@@ -6,13 +6,15 @@ before trusting them.
 
 ## Phase 0: reconnaissance (in progress)
 
-- Read-only probe: find `fm.exe`, tell Steam / Epic / Game Pass apart, attach,
-  list modules, read `game_plugin.dll` headers from memory.
-- Locate the entity arrays (players, staff, clubs) in `game_plugin.dll` by scanning
-  for `(begin, end)` pointer pairs and counting element vtables.
-- Confirm on the Game Pass build that object layouts match the Steam notes in
-  `docs/recon/`.
-- Tauri app shell that builds and shows whether the game is detected.
+- [x] Read-only probe: find `fm.exe`, tell Steam / Epic / Game Pass apart, attach,
+  list modules, read `game_plugin.dll` headers from memory. Attaching to the Game
+  Pass build works without administrator rights.
+- [x] Locate the entity arrays (players, staff, clubs) in `game_plugin.dll` by
+  scanning for `(begin, end)` pointer pairs and counting element vtables.
+- [x] Confirm on the Game Pass build that object layouts match the Steam notes in
+  `docs/recon/` (player UID and names verified).
+- [x] Tauri app shell that builds and shows whether the game is detected.
+- [ ] Verify staff and club layouts the same way.
 
 ## Phase 1: memory core
 

@@ -62,4 +62,73 @@ UID at `+0x294` and the person block at `+0x288` are the first things to verify.
 
 ## Game Pass findings
 
-To be filled in by `fmlibre-probe info` and `fmlibre-probe scan` on a loaded save.
+### Attaching (`fmlibre-probe info`)
+
+- `OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ)` on the Game Pass
+  `fm.exe` works **without administrator rights**.
+- The running executable lives in the folder chosen in the Xbox app, here
+  `D:\Games\Football Manager 27\Content\fm.exe`, not under `WindowsApps`. The
+  package identity (`GetPackageFullName`) and `MicrosoftGame.config` next to the
+  exe still identify the build as Game Pass.
+- `fm.exe`, `UnityPlayer.dll` and `GameAssembly.dll` load at start-up;
+  `game_plugin.dll` loads later, during start-up loading.
+
+### `game_plugin.dll` as mapped
+
+Size of image `0x19436000`. Section table read from memory:
+
+| Section | RVA | Size | Access |
+|---|---|---|---|
+| `.trace` | `0x1000` | `0x4a96000` | R-X (code) |
+| `.xpdata` | `0x4a97000` | `0xb50000` | R-- (vtables live here) |
+| `.ecode` | `0x55e7000` | `0x100000` | RW- (entity array pairs live here) |
+| `.xdata` | `0x56e7000` | `0x19b000` | R-- |
+| `.sxdata` | `0x5884000` | `0xd000` | RW- |
+| `.debug` | `0x58e7000` | `0x13812ea8` | RWX (protector) |
+
+Plus small `.udata`, `.sdata`, `.bss`, `.rdata`, `.impdata`, `.xtext`, `.text`,
+`.link`, `.tls`, `.xtls`, `.rsrc` and `.sbss` sections. Writable memory in the
+module: 84 regions, 313 MiB.
+
+The `game_plugin_plugin_build_timestamp` export points into `.debug` and starts
+with `call`/`jmp`: it is code, so it cannot serve as a data fingerprint. Use the
+package version instead.
+
+### Entity arrays (`fmlibre-probe scan`)
+
+The scan took 2.3 s (debug build) and found 20 arrays, all with their
+`(begin, end)` pairs in `.ecode`. The cluster sits at the same relative offsets as
+on Steam, shifted as a block by `-0x81A10`.
+
+| Array | Steam RVA | Game Pass RVA | Elements | Vtables (Game Pass RVA × count) |
+|---|---|---|---|---|
+| People | — | `0x5681DA8` | 88,630 | `0x4cd47f8` ×59,130, `0x4d39378` ×29,324, `0x4f1f208` ×174, `0x4c6e218` ×2 |
+| Players | `0x57037D0` | `0x5681DC0` | 59,304 | `0x4cd4318` ×59,130 (player), `0x4f1ed28` ×174 (player-coach) |
+| Players (second list) | — | `0x5681DD8` | 59,304 | same as players |
+| Staff | `0x5703818` | `0x5681E08` | 29,500 | `0x4d39358` ×29,324, `0x4f1ed0c` ×174, `0x4c6e1fc` ×2 |
+| Clubs | `0x5703988` | `0x5681F78` | 31,233 | `0x4c87b68` ×31,227, `0x4f0e3f8` ×6 |
+
+The people array points at the person sub-object at player `+0x2B0` (vtable
+`0x4cd47f8`), the players array at the player object itself. Other arrays in the
+cluster (teams, club subsets, about 3.7k objects of vtable `0x4ad55c8`) are not
+identified yet. Element counts depend on the leagues loaded in the save.
+
+### Player layout: same as Steam
+
+Verified with `fmlibre-probe column game_plugin.dll+0x5681dc0 0x294 --find <UID>`:
+Lionel Messi (UID 7458500) is element 360 and Erling Haaland (UID 29179241)
+element 6975 of the players array, both at the Steam offset.
+
+| Offset | Content |
+|---|---|
+| `+0x288` | person block vtable (`0x4cd4848`) |
+| `+0x294` | UID (`u32`); `+0x298` holds the same value again |
+| `+0x2B0` | person sub-object vtable (`0x4cd47f8`) |
+| `+0x2C8` | full name: pointer to an FM string |
+| `+0x2D8` / `+0x2E0` | first / last name: pointer to a name-table entry |
+| `+0x2E8` | common name entry, null when there is none |
+
+FM strings are a `u32` byte length followed by NUL-terminated UTF-8 text, packed in
+a pool (pointers are only 4-byte aligned). Messi's full name reads
+`Lionel Andrés Messi Cuccittini`. A name-table entry starts with a pointer to its
+FM string, then a `u32` id; entries are 24 bytes apart.
