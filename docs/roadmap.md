@@ -30,10 +30,12 @@ before trusting them.
 - [x] Player profile panel in the app.
 - [x] Locate the in-game date; ages in the list and the profile.
 
-## Phase 2: data model
+## Phase 2: data model (in progress)
 
-- Players, staff and clubs: names, ages, attributes, CA/PA, positions, personality,
-  contracts, club finances.
+- [x] Players: names, ages, attributes, CA/PA, positions, personality, contracts.
+- [x] Staff: names, ages, jobs, employers, attributes, personality, contracts,
+  including the human manager.
+- [ ] Clubs: reputation, facilities, supporters, finances.
 - Every field needs two independent confirmations before it becomes writable.
 
 ## Phase 3: read-only MVP

@@ -11,7 +11,8 @@ use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PERSONALITY, POSITIONS,
-    PlayerIndex, ScanOptions, Session, SessionError, find_game, scan_object_arrays,
+    PlayerIndex, STAFF_ATTRIBUTE_GROUPS, ScanOptions, Session, SessionError, StaffIndex, find_game, job_name,
+    scan_object_arrays,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -51,6 +52,19 @@ enum Command {
     /// Show everything FMLibreEditor reads for the player with this UID.
     Player {
         /// The player's unique ID.
+        uid: u32,
+    },
+    /// List staff (managers, coaches, scouts...), the human manager first, then best first.
+    Staff {
+        /// Words to look for in names (accents and case are ignored), or a staff id.
+        text: Option<String>,
+        /// How many to print.
+        #[arg(long, default_value_t = 25)]
+        limit: usize,
+    },
+    /// Show everything FMLibreEditor reads for the member of staff with this id.
+    StaffMember {
+        /// The staff id.
         uid: u32,
     },
     /// List players, best first, optionally only those matching TEXT.
@@ -185,6 +199,10 @@ fn run(cli: Cli) -> Result<()> {
             calibrate(&Session::connect(process, source)?)
         }
         Command::Player { uid } => player(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::Staff { text, limit } => {
+            staff(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
+        }
+        Command::StaffMember { uid } => staff_member(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Players { text, limit } => {
             players(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
         }
@@ -451,6 +469,82 @@ fn player(session: &Session, uid: u32) -> Result<()> {
             );
             println!("                 transfer listed {}, loan listed {}", c.transfer_listed, c.loan_listed);
         }
+        None => println!("  contract       none"),
+    }
+    Ok(())
+}
+
+fn staff(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
+    let started = Instant::now();
+    let index = StaffIndex::new(session.staff()?);
+    let elapsed = started.elapsed();
+    let hits = index.search(text.unwrap_or(""));
+    println!(
+        "Read {} staff in {:.1} s; {} shown of {} matching.",
+        index.len(),
+        elapsed.as_secs_f64(),
+        hits.len().min(limit),
+        hits.len()
+    );
+    println!();
+    println!("{:>10}  {:<28}  {:>3}  {:<22}  {:<24}  {:>3}  {:>4}", "ID", "Name", "Age", "Job", "Club", "CA", "PA");
+    for s in hits.iter().take(limit) {
+        let job =
+            s.job.map_or_else(String::new, |code| job_name(code).map_or_else(|| format!("job {code}"), str::to_owned));
+        let name = if s.is_human { format!("{} (you)", s.name) } else { s.name.clone() };
+        println!(
+            "{:>10}  {:<28}  {:>3}  {:<22}  {:<24}  {:>3}  {:>4}",
+            s.uid,
+            clip(&name, 28),
+            s.age.map_or_else(String::new, |age| age.to_string()),
+            clip(&job, 22),
+            clip(s.club.as_deref().unwrap_or("-"), 24),
+            s.current_ability,
+            s.potential_ability
+        );
+    }
+    Ok(())
+}
+
+fn staff_member(session: &Session, uid: u32) -> Result<()> {
+    let index = StaffIndex::new(session.staff()?);
+    let member = index.get(uid).with_context(|| format!("no member of staff with id {uid}"))?;
+    let d = session.staff_details(member)?.context("the staff member's data changed while reading; try again")?;
+    let s = &d.summary;
+    println!("{} (id {}){}", s.name, s.uid, if s.is_human { ", the human manager" } else { "" });
+    if let Some(full) = &s.full_name {
+        println!("  full name      {full}");
+    }
+    let age = s.age.map_or_else(String::new, |age| format!(" (age {age})"));
+    println!("  born           {}{age}", iso_date(s.date_of_birth));
+    println!("  nation         {}", s.nation.as_deref().unwrap_or("-"));
+    println!("  club           {}", s.club.as_deref().unwrap_or("-"));
+    println!("  CA / PA        {} / {}", s.current_ability, s.potential_ability);
+    println!(
+        "  reputation     home {}, current {}, world {}",
+        d.reputation.home, d.reputation.current, d.reputation.world
+    );
+    if member.shift != 0 {
+        println!("  layout         person block shifted by {:#x}", member.shift);
+    }
+    println!();
+    for (group, keys) in STAFF_ATTRIBUTE_GROUPS {
+        let values: Vec<String> =
+            keys.iter().filter_map(|key| d.attributes.get(*key).map(|a| format!("{key} {}", a.value))).collect();
+        println!("  {group:<12} {}", values.join(", "));
+    }
+    let personality: Vec<String> = PERSONALITY.iter().map(|key| format!("{key} {}", d.personality[key])).collect();
+    println!("  {:<12} {}", "personality", personality.join(", "));
+    println!();
+    match &d.contract {
+        Some(c) => println!(
+            "  contract       {}, £{} per week, signed {}, expires {}, joined {}",
+            job_name(c.job).map_or_else(|| format!("job {}", c.job), str::to_owned),
+            c.wage,
+            iso_date(c.signed),
+            iso_date(c.expires),
+            iso_date(c.joined)
+        ),
         None => println!("  contract       none"),
     }
     Ok(())

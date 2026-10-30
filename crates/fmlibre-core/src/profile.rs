@@ -103,6 +103,8 @@ pub struct ContractLayout {
     pub squad_status: u64,
     pub listing: u64,
     pub squad_number: u64,
+    pub team: u64,
+    pub job: u64,
 }
 
 impl ContractLayout {
@@ -116,6 +118,8 @@ impl ContractLayout {
             self.squad_status + 1,
             self.listing + 1,
             self.squad_number + 1,
+            self.team + 8,
+            self.job + 1,
         ]
         .into_iter()
         .max()
@@ -133,10 +137,59 @@ pub struct ClusterLayout {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StaffLayout {
+    pub uid: u64,
     pub full_name: u64,
     pub first_name: u64,
     pub last_name: u64,
     pub common_name: u64,
+    pub nation: u64,
+    /// First of the 8 personality ratings, in [`crate::PERSONALITY`] order.
+    pub personality: u64,
+    pub date_of_birth: u64,
+    pub contract: u64,
+    pub home_reputation: u64,
+    pub current_reputation: u64,
+    pub world_reputation: u64,
+    pub current_ability: u64,
+    pub potential_ability: u64,
+    /// Start of the person block; fields from here on move with the person-block shift.
+    pub person_block: u64,
+    /// Shifts of the person block seen across staff classes (the human manager uses 0x340).
+    pub person_block_shifts: Vec<u64>,
+    /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
+    pub attributes: BTreeMap<String, u64>,
+    /// Ratings stored as shown (1..20) by key.
+    pub ratings: BTreeMap<String, u64>,
+}
+
+impl StaffLayout {
+    /// Where `offset` lands in an object whose person block is shifted by `shift`.
+    pub fn at(&self, offset: u64, shift: u64) -> u64 {
+        if offset >= self.person_block { offset + shift } else { offset }
+    }
+
+    /// One past the last byte of every staff field, before any shift.
+    pub fn end(&self) -> u64 {
+        let fields = [
+            self.uid + 4,
+            self.full_name + 8,
+            self.first_name + 8,
+            self.last_name + 8,
+            self.common_name + 8,
+            self.nation + 8,
+            self.personality + crate::PERSONALITY.len() as u64,
+            self.date_of_birth + 4,
+            self.contract + 8,
+            self.world_reputation + 2,
+            self.potential_ability + 2,
+        ];
+        let single_bytes = self.attributes.values().chain(self.ratings.values()).map(|offset| offset + 1);
+        fields.into_iter().chain(single_bytes).max().unwrap_or(0)
+    }
+
+    pub fn max_shift(&self) -> u64 {
+        self.person_block_shifts.iter().copied().max().unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

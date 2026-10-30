@@ -137,24 +137,35 @@ nav {
   gap: 2px;
 }
 
-nav a {
+.nav-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
   padding: 7px 10px;
+  border: 0;
   border-radius: 6px;
-  color: var(--text);
-  text-decoration: none;
-  cursor: default;
+  background: transparent;
+  text-align: left;
 }
 
-nav a.active {
+.nav-item:hover:not(:disabled, .active) {
+  background: var(--raised);
+}
+
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.nav-item.active {
   background: var(--accent-soft);
   font-weight: 600;
 }
 
-nav a.disabled {
+.nav-item:disabled {
   color: var(--muted);
+  opacity: 1;
 }
 
 nav small {
@@ -286,9 +297,18 @@ nav small {
   color: var(--danger);
 }
 
-/* Players */
+/* Players and staff */
 
-/* The table, plus the player profile beside it while one is open. */
+/* Holds one workspace per list. All stay mounted so each keeps its search, rows, scroll position and selection. */
+.views {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A list and the profile beside it while a row is picked. */
 .workspace {
   display: flex;
   flex: 1;
@@ -296,6 +316,14 @@ nav small {
   min-height: 0;
 }
 
+/* The list that is not shown: out of the way, but laid out, so its scroll position survives. Hidden for focus and assistive technology too. */
+.workspace.inactive {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+
+/* The table section of a workspace. */
 .players {
   display: flex;
   flex-direction: column;
@@ -417,6 +445,38 @@ nav small {
 @container (max-width: 580px) {
   .with-profile .grid .col-nation {
     display: none;
+  }
+}
+
+/*
+ * The staff table has one more text column, so its columns drop out sooner, whether or not a
+ * profile is open: Born and ID, then Nation, then Age and PA, and the text columns wrap.
+ */
+.staff-grid :is(.col-job, .col-club) {
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@container (max-width: 960px) {
+  .staff-grid :is(.col-born, .col-uid) {
+    display: none;
+  }
+}
+
+@container (max-width: 780px) {
+  .staff-grid .col-nation {
+    display: none;
+  }
+}
+
+@container (max-width: 680px) {
+  .staff-grid :is(.col-age, .col-pa) {
+    display: none;
+  }
+
+  .staff-grid :is(.col-name, .col-job, .col-club) {
+    white-space: normal;
   }
 }
 
@@ -726,6 +786,15 @@ nav small {
 .tag.listed {
   border-color: var(--tier-2);
   color: var(--tier-2);
+}
+
+/* Marks the manager the user controls, beside the name. */
+.tag.you {
+  margin-left: 8px;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  vertical-align: middle;
 }
 
 .bar-stat dt {

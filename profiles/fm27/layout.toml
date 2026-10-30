@@ -106,6 +106,8 @@ joined = 0x4C             # date the player joined the club (Messi: 15 July 2023
 squad_status = 0x54       # u8 (1 star player, 2 important player, 5 impact sub)
 listing = 0x57            # u8; bit 0 transfer listed, bit 1 loan listed
 squad_number = 0x5D       # u8; 255 = none
+team = 0x10               # team pointer (the employer, for staff); its club is at team+0x30
+job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant coach, ...)
 
 # Static data in game_plugin.dll next to the entity arrays. Offsets are relative to
 # the players (begin, end) pair: the cluster moves as one block between builds.
@@ -114,11 +116,55 @@ squad_number = 0x5D       # u8; 255 = none
 # by the game's UI strings ("Cts 18 Tem", "18 Temmuz 2026") in the test save.
 current_date = 0x848
 
+# Non-player staff. Offsets from fm-editor's FM27 notes (Steam), checked on the Game
+# Pass build with the witnesses listed in docs/recon.
 [staff]
+uid = 0x10C               # u32 staff id
 full_name = 0x140         # FM string pointer; often null
 first_name = 0x150        # name-table entry pointer
 last_name = 0x158         # name-table entry pointer
 common_name = 0x160       # name-table entry pointer
+nation = 0x168            # nation pointer
+personality = 0x170       # 8 ratings, same order as for players
+date_of_birth = 0x188     # date
+contract = 0x1A8          # contract pointer (same record as a player's contract)
+home_reputation = 0xD4    # u16
+current_reputation = 0xD6
+world_reputation = 0xD8
+current_ability = 0xDA    # u16
+potential_ability = 0xDC  # u16
+# The person block starts here (a contract points back at it). In the human
+# manager's object every field from here on sits 0x340 further: id, names, nation,
+# personality, birth date and contract. Attributes, reputation and CA/PA stay put.
+person_block = 0x100
+person_block_shifts = [0x0, 0x340]
+
+# u8, raw 0..100, shown as (raw + 2) / 5
+[staff.attributes]
+attacking = 0x32
+defending = 0x33
+fitness = 0x34
+goalkeeping = 0x2B
+possession = 0x35
+tactical = 0x37
+technical = 0x36
+set_pieces = 0x43
+determination = 0x1D
+motivating = 0x2F
+people_management = 0x2E
+judging_ability = 0x2C
+judging_potential = 0x2D
+judging_staff = 0x42
+negotiating = 0x41
+tactical_knowledge = 0x31
+data_analysis = 0x3C
+physiotherapy = 0x30
+sports_science = 0x3F
+
+# u8 ratings stored as shown, 1..20
+[staff.ratings]
+working_with_youngsters = 0x1C
+authority = 0x14
 
 [team]
 club = 0x30               # club pointer

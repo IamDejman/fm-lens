@@ -5,8 +5,9 @@ use serde::Serialize;
 
 use crate::calibrate::ArrayRef;
 use crate::date::FmDate;
+use crate::index::{Listed, SearchIndex};
 use crate::profile::{Layout, PlayerLayout};
-use crate::text::{fold, is_name_like, read_fm_string, read_name_entry};
+use crate::text::{Memo, display_name, is_name_like, read_fm_string, read_name_entry};
 
 /// The fields shown in player lists.
 #[derive(Debug, Clone, Serialize)]
@@ -31,6 +32,30 @@ pub struct PlayerSummary {
     #[serde(skip)]
     pub shift: u64,
 }
+
+impl Listed for PlayerSummary {
+    fn uid(&self) -> u32 {
+        self.uid
+    }
+
+    fn names(&self) -> String {
+        match &self.full_name {
+            Some(full) => format!("{} {full}", self.name),
+            None => self.name.clone(),
+        }
+    }
+
+    fn display_name(&self) -> &str {
+        &self.name
+    }
+
+    fn rank(&self) -> i32 {
+        i32::from(self.current_ability)
+    }
+}
+
+/// Players with a search index over their names.
+pub type PlayerIndex = SearchIndex<PlayerSummary>;
 
 /// Reads every player in the players array; ages are computed for `today`. Only reads memory.
 pub fn read_players(
@@ -80,24 +105,11 @@ pub fn read_players(
         let uid = u32_at(p.uid);
         let full_name = read_fm_string(process, u64_at(p.full_name));
         let mut name_part = |offset| names.get(u64_at(offset), |entry| read_name_entry(process, entry));
-        let common = name_part(p.common_name);
-        let first = name_part(p.first_name);
-        let last = name_part(p.last_name);
-        let name = common
-            .or_else(|| match (first, last) {
-                (Some(first), Some(last)) => Some(format!("{first} {last}")),
-                (first, last) => first.or(last),
-            })
-            .or_else(|| full_name.clone())
-            .unwrap_or_else(|| format!("UID {uid}"));
+        let (common, first, last) = (name_part(p.common_name), name_part(p.first_name), name_part(p.last_name));
+        let name = display_name(common, first, last, full_name.as_ref(), uid);
 
-        let club = clubs.get(u64_at(p.team), |team| {
-            let club = process.read_u64(team + layout.team.club).ok()?;
-            read_fm_string(process, process.read_u64(club + layout.club.name).ok()?)
-        });
-        let nation = nations.get(u64_at(p.nation), |nation| {
-            read_fm_string(process, process.read_u64(nation + layout.nation.name).ok()?)
-        });
+        let club = clubs.get(u64_at(p.team), |team| club_of_team(process, layout, team));
+        let nation = nations.get(u64_at(p.nation), |nation| nation_name(process, layout, nation));
 
         let date_of_birth = FmDate::from_raw(u16_at(p.date_of_birth), u16_at(p.date_of_birth + 2));
         players.push(PlayerSummary {
@@ -115,6 +127,17 @@ pub fn read_players(
         });
     }
     Ok(players)
+}
+
+/// The name of the club a team belongs to.
+pub(crate) fn club_of_team(process: &Process, layout: &Layout, team: u64) -> Option<String> {
+    let club = process.read_u64(team + layout.team.club).ok()?;
+    read_fm_string(process, process.read_u64(club + layout.club.name).ok()?)
+}
+
+/// The name of a nation object.
+pub(crate) fn nation_name(process: &Process, layout: &Layout, nation: u64) -> Option<String> {
+    read_fm_string(process, process.read_u64(nation + layout.nation.name).ok()?)
 }
 
 /// Finds where `object` keeps its person block: the candidate shift under which most
@@ -141,66 +164,4 @@ pub(crate) fn name_score(process: &Process, p: &PlayerLayout, object: u64, shift
     named(read_fm_string(process, pointer_at(p.full_name)))
         + named(read_name_entry(process, pointer_at(p.first_name)))
         + named(read_name_entry(process, pointer_at(p.last_name)))
-}
-
-/// Players with a search index over their names.
-pub struct PlayerIndex {
-    players: Vec<PlayerSummary>,
-    folded: Vec<String>,
-    by_uid: HashMap<u32, usize>,
-}
-
-impl PlayerIndex {
-    pub fn new(players: Vec<PlayerSummary>) -> Self {
-        let folded = players
-            .iter()
-            .map(|p| match &p.full_name {
-                Some(full) => fold(&format!("{} {full}", p.name)),
-                None => fold(&p.name),
-            })
-            .collect();
-        let by_uid = players.iter().enumerate().map(|(i, p)| (p.uid, i)).collect();
-        Self { players, folded, by_uid }
-    }
-
-    pub fn len(&self) -> usize {
-        self.players.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.players.is_empty()
-    }
-
-    pub fn get(&self, uid: u32) -> Option<&PlayerSummary> {
-        self.by_uid.get(&uid).map(|&i| &self.players[i])
-    }
-
-    /// Players whose name contains every word of `query` (ignoring accents and case), or
-    /// whose UID equals it; highest current ability first. An empty query matches everyone.
-    pub fn search(&self, query: &str) -> Vec<&PlayerSummary> {
-        let uid: Option<u32> = query.trim().parse().ok();
-        let words: Vec<String> = fold(query).split_whitespace().map(str::to_owned).collect();
-        let mut hits: Vec<&PlayerSummary> = self
-            .players
-            .iter()
-            .zip(&self.folded)
-            .filter(|(p, name)| uid == Some(p.uid) || words.iter().all(|w| name.contains(w.as_str())))
-            .map(|(p, _)| p)
-            .collect();
-        hits.sort_by(|a, b| b.current_ability.cmp(&a.current_ability).then_with(|| a.name.cmp(&b.name)));
-        hits
-    }
-}
-
-/// Caches what a pointer resolves to.
-#[derive(Default)]
-struct Memo(HashMap<u64, Option<String>>);
-
-impl Memo {
-    fn get(&mut self, key: u64, load: impl FnOnce(u64) -> Option<String>) -> Option<String> {
-        if !is_user_pointer(key) {
-            return None;
-        }
-        self.0.entry(key).or_insert_with(|| load(key)).clone()
-    }
 }

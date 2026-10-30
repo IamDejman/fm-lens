@@ -1,8 +1,41 @@
-use fmlibre_mem::Process;
+use std::collections::HashMap;
+
+use fmlibre_mem::{Process, is_user_pointer};
 use unicode_normalization::UnicodeNormalization;
 
 /// Longest FM string accepted; anything longer is treated as a bad pointer.
 const MAX_STRING_LEN: usize = 1024;
+
+/// Caches what a pointer resolves to, for names, clubs and nations shared by many people.
+#[derive(Default)]
+pub(crate) struct Memo(HashMap<u64, Option<String>>);
+
+impl Memo {
+    pub(crate) fn get(&mut self, key: u64, load: impl FnOnce(u64) -> Option<String>) -> Option<String> {
+        if !is_user_pointer(key) {
+            return None;
+        }
+        self.0.entry(key).or_insert_with(|| load(key)).clone()
+    }
+}
+
+/// The name FM shows for a person: the common name if set, otherwise first and last
+/// name, otherwise the full name.
+pub(crate) fn display_name(
+    common: Option<String>,
+    first: Option<String>,
+    last: Option<String>,
+    full: Option<&String>,
+    uid: u32,
+) -> String {
+    common
+        .or_else(|| match (first, last) {
+            (Some(first), Some(last)) => Some(format!("{first} {last}")),
+            (first, last) => first.or(last),
+        })
+        .or_else(|| full.cloned())
+        .unwrap_or_else(|| format!("UID {uid}"))
+}
 
 /// Reads an FM string: a `u32` byte length followed by UTF-8 text.
 /// Returns `None` for null pointers and for bytes that are not a valid string.
