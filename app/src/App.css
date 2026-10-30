@@ -396,6 +396,112 @@ nav small {
   font-size: 13px;
 }
 
+/* Filters */
+
+/* The filters of a list, between the search box and the table. */
+.filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.filter-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.filter-toggle svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.filter-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* How many filters are in effect. */
+.filter-count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.filter-clear {
+  padding: 4px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.filter-clear:hover:not(:disabled) {
+  color: var(--text);
+}
+
+/* The inputs wrap onto a second row, and more when the list is narrow. */
+.filter-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  font-size: 13px;
+}
+
+/* A label and its input, or the label of a pair of inputs. */
+.filter-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.filter-fields :is(select, input:not([type="checkbox"])) {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+.filter-fields :is(select, input:not([type="checkbox"])):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.filter-fields input[type="number"] {
+  width: 4.75rem;
+}
+
+.filter-fields input[type="text"] {
+  width: 9rem;
+}
+
+.filter-fields input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .table-wrap {
   flex: 1;
   min-height: 0;
@@ -425,6 +531,64 @@ nav small {
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.4px;
+}
+
+/* A header that sorts the list: a button that looks like the header, with an arrow once its column is the sort. */
+.grid th .sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.grid th .sort:hover {
+  color: var(--text);
+}
+
+.grid th .sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* A number is right-aligned: its arrow goes before the label, so the label stays above the digits. */
+.grid th.num .sort {
+  flex-direction: row-reverse;
+}
+
+.grid th[aria-sort] {
+  color: var(--text);
+}
+
+/* Always there, though hidden, so a column does not change its width when it becomes the sort. */
+.sort-arrow {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+/* A hint on the columns that are not the sort, so it is clear they can be clicked. */
+.grid th:not([aria-sort]) .sort:hover .sort-arrow {
+  opacity: 0.45;
+}
+
+.grid th[aria-sort] .sort-arrow {
+  opacity: 1;
+}
+
+.grid th[aria-sort="descending"] .sort-arrow {
+  transform: rotate(180deg);
 }
 
 .grid td {
@@ -460,6 +624,37 @@ nav small {
 @container (max-width: 580px) {
   .with-profile .grid .col-nation {
     display: none;
+  }
+}
+
+/*
+ * The players table has the most columns, so it drops them by the room it has, whether or not a profile is
+ * open (the table is as wide as the list is): Born and UID first, then Contract, then Positions. With a
+ * profile open the rules above take Nation too, at the end. The widths are estimates, worked out so that the
+ * default window (a table about 1000px wide with no profile open) keeps Positions and Contract: tune by eye.
+ */
+@container (max-width: 1200px) {
+  .player-grid :is(.col-born, .col-uid) {
+    display: none;
+  }
+}
+
+@container (max-width: 960px) {
+  .player-grid .col-contract {
+    display: none;
+  }
+}
+
+@container (max-width: 880px) {
+  .player-grid .col-positions {
+    display: none;
+  }
+}
+
+/* Narrower still, names and clubs wrap rather than push CA and PA out of view. */
+@container (max-width: 560px) {
+  .player-grid :is(.col-name, .col-club) {
+    white-space: normal;
   }
 }
 

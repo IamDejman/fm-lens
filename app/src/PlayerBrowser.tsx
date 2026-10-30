@@ -1,44 +1,82 @@
+import { useState } from "react";
 import { Ability } from "./Ability";
 import { formatDate } from "./format";
+import { playerListText, POSITION_LABELS, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
+import {
+  countFilters,
+  NO_PLAYER_FILTERS,
+  PlayerFilterBar,
+  toPlayerFilter,
+  type PlayerFilterFields,
+} from "./PlayerFilters";
 import { PlayerProfile } from "./PlayerProfile";
-import type { PlayerSummary } from "./types";
+import type { PlayerOrder, PlayerSort, PlayerSummary } from "./types";
+
+const text = playerListText;
+
+/** What the list is in until a column header is clicked: the best players first. */
+const DEFAULT_ORDER: PlayerOrder = { by: "currentAbility", ascending: false };
+
+/** The columns whose first click sorts from A to Z or from the earliest date; the numbers start with the highest. */
+const FIRST_ASCENDING: ReadonlySet<PlayerSort> = new Set<PlayerSort>(["name", "nation", "club", "contractExpires"]);
+
+/** How many positions a row shows before the ellipsis; its hover text has all of them. */
+const POSITIONS_SHOWN = 3;
 
 /** The players table with the profile of the selected player beside it. */
 export function PlayerBrowser({ version, active }: { version: number; active: boolean }) {
+  const [fields, setFields] = useState<PlayerFilterFields>(NO_PLAYER_FILTERS);
+  // Null until a header is clicked: no order is asked for, and the search answers with the best current ability first.
+  const [order, setOrder] = useState<PlayerOrder | null>(null);
+
+  const filter = toPlayerFilter(fields);
+  const filterCount = countFilters(filter);
+  const sorted = order ?? DEFAULT_ORDER;
+  const sortBy = (by: PlayerSort) =>
+    setOrder({ by, ascending: sorted.by === by ? !sorted.ascending : FIRST_ASCENDING.has(by) });
+  const sortHeader = (by: PlayerSort, className?: string) => (
+    <SortHeader by={by} order={sorted} onSort={sortBy} className={className} />
+  );
+
   return (
     <ListBrowser<PlayerSummary>
       command="search_players"
+      requestArgs={{ filter, order: order ?? undefined }}
       version={version}
       active={active}
-      placeholder="Search players by name or UID"
+      placeholder={text.search}
       summary={(total, shown) =>
-        total > shown
-          ? `${total.toLocaleString()} players · showing the top ${shown} by current ability`
-          : `${total.toLocaleString()} players`
+        text.summary(total, shown, order && { by: text.sortNames[order.by], ascending: order.ascending })
       }
-      empty={(query) => `No players match “${query}”.`}
+      empty={(query) => text.empty(query, filterCount > 0)}
+      filterBar={<PlayerFilterBar fields={fields} onChange={setFields} active={filterCount} />}
+      tableClass="player-grid"
       header={
         <>
-          <th>Name</th>
-          <th className="num">Age</th>
-          <th className="col-nation">Nation</th>
-          <th>Club</th>
-          <th className="col-born">Born</th>
-          <th className="num">CA</th>
-          <th className="num">PA</th>
-          <th className="num col-uid">UID</th>
+          {sortHeader("name", "col-name")}
+          {sortHeader("age", "num")}
+          <th className="col-positions">{text.columns.positions}</th>
+          {sortHeader("nation", "col-nation")}
+          {sortHeader("club", "col-club")}
+          {sortHeader("contractExpires", "col-contract")}
+          <th className="col-born">{text.columns.born}</th>
+          {sortHeader("currentAbility", "num")}
+          {sortHeader("potentialAbility", "num")}
+          <th className="num col-uid">{text.columns.uid}</th>
         </>
       }
       cells={(p) => (
         <>
-          <td>
+          <td className="col-name">
             <div className="name">{p.name}</div>
             {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
           </td>
-          <td className="num">{p.age ?? "—"}</td>
-          <td className="col-nation">{p.nation ?? "—"}</td>
-          <td>{p.club ?? <span className="muted">Free agent</span>}</td>
+          <td className="num">{p.age ?? profileText.none}</td>
+          <PositionsCell positions={p.positions} />
+          <td className="col-nation">{p.nation ?? profileText.none}</td>
+          <td className="col-club">{p.club ?? <span className="muted">{profileText.freeAgent}</span>}</td>
+          <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
           <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
           <td className="num">
             <Ability value={p.currentAbility} />
@@ -51,5 +89,46 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
       )}
       profile={(p, panel) => <PlayerProfile player={p} version={panel.version} onClose={panel.onClose} />}
     />
+  );
+}
+
+interface SortHeaderProps {
+  /** The column; it is also what the list is sorted by. */
+  by: PlayerSort;
+  /** How the list is sorted now. */
+  order: PlayerOrder;
+  onSort: (by: PlayerSort) => void;
+  className?: string;
+}
+
+/** A column header that sorts the list; the sorted column shows an arrow and says which way in `aria-sort`. */
+function SortHeader({ by, order, onSort, className }: SortHeaderProps) {
+  const direction = order.by !== by ? undefined : order.ascending ? "ascending" : "descending";
+  return (
+    <th className={className} aria-sort={direction}>
+      <button type="button" className="sort" title={text.sortBy(text.sortNames[by])} onClick={() => onSort(by)}>
+        {text.columns[by]}
+        <svg className="sort-arrow" viewBox="0 0 10 10" aria-hidden="true">
+          <path d="M5 8.5v-7M2 4.5l3-3 3 3" />
+        </svg>
+      </button>
+    </th>
+  );
+}
+
+const positionLabel = (key: string): string =>
+  (POSITION_LABELS as Readonly<Record<string, string>>)[key] ?? key.toUpperCase();
+
+/** The positions a player can play, best first: three at most, then an ellipsis; the hover text has all of them. */
+function PositionsCell({ positions }: { positions: readonly string[] }) {
+  if (positions.length === 0) {
+    return <td className="col-positions muted">{profileText.none}</td>;
+  }
+  const labels = positions.map(positionLabel);
+  return (
+    <td className="col-positions" title={labels.join(" ")}>
+      {labels.slice(0, POSITIONS_SHOWN).join(" ")}
+      {labels.length > POSITIONS_SHOWN && " …"}
+    </td>
   );
 }

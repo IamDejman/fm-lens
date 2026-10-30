@@ -1,8 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// A calendar date decoded from FM's `[u16 day_of_year][u16 year]` pair.
 /// Field order makes the derived ordering chronological.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct FmDate {
     pub year: u16,
     pub month: u8,

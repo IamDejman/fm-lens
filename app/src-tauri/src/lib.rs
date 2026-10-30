@@ -2,8 +2,9 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use fmlibre_core::{
-    ArraySource, ClubDetails, ClubIndex, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, Listed, PlayerDetails,
-    PlayerIndex, SearchIndex, Session, StaffDetails, StaffIndex, find_game,
+    ArraySource, ClubDetails, ClubFilter, ClubIndex, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, Listed,
+    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session, StaffDetails, StaffFilter, StaffIndex,
+    find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::Serialize;
@@ -76,8 +77,17 @@ struct Page<T> {
     rows: Vec<T>,
 }
 
-fn page<T: Listed + Clone>(index: &SearchIndex<T>, query: &str, limit: usize) -> Page<T> {
-    let hits = index.search(query);
+/// Searches `index`, keeps the hits `keep` accepts and returns at most `limit` of them.
+fn page<T: Listed + Clone>(
+    index: &SearchIndex<T>,
+    query: &str,
+    limit: usize,
+    keep: impl Fn(&T) -> bool,
+    sort: impl FnOnce(&mut Vec<&T>),
+) -> Page<T> {
+    let mut hits = index.search(query);
+    hits.retain(|item| keep(item));
+    sort(&mut hits);
     Page { total: hits.len(), rows: hits.into_iter().take(limit).cloned().collect() }
 }
 
@@ -153,10 +163,23 @@ fn search_players(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    filter: Option<PlayerFilter>,
+    order: Option<PlayerOrder>,
 ) -> Result<Page<fmlibre_core::PlayerSummary>, String> {
     let guard = state.0.lock().map_err(text)?;
     let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    Ok(page(&connection.players, &query, limit))
+    let filter = filter.unwrap_or_default();
+    Ok(page(
+        &connection.players,
+        &query,
+        limit,
+        |p| filter.matches(p),
+        |hits| {
+            if let Some(order) = order {
+                sort_players(hits, order);
+            }
+        },
+    ))
 }
 
 /// Staff matching `query`, the human manager first, then by current ability; at most `limit` rows.
@@ -165,10 +188,12 @@ fn search_staff(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    filter: Option<StaffFilter>,
 ) -> Result<Page<fmlibre_core::StaffSummary>, String> {
     let guard = state.0.lock().map_err(text)?;
     let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    Ok(page(&connection.staff, &query, limit))
+    let filter = filter.unwrap_or_default();
+    Ok(page(&connection.staff, &query, limit, |s| filter.matches(s), |_| {}))
 }
 
 /// Clubs matching `query`, highest reputation first; at most `limit` rows.
@@ -177,10 +202,12 @@ fn search_clubs(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    filter: Option<ClubFilter>,
 ) -> Result<Page<fmlibre_core::ClubSummary>, String> {
     let guard = state.0.lock().map_err(text)?;
     let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    Ok(page(&connection.clubs, &query, limit))
+    let filter = filter.unwrap_or_default();
+    Ok(page(&connection.clubs, &query, limit, |c| filter.matches(c), |_| {}))
 }
 
 /// The full profile of the club with `uid`. Only reads memory.

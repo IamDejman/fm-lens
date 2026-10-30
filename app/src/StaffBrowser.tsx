@@ -1,22 +1,54 @@
+import { useState } from "react";
 import { Ability } from "./Ability";
 import { formatDate } from "./format";
-import { jobLabel, profileText, staffListText } from "./labels";
+import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { employerOf, HumanBadge, StaffProfile } from "./StaffProfile";
-import type { StaffSummary } from "./types";
+import type { StaffFilter, StaffSummary } from "./types";
 
 const columns = staffListText.columns;
+const filters = staffListText.filters;
 
 /** The staff table with the profile of the selected member of staff beside it. */
 export function StaffBrowser({ version, active }: { version: number; active: boolean }) {
+  // The job as the select holds it: a job code, or "" for any.
+  const [job, setJob] = useState("");
+  const [unemployed, setUnemployed] = useState(false);
+  const filter: StaffFilter | undefined =
+    job === "" && !unemployed
+      ? undefined
+      : { job: job === "" ? undefined : Number(job), unemployed: unemployed || undefined };
+
   return (
     <ListBrowser<StaffSummary>
       command="search_staff"
+      requestArgs={{ filter }}
       version={version}
       active={active}
       placeholder={staffListText.search}
       summary={staffListText.summary}
-      empty={staffListText.empty}
+      empty={(query) => staffListText.empty(query, filter !== undefined)}
+      filterBar={
+        <div className="filter-bar">
+          <div className="filter-fields">
+            <label className="filter-field">
+              <span>{filters.job}</span>
+              <select value={job} onChange={(e) => setJob(e.currentTarget.value)}>
+                <option value="">{filters.anyJob}</option>
+                {JOB_FILTER_OPTIONS.map(({ code, label }) => (
+                  <option key={code} value={code}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="filter-field">
+              <input type="checkbox" checked={unemployed} onChange={(e) => setUnemployed(e.currentTarget.checked)} />
+              <span>{filters.unemployedOnly}</span>
+            </label>
+          </div>
+        </div>
+      }
       tableClass="staff-grid"
       header={
         <>

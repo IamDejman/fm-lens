@@ -4,6 +4,7 @@
 import { fold } from "../format";
 import type {
   ClubDetails,
+  ClubFilter,
   ClubPage,
   ClubSummary,
   ConnectionInfo,
@@ -11,10 +12,13 @@ import type {
   FmDate,
   GameInfo,
   PlayerDetails,
+  PlayerFilter,
+  PlayerOrder,
   PlayerPage,
   PlayerSummary,
   ReloadInfo,
   StaffDetails,
+  StaffFilter,
   StaffPage,
   StaffSummary,
 } from "../types";
@@ -44,25 +48,70 @@ function random(seed: number): () => number {
   };
 }
 
-const players: PlayerSummary[] = (() => {
+/** The 15 positions, in the order the game stores their ratings. */
+const POSITIONS = ["gk", "sw", "dl", "dc", "dr", "dm", "ml", "mc", "mr", "aml", "amc", "amr", "st", "wbl", "wbr"];
+
+/** From this rating FM counts a position as one a player can play: the list's positions and its filter use it. */
+const PLAYABLE_RATING = 15;
+
+/** Every eleventh fixture player is a goalkeeper. */
+const isKeeper = (uid: number) => uid % 11 === 0;
+
+/** How well a fixture player plays each position (1–20): one natural position, a few that come close, the rest low. */
+function positionRatings(next: () => number, keeper: boolean): Record<string, number> {
+  const natural = keeper ? "gk" : POSITIONS[1 + Math.floor(next() * (POSITIONS.length - 1))];
+  return Object.fromEntries(
+    POSITIONS.map((key) => [key, key === natural ? 20 : keeper || key === "gk" ? 1 : Math.round(1 + next() ** 2 * 16)]),
+  );
+}
+
+/** The positions rated PLAYABLE_RATING or more, best first (equals in the order of POSITIONS), as the real list has them. */
+function playablePositions(ratings: Record<string, number>): string[] {
+  return POSITIONS.filter((key) => ratings[key] >= PLAYABLE_RATING).sort((a, b) => ratings[b] - ratings[a]);
+}
+
+/** When a fixture contract ends: mostly on 30 June, some at the turn of the year, a few this year (after the game date). */
+function contractEnd(next: () => number): FmDate {
+  const roll = next();
+  if (roll < 0.12) {
+    return { year: GAME_DATE.year, month: 12, day: 31 };
+  }
+  const year = GAME_DATE.year + 1 + Math.floor(next() * 5);
+  return roll < 0.8 ? { year, month: 6, day: 30 } : { year, month: 12, day: 31 };
+}
+
+/** The fixture players, and how well each plays every position (by UID): the list and the profile both read the ratings. */
+const { players, ratings } = (() => {
   const next = random(27);
   const pick = <T,>(items: T[]) => items[Math.floor(next() * items.length)];
-  return Array.from({ length: 400 }, (_, i) => {
+  const ratings: Record<number, Record<string, number>> = {};
+  const players = Array.from({ length: 400 }, (_, i): PlayerSummary => {
+    const uid = 1_000_000 + i * 37;
     const ca = Math.round(40 + next() * 150);
     const name = `${pick(FIRST)} ${pick(LAST)}`;
     const born: FmDate = { year: 1988 + Math.floor(next() * 20), month: 1 + Math.floor(next() * 12), day: 1 + Math.floor(next() * 28) };
+    const fullName = next() < 0.3 ? `${name} ${pick(LAST)}` : null;
+    const nation = pick(NATIONS);
+    const club = next() < 0.9 ? pick(CLUBS) : null;
+    const potentialAbility = Math.min(200, ca + Math.round(next() * 40));
+    // Positions and contract are drawn from a generator of their own, so the other fields of each player come out as before.
+    const own = random(uid ^ 0x5a5a5a);
+    ratings[uid] = positionRatings(own, isKeeper(uid));
     return {
-      uid: 1_000_000 + i * 37,
+      uid,
       name,
-      fullName: next() < 0.3 ? `${name} ${pick(LAST)}` : null,
+      fullName,
       dateOfBirth: born,
       age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
-      nation: pick(NATIONS),
-      club: next() < 0.9 ? pick(CLUBS) : null,
+      nation,
+      club,
+      positions: playablePositions(ratings[uid]),
+      contractExpires: club === null ? null : contractEnd(own),
       currentAbility: ca,
-      potentialAbility: Math.min(200, ca + Math.round(next() * 40)),
+      potentialAbility,
     };
   });
+  return { players, ratings };
 })();
 
 const ATTRIBUTES = [
@@ -78,7 +127,6 @@ const GK_ONLY = new Set([
   "aerial_reach", "command_of_area", "communication", "eccentricity", "handling", "kicking", "one_on_ones",
   "punching", "reflexes", "rushing_out", "throwing",
 ]);
-const POSITIONS = ["gk", "sw", "dl", "dc", "dr", "dm", "ml", "mc", "mr", "aml", "amc", "amr", "st", "wbl", "wbr"];
 const PERSONALITY = [
   "adaptability", "ambition", "loyalty", "pressure", "professionalism", "sportsmanship", "temperament", "controversy",
 ];
@@ -86,7 +134,7 @@ const PERSONALITY = [
 /** Made-up but self-consistent profile for a fixture player. */
 function details(player: PlayerSummary): PlayerDetails {
   const next = random(player.uid);
-  const keeper = player.uid % 11 === 0;
+  const keeper = isKeeper(player.uid);
   const level = player.currentAbility / 2; // raw attribute centre, 0–100
   const attributes = Object.fromEntries(
     ATTRIBUTES.map((key) => {
@@ -95,10 +143,6 @@ function details(player: PlayerSummary): PlayerDetails {
       return [key, { raw, value: Math.max(1, Math.min(20, Math.floor((raw + 2) / 5))) }];
     }),
   );
-  const natural = keeper ? "gk" : POSITIONS[1 + Math.floor(next() * (POSITIONS.length - 1))];
-  const positions = Object.fromEntries(
-    POSITIONS.map((key) => [key, key === natural ? 20 : keeper || key === "gk" ? 1 : Math.round(1 + next() * 16)]),
-  );
   const personality = Object.fromEntries(PERSONALITY.map((key) => [key, Math.round(1 + next() * 19)]));
   return {
     ...player,
@@ -106,14 +150,15 @@ function details(player: PlayerSummary): PlayerDetails {
     askingPrice: next() < 0.2 ? Math.round(next() * 40) * 1_000_000 : null,
     reputation: { home: Math.round(next() * 10000), current: Math.round(next() * 10000), world: Math.round(next() * 10000) },
     international: { caps: Math.round(next() * 90), goals: Math.round(next() * 30), u21Caps: Math.round(next() * 20), u21Goals: Math.round(next() * 8) },
-    positions,
+    // The ratings behind the positions of the list row: the profile and the row agree.
+    positionRatings: ratings[player.uid],
     personality,
     attributes,
     contract: player.club
       ? {
           wage: Math.round(player.currentAbility * 900 + next() * 20000),
           signed: { year: 2024, month: 7, day: 1 },
-          expires: { year: 2027 + Math.floor(next() * 4), month: 6, day: 30 },
+          expires: player.contractExpires,
           joined: { year: 2022, month: 8, day: 15 },
           squadStatus: 1 + Math.floor(next() * 5),
           squadNumber: 1 + Math.floor(next() * 40),
@@ -222,6 +267,79 @@ function clubDetails(club: ClubSummary): ClubDetails {
   };
 }
 
+/** A date as a number that orders like the date. */
+const dayNumber = (date: FmDate) => (date.year * 100 + date.month) * 100 + date.day;
+
+/** Whether `text` contains `needle`, ignoring accents and case; an empty needle matches anything. */
+function contains(text: string | null, needle: string | undefined): boolean {
+  const wanted = fold(needle?.trim() ?? "");
+  return wanted === "" || (text !== null && fold(text).includes(wanted));
+}
+
+/** The player filter of the real command: fields that are not set match everyone. */
+function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
+  return (
+    (f.position === undefined || p.positions.includes(f.position)) &&
+    (f.minAge === undefined || (p.age !== null && p.age >= f.minAge)) &&
+    (f.maxAge === undefined || (p.age !== null && p.age <= f.maxAge)) &&
+    (f.minCurrentAbility === undefined || p.currentAbility >= f.minCurrentAbility) &&
+    (f.minPotentialAbility === undefined || p.potentialAbility >= f.minPotentialAbility) &&
+    contains(p.nation, f.nation) &&
+    contains(p.club, f.club) &&
+    (!f.freeAgents || p.club === null) &&
+    (f.contractExpiresBy === undefined ||
+      (p.contractExpires !== null && dayNumber(p.contractExpires) <= dayNumber(f.contractExpiresBy)))
+  );
+}
+
+/** The search's own order, as the real index has it: best current ability first, then by name without accents or case. */
+function bySearchRank(a: PlayerSummary, b: PlayerSummary): number {
+  const x = fold(a.name);
+  const y = fold(b.name);
+  return b.currentAbility - a.currentAbility || (x < y ? -1 : x > y ? 1 : 0);
+}
+
+/**
+ * The sort of the real command: unknown values (no age, no club, no contract) go last either way and text
+ * compares without accents or case. Like the real one it is stable, so equals keep the search's order.
+ */
+function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b: PlayerSummary) => number {
+  const value = (p: PlayerSummary): string | number | null => {
+    switch (by) {
+      case "currentAbility":
+        return p.currentAbility;
+      case "potentialAbility":
+        return p.potentialAbility;
+      case "age":
+        return p.age;
+      case "name":
+        return fold(p.name);
+      case "nation":
+        return p.nation && fold(p.nation);
+      case "club":
+        return p.club && fold(p.club);
+      case "contractExpires":
+        return p.contractExpires && dayNumber(p.contractExpires);
+    }
+  };
+  return (a, b) => {
+    const x = value(a);
+    const y = value(b);
+    if (x === null || y === null) {
+      return x === y ? 0 : x === null ? 1 : -1;
+    }
+    return x === y ? 0 : (x < y ? -1 : 1) * (ascending ? 1 : -1);
+  };
+}
+
+/** The staff filter of the real command: a player-coach has the code of the coaching job plus one, and matches it too. */
+function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
+  return (
+    (f.job === undefined || (s.job !== null && (s.job === f.job || s.job === f.job + 1))) &&
+    (!f.unemployed || s.job === null)
+  );
+}
+
 export async function mockInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((resolve) => setTimeout(resolve, 150));
   switch (command) {
@@ -254,19 +372,26 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "search_players": {
       const query = String(args?.query ?? "");
       const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as PlayerFilter;
+      // Without an order the best current ability comes first, as with the real command.
+      const order = (args?.order ?? { by: "currentAbility", ascending: false }) as PlayerOrder;
       const words = fold(query).split(/\s+/).filter(Boolean);
       const hits = players
         .filter((p) => String(p.uid) === query.trim() || words.every((w) => fold(`${p.name} ${p.fullName ?? ""}`).includes(w)))
-        .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
+        .filter((p) => matchesPlayerFilter(p, filter))
+        .sort(bySearchRank)
+        .sort(playerComparator(order));
       const page: PlayerPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;
     }
     case "search_clubs": {
       const query = String(args?.query ?? "");
       const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as ClubFilter;
       const words = fold(query).split(/\s+/).filter(Boolean);
       const hits = clubs
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
+        .filter((c) => filter.women === undefined || c.women === filter.women)
         .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
       const page: ClubPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;
@@ -282,9 +407,11 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "search_staff": {
       const query = String(args?.query ?? "");
       const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as StaffFilter;
       const words = fold(query).split(/\s+/).filter(Boolean);
       const hits = staff
         .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
+        .filter((s) => matchesStaffFilter(s, filter))
         .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
       const page: StaffPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;

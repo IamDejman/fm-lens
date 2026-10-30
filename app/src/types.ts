@@ -159,6 +159,9 @@ export interface PlayerSummary {
   age: number | null;
   nation: string | null;
   club: string | null;
+  /** Position keys rated 15 or more, best first. */
+  positions: string[];
+  contractExpires: FmDate | null;
   currentAbility: number;
   potentialAbility: number;
 }
@@ -166,6 +169,53 @@ export interface PlayerSummary {
 export interface PlayerPage {
   total: number;
   rows: PlayerSummary[];
+}
+
+/** Filters for `search_players`; omitted fields match everyone. */
+export interface PlayerFilter {
+  /** A position key (gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr); rated 15+ there. */
+  position?: string;
+  minAge?: number;
+  maxAge?: number;
+  minCurrentAbility?: number;
+  minPotentialAbility?: number;
+  /** Part of the nation's name; accents and case ignored. */
+  nation?: string;
+  /** Part of the club's name; accents and case ignored. */
+  club?: string;
+  /** Only players without a club. */
+  freeAgents?: boolean;
+  /** Only contracts ending on or before this date. */
+  contractExpiresBy?: FmDate;
+}
+
+export type PlayerSort =
+  | "currentAbility"
+  | "potentialAbility"
+  | "age"
+  | "name"
+  | "nation"
+  | "club"
+  | "contractExpires";
+
+/** Sort order for `search_players`; without one, results are by current ability, highest first. */
+export interface PlayerOrder {
+  by: PlayerSort;
+  ascending: boolean;
+}
+
+/** Filters for `search_staff`. */
+export interface StaffFilter {
+  /** Job code (see `jobLabel`); its player-coach variant matches too. */
+  job?: number;
+  /** Only staff without a contract. */
+  unemployed?: boolean;
+}
+
+/** Filters for `search_clubs`. */
+export interface ClubFilter {
+  /** true: women's clubs only; false: men's clubs only. */
+  women?: boolean;
 }
 
 /** An attribute as stored (`raw`, 0–100) and as FM shows it (`value`, 1–20). */
@@ -199,6 +249,7 @@ export interface Contract {
   loanListed: boolean;
 }
 
+/** A row of the list and more. */
 export interface PlayerDetails extends PlayerSummary {
   heightCm: number;
   /** Pounds; null when the club has not set one. */
@@ -206,7 +257,7 @@ export interface PlayerDetails extends PlayerSummary {
   reputation: Reputation;
   international: International;
   /** gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr → 1–20 */
-  positions: Record<string, number>;
+  positionRatings: Record<string, number>;
   /** adaptability, ambition, loyalty, pressure, professionalism, sportsmanship, temperament, controversy → 1–20 */
   personality: Record<string, number>;
   /** Attribute key (e.g. "first_touch") → raw and shown value. */

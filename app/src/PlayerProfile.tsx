@@ -51,7 +51,7 @@ interface PlayerProfileProps {
 export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) {
   const loaded = useProfileDetails<PlayerDetails>("player_details", player.uid, version);
   const details = loaded?.details;
-  const info: PlayerSummary = details ?? player;
+  const info = details ?? player;
   const vitals = [
     bornText(info),
     details && details.heightCm > 0 && profileText.height(details.heightCm),
@@ -82,7 +82,7 @@ export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) 
 }
 
 function ProfileBody({ details }: { details: PlayerDetails }) {
-  const goalkeeper = (details.positions.gk ?? 0) >= GOALKEEPER_RATING;
+  const goalkeeper = (details.positionRatings.gk ?? 0) >= GOALKEEPER_RATING;
   return (
     <>
       <div className="profile-columns">
@@ -103,7 +103,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
         <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
         <section className="profile-group">
           <h3>{profileText.positions}</h3>
-          <PositionPitch ratings={details.positions} />
+          <PositionPitch ratings={details.positionRatings} />
         </section>
       </div>
 

@@ -98,8 +98,8 @@ pub struct PlayerDetails {
     pub asking_price: Option<i32>,
     pub reputation: Reputation,
     pub international: International,
-    /// Position ratings (1–20) by [`POSITIONS`] key.
-    pub positions: BTreeMap<&'static str, u8>,
+    /// Position ratings (1–20) by [`POSITIONS`] key; the summary's `positions` lists the playable ones.
+    pub position_ratings: BTreeMap<&'static str, u8>,
     /// Personality ratings (1–20) by [`PERSONALITY`] key.
     pub personality: BTreeMap<&'static str, u8>,
     pub attributes: BTreeMap<String, Attribute>,
@@ -170,7 +170,7 @@ pub fn read_player_details(
     }
 
     let asking_price = u32_at(p.asking_price) as i32;
-    let positions = POSITIONS.iter().enumerate().map(|(i, &key)| (key, u8_at(p.positions + i as u64))).collect();
+    let position_ratings = POSITIONS.iter().enumerate().map(|(i, &key)| (key, u8_at(p.positions + i as u64))).collect();
     let personality = PERSONALITY.iter().enumerate().map(|(i, &key)| (key, u8_at(p.personality + i as u64))).collect();
     let attributes =
         p.attributes.iter().map(|(key, &offset)| (key.clone(), Attribute::from_raw(u8_at(offset)))).collect();
@@ -190,7 +190,7 @@ pub fn read_player_details(
             u21_caps: u8_at(p.u21_caps),
             u21_goals: u8_at(p.u21_goals),
         },
-        positions,
+        position_ratings,
         personality,
         attributes,
         contract: read_contract(process, layout, u64_at(p.contract)),

@@ -7,6 +7,7 @@ mod calibrate;
 mod clubs;
 mod date;
 mod details;
+mod filter;
 mod game;
 mod index;
 mod players;
@@ -25,9 +26,10 @@ pub use details::{
     ATTRIBUTE_GROUPS, Attribute, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
     read_player_details,
 };
+pub use filter::{ClubFilter, PlayerFilter, PlayerOrder, PlayerSort, StaffFilter, sort_players};
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use index::{Listed, SearchIndex};
-pub use players::{PlayerIndex, PlayerSummary, read_players};
+pub use players::{PLAYABLE_RATING, PlayerIndex, PlayerSummary, read_players};
 pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,
     profile_for,

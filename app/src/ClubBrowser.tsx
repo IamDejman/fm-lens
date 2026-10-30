@@ -1,21 +1,41 @@
+import { useState } from "react";
 import { ClubProfile } from "./ClubProfile";
 import { clubListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { ReputationMeter } from "./ProfileParts";
-import type { ClubSummary } from "./types";
+import type { ClubFilter, ClubSummary } from "./types";
 
 const columns = clubListText.columns;
+const filters = clubListText.filters;
+
+/** Which clubs the list shows. */
+type ClubKind = "all" | "men" | "women";
 
 /** The clubs table with the profile of the selected club beside it. */
 export function ClubBrowser({ version, active }: { version: number; active: boolean }) {
+  const [kind, setKind] = useState<ClubKind>("all");
+  const filter: ClubFilter | undefined = kind === "all" ? undefined : { women: kind === "women" };
+
   return (
     <ListBrowser<ClubSummary>
       command="search_clubs"
+      requestArgs={{ filter }}
       version={version}
       active={active}
       placeholder={clubListText.search}
       summary={clubListText.summary}
-      empty={clubListText.empty}
+      empty={(query) => clubListText.empty(query, filter !== undefined)}
+      filterBar={
+        <div className="filter-bar">
+          <div className="filter-fields">
+            <select aria-label={filters.kind} value={kind} onChange={(e) => setKind(e.currentTarget.value as ClubKind)}>
+              <option value="all">{filters.all}</option>
+              <option value="men">{filters.men}</option>
+              <option value="women">{filters.women}</option>
+            </select>
+          </div>
+        </div>
+      }
       tableClass="club-grid"
       header={
         <>

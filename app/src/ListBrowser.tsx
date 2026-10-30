@@ -10,8 +10,16 @@ interface Page<Row> {
 }
 
 interface ListBrowserProps<Row extends { uid: number }> {
-  /** The Rust command that searches, e.g. "search_players". It takes `{ query, limit }` and returns a page. */
+  /**
+   * The Rust command that searches, e.g. "search_players". It takes `{ query, limit, ...requestArgs }` and
+   * returns a page.
+   */
   command: string;
+  /**
+   * Arguments for the command besides `query` and `limit`, e.g. `{ filter, order }`. They are compared by
+   * value, so the list is asked again when they change however often the object is built anew.
+   */
+  requestArgs?: Record<string, unknown>;
   /** Changes when the game data is read again, so the list and the open profile are too. */
   version: number;
   /**
@@ -24,6 +32,8 @@ interface ListBrowserProps<Row extends { uid: number }> {
   summary: (total: number, shown: number) => string;
   /** The message under an empty table. */
   empty: (query: string) => string;
+  /** The filters of the list, between the search box and the table. */
+  filterBar?: ReactNode;
   /** An extra class of the table, for column rules of that list. */
   tableClass?: string;
   /** The header cells. */
@@ -36,13 +46,20 @@ interface ListBrowserProps<Row extends { uid: number }> {
 
 /** A searchable table with the profile of the selected row beside it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
-  const { command, version, active, placeholder, summary, empty, tableClass, header, cells, profile } = props;
+  const { command, requestArgs, version, active, placeholder, summary, empty, filterBar } = props;
+  const { tableClass, header, cells, profile } = props;
   const [query, setQuery] = useState("");
   const [page, setPage] = useState<Page<Row> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const tableWrap = useRef<HTMLDivElement>(null);
   const selectedRow = useRef<HTMLTableRowElement>(null);
+
+  // The arguments as JSON, which is how they reach the command: the effect below depends on their value.
+  const argsKey = JSON.stringify(requestArgs ?? {});
+  // The arguments of the rows on show, so a new sort or filter can start at the top.
+  const shownArgs = useRef(argsKey);
 
   const closeProfile = useCallback(() => {
     // The panel unmounts with the focused control inside it; keep keyboard focus in the table.
@@ -54,13 +71,22 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
 
   useEffect(() => {
     let cancelled = false;
+    const args: Record<string, unknown> = JSON.parse(argsKey);
+    // Typing in the search box or a filter waits a little, so a burst of keys makes one request.
+    // A list nobody has touched yet loads at once.
+    const untouched = query === "" && argsKey === "{}";
     const timer = setTimeout(
       async () => {
         try {
-          const result = await call<Page<Row>>(command, { query, limit: ROW_LIMIT });
+          const result = await call<Page<Row>>(command, { ...args, query, limit: ROW_LIMIT });
           if (!cancelled) {
             setPage(result);
             setError(null);
+            if (shownArgs.current !== argsKey) {
+              // A new sort or filter starts at the top; reading the same list again keeps its place.
+              shownArgs.current = argsKey;
+              tableWrap.current?.scrollTo({ top: 0 });
+            }
           }
         } catch (e) {
           if (!cancelled) {
@@ -68,13 +94,13 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
           }
         }
       },
-      query ? 150 : 0,
+      untouched ? 0 : 150,
     );
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [command, query, version]);
+  }, [command, query, argsKey, version]);
 
   useEffect(() => {
     if (active) {
@@ -105,9 +131,10 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
           </label>
           <span className="count">{page ? summary(page.total, page.rows.length) : ""}</span>
         </div>
+        {filterBar}
         {error && <div className="banner">{error}</div>}
 
-        <div className="table-wrap">
+        <div className="table-wrap" ref={tableWrap}>
           <table className={tableClass ? `grid ${tableClass}` : "grid"}>
             <thead>
               <tr>{header}</tr>

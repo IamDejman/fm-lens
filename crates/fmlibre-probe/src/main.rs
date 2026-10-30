@@ -7,12 +7,13 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
 
-use anyhow::{Context, Result, anyhow, ensure};
+use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PERSONALITY,
-    POSITIONS, PlayerIndex, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, ScanOptions, Session,
-    SessionError, StaffIndex, find_game, job_name, scan_object_arrays,
+    POSITIONS, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX,
+    SUPPORTER_TRAITS, ScanOptions, Session, SessionError, StaffIndex, find_game, job_name, scan_object_arrays,
+    sort_players,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -87,6 +88,8 @@ enum Command {
         /// How many players to print.
         #[arg(long, default_value_t = 25)]
         limit: usize,
+        #[command(flatten)]
+        filter: PlayerFilterArgs,
     },
     /// Find (begin, end) arrays of game objects in game_plugin.dll and count their vtables.
     Scan {
@@ -220,8 +223,8 @@ fn run(cli: Cli) -> Result<()> {
             clubs(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
         }
         Command::Club { uid } => club(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
-        Command::Players { text, limit } => {
-            players(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
+        Command::Players { text, limit, filter } => {
+            players(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit, &filter)
         }
         Command::Scan { min, max, top } => {
             let (game, modules) = inspect(&process)?;
@@ -398,11 +401,16 @@ fn calibrate(session: &Session) -> Result<()> {
     Ok(())
 }
 
-fn players(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
+fn players(session: &Session, text: Option<&str>, limit: usize, args: &PlayerFilterArgs) -> Result<()> {
+    let (filter, order) = args.parse()?;
     let started = Instant::now();
     let index = PlayerIndex::new(session.players()?);
     let elapsed = started.elapsed();
-    let hits = index.search(text.unwrap_or(""));
+    let mut hits = index.search(text.unwrap_or(""));
+    hits.retain(|p| filter.matches(p));
+    if let Some(order) = order {
+        sort_players(&mut hits, order);
+    }
     println!(
         "Read {} players in {:.1} s; {} shown of {} matching.",
         index.len(),
@@ -412,23 +420,107 @@ fn players(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
     );
     println!();
     println!(
-        "{:>10}  {:<28}  {:>3}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
-        "UID", "Name", "Age", "Born", "Nation", "Club", "CA", "PA"
+        "{:>10}  {:<26}  {:>3}  {:<12}  {:<14}  {:<22}  {:<10}  {:>3}  {:>4}",
+        "UID", "Name", "Age", "Positions", "Nation", "Club", "Expires", "CA", "PA"
     );
     for p in hits.iter().take(limit) {
+        let positions: Vec<String> = p.positions.iter().map(|key| key.to_uppercase()).collect();
         println!(
-            "{:>10}  {:<28}  {:>3}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
+            "{:>10}  {:<26}  {:>3}  {:<12}  {:<14}  {:<22}  {:<10}  {:>3}  {:>4}",
             p.uid,
-            clip(&p.name, 28),
+            clip(&p.name, 26),
             p.age.map_or_else(String::new, |age| age.to_string()),
-            iso_date(p.date_of_birth),
-            clip(p.nation.as_deref().unwrap_or("-"), 16),
-            clip(p.club.as_deref().unwrap_or("-"), 24),
+            clip(&positions.join(" "), 12),
+            clip(p.nation.as_deref().unwrap_or("-"), 14),
+            clip(p.club.as_deref().unwrap_or("-"), 22),
+            iso_date(p.contract_expires),
             p.current_ability,
             p.potential_ability
         );
     }
     Ok(())
+}
+
+/// Player filters and sorting for `players`.
+#[derive(clap::Args)]
+struct PlayerFilterArgs {
+    /// Only players rated 15 or more at this position (gk, dc, wbl, mc, aml, st, ...).
+    #[arg(long)]
+    position: Option<String>,
+    #[arg(long)]
+    min_age: Option<u16>,
+    #[arg(long)]
+    max_age: Option<u16>,
+    #[arg(long)]
+    min_ca: Option<u16>,
+    #[arg(long)]
+    min_pa: Option<i16>,
+    /// Part of the nation's name.
+    #[arg(long)]
+    nation: Option<String>,
+    /// Part of the club's name.
+    #[arg(long)]
+    club: Option<String>,
+    /// Only players without a club.
+    #[arg(long)]
+    free_agents: bool,
+    /// Only contracts ending on or before this date (YYYY-MM-DD).
+    #[arg(long)]
+    expires_by: Option<String>,
+    /// Sort by ca, pa, age, name, nation, club or expires (highest first unless --ascending).
+    #[arg(long)]
+    sort: Option<String>,
+    #[arg(long)]
+    ascending: bool,
+}
+
+impl PlayerFilterArgs {
+    fn parse(&self) -> Result<(PlayerFilter, Option<PlayerOrder>)> {
+        if let Some(position) = &self.position {
+            ensure!(
+                POSITIONS.contains(&position.as_str()),
+                "unknown position {position}; use one of {}",
+                POSITIONS.join(", ")
+            );
+        }
+        let contract_expires_by = self.expires_by.as_deref().map(parse_iso_date).transpose()?;
+        let filter = PlayerFilter {
+            position: self.position.clone(),
+            min_age: self.min_age,
+            max_age: self.max_age,
+            min_current_ability: self.min_ca,
+            min_potential_ability: self.min_pa,
+            nation: self.nation.clone(),
+            club: self.club.clone(),
+            free_agents: self.free_agents,
+            contract_expires_by,
+        };
+        let by = match self.sort.as_deref() {
+            None => return Ok((filter, None)),
+            Some("ca") => PlayerSort::CurrentAbility,
+            Some("pa") => PlayerSort::PotentialAbility,
+            Some("age") => PlayerSort::Age,
+            Some("name") => PlayerSort::Name,
+            Some("nation") => PlayerSort::Nation,
+            Some("club") => PlayerSort::Club,
+            Some("expires") => PlayerSort::ContractExpires,
+            Some(other) => bail!("unknown sort column {other}"),
+        };
+        Ok((filter, Some(PlayerOrder { by, ascending: self.ascending })))
+    }
+}
+
+/// Parses "2027-06-30".
+fn parse_iso_date(text: &str) -> Result<FmDate> {
+    let parts: Vec<&str> = text.split('-').collect();
+    ensure!(parts.len() == 3, "dates look like 2027-06-30, not {text}");
+    let date = FmDate {
+        year: parts[0].parse().with_context(|| format!("bad year in {text}"))?,
+        month: parts[1].parse().with_context(|| format!("bad month in {text}"))?,
+        day: parts[2].parse().with_context(|| format!("bad day in {text}"))?,
+    };
+    ensure!((1..=12).contains(&date.month) && (1..=31).contains(&date.day), "not a date: {text}");
+    Ok(date)
 }
 
 fn player(session: &Session, uid: u32) -> Result<()> {
@@ -469,7 +561,7 @@ fn player(session: &Session, uid: u32) -> Result<()> {
         println!("  {group:<12} {}", values.join(", "));
     }
     let positions: Vec<String> =
-        POSITIONS.iter().map(|key| format!("{} {}", key.to_uppercase(), d.positions[key])).collect();
+        POSITIONS.iter().map(|key| format!("{} {}", key.to_uppercase(), d.position_ratings[key])).collect();
     println!("  {:<12} {}", "positions", positions.join(", "));
     let personality: Vec<String> = PERSONALITY.iter().map(|key| format!("{key} {}", d.personality[key])).collect();
     println!("  {:<12} {}", "personality", personality.join(", "));
