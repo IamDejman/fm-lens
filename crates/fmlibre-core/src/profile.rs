@@ -17,6 +17,8 @@ pub struct Layout {
     pub staff: StaffLayout,
     pub team: TeamLayout,
     pub club: ClubLayout,
+    pub club_info: ClubInfoLayout,
+    pub club_finance: ClubFinanceLayout,
     pub nation: NationLayout,
 }
 
@@ -196,13 +198,98 @@ impl StaffLayout {
 #[serde(deny_unknown_fields)]
 pub struct TeamLayout {
     pub club: u64,
+    pub reputation: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ClubLayout {
+    pub uid: u64,
     pub name: u64,
     pub short_name: u64,
+    pub women: u64,
+    pub teams: u64,
+    pub info: u64,
+    pub finance: u64,
+}
+
+impl ClubLayout {
+    pub fn end(&self) -> u64 {
+        [
+            self.uid + 4,
+            self.name + 8,
+            self.short_name + 8,
+            self.women + 1,
+            self.teams + 8,
+            self.info + 8,
+            self.finance + 8,
+        ]
+        .into_iter()
+        .max()
+        .unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClubInfoLayout {
+    pub season_tickets: u64,
+    pub founded: u64,
+    pub social_media: u64,
+    /// First of 6 supporter-mix percentages, in [`crate::SUPPORTER_MIX`] order.
+    pub supporter_mix: u64,
+    /// First of 6 supporter traits (1..20), in [`crate::SUPPORTER_TRAITS`] order.
+    pub supporter_traits: u64,
+    pub training: u64,
+    pub youth_facilities: u64,
+    pub youth_coaching: u64,
+    pub youth_recruitment: u64,
+}
+
+impl ClubInfoLayout {
+    pub fn end(&self) -> u64 {
+        [
+            self.season_tickets + 4,
+            self.founded + 2,
+            self.social_media + 4,
+            self.supporter_mix + 6,
+            self.supporter_traits + 6,
+            self.training + 1,
+            self.youth_facilities + 1,
+            self.youth_coaching + 1,
+            self.youth_recruitment + 1,
+        ]
+        .into_iter()
+        .max()
+        .unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClubFinanceLayout {
+    pub balance: u64,
+    pub transfer_budget: u64,
+    pub total_wage_budget: u64,
+    pub wage_budget: u64,
+    pub ticket_price: u64,
+    pub corporate: u64,
+}
+
+impl ClubFinanceLayout {
+    pub fn end(&self) -> u64 {
+        [
+            self.balance + 4,
+            self.transfer_budget + 4,
+            self.total_wage_budget + 4,
+            self.wage_budget + 4,
+            self.ticket_price + 4,
+            self.corporate + 1,
+        ]
+        .into_iter()
+        .max()
+        .unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

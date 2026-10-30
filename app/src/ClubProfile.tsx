@@ -1,0 +1,215 @@
+import type { ReactNode } from "react";
+import { formatPounds } from "./format";
+import {
+  CLUB_FACILITY_LABELS,
+  clubProfileText,
+  profileText,
+  SUPPORTER_MIX_LABELS,
+  SUPPORTER_TRAIT_LABELS,
+  type SupporterMixKey,
+} from "./labels";
+import {
+  Fact,
+  ProfileFrame,
+  RatingGroup,
+  RatingList,
+  ReputationMeter,
+  useProfileDetails,
+  type RatingRow,
+} from "./ProfileParts";
+import type { ClubDetails, ClubSummary, Finances } from "./types";
+
+const text = clubProfileText;
+
+interface ClubProfileProps {
+  /** The row that was picked; its fields fill the header while the full profile loads. */
+  club: ClubSummary;
+  /** Changes when the game data is read again, so the profile is too. */
+  version: number;
+  onClose: () => void;
+}
+
+/** The profile of one club. Mount it with `key={uid}` so a new club starts at the top. */
+export function ClubProfile({ club, version, onClose }: ClubProfileProps) {
+  const loaded = useProfileDetails<ClubDetails>("club_details", club.uid, version);
+  const details = loaded?.details;
+  const info: ClubSummary = details ?? club;
+  const vitals = [info.founded !== null && text.founded(info.founded), `${profileText.uid} ${info.uid}`]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <ProfileFrame
+      name={info.name}
+      fullName={info.shortName}
+      badge={info.women ? <span className="tag women">{text.womensClub}</span> : undefined}
+      vitals={vitals}
+      side={
+        // Laid out like the abilities of a person: a label and a bar with the number on it.
+        <div className="profile-abilities">
+          <abbr title={text.reputationTitle}>{text.reputationShort}</abbr>
+          <ReputationMeter value={info.reputation} />
+        </div>
+      }
+      loaded={loaded}
+      onClose={onClose}
+    >
+      {details && <ClubBody details={details} />}
+    </ProfileFrame>
+  );
+}
+
+/** Two columns: what the club has on the left, the people around it on the right. */
+function ClubBody({ details }: { details: ClubDetails }) {
+  return (
+    <div className="profile-split">
+      <div className="profile-stack">
+        <Facilities facilities={details.facilities} />
+        <FinancesGroup finances={details.finances} />
+      </div>
+      <div className="profile-stack">
+        <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
+        <ClubInfo details={details} />
+      </div>
+    </div>
+  );
+}
+
+/** The keys of `labels` that `values` has, in the order of `labels`. */
+function knownKeys<K extends string>(labels: Record<K, string>, values: Record<string, number>): K[] {
+  return (Object.keys(labels) as K[]).filter((key) => values[key] !== undefined);
+}
+
+/** Rating rows for the keys of `labels` that `values` has; a rating the game does not give is left out. */
+function ratingRows(labels: Record<string, string>, values: Record<string, number>): RatingRow[] {
+  return knownKeys(labels, values).map((key) => ({ key, label: labels[key], value: values[key] }));
+}
+
+function Facilities({ facilities }: { facilities: Record<string, number> }) {
+  const rows = ratingRows(CLUB_FACILITY_LABELS, facilities);
+  return rows.length > 0 ? <RatingGroup title={text.facilities} rows={rows} /> : null;
+}
+
+function Supporters({ traits, mix }: { traits: Record<string, number>; mix: Record<string, number> }) {
+  const traitRows = ratingRows(SUPPORTER_TRAIT_LABELS, traits);
+  const segments = mixSegments(mix);
+  if (traitRows.length === 0 && segments.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{text.supporters}</h3>
+      {traitRows.length > 0 && <RatingList rows={traitRows} />}
+      {segments.length > 0 && <SupporterMix segments={segments} />}
+    </section>
+  );
+}
+
+interface MixSegment {
+  key: SupporterMixKey;
+  label: string;
+  /** Percent of the supporters. */
+  value: number;
+}
+
+/** The kinds of supporters the game gives, in the order of the bar; nothing when it gives none. */
+function mixSegments(mix: Record<string, number>): MixSegment[] {
+  const segments = knownKeys(SUPPORTER_MIX_LABELS, mix).map((key) => ({
+    key,
+    label: SUPPORTER_MIX_LABELS[key],
+    value: mix[key],
+  }));
+  // A mix of zeroes tells no more than none at all.
+  return segments.some((segment) => segment.value > 0) ? segments : [];
+}
+
+/**
+ * The supporter mix as one stacked bar, split by percent, with a legend that has every share as
+ * text. Each kind keeps its colour (see `.mix-*` in App.css), whatever the others are.
+ */
+function SupporterMix({ segments }: { segments: MixSegment[] }) {
+  return (
+    <div className="mix">
+      <h4>{text.supporterMix}</h4>
+      {/* The legend has every share as text, so the bar is only for the eye. */}
+      <div className="mix-bar" aria-hidden="true">
+        {segments
+          .filter((segment) => segment.value > 0)
+          .map(({ key, label, value }) => (
+            <span
+              key={key}
+              className={`mix-${key}`}
+              style={{ flexGrow: value }}
+              title={text.mixTooltip(label, text.percent(value))}
+            />
+          ))}
+      </div>
+      <ul className="legend mix-legend">
+        {segments.map(({ key, label, value }) => (
+          <li key={key} className={`mix-${key}`}>
+            <span className="swatch" />
+            {label}
+            <span className="range">{text.percent(value)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function FinancesGroup({ finances }: { finances: Finances | null }) {
+  return (
+    <section className="profile-group">
+      <h3>{text.finances}</h3>
+      {finances ? (
+        <>
+          <dl className="stats">
+            <Fact label={text.balance}>
+              <span className={finances.balance < 0 ? "negative" : undefined}>{formatPounds(finances.balance)}</span>
+            </Fact>
+            <Fact label={text.transferBudget}>
+              {/* FM stores -1 when the board has not set a transfer budget. */}
+              {finances.transferBudget < 0 ? profileText.notSet : formatPounds(finances.transferBudget)}
+            </Fact>
+            <Fact label={perWeek(text.wageBudget)}>{formatPounds(finances.wageBudget)}</Fact>
+            <Fact label={perWeek(text.totalWageBudget)}>{formatPounds(finances.totalWageBudget)}</Fact>
+            <Fact label={text.ticketPrice}>{formatTicketPrice(finances.ticketPrice)}</Fact>
+          </dl>
+          <p className="note">{profileText.wageNote}</p>
+        </>
+      ) : (
+        <p className="note">{text.noFinances}</p>
+      )}
+    </section>
+  );
+}
+
+/** The label of an amount per week: the name, with "per week" in small print under it. */
+function perWeek(label: string): ReactNode {
+  return (
+    <>
+      {label}
+      <span className="unit">{text.perWeek}</span>
+    </>
+  );
+}
+
+/** A ticket price: whole pounds as they are, pence as two decimals ("£41.80"). */
+function formatTicketPrice(price: number): string {
+  return Number.isInteger(price)
+    ? formatPounds(price)
+    : `£${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function ClubInfo({ details }: { details: ClubDetails }) {
+  const count = (value: number | null) => (value === null ? profileText.none : value.toLocaleString());
+  return (
+    <section className="profile-group">
+      <h3>{text.info}</h3>
+      <dl className="stats">
+        <Fact label={text.seasonTickets}>{count(details.seasonTickets)}</Fact>
+        <Fact label={text.socialMedia}>{count(details.socialMedia)}</Fact>
+      </dl>
+    </section>
+  );
+}

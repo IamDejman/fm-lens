@@ -42,6 +42,7 @@ export interface ConnectionInfo {
   arrays: EntityArrays;
   players: number;
   staff: number;
+  clubs: number;
   /** Current in-game date, when it could be read. */
   gameDate: FmDate | null;
   loadMs: number;
@@ -50,7 +51,51 @@ export interface ConnectionInfo {
 export interface ReloadInfo {
   players: number;
   staff: number;
+  clubs: number;
   gameDate: FmDate | null;
+}
+
+export interface ClubSummary {
+  uid: number;
+  /** Full name, e.g. "Tottenham Hotspur". */
+  name: string;
+  shortName: string | null;
+  /** A women's club. */
+  women: boolean;
+  /** 0–10000. */
+  reputation: number | null;
+  founded: number | null;
+}
+
+export interface ClubPage {
+  total: number;
+  rows: ClubSummary[];
+}
+
+export interface Finances {
+  /** Pounds. */
+  balance: number;
+  /** Pounds. */
+  transferBudget: number;
+  /** Pounds per week. */
+  wageBudget: number;
+  /** Pounds per week. */
+  totalWageBudget: number;
+  /** Average match ticket, pounds. */
+  ticketPrice: number;
+}
+
+export interface ClubDetails extends ClubSummary {
+  seasonTickets: number | null;
+  socialMedia: number | null;
+  /** hardcore, core, family, fair_weather, casual, other → percent; empty when unknown. */
+  supporterMix: Record<string, number>;
+  /** loyalty, passion, patience, affluence, temperament, expectations → 1–20; empty when unknown. */
+  supporterTraits: Record<string, number>;
+  /** training, youth_facilities, youth_coaching, youth_recruitment and (with finances) corporate → 1–20. */
+  facilities: Record<string, number>;
+  /** Only clubs in the leagues being played have finances. */
+  finances: Finances | null;
 }
 
 /** A manager, coach, scout, director or other non-playing person. */

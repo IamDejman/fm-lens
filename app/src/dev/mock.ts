@@ -3,6 +3,9 @@
 
 import { fold } from "../format";
 import type {
+  ClubDetails,
+  ClubPage,
+  ClubSummary,
   ConnectionInfo,
   Detection,
   FmDate,
@@ -186,6 +189,39 @@ function staffDetails(member: StaffSummary): StaffDetails {
   };
 }
 
+const clubs: ClubSummary[] = CLUBS.flatMap((name, i) => [
+  { uid: 500 + i * 7, name, shortName: name.split(" ")[0], women: false, reputation: 8200 - i * 900, founded: 1880 + i * 11 },
+  { uid: 2_000_100_000 + i, name, shortName: name.split(" ")[0], women: true, reputation: 6100 - i * 700, founded: 1985 + i * 4 },
+]);
+
+/** Made-up but self-consistent profile for a fixture club; women's clubs have no finances. */
+function clubDetails(club: ClubSummary): ClubDetails {
+  const next = random(club.uid);
+  const rating = () => Math.round(5 + next() * 15);
+  const mix = [10, 35, 15, 20, 6, 14];
+  return {
+    ...club,
+    seasonTickets: Math.round(5000 + next() * 45000),
+    socialMedia: Math.round(next() * 9_000_000),
+    supporterMix: Object.fromEntries(["hardcore", "core", "family", "fair_weather", "casual", "other"].map((k, n) => [k, mix[n]])),
+    supporterTraits: Object.fromEntries(
+      ["loyalty", "passion", "patience", "affluence", "temperament", "expectations"].map((k) => [k, rating()]),
+    ),
+    facilities: Object.fromEntries(
+      ["training", "youth_facilities", "youth_coaching", "youth_recruitment", ...(club.women ? [] : ["corporate"])].map((k) => [k, rating()]),
+    ),
+    finances: club.women
+      ? null
+      : {
+          balance: Math.round((next() - 0.2) * 200_000_000),
+          transferBudget: Math.round(next() * 60_000_000),
+          wageBudget: Math.round(1_000_000 + next() * 3_000_000),
+          totalWageBudget: Math.round(1_200_000 + next() * 3_200_000),
+          ticketPrice: Math.round(20 + next() * 60),
+        },
+  };
+}
+
 export async function mockInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((resolve) => setTimeout(resolve, 150));
   switch (command) {
@@ -205,13 +241,14 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         },
         players: players.length,
         staff: staff.length,
+        clubs: clubs.length,
         gameDate: GAME_DATE,
         loadMs: 480,
       };
       return info as T;
     }
     case "reload": {
-      const reloaded: ReloadInfo = { players: players.length, staff: staff.length, gameDate: GAME_DATE };
+      const reloaded: ReloadInfo = { players: players.length, staff: staff.length, clubs: clubs.length, gameDate: GAME_DATE };
       return reloaded as T;
     }
     case "search_players": {
@@ -223,6 +260,24 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
       const page: PlayerPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;
+    }
+    case "search_clubs": {
+      const query = String(args?.query ?? "");
+      const limit = Number(args?.limit ?? 200);
+      const words = fold(query).split(/\s+/).filter(Boolean);
+      const hits = clubs
+        .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
+        .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
+      const page: ClubPage = { total: hits.length, rows: hits.slice(0, limit) };
+      return page as T;
+    }
+    case "club_details": {
+      const uid = Number(args?.uid);
+      const club = clubs.find((c) => c.uid === uid);
+      if (!club) {
+        throw new Error(`No club with UID ${uid}`);
+      }
+      return clubDetails(club) as T;
     }
     case "search_staff": {
       const query = String(args?.query ?? "");

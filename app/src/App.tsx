@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { call, inTauri } from "./api";
+import { ClubBrowser } from "./ClubBrowser";
 import { describeGame, formatDate } from "./format";
+import { clubListText } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { StaffBrowser } from "./StaffBrowser";
 import type { ConnectionInfo, Detection, ReloadInfo } from "./types";
 import "./App.css";
 
-type View = "players" | "staff";
+type View = "players" | "staff" | "clubs";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: "Players" },
   { id: "staff", label: "Staff" },
+  { id: "clubs", label: clubListText.nav },
 ];
 
 function App() {
@@ -39,13 +42,13 @@ function App() {
   );
 
   const connect = () =>
-    run("Reading players and staff…", async () => {
+    run("Reading players, staff and clubs…", async () => {
       setConnection(await call<ConnectionInfo>("connect"));
       setDataVersion((v) => v + 1);
     });
 
   const reload = () =>
-    run("Reloading players and staff…", async () => {
+    run("Reloading players, staff and clubs…", async () => {
       try {
         const reloaded = await call<ReloadInfo>("reload");
         setConnection((c) => c && { ...c, ...reloaded });
@@ -84,9 +87,6 @@ function App() {
               {label}
             </button>
           ))}
-          <button type="button" className="nav-item" disabled>
-            Clubs <small>soon</small>
-          </button>
         </nav>
         <p className="sidebar-note">Read-only for now: nothing in the game is changed.</p>
       </aside>
@@ -101,6 +101,7 @@ function App() {
                   connection.gameDate && formatDate(connection.gameDate),
                   `${connection.players.toLocaleString()} players`,
                   `${connection.staff.toLocaleString()} staff`,
+                  clubListText.count(connection.clubs),
                 ]
                   .filter(Boolean)
                   .join(" · ")
@@ -123,10 +124,11 @@ function App() {
         {error && <div className="banner">{error}</div>}
 
         {connection ? (
-          // Both lists stay mounted, so each keeps its search and selection while the other is shown.
+          // All the lists stay mounted, so each keeps its search and selection while another is shown.
           <div className="views">
             <PlayerBrowser version={dataVersion} active={view === "players"} />
             <StaffBrowser version={dataVersion} active={view === "staff"} />
+            <ClubBrowser version={dataVersion} active={view === "clubs"} />
           </div>
         ) : (
           <ConnectPanel detection={detection} busy={busy !== null} onConnect={connect} />
@@ -166,7 +168,7 @@ function ConnectPanel(props: { detection: Detection | null; busy: boolean; onCon
         )}
 
         <button className="primary" onClick={onConnect} disabled={busy || !ready}>
-          Connect and read players and staff
+          Connect and read players, staff and clubs
         </button>
       </div>
     </section>

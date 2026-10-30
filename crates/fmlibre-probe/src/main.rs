@@ -10,9 +10,9 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
-    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PERSONALITY, POSITIONS,
-    PlayerIndex, STAFF_ATTRIBUTE_GROUPS, ScanOptions, Session, SessionError, StaffIndex, find_game, job_name,
-    scan_object_arrays,
+    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PERSONALITY,
+    POSITIONS, PlayerIndex, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, ScanOptions, Session,
+    SessionError, StaffIndex, find_game, job_name, scan_object_arrays,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -61,6 +61,19 @@ enum Command {
         /// How many to print.
         #[arg(long, default_value_t = 25)]
         limit: usize,
+    },
+    /// List clubs, highest reputation first, optionally only those matching TEXT.
+    Clubs {
+        /// Words to look for in club names (accents and case are ignored), or a UID.
+        text: Option<String>,
+        /// How many to print.
+        #[arg(long, default_value_t = 25)]
+        limit: usize,
+    },
+    /// Show everything FMLibreEditor reads for the club with this UID.
+    Club {
+        /// The club's unique ID.
+        uid: u32,
     },
     /// Show everything FMLibreEditor reads for the member of staff with this id.
     StaffMember {
@@ -203,6 +216,10 @@ fn run(cli: Cli) -> Result<()> {
             staff(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
         }
         Command::StaffMember { uid } => staff_member(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::Clubs { text, limit } => {
+            clubs(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
+        }
+        Command::Club { uid } => club(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Players { text, limit } => {
             players(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
         }
@@ -546,6 +563,63 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
             iso_date(c.joined)
         ),
         None => println!("  contract       none"),
+    }
+    Ok(())
+}
+
+fn clubs(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
+    let started = Instant::now();
+    let index = ClubIndex::new(session.clubs()?);
+    let elapsed = started.elapsed();
+    let hits = index.search(text.unwrap_or(""));
+    println!(
+        "Read {} clubs in {:.1} s; {} shown of {} matching.",
+        index.len(),
+        elapsed.as_secs_f64(),
+        hits.len().min(limit),
+        hits.len()
+    );
+    println!();
+    println!("{:>10}  {:<32}  {:<20}  {:>5}  {:>7}", "UID", "Name", "Short name", "Rep", "Founded");
+    for c in hits.iter().take(limit) {
+        let name = if c.women { format!("{} (women)", c.name) } else { c.name.clone() };
+        println!(
+            "{:>10}  {:<32}  {:<20}  {:>5}  {:>7}",
+            c.uid,
+            clip(&name, 32),
+            clip(c.short_name.as_deref().unwrap_or("-"), 20),
+            c.reputation.map_or_else(String::new, |r| r.to_string()),
+            c.founded.map_or_else(String::new, |y| y.to_string())
+        );
+    }
+    Ok(())
+}
+
+fn club(session: &Session, uid: u32) -> Result<()> {
+    let index = ClubIndex::new(session.clubs()?);
+    let summary = index.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+    let d = session.club_details(summary)?.context("the club's data changed while reading; try again")?;
+    let c = &d.summary;
+    println!("{} (UID {}){}", c.name, c.uid, if c.women { ", women's club" } else { "" });
+    println!("  short name     {}", c.short_name.as_deref().unwrap_or("-"));
+    println!("  reputation     {}", c.reputation.map_or_else(|| "-".to_owned(), |r| r.to_string()));
+    println!("  founded        {}", c.founded.map_or_else(|| "-".to_owned(), |y| y.to_string()));
+    println!("  season tickets {}", d.season_tickets.map_or_else(|| "-".to_owned(), |n| n.to_string()));
+    println!("  social media   {}", d.social_media.map_or_else(|| "-".to_owned(), |n| n.to_string()));
+    let mix: Vec<String> =
+        SUPPORTER_MIX.iter().filter_map(|k| d.supporter_mix.get(k).map(|v| format!("{k} {v}%"))).collect();
+    println!("  supporters     {}", mix.join(", "));
+    let traits: Vec<String> =
+        SUPPORTER_TRAITS.iter().filter_map(|k| d.supporter_traits.get(k).map(|v| format!("{k} {v}"))).collect();
+    println!("  traits         {}", traits.join(", "));
+    let facilities: Vec<String> = d.facilities.iter().map(|(k, v)| format!("{k} {v}")).collect();
+    println!("  facilities     {}", facilities.join(", "));
+    match &d.finances {
+        Some(f) => println!(
+            "  finances       balance £{}, transfer budget £{}, wage budget £{} p/w (total £{}), ticket £{:.0}",
+            f.balance, f.transfer_budget, f.wage_budget, f.total_wage_budget, f.ticket_price
+        ),
+        None => println!("  finances       not kept for this club"),
     }
     Ok(())
 }

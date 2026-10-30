@@ -5,7 +5,7 @@ import { formatDate, formatPounds } from "./format";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import type { Attribute, FmDate, Reputation } from "./types";
 
-// What the player and staff profiles have in common: the panel frame, loading, rating rows and
+// What the player, staff and club profiles have in common: the panel frame, loading, rating rows and
 // the label/value blocks.
 
 /** Reputation is stored on a 0–10000 scale. */
@@ -42,15 +42,19 @@ export function useProfileDetails<T>(command: string, uid: number, version: numb
 
 interface ProfileFrameProps {
   name: string;
+  /** A second name under the name when it differs: a person's full name, a club's short name. */
   fullName: string | null;
   /** Sits beside the name. */
   badge?: ReactNode;
-  /** The line under the names. */
-  meta: ReactNode;
+  /** The line under the names; a profile with nothing to say there leaves it out. */
+  meta?: ReactNode;
   /** The small print under that, e.g. the birth date. */
   vitals: string;
-  currentAbility: number;
-  potentialAbility: number;
+  /** The abilities of a person, under the close button. */
+  currentAbility?: number;
+  potentialAbility?: number;
+  /** Under the close button instead of the abilities, e.g. the reputation of a club. */
+  side?: ReactNode;
   loaded: Loaded<unknown> | null;
   onClose: () => void;
   /** The body, once the profile has loaded. */
@@ -58,11 +62,13 @@ interface ProfileFrameProps {
 }
 
 /**
- * The panel beside a list: header with the abilities and a close button, and a scrolling body
- * that shows the loading state or error. Mount it with `key={uid}` so a new person starts at the top.
+ * The panel beside a list: header with the abilities (or another summary, as `side`) and a close
+ * button, and a scrolling body that shows the loading state or error. Mount it with `key={uid}` so
+ * a new person starts at the top.
  */
 export function ProfileFrame(props: ProfileFrameProps) {
-  const { name, fullName, badge, meta, vitals, currentAbility, potentialAbility, loaded, onClose, children } = props;
+  const { name, fullName, badge, meta, vitals, currentAbility, potentialAbility, side, loaded, onClose, children } =
+    props;
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -83,7 +89,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
             {badge}
           </h2>
           {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
-          <p className="profile-meta">{meta}</p>
+          {meta !== undefined && <p className="profile-meta">{meta}</p>}
           <p className="profile-vitals">{vitals}</p>
         </div>
         <div className="profile-side">
@@ -92,12 +98,15 @@ export function ProfileFrame(props: ProfileFrameProps) {
               <path d="m5 5 10 10M15 5 5 15" />
             </svg>
           </button>
-          <div className="profile-abilities">
-            <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
-            <Ability value={currentAbility} />
-            <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
-            <Ability value={potentialAbility} />
-          </div>
+          {side ??
+            (currentAbility !== undefined && potentialAbility !== undefined && (
+              <div className="profile-abilities">
+                <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
+                <Ability value={currentAbility} />
+                <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
+                <Ability value={potentialAbility} />
+              </div>
+            ))}
         </div>
       </header>
 
@@ -181,25 +190,32 @@ function tierClass(value: number, lowerIsBetter = false): string {
   return `tier-${score <= 5 ? 1 : score <= 10 ? 2 : score <= 15 ? 3 : 4}`;
 }
 
+/** The rows of a rating group: a label and the value on a chip coloured by band. */
+export function RatingList({ rows }: { rows: RatingRow[] }) {
+  return (
+    <dl className="stats ratings">
+      {rows.map((row) => (
+        <div className="stat" key={row.key} title={row.title}>
+          <dt>{row.label}</dt>
+          <dd className={row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}>
+            {row.value ?? profileText.none}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function RatingGroup({ title, rows }: { title: string; rows: RatingRow[] }) {
   return (
     <section className="profile-group">
       <h3>{title}</h3>
-      <dl className="stats ratings">
-        {rows.map((row) => (
-          <div className="stat" key={row.key} title={row.title}>
-            <dt>{row.label}</dt>
-            <dd className={row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}>
-              {row.value ?? profileText.none}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <RatingList rows={rows} />
     </section>
   );
 }
 
-export function Fact({ label, children }: { label: string; children: ReactNode }) {
+export function Fact({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div className="stat">
       <dt>{label}</dt>
@@ -247,7 +263,7 @@ export function ReputationBars({ reputation }: { reputation: Reputation }) {
 }
 
 function ReputationBar({ label, value }: { label: string; value: number }) {
-  const style = { "--fill": `${Math.min(100, (value / REPUTATION_MAX) * 100)}%` } as CSSProperties;
+  const style = { "--fill": reputationFill(value) } as CSSProperties;
   return (
     <div className="stat bar-stat">
       <dt>{label}</dt>
@@ -256,5 +272,26 @@ function ReputationBar({ label, value }: { label: string; value: number }) {
         <span className="figure">{value.toLocaleString()}</span>
       </dd>
     </div>
+  );
+}
+
+/** How much of a bar a reputation fills, as a CSS length. */
+function reputationFill(value: number): string {
+  return `${Math.min(100, (value * 100) / REPUTATION_MAX)}%`;
+}
+
+/**
+ * One reputation as a compact bar with the number on it, in the style of the abilities; a dash
+ * when the reputation is unknown. For the club list and the club header.
+ */
+export function ReputationMeter({ value }: { value: number | null }) {
+  if (value === null) {
+    return <span className="muted">{profileText.none}</span>;
+  }
+  const style = { "--fill": reputationFill(value) } as CSSProperties;
+  return (
+    <span className="ability rep" style={style}>
+      {value.toLocaleString()}
+    </span>
   );
 }

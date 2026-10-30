@@ -226,6 +226,35 @@ lists. The reader detects the shift per vtable, as for player-coaches. The same
 class also holds an account placeholder with no birth date, nation or contract;
 the reader skips it.
 
+### Clubs
+
+`fmlibre-probe clubs` reads 31,227 clubs in 0.3 s (debug build); the six entries
+without a name share the array but are not clubs, and are skipped. Checked on
+Tottenham Hotspur (UID 728) against fm-editor's Steam witnesses:
+
+| Where | Content | Spurs |
+|---|---|---|
+| club `+0x0C` | UID (`u32`) | 728 |
+| club `+0xC0` / `+0xC8` | full / short name (FM strings) | Tottenham Hotspur / Tottenham |
+| club `+0xB9` | women's club flag | 0 |
+| club `+0x18` → `[0]` `+0xA8` | reputation, on the senior team (`u16`) | 7650 |
+| club `+0x100` → `+0xC0` / `+0xD8` / `+0xF8` | season tickets / founded / social followers | 50,000 / 1882 / 6,835,276 |
+| info `+0x106..+0x10B` | supporter mix, % | 10 / 37 / 15 / 19 / 5 / 14 |
+| info `+0x114..+0x119` | supporter traits, 1–20 | 18 / 14 / 7 / 14 / 7 / 14 |
+| info `+0x120` / `+0x12B` / `+0x12C` / `+0x12D` | training / youth facilities / youth coaching / youth recruitment | 20 / 20 / 16 / 16 |
+| club `+0x150` → `+0x0C` | balance (`i32` pounds) | 161,320,637 |
+| finance `+0x7C4` | transfer budget | 24,250,000 |
+| finance `+0x808` / `+0x814` | total / spending wage budget per week | 4,627,024 / 4,438,849 |
+| finance `+0x864` | average ticket price (`f32` pounds) | 65 |
+| finance `+0x8A9` | corporate facilities | 20 |
+
+More reputations and founding years: Manchester City 9150 / 1894, Arsenal 8950 /
+1886 (both as on Steam), Barcelona 9100 / 1899, Real Madrid 9100 / 1902.
+
+Only clubs in the leagues being played have the full finance record; the others use
+a smaller class that ends before the budget fields. The reader keeps finances only
+when the ticket price, budgets and corporate rating look like a real club's.
+
 ### Staff and club layouts
 
 `fmlibre-probe calibrate` decodes 100% of sampled staff (name-table entries at

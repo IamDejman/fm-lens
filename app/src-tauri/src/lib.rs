@@ -2,8 +2,8 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use fmlibre_core::{
-    ArraySource, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, Listed, PlayerDetails, PlayerIndex,
-    SearchIndex, Session, StaffDetails, StaffIndex, find_game,
+    ArraySource, ClubDetails, ClubIndex, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, Listed, PlayerDetails,
+    PlayerIndex, SearchIndex, Session, StaffDetails, StaffIndex, find_game,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::Serialize;
@@ -16,13 +16,15 @@ struct Connection {
     session: Session,
     players: PlayerIndex,
     staff: StaffIndex,
+    clubs: ClubIndex,
 }
 
 impl Connection {
     fn load(session: Session) -> Result<Self, String> {
         let players = PlayerIndex::new(session.players().map_err(text)?);
         let staff = StaffIndex::new(session.staff().map_err(text)?);
-        Ok(Self { session, players, staff })
+        let clubs = ClubIndex::new(session.clubs().map_err(text)?);
+        Ok(Self { session, players, staff, clubs })
     }
 }
 
@@ -53,6 +55,7 @@ struct ConnectionInfo {
     arrays: EntityArrays,
     players: usize,
     staff: usize,
+    clubs: usize,
     game_date: Option<FmDate>,
     load_ms: u128,
 }
@@ -62,6 +65,7 @@ struct ConnectionInfo {
 struct ReloadInfo {
     players: usize,
     staff: usize,
+    clubs: usize,
     game_date: Option<FmDate>,
 }
 
@@ -119,6 +123,7 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
         arrays: connection.session.arrays.clone(),
         players: connection.players.len(),
         staff: connection.staff.len(),
+        clubs: connection.clubs.len(),
         game_date: connection.session.game_date(),
         load_ms: started.elapsed().as_millis(),
     };
@@ -135,6 +140,7 @@ async fn reload(state: State<'_, AppState>) -> Result<ReloadInfo, String> {
     let info = ReloadInfo {
         players: connection.players.len(),
         staff: connection.staff.len(),
+        clubs: connection.clubs.len(),
         game_date: connection.session.game_date(),
     };
     *state.0.lock().map_err(text)? = Some(connection);
@@ -163,6 +169,31 @@ fn search_staff(
     let guard = state.0.lock().map_err(text)?;
     let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
     Ok(page(&connection.staff, &query, limit))
+}
+
+/// Clubs matching `query`, highest reputation first; at most `limit` rows.
+#[tauri::command]
+fn search_clubs(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+) -> Result<Page<fmlibre_core::ClubSummary>, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    Ok(page(&connection.clubs, &query, limit))
+}
+
+/// The full profile of the club with `uid`. Only reads memory.
+#[tauri::command]
+fn club_details(state: State<'_, AppState>, uid: u32) -> Result<ClubDetails, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let club = connection.clubs.get(uid).ok_or_else(|| format!("No club with UID {uid}"))?;
+    connection
+        .session
+        .club_details(club)
+        .map_err(text)?
+        .ok_or_else(|| "This club's data has changed in the game; reload and try again.".to_owned())
 }
 
 /// The full profile of the player with `uid`. Only reads memory.
@@ -201,8 +232,10 @@ pub fn run() {
             reload,
             search_players,
             search_staff,
+            search_clubs,
             player_details,
-            staff_details
+            staff_details,
+            club_details
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

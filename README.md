@@ -2,9 +2,10 @@
 
 A free, open-source real-time editor for **Football Manager 27**, built Game Pass first.
 
-> **Status: pre-alpha, Phase 2.** Nothing here edits the game yet. The app lists and
-> searches every player and member of staff of a running FM27 (Game Pass build) and
-> shows their profiles (attributes, positions, personality, contract), read-only.
+> **Status: pre-alpha, Phase 3.** Nothing here edits the game yet. The app lists and
+> searches every player, member of staff and club of a running FM27 (Game Pass
+> build) and shows their profiles (attributes, positions, personality, contracts,
+> facilities, supporters, finances), read-only.
 
 ## Goals
 
@@ -59,6 +60,7 @@ fmlibre-probe calibrate                              # identify the build and lo
 fmlibre-probe players "arda guler"                   # search players (accents ignored), best first
 fmlibre-probe player 7458500                         # everything read for one player
 fmlibre-probe staff arteta                           # search staff; staff-member <id> for details
+fmlibre-probe clubs tottenham                        # search clubs; club <uid> for details
 fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
 fmlibre-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0

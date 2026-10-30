@@ -1,5 +1,6 @@
-// Text of the player and staff profiles. Keys of the game data map to the names FM uses; every
-// other string of the panels is in `profileText`, and those of the staff list in `staffListText`.
+// Text of the player, staff and club profiles. Keys of the game data map to the names FM uses; every
+// other string of the panels is in `profileText` (those only the club panel has, in `clubProfileText`),
+// and those of the staff and club lists in `staffListText` and `clubListText`.
 // A translation only has to replace the values here.
 
 export const ATTRIBUTE_LABELS = {
@@ -129,6 +130,36 @@ export const POSITION_LABELS = {
 } as const;
 
 export type PositionKey = keyof typeof POSITION_LABELS;
+
+export const CLUB_FACILITY_LABELS = {
+  training: "Training",
+  youth_facilities: "Youth Facilities",
+  youth_coaching: "Youth Coaching",
+  youth_recruitment: "Youth Recruitment",
+  /** Only a club with finances has it. */
+  corporate: "Corporate",
+} as const;
+
+export const SUPPORTER_TRAIT_LABELS = {
+  loyalty: "Loyalty",
+  passion: "Passion",
+  patience: "Patience",
+  affluence: "Affluence",
+  temperament: "Temperament",
+  expectations: "Expectations",
+} as const;
+
+/** The kinds of supporters, in the order of the supporter-mix bar. */
+export const SUPPORTER_MIX_LABELS = {
+  hardcore: "Hardcore",
+  core: "Core",
+  family: "Family",
+  fair_weather: "Fair-weather",
+  casual: "Casual",
+  other: "Other",
+} as const;
+
+export type SupporterMixKey = keyof typeof SUPPORTER_MIX_LABELS;
 
 const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Star player",
@@ -278,5 +309,64 @@ export const staffListText = {
     currentAbility: "CA",
     potentialAbility: "PA",
     id: "ID",
+  },
+};
+
+/** The club profile: what the player and staff panels do not have. */
+export const clubProfileText = {
+  // Header
+  womensClub: "Women's club",
+  /** "Founded 1882", in the line under the name. */
+  founded: (year: number) => `Founded ${year}`,
+  reputationShort: "REP",
+  reputationTitle: "Reputation",
+
+  facilities: "Facilities",
+
+  // Supporters
+  supporters: "Supporters",
+  supporterMix: "Supporter mix",
+  /** A share of the supporters; `value` is already a percentage (35 for 35%). */
+  percent: (value: number) => `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`,
+  /** Hover text of a segment of the supporter-mix bar. */
+  mixTooltip: (kind: string, percent: string) => `${kind} · ${percent}`,
+
+  // Finances
+  finances: "Finances",
+  balance: "Balance",
+  transferBudget: "Transfer budget",
+  wageBudget: "Wage budget (spending)",
+  totalWageBudget: "Total wage budget",
+  ticketPrice: "Average ticket price",
+  /** Under the labels of the two wage budgets, which are amounts per week. */
+  perWeek: "per week",
+  /** Clubs outside the leagues being played have no finance record in memory. */
+  noFinances: "FM keeps finances only for clubs in the leagues being played.",
+
+  // Club info
+  info: "Club info",
+  seasonTickets: "Season tickets",
+  socialMedia: "Social media followers",
+};
+
+/** The club list, with the sidebar entry and the status-line count that go with it. */
+export const clubListText = {
+  /** The entry in the sidebar. */
+  nav: "Clubs",
+  /** In the status line, once connected. */
+  count: (total: number) => `${total.toLocaleString()} clubs`,
+  search: "Search clubs by name or UID",
+  summary: (total: number, shown: number) =>
+    total > shown
+      ? `${total.toLocaleString()} clubs · showing the top ${shown} by reputation`
+      : `${total.toLocaleString()} clubs`,
+  empty: (query: string) => `No clubs match “${query}”.`,
+  /** The small tag on a women's club. */
+  women: "Women",
+  columns: {
+    name: "Name",
+    reputation: "Reputation",
+    founded: "Founded",
+    uid: "UID",
   },
 };

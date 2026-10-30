@@ -26,9 +26,9 @@ export function formatDate(date: FmDate | null): string {
   });
 }
 
-/** "£1,234,567", grouped the way the reader's locale does it. */
+/** "£1,234,567", grouped the way the reader's locale does it; "-£1,234" when negative, like a club's overdraft. */
 export function formatPounds(amount: number): string {
-  return `£${amount.toLocaleString()}`;
+  return `${amount < 0 ? "-" : ""}£${Math.abs(amount).toLocaleString()}`;
 }
 
 /** Lower-cases and strips accents, matching the Rust side's `fold`. */
