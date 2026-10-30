@@ -10,8 +10,8 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
-    ArrayCandidate, ArraySource, GAME_EXE, GAME_PLUGIN, GameInfo, PlayerIndex, ScanOptions, Session, SessionError,
-    find_game, scan_object_arrays,
+    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PERSONALITY, POSITIONS,
+    PlayerIndex, ScanOptions, Session, SessionError, find_game, scan_object_arrays,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -47,6 +47,11 @@ enum Command {
         /// Ignore the build profile and find the arrays by scanning, as for an unknown build.
         #[arg(long)]
         scan: bool,
+    },
+    /// Show everything FMLibreEditor reads for the player with this UID.
+    Player {
+        /// The player's unique ID.
+        uid: u32,
     },
     /// List players, best first, optionally only those matching TEXT.
     Players {
@@ -153,6 +158,7 @@ fn run(cli: Cli) -> Result<()> {
             let source = if scan { ArraySource::ScanOnly } else { ArraySource::ProfileFirst };
             calibrate(&Session::connect(process, source)?)
         }
+        Command::Player { uid } => player(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Players { text, limit } => {
             players(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
         }
@@ -255,6 +261,63 @@ fn players(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
             p.current_ability,
             p.potential_ability
         );
+    }
+    Ok(())
+}
+
+fn player(session: &Session, uid: u32) -> Result<()> {
+    let index = PlayerIndex::new(session.players()?);
+    let summary = index.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let d = session.player_details(summary)?.context("the player's data changed while reading; try again")?;
+    let date = |date: Option<FmDate>| {
+        date.map_or_else(|| "-".to_owned(), |d| format!("{:04}-{:02}-{:02}", d.year, d.month, d.day))
+    };
+
+    println!("{} (UID {})", d.summary.name, d.summary.uid);
+    if let Some(full) = &d.summary.full_name {
+        println!("  full name      {full}");
+    }
+    println!("  born           {}", date(d.summary.date_of_birth));
+    println!("  nation         {}", d.summary.nation.as_deref().unwrap_or("-"));
+    println!("  club           {}", d.summary.club.as_deref().unwrap_or("-"));
+    println!("  CA / PA        {} / {}", d.summary.current_ability, d.summary.potential_ability);
+    println!("  height         {} cm", d.height_cm);
+    println!(
+        "  reputation     home {}, current {}, world {}",
+        d.reputation.home, d.reputation.current, d.reputation.world
+    );
+    let i = &d.international;
+    println!("  international  {} caps, {} goals; U21 {} caps, {} goals", i.caps, i.goals, i.u21_caps, i.u21_goals);
+    println!("  asking price   {}", d.asking_price.map_or_else(|| "not set".to_owned(), |p| format!("£{p}")));
+    if summary.shift != 0 {
+        println!("  layout         person block shifted by {:#x} (player-coach)", summary.shift);
+    }
+
+    println!();
+    for (group, keys) in ATTRIBUTE_GROUPS {
+        let values: Vec<String> =
+            keys.iter().filter_map(|key| d.attributes.get(*key).map(|a| format!("{key} {}", a.value))).collect();
+        println!("  {group:<12} {}", values.join(", "));
+    }
+    let positions: Vec<String> =
+        POSITIONS.iter().map(|key| format!("{} {}", key.to_uppercase(), d.positions[key])).collect();
+    println!("  {:<12} {}", "positions", positions.join(", "));
+    let personality: Vec<String> = PERSONALITY.iter().map(|key| format!("{key} {}", d.personality[key])).collect();
+    println!("  {:<12} {}", "personality", personality.join(", "));
+
+    println!();
+    match &d.contract {
+        Some(c) => {
+            println!("  contract       £{} per week, signed {}, expires {}", c.wage, date(c.signed), date(c.expires));
+            println!(
+                "                 joined {}, squad status {}, squad number {}",
+                date(c.joined),
+                c.squad_status,
+                c.squad_number.map_or_else(|| "-".to_owned(), |n| n.to_string())
+            );
+            println!("                 transfer listed {}, loan listed {}", c.transfer_listed, c.loan_listed);
+        }
+        None => println!("  contract       none"),
     }
     Ok(())
 }

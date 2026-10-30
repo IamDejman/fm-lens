@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Ability } from "./Ability";
 import { call, inTauri } from "./api";
 import { describeGame, formatDate } from "./format";
-import type { ConnectionInfo, Detection, PlayerPage } from "./types";
+import { PlayerProfile } from "./PlayerProfile";
+import type { ConnectionInfo, Detection, PlayerPage, PlayerSummary } from "./types";
 import "./App.css";
 
 /** Rows shown at once; the best players by current ability come first. */
@@ -151,6 +153,16 @@ function PlayerBrowser({ version }: { version: number }) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState<PlayerPage | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<PlayerSummary | null>(null);
+  const selectedRow = useRef<HTMLTableRowElement>(null);
+
+  const closeProfile = useCallback(() => {
+    // The panel unmounts with the focused control inside it; keep keyboard focus in the table.
+    if (document.activeElement?.closest(".profile")) {
+      selectedRow.current?.focus();
+    }
+    setSelected(null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,79 +195,81 @@ function PlayerBrowser({ version }: { version: number }) {
     : "";
 
   return (
-    <section className="players">
-      <div className="toolbar">
-        <label className="search">
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <circle cx="8.5" cy="8.5" r="5.5" />
-            <path d="m13 13 4.5 4.5" />
-          </svg>
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.currentTarget.value)}
-            placeholder="Search players by name or UID"
-            spellCheck={false}
-          />
-        </label>
-        <span className="count">{summary}</span>
-      </div>
-      {error && <div className="banner">{error}</div>}
+    <div className={selected ? "workspace with-profile" : "workspace"}>
+      <section className="players">
+        <div className="toolbar">
+          <label className="search">
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="8.5" cy="8.5" r="5.5" />
+              <path d="m13 13 4.5 4.5" />
+            </svg>
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.currentTarget.value)}
+              placeholder="Search players by name or UID"
+              spellCheck={false}
+            />
+          </label>
+          <span className="count">{summary}</span>
+        </div>
+        {error && <div className="banner">{error}</div>}
 
-      <div className="table-wrap">
-        <table className="grid">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Nation</th>
-              <th>Club</th>
-              <th>Born</th>
-              <th className="num">CA</th>
-              <th className="num">PA</th>
-              <th className="num">UID</th>
-            </tr>
-          </thead>
-          <tbody>
-            {page?.rows.map((p) => (
-              <tr key={p.uid}>
-                <td>
-                  <div className="name">{p.name}</div>
-                  {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
-                </td>
-                <td>{p.nation ?? "—"}</td>
-                <td>{p.club ?? <span className="muted">Free agent</span>}</td>
-                <td className="date">{formatDate(p.dateOfBirth)}</td>
-                <td className="num">
-                  <Ability value={p.currentAbility} />
-                </td>
-                <td className="num">
-                  <Ability value={p.potentialAbility} />
-                </td>
-                <td className="num uid">{p.uid}</td>
+        <div className="table-wrap">
+          <table className="grid">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Nation</th>
+                <th>Club</th>
+                <th>Born</th>
+                <th className="num">CA</th>
+                <th className="num">PA</th>
+                <th className="num">UID</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {page && page.rows.length === 0 && <p className="empty">No players match “{query}”.</p>}
-      </div>
-    </section>
-  );
-}
+            </thead>
+            <tbody>
+              {page?.rows.map((p) => {
+                const isSelected = p.uid === selected?.uid;
+                return (
+                  <tr
+                    key={p.uid}
+                    ref={isSelected ? selectedRow : undefined}
+                    className={isSelected ? "selected" : undefined}
+                    aria-current={isSelected ? "true" : undefined}
+                    tabIndex={0}
+                    onClick={() => setSelected(p)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setSelected(p);
+                      }
+                    }}
+                  >
+                    <td>
+                      <div className="name">{p.name}</div>
+                      {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
+                    </td>
+                    <td>{p.nation ?? "—"}</td>
+                    <td>{p.club ?? <span className="muted">Free agent</span>}</td>
+                    <td className="date">{formatDate(p.dateOfBirth)}</td>
+                    <td className="num">
+                      <Ability value={p.currentAbility} />
+                    </td>
+                    <td className="num">
+                      <Ability value={p.potentialAbility} />
+                    </td>
+                    <td className="num uid">{p.uid}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {page && page.rows.length === 0 && <p className="empty">No players match “{query}”.</p>}
+        </div>
+      </section>
 
-/** Current or potential ability (1–200) with a bar; negative potentials are ranges. */
-function Ability({ value }: { value: number }) {
-  if (value < 0) {
-    return (
-      <span className="ability range" title="Potential set as a range">
-        {value}
-      </span>
-    );
-  }
-  const style = { "--fill": `${Math.min(100, value / 2)}%` } as CSSProperties;
-  return (
-    <span className="ability" style={style}>
-      {value}
-    </span>
+      {selected && <PlayerProfile key={selected.uid} player={selected} version={version} onClose={closeProfile} />}
+    </div>
   );
 }
 

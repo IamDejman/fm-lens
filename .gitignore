@@ -6,4 +6,4 @@ node_modules/
 # Probe reports can contain memory addresses from a local game session.
 /reports
 
-# Local tooling configuration.
+# Local tooling state.

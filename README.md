@@ -3,7 +3,8 @@
 A free, open-source real-time editor for **Football Manager 27**, built Game Pass first.
 
 > **Status: pre-alpha, Phase 1.** Nothing here edits the game yet. The app lists and
-> searches every player of a running FM27 (Game Pass build), read-only.
+> searches every player of a running FM27 (Game Pass build) and shows each player's
+> profile (attributes, positions, personality, contract), read-only.
 
 ## Goals
 

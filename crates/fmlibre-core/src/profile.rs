@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use fmlibre_mem::PeImage;
 use serde::Deserialize;
 
@@ -10,6 +12,7 @@ use crate::game::Storefront;
 pub struct Layout {
     pub edition: u32,
     pub player: PlayerLayout,
+    pub contract: ContractLayout,
     pub staff: StaffLayout,
     pub team: TeamLayout,
     pub club: ClubLayout,
@@ -29,6 +32,94 @@ pub struct PlayerLayout {
     pub potential_ability: u64,
     pub nation: u64,
     pub team: u64,
+    /// Start of the person block; fields from here on move with the person-block shift.
+    pub person_block: u64,
+    /// Shifts of the person block seen across player classes (player-coaches use 0xF8).
+    pub person_block_shifts: Vec<u64>,
+    pub height: u64,
+    pub asking_price: u64,
+    pub home_reputation: u64,
+    pub current_reputation: u64,
+    pub world_reputation: u64,
+    pub international_caps: u64,
+    pub international_goals: u64,
+    pub u21_caps: u64,
+    pub u21_goals: u64,
+    pub contract: u64,
+    /// First of the 15 position ratings, in [`crate::POSITIONS`] order.
+    pub positions: u64,
+    /// First of the 8 personality ratings, in [`crate::PERSONALITY`] order.
+    pub personality: u64,
+    /// Attribute offsets by key; see [`crate::ATTRIBUTE_GROUPS`].
+    pub attributes: BTreeMap<String, u64>,
+}
+
+impl PlayerLayout {
+    /// Where `offset` lands in an object whose person block is shifted by `shift`.
+    pub fn at(&self, offset: u64, shift: u64) -> u64 {
+        if offset >= self.person_block { offset + shift } else { offset }
+    }
+
+    /// One past the last byte of every direct player field, before any shift.
+    pub fn end(&self) -> u64 {
+        let fields = [
+            self.uid + 4,
+            self.full_name + 8,
+            self.first_name + 8,
+            self.last_name + 8,
+            self.common_name + 8,
+            self.date_of_birth + 4,
+            self.current_ability + 2,
+            self.potential_ability + 2,
+            self.nation + 8,
+            self.team + 8,
+            self.height + 2,
+            self.asking_price + 4,
+            self.world_reputation + 2,
+            self.international_goals + 2,
+            self.u21_goals + 1,
+            self.contract + 8,
+            self.positions + crate::POSITIONS.len() as u64,
+            self.personality + crate::PERSONALITY.len() as u64,
+        ];
+        let attributes = self.attributes.values().map(|offset| offset + 1);
+        fields.into_iter().chain(attributes).max().unwrap_or(0)
+    }
+
+    /// The largest person-block shift.
+    pub fn max_shift(&self) -> u64 {
+        self.person_block_shifts.iter().copied().max().unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContractLayout {
+    pub wage: u64,
+    pub signed: u64,
+    pub expires: u64,
+    pub joined: u64,
+    pub squad_status: u64,
+    pub listing: u64,
+    pub squad_number: u64,
+}
+
+impl ContractLayout {
+    /// One past the last byte of every contract field.
+    pub fn end(&self) -> u64 {
+        [
+            self.wage + 4,
+            self.signed + 4,
+            self.expires + 4,
+            self.joined + 4,
+            self.squad_status + 1,
+            self.listing + 1,
+            self.squad_number + 1,
+        ]
+        .into_iter()
+        .max()
+        .unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -117,9 +208,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn attribute_groups_cover_the_layout() {
+        let layout = layout_for(27).expect("FM27 layout");
+        let mut grouped: Vec<&str> =
+            crate::ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter().copied()).collect();
+        grouped.sort_unstable();
+        let mut mapped: Vec<&str> = layout.player.attributes.keys().map(String::as_str).collect();
+        mapped.sort_unstable();
+        assert_eq!(grouped, mapped);
+    }
+
+    #[test]
     fn built_in_profiles_parse() {
         let layout = layout_for(27).expect("FM27 layout");
         assert_eq!(layout.player.uid, 0x294);
+        assert_eq!(layout.player.at(layout.player.uid, 0xF8), 0x38C);
+        assert_eq!(layout.player.at(layout.player.team, 0xF8), 0x130);
 
         let fingerprint = PluginFingerprint { size_of_image: 0x1943_6000, link_timestamp: 0x6ADF_B161 };
         let profile = profile_for(fingerprint).expect("Game Pass 0.9.2355.0 profile");
