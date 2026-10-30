@@ -132,3 +132,25 @@ FM strings are a `u32` byte length followed by NUL-terminated UTF-8 text, packed
 a pool (pointers are only 4-byte aligned). Messi's full name reads
 `Lionel Andrés Messi Cuccittini`. A name-table entry starts with a pointer to its
 FM string, then a `u32` id; entries are 24 bytes apart.
+
+More player fields, checked on Messi's object against the Steam offsets:
+
+| Offset | Content | Messi |
+|---|---|---|
+| `+0x150..+0x15E` | 15 position ratings, 1–20 | AMR 20, AMC 19, ST 19, MR 12 |
+| `+0x15F..+0x194` | attributes, raw 0–100, shown as `(raw + 2) / 5` | dribbling 97 → 19, left foot 100 → 20, work rate 28 → 6 |
+| `+0x25E` / `+0x260` / `+0x262` | home / current / world reputation (`u16`) | 9838 / 8750 / 8750 |
+| `+0x264` / `+0x266` | current / potential ability | 170 / 200 |
+| `+0x2F8..+0x2FF` | personality, 1–20 | ambition 18, pressure 19 |
+| `+0x310` | date of birth: `u16` day of year (1-based) + `u16` year | 175, 1987 → 24 June 1987 |
+
+### Staff and club layouts
+
+`fmlibre-probe calibrate` decodes 100% of sampled staff (name-table entries at
+`+0x150` / `+0x158`) and clubs (name at `+0xC0`), both with and without the build
+profile (`--scan`). Clubs are reached from players through the team pointer at
+`+0x130` and `team+0x30`; nations through `+0x2F0` with the name at `nation+0x18`.
+Nation names come from the game's own translations, so they follow the game
+language (e.g. `Arjantin` in a Turkish game).
+
+`fmlibre-probe players` reads all 59,304 players in 0.5 s (debug build).

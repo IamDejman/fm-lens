@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use fmlibre_mem::Process;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// Executable name of Football Manager on Windows (Steam, Epic and Game Pass alike).
 pub const GAME_EXE: &str = "fm.exe";
@@ -10,7 +10,7 @@ pub const GAME_EXE: &str = "fm.exe";
 pub const GAME_PLUGIN: &str = "game_plugin.dll";
 
 /// Where the running copy of the game was installed from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Storefront {
     GamePass,

@@ -4,7 +4,7 @@ Each phase ends with something that runs. Release builds of FM27 move data aroun
 so every phase keeps game-specific addresses in data, not code, and checks them
 before trusting them.
 
-## Phase 0: reconnaissance (in progress)
+## Phase 0: reconnaissance (done)
 
 - [x] Read-only probe: find `fm.exe`, tell Steam / Epic / Game Pass apart, attach,
   list modules, read `game_plugin.dll` headers from memory. Attaching to the Game
@@ -12,17 +12,20 @@ before trusting them.
 - [x] Locate the entity arrays (players, staff, clubs) in `game_plugin.dll` by
   scanning for `(begin, end)` pointer pairs and counting element vtables.
 - [x] Confirm on the Game Pass build that object layouts match the Steam notes in
-  `docs/recon/` (player UID and names verified).
+  `docs/recon/` (player, staff and club layouts).
 - [x] Tauri app shell that builds and shows whether the game is detected.
-- [ ] Verify staff and club layouts the same way.
 
-## Phase 1: memory core
+## Phase 1: memory core (in progress)
 
-- Version profiles in data files: array RVAs, vtables, field offsets and encodings
-  per build.
-- Automatic calibration: re-find arrays and vtables after a patch, validated by
-  decoding known fields (names, UIDs, dates).
-- Decoders for FM strings, dates and attribute scales.
+- [x] Build profiles and object layouts as data files in `profiles/`, matched by
+  the `game_plugin.dll` fingerprint.
+- [x] Automatic calibration: check the profile's arrays, or find them by scanning
+  when there is no profile or it does not check out, validated by decoding names.
+- [x] Decoders for FM strings, name-table entries and dates.
+- [x] First read-only player list in the app: search by name or UID, accents
+  ignored.
+- [ ] Attribute scale and the rest of the player fields in the data model.
+- [ ] Locate the in-game date, for ages.
 
 ## Phase 2: data model
 

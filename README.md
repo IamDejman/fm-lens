@@ -2,8 +2,8 @@
 
 A free, open-source real-time editor for **Football Manager 27**, built Game Pass first.
 
-> **Status: pre-alpha, Phase 0 (reconnaissance).** Nothing here edits the game yet.
-> The only working tool is a read-only probe.
+> **Status: pre-alpha, Phase 1.** Nothing here edits the game yet. The app lists and
+> searches every player of a running FM27 (Game Pass build), read-only.
 
 ## Goals
 
@@ -29,8 +29,9 @@ the game's code.
 | Path | Contents |
 |---|---|
 | `crates/fmlibre-mem` | Windows process access: processes, modules, memory regions, PE headers |
-| `crates/fmlibre-core` | Football Manager logic: game detection, object-array scanner |
+| `crates/fmlibre-core` | Football Manager logic: game detection, calibration, decoders, players |
 | `crates/fmlibre-probe` | Read-only command-line probe |
+| `profiles/` | Object layouts per edition and addresses per game build |
 | `app/` | Tauri 2 desktop app (React + TypeScript) |
 | `docs/` | Roadmap and reverse-engineering notes |
 
@@ -41,7 +42,11 @@ Visual Studio Build Tools with the C++ workload, and Node.js 20+ for the app.
 
 ```powershell
 cargo build --release -p fmlibre-probe
+cd app; npm install; npm run tauri dev     # run the desktop app
 ```
+
+`npm run dev` in `app/` serves the interface in a plain browser with made-up sample
+players, for working on the UI without the game.
 
 ## Using the probe
 
@@ -49,14 +54,18 @@ Start FM27, load a save, then run:
 
 ```powershell
 fmlibre-probe info                                   # process, storefront, modules, game_plugin.dll layout
-fmlibre-probe scan                                   # find arrays of game objects (players, staff, clubs...)
+fmlibre-probe calibrate                              # identify the build and locate players, staff, clubs
+fmlibre-probe players "arda guler"                   # search players (accents ignored), best first
+fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
-fmlibre-probe element game_plugin.dll+0x57037d0 0    # follow an array and dump element 0
+fmlibre-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0
+fmlibre-probe column game_plugin.dll+0x5681dc0 0x294 --find 7458500   # find a player by UID
 ```
 
 Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `scan`
-to save the results. The probe only reads memory. If Windows denies access, run it
-from an administrator terminal.
+to save the results. `calibrate --scan` ignores the build profile and finds the
+arrays the way it would on an unknown build. The probe only reads memory. If
+Windows denies access, run it from an administrator terminal.
 
 ## Safety
 

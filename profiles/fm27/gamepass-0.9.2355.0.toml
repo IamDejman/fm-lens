@@ -1,0 +1,16 @@
+# FM27 Launch Preview on Game Pass / Microsoft Store.
+name = "FM27 0.9.2355.0 (Game Pass, Launch Preview)"
+edition = 27
+storefront = "gamePass"
+package_version = "0.9.2355.0"
+
+# game_plugin.dll as mapped in memory; these two values identify the build.
+[plugin]
+size_of_image = 0x19436000
+link_timestamp = 0x6ADFB161
+
+# RVAs in game_plugin.dll of the (begin, end) pointer pairs of the entity arrays.
+[arrays]
+players = 0x5681DC0
+staff = 0x5681E08
+clubs = 0x5681F78
