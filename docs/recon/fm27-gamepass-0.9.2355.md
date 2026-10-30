@@ -173,6 +173,19 @@ Contract fields (from the contract pointer), checked on Messi:
 FM stores unset dates as zero or as days in 1900 (a rolling contract "expires"
 1900-01-02); the decoder treats both as no date.
 
+### In-game date
+
+The current in-game date sits in static data right after the entity-array cluster,
+at RVA `0x5682608` = players pair `+0x848`: a `u16` day of year with a flag in the
+high bit (`0x80C7` → day 199) and a `u16` year (2026), i.e. 18 July 2026 in the
+test save. Confirmed with `fmlibre-probe find "18 Temmuz 2026"` and
+`find "18 Tem"`: the game's UI strings read "18 Temmuz 2026" and "Cts 18 Tem"
+(18 July 2026 is a Saturday), and there is no trace of the other candidate.
+
+That other candidate, RVA `0x56823F8`, is a real-world timestamp, not the game
+date: 14 October 2026, next to a 64-bit count of milliseconds since 0001-01-01
+reading 2026-10-14 11:13:04, probably when the database was built.
+
 ### Player-coaches
 
 174 objects in the players array have their own vtable (`0x4f1ed28`). In them the

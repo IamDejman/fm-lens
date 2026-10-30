@@ -3,6 +3,7 @@ use std::fmt;
 use fmlibre_mem::{Module, PeImage, Process, find_processes, list_modules};
 
 use crate::calibrate::{EntityArrays, calibrate};
+use crate::date::FmDate;
 use crate::details::{PlayerDetails, read_player_details};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
 use crate::players::{PlayerSummary, read_players};
@@ -104,10 +105,17 @@ impl Session {
         Ok(Self { process, game, plugin, fingerprint, profile, layout, arrays })
     }
 
-    /// Reads every player. Only reads memory.
+    /// The current in-game date, when it can be read and looks like a real date.
+    pub fn game_date(&self) -> Option<FmDate> {
+        let players = self.arrays.players.as_ref()?;
+        let raw = self.process.read_u32(self.plugin.base + players.pair_rva + self.layout.cluster.current_date).ok()?;
+        FmDate::from_raw(raw as u16, (raw >> 16) as u16).filter(|date| (2000..=2200).contains(&date.year))
+    }
+
+    /// Reads every player, with ages on the current in-game date. Only reads memory.
     pub fn players(&self) -> Result<Vec<PlayerSummary>, SessionError> {
         let array = self.arrays.players.as_ref().ok_or(SessionError::PlayersNotFound)?;
-        Ok(read_players(&self.process, &self.plugin, array, &self.layout)?)
+        Ok(read_players(&self.process, &self.plugin, array, &self.layout, self.game_date())?)
     }
 
     /// Reads the full profile of `player`; `None` when its object has changed since the

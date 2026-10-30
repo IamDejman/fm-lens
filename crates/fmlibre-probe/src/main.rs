@@ -107,6 +107,32 @@ enum Command {
         #[arg(long)]
         find: Option<u64>,
     },
+    /// Search the game's memory for text (as UTF-8 and UTF-16), bytes or a number.
+    Find {
+        /// What to look for: text by default; hex bytes or a number with --as.
+        pattern: String,
+        /// How to read PATTERN.
+        #[arg(long = "as", value_enum, default_value_t = PatternKind::Text)]
+        kind: PatternKind,
+        /// Only search this module, e.g. game_plugin.dll.
+        #[arg(long)]
+        module: Option<String>,
+        /// Stop after this many hits.
+        #[arg(long, default_value_t = 20)]
+        max: usize,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum PatternKind {
+    /// Text, matched as UTF-8 and as UTF-16LE.
+    Text,
+    /// Bytes such as "c7 80 ea 07".
+    Hex,
+    /// A little-endian u16, decimal or 0x-prefixed hex.
+    U16,
+    /// A little-endian u32, decimal or 0x-prefixed hex.
+    U32,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -179,6 +205,110 @@ fn run(cli: Cli) -> Result<()> {
             let modules = list_modules(process.pid()).context("listing modules")?;
             column(&process, &modules, resolve(&pair, &modules)?, parse_hex(&offset)?, kind, first, find)
         }
+        Command::Find { pattern, kind, module, max } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
+            find(&process, &modules, &pattern, kind, module.as_deref(), max)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// find
+
+fn find(
+    process: &Process,
+    modules: &[Module],
+    pattern: &str,
+    kind: PatternKind,
+    module: Option<&str>,
+    max: usize,
+) -> Result<()> {
+    let needles: Vec<(&str, Vec<u8>)> = match kind {
+        PatternKind::Text => vec![
+            ("utf-8", pattern.as_bytes().to_vec()),
+            ("utf-16", pattern.encode_utf16().flat_map(u16::to_le_bytes).collect()),
+        ],
+        PatternKind::Hex => vec![("bytes", parse_bytes(pattern)?)],
+        PatternKind::U16 => vec![("u16", u16::try_from(parse_number(pattern)?)?.to_le_bytes().to_vec())],
+        PatternKind::U32 => vec![("u32", u32::try_from(parse_number(pattern)?)?.to_le_bytes().to_vec())],
+    };
+    ensure!(needles.iter().all(|(_, needle)| !needle.is_empty()), "the pattern is empty");
+    let (start, end) = match module {
+        Some(name) => {
+            let m = find_module(modules, name).with_context(|| format!("module {name} is not loaded"))?;
+            (m.base, m.end())
+        }
+        None => (0x1_0000, 0x7FFF_FFFF_0000),
+    };
+
+    const CHUNK: u64 = 8 << 20;
+    let overlap = needles.iter().map(|(_, needle)| needle.len() as u64).max().unwrap_or(1) - 1;
+    let finders: Vec<(&str, memchr::memmem::Finder)> =
+        needles.iter().map(|(label, needle)| (*label, memchr::memmem::Finder::new(needle))).collect();
+    let started = Instant::now();
+    let (mut scanned, mut hits) = (0u64, 0usize);
+
+    'regions: for region in regions(process, start, end).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            let len = (region.size - offset).min(CHUNK + overlap);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                for (label, finder) in &finders {
+                    for pos in finder.find_iter(&chunk) {
+                        // A match that starts in the overlap is reported with the next chunk.
+                        if pos as u64 >= CHUNK {
+                            continue;
+                        }
+                        let addr = base + pos as u64;
+                        let context = if *label == "utf-16" { utf16_context(process, addr) } else { String::new() };
+                        println!("{addr:#014x}  {label:<6} {:<34} {context}", describe_address(addr, modules));
+                        hits += 1;
+                        if hits >= max {
+                            break 'regions;
+                        }
+                    }
+                }
+            }
+            scanned += len.min(CHUNK);
+            offset += CHUNK;
+        }
+    }
+    println!(
+        "{hits} hit(s){}; scanned {:.0} MiB in {:.1} s.",
+        if hits >= max { " (stopped at --max)" } else { "" },
+        scanned as f64 / 1_048_576.0,
+        started.elapsed().as_secs_f64()
+    );
+    Ok(())
+}
+
+/// The UTF-16 text around a hit, with control characters shown as dots.
+fn utf16_context(process: &Process, addr: u64) -> String {
+    const AROUND: u64 = 48;
+    let Ok(bytes) = process.read_bytes(addr.saturating_sub(AROUND), (2 * AROUND) as usize) else {
+        return String::new();
+    };
+    let units: Vec<u16> = bytes.as_chunks::<2>().0.iter().map(|pair| u16::from_le_bytes(*pair)).collect();
+    String::from_utf16_lossy(&units).chars().map(|c| if c.is_control() { '·' } else { c }).collect()
+}
+
+/// Parses "c7 80 ea 07" (spaces optional) into bytes.
+fn parse_bytes(text: &str) -> Result<Vec<u8>> {
+    let digits: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+    ensure!(digits.len().is_multiple_of(2), "hex bytes need an even number of digits: {text}");
+    (0..digits.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&digits[i..i + 2], 16).with_context(|| format!("not hex bytes: {text}")))
+        .collect()
+}
+
+/// Parses a decimal number, or hex with a 0x prefix.
+fn parse_number(text: &str) -> Result<u64> {
+    let text = text.trim();
+    match text.strip_prefix("0x").or_else(|| text.strip_prefix("0X")) {
+        Some(hex) => u64::from_str_radix(hex, 16).with_context(|| format!("not a hex number: {text}")),
+        None => text.parse().with_context(|| format!("not a number: {text}")),
     }
 }
 
@@ -215,6 +345,7 @@ fn calibrate(session: &Session) -> Result<()> {
         Some(profile) => println!("Build profile: {}", profile.name),
         None => println!("Build profile: none for this build"),
     }
+    println!("In-game date: {}", iso_date(session.game_date()));
     let source = if session.arrays.from_profile { "from the build profile, checked" } else { "found by scanning" };
     println!("Entity arrays ({source}):");
     let arrays = &session.arrays;
@@ -246,16 +377,16 @@ fn players(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
     );
     println!();
     println!(
-        "{:>10}  {:<28}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
-        "UID", "Name", "Born", "Nation", "Club", "CA", "PA"
+        "{:>10}  {:<28}  {:>3}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
+        "UID", "Name", "Age", "Born", "Nation", "Club", "CA", "PA"
     );
     for p in hits.iter().take(limit) {
-        let born = p.date_of_birth.map_or_else(String::new, |d| format!("{:04}-{:02}-{:02}", d.year, d.month, d.day));
         println!(
-            "{:>10}  {:<28}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
+            "{:>10}  {:<28}  {:>3}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
             p.uid,
             clip(&p.name, 28),
-            born,
+            p.age.map_or_else(String::new, |age| age.to_string()),
+            iso_date(p.date_of_birth),
             clip(p.nation.as_deref().unwrap_or("-"), 16),
             clip(p.club.as_deref().unwrap_or("-"), 24),
             p.current_ability,
@@ -277,7 +408,10 @@ fn player(session: &Session, uid: u32) -> Result<()> {
     if let Some(full) = &d.summary.full_name {
         println!("  full name      {full}");
     }
-    println!("  born           {}", date(d.summary.date_of_birth));
+    match d.summary.age {
+        Some(age) => println!("  born           {} (age {age})", date(d.summary.date_of_birth)),
+        None => println!("  born           {}", date(d.summary.date_of_birth)),
+    }
     println!("  nation         {}", d.summary.nation.as_deref().unwrap_or("-"));
     println!("  club           {}", d.summary.club.as_deref().unwrap_or("-"));
     println!("  CA / PA        {} / {}", d.summary.current_ability, d.summary.potential_ability);
@@ -320,6 +454,11 @@ fn player(session: &Session, uid: u32) -> Result<()> {
         None => println!("  contract       none"),
     }
     Ok(())
+}
+
+/// "2026-07-18", or "-" when the date is unknown.
+fn iso_date(date: Option<FmDate>) -> String {
+    date.map_or_else(|| "-".to_owned(), |d| format!("{:04}-{:02}-{:02}", d.year, d.month, d.day))
 }
 
 /// Shortens `text` to at most `width` characters.

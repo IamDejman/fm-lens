@@ -15,7 +15,7 @@ before trusting them.
   `docs/recon/` (player, staff and club layouts).
 - [x] Tauri app shell that builds and shows whether the game is detected.
 
-## Phase 1: memory core (in progress)
+## Phase 1: memory core (done)
 
 - [x] Build profiles and object layouts as data files in `profiles/`, matched by
   the `game_plugin.dll` fingerprint.
@@ -28,7 +28,7 @@ before trusting them.
   attributes, positions, personality, reputation, caps, contract; player-coaches
   handled.
 - [x] Player profile panel in the app.
-- [ ] Locate the in-game date, for ages.
+- [x] Locate the in-game date; ages in the list and the profile.
 
 ## Phase 2: data model
 

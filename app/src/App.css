@@ -409,13 +409,13 @@ nav small {
 
 /* With a profile open the table is narrow: drop Born and UID, then Nation, once they no longer fit. */
 @container (max-width: 780px) {
-  .with-profile .grid :is(th, td):is(:nth-child(4), :nth-child(7)) {
+  .with-profile .grid :is(.col-born, .col-uid) {
     display: none;
   }
 }
 
 @container (max-width: 580px) {
-  .with-profile .grid :is(th, td):nth-child(2) {
+  .with-profile .grid .col-nation {
     display: none;
   }
 }

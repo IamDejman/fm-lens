@@ -41,7 +41,14 @@ export interface ConnectionInfo {
   profile: string | null;
   arrays: EntityArrays;
   players: number;
+  /** Current in-game date, when it could be read. */
+  gameDate: FmDate | null;
   loadMs: number;
+}
+
+export interface ReloadInfo {
+  players: number;
+  gameDate: FmDate | null;
 }
 
 export interface FmDate {
@@ -55,6 +62,8 @@ export interface PlayerSummary {
   name: string;
   fullName: string | null;
   dateOfBirth: FmDate | null;
+  /** Age on the in-game date. */
+  age: number | null;
   nation: string | null;
   club: string | null;
   currentAbility: number;

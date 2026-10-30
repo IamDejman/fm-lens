@@ -899,6 +899,7 @@ dependencies = [
  "clap",
  "fmlibre-core",
  "fmlibre-mem",
+ "memchr",
  "serde",
  "serde_json",
 ]

@@ -61,6 +61,8 @@ fmlibre-probe scan                                   # find arrays of game objec
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
 fmlibre-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0
 fmlibre-probe column game_plugin.dll+0x5681dc0 0x294 --find 7458500   # find a player by UID
+fmlibre-probe find "18 Temmuz 2026"                  # search memory for text (UTF-8 and UTF-16)
+fmlibre-probe find "c7 80 ea 07" --as hex --module game_plugin.dll
 ```
 
 Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `scan`

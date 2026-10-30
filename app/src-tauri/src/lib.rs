@@ -2,8 +2,8 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use fmlibre_core::{
-    ArraySource, EntityArrays, GAME_EXE, GAME_PLUGIN, GameInfo, PlayerDetails, PlayerIndex, PlayerSummary, Session,
-    find_game,
+    ArraySource, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PlayerDetails, PlayerIndex, PlayerSummary,
+    Session, find_game,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::Serialize;
@@ -43,7 +43,15 @@ struct ConnectionInfo {
     profile: Option<String>,
     arrays: EntityArrays,
     players: usize,
+    game_date: Option<FmDate>,
     load_ms: u128,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReloadInfo {
+    players: usize,
+    game_date: Option<FmDate>,
 }
 
 #[derive(Serialize)]
@@ -95,6 +103,7 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
         profile: connection.session.profile.as_ref().map(|p| p.name.clone()),
         arrays: connection.session.arrays.clone(),
         players: connection.players.len(),
+        game_date: connection.session.game_date(),
         load_ms: started.elapsed().as_millis(),
     };
     *state.0.lock().map_err(text)? = Some(connection);
@@ -103,7 +112,7 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
 
 /// Reads every player again, e.g. after the game has moved on. Drops the connection when that fails.
 #[tauri::command]
-async fn reload_players(state: State<'_, AppState>) -> Result<usize, String> {
+async fn reload_players(state: State<'_, AppState>) -> Result<ReloadInfo, String> {
     let mut connection = state.0.lock().map_err(text)?.take().ok_or_else(|| NOT_CONNECTED.to_owned())?;
     let connection = tauri::async_runtime::spawn_blocking(move || -> Result<Connection, String> {
         connection.players = PlayerIndex::new(connection.session.players().map_err(text)?);
@@ -111,9 +120,9 @@ async fn reload_players(state: State<'_, AppState>) -> Result<usize, String> {
     })
     .await
     .map_err(text)??;
-    let count = connection.players.len();
+    let info = ReloadInfo { players: connection.players.len(), game_date: connection.session.game_date() };
     *state.0.lock().map_err(text)? = Some(connection);
-    Ok(count)
+    Ok(info)
 }
 
 /// Players matching `query`, highest current ability first; at most `limit` rows.

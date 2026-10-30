@@ -132,6 +132,7 @@ export const profileText = {
   /** Hover text of an attribute: the value as stored, 0–100. */
   raw: (raw: number) => `raw ${raw} / 100`,
   lowerIsBetter: "lower is better",
+  age: (age: number) => `age ${age}`,
 
   // Positions
   positions: "Positions",
