@@ -13,6 +13,7 @@ pub struct Layout {
     pub edition: u32,
     pub player: PlayerLayout,
     pub contract: ContractLayout,
+    pub cluster: ClusterLayout,
     pub staff: StaffLayout,
     pub team: TeamLayout,
     pub club: ClubLayout,
@@ -120,6 +121,13 @@ impl ContractLayout {
         .max()
         .unwrap_or(0)
     }
+}
+
+/// Static values next to the entity arrays, as offsets from the players `(begin, end)` pair.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClusterLayout {
+    pub current_date: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

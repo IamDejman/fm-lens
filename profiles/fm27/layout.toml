@@ -107,6 +107,13 @@ squad_status = 0x54       # u8 (1 star player, 2 important player, 5 impact sub)
 listing = 0x57            # u8; bit 0 transfer listed, bit 1 loan listed
 squad_number = 0x5D       # u8; 255 = none
 
+# Static data in game_plugin.dll next to the entity arrays. Offsets are relative to
+# the players (begin, end) pair: the cluster moves as one block between builds.
+[cluster]
+# Current in-game date: u16 day of year (flags above bit 8) + u16 year. Confirmed
+# by the game's UI strings ("Cts 18 Tem", "18 Temmuz 2026") in the test save.
+current_date = 0x848
+
 [staff]
 full_name = 0x140         # FM string pointer; often null
 first_name = 0x150        # name-table entry pointer

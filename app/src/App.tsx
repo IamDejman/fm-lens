@@ -3,7 +3,7 @@ import { Ability } from "./Ability";
 import { call, inTauri } from "./api";
 import { describeGame, formatDate } from "./format";
 import { PlayerProfile } from "./PlayerProfile";
-import type { ConnectionInfo, Detection, PlayerPage, PlayerSummary } from "./types";
+import type { ConnectionInfo, Detection, PlayerPage, PlayerSummary, ReloadInfo } from "./types";
 import "./App.css";
 
 /** Rows shown at once; the best players by current ability come first. */
@@ -42,7 +42,8 @@ function App() {
   const reload = () =>
     run("Reloading players…", async () => {
       try {
-        await call<number>("reload_players");
+        const reloaded = await call<ReloadInfo>("reload_players");
+        setConnection((c) => c && { ...c, players: reloaded.players, gameDate: reloaded.gameDate });
         setDataVersion((v) => v + 1);
       } catch (e) {
         // The Rust side drops the connection when reading fails (e.g. the game was closed).
@@ -83,7 +84,13 @@ function App() {
           <span className={`status ${connection ? "on" : ""}`}>
             <span className="dot" />
             {connection
-              ? `${describeGame(connection.game)} · ${connection.players.toLocaleString()} players`
+              ? [
+                  describeGame(connection.game),
+                  connection.gameDate && formatDate(connection.gameDate),
+                  `${connection.players.toLocaleString()} players`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               : "Not connected"}
           </span>
           {!inTauri && <span className="tag">browser preview · sample data</span>}
@@ -220,12 +227,13 @@ function PlayerBrowser({ version }: { version: number }) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Nation</th>
+                <th className="num">Age</th>
+                <th className="col-nation">Nation</th>
                 <th>Club</th>
-                <th>Born</th>
+                <th className="col-born">Born</th>
                 <th className="num">CA</th>
                 <th className="num">PA</th>
-                <th className="num">UID</th>
+                <th className="num col-uid">UID</th>
               </tr>
             </thead>
             <tbody>
@@ -249,16 +257,17 @@ function PlayerBrowser({ version }: { version: number }) {
                       <div className="name">{p.name}</div>
                       {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
                     </td>
-                    <td>{p.nation ?? "—"}</td>
+                    <td className="num">{p.age ?? "—"}</td>
+                    <td className="col-nation">{p.nation ?? "—"}</td>
                     <td>{p.club ?? <span className="muted">Free agent</span>}</td>
-                    <td className="date">{formatDate(p.dateOfBirth)}</td>
+                    <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
                     <td className="num">
                       <Ability value={p.currentAbility} />
                     </td>
                     <td className="num">
                       <Ability value={p.potentialAbility} />
                     </td>
-                    <td className="num uid">{p.uid}</td>
+                    <td className="num uid col-uid">{p.uid}</td>
                   </tr>
                 );
               })}

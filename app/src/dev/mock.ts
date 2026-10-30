@@ -2,7 +2,18 @@
 // (`npm run dev`) without the game or Tauri. Every player here is made up.
 
 import { fold } from "../format";
-import type { ConnectionInfo, Detection, GameInfo, PlayerDetails, PlayerPage, PlayerSummary } from "../types";
+import type {
+  ConnectionInfo,
+  Detection,
+  FmDate,
+  GameInfo,
+  PlayerDetails,
+  PlayerPage,
+  PlayerSummary,
+  ReloadInfo,
+} from "../types";
+
+const GAME_DATE: FmDate = { year: 2026, month: 7, day: 18 };
 
 const game: GameInfo = {
   pid: 4242,
@@ -33,11 +44,13 @@ const players: PlayerSummary[] = (() => {
   return Array.from({ length: 400 }, (_, i) => {
     const ca = Math.round(40 + next() * 150);
     const name = `${pick(FIRST)} ${pick(LAST)}`;
+    const born: FmDate = { year: 1988 + Math.floor(next() * 20), month: 1 + Math.floor(next() * 12), day: 1 + Math.floor(next() * 28) };
     return {
       uid: 1_000_000 + i * 37,
       name,
       fullName: next() < 0.3 ? `${name} ${pick(LAST)}` : null,
-      dateOfBirth: { year: 1988 + Math.floor(next() * 20), month: 1 + Math.floor(next() * 12), day: 1 + Math.floor(next() * 28) },
+      dateOfBirth: born,
+      age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
       nation: pick(NATIONS),
       club: next() < 0.9 ? pick(CLUBS) : null,
       currentAbility: ca,
@@ -123,12 +136,15 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           fromProfile: true,
         },
         players: players.length,
+        gameDate: GAME_DATE,
         loadMs: 480,
       };
       return info as T;
     }
-    case "reload_players":
-      return players.length as T;
+    case "reload_players": {
+      const reloaded: ReloadInfo = { players: players.length, gameDate: GAME_DATE };
+      return reloaded as T;
+    }
     case "search_players": {
       const query = String(args?.query ?? "");
       const limit = Number(args?.limit ?? 200);

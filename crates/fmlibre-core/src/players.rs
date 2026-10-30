@@ -18,6 +18,8 @@ pub struct PlayerSummary {
     /// Full birth name, when FM stores one.
     pub full_name: Option<String>,
     pub date_of_birth: Option<FmDate>,
+    /// Age on the in-game date, when both dates are known.
+    pub age: Option<u16>,
     pub nation: Option<String>,
     pub club: Option<String>,
     pub current_ability: u16,
@@ -30,12 +32,13 @@ pub struct PlayerSummary {
     pub shift: u64,
 }
 
-/// Reads every player in the players array. Only reads memory.
+/// Reads every player in the players array; ages are computed for `today`. Only reads memory.
 pub fn read_players(
     process: &Process,
     module: &Module,
     array: &ArrayRef,
     layout: &Layout,
+    today: Option<FmDate>,
 ) -> fmlibre_mem::Result<Vec<PlayerSummary>> {
     let p = &layout.player;
     let (begin, count) = array.locate(process, module)?;
@@ -96,11 +99,13 @@ pub fn read_players(
             read_fm_string(process, process.read_u64(nation + layout.nation.name).ok()?)
         });
 
+        let date_of_birth = FmDate::from_raw(u16_at(p.date_of_birth), u16_at(p.date_of_birth + 2));
         players.push(PlayerSummary {
             uid,
             name,
             full_name,
-            date_of_birth: FmDate::from_raw(u16_at(p.date_of_birth), u16_at(p.date_of_birth + 2)),
+            date_of_birth,
+            age: date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today)),
             nation,
             club,
             current_ability: u16_at(p.current_ability),

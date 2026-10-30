@@ -86,7 +86,8 @@ export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) 
   const details = loaded?.details;
   const info: PlayerSummary = details ?? player;
   const vitals = [
-    info.dateOfBirth && `${profileText.born} ${formatDate(info.dateOfBirth)}`,
+    info.dateOfBirth &&
+      `${profileText.born} ${formatDate(info.dateOfBirth)}${info.age === null ? "" : ` (${profileText.age(info.age)})`}`,
     details && details.heightCm > 0 && profileText.height(details.heightCm),
     `${profileText.uid} ${info.uid}`,
   ]
