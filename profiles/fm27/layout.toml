@@ -1,0 +1,36 @@
+# Field offsets inside FM27 objects (heap data owned by game_plugin.dll).
+#
+# Offsets are the same for every storefront build of a game version, so they live
+# apart from the per-build addresses in the build profiles next to this file.
+# First mapped on Steam by fm-editor (https://github.com/barak14/fm-editor,
+# GPL-3.0-or-later); player fields verified on the Game Pass build 0.9.2355.0 with
+# Lionel Messi (UID 7458500) and Erling Haaland (UID 29179241).
+edition = 27
+
+[player]
+uid = 0x294               # u32
+full_name = 0x2C8         # FM string pointer; may be null
+first_name = 0x2D8        # name-table entry pointer
+last_name = 0x2E0         # name-table entry pointer
+common_name = 0x2E8       # name-table entry pointer; null when the player has none
+date_of_birth = 0x310     # u16 day of year (low 9 bits) + u16 year
+current_ability = 0x264   # u16, 1..200
+potential_ability = 0x266 # i16, 1..200; negative values are ranges
+nation = 0x2F0            # nation pointer
+team = 0x130              # team pointer; the club hangs off the team
+
+[staff]
+full_name = 0x140         # FM string pointer; often null
+first_name = 0x150        # name-table entry pointer
+last_name = 0x158         # name-table entry pointer
+common_name = 0x160       # name-table entry pointer
+
+[team]
+club = 0x30               # club pointer
+
+[club]
+name = 0xC0               # FM string pointer
+short_name = 0xC8         # FM string pointer
+
+[nation]
+name = 0x18               # FM string pointer

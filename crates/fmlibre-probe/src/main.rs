@@ -7,12 +7,13 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
 
-use anyhow::{Context, Result, anyhow, bail, ensure};
+use anyhow::{Context, Result, anyhow, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
-use fmlibre_core::{ArrayCandidate, GAME_EXE, GAME_PLUGIN, GameInfo, ScanOptions, scan_object_arrays};
-use fmlibre_mem::{
-    Module, PeImage, Process, find_processes, is_current_process_elevated, is_user_pointer, list_modules, regions,
+use fmlibre_core::{
+    ArrayCandidate, ArraySource, GAME_EXE, GAME_PLUGIN, GameInfo, PlayerIndex, ScanOptions, Session, SessionError,
+    find_game, scan_object_arrays,
 };
+use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
 
 const KEY_MODULES: [&str; 4] = [GAME_EXE, "UnityPlayer.dll", "GameAssembly.dll", GAME_PLUGIN];
@@ -41,6 +42,20 @@ struct Cli {
 enum Command {
     /// Show the process, storefront, modules and the layout of game_plugin.dll (default).
     Info,
+    /// Identify the build and locate the player, staff and club arrays.
+    Calibrate {
+        /// Ignore the build profile and find the arrays by scanning, as for an unknown build.
+        #[arg(long)]
+        scan: bool,
+    },
+    /// List players, best first, optionally only those matching TEXT.
+    Players {
+        /// Words to look for in player names (accents and case are ignored), or a UID.
+        text: Option<String>,
+        /// How many players to print.
+        #[arg(long, default_value_t = 25)]
+        limit: usize,
+    },
     /// Find (begin, end) arrays of game objects in game_plugin.dll and count their vtables.
     Scan {
         /// Smallest array to report.
@@ -126,49 +141,132 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<()> {
     let elevated = is_current_process_elevated();
-    let (process, game) = attach(cli.pid, elevated)?;
-    let modules = list_modules(process.pid()).context("listing modules")?;
+    let process = attach(cli.pid, elevated)?;
     let json = cli.json.as_deref();
 
     match cli.command.unwrap_or(Command::Info) {
-        Command::Info => info(&process, &game, &modules, elevated, json),
+        Command::Info => {
+            let (game, modules) = inspect(&process)?;
+            info(&process, &game, &modules, elevated, json)
+        }
+        Command::Calibrate { scan } => {
+            let source = if scan { ArraySource::ScanOnly } else { ArraySource::ProfileFirst };
+            calibrate(&Session::connect(process, source)?)
+        }
+        Command::Players { text, limit } => {
+            players(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit)
+        }
         Command::Scan { min, max, top } => {
+            let (game, modules) = inspect(&process)?;
             let opts = ScanOptions { min_count: min, max_count: max, ..ScanOptions::default() };
             scan(&process, &game, &modules, &opts, top, json)
         }
-        Command::Dump { addr, len } => dump(&process, &modules, resolve(&addr, &modules)?, parse_hex(&len)?),
+        Command::Dump { addr, len } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
+            dump(&process, &modules, resolve(&addr, &modules)?, parse_hex(&len)?)
+        }
         Command::Element { pair, index, len } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
             element(&process, &modules, resolve(&pair, &modules)?, index, parse_hex(&len)?)
         }
         Command::Column { pair, offset, kind, first, find } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
             column(&process, &modules, resolve(&pair, &modules)?, parse_hex(&offset)?, kind, first, find)
         }
     }
 }
 
-fn attach(pid: Option<u32>, elevated: bool) -> Result<(Process, GameInfo)> {
-    let running = find_processes(GAME_EXE).context("listing processes")?;
-    let entry = match (pid, running.as_slice()) {
-        (Some(pid), _) => {
-            running.iter().find(|p| p.pid == pid).with_context(|| format!("no {GAME_EXE} with pid {pid}"))?
-        }
-        (None, []) => bail!("{GAME_EXE} is not running. Start Football Manager 27, load a save and try again."),
-        (None, [only]) => only,
-        (None, many) => {
-            let pids: Vec<String> = many.iter().map(|p| p.pid.to_string()).collect();
-            bail!("{} copies of {GAME_EXE} are running (pids {}); choose one with --pid", many.len(), pids.join(", "))
-        }
-    };
-
-    let process = Process::open_read(entry.pid).map_err(|err| {
+fn attach(pid: Option<u32>, elevated: bool) -> Result<Process> {
+    let pid = find_game(pid).map_err(|err| match err {
+        SessionError::SeveralRunning(_) => anyhow!("{err} with --pid"),
+        err => anyhow!(err),
+    })?;
+    Process::open_read(pid).map_err(|err| {
         if err.is_access_denied() && !elevated {
             anyhow!("{err}. Run the probe from an administrator terminal and try again.")
         } else {
             anyhow!(err)
         }
-    })?;
-    let game = GameInfo::inspect(&process).context("inspecting the game process")?;
-    Ok((process, game))
+    })
+}
+
+fn inspect(process: &Process) -> Result<(GameInfo, Vec<Module>)> {
+    let game = GameInfo::inspect(process).context("inspecting the game process")?;
+    let modules = list_modules(process.pid()).context("listing modules")?;
+    Ok((game, modules))
+}
+
+// ---------------------------------------------------------------------------
+// calibrate / players
+
+fn calibrate(session: &Session) -> Result<()> {
+    let fingerprint = session.fingerprint;
+    println!(
+        "{GAME_PLUGIN} build: size of image {:#x}, link timestamp {:#010x}",
+        fingerprint.size_of_image, fingerprint.link_timestamp
+    );
+    match &session.profile {
+        Some(profile) => println!("Build profile: {}", profile.name),
+        None => println!("Build profile: none for this build"),
+    }
+    let source = if session.arrays.from_profile { "from the build profile, checked" } else { "found by scanning" };
+    println!("Entity arrays ({source}):");
+    let arrays = &session.arrays;
+    for (label, array) in [("players", &arrays.players), ("staff", &arrays.staff), ("clubs", &arrays.clubs)] {
+        match array {
+            Some(a) => println!(
+                "  {label:<8} {GAME_PLUGIN}+{:#x}  {:>7} elements  {:>3.0}% of samples decoded",
+                a.pair_rva,
+                a.count,
+                a.confidence * 100.0
+            ),
+            None => println!("  {label:<8} not found"),
+        }
+    }
+    Ok(())
+}
+
+fn players(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
+    let started = Instant::now();
+    let index = PlayerIndex::new(session.players()?);
+    let elapsed = started.elapsed();
+    let hits = index.search(text.unwrap_or(""));
+    println!(
+        "Read {} players in {:.1} s; {} shown of {} matching.",
+        index.len(),
+        elapsed.as_secs_f64(),
+        hits.len().min(limit),
+        hits.len()
+    );
+    println!();
+    println!(
+        "{:>10}  {:<28}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
+        "UID", "Name", "Born", "Nation", "Club", "CA", "PA"
+    );
+    for p in hits.iter().take(limit) {
+        let born = p.date_of_birth.map_or_else(String::new, |d| format!("{:04}-{:02}-{:02}", d.year, d.month, d.day));
+        println!(
+            "{:>10}  {:<28}  {:<10}  {:<16}  {:<24}  {:>3}  {:>4}",
+            p.uid,
+            clip(&p.name, 28),
+            born,
+            clip(p.nation.as_deref().unwrap_or("-"), 16),
+            clip(p.club.as_deref().unwrap_or("-"), 24),
+            p.current_ability,
+            p.potential_ability
+        );
+    }
+    Ok(())
+}
+
+/// Shortens `text` to at most `width` characters.
+fn clip(text: &str, width: usize) -> String {
+    if text.chars().count() <= width {
+        return text.to_owned();
+    }
+    let mut out: String = text.chars().take(width - 1).collect();
+    out.push('…');
+    out
 }
 
 // ---------------------------------------------------------------------------
@@ -416,8 +514,8 @@ fn dump(process: &Process, modules: &[Module], addr: u64, len: u64) -> Result<()
     }
     println!();
     println!("As 64-bit values:");
-    for (i, chunk) in bytes.chunks_exact(8).enumerate() {
-        let value = u64::from_le_bytes(chunk.try_into().expect("8 bytes"));
+    for (i, chunk) in bytes.as_chunks::<8>().0.iter().enumerate() {
+        let value = u64::from_le_bytes(*chunk);
         let (lo, hi) = (value as u32, (value >> 32) as u32);
         println!("  +{:#06x}  {value:#018x}  lo={lo:<10} hi={hi:<10} {}", i * 8, pointer_hint(value, modules));
     }
@@ -447,8 +545,8 @@ fn column(
     println!("Array at {} has {count} elements; field +{offset:#x}:", describe_address(pair, modules));
 
     let mut matches = 0;
-    for (index, chunk) in pointers.chunks_exact(8).enumerate() {
-        let object = u64::from_le_bytes(chunk.try_into().expect("8 bytes"));
+    for (index, chunk) in pointers.as_chunks::<8>().0.iter().enumerate() {
+        let object = u64::from_le_bytes(*chunk);
         let Ok(bytes) = process.read_bytes(object + offset, kind.width()) else {
             println!("{index:>8}  {object:#014x}  unreadable");
             continue;
@@ -471,7 +569,7 @@ fn read_pair(process: &Process, pair: u64) -> Result<(u64, u64)> {
     let begin = process.read_u64(pair)?;
     let end = process.read_u64(pair + 8)?;
     ensure!(
-        end > begin && (end - begin) % 8 == 0,
+        end > begin && (end - begin).is_multiple_of(8),
         "{pair:#x} does not hold a (begin, end) pointer pair ({begin:#x}, {end:#x})"
     );
     Ok((begin, (end - begin) / 8))
