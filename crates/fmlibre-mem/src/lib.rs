@@ -22,5 +22,5 @@ pub use region::{Region, regions};
 /// Whether `p` looks like a user-mode pointer: 8-byte aligned and inside the
 /// canonical user address range of a 64-bit Windows process.
 pub fn is_user_pointer(p: u64) -> bool {
-    p % 8 == 0 && (0x1_0000..0x7FFF_FFFF_0000).contains(&p)
+    p.is_multiple_of(8) && (0x1_0000..0x7FFF_FFFF_0000).contains(&p)
 }

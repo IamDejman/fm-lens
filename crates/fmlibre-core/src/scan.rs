@@ -106,7 +106,7 @@ fn plausible_pair(begin: u64, end: u64, module: &Module, opts: &ScanOptions) -> 
         return false;
     }
     let bytes = end - begin;
-    bytes % 8 == 0 && (opts.min_count..=opts.max_count).contains(&(bytes / 8))
+    bytes.is_multiple_of(8) && (opts.min_count..=opts.max_count).contains(&(bytes / 8))
 }
 
 /// A user-mode pointer that does not point into the module itself.
@@ -138,15 +138,15 @@ fn census(process: &Process, module: &Module, array: &mut ArrayCandidate, limit:
         return;
     };
     let mut counts: HashMap<u64, u64> = HashMap::new();
-    for chunk in raw.chunks_exact(8) {
-        let element = u64::from_le_bytes(chunk.try_into().expect("8-byte chunk"));
+    for chunk in raw.as_chunks::<8>().0 {
+        let element = u64::from_le_bytes(*chunk);
         if !is_heap_pointer(element, module) {
             continue;
         }
-        if let Ok(vtable) = process.read_u64(element) {
-            if module.contains(vtable) {
-                *counts.entry(vtable - module.base).or_default() += 1;
-            }
+        if let Ok(vtable) = process.read_u64(element)
+            && module.contains(vtable)
+        {
+            *counts.entry(vtable - module.base).or_default() += 1;
         }
     }
     let mut vtables: Vec<VtableCount> = counts.into_iter().map(|(rva, count)| VtableCount { rva, count }).collect();

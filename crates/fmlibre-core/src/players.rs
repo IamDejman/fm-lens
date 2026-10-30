@@ -58,8 +58,8 @@ pub fn read_players(
     let mut nations = Memo::default();
 
     let mut players = Vec::with_capacity(count as usize);
-    for chunk in pointers.chunks_exact(8) {
-        let object = u64::from_le_bytes(chunk.try_into().expect("8-byte chunk"));
+    for chunk in pointers.as_chunks::<8>().0 {
+        let object = u64::from_le_bytes(*chunk);
         if !is_user_pointer(object) || process.read_into(object + start, &mut buf).is_err() {
             continue;
         }

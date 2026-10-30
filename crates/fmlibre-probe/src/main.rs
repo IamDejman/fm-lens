@@ -514,8 +514,8 @@ fn dump(process: &Process, modules: &[Module], addr: u64, len: u64) -> Result<()
     }
     println!();
     println!("As 64-bit values:");
-    for (i, chunk) in bytes.chunks_exact(8).enumerate() {
-        let value = u64::from_le_bytes(chunk.try_into().expect("8 bytes"));
+    for (i, chunk) in bytes.as_chunks::<8>().0.iter().enumerate() {
+        let value = u64::from_le_bytes(*chunk);
         let (lo, hi) = (value as u32, (value >> 32) as u32);
         println!("  +{:#06x}  {value:#018x}  lo={lo:<10} hi={hi:<10} {}", i * 8, pointer_hint(value, modules));
     }
@@ -545,8 +545,8 @@ fn column(
     println!("Array at {} has {count} elements; field +{offset:#x}:", describe_address(pair, modules));
 
     let mut matches = 0;
-    for (index, chunk) in pointers.chunks_exact(8).enumerate() {
-        let object = u64::from_le_bytes(chunk.try_into().expect("8 bytes"));
+    for (index, chunk) in pointers.as_chunks::<8>().0.iter().enumerate() {
+        let object = u64::from_le_bytes(*chunk);
         let Ok(bytes) = process.read_bytes(object + offset, kind.width()) else {
             println!("{index:>8}  {object:#014x}  unreadable");
             continue;
@@ -569,7 +569,7 @@ fn read_pair(process: &Process, pair: u64) -> Result<(u64, u64)> {
     let begin = process.read_u64(pair)?;
     let end = process.read_u64(pair + 8)?;
     ensure!(
-        end > begin && (end - begin) % 8 == 0,
+        end > begin && (end - begin).is_multiple_of(8),
         "{pair:#x} does not hold a (begin, end) pointer pair ({begin:#x}, {end:#x})"
     );
     Ok((begin, (end - begin) / 8))
