@@ -65,3 +65,49 @@ export interface PlayerPage {
   total: number;
   rows: PlayerSummary[];
 }
+
+/** An attribute as stored (`raw`, 0–100) and as FM shows it (`value`, 1–20). */
+export interface Attribute {
+  raw: number;
+  value: number;
+}
+
+export interface Reputation {
+  home: number;
+  current: number;
+  world: number;
+}
+
+export interface International {
+  caps: number;
+  goals: number;
+  u21Caps: number;
+  u21Goals: number;
+}
+
+export interface Contract {
+  /** Pounds per week. */
+  wage: number;
+  signed: FmDate | null;
+  expires: FmDate | null;
+  joined: FmDate | null;
+  squadStatus: number;
+  squadNumber: number | null;
+  transferListed: boolean;
+  loanListed: boolean;
+}
+
+export interface PlayerDetails extends PlayerSummary {
+  heightCm: number;
+  /** Pounds; null when the club has not set one. */
+  askingPrice: number | null;
+  reputation: Reputation;
+  international: International;
+  /** gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr → 1–20 */
+  positions: Record<string, number>;
+  /** adaptability, ambition, loyalty, pressure, professionalism, sportsmanship, temperament, controversy → 1–20 */
+  personality: Record<string, number>;
+  /** Attribute key (e.g. "first_touch") → raw and shown value. */
+  attributes: Record<string, Attribute>;
+  contract: Contract | null;
+}

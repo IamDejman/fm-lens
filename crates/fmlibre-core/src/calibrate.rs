@@ -1,6 +1,7 @@
 use fmlibre_mem::{Module, Process, is_user_pointer};
 use serde::Serialize;
 
+use crate::players::name_score;
 use crate::profile::{ArrayRvas, Layout};
 use crate::scan::{ScanOptions, scan_object_arrays};
 use crate::text::{is_name_like, read_fm_string, read_name_entry};
@@ -100,9 +101,7 @@ fn looks_like(process: &Process, layout: &Layout, kind: Kind, object: u64) -> bo
     match kind {
         Kind::Player => {
             let p = &layout.player;
-            process.read_u32(object + p.uid).is_ok_and(|uid| uid != 0)
-                && (named(read_fm_string(process, pointer_at(p.full_name)))
-                    || named(read_name_entry(process, pointer_at(p.last_name))))
+            p.person_block_shifts.iter().any(|&shift| name_score(process, p, object, shift) > 0)
         }
         Kind::Staff => {
             let s = &layout.staff;

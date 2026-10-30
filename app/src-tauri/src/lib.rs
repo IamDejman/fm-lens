@@ -2,7 +2,8 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use fmlibre_core::{
-    ArraySource, EntityArrays, GAME_EXE, GAME_PLUGIN, GameInfo, PlayerIndex, PlayerSummary, Session, find_game,
+    ArraySource, EntityArrays, GAME_EXE, GAME_PLUGIN, GameInfo, PlayerDetails, PlayerIndex, PlayerSummary, Session,
+    find_game,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::Serialize;
@@ -124,11 +125,24 @@ fn search_players(state: State<'_, AppState>, query: String, limit: usize) -> Re
     Ok(PlayerPage { total: hits.len(), rows: hits.into_iter().take(limit).cloned().collect() })
 }
 
+/// The full profile of the player with `uid`. Only reads memory.
+#[tauri::command]
+fn player_details(state: State<'_, AppState>, uid: u32) -> Result<PlayerDetails, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let player = connection.players.get(uid).ok_or_else(|| format!("No player with UID {uid}"))?;
+    connection
+        .session
+        .player_details(player)
+        .map_err(text)?
+        .ok_or_else(|| "This player's data has changed in the game; reload and try again.".to_owned())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![detect_game, connect, reload_players, search_players])
+        .invoke_handler(tauri::generate_handler![detect_game, connect, reload_players, search_players, player_details])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

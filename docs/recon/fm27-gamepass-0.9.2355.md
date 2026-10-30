@@ -144,6 +144,45 @@ More player fields, checked on Messi's object against the Steam offsets:
 | `+0x2F8..+0x2FF` | personality, 1–20 | ambition 18, pressure 19 |
 | `+0x310` | date of birth: `u16` day of year (1-based) + `u16` year | 175, 1987 → 24 June 1987 |
 
+More fields, read with `fmlibre-probe player 7458500`:
+
+| Offset | Content | Messi |
+|---|---|---|
+| `+0x22E` | height in cm (`u16`) | 171 |
+| `+0x238` | asking price in pounds (`i32`), -1 when not set | -1 |
+| `+0x3BC` / `+0x3BE` | international caps / goals (`u16`) | 207 / 125 |
+| `+0x3C0` / `+0x3C1` | U21 caps / goals (`u8`) | 18 / 14, his real U20 record |
+| `+0x330` | contract pointer | see below |
+
+`+0x234` reads 300,000,000 for Messi, so it is not the market value fm-editor's
+FM26 notes suggest; left unmapped.
+
+Contract fields (from the contract pointer), checked on Messi:
+
+| Offset | Content | Messi |
+|---|---|---|
+| `+0x08` | pointer back to the player's person block (`player+0x288`) | ✓ |
+| `+0x20` | wage, pounds per week (`i32`) | 404,321 |
+| `+0x44` | signed (date) | 1 Dec 2025 |
+| `+0x48` | expires (date) | 31 Dec 2028 |
+| `+0x4C` | joined the club (date) | 15 Jul 2023, his real Inter Miami signing date |
+| `+0x54` | squad status (`u8`) | 1 (star player) |
+| `+0x57` | listing flags: bit 0 transfer, bit 1 loan | 0 |
+| `+0x5D` | squad number (`u8`, 255 = none) | 10 |
+
+FM stores unset dates as zero or as days in 1900 (a rolling contract "expires"
+1900-01-02); the decoder treats both as no date.
+
+### Player-coaches
+
+174 objects in the players array have their own vtable (`0x4f1ed28`). In them the
+person block, everything from `+0x288` on, sits `0xF8` further: the UID is at
+`+0x38C`, the full name at `+0x3C0`, and so on. Fields before `+0x288` (team,
+positions, attributes, height, reputations, CA/PA) do not move. Verified with Paul
+Ifill (UID 109160, born 20 October 1979, player-coach at Greytown AFC). The reader
+works out the shift once per vtable by trying each candidate and keeping the one
+under which the name decodes, so no build-specific vtable is needed.
+
 ### Staff and club layouts
 
 `fmlibre-probe calibrate` decodes 100% of sampled staff (name-table entries at

@@ -2,7 +2,7 @@
 // (`npm run dev`) without the game or Tauri. Every player here is made up.
 
 import { fold } from "../format";
-import type { ConnectionInfo, Detection, GameInfo, PlayerPage, PlayerSummary } from "../types";
+import type { ConnectionInfo, Detection, GameInfo, PlayerDetails, PlayerPage, PlayerSummary } from "../types";
 
 const game: GameInfo = {
   pid: 4242,
@@ -46,6 +46,65 @@ const players: PlayerSummary[] = (() => {
   });
 })();
 
+const ATTRIBUTES = [
+  "corners", "crossing", "dribbling", "finishing", "first_touch", "free_kicks", "heading", "long_shots",
+  "long_throws", "marking", "passing", "penalty_taking", "tackling", "technique", "aggression", "anticipation",
+  "bravery", "composure", "concentration", "decisions", "determination", "flair", "leadership", "off_the_ball",
+  "positioning", "teamwork", "vision", "work_rate", "acceleration", "agility", "balance", "jumping_reach",
+  "natural_fitness", "pace", "stamina", "strength", "aerial_reach", "command_of_area", "communication",
+  "eccentricity", "handling", "kicking", "one_on_ones", "punching", "reflexes", "rushing_out", "throwing",
+  "consistency", "dirtiness", "important_matches", "injury_proneness", "versatility", "left_foot", "right_foot",
+];
+const GK_ONLY = new Set([
+  "aerial_reach", "command_of_area", "communication", "eccentricity", "handling", "kicking", "one_on_ones",
+  "punching", "reflexes", "rushing_out", "throwing",
+]);
+const POSITIONS = ["gk", "sw", "dl", "dc", "dr", "dm", "ml", "mc", "mr", "aml", "amc", "amr", "st", "wbl", "wbr"];
+const PERSONALITY = [
+  "adaptability", "ambition", "loyalty", "pressure", "professionalism", "sportsmanship", "temperament", "controversy",
+];
+
+/** Made-up but self-consistent profile for a fixture player. */
+function details(player: PlayerSummary): PlayerDetails {
+  const next = random(player.uid);
+  const keeper = player.uid % 11 === 0;
+  const level = player.currentAbility / 2; // raw attribute centre, 0–100
+  const attributes = Object.fromEntries(
+    ATTRIBUTES.map((key) => {
+      const centre = GK_ONLY.has(key) !== keeper ? 12 : level;
+      const raw = Math.max(1, Math.min(100, Math.round(centre + (next() - 0.5) * 40)));
+      return [key, { raw, value: Math.max(1, Math.min(20, Math.floor((raw + 2) / 5))) }];
+    }),
+  );
+  const natural = keeper ? "gk" : POSITIONS[1 + Math.floor(next() * (POSITIONS.length - 1))];
+  const positions = Object.fromEntries(
+    POSITIONS.map((key) => [key, key === natural ? 20 : keeper || key === "gk" ? 1 : Math.round(1 + next() * 16)]),
+  );
+  const personality = Object.fromEntries(PERSONALITY.map((key) => [key, Math.round(1 + next() * 19)]));
+  return {
+    ...player,
+    heightCm: Math.round(168 + next() * 26),
+    askingPrice: next() < 0.2 ? Math.round(next() * 40) * 1_000_000 : null,
+    reputation: { home: Math.round(next() * 10000), current: Math.round(next() * 10000), world: Math.round(next() * 10000) },
+    international: { caps: Math.round(next() * 90), goals: Math.round(next() * 30), u21Caps: Math.round(next() * 20), u21Goals: Math.round(next() * 8) },
+    positions,
+    personality,
+    attributes,
+    contract: player.club
+      ? {
+          wage: Math.round(player.currentAbility * 900 + next() * 20000),
+          signed: { year: 2024, month: 7, day: 1 },
+          expires: { year: 2027 + Math.floor(next() * 4), month: 6, day: 30 },
+          joined: { year: 2022, month: 8, day: 15 },
+          squadStatus: 1 + Math.floor(next() * 5),
+          squadNumber: 1 + Math.floor(next() * 40),
+          transferListed: next() < 0.1,
+          loanListed: false,
+        }
+      : null,
+  };
+}
+
 export async function mockInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((resolve) => setTimeout(resolve, 150));
   switch (command) {
@@ -79,6 +138,14 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
       const page: PlayerPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;
+    }
+    case "player_details": {
+      const uid = Number(args?.uid);
+      const player = players.find((p) => p.uid === uid);
+      if (!player) {
+        throw new Error(`No player with UID ${uid}`);
+      }
+      return details(player) as T;
     }
     default:
       throw new Error(`No fixture for command "${command}"`);

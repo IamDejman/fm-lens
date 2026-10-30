@@ -24,7 +24,10 @@ before trusting them.
 - [x] Decoders for FM strings, name-table entries and dates.
 - [x] First read-only player list in the app: search by name or UID, accents
   ignored.
-- [ ] Attribute scale and the rest of the player fields in the data model.
+- [x] Attribute scale and the rest of the player fields in the data model:
+  attributes, positions, personality, reputation, caps, contract; player-coaches
+  handled.
+- [x] Player profile panel in the app.
 - [ ] Locate the in-game date, for ages.
 
 ## Phase 2: data model

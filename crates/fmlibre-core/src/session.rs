@@ -3,6 +3,7 @@ use std::fmt;
 use fmlibre_mem::{Module, PeImage, Process, find_processes, list_modules};
 
 use crate::calibrate::{EntityArrays, calibrate};
+use crate::details::{PlayerDetails, read_player_details};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
 use crate::players::{PlayerSummary, read_players};
 use crate::profile::{BuildProfile, Layout, PluginFingerprint, layout_for, profile_for};
@@ -107,5 +108,11 @@ impl Session {
     pub fn players(&self) -> Result<Vec<PlayerSummary>, SessionError> {
         let array = self.arrays.players.as_ref().ok_or(SessionError::PlayersNotFound)?;
         Ok(read_players(&self.process, &self.plugin, array, &self.layout)?)
+    }
+
+    /// Reads the full profile of `player`; `None` when its object has changed since the
+    /// players were read. Only reads memory.
+    pub fn player_details(&self, player: &PlayerSummary) -> Result<Option<PlayerDetails>, SessionError> {
+        Ok(read_player_details(&self.process, &self.layout, player)?)
     }
 }

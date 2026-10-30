@@ -3,8 +3,8 @@
 # Offsets are the same for every storefront build of a game version, so they live
 # apart from the per-build addresses in the build profiles next to this file.
 # First mapped on Steam by fm-editor (https://github.com/barak14/fm-editor,
-# GPL-3.0-or-later); player fields verified on the Game Pass build 0.9.2355.0 with
-# Lionel Messi (UID 7458500) and Erling Haaland (UID 29179241).
+# GPL-3.0-or-later); verified on the Game Pass build 0.9.2355.0 with Lionel Messi
+# (UID 7458500) and Erling Haaland (UID 29179241) unless noted otherwise.
 edition = 27
 
 [player]
@@ -18,6 +18,94 @@ current_ability = 0x264   # u16, 1..200
 potential_ability = 0x266 # i16, 1..200; negative values are ranges
 nation = 0x2F0            # nation pointer
 team = 0x130              # team pointer; the club hangs off the team
+
+# The person block starts here in plain players. Player-coaches carry an extra
+# block in front of it, so every field from here on sits 0xF8 further for them.
+person_block = 0x288
+person_block_shifts = [0x0, 0xF8]
+
+height = 0x22E            # u16, centimetres
+asking_price = 0x238      # i32, pounds; -1 when not set
+home_reputation = 0x25E   # u16
+current_reputation = 0x260
+world_reputation = 0x262
+international_caps = 0x3BC  # u16
+international_goals = 0x3BE # u16
+u21_caps = 0x3C0          # u8 (Messi: 18 caps, 14 goals)
+u21_goals = 0x3C1         # u8
+contract = 0x330          # contract pointer
+# 15 ratings, 1..20: GK, SW, DL, DC, DR, DM, ML, MC, MR, AML, AMC, AMR, ST, WBL, WBR
+positions = 0x150
+# 8 ratings, 1..20: adaptability, ambition, loyalty, pressure, professionalism,
+# sportsmanship, temperament, controversy
+personality = 0x2F8
+
+# u8, raw 0..100, shown in game as (raw + 2) / 5
+[player.attributes]
+corners = 0x17A
+crossing = 0x15F
+dribbling = 0x160
+finishing = 0x161
+first_touch = 0x175
+free_kicks = 0x182
+heading = 0x162
+long_shots = 0x163
+long_throws = 0x17D
+marking = 0x164
+passing = 0x166
+penalty_taking = 0x167
+tackling = 0x168
+technique = 0x176
+aggression = 0x18C
+anticipation = 0x170
+bravery = 0x18A
+composure = 0x193
+concentration = 0x194
+decisions = 0x171
+determination = 0x192
+flair = 0x179
+leadership = 0x187
+off_the_ball = 0x165
+positioning = 0x173
+teamwork = 0x17B
+vision = 0x169
+work_rate = 0x17C
+acceleration = 0x181
+agility = 0x18D
+balance = 0x189
+jumping_reach = 0x186
+natural_fitness = 0x191
+pace = 0x185
+stamina = 0x184
+strength = 0x183
+aerial_reach = 0x16B
+command_of_area = 0x16C
+communication = 0x16D
+eccentricity = 0x17E
+handling = 0x16A
+kicking = 0x16E
+one_on_ones = 0x172
+punching = 0x180
+reflexes = 0x174
+rushing_out = 0x17F
+throwing = 0x16F
+consistency = 0x18B
+dirtiness = 0x188
+important_matches = 0x18E
+injury_proneness = 0x18F
+versatility = 0x190
+left_foot = 0x177
+right_foot = 0x178
+
+# Fields of the contract a player's `contract` pointer leads to.
+[contract]
+wage = 0x20               # i32, pounds per week
+signed = 0x44             # date
+expires = 0x48            # date
+joined = 0x4C             # date the player joined the club (Messi: 15 July 2023)
+squad_status = 0x54       # u8 (1 star player, 2 important player, 5 impact sub)
+listing = 0x57            # u8; bit 0 transfer listed, bit 1 loan listed
+squad_number = 0x5D       # u8; 255 = none
 
 [staff]
 full_name = 0x140         # FM string pointer; often null

@@ -26,6 +26,11 @@ export function formatDate(date: FmDate | null): string {
   });
 }
 
+/** "£1,234,567", grouped the way the reader's locale does it. */
+export function formatPounds(amount: number): string {
+  return `£${amount.toLocaleString()}`;
+}
+
 /** Lower-cases and strips accents, matching the Rust side's `fold`. */
 export function fold(text: string): string {
   return text

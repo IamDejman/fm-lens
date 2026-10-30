@@ -12,10 +12,11 @@ const MONTH_LENGTHS: [u16; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 
 impl FmDate {
     /// Decodes FM's day-of-year (1-based) and year. FM27 keeps flags above bit 8 of the
-    /// day field, so only its low 9 bits are the day. Returns `None` for unset dates.
+    /// day field, so only its low 9 bits are the day. Returns `None` for unset dates,
+    /// which FM stores as zero or as days in 1900 (e.g. rolling contracts end "1900-01-02").
     pub fn from_raw(day_field: u16, year: u16) -> Option<Self> {
         let mut day = day_field & 0x1FF;
-        if year == 0 || day == 0 {
+        if year <= 1900 || day == 0 {
             return None;
         }
         for (month, &length) in MONTH_LENGTHS.iter().enumerate() {
@@ -56,6 +57,7 @@ mod tests {
         assert_eq!(FmDate::from_raw(0x200 | 175, 1987), date(1987, 6, 24));
         assert_eq!(FmDate::from_raw(0, 1987), None);
         assert_eq!(FmDate::from_raw(175, 0), None);
+        assert_eq!(FmDate::from_raw(2, 1900), None);
         assert_eq!(FmDate::from_raw(366, 2001), None);
     }
 }

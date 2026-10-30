@@ -10,6 +10,13 @@
   --danger: #ef6b62;
   --danger-soft: rgba(239, 107, 98, 0.12);
 
+  /* Rating bands: 1–5, 6–10, 11–15, 16–20; --on-tier is the text colour on a solid band colour. */
+  --tier-1: #ef6b62;
+  --tier-2: #e6a23c;
+  --tier-3: #a6c95c;
+  --tier-4: var(--accent);
+  --on-tier: #0e1217;
+
   color-scheme: dark;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
@@ -30,6 +37,12 @@
     --accent-soft: rgba(31, 138, 100, 0.16);
     --danger: #c43c33;
     --danger-soft: rgba(196, 60, 51, 0.1);
+
+    --tier-1: #b8332b;
+    --tier-2: #a65f00;
+    --tier-3: #587a0c;
+    --tier-4: #16714f;
+    --on-tier: #ffffff;
 
     color-scheme: light;
   }
@@ -275,18 +288,28 @@ nav small {
 
 /* Players */
 
+/* The table, plus the player profile beside it while one is open. */
+.workspace {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
 .players {
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-width: 240px;
   min-height: 0;
   padding: 16px 20px 0;
 }
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 6px 16px;
   margin-bottom: 12px;
 }
 
@@ -333,6 +356,7 @@ nav small {
 .table-wrap {
   flex: 1;
   min-height: 0;
+  container-type: inline-size;
   overflow: auto;
   border: 1px solid var(--border);
   border-bottom: 0;
@@ -366,8 +390,34 @@ nav small {
   white-space: nowrap;
 }
 
+.grid tbody tr {
+  cursor: pointer;
+}
+
 .grid tbody tr:hover td {
   background: var(--raised);
+}
+
+.grid tbody tr.selected td {
+  background: var(--accent-soft);
+}
+
+.grid tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* With a profile open the table is narrow: drop Born and UID, then Nation, once they no longer fit. */
+@container (max-width: 780px) {
+  .with-profile .grid :is(th, td):is(:nth-child(4), :nth-child(7)) {
+    display: none;
+  }
+}
+
+@container (max-width: 580px) {
+  .with-profile .grid :is(th, td):nth-child(2) {
+    display: none;
+  }
 }
 
 .grid .num {
@@ -413,4 +463,399 @@ nav small {
   padding: 24px;
   color: var(--muted);
   text-align: center;
+}
+
+/* Player profile */
+
+.profile {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 560px;
+  min-width: 440px;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.profile-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-id {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-id h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.profile-id p {
+  margin: 0;
+}
+
+.profile-id .profile-meta {
+  margin-top: 6px;
+}
+
+.profile-fullname,
+.profile-vitals {
+  color: var(--muted);
+}
+
+.profile-vitals {
+  font-size: 13px;
+}
+
+.profile-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.icon-button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.profile-abilities {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.profile-abilities abbr {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: help;
+}
+
+.profile-abilities .ability {
+  display: block;
+  min-width: 100px;
+}
+
+.profile-body {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.profile-body > * + * {
+  margin-top: 20px;
+}
+
+.profile-body .banner {
+  margin: 0;
+}
+
+.profile-status {
+  margin: 24px 0;
+  color: var(--muted);
+  text-align: center;
+  animation: profile-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes profile-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-status {
+    animation: none;
+  }
+}
+
+.profile-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 14px;
+  align-items: start;
+}
+
+.profile-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+  align-items: start;
+}
+
+.profile-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.profile-group h3,
+.profile-group h4 {
+  margin: 0 0 4px;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Label and value rows: attributes, contract and career facts, reputation. */
+
+.stats {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.stat:hover {
+  background: var(--raised);
+}
+
+.stat dt {
+  min-width: 0;
+  color: var(--muted);
+}
+
+.stat dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ratings .stat dt {
+  color: var(--text);
+}
+
+/* A 1–20 rating as a number on a tinted chip, coloured by band. */
+.stat .value {
+  position: relative;
+  flex: none;
+  min-width: 26px;
+  padding: 1px 6px;
+  isolation: isolate;
+  border-radius: 5px;
+  color: var(--muted);
+  font-weight: 700;
+  text-align: center;
+}
+
+.value::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0.13;
+}
+
+.value.tier-1 {
+  color: var(--tier-1);
+}
+
+.value.tier-2 {
+  color: var(--tier-2);
+}
+
+.value.tier-3 {
+  color: var(--tier-3);
+}
+
+.value.tier-4 {
+  color: var(--tier-4);
+}
+
+.note {
+  margin: 0 6px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0 6px;
+}
+
+.tag.listed {
+  border-color: var(--tier-2);
+  color: var(--tier-2);
+}
+
+.bar-stat dt {
+  flex: none;
+  width: 58px;
+}
+
+.bar-stat dd {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--fill);
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.figure {
+  min-width: 40px;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Position pitch */
+
+.pitch {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.pitch-field {
+  fill: var(--accent);
+  fill-opacity: 0.06;
+  stroke: var(--accent);
+  stroke-opacity: 0.35;
+}
+
+.pitch-lines {
+  fill: none;
+  stroke: var(--accent);
+  stroke-opacity: 0.28;
+}
+
+.pitch-marker rect {
+  fill: var(--pos);
+}
+
+.pitch-marker text {
+  fill: var(--on-tier);
+  font-size: 9px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.pos-natural {
+  --pos: var(--tier-4);
+}
+
+.pos-accomplished {
+  --pos: var(--tier-3);
+}
+
+.pos-competent {
+  --pos: var(--tier-2);
+}
+
+.pos-unconvincing {
+  --pos: var(--tier-1);
+}
+
+/* Barely visible, so the positions a player can really play stand out. */
+.pitch-marker.pos-ineffective rect {
+  fill: var(--muted);
+  fill-opacity: 0.1;
+}
+
+.pitch-marker.pos-ineffective text {
+  fill: var(--muted);
+  fill-opacity: 0.7;
+}
+
+.legend {
+  display: grid;
+  gap: 3px;
+  margin: 10px 0 0;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  list-style: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend .range {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+  flex: none;
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--pos);
+}
+
+.swatch.pos-ineffective {
+  background: var(--muted);
+  opacity: 0.25;
 }
