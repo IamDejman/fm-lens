@@ -1,0 +1,7 @@
+/target
+node_modules/
+/app/dist
+*.log
+
+# Probe reports can contain memory addresses from a local game session.
+/reports

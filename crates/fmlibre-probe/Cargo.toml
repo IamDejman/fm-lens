@@ -1,0 +1,16 @@
+[package]
+name = "fmlibre-probe"
+description = "Read-only probe for a running Football Manager process"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+fmlibre-core.workspace = true
+fmlibre-mem.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true

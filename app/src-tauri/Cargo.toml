@@ -1,0 +1,23 @@
+[package]
+name = "fmlibre-app"
+description = "FMLibreEditor desktop app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+# The `_lib` suffix keeps the library name distinct from the binary name on Windows,
+# see https://github.com/rust-lang/cargo/issues/8519
+name = "fmlibre_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+fmlibre-core.workspace = true
+fmlibre-mem.workspace = true
+serde.workspace = true
+tauri = { version = "2", features = [] }

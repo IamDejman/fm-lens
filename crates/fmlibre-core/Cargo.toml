@@ -1,0 +1,12 @@
+[package]
+name = "fmlibre-core"
+description = "Football Manager specific logic for FMLibreEditor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+fmlibre-mem.workspace = true
+serde.workspace = true
