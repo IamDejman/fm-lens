@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::calibrate::ArrayRef;
 use crate::date::FmDate;
+use crate::details::POSITIONS;
 use crate::index::{Listed, SearchIndex};
 use crate::profile::{Layout, PlayerLayout};
 use crate::text::{Memo, display_name, is_name_like, read_fm_string, read_name_entry};
@@ -23,8 +24,14 @@ pub struct PlayerSummary {
     pub age: Option<u16>,
     pub nation: Option<String>,
     pub club: Option<String>,
+    /// Positions rated 15 or more (see [`crate::POSITIONS`] keys), best first.
+    pub positions: Vec<&'static str>,
+    pub contract_expires: Option<FmDate>,
     pub current_ability: u16,
     pub potential_ability: i16,
+    /// All 15 position ratings, in [`crate::POSITIONS`] order.
+    #[serde(skip)]
+    pub position_ratings: [u8; 15],
     /// Address of the player object in the game process.
     #[serde(skip)]
     pub address: u64,
@@ -112,6 +119,13 @@ pub fn read_players(
         let nation = nations.get(u64_at(p.nation), |nation| nation_name(process, layout, nation));
 
         let date_of_birth = FmDate::from_raw(u16_at(p.date_of_birth), u16_at(p.date_of_birth + 2));
+        let mut position_ratings = [0u8; POSITIONS.len()];
+        position_ratings.copy_from_slice(&buf[at(p.positions)..at(p.positions) + POSITIONS.len()]);
+        let contract = u64_at(p.contract);
+        let contract_expires = is_user_pointer(contract)
+            .then(|| process.read_u32(contract + layout.contract.expires).ok())
+            .flatten()
+            .and_then(|raw| FmDate::from_raw(raw as u16, (raw >> 16) as u16));
         players.push(PlayerSummary {
             uid,
             name,
@@ -120,13 +134,27 @@ pub fn read_players(
             age: date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today)),
             nation,
             club,
+            positions: natural_positions(&position_ratings),
+            contract_expires,
             current_ability: u16_at(p.current_ability),
             potential_ability: u16_at(p.potential_ability) as i16,
+            position_ratings,
             address: object,
             shift,
         });
     }
     Ok(players)
+}
+
+/// Rating from which FM calls a position one the player can play ("accomplished").
+pub const PLAYABLE_RATING: u8 = 15;
+
+/// Positions rated at least [`PLAYABLE_RATING`], best first.
+fn natural_positions(ratings: &[u8; POSITIONS.len()]) -> Vec<&'static str> {
+    let mut playable: Vec<(u8, usize)> =
+        ratings.iter().enumerate().filter(|&(_, &r)| r >= PLAYABLE_RATING).map(|(i, &r)| (r, i)).collect();
+    playable.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
+    playable.into_iter().map(|(_, i)| POSITIONS[i]).collect()
 }
 
 /// The name of the club a team belongs to.

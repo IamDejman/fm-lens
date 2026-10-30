@@ -58,6 +58,7 @@ Start FM27, load a save, then run:
 fmlibre-probe info                                   # process, storefront, modules, game_plugin.dll layout
 fmlibre-probe calibrate                              # identify the build and locate players, staff, clubs
 fmlibre-probe players "arda guler"                   # search players (accents ignored), best first
+fmlibre-probe players --position st --max-age 20 --min-pa 170 --sort pa   # wonderkid strikers
 fmlibre-probe player 7458500                         # everything read for one player
 fmlibre-probe staff arteta                           # search staff; staff-member <id> for details
 fmlibre-probe clubs tottenham                        # search clubs; club <uid> for details

@@ -38,9 +38,13 @@ before trusting them.
 - [x] Clubs: reputation, founding year, facilities, supporters, finances.
 - Every field needs two independent confirmations before it becomes writable.
 
-## Phase 3: read-only MVP
+## Phase 3: read-only MVP (in progress)
 
-- Search, filters and player/staff/club profiles in the app. First public release.
+- [x] Search and player / staff / club profiles in the app.
+- [x] Player filters (position, age, CA/PA, nation, club, free agents, contract
+  end) and sortable columns; staff filters (job, unemployed); club filter
+  (men's / women's).
+- [ ] A local release build; the first public release is the maintainer's call.
 
 ## Phase 4: editing
 

@@ -1,7 +1,10 @@
-// Text of the player, staff and club profiles. Keys of the game data map to the names FM uses; every
-// other string of the panels is in `profileText` (those only the club panel has, in `clubProfileText`),
-// and those of the staff and club lists in `staffListText` and `clubListText`.
+// Text of the player, staff and club profiles and lists. Keys of the game data map to the names FM uses;
+// every other string of the panels is in `profileText` (those only the club panel has, in
+// `clubProfileText`), and those of the player, staff and club lists in `playerListText`, `staffListText`
+// and `clubListText`.
 // A translation only has to replace the values here.
+
+import type { PlayerSort } from "./types";
 
 export const ATTRIBUTE_LABELS = {
   // Technical
@@ -291,6 +294,92 @@ export function jobLabel(code: number | null): string {
   return coach !== undefined ? profileText.playerCoach(coach) : profileText.unknownJob(code);
 }
 
+/**
+ * The jobs the staff list can be filtered by, one entry each, in the order of their names. The odd codes
+ * (player-coaches) are left out: a filter on a coaching job finds them too. So is "Player" (code 1), which
+ * is no job of a member of staff and, with the next code added, would match the coaches.
+ */
+export const JOB_FILTER_OPTIONS: readonly { code: number; label: string }[] = Object.keys(JOB_LABELS)
+  .map(Number)
+  .filter((code) => code > 1)
+  .map((code) => ({ code, label: jobLabel(code) }))
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+/** The player list: search, filter bar and columns. */
+export const playerListText = {
+  search: "Search players by name or UID",
+  /**
+   * The line beside the search box. `sorted` is the order a column header was clicked for, or null while the
+   * list is in its default order (best current ability first); its `by` is a name from `sortNames`.
+   */
+  summary: (total: number, shown: number, sorted: { by: string; ascending: boolean } | null) => {
+    const count = `${total.toLocaleString()} players`;
+    if (total <= shown) {
+      return count;
+    }
+    return sorted === null
+      ? `${count} · showing the top ${shown} by current ability`
+      : `${count} · showing the first ${shown} by ${sorted.by}, ${sorted.ascending ? "ascending" : "descending"}`;
+  },
+  /** The message under an empty table; `filtered` is whether any filter is in effect. */
+  empty: (query: string, filtered: boolean) => {
+    if (query === "") {
+      return filtered ? "No players match these filters." : "No players found.";
+    }
+    return filtered ? `No players match “${query}” with these filters.` : `No players match “${query}”.`;
+  },
+  columns: {
+    name: "Name",
+    age: "Age",
+    positions: "Positions",
+    nation: "Nation",
+    club: "Club",
+    contractExpires: "Contract",
+    born: "Born",
+    currentAbility: "CA",
+    potentialAbility: "PA",
+    uid: "UID",
+  } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
+  /** Hover text of a column header that sorts the list; `by` is a name from `sortNames`. */
+  sortBy: (by: string) => `Sort by ${by}`,
+  /** The name of each sortable column, as the summary line and the hover text of a header say it. */
+  sortNames: {
+    currentAbility: "current ability",
+    potentialAbility: "potential ability",
+    age: "age",
+    name: "name",
+    nation: "nation",
+    club: "club",
+    contractExpires: "contract end",
+  } satisfies Record<PlayerSort, string>,
+  filters: {
+    /** The button that shows or hides the filters. */
+    toggle: "Filters",
+    /** Its name for assistive technology while `count` of the filters are in effect. */
+    toggleActive: (count: number) => `Filters, ${count} active`,
+    clear: "Clear",
+    /** The entry of the position select that is no filter. */
+    any: "Any",
+    position: "Position",
+    age: "Age",
+    minAge: "Minimum age",
+    maxAge: "Maximum age",
+    /** The hint in an empty age input. */
+    minPlaceholder: "Min",
+    maxPlaceholder: "Max",
+    minCurrentAbility: "Min CA",
+    minCurrentAbilityTitle: "Minimum current ability",
+    minPotentialAbility: "Min PA",
+    minPotentialAbilityTitle: "Minimum potential ability",
+    /** The hint in an empty ability input: what it accepts. */
+    abilityPlaceholder: "1–200",
+    nation: "Nation",
+    club: "Club",
+    freeAgentsOnly: "Free agents only",
+    contractEndsBy: "Contract ends by",
+  },
+};
+
 /** The staff list. */
 export const staffListText = {
   search: "Search staff by name or ID",
@@ -298,7 +387,13 @@ export const staffListText = {
     total > shown
       ? `${total.toLocaleString()} staff · showing the top ${shown} by current ability`
       : `${total.toLocaleString()} staff`,
-  empty: (query: string) => `No staff match “${query}”.`,
+  /** The message under an empty table; `filtered` is whether any filter is in effect. */
+  empty: (query: string, filtered: boolean) => {
+    if (query === "") {
+      return filtered ? "No staff match these filters." : "No staff found.";
+    }
+    return filtered ? `No staff match “${query}” with these filters.` : `No staff match “${query}”.`;
+  },
   columns: {
     name: "Name",
     age: "Age",
@@ -309,6 +404,12 @@ export const staffListText = {
     currentAbility: "CA",
     potentialAbility: "PA",
     id: "ID",
+  },
+  filters: {
+    job: "Job",
+    /** The entry of the job select that is no filter. */
+    anyJob: "Any",
+    unemployedOnly: "Unemployed only",
   },
 };
 
@@ -360,7 +461,13 @@ export const clubListText = {
     total > shown
       ? `${total.toLocaleString()} clubs · showing the top ${shown} by reputation`
       : `${total.toLocaleString()} clubs`,
-  empty: (query: string) => `No clubs match “${query}”.`,
+  /** The message under an empty table; `filtered` is whether a filter is in effect. */
+  empty: (query: string, filtered: boolean) => {
+    if (query === "") {
+      return filtered ? "No clubs match this filter." : "No clubs found.";
+    }
+    return filtered ? `No clubs match “${query}” with this filter.` : `No clubs match “${query}”.`;
+  },
   /** The small tag on a women's club. */
   women: "Women",
   columns: {
@@ -368,5 +475,12 @@ export const clubListText = {
     reputation: "Reputation",
     founded: "Founded",
     uid: "UID",
+  },
+  filters: {
+    /** The name of the select, which has no label of its own. */
+    kind: "Clubs to show",
+    all: "All clubs",
+    men: "Men's clubs",
+    women: "Women's clubs",
   },
 };
