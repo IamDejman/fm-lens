@@ -3,6 +3,7 @@ use std::fmt;
 use fmlibre_mem::{Module, PeImage, Process, find_processes, list_modules};
 
 use crate::calibrate::{EntityArrays, calibrate};
+use crate::clubs::{ClubDetails, ClubSummary, read_club_details, read_clubs};
 use crate::date::FmDate;
 use crate::details::{PlayerDetails, read_player_details};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
@@ -117,6 +118,19 @@ impl Session {
     pub fn players(&self) -> Result<Vec<PlayerSummary>, SessionError> {
         let array = self.arrays.players.as_ref().ok_or(SessionError::PlayersNotFound)?;
         Ok(read_players(&self.process, &self.plugin, array, &self.layout, self.game_date())?)
+    }
+
+    /// Reads every club. Only reads memory.
+    pub fn clubs(&self) -> Result<Vec<ClubSummary>, SessionError> {
+        let Some(array) = self.arrays.clubs.as_ref() else {
+            return Ok(Vec::new());
+        };
+        Ok(read_clubs(&self.process, &self.plugin, array, &self.layout)?)
+    }
+
+    /// Reads the full profile of `club`; `None` when its object has changed. Only reads memory.
+    pub fn club_details(&self, club: &ClubSummary) -> Result<Option<ClubDetails>, SessionError> {
+        Ok(read_club_details(&self.process, &self.layout, club)?)
     }
 
     /// Reads every member of staff, with ages on the current in-game date. Only reads memory.

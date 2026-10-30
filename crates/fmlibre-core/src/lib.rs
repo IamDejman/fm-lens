@@ -4,6 +4,7 @@
 #![cfg(windows)]
 
 mod calibrate;
+mod clubs;
 mod date;
 mod details;
 mod game;
@@ -16,6 +17,9 @@ mod staff;
 mod text;
 
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
+pub use clubs::{
+    ClubDetails, ClubIndex, ClubSummary, Finances, SUPPORTER_MIX, SUPPORTER_TRAITS, read_club_details, read_clubs,
+};
 pub use date::FmDate;
 pub use details::{
     ATTRIBUTE_GROUPS, Attribute, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,

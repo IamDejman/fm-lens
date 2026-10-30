@@ -17,6 +17,14 @@
   --tier-4: var(--accent);
   --on-tier: #0e1217;
 
+  /* The kinds of supporters in the supporter-mix bar: six distinct hues, one per kind, in a fixed order. */
+  --mix-1: #3987e5;
+  --mix-2: #d95926;
+  --mix-3: #199e70;
+  --mix-4: #c98500;
+  --mix-5: #d55181;
+  --mix-6: #008300;
+
   color-scheme: dark;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
@@ -43,6 +51,13 @@
     --tier-3: #587a0c;
     --tier-4: #16714f;
     --on-tier: #ffffff;
+
+    --mix-1: #2a78d6;
+    --mix-2: #eb6834;
+    --mix-3: #1baf7a;
+    --mix-4: #eda100;
+    --mix-5: #e87ba4;
+    --mix-6: #008300;
 
     color-scheme: light;
   }
@@ -449,6 +464,20 @@ nav small {
 }
 
 /*
+ * The clubs table is short: with a profile open only UID drops out (above), and Founded when the
+ * list gets very narrow. A long name wraps instead of pushing the other columns out.
+ */
+.club-grid .col-name {
+  white-space: normal;
+}
+
+@container (max-width: 420px) {
+  .club-grid .col-founded {
+    display: none;
+  }
+}
+
+/*
  * The staff table has one more text column, so its columns drop out sooner, whether or not a
  * profile is open: Born and ID, then Nation, then Age and PA, and the text columns wrap.
  */
@@ -519,6 +548,11 @@ nav small {
   color: var(--muted);
 }
 
+/* A reputation reaches 10,000: room for its five digits and the separator, so every bar is as long as the next. */
+.ability.rep {
+  min-width: 64px;
+}
+
 .empty {
   padding: 24px;
   color: var(--muted);
@@ -572,6 +606,11 @@ nav small {
 
 .profile-vitals {
   font-size: 13px;
+}
+
+/* A profile with no line of its own under the names (a club) still wants air above its small print. */
+.profile-id :is(h2, .profile-fullname) + .profile-vitals {
+  margin-top: 6px;
 }
 
 .profile-side {
@@ -729,6 +768,12 @@ nav small {
   color: var(--text);
 }
 
+/* The unit of an amount, in small print under its label. */
+.stat dt .unit {
+  display: block;
+  font-size: 11.5px;
+}
+
 /* A 1–20 rating as a number on a tinted chip, coloured by band. */
 .stat .value {
   position: relative;
@@ -775,6 +820,11 @@ nav small {
   line-height: 1.35;
 }
 
+/* An amount below zero, e.g. a club's overdraft. */
+.negative {
+  color: var(--danger);
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
@@ -794,6 +844,14 @@ nav small {
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
+  vertical-align: middle;
+}
+
+/* Marks a women's club, beside the name. */
+.tag.women {
+  margin-left: 8px;
+  font-weight: 500;
+  white-space: nowrap;
   vertical-align: middle;
 }
 
@@ -927,4 +985,55 @@ nav small {
 .swatch.pos-ineffective {
   background: var(--muted);
   opacity: 0.25;
+}
+
+/* Supporter mix */
+
+/* Each kind of supporter keeps its own colour, whichever others are there (--mix-1 … 6 are in :root). */
+.mix-hardcore {
+  --seg: var(--mix-1);
+}
+
+.mix-core {
+  --seg: var(--mix-2);
+}
+
+.mix-family {
+  --seg: var(--mix-3);
+}
+
+.mix-fair_weather {
+  --seg: var(--mix-4);
+}
+
+.mix-casual {
+  --seg: var(--mix-5);
+}
+
+.mix-other {
+  --seg: var(--mix-6);
+}
+
+.stats + .mix {
+  margin-top: 14px;
+}
+
+/* One stacked bar, as thick as a thin mark: a 2px gap of the panel colour between the segments, and rounded ends. */
+.mix-bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  margin: 6px 6px 0;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+/* A segment grows by its percent (flex-grow is set on it), so the bar is full even when they do not add up to 100. */
+.mix-bar span {
+  flex: 0 1 0%;
+  background: var(--seg);
+}
+
+.mix-legend .swatch {
+  background: var(--seg);
 }

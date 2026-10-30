@@ -168,10 +168,41 @@ authority = 0x14
 
 [team]
 club = 0x30               # club pointer
+reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its senior team
 
+# Checked on Tottenham Hotspur (UID 728) in the Game Pass build, against values
+# fm-editor witnessed on Steam (founded 1882, 50,000 season tickets, 6.8M social
+# followers, supporter traits 18/14/7/14/7/14, ticket price £65, corporate 20,
+# reputation 7650).
 [club]
-name = 0xC0               # FM string pointer
+uid = 0x0C                # u32
+name = 0xC0               # full name, FM string pointer
 short_name = 0xC8         # FM string pointer
+women = 0xB9              # u8: 0 men's club, 1 women's club
+teams = 0x18              # pointer to the club's team pointers; the first is the senior team
+info = 0x100              # info record pointer
+finance = 0x150           # finance record pointer
+
+[club_info]
+season_tickets = 0xC0     # u32
+founded = 0xD8            # u16 year
+social_media = 0xF8       # u32 followers
+supporter_mix = 0x106     # 6 x u8 percentages: hardcore, core, family, fair-weather, casual, other
+supporter_traits = 0x114  # 6 x u8, 1..20: loyalty, passion, patience, affluence, temperament, expectations
+training = 0x120          # facilities, u8 1..20
+youth_facilities = 0x12B
+youth_coaching = 0x12C
+youth_recruitment = 0x12D
+
+# Only clubs in the leagues being played have the full finance record; the others
+# use a smaller class, so readers check that these values look sane before use.
+[club_finance]
+balance = 0x0C            # i32 pounds
+transfer_budget = 0x7C4   # i32 pounds
+total_wage_budget = 0x808 # i32 pounds per week
+wage_budget = 0x814       # i32 pounds per week, the spending wage budget
+ticket_price = 0x864      # f32 pounds, average match ticket
+corporate = 0x8A9         # u8 1..20, corporate facilities
 
 [nation]
 name = 0x18               # FM string pointer
