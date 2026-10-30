@@ -11,6 +11,9 @@ import type {
   PlayerPage,
   PlayerSummary,
   ReloadInfo,
+  StaffDetails,
+  StaffPage,
+  StaffSummary,
 } from "../types";
 
 const GAME_DATE: FmDate = { year: 2026, month: 7, day: 18 };
@@ -118,6 +121,71 @@ function details(player: PlayerSummary): PlayerDetails {
   };
 }
 
+/** Job codes as stored in contracts (see labels.ts). */
+const JOBS = [16, 20, 2, 2, 2, 34, 26, 14, 14, 44, 12, 60, 64, 88];
+const STAFF_ATTRIBUTES = [
+  "attacking", "defending", "fitness", "goalkeeping", "possession", "set_pieces", "tactical", "technical",
+  "determination", "motivating", "people_management", "data_analysis", "judging_ability", "judging_potential",
+  "judging_staff", "negotiating", "tactical_knowledge", "physiotherapy", "sports_science",
+];
+const STAFF_RATINGS = ["working_with_youngsters", "authority"];
+
+const staff: StaffSummary[] = (() => {
+  const next = random(1984);
+  const pick = <T,>(items: T[]) => items[Math.floor(next() * items.length)];
+  return Array.from({ length: 120 }, (_, i) => {
+    const born: FmDate = { year: 1955 + Math.floor(next() * 40), month: 1 + Math.floor(next() * 12), day: 1 + Math.floor(next() * 28) };
+    const ca = Math.round(40 + next() * 140);
+    const employed = i === 0 || next() < 0.85;
+    return {
+      uid: 2_000_000 + i * 53,
+      name: `${pick(FIRST)} ${pick(LAST)}`,
+      fullName: null,
+      dateOfBirth: born,
+      age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
+      nation: pick(NATIONS),
+      club: employed ? pick(CLUBS) : null,
+      job: i === 0 ? 16 : employed ? pick(JOBS) : null,
+      currentAbility: ca,
+      potentialAbility: Math.min(200, ca + Math.round(next() * 30)),
+      isHuman: i === 0,
+    };
+  });
+})();
+
+/** Made-up but self-consistent profile for a fixture member of staff. */
+function staffDetails(member: StaffSummary): StaffDetails {
+  const next = random(member.uid);
+  const level = member.currentAbility / 2;
+  const attributes = Object.fromEntries([
+    ...STAFF_ATTRIBUTES.map((key) => {
+      const raw = Math.max(1, Math.min(100, Math.round(level + (next() - 0.5) * 50)));
+      return [key, { raw, value: Math.max(1, Math.min(20, Math.floor((raw + 2) / 5))) }];
+    }),
+    ...STAFF_RATINGS.map((key) => {
+      const value = Math.round(1 + next() * 19);
+      return [key, { raw: value, value }];
+    }),
+  ]);
+  const personality = Object.fromEntries(PERSONALITY.map((key) => [key, Math.round(1 + next() * 19)]));
+  return {
+    ...member,
+    reputation: { home: Math.round(next() * 10000), current: Math.round(next() * 10000), world: Math.round(next() * 10000) },
+    personality,
+    attributes,
+    contract:
+      member.job === null
+        ? null
+        : {
+            wage: Math.round(member.currentAbility * 400 + next() * 20000),
+            signed: { year: 2026, month: 6, day: 29 },
+            expires: { year: 2027 + Math.floor(next() * 4), month: 6, day: 30 },
+            joined: { year: 2021 + Math.floor(next() * 5), month: 7, day: 1 },
+            job: member.job,
+          },
+  };
+}
+
 export async function mockInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((resolve) => setTimeout(resolve, 150));
   switch (command) {
@@ -136,13 +204,14 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           fromProfile: true,
         },
         players: players.length,
+        staff: staff.length,
         gameDate: GAME_DATE,
         loadMs: 480,
       };
       return info as T;
     }
-    case "reload_players": {
-      const reloaded: ReloadInfo = { players: players.length, gameDate: GAME_DATE };
+    case "reload": {
+      const reloaded: ReloadInfo = { players: players.length, staff: staff.length, gameDate: GAME_DATE };
       return reloaded as T;
     }
     case "search_players": {
@@ -154,6 +223,24 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
       const page: PlayerPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;
+    }
+    case "search_staff": {
+      const query = String(args?.query ?? "");
+      const limit = Number(args?.limit ?? 200);
+      const words = fold(query).split(/\s+/).filter(Boolean);
+      const hits = staff
+        .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
+        .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
+      const page: StaffPage = { total: hits.length, rows: hits.slice(0, limit) };
+      return page as T;
+    }
+    case "staff_details": {
+      const uid = Number(args?.uid);
+      const member = staff.find((s) => s.uid === uid);
+      if (!member) {
+        throw new Error(`No member of staff with id ${uid}`);
+      }
+      return staffDetails(member) as T;
     }
     case "player_details": {
       const uid = Number(args?.uid);

@@ -8,6 +8,7 @@ use crate::details::{PlayerDetails, read_player_details};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
 use crate::players::{PlayerSummary, read_players};
 use crate::profile::{BuildProfile, Layout, PluginFingerprint, layout_for, profile_for};
+use crate::staff::{StaffDetails, StaffSummary, read_staff, read_staff_details};
 
 #[derive(Debug)]
 pub enum SessionError {
@@ -116,6 +117,19 @@ impl Session {
     pub fn players(&self) -> Result<Vec<PlayerSummary>, SessionError> {
         let array = self.arrays.players.as_ref().ok_or(SessionError::PlayersNotFound)?;
         Ok(read_players(&self.process, &self.plugin, array, &self.layout, self.game_date())?)
+    }
+
+    /// Reads every member of staff, with ages on the current in-game date. Only reads memory.
+    pub fn staff(&self) -> Result<Vec<StaffSummary>, SessionError> {
+        let Some(array) = self.arrays.staff.as_ref() else {
+            return Ok(Vec::new());
+        };
+        Ok(read_staff(&self.process, &self.plugin, array, &self.layout, self.game_date())?)
+    }
+
+    /// Reads the full profile of `member`; `None` when its object has changed. Only reads memory.
+    pub fn staff_details(&self, member: &StaffSummary) -> Result<Option<StaffDetails>, SessionError> {
+        Ok(read_staff_details(&self.process, &self.layout, member)?)
     }
 
     /// Reads the full profile of `player`; `None` when its object has changed since the

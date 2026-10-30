@@ -1,5 +1,6 @@
-// Text of the player profile. Keys of the game data map to the names FM uses; every other
-// string of the panel is in `profileText`. A translation only has to replace the values here.
+// Text of the player and staff profiles. Keys of the game data map to the names FM uses; every
+// other string of the panels is in `profileText`, and those of the staff list in `staffListText`.
+// A translation only has to replace the values here.
 
 export const ATTRIBUTE_LABELS = {
   // Technical
@@ -66,6 +67,36 @@ export const ATTRIBUTE_LABELS = {
 
 export type AttributeKey = keyof typeof ATTRIBUTE_LABELS;
 
+export const STAFF_ATTRIBUTE_LABELS = {
+  // Coaching
+  attacking: "Attacking",
+  defending: "Defending",
+  fitness: "Fitness",
+  goalkeeping: "Goalkeeping",
+  possession: "Possession",
+  set_pieces: "Set Pieces",
+  tactical: "Tactical",
+  technical: "Technical",
+  working_with_youngsters: "Working with Youngsters",
+  // Mental
+  authority: "Authority",
+  determination: "Determination",
+  motivating: "Motivating",
+  people_management: "People Management",
+  // Knowledge
+  data_analysis: "Data Analysis",
+  judging_ability: "Judging Player Ability",
+  judging_potential: "Judging Player Potential",
+  judging_staff: "Judging Staff Ability",
+  negotiating: "Negotiating",
+  tactical_knowledge: "Tactical Knowledge",
+  // Medical
+  physiotherapy: "Physiotherapy",
+  sports_science: "Sports Science",
+} as const;
+
+export type StaffAttributeKey = keyof typeof STAFF_ATTRIBUTE_LABELS;
+
 export const PERSONALITY_LABELS = {
   adaptability: "Adaptability",
   ambition: "Ambition",
@@ -105,6 +136,31 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   5: "Impact sub",
 };
 
+/** FM's job codes as stored in contracts. */
+const JOB_LABELS: Partial<Record<number, string>> = {
+  1: "Player",
+  2: "Coach",
+  4: "Chairperson",
+  6: "Director",
+  12: "Physio",
+  14: "Scout",
+  16: "Manager",
+  20: "Assistant Coach",
+  22: "Set Piece Coach",
+  26: "Fitness Coach",
+  34: "Goalkeeping Coach",
+  40: "Head of Sports Science",
+  44: "Chief Scout",
+  48: "Sports Scientist",
+  50: "Head Physio",
+  58: "Recruitment Analyst",
+  60: "Performance Analyst",
+  64: "Head of Youth Development",
+  70: "President",
+  86: "Loan Manager",
+  88: "Technical Director",
+};
+
 export const profileText = {
   close: "Close profile",
   loading: "Loading profile…",
@@ -129,8 +185,8 @@ export const profileText = {
   hidden: "Hidden",
   feet: "Feet",
   personality: "Personality",
-  /** Hover text of an attribute: the value as stored, 0–100. */
-  raw: (raw: number) => `raw ${raw} / 100`,
+  /** Hover text of an attribute: the value as stored, 0–100 unless the game stores it on another scale. */
+  raw: (raw: number, scale = 100) => `raw ${raw} / ${scale}`,
   lowerIsBetter: "lower is better",
   age: (age: number) => `age ${age}`,
 
@@ -171,4 +227,56 @@ export const profileText = {
   reputationHome: "Home",
   reputationCurrent: "Current",
   reputationWorld: "World",
+
+  // Staff
+  /** Badge on the manager the user controls. */
+  you: "You",
+  youTitle: "The manager you control in this save",
+  id: "ID",
+  job: "Job",
+  unemployed: "Unemployed",
+  coaching: "Coaching",
+  knowledge: "Knowledge",
+  medical: "Medical",
+  /** A coaching job held by someone who still plays. */
+  playerCoach: (job: string) => `${job} (player-coach)`,
+  unknownJob: (code: number) => `Job ${code}`,
+};
+
+/**
+ * The name of a job code from a contract. An odd code above 1 is the player-coach variant of the
+ * code below it. A person without a contract (`null`) has no job; codes the table does not know
+ * are shown as they are.
+ */
+export function jobLabel(code: number | null): string {
+  if (code === null) {
+    return profileText.none;
+  }
+  const label = JOB_LABELS[code];
+  if (label !== undefined) {
+    return label;
+  }
+  const coach = code > 1 && code % 2 === 1 ? JOB_LABELS[code - 1] : undefined;
+  return coach !== undefined ? profileText.playerCoach(coach) : profileText.unknownJob(code);
+}
+
+/** The staff list. */
+export const staffListText = {
+  search: "Search staff by name or ID",
+  summary: (total: number, shown: number) =>
+    total > shown
+      ? `${total.toLocaleString()} staff · showing the top ${shown} by current ability`
+      : `${total.toLocaleString()} staff`,
+  empty: (query: string) => `No staff match “${query}”.`,
+  columns: {
+    name: "Name",
+    age: "Age",
+    job: "Job",
+    club: "Club",
+    nation: "Nation",
+    born: "Born",
+    currentAbility: "CA",
+    potentialAbility: "PA",
+    id: "ID",
+  },
 };

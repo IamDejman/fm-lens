@@ -41,6 +41,7 @@ export interface ConnectionInfo {
   profile: string | null;
   arrays: EntityArrays;
   players: number;
+  staff: number;
   /** Current in-game date, when it could be read. */
   gameDate: FmDate | null;
   loadMs: number;
@@ -48,7 +49,54 @@ export interface ConnectionInfo {
 
 export interface ReloadInfo {
   players: number;
+  staff: number;
   gameDate: FmDate | null;
+}
+
+/** A manager, coach, scout, director or other non-playing person. */
+export interface StaffSummary {
+  uid: number;
+  name: string;
+  fullName: string | null;
+  dateOfBirth: FmDate | null;
+  age: number | null;
+  nation: string | null;
+  /** The employer. */
+  club: string | null;
+  /** FM job code from the contract; see `jobLabel` in labels.ts. */
+  job: number | null;
+  currentAbility: number;
+  potentialAbility: number;
+  /** The manager the user controls in this save. */
+  isHuman: boolean;
+}
+
+export interface StaffPage {
+  total: number;
+  rows: StaffSummary[];
+}
+
+export interface StaffContract {
+  /** Pounds per week. */
+  wage: number;
+  signed: FmDate | null;
+  expires: FmDate | null;
+  joined: FmDate | null;
+  job: number;
+}
+
+export interface StaffDetails extends StaffSummary {
+  reputation: Reputation;
+  /** Same keys as a player's personality. */
+  personality: Record<string, number>;
+  /**
+   * attacking, defending, fitness, goalkeeping, possession, set_pieces, tactical, technical,
+   * working_with_youngsters, authority, determination, motivating, people_management,
+   * data_analysis, judging_ability, judging_potential, judging_staff, negotiating,
+   * tactical_knowledge, physiotherapy, sports_science → raw and shown value (1–20).
+   */
+  attributes: Record<string, Attribute>;
+  contract: StaffContract | null;
 }
 
 export interface FmDate {

@@ -1,13 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Ability } from "./Ability";
+import { useCallback, useEffect, useState } from "react";
 import { call, inTauri } from "./api";
 import { describeGame, formatDate } from "./format";
-import { PlayerProfile } from "./PlayerProfile";
-import type { ConnectionInfo, Detection, PlayerPage, PlayerSummary, ReloadInfo } from "./types";
+import { PlayerBrowser } from "./PlayerBrowser";
+import { StaffBrowser } from "./StaffBrowser";
+import type { ConnectionInfo, Detection, ReloadInfo } from "./types";
 import "./App.css";
 
-/** Rows shown at once; the best players by current ability come first. */
-const ROW_LIMIT = 200;
+type View = "players" | "staff";
+
+const VIEWS: { id: View; label: string }[] = [
+  { id: "players", label: "Players" },
+  { id: "staff", label: "Staff" },
+];
 
 function App() {
   const [detection, setDetection] = useState<Detection | null>(null);
@@ -15,6 +19,7 @@ function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
+  const [view, setView] = useState<View>("players");
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
     setBusy(label);
@@ -34,16 +39,16 @@ function App() {
   );
 
   const connect = () =>
-    run("Reading players…", async () => {
+    run("Reading players and staff…", async () => {
       setConnection(await call<ConnectionInfo>("connect"));
       setDataVersion((v) => v + 1);
     });
 
   const reload = () =>
-    run("Reloading players…", async () => {
+    run("Reloading players and staff…", async () => {
       try {
-        const reloaded = await call<ReloadInfo>("reload_players");
-        setConnection((c) => c && { ...c, players: reloaded.players, gameDate: reloaded.gameDate });
+        const reloaded = await call<ReloadInfo>("reload");
+        setConnection((c) => c && { ...c, ...reloaded });
         setDataVersion((v) => v + 1);
       } catch (e) {
         // The Rust side drops the connection when reading fails (e.g. the game was closed).
@@ -68,13 +73,20 @@ function App() {
           </div>
         </div>
         <nav>
-          <a className="active">Players</a>
-          <a className="disabled" aria-disabled="true">
-            Staff <small>soon</small>
-          </a>
-          <a className="disabled" aria-disabled="true">
+          {VIEWS.map(({ id, label }) => (
+            <button
+              key={id}
+              type="button"
+              className={id === view ? "nav-item active" : "nav-item"}
+              aria-current={id === view ? "page" : undefined}
+              onClick={() => setView(id)}
+            >
+              {label}
+            </button>
+          ))}
+          <button type="button" className="nav-item" disabled>
             Clubs <small>soon</small>
-          </a>
+          </button>
         </nav>
         <p className="sidebar-note">Read-only for now: nothing in the game is changed.</p>
       </aside>
@@ -88,6 +100,7 @@ function App() {
                   describeGame(connection.game),
                   connection.gameDate && formatDate(connection.gameDate),
                   `${connection.players.toLocaleString()} players`,
+                  `${connection.staff.toLocaleString()} staff`,
                 ]
                   .filter(Boolean)
                   .join(" · ")
@@ -110,7 +123,11 @@ function App() {
         {error && <div className="banner">{error}</div>}
 
         {connection ? (
-          <PlayerBrowser version={dataVersion} />
+          // Both lists stay mounted, so each keeps its search and selection while the other is shown.
+          <div className="views">
+            <PlayerBrowser version={dataVersion} active={view === "players"} />
+            <StaffBrowser version={dataVersion} active={view === "staff"} />
+          </div>
         ) : (
           <ConnectPanel detection={detection} busy={busy !== null} onConnect={connect} />
         )}
@@ -149,136 +166,10 @@ function ConnectPanel(props: { detection: Detection | null; busy: boolean; onCon
         )}
 
         <button className="primary" onClick={onConnect} disabled={busy || !ready}>
-          Connect and read players
+          Connect and read players and staff
         </button>
       </div>
     </section>
-  );
-}
-
-function PlayerBrowser({ version }: { version: number }) {
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState<PlayerPage | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<PlayerSummary | null>(null);
-  const selectedRow = useRef<HTMLTableRowElement>(null);
-
-  const closeProfile = useCallback(() => {
-    // The panel unmounts with the focused control inside it; keep keyboard focus in the table.
-    if (document.activeElement?.closest(".profile")) {
-      selectedRow.current?.focus();
-    }
-    setSelected(null);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const timer = setTimeout(
-      async () => {
-        try {
-          const result = await call<PlayerPage>("search_players", { query, limit: ROW_LIMIT });
-          if (!cancelled) {
-            setPage(result);
-            setError(null);
-          }
-        } catch (e) {
-          if (!cancelled) {
-            setError(String(e));
-          }
-        }
-      },
-      query ? 150 : 0,
-    );
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query, version]);
-
-  const summary = page
-    ? page.total > page.rows.length
-      ? `${page.total.toLocaleString()} players · showing the top ${page.rows.length} by current ability`
-      : `${page.total.toLocaleString()} players`
-    : "";
-
-  return (
-    <div className={selected ? "workspace with-profile" : "workspace"}>
-      <section className="players">
-        <div className="toolbar">
-          <label className="search">
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <circle cx="8.5" cy="8.5" r="5.5" />
-              <path d="m13 13 4.5 4.5" />
-            </svg>
-            <input
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.currentTarget.value)}
-              placeholder="Search players by name or UID"
-              spellCheck={false}
-            />
-          </label>
-          <span className="count">{summary}</span>
-        </div>
-        {error && <div className="banner">{error}</div>}
-
-        <div className="table-wrap">
-          <table className="grid">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th className="num">Age</th>
-                <th className="col-nation">Nation</th>
-                <th>Club</th>
-                <th className="col-born">Born</th>
-                <th className="num">CA</th>
-                <th className="num">PA</th>
-                <th className="num col-uid">UID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {page?.rows.map((p) => {
-                const isSelected = p.uid === selected?.uid;
-                return (
-                  <tr
-                    key={p.uid}
-                    ref={isSelected ? selectedRow : undefined}
-                    className={isSelected ? "selected" : undefined}
-                    aria-current={isSelected ? "true" : undefined}
-                    tabIndex={0}
-                    onClick={() => setSelected(p)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setSelected(p);
-                      }
-                    }}
-                  >
-                    <td>
-                      <div className="name">{p.name}</div>
-                      {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
-                    </td>
-                    <td className="num">{p.age ?? "—"}</td>
-                    <td className="col-nation">{p.nation ?? "—"}</td>
-                    <td>{p.club ?? <span className="muted">Free agent</span>}</td>
-                    <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
-                    <td className="num">
-                      <Ability value={p.currentAbility} />
-                    </td>
-                    <td className="num">
-                      <Ability value={p.potentialAbility} />
-                    </td>
-                    <td className="num uid col-uid">{p.uid}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {page && page.rows.length === 0 && <p className="empty">No players match “{query}”.</p>}
-        </div>
-      </section>
-
-      {selected && <PlayerProfile key={selected.uid} player={selected} version={version} onClose={closeProfile} />}
-    </div>
   );
 }
 

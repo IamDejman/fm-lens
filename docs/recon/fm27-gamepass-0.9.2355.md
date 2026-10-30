@@ -196,6 +196,36 @@ Ifill (UID 109160, born 20 October 1979, player-coach at Greytown AFC). The read
 works out the shift once per vtable by trying each candidate and keeping the one
 under which the name decodes, so no build-specific vtable is needed.
 
+### Staff
+
+Staff offsets follow fm-editor's FM27 notes and read correctly on Game Pass
+(`fmlibre-probe staff`, `staff-member <id>`):
+
+| Offset | Content |
+|---|---|
+| `+0x10..+0x43` | attributes: raw 0–100 ones such as attacking `+0x32`, tactical `+0x37`, judging potential `+0x2D`; ratings stored as shown, such as authority `+0x14`, working with youngsters `+0x1C` |
+| `+0xD4` / `+0xD6` / `+0xD8` | home / current / world reputation |
+| `+0xDA` / `+0xDC` | CA / PA |
+| `+0x100` | start of the person block (a contract's `+0x08` points here) |
+| `+0x10C` | staff id (`u32`) |
+| `+0x140` / `+0x150` / `+0x158` / `+0x160` | full name / first / last / common name |
+| `+0x168` | nation pointer |
+| `+0x170` | personality, 8 ratings |
+| `+0x188` | date of birth |
+| `+0x1A8` | contract pointer: the same record as a player's, with the employer's team at `+0x10` and a `u8` job code at `+0x26` |
+
+Witnesses: Mikel Arteta (manager, Arsenal, £375,000 a week until 30 June 2030,
+joined 19 December 2019), Hansi Flick (manager, Barcelona, £99,218 a week), Enzo
+Maresca (manager, Manchester City), Alex Ferguson (director, Manchester United).
+Pep Guardiola, Jürgen Klopp and Antonio Conte have no contract. Job code 70 is
+"president" (Giuseppe Marotta at Inter, Florentino Pérez at Real Madrid).
+
+The human manager's class keeps the whole person block `0x340` further, including
+nation (`+0x4A8`) and contract (`+0x4E8`), not only the identity fields fm-editor
+lists. The reader detects the shift per vtable, as for player-coaches. The same
+class also holds an account placeholder with no birth date, nation or contract;
+the reader skips it.
+
 ### Staff and club layouts
 
 `fmlibre-probe calibrate` decodes 100% of sampled staff (name-table entries at

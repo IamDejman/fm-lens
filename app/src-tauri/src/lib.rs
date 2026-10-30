@@ -2,8 +2,8 @@ use std::sync::Mutex;
 use std::time::Instant;
 
 use fmlibre_core::{
-    ArraySource, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PlayerDetails, PlayerIndex, PlayerSummary,
-    Session, find_game,
+    ArraySource, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, Listed, PlayerDetails, PlayerIndex,
+    SearchIndex, Session, StaffDetails, StaffIndex, find_game,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::Serialize;
@@ -11,10 +11,19 @@ use tauri::State;
 
 const NOT_CONNECTED: &str = "Not connected to the game";
 
-/// The connected game and the players read from it.
+/// The connected game and the people read from it.
 struct Connection {
     session: Session,
     players: PlayerIndex,
+    staff: StaffIndex,
+}
+
+impl Connection {
+    fn load(session: Session) -> Result<Self, String> {
+        let players = PlayerIndex::new(session.players().map_err(text)?);
+        let staff = StaffIndex::new(session.staff().map_err(text)?);
+        Ok(Self { session, players, staff })
+    }
 }
 
 #[derive(Default)]
@@ -43,6 +52,7 @@ struct ConnectionInfo {
     profile: Option<String>,
     arrays: EntityArrays,
     players: usize,
+    staff: usize,
     game_date: Option<FmDate>,
     load_ms: u128,
 }
@@ -51,14 +61,20 @@ struct ConnectionInfo {
 #[serde(rename_all = "camelCase")]
 struct ReloadInfo {
     players: usize,
+    staff: usize,
     game_date: Option<FmDate>,
 }
 
+/// One page of search results.
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PlayerPage {
+struct Page<T> {
     total: usize,
-    rows: Vec<PlayerSummary>,
+    rows: Vec<T>,
+}
+
+fn page<T: Listed + Clone>(index: &SearchIndex<T>, query: &str, limit: usize) -> Page<T> {
+    let hits = index.search(query);
+    Page { total: hits.len(), rows: hits.into_iter().take(limit).cloned().collect() }
 }
 
 fn text(err: impl std::fmt::Display) -> String {
@@ -85,15 +101,14 @@ fn inspect(pid: u32) -> DetectedGame {
     }
 }
 
-/// Attaches to the running game, locates its data and reads every player. Only reads memory.
+/// Attaches to the running game, locates its data and reads every player and member of
+/// staff. Only reads memory.
 #[tauri::command]
 async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
     let started = Instant::now();
     let connection = tauri::async_runtime::spawn_blocking(|| -> Result<Connection, String> {
         let process = Process::open_read(find_game(None).map_err(text)?).map_err(text)?;
-        let session = Session::connect(process, ArraySource::ProfileFirst).map_err(text)?;
-        let players = PlayerIndex::new(session.players().map_err(text)?);
-        Ok(Connection { session, players })
+        Connection::load(Session::connect(process, ArraySource::ProfileFirst).map_err(text)?)
     })
     .await
     .map_err(text)??;
@@ -103,6 +118,7 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
         profile: connection.session.profile.as_ref().map(|p| p.name.clone()),
         arrays: connection.session.arrays.clone(),
         players: connection.players.len(),
+        staff: connection.staff.len(),
         game_date: connection.session.game_date(),
         load_ms: started.elapsed().as_millis(),
     };
@@ -110,28 +126,43 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
     Ok(info)
 }
 
-/// Reads every player again, e.g. after the game has moved on. Drops the connection when that fails.
+/// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails.
 #[tauri::command]
-async fn reload_players(state: State<'_, AppState>) -> Result<ReloadInfo, String> {
-    let mut connection = state.0.lock().map_err(text)?.take().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let connection = tauri::async_runtime::spawn_blocking(move || -> Result<Connection, String> {
-        connection.players = PlayerIndex::new(connection.session.players().map_err(text)?);
-        Ok(connection)
-    })
-    .await
-    .map_err(text)??;
-    let info = ReloadInfo { players: connection.players.len(), game_date: connection.session.game_date() };
+async fn reload(state: State<'_, AppState>) -> Result<ReloadInfo, String> {
+    let connection = state.0.lock().map_err(text)?.take().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let connection =
+        tauri::async_runtime::spawn_blocking(move || Connection::load(connection.session)).await.map_err(text)??;
+    let info = ReloadInfo {
+        players: connection.players.len(),
+        staff: connection.staff.len(),
+        game_date: connection.session.game_date(),
+    };
     *state.0.lock().map_err(text)? = Some(connection);
     Ok(info)
 }
 
 /// Players matching `query`, highest current ability first; at most `limit` rows.
 #[tauri::command]
-fn search_players(state: State<'_, AppState>, query: String, limit: usize) -> Result<PlayerPage, String> {
+fn search_players(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+) -> Result<Page<fmlibre_core::PlayerSummary>, String> {
     let guard = state.0.lock().map_err(text)?;
     let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let hits = connection.players.search(&query);
-    Ok(PlayerPage { total: hits.len(), rows: hits.into_iter().take(limit).cloned().collect() })
+    Ok(page(&connection.players, &query, limit))
+}
+
+/// Staff matching `query`, the human manager first, then by current ability; at most `limit` rows.
+#[tauri::command]
+fn search_staff(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+) -> Result<Page<fmlibre_core::StaffSummary>, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    Ok(page(&connection.staff, &query, limit))
 }
 
 /// The full profile of the player with `uid`. Only reads memory.
@@ -147,11 +178,32 @@ fn player_details(state: State<'_, AppState>, uid: u32) -> Result<PlayerDetails,
         .ok_or_else(|| "This player's data has changed in the game; reload and try again.".to_owned())
 }
 
+/// The full profile of the member of staff with `uid`. Only reads memory.
+#[tauri::command]
+fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let member = connection.staff.get(uid).ok_or_else(|| format!("No member of staff with id {uid}"))?;
+    connection
+        .session
+        .staff_details(member)
+        .map_err(text)?
+        .ok_or_else(|| "This person's data has changed in the game; reload and try again.".to_owned())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
-        .invoke_handler(tauri::generate_handler![detect_game, connect, reload_players, search_players, player_details])
+        .invoke_handler(tauri::generate_handler![
+            detect_game,
+            connect,
+            reload,
+            search_players,
+            search_staff,
+            player_details,
+            staff_details
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
