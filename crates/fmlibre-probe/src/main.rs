@@ -12,9 +12,9 @@ use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, Entity, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo,
-    GraphicsIndex, Kind, PERSONALITY, POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort,
-    STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex,
-    Target, find_game, job_name, scan_object_arrays, sort_players,
+    GraphicsIndex, Kind, MoveTerms, PERSONALITY, POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder,
+    PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError,
+    StaffIndex, Target, find_game, job_name, scan_object_arrays, sort_players,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -128,6 +128,25 @@ enum Command {
         #[arg(long)]
         restore: bool,
     },
+    /// Move a player to another club's senior team in the running game.
+    Move {
+        /// The player's UID.
+        uid: u32,
+        /// The UID of the club he joins.
+        club: u32,
+        /// A new wage in pounds per week; the contract's otherwise.
+        #[arg(long)]
+        wage: Option<i64>,
+        /// A new contract end as YYYY-MM-DD; the contract's otherwise.
+        #[arg(long)]
+        expires: Option<String>,
+        /// Move him back afterwards and check it: tests a move without changing the save.
+        #[arg(long)]
+        restore: bool,
+        /// With --restore, how many seconds to wait before moving him back, to look at the game meanwhile.
+        #[arg(long, default_value_t = 0)]
+        hold: u64,
+    },
     /// Read the graphics packs (logos, faces, flags) and show what they hold. Needs no game.
     Graphics {
         /// The graphics folder; by default Documents\Sports Interactive\Football Manager 27\graphics.
@@ -195,6 +214,42 @@ enum Command {
         /// Stop after this many hits.
         #[arg(long, default_value_t = 20)]
         max: usize,
+    },
+    /// Find the pointers to ADDR in the game's memory, e.g. everything that refers to a player.
+    Refs {
+        /// The address pointed at; `player` and `club` print object addresses.
+        addr: String,
+        /// Also count pointers into the SPAN bytes from ADDR on, e.g. into a person block.
+        #[arg(long, default_value = "1")]
+        span: String,
+        /// Stop after this many hits.
+        #[arg(long, default_value_t = 100)]
+        max: usize,
+    },
+    /// Find the (begin, end) arrays in the game's memory that hold the 8-byte slot at ADDR,
+    /// e.g. a hit from `refs`, and the object each array belongs to.
+    Holders {
+        /// The address of an array slot.
+        addr: String,
+        /// Stop after this many hits.
+        #[arg(long, default_value_t = 20)]
+        max: usize,
+    },
+    /// Read every team's player list and show how the game's allocator spaces their buffers.
+    Squads,
+    /// Show the memory region that holds ADDR and the start of its allocation.
+    Region {
+        /// Any address in the game process.
+        addr: String,
+    },
+    /// Show the (begin, end) arrays inside the object at ADDR and name the players, staff
+    /// and clubs they hold.
+    Lists {
+        /// The object's address, e.g. a club or a team.
+        addr: String,
+        /// How many bytes of the object to look through.
+        #[arg(long, default_value = "0x800")]
+        len: String,
     },
 }
 
@@ -267,7 +322,7 @@ fn run(cli: Cli) -> Result<()> {
         return graphics(root, &clubs);
     }
     let elevated = is_current_process_elevated();
-    let writes = matches!(cli.command, Some(Command::Set { .. }));
+    let writes = matches!(cli.command, Some(Command::Set { .. } | Command::Move { .. }));
     let process = attach(cli.pid, elevated, writes)?;
     let json = cli.json.as_deref();
 
@@ -302,6 +357,11 @@ fn run(cli: Cli) -> Result<()> {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             set(&session, entity.into(), uid, &field, &value, shown, restore)
         }
+        Command::Move { uid, club, wage, expires, restore, hold } => {
+            let expires = expires.as_deref().map(parse_iso_date).transpose()?.map(FmDate::to_number);
+            let terms = MoveTerms { wage, expires };
+            move_player(&Session::connect(process, ArraySource::ProfileFirst)?, uid, club, terms, restore, hold)
+        }
         Command::Graphics { .. } => unreachable!("handled before attaching"),
         Command::Scan { min, max, top } => {
             let (game, modules) = inspect(&process)?;
@@ -324,7 +384,364 @@ fn run(cli: Cli) -> Result<()> {
             let modules = list_modules(process.pid()).context("listing modules")?;
             find(&process, &modules, &pattern, kind, module.as_deref(), max)
         }
+        Command::Refs { addr, span, max } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
+            refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
+        }
+        Command::Squads => squads(&Session::connect(process, ArraySource::ProfileFirst)?),
+        Command::Region { addr } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
+            let addr = resolve(&addr, &modules)?;
+            let r = fmlibre_mem::region_at(&process, addr).with_context(|| format!("{addr:#x} is not mapped"))?;
+            println!(
+                "{addr:#x} is in {:#x}..{:#x} ({:#x} bytes), allocated at {:#x}; {} {}{}",
+                r.base,
+                r.end(),
+                r.size,
+                r.allocation_base,
+                r.protection(),
+                if r.is_image() {
+                    "image"
+                } else if r.is_private() {
+                    "private"
+                } else {
+                    "mapped"
+                },
+                if r.is_committed() { "" } else { ", not committed" }
+            );
+            dump(&process, &modules, r.allocation_base, 0x40)
+        }
+        Command::Holders { addr, max } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
+            holders(&process, &modules, resolve(&addr, &modules)?, max)
+        }
+        Command::Lists { addr, len } => {
+            let modules = list_modules(process.pid()).context("listing modules")?;
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            lists(&session, &modules, resolve(&addr, &modules)?, parse_hex(&len)?)
+        }
     }
+}
+
+// ---------------------------------------------------------------------------
+// refs and lists
+
+/// Prints every 8-byte-aligned value in readable memory that points into `addr..addr + span`.
+fn refs(process: &Process, modules: &[Module], addr: u64, span: u64, max: usize) -> Result<()> {
+    ensure!(span > 0, "the span is empty");
+    const CHUNK: u64 = 8 << 20;
+    let started = Instant::now();
+    let (mut scanned, mut hits) = (0u64, 0usize);
+
+    'regions: for region in regions(process, 0x1_0000, 0x7FFF_FFFF_0000).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            let len = (region.size - offset).min(CHUNK);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                for (i, word) in chunk.as_chunks::<8>().0.iter().enumerate() {
+                    let value = u64::from_le_bytes(*word);
+                    if value.wrapping_sub(addr) >= span {
+                        continue;
+                    }
+                    let at = base + (i * 8) as u64;
+                    let into = if value == addr { String::new() } else { format!("+{:#x}", value - addr) };
+                    println!("{at:#014x}  {:<34} {into:<7} {}", describe_address(at, modules), neighbours(process, at));
+                    hits += 1;
+                    if hits >= max {
+                        break 'regions;
+                    }
+                }
+            }
+            scanned += len;
+            offset += CHUNK;
+        }
+    }
+    println!(
+        "{hits} hit(s){}; scanned {:.0} MiB in {:.1} s.",
+        if hits >= max { " (stopped at --max)" } else { "" },
+        scanned as f64 / 1_048_576.0,
+        started.elapsed().as_secs_f64()
+    );
+    Ok(())
+}
+
+/// Prints every (begin, end) pair in readable memory whose array holds the slot at `addr`,
+/// with the nearest vtable before the pair: the class of the object that owns the array.
+fn holders(process: &Process, modules: &[Module], addr: u64, max: usize) -> Result<()> {
+    const CHUNK: u64 = 8 << 20;
+    // Longer arrays are the game-wide ones, and random words make false pairs that long.
+    const LONGEST: u64 = 8 * 20_000;
+    let started = Instant::now();
+    let mut hits = 0usize;
+
+    'regions: for region in regions(process, 0x1_0000, 0x7FFF_FFFF_0000).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            // One extra word, so that a pair split by the chunk boundary is still seen.
+            let len = (region.size - offset).min(CHUNK + 8);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                let words: Vec<u64> = chunk.as_chunks::<8>().0.iter().map(|w| u64::from_le_bytes(*w)).collect();
+                for (i, pair) in words.windows(2).enumerate() {
+                    let (begin, end) = (pair[0], pair[1]);
+                    if begin > addr
+                        || addr >= end
+                        || end - begin > LONGEST
+                        || !begin.is_multiple_of(8)
+                        || !(addr - begin).is_multiple_of(8)
+                    {
+                        continue;
+                    }
+                    let at = base + (i * 8) as u64;
+                    let owner = (1..=0x80u64)
+                        .map(|back| at - back * 8)
+                        .find_map(|slot| {
+                            let value = process.read_u64(slot).ok()?;
+                            let module = modules.iter().find(|m| m.contains(value) && m.name == GAME_PLUGIN)?;
+                            Some(format!("vtable {}+{:#x} at -{:#x}", module.name, value - module.base, at - slot))
+                        })
+                        .unwrap_or_default();
+                    println!(
+                        "{at:#014x}  {:<34} index {} of {}  {owner}",
+                        describe_address(at, modules),
+                        (addr - begin) / 8,
+                        (end - begin) / 8
+                    );
+                    hits += 1;
+                    if hits >= max {
+                        break 'regions;
+                    }
+                }
+            }
+            offset += CHUNK;
+        }
+    }
+    println!("{hits} pair(s) in {:.1} s.", started.elapsed().as_secs_f64());
+    Ok(())
+}
+
+/// Reads the player list of every team (team + 0x38: begin, end, capacity) and reports,
+/// per list length, the spacing of list buffers that share a 64 KiB page: a slab
+/// allocator puts blocks of one size class at multiples of that size.
+fn squads(session: &Session) -> Result<()> {
+    let process = &session.process;
+    let mut lists: Vec<(u64, u64, u64)> = Vec::new(); // (begin, length, capacity)
+    let mut teams = 0;
+    for club in session.clubs()? {
+        let Ok(begin) = process.read_u64(club.address + session.layout.club.teams) else { continue };
+        let Ok(end) = process.read_u64(club.address + session.layout.club.teams + 8) else { continue };
+        if !is_user_pointer(begin) || end < begin || end - begin > 8 * 16 {
+            continue;
+        }
+        for i in 0..(end - begin) / 8 {
+            let Ok(team) = process.read_u64(begin + i * 8) else { continue };
+            let Ok(words) = process.read_bytes(team + 0x38, 24) else { continue };
+            let w: Vec<u64> = words.as_chunks::<8>().0.iter().map(|w| u64::from_le_bytes(*w)).collect();
+            teams += 1;
+            if is_user_pointer(w[0]) && w[1] > w[0] && w[2] >= w[1] {
+                lists.push((w[0], (w[1] - w[0]) / 8, (w[2] - w[0]) / 8));
+            }
+        }
+    }
+    let with_room = lists.iter().filter(|l| l.2 > l.1).count();
+    println!("{teams} teams, {} non-empty lists, {with_room} with capacity above their length", lists.len());
+
+    // Which team lists hold each player: the team the player is at, the contract's team, both, neither.
+    let mut listed: std::collections::HashMap<u64, Vec<u64>> = std::collections::HashMap::new();
+    for club in session.clubs()? {
+        let teams_at = club.address + session.layout.club.teams;
+        let (Ok(begin), Ok(end)) = (process.read_u64(teams_at), process.read_u64(teams_at + 8)) else { continue };
+        if !is_user_pointer(begin) || end < begin || end - begin > 8 * 16 {
+            continue;
+        }
+        for i in 0..(end - begin) / 8 {
+            let Ok(team) = process.read_u64(begin + i * 8) else { continue };
+            let (Ok(b), Ok(e)) = (process.read_u64(team + 0x38), process.read_u64(team + 0x40)) else { continue };
+            if !is_user_pointer(b) || e <= b || e - b > 8 * 5000 {
+                continue;
+            }
+            for element in process.read_bytes(b, (e - b) as usize).unwrap_or_default().as_chunks::<8>().0 {
+                listed.entry(u64::from_le_bytes(*element)).or_default().push(team);
+            }
+        }
+    }
+    let (mut at_team, mut at_contract, mut both, mut neither, mut extra) = (0, 0, 0, 0, 0);
+    let pl = &session.layout.player;
+    for player in session.players()? {
+        let team = process.read_u64(player.address + pl.team).unwrap_or(0);
+        let contract = process.read_u64(player.address + pl.at(pl.contract, player.shift)).unwrap_or(0);
+        let contract_team = if is_user_pointer(contract) {
+            process.read_u64(contract + session.layout.contract.team).unwrap_or(0)
+        } else {
+            0
+        };
+        let lists = listed.get(&player.address).map(Vec::as_slice).unwrap_or_default();
+        let (in_team, in_contract) = (lists.contains(&team), lists.contains(&contract_team));
+        match (in_team, in_contract) {
+            (true, true) => both += 1,
+            (true, false) => at_team += 1,
+            (false, true) => at_contract += 1,
+            (false, false) => neither += 1,
+        }
+        if lists.iter().any(|t| *t != team && *t != contract_team) {
+            extra += 1;
+        }
+    }
+    println!(
+        "team lists: {both} players listed at both their team and their contract's team, {at_team} only at \
+         their team, {at_contract} only at their contract's team, {neither} at neither, {extra} also elsewhere"
+    );
+
+    // How players, their contracts and the two team pointers of a contract relate.
+    let p = &session.layout.player;
+    let (mut no_contract, mut same, mut loaned, mut split, mut no_team, mut sibling) = (0, 0, 0, 0, 0, 0);
+    let club_of = |team: u64| process.read_u64(team + session.layout.team.club).unwrap_or(0);
+    let mut examples: Vec<String> = Vec::new();
+    for player in session.players()? {
+        let team = process.read_u64(player.address + p.team).unwrap_or(0);
+        let contract = process.read_u64(player.address + p.at(p.contract, player.shift)).unwrap_or(0);
+        if !is_user_pointer(contract) {
+            no_contract += 1;
+            continue;
+        }
+        let first = process.read_u64(contract + session.layout.contract.team).unwrap_or(0);
+        let second = process.read_u64(contract + session.layout.contract.team + 8).unwrap_or(0);
+        if !is_user_pointer(team) {
+            no_team += 1;
+        } else if first != second {
+            split += 1;
+            if examples.len() < 5 {
+                examples.push(format!("{} ({:?})", player.name, player.club));
+            }
+        } else if team == first {
+            same += 1;
+        } else if club_of(team) == club_of(first) {
+            sibling += 1;
+        } else {
+            loaned += 1;
+        }
+    }
+    println!(
+        "players: {no_contract} without a contract, {no_team} with a contract but no team, {same} at their \
+         contract's team, {sibling} at another team of the same club, {loaned} at another club (on loan?), \
+         {split} whose contract names two teams"
+    );
+    if !examples.is_empty() {
+        println!("  two teams: {}", examples.join(", "));
+    }
+
+    // GCD of the distances between lists of the same length on the same 64 KiB page.
+    let mut by_length: std::collections::BTreeMap<u64, Vec<u64>> = std::collections::BTreeMap::new();
+    for &(begin, len, _) in &lists {
+        by_length.entry(len).or_default().push(begin);
+    }
+    fn gcd(a: u64, b: u64) -> u64 {
+        if b == 0 { a } else { gcd(b, a % b) }
+    }
+    println!("length  lists  spacing (bytes, gcd on shared pages)  zeroed slack after the end (slots)");
+    for (len, mut begins) in by_length {
+        begins.sort_unstable();
+        let mut g = 0;
+        for pair in begins.windows(2) {
+            if pair[1] - pair[0] < 0x10000 && pair[1] >> 16 == pair[0] >> 16 {
+                g = gcd(g, pair[1] - pair[0]);
+            }
+        }
+        // How many words after the end are zero, at most 8, for the first few lists.
+        let slack: Vec<String> = begins
+            .iter()
+            .take(6)
+            .map(|&b| {
+                let after = process.read_bytes(b + len * 8, 64).unwrap_or_default();
+                after.as_chunks::<8>().0.iter().take_while(|w| u64::from_le_bytes(**w) == 0).count().to_string()
+            })
+            .collect();
+        println!(
+            "{len:>6}  {:>5}  {:>6}  {}",
+            begins.len(),
+            if g == 0 { "-".to_owned() } else { g.to_string() },
+            slack.join(" ")
+        );
+    }
+    Ok(())
+}
+
+/// The two 64-bit values on either side of `at`, to tell arrays and objects apart.
+fn neighbours(process: &Process, at: u64) -> String {
+    let word = |addr: u64| process.read_u64(addr).map_or_else(|_| "?".to_owned(), |v| format!("{v:#x}"));
+    format!("[{} {} | {} {}]", word(at - 16), word(at - 8), word(at + 8), word(at + 16))
+}
+
+/// Prints the (begin, end) pointer arrays found inside the object at `addr`, with the
+/// players, staff, clubs and contracts among their elements named.
+fn lists(session: &Session, modules: &[Module], addr: u64, len: u64) -> Result<()> {
+    let process = &session.process;
+    let names = object_names(session)?;
+    let bytes =
+        process.read_bytes(addr, len as usize).with_context(|| format!("reading {len:#x} bytes at {addr:#x}"))?;
+    let words: Vec<u64> = bytes.as_chunks::<8>().0.iter().map(|w| u64::from_le_bytes(*w)).collect();
+    println!("{} ({len:#x} bytes)", describe_address(addr, modules));
+
+    for (i, pair) in words.windows(3).enumerate() {
+        let (begin, end) = (pair[0], pair[1]);
+        if !is_user_pointer(begin) || end <= begin || !(end - begin).is_multiple_of(8) || end - begin > 8 * 5000 {
+            continue;
+        }
+        let count = (end - begin) / 8;
+        let Ok(elements) = process.read_bytes(begin, (count * 8) as usize) else {
+            continue;
+        };
+        let named: Vec<&str> = elements
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .filter_map(|e| names.get(&u64::from_le_bytes(*e)).map(String::as_str))
+            .collect();
+        let capacity = pair[2];
+        let capacity = if capacity >= end && (capacity - begin).is_multiple_of(8) && capacity - begin <= 8 * 10000 {
+            format!(", room for {}", (capacity - begin) / 8)
+        } else {
+            String::new()
+        };
+        let sample: Vec<&str> = named.iter().take(4).copied().collect();
+        println!(
+            "  +{:#05x}  {count:>5} at {begin:#x}{capacity}; {} named{}{}",
+            i * 8,
+            named.len(),
+            if sample.is_empty() { "" } else { ": " },
+            sample.join(", ")
+        );
+    }
+    Ok(())
+}
+
+/// Names for the addresses of players, staff, their person blocks and contracts, and clubs.
+fn object_names(session: &Session) -> Result<std::collections::HashMap<u64, String>> {
+    let process = &session.process;
+    let (p, s) = (&session.layout.player, &session.layout.staff);
+    let mut names = std::collections::HashMap::new();
+    for player in session.players()? {
+        let block = player.address + p.person_block + player.shift;
+        if let Ok(contract) = process.read_u64(player.address + p.at(p.contract, player.shift)) {
+            names.insert(contract, format!("contract of {}", player.name));
+        }
+        names.insert(block, format!("person block of {}", player.name));
+        names.insert(player.address, format!("player {}", player.name));
+    }
+    for member in session.staff()? {
+        let block = member.address + s.person_block + member.shift;
+        if let Ok(contract) = process.read_u64(member.address + s.at(s.contract, member.shift)) {
+            names.insert(contract, format!("contract of staff {}", member.name));
+        }
+        names.insert(block, format!("person block of staff {}", member.name));
+        names.insert(member.address, format!("staff {}", member.name));
+    }
+    for club in session.clubs()? {
+        names.insert(club.address, format!("club {}", club.name));
+    }
+    names.remove(&0);
+    Ok(names)
 }
 
 // ---------------------------------------------------------------------------
@@ -631,6 +1048,15 @@ fn player(session: &Session, uid: u32) -> Result<()> {
     if summary.shift != 0 {
         println!("  layout         person block shifted by {:#x} (player-coach)", summary.shift);
     }
+    let p = &session.layout.player;
+    let pointer = |offset: u64| session.process.read_u64(summary.address + p.at(offset, summary.shift)).unwrap_or(0);
+    println!(
+        "  addresses      object {:#x}, person block {:#x}, team {:#x}, contract {:#x}",
+        summary.address,
+        summary.address + p.person_block + summary.shift,
+        pointer(p.team),
+        pointer(p.contract)
+    );
 
     println!();
     for (group, keys) in ATTRIBUTE_GROUPS {
@@ -906,6 +1332,35 @@ fn set(
     Ok(())
 }
 
+fn move_player(session: &Session, uid: u32, club: u32, terms: MoveTerms, restore: bool, hold: u64) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let to = clubs.get(club).with_context(|| format!("no club with UID {club}"))?;
+    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
+    let plan = session.plan_club_move(player, to, terms, &human)?;
+    let from = clubs.get(plan.from_club).map_or("?", |c| c.name.as_str());
+    println!("{} (UID {uid}): {from} -> {}, {} writes", player.name, to.name, plan.writes());
+
+    let done = session.apply_club_move(&plan)?;
+    // Read him again as the lists would, from the team he now plays for.
+    let club_now = |label: &str| -> Result<Option<u32>> {
+        let now = session.players()?.into_iter().find(|p| p.uid == uid).context("the player is gone")?;
+        println!("  {label} {}", now.club.as_deref().unwrap_or("-"));
+        Ok(now.club_uid)
+    };
+    ensure!(club_now("now at")? == Some(club), "the player does not read as being at {}", to.name);
+    if restore {
+        if hold > 0 {
+            println!("  moving him back in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
+        session.undo_club_move(&done)?;
+        ensure!(club_now("moved back to")? == Some(plan.from_club), "the player is not back at {from}");
+    }
+    Ok(())
+}
+
 fn clubs(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
     let started = Instant::now();
     let index = ClubIndex::new(session.clubs()?);
@@ -940,6 +1395,8 @@ fn club(session: &Session, uid: u32) -> Result<()> {
     let d = session.club_details(summary)?.context("the club's data changed while reading; try again")?;
     let c = &d.summary;
     println!("{} (UID {}){}", c.name, c.uid, if c.women { ", women's club" } else { "" });
+    let teams = session.process.read_u64(summary.address + session.layout.club.teams).unwrap_or(0);
+    println!("  addresses      object {:#x}, teams {teams:#x}", summary.address);
     println!("  short name     {}", c.short_name.as_deref().unwrap_or("-"));
     println!("  reputation     {}", c.reputation.map_or_else(|| "-".to_owned(), |r| r.to_string()));
     println!("  founded        {}", c.founded.map_or_else(|| "-".to_owned(), |y| y.to_string()));

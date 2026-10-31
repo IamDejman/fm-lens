@@ -330,6 +330,25 @@ export interface LoggedChange {
   undoneAt: number | null;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
+  /**
+   * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
+   * values are the clubs' UIDs: the clubs' names.
+   */
+  moved?: { from: string; to: string };
+}
+
+/** The contract a move to another club gives the player, as stored; what is left out stays as it is. */
+export interface MoveTerms {
+  /** Pounds per week. */
+  wage?: number;
+  /** A date as a number like 20290630; it must come after the game's date. */
+  expires?: number;
+}
+
+/** From `plan_club_move`: the move can be made, between these clubs. */
+export interface MovePreview {
+  from: { uid: number; name: string };
+  to: { uid: number; name: string };
 }
 
 /** An edit `apply_edits` refused; it changed nothing. */

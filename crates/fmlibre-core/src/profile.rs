@@ -20,6 +20,7 @@ pub struct Layout {
     pub club_info: ClubInfoLayout,
     pub club_finance: ClubFinanceLayout,
     pub nation: NationLayout,
+    pub heap: HeapLayout,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -108,6 +109,8 @@ pub struct ContractLayout {
     pub listing: u64,
     pub squad_number: u64,
     pub team: u64,
+    /// The employer's senior team: the same as `team` but for player-coaches.
+    pub senior_team: u64,
     pub job: u64,
 }
 
@@ -124,6 +127,7 @@ impl ContractLayout {
             self.listing + 1,
             self.squad_number + 1,
             self.team + 8,
+            self.senior_team + 8,
             self.job + 1,
         ]
         .into_iter()
@@ -201,6 +205,8 @@ impl StaffLayout {
 #[serde(deny_unknown_fields)]
 pub struct TeamLayout {
     pub club: u64,
+    /// The team's player pointers as `(begin, end, capacity)`.
+    pub players: u64,
     pub reputation: u64,
 }
 
@@ -302,6 +308,26 @@ pub struct NationLayout {
     pub name: u64,
 }
 
+/// What the game's allocator does with the blocks it hands out.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeapLayout {
+    /// Block sizes in bytes, ascending. A buffer of more than the first size and up to the last one sits in
+    /// the smallest block at least as large as it; outside that span the block size is not known.
+    pub block_sizes: Vec<u64>,
+}
+
+impl HeapLayout {
+    /// The size of the block that holds a buffer of `bytes`, where that is known.
+    pub fn block_size(&self, bytes: u64) -> Option<u64> {
+        let (&smallest, sizes) = self.block_sizes.split_first()?;
+        if bytes <= smallest {
+            return None;
+        }
+        sizes.iter().copied().find(|&size| size >= bytes)
+    }
+}
+
 /// Addresses that change with every build of `game_plugin.dll`.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -376,6 +402,15 @@ mod tests {
         assert_eq!(layout.player.uid, 0x294);
         assert_eq!(layout.player.at(layout.player.uid, 0xF8), 0x38C);
         assert_eq!(layout.player.at(layout.player.team, 0xF8), 0x130);
+
+        // Lists measured on the test save: 19 pointers in 160 bytes, 29 in 256, 33 to 36 in 288, 41 in 384.
+        assert_eq!(layout.heap.block_size(19 * 8), Some(160));
+        assert_eq!(layout.heap.block_size(29 * 8), Some(256));
+        assert_eq!(layout.heap.block_size(33 * 8), Some(288));
+        assert_eq!(layout.heap.block_size(36 * 8), Some(288));
+        assert_eq!(layout.heap.block_size(41 * 8), Some(384));
+        assert_eq!(layout.heap.block_size(18 * 8), None);
+        assert_eq!(layout.heap.block_size(65 * 8), None);
 
         let fingerprint = PluginFingerprint { size_of_image: 0x1943_6000, link_timestamp: 0x6ADF_B161 };
         let profile = profile_for(fingerprint).expect("Game Pass 0.9.2355.0 profile");

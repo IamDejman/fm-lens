@@ -14,6 +14,8 @@ import type {
   MassOperation,
   MassPreview,
   MassReport,
+  MovePreview,
+  MoveTerms,
 } from "./types";
 
 /** The fields of players or of staff the editor can change, in display order. */
@@ -96,3 +98,14 @@ export const applyMassEdit = (id: number) => call<MassReport>("apply_mass_edit",
 
 /** Undoes every change of a mass edit that is not undone yet. */
 export const undoBatch = (batch: number) => call<BatchUndo>("undo_batch", { batch });
+
+/**
+ * Checks that the player `uid` can move to the club `club` on `terms`, and names both clubs. Nothing is written;
+ * when he cannot move, the error says why (a loan, a club a human manager runs, a squad list with no room, ...).
+ */
+export const planClubMove = (uid: number, club: number, terms: MoveTerms) =>
+  call<MovePreview>("plan_club_move", { uid, club, terms });
+
+/** Moves the player to the senior team of the club on `terms`; the move is logged and undone like any change. */
+export const movePlayer = (uid: number, club: number, terms: MoveTerms) =>
+  call<LoggedChange>("move_player", { uid, club, terms });

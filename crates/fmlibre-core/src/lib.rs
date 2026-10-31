@@ -19,6 +19,7 @@ mod scan;
 mod session;
 mod staff;
 mod text;
+mod transfer;
 
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clubs::{
@@ -47,3 +48,4 @@ pub use staff::{
     read_staff_details,
 };
 pub use text::{fold, is_name_like, read_fm_string, read_name_entry};
+pub use transfer::{ClubMove, MoveError, MovePlan, MoveTerms};
