@@ -14,6 +14,7 @@ import type {
   Failure,
   FmDate,
   GameInfo,
+  Injury,
   PlayerDetails,
   PlayerFilter,
   PlayerOrder,
@@ -200,7 +201,37 @@ function details(player: PlayerSummary): PlayerDetails {
           }),
         }
       : null,
+    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more), happiness 0–20.
+    condition: Math.round(7000 + next() * 3000),
+    matchSharpness: Math.round(3500 + next() * 6500),
+    happiness: Math.round(4 + next() * 16),
+    injuries: injuriesOf(player.uid),
   });
+}
+
+/** The fixture players healed through the editor, by UID, while the healing is not undone. */
+const healedPlayers = new Set<number>();
+
+/** `date` moved on by `days`. */
+function addDays(date: FmDate, days: number): FmDate {
+  const moved = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+  return { year: moved.getUTCFullYear(), month: moved.getUTCMonth() + 1, day: moved.getUTCDate() };
+}
+
+/** The current injuries of a fixture player: every seventh one is injured, some of them twice over, until healed. */
+function injuriesOf(uid: number): Injury[] {
+  if (uid % 7 !== 3 || healedPlayers.has(uid)) {
+    return [];
+  }
+  const injury = (name: string, daysAgo: number, soonest: number, latest: number): Injury => {
+    const started = addDays(GAME_DATE, -daysAgo);
+    return { name, started, backSoonest: addDays(started, soonest), backLatest: addDays(started, latest) };
+  };
+  const injuries = [injury("Hamstring strain", 4, 21, 35)];
+  if (uid % 2 === 0) {
+    injuries.push(injury("Twisted ankle", 1, 7, 12));
+  }
+  return injuries;
 }
 
 /** Job codes as stored in contracts (see labels.ts). */
@@ -325,6 +356,9 @@ function fieldTable(entity: Entity): EditField[] {
       field("international.goals", "u16", 0, 1000),
       field("international.u21_caps", "u8", 0, 255),
       field("international.u21_goals", "u8", 0, 255),
+      field("condition", "u16", 0, 10_000, "percent"),
+      field("match_sharpness", "u16", 3_500, 10_000, "percent"),
+      field("happiness", "u8", 0, 20),
       ...ATTRIBUTES.map((key) => field(`attribute.${key}`, "u8", 1, 100, "attribute")),
       // The game no longer plays a sweeper, so the real table leaves it out.
       ...POSITIONS.filter((key) => key !== "sw").map((key) => field(`position.${key}`, "u8", 1, 20)),
@@ -384,6 +418,15 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "height":
         (d as PlayerDetails).heightCm = value;
+        break;
+      case "condition":
+        (d as PlayerDetails).condition = value;
+        break;
+      case "match_sharpness":
+        (d as PlayerDetails).matchSharpness = value;
+        break;
+      case "happiness":
+        (d as PlayerDetails).happiness = value;
         break;
       case "international":
         (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
@@ -468,6 +511,12 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.potentialAbility;
       case "height":
         return person.heightCm;
+      case "condition":
+        return person.condition;
+      case "match_sharpness":
+        return person.matchSharpness;
+      case "happiness":
+        return person.happiness;
       case "reputation":
         return entity === "club" ? club.reputation : person.reputation[name as "home" | "current" | "world"];
       case "international":
@@ -610,6 +659,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.moved) {
     undoMove(entry);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field === "injuries") {
+    unhealed(entry.uid);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -805,6 +859,40 @@ function undoMove(entry: LoggedChange): void {
     written.delete(`player:${entry.uid}`);
   }
   unmoved(entry.uid);
+}
+
+// Healing -----------------------------------------------------------------------------------------------------------
+
+/** `heal_player`: the fixture player gets over his injuries, logged as a change of his `injuries` to none. */
+function healPlayer(uid: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const injuries = injuriesOf(uid).length;
+  if (injuries === 0) {
+    throw failure("heal.notInjured", "the player has no injury to heal");
+  }
+  healedPlayers.add(uid);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "injuries",
+    old: injuries,
+    new: 0,
+    undoneAt: null,
+    batch: null,
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** Lists the injuries of the player `uid` again. */
+function unhealed(uid: number): void {
+  healedPlayers.delete(uid);
 }
 
 // Mass edits --------------------------------------------------------------------------------------------------------
@@ -1188,6 +1276,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return movePlayer(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
     case "plan_club_swap":
       return planSwap(Number(args?.uid), Number(args?.other)) as T;
+    case "heal_player":
+      return healPlayer(Number(args?.uid)) as T;
     case "swap_players":
       return swapPlayers(Number(args?.uid), Number(args?.other)) as T;
     default:
