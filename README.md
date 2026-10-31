@@ -2,10 +2,11 @@
 
 A free, open-source real-time editor for **Football Manager 27**, built Game Pass first.
 
-> **Status: pre-alpha.** Nothing here edits the game yet. The app lists, searches,
-> filters and sorts every player, member of staff and club of a running FM27 (Game
-> Pass build) and shows their profiles (attributes, positions, personality,
-> contracts, facilities, supporters, finances), read-only. Editing comes next.
+> **Status: pre-alpha.** The app lists, searches, filters and sorts every player,
+> member of staff and club of a running FM27 (Game Pass build) and shows their
+> profiles (attributes, positions, personality, contracts, facilities, supporters,
+> finances), read-only. Editing has started in the probe: it changes one checked
+> field of a player or member of staff at a time. The app gets editing next.
 
 ## Goals
 
@@ -23,16 +24,25 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 FM27's interface is Unity (IL2CPP), but the game itself, its database and
 simulation, lives in a native, anti-tamper protected module: `game_plugin.dll`.
 FMLibreEditor runs as a separate process and reads that module's heap data with
-`ReadProcessMemory` (writing comes later). It never injects code and never patches
-the game's code.
+`ReadProcessMemory`. To edit, it writes single values back with `WriteProcessMemory`,
+and only into the game's heap. It never injects code and never patches the game's
+code.
+
+Before every write it checks four things:
+- the object still belongs to the same person;
+- the new value is one the field can take;
+- the current value looks like that field's (otherwise the layout does not fit);
+- the value reads back as written.
+
+If any check fails, nothing changes.
 
 ## Repository layout
 
 | Path | Contents |
 |---|---|
-| `crates/fmlibre-mem` | Windows process access: processes, modules, memory regions, PE headers |
-| `crates/fmlibre-core` | Football Manager logic: game detection, calibration, decoders, players |
-| `crates/fmlibre-probe` | Read-only command-line probe |
+| `crates/fmlibre-mem` | Windows process access: processes, modules, memory regions, PE headers, guarded writes |
+| `crates/fmlibre-core` | Football Manager logic: game detection, calibration, decoders, editable fields |
+| `crates/fmlibre-probe` | Command-line probe |
 | `profiles/` | Object layouts per edition and addresses per game build |
 | `app/` | Tauri 2 desktop app (React + TypeScript) |
 | `docs/` | Roadmap and reverse-engineering notes |
@@ -67,6 +77,9 @@ fmlibre-probe players --position st --max-age 20 --min-pa 170 --sort pa   # wond
 fmlibre-probe player 7458500                         # everything read for one player
 fmlibre-probe staff arteta                           # search staff; staff-member <id> for details
 fmlibre-probe clubs tottenham                        # search clubs; club <uid> for details
+fmlibre-probe fields player                          # what the editor can change (also: staff)
+fmlibre-probe get player 7458500                     # those fields' values for one player
+fmlibre-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
 fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
 fmlibre-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0
@@ -77,8 +90,12 @@ fmlibre-probe find "c7 80 ea 07" --as hex --module game_plugin.dll
 
 Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `scan`
 to save the results. `calibrate --scan` ignores the build profile and finds the
-arrays the way it would on an unknown build. The probe only reads memory. If
-Windows denies access, run it from an administrator terminal.
+arrays the way it would on an unknown build.
+
+Only `set` writes to the game. It changes one field after the checks above. Values
+are as stored: attributes run 0–100, or 1–20 with `--shown`. `set --restore` writes
+the old value back straight away, to test a field without changing the save. If
+Windows denies access, run the probe from an administrator terminal.
 
 ## Safety
 

@@ -1,5 +1,5 @@
 //! Football Manager specific logic shared by the probe and the app: recognising a
-//! running game, locating its entity arrays and decoding what they hold.
+//! running game, locating its entity arrays, decoding what they hold and changing it.
 
 #![cfg(windows)]
 
@@ -7,6 +7,7 @@ mod calibrate;
 mod clubs;
 mod date;
 mod details;
+mod edit;
 mod filter;
 mod game;
 mod index;
@@ -26,6 +27,7 @@ pub use details::{
     ATTRIBUTE_GROUPS, Attribute, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
     read_player_details,
 };
+pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use filter::{ClubFilter, PlayerFilter, PlayerOrder, PlayerSort, StaffFilter, sort_players};
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use index::{Listed, SearchIndex};

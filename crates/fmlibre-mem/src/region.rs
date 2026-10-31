@@ -1,8 +1,9 @@
 use std::ffi::c_void;
 
 use windows_sys::Win32::System::Memory::{
-    MEM_COMMIT, MEM_IMAGE, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE,
-    PAGE_EXECUTE_WRITECOPY, PAGE_GUARD, PAGE_NOACCESS, PAGE_READWRITE, PAGE_WRITECOPY, VirtualQueryEx,
+    MEM_COMMIT, MEM_IMAGE, MEM_PRIVATE, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE, PAGE_EXECUTE_READ,
+    PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, PAGE_GUARD, PAGE_NOACCESS, PAGE_READWRITE, PAGE_WRITECOPY,
+    VirtualQueryEx,
 };
 
 use crate::process::Process;
@@ -29,6 +30,16 @@ impl Region {
 
     pub fn is_image(&self) -> bool {
         self.kind == MEM_IMAGE
+    }
+
+    /// Memory the process allocated for itself (heaps), as opposed to a mapped file or module.
+    pub fn is_private(&self) -> bool {
+        self.kind == MEM_PRIVATE
+    }
+
+    /// Whether the editor may write here: committed heap data, writable and not executable.
+    pub fn holds_data(&self) -> bool {
+        self.is_private() && self.is_writable() && !self.is_executable()
     }
 
     pub fn is_readable(&self) -> bool {
@@ -61,23 +72,30 @@ pub fn regions(process: &Process, start: u64, end: u64) -> Vec<Region> {
     let mut out = Vec::new();
     let mut addr = start;
     while addr < end {
-        let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
-        let written = unsafe {
-            VirtualQueryEx(process.raw_handle(), addr as *const c_void, &mut mbi, size_of::<MEMORY_BASIC_INFORMATION>())
-        };
-        if written == 0 || mbi.RegionSize == 0 {
+        let Some(region) = region_at(process, addr) else {
             break;
-        }
-        let region = Region {
-            base: mbi.BaseAddress as u64,
-            size: mbi.RegionSize as u64,
-            allocation_base: mbi.AllocationBase as u64,
-            state: mbi.State,
-            protect: mbi.Protect,
-            kind: mbi.Type,
         };
         out.push(region);
         addr = region.end();
     }
     out
+}
+
+/// The region that contains `addr`.
+pub fn region_at(process: &Process, addr: u64) -> Option<Region> {
+    let mut mbi: MEMORY_BASIC_INFORMATION = unsafe { std::mem::zeroed() };
+    let written = unsafe {
+        VirtualQueryEx(process.raw_handle(), addr as *const c_void, &mut mbi, size_of::<MEMORY_BASIC_INFORMATION>())
+    };
+    if written == 0 || mbi.RegionSize == 0 {
+        return None;
+    }
+    Some(Region {
+        base: mbi.BaseAddress as u64,
+        size: mbi.RegionSize as u64,
+        allocation_base: mbi.AllocationBase as u64,
+        state: mbi.State,
+        protect: mbi.Protect,
+        kind: mbi.Type,
+    })
 }

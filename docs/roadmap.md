@@ -48,10 +48,19 @@ before trusting them.
   with its own icon, no installer. The first public release is the maintainer's
   call.
 
-## Phase 4: editing (next)
+## Phase 4: editing (in progress)
 
-- Writes with validation, pending-changes review, undo history and a change log.
-- Mass editing with a preview.
+- [x] Guarded writes, heap only. Editable fields for players are CA/PA,
+  attributes, positions, personality, height, reputation and caps. For staff they
+  are CA/PA, attributes, personality and reputation.
+  - Every write re-checks the target and the field's range, and is read back.
+  - Undo works when the game has not changed the value since.
+  - The probe has `fields`, `get` and `set`. Each field was written, read back and
+    restored live on the test save.
+- [ ] Editing in the app: edit mode in the profiles, a pending-changes review,
+  undo history and a change log.
+- [ ] Contracts and club finances.
+- [ ] Mass editing with a preview.
 
 ## Phase 5: polish and reach
 

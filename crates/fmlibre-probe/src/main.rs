@@ -1,7 +1,8 @@
-//! `fmlibre-probe`: a read-only look inside a running Football Manager process.
+//! `fmlibre-probe`: a look inside a running Football Manager process.
 //!
-//! It never writes to the game. Use it to check that FMLibreEditor can attach to
-//! a given build (Steam, Epic, Game Pass) and to map where the game keeps its data.
+//! Use it to check that FMLibreEditor can attach to a given build (Steam, Epic, Game
+//! Pass) and to map where the game keeps its data. Only `set` writes to the game, one
+//! field at a time, through the same checks as the app.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -10,10 +11,10 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
-    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, PERSONALITY,
-    POSITIONS, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX,
-    SUPPORTER_TRAITS, ScanOptions, Session, SessionError, StaffIndex, find_game, job_name, scan_object_arrays,
-    sort_players,
+    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, Entity, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo,
+    PERSONALITY, POSITIONS, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX,
+    SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, find_game, job_name,
+    scan_object_arrays, sort_players,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -24,7 +25,7 @@ const KEY_MODULES: [&str; 4] = [GAME_EXE, "UnityPlayer.dll", "GameAssembly.dll",
 #[command(
     name = "fmlibre-probe",
     version,
-    about = "Read-only probe for a running Football Manager 27 process.",
+    about = "Probe for a running Football Manager 27 process. Only `set` writes to the game.",
     after_help = "Addresses and lengths are hexadecimal; ADDR is 0x... or module.dll+0x...; INDEX is decimal."
 )]
 struct Cli {
@@ -91,6 +92,41 @@ enum Command {
         #[command(flatten)]
         filter: PlayerFilterArgs,
     },
+    /// List the fields the editor can change, or with --stats check them against every object.
+    Fields {
+        #[arg(value_enum)]
+        entity: EntityArg,
+        /// Read every player or member of staff and show the values each field holds.
+        #[arg(long)]
+        stats: bool,
+    },
+    /// Show the editable fields of one player or member of staff.
+    Get {
+        #[arg(value_enum)]
+        entity: EntityArg,
+        /// UID of the player, or staff id.
+        uid: u32,
+        /// Field keys, from `fields`; all fields when none are given.
+        fields: Vec<String>,
+    },
+    /// Change one field of a player or member of staff in the running game.
+    Set {
+        #[arg(value_enum)]
+        entity: EntityArg,
+        /// UID of the player, or staff id.
+        uid: u32,
+        /// The field's key, from `fields`.
+        field: String,
+        /// The new value as stored (attributes 0-100), or as shown with --shown (1-20).
+        #[arg(allow_negative_numbers = true)]
+        value: i64,
+        /// VALUE is as the game shows it.
+        #[arg(long)]
+        shown: bool,
+        /// Write the old value back afterwards and check it: tests a field without changing the save.
+        #[arg(long)]
+        restore: bool,
+    },
     /// Find (begin, end) arrays of game objects in game_plugin.dll and count their vtables.
     Scan {
         /// Smallest array to report.
@@ -154,6 +190,21 @@ enum Command {
 }
 
 #[derive(Clone, Copy, ValueEnum)]
+enum EntityArg {
+    Player,
+    Staff,
+}
+
+impl From<EntityArg> for Entity {
+    fn from(arg: EntityArg) -> Self {
+        match arg {
+            EntityArg::Player => Entity::Player,
+            EntityArg::Staff => Entity::Staff,
+        }
+    }
+}
+
+#[derive(Clone, Copy, ValueEnum)]
 enum PatternKind {
     /// Text, matched as UTF-8 and as UTF-16LE.
     Text,
@@ -202,7 +253,8 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> Result<()> {
     let elevated = is_current_process_elevated();
-    let process = attach(cli.pid, elevated)?;
+    let writes = matches!(cli.command, Some(Command::Set { .. }));
+    let process = attach(cli.pid, elevated, writes)?;
     let json = cli.json.as_deref();
 
     match cli.command.unwrap_or(Command::Info) {
@@ -225,6 +277,16 @@ fn run(cli: Cli) -> Result<()> {
         Command::Club { uid } => club(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Players { text, limit, filter } => {
             players(&Session::connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit, &filter)
+        }
+        Command::Fields { entity, stats } => {
+            fields(&Session::connect(process, ArraySource::ProfileFirst)?, entity.into(), stats)
+        }
+        Command::Get { entity, uid, fields } => {
+            get(&Session::connect(process, ArraySource::ProfileFirst)?, entity.into(), uid, &fields)
+        }
+        Command::Set { entity, uid, field, value, shown, restore } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            set(&session, entity.into(), uid, &field, value, shown, restore)
         }
         Command::Scan { min, max, top } => {
             let (game, modules) = inspect(&process)?;
@@ -350,12 +412,13 @@ fn parse_number(text: &str) -> Result<u64> {
     }
 }
 
-fn attach(pid: Option<u32>, elevated: bool) -> Result<Process> {
+fn attach(pid: Option<u32>, elevated: bool, writes: bool) -> Result<Process> {
     let pid = find_game(pid).map_err(|err| match err {
         SessionError::SeveralRunning(_) => anyhow!("{err} with --pid"),
         err => anyhow!(err),
     })?;
-    Process::open_read(pid).map_err(|err| {
+    let opened = if writes { Process::open_read_write(pid) } else { Process::open_read(pid) };
+    opened.map_err(|err| {
         if err.is_access_denied() && !elevated {
             anyhow!("{err}. Run the probe from an administrator terminal and try again.")
         } else {
@@ -655,6 +718,119 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
             iso_date(c.joined)
         ),
         None => println!("  contract       none"),
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// fields / get / set
+
+/// Every player or member of staff, as edit targets with their names.
+fn targets(session: &Session, entity: Entity) -> Result<Vec<(Target, String)>> {
+    Ok(match entity {
+        Entity::Player => session.players()?.into_iter().map(|p| (p.target(), p.name)).collect(),
+        Entity::Staff => session.staff()?.into_iter().map(|s| (s.target(), s.name)).collect(),
+    })
+}
+
+fn find_target(session: &Session, entity: Entity, uid: u32) -> Result<(Target, String)> {
+    targets(session, entity)?
+        .into_iter()
+        .find(|(target, _)| target.uid == uid)
+        .with_context(|| format!("no {entity} with id {uid}"))
+}
+
+/// A stored value, with the value the game shows when that differs.
+fn shown(field: &Field, stored: i64) -> String {
+    match field.scale {
+        Scale::Plain => stored.to_string(),
+        Scale::Attribute => format!("{stored} ({})", field.scale.shown(stored)),
+    }
+}
+
+fn fields(session: &Session, entity: Entity, stats: bool) -> Result<()> {
+    let fields = session.fields(entity);
+    if !stats {
+        println!("{:<34}  {:<4}  {:<9}  {:>6}  {:>6}", "Field", "Type", "Scale", "Min", "Max");
+        for f in &fields {
+            let scale = format!("{:?}", f.scale).to_lowercase();
+            let kind = format!("{:?}", f.kind).to_lowercase();
+            println!("{:<34}  {kind:<4}  {scale:<9}  {:>6}  {:>6}", f.key, f.min, f.max);
+        }
+        return Ok(());
+    }
+
+    let started = Instant::now();
+    let targets = targets(session, entity)?;
+    let mut seen: Vec<(i64, i64, usize)> = vec![(i64::MAX, i64::MIN, 0); fields.len()];
+    let mut read = 0;
+    for (target, _) in &targets {
+        let Ok(values) = session.read_fields(target, &fields) else {
+            continue;
+        };
+        read += 1;
+        for ((low, high, odd), (field, value)) in seen.iter_mut().zip(fields.iter().zip(values)) {
+            *low = (*low).min(value);
+            *high = (*high).max(value);
+            *odd += usize::from(!field.is_plausible(value));
+        }
+    }
+    println!("Read {read} of {} {entity} objects in {:.1} s.", targets.len(), started.elapsed().as_secs_f64());
+    println!();
+    println!("{:<34}  {:>13}  {:>13}  {:>11}", "Field", "Writes", "Found", "Implausible");
+    for (f, (low, high, odd)) in fields.iter().zip(seen) {
+        println!("{:<34}  {:>13}  {:>13}  {odd:>11}", f.key, format!("{}..{}", f.min, f.max), format!("{low}..{high}"));
+    }
+    Ok(())
+}
+
+fn get(session: &Session, entity: Entity, uid: u32, keys: &[String]) -> Result<()> {
+    let (target, name) = find_target(session, entity, uid)?;
+    let fields: Vec<Field> = if keys.is_empty() {
+        session.fields(entity)
+    } else {
+        keys.iter().map(|key| session.field(entity, key)).collect::<Result<_, _>>()?
+    };
+    let values = session.read_fields(&target, &fields)?;
+    println!("{name} ({entity} {uid})");
+    for (field, value) in fields.iter().zip(values) {
+        let note = if field.is_plausible(value) { "" } else { "  (implausible: not writable)" };
+        println!("  {:<34} {}{note}", field.key, shown(field, value));
+    }
+    Ok(())
+}
+
+fn set(
+    session: &Session,
+    entity: Entity,
+    uid: u32,
+    key: &str,
+    value: i64,
+    as_shown: bool,
+    restore: bool,
+) -> Result<()> {
+    let (target, name) = find_target(session, entity, uid)?;
+    let field = session.field(entity, key)?;
+    let stored = if as_shown { field.scale.stored(value) } else { value };
+    let change = session.write_field(&target, &field, stored)?;
+    let read = session.read_field(&target, &field)?;
+    println!("{name} ({entity} {uid})");
+    println!(
+        "  {key}: {} -> {}, reads back {}",
+        shown(&field, change.old),
+        shown(&field, change.new),
+        shown(&field, read)
+    );
+    if restore {
+        let back = session.revert(&target, &change)?;
+        let read = session.read_field(&target, &field)?;
+        ensure!(read == change.old, "{key} reads {read} after restoring {}", change.old);
+        println!(
+            "  restored: {} -> {}, reads back {}",
+            shown(&field, back.old),
+            shown(&field, back.new),
+            shown(&field, read)
+        );
     }
     Ok(())
 }

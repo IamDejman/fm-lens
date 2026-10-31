@@ -4,17 +4,18 @@ use std::path::PathBuf;
 use windows_sys::Win32::Foundation::{APPMODEL_ERROR_NO_PACKAGE, ERROR_INSUFFICIENT_BUFFER, ERROR_SUCCESS, HANDLE};
 use windows_sys::Win32::Security::{GetTokenInformation, TOKEN_ELEVATION, TOKEN_QUERY, TokenElevation};
 use windows_sys::Win32::Storage::Packaging::Appx::GetPackageFullName;
-use windows_sys::Win32::System::Diagnostics::Debug::ReadProcessMemory;
+use windows_sys::Win32::System::Diagnostics::Debug::{ReadProcessMemory, WriteProcessMemory};
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
 use windows_sys::Win32::System::Threading::{
-    GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_NAME_WIN32, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
-    QueryFullProcessImageNameW,
+    GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_ACCESS_RIGHTS, PROCESS_NAME_WIN32,
+    PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE, QueryFullProcessImageNameW,
 };
 
 use crate::error::{Error, Result, last_error};
 use crate::handle::{OwnedHandle, create_snapshot, from_wide};
+use crate::region::region_at;
 
 /// A process seen in a system snapshot; not opened.
 #[derive(Debug, Clone)]
@@ -62,27 +63,44 @@ pub fn is_current_process_elevated() -> bool {
     ok != 0 && elevation.TokenIsElevated != 0
 }
 
-/// A process opened for querying and reading memory. Write access is never requested.
+/// A process opened for querying and reading memory, and for writing it only when
+/// opened with [`Process::open_read_write`].
 pub struct Process {
     handle: OwnedHandle,
     pid: u32,
+    writable: bool,
 }
 
-// Process handles may be used from any thread; ReadProcessMemory is thread-safe.
+// Process handles may be used from any thread; ReadProcessMemory and WriteProcessMemory are thread-safe.
 unsafe impl Send for Process {}
 unsafe impl Sync for Process {}
 
 impl Process {
     pub fn open_read(pid: u32) -> Result<Self> {
-        let handle = unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, pid) };
+        Self::open(pid, PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, false)
+    }
+
+    /// Opens `pid` for reading and also for writing its memory with [`Process::write_bytes`].
+    pub fn open_read_write(pid: u32) -> Result<Self> {
+        let access = PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION;
+        Self::open(pid, access, true)
+    }
+
+    fn open(pid: u32, access: PROCESS_ACCESS_RIGHTS, writable: bool) -> Result<Self> {
+        let handle = unsafe { OpenProcess(access, 0, pid) };
         if handle.is_null() {
             return Err(Error::last("OpenProcess"));
         }
-        Ok(Self { handle: OwnedHandle(handle), pid })
+        Ok(Self { handle: OwnedHandle(handle), pid, writable })
     }
 
     pub fn pid(&self) -> u32 {
         self.pid
+    }
+
+    /// Whether the process was opened for writing.
+    pub fn can_write(&self) -> bool {
+        self.writable
     }
 
     pub(crate) fn raw_handle(&self) -> HANDLE {
@@ -146,5 +164,66 @@ impl Process {
         let mut b = [0u8; 4];
         self.read_into(addr, &mut b)?;
         Ok(u32::from_le_bytes(b))
+    }
+
+    /// Writes `data` at `addr`; fails unless every byte was written.
+    ///
+    /// Only heap data can be written: the whole range must lie in one region of
+    /// committed, private, writable and non-executable memory. Anything else, such as
+    /// a module's code or data, is refused before Windows is asked, because
+    /// `WriteProcessMemory` would otherwise lift a page's protection to write it.
+    pub fn write_bytes(&self, addr: u64, data: &[u8]) -> Result<()> {
+        if !self.writable {
+            return Err(Error::ReadOnly);
+        }
+        if data.is_empty() {
+            return Ok(());
+        }
+        let len = data.len();
+        let end = addr.checked_add(len as u64).ok_or(Error::NotWritable { addr, len })?;
+        match region_at(self, addr) {
+            Some(region) if region.holds_data() && end <= region.end() => {}
+            _ => return Err(Error::NotWritable { addr, len }),
+        }
+        let mut written = 0usize;
+        let ok = unsafe {
+            WriteProcessMemory(self.handle.0, addr as *const c_void, data.as_ptr().cast(), len, &mut written)
+        };
+        if ok == 0 || written != len {
+            return Err(Error::Write { addr, len, code: last_error() });
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static IN_THE_IMAGE: [u8; 8] = [0; 8];
+    // Writable, but part of the module's image all the same.
+    static WRITABLE_IN_THE_IMAGE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+    #[test]
+    fn writes_heap_data_only() {
+        let process = Process::open_read_write(std::process::id()).expect("open this process");
+        let heap = vec![0u8; 64].into_boxed_slice();
+        let addr = heap.as_ptr() as u64;
+
+        process.write_bytes(addr + 8, &[1, 2, 3]).expect("write into the heap");
+        assert_eq!(process.read_bytes(addr + 6, 6).expect("read back"), [0, 0, 1, 2, 3, 0]);
+
+        // A module's own memory, data or code, is never written.
+        let image = IN_THE_IMAGE.as_ptr() as u64;
+        assert!(matches!(process.write_bytes(image, &[1]), Err(Error::NotWritable { .. })));
+        let data = WRITABLE_IN_THE_IMAGE.as_ptr() as u64;
+        assert!(matches!(process.write_bytes(data, &[1]), Err(Error::NotWritable { .. })));
+        let code = writes_heap_data_only as *const () as u64;
+        assert!(matches!(process.write_bytes(code, &[0xCC]), Err(Error::NotWritable { .. })));
+        assert!(matches!(process.write_bytes(0x10, &[1]), Err(Error::NotWritable { .. })));
+
+        let read_only = Process::open_read(std::process::id()).expect("open this process");
+        assert!(matches!(read_only.write_bytes(addr, &[1]), Err(Error::ReadOnly)));
+        drop(heap);
     }
 }
