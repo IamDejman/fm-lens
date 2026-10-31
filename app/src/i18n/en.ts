@@ -233,6 +233,8 @@ export const en = {
     "international.u21_goals": "U21 goals",
     "contract.wage": "Wage per week",
     "contract.expires": "Contract end",
+    // A move to another club, which the change log keeps as a change of the player's club.
+    club: "Club",
     // A club's own reputation, which has no home, current or world.
     reputation: "Reputation",
     "facilities.training": "Training facilities",

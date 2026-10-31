@@ -223,6 +223,7 @@ export const tr: Strings = {
     "international.u21_goals": "U21 gol",
     "contract.wage": "Haftalık maaş",
     "contract.expires": "Sözleşme bitişi",
+    club: "Kulüp",
     reputation: "İtibar",
     "facilities.training": "Antrenman tesisleri",
     "facilities.youth_facilities": "Altyapı tesisleri",
