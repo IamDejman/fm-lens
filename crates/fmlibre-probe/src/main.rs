@@ -4,6 +4,7 @@
 //! Pass) and to map where the game keeps its data. Only `set` writes to the game, one
 //! field at a time, through the same checks as the app.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
@@ -288,6 +289,50 @@ enum Command {
     },
     /// Read every team's player list and show how the game's allocator spaces their buffers.
     Squads,
+    /// Find where clubs keep a value seen in another tool: from each club and its senior team,
+    /// follow pointers up to --depth hops and print the places where every club given holds its
+    /// own value, under several encodings.
+    Related {
+        /// A club UID and the value seen for it, e.g. 602=42; give several clubs.
+        #[arg(long = "club", value_parser = parse_club_value, required = true)]
+        clubs: Vec<(u32, f64)>,
+        /// How many pointers to follow from the club and its senior team.
+        #[arg(long, default_value_t = 2)]
+        depth: usize,
+        /// How many bytes to read from each object.
+        #[arg(long, default_value = "0x400")]
+        span: String,
+        /// How far a value may be from the one seen, in the units seen (percentages are often rounded).
+        #[arg(long, default_value_t = 1.0)]
+        tolerance: f64,
+    },
+    /// Find a player field whose average over a club's senior team is a value seen for the club:
+    /// for each offset of the player object, the mean over the players who play for the team.
+    TeamAverage {
+        /// A club UID and the value seen for it, e.g. 680=48; give several clubs.
+        #[arg(long = "club", value_parser = parse_club_value, required = true)]
+        clubs: Vec<(u32, f64)>,
+        /// How far a mean may be from the value seen.
+        #[arg(long, default_value_t = 0.6)]
+        tolerance: f64,
+    },
+    /// Find where clubs keep a value in records that point back at them: every pointer to each
+    /// club's senior team (or club, with --to-club) is found in memory, and the bytes around it are
+    /// compared, at the same distance from the pointer, with the value seen for that club.
+    Nearby {
+        /// A club UID and the value seen for it, e.g. 680=48; give several clubs.
+        #[arg(long = "club", value_parser = parse_club_value, required = true)]
+        clubs: Vec<(u32, f64)>,
+        /// Look around pointers to the club object instead of its senior team.
+        #[arg(long)]
+        to_club: bool,
+        /// How far around each pointer to look, in bytes.
+        #[arg(long, default_value = "0x800")]
+        window: String,
+        /// How far a value may be from the one seen, in the units seen.
+        #[arg(long, default_value_t = 0.6)]
+        tolerance: f64,
+    },
     /// Print the current injuries of the players of one club.
     Injuries {
         /// The club's UID.
@@ -500,6 +545,16 @@ fn run(cli: Cli) -> Result<()> {
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
         }
         Command::Squads => squads(&Session::connect(process, ArraySource::ProfileFirst)?),
+        Command::Related { clubs, depth, span, tolerance } => {
+            related(&Session::connect(process, ArraySource::ProfileFirst)?, &clubs, depth, parse_hex(&span)?, tolerance)
+        }
+        Command::TeamAverage { clubs, tolerance } => {
+            team_average(&Session::connect(process, ArraySource::ProfileFirst)?, &clubs, tolerance)
+        }
+        Command::Nearby { clubs, to_club, window, tolerance } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            nearby(&session, &clubs, to_club, parse_hex(&window)?, tolerance)
+        }
         Command::Injuries { club } => injuries(&Session::connect(process, ArraySource::ProfileFirst)?, club),
         Command::Stats { min, max, club, player } => {
             stats(&Session::connect(process, ArraySource::ProfileFirst)?, min, max, club, player)
@@ -2330,6 +2385,284 @@ fn resolve(expr: &str, modules: &[Module]) -> Result<u64> {
         }
         None => parse_hex(expr),
     }
+}
+
+/// Each encoding turns the bytes at an offset into a number in the units a tool shows, if they fit.
+type Encoding = (&'static str, usize, fn(&[u8]) -> f64);
+
+const ENCODINGS: [Encoding; 8] = [
+    ("u8", 1, |b| f64::from(b[0])),
+    ("u8 of 255", 1, |b| f64::from(b[0]) * 100.0 / 255.0),
+    ("u16/100", 2, |b| f64::from(u16::from_le_bytes([b[0], b[1]])) / 100.0),
+    ("u16/10", 2, |b| f64::from(u16::from_le_bytes([b[0], b[1]])) / 10.0),
+    ("u16 of 65535", 2, |b| f64::from(u16::from_le_bytes([b[0], b[1]])) * 100.0 / 65535.0),
+    ("u32/100", 4, |b| f64::from(u32::from_le_bytes([b[0], b[1], b[2], b[3]])) / 100.0),
+    ("f32", 4, |b| f64::from(f32::from_le_bytes([b[0], b[1], b[2], b[3]]))),
+    ("f32*100", 4, |b| f64::from(f32::from_le_bytes([b[0], b[1], b[2], b[3]])) * 100.0),
+];
+
+/// Whether the 8-byte word holding `offset` (counted from an 8-aligned start) looks like an
+/// address: a byte of a pointer matches a value by chance far too often.
+fn in_address(bytes: &[u8], offset: usize) -> bool {
+    let word = offset / 8 * 8;
+    word + 8 <= bytes.len()
+        && (0x1_0000_0000..0x8000_0000_0000)
+            .contains(&u64::from_le_bytes(bytes[word..word + 8].try_into().expect("8 bytes")))
+}
+
+fn team_average(session: &Session, clubs: &[(u32, f64)], tolerance: f64) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let index = ClubIndex::new(session.clubs()?);
+    let p = &session.layout.player;
+    let len = (p.end() + p.max_shift()) as usize;
+    // Every senior player's object, by club, read as it is now.
+    let mut squads = Vec::new();
+    for &(uid, _) in clubs {
+        let club = index.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+        let team = session.club_teams(club, &players)?.into_iter().next().context("the club has no team")?;
+        let objects: Vec<Vec<u8>> = team
+            .players
+            .iter()
+            .filter(|member| member.plays_here)
+            .filter_map(|member| players.get(member.uid))
+            .filter_map(|player| session.process.read_bytes(player.address, len).ok())
+            .collect();
+        println!("{} ({uid}): {} players", club.name, objects.len());
+        squads.push(objects);
+    }
+    let mut hits = 0;
+    for &(name, size, decode) in &ENCODINGS {
+        for offset in (0..len - size).step_by(size) {
+            let means: Vec<f64> = squads
+                .iter()
+                .map(|squad| {
+                    let values: Vec<f64> = squad.iter().map(|bytes| decode(&bytes[offset..offset + size])).collect();
+                    values.iter().sum::<f64>() / values.len().max(1) as f64
+                })
+                .collect();
+            if means.iter().zip(clubs).all(|(&m, &(_, want))| m.is_finite() && (m - want).abs() <= tolerance) {
+                let shown: Vec<String> = means.iter().map(|m| format!("{m:.2}")).collect();
+                println!("  player +{offset:#x} {name}: {}", shown.join(" "));
+                hits += 1;
+            }
+        }
+    }
+    println!("{hits} places");
+    Ok(())
+}
+
+fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, tolerance: f64) -> Result<()> {
+    const CHUNK: u64 = 8 << 20;
+    ensure!(clubs.len() >= 2, "give at least two clubs, so that a match means something");
+    let window = window / 8 * 8;
+    let index = ClubIndex::new(session.clubs()?);
+    let process = &session.process;
+    let mut targets = std::collections::HashMap::new();
+    for (i, &(uid, _)) in clubs.iter().enumerate() {
+        let club = index.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+        let target = if to_club {
+            club.address
+        } else {
+            process.read_u64(process.read_u64(club.address + session.layout.club.teams)?)?
+        };
+        targets.insert(target, i);
+    }
+
+    // Every pointer to a target, by club.
+    let started = Instant::now();
+    let mut refs: Vec<Vec<u64>> = vec![Vec::new(); clubs.len()];
+    for region in regions(process, 0x1_0000, 0x7FFF_FFFF_0000).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            let len = (region.size - offset).min(CHUNK);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                for (i, word) in chunk.as_chunks::<8>().0.iter().enumerate() {
+                    if let Some(&club) = targets.get(&u64::from_le_bytes(*word)) {
+                        refs[club].push(base + (i * 8) as u64);
+                    }
+                }
+            }
+            offset += CHUNK;
+        }
+    }
+    let counts: Vec<String> = refs.iter().map(|r| r.len().to_string()).collect();
+    println!("Pointers found in {:.1} s: {}", started.elapsed().as_secs_f64(), counts.join(", "));
+
+    // Each pointer is told by the record that holds it: the nearest vtable before it (a word that
+    // points into game_plugin.dll) and how far before. Records of one kind are compared with each
+    // other only, which keeps a value that one of a thousand pointers happens to have from matching.
+    let plugin = list_modules(process.pid())?
+        .into_iter()
+        .find(|m| m.name.eq_ignore_ascii_case(GAME_PLUGIN))
+        .context("game_plugin.dll is not loaded")?;
+    let in_plugin = |value: u64| (plugin.base..plugin.base + plugin.size).contains(&value);
+    type Kind = (u64, u64);
+    let mut kinds: Vec<BTreeMap<Kind, Vec<Vec<u8>>>> = vec![BTreeMap::new(); clubs.len()];
+    for (club, list) in refs.iter().enumerate() {
+        for &at in list {
+            let Ok(bytes) = process.read_bytes(at - window, (2 * window) as usize) else {
+                continue;
+            };
+            let words = bytes.as_chunks::<8>().0;
+            let here = (window / 8) as usize;
+            let vtable = (0..=here).rev().find(|&i| in_plugin(u64::from_le_bytes(words[i])));
+            if let Some(i) = vtable {
+                let kind = (u64::from_le_bytes(words[i]) - plugin.base, ((here - i) * 8) as u64);
+                kinds[club].entry(kind).or_default().push(bytes);
+            }
+        }
+    }
+
+    let mut hits = 0;
+    for (kind, first) in &kinds[0] {
+        // A team's own record is one per club: kinds that every club has a few of at most.
+        let all: Vec<&Vec<Vec<u8>>> = kinds.iter().filter_map(|k| k.get(kind)).collect();
+        if all.len() != clubs.len() || all.iter().any(|records| records.len() > 4) || first.is_empty() {
+            continue;
+        }
+        for &(name, size, decode) in &ENCODINGS {
+            for offset in (0..(2 * window) as usize - size).step_by(size) {
+                let mut seen = Vec::new();
+                for (records, &(_, want)) in all.iter().zip(clubs) {
+                    let found = records.iter().find_map(|bytes| {
+                        if in_address(bytes, offset) {
+                            return None;
+                        }
+                        let v = decode(&bytes[offset..offset + size]);
+                        (v.is_finite() && (v - want).abs() <= tolerance).then_some(v)
+                    });
+                    match found {
+                        Some(v) => seen.push(v),
+                        None => break,
+                    }
+                }
+                if seen.len() == clubs.len() {
+                    // Where the value sits in its record, counted from the record's vtable.
+                    let field = (offset as i64 - window as i64) + kind.1 as i64;
+                    let shown: Vec<String> = seen.iter().map(|v| format!("{v:.2}")).collect();
+                    println!(
+                        "  record with vtable game_plugin.dll+{:#x}, team pointer at +{:#x}: value at {field:+#x} {name}: {}",
+                        kind.0,
+                        kind.1,
+                        shown.join(" ")
+                    );
+                    hits += 1;
+                }
+            }
+        }
+    }
+    println!("{hits} places");
+    Ok(())
+}
+
+/// `602=42`: a club UID and a value seen for it.
+fn parse_club_value(text: &str) -> Result<(u32, f64)> {
+    let (uid, value) = text.split_once('=').context("expected UID=VALUE, e.g. 602=42")?;
+    Ok((uid.trim().parse().context("not a club UID")?, value.trim().parse().context("not a number")?))
+}
+
+/// Where a value sits: a root (0 the club, 1 its senior team), then the offsets of the pointers
+/// followed from it.
+type HopPath = Vec<u64>;
+
+/// Reads the objects reachable from `roots` within `depth` pointer hops, `span` bytes of each,
+/// by the path that leads to them. Pointers into the game's modules (vtables, statics) are not
+/// followed: the objects that matter live on the heap.
+fn reachable(process: &Process, roots: &[u64], depth: usize, span: u64) -> BTreeMap<HopPath, Vec<u8>> {
+    let mut found = BTreeMap::new();
+    let mut frontier: Vec<(HopPath, u64)> = roots.iter().enumerate().map(|(i, &root)| (vec![i as u64], root)).collect();
+    for level in 0..=depth {
+        let mut next = Vec::new();
+        for (path, address) in frontier {
+            let Ok(bytes) = process.read_bytes(address, span as usize) else {
+                continue;
+            };
+            if level < depth {
+                for (i, word) in bytes.as_chunks::<8>().0.iter().enumerate() {
+                    let target = u64::from_le_bytes(*word);
+                    if is_user_pointer(target) && target < 0x7FF0_0000_0000 {
+                        let mut child = path.clone();
+                        child.push(i as u64 * 8);
+                        next.push((child, target));
+                    }
+                }
+            }
+            found.insert(path, bytes);
+        }
+        frontier = next;
+    }
+    found
+}
+
+fn related(session: &Session, clubs: &[(u32, f64)], depth: usize, span: u64, tolerance: f64) -> Result<()> {
+    ensure!(clubs.len() >= 2, "give at least two clubs, so that a match means something");
+    // The objects of the first clubs are read whole and compared; the places that match there are
+    // then followed, one by one, in the other clubs, which keeps memory in bounds.
+    const COMPARED: usize = 3;
+    let index = ClubIndex::new(session.clubs()?);
+    let process = &session.process;
+    let mut roots = Vec::new();
+    for &(uid, _) in clubs {
+        let club = index.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+        let teams = process.read_u64(club.address + session.layout.club.teams)?;
+        roots.push([club.address, process.read_u64(teams)?]);
+    }
+    let (compared, followed) = clubs.split_at(clubs.len().min(COMPARED));
+    let objects: Vec<_> = roots[..compared.len()].iter().map(|r| reachable(process, r, depth, span)).collect();
+    let clubs = compared;
+    println!(
+        "Read {} objects for the first club; looking for {}.",
+        objects[0].len(),
+        clubs.iter().map(|(uid, value)| format!("{uid}={value}")).collect::<Vec<_>>().join(", ")
+    );
+    let mut hits = 0;
+    for (path, first) in &objects[0] {
+        let all: Vec<&Vec<u8>> = objects.iter().filter_map(|found| found.get(path)).collect();
+        if all.len() != objects.len() {
+            continue;
+        }
+        let len = all.iter().map(|bytes| bytes.len()).min().unwrap_or(0).min(first.len());
+        for &(name, size, decode) in &ENCODINGS {
+            for offset in (0..len.saturating_sub(size - 1)).step_by(size) {
+                if all.iter().any(|bytes| in_address(bytes, offset)) {
+                    continue;
+                }
+                let mut values: Vec<f64> = all.iter().map(|bytes| decode(&bytes[offset..offset + size])).collect();
+                let close = |v: f64, want: f64| v.is_finite() && (v - want).abs() <= tolerance;
+                if !values.iter().zip(clubs).all(|(&v, &(_, want))| close(v, want)) {
+                    continue;
+                }
+                // The other clubs: follow the same path in each and read the same bytes.
+                let mut agrees = true;
+                for (root, &(_, want)) in roots[compared.len()..].iter().zip(followed) {
+                    let mut address = Some(root[path[0] as usize]);
+                    for &hop in &path[1..] {
+                        address = address.and_then(|a| process.read_u64(a + hop).ok());
+                    }
+                    let value = address
+                        .and_then(|a| process.read_bytes(a + offset as u64, size).ok())
+                        .map(|bytes| decode(&bytes));
+                    match value {
+                        Some(v) if close(v, want) => values.push(v),
+                        _ => {
+                            agrees = false;
+                            break;
+                        }
+                    }
+                }
+                if agrees {
+                    let steps: Vec<String> = path[1..].iter().map(|o| format!("+{o:#x}")).collect();
+                    let root = if path[0] == 0 { "club" } else { "team" };
+                    let shown: Vec<String> = values.iter().map(|v| format!("{v:.2}")).collect();
+                    println!("  {root}{} -> +{offset:#x} {name}: {}", steps.join(" -> "), shown.join(" "));
+                    hits += 1;
+                }
+            }
+        }
+    }
+    println!("{hits} places");
+    Ok(())
 }
 
 fn parse_hex(text: &str) -> Result<u64> {
