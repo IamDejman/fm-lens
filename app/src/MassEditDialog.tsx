@@ -5,7 +5,15 @@
 import { useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { valueText } from "./editDraft";
-import { applyMassEdit, changeLog, isoFromNumber, planMassEdit, shownValue, undoBatch } from "./editing";
+import {
+  applyMassEdit,
+  changeLog,
+  isoFromNumber,
+  isStoredFiner,
+  planMassEdit,
+  shownValue,
+  undoBatch,
+} from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { changesText, editText, fieldLabel, massEditText as text, profileText, valueChange } from "./labels";
@@ -566,7 +574,16 @@ function OperationRow(props: OperationRowProps) {
   const message = verdict.ok ? null : verdict.message;
   // As wide as the longest number it takes, a minus sign included.
   const digits = Math.max(String(range.min).length, String(range.max).length);
-  const hover = draft.kind === "scale" ? text.percentTitle : draft.kind === "add" ? text.addTitle : undefined;
+  // A Set or an Add of a percentage (energy, match sharpness) is typed in percent, an Add in percentage points.
+  const percent = field.scale === "percent" && draft.kind !== "scale";
+  const hover =
+    draft.kind === "scale"
+      ? text.percentTitle
+      : draft.kind === "add"
+        ? percent
+          ? text.addPointsTitle
+          : text.addTitle
+        : undefined;
 
   return (
     <div className="mass-row" role="group" aria-label={text.row(position)} data-row={draft.id}>
@@ -630,6 +647,11 @@ function OperationRow(props: OperationRowProps) {
             {text.ofCurrent}
           </span>
         )}
+        {percent && (
+          <span className="mass-unit" aria-hidden="true">
+            {editText.percent}
+          </span>
+        )}
       </span>
 
       <button
@@ -691,10 +713,11 @@ function PreviewTable({ entity, preview, fields }: PreviewTableProps) {
                   <td className="name">{row.name}</td>
                   <td className="uid">{row.uid}</td>
                   <td>{fieldLabel(entity, row.field)}</td>
-                  {/* An attribute is stored on a finer scale than it is shown: the hover text has the stored ones. */}
+                  {/* An attribute or a percentage is stored on a finer scale than it is shown: the hover text has the
+                      stored values. */}
                   <td
                     className="change-value"
-                    title={field?.scale === "attribute" ? changesText.stored(valueChange(row.old, row.new)) : undefined}
+                    title={isStoredFiner(field) ? changesText.stored(valueChange(row.old, row.new)) : undefined}
                   >
                     {valueChange(valueText(field, shown(row.old)), valueText(field, shown(row.new)))}
                   </td>

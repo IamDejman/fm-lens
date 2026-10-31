@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { valueText, type Pending } from "./editDraft";
-import { isoFromNumber } from "./editing";
+import { isoFromNumber, isStoredFiner } from "./editing";
 import { changesText, choiceLabel, editText, fieldLabel, POSITION_LABELS, valueChange } from "./labels";
 import { PITCH_ORDER } from "./PositionPitch";
 import type { Entity } from "./types";
@@ -10,11 +10,11 @@ import { useEditableField, useEditSession, type ProfileEditing, type Report } fr
 
 /**
  * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
- * input, with the pound sign before it for an amount of money, or a date input (`YYYY-MM-DD`, with the calendar of
- * the browser) for a date. A field that holds a code from a list is a select of its choices, and a yes-or-no a
- * checkbox with the name of the field. A number that may be left empty says "none" while it is. A changed input is
- * outlined in the accent colour and says what it was; one that cannot be applied is outlined as an error. Nothing
- * while the profile is not being edited.
+ * input, with the pound sign before it for an amount of money and the percent sign after it for a percentage, or a
+ * date input (`YYYY-MM-DD`, with the calendar of the browser) for a date. A field that holds a code from a list is a
+ * select of its choices, and a yes-or-no a checkbox with the name of the field. A number that may be left empty says
+ * "none" while it is. A changed input is outlined in the accent colour and says what it was; one that cannot be
+ * applied is outlined as an error. Nothing while the profile is not being edited.
  */
 export function EditInput({ field }: { field: string }) {
   const session = useEditSession();
@@ -97,16 +97,27 @@ export function EditInput({ field }: { field: string }) {
       onWheel={(e) => e.currentTarget.blur()}
     />
   );
-  return spec.kind === "i32" ? (
-    <span className="edit-money">
-      <span className="edit-unit" aria-hidden="true">
-        {editText.pounds}
+  if (spec.kind === "i32") {
+    return (
+      <span className="edit-money">
+        <span className="edit-unit" aria-hidden="true">
+          {editText.pounds}
+        </span>
+        {control}
       </span>
-      {control}
-    </span>
-  ) : (
-    control
-  );
+    );
+  }
+  if (spec.scale === "percent") {
+    return (
+      <span className="edit-percent">
+        {control}
+        <span className="edit-unit" aria-hidden="true">
+          {editText.percent}
+        </span>
+      </span>
+    );
+  }
+  return control;
 }
 
 /** `children` while the profile is read, the input of `field` while it is edited. */
@@ -254,8 +265,8 @@ function ReportText({ report }: { report: Report }) {
 }
 
 /**
- * What Apply would write, as "Finishing 17 → 20", "Contract end 30 Jun 2029 → 30 Jun 2031" or "Balance £1,000 →
- * £2,000"; the hover text of an attribute has the stored values.
+ * What Apply would write, as "Finishing 17 → 20", "Contract end 30 Jun 2029 → 30 Jun 2031", "Balance £1,000 →
+ * £2,000" or "Energy 70% → 100%"; the hover text of an attribute or a percentage has the stored values.
  */
 function ReviewList({ id, changes }: { id: string; changes: Pending[] }) {
   return (
@@ -263,7 +274,7 @@ function ReviewList({ id, changes }: { id: string; changes: Pending[] }) {
       {changes.map(({ field, was, now, wasStored, edit }) => (
         <li
           key={field.key}
-          title={field.scale === "attribute" ? changesText.stored(valueChange(wasStored, edit.value)) : undefined}
+          title={isStoredFiner(field) ? changesText.stored(valueChange(wasStored, edit.value)) : undefined}
         >
           <span>{fieldLabel(field.entity, field.key)}</span>{" "}
           <span className="edit-delta">{valueChange(valueText(field, was), valueText(field, now))}</span>

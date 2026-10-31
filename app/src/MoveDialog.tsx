@@ -1,16 +1,28 @@
 // Moving a player to another club: the button in the header of his profile, and the dialog it opens. The dialog picks
 // the club (and, if wanted, a new wage and contract end), asks the game whether the move can be made before it offers
 // it, and makes it. The move is logged like any change, and can be undone from the Changes view.
+//
+// A switch at the top of the dialog makes it a swap instead: after the club it picks one of the club's players, who
+// goes the other way, and each keeps his own contract.
 
-import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { Ability } from "./Ability";
 import { call } from "./api";
-import { isoFromNumber, movePlayer, numberFromDate, numberFromIso, planClubMove } from "./editing";
+import {
+  isoFromNumber,
+  movePlayer,
+  numberFromDate,
+  numberFromIso,
+  planClubMove,
+  planClubSwap,
+  swapPlayers,
+} from "./editing";
 import { describeError, formatDate, formatPounds } from "./format";
-import { clubListText, editText, fieldLabel, moveText as text, profileText } from "./labels";
-import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
+import { clubListText, editText, fieldLabel, moveText as text, positionLabel, profileText } from "./labels";
+import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
-import type { ClubPage, ClubSummary, Contract, MovePreview, MoveTerms } from "./types";
+import type { ClubPage, ClubSummary, Contract, MovePreview, MoveTerms, PlayerPage, PlayerSummary } from "./types";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
 
@@ -84,16 +96,34 @@ export function MoveButton({ player, contract, ready }: MoveButtonProps) {
 /** How many clubs the search lists: the best by reputation, or the best matches of what was typed. */
 const RESULT_LIMIT = 8;
 
+/**
+ * The same for the players of a club in a swap. A squad is long, so this is more than the list has room for: it
+ * scrolls.
+ */
+const PARTNER_LIMIT = 50;
+
 /** How long the search waits after the last key, so that a burst of keys asks the game once. */
 const SEARCH_DELAY = 150;
 
-/** The same for the plan, after the last change of the club or the terms. */
+/** The same for the plan, after the last change of the club or the terms (of a swap: of the player picked). */
 const PLAN_DELAY = 200;
+
+/** What the dialog makes: a move to a club, or a swap with one of its players. */
+type Mode = "move" | "swap";
+
+/** The two ends of the switch at the top of the dialog. */
+const MODES: readonly { id: Mode; label: string }[] = [
+  { id: "move", label: text.modeMove },
+  { id: "swap", label: text.modeSwap },
+];
 
 /** What the search answered for the text it was asked with: a page of clubs, or why it failed. */
 type Found = { query: string; page: ClubPage } | { query: string; error: string };
 
-/** What the game said to the plan of a move, for the club and terms it was asked about (see `planKey`). */
+/** The same for the players of a club. */
+type FoundPlayers = { query: string; page: PlayerPage } | { query: string; error: string };
+
+/** What the game said to the plan of a move or a swap, for the club and terms or the player it was asked about. */
 interface Planned {
   key: string;
   outcome: { preview: MovePreview } | { error: string };
@@ -146,6 +176,9 @@ function termsOf(wage: number | undefined, expires: number | undefined): MoveTer
 /** What a plan is for. A plan is the dialog's only while the club and the terms are the ones it was asked about. */
 const planKey = (club: number, terms: MoveTerms) => `${club}:${terms.wage ?? ""}:${terms.expires ?? ""}`;
 
+/** The same for a swap, which depends on the player picked alone (his club is the club picked). */
+const swapKey = (partner: number) => `swap:${partner}`;
+
 /** An input's class: outlined in the accent colour once it holds a change, and as an error while it cannot be sent. */
 const inputClass = (verdict: Verdict) => (verdict.status === "same" ? "move-input" : `move-input ${verdict.status}`);
 
@@ -171,6 +204,229 @@ function ClubLine({ uid, name, women = false }: { uid: number | null; name: stri
   );
 }
 
+/** How many positions a player's line shows. */
+const POSITIONS_SHOWN = 3;
+
+/** A player as one line: his face, his name (cut short where it does not fit), and under it his positions and age. */
+function PlayerLine({ player }: { player: PlayerSummary }) {
+  const detail = [
+    player.positions.length > 0 && player.positions.slice(0, POSITIONS_SHOWN).map(positionLabel).join(" "),
+    player.age !== null && profileText.age(player.age),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <WithPicture picture={<PersonFace uid={player.uid} name={player.name} size={PICTURE_SIZE.rowFace} />}>
+      <span className="move-player-text">
+        <span className="move-club-name" title={player.name}>
+          {player.name}
+        </span>
+        {detail && <span className="move-player-detail">{detail}</span>}
+      </span>
+    </WithPicture>
+  );
+}
+
+interface PartnerPickerProps {
+  /** The club whose players are listed: the one the swap goes to. */
+  club: ClubSummary;
+  /** The player picked to go the other way; null while the list is on show. */
+  partner: PlayerSummary | null;
+  /** Whether the swap is being made: the picked player stays. */
+  busy: boolean;
+  /** The search box, which the dialog moves focus to once the club is picked. */
+  inputRef: RefObject<HTMLInputElement | null>;
+  onPick: (player: PlayerSummary) => void;
+  /** Takes the picked player back, for the list to come up again. */
+  onChange: () => void;
+}
+
+/**
+ * The players of the club a swap goes to: a box that narrows them by name, and the list under it with one row
+ * highlighted (the one Enter picks), as for the clubs. The player picked takes the place of the list. Mount it with
+ * `key={club.uid}` so that another club starts from its own list.
+ */
+function PartnerPicker({ club, partner, busy, inputRef, onPick, onChange }: PartnerPickerProps) {
+  const base = useId();
+  const id = (part: string) => `${base}-${part}`;
+  const results = useRef<HTMLUListElement>(null);
+  const changeButton = useRef<HTMLButtonElement>(null);
+  // The control that takes focus once the next render is on screen: the one that takes the place of the one pressed.
+  const pendingFocus = useRef<"search" | "change" | null>(null);
+  // Set when a key moved the highlight, so that the row it reached scrolls into view; the mouse is not followed.
+  const keyboardMoved = useRef(false);
+
+  const [query, setQuery] = useState("");
+  const [found, setFound] = useState<FoundPlayers | null>(null);
+  // The row Enter picks.
+  const [active, setActive] = useState(0);
+
+  // Until the search has answered for what is typed the rows are the last ones: Enter leaves them alone.
+  const rows = found !== null && "page" in found ? found.page.rows : [];
+  const settled = found !== null && found.query === query;
+
+  // The search asks for the club's players a moment after the last key, while none is picked. An answer that comes
+  // after the text changed, or after a player was picked, is dropped: the cleanup says so.
+  const choosing = partner === null;
+  useEffect(() => {
+    if (!choosing) {
+      return;
+    }
+    let cancelled = false;
+    const answer = (next: FoundPlayers) => {
+      if (!cancelled) {
+        setFound(next);
+        setActive(0);
+      }
+    };
+    const timer = setTimeout(
+      () => {
+        call<PlayerPage>("search_players", { query, limit: PARTNER_LIMIT, filter: { clubUid: club.uid } }).then(
+          (page) => answer({ query, page }),
+          (e) => answer({ query, error: describeError(e) }),
+        );
+      },
+      // The first look, at the best players, needs no wait.
+      query === "" ? 0 : SEARCH_DELAY,
+    );
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [choosing, club.uid, query]);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) {
+      return;
+    }
+    pendingFocus.current = null;
+    if (target === "search") {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    } else {
+      changeButton.current?.focus();
+    }
+  });
+
+  useEffect(() => {
+    if (keyboardMoved.current) {
+      keyboardMoved.current = false;
+      results.current?.children[active]?.scrollIntoView?.({ block: "nearest" });
+    }
+  }, [active]);
+
+  const pick = (chosen: PlayerSummary) => {
+    onPick(chosen);
+    pendingFocus.current = "change";
+  };
+
+  const searchAgain = () => {
+    onChange();
+    pendingFocus.current = "search";
+  };
+
+  const searchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.nativeEvent.isComposing) {
+      return;
+    }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      // The arrows move through the players, not the caret.
+      event.preventDefault();
+      if (rows.length > 0) {
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        keyboardMoved.current = true;
+        setActive((index) => (index + step + rows.length) % rows.length);
+      }
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const row = rows[active];
+      if (settled && row) {
+        pick(row);
+      }
+    }
+  };
+
+  if (partner !== null) {
+    return (
+      <div className="move-club">
+        <PlayerLine player={partner} />
+        <button ref={changeButton} type="button" className="move-change" disabled={busy} onClick={searchAgain}>
+          {text.changePlayer}
+        </button>
+      </div>
+    );
+  }
+
+  // What the search says under its list: a live region that is always there, so that it is read out when it fills.
+  const note =
+    found === null
+      ? text.playersSearching
+      : !settled
+        ? ""
+        : "error" in found
+          ? text.playersSearchFailed(found.error)
+          : found.page.rows.length === 0
+            ? text.playersEmpty(query)
+            : found.page.total > found.page.rows.length
+              ? text.more(found.page.total - found.page.rows.length)
+              : "";
+  const noteIsError = found !== null && settled && "error" in found;
+
+  return (
+    <>
+      <label className="search move-search">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5.5" />
+          <path d="m13 13 4.5 4.5" />
+        </svg>
+        <input
+          ref={inputRef}
+          role="combobox"
+          aria-label={text.playerSearchLabel}
+          aria-autocomplete="list"
+          aria-expanded={rows.length > 0}
+          aria-controls={id("players")}
+          aria-activedescendant={rows.length > 0 ? id(`player-${active}`) : undefined}
+          value={query}
+          placeholder={text.playerSearch}
+          spellCheck={false}
+          autoComplete="off"
+          onChange={(e) => setQuery(e.currentTarget.value)}
+          onKeyDown={searchKeyDown}
+        />
+      </label>
+      <div className="move-results-box move-partners" aria-busy={!settled || undefined}>
+        <ul ref={results} id={id("players")} className="move-results" role="listbox" aria-label={text.playersLabel}>
+          {rows.map((row, index) => (
+            <li
+              key={row.uid}
+              id={id(`player-${index}`)}
+              className={index === active ? "move-option active" : "move-option"}
+              role="option"
+              aria-selected={index === active}
+              // Focus stays in the search box: a click only picks.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => pick(row)}
+            >
+              <PlayerLine player={row} />
+              <span className="move-abilities">
+                <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
+                <Ability value={row.currentAbility} />
+                <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
+                <Ability value={row.potentialAbility} />
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className={noteIsError ? "move-results-note error" : "move-results-note"} role="status">
+          {note}
+        </p>
+      </div>
+    </>
+  );
+}
+
 interface MoveDialogProps {
   player: MovingPlayer;
   /** His contract as it was when the dialog opened: the inputs start from it. Null when he has none. */
@@ -185,6 +441,7 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   const id = (part: string) => `${base}-${part}`;
   const dialog = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const partnerInput = useRef<HTMLInputElement>(null);
   const results = useRef<HTMLUListElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
   const moveButton = useRef<HTMLButtonElement>(null);
@@ -192,18 +449,21 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   const alive = useRef(true);
   const running = useRef(false);
   // The control that takes focus once the next render is on screen: one that is not there yet, or was disabled.
-  const pendingFocus = useRef<"search" | "change" | "move" | null>(null);
+  const pendingFocus = useRef<"search" | "change" | "partner" | "move" | null>(null);
   // Set when a key moved the highlight, so that the row it reached scrolls into view; the mouse is not followed.
   const keyboardMoved = useRef(false);
 
   const wasWage = contract?.wage ?? null;
   const wasExpires = contract?.expires ? numberFromDate(contract.expires) : null;
 
+  const [mode, setMode] = useState<Mode>("move");
   const [query, setQuery] = useState("");
   const [found, setFound] = useState<Found | null>(null);
   // The row Enter picks.
   const [active, setActive] = useState(0);
   const [club, setClub] = useState<ClubSummary | null>(null);
+  // The player a swap sends to the player's club: one of the club's players, once picked. A move has none.
+  const [partner, setPartner] = useState<PlayerSummary | null>(null);
   const [wageText, setWageText] = useState(wasWage === null ? "" : String(wasWage));
   const [expiresText, setExpiresText] = useState(wasExpires === null ? "" : isoFromNumber(wasExpires));
   const [planned, setPlanned] = useState<Planned | null>(null);
@@ -222,12 +482,26 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   const expires = expiresVerdict.status === "changed" ? expiresVerdict.value : undefined;
   const terms = termsOf(wage, expires);
 
-  // What the plan is for: null while there is no club, or an input cannot be sent. Move is offered only for a plan the
-  // game made for the club and terms as they are now, so a change takes it back at once, before the new plan is asked.
-  const key = club !== null && valid ? planKey(club.uid, terms) : null;
+  const swap = mode === "swap";
+
+  // What the plan is for: for a move, null while there is no club, or an input cannot be sent; for a swap, null while
+  // no player is picked. Move or Swap is offered only for a plan the game made for what is picked now, so a change
+  // takes it back at once, before the new plan is asked.
+  const key = swap
+    ? partner !== null
+      ? swapKey(partner.uid)
+      : null
+    : club !== null && valid
+      ? planKey(club.uid, terms)
+      : null;
   const outcome = key !== null && planned?.key === key ? planned.outcome : null;
   const preview = outcome !== null && "preview" in outcome ? outcome.preview : null;
   const canMove = preview !== null && !moving;
+
+  // What the button makes, for the plan it is offered for: the swap with the player picked, or the move to the club.
+  const make = swap
+    ? partner && (() => swapPlayers(player.uid, partner.uid))
+    : club && (() => movePlayer(player.uid, club.uid, terms));
 
   // The clubs on show. Until the search has answered for what is typed they are the last ones: Enter leaves them alone.
   const rows = found !== null && "page" in found ? found.page.rows : [];
@@ -274,7 +548,7 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   // The game works out the move a moment after the club and the terms stop changing. An answer that comes after they
   // changed again is dropped: the cleanup says so.
   useEffect(() => {
-    if (club === null || !valid) {
+    if (swap || club === null || !valid) {
       return;
     }
     let cancelled = false;
@@ -294,10 +568,34 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [player.uid, club, valid, wage, expires, replans]);
+  }, [swap, player.uid, club, valid, wage, expires, replans]);
+
+  // The same for a swap, a moment after the player to swap with is picked.
+  useEffect(() => {
+    if (!swap || partner === null) {
+      return;
+    }
+    let cancelled = false;
+    const answer = (result: Planned["outcome"]) => {
+      if (!cancelled) {
+        setPlanned({ key: swapKey(partner.uid), outcome: result });
+      }
+    };
+    const timer = setTimeout(() => {
+      planClubSwap(player.uid, partner.uid).then(
+        (made) => answer({ preview: made }),
+        (e) => answer({ error: describeError(e) }),
+      );
+    }, PLAN_DELAY);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [swap, player.uid, partner, replans]);
 
   // Focus that was asked for while the controls changed: the button that takes the place of the search, the search
-  // that takes the place of the button, or Move once a failed move is over (the buttons were disabled while it ran).
+  // that takes the place of the button, the search for the player of a swap that takes the place of the clubs, or Move
+  // once a failed move is over (the buttons were disabled while it ran).
   useEffect(() => {
     const target = pendingFocus.current;
     if (target === null) {
@@ -309,6 +607,8 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
       searchInput.current?.select();
     } else if (target === "change") {
       changeButton.current?.focus();
+    } else if (target === "partner") {
+      partnerInput.current?.focus();
     } else {
       (moveButton.current && !moveButton.current.disabled ? moveButton : cancelButton).current?.focus();
     }
@@ -323,11 +623,14 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
 
   const pick = (chosen: ClubSummary) => {
     setClub(chosen);
-    pendingFocus.current = "change";
+    // A swap goes on to the club's players; a move to its terms, from the button that brings the clubs back.
+    pendingFocus.current = swap ? "partner" : "change";
   };
 
   const searchAgain = () => {
     setClub(null);
+    // The player was one of the club's.
+    setPartner(null);
     pendingFocus.current = "search";
   };
 
@@ -353,14 +656,14 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   };
 
   const move = async () => {
-    if (!canMove || key === null || club === null || running.current) {
+    if (!canMove || key === null || make === null || running.current) {
       return;
     }
     running.current = true;
     setMoving(true);
     setMoveError(null);
     try {
-      await movePlayer(player.uid, club.uid, terms);
+      await make();
       // The game has changed: the lists, the profile and the change log read it again.
       onMoved();
       onClose();
@@ -401,18 +704,26 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
     contract?.expires ? formatDate(contract.expires) : null,
   );
 
-  // What the move comes to, or why it cannot be made. The plan line is a live region that is always there.
+  // Where the clubs of a move that can be made lead; for a swap, who goes where.
+  const route = (made: MovePreview) =>
+    swap && partner !== null
+      ? text.swapRoute(player.name, made.from.name, made.to.name, partner.name)
+      : text.route(made.from.name, made.to.name);
+
+  // What the move or the swap comes to, or why it cannot be made. The plan line is a live region that is always there.
   const plan: { tone: "pending" | "ok" | "refused"; message: string } =
     club === null
-      ? { tone: "pending", message: text.chooseClub }
-      : !valid
-        ? { tone: "pending", message: text.fixTerms }
-        : outcome === null
-          ? { tone: "pending", message: text.checking }
-          : "error" in outcome
-            ? { tone: "refused", message: outcome.error }
-            : { tone: "ok", message: text.route(outcome.preview.from.name, outcome.preview.to.name) };
-  // A failed move is told for the club and terms it was tried with only.
+      ? { tone: "pending", message: swap ? text.swapChooseClub : text.chooseClub }
+      : swap && partner === null
+        ? { tone: "pending", message: text.swapChoosePlayer }
+        : !swap && !valid
+          ? { tone: "pending", message: text.fixTerms }
+          : outcome === null
+            ? { tone: "pending", message: swap ? text.swapChecking : text.checking }
+            : "error" in outcome
+              ? { tone: "refused", message: outcome.error }
+              : { tone: "ok", message: route(outcome.preview) };
+  // A failed move is told for the club and terms it was tried with only (a swap: for the player picked).
   const failure = moveError !== null && moveError.key === key ? moveError.message : null;
 
   return createPortal(
@@ -436,13 +747,27 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
         tabIndex={-1}
       >
         <header className="modal-head">
-          <h2 id={id("title")}>{text.title}</h2>
+          <h2 id={id("title")}>{swap ? text.swapTitle : text.title}</h2>
           <p id={id("player")} className="move-player">
             {player.name}
           </p>
         </header>
 
         <div className="modal-body">
+          <div className="move-mode" role="group" aria-label={text.modeLabel}>
+            {MODES.map(({ id: kind, label }) => (
+              <button
+                key={kind}
+                type="button"
+                aria-pressed={kind === mode}
+                disabled={moving}
+                onClick={() => setMode(kind)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <section className="move-section" aria-labelledby={id("from")}>
             <h3 id={id("from")}>{text.from}</h3>
             <div className="move-club">
@@ -522,56 +847,75 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
             )}
           </section>
 
+          {swap && club !== null && (
+            <section className="move-section" aria-labelledby={id("swap-with")}>
+              <h3 id={id("swap-with")}>{text.swapWith}</h3>
+              <PartnerPicker
+                key={club.uid}
+                club={club}
+                partner={partner}
+                busy={moving}
+                inputRef={partnerInput}
+                onPick={setPartner}
+                onChange={() => setPartner(null)}
+              />
+            </section>
+          )}
+
           <section className="move-section" aria-labelledby={id("contract")}>
             <h3 id={id("contract")}>{profileText.contract}</h3>
-            <div className="move-terms">
-              <div className="move-term">
-                <label htmlFor={id("wage")}>{fieldLabel("player", "contract.wage")}</label>
-                <span className="move-money">
-                  <span className="move-unit" aria-hidden="true">
-                    {editText.pounds}
+            {swap ? (
+              <p className="move-note">{text.swapContract}</p>
+            ) : (
+              <div className="move-terms">
+                <div className="move-term">
+                  <label htmlFor={id("wage")}>{fieldLabel("player", "contract.wage")}</label>
+                  <span className="move-money">
+                    <span className="move-unit" aria-hidden="true">
+                      {editText.pounds}
+                    </span>
+                    <input
+                      id={id("wage")}
+                      className={inputClass(wageVerdict)}
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={wageText}
+                      readOnly={moving}
+                      aria-invalid={wageVerdict.status === "invalid" || undefined}
+                      aria-describedby={wageNote ? id("wage-note") : undefined}
+                      onChange={(e) => setWageText(e.currentTarget.value)}
+                      // A wheel turned over the focused input would change it: let go of it, so the dialog scrolls.
+                      onWheel={(e) => e.currentTarget.blur()}
+                    />
                   </span>
-                  <input
-                    id={id("wage")}
-                    className={inputClass(wageVerdict)}
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={wageText}
-                    readOnly={moving}
-                    aria-invalid={wageVerdict.status === "invalid" || undefined}
-                    aria-describedby={wageNote ? id("wage-note") : undefined}
-                    onChange={(e) => setWageText(e.currentTarget.value)}
-                    // A wheel turned over the focused input would change it: let go of it, so the dialog scrolls.
-                    onWheel={(e) => e.currentTarget.blur()}
-                  />
-                </span>
-                {wageNote && (
-                  <p id={id("wage-note")} className={wageNote.invalid ? "move-note invalid" : "move-note"}>
-                    {wageNote.message}
-                  </p>
-                )}
-              </div>
+                  {wageNote && (
+                    <p id={id("wage-note")} className={wageNote.invalid ? "move-note invalid" : "move-note"}>
+                      {wageNote.message}
+                    </p>
+                  )}
+                </div>
 
-              <div className="move-term">
-                <label htmlFor={id("expires")}>{fieldLabel("player", "contract.expires")}</label>
-                <input
-                  id={id("expires")}
-                  className={inputClass(expiresVerdict)}
-                  type="date"
-                  value={expiresText}
-                  readOnly={moving}
-                  aria-invalid={expiresVerdict.status === "invalid" || undefined}
-                  aria-describedby={expiresNote ? id("expires-note") : undefined}
-                  onChange={(e) => setExpiresText(e.currentTarget.value)}
-                />
-                {expiresNote && (
-                  <p id={id("expires-note")} className={expiresNote.invalid ? "move-note invalid" : "move-note"}>
-                    {expiresNote.message}
-                  </p>
-                )}
+                <div className="move-term">
+                  <label htmlFor={id("expires")}>{fieldLabel("player", "contract.expires")}</label>
+                  <input
+                    id={id("expires")}
+                    className={inputClass(expiresVerdict)}
+                    type="date"
+                    value={expiresText}
+                    readOnly={moving}
+                    aria-invalid={expiresVerdict.status === "invalid" || undefined}
+                    aria-describedby={expiresNote ? id("expires-note") : undefined}
+                    onChange={(e) => setExpiresText(e.currentTarget.value)}
+                  />
+                  {expiresNote && (
+                    <p id={id("expires-note")} className={expiresNote.invalid ? "move-note invalid" : "move-note"}>
+                      {expiresNote.message}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </section>
 
           <p className={`move-plan ${plan.tone}`} role="status">
@@ -579,9 +923,9 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
           </p>
 
           <section className="move-section" aria-labelledby={id("does")}>
-            <h3 id={id("does")}>{text.doesHeading}</h3>
+            <h3 id={id("does")}>{swap ? text.swapDoesHeading : text.doesHeading}</h3>
             <ul className="move-facts">
-              {text.does.map((line) => (
+              {(swap ? text.swapDoes : text.does).map((line) => (
                 <li key={line}>{line}</li>
               ))}
             </ul>
@@ -595,9 +939,9 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
         )}
 
         <footer className="modal-foot">
-          <span className="move-foot-note">{text.hint}</span>
+          <span className="move-foot-note">{swap ? text.swapHint : text.hint}</span>
           <button ref={moveButton} type="button" className="primary" disabled={!canMove} onClick={() => void move()}>
-            {moving ? text.moving : text.move}
+            {moving ? (swap ? text.swapping : text.moving) : swap ? text.swap : text.move}
           </button>
           <button ref={cancelButton} type="button" disabled={moving} onClick={onClose}>
             {text.cancel}

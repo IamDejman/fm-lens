@@ -34,6 +34,9 @@ export const changeLog = () => call<LoggedChange[]>("change_log");
 /** Writes back the old value of a logged change; fails if the game has changed the value since. */
 export const undoChange = (id: number) => call<LoggedChange>("undo_change", { id });
 
+/** The whole percentage the game shows (0–100) for a stored one (0–10000), for a profile that has no field table. */
+export const wholePercent = (stored: number): number => Math.floor((stored + 50) / 100);
+
 /**
  * The value the game shows for a stored one: attributes are stored 0–100 and shown 1–20, percentages are stored
  * 0–10000 and shown 0–100.
@@ -43,11 +46,17 @@ export function shownValue(field: EditField, stored: number): number {
     case "attribute":
       return Math.min(20, Math.max(1, Math.floor((stored + 2) / 5)));
     case "percent":
-      return Math.floor((stored + 50) / 100);
+      return wholePercent(stored);
     default:
       return stored;
   }
 }
+
+/**
+ * Whether `field` is stored on a finer scale than it is shown, as attributes and percentages are: what is shown is
+ * rounded, so a list of changes has the values as stored in a hover text. False for a field the table lacks.
+ */
+export const isStoredFiner = (field: EditField | undefined): boolean => field !== undefined && field.scale !== "plain";
 
 /** The stored value to write for a value typed as shown: the middle of the stored values the game shows as it. */
 export function storedValue(field: EditField, shown: number): number {

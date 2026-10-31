@@ -20,14 +20,39 @@ export function formatNumber(value: number, options?: Intl.NumberFormatOptions):
   return (options ? new Intl.NumberFormat(intlLocale, options) : integers).format(value);
 }
 
+const percents = new Intl.NumberFormat(intlLocale, { style: "percent" });
+
+/**
+ * A percentage (87 for 87%) the way the language writes it: "87%" in English, "%87" in Turkish, without decimals;
+ * `options` are those of `Intl.NumberFormat`, e.g. to keep some.
+ */
+export function formatPercent(percent: number, options?: Intl.NumberFormatOptions): string {
+  const format = options ? new Intl.NumberFormat(intlLocale, { ...options, style: "percent" }) : percents;
+  return format.format(percent / 100);
+}
+
 const dates = new Intl.DateTimeFormat(intlLocale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const daysOfYear = new Intl.DateTimeFormat(intlLocale, { day: "numeric", month: "short", timeZone: "UTC" });
+
+const utcOf = (date: FmDate) => new Date(Date.UTC(date.year, date.month - 1, date.day));
 
 /** "26 Mar 1982" in English, "26 Eyl 1982" in Turkish: the date as the language writes it; nothing for no date. */
 export function formatDate(date: FmDate | null): string {
   if (!date) {
     return "";
   }
-  return dates.format(new Date(Date.UTC(date.year, date.month - 1, date.day)));
+  return dates.format(utcOf(date));
+}
+
+/**
+ * Two dates as a range, "8 Aug – 22 Aug 2026" (the first without its year when both are in the same one). The same
+ * day, or only one date known, is that date alone; nothing for no date.
+ */
+export function formatDateRange(from: FmDate | null, to: FmDate | null): string {
+  if (!from || !to || (from.year === to.year && from.month === to.month && from.day === to.day)) {
+    return formatDate(from ?? to);
+  }
+  return `${from.year === to.year ? daysOfYear.format(utcOf(from)) : formatDate(from)} – ${formatDate(to)}`;
 }
 
 /** A moment (milliseconds since 1970) as the local time of day, "14:05:09". */
@@ -62,13 +87,19 @@ function isFailure(value: unknown): value is Failure {
 /** The parameters of a failure that are amounts or field values, rather than ids. */
 const VALUE_PARAMS = ["value", "min", "max", "wrote", "read", "expected", "found", "count", "limit", "players"];
 
+/** The fields the game stores as 0–10000 for 0–100% (see `EditField.scale`), which the app shows as percentages. */
+const PERCENT_FIELDS: ReadonlySet<string> = new Set(["condition", "match_sharpness"]);
+
 /**
- * A failure's parameters as a sentence shows them: amounts with the language's separators, and the values of a
- * date field (stored as numbers like 20290630) as dates. Field keys stay keys; the dictionary names them.
+ * A failure's parameters as a sentence shows them: amounts with the language's separators, the values of a date field
+ * (stored as numbers like 20290630) as dates, and those of a percentage as percentages: the game may have changed
+ * them since they were written, and "Energy is now 95%, not 100%" says more than "now 9512, not 10000". Field keys
+ * stay keys; the dictionary names them.
  */
 function readableParams(params: Record<string, string>): Record<string, string> {
   const readable = { ...params };
   const dates = params.field?.endsWith("expires") ?? false;
+  const percent = params.field !== undefined && PERCENT_FIELDS.has(params.field);
   for (const key of VALUE_PARAMS) {
     const value = Number(params[key]);
     if (params[key] === undefined || !Number.isFinite(value)) {
@@ -76,7 +107,12 @@ function readableParams(params: Record<string, string>): Record<string, string> 
     }
     const year = Math.floor(value / 10_000);
     const date = dates ? formatDate({ year, month: Math.floor(value / 100) % 100, day: value % 100 }) : "";
-    readable[key] = dates && year > 1900 ? date : formatNumber(value);
+    readable[key] =
+      dates && year > 1900
+        ? date
+        : percent
+          ? formatPercent(value / 100, { maximumFractionDigits: 2 })
+          : formatNumber(value);
   }
   return readable;
 }

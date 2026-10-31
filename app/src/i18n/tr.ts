@@ -296,6 +296,9 @@ export const tr: Strings = {
     "international.goals": "Milli gol",
     "international.u21_caps": "U21 maç",
     "international.u21_goals": "U21 gol",
+    condition: "Enerji",
+    match_sharpness: "Maç kondisyonu",
+    happiness: "Mutluluk",
     "contract.wage": "Haftalık maaş",
     "contract.expires": "Sözleşme bitişi",
     "contract.squad_number": "Forma numarası",
@@ -303,6 +306,7 @@ export const tr: Strings = {
     "contract.transfer_listed": "Transfer listesinde",
     "contract.loan_listed": "Kiralık listesinde",
     club: "Kulüp",
+    injuries: "Sakatlıklar",
     reputation: "İtibar",
     "facilities.training": "Antrenman tesisleri",
     "facilities.youth_facilities": "Altyapı tesisleri",
@@ -380,6 +384,16 @@ export const tr: Strings = {
     reputationHome: "Yerel",
     reputationCurrent: "Güncel",
     reputationWorld: "Dünya",
+
+    // Medical
+    happiness: (value) => `${value} / 20`,
+    happinessTitle: "Oyun, mutluluğu 20 olan oyuncuyu memnun sayar",
+    noInjuries: "Sakatlığı yok",
+    unknownInjury: "Bilinmeyen sakatlık",
+    injuryStarted: (date) => `Başlangıç: ${date}`,
+    injuryBack: (dates) => `Beklenen dönüş: ${dates}`,
+    heal: "İyileştir",
+    healTitle: "Bu oyuncunun tüm sakatlıklarını oyunda iyileştir",
 
     // Staff
     you: "Siz",
@@ -627,7 +641,9 @@ export const tr: Strings = {
     invalid: (min, max) => `${min} ile ${max} arasında bir tam sayı girin`,
     invalidDate: (from, to) => `${from} ile ${to} arasında bir tarih girin`,
     invalidMoney: (from, to) => `${from} ile ${to} arasında tam sayı bir sterlin tutarı girin`,
+    invalidPercentage: (from, to) => `${from} ile ${to} arasında tam sayı bir yüzde girin`,
     pounds: "£",
+    percent: "%",
     yes: "Evet",
     no: "Hayır",
     none: "yok",
@@ -658,7 +674,9 @@ export const tr: Strings = {
     nav: "Değişiklikler",
     title: "Bu oturumdaki değişiklikler",
     hint: "En yeniler üstte. Bir değişiklik yalnızca oyun yazdığı değeri hâlâ tutuyorsa geri alınabilir.",
+    continueHint: "Oyun değişiklikleri bir kez ilerleyince gösterir: oyunda Devam'a basın.",
     swappedWith: (name) => `Takas: ${name}`,
+    healed: (count) => `${format(count)} sakatlık iyileştirildi`,
     count: (total, undone) => {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} geri alındı`;
@@ -736,6 +754,7 @@ export const tr: Strings = {
       contract: "Sözleşme",
       facilities: "Tesisler",
       finances: "Finans",
+      health: "Sağlık",
       other: "Diğer",
     },
     fieldsLabel: "Değiştirilecek alanlar",
@@ -748,6 +767,7 @@ export const tr: Strings = {
     >,
     values: { set: "Değer", add: "Miktar", scale: "Yüzde" } satisfies Record<MassOperationKind["op"], string>,
     addTitle: "Her değere, gösterildiği gibi eklenir; negatif sayı çıkarır",
+    addPointsTitle: "Her değere yüzde puanı olarak eklenir (%70 artı 10, %80 eder); negatif sayı çıkarır",
     rangeHint: (min, max) => `${format(min)}–${format(max)}`,
     amountHint: (max) => `±${format(max)}`,
     ofCurrent: "% (mevcut değerin)",
@@ -841,6 +861,11 @@ export const tr: Strings = {
     from: "Mevcut kulüp",
     to: "Yeni kulüp",
 
+    // The switch at the top of the dialog
+    modeLabel: "Taşı veya takas et",
+    modeMove: "Kulübe taşı",
+    modeSwap: "Oyuncuyla takas et",
+
     // Choosing the club
     searchLabel: "Taşınacağı kulübü ara",
     resultsLabel: "Bulunan kulüpler",
@@ -868,11 +893,41 @@ export const tr: Strings = {
       "Değişiklikler bölümünde listelenir ve oradan geri alınabilir",
     ],
 
+    // Swapping with a player of the club instead
+    swapTitle: "Oyuncuyla takas et",
+    swapWith: "Takas edilecek oyuncu",
+    playerSearchLabel: "Takas edilecek oyuncuyu ara",
+    playerSearch: "Bu kulübün oyuncularını isimle ara",
+    playersLabel: "Bulunan oyuncular",
+    playersSearching: "Oyuncular aranıyor…",
+    playersSearchFailed: (reason) => `Oyuncular aranamadı: ${reason}`,
+    playersEmpty: (query) =>
+      query === "" ? "Bu kulübün oyuncusu yok." : `Bu kulüpte “${query}” aramasına uyan oyuncu yok.`,
+    changePlayer: "Başka oyuncu seç",
+
+    // What the dialog says about the swap
+    swapContract: "Her oyuncu kendi sözleşmesini korur; maaşlar ve sözleşme bitişleri değişmez.",
+    swapChooseClub: "Takas edilecek oyuncunun kulübünü seçin.",
+    swapChoosePlayer: "Takas edilecek oyuncuyu seçin.",
+    swapChecking: "Takas kontrol ediliyor…",
+    swapRoute: (player, from, to, other) => `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
+    swapDoesHeading: "Takas işlemi ne yapar",
+    swapDoes: [
+      "İkisi de diğerinin kulübünün A takımına katılır",
+      "Sözleşmeler oyundaki tarihle başlar; forma numaraları silinir",
+      "İkisi de transfer ve kiralık listelerinden çıkar",
+      "Bedel ödenmez; kariyer geçmişi güncellenmez",
+      "Değişiklikler bölümünde tek değişiklik olarak listelenir; geri alınırsa ikisi de eski kulübüne döner",
+    ],
+
     // The foot
     hint: "Siz taşımadan oyunda hiçbir şey değişmez.",
     move: "Taşı",
     moving: "Taşınıyor…",
     cancel: "İptal",
+    swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
+    swap: "Takas et",
+    swapping: "Takas ediliyor…",
   },
 
   game: {

@@ -6,8 +6,8 @@
 // club panel has, in `clubProfile`), and those of the player, staff and club lists in `playerList`, `staffList` and
 // `clubList` (the saved player filters are in `playerList.filters.saved`). Editing has `edit` (and `fields` for the
 // names of the fields), the Changes view `changes`, mass editing `massEdit`, comparing players `comparison`, moving a
-// player to another club `move`, the sidebar and the connect panel `app`, and the graphics packs the pictures come
-// from `graphics`. The components read them through `labels.ts`.
+// player to another club or swapping him with one `move`, the sidebar and the connect panel `app`, and the graphics
+// packs the pictures come from `graphics`. The components read them through `labels.ts`.
 //
 // The text functions (counts, summaries, "was …") are written per language: plurals and word order differ, so a
 // language builds its sentences itself.
@@ -260,6 +260,10 @@ export const en = {
     "international.goals": "International goals",
     "international.u21_caps": "U21 caps",
     "international.u21_goals": "U21 goals",
+    // What the game changes every day.
+    condition: "Energy",
+    match_sharpness: "Match sharpness",
+    happiness: "Happiness",
     "contract.wage": "Wage per week",
     "contract.expires": "Contract end",
     "contract.squad_number": "Squad number",
@@ -268,6 +272,8 @@ export const en = {
     "contract.loan_listed": "Loan listed",
     // A move to another club, which the change log keeps as a change of the player's club.
     club: "Club",
+    // Healing a player, which the change log keeps as a change of his injuries.
+    injuries: "Injuries",
     // A club's own reputation, which has no home, current or world.
     reputation: "Reputation",
     "facilities.training": "Training facilities",
@@ -349,6 +355,21 @@ export const en = {
     reputationHome: "Home",
     reputationCurrent: "Current",
     reputationWorld: "World",
+
+    // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
+    /** A player's happiness, 0–20. */
+    happiness: (value: number) => `${value} / 20`,
+    /** Hover text of his happiness. */
+    happinessTitle: "At 20 the game calls a player content",
+    noInjuries: "No injuries",
+    /** The name of an injury the game gave none for. */
+    unknownInjury: "Unknown injury",
+    /** Under the name of an injury: when it began, and when he is expected back (`dates`: one date, or a range). */
+    injuryStarted: (date: string) => `Started ${date}`,
+    injuryBack: (dates: string) => `Expected back ${dates}`,
+    /** Heals every injury of the player at once. */
+    heal: "Heal",
+    healTitle: "Heal every injury of this player in the game",
 
     // Staff
     /** Badge on the manager the user controls. */
@@ -653,8 +674,12 @@ export const en = {
     invalidDate: (from: string, to: string) => `Enter a date from ${from} to ${to}`,
     /** The same for an amount of money, in whole pounds; `from` and `to` are the least and the most it takes. */
     invalidMoney: (from: string, to: string) => `Enter a whole number of pounds from ${from} to ${to}`,
+    /** The same for a percentage, in whole percent; `from` and `to` are the least and the most it takes, as shown. */
+    invalidPercentage: (from: string, to: string) => `Enter a whole percentage from ${from} to ${to}`,
     /** Before the input of an amount of money: the game stores pounds. */
     pounds: "£",
+    /** After the input of a percentage: the game shows energy and match sharpness as 0–100%. */
+    percent: "%",
     /** The two values of a yes-or-no field, as the lists of changes and the hover text of its checkbox say them. */
     yes: "Yes",
     no: "No",
@@ -700,8 +725,12 @@ export const en = {
     nav: "Changes",
     title: "Changes this session",
     hint: "Newest first. A change can be undone only while the game still holds the value it wrote.",
+    /** Under the hint: a change shows in the game only after it has moved on once. */
+    continueHint: "The game shows a change once it moves on: press Continue in the game.",
     /** Under a move to another club that was a swap: the player who went the other way. */
     swappedWith: (name: string) => `Swapped with ${name}`,
+    /** What a heal changed, in the place of its values: `count` is how many injuries the player had. */
+    healed: (count: number) => (count === 1 ? "Healed 1 injury" : `Healed ${format(count)} injuries`),
     /** The line beside the title; `undone` of the `total` changes were undone. */
     count: (total: number, undone: number) => {
       const count = changeCount(total);
@@ -796,6 +825,8 @@ export const en = {
       contract: "Contract",
       facilities: "Facilities",
       finances: "Finances",
+      /** A player's energy, match sharpness and happiness: the Medical group of his profile. */
+      health: "Medical",
       /** Whatever the other groups do not have, e.g. a player's height. */
       other: "Other",
     },
@@ -809,6 +840,8 @@ export const en = {
     values: { set: "Value", add: "Amount", scale: "Percent" } satisfies Record<MassOperationKind["op"], string>,
     /** Hover text of the amount of an Add. */
     addTitle: "Added to every value as shown; a negative number takes away",
+    /** The same for a percentage: the amount is in percentage points, not a percent of the value (that is Scale). */
+    addPointsTitle: "Percentage points added to every value (70% plus 10 is 80%); a negative number takes away",
     /** The hint in an empty value input: what it takes. */
     rangeHint: (min: number, max: number) => `${format(min)}–${format(max)}`,
     /** The same for an amount, which may be negative: up to `max` either way. */
@@ -912,7 +945,10 @@ export const en = {
     close: "Close",
   },
 
-  /** Moving a player to another club: the button in his profile and the dialog it opens. */
+  /**
+   * Moving a player to another club, or swapping him with a player of another club: the button in his profile and the
+   * dialog it opens.
+   */
   move: {
     /** The button in the header of a player's profile. */
     button: "Move to another club",
@@ -920,9 +956,15 @@ export const en = {
 
     // The dialog
     title: "Move to another club",
-    /** The club the player is at, and the club he moves to. */
+    /** The club the player is at, and the club he moves to (or, in a swap, goes to). */
     from: "From",
     to: "To",
+
+    // The switch at the top of the dialog: a move to a club, or a swap with one of its players.
+    /** Its name for assistive technology. */
+    modeLabel: "Move or swap",
+    modeMove: "Move to a club",
+    modeSwap: "Swap with a player",
 
     // Choosing the club
     /** The name of the search box, and of the list of clubs under it, for assistive technology. */
@@ -957,12 +999,50 @@ export const en = {
       "Listed under Changes, where it can be undone",
     ],
 
+    // Swapping with a player of the club instead: the title, and the section that picks the player (the club is
+    // chosen as for a move).
+    swapTitle: "Swap with a player",
+    /** The player who goes the other way. */
+    swapWith: "Swap with",
+    /** The name of the search box of the club's players, its hint, and the name of the list under it. */
+    playerSearchLabel: "Search for the player to swap with",
+    playerSearch: "Search this club's players by name",
+    playersLabel: "Players found",
+    playersSearching: "Searching players…",
+    playersSearchFailed: (reason: string) => `Could not search the players: ${reason}`,
+    /** Under the list when it is empty: `query` is what was typed. */
+    playersEmpty: (query: string) =>
+      query === "" ? "This club has no players." : `No player of this club matches “${query}”.`,
+    /** Takes the place of the list once a player is picked: the button that brings it back. */
+    changePlayer: "Choose another player",
+
+    // What the dialog says about the swap
+    /** A swap has no contract terms to set. */
+    swapContract: "Each player keeps their own contract; wages and contract ends do not change.",
+    swapChooseClub: "Choose the club of the player to swap with.",
+    swapChoosePlayer: "Choose the player to swap with.",
+    swapChecking: "Checking the swap…",
+    /** The swap can be made: who goes where, a line each. `from` is the club of the player, `to` that of the other. */
+    swapRoute: (player: string, from: string, to: string, other: string) =>
+      `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
+    swapDoesHeading: "What the swap does",
+    swapDoes: [
+      "Each joins the senior team of the other's club",
+      "Contracts dated from the game's date; squad numbers cleared",
+      "Both come off the transfer and loan lists",
+      "No fees are paid; career history is not updated",
+      "Listed under Changes as one change, which undoes both moves",
+    ],
+
     // The foot
-    /** Nothing changes in the game until Move. */
+    /** Nothing changes in the game until Move, or Swap. */
     hint: "Nothing changes in the game until you press Move.",
     move: "Move",
     moving: "Moving…",
     cancel: "Cancel",
+    swapHint: "Nothing changes in the game until you press Swap.",
+    swap: "Swap",
+    swapping: "Swapping…",
   },
 
   /** The game, as `describeGame` in `format.ts` names it. */

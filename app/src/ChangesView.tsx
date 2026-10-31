@@ -4,7 +4,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { valueText } from "./editDraft";
-import { changeLog, shownValue, undoBatch, undoChange } from "./editing";
+import { changeLog, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError, formatDateTime, formatTime } from "./format";
 import { changesText as text, fieldLabel, massEditText, profileText, valueChange } from "./labels";
@@ -267,6 +267,7 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
           <span className="count">{text.count(log.length, undone)}</span>
         </div>
         <p className="view-note">{text.hint}</p>
+        <p className="view-note">{text.continueHint}</p>
         {problem && (
           <div className="banner" role="alert">
             {problem}
@@ -455,9 +456,16 @@ interface ChangeRowProps {
 function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);
   const shown = (stored: number) => (field ? shownValue(field, stored) : stored);
-  // An attribute is stored on a finer scale than it is shown: its hover text has the values as stored.
-  const storedNote = field?.scale === "attribute" ? text.stored(valueChange(change.old, change.new)) : undefined;
+  // An attribute or a percentage is stored on a finer scale than it is shown: its hover text has the values as stored.
+  const storedNote = isStoredFiner(field) ? text.stored(valueChange(change.old, change.new)) : undefined;
   const className = [change.undoneAt !== null && "undone", inBatch && "in-batch"].filter(Boolean).join(" ");
+  // A move to another club is logged with the clubs' UIDs as its values: their names say more. A heal is logged as a
+  // change of his injuries from how many he had to none: "Healed 2 injuries" says it better than "2 → 0".
+  const value = change.moved
+    ? valueChange(change.moved.from, change.moved.to)
+    : change.field === "injuries"
+      ? text.healed(change.old)
+      : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
 
   return (
     <tr className={className || undefined}>
@@ -475,10 +483,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       </td>
       <td>{label}</td>
       <td className="change-value" title={storedNote}>
-        {/* A move to another club is logged with the clubs' UIDs as its values: their names say more. */}
-        {change.moved
-          ? valueChange(change.moved.from, change.moved.to)
-          : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)))}
+        {value}
         {change.moved?.with !== undefined && <div className="sub">{text.swappedWith(change.moved.with)}</div>}
       </td>
       <td className="col-status">

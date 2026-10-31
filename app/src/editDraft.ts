@@ -1,7 +1,7 @@
 // What the inputs of an edit session hold and what Apply would write. No React here: the components only draw it.
 
 import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
-import { formatDate, formatNumber, formatPounds } from "./format";
+import { formatDate, formatNumber, formatPercent, formatPounds } from "./format";
 import { choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
 
@@ -46,13 +46,16 @@ function inputText(field: EditField, shown: number): string {
 }
 
 /**
- * A value of `field`, as shown, written out: a date as the app shows dates, an amount of money in pounds, a flag as
- * Yes or No, a code from a list by its name, the blank as "none", anything else as a number. A field the table lacks
- * (`undefined`) is a number.
+ * A value of `field`, as shown, written out: a date as the app shows dates, an amount of money in pounds, a percentage
+ * with its percent sign, a flag as Yes or No, a code from a list by its name, the blank as "none", anything else as a
+ * number. A field the table lacks (`undefined`) is a number.
  */
 export function valueText(field: EditField | undefined, shown: number): string {
   if (field !== undefined && shown === field.blank) {
     return editText.none;
+  }
+  if (field?.scale === "percent") {
+    return formatPercent(shown);
   }
   switch (field?.kind) {
     case "date":
@@ -121,6 +124,9 @@ function invalidMessage(field: EditField, range: { min: number; max: number }): 
   if (field.kind === "flag" || field.choices !== null) {
     // A checkbox and a select only hold what they offer, so no value of theirs needs correcting.
     return null;
+  }
+  if (field.scale === "percent") {
+    return editText.invalidPercentage(valueText(field, range.min), valueText(field, range.max));
   }
   switch (field.kind) {
     case "date":
