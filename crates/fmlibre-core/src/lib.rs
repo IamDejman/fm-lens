@@ -11,6 +11,7 @@ mod edit;
 mod filter;
 mod game;
 mod index;
+mod mass;
 mod players;
 mod profile;
 mod scan;
@@ -31,6 +32,7 @@ pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use filter::{ClubFilter, PlayerFilter, PlayerOrder, PlayerSort, StaffFilter, sort_players};
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use index::{Listed, SearchIndex};
+pub use mass::{Operation, Plan, Planned, Skipped};
 pub use players::{PLAYABLE_RATING, PlayerIndex, PlayerSummary, read_players};
 pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,

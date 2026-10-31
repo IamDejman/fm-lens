@@ -351,3 +351,27 @@ These were refused, and nothing was written:
 - Paul Ifill's unset contract end;
 - 30 February as a date;
 - 21 as training facilities.
+
+### Mass edits
+
+How a mass edit works:
+- **Planning:** a mass edit is planned from the values the game holds when it is
+  previewed.
+- **Applying:** each change is then written only if the game still holds the
+  previewed old value, so nothing written after the preview is overwritten.
+- **Undo:** works on the whole batch.
+- **Restoring:** a value being undone only has to be plausible, not in the range the
+  editor writes, so a database value outside that range, such as a negative
+  potential ability, can go back.
+
+These were tried live on the test save through the release app's commands:
+- **Tottenham Hotspur's 81 players:** finishing +2 (shown) and CA +1 gave 162
+  changes. They were applied, read back and undone as one batch, and every value
+  ended as it started.
+- **Messi:** his contract end was set.
+- **Tottenham:** its transfer budget was doubled.
+
+These were refused:
+- a selection of all 59,304 players (over the limit);
+- a preview replaced by a newer one;
+- adding to a date.

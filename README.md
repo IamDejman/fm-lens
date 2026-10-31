@@ -13,7 +13,8 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 > - **Clubs:** reputation, facilities and finances.
 > - **How:** changes are reviewed before they are applied, and a Changes view
 >   undoes them.
-> - **Not yet:** editing many players at once.
+> - **Many at once:** a mass edit changes every player, member of staff or club the
+>   list selects. It is previewed before it is applied and undone as one batch.
 
 ## Goals
 

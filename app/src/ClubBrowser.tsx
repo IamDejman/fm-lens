@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ClubProfile } from "./ClubProfile";
 import { clubListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
+import { MassEditButton } from "./MassEditDialog";
 import { ReputationMeter } from "./ProfileParts";
 import type { ClubFilter, ClubSummary } from "./types";
 
@@ -36,6 +37,7 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
           </div>
         </div>
       }
+      toolbarActions={(list) => <MassEditButton entity="club" filters={{ clubFilter: filter }} list={list} />}
       tableClass="club-grid"
       header={
         <>

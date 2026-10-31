@@ -1,7 +1,20 @@
 // Editing: the Rust commands that change the game, and how stored values are shown.
 
 import { call } from "./api";
-import type { ApplyReport, EditField, Entity, FieldEdit, FieldValues, FmDate, LoggedChange } from "./types";
+import type {
+  ApplyReport,
+  BatchUndo,
+  EditField,
+  Entity,
+  FieldEdit,
+  FieldValues,
+  FmDate,
+  LoggedChange,
+  MassFilters,
+  MassOperation,
+  MassPreview,
+  MassReport,
+} from "./types";
 
 /** The fields of players or of staff the editor can change, in display order. */
 export const editFields = (entity: Entity) => call<EditField[]>("edit_fields", { entity });
@@ -70,3 +83,16 @@ export function numberFromIso(text: string): number | null {
   const value = Number(match[1]) * 10_000 + Number(match[2]) * 100 + Number(match[3]);
   return dateFromNumber(value) ? value : null;
 }
+
+/**
+ * Works out a mass edit: `operations` on every player, member of staff or club that `query` and the entity's
+ * filter in `filters` select, from the values the game holds now. Nothing is written until `applyMassEdit`.
+ */
+export const planMassEdit = (entity: Entity, query: string, filters: MassFilters, operations: MassOperation[]) =>
+  call<MassPreview>("plan_mass_edit", { entity, query, filters, operations });
+
+/** Writes the mass edit previewed as `id`, exactly as shown; each change only if the value is still the one previewed. */
+export const applyMassEdit = (id: number) => call<MassReport>("apply_mass_edit", { id });
+
+/** Undoes every change of a mass edit that is not undone yet. */
+export const undoBatch = (batch: number) => call<BatchUndo>("undo_batch", { batch });

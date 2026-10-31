@@ -4,8 +4,8 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, Entity, EntityArrays, Field, FmDate, GAME_EXE,
-    GAME_PLUGIN, GameInfo, Kind, Listed, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session,
-    StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
+    GAME_PLUGIN, GameInfo, Kind, Listed, Operation, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder,
+    SearchIndex, Session, Skipped, StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -20,14 +20,76 @@ struct Connection {
     staff: StaffIndex,
     clubs: ClubIndex,
     log: Vec<LoggedChange>,
+    /// The mass edit last previewed, until it is applied or replaced.
+    mass: Option<PendingMass>,
+    /// The next id for a mass-edit preview or batch.
+    next_id: u32,
+}
+
+/// A mass edit that was worked out and shown, waiting to be applied as it was shown.
+struct PendingMass {
+    id: u32,
+    entity: Entity,
+    planned: Vec<Planned>,
 }
 
 impl Connection {
+    /// Reads every list. A reload keeps the change log; a mass edit previewed before is dropped,
+    /// since its people may have moved.
     fn load(session: Session, log: Vec<LoggedChange>) -> Result<Self, String> {
         let players = PlayerIndex::new(session.players().map_err(text)?);
         let staff = StaffIndex::new(session.staff().map_err(text)?);
         let clubs = ClubIndex::new(session.clubs().map_err(text)?);
-        Ok(Self { session, players, staff, clubs, log })
+        let next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
+        Ok(Self { session, players, staff, clubs, log, mass: None, next_id })
+    }
+
+    fn fresh_id(&mut self) -> u32 {
+        self.next_id += 1;
+        self.next_id - 1
+    }
+
+    /// The players, staff or clubs a search and its filter select, as edit targets with names.
+    fn select(&self, entity: Entity, query: &str, filters: Filters) -> Vec<(Target, String)> {
+        match entity {
+            Entity::Player => {
+                let filter = filters.player_filter.unwrap_or_default();
+                let hits = self.players.search(query).into_iter().filter(|p| filter.matches(p));
+                hits.map(|p| (p.target(), p.name.clone())).collect()
+            }
+            Entity::Staff => {
+                let filter = filters.staff_filter.unwrap_or_default();
+                let hits = self.staff.search(query).into_iter().filter(|s| filter.matches(s));
+                hits.map(|s| (s.target(), s.name.clone())).collect()
+            }
+            Entity::Club => {
+                let filter = filters.club_filter.unwrap_or_default();
+                let hits = self.clubs.search(query).into_iter().filter(|c| filter.matches(c));
+                hits.map(|c| (c.target(), c.name.clone())).collect()
+            }
+        }
+    }
+
+    /// Logs a change just written; `batch` groups the changes of one mass edit.
+    fn log_change(&mut self, change: Change, name: String, batch: Option<u32>) -> LoggedChange {
+        self.note_change(&change, change.new);
+        let logged = LoggedChange { id: self.log.len() + 1, at: now_ms(), name, change, undone_at: None, batch };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Writes back the old value of the logged change `id`, if the game still holds the new one.
+    fn undo(&mut self, id: usize) -> Result<LoggedChange, String> {
+        let entry = self.log.iter().find(|logged| logged.id == id).cloned().ok_or_else(|| format!("No change {id}"))?;
+        if entry.undone_at.is_some() {
+            return Err("This change has already been undone.".to_owned());
+        }
+        let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
+        self.session.revert(&target, &entry.change).map_err(text)?;
+        self.note_change(&entry.change, entry.change.old);
+        let logged = self.log.iter_mut().find(|logged| logged.id == id).expect("found above");
+        logged.undone_at = Some(now_ms());
+        Ok(logged.clone())
     }
 
     /// Where the player, member of staff or club with `uid` lives in the game, and its name.
@@ -63,6 +125,81 @@ struct LoggedChange {
     change: Change,
     /// When it was undone, if it was.
     undone_at: Option<u64>,
+    /// The mass edit it was part of, if any.
+    batch: Option<u32>,
+}
+
+/// The filter of the list a mass edit applies to; only the one for its entity is used.
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct Filters {
+    player_filter: Option<PlayerFilter>,
+    staff_filter: Option<StaffFilter>,
+    club_filter: Option<ClubFilter>,
+}
+
+/// One field of a mass edit and what to do with it.
+#[derive(Deserialize)]
+struct MassOperation {
+    field: String,
+    operation: Operation,
+}
+
+/// Most players, staff or clubs one mass edit may change.
+const MASS_LIMIT: usize = 10_000;
+
+/// Most changes and skipped fields a preview lists; the counts cover all of them.
+const PREVIEW_ROWS: usize = 500;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MassPreview {
+    /// What `apply_mass_edit` takes to write exactly these changes.
+    id: u32,
+    /// How many players, staff or clubs the search and filters selected.
+    targets: usize,
+    /// How many of them already have the values the edit would give them.
+    unchanged: usize,
+    /// How many values would change, in all.
+    changes: usize,
+    /// The first changes.
+    rows: Vec<Planned>,
+    /// How many values are left alone, and the first of them with the reason.
+    skipped_count: usize,
+    skipped: Vec<Skipped>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MassReport {
+    /// Groups the changes in the log; `undo_batch` undoes them together.
+    batch: u32,
+    applied: usize,
+    failed: Vec<MassFailure>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MassFailure {
+    uid: u32,
+    name: String,
+    field: String,
+    error: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BatchUndo {
+    undone: usize,
+    /// Changes the game has changed since, which were left as they are.
+    failed: Vec<BatchUndoFailure>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BatchUndoFailure {
+    id: usize,
+    error: String,
 }
 
 /// One value to write, as stored.
@@ -366,18 +503,7 @@ fn apply_edits(
         match written {
             // Already the value asked for: nothing was written.
             Ok(change) if change.old == change.new => {}
-            Ok(change) => {
-                connection.note_change(&change, change.new);
-                let logged = LoggedChange {
-                    id: connection.log.len() + 1,
-                    at: now_ms(),
-                    name: name.clone(),
-                    change,
-                    undone_at: None,
-                };
-                connection.log.push(logged.clone());
-                report.applied.push(logged);
-            }
+            Ok(change) => report.applied.push(connection.log_change(change, name.clone(), None)),
             Err(err) => report.failed.push(FailedEdit { field: edit.field, value: edit.value, error: err.to_string() }),
         }
     }
@@ -398,17 +524,108 @@ fn change_log(state: State<'_, AppState>) -> Result<Vec<LoggedChange>, String> {
 fn undo_change(state: State<'_, AppState>, id: usize) -> Result<LoggedChange, String> {
     let mut guard = state.0.lock().map_err(text)?;
     let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let entry =
-        connection.log.iter().find(|logged| logged.id == id).cloned().ok_or_else(|| format!("No change {id}"))?;
-    if entry.undone_at.is_some() {
-        return Err("This change has already been undone.".to_owned());
+    connection.undo(id)
+}
+
+/// Works out a mass edit: `operations` applied to every player, member of staff or club
+/// that `query` and the entity's filter select, from the values the game holds now.
+/// Nothing is written; the plan waits for `apply_mass_edit` with the preview's id.
+#[tauri::command]
+fn plan_mass_edit(
+    state: State<'_, AppState>,
+    entity: Entity,
+    query: String,
+    filters: Filters,
+    operations: Vec<MassOperation>,
+) -> Result<MassPreview, String> {
+    let mut guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    if operations.is_empty() {
+        return Err("Choose at least one field to change.".to_owned());
     }
-    let (target, _) = connection.target(entry.change.entity, entry.change.uid)?;
-    connection.session.revert(&target, &entry.change).map_err(text)?;
-    connection.note_change(&entry.change, entry.change.old);
-    let logged = connection.log.iter_mut().find(|logged| logged.id == id).expect("found above");
-    logged.undone_at = Some(now_ms());
-    Ok(logged.clone())
+    let targets = connection.select(entity, &query, filters);
+    if targets.len() > MASS_LIMIT {
+        return Err(format!(
+            "{} match. Narrow the search or the filters to {MASS_LIMIT} or fewer for a mass edit.",
+            targets.len()
+        ));
+    }
+    let operations = operations
+        .into_iter()
+        .map(|op| Ok((connection.session.field(entity, &op.field)?, op.operation)))
+        .collect::<Result<Vec<_>, fmlibre_core::EditError>>()
+        .map_err(text)?;
+    let plan = connection.session.plan_mass_edit(&targets, &operations).map_err(text)?;
+    let id = connection.fresh_id();
+    let preview = MassPreview {
+        id,
+        targets: targets.len(),
+        unchanged: plan.unchanged,
+        changes: plan.planned.len(),
+        rows: plan.planned.iter().take(PREVIEW_ROWS).cloned().collect(),
+        skipped_count: plan.skipped.len(),
+        skipped: plan.skipped.into_iter().take(PREVIEW_ROWS).collect(),
+    };
+    connection.mass = Some(PendingMass { id, entity, planned: plan.planned });
+    Ok(preview)
+}
+
+/// Writes the mass edit previewed as `id`, exactly as it was shown: each change only while
+/// the game still holds the value it was planned from. The changes are logged as one batch.
+#[tauri::command]
+fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, String> {
+    let mut guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let pending = match connection.mass.take() {
+        Some(pending) if pending.id == id => pending,
+        other => {
+            connection.mass = other;
+            return Err("This preview is out of date. Preview the mass edit again.".to_owned());
+        }
+    };
+    let fields: BTreeMap<String, Field> =
+        connection.session.fields(pending.entity).into_iter().map(|field| (field.key.clone(), field)).collect();
+    let batch = connection.fresh_id();
+    let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+    for planned in pending.planned {
+        let field = &fields[&planned.field];
+        match connection.session.write_field_if(&planned.target, field, planned.old, planned.new) {
+            Ok(change) => {
+                connection.log_change(change, planned.name, Some(batch));
+                report.applied += 1;
+            }
+            Err(err) => report.failed.push(MassFailure {
+                uid: planned.uid,
+                name: planned.name,
+                field: planned.field,
+                error: err.to_string(),
+            }),
+        }
+    }
+    Ok(report)
+}
+
+/// Undoes every change of the mass edit `batch` that is not undone yet, newest first.
+/// Changes the game has changed since are left as they are and reported.
+#[tauri::command]
+fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, String> {
+    let mut guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let ids: Vec<usize> = connection
+        .log
+        .iter()
+        .rev()
+        .filter(|logged| logged.batch == Some(batch) && logged.undone_at.is_none())
+        .map(|logged| logged.id)
+        .collect();
+    let mut report = BatchUndo { undone: 0, failed: Vec::new() };
+    for id in ids {
+        match connection.undo(id) {
+            Ok(_) => report.undone += 1,
+            Err(error) => report.failed.push(BatchUndoFailure { id, error }),
+        }
+    }
+    Ok(report)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -429,7 +646,10 @@ pub fn run() {
             read_values,
             apply_edits,
             change_log,
-            undo_change
+            undo_change,
+            plan_mass_edit,
+            apply_mass_edit,
+            undo_batch
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

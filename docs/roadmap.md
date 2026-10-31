@@ -48,7 +48,7 @@ before trusting them.
   with its own icon, no installer. The first public release is the maintainer's
   call.
 
-## Phase 4: editing (in progress)
+## Phase 4: editing (done)
 
 - [x] Guarded writes, heap only. Editable fields for players are CA/PA,
   attributes, positions, personality, height, reputation and caps. For staff they
@@ -68,7 +68,14 @@ before trusting them.
 
   Each record is checked before it is written: a contract must point back at its
   owner, the senior team at its club, and finances must be the full finance record.
-- [ ] Mass editing with a preview.
+- [x] Mass editing with a preview:
+  - **Targets:** the players, staff or clubs that the list's search and filters
+    select, up to 10,000.
+  - **Operations:** set a field, add to it, or change it by a percentage.
+  - **Preview:** lists every old → new value and what is left alone.
+  - **Apply:** writes exactly the previewed changes, each only while the game still
+    holds the previewed value.
+  - **Undo:** the whole batch at once, from the Changes view.
 
 ## Phase 5: polish and reach
 

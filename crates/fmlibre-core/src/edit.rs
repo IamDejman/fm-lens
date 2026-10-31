@@ -403,6 +403,11 @@ pub enum EditError {
         field: String,
         value: i64,
     },
+    /// The field cannot be changed this way, e.g. a date by adding to it.
+    Unsupported {
+        field: String,
+        reason: &'static str,
+    },
     /// The object no longer belongs to the person or club: the game has moved on.
     Moved {
         entity: Entity,
@@ -445,6 +450,7 @@ impl fmt::Display for EditError {
                 write!(f, "{value} is not a valid {field}; it takes {min} to {max}")
             }
             EditError::NotADate { field, value } => write!(f, "{value} is not a date for {field}"),
+            EditError::Unsupported { field, reason } => write!(f, "{field}: {reason}"),
             EditError::Moved { entity, uid } => {
                 write!(f, "the {entity} with id {uid} has moved in the game's memory; reload and try again")
             }
@@ -542,7 +548,34 @@ impl Session {
     /// plausible. If the value read back differs, the old bytes are written back before
     /// the error is returned.
     pub fn write_field(&self, target: &Target, field: &Field, value: i64) -> Result<Change, EditError> {
-        if !(field.min..=field.max).contains(&value) {
+        self.write(target, field, value, None, false)
+    }
+
+    /// Like [`Session::write_field`], but only while the game still holds `expected`:
+    /// otherwise nothing is written and the error is a [`EditError::Conflict`].
+    pub fn write_field_if(
+        &self,
+        target: &Target,
+        field: &Field,
+        expected: i64,
+        value: i64,
+    ) -> Result<Change, EditError> {
+        self.write(target, field, value, Some(expected), false)
+    }
+
+    /// Writes `value`. A value being restored (`restoring`) was the game's own, so it only
+    /// has to be plausible, not in the range the editor writes: a potential ability the
+    /// database left negative goes back as it was.
+    fn write(
+        &self,
+        target: &Target,
+        field: &Field,
+        value: i64,
+        expected: Option<i64>,
+        restoring: bool,
+    ) -> Result<Change, EditError> {
+        let allowed = if restoring { field.is_plausible(value) } else { (field.min..=field.max).contains(&value) };
+        if !allowed {
             return Err(EditError::OutOfRange { field: field.key.clone(), value, min: field.min, max: field.max });
         }
         if field.kind == Kind::Date && FmDate::from_number(value).is_none() {
@@ -552,6 +585,11 @@ impl Session {
         let address = self.locate(target, field)?.ok_or_else(|| EditError::NoRecord { field: field.key.clone() })?;
         let old_bytes = self.process.read_bytes(address, field.kind.size())?;
         let old = field.kind.decode(&old_bytes);
+        if let Some(expected) = expected
+            && old != expected
+        {
+            return Err(EditError::Conflict { field: field.key.clone(), expected, found: old });
+        }
         if !field.is_plausible(old) {
             return Err(EditError::Implausible { field: field.key.clone(), value: old });
         }
@@ -575,11 +613,7 @@ impl Session {
     /// Undoes `change`, provided the game still holds the value it wrote.
     pub fn revert(&self, target: &Target, change: &Change) -> Result<Change, EditError> {
         let field = self.field(target.entity, &change.field)?;
-        let found = self.read_field(target, &field)?;
-        if found != change.new {
-            return Err(EditError::Conflict { field: field.key, expected: change.new, found });
-        }
-        self.write_field(target, &field, change.old)
+        self.write(target, &field, change.old, Some(change.new), true)
     }
 
     fn check_target(&self, target: &Target, field: &Field) -> Result<(), EditError> {

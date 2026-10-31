@@ -10,6 +10,19 @@ interface Page<Row> {
   rows: Row[];
 }
 
+/** What a list tells the actions in its toolbar about itself. */
+export interface ListState {
+  /** The text in the search box. */
+  query: string;
+  /**
+   * How many rows the search and the filters select: the total of the rows on show. Null until the list has them,
+   * and while it is asking again after the search or the filters changed.
+   */
+  total: number | null;
+  /** How many of them the list has rows for: the best ones (see `summary`). */
+  shown: number;
+}
+
 interface ListBrowserProps<Row extends { uid: number }> {
   /**
    * The Rust command that searches, e.g. "search_players". It takes `{ query, limit, ...requestArgs }` and
@@ -35,6 +48,8 @@ interface ListBrowserProps<Row extends { uid: number }> {
   empty: (query: string) => string;
   /** The filters of the list, between the search box and the table. */
   filterBar?: ReactNode;
+  /** Buttons at the end of the toolbar, e.g. Mass edit; they get the search text and the total. */
+  toolbarActions?: (list: ListState) => ReactNode;
   /** An extra class of the table, for column rules of that list. */
   tableClass?: string;
   /** The header cells. */
@@ -47,10 +62,13 @@ interface ListBrowserProps<Row extends { uid: number }> {
 
 /** A searchable table with the profile of the selected row beside it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
-  const { command, requestArgs, version, active, placeholder, summary, empty, filterBar } = props;
+  const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
   const { tableClass, header, cells, profile } = props;
   const [query, setQuery] = useState("");
   const [page, setPage] = useState<Page<Row> | null>(null);
+  // The search text and arguments the rows on show were asked for: their total is the list's only while those are
+  // the ones in the search box and the filters now.
+  const [shownFor, setShownFor] = useState<{ query: string; argsKey: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -85,6 +103,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
           const result = await call<Page<Row>>(command, { ...args, query, limit: ROW_LIMIT });
           if (!cancelled) {
             setPage(result);
+            setShownFor({ query, argsKey });
             setError(null);
             if (shownArgs.current !== argsKey) {
               // A new sort or filter starts at the top; reading the same list again keeps its place.
@@ -112,6 +131,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
     }
   }, [active]);
 
+  const settled = page !== null && shownFor !== null && shownFor.query === query && shownFor.argsKey === argsKey;
+
   // A hidden list has no profile open: its window-wide Escape handler must not fire.
   const showProfile = active && selected !== null;
   const className = ["workspace", showProfile && "with-profile", !active && "inactive"].filter(Boolean).join(" ");
@@ -134,6 +155,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
             />
           </label>
           <span className="count">{page ? summary(page.total, page.rows.length) : ""}</span>
+          {toolbarActions?.({ query, total: settled ? page.total : null, shown: page?.rows.length ?? 0 })}
         </div>
         {filterBar}
         {error && <div className="banner">{error}</div>}
