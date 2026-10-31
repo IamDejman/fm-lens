@@ -679,15 +679,30 @@ export const en = {
     undo: "Undo",
     /** Hover text of Undo; `label` is the field's name. */
     undoTitle: (label: string) => `Write the old value of ${label} back to the game`,
-    /** The small tag after the name of a change that was part of a mass edit. */
+    /** The small tag after the fields a mass edit changed: a mass edit is one row of the list. */
     batch: "Mass edit",
-    /** Hover text of that tag; `count` is how many changes the mass edit made. */
-    batchTitle: (count: number) => `Part of a mass edit of ${changeCount(count)}`,
-    /** Undoes the whole mass edit; it sits on the newest change of the mass edit. */
+    /** Under those fields: how many changes the mass edit made, and how many of them are not undone. */
+    batchCount: (total: number, remaining: number) =>
+      remaining === 0
+        ? `${changeCount(total)} · all undone`
+        : `${changeCount(total)} · ${format(remaining)} not undone`,
+    /** Opens the list of the changes of a mass edit under its row, and closes it again. */
+    showChanges: "Show changes",
+    hideChanges: "Hide changes",
+    /** Undoes the whole mass edit. */
     undoBatch: "Undo mass edit",
     /** Hover text of Undo mass edit; `remaining` is how many of its changes are not undone yet. */
     undoBatchTitle: (remaining: number) =>
       `Write the old values of this mass edit back to the game (${format(remaining)} still in place)`,
+
+    // Pages: the list, and the changes of a mass edit that is open, are shown a page at a time.
+    /** The names of the two groups of buttons for assistive technology. */
+    pages: "Pages of the list",
+    batchPages: "Pages of the changes of this mass edit",
+    previous: "Previous",
+    next: "Next",
+    /** Between the buttons: the rows on show and how many there are, e.g. "101–200 of 450". */
+    range: (first: number, last: number, total: number) => `${format(first)}–${format(last)} of ${format(total)}`,
   },
 
   /** Mass editing: the button in the toolbar of a list and the dialog it opens. */

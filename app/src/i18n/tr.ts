@@ -595,10 +595,21 @@ export const tr: Strings = {
     undo: "Geri al",
     undoTitle: (label) => `Eski değeri oyuna geri yaz: ${label}`,
     batch: "Toplu düzenleme",
-    batchTitle: (count) => `${changes(count)} yapan bir toplu düzenlemenin parçası`,
+    batchCount: (total, remaining) =>
+      remaining === 0
+        ? `${changes(total)} · hepsi geri alındı`
+        : `${changes(total)} · ${format(remaining)} tanesi geri alınmadı`,
+    showChanges: "Değişiklikleri göster",
+    hideChanges: "Değişiklikleri gizle",
     undoBatch: "Toplu düzenlemeyi geri al",
     undoBatchTitle: (remaining) =>
       `Bu toplu düzenlemenin eski değerlerini oyuna geri yaz (${changes(remaining)} hâlâ yerinde)`,
+
+    pages: "Liste sayfaları",
+    batchPages: "Bu toplu düzenlemenin değişiklik sayfaları",
+    previous: "Önceki",
+    next: "Sonraki",
+    range: (first, last, total) => `${format(first)}–${format(last)} / ${format(total)}`,
   },
 
   massEdit: {

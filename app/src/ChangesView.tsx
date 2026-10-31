@@ -1,14 +1,15 @@
-// The Changes view: everything written to the game this session, newest first, with an Undo for each change, and
-// for each mass edit an Undo of the whole mass edit.
+// The Changes view: everything written to the game this session, newest first, with an Undo for each change. A mass
+// edit is one row, with an Undo of the whole mass edit and a toggle that opens its changes. One mass edit can log
+// thousands of changes, so the list, and the changes of a mass edit that is open, are shown a page at a time.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { valueText } from "./editDraft";
 import { changeLog, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError, formatDateTime, formatTime } from "./format";
 import { changesText as text, fieldLabel, massEditText, profileText, valueChange } from "./labels";
 import { undoFailureLines } from "./massDraft";
-import type { EditField, LoggedChange } from "./types";
+import type { EditField, Entity, LoggedChange } from "./types";
 
 /**
  * This session's change log. `reload` reads it again; when several reads overlap, the answer to the last one asked
@@ -73,32 +74,75 @@ function useFieldIndex(): { fields: ReadonlyMap<string, EditField> | null; error
   return { fields, error };
 }
 
-/** What the log says about one mass edit. */
-interface BatchInfo {
-  /** The newest change of the mass edit: the row that has its Undo. */
-  newest: number;
-  /** How many changes it made, and how many of them are not undone. */
-  total: number;
-  remaining: number;
+/** Rows shown at once: of the list, and of the changes of a mass edit that is open. */
+const PAGE_SIZE = 100;
+
+/** The columns of the table, for a cell that spans them all. */
+const COLUMNS = 5;
+
+/** How many pages `total` rows take. */
+const pageCount = (total: number) => Math.ceil(total / PAGE_SIZE);
+
+/** `page` (from 0), kept within the pages `total` rows take: the list may have become shorter than it was. */
+const withinPages = (page: number, total: number) => Math.min(page, Math.max(0, pageCount(total) - 1));
+
+/** The rows of `page` (from 0). */
+function pageOf<T>(rows: readonly T[], page: number): T[] {
+  return rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 }
 
-/** The mass edits in `log` (newest change first, as the log is), by batch. */
-function batchesOf(log: readonly LoggedChange[]): Map<number, BatchInfo> {
-  const batches = new Map<number, BatchInfo>();
+/** What the log says about one mass edit. */
+interface Batch {
+  id: number;
+  /** What it changed: a mass edit is made in one list. */
+  entity: Entity;
+  /** Its changes, newest first, as the log has them. */
+  changes: LoggedChange[];
+  /** How many of them are not undone. */
+  remaining: number;
+  /** The names of the fields it changed, each once, in the order they were written. */
+  fields: string[];
+}
+
+/** A row of the list: a change that was made on its own, or a whole mass edit. */
+type Entry = { kind: "change"; change: LoggedChange } | { kind: "batch"; batch: Batch };
+
+/**
+ * The rows of the list for `log` (newest change first, as the log is): the changes made on their own, and each mass
+ * edit once, where its newest change is.
+ */
+function entriesOf(log: readonly LoggedChange[]): Entry[] {
+  const entries: Entry[] = [];
+  const batches = new Map<number, Batch>();
   for (const change of log) {
     if (change.batch === null) {
+      entries.push({ kind: "change", change });
       continue;
     }
-    const open = change.undoneAt === null ? 1 : 0;
-    const found = batches.get(change.batch);
-    if (found === undefined) {
-      batches.set(change.batch, { newest: change.id, total: 1, remaining: open });
-    } else {
-      found.total++;
-      found.remaining += open;
+    let batch = batches.get(change.batch);
+    if (batch === undefined) {
+      batch = { id: change.batch, entity: change.entity, changes: [], remaining: 0, fields: [] };
+      batches.set(change.batch, batch);
+      entries.push({ kind: "batch", batch });
+    }
+    batch.changes.push(change);
+    if (change.undoneAt === null) {
+      batch.remaining++;
     }
   }
-  return batches;
+  for (const batch of batches.values()) {
+    batch.fields = fieldNames(batch);
+  }
+  return entries;
+}
+
+/** The names of the fields `batch` changed, each once, the oldest change first: the order the mass edit had them in. */
+function fieldNames(batch: Batch): string[] {
+  const names = new Set<string>();
+  for (let at = batch.changes.length - 1; at >= 0; at--) {
+    names.add(fieldLabel(batch.entity, batch.changes[at].field));
+  }
+  return [...names];
 }
 
 /** What undoing a whole mass edit came to: how many changes were taken back and what could not be, or why it failed. */
@@ -120,9 +164,14 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
   const [undoing, setUndoing] = useState(false);
   // Why an undo failed, by change id.
   const [failures, setFailures] = useState<Record<number, string>>({});
-  // What undoing a whole mass edit did, by batch: it is shown on the newest change of the mass edit.
+  // What undoing a whole mass edit did, by batch: it is shown on the row of the mass edit.
   const [outcomes, setOutcomes] = useState<Record<number, BatchOutcome>>({});
-  const batches = useMemo(() => batchesOf(log), [log]);
+  // The page of the list that is on show, from 0.
+  const [page, setPage] = useState(0);
+  // The mass edits that are open, by batch, each with the page of its changes that is on show, from 0.
+  const [open, setOpen] = useState<Partial<Record<number, number>>>({});
+  const entries = useMemo(() => entriesOf(log), [log]);
+  const tableWrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     reload();
@@ -172,10 +221,43 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
     }
   };
 
+  const showPage = (next: number) => {
+    setPage(next);
+    // A page starts at its top.
+    tableWrap.current?.scrollTo({ top: 0 });
+  };
+
+  /** Opens the mass edit at the first page of its changes, or closes it. */
+  const toggle = (batch: number) =>
+    setOpen((old) => {
+      const rest = { ...old };
+      if (old[batch] === undefined) {
+        rest[batch] = 0;
+      } else {
+        delete rest[batch];
+      }
+      return rest;
+    });
+
+  const showBatchPage = (batch: number, next: number) => setOpen((old) => ({ ...old, [batch]: next }));
+
   // Stored values are turned into shown ones with the field tables, so the rows wait for them.
   const ready = fields !== null || fieldsError !== null;
   const undone = log.filter((change) => change.undoneAt !== null).length;
   const problem = error ?? fieldsError;
+  const shownPage = withinPages(page, entries.length);
+
+  const changeRow = (change: LoggedChange, inBatch: boolean) => (
+    <ChangeRow
+      key={change.id}
+      change={change}
+      field={fields?.get(`${change.entity}:${change.field}`)}
+      failure={failures[change.id]}
+      undoing={undoing}
+      onUndo={undo}
+      inBatch={inBatch}
+    />
+  );
 
   return (
     <div className="workspace">
@@ -191,7 +273,7 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
           </div>
         )}
 
-        <div className="table-wrap">
+        <div className="table-wrap" ref={tableWrap}>
           <table className="grid changes-grid">
             <thead>
               <tr>
@@ -204,30 +286,153 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
             </thead>
             <tbody>
               {ready &&
-                log.map((change) => {
-                  const batch = change.batch === null ? undefined : batches.get(change.batch);
-                  const newest = batch !== undefined && batch.newest === change.id;
+                pageOf(entries, shownPage).map((entry) => {
+                  if (entry.kind === "change") {
+                    return changeRow(entry.change, false);
+                  }
+                  const { batch } = entry;
+                  // Undefined while the mass edit is closed.
+                  const opened = open[batch.id];
+                  const batchPage = opened === undefined ? 0 : withinPages(opened, batch.changes.length);
                   return (
-                    <ChangeRow
-                      key={change.id}
-                      change={change}
-                      field={fields?.get(`${change.entity}:${change.field}`)}
-                      failure={failures[change.id]}
-                      undoing={undoing}
-                      onUndo={undo}
-                      batch={batch}
-                      newest={newest}
-                      outcome={newest && change.batch !== null ? outcomes[change.batch] : undefined}
-                      onUndoBatch={undoWholeBatch}
-                    />
+                    <Fragment key={`batch-${batch.id}`}>
+                      <BatchRow
+                        batch={batch}
+                        open={opened !== undefined}
+                        undoing={undoing}
+                        outcome={outcomes[batch.id]}
+                        onToggle={toggle}
+                        onUndo={undoWholeBatch}
+                      />
+                      {opened !== undefined && (
+                        <>
+                          {pageCount(batch.changes.length) > 1 && (
+                            <tr className="batch-pager">
+                              <td colSpan={COLUMNS}>
+                                <Pager
+                                  label={text.batchPages}
+                                  page={batchPage}
+                                  total={batch.changes.length}
+                                  onPage={(next) => showBatchPage(batch.id, next)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                          {pageOf(batch.changes, batchPage).map((change) => changeRow(change, true))}
+                        </>
+                      )}
+                    </Fragment>
                   );
                 })}
             </tbody>
           </table>
           {ready && log.length === 0 && <p className="empty">{text.empty}</p>}
         </div>
+        {ready && pageCount(entries.length) > 1 && (
+          <div className="pager-bar">
+            <Pager label={text.pages} page={shownPage} total={entries.length} onPage={showPage} />
+          </div>
+        )}
       </section>
     </div>
+  );
+}
+
+interface PagerProps {
+  /** What the buttons page through, for assistive technology. */
+  label: string;
+  /** The page that is on show, from 0, and how many rows there are in all. */
+  page: number;
+  total: number;
+  onPage: (page: number) => void;
+}
+
+/** Previous and Next with the rows on show between them ("101–200 of 450"); nothing while the rows fit one page. */
+function Pager({ label, page, total, onPage }: PagerProps) {
+  const box = useRef<HTMLDivElement>(null);
+  const pages = pageCount(total);
+
+  // A disabled button cannot keep focus: when the button that was pressed has reached the first or the last page, focus
+  // goes to the other one.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (box.current?.contains(active) && active instanceof HTMLElement && active.matches(":disabled")) {
+      box.current.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+    }
+  }, [page]);
+
+  if (pages <= 1) {
+    return null;
+  }
+  const first = page * PAGE_SIZE + 1;
+  const last = Math.min(total, first + PAGE_SIZE - 1);
+
+  return (
+    <div ref={box} className="pager" role="group" aria-label={label}>
+      <button type="button" disabled={page === 0} onClick={() => onPage(page - 1)}>
+        {text.previous}
+      </button>
+      {/* A live region, so that the new range is read out when a page changes. */}
+      <span className="pager-range" role="status">
+        {text.range(first, last, total)}
+      </span>
+      <button type="button" disabled={page >= pages - 1} onClick={() => onPage(page + 1)}>
+        {text.next}
+      </button>
+    </div>
+  );
+}
+
+interface BatchRowProps {
+  batch: Batch;
+  /** Whether its changes are shown under it. */
+  open: boolean;
+  /** Whether any undo is under way: one at a time. */
+  undoing: boolean;
+  /** What undoing the whole mass edit did. */
+  outcome: BatchOutcome | undefined;
+  onToggle: (batch: number) => void;
+  onUndo: (batch: number) => void;
+}
+
+/** A mass edit as one row: what it changed, how much of it is still in place, its Undo and the toggle for its changes. */
+function BatchRow({ batch, open, undoing, outcome, onToggle, onUndo }: BatchRowProps) {
+  // The newest change gives the time: the mass edit is as old as its last write.
+  const newest = batch.changes[0];
+
+  return (
+    <tr className={batch.remaining === 0 ? "batch-row undone" : "batch-row"}>
+      <td className="date" title={formatDateTime(newest.at)}>
+        {formatTime(newest.at)}
+      </td>
+      <td className="col-person col-batch" colSpan={3}>
+        <div className="name">
+          {batch.fields.join(", ")}
+          <span className="tag kind">{text.kinds[batch.entity]}</span>
+          <span className="tag batch">{text.batch}</span>
+        </div>
+        <div className="sub">{text.batchCount(batch.changes.length, batch.remaining)}</div>
+      </td>
+      <td className="col-status">
+        <div className="row-actions">
+          {batch.remaining > 0 && (
+            <button
+              type="button"
+              className="batch-undo"
+              disabled={undoing}
+              title={text.undoBatchTitle(batch.remaining)}
+              onClick={() => onUndo(batch.id)}
+            >
+              {text.undoBatch}
+            </button>
+          )}
+          <button type="button" className="batch-toggle" aria-expanded={open} onClick={() => onToggle(batch.id)}>
+            {open ? text.hideChanges : text.showChanges}
+          </button>
+        </div>
+        {outcome !== undefined && <BatchOutcomeNote outcome={outcome} />}
+      </td>
+    </tr>
   );
 }
 
@@ -243,23 +448,19 @@ interface ChangeRowProps {
   /** Whether any undo is under way: one at a time. */
   undoing: boolean;
   onUndo: (change: LoggedChange) => void;
-  /** The mass edit the change is part of, if it is. */
-  batch: BatchInfo | undefined;
-  /** Whether it is the newest change of its mass edit: it has the Undo of the whole mass edit and what that did. */
-  newest: boolean;
-  outcome: BatchOutcome | undefined;
-  onUndoBatch: (batch: number) => void;
+  /** Whether it is shown under the row of the mass edit it is part of. */
+  inBatch: boolean;
 }
 
-function ChangeRow({ change, field, failure, undoing, onUndo, batch, newest, outcome, onUndoBatch }: ChangeRowProps) {
+function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);
-  const batchId = change.batch;
   const shown = (stored: number) => (field ? shownValue(field, stored) : stored);
   // An attribute is stored on a finer scale than it is shown: its hover text has the values as stored.
   const storedNote = field?.scale === "attribute" ? text.stored(valueChange(change.old, change.new)) : undefined;
+  const className = [change.undoneAt !== null && "undone", inBatch && "in-batch"].filter(Boolean).join(" ");
 
   return (
-    <tr className={change.undoneAt === null ? undefined : "undone"}>
+    <tr className={className || undefined}>
       <td className="date" title={formatDateTime(change.at)}>
         {formatTime(change.at)}
       </td>
@@ -267,11 +468,6 @@ function ChangeRow({ change, field, failure, undoing, onUndo, batch, newest, out
         <div className="name">
           {change.name}
           <span className="tag kind">{text.kinds[change.entity]}</span>
-          {batch && (
-            <span className="tag batch" title={text.batchTitle(batch.total)}>
-              {text.batch}
-            </span>
-          )}
         </div>
         <div className="sub uid">
           {change.entity === "staff" ? profileText.id : profileText.uid} {change.uid}
@@ -290,24 +486,12 @@ function ChangeRow({ change, field, failure, undoing, onUndo, batch, newest, out
           ) : (
             text.undone(formatTime(change.undoneAt))
           )}
-          {newest && batch && batch.remaining > 0 && batchId !== null && (
-            <button
-              type="button"
-              className="batch-undo"
-              disabled={undoing}
-              title={text.undoBatchTitle(batch.remaining)}
-              onClick={() => onUndoBatch(batchId)}
-            >
-              {text.undoBatch}
-            </button>
-          )}
         </div>
         {change.undoneAt === null && failure !== undefined && (
           <span className="row-error" role="alert">
             {failure}
           </span>
         )}
-        {outcome !== undefined && <BatchOutcomeNote outcome={outcome} />}
       </td>
     </tr>
   );
