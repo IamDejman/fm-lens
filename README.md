@@ -2,10 +2,10 @@
 
 A free, open-source real-time editor for **Football Manager 27**, built Game Pass first.
 
-> **Status: pre-alpha, Phase 3.** Nothing here edits the game yet. The app lists and
-> searches every player, member of staff and club of a running FM27 (Game Pass
-> build) and shows their profiles (attributes, positions, personality, contracts,
-> facilities, supporters, finances), read-only.
+> **Status: pre-alpha.** Nothing here edits the game yet. The app lists, searches,
+> filters and sorts every player, member of staff and club of a running FM27 (Game
+> Pass build) and shows their profiles (attributes, positions, personality,
+> contracts, facilities, supporters, finances), read-only. Editing comes next.
 
 ## Goals
 
@@ -45,7 +45,12 @@ Visual Studio Build Tools with the C++ workload, and Node.js 20+ for the app.
 ```powershell
 cargo build --release -p fmlibre-probe
 cd app; npm install; npm run tauri dev     # run the desktop app
+npm run release                            # build target\release\FMLibreEditor.exe
 ```
+
+`npm run release` builds a stand-alone `FMLibreEditor.exe` without an installer. It
+needs the WebView2 runtime, which Windows 10 and 11 already have. There are no
+published builds yet.
 
 `npm run dev` in `app/` serves the interface in a plain browser with made-up sample
 players, for working on the UI without the game.

@@ -38,15 +38,17 @@ before trusting them.
 - [x] Clubs: reputation, founding year, facilities, supporters, finances.
 - Every field needs two independent confirmations before it becomes writable.
 
-## Phase 3: read-only MVP (in progress)
+## Phase 3: read-only MVP (done)
 
 - [x] Search and player / staff / club profiles in the app.
 - [x] Player filters (position, age, CA/PA, nation, club, free agents, contract
   end) and sortable columns; staff filters (job, unemployed); club filter
   (men's / women's).
-- [ ] A local release build; the first public release is the maintainer's call.
+- [x] A local release build: `npm run release` in `app/` makes a stand-alone exe
+  with its own icon, no installer. The first public release is the maintainer's
+  call.
 
-## Phase 4: editing
+## Phase 4: editing (next)
 
 - Writes with validation, pending-changes review, undo history and a change log.
 - Mass editing with a preview.
