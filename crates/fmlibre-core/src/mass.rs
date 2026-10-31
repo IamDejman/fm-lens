@@ -27,7 +27,10 @@ impl Operation {
     /// be one the field takes.
     pub fn check(self, field: &Field) -> Result<(), EditError> {
         match self {
-            Operation::Set { value } if !(field.min..=field.max).contains(&value) => {
+            _ if !field.mass => {
+                Err(EditError::Unsupported { field: field.key.clone(), reason: "it is changed one person at a time" })
+            }
+            Operation::Set { value } if !field.takes(value) => {
                 Err(EditError::OutOfRange { field: field.key.clone(), value, min: field.min, max: field.max })
             }
             Operation::Add { .. } | Operation::Scale { .. } if field.kind == Kind::Date => {

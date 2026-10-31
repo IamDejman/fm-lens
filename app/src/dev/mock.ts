@@ -285,8 +285,20 @@ const INTERNATIONAL = { caps: "caps", goals: "goals", u21_caps: "u21Caps", u21_g
 
 /** The editable fields, as the real `edit_fields` lists them. */
 function fieldTable(entity: Entity): EditField[] {
-  const field = (key: string, kind: EditField["kind"], min: number, max: number, scale: EditField["scale"] = "plain") =>
-    ({ key, entity, kind, scale, min, max }) satisfies EditField;
+  const field = (
+    key: string,
+    kind: EditField["kind"],
+    min: number,
+    max: number,
+    scale: EditField["scale"] = "plain",
+  ): EditField => ({ key, entity, kind, scale, min, max, blank: null, choices: null, mass: true });
+  // A player's squad number (255: none), squad status and listing are changed one player at a time.
+  const playerContract: EditField[] = [
+    { ...field("contract.squad_number", "u8", 1, 99), blank: 255, mass: false },
+    { ...field("contract.squad_status", "u8", 1, 40), choices: [1, 2, 3, 4, 5], mass: false },
+    { ...field("contract.transfer_listed", "flag", 0, 1), mass: false },
+    { ...field("contract.loan_listed", "flag", 0, 1), mass: false },
+  ];
   const common = [
     field("current_ability", "u16", 1, 200),
     field("potential_ability", "i16", 1, 200),
@@ -318,6 +330,7 @@ function fieldTable(entity: Entity): EditField[] {
       ...POSITIONS.filter((key) => key !== "sw").map((key) => field(`position.${key}`, "u8", 1, 20)),
       ...personality,
       ...contract,
+      ...playerContract,
     ];
   }
   return [
@@ -380,6 +393,18 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
           d.contract.wage = value;
         } else if (d.contract && name === "expires") {
           d.contract.expires = dateFromNumber(value);
+        } else if (entity === "player" && (d as PlayerDetails).contract) {
+          // What only a player's contract has.
+          const contract = (d as PlayerDetails).contract!;
+          if (name === "squad_number") {
+            contract.squadNumber = value === 255 ? null : value;
+          } else if (name === "squad_status") {
+            contract.squadStatus = value;
+          } else if (name === "transfer_listed") {
+            contract.transferListed = value === 1;
+          } else if (name === "loan_listed") {
+            contract.loanListed = value === 1;
+          }
         }
         break;
     }
@@ -453,10 +478,25 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.positionRatings[name];
       case "personality":
         return person.personality[name];
-      case "contract":
-        return name === "wage"
-          ? person.contract?.wage
-          : person.contract?.expires && numberFromDate(person.contract.expires);
+      case "contract": {
+        const contract = (person as PlayerDetails).contract;
+        switch (name) {
+          case "wage":
+            return person.contract?.wage;
+          case "expires":
+            return person.contract?.expires && numberFromDate(person.contract.expires);
+          // Only a player's contract has these; the real table offers them for players only.
+          case "squad_number":
+            return contract && (contract.squadNumber ?? 255);
+          case "squad_status":
+            return contract?.squadStatus;
+          case "transfer_listed":
+            return contract && Number(contract.transferListed);
+          case "loan_listed":
+            return contract && Number(contract.loanListed);
+        }
+        return undefined;
+      }
       case "facilities":
         return club.facilities[name];
       case "finance":

@@ -293,20 +293,34 @@ export interface EditField {
   /**
    * People: "current_ability", "potential_ability", "height", "reputation.home", "international.caps",
    * "attribute.finishing", "position.st", "personality.ambition", "contract.wage", "contract.expires".
+   * Players only: "contract.squad_number", "contract.squad_status", "contract.transfer_listed",
+   * "contract.loan_listed".
    * Clubs: "reputation", "facilities.training", "facilities.youth_facilities", "facilities.youth_coaching",
    * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
    * "finance.wage_budget", "finance.total_wage_budget".
    */
   key: string;
   entity: Entity;
-  /** "date": values are numbers like 20290630 (see `dateFromNumber` in editing.ts); "i32": money in pounds. */
-  kind: "u8" | "u16" | "i16" | "i32" | "date";
+  /**
+   * "date": values are numbers like 20290630 (see `dateFromNumber` in editing.ts); "i32": money in pounds; "flag":
+   * 0 or 1, a yes-or-no such as being on the transfer list.
+   */
+  kind: "u8" | "u16" | "i16" | "i32" | "date" | "flag";
   /** "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "plain": shown as stored. */
   scale: "plain" | "attribute";
   /** Smallest stored value the editor writes. */
   min: number;
   /** Largest stored value the editor writes. */
   max: number;
+  /** A stored value meaning "none" that the field may also be set to, such as 255 for no squad number. */
+  blank: number | null;
+  /**
+   * The only values the field takes, in the order to offer them, when it holds a code from a list (a squad status,
+   * named by `squadStatusName`); null for any value of its range.
+   */
+  choices: number[] | null;
+  /** Whether a mass edit may change the field; some are changed one person at a time. */
+  mass: boolean;
 }
 
 /**

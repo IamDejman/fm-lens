@@ -107,5 +107,12 @@ before trusting them.
   - the Rust side's errors appear in Turkish too;
   - faces are checked with a test pack, and `FMLIBRE_GRAPHICS` points the app at
     another graphics folder.
-- [ ] Check in the game that moved players play for their new club and that the
-  following days run normally.
+- [x] Check in the game that moved players play for their new club and that the
+  following days run normally. Arda Güler was moved to the human manager's club;
+  the game ran on for several days and took a work permit application for him
+  without trouble.
+- [ ] More of what FM Live Editor and FMRTE users reach for, as far as data-only
+  writes allow:
+  - a player's squad number, squad status, and transfer and loan listing;
+  - swapping two players between clubs;
+  - healing injuries, raising morale, and setting condition and match sharpness.

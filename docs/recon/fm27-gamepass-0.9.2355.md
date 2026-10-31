@@ -470,5 +470,6 @@ These were refused, and nothing was written:
 - a move to a women's club;
 - a contract end in the past.
 
-It has not been checked yet whether the game's own screens and its next days
-accept the move.
+**In the game:** Arda Güler was moved through the app to Manchester United, the
+human manager's club. The game was played on for several days and took a work
+permit application for him; nothing went wrong.

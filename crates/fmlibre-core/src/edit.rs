@@ -49,21 +49,24 @@ pub enum Kind {
     /// A `u16` day of the year (flags above bit 8) and a `u16` year. Values are numbers
     /// like 20290630; 0 is a date the game has not set.
     Date,
+    /// One bit of a byte, 0 or 1; the field says which bit. The rest of the byte is left as it is.
+    Flag,
 }
 
 impl Kind {
     pub fn size(self) -> usize {
         match self {
-            Kind::U8 => 1,
+            Kind::U8 | Kind::Flag => 1,
             Kind::U16 | Kind::I16 => 2,
             Kind::I32 | Kind::Date => 4,
         }
     }
 
+    /// The value in `bytes`; a flag's whole byte, as only its field knows which bit is meant.
     pub(crate) fn decode(self, bytes: &[u8]) -> i64 {
         let u16_at = |i: usize| u16::from_le_bytes([bytes[i], bytes[i + 1]]);
         match self {
-            Kind::U8 => i64::from(bytes[0]),
+            Kind::U8 | Kind::Flag => i64::from(bytes[0]),
             Kind::U16 => i64::from(u16_at(0)),
             Kind::I16 => i64::from(u16_at(0) as i16),
             Kind::I32 => i64::from(i32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
@@ -76,7 +79,7 @@ impl Kind {
     pub(crate) fn encode(self, value: i64, old: &[u8]) -> Vec<u8> {
         const FITS: &str = "checked against the field's range";
         match self {
-            Kind::U8 => vec![u8::try_from(value).expect(FITS)],
+            Kind::U8 | Kind::Flag => vec![u8::try_from(value).expect(FITS)],
             Kind::U16 => u16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I16 => i16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I32 => i32::try_from(value).expect(FITS).to_le_bytes().to_vec(),
@@ -145,6 +148,17 @@ pub struct Field {
     pub min: i64,
     /// Largest stored value the editor writes.
     pub max: i64,
+    /// A stored value meaning "none" that the field may be set to besides `min..=max`, such
+    /// as 255 for no squad number.
+    pub blank: Option<i64>,
+    /// The values the field takes, in the order to offer them, when it holds a code from a
+    /// list (a squad status) rather than any value of its range.
+    pub choices: Option<Vec<i64>>,
+    /// Whether a mass edit may change the field; some only make sense one person at a time.
+    pub mass: bool,
+    /// For a flag, which bit of its byte it is.
+    #[serde(skip)]
+    bit: u8,
     #[serde(skip)]
     place: Place,
     /// Offset in its record, for the object before any person-block shift.
@@ -168,6 +182,10 @@ impl Field {
             scale: Scale::Plain,
             min: *range.start(),
             max: *range.end(),
+            blank: None,
+            choices: None,
+            mass: true,
+            bit: 0,
             place: Place::Object,
             offset,
             shifted: false,
@@ -175,9 +193,56 @@ impl Field {
         }
     }
 
+    /// A field that is one `bit` of the byte at `offset`: 0 or 1.
+    fn flag(entity: Entity, key: impl Into<String>, offset: u64, bit: u8) -> Self {
+        Self { bit, ..Field::new(entity, key, offset, Kind::Flag, 0..=1) }
+    }
+
     fn attribute(mut self) -> Self {
         self.scale = Scale::Attribute;
         self
+    }
+
+    /// Lets the field be set to `blank`, which means "none", besides its range.
+    fn blank(mut self, blank: i64) -> Self {
+        self.blank = Some(blank);
+        self
+    }
+
+    /// Restricts the field to the codes in `choices`.
+    fn choices(mut self, choices: &[i64]) -> Self {
+        self.choices = Some(choices.to_vec());
+        self
+    }
+
+    /// Keeps the field out of mass edits.
+    fn single(mut self) -> Self {
+        self.mass = false;
+        self
+    }
+
+    /// Whether the editor writes `value` to this field: one of its range (and of its choices,
+    /// when it has them), or its blank.
+    pub fn takes(&self, value: i64) -> bool {
+        self.blank == Some(value)
+            || ((self.min..=self.max).contains(&value) && self.choices.as_ref().is_none_or(|c| c.contains(&value)))
+    }
+
+    /// The value of the field in its bytes: for a flag, its bit.
+    pub(crate) fn decode(&self, bytes: &[u8]) -> i64 {
+        match self.kind {
+            Kind::Flag => i64::from((bytes[0] >> self.bit) & 1),
+            kind => kind.decode(bytes),
+        }
+    }
+
+    /// The bytes of `value` written over `old`: a flag keeps the other bits of its byte.
+    pub(crate) fn encode(&self, value: i64, old: &[u8]) -> Vec<u8> {
+        match self.kind {
+            Kind::Flag if value == 0 => vec![old[0] & !(1 << self.bit)],
+            Kind::Flag => vec![old[0] | (1 << self.bit)],
+            kind => kind.encode(value, old),
+        }
     }
 
     /// Accepts stored values in `plausible` as the game's own, beyond the ones the editor writes.
@@ -231,6 +296,28 @@ fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 2] {
     ]
 }
 
+/// The squad statuses the editor offers, by the codes contracts hold them as (see the names in the app's
+/// dictionaries). The game uses more codes than these, e.g. for goalkeepers and youngsters.
+pub const SQUAD_STATUSES: [i64; 5] = [1, 2, 3, 4, 5];
+
+/// A squad number from 1 to 99 (255: none), the squad status, and whether the player is on
+/// the transfer list and on the loan list: one player at a time.
+fn player_contract_fields(layout: &Layout) -> [Field; 4] {
+    let c = &layout.contract;
+    let field = |key: &str, offset: u64, range: RangeInclusive<i64>| {
+        Field::new(Entity::Player, key, offset, Kind::U8, range).single().in_record(Place::Contract)
+    };
+    [
+        field("contract.squad_number", c.squad_number, 1..=99).plausible(1..=255).blank(NO_SQUAD_NUMBER),
+        field("contract.squad_status", c.squad_status, 1..=40).plausible(0..=40).choices(&SQUAD_STATUSES),
+        Field::flag(Entity::Player, "contract.transfer_listed", c.listing, 0).single().in_record(Place::Contract),
+        Field::flag(Entity::Player, "contract.loan_listed", c.listing, 1).single().in_record(Place::Contract),
+    ]
+}
+
+/// The squad number of a player without one.
+pub(crate) const NO_SQUAD_NUMBER: i64 = 255;
+
 fn player_fields(layout: &Layout) -> Vec<Field> {
     let p = &layout.player;
     let field = |key: &str, offset: u64, kind: Kind, range: RangeInclusive<i64>| {
@@ -263,6 +350,7 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         field(&format!("personality.{key}"), p.personality + i as u64, Kind::U8, 1..=20).plausible(0..=20)
     }));
     out.extend(contract_fields(layout, Entity::Player));
+    out.extend(player_contract_fields(layout));
     out.into_iter().map(|f| f.in_person_block(p.person_block)).collect()
 }
 
@@ -404,6 +492,18 @@ pub enum EditError {
         field: String,
         value: i64,
     },
+    /// A field that holds a code from a list was given a code the editor does not offer.
+    NotAChoice {
+        field: String,
+        value: i64,
+    },
+    /// Another player of the team already has this squad number.
+    Taken {
+        field: String,
+        value: i64,
+        /// The UID of the player who has it.
+        holder: u32,
+    },
     /// The field cannot be changed this way, e.g. a date by adding to it.
     Unsupported {
         field: String,
@@ -451,6 +551,10 @@ impl fmt::Display for EditError {
                 write!(f, "{value} is not a valid {field}; it takes {min} to {max}")
             }
             EditError::NotADate { field, value } => write!(f, "{value} is not a date for {field}"),
+            EditError::NotAChoice { field, value } => write!(f, "{value} is not one of the values {field} takes"),
+            EditError::Taken { field, value, holder } => {
+                write!(f, "{field} {value} is taken: the player with UID {holder} in the same team has it")
+            }
             EditError::Unsupported { field, reason } => write!(f, "{field}: {reason}"),
             EditError::Moved { entity, uid } => {
                 write!(f, "the {entity} with id {uid} has moved in the game's memory; reload and try again")
@@ -481,6 +585,8 @@ impl Coded for EditError {
             EditError::UnknownField { .. } => "edit.unknownField",
             EditError::OutOfRange { .. } => "edit.outOfRange",
             EditError::NotADate { .. } => "edit.notADate",
+            EditError::NotAChoice { .. } => "edit.notAChoice",
+            EditError::Taken { .. } => "edit.taken",
             EditError::Unsupported { .. } => "edit.unsupported",
             EditError::Moved { .. } => "edit.moved",
             EditError::NoRecord { .. } => "edit.noRecord",
@@ -500,8 +606,11 @@ impl Coded for EditError {
             EditError::OutOfRange { field: key, value, min, max } => {
                 vec![field(key), number("value", value), number("min", min), number("max", max)]
             }
-            EditError::NotADate { field: key, value } | EditError::Implausible { field: key, value } => {
-                vec![field(key), number("value", value)]
+            EditError::NotADate { field: key, value }
+            | EditError::NotAChoice { field: key, value }
+            | EditError::Implausible { field: key, value } => vec![field(key), number("value", value)],
+            EditError::Taken { field: key, value, holder } => {
+                vec![field(key), number("value", value), ("uid", holder.to_string())]
             }
             EditError::Unsupported { field: key, reason } => vec![field(key), ("reason", (*reason).to_owned())],
             EditError::Moved { entity, uid } => vec![("entity", entity.to_string()), ("uid", uid.to_string())],
@@ -541,7 +650,7 @@ impl Session {
     pub fn read_field(&self, target: &Target, field: &Field) -> Result<i64, EditError> {
         self.check_target(target, field)?;
         let address = self.locate(target, field)?.ok_or_else(|| EditError::NoRecord { field: field.key.clone() })?;
-        Ok(field.kind.decode(&self.process.read_bytes(address, field.kind.size())?))
+        Ok(field.decode(&self.process.read_bytes(address, field.kind.size())?))
     }
 
     /// Reads every one of `fields` of `target`: `None` for a field whose record the
@@ -562,7 +671,7 @@ impl Session {
         let mut out = Vec::with_capacity(fields.len());
         for field in fields {
             if field.place == Place::Object {
-                out.push(Some(field.kind.decode(&object[local(field)..])));
+                out.push(Some(field.decode(&object[local(field)..])));
                 continue;
             }
             let record = match records.iter().find(|(place, _)| *place == field.place) {
@@ -576,7 +685,7 @@ impl Session {
             out.push(match record {
                 Some(record) => {
                     let bytes = self.process.read_bytes(field.address(record, target), field.kind.size())?;
-                    Some(field.kind.decode(&bytes))
+                    Some(field.decode(&bytes))
                 }
                 None => None,
             });
@@ -617,8 +726,11 @@ impl Session {
         expected: Option<i64>,
         restoring: bool,
     ) -> Result<Change, EditError> {
-        let allowed = if restoring { field.is_plausible(value) } else { (field.min..=field.max).contains(&value) };
+        let allowed = if restoring { field.is_plausible(value) } else { field.takes(value) };
         if !allowed {
+            if field.choices.is_some() && (field.min..=field.max).contains(&value) {
+                return Err(EditError::NotAChoice { field: field.key.clone(), value });
+            }
             return Err(EditError::OutOfRange { field: field.key.clone(), value, min: field.min, max: field.max });
         }
         if field.kind == Kind::Date && FmDate::from_number(value).is_none() {
@@ -627,7 +739,7 @@ impl Session {
         self.check_target(target, field)?;
         let address = self.locate(target, field)?.ok_or_else(|| EditError::NoRecord { field: field.key.clone() })?;
         let old_bytes = self.process.read_bytes(address, field.kind.size())?;
-        let old = field.kind.decode(&old_bytes);
+        let old = field.decode(&old_bytes);
         if let Some(expected) = expected
             && old != expected
         {
@@ -643,14 +755,53 @@ impl Session {
         if old == value {
             return Ok(change);
         }
-        self.process.write_bytes(address, &field.kind.encode(value, &old_bytes))?;
-        let read = field.kind.decode(&self.process.read_bytes(address, field.kind.size())?);
+        // Two players of a team on the pitch with one number would confuse the game; the players it has lent out
+        // keep theirs, so they do not count.
+        if field.key == "contract.squad_number"
+            && !restoring
+            && field.blank != Some(value)
+            && let Some(holder) = self.squad_number_holder(target, value)?
+        {
+            return Err(EditError::Taken { field: field.key.clone(), value, holder });
+        }
+        self.process.write_bytes(address, &field.encode(value, &old_bytes))?;
+        let read = field.decode(&self.process.read_bytes(address, field.kind.size())?);
         if read != value {
             // Best effort: put back what was there.
             let _ = self.process.write_bytes(address, &old_bytes);
             return Err(EditError::NotApplied { field: field.key.clone(), wrote: value, read });
         }
         Ok(change)
+    }
+
+    /// The UID of another player of the team the player `target` plays for who wears the
+    /// squad number `number`, among the players who play for that team now.
+    fn squad_number_holder(&self, target: &Target, number: i64) -> Result<Option<u32>, EditError> {
+        let (p, c) = (&self.layout.player, &self.layout.contract);
+        let team = self.process.read_u64(target.address + p.team)?;
+        if !is_user_pointer(team) {
+            return Ok(None);
+        }
+        let header = self.process.read_bytes(team + self.layout.team.players, 16)?;
+        let begin = u64::from_le_bytes(header[..8].try_into().expect("8 bytes"));
+        let end = u64::from_le_bytes(header[8..].try_into().expect("8 bytes"));
+        if !is_user_pointer(begin) || end <= begin || end - begin > 8 * 2_000 {
+            return Ok(None);
+        }
+        for element in self.process.read_bytes(begin, (end - begin) as usize)?.as_chunks::<8>().0 {
+            let player = u64::from_le_bytes(*element);
+            if player == target.address || self.process.read_u64(player + p.team)? != team {
+                continue;
+            }
+            let shift = crate::players::person_shift(&self.process, p, player);
+            let contract = self.process.read_u64(player + p.at(p.contract, shift))?;
+            if is_user_pointer(contract)
+                && i64::from(self.process.read_bytes(contract + c.squad_number, 1)?[0]) == number
+            {
+                return Ok(Some(self.process.read_u32(player + p.at(p.uid, shift))?));
+            }
+        }
+        Ok(None)
     }
 
     /// Undoes `change`, provided the game still holds the value it wrote.
@@ -768,11 +919,44 @@ mod tests {
     }
 
     #[test]
-    fn field_tables_cover_the_layout() {
+    fn flags_keep_the_rest_of_their_byte() {
         let layout = crate::layout_for(27).expect("FM27 layout");
         let players = fields(&layout, Entity::Player);
-        // Every position but the sweeper, and the contract's wage and end.
-        assert_eq!(players.len(), 10 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2);
+        let field = |key: &str| players.iter().find(|f| f.key == key).cloned().expect(key);
+        let (transfer, loan) = (field("contract.transfer_listed"), field("contract.loan_listed"));
+        // Bit 6 is the game's own, set for many youngsters.
+        let byte = [0b0100_0010];
+        assert_eq!((transfer.decode(&byte), loan.decode(&byte)), (0, 1));
+        assert_eq!(transfer.encode(1, &byte), [0b0100_0011]);
+        assert_eq!(loan.encode(0, &byte), [0b0100_0000]);
+        assert_eq!(transfer.kind.size(), 1);
+    }
+
+    #[test]
+    fn some_fields_take_a_blank_or_a_list_of_codes() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let players = fields(&layout, Entity::Player);
+        let field = |key: &str| players.iter().find(|f| f.key == key).cloned().expect(key);
+        let number = field("contract.squad_number");
+        assert!(number.takes(1) && number.takes(99) && number.takes(255));
+        assert!(!number.takes(0) && !number.takes(100));
+        let status = field("contract.squad_status");
+        assert!(status.takes(1) && !status.takes(6) && !status.takes(0));
+    }
+
+    #[test]
+    fn field_tables_cover_the_layout() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let key = |list: &[Field], key: &str| list.iter().find(|f| f.key == key).cloned().expect(key);
+        let players = fields(&layout, Entity::Player);
+        // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
+        // transfer and loan listing, which only players have.
+        assert_eq!(
+            players.len(),
+            10 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
+        );
+        assert!(!key(&players, "contract.squad_number").mass);
+        assert!(key(&players, "contract.wage").mass);
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
@@ -780,7 +964,6 @@ mod tests {
         let clubs = fields(&layout, Entity::Club);
         assert_eq!(clubs.len(), 10);
 
-        let key = |list: &[Field], key: &str| list.iter().find(|f| f.key == key).cloned().expect(key);
         // Before the person block: never shifted. In it: shifted. Other records: never.
         assert!(!key(&players, "attribute.finishing").shifted);
         assert!(key(&players, "personality.ambition").shifted);

@@ -36,6 +36,8 @@ const entityCount = (entity: Entity, count: number) => `${format(count)} ${nouns
 const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Yıldız oyuncu",
   2: "Önemli oyuncu",
+  3: "Düzenli ilk 11 oyuncusu",
+  4: "Kadro oyuncusu",
   5: "Etkili yedek",
 };
 
@@ -49,6 +51,7 @@ const recordNoun = (entity: string | undefined) =>
 /** The reasons the Rust side gives for a field that cannot be changed some way. */
 const UNSUPPORTED: Partial<Record<string, string>> = {
   "a date can only be set": "bir tarih yalnızca doğrudan ayarlanabilir",
+  "it is changed one person at a time": "bu alan kişi kişi değiştirilir",
 };
 
 const reload = "verileri yeniden okuyup tekrar deneyin";
@@ -57,6 +60,8 @@ const errors: ErrorTexts = {
   "edit.unknownField": (p) => `Burada “${p.field}” adında düzenlenebilir bir alan yok.`,
   "edit.outOfRange": (p) => `${field(p.field)} için ${p.value} geçersiz: ${p.min} ile ${p.max} arasında olmalı.`,
   "edit.notADate": (p) => `${p.value}, ${field(p.field)} için geçerli bir tarih değil.`,
+  "edit.notAChoice": (p) => `${p.value}, ${field(p.field)} için seçilebilecek değerlerden biri değil.`,
+  "edit.taken": (p) => `${p.value} numaralı formayı takımda ${p.name ?? `${p.uid} kimlikli oyuncu`} giyiyor.`,
   "edit.unsupported": (p) => `${field(p.field)} bu şekilde değiştirilemez: ${UNSUPPORTED[p.reason] ?? p.reason}.`,
   "edit.moved": (p) => `Bu ${recordNoun(p.entity)} oyunun belleğinde yer değiştirmiş; ${reload}.`,
   "edit.noRecord": (p) => `${field(p.field)} burada değiştirilemez: kaydı yok ya da doğrulanamadı.`,
@@ -292,6 +297,10 @@ export const tr: Strings = {
     "international.u21_goals": "U21 gol",
     "contract.wage": "Haftalık maaş",
     "contract.expires": "Sözleşme bitişi",
+    "contract.squad_number": "Forma numarası",
+    "contract.squad_status": "Kadro rolü",
+    "contract.transfer_listed": "Transfer listesinde",
+    "contract.loan_listed": "Kiralık listesinde",
     club: "Kulüp",
     reputation: "İtibar",
     "facilities.training": "Antrenman tesisleri",
