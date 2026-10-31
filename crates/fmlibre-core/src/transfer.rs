@@ -302,20 +302,33 @@ impl Session {
             return Err(MoveError::NotAClub { uid: club.uid });
         }
 
-        // He must be in the list of the team he plays for once; his employer's list may hold him too.
+        // He must be in the list of the team he plays for, once. Every list of his club that holds him loses him:
+        // his employer's often does too, and a youngster may be listed with more than one youth side.
+        let mut old_teams = match PointerList::read(process, old_club + layout.club.teams)? {
+            Some(teams) => teams.elements(process)?,
+            None => Vec::new(),
+        };
+        old_teams.sort_unstable();
+        old_teams.dedup();
+        if !old_teams.contains(&team) || !old_teams.contains(&employer) {
+            return Err(MoveError::NotListed);
+        }
         let mut leaving = Vec::new();
-        for (i, from) in [team, employer].into_iter().enumerate() {
-            if i == 1 && from == team {
-                break;
-            }
-            let list = PointerList::read(process, from + layout.team.players)?.ok_or(MoveError::NotListed)?;
+        for &from in &old_teams {
+            // A team without a list holds nobody.
+            let Some(list) = PointerList::read(process, from + layout.team.players)? else {
+                continue;
+            };
             let elements = list.elements(process)?;
             let found: Vec<usize> = (0..elements.len()).filter(|&j| elements[j] == object).collect();
             match found[..] {
-                [index] => leaving.push((list, index, elements)),
-                [] if i == 1 => {}
+                [] => {}
+                [index] => leaving.push((from, list, index, elements)),
                 _ => return Err(MoveError::NotListed),
             }
+        }
+        if !leaving.iter().any(|&(from, ..)| from == team) {
+            return Err(MoveError::NotListed);
         }
         // A team without a list has no block to add to.
         let joining =
@@ -367,7 +380,7 @@ impl Session {
         // Out of the old lists: the players after him move up one, the list ends one earlier, and the
         // slot it gave up is cleared. On the way the list repeats its last player for a moment; it
         // never holds an empty slot.
-        for (list, index, elements) in leaving {
+        for (_, list, index, elements) in leaving {
             let last = elements.len() - 1;
             let bytes = |range: &[u64]| range.iter().flat_map(|e| e.to_le_bytes()).collect::<Vec<u8>>();
             patches.push(list.begin + index as u64 * 8, bytes(&elements[index..last]), bytes(&elements[index + 1..]));
