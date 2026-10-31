@@ -26,6 +26,17 @@ export function formatDate(date: FmDate | null): string {
   });
 }
 
+/** A moment (milliseconds since 1970) as the local time of day, "14:05:09". */
+export function formatTime(ms: number): string {
+  const time = new Date(ms);
+  return [time.getHours(), time.getMinutes(), time.getSeconds()].map((part) => String(part).padStart(2, "0")).join(":");
+}
+
+/** The message of a failed call: what a Rust command answers with, or the message of an error. */
+export function describeError(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** "£1,234,567", grouped the way the reader's locale does it; "-£1,234" when negative, like a club's overdraft. */
 export function formatPounds(amount: number): string {
   return `${amount < 0 ? "-" : ""}£${Math.abs(amount).toLocaleString()}`;

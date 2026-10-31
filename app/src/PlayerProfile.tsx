@@ -1,5 +1,6 @@
+import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { formatPounds } from "./format";
-import { ATTRIBUTE_LABELS, profileText, type AttributeKey } from "./labels";
+import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
 import { PositionPitch } from "./PositionPitch";
 import {
   attributeRow,
@@ -16,6 +17,7 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type { Contract, PlayerDetails, PlayerSummary } from "./types";
+import { useEditableField, useProfileEditing } from "./useProfileEditing";
 
 // Attributes in the order FM lists them.
 const TECHNICAL: AttributeKey[] = [
@@ -50,6 +52,7 @@ interface PlayerProfileProps {
 /** The profile of one player. Mount it with `key={uid}` so a new player starts at the top. */
 export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) {
   const loaded = useProfileDetails<PlayerDetails>("player_details", player.uid, version);
+  const editing = useProfileEditing("player", player.uid);
   const details = loaded?.details;
   const info = details ?? player;
   const vitals = [
@@ -75,6 +78,7 @@ export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) 
       potentialAbility={info.potentialAbility}
       loaded={loaded}
       onClose={onClose}
+      editing={editing}
     >
       {details && <ProfileBody details={details} />}
     </ProfileFrame>
@@ -85,6 +89,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
   const goalkeeper = (details.positionRatings.gk ?? 0) >= GOALKEEPER_RATING;
   return (
     <>
+      <AbilityEditGroup entity="player" />
+
       <div className="profile-columns">
         {goalkeeper ? (
           <RatingGroup title={profileText.goalkeeping} rows={attributeRows(details, GOALKEEPING)} />
@@ -106,6 +112,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
           <PositionPitch ratings={details.positionRatings} />
         </section>
       </div>
+
+      <PositionEditGroup />
 
       {details.contract && <ContractGroup contract={details.contract} />}
       <CareerGroup details={details} />
@@ -143,17 +151,32 @@ function ContractGroup({ contract }: { contract: Contract }) {
   );
 }
 
+/** International record, reputation and asking price; while the player is edited, the height is here too. */
 function CareerGroup({ details }: { details: PlayerDetails }) {
   const { international, reputation, askingPrice } = details;
+  const editingHeight = useEditableField("height");
   return (
     <section className="profile-group">
       <h3>{profileText.career}</h3>
       <div className="profile-split">
         <dl className="stats">
-          <Fact label={profileText.internationalCaps}>{international.caps}</Fact>
-          <Fact label={profileText.internationalGoals}>{international.goals}</Fact>
-          <Fact label={profileText.u21Caps}>{international.u21Caps}</Fact>
-          <Fact label={profileText.u21Goals}>{international.u21Goals}</Fact>
+          {editingHeight && (
+            <Fact label={fieldLabel("player", "height")}>
+              <EditInput field="height" />
+            </Fact>
+          )}
+          <Fact label={profileText.internationalCaps}>
+            <EditableValue field="international.caps">{international.caps}</EditableValue>
+          </Fact>
+          <Fact label={profileText.internationalGoals}>
+            <EditableValue field="international.goals">{international.goals}</EditableValue>
+          </Fact>
+          <Fact label={profileText.u21Caps}>
+            <EditableValue field="international.u21_caps">{international.u21Caps}</EditableValue>
+          </Fact>
+          <Fact label={profileText.u21Goals}>
+            <EditableValue field="international.u21_goals">{international.u21Goals}</EditableValue>
+          </Fact>
           <Fact label={profileText.askingPrice}>
             {askingPrice === null ? profileText.notSet : formatPounds(askingPrice)}
           </Fact>

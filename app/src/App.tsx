@@ -1,19 +1,23 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { call, inTauri } from "./api";
+import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
+import { forgetFieldTables } from "./fieldTables";
 import { describeGame, formatDate } from "./format";
-import { clubListText } from "./labels";
+import { appText, changesText, clubListText } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { StaffBrowser } from "./StaffBrowser";
 import type { ConnectionInfo, Detection, ReloadInfo } from "./types";
+import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
-type View = "players" | "staff" | "clubs";
+type View = "players" | "staff" | "clubs" | "changes";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: "Players" },
   { id: "staff", label: "Staff" },
   { id: "clubs", label: clubListText.nav },
+  { id: "changes", label: changesText.nav },
 ];
 
 function App() {
@@ -23,6 +27,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
   const [view, setView] = useState<View>("players");
+  const { log, error: logError, reload: reloadLog, clear: clearLog } = useChangeLog();
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
     setBusy(label);
@@ -43,7 +48,11 @@ function App() {
 
   const connect = () =>
     run("Reading players, staff and clubs…", async () => {
-      setConnection(await call<ConnectionInfo>("connect"));
+      const connected = await call<ConnectionInfo>("connect");
+      // A new connection has an empty change log, and its field tables may differ.
+      forgetFieldTables();
+      clearLog();
+      setConnection(connected);
       setDataVersion((v) => v + 1);
     });
 
@@ -65,6 +74,23 @@ function App() {
     void detect();
   }, [detect]);
 
+  // Changes were written or undone: the lists and the open profile read the game again, and so does the log.
+  // The lists keep their search, filters, sort and selection when they do.
+  const edited = useCallback(() => {
+    setDataVersion((v) => v + 1);
+    void reloadLog();
+  }, [reloadLog]);
+
+  const editable = connection?.editable ?? false;
+  const editor = useMemo(() => ({ editable, onEdited: edited }), [editable, edited]);
+
+  // With edits pending in the open profile, leaving for another view asks first.
+  const show = (id: View) => {
+    if (id !== view) {
+      askToLeave(() => setView(id));
+    }
+  };
+
   return (
     <div className="app">
       <aside className="sidebar">
@@ -82,13 +108,16 @@ function App() {
               type="button"
               className={id === view ? "nav-item active" : "nav-item"}
               aria-current={id === view ? "page" : undefined}
-              onClick={() => setView(id)}
+              onClick={() => show(id)}
             >
               {label}
+              {id === "changes" && log.length > 0 && <small>{log.length}</small>}
             </button>
           ))}
         </nav>
-        <p className="sidebar-note">Read-only for now: nothing in the game is changed.</p>
+        <p className="sidebar-note">
+          {connection ? (editable ? appText.noteEditable : appText.noteReadOnly) : appText.noteNotConnected}
+        </p>
       </aside>
 
       <div className="main">
@@ -125,11 +154,14 @@ function App() {
 
         {connection ? (
           // All the lists stay mounted, so each keeps its search and selection while another is shown.
-          <div className="views">
-            <PlayerBrowser version={dataVersion} active={view === "players"} />
-            <StaffBrowser version={dataVersion} active={view === "staff"} />
-            <ClubBrowser version={dataVersion} active={view === "clubs"} />
-          </div>
+          <EditorContext.Provider value={editor}>
+            <div className="views">
+              <PlayerBrowser version={dataVersion} active={view === "players"} />
+              <StaffBrowser version={dataVersion} active={view === "staff"} />
+              <ClubBrowser version={dataVersion} active={view === "clubs"} />
+              {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
+            </div>
+          </EditorContext.Provider>
         ) : (
           <ConnectPanel detection={detection} busy={busy !== null} onConnect={connect} />
         )}

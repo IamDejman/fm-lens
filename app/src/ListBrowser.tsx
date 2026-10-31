@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { call } from "./api";
+import { askToLeave } from "./useProfileEditing";
 
 /** Rows shown at once; the best come first. */
 const ROW_LIMIT = 200;
@@ -68,6 +69,9 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
     }
     setSelected(null);
   }, []);
+
+  // Another row replaces the profile, and with it the edits pending in it: the profile asks first.
+  const pick = (row: Row) => (row.uid === selected?.uid ? setSelected(row) : askToLeave(() => setSelected(row)));
 
   useEffect(() => {
     let cancelled = false;
@@ -149,10 +153,10 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
                     className={isSelected ? "selected" : undefined}
                     aria-current={isSelected ? "true" : undefined}
                     tabIndex={0}
-                    onClick={() => setSelected(row)}
+                    onClick={() => pick(row)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        setSelected(row);
+                        pick(row);
                       }
                     }}
                   >

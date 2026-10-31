@@ -42,6 +42,17 @@ impl<T: Listed> SearchIndex<T> {
         self.by_uid.get(&uid).map(|&i| &self.items[i])
     }
 
+    /// Changes the item with `uid` in place, e.g. after an edit; its names must stay the same.
+    pub fn update(&mut self, uid: u32, change: impl FnOnce(&mut T)) -> bool {
+        match self.by_uid.get(&uid) {
+            Some(&i) => {
+                change(&mut self.items[i]);
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Items whose names contain every word of `query` (ignoring accents and case), or
     /// whose id equals it; highest rank first, then by name. An empty query matches everything.
     pub fn search(&self, query: &str) -> Vec<&T> {

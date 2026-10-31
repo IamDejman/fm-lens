@@ -1232,3 +1232,267 @@ nav small {
 .mix-legend .swatch {
   background: var(--seg);
 }
+
+/* Editing */
+
+/* The Edit button and the close button, side by side at the top right of a profile. */
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-toggle {
+  padding: 3px 12px;
+  font-size: 13px;
+}
+
+.edit-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+/* The profile that is being edited has the accent colour under its header. */
+.profile.editing .profile-head {
+  border-bottom-color: var(--accent);
+}
+
+/* A number input where a value was. Its width follows the digits of the largest value it takes (--digits). */
+.edit-input {
+  flex: none;
+  width: calc(var(--digits, 2) * 1ch + 1.6rem);
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+  appearance: textfield;
+}
+
+/* No spin buttons, which would eat the room of the digits; the arrow keys still step the value. */
+.edit-input::-webkit-inner-spin-button,
+.edit-input::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.edit-input:not(.changed, .invalid):hover:not(:read-only) {
+  border-color: var(--muted);
+}
+
+.edit-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A value other than the game's: the accent colour, as a tint and a second line inside the border. */
+.edit-input.changed {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* A value that cannot be applied: empty, out of range or not whole, or one the game refused. */
+.edit-input.invalid {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.edit-input.invalid:focus-visible {
+  outline-color: var(--danger);
+}
+
+/* While the changes are being written. */
+.edit-input:read-only {
+  opacity: 0.6;
+}
+
+/* Current and potential ability side by side, not as two rows across the whole panel. */
+.edit-ability .stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 28px;
+}
+
+.edit-ability .stat {
+  flex: none;
+  gap: 12px;
+}
+
+/* The position ratings: as many cells to a row as fit. */
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr));
+  gap: 0 16px;
+}
+
+.edit-grid .stat dt {
+  color: var(--text);
+}
+
+/* The bar under the body of a profile: what Apply said, the list of changes and the footer with the buttons. */
+.edit-bar {
+  position: relative;
+  flex: none;
+}
+
+/* A live region that is always there, so that it is read out when it fills; it takes no room while it is empty. */
+.edit-report {
+  font-size: 13px;
+}
+
+.edit-report:not(:empty) {
+  padding: 8px 44px 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--raised);
+}
+
+.edit-report p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.edit-problems {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--danger);
+}
+
+.edit-problems:first-child {
+  margin-top: 0;
+}
+
+.edit-dismiss {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+}
+
+.edit-review {
+  max-height: 9.5rem;
+  margin: 0;
+  padding: 8px 16px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  background: var(--raised);
+  font-size: 13px;
+  list-style: none;
+}
+
+.edit-review li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 1px 0;
+}
+
+.edit-delta {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.edit-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.edit-footer button {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.edit-count {
+  flex: 1;
+  min-width: 7rem;
+  font-weight: 600;
+}
+
+.edit-invalid {
+  color: var(--danger);
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* Changes */
+
+.view-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.changes .toolbar {
+  margin-bottom: 4px;
+}
+
+.view-note {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* A row is not picked, only undone. */
+.changes-grid tbody tr {
+  cursor: default;
+}
+
+.changes-grid td {
+  vertical-align: top;
+}
+
+.changes-grid .tag.kind {
+  margin-left: 8px;
+  font-weight: 500;
+  vertical-align: middle;
+}
+
+.changes-grid .change-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* The one cell that may be tall: an undo that failed says why under its button. */
+.changes-grid .col-status {
+  min-width: 11rem;
+  white-space: normal;
+}
+
+.changes-grid .col-status button {
+  padding: 2px 12px;
+  font-size: 13px;
+}
+
+.changes-grid .row-error {
+  display: block;
+  max-width: 24rem;
+  margin-top: 4px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* A change that was undone is history: dimmed. */
+.changes-grid tr.undone td {
+  color: var(--muted);
+}
+
+.changes-grid tr.undone .change-value {
+  font-weight: 400;
+}
