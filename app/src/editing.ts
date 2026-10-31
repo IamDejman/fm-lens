@@ -4,6 +4,8 @@ import { call } from "./api";
 import type {
   ApplyReport,
   BatchUndo,
+  CaptainRole,
+  ClubTeam,
   EditField,
   Entity,
   FieldEdit,
@@ -16,6 +18,7 @@ import type {
   MassReport,
   MovePreview,
   MoveTerms,
+  TeamAction,
 } from "./types";
 
 /** The fields of players or of staff the editor can change, in display order. */
@@ -150,3 +153,21 @@ export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("s
  * field `injuries` from how many he had to 0, and undone as one; fails when he has none.
  */
 export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { uid });
+
+/** The teams of a club, the senior team first, with their players and the live values a squad screen shows. */
+export const clubSquads = (uid: number) => call<ClubTeam[]>("club_squads", { uid });
+
+/**
+ * Makes the player `uid` the captain or vice-captain of the club's team `team` (see `ClubTeam.index`); he must play
+ * for that team. When he held the other role, the two captains swap. Logged with `captaincy` and undone as one change.
+ * Fails with "captain.notInTeam" or "captain.unchanged".
+ */
+export const setCaptain = (club: number, team: number, role: CaptainRole, uid: number) =>
+  call<LoggedChange>("set_captain", { club, team, role, uid });
+
+/**
+ * Does `action` to every player of the club's team `team`, those out on loan too. The changes are logged as one
+ * batch, undone with `undoBatch`; `applied` counts the changes (an injured player healed counts once).
+ */
+export const teamAction = (club: number, team: number, action: TeamAction) =>
+  call<MassReport>("team_action", { club, team, action });

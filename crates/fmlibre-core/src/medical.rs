@@ -65,6 +65,11 @@ impl Session {
         list.records.iter().map(|&record| self.read_injury(record, &self.layout.injury)).collect()
     }
 
+    /// How many current injuries `player` has; none when his list does not check out.
+    pub(crate) fn injury_count(&self, player: &PlayerSummary) -> usize {
+        self.injury_list(player).ok().flatten().map_or(0, |list| list.records.len())
+    }
+
     /// Works out healing every current injury of `player`. Nothing is written.
     pub fn plan_heal(&self, player: &PlayerSummary) -> Result<HealPlan, MoveError> {
         let list = self.injury_list(player)?.filter(|list| !list.records.is_empty()).ok_or(MoveError::NotInjured)?;

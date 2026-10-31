@@ -15,6 +15,12 @@ const REPUTATION_MAX = 10000;
 
 export type Loaded<T> = { details: T; error?: undefined } | { details?: undefined; error: string };
 
+/** What ties a tab to its panel for assistive technology: the panel's own id, and the id of the tab that names it. */
+export interface PanelIds {
+  id: string;
+  labelledBy: string;
+}
+
 /** Loads a profile with `command`, and again when `version` changes: the game data was read again. */
 export function useProfileDetails<T>(command: string, uid: number, version: number): Loaded<T> | null {
   const [loaded, setLoaded] = useState<Loaded<T> | null>(null);
@@ -61,6 +67,10 @@ interface ProfileFrameProps {
   side?: ReactNode;
   /** Buttons before Edit in the header, e.g. the player's Compare button. */
   actions?: ReactNode;
+  /** Between the header and the body, so that it stays in view while the body scrolls: the tabs of a club. */
+  tabs?: ReactNode;
+  /** For a body that holds a table, such as a club's squad: the panel takes more of the window than a profile does. */
+  wide?: boolean;
   loaded: Loaded<unknown> | null;
   onClose: () => void;
   /**
@@ -79,7 +89,7 @@ interface ProfileFrameProps {
  */
 export function ProfileFrame(props: ProfileFrameProps) {
   const { picture, name, fullName, badge, meta, vitals, currentAbility, potentialAbility } = props;
-  const { side, actions, loaded, onClose, editing, children } = props;
+  const { side, actions, tabs, wide, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
 
@@ -97,7 +107,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
   return (
     <SessionContext.Provider value={editing?.session ?? null}>
       <section
-        className={editing?.stage === "edit" ? "profile editing" : "profile"}
+        className={["profile", editing?.stage === "edit" && "editing", wide && "wide"].filter(Boolean).join(" ")}
         role="dialog"
         aria-label={name}
         aria-busy={!loaded}
@@ -139,6 +149,8 @@ export function ProfileFrame(props: ProfileFrameProps) {
               ))}
           </div>
         </header>
+
+        {tabs}
 
         <div className="profile-body">
           {!loaded && (

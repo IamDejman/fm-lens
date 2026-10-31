@@ -5,6 +5,10 @@ import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
 import type {
   ApplyReport,
+  CaptainRole,
+  ClubTeam,
+  SquadPlayer,
+  TeamAction,
   ClubDetails,
   ClubFilter,
   ClubPage,
@@ -201,11 +205,12 @@ function details(player: PlayerSummary): PlayerDetails {
           }),
         }
       : null,
-    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more), happiness 0–20.
+    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more).
     condition: Math.round(7000 + next() * 3000),
     matchSharpness: Math.round(3500 + next() * 6500),
-    happiness: Math.round(4 + next() * 16),
     injuries: injuriesOf(player.uid),
+    // Drawn last, so that the values above come out as before.
+    morale: Math.round(7 + next() * 10),
   });
 }
 
@@ -358,7 +363,7 @@ function fieldTable(entity: Entity): EditField[] {
       field("international.u21_goals", "u8", 0, 255),
       field("condition", "u16", 0, 10_000, "percent"),
       field("match_sharpness", "u16", 3_500, 10_000, "percent"),
-      field("happiness", "u8", 0, 20),
+      field("morale", "u8", 1, 20),
       ...ATTRIBUTES.map((key) => field(`attribute.${key}`, "u8", 1, 100, "attribute")),
       // The game no longer plays a sweeper, so the real table leaves it out.
       ...POSITIONS.filter((key) => key !== "sw").map((key) => field(`position.${key}`, "u8", 1, 20)),
@@ -425,8 +430,8 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
       case "match_sharpness":
         (d as PlayerDetails).matchSharpness = value;
         break;
-      case "happiness":
-        (d as PlayerDetails).happiness = value;
+      case "morale":
+        (d as PlayerDetails).morale = value;
         break;
       case "international":
         (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
@@ -515,8 +520,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.condition;
       case "match_sharpness":
         return person.matchSharpness;
-      case "happiness":
-        return person.happiness;
+      case "morale":
+        return person.morale;
       case "reputation":
         return entity === "club" ? club.reputation : person.reputation[name as "home" | "current" | "world"];
       case "international":
@@ -664,6 +669,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.field === "injuries") {
     unhealed(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.captaincy) {
+    undoCaptain(entry);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -863,8 +873,11 @@ function undoMove(entry: LoggedChange): void {
 
 // Healing -----------------------------------------------------------------------------------------------------------
 
-/** `heal_player`: the fixture player gets over his injuries, logged as a change of his `injuries` to none. */
-function healPlayer(uid: number): LoggedChange {
+/**
+ * `heal_player`: the fixture player gets over his injuries, logged as a change of his `injuries` to none; `batch`
+ * groups the healings of a team-wide action.
+ */
+function healPlayer(uid: number, batch: number | null = null): LoggedChange {
   const player = players.find((p) => p.uid === uid);
   if (!player) {
     throw notFound("player", uid);
@@ -884,7 +897,7 @@ function healPlayer(uid: number): LoggedChange {
     old: injuries,
     new: 0,
     undoneAt: null,
-    batch: null,
+    batch,
   };
   changes.push(logged);
   return { ...logged };
@@ -893,6 +906,171 @@ function healPlayer(uid: number): LoggedChange {
 /** Lists the injuries of the player `uid` again. */
 function unhealed(uid: number): void {
   healedPlayers.delete(uid);
+}
+
+// Squads and captains -----------------------------------------------------------------------------------------------
+
+/** The captains changed through the editor, by `club:team`. */
+const captainsSet = new Map<string, { captain: number | null; viceCaptain: number | null }>();
+
+/** What each captaincy (by the id of its logged change) found and left, for its undo. */
+const captainUndo = new Map<number, { key: string; before: CaptainPair; after: CaptainPair }>();
+
+type CaptainPair = { captain: number | null; viceCaptain: number | null };
+
+/**
+ * The teams of a fixture club, as UIDs: the senior team holds the players over 21 and the best youngsters, the
+ * under-21s and under-18s the other youngsters. The weakest senior player is out on loan. Women's clubs have no
+ * fixture players, so their one team is empty.
+ */
+function fixtureTeams(clubUid: number): { kind: number; ageLimit: number | null; uids: number[]; out: number | null }[] {
+  const own = players.filter((p) => p.clubUid === clubUid).sort((a, b) => b.currentAbility - a.currentAbility);
+  const young = (p: PlayerSummary, limit: number) => p.age !== null && p.age <= limit;
+  const senior = own.filter((p, i) => !young(p, 21) || i < 4);
+  const rest = own.filter((p) => !senior.includes(p));
+  const teams = [
+    { kind: 0, ageLimit: null, uids: senior.map((p) => p.uid), out: senior[senior.length - 1]?.uid ?? null },
+    { kind: 10, ageLimit: 21, uids: rest.filter((p) => !young(p, 18)).map((p) => p.uid), out: null },
+    { kind: 12, ageLimit: 18, uids: rest.filter((p) => young(p, 18)).map((p) => p.uid), out: null },
+  ];
+  return own.length === 0 ? teams.slice(0, 1) : teams;
+}
+
+/** The captains of a fixture team: the senior team's two best players until the editor changes them. */
+function captainsOf(clubUid: number, index: number, uids: number[]): CaptainPair {
+  const set = captainsSet.get(`${clubUid}:${index}`);
+  if (set) {
+    return set;
+  }
+  return index === 0 ? { captain: uids[0] ?? null, viceCaptain: uids[1] ?? null } : { captain: null, viceCaptain: null };
+}
+
+/** `club_squads`: the fixture club's teams with their players' list rows and live values. */
+function clubSquads(clubUid: number): ClubTeam[] {
+  if (!clubs.some((c) => c.uid === clubUid)) {
+    throw notFound("club", clubUid);
+  }
+  return fixtureTeams(clubUid).map((team, index) => ({
+    index,
+    kind: team.kind,
+    ageLimit: team.ageLimit,
+    ...captainsOf(clubUid, index, team.uids),
+    players: team.uids.map((uid): SquadPlayer => {
+      const row = players.find((p) => p.uid === uid)!;
+      const d = details(row);
+      return {
+        ...row,
+        playsHere: uid !== team.out,
+        loan: uid === team.out ? "out" : null,
+        condition: d.condition,
+        matchSharpness: d.matchSharpness,
+        morale: d.morale,
+        injuries: d.injuries.length,
+      };
+    }),
+  }));
+}
+
+/** The team at `index` of the fixture club, or the real command's failure. */
+function fixtureTeam(clubUid: number, index: number): ClubTeam {
+  const team = clubSquads(clubUid).find((t) => t.index === index);
+  if (!team) {
+    throw failure("squad.noTeam", `the club has no team number ${index} that checks out`, { index });
+  }
+  return team;
+}
+
+/** `set_captain`: the checks of the real command, a swap when he held the other role, and the log entry. */
+function setCaptain(clubUid: number, index: number, role: CaptainRole, uid: number): LoggedChange {
+  const team = fixtureTeam(clubUid, index);
+  if (!team.players.some((p) => p.uid === uid && p.playsHere)) {
+    throw failure("captain.notInTeam", "the player does not play for this team");
+  }
+  const [key, otherKey] = role === "captain" ? (["captain", "viceCaptain"] as const) : (["viceCaptain", "captain"] as const);
+  const old = team[key];
+  if (old === uid) {
+    throw failure("captain.unchanged", "The player holds that role already.");
+  }
+  const swapped = team[otherKey] === uid;
+  const before: CaptainPair = { captain: team.captain, viceCaptain: team.viceCaptain };
+  const after: CaptainPair = { ...before, [key]: uid, ...(swapped && { [otherKey]: old }) };
+  const keyOf = `${clubUid}:${index}`;
+  captainsSet.set(keyOf, after);
+  const nameOf = (u: number) => players.find((p) => p.uid === u)?.name ?? String(u);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: clubs.find((c) => c.uid === clubUid)!.name,
+    entity: "club",
+    uid: clubUid,
+    field: role === "captain" ? "captain" : "vice_captain",
+    old: old ?? 0,
+    new: uid,
+    undoneAt: null,
+    batch: null,
+    captaincy: {
+      team: index,
+      kind: team.kind,
+      ageLimit: team.ageLimit,
+      from: old === null ? null : nameOf(old),
+      to: nameOf(uid),
+      swapped,
+    },
+  };
+  captainUndo.set(logged.id, { key: keyOf, before, after });
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** Gives back the captaincies the change `entry` took, unless they have changed again since. */
+function undoCaptain(entry: LoggedChange): void {
+  const undo = captainUndo.get(entry.id);
+  const [clubUid, index] = undo ? undo.key.split(":").map(Number) : [0, 0];
+  const now = undo && captainsOf(clubUid, index, []);
+  if (!undo || now?.captain !== undo.after.captain || now?.viceCaptain !== undo.after.viceCaptain) {
+    throw failure("move.changed", "the game has changed the memory at 0x0 since; reload and try again", { address: "0x0" });
+  }
+  captainsSet.set(undo.key, undo.before);
+}
+
+/** `team_action`: the action on every player of the fixture team, logged as one batch like a mass edit. */
+function teamAction(clubUid: number, index: number, action: TeamAction): MassReport {
+  const team = fixtureTeam(clubUid, index);
+  const batch = nextMassId++;
+  const report: MassReport = { batch, applied: 0, failed: [] };
+  if (action === "heal") {
+    for (const player of team.players.filter((p) => p.injuries > 0)) {
+      healPlayer(player.uid, batch);
+      report.applied++;
+    }
+    return report;
+  }
+  const values: [string, number][] =
+    action === "inspire" ? [["morale", 20]] : [["condition", 10_000], ["match_sharpness", 10_000]];
+  for (const player of team.players) {
+    const now = currentValues("player", player.uid);
+    for (const [field, value] of values) {
+      if (now[field] === value) {
+        continue;
+      }
+      writeValue("player", player.uid, field, value);
+      const logged: LoggedChange = {
+        id: changes.length + 1,
+        at: Date.now(),
+        name: player.name,
+        entity: "player",
+        uid: player.uid,
+        field,
+        old: now[field],
+        new: value,
+        undoneAt: null,
+        batch,
+      };
+      changes.push(logged);
+      report.applied++;
+    }
+  }
+  return report;
 }
 
 // Mass edits --------------------------------------------------------------------------------------------------------
@@ -1278,6 +1456,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return planSwap(Number(args?.uid), Number(args?.other)) as T;
     case "heal_player":
       return healPlayer(Number(args?.uid)) as T;
+    case "club_squads":
+      return clubSquads(Number(args?.uid)) as T;
+    case "set_captain":
+      return setCaptain(Number(args?.club), Number(args?.team), args?.role as CaptainRole, Number(args?.uid)) as T;
+    case "team_action":
+      return teamAction(Number(args?.club), Number(args?.team), args?.action as TeamAction) as T;
     case "swap_players":
       return swapPlayers(Number(args?.uid), Number(args?.other)) as T;
     default:

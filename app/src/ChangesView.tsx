@@ -7,7 +7,15 @@ import { valueText } from "./editDraft";
 import { changeLog, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError, formatDateTime, formatTime } from "./format";
-import { changesText as text, fieldLabel, massEditText, profileText, valueChange } from "./labels";
+import {
+  changesText as text,
+  fieldLabel,
+  massEditText,
+  profileText,
+  swapNote,
+  teamLabel,
+  valueChange,
+} from "./labels";
 import { undoFailureLines } from "./massDraft";
 import type { EditField, Entity, LoggedChange } from "./types";
 
@@ -453,19 +461,40 @@ interface ChangeRowProps {
   inBatch: boolean;
 }
 
+/**
+ * What a captaincy says under its values: the team, unless it is the first one, and when the two captains swapped, who
+ * holds the other role now. The log knows the team only by its place in the club's list, so it is named by that.
+ */
+function captaincyNotes({ captaincy, field }: LoggedChange): string[] {
+  if (!captaincy) {
+    return [];
+  }
+  const notes: string[] = [];
+  if (captaincy.team !== 0) {
+    notes.push(teamLabel({ index: captaincy.team, kind: captaincy.kind, ageLimit: captaincy.ageLimit }));
+  }
+  if (captaincy.swapped) {
+    notes.push(swapNote(field === "captain" ? "captain" : "viceCaptain", captaincy.from));
+  }
+  return notes;
+}
+
 function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);
   const shown = (stored: number) => (field ? shownValue(field, stored) : stored);
   // An attribute or a percentage is stored on a finer scale than it is shown: its hover text has the values as stored.
   const storedNote = isStoredFiner(field) ? text.stored(valueChange(change.old, change.new)) : undefined;
   const className = [change.undoneAt !== null && "undone", inBatch && "in-batch"].filter(Boolean).join(" ");
-  // A move to another club is logged with the clubs' UIDs as its values: their names say more. A heal is logged as a
-  // change of his injuries from how many he had to none: "Healed 2 injuries" says it better than "2 → 0".
+  // A move to another club is logged with the clubs' UIDs as its values: their names say more, and so do the players'
+  // for a captaincy. A heal is logged as a change of his injuries from how many he had to none: "Healed 2 injuries"
+  // says it better than "2 → 0".
   const value = change.moved
     ? valueChange(change.moved.from, change.moved.to)
-    : change.field === "injuries"
-      ? text.healed(change.old)
-      : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
+    : change.captaincy
+      ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
+      : change.field === "injuries"
+        ? text.healed(change.old)
+        : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
 
   return (
     <tr className={className || undefined}>
@@ -485,6 +514,11 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       <td className="change-value" title={storedNote}>
         {value}
         {change.moved?.with !== undefined && <div className="sub">{text.swappedWith(change.moved.with)}</div>}
+        {captaincyNotes(change).map((note) => (
+          <div key={note} className="sub">
+            {note}
+          </div>
+        ))}
       </td>
       <td className="col-status">
         <div className="row-actions">

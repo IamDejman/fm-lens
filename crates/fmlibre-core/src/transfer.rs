@@ -145,6 +145,12 @@ pub enum MoveError {
     },
     /// Healing asked for a player who has no current injury.
     NotInjured,
+    /// The club has no team at this place in its list of teams, or it does not check out.
+    NoTeam {
+        index: usize,
+    },
+    /// A captain asked for who does not play for the team.
+    NotInTeam,
     /// A contract term the editor does not write, such as an end date that has passed.
     OutOfRange {
         field: &'static str,
@@ -187,6 +193,8 @@ impl fmt::Display for MoveError {
                  make it bigger"
             ),
             MoveError::NotInjured => f.write_str("the player has no injury to heal"),
+            MoveError::NoTeam { index } => write!(f, "the club has no team number {index} that checks out"),
+            MoveError::NotInTeam => f.write_str("the player does not play for this team"),
             MoveError::OutOfRange { field, value, min, max } => {
                 write!(f, "{value} is not a valid {field}; it takes {min} to {max}")
             }
@@ -216,6 +224,8 @@ impl Coded for MoveError {
             MoveError::NotListed => "move.notListed",
             MoveError::NoRoom { .. } => "move.noRoom",
             MoveError::NotInjured => "heal.notInjured",
+            MoveError::NoTeam { .. } => "squad.noTeam",
+            MoveError::NotInTeam => "captain.notInTeam",
             MoveError::OutOfRange { .. } => "move.outOfRange",
             MoveError::Changed { .. } => "move.changed",
             MoveError::NotApplied { .. } => "move.notApplied",
@@ -227,6 +237,7 @@ impl Coded for MoveError {
         match self {
             MoveError::Moved { uid } | MoveError::NotAClub { uid } => vec![("uid", uid.to_string())],
             MoveError::NoRoom { players } => vec![("players", players.to_string())],
+            MoveError::NoTeam { index } => vec![("index", index.to_string())],
             MoveError::OutOfRange { field, value, min, max } => vec![
                 ("field", (*field).to_owned()),
                 ("value", value.to_string()),
@@ -250,7 +261,7 @@ impl From<fmlibre_mem::Error> for MoveError {
 
 /// A list of pointers the game keeps as `(begin, end, capacity)` at `header`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct PointerList {
+pub(crate) struct PointerList {
     header: u64,
     begin: u64,
     end: u64,
@@ -259,7 +270,7 @@ struct PointerList {
 
 impl PointerList {
     /// The list whose header is at `header`, or `None` when the header does not hold one.
-    fn read(process: &Process, header: u64) -> Result<Option<Self>, MoveError> {
+    pub(crate) fn read(process: &Process, header: u64) -> Result<Option<Self>, MoveError> {
         let bytes = process.read_bytes(header, 24)?;
         let word = |i: usize| u64::from_le_bytes(bytes[i * 8..i * 8 + 8].try_into().expect("8 bytes"));
         let (begin, end, capacity) = (word(0), word(1), word(2));
@@ -272,11 +283,11 @@ impl PointerList {
         Ok(sane.then_some(Self { header, begin, end, capacity }))
     }
 
-    fn len(&self) -> u64 {
+    pub(crate) fn len(&self) -> u64 {
         (self.end - self.begin) / 8
     }
 
-    fn elements(&self, process: &Process) -> Result<Vec<u64>, MoveError> {
+    pub(crate) fn elements(&self, process: &Process) -> Result<Vec<u64>, MoveError> {
         let bytes = process.read_bytes(self.begin, (self.end - self.begin) as usize)?;
         Ok(bytes.as_chunks::<8>().0.iter().map(|word| u64::from_le_bytes(*word)).collect())
     }

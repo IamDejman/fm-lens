@@ -115,7 +115,13 @@ before trusting them.
   writes allow:
   - a player's squad number, squad status, and transfer and loan listing;
   - swapping two players between clubs, with undo;
-  - healing injuries, with undo; setting energy, match sharpness and happiness,
-    one player at a time or in a mass edit.
-- [ ] Next from that list: captains, and the squad status codes past 5 (youth and
-  backup roles), once the game's own data names them.
+  - healing injuries, with undo; setting energy, match sharpness and morale, one
+    player at a time or in a mass edit.
+- [x] A squad tab in the club profile, like FM Live Editor's Teams tab:
+  - each team's players with their fitness, morale, injuries and loans;
+  - captain and vice-captain;
+  - heal all, inspire all (morale to 20) and refresh all (energy and match
+    sharpness to 100%), each undone as one batch.
+- [ ] Next: team cohesion and tactical familiarity (FMLE's "Max Cohesion" and "Max
+  Tactics"), suspensions ("Unban All"), and the squad status codes past 5 (youth
+  and backup roles), once the game's own data names them.

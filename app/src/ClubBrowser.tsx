@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClubProfile } from "./ClubProfile";
+import { ClubProfile, readTab, type ClubTab } from "./ClubProfile";
 import { clubListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
@@ -22,6 +22,9 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
   // It starts as it was before the language was switched, if it was (see `restore.ts`).
   const [kind, setKind] = useState<ClubKind>(() => restored("clubKind", readKind));
   useSnapshot("clubKind", () => kind);
+  // The tab of the club profile is kept here, so that the next club picked opens on the squad when this one did.
+  const [tab, setTab] = useState<ClubTab>(() => restored("clubTab", readTab));
+  useSnapshot("clubTab", () => tab);
   const filter: ClubFilter | undefined = kind === "all" ? undefined : { women: kind === "women" };
 
   return (
@@ -56,7 +59,9 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
         </>
       }
       cells={(c) => <ClubCells club={c} />}
-      profile={(c, panel) => <ClubProfile club={c} version={panel.version} onClose={panel.onClose} />}
+      profile={(c, panel) => (
+        <ClubProfile club={c} version={panel.version} tab={tab} onTab={setTab} onClose={panel.onClose} />
+      )}
     />
   );
 }

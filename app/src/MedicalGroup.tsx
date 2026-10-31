@@ -1,5 +1,5 @@
-// The Medical group of a player's profile: his energy, match sharpness and happiness, his current injuries, and the
-// button that heals them.
+// The Medical group of a player's profile: his energy, match sharpness and morale, his current injuries, and
+// the button that heals them.
 
 import { useContext, useEffect, useRef, useState } from "react";
 import { EditableValue } from "./EditControls";
@@ -10,12 +10,12 @@ import { Fact } from "./ProfileParts";
 import type { Injury, PlayerDetails } from "./types";
 import { EditorContext } from "./useProfileEditing";
 
-/** A stored percentage (0–10000) as the profile shows it: "87%". */
-const percentText = (stored: number) => formatPercent(wholePercent(stored));
+/** A stored percentage (0–10000) as the profile shows it: "87%". The squad table of a club shows them the same way. */
+export const percentText = (stored: number) => formatPercent(wholePercent(stored));
 
 /**
- * Energy and match sharpness as whole percentages and happiness out of 20, which are inputs while the player is
- * edited, and under them his injuries.
+ * Energy and match sharpness as whole percentages, morale out of 20, which are inputs while the player
+ * is edited, and under them his injuries.
  */
 export function MedicalGroup({ details }: { details: PlayerDetails }) {
   const injured = details.injuries.length > 0;
@@ -41,8 +41,8 @@ export function MedicalGroup({ details }: { details: PlayerDetails }) {
         <Fact label={fieldLabel("player", "match_sharpness")}>
           <EditableValue field="match_sharpness">{percentText(details.matchSharpness)}</EditableValue>
         </Fact>
-        <Fact label={fieldLabel("player", "happiness")} title={profileText.happinessTitle}>
-          <EditableValue field="happiness">{profileText.happiness(details.happiness)}</EditableValue>
+        <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
+          <EditableValue field="morale">{profileText.morale(details.morale)}</EditableValue>
         </Fact>
       </dl>
       {injured ? (

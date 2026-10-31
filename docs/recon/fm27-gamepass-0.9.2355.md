@@ -487,7 +487,9 @@ move.
 These sit in a player's contract (see the table above).
 - **Squad status:** Bruno Fernandes reads 1, and the game calls him a star player
   ("Forma süresi" in the Turkish game). 2 is an important player and 5 an impact
-  sub. The editor offers 1 to 5 and leaves other codes the game holds as they are.
+  sub. Amad reads 4, which the game calls a rotation player ("Rotasyon
+  Oyuncusu"). The editor offers 1 to 5 and leaves other codes the game holds as
+  they are.
 - **Squad numbers:** 97 numbers on the test save are worn twice within one team's
   list, by a player out on loan and a player who plays for the team. So a number
   counts as taken only when a player who plays for the team (his `+0x130`) wears
@@ -519,15 +521,51 @@ These sit in a player's contract (see the table above).
 |---|---|---|
 | `+0x25C` | energy (`u16`, 0–10000 for 0–100%) | Joshua Zirkzee, 6950 → 10000: "Dinç" (fresh) |
 | `+0x258` | match sharpness (`u16`, 0–10000) | de Ligt, injured, 3500: "Maç Kondisyonu Eksik" (lacking match fitness); no player had less |
-| `+0x1F1` | happiness (`u8`, 0–20) | Arda Güler, 8 → 20: "Memnun" (content) |
+| `+0x26C` | morale (`u8`, 1–20), shown as overall happiness ("Genel Mutluluk") | Arda Güler: "Memnun" (content) at 10, "Biraz Mutlu" (slightly happy) at 11, "Aşırı Mutlu" (extremely happy) at 20; Amad "Aşırı Mutlu" at 15 |
 
-These were held in the game for 15 minutes with the probe's `--hold`, then
+- **Morale:** FM Live Editor 27 calls this byte morale. Its words for 15
+  Manchester United players matched it: Okay 10, Fairly Good 11, Quite Good 12,
+  Good 13, Really Good 14, Very Good 15. On the test save it runs from 1 to 20.
+- **The byte at `+0x1F1`** (0–20) moves with morale, but it is not what the game
+  shows. It was first taken for happiness after setting it to 20 left Güler
+  "Memnun", but that was his morale, 10 at the time. The editor no longer reads it.
+
+These were held in the game for 15 to 25 minutes with the probe's `--hold`, then
 restored:
 - Zirkzee's energy;
 - de Ligt's match sharpness;
-- Güler's happiness;
+- Güler's morale, twice;
 - de Ligt's healing: the game showed him fit, and his injury was listed again
   afterwards.
 
 The game's screens show an edited value only after the game has moved on once
 (Continue): its interface keeps a copy of the data and refreshes it then.
+
+### Teams and captains
+
+A club's teams (`club+0x18`, the senior team first) each say what kind of team they
+are. The probe's `teams <club>` lists them with their players:
+
+| Offset | Value | Seen on the test save |
+|---|---|---|
+| `+0x28` | kind (`u8`) | 0 first team, 3 B team (Juventus Next Gen), 10 under-21s, 18 under-20s, 12 under-18s |
+| `+0x2C` | age limit (`u8`) | 21, 20, 18; 100 for a team without one |
+| `+0x88` | captain: pointer to his person block | Manchester United: Bruno Fernandes; Tottenham: Micky van de Ven; Juventus: Manuel Locatelli |
+| `+0x90` | vice-captain, the same way | Lisandro Martínez; Pedro Porro; Bremer |
+
+- **What the lists hold:** Manchester United's senior list holds the 30 players
+  FM Live Editor 27 shows for it. André Onana and Altay Bayındır are under contract
+  with it while on loan elsewhere: the club of the team a player plays for differs
+  from the club of his contract's team.
+- **Youth teams:** the under-21s and under-18s had no captains. Juventus Next Gen,
+  a B team, had both.
+- **Writing a captaincy** points the role at the player's person block, in one
+  write. When he held the other role, the two captains swap, in two writes.
+  - A player who does not play for the team is refused: an under-21 player for the
+    senior team, and a player out on loan.
+- **Tried live:** Amad as captain, the swap both ways, and these refusals were each
+  done and undone with `captain ... --restore`.
+- **In the game:** Amad was held as Manchester United's captain for 20 minutes
+  while the game ran, and then restored. The game carried on without trouble.
+  Amad's mood screen listed no captaincy among his reasons to be happy. Whether the
+  squad screen showed him as captain was not checked.

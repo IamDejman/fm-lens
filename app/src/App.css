@@ -238,9 +238,10 @@ nav small {
 }
 
 /* "EN | TR": two buttons in one frame; the pressed one is the language in use. The mode switch of the move dialog (see
-   Moving a player) is made the same way. */
+   Moving a player) is made the same way, and so is the switch between the teams of a squad (see Club squad). */
 .language-switch,
-.move-mode {
+.move-mode,
+.squad-teams {
   display: inline-flex;
   align-self: flex-start;
   overflow: hidden;
@@ -249,7 +250,8 @@ nav small {
 }
 
 .language-switch button,
-.move-mode button {
+.move-mode button,
+.squad-teams button {
   min-width: 40px;
   padding: 3px 10px;
   border: 0;
@@ -262,30 +264,35 @@ nav small {
 }
 
 .language-switch button + button,
-.move-mode button + button {
+.move-mode button + button,
+.squad-teams button + button {
   border-left: 1px solid var(--border);
 }
 
 /* The accent border every button gets on hover would colour the divider only: the buttons share one frame. */
 .language-switch button:hover:not(:disabled),
-.move-mode button:hover:not(:disabled) {
+.move-mode button:hover:not(:disabled),
+.squad-teams button:hover:not(:disabled) {
   border-color: var(--border);
 }
 
 .language-switch button:hover:not(:disabled, [aria-pressed="true"]),
-.move-mode button:hover:not(:disabled, [aria-pressed="true"]) {
+.move-mode button:hover:not(:disabled, [aria-pressed="true"]),
+.squad-teams button:hover:not(:disabled, [aria-pressed="true"]) {
   background: var(--raised);
   color: var(--text);
 }
 
 .language-switch button[aria-pressed="true"],
-.move-mode button[aria-pressed="true"] {
+.move-mode button[aria-pressed="true"],
+.squad-teams button[aria-pressed="true"] {
   background: var(--accent-soft);
   color: var(--text);
 }
 
 .language-switch button:focus-visible,
-.move-mode button:focus-visible {
+.move-mode button:focus-visible,
+.squad-teams button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -773,6 +780,13 @@ nav small {
   }
 }
 
+/* A club's squad takes most of the window, which leaves the list beside it its minimum: names, and no reputation. */
+@container (max-width: 300px) {
+  .club-grid .col-rep {
+    display: none;
+  }
+}
+
 /*
  * The staff table has one more text column, so its columns drop out sooner, whether or not a
  * profile is open: Born and ID, then Nation, then Age and PA, and the text columns wrap.
@@ -1001,6 +1015,12 @@ nav small {
   min-height: 0;
   border-left: 1px solid var(--border);
   background: var(--panel);
+}
+
+/* A profile with a table in it, a club's squad, takes more of the window than the others: the list beside it keeps no
+   more than its minimum. Where the window is narrower the table scrolls in its box. */
+.profile.wide {
+  flex-basis: 880px;
 }
 
 .profile-head {
@@ -1483,11 +1503,12 @@ nav small {
 }
 
 /* The Compare button sits before Edit and looks like it: pressed while the player is in the comparison. So does Move to
-   another club (see Moving a player), and Heal in the Medical group. */
+   another club (see Moving a player), Heal in the Medical group, and the actions on a squad (see Club squad). */
 .edit-toggle,
 .compare-toggle,
 .move-toggle,
-.heal-toggle {
+.heal-toggle,
+.squad-action {
   padding: 3px 12px;
   font-size: 13px;
 }
@@ -1500,15 +1521,17 @@ nav small {
 }
 
 /* A full comparison takes no one more: the button is dimmed, and its hover text says why. It stays a Tab stop. So does
-   Heal while it is under way, which keeps focus on it. */
+   Heal while it is under way, which keeps focus on it, and so do the actions on a squad. */
 .compare-toggle[aria-disabled="true"],
-.heal-toggle[aria-disabled="true"] {
+.heal-toggle[aria-disabled="true"],
+.squad-action[aria-disabled="true"] {
   opacity: 0.55;
   cursor: default;
 }
 
 .compare-toggle[aria-disabled="true"]:hover,
-.heal-toggle[aria-disabled="true"]:hover {
+.heal-toggle[aria-disabled="true"]:hover,
+.squad-action[aria-disabled="true"]:hover {
   border-color: var(--border);
 }
 
@@ -3008,4 +3031,278 @@ button.danger:hover:not(:disabled) {
   margin: 6px 6px 0;
   color: var(--danger);
   font-size: 13px;
+}
+
+/* Club squad */
+
+/* The tabs under the header of a club's profile: the body scrolls under them. The open tab is underlined in the accent
+   colour, over the line that is the foot of the tabs. */
+.profile-tabs {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-tab {
+  margin-bottom: -1px;
+  padding: 8px 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.profile-tab:hover:not(:disabled, [aria-selected="true"]) {
+  border-bottom-color: var(--border);
+  color: var(--text);
+}
+
+.profile-tab[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.profile-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The body of a profile on its squad tab: the controls keep their place and the table scrolls in a box of its own. For
+   that the tab must be able to be shorter than its content, which a flex item is not unless it has a minimum height of
+   its own; this one is room for the controls and a few rows, and a window too short for them scrolls the body instead. */
+.profile-body:has(> .squad-tab) {
+  display: flex;
+  flex-direction: column;
+}
+
+.squad-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 30rem;
+}
+
+/* The switch between the teams, how many players the shown one lists, and under them its captains. */
+.squad-summary {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.squad-summary p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.squad-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.squad-captains {
+  flex-basis: 100%;
+}
+
+.squad-teams {
+  align-self: auto;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.squad-teams button {
+  padding: 4px 12px;
+  font-size: 13px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+/* The actions on the whole team, and beside them what they cover. */
+.squad-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.squad-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.squad-hint {
+  flex: 1 1 16rem;
+  margin: 0;
+}
+
+/* What the last action did: a live region that is always there, and takes no room while it is empty. It takes focus
+   when the button that had it is gone. */
+.squad-result {
+  flex: none;
+  font-size: 13px;
+}
+
+.squad-result:not(:empty) {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+}
+
+.squad-result:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.squad-result-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.squad-result p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.squad-result p.error {
+  color: var(--danger);
+}
+
+/* The table takes the room the controls leave, and scrolls inside its box with its head in view. */
+.squad-table-wrap {
+  flex: 1;
+  min-height: 14rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+/* The players are read, not picked: no row is a link. The cells are tighter than a list's: there are more of them. */
+.squad-grid tbody tr {
+  cursor: default;
+}
+
+.squad-grid :is(th, td) {
+  padding: 6px 7px;
+}
+
+.squad-grid :is(th, td):first-child {
+  padding-left: 12px;
+}
+
+/* The tags may take a second line under the name. */
+.squad-grid td.col-name {
+  white-space: normal;
+}
+
+.squad-grid .col-actions {
+  width: 1%;
+  padding-left: 0;
+  text-align: right;
+}
+
+/* A player who does not play for the team, e.g. one out on loan, is dimmed: his tag says why. */
+.squad-grid tr.away td {
+  color: var(--muted);
+}
+
+.squad-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+}
+
+.squad-name .tag {
+  padding: 0 7px;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.tag.injured {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.tag.loan {
+  border-color: var(--tier-2);
+  color: var(--tier-2);
+}
+
+/* C and VC after a name: the captain's is filled in the accent colour, the vice-captain's outlined. */
+.role-badge {
+  padding: 0 5px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.6;
+  text-decoration: none;
+  cursor: help;
+}
+
+.role-badge.captain {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* The menu button at the end of a row is the dots of the icon buttons, bolder; the menu hangs from it over the window
+   (see CaptainMenu). */
+.squad-menu-toggle {
+  width: 26px;
+  height: 24px;
+}
+
+.squad-menu-toggle svg {
+  stroke-width: 3.2;
+}
+
+.squad-menu-toggle[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.squad-menu {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.squad-menu button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  text-align: left;
+}
+
+.squad-menu button:hover,
+.squad-menu button:focus-visible {
+  background: var(--raised);
+}
+
+.squad-menu button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }

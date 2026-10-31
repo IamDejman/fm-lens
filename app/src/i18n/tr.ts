@@ -4,7 +4,7 @@
 // Turkish has no plural after a number ("3 değişiklik"), and its case endings follow the word they end, not a
 // number, so the sentences are built to put an ending on a noun ("oyuncunun"), never on a figure.
 
-import type { Entity, MassOperationKind, MassPreview, PlayerSort, Storefront } from "../types";
+import type { Entity, MassOperationKind, MassPreview, PlayerSort, SquadSort, Storefront } from "../types";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
 
@@ -37,7 +37,7 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Yıldız oyuncu",
   2: "Önemli oyuncu",
   3: "Düzenli ilk 11 oyuncusu",
-  4: "Kadro oyuncusu",
+  4: "Rotasyon oyuncusu",
   5: "Etkili yedek",
 };
 
@@ -88,6 +88,9 @@ const errors: ErrorTexts = {
   "move.changed": () => `Oyun bu belleği o zamandan beri değiştirmiş; ${reload}.`,
   "move.notApplied": () => "Belleğe yazıldı ama geri okunan farklı çıktı.",
   "heal.notInjured": () => "Oyuncunun iyileştirilecek bir sakatlığı yok.",
+  "squad.noTeam": () => `Kulübün böyle bir takımı yok ya da takım doğrulanamadı; ${reload}.`,
+  "captain.notInTeam": () => "Oyuncu bu takımda oynamıyor; kaptan ancak takımın kendi oyuncularından seçilebilir.",
+  "captain.unchanged": () => "Oyuncu bu görevi zaten üstleniyor.",
   "session.notRunning": () => "Football Manager 27 çalışmıyor. Oyunu başlatıp bir kayıt yükleyin, sonra tekrar deneyin.",
   "session.noSuchProcess": (p) => `${p.pid} işlem numaralı bir fm.exe yok.`,
   "session.severalRunning": (p) => `fm.exe'nin ${p.count} kopyası çalışıyor (${p.pids}); birini seçin.`,
@@ -298,7 +301,7 @@ export const tr: Strings = {
     "international.u21_goals": "U21 gol",
     condition: "Enerji",
     match_sharpness: "Maç kondisyonu",
-    happiness: "Mutluluk",
+    morale: "Moral",
     "contract.wage": "Haftalık maaş",
     "contract.expires": "Sözleşme bitişi",
     "contract.squad_number": "Forma numarası",
@@ -307,6 +310,8 @@ export const tr: Strings = {
     "contract.loan_listed": "Kiralık listesinde",
     club: "Kulüp",
     injuries: "Sakatlıklar",
+    captain: "Kaptan",
+    vice_captain: "Yardımcı kaptan",
     reputation: "İtibar",
     "facilities.training": "Antrenman tesisleri",
     "facilities.youth_facilities": "Altyapı tesisleri",
@@ -386,8 +391,8 @@ export const tr: Strings = {
     reputationWorld: "Dünya",
 
     // Medical
-    happiness: (value) => `${value} / 20`,
-    happinessTitle: "Oyun, mutluluğu 20 olan oyuncuyu memnun sayar",
+    morale: (value) => `${value} / 20`,
+    moraleTitle: "Oyun morali Genel Mutluluk olarak gösterir: 10'da Memnun, 11'de Biraz Mutlu, 15 ve 20'de Aşırı Mutlu",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
@@ -532,6 +537,11 @@ export const tr: Strings = {
     founded: (year) => `Kuruluş ${year}`,
     reputationShort: "İtibar",
     reputationTitle: "İtibar",
+
+    // The tabs under the header
+    tabsLabel: "Kulüp bölümleri",
+    tabs: { overview: "Genel", squad: "Kadro" },
+    squadLocked: "Kadroyu açmak için düzenlemeyi bitirin",
 
     facilities: "Tesisler",
 
@@ -928,6 +938,93 @@ export const tr: Strings = {
     swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
     swap: "Takas et",
     swapping: "Takas ediliyor…",
+  },
+
+  squad: {
+    // The switch between the club's teams
+    teamsLabel: "Takım",
+    // The first team is the A team; the others are told apart by their age limit, or by their place in the club's list.
+    teams: {
+      first: "A takımı",
+      b: "B takımı",
+      age: (limit) => `U${limit}`,
+      other: (place) => `Takım ${place}`,
+    },
+    noTeams: "Bu kulübün takımı yok.",
+    loading: "Kadro okunuyor…",
+    empty: "Bu takımda oyuncu yok.",
+
+    // Above the table
+    players: (count) => `${format(count)} oyuncu`,
+    averageAge: (age) => `yaş ortalaması ${age}`,
+    captains: (captain, viceCaptain) => `Kaptan: ${captain} · Yardımcı kaptan: ${viceCaptain}`,
+
+    // The actions on the whole team
+    actionsLabel: "Takımın tamamına yönelik işlemler",
+    healAll: (injured) => (injured === 0 ? "Hepsini iyileştir" : `Hepsini iyileştir (${format(injured)} sakat)`),
+    healAllTitle: "Bu takımdaki her oyuncunun tüm sakatlıklarını iyileştir",
+    healNone: "Bu takımda sakat oyuncu yok",
+    inspireAll: "Hepsine moral ver",
+    inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla",
+    refreshAll: "Hepsini dinlendir",
+    refreshAllTitle: "Bu takımdaki her oyuncunun enerjisini ve maç kondisyonunu %100'e ayarla",
+    hint:
+      "İşlemler listedeki her oyuncuyu kapsar, kiralık gönderilenler de dahil. " +
+      "Geri alma işlemi Değişiklikler bölümünde de yapılabilir.",
+
+    // What an action did, under the buttons
+    written: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} yazıldı`),
+    refused: (name, reason) => `${name}: ${reason}`,
+    undo: "Geri al",
+    undoTitle: "Bu değişikliklerin eski değerlerini oyuna geri yaz",
+
+    // Captains
+    captainShort: "K",
+    viceCaptainShort: "YK",
+    menuLabel: (name) => `Kaptanlık: ${name}`,
+    menuTitle: "Kaptanlık",
+    makeCaptain: "Kaptan yap",
+    makeViceCaptain: "Yardımcı kaptan yap",
+    nowCaptain: (name) => `${name} artık kaptan`,
+    nowViceCaptain: (name) => `${name} artık yardımcı kaptan`,
+    noCaptain: "Artık kaptan yok",
+    noViceCaptain: "Artık yardımcı kaptan yok",
+
+    // The table
+    tableLabel: (team) => `Oyuncular: ${team}`,
+    columns: {
+      name: "İsim",
+      position: "Poz",
+      age: "Yaş",
+      currentAbility: "MY",
+      potentialAbility: "PY",
+      condition: "Enerji",
+      matchSharpness: "Maç kond.",
+      morale: "Moral",
+      actions: "Kaptanlık",
+    } satisfies Record<SquadSort | "actions", string>,
+    sortBy: (by) => `Sırala: ${by}`,
+    // Said as "Sırala: …", so they stand as plain nouns.
+    sortNames: {
+      name: "isim",
+      position: "pozisyon",
+      age: "yaş",
+      currentAbility: "mevcut yetenek",
+      potentialAbility: "potansiyel yetenek",
+      condition: "enerji",
+      matchSharpness: "maç kondisyonu",
+      morale: "moral",
+    } satisfies Record<SquadSort, string>,
+
+    // The tags after a name
+    injured: "Sakat",
+    injuredTitle: (count) => `${format(count)} sakatlık`,
+    onLoan: "Kirada",
+    onLoanTitle: "Başka bir kulübe kiralık gönderildi",
+    loanee: "Kiralık",
+    loaneeTitle: "Başka bir kulüpten kiralık geldi",
+    elsewhere: "Başka takımda",
+    elsewhereTitle: "Kulübün başka bir takımında oynuyor",
   },
 
   game: {

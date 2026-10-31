@@ -4,10 +4,11 @@ use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError, Entity, EntityArrays, Field,
-    FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Healed, Kind, Listed, MoveError, MovePlan,
-    MoveTerms, Operation, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex,
-    Session, SessionError, Skipped, StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
+    ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
+    Entity, EntityArrays, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Healed, Kind,
+    Listed, Loan, MoveError, MovePlan, MoveTerms, Operation, Picture, Planned, PlayerDetails, PlayerFilter,
+    PlayerIndex, PlayerOrder, PlayerSummary, SearchIndex, Session, SessionError, Skipped, StaffDetails, StaffFilter,
+    StaffIndex, Target, find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -104,14 +105,76 @@ impl Connection {
             undone_at: None,
             batch,
             moved: None,
+            captaincy: None,
             undo: None,
         };
         self.log.push(logged.clone());
         logged
     }
 
+    /// Writes changes a mass edit worked out, each only while the game still holds the value it
+    /// was planned from, and logs them as the batch `batch`.
+    fn write_planned(&mut self, entity: Entity, planned: Vec<Planned>, batch: u32) -> MassReport {
+        let fields: BTreeMap<String, Field> =
+            self.session.fields(entity).into_iter().map(|field| (field.key.clone(), field)).collect();
+        let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+        for planned in planned {
+            let field = &fields[&planned.field];
+            match self.session.write_field_if(&planned.target, field, planned.old, planned.new) {
+                Ok(change) => {
+                    self.log_change(change, planned.name, Some(batch));
+                    report.applied += 1;
+                }
+                Err(err) => report.failed.push(MassFailure {
+                    uid: planned.uid,
+                    name: planned.name,
+                    field: planned.field,
+                    error: err.into(),
+                }),
+            }
+        }
+        report
+    }
+
+    /// Logs a captaincy just written, as a change of the club's `captain` or `vice_captain`
+    /// from one player's UID to the other's (0 for nobody).
+    fn log_captain(&mut self, done: CaptainSet) -> LoggedChange {
+        let field = match done.role {
+            CaptainRole::Captain => "captain",
+            CaptainRole::ViceCaptain => "vice_captain",
+        };
+        let change = Change {
+            entity: Entity::Club,
+            uid: done.club,
+            field: field.to_owned(),
+            old: i64::from(done.old.unwrap_or(0)),
+            new: i64::from(done.new),
+        };
+        let captaincy = Captaincy {
+            team: done.team,
+            kind: done.kind,
+            age_limit: done.age_limit,
+            from: done.old.map(|uid| self.player_name(uid)),
+            to: self.player_name(done.new),
+            swapped: done.swapped,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(done.club),
+            change,
+            undone_at: None,
+            batch: None,
+            moved: None,
+            captaincy: Some(captaincy),
+            undo: Some(Undo::Captain(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs healing just written, as a change of the player's `injuries` from how many he had to none.
-    fn log_heal(&mut self, done: Healed) -> LoggedChange {
+    fn log_heal(&mut self, done: Healed, batch: Option<u32>) -> LoggedChange {
         let change = Change {
             entity: Entity::Player,
             uid: done.player,
@@ -125,8 +188,9 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
-            batch: None,
+            batch,
             moved: None,
+            captaincy: None,
             undo: Some(Undo::Heal(done)),
         };
         self.log.push(logged.clone());
@@ -215,6 +279,7 @@ impl Connection {
             undone_at: None,
             batch: None,
             moved: Some(MovedClubs { from, to, with }),
+            captaincy: None,
             undo: Some(Undo::Move(before)),
         };
         self.log.push(logged.clone());
@@ -245,6 +310,7 @@ impl Connection {
                 }
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
+            Some(Undo::Captain(captaincy)) => self.session.undo_captain(&captaincy)?,
             None => {
                 let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
                 self.session.revert(&target, &entry.change)?;
@@ -295,7 +361,11 @@ struct LoggedChange {
     /// to the other: the clubs' names.
     #[serde(skip_serializing_if = "Option::is_none")]
     moved: Option<MovedClubs>,
-    /// For a move or healing: what undoing it takes. Other changes write back `old`.
+    /// For a captaincy, logged as a change of the club's `captain` or `vice_captain` from one
+    /// player's UID to the other's: the team and the players' names.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    captaincy: Option<Captaincy>,
+    /// For a move, healing or a captaincy: what undoing it takes. Other changes write back `old`.
     #[serde(skip)]
     undo: Option<Undo>,
 }
@@ -305,6 +375,61 @@ struct LoggedChange {
 enum Undo {
     Move(LoggedMove),
     Heal(Healed),
+    Captain(CaptainSet),
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Captaincy {
+    /// Where the team is in its club's list of teams; 0 is the senior team.
+    team: usize,
+    /// The team's kind and age limit, to name it by (see `TeamView`).
+    kind: u8,
+    age_limit: Option<u8>,
+    /// Who held the role, and who took it.
+    from: Option<String>,
+    to: String,
+    /// Whether the player who took the role held the other one, which `from` now holds.
+    swapped: bool,
+}
+
+/// One of a club's teams as its squad screen shows it.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TeamView {
+    index: usize,
+    /// The game's code for the kind of team: 0 for the first team.
+    kind: u8,
+    age_limit: Option<u8>,
+    captain: Option<u32>,
+    vice_captain: Option<u32>,
+    players: Vec<SquadRow>,
+}
+
+/// A player of a team: his list row and the live values the squad screen shows.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SquadRow {
+    #[serde(flatten)]
+    player: PlayerSummary,
+    plays_here: bool,
+    loan: Option<Loan>,
+    condition: u16,
+    match_sharpness: u16,
+    morale: u8,
+    injuries: usize,
+}
+
+/// What a team-wide action does to every player of the team.
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum TeamAction {
+    /// Heals every current injury.
+    Heal,
+    /// Morale to the top.
+    Inspire,
+    /// Energy and match sharpness to 100%.
+    Refresh,
 }
 
 #[derive(Clone, Serialize)]
@@ -918,7 +1043,120 @@ fn heal_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Fai
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
     let plan = connection.session.plan_heal(player)?;
     let done = connection.session.apply_heal(&plan)?;
-    Ok(connection.log_heal(done))
+    Ok(connection.log_heal(done, None))
+}
+
+/// The teams of the club `uid`, the senior team first, with their players: each one's list
+/// row and the live values a squad screen shows, read now.
+#[tauri::command]
+fn club_squads(state: State<'_, AppState>, uid: u32) -> Result<Vec<TeamView>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let club = connection.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?;
+    let teams = connection.session.club_teams(club, &connection.players)?;
+    Ok(teams
+        .into_iter()
+        .map(|team| TeamView {
+            index: team.index,
+            kind: team.kind,
+            age_limit: team.age_limit,
+            captain: team.captain,
+            vice_captain: team.vice_captain,
+            players: team
+                .players
+                .into_iter()
+                .filter_map(|member| {
+                    let player = connection.players.get(member.uid)?.clone();
+                    Some(SquadRow {
+                        player,
+                        plays_here: member.plays_here,
+                        loan: member.loan,
+                        condition: member.condition,
+                        match_sharpness: member.match_sharpness,
+                        morale: member.morale,
+                        injuries: member.injuries,
+                    })
+                })
+                .collect(),
+        })
+        .collect())
+}
+
+/// Makes the player `uid` the captain or vice-captain of the team `team` of the club `club`;
+/// he must play for that team. When he held the other role, the two captains swap.
+#[tauri::command]
+fn set_captain(
+    state: State<'_, AppState>,
+    club: u32,
+    team: usize,
+    role: CaptainRole,
+    uid: u32,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_captain(summary, team, role, player, &connection.players)?;
+    if plan.writes() == 0 {
+        return Err(Failure::new("captain.unchanged", "The player holds that role already."));
+    }
+    let done = connection.session.apply_captain(&plan)?;
+    Ok(connection.log_captain(done))
+}
+
+/// Does `action` to every player of the team `team` of the club `club`, read now: those out
+/// on loan too. The changes are logged as one batch, which `undo_batch` undoes.
+#[tauri::command]
+fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamAction) -> Result<MassReport, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let members = connection
+        .session
+        .club_teams(summary, &connection.players)?
+        .into_iter()
+        .find(|found| found.index == team)
+        .ok_or(MoveError::NoTeam { index: team })?
+        .players;
+    let batch = connection.fresh_id();
+    let values: &[(&str, i64)] = match action {
+        TeamAction::Heal => {
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            for member in members.iter().filter(|member| member.injuries > 0) {
+                let Some(player) = connection.players.get(member.uid) else {
+                    continue;
+                };
+                let name = player.name.clone();
+                let healed = connection.session.plan_heal(player).and_then(|plan| connection.session.apply_heal(&plan));
+                match healed {
+                    Ok(done) => {
+                        connection.log_heal(done, Some(batch));
+                        report.applied += 1;
+                    }
+                    Err(err) => report.failed.push(MassFailure {
+                        uid: member.uid,
+                        name,
+                        field: "injuries".to_owned(),
+                        error: err.into(),
+                    }),
+                }
+            }
+            return Ok(report);
+        }
+        TeamAction::Inspire => &[("morale", 20)],
+        TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000)],
+    };
+    let targets: Vec<(Target, String)> = members
+        .iter()
+        .filter_map(|member| connection.players.get(member.uid))
+        .map(|player| (player.target(), player.name.clone()))
+        .collect();
+    let operations = values
+        .iter()
+        .map(|&(key, value)| Ok((connection.session.field(Entity::Player, key)?, Operation::Set { value })))
+        .collect::<Result<Vec<_>, EditError>>()?;
+    let plan = connection.session.plan_mass_edit(&targets, &operations)?;
+    Ok(connection.write_planned(Entity::Player, plan.planned, batch))
 }
 
 /// Works out a mass edit: `operations` applied to every player, member of staff or club
@@ -977,26 +1215,8 @@ fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, Fa
             return Err(Failure::new("mass.outOfDate", "This preview is out of date. Preview the mass edit again."));
         }
     };
-    let fields: BTreeMap<String, Field> =
-        connection.session.fields(pending.entity).into_iter().map(|field| (field.key.clone(), field)).collect();
     let batch = connection.fresh_id();
-    let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
-    for planned in pending.planned {
-        let field = &fields[&planned.field];
-        match connection.session.write_field_if(&planned.target, field, planned.old, planned.new) {
-            Ok(change) => {
-                connection.log_change(change, planned.name, Some(batch));
-                report.applied += 1;
-            }
-            Err(err) => report.failed.push(MassFailure {
-                uid: planned.uid,
-                name: planned.name,
-                field: planned.field,
-                error: err.into(),
-            }),
-        }
-    }
-    Ok(report)
+    Ok(connection.write_planned(pending.entity, pending.planned, batch))
 }
 
 /// Undoes every change of the mass edit `batch` that is not undone yet, newest first.
@@ -1071,6 +1291,9 @@ pub fn run() {
             plan_club_swap,
             swap_players,
             heal_player,
+            club_squads,
+            set_captain,
+            team_action,
             graphics_info
         ])
         .run(tauri::generate_context!())

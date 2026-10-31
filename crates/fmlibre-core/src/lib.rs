@@ -19,6 +19,7 @@ mod players;
 mod profile;
 mod scan;
 mod session;
+mod squad;
 mod staff;
 mod text;
 mod transfer;
@@ -47,6 +48,7 @@ pub use profile::{
 };
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};
 pub use session::{ArraySource, Session, SessionError, find_game};
+pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember};
 pub use staff::{
     STAFF_ATTRIBUTE_GROUPS, StaffContract, StaffDetails, StaffIndex, StaffSummary, job_name, read_staff,
     read_staff_details,
