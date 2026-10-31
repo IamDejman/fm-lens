@@ -9,6 +9,7 @@ import {
   SUPPORTER_TRAIT_LABELS,
   type SupporterMixKey,
 } from "./labels";
+import { ClubLogo, PICTURE_SIZE } from "./Picture";
 import {
   Fact,
   ProfileFrame,
@@ -43,6 +44,7 @@ export function ClubProfile({ club, version, onClose }: ClubProfileProps) {
 
   return (
     <ProfileFrame
+      picture={<ClubLogo uid={info.uid} name={info.name} size={PICTURE_SIZE.clubLogo} />}
       name={info.name}
       fullName={info.shortName}
       badge={info.women ? <span className="tag women">{text.womensClub}</span> : undefined}

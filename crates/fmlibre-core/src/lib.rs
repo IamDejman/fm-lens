@@ -10,6 +10,7 @@ mod details;
 mod edit;
 mod filter;
 mod game;
+mod graphics;
 mod index;
 mod mass;
 mod players;
@@ -31,6 +32,7 @@ pub use details::{
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use filter::{ClubFilter, PlayerFilter, PlayerOrder, PlayerSort, StaffFilter, sort_players};
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
+pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use index::{Listed, SearchIndex};
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use players::{PLAYABLE_RATING, PlayerIndex, PlayerSummary, read_players};

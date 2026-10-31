@@ -3,6 +3,7 @@ import { ClubProfile } from "./ClubProfile";
 import { clubListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
+import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
 import type { ClubFilter, ClubSummary } from "./types";
 
@@ -57,11 +58,13 @@ function ClubCells({ club: c }: { club: ClubSummary }) {
   return (
     <>
       <td className="col-name">
-        <div className="name">
-          {c.name}
-          {c.women && <span className="tag women">{clubListText.women}</span>}
-        </div>
-        {c.shortName && c.shortName !== c.name && <div className="sub">{c.shortName}</div>}
+        <WithPicture picture={<ClubLogo uid={c.uid} name={c.name} size={PICTURE_SIZE.clubRowLogo} />}>
+          <div className="name">
+            {c.name}
+            {c.women && <span className="tag women">{clubListText.women}</span>}
+          </div>
+          {c.shortName && c.shortName !== c.name && <div className="sub">{c.shortName}</div>}
+        </WithPicture>
       </td>
       <td className="num col-rep">
         <ReputationMeter value={c.reputation} />

@@ -23,7 +23,11 @@ pub struct PlayerSummary {
     /// Age on the in-game date, when both dates are known.
     pub age: Option<u16>,
     pub nation: Option<String>,
+    /// The nation's UID, e.g. for its flag.
+    pub nation_uid: Option<u32>,
     pub club: Option<String>,
+    /// The club's UID, e.g. for its logo.
+    pub club_uid: Option<u32>,
     /// Positions rated 15 or more (see [`crate::POSITIONS`] keys), best first.
     pub positions: Vec<&'static str>,
     pub contract_expires: Option<FmDate>,
@@ -83,7 +87,9 @@ pub fn read_players(
     // Many players share first names, clubs and nations; resolve each pointer once.
     let mut names = Memo::default();
     let mut clubs = Memo::default();
+    let mut club_uids: HashMap<u64, Option<u32>> = HashMap::new();
     let mut nations = Memo::default();
+    let mut nation_uids: HashMap<u64, Option<u32>> = HashMap::new();
 
     let mut players = Vec::with_capacity(count as usize);
     for chunk in pointers.as_chunks::<8>().0 {
@@ -115,8 +121,12 @@ pub fn read_players(
         let (common, first, last) = (name_part(p.common_name), name_part(p.first_name), name_part(p.last_name));
         let name = display_name(common, first, last, full_name.as_ref(), uid);
 
-        let club = clubs.get(u64_at(p.team), |team| club_of_team(process, layout, team));
-        let nation = nations.get(u64_at(p.nation), |nation| nation_name(process, layout, nation));
+        let team = u64_at(p.team);
+        let club = clubs.get(team, |team| club_of_team(process, layout, team));
+        let club_uid = *club_uids.entry(team).or_insert_with(|| club_uid_of_team(process, layout, team));
+        let nation_ptr = u64_at(p.nation);
+        let nation = nations.get(nation_ptr, |nation| nation_name(process, layout, nation));
+        let nation_uid = *nation_uids.entry(nation_ptr).or_insert_with(|| nation_uid(process, layout, nation_ptr));
 
         let date_of_birth = FmDate::from_raw(u16_at(p.date_of_birth), u16_at(p.date_of_birth + 2));
         let mut position_ratings = [0u8; POSITIONS.len()];
@@ -132,7 +142,9 @@ pub fn read_players(
             full_name,
             date_of_birth,
             age: date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today)),
+            nation_uid: nation.as_ref().and(nation_uid),
             nation,
+            club_uid: club.as_ref().and(club_uid),
             club,
             positions: natural_positions(&position_ratings),
             contract_expires,
@@ -163,9 +175,23 @@ pub(crate) fn club_of_team(process: &Process, layout: &Layout, team: u64) -> Opt
     read_fm_string(process, process.read_u64(club + layout.club.name).ok()?)
 }
 
+/// The UID of the club a team belongs to.
+pub(crate) fn club_uid_of_team(process: &Process, layout: &Layout, team: u64) -> Option<u32> {
+    if !is_user_pointer(team) {
+        return None;
+    }
+    let club = process.read_u64(team + layout.team.club).ok().filter(|&club| is_user_pointer(club))?;
+    process.read_u32(club + layout.club.uid).ok()
+}
+
 /// The name of a nation object.
 pub(crate) fn nation_name(process: &Process, layout: &Layout, nation: u64) -> Option<String> {
     read_fm_string(process, process.read_u64(nation + layout.nation.name).ok()?)
+}
+
+/// The UID of a nation object, e.g. for its flag.
+pub(crate) fn nation_uid(process: &Process, layout: &Layout, nation: u64) -> Option<u32> {
+    is_user_pointer(nation).then(|| process.read_u32(nation + layout.nation.uid).ok()).flatten()
 }
 
 /// Finds where `object` keeps its person block: the candidate shift under which most

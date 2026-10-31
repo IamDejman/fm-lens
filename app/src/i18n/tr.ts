@@ -511,6 +511,14 @@ export const tr: Strings = {
     },
   },
 
+  graphics: {
+    reading: "Grafik paketleri okunuyor…",
+    summary: ({ clubLogos, flags, faces }) =>
+      `Grafikler: ${format(clubLogos)} kulüp logosu · ${format(flags)} bayrak · ${format(faces)} yüz`,
+    none: "Grafik paketi bulunamadı",
+    noneHint: "Logo ve yüz paketleri FM27'nin graphics klasörüne kurulur.",
+  },
+
   edit: {
     edit: "Düzenle",
     editTitle: "Bu profilin değerlerini oyunda değiştir",

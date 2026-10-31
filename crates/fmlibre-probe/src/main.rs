@@ -12,9 +12,9 @@ use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, Entity, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo,
-    Kind, PERSONALITY, POSITIONS, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS,
-    SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, find_game,
-    job_name, scan_object_arrays, sort_players,
+    GraphicsIndex, Kind, PERSONALITY, POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort,
+    STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex,
+    Target, find_game, job_name, scan_object_arrays, sort_players,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -127,6 +127,14 @@ enum Command {
         /// Write the old value back afterwards and check it: tests a field without changing the save.
         #[arg(long)]
         restore: bool,
+    },
+    /// Read the graphics packs (logos, faces, flags) and show what they hold. Needs no game.
+    Graphics {
+        /// The graphics folder; by default Documents\Sports Interactive\Football Manager 27\graphics.
+        #[arg(long)]
+        root: Option<PathBuf>,
+        /// Club UIDs to look up.
+        clubs: Vec<u32>,
     },
     /// Find (begin, end) arrays of game objects in game_plugin.dll and count their vtables.
     Scan {
@@ -255,6 +263,9 @@ fn main() -> ExitCode {
 }
 
 fn run(cli: Cli) -> Result<()> {
+    if let Some(Command::Graphics { root, clubs }) = cli.command {
+        return graphics(root, &clubs);
+    }
     let elevated = is_current_process_elevated();
     let writes = matches!(cli.command, Some(Command::Set { .. }));
     let process = attach(cli.pid, elevated, writes)?;
@@ -291,6 +302,7 @@ fn run(cli: Cli) -> Result<()> {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             set(&session, entity.into(), uid, &field, &value, shown, restore)
         }
+        Command::Graphics { .. } => unreachable!("handled before attaching"),
         Command::Scan { min, max, top } => {
             let (game, modules) = inspect(&process)?;
             let opts = ScanOptions { min_count: min, max_count: max, ..ScanOptions::default() };
@@ -721,6 +733,34 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
             iso_date(c.joined)
         ),
         None => println!("  contract       none"),
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// graphics
+
+fn graphics(root: Option<PathBuf>, clubs: &[u32]) -> Result<()> {
+    let root = match root {
+        Some(root) => root,
+        None => {
+            let home = std::env::var_os("USERPROFILE").context("USERPROFILE is not set; pass --root")?;
+            GraphicsIndex::default_root(&PathBuf::from(home).join("Documents"), 27)
+        }
+    };
+    let started = Instant::now();
+    let index = GraphicsIndex::scan(&root);
+    let c = index.counts();
+    println!("Read {} in {:.1} s.", root.display(), started.elapsed().as_secs_f64());
+    println!(
+        "  club logos {}, faces {}, flags {}, competition logos {}",
+        c.club_logos, c.faces, c.flags, c.competition_logos
+    );
+    for &uid in clubs {
+        match index.file(Picture::ClubLogo, uid) {
+            Some(file) => println!("  club {uid}: {}", file.display()),
+            None => println!("  club {uid}: no logo"),
+        }
     }
     Ok(())
 }

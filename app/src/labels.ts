@@ -3,8 +3,8 @@
 // i18n/index.ts) under the names the components use. Keys of the game data map to the names FM uses; every other
 // string of the panels is in `profileText` (those only the club panel has, in `clubProfileText`), and those of the
 // player, staff and club lists in `playerListText`, `staffListText` and `clubListText`. Editing has `editText` (and
-// `fieldLabel` for the names of the fields), the Changes view `changesText`, mass editing `massEditText`, and the
-// sidebar and the connect panel `appText`.
+// `fieldLabel` for the names of the fields), the Changes view `changesText`, mass editing `massEditText`, the
+// sidebar and the connect panel `appText`, and the status of the graphics packs `graphicsText`.
 // A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts).
 
 import { formatNumber } from "./format";
@@ -87,6 +87,9 @@ export const clubListText = strings.clubList;
  * `ConnectionInfo.editable`), the status line and the connect panel.
  */
 export const appText = strings.app;
+
+/** The graphics packs the pictures come from: their status at the foot of the sidebar. */
+export const graphicsText = strings.graphics;
 
 /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
 export const editText = strings.edit;

@@ -4,6 +4,7 @@ import { formatDate } from "./format";
 import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
+import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { employerOf, HumanBadge, StaffProfile } from "./StaffProfile";
 import type { StaffFilter, StaffSummary } from "./types";
 
@@ -87,9 +88,13 @@ function StaffCells({ staff: s }: { staff: StaffSummary }) {
         {jobLabel(s.job)}
       </td>
       <td className="col-club" title={s.club ?? undefined}>
-        {employerOf(s) ?? <span className="muted">{profileText.none}</span>}
+        <WithPicture picture={<ClubLogo uid={s.clubUid} name={s.club} size={PICTURE_SIZE.rowLogo} />}>
+          {employerOf(s) ?? <span className="muted">{profileText.none}</span>}
+        </WithPicture>
       </td>
-      <td className="col-nation">{s.nation ?? profileText.none}</td>
+      <td className="col-nation">
+        <WithPicture picture={<NationFlag uid={s.nationUid} />}>{s.nation ?? profileText.none}</WithPicture>
+      </td>
       <td className="date col-born">{formatDate(s.dateOfBirth)}</td>
       <td className="num col-ca">
         <Ability value={s.currentAbility} />

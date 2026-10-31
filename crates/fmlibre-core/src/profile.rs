@@ -298,6 +298,7 @@ impl ClubFinanceLayout {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NationLayout {
+    pub uid: u64,
     pub name: u64,
 }
 

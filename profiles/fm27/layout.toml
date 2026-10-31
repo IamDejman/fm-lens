@@ -206,4 +206,5 @@ ticket_price = 0x864      # f32 pounds, average match ticket
 corporate = 0x8A9         # u8 1..20, corporate facilities
 
 [nation]
+uid = 0x0C                # u32 (Argentina: 1649, as graphics packs map its flag)
 name = 0x18               # FM string pointer

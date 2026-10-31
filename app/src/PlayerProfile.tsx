@@ -1,6 +1,7 @@
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { formatPounds } from "./format";
 import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
+import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { PositionPitch } from "./PositionPitch";
 import {
   attributeRow,
@@ -65,12 +66,26 @@ export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) 
 
   return (
     <ProfileFrame
+      picture={<PersonFace uid={info.uid} name={info.name} size={PICTURE_SIZE.face} />}
       name={info.name}
       fullName={info.fullName}
       meta={
         <>
-          {info.club ?? <span className="muted">{profileText.freeAgent}</span>}
-          {info.nation && ` · ${info.nation}`}
+          {info.club === null ? (
+            <span className="muted">{profileText.freeAgent}</span>
+          ) : (
+            <WithPicture inline picture={<ClubLogo uid={info.clubUid} name={info.club} size={PICTURE_SIZE.textLogo} />}>
+              {info.club}
+            </WithPicture>
+          )}
+          {info.nation && (
+            <>
+              {" · "}
+              <WithPicture inline picture={<NationFlag uid={info.nationUid} />}>
+                {info.nation}
+              </WithPicture>
+            </>
+          )}
         </>
       }
       vitals={vitals}

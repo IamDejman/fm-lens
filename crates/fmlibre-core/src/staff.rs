@@ -7,7 +7,7 @@ use crate::calibrate::ArrayRef;
 use crate::date::FmDate;
 use crate::details::{Attribute, PERSONALITY, Reputation};
 use crate::index::{Listed, SearchIndex};
-use crate::players::{club_of_team, nation_name};
+use crate::players::{club_of_team, club_uid_of_team, nation_name, nation_uid};
 use crate::profile::{Layout, StaffLayout};
 use crate::text::{Memo, display_name, is_name_like, read_fm_string, read_name_entry};
 
@@ -83,8 +83,12 @@ pub struct StaffSummary {
     pub date_of_birth: Option<FmDate>,
     pub age: Option<u16>,
     pub nation: Option<String>,
+    /// The nation's UID, e.g. for its flag.
+    pub nation_uid: Option<u32>,
     /// The employer, from the contract.
     pub club: Option<String>,
+    /// The employer's UID, e.g. for its logo.
+    pub club_uid: Option<u32>,
     /// FM job code from the contract; see [`job_name`].
     pub job: Option<u8>,
     pub current_ability: u16,
@@ -141,7 +145,9 @@ pub fn read_staff(
     let mut shifts: HashMap<u64, u64> = HashMap::new();
     let mut names = Memo::default();
     let mut clubs = Memo::default();
+    let mut club_uids: HashMap<u64, Option<u32>> = HashMap::new();
     let mut nations = Memo::default();
+    let mut nation_uids: HashMap<u64, Option<u32>> = HashMap::new();
 
     let mut staff = Vec::with_capacity(count as usize);
     for chunk in pointers.as_chunks::<8>().0 {
@@ -177,14 +183,20 @@ pub fn read_staff(
         if shift != 0 && date_of_birth.is_none() {
             continue;
         }
-        let nation = nations.get(u64_at(at(s.nation)), |nation| nation_name(process, layout, nation));
+        let nation_ptr = u64_at(at(s.nation));
+        let nation = nations.get(nation_ptr, |nation| nation_name(process, layout, nation));
+        let nation_uid = *nation_uids.entry(nation_ptr).or_insert_with(|| nation_uid(process, layout, nation_ptr));
 
         let contract_ptr = u64_at(at(s.contract));
-        let (job, club) = if is_user_pointer(contract_ptr) && process.read_into(contract_ptr, &mut contract).is_ok() {
+        let (job, club, club_uid) = if is_user_pointer(contract_ptr)
+            && process.read_into(contract_ptr, &mut contract).is_ok()
+        {
             let team = u64::from_le_bytes(contract[c.team as usize..c.team as usize + 8].try_into().expect("8 bytes"));
-            (Some(contract[c.job as usize]), clubs.get(team, |team| club_of_team(process, layout, team)))
+            let club = clubs.get(team, |team| club_of_team(process, layout, team));
+            let club_uid = *club_uids.entry(team).or_insert_with(|| club_uid_of_team(process, layout, team));
+            (Some(contract[c.job as usize]), club.clone(), club.and(club_uid))
         } else {
-            (None, None)
+            (None, None, None)
         };
 
         staff.push(StaffSummary {
@@ -193,8 +205,10 @@ pub fn read_staff(
             full_name,
             date_of_birth,
             age: date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today)),
+            nation_uid: nation.as_ref().and(nation_uid),
             nation,
             club,
+            club_uid,
             job,
             current_ability: u16_at(at(s.current_ability)),
             potential_ability: u16_at(at(s.potential_ability)) as i16,
