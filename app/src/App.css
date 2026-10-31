@@ -237,8 +237,10 @@ nav small {
   gap: 2px;
 }
 
-/* "EN | TR": two buttons in one frame; the pressed one is the language in use. */
-.language-switch {
+/* "EN | TR": two buttons in one frame; the pressed one is the language in use. The mode switch of the move dialog (see
+   Moving a player) is made the same way. */
+.language-switch,
+.move-mode {
   display: inline-flex;
   align-self: flex-start;
   overflow: hidden;
@@ -246,7 +248,8 @@ nav small {
   border-radius: 6px;
 }
 
-.language-switch button {
+.language-switch button,
+.move-mode button {
   min-width: 40px;
   padding: 3px 10px;
   border: 0;
@@ -258,26 +261,31 @@ nav small {
   letter-spacing: 0.5px;
 }
 
-.language-switch button + button {
+.language-switch button + button,
+.move-mode button + button {
   border-left: 1px solid var(--border);
 }
 
 /* The accent border every button gets on hover would colour the divider only: the buttons share one frame. */
-.language-switch button:hover:not(:disabled) {
+.language-switch button:hover:not(:disabled),
+.move-mode button:hover:not(:disabled) {
   border-color: var(--border);
 }
 
-.language-switch button:hover:not(:disabled, [aria-pressed="true"]) {
+.language-switch button:hover:not(:disabled, [aria-pressed="true"]),
+.move-mode button:hover:not(:disabled, [aria-pressed="true"]) {
   background: var(--raised);
   color: var(--text);
 }
 
-.language-switch button[aria-pressed="true"] {
+.language-switch button[aria-pressed="true"],
+.move-mode button[aria-pressed="true"] {
   background: var(--accent-soft);
   color: var(--text);
 }
 
-.language-switch button:focus-visible {
+.language-switch button:focus-visible,
+.move-mode button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -1078,7 +1086,8 @@ nav small {
 }
 
 .profile-abilities abbr,
-.compare-abilities abbr {
+.compare-abilities abbr,
+.move-abilities abbr {
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
@@ -1474,10 +1483,11 @@ nav small {
 }
 
 /* The Compare button sits before Edit and looks like it: pressed while the player is in the comparison. So does Move to
-   another club (see Moving a player). */
+   another club (see Moving a player), and Heal in the Medical group. */
 .edit-toggle,
 .compare-toggle,
-.move-toggle {
+.move-toggle,
+.heal-toggle {
   padding: 3px 12px;
   font-size: 13px;
 }
@@ -1489,13 +1499,16 @@ nav small {
   font-weight: 600;
 }
 
-/* A full comparison takes no one more: the button is dimmed, and its hover text says why. It stays a Tab stop. */
-.compare-toggle[aria-disabled="true"] {
+/* A full comparison takes no one more: the button is dimmed, and its hover text says why. It stays a Tab stop. So does
+   Heal while it is under way, which keeps focus on it. */
+.compare-toggle[aria-disabled="true"],
+.heal-toggle[aria-disabled="true"] {
   opacity: 0.55;
   cursor: default;
 }
 
-.compare-toggle[aria-disabled="true"]:hover {
+.compare-toggle[aria-disabled="true"]:hover,
+.heal-toggle[aria-disabled="true"]:hover {
   border-color: var(--border);
 }
 
@@ -1615,8 +1628,9 @@ select.edit-input {
   cursor: default;
 }
 
-/* An amount of money: the pound sign before an input that takes plain whole pounds. */
-.edit-money {
+/* An amount of money: the pound sign before an input that takes plain whole pounds. A percentage has its sign after. */
+.edit-money,
+.edit-percent {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1627,14 +1641,17 @@ select.edit-input {
   font-weight: 600;
 }
 
-/* Current and potential ability side by side, not as two rows across the whole panel. */
-.edit-ability .stats {
+/* Current and potential ability side by side, not as two rows across the whole panel; so are the values of the Medical
+   group of a player. */
+.edit-ability .stats,
+.medical-values {
   display: flex;
   flex-wrap: wrap;
   gap: 0 28px;
 }
 
-.edit-ability .stat {
+.edit-ability .stat,
+.medical-values .stat {
   flex: none;
   gap: 12px;
 }
@@ -1761,6 +1778,11 @@ button.danger:hover:not(:disabled) {
   margin: 0 0 12px;
   color: var(--muted);
   font-size: 13px;
+}
+
+/* Notes one under the other are one block of text: the air goes under the last of them. */
+.view-note:has(+ .view-note) {
+  margin-bottom: 2px;
 }
 
 /* A row is not picked, only undone. */
@@ -2669,6 +2691,43 @@ button.danger:hover:not(:disabled) {
   font-size: 13px;
 }
 
+/* The switch between a move and a swap, at the top of the dialog: the frame and the buttons are the language switch's
+   (see Shell), across the dialog and in two halves. */
+.move-mode {
+  align-self: stretch;
+}
+
+.move-mode button {
+  flex: 1;
+  padding: 5px 14px;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+
+/* A player of the club in the list of a swap, or picked: his name, and under it his positions and age. */
+.move-player-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.move-player-detail {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* His abilities, at the end of his row, as in the header of his profile. */
+.move-abilities {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px 6px;
+}
+
 /* The search box is as wide as the dialog. */
 .move-search {
   width: 100%;
@@ -2687,6 +2746,12 @@ button.danger:hover:not(:disabled) {
 
 .move-results-box[aria-busy="true"] .move-results {
   opacity: 0.55;
+}
+
+/* A club has many more players than the list has room for clubs: the box keeps its height, and the list scrolls in it. */
+.move-results-box.move-partners {
+  height: 21rem;
+  overflow-y: auto;
 }
 
 .move-results {
@@ -2830,7 +2895,7 @@ button.danger:hover:not(:disabled) {
   color: var(--danger);
 }
 
-/* What the move comes to, or why it cannot be made: a live region that is always there. */
+/* What the move comes to, or why it cannot be made: a live region that is always there. A swap is two lines. */
 .move-plan {
   margin: 0;
   padding: 8px 12px;
@@ -2839,6 +2904,7 @@ button.danger:hover:not(:disabled) {
   background: var(--raised);
   font-weight: 600;
   overflow-wrap: anywhere;
+  white-space: pre-line;
 }
 
 /* Nothing to say yet: a hint, or the wait for the game's answer. */
@@ -2883,5 +2949,63 @@ button.danger:hover:not(:disabled) {
   padding: 10px 20px;
   border-width: 1px 0 0;
   border-radius: 0;
+  font-size: 13px;
+}
+
+/* Medical */
+
+/* The Medical group of a player's profile has its values side by side (see Editing); under them either no injuries,
+   which takes focus when the Heal button that had it is gone... */
+.injuries-none {
+  width: fit-content;
+  margin: 8px 6px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.injuries-none:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ...or the injuries: a heading with the Heal button at its end, then each injury with its dates in small print. */
+.injuries-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-right: 6px;
+}
+
+.injuries-head h4 {
+  margin: 0;
+}
+
+.injury-list {
+  margin: 6px 0 0;
+  padding: 0 6px;
+  list-style: none;
+}
+
+.injury-list li + li {
+  margin-top: 6px;
+}
+
+.injury-name {
+  display: block;
+  font-weight: 600;
+}
+
+.injury-dates {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Why Heal did not work, under the heading with the button. */
+.heal-error {
+  margin: 6px 6px 0;
+  color: var(--danger);
   font-size: 13px;
 }

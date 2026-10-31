@@ -5,7 +5,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError, Entity, EntityArrays, Field,
-    FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Kind, Listed, MoveError, MovePlan,
+    FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Healed, Kind, Listed, MoveError, MovePlan,
     MoveTerms, Operation, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex,
     Session, SessionError, Skipped, StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
 };
@@ -104,7 +104,30 @@ impl Connection {
             undone_at: None,
             batch,
             moved: None,
-            club_move: None,
+            undo: None,
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs healing just written, as a change of the player's `injuries` from how many he had to none.
+    fn log_heal(&mut self, done: Healed) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "injuries".to_owned(),
+            old: done.injuries as i64,
+            new: 0,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch: None,
+            moved: None,
+            undo: Some(Undo::Heal(done)),
         };
         self.log.push(logged.clone());
         logged
@@ -115,6 +138,28 @@ impl Connection {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
         let to = self.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
         Ok(self.session.plan_club_move(player, to, terms, &self.human_clubs)?)
+    }
+
+    /// Works out the players `uid` and `other` swapping clubs.
+    fn plan_swap(&self, uid: u32, other: u32) -> Result<MovePlan, Failure> {
+        let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+        let partner = self.players.get(other).ok_or_else(|| not_found(Entity::Player, other))?;
+        Ok(self.session.plan_club_swap(player, partner, &self.human_clubs)?)
+    }
+
+    /// What the list row of the player `uid` says about his club and contract end now.
+    fn row_before(&self, uid: u32) -> RowBefore {
+        let row = self.players.get(uid);
+        RowBefore {
+            uid,
+            club: row.and_then(|player| player.club.clone()),
+            club_uid: row.and_then(|player| player.club_uid),
+            contract_expires: row.and_then(|player| player.contract_expires),
+        }
+    }
+
+    fn player_name(&self, uid: u32) -> String {
+        self.players.get(uid).map_or_else(|| uid.to_string(), |player| player.name.clone())
     }
 
     /// `failure` with the name of the player it names by UID, for the window to say who.
@@ -133,17 +178,12 @@ impl Connection {
         self.clubs.get(uid).map_or_else(|| uid.to_string(), |club| club.name.clone())
     }
 
-    /// Logs a move just written, as a change of the player's `club` from one club UID to the other.
+    /// Logs a move just written, as a change of the player's `club` from one club UID to the
+    /// other; a swap is one change too, which names the player who went the other way.
     fn log_move(&mut self, done: ClubMove, terms: MoveTerms) -> LoggedChange {
         let (from, to) = (self.club_name(done.from_club), self.club_name(done.to_club));
-        let row = self.players.get(done.player);
-        let name = row.map_or_else(|| done.player.to_string(), |player| player.name.clone());
-        let before = LoggedMove {
-            done: done.clone(),
-            club: row.and_then(|player| player.club.clone()),
-            club_uid: row.and_then(|player| player.club_uid),
-            contract_expires: row.and_then(|player| player.contract_expires),
-        };
+        let name = self.player_name(done.player);
+        let mut rows = vec![self.row_before(done.player)];
         self.players.update(done.player, |player| {
             player.club = Some(to.clone());
             player.club_uid = Some(done.to_club);
@@ -151,6 +191,15 @@ impl Connection {
                 player.contract_expires = FmDate::from_number(expires);
             }
         });
+        let with = done.other.map(|other| {
+            rows.push(self.row_before(other));
+            self.players.update(other, |player| {
+                player.club = Some(from.clone());
+                player.club_uid = Some(done.from_club);
+            });
+            self.player_name(other)
+        });
+        let before = LoggedMove { done: done.clone(), rows };
         let change = Change {
             entity: Entity::Player,
             uid: done.player,
@@ -165,15 +214,15 @@ impl Connection {
             change,
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from, to }),
-            club_move: Some(before),
+            moved: Some(MovedClubs { from, to, with }),
+            undo: Some(Undo::Move(before)),
         };
         self.log.push(logged.clone());
         logged
     }
 
     /// Writes back the old value of the logged change `id`, if the game still holds the new
-    /// one; a move goes back if the game still holds everything it wrote.
+    /// one; a move or healing goes back if the game still holds everything it wrote.
     fn undo(&mut self, id: usize) -> Result<LoggedChange, Failure> {
         let entry = self
             .log
@@ -184,17 +233,23 @@ impl Connection {
         if entry.undone_at.is_some() {
             return Err(Failure::new("app.alreadyUndone", "This change has already been undone."));
         }
-        if let Some(moved) = entry.club_move {
-            self.session.undo_club_move(&moved.done)?;
-            self.players.update(moved.done.player, |player| {
-                player.club = moved.club;
-                player.club_uid = moved.club_uid;
-                player.contract_expires = moved.contract_expires;
-            });
-        } else {
-            let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
-            self.session.revert(&target, &entry.change)?;
-            self.note_change(&entry.change, entry.change.old);
+        match entry.undo {
+            Some(Undo::Move(moved)) => {
+                self.session.undo_club_move(&moved.done)?;
+                for row in moved.rows {
+                    self.players.update(row.uid, |player| {
+                        player.club = row.club;
+                        player.club_uid = row.club_uid;
+                        player.contract_expires = row.contract_expires;
+                    });
+                }
+            }
+            Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
+            None => {
+                let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
+                self.session.revert(&target, &entry.change)?;
+                self.note_change(&entry.change, entry.change.old);
+            }
         }
         let logged = self.log.iter_mut().find(|logged| logged.id == id).expect("found above");
         logged.undone_at = Some(now_ms());
@@ -240,22 +295,39 @@ struct LoggedChange {
     /// to the other: the clubs' names.
     #[serde(skip_serializing_if = "Option::is_none")]
     moved: Option<MovedClubs>,
-    /// For a move: what undoing it takes.
+    /// For a move or healing: what undoing it takes. Other changes write back `old`.
     #[serde(skip)]
-    club_move: Option<LoggedMove>,
+    undo: Option<Undo>,
+}
+
+/// What undoing a change takes when writing back its old value is not enough.
+#[derive(Clone)]
+enum Undo {
+    Move(LoggedMove),
+    Heal(Healed),
 }
 
 #[derive(Clone, Serialize)]
 struct MovedClubs {
     from: String,
     to: String,
+    /// In a swap, the player who went the other way.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    with: Option<String>,
 }
 
-/// A move as the log keeps it: the writes to undo, and what the player's list row said
-/// about his club and contract before.
+/// A move as the log keeps it: the writes to undo, and what the list rows of the players it
+/// moved said before.
 #[derive(Clone)]
 struct LoggedMove {
     done: ClubMove,
+    rows: Vec<RowBefore>,
+}
+
+/// What a player's list row said about his club and contract end.
+#[derive(Clone)]
+struct RowBefore {
+    uid: u32,
     club: Option<String>,
     club_uid: Option<u32>,
     contract_expires: Option<FmDate>,
@@ -815,6 +887,40 @@ fn move_player(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms
     Ok(connection.log_move(done, terms))
 }
 
+/// Checks that the players `uid` and `other` can swap clubs, and names the clubs (`from` is
+/// the club of `uid`); the error says why they cannot. Nothing is written.
+#[tauri::command]
+fn plan_club_swap(state: State<'_, AppState>, uid: u32, other: u32) -> Result<MovePreview, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let plan = connection.plan_swap(uid, other)?;
+    let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
+    Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club) })
+}
+
+/// Swaps the clubs of the players `uid` and `other`, worked out again from the game as it is
+/// now; each keeps his contract's terms. Logged as one change of `uid`'s club.
+#[tauri::command]
+fn swap_players(state: State<'_, AppState>, uid: u32, other: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let plan = connection.plan_swap(uid, other)?;
+    let done = connection.session.apply_club_move(&plan)?;
+    Ok(connection.log_move(done, MoveTerms::default()))
+}
+
+/// Heals every current injury of the player `uid`, as the game does when he gets over them,
+/// and logs it as one change of his `injuries` to none.
+#[tauri::command]
+fn heal_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_heal(player)?;
+    let done = connection.session.apply_heal(&plan)?;
+    Ok(connection.log_heal(done))
+}
+
 /// Works out a mass edit: `operations` applied to every player, member of staff or club
 /// that `query` and the entity's filter select, from the values the game holds now.
 /// Nothing is written; the plan waits for `apply_mass_edit` with the preview's id.
@@ -962,6 +1068,9 @@ pub fn run() {
             undo_batch,
             plan_club_move,
             move_player,
+            plan_club_swap,
+            swap_players,
+            heal_player,
             graphics_info
         ])
         .run(tauri::generate_context!())

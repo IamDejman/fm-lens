@@ -4,6 +4,7 @@ use fmlibre_mem::{Process, is_user_pointer};
 use serde::Serialize;
 
 use crate::date::FmDate;
+use crate::medical::Injury;
 use crate::players::PlayerSummary;
 use crate::profile::Layout;
 
@@ -104,6 +105,13 @@ pub struct PlayerDetails {
     pub personality: BTreeMap<&'static str, u8>,
     pub attributes: BTreeMap<String, Attribute>,
     pub contract: Option<Contract>,
+    /// Energy and match sharpness, 0–10000 (100.00%), and happiness, 0–20: what the game
+    /// changes every day.
+    pub condition: u16,
+    pub match_sharpness: u16,
+    pub happiness: u8,
+    /// Current injuries (see [`crate::Session::injuries`]).
+    pub injuries: Vec<Injury>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -194,6 +202,11 @@ pub fn read_player_details(
         personality,
         attributes,
         contract: read_contract(process, layout, u64_at(p.contract)),
+        condition: u16_at(p.condition),
+        match_sharpness: u16_at(p.match_sharpness),
+        happiness: u8_at(p.happiness),
+        // The session reads them, as they hang off a record of their own.
+        injuries: Vec::new(),
     }))
 }
 

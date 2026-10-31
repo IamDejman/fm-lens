@@ -73,7 +73,8 @@ export function inputRange(field: EditField, kind: OperationKind): { min: number
 /**
  * What the row that does `kind` to `field` and holds `text` stands for. Values are sent as stored: a Set of an
  * attribute is typed on the 1–20 scale it is shown on and written on the 0–100 scale it is stored on, and an Add of
- * N points is N times as much; a Scale is a percent of the stored value, whatever the field.
+ * N points is N times as much; a Set of a percentage is typed as 0–100 and written as 0–10000, and an Add takes
+ * percentage points, 100 times as many; a Scale is a percent of the stored value, whatever the field.
  */
 export function judgeRow(field: EditField, kind: OperationKind, text: string): RowVerdict {
   const empty = text.trim() === "";
@@ -100,7 +101,9 @@ export function judgeRow(field: EditField, kind: OperationKind, text: string): R
       return invalid(
         field.kind === "i32"
           ? editText.invalidMoney(valueText(field, min), valueText(field, max))
-          : editText.invalid(min, max),
+          : field.scale === "percent"
+            ? editText.invalidPercentage(valueText(field, min), valueText(field, max))
+            : editText.invalid(min, max),
       );
     }
     case "add": {
@@ -128,7 +131,7 @@ export type FieldGroupId = keyof typeof massEditText.groups;
 const GROUP_ORDER: Record<Entity, readonly FieldGroupId[]> = {
   player: [
     "ability", "technical", "mental", "physical", "goalkeeping", "hidden", "feet", "positions", "personality",
-    "reputation", "international", "contract", "other",
+    "reputation", "international", "contract", "health", "other",
   ],
   staff: ["ability", "coaching", "mental", "knowledge", "medical", "personality", "reputation", "contract", "other"],
   club: ["reputation", "facilities", "finances", "other"],
@@ -199,6 +202,12 @@ function groupOf(entity: Entity, key: string): FieldGroupId {
       break;
     case "finance":
       id = "finances";
+      break;
+    // What a player's Medical group in his profile has: his energy, match sharpness and happiness.
+    case "condition":
+    case "match_sharpness":
+    case "happiness":
+      id = "health";
       break;
   }
   return id !== undefined && GROUP_ORDER[entity].includes(id) ? id : "other";

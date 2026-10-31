@@ -14,6 +14,7 @@ import type {
   Failure,
   FmDate,
   GameInfo,
+  Injury,
   PlayerDetails,
   PlayerFilter,
   PlayerOrder,
@@ -200,7 +201,37 @@ function details(player: PlayerSummary): PlayerDetails {
           }),
         }
       : null,
+    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more), happiness 0–20.
+    condition: Math.round(7000 + next() * 3000),
+    matchSharpness: Math.round(3500 + next() * 6500),
+    happiness: Math.round(4 + next() * 16),
+    injuries: injuriesOf(player.uid),
   });
+}
+
+/** The fixture players healed through the editor, by UID, while the healing is not undone. */
+const healedPlayers = new Set<number>();
+
+/** `date` moved on by `days`. */
+function addDays(date: FmDate, days: number): FmDate {
+  const moved = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+  return { year: moved.getUTCFullYear(), month: moved.getUTCMonth() + 1, day: moved.getUTCDate() };
+}
+
+/** The current injuries of a fixture player: every seventh one is injured, some of them twice over, until healed. */
+function injuriesOf(uid: number): Injury[] {
+  if (uid % 7 !== 3 || healedPlayers.has(uid)) {
+    return [];
+  }
+  const injury = (name: string, daysAgo: number, soonest: number, latest: number): Injury => {
+    const started = addDays(GAME_DATE, -daysAgo);
+    return { name, started, backSoonest: addDays(started, soonest), backLatest: addDays(started, latest) };
+  };
+  const injuries = [injury("Hamstring strain", 4, 21, 35)];
+  if (uid % 2 === 0) {
+    injuries.push(injury("Twisted ankle", 1, 7, 12));
+  }
+  return injuries;
 }
 
 /** Job codes as stored in contracts (see labels.ts). */
@@ -325,6 +356,9 @@ function fieldTable(entity: Entity): EditField[] {
       field("international.goals", "u16", 0, 1000),
       field("international.u21_caps", "u8", 0, 255),
       field("international.u21_goals", "u8", 0, 255),
+      field("condition", "u16", 0, 10_000, "percent"),
+      field("match_sharpness", "u16", 3_500, 10_000, "percent"),
+      field("happiness", "u8", 0, 20),
       ...ATTRIBUTES.map((key) => field(`attribute.${key}`, "u8", 1, 100, "attribute")),
       // The game no longer plays a sweeper, so the real table leaves it out.
       ...POSITIONS.filter((key) => key !== "sw").map((key) => field(`position.${key}`, "u8", 1, 20)),
@@ -384,6 +418,15 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "height":
         (d as PlayerDetails).heightCm = value;
+        break;
+      case "condition":
+        (d as PlayerDetails).condition = value;
+        break;
+      case "match_sharpness":
+        (d as PlayerDetails).matchSharpness = value;
+        break;
+      case "happiness":
+        (d as PlayerDetails).happiness = value;
         break;
       case "international":
         (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
@@ -468,6 +511,12 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.potentialAbility;
       case "height":
         return person.heightCm;
+      case "condition":
+        return person.condition;
+      case "match_sharpness":
+        return person.matchSharpness;
+      case "happiness":
+        return person.happiness;
       case "reputation":
         return entity === "club" ? club.reputation : person.reputation[name as "home" | "current" | "world"];
       case "international":
@@ -613,6 +662,11 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
+  if (entry.field === "injuries") {
+    unhealed(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   const found = currentValues(entry.entity, entry.uid)[entry.field];
   if (found !== entry.new) {
     const message = `${entry.field} is now ${found}, not ${entry.new}; the game has changed it since`;
@@ -628,8 +682,14 @@ function undoChange(id: number): LoggedChange {
 /** The players moved to another club, with how many of their moves are not undone. */
 const movedPlayers = new Map<number, number>();
 
-/** What each move (by the id of its logged change) found in the list row and on top of the profile, for its undo. */
-const moveUndo = new Map<number, { row: Pick<PlayerSummary, "club" | "clubUid" | "contractExpires">; written?: FieldValues }>();
+/** What a list row says about the player's club and contract end. */
+type ClubRow = Pick<PlayerSummary, "club" | "clubUid" | "contractExpires">;
+
+/**
+ * What each move (by the id of its logged change) found in the list row and on top of the profile, for its undo; a
+ * swap also keeps the row of the player who went the other way.
+ */
+const moveUndo = new Map<number, { row: ClubRow; written?: FieldValues; other?: { uid: number; row: ClubRow } }>();
 
 /** The men's fixture club whose squad list is full, so that the move dialog's refusal can be seen. */
 const FULL_CLUB = 500 + (CLUBS.length - 1) * 7;
@@ -711,12 +771,86 @@ function movePlayer(uid: number, clubUid: number, terms: MoveTerms): LoggedChang
   return { ...logged };
 }
 
-/** Puts back what the move logged as `entry` changed, unless the player has moved again since. */
+/** `plan_club_swap`: the checks of the real command that the fixtures can have, with its messages. */
+function planSwap(uid: number, otherUid: number): MovePreview {
+  const player = players.find((p) => p.uid === uid);
+  const other = players.find((p) => p.uid === otherUid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  if (!other) {
+    throw notFound("player", otherUid);
+  }
+  for (const p of [player, other]) {
+    if (p.clubUid === null) {
+      throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
+    }
+    if (staff.some((s) => s.isHuman && s.clubUid === p.clubUid)) {
+      throw failure(
+        "move.humanClub",
+        "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
+      );
+    }
+  }
+  if (player.clubUid === other.clubUid) {
+    throw failure("move.sameClub", "the player is at this club already");
+  }
+  const from = clubs.find((c) => c.uid === player.clubUid)!;
+  const to = clubs.find((c) => c.uid === other.clubUid)!;
+  return { from: { uid: from.uid, name: from.name }, to: { uid: to.uid, name: to.name } };
+}
+
+/** `swap_players`: the two fixture players change clubs, logged as one change of the first one's club. */
+function swapPlayers(uid: number, otherUid: number): LoggedChange {
+  const preview = planSwap(uid, otherUid);
+  const player = players.find((p) => p.uid === uid)!;
+  const other = players.find((p) => p.uid === otherUid)!;
+  const id = changes.length + 1;
+  const rowOf = (p: PlayerSummary) => ({ club: p.club, clubUid: p.clubUid, contractExpires: p.contractExpires });
+  moveUndo.set(id, { row: rowOf(player), written: written.get(`player:${uid}`), other: { uid: otherUid, row: rowOf(other) } });
+  Object.assign(player, { club: preview.to.name, clubUid: preview.to.uid });
+  Object.assign(other, { club: preview.from.name, clubUid: preview.from.uid });
+  for (const moved of [uid, otherUid]) {
+    movedPlayers.set(moved, (movedPlayers.get(moved) ?? 0) + 1);
+  }
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "club",
+    old: preview.from.uid,
+    new: preview.to.uid,
+    undoneAt: null,
+    batch: null,
+    moved: { from: preview.from.name, to: preview.to.name, with: other.name },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** One fewer move of the player `uid` stands. */
+function unmoved(uid: number): void {
+  const live = (movedPlayers.get(uid) ?? 1) - 1;
+  if (live > 0) {
+    movedPlayers.set(uid, live);
+  } else {
+    movedPlayers.delete(uid);
+  }
+}
+
+/** Puts back what the move (or swap) logged as `entry` changed, unless a player has moved again since. */
 function undoMove(entry: LoggedChange): void {
   const player = players.find((p) => p.uid === entry.uid);
   const before = moveUndo.get(entry.id);
-  if (!player || !before || player.clubUid !== entry.new) {
+  const other = before?.other && players.find((p) => p.uid === before.other!.uid);
+  if (!player || !before || player.clubUid !== entry.new || (before.other && other?.clubUid !== entry.old)) {
     throw failure("move.changed", "the game has changed the player's club since; reload and try again");
+  }
+  if (before.other && other) {
+    Object.assign(other, before.other.row);
+    unmoved(other.uid);
   }
   Object.assign(player, before.row);
   if (before.written) {
@@ -724,12 +858,41 @@ function undoMove(entry: LoggedChange): void {
   } else {
     written.delete(`player:${entry.uid}`);
   }
-  const live = (movedPlayers.get(entry.uid) ?? 1) - 1;
-  if (live > 0) {
-    movedPlayers.set(entry.uid, live);
-  } else {
-    movedPlayers.delete(entry.uid);
+  unmoved(entry.uid);
+}
+
+// Healing -----------------------------------------------------------------------------------------------------------
+
+/** `heal_player`: the fixture player gets over his injuries, logged as a change of his `injuries` to none. */
+function healPlayer(uid: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
   }
+  const injuries = injuriesOf(uid).length;
+  if (injuries === 0) {
+    throw failure("heal.notInjured", "the player has no injury to heal");
+  }
+  healedPlayers.add(uid);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "injuries",
+    old: injuries,
+    new: 0,
+    undoneAt: null,
+    batch: null,
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** Lists the injuries of the player `uid` again. */
+function unhealed(uid: number): void {
+  healedPlayers.delete(uid);
 }
 
 // Mass edits --------------------------------------------------------------------------------------------------------
@@ -928,6 +1091,7 @@ function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
     (f.minPotentialAbility === undefined || p.potentialAbility >= f.minPotentialAbility) &&
     contains(p.nation, f.nation) &&
     contains(p.club, f.club) &&
+    (f.clubUid === undefined || p.clubUid === f.clubUid) &&
     (!f.freeAgents || p.club === null) &&
     (f.contractExpiresBy === undefined ||
       (p.contractExpires !== null && dayNumber(p.contractExpires) <= dayNumber(f.contractExpiresBy)))
@@ -1110,6 +1274,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return planMove(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
     case "move_player":
       return movePlayer(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
+    case "plan_club_swap":
+      return planSwap(Number(args?.uid), Number(args?.other)) as T;
+    case "heal_player":
+      return healPlayer(Number(args?.uid)) as T;
+    case "swap_players":
+      return swapPlayers(Number(args?.uid), Number(args?.other)) as T;
     default:
       throw new Error(`No fixture for command "${command}"`);
   }

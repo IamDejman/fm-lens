@@ -14,6 +14,7 @@ mod game;
 mod graphics;
 mod index;
 mod mass;
+mod medical;
 mod players;
 mod profile;
 mod scan;
@@ -38,6 +39,7 @@ pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use index::{Listed, SearchIndex};
 pub use mass::{Operation, Plan, Planned, Skipped};
+pub use medical::{HealPlan, Healed, Injury};
 pub use players::{PLAYABLE_RATING, PlayerIndex, PlayerSummary, read_players};
 pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,

@@ -43,7 +43,7 @@ const LONGEST_LIST: u64 = 2_000;
 
 /// Bytes the editor writes at one address, with the bytes it expects to find there.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Patch {
+pub(crate) struct Patch {
     address: u64,
     before: Vec<u8>,
     after: Vec<u8>,
@@ -58,12 +58,15 @@ pub struct MoveTerms {
     pub expires: Option<i64>,
 }
 
-/// A move worked out from the game as it is now, ready to be written.
+/// A move worked out from the game as it is now, ready to be written: one player to
+/// another club, or two players swapping clubs.
 #[derive(Debug, Clone)]
 pub struct MovePlan {
     pub player: u32,
     pub from_club: u32,
     pub to_club: u32,
+    /// In a swap, the player who goes the other way.
+    pub other: Option<u32>,
     /// The writes, in the order they are made.
     patches: Vec<Patch>,
 }
@@ -81,7 +84,33 @@ pub struct ClubMove {
     pub player: u32,
     pub from_club: u32,
     pub to_club: u32,
+    /// In a swap, the player who went the other way.
+    pub other: Option<u32>,
     patches: Vec<Patch>,
+}
+
+/// What ties a player to his club, checked: the player, the team he plays for, his
+/// contract and the team that employs him, the club, and every list of it that holds him.
+struct Departure {
+    uid: u32,
+    object: u64,
+    team: u64,
+    contract: u64,
+    employer: u64,
+    /// The contract's bytes, as read.
+    record: Vec<u8>,
+    club: u64,
+    club_uid: u32,
+    /// Each list of the club that holds him: the team, the list, where in it he is, and what it holds.
+    leaving: Vec<(u64, PointerList, usize, Vec<u64>)>,
+}
+
+/// The senior team a player joins, and its list.
+struct Arrival {
+    club_uid: u32,
+    senior: u64,
+    list: PointerList,
+    elements: Vec<u64>,
 }
 
 #[derive(Debug)]
@@ -114,6 +143,8 @@ pub enum MoveError {
     NoRoom {
         players: u64,
     },
+    /// Healing asked for a player who has no current injury.
+    NotInjured,
     /// A contract term the editor does not write, such as an end date that has passed.
     OutOfRange {
         field: &'static str,
@@ -155,6 +186,7 @@ impl fmt::Display for MoveError {
                 "the club's squad list has no room for another player ({players} now), and the editor cannot \
                  make it bigger"
             ),
+            MoveError::NotInjured => f.write_str("the player has no injury to heal"),
             MoveError::OutOfRange { field, value, min, max } => {
                 write!(f, "{value} is not a valid {field}; it takes {min} to {max}")
             }
@@ -183,6 +215,7 @@ impl Coded for MoveError {
             MoveError::MenAndWomen => "move.menAndWomen",
             MoveError::NotListed => "move.notListed",
             MoveError::NoRoom { .. } => "move.noRoom",
+            MoveError::NotInjured => "heal.notInjured",
             MoveError::OutOfRange { .. } => "move.outOfRange",
             MoveError::Changed { .. } => "move.changed",
             MoveError::NotApplied { .. } => "move.notApplied",
@@ -260,12 +293,23 @@ impl PointerList {
     }
 }
 
+/// Out of `list`, where the player is at `index`: the players after him move up one, the
+/// list ends one earlier, and the slot it gave up is cleared. On the way the list repeats its
+/// last player for a moment; it never holds an empty slot.
+fn removal_patches(list: &PointerList, index: usize, elements: &[u64], patches: &mut Patches) {
+    let last = elements.len() - 1;
+    let bytes = |range: &[u64]| range.iter().flat_map(|e| e.to_le_bytes()).collect::<Vec<u8>>();
+    patches.push(list.begin + index as u64 * 8, bytes(&elements[index..last]), bytes(&elements[index + 1..]));
+    patches.push(list.header + 8, list.end.to_le_bytes(), (list.end - 8).to_le_bytes());
+    patches.push(list.begin + last as u64 * 8, elements[last].to_le_bytes(), 0u64.to_le_bytes());
+}
+
 /// Collects the patches of a move, leaving out the ones that would change nothing.
 #[derive(Default)]
-struct Patches(Vec<Patch>);
+pub(crate) struct Patches(pub(crate) Vec<Patch>);
 
 impl Patches {
-    fn push(&mut self, address: u64, before: impl Into<Vec<u8>>, after: impl Into<Vec<u8>>) {
+    pub(crate) fn push(&mut self, address: u64, before: impl Into<Vec<u8>>, after: impl Into<Vec<u8>>) {
         let (before, after) = (before.into(), after.into());
         if before != after {
             self.0.push(Patch { address, before, after });
@@ -284,10 +328,85 @@ impl Session {
         terms: MoveTerms,
         human_clubs: &[u32],
     ) -> Result<MovePlan, MoveError> {
+        self.check_terms(terms, self.game_date())?;
+        let leaving = self.departure(player, human_clubs)?;
+        if self.process.read_u32(club.address + self.layout.club.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        let joining = self.arrival(club.address, &leaving)?;
+        if joining.list.len() + 1 > joining.list.room(&self.process, &self.layout.heap)? {
+            return Err(MoveError::NoRoom { players: joining.list.len() });
+        }
+
+        let mut patches = Patches::default();
+        self.append_patches(&joining.list, leaving.object, &mut patches)?;
+        self.contract_patches(&leaving, joining.senior, terms, &mut patches);
+        for (_, list, index, elements) in &leaving.leaving {
+            removal_patches(list, *index, elements, &mut patches);
+        }
+        Ok(MovePlan {
+            player: leaving.uid,
+            from_club: leaving.club_uid,
+            to_club: joining.club_uid,
+            other: None,
+            patches: patches.0,
+        })
+    }
+
+    /// Works out `player` and `other` swapping clubs, each joining the other's senior team
+    /// on his own contract. Each takes the other's slot in that team's list where it has him,
+    /// so a full list is no obstacle then. Nothing is written.
+    pub fn plan_club_swap(
+        &self,
+        player: &PlayerSummary,
+        other: &PlayerSummary,
+        human_clubs: &[u32],
+    ) -> Result<MovePlan, MoveError> {
+        let (first, second) = (self.departure(player, human_clubs)?, self.departure(other, human_clubs)?);
+        let into_second = self.arrival(second.club, &first)?;
+        let into_first = self.arrival(first.club, &second)?;
+
+        let mut patches = Patches::default();
+        // Each joins his new senior team in the slot of the player he swaps with, or in a free one. The list whose
+        // slot changes hands is left out of the leaver's removals below.
+        let mut kept: Vec<u64> = Vec::new();
+        for (joining, joiner, leaver) in [(&into_second, &first, &second), (&into_first, &second, &first)] {
+            match joining.elements.iter().position(|&e| e == leaver.object) {
+                Some(index) => {
+                    let slot = joining.list.begin + index as u64 * 8;
+                    patches.push(slot, leaver.object.to_le_bytes(), joiner.object.to_le_bytes());
+                    kept.push(joining.list.header);
+                }
+                None => {
+                    if joining.list.len() + 1 > joining.list.room(&self.process, &self.layout.heap)? {
+                        return Err(MoveError::NoRoom { players: joining.list.len() });
+                    }
+                    self.append_patches(&joining.list, joiner.object, &mut patches)?;
+                }
+            }
+        }
+        self.contract_patches(&first, into_second.senior, MoveTerms::default(), &mut patches);
+        self.contract_patches(&second, into_first.senior, MoveTerms::default(), &mut patches);
+        for leaver in [&first, &second] {
+            for (_, list, index, elements) in &leaver.leaving {
+                if !kept.contains(&list.header) {
+                    removal_patches(list, *index, elements, &mut patches);
+                }
+            }
+        }
+        Ok(MovePlan {
+            player: first.uid,
+            from_club: first.club_uid,
+            to_club: second.club_uid,
+            other: Some(second.uid),
+            patches: patches.0,
+        })
+    }
+
+    /// Checks what ties `player` to his club and reads every list of it that holds him.
+    fn departure(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<Departure, MoveError> {
         let (process, layout) = (&self.process, &self.layout);
         let (p, c) = (&layout.player, &layout.contract);
-        let today = self.game_date();
-        self.check_terms(terms, today)?;
         let object = player.address;
         if process.read_u32(object + p.at(p.uid, player.shift))? != player.uid {
             return Err(MoveError::Moved { uid: player.uid });
@@ -319,28 +438,9 @@ impl Session {
         if !is_user_pointer(old_club) || process.read_u64(employer + layout.team.club)? != old_club {
             return Err(MoveError::OnLoan);
         }
-        let from_club = process.read_u32(old_club + layout.club.uid)?;
-        if human_clubs.contains(&from_club) {
+        let club_uid = process.read_u32(old_club + layout.club.uid)?;
+        if human_clubs.contains(&club_uid) {
             return Err(MoveError::HumanClub);
-        }
-
-        // The new club, and its senior team, which must point back at it.
-        if process.read_u32(club.address + layout.club.uid)? != club.uid {
-            return Err(MoveError::NotAClub { uid: club.uid });
-        }
-        if club.address == old_club {
-            return Err(MoveError::SameClub);
-        }
-        let women = |address: u64| process.read_bytes(address + layout.club.women, 1).map(|b| b[0]);
-        if women(old_club)? != women(club.address)? {
-            return Err(MoveError::MenAndWomen);
-        }
-        let senior = match PointerList::read(process, club.address + layout.club.teams)? {
-            Some(teams) if teams.len() > 0 => process.read_u64(teams.begin)?,
-            _ => 0,
-        };
-        if !is_user_pointer(senior) || process.read_u64(senior + layout.team.club)? != club.address {
-            return Err(MoveError::NotAClub { uid: club.uid });
         }
 
         // He must be in the list of the team he plays for, once. Every list of his club that holds him loses him:
@@ -371,31 +471,58 @@ impl Session {
         if !leaving.iter().any(|&(from, ..)| from == team) {
             return Err(MoveError::NotListed);
         }
+        Ok(Departure { uid: player.uid, object, team, contract, employer, record, club: old_club, club_uid, leaving })
+    }
+
+    /// Checks the senior team of the club at `club` for the player `leaving` describes, and
+    /// reads its list.
+    fn arrival(&self, club: u64, leaving: &Departure) -> Result<Arrival, MoveError> {
+        let (process, layout) = (&self.process, &self.layout);
+        let club_uid = process.read_u32(club + layout.club.uid)?;
+        if club == leaving.club {
+            return Err(MoveError::SameClub);
+        }
+        let women = |address: u64| process.read_bytes(address + layout.club.women, 1).map(|b| b[0]);
+        if women(leaving.club)? != women(club)? {
+            return Err(MoveError::MenAndWomen);
+        }
+        // The senior team must point back at its club.
+        let senior = match PointerList::read(process, club + layout.club.teams)? {
+            Some(teams) if teams.len() > 0 => process.read_u64(teams.begin)?,
+            _ => 0,
+        };
+        if !is_user_pointer(senior) || process.read_u64(senior + layout.team.club)? != club {
+            return Err(MoveError::NotAClub { uid: club_uid });
+        }
         // A team without a list has no block to add to.
-        let joining =
-            PointerList::read(process, senior + layout.team.players)?.ok_or(MoveError::NoRoom { players: 0 })?;
-        if joining.elements(process)?.contains(&object) {
+        let list = PointerList::read(process, senior + layout.team.players)?.ok_or(MoveError::NoRoom { players: 0 })?;
+        let elements = list.elements(process)?;
+        if elements.contains(&leaving.object) {
             return Err(MoveError::NotListed);
         }
-        if joining.len() + 1 > joining.room(process, &layout.heap)? {
-            return Err(MoveError::NoRoom { players: joining.len() });
-        }
+        Ok(Arrival { club_uid, senior, list, elements })
+    }
 
-        let mut patches = Patches::default();
-        // The player goes into the new list's first free slot, then the list takes it in.
-        let slot = process.read_bytes(joining.end, 8)?;
-        patches.push(joining.end, slot, object.to_le_bytes());
-        let end = joining.end + 8;
-        let header = [joining.end.to_le_bytes(), joining.capacity.to_le_bytes()].concat();
-        patches.push(joining.header + 8, header, [end.to_le_bytes(), joining.capacity.max(end).to_le_bytes()].concat());
+    /// The player `object` goes into the first free slot of `list`, then the list takes it in.
+    fn append_patches(&self, list: &PointerList, object: u64, patches: &mut Patches) -> Result<(), MoveError> {
+        let slot = self.process.read_bytes(list.end, 8)?;
+        patches.push(list.end, slot, object.to_le_bytes());
+        let end = list.end + 8;
+        let header = [list.end.to_le_bytes(), list.capacity.to_le_bytes()].concat();
+        patches.push(list.header + 8, header, [end.to_le_bytes(), list.capacity.max(end).to_le_bytes()].concat());
+        Ok(())
+    }
 
-        // A contract with the new senior team from today, on the terms given, with no squad number, and off
-        // the transfer and loan lists.
+    /// The player `leaving` describes plays for `senior` under contract with it from today, on
+    /// `terms`, with no squad number, and off the transfer and loan lists.
+    fn contract_patches(&self, leaving: &Departure, senior: u64, terms: MoveTerms, patches: &mut Patches) {
+        let (p, c) = (&self.layout.player, &self.layout.contract);
+        let Departure { object, team, contract, employer, ref record, .. } = *leaving;
         for offset in [c.team, c.senior_team] {
             patches.push(contract + offset, employer.to_le_bytes(), senior.to_le_bytes());
         }
         let date_at = |offset: u64| &record[offset as usize..offset as usize + 4];
-        if let Some(today) = today {
+        if let Some(today) = self.game_date() {
             for offset in [c.signed, c.joined] {
                 // A date the game has not set stays unset.
                 if Kind::Date.decode(date_at(offset)) != 0 {
@@ -414,51 +541,52 @@ impl Session {
         if let Some(expires) = terms.expires {
             patches.push(contract + c.expires, date_at(c.expires), Kind::Date.encode(expires, date_at(c.expires)));
         }
+        let byte = |offset: u64| record[offset as usize];
         patches.push(contract + c.squad_number, [byte(c.squad_number)], [NO_SQUAD_NUMBER]);
         patches.push(contract + c.listing, [byte(c.listing)], [byte(c.listing) & !LISTED]);
         patches.push(object + p.team, team.to_le_bytes(), senior.to_le_bytes());
-
-        // Out of the old lists: the players after him move up one, the list ends one earlier, and the
-        // slot it gave up is cleared. On the way the list repeats its last player for a moment; it
-        // never holds an empty slot.
-        for (_, list, index, elements) in leaving {
-            let last = elements.len() - 1;
-            let bytes = |range: &[u64]| range.iter().flat_map(|e| e.to_le_bytes()).collect::<Vec<u8>>();
-            patches.push(list.begin + index as u64 * 8, bytes(&elements[index..last]), bytes(&elements[index + 1..]));
-            patches.push(list.header + 8, list.end.to_le_bytes(), (list.end - 8).to_le_bytes());
-            patches.push(list.begin + last as u64 * 8, elements[last].to_le_bytes(), 0u64.to_le_bytes());
-        }
-
-        Ok(MovePlan { player: player.uid, from_club, to_club: club.uid, patches: patches.0 })
     }
 
     /// Writes a planned move. Every write lands only on the bytes the plan found, and is
     /// read back; when one fails, the ones before it are put back.
     pub fn apply_club_move(&self, plan: &MovePlan) -> Result<ClubMove, MoveError> {
-        for patch in &plan.patches {
-            self.expect(patch.address, &patch.before)?;
-        }
-        for (i, patch) in plan.patches.iter().enumerate() {
-            if let Err(err) = self.write_patch(patch.address, &patch.before, &patch.after) {
-                for done in plan.patches[..i].iter().rev() {
-                    let _ = self.write_patch(done.address, &done.after, &done.before);
-                }
-                return Err(err);
-            }
-        }
-        let MovePlan { player, from_club, to_club, ref patches } = *plan;
-        Ok(ClubMove { player, from_club, to_club, patches: patches.clone() })
+        self.apply_patches(&plan.patches)?;
+        let MovePlan { player, from_club, to_club, other, ref patches } = *plan;
+        Ok(ClubMove { player, from_club, to_club, other, patches: patches.clone() })
     }
 
     /// Moves the player back as he was, provided memory still holds everything the move
     /// wrote. When a write fails, the ones already undone are written again.
     pub fn undo_club_move(&self, done: &ClubMove) -> Result<(), MoveError> {
-        for patch in &done.patches {
+        self.undo_patches(&done.patches)
+    }
+
+    /// Writes `patches` in order, each over the bytes it expects, after checking them all;
+    /// when one fails, the ones before it are put back.
+    pub(crate) fn apply_patches(&self, patches: &[Patch]) -> Result<(), MoveError> {
+        for patch in patches {
+            self.expect(patch.address, &patch.before)?;
+        }
+        for (i, patch) in patches.iter().enumerate() {
+            if let Err(err) = self.write_patch(patch.address, &patch.before, &patch.after) {
+                for done in patches[..i].iter().rev() {
+                    let _ = self.write_patch(done.address, &done.after, &done.before);
+                }
+                return Err(err);
+            }
+        }
+        Ok(())
+    }
+
+    /// Writes back what `patches` found, in reverse order, provided memory still holds all
+    /// they wrote; when a write fails, the ones already undone are written again.
+    pub(crate) fn undo_patches(&self, patches: &[Patch]) -> Result<(), MoveError> {
+        for patch in patches {
             self.expect(patch.address, &patch.after)?;
         }
-        for (i, patch) in done.patches.iter().enumerate().rev() {
+        for (i, patch) in patches.iter().enumerate().rev() {
             if let Err(err) = self.write_patch(patch.address, &patch.after, &patch.before) {
-                for redo in &done.patches[i + 1..] {
+                for redo in &patches[i + 1..] {
                     let _ = self.write_patch(redo.address, &redo.before, &redo.after);
                 }
                 return Err(err);

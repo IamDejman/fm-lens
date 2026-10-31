@@ -34,14 +34,40 @@ export const changeLog = () => call<LoggedChange[]>("change_log");
 /** Writes back the old value of a logged change; fails if the game has changed the value since. */
 export const undoChange = (id: number) => call<LoggedChange>("undo_change", { id });
 
-/** The value the game shows for a stored one: attributes are stored 0–100 and shown 1–20. */
+/** The whole percentage the game shows (0–100) for a stored one (0–10000), for a profile that has no field table. */
+export const wholePercent = (stored: number): number => Math.floor((stored + 50) / 100);
+
+/**
+ * The value the game shows for a stored one: attributes are stored 0–100 and shown 1–20, percentages are stored
+ * 0–10000 and shown 0–100.
+ */
 export function shownValue(field: EditField, stored: number): number {
-  return field.scale === "attribute" ? Math.min(20, Math.max(1, Math.floor((stored + 2) / 5))) : stored;
+  switch (field.scale) {
+    case "attribute":
+      return Math.min(20, Math.max(1, Math.floor((stored + 2) / 5)));
+    case "percent":
+      return wholePercent(stored);
+    default:
+      return stored;
+  }
 }
+
+/**
+ * Whether `field` is stored on a finer scale than it is shown, as attributes and percentages are: what is shown is
+ * rounded, so a list of changes has the values as stored in a hover text. False for a field the table lacks.
+ */
+export const isStoredFiner = (field: EditField | undefined): boolean => field !== undefined && field.scale !== "plain";
 
 /** The stored value to write for a value typed as shown: the middle of the stored values the game shows as it. */
 export function storedValue(field: EditField, shown: number): number {
-  return field.scale === "attribute" ? shown * 5 : shown;
+  switch (field.scale) {
+    case "attribute":
+      return shown * 5;
+    case "percent":
+      return shown * 100;
+    default:
+      return shown;
+  }
 }
 
 /** The values an input for `field` takes, as shown. */
@@ -109,3 +135,18 @@ export const planClubMove = (uid: number, club: number, terms: MoveTerms) =>
 /** Moves the player to the senior team of the club on `terms`; the move is logged and undone like any change. */
 export const movePlayer = (uid: number, club: number, terms: MoveTerms) =>
   call<LoggedChange>("move_player", { uid, club, terms });
+
+/**
+ * Checks that the players `uid` and `other` can swap clubs, each joining the other's senior team on his own contract,
+ * and names the clubs (`from` is the club of `uid`). Nothing is written; when they cannot, the error says why.
+ */
+export const planClubSwap = (uid: number, other: number) => call<MovePreview>("plan_club_swap", { uid, other });
+
+/** Swaps the clubs of two players; logged as one change of the first player's club, undone as one. */
+export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("swap_players", { uid, other });
+
+/**
+ * Heals every current injury of the player, as the game does when he gets over them. Logged as one change of his
+ * field `injuries` from how many he had to 0, and undone as one; fails when he has none.
+ */
+export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { uid });

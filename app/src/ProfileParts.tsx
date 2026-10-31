@@ -265,9 +265,9 @@ export function RatingGroup({ title, rows }: { title: string; rows: RatingRow[] 
   );
 }
 
-export function Fact({ label, children }: { label: ReactNode; children: ReactNode }) {
+export function Fact({ label, title, children }: { label: ReactNode; title?: string; children: ReactNode }) {
   return (
-    <div className="stat">
+    <div className="stat" title={title}>
       <dt>{label}</dt>
       <dd>{children}</dd>
     </div>

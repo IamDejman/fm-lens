@@ -2,6 +2,7 @@ import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { formatPounds } from "./format";
 import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
+import { MedicalGroup } from "./MedicalGroup";
 import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
@@ -127,6 +128,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
       </div>
 
       <PositionEditGroup />
+
+      <MedicalGroup details={details} />
 
       {details.contract && <ContractGroup contract={details.contract} />}
       <CareerGroup details={details} />

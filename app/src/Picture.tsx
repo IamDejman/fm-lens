@@ -21,6 +21,8 @@ export const PICTURE_SIZE = {
   face: 64,
   /** A person's face at the head of a column of the comparison. */
   columnFace: 44,
+  /** A person's face in a row of the players a dialog lists. */
+  rowFace: 28,
   /** A club's logo in the header of its profile. */
   clubLogo: 56,
   /** A flag, in a table cell or a line of text: the 3:2 of most flags, small. */

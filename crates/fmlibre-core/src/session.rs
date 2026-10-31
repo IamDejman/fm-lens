@@ -190,6 +190,11 @@ impl Session {
     /// Reads the full profile of `player`; `None` when its object has changed since the
     /// players were read. Only reads memory.
     pub fn player_details(&self, player: &PlayerSummary) -> Result<Option<PlayerDetails>, SessionError> {
-        Ok(read_player_details(&self.process, &self.layout, player)?)
+        let Some(mut details) = read_player_details(&self.process, &self.layout, player)? else {
+            return Ok(None);
+        };
+        // A list the editor does not make sense of leaves the profile without injuries.
+        details.injuries = self.injuries(player).unwrap_or_default();
+        Ok(Some(details))
     }
 }

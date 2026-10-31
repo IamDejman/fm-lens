@@ -20,7 +20,36 @@ pub struct Layout {
     pub club_info: ClubInfoLayout,
     pub club_finance: ClubFinanceLayout,
     pub nation: NationLayout,
+    pub injury: InjuryLayout,
     pub heap: HeapLayout,
+}
+
+/// One current injury of a player. A player's `injuries` pointer leads to a record whose
+/// first field is the list `(begin, end, capacity)` of these.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InjuryLayout {
+    /// Pointer to the kind of injury.
+    pub kind: u64,
+    /// The team he was with when it happened.
+    pub team: u64,
+    /// Date.
+    pub started: u64,
+    /// `u16` days from `started` until he is back at the latest, and at the soonest.
+    pub longest: u64,
+    pub shortest: u64,
+    /// In the kind of injury: its name, an FM string.
+    pub kind_name: u64,
+}
+
+impl InjuryLayout {
+    /// One past the last byte of every injury field.
+    pub fn end(&self) -> u64 {
+        [self.kind + 8, self.team + 8, self.started + 4, self.longest + 2, self.shortest + 2]
+            .into_iter()
+            .max()
+            .unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -50,6 +79,13 @@ pub struct PlayerLayout {
     pub u21_caps: u64,
     pub u21_goals: u64,
     pub contract: u64,
+    /// `u16` 0..10000, live values the game changes every day.
+    pub match_sharpness: u64,
+    pub condition: u64,
+    /// `u8` 0..20: how happy the player is, which the game shows in words.
+    pub happiness: u64,
+    /// Pointer to the injury record; see [`InjuryLayout`].
+    pub injuries: u64,
     /// First of the 15 position ratings, in [`crate::POSITIONS`] order.
     pub positions: u64,
     /// First of the 8 personality ratings, in [`crate::PERSONALITY`] order.
@@ -83,6 +119,10 @@ impl PlayerLayout {
             self.international_goals + 2,
             self.u21_goals + 1,
             self.contract + 8,
+            self.match_sharpness + 2,
+            self.condition + 2,
+            self.happiness + 1,
+            self.injuries + 8,
             self.positions + crate::POSITIONS.len() as u64,
             self.personality + crate::PERSONALITY.len() as u64,
         ];

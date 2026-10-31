@@ -203,6 +203,8 @@ export interface PlayerFilter {
   nation?: string;
   /** Part of the club's name; accents and case ignored. */
   club?: string;
+  /** Only players of the club with this UID, e.g. those a player can swap with. */
+  clubUid?: number;
   /** Only players without a club. */
   freeAgents?: boolean;
   /** Only contracts ending on or before this date. */
@@ -283,6 +285,23 @@ export interface PlayerDetails extends PlayerSummary {
   /** Attribute key (e.g. "first_touch") → raw and shown value. */
   attributes: Record<string, Attribute>;
   contract: Contract | null;
+  /** Energy ("condition") and match sharpness, 0–10000 for 0–100%: what the game changes every day. */
+  condition: number;
+  matchSharpness: number;
+  /** 0–20; at 20 the game calls him content. */
+  happiness: number;
+  /** His current injuries; empty when he has none. */
+  injuries: Injury[];
+}
+
+/** One current injury of a player. */
+export interface Injury {
+  /** The game's name for it, in the game's language; null when it could not be read. */
+  name: string | null;
+  started: FmDate | null;
+  /** When he is expected back, at the soonest and at the latest. */
+  backSoonest: FmDate | null;
+  backLatest: FmDate | null;
 }
 
 /** What an edit is for. */
@@ -306,8 +325,11 @@ export interface EditField {
    * 0 or 1, a yes-or-no such as being on the transfer list.
    */
   kind: "u8" | "u16" | "i16" | "i32" | "date" | "flag";
-  /** "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "plain": shown as stored. */
-  scale: "plain" | "attribute";
+  /**
+   * "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "percent": stored 0–10000, shown as a
+   * percentage 0–100; "plain": shown as stored.
+   */
+  scale: "plain" | "attribute" | "percent";
   /** Smallest stored value the editor writes. */
   min: number;
   /** Largest stored value the editor writes. */
@@ -354,11 +376,17 @@ export interface LoggedChange {
   undoneAt: number | null;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
+  // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0.
   /**
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
    * values are the clubs' UIDs: the clubs' names.
    */
-  moved?: { from: string; to: string };
+  moved?: {
+    from: string;
+    to: string;
+    /** For a swap of two players, logged as one change, the player who went the other way. */
+    with?: string;
+  };
 }
 
 /** The contract a move to another club gives the player, as stored; what is left out stays as it is. */

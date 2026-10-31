@@ -1,0 +1,146 @@
+// The Medical group of a player's profile: his energy, match sharpness and happiness, his current injuries, and the
+// button that heals them.
+
+import { useContext, useEffect, useRef, useState } from "react";
+import { EditableValue } from "./EditControls";
+import { healPlayer, wholePercent } from "./editing";
+import { describeError, formatDate, formatDateRange, formatPercent } from "./format";
+import { appText, fieldLabel, profileText } from "./labels";
+import { Fact } from "./ProfileParts";
+import type { Injury, PlayerDetails } from "./types";
+import { EditorContext } from "./useProfileEditing";
+
+/** A stored percentage (0–10000) as the profile shows it: "87%". */
+const percentText = (stored: number) => formatPercent(wholePercent(stored));
+
+/**
+ * Energy and match sharpness as whole percentages and happiness out of 20, which are inputs while the player is
+ * edited, and under them his injuries.
+ */
+export function MedicalGroup({ details }: { details: PlayerDetails }) {
+  const injured = details.injuries.length > 0;
+  const noInjuries = useRef<HTMLParagraphElement>(null);
+  const wasInjured = useRef(injured);
+
+  // A heal takes the Heal button, which had focus, away with the list it healed: focus goes to the line that takes
+  // their place, so that someone using the keyboard stays in the group.
+  useEffect(() => {
+    if (wasInjured.current && !injured && document.activeElement === document.body) {
+      noInjuries.current?.focus();
+    }
+    wasInjured.current = injured;
+  }, [injured]);
+
+  return (
+    <section className="profile-group">
+      <h3>{profileText.medical}</h3>
+      <dl className="stats medical-values">
+        <Fact label={fieldLabel("player", "condition")}>
+          <EditableValue field="condition">{percentText(details.condition)}</EditableValue>
+        </Fact>
+        <Fact label={fieldLabel("player", "match_sharpness")}>
+          <EditableValue field="match_sharpness">{percentText(details.matchSharpness)}</EditableValue>
+        </Fact>
+        <Fact label={fieldLabel("player", "happiness")} title={profileText.happinessTitle}>
+          <EditableValue field="happiness">{profileText.happiness(details.happiness)}</EditableValue>
+        </Fact>
+      </dl>
+      {injured ? (
+        <InjuryList uid={details.uid} injuries={details.injuries} />
+      ) : (
+        <p ref={noInjuries} tabIndex={-1} className="injuries-none">
+          {profileText.noInjuries}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** When an injury began and when he is expected back, as one line; nothing for an injury the game gave no dates for. */
+function injuryDates({ started, backSoonest, backLatest }: Injury): string {
+  return [
+    started && profileText.injuryStarted(formatDate(started)),
+    (backSoonest || backLatest) && profileText.injuryBack(formatDateRange(backSoonest, backLatest)),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/**
+ * The injuries a player has, each with its name and dates, and the Heal button for all of them. Healing asks no
+ * question: it is logged like any change, and undone from the Changes view. Only there while he has an injury, so the
+ * state of a heal goes with the list that was healed.
+ */
+function InjuryList({ uid, injuries }: { uid: number; injuries: Injury[] }) {
+  const { editable, onEdited } = useContext(EditorContext);
+  const [healing, setHealing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const alive = useRef(true);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  // After a heal the button stays busy until the profile has read the game again, which gives a new list: pressed in
+  // between, it would only heal what is healed already.
+  useEffect(() => {
+    setHealing(false);
+  }, [injuries]);
+
+  const heal = async () => {
+    // While a heal is under way the button is only dimmed (aria-disabled), not disabled: a disabled button loses focus.
+    if (healing) {
+      return;
+    }
+    setHealing(true);
+    setError(null);
+    try {
+      await healPlayer(uid);
+      // The game has changed: the lists, the profile and the change log read it again.
+      onEdited();
+    } catch (e) {
+      if (alive.current) {
+        setError(describeError(e));
+        setHealing(false);
+      }
+    }
+  };
+
+  return (
+    <div className="injuries">
+      <div className="injuries-head">
+        <h4>{fieldLabel("player", "injuries")}</h4>
+        <button
+          type="button"
+          className="heal-toggle"
+          disabled={!editable}
+          aria-disabled={healing || undefined}
+          aria-busy={healing || undefined}
+          title={editable ? profileText.healTitle : appText.noteReadOnly}
+          onClick={() => void heal()}
+        >
+          {profileText.heal}
+        </button>
+      </div>
+      {error !== null && (
+        <p className="heal-error" role="alert">
+          {error}
+        </p>
+      )}
+      <ul className="injury-list">
+        {injuries.map((injury, index) => {
+          const dates = injuryDates(injury);
+          return (
+            <li key={index}>
+              <span className="injury-name">{injury.name ?? profileText.unknownInjury}</span>
+              {dates && <span className="injury-dates">{dates}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
