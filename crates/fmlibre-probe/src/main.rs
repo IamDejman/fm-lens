@@ -147,6 +147,16 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
+    /// Swap two players between their clubs in the running game.
+    Swap {
+        /// The UID of one player.
+        uid: u32,
+        /// The UID of the player he swaps with.
+        other: u32,
+        /// Swap them back afterwards and check it: tests a swap without changing the save.
+        #[arg(long)]
+        restore: bool,
+    },
     /// Read the graphics packs (logos, faces, flags) and show what they hold. Needs no game.
     Graphics {
         /// The graphics folder; by default Documents\Sports Interactive\Football Manager 27\graphics.
@@ -339,7 +349,7 @@ fn run(cli: Cli) -> Result<()> {
         return graphics(root, &clubs);
     }
     let elevated = is_current_process_elevated();
-    let writes = matches!(cli.command, Some(Command::Set { .. } | Command::Move { .. }));
+    let writes = matches!(cli.command, Some(Command::Set { .. } | Command::Move { .. } | Command::Swap { .. }));
     let process = attach(cli.pid, elevated, writes)?;
     let json = cli.json.as_deref();
 
@@ -378,6 +388,9 @@ fn run(cli: Cli) -> Result<()> {
             let expires = expires.as_deref().map(parse_iso_date).transpose()?.map(FmDate::to_number);
             let terms = MoveTerms { wage, expires };
             move_player(&Session::connect(process, ArraySource::ProfileFirst)?, uid, club, terms, restore, hold)
+        }
+        Command::Swap { uid, other, restore } => {
+            swap_players(&Session::connect(process, ArraySource::ProfileFirst)?, uid, other, restore)
         }
         Command::Graphics { .. } => unreachable!("handled before attaching"),
         Command::Scan { min, max, top } => {
@@ -1108,6 +1121,7 @@ impl PlayerFilterArgs {
             min_potential_ability: self.min_pa,
             nation: self.nation.clone(),
             club: self.club.clone(),
+            club_uid: None,
             free_agents: self.free_agents,
             contract_expires_by,
         };
@@ -1478,6 +1492,45 @@ fn move_player(session: &Session, uid: u32, club: u32, terms: MoveTerms, restore
         }
         session.undo_club_move(&done)?;
         ensure!(club_now("moved back to")? == Some(plan.from_club), "the player is not back at {from}");
+    }
+    Ok(())
+}
+
+fn swap_players(session: &Session, uid: u32, other: u32, restore: bool) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let first = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let second = players.get(other).with_context(|| format!("no player with UID {other}"))?;
+    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
+    let plan = session.plan_club_swap(first, second, &human)?;
+    let name = |club: u32| clubs.get(club).map_or("?", |c| c.name.as_str());
+    println!(
+        "{} ({}) <-> {} ({}), {} writes",
+        first.name,
+        name(plan.from_club),
+        second.name,
+        name(plan.to_club),
+        plan.writes()
+    );
+    // A swap is written and undone like a move: as the patches it was planned as.
+    let done = session.apply_club_move(&plan)?;
+    // Read both again as the lists would.
+    let clubs_now = |label: &str| -> Result<(Option<u32>, Option<u32>)> {
+        let now = PlayerIndex::new(session.players()?);
+        let (a, b) = (now.get(uid).context("gone")?, now.get(other).context("gone")?);
+        println!(
+            "  {label}: {} at {}, {} at {}",
+            a.name,
+            a.club.as_deref().unwrap_or("-"),
+            b.name,
+            b.club.as_deref().unwrap_or("-")
+        );
+        Ok((a.club_uid, b.club_uid))
+    };
+    ensure!(clubs_now("now")? == (Some(plan.to_club), Some(plan.from_club)), "the players did not swap clubs");
+    if restore {
+        session.undo_club_move(&done)?;
+        ensure!(clubs_now("back")? == (Some(plan.from_club), Some(plan.to_club)), "the players are not back");
     }
     Ok(())
 }

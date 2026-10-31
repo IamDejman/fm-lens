@@ -24,6 +24,8 @@ pub struct PlayerFilter {
     pub nation: Option<String>,
     /// Part of the club's name, accents and case ignored.
     pub club: Option<String>,
+    /// Only players of the club with this UID, e.g. those a player can swap with.
+    pub club_uid: Option<u32>,
     /// Only players without a club.
     pub free_agents: bool,
     /// Only players whose contract ends on or before this date.
@@ -45,6 +47,7 @@ impl PlayerFilter {
             && self.min_potential_ability.is_none_or(|min| p.potential_ability >= min)
             && contains(p.nation.as_deref(), self.nation.as_deref())
             && contains(p.club.as_deref(), self.club.as_deref())
+            && self.club_uid.is_none_or(|uid| p.club_uid == Some(uid))
             && (!self.free_agents || p.club.is_none())
             && self.contract_expires_by.is_none_or(|by| p.contract_expires.is_some_and(|end| end <= by))
     }

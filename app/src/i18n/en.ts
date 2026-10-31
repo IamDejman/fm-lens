@@ -700,6 +700,8 @@ export const en = {
     nav: "Changes",
     title: "Changes this session",
     hint: "Newest first. A change can be undone only while the game still holds the value it wrote.",
+    /** Under a move to another club that was a swap: the player who went the other way. */
+    swappedWith: (name: string) => `Swapped with ${name}`,
     /** The line beside the title; `undone` of the `total` changes were undone. */
     count: (total: number, undone: number) => {
       const count = changeCount(total);

@@ -109,3 +109,12 @@ export const planClubMove = (uid: number, club: number, terms: MoveTerms) =>
 /** Moves the player to the senior team of the club on `terms`; the move is logged and undone like any change. */
 export const movePlayer = (uid: number, club: number, terms: MoveTerms) =>
   call<LoggedChange>("move_player", { uid, club, terms });
+
+/**
+ * Checks that the players `uid` and `other` can swap clubs, each joining the other's senior team on his own contract,
+ * and names the clubs (`from` is the club of `uid`). Nothing is written; when they cannot, the error says why.
+ */
+export const planClubSwap = (uid: number, other: number) => call<MovePreview>("plan_club_swap", { uid, other });
+
+/** Swaps the clubs of two players; logged as one change of the first player's club, undone as one. */
+export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("swap_players", { uid, other });

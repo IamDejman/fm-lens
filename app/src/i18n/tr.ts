@@ -657,6 +657,7 @@ export const tr: Strings = {
     nav: "Değişiklikler",
     title: "Bu oturumdaki değişiklikler",
     hint: "En yeniler üstte. Bir değişiklik yalnızca oyun yazdığı değeri hâlâ tutuyorsa geri alınabilir.",
+    swappedWith: (name) => `Takas: ${name}`,
     count: (total, undone) => {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} geri alındı`;

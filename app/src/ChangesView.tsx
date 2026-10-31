@@ -479,6 +479,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
         {change.moved
           ? valueChange(change.moved.from, change.moved.to)
           : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)))}
+        {change.moved?.with !== undefined && <div className="sub">{text.swappedWith(change.moved.with)}</div>}
       </td>
       <td className="col-status">
         <div className="row-actions">

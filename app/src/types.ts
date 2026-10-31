@@ -203,6 +203,8 @@ export interface PlayerFilter {
   nation?: string;
   /** Part of the club's name; accents and case ignored. */
   club?: string;
+  /** Only players of the club with this UID, e.g. those a player can swap with. */
+  clubUid?: number;
   /** Only players without a club. */
   freeAgents?: boolean;
   /** Only contracts ending on or before this date. */
@@ -358,7 +360,12 @@ export interface LoggedChange {
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
    * values are the clubs' UIDs: the clubs' names.
    */
-  moved?: { from: string; to: string };
+  moved?: {
+    from: string;
+    to: string;
+    /** For a swap of two players, logged as one change, the player who went the other way. */
+    with?: string;
+  };
 }
 
 /** The contract a move to another club gives the player, as stored; what is left out stays as it is. */
