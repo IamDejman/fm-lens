@@ -111,8 +111,11 @@ before trusting them.
   following days run normally. Arda Güler was moved to the human manager's club;
   the game ran on for several days and took a work permit application for him
   without trouble.
-- [ ] More of what FM Live Editor and FMRTE users reach for, as far as data-only
+- [x] More of what FM Live Editor and FMRTE users reach for, as far as data-only
   writes allow:
   - a player's squad number, squad status, and transfer and loan listing;
-  - swapping two players between clubs;
-  - healing injuries, raising morale, and setting condition and match sharpness.
+  - swapping two players between clubs, with undo;
+  - healing injuries, with undo; setting energy, match sharpness and happiness,
+    one player at a time or in a mass edit.
+- [ ] Next from that list: captains, and the squad status codes past 5 (youth and
+  backup roles), once the game's own data names them.

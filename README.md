@@ -10,15 +10,21 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 > Players, staff and clubs can be edited, from an Edit mode in their profiles:
 > - **Players and staff:** abilities, attributes, positions, personality,
 >   reputation, caps, and their contract's wage and end date.
+> - **Players only:** squad number, squad status, transfer and loan listing,
+>   energy, match sharpness and happiness. Injuries can be healed.
 > - **Clubs:** reputation, facilities and finances.
 > - **How:** changes are reviewed before they are applied, and a Changes view
 >   undoes them.
 > - **Many at once:** a mass edit changes every player, member of staff or club the
 >   list selects. It is previewed before it is applied and undone as one batch.
 > - **Moving players:** a player can move to another club's senior team, on his
->   contract or new terms. Free agents, loans and players at your own club are
->   refused for now, and so is a club whose squad list has no room left (see
+>   contract or new terms, or swap clubs with another player. Free agents, loans
+>   and players at your own club are refused for now, and so is a club whose squad
+>   list has no room left (see
 >   [the notes](docs/recon/fm27-gamepass-0.9.2355.md#squad-lists-and-moving-players-between-clubs)).
+>
+> The game's screens show a change once the game moves on: press Continue in the
+> game.
 >
 > The interface is in English and Turkish. Club logos, flags and faces come from the
 > graphics packs installed in the game's graphics folder.
@@ -101,6 +107,9 @@ fmlibre-probe fields player                          # what the editor can chang
 fmlibre-probe get player 7458500                     # those fields' values for one player
 fmlibre-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
 fmlibre-probe move 13200568 1139 --restore           # move a player to a club and back: this writes too
+fmlibre-probe swap 13200568 72048035 --restore       # two players swap clubs and back: this writes too
+fmlibre-probe injuries 728                           # the current injuries of a club's players
+fmlibre-probe heal 37055843 --heal --restore         # heal a player and list his injuries again: this writes too
 fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
 fmlibre-probe refs 0x1a5a5396990 --span 0x3c8        # every pointer into an object (holders, lists, squads too)
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
@@ -114,11 +123,13 @@ Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `sc
 to save the results. `calibrate --scan` ignores the build profile and finds the
 arrays the way it would on an unknown build.
 
-Only `set` and `move` write to the game. `set` changes one field after the checks
-above. Values are as stored: attributes run 0–100, or 1–20 with `--shown`. `move`
-moves a player to a club's senior team. With `--restore`, either one puts the old
-values back straight away, to test without changing the save. If Windows denies
-access, run the probe from an administrator terminal.
+Only `set`, `move`, `swap` and `heal --heal` write to the game. `set` changes one
+field after the checks above. Values are as stored: attributes run 0–100, or 1–20
+with `--shown`. `move` moves a player to a club's senior team. With `--restore`,
+each one puts the old values back straight away, to test without changing the
+save; `set` and `heal` also take `--hold <seconds>` to wait first, so the change
+can be looked at in the game. If Windows denies access, run the probe from an
+administrator terminal.
 
 ## Safety
 

@@ -473,3 +473,61 @@ These were refused, and nothing was written:
 **In the game:** Arda Güler was moved through the app to Manchester United, the
 human manager's club. The game was played on for several days and took a work
 permit application for him; nothing went wrong.
+
+**A swap** of two players needs no room in either list: each player takes the
+other's slot in his new senior team's list (a list without that slot gets him
+added at its end, as in a move). Both contracts then get the writes of a move,
+without new terms, and each player keeps his wage and contract end. Mohammed
+Kudus and Weston McKennie (Juventus) swapped and swapped back with
+`swap ... --restore` in 14 writes; a swap is refused for the same reasons as a
+move.
+
+### Squad numbers, squad status and listing
+
+These sit in a player's contract (see the table above).
+- **Squad status:** Bruno Fernandes reads 1, and the game calls him a star player
+  ("Forma süresi" in the Turkish game). 2 is an important player and 5 an impact
+  sub. The editor offers 1 to 5 and leaves other codes the game holds as they are.
+- **Squad numbers:** 97 numbers on the test save are worn twice within one team's
+  list, by a player out on loan and a player who plays for the team. So a number
+  counts as taken only when a player who plays for the team (his `+0x130`) wears
+  it.
+- **Listing:** bit 0 puts the player on the transfer list and bit 1 on the loan
+  list. The game uses the byte's other bits too, so a write keeps them.
+
+### Injuries and live values
+
+- **Injuries:** a player's `+0xF8` points at his injury record, or is null for a
+  player who was never injured. The record's first field is the list, as
+  `(begin, end, capacity)`, of his current injuries.
+  - When he gets over them the game empties that list and keeps the record. On the
+    test save 5,354 players had an empty list and 2,563 one injury.
+  - Only the record points at the list's buffer, and only the player points at the
+    record.
+  - An injury has the kind of injury at `+0x08` (its name, an FM string, is at the
+    kind's `+0x18`), the team at `+0x18` and the start date at `+0x20`. The days
+    from that date until he is back are at `+0x28` (at the latest) and `+0x2A` (at
+    the soonest).
+  - Matthijs de Ligt, for example, has one injury, a spinal bruise ("omurgada
+    zedelenme"), since 30 November 2025, with him back between 22 August and
+    21 September 2026.
+- **Healing** does what the game does and empties the list: its end is set to its
+  begin. Undoing it sets the end back, if the list is still empty.
+- **Live values,** checked against the game's own words on the test save:
+
+| Offset | Value | Witness |
+|---|---|---|
+| `+0x25C` | energy (`u16`, 0–10000 for 0–100%) | Joshua Zirkzee, 6950 → 10000: "Dinç" (fresh) |
+| `+0x258` | match sharpness (`u16`, 0–10000) | de Ligt, injured, 3500: "Maç Kondisyonu Eksik" (lacking match fitness); no player had less |
+| `+0x1F1` | happiness (`u8`, 0–20) | Arda Güler, 8 → 20: "Memnun" (content) |
+
+These were held in the game for 15 minutes with the probe's `--hold`, then
+restored:
+- Zirkzee's energy;
+- de Ligt's match sharpness;
+- Güler's happiness;
+- de Ligt's healing: the game showed him fit, and his injury was listed again
+  afterwards.
+
+The game's screens show an edited value only after the game has moved on once
+(Continue): its interface keeps a copy of the data and refreshes it then.

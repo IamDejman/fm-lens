@@ -264,8 +264,7 @@ enum Command {
     },
     /// Read every team's player list and show how the game's allocator spaces their buffers.
     Squads,
-    /// Print the records the player's +0xF8 history holds (what looks like his injuries), for
-    /// the players of one club.
+    /// Print the current injuries of the players of one club.
     Injuries {
         /// The club's UID.
         club: u32,
