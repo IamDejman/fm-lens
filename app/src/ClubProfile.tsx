@@ -52,9 +52,7 @@ export function ClubProfile({ club, version, tab, onTab, onClose }: ClubProfileP
   const base = useId();
   const details = loaded?.details;
   const info: ClubSummary = details ?? club;
-  const vitals = [info.founded !== null && text.founded(info.founded), `${profileText.uid} ${info.uid}`]
-    .filter(Boolean)
-    .join(" · ");
+  const vitals = [info.founded !== null && text.founded(info.founded), `${profileText.uid} ${info.uid}`];
 
   // The club is edited on the Overview, which has its inputs: editing starts there, and the Squad tab is not offered
   // until it is done.

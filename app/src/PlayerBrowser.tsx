@@ -82,14 +82,14 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
       header={
         <>
           {sortHeader("name", "col-name")}
-          {sortHeader("age", "num")}
+          {sortHeader("age", "num col-age")}
           <th className="col-positions">{text.columns.positions}</th>
           {sortHeader("nation", "col-nation")}
           {sortHeader("club", "col-club")}
           {sortHeader("contractExpires", "col-contract")}
           <th className="col-born">{text.columns.born}</th>
-          {sortHeader("currentAbility", "num")}
-          {sortHeader("potentialAbility", "num")}
+          {sortHeader("currentAbility", "num col-ca")}
+          {sortHeader("potentialAbility", "num col-pa")}
           <th className="num col-uid">{text.columns.uid}</th>
         </>
       }
@@ -100,7 +100,7 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
             <div className="name">{p.name}</div>
             {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
           </td>
-          <td className="num">{p.age ?? profileText.none}</td>
+          <td className="num col-age">{p.age ?? profileText.none}</td>
           <PositionsCell positions={p.positions} />
           <td className="col-nation" title={p.nation ?? undefined}>
             <WithPicture picture={<NationFlag uid={p.nationUid} />}>{p.nation ?? profileText.none}</WithPicture>
@@ -112,10 +112,10 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
           </td>
           <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
           <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
-          <td className="num">
+          <td className="num col-ca">
             <Ability value={p.currentAbility} />
           </td>
-          <td className="num">
+          <td className="num col-pa">
             <Ability value={p.potentialAbility} />
           </td>
           <td className="num uid col-uid">{p.uid}</td>

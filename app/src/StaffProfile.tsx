@@ -90,7 +90,7 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
   const editing = useProfileEditing("staff", member.uid);
   const details = loaded?.details;
   const info: StaffSummary = details ?? member;
-  const vitals = [bornText(info), `${profileText.id} ${info.uid}`].filter(Boolean).join(" · ");
+  const vitals = [bornText(info), `${profileText.id} ${info.uid}`];
 
   return (
     <ProfileFrame
