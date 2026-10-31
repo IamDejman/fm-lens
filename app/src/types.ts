@@ -11,11 +11,21 @@ export interface GameInfo {
   packageVersion: string | null;
 }
 
+/**
+ * How a Rust command fails: a code such as "edit.outOfRange", the values its message names, and the message in
+ * English. `describeError` (format.ts) words it in the language of the window.
+ */
+export interface Failure {
+  code: string;
+  params: Record<string, string>;
+  message: string;
+}
+
 export interface DetectedGame {
   pid: number;
   info: GameInfo | null;
   pluginLoaded: boolean;
-  error: string | null;
+  error: Failure | null;
 }
 
 export interface Detection {
@@ -355,8 +365,8 @@ export interface MovePreview {
 export interface FailedEdit {
   field: string;
   value: number;
-  /** Why, e.g. "250 is not a valid current_ability; it takes 1 to 200". */
-  error: string;
+  /** Why, e.g. that 250 is not a current ability, which takes 1 to 200. */
+  error: Failure;
 }
 
 export interface ApplyReport {
@@ -399,7 +409,10 @@ export interface SkippedField {
   uid: number;
   name: string;
   field: string;
+  /** Why, in English; `code` and `params` say it in the window's language, as a `Failure` would. */
   reason: string;
+  code: string;
+  params: Record<string, string>;
 }
 
 /** From `plan_mass_edit`: what applying would change. Nothing is written yet. */
@@ -426,14 +439,14 @@ export interface MassReport {
   batch: number;
   applied: number;
   /** Changes not written, e.g. because the game changed the value after the preview. */
-  failed: { uid: number; name: string; field: string; error: string }[];
+  failed: { uid: number; name: string; field: string; error: Failure }[];
 }
 
 /** From `undo_batch`. */
 export interface BatchUndo {
   undone: number;
   /** Changes the game has changed since, left as they are. */
-  failed: { id: number; error: string }[];
+  failed: { id: number; error: Failure }[];
 }
 
 /** How many pictures of each kind the graphics packs hold. */

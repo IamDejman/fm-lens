@@ -5,7 +5,8 @@
 // number, so the sentences are built to put an ending on a noun ("oyuncunun"), never on a figure.
 
 import type { Entity, MassOperationKind, MassPreview, PlayerSort, Storefront } from "../types";
-import type { Strings } from "./en";
+import type { ErrorTexts, Strings } from "./en";
+import { fieldName } from "./fieldNames";
 
 const numbers = new Intl.NumberFormat("tr-TR");
 const percents = new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 });
@@ -36,6 +37,74 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Yıldız oyuncu",
   2: "Önemli oyuncu",
   5: "Etkili yedek",
+};
+
+/** The name of the field a failure names. The sentences put no ending on it: "için" and a colon need none. */
+const field = (key: string | undefined) => fieldName(tr, key ?? "");
+
+/** The noun of the kind of record a failure names, or "kayıt" when it names none. */
+const recordNoun = (entity: string | undefined) =>
+  entity === "player" || entity === "staff" || entity === "club" ? nouns[entity].plain : "kayıt";
+
+/** The reasons the Rust side gives for a field that cannot be changed some way. */
+const UNSUPPORTED: Partial<Record<string, string>> = {
+  "a date can only be set": "bir tarih yalnızca doğrudan ayarlanabilir",
+};
+
+const reload = "verileri yeniden okuyup tekrar deneyin";
+
+const errors: ErrorTexts = {
+  "edit.unknownField": (p) => `Burada “${p.field}” adında düzenlenebilir bir alan yok.`,
+  "edit.outOfRange": (p) => `${field(p.field)} için ${p.value} geçersiz: ${p.min} ile ${p.max} arasında olmalı.`,
+  "edit.notADate": (p) => `${p.value}, ${field(p.field)} için geçerli bir tarih değil.`,
+  "edit.unsupported": (p) => `${field(p.field)} bu şekilde değiştirilemez: ${UNSUPPORTED[p.reason] ?? p.reason}.`,
+  "edit.moved": (p) => `Bu ${recordNoun(p.entity)} oyunun belleğinde yer değiştirmiş; ${reload}.`,
+  "edit.noRecord": (p) => `${field(p.field)} burada değiştirilemez: kaydı yok ya da doğrulanamadı.`,
+  "edit.unset": (p) => `${field(p.field)} oyunda ayarlanmamış, bu yüzden dokunulmadı.`,
+  "edit.implausible": (p) =>
+    `${field(p.field)} şu an ${p.value} okunuyor ve bu alan böyle bir değer alamaz; güvenlik için dokunulmadı.`,
+  "edit.notApplied": (p) => `${field(p.field)}: ${p.wrote} yazıldı ama geri ${p.read} okundu.`,
+  "edit.conflict": (p) => `${field(p.field)} şu an ${p.found}, ${p.expected} değil: oyun o zamandan beri değiştirmiş.`,
+  "move.moved": () => `Oyuncu oyunun belleğinde yer değiştirmiş; ${reload}.`,
+  "move.notAClub": () => "Bu kulübün oyuncunun katılabileceği bir A takımı yok.",
+  "move.freeAgent": () => "Oyuncunun kulübü yok; serbest oyuncular henüz taşınamıyor.",
+  "move.sameClub": () => "Oyuncu zaten bu kulüpte.",
+  "move.onLoan": () => "Oyuncu kiralık; kiralık oyuncular henüz taşınamıyor.",
+  "move.playerCoach": () => "Oyuncu-antrenörler taşınamıyor: aynı zamanda personel olarak da çalışıyorlar.",
+  "move.unusualContract": () => "Oyuncunun sözleşmesi olağan bir oyuncu sözleşmesi değil.",
+  "move.humanClub": () =>
+    "Oyuncu, bir insan menajerin yönettiği kulüpte. Kulübün taktikleri ve antrenmanı da ona bağlı; bu yüzden " +
+    "kulüpten ancak oyunun içinden ayrılabilir.",
+  "move.menAndWomen": () => "Kulüplerden biri erkek, diğeri kadın kulübü.",
+  "move.notListed": () => "Kadro listeleri oyuncuyu olması gereken yerde tutmuyor.",
+  "move.noRoom": (p) =>
+    `Kulübün kadro listesinde bir oyuncuya daha yer yok (şu an ${p.players} oyuncu) ve düzenleyici listeyi büyütemez.`,
+  "move.outOfRange": (p) => `${field(p.field)} için ${p.value} geçersiz: ${p.min} ile ${p.max} arasında olmalı.`,
+  "move.changed": () => `Oyun bu belleği o zamandan beri değiştirmiş; ${reload}.`,
+  "move.notApplied": () => "Belleğe yazıldı ama geri okunan farklı çıktı.",
+  "session.notRunning": () => "Football Manager 27 çalışmıyor. Oyunu başlatıp bir kayıt yükleyin, sonra tekrar deneyin.",
+  "session.noSuchProcess": (p) => `${p.pid} işlem numaralı bir fm.exe yok.`,
+  "session.severalRunning": (p) => `fm.exe'nin ${p.count} kopyası çalışıyor (${p.pids}); birini seçin.`,
+  "session.pluginNotLoaded": () => "Oyunun verisi henüz yüklenmedi; ana menüyü bekleyip tekrar deneyin.",
+  "session.unsupportedEdition": (p) => `FM${p.edition} henüz desteklenmiyor.`,
+  "session.unknownEdition": () => "Bunun hangi Football Manager olduğu anlaşılamadı.",
+  "session.playersNotFound": () => "Oyuncu listesi bulunamadı; bir kayıt yükleyin (ana menü yetmez) ve tekrar deneyin.",
+  "memory.win32": (p) => `Windows bir işlemi reddetti (${p.operation}, hata ${p.code}).`,
+  "memory.read": (p) => `Oyunun belleği okunamadı (Windows hatası ${p.code}).`,
+  "memory.write": (p) => `Oyunun belleğine yazılamadı (Windows hatası ${p.code}).`,
+  "memory.readOnly": () => "Oyun yalnızca okunmak üzere açıldı; Windows yazmaya izin vermedi.",
+  "memory.notWritable": () => "Bu adres oyunun yazılabilir veri belleğinde değil, bu yüzden yazılmadı.",
+  "memory.invalidPe": () => "Oyunun modülü okunamadı.",
+  "app.internal": () => "Uygulamada beklenmeyen bir hata oluştu.",
+  "app.notConnected": () => "Oyuna bağlı değil.",
+  "app.notFound": (p) => `Listelerde ${p.uid} kimlikli bir ${recordNoun(p.entity)} yok; verileri yeniden okuyun.`,
+  "app.dataChanged": () => `Bu veriler oyunda değişti; ${reload}.`,
+  "app.noChange": (p) => `${p.id} numaralı bir değişiklik yok.`,
+  "app.alreadyUndone": () => "Bu değişiklik zaten geri alındı.",
+  "mass.noOperations": () => "Değiştirilecek en az bir alan seçin.",
+  "mass.tooMany": (p) =>
+    `${p.count} sonuç var. Toplu düzenleme için aramayı ya da filtreleri en fazla ${p.limit} sonuca daraltın.`,
+  "mass.outOfDate": () => "Bu önizleme eskidi. Toplu düzenlemeyi yeniden önizleyin.",
 };
 
 export const tr: Strings = {
@@ -801,4 +870,6 @@ export const tr: Strings = {
       unknown: "Bilinmeyen mağaza",
     } satisfies Record<Storefront, string>,
   },
+
+  errors,
 };

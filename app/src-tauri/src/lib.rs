@@ -4,16 +4,14 @@ use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Entity, EntityArrays, Field, FmDate, GAME_EXE,
-    GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Kind, Listed, MovePlan, MoveTerms, Operation, Picture,
-    Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session, Skipped, StaffDetails,
-    StaffFilter, StaffIndex, Target, find_game, sort_players,
+    ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError, Entity, EntityArrays, Field,
+    FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Kind, Listed, MoveError, MovePlan,
+    MoveTerms, Operation, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex,
+    Session, SessionError, Skipped, StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
-
-const NOT_CONNECTED: &str = "Not connected to the game";
 
 /// The environment variable that names the graphics folder to read packs from, instead of
 /// `Documents\Sports Interactive\Football Manager 27\graphics`.
@@ -44,12 +42,12 @@ struct PendingMass {
 impl Connection {
     /// Reads every list. A reload keeps the change log; a mass edit previewed before is dropped,
     /// since its people may have moved.
-    fn load(session: Session, log: Vec<LoggedChange>) -> Result<Self, String> {
-        let players = PlayerIndex::new(session.players().map_err(text)?);
-        let staff = session.staff().map_err(text)?;
+    fn load(session: Session, log: Vec<LoggedChange>) -> Result<Self, Failure> {
+        let players = PlayerIndex::new(session.players()?);
+        let staff = session.staff()?;
         let human_clubs = staff.iter().filter(|member| member.is_human).filter_map(|member| member.club_uid).collect();
         let staff = StaffIndex::new(staff);
-        let clubs = ClubIndex::new(session.clubs().map_err(text)?);
+        let clubs = ClubIndex::new(session.clubs()?);
         let next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
         Ok(Self { session, players, staff, clubs, human_clubs, log, mass: None, next_id })
     }
@@ -113,10 +111,10 @@ impl Connection {
     }
 
     /// Works out moving the player `uid` to the club `club` on the contract `terms`.
-    fn plan_move(&self, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePlan, String> {
-        let player = self.players.get(uid).ok_or_else(|| format!("No player with id {uid}"))?;
-        let to = self.clubs.get(club).ok_or_else(|| format!("No club with id {club}"))?;
-        self.session.plan_club_move(player, to, terms, &self.human_clubs).map_err(text)
+    fn plan_move(&self, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePlan, Failure> {
+        let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+        let to = self.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+        Ok(self.session.plan_club_move(player, to, terms, &self.human_clubs)?)
     }
 
     fn club_name(&self, uid: u32) -> String {
@@ -164,13 +162,18 @@ impl Connection {
 
     /// Writes back the old value of the logged change `id`, if the game still holds the new
     /// one; a move goes back if the game still holds everything it wrote.
-    fn undo(&mut self, id: usize) -> Result<LoggedChange, String> {
-        let entry = self.log.iter().find(|logged| logged.id == id).cloned().ok_or_else(|| format!("No change {id}"))?;
+    fn undo(&mut self, id: usize) -> Result<LoggedChange, Failure> {
+        let entry = self
+            .log
+            .iter()
+            .find(|logged| logged.id == id)
+            .cloned()
+            .ok_or_else(|| Failure::new("app.noChange", format!("No change {id}")).with("id", id))?;
         if entry.undone_at.is_some() {
-            return Err("This change has already been undone.".to_owned());
+            return Err(Failure::new("app.alreadyUndone", "This change has already been undone."));
         }
         if let Some(moved) = entry.club_move {
-            self.session.undo_club_move(&moved.done).map_err(text)?;
+            self.session.undo_club_move(&moved.done)?;
             self.players.update(moved.done.player, |player| {
                 player.club = moved.club;
                 player.club_uid = moved.club_uid;
@@ -178,7 +181,7 @@ impl Connection {
             });
         } else {
             let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
-            self.session.revert(&target, &entry.change).map_err(text)?;
+            self.session.revert(&target, &entry.change)?;
             self.note_change(&entry.change, entry.change.old);
         }
         let logged = self.log.iter_mut().find(|logged| logged.id == id).expect("found above");
@@ -187,13 +190,13 @@ impl Connection {
     }
 
     /// Where the player, member of staff or club with `uid` lives in the game, and its name.
-    fn target(&self, entity: Entity, uid: u32) -> Result<(Target, String), String> {
+    fn target(&self, entity: Entity, uid: u32) -> Result<(Target, String), Failure> {
         match entity {
             Entity::Player => self.players.get(uid).map(|p| (p.target(), p.name.clone())),
             Entity::Staff => self.staff.get(uid).map(|s| (s.target(), s.name.clone())),
             Entity::Club => self.clubs.get(uid).map(|c| (c.target(), c.name.clone())),
         }
-        .ok_or_else(|| format!("No {entity} with id {uid}"))
+        .ok_or_else(|| not_found(entity, uid))
     }
 
     /// Keeps the list rows in step with `value`, just written to the field `change` names.
@@ -315,7 +318,7 @@ struct MassFailure {
     uid: u32,
     name: String,
     field: String,
-    error: String,
+    error: Failure,
 }
 
 #[derive(Serialize)]
@@ -330,7 +333,7 @@ struct BatchUndo {
 #[serde(rename_all = "camelCase")]
 struct BatchUndoFailure {
     id: usize,
-    error: String,
+    error: Failure,
 }
 
 /// One value to write, as stored.
@@ -345,7 +348,7 @@ struct FieldEdit {
 struct FailedEdit {
     field: String,
     value: i64,
-    error: String,
+    error: Failure,
 }
 
 #[derive(Serialize)]
@@ -448,7 +451,7 @@ struct DetectedGame {
     pid: u32,
     info: Option<GameInfo>,
     plugin_loaded: bool,
-    error: Option<String>,
+    error: Option<Failure>,
 }
 
 #[derive(Serialize)]
@@ -496,14 +499,73 @@ fn page<T: Listed + Clone>(
     Page { total: hits.len(), rows: hits.into_iter().take(limit).cloned().collect() }
 }
 
-fn text(err: impl std::fmt::Display) -> String {
-    err.to_string()
+/// What a command reports when it fails: a code the window says in its own language, the
+/// values the message names, and the message in English for a code the window does not know.
+#[derive(Debug, Clone, Serialize)]
+struct Failure {
+    code: &'static str,
+    params: BTreeMap<&'static str, String>,
+    message: String,
+}
+
+impl Failure {
+    /// A failure of the app's own, rather than of the game or of an edit.
+    fn new(code: &'static str, message: impl Into<String>) -> Self {
+        Self { code, params: BTreeMap::new(), message: message.into() }
+    }
+
+    fn with(mut self, name: &'static str, value: impl ToString) -> Self {
+        self.params.insert(name, value.to_string());
+        self
+    }
+
+    fn coded(err: &impl Coded) -> Self {
+        Self { code: err.code(), params: err.params().into_iter().collect(), message: err.to_string() }
+    }
+}
+
+macro_rules! coded_failures {
+    ($($error:ty),*) => {$(
+        impl From<$error> for Failure {
+            fn from(err: $error) -> Self {
+                Failure::coded(&err)
+            }
+        }
+    )*};
+}
+
+coded_failures!(EditError, MoveError, SessionError, fmlibre_mem::Error);
+
+impl<T> From<std::sync::PoisonError<T>> for Failure {
+    fn from(err: std::sync::PoisonError<T>) -> Self {
+        Failure::new("app.internal", err.to_string())
+    }
+}
+
+impl From<tauri::Error> for Failure {
+    fn from(err: tauri::Error) -> Self {
+        Failure::new("app.internal", err.to_string())
+    }
+}
+
+fn not_connected() -> Failure {
+    Failure::new("app.notConnected", "Not connected to the game")
+}
+
+/// No player, member of staff or club with `uid` in the lists read from the game.
+fn not_found(entity: Entity, uid: u32) -> Failure {
+    Failure::new("app.notFound", format!("No {entity} with id {uid}")).with("entity", entity).with("uid", uid)
+}
+
+/// A profile could not be read whole, as the game changed it meanwhile.
+fn data_changed() -> Failure {
+    Failure::new("app.dataChanged", "This data has changed in the game; reload and try again.")
 }
 
 /// Lists running Football Manager processes and whether they can be opened for reading.
 #[tauri::command]
-async fn detect_game() -> Result<Detection, String> {
-    let running = find_processes(GAME_EXE).map_err(text)?;
+async fn detect_game() -> Result<Detection, Failure> {
+    let running = find_processes(GAME_EXE)?;
     let games = running.into_iter().map(|entry| inspect(entry.pid)).collect();
     Ok(Detection { elevated: is_current_process_elevated(), games })
 }
@@ -516,7 +578,7 @@ fn inspect(pid: u32) -> DetectedGame {
     });
     match result {
         Ok((info, plugin_loaded)) => DetectedGame { pid, info: Some(info), plugin_loaded, error: None },
-        Err(err) => DetectedGame { pid, info: None, plugin_loaded: false, error: Some(err.to_string()) },
+        Err(err) => DetectedGame { pid, info: None, plugin_loaded: false, error: Some(err.into()) },
     }
 }
 
@@ -524,18 +586,17 @@ fn inspect(pid: u32) -> DetectedGame {
 /// staff and club. Only reads memory; the game is opened for writing too when Windows
 /// allows it, so that edits can be applied later.
 #[tauri::command]
-async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
+async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
-    let connection = tauri::async_runtime::spawn_blocking(|| -> Result<Connection, String> {
-        let pid = find_game(None).map_err(text)?;
-        let process = Process::open_read_write(pid).or_else(|_| Process::open_read(pid)).map_err(text)?;
-        Connection::load(Session::connect(process, ArraySource::ProfileFirst).map_err(text)?, Vec::new())
+    let connection = tauri::async_runtime::spawn_blocking(|| -> Result<Connection, Failure> {
+        let pid = find_game(None)?;
+        let process = Process::open_read_write(pid).or_else(|_| Process::open_read(pid))?;
+        Connection::load(Session::connect(process, ArraySource::ProfileFirst)?, Vec::new())
     })
-    .await
-    .map_err(text)??;
+    .await??;
 
     let info = connection.info(started.elapsed().as_millis());
-    *state.0.lock().map_err(text)? = Some(connection);
+    *state.0.lock()? = Some(connection);
     Ok(info)
 }
 
@@ -543,25 +604,24 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
 /// again: lets the window pick it up after a reload (e.g. to change the language) with
 /// the lists and the change log as they were.
 #[tauri::command]
-fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInfo>, String> {
-    let guard = state.0.lock().map_err(text)?;
+fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInfo>, Failure> {
+    let guard = state.0.lock()?;
     Ok(guard.as_ref().map(|connection| connection.info(0)))
 }
 
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails.
 #[tauri::command]
-async fn reload(state: State<'_, AppState>) -> Result<ReloadInfo, String> {
-    let connection = state.0.lock().map_err(text)?.take().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let connection = tauri::async_runtime::spawn_blocking(move || Connection::load(connection.session, connection.log))
-        .await
-        .map_err(text)??;
+async fn reload(state: State<'_, AppState>) -> Result<ReloadInfo, Failure> {
+    let connection = state.0.lock()?.take().ok_or_else(not_connected)?;
+    let connection =
+        tauri::async_runtime::spawn_blocking(move || Connection::load(connection.session, connection.log)).await??;
     let info = ReloadInfo {
         players: connection.players.len(),
         staff: connection.staff.len(),
         clubs: connection.clubs.len(),
         game_date: connection.session.game_date(),
     };
-    *state.0.lock().map_err(text)? = Some(connection);
+    *state.0.lock()? = Some(connection);
     Ok(info)
 }
 
@@ -573,9 +633,9 @@ fn search_players(
     limit: usize,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
-) -> Result<Page<fmlibre_core::PlayerSummary>, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+) -> Result<Page<fmlibre_core::PlayerSummary>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     Ok(page(
         &connection.players,
@@ -597,9 +657,9 @@ fn search_staff(
     query: String,
     limit: usize,
     filter: Option<StaffFilter>,
-) -> Result<Page<fmlibre_core::StaffSummary>, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+) -> Result<Page<fmlibre_core::StaffSummary>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     Ok(page(&connection.staff, &query, limit, |s| filter.matches(s), |_| {}))
 }
@@ -611,57 +671,45 @@ fn search_clubs(
     query: String,
     limit: usize,
     filter: Option<ClubFilter>,
-) -> Result<Page<fmlibre_core::ClubSummary>, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+) -> Result<Page<fmlibre_core::ClubSummary>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     Ok(page(&connection.clubs, &query, limit, |c| filter.matches(c), |_| {}))
 }
 
 /// The full profile of the club with `uid`. Only reads memory.
 #[tauri::command]
-fn club_details(state: State<'_, AppState>, uid: u32) -> Result<ClubDetails, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let club = connection.clubs.get(uid).ok_or_else(|| format!("No club with UID {uid}"))?;
-    connection
-        .session
-        .club_details(club)
-        .map_err(text)?
-        .ok_or_else(|| "This club's data has changed in the game; reload and try again.".to_owned())
+fn club_details(state: State<'_, AppState>, uid: u32) -> Result<ClubDetails, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let club = connection.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?;
+    connection.session.club_details(club)?.ok_or_else(data_changed)
 }
 
 /// The full profile of the player with `uid`. Only reads memory.
 #[tauri::command]
-fn player_details(state: State<'_, AppState>, uid: u32) -> Result<PlayerDetails, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let player = connection.players.get(uid).ok_or_else(|| format!("No player with UID {uid}"))?;
-    connection
-        .session
-        .player_details(player)
-        .map_err(text)?
-        .ok_or_else(|| "This player's data has changed in the game; reload and try again.".to_owned())
+fn player_details(state: State<'_, AppState>, uid: u32) -> Result<PlayerDetails, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    connection.session.player_details(player)?.ok_or_else(data_changed)
 }
 
 /// The full profile of the member of staff with `uid`. Only reads memory.
 #[tauri::command]
-fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let member = connection.staff.get(uid).ok_or_else(|| format!("No member of staff with id {uid}"))?;
-    connection
-        .session
-        .staff_details(member)
-        .map_err(text)?
-        .ok_or_else(|| "This person's data has changed in the game; reload and try again.".to_owned())
+fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let member = connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
+    connection.session.staff_details(member)?.ok_or_else(data_changed)
 }
 
 /// The fields of players or of staff that the editor can change.
 #[tauri::command]
-fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
     Ok(connection.session.fields(entity))
 }
 
@@ -669,12 +717,12 @@ fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>,
 /// now, as stored, read now. Fields without their record (no contract, a club without
 /// full finances) and dates the game has not set are left out.
 #[tauri::command]
-fn read_values(state: State<'_, AppState>, entity: Entity, uid: u32) -> Result<BTreeMap<String, i64>, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn read_values(state: State<'_, AppState>, entity: Entity, uid: u32) -> Result<BTreeMap<String, i64>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
     let (target, _) = connection.target(entity, uid)?;
     let fields = connection.session.fields(entity);
-    let values = connection.session.read_fields(&target, &fields).map_err(text)?;
+    let values = connection.session.read_fields(&target, &fields)?;
     Ok(fields
         .into_iter()
         .zip(values)
@@ -693,9 +741,9 @@ fn apply_edits(
     entity: Entity,
     uid: u32,
     edits: Vec<FieldEdit>,
-) -> Result<ApplyReport, String> {
-    let mut guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+) -> Result<ApplyReport, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     let (target, name) = connection.target(entity, uid)?;
     let mut report = ApplyReport { applied: Vec::new(), failed: Vec::new() };
     for edit in edits {
@@ -707,7 +755,7 @@ fn apply_edits(
             // Already the value asked for: nothing was written.
             Ok(change) if change.old == change.new => {}
             Ok(change) => report.applied.push(connection.log_change(change, name.clone(), None)),
-            Err(err) => report.failed.push(FailedEdit { field: edit.field, value: edit.value, error: err.to_string() }),
+            Err(err) => report.failed.push(FailedEdit { field: edit.field, value: edit.value, error: err.into() }),
         }
     }
     Ok(report)
@@ -715,27 +763,27 @@ fn apply_edits(
 
 /// Every change written this session, newest first.
 #[tauri::command]
-fn change_log(state: State<'_, AppState>) -> Result<Vec<LoggedChange>, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn change_log(state: State<'_, AppState>) -> Result<Vec<LoggedChange>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
     Ok(connection.log.iter().rev().cloned().collect())
 }
 
 /// Writes back the old value of the logged change `id`, provided the game still holds the
 /// value that change wrote.
 #[tauri::command]
-fn undo_change(state: State<'_, AppState>, id: usize) -> Result<LoggedChange, String> {
-    let mut guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn undo_change(state: State<'_, AppState>, id: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     connection.undo(id)
 }
 
 /// Checks that the player `uid` can move to the club `club` on the contract `terms`, and
 /// names the clubs; the error says why he cannot. Nothing is written.
 #[tauri::command]
-fn plan_club_move(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePreview, String> {
-    let guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn plan_club_move(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePreview, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
     let plan = connection.plan_move(uid, club, terms)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
     Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club) })
@@ -744,11 +792,11 @@ fn plan_club_move(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTe
 /// Moves the player `uid` to the senior team of the club `club` on the contract `terms`,
 /// worked out again from the game as it is now, and logs the move.
 #[tauri::command]
-fn move_player(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<LoggedChange, String> {
-    let mut guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn move_player(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     let plan = connection.plan_move(uid, club, terms)?;
-    let done = connection.session.apply_club_move(&plan).map_err(text)?;
+    let done = connection.session.apply_club_move(&plan)?;
     Ok(connection.log_move(done, terms))
 }
 
@@ -762,25 +810,25 @@ fn plan_mass_edit(
     query: String,
     filters: Filters,
     operations: Vec<MassOperation>,
-) -> Result<MassPreview, String> {
-    let mut guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+) -> Result<MassPreview, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     if operations.is_empty() {
-        return Err("Choose at least one field to change.".to_owned());
+        return Err(Failure::new("mass.noOperations", "Choose at least one field to change."));
     }
     let targets = connection.select(entity, &query, filters);
     if targets.len() > MASS_LIMIT {
-        return Err(format!(
+        let message = format!(
             "{} match. Narrow the search or the filters to {MASS_LIMIT} or fewer for a mass edit.",
             targets.len()
-        ));
+        );
+        return Err(Failure::new("mass.tooMany", message).with("count", targets.len()).with("limit", MASS_LIMIT));
     }
     let operations = operations
         .into_iter()
         .map(|op| Ok((connection.session.field(entity, &op.field)?, op.operation)))
-        .collect::<Result<Vec<_>, fmlibre_core::EditError>>()
-        .map_err(text)?;
-    let plan = connection.session.plan_mass_edit(&targets, &operations).map_err(text)?;
+        .collect::<Result<Vec<_>, EditError>>()?;
+    let plan = connection.session.plan_mass_edit(&targets, &operations)?;
     let id = connection.fresh_id();
     let preview = MassPreview {
         id,
@@ -798,14 +846,14 @@ fn plan_mass_edit(
 /// Writes the mass edit previewed as `id`, exactly as it was shown: each change only while
 /// the game still holds the value it was planned from. The changes are logged as one batch.
 #[tauri::command]
-fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, String> {
-    let mut guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     let pending = match connection.mass.take() {
         Some(pending) if pending.id == id => pending,
         other => {
             connection.mass = other;
-            return Err("This preview is out of date. Preview the mass edit again.".to_owned());
+            return Err(Failure::new("mass.outOfDate", "This preview is out of date. Preview the mass edit again."));
         }
     };
     let fields: BTreeMap<String, Field> =
@@ -823,7 +871,7 @@ fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, St
                 uid: planned.uid,
                 name: planned.name,
                 field: planned.field,
-                error: err.to_string(),
+                error: err.into(),
             }),
         }
     }
@@ -833,9 +881,9 @@ fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, St
 /// Undoes every change of the mass edit `batch` that is not undone yet, newest first.
 /// Changes the game has changed since are left as they are and reported.
 #[tauri::command]
-fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, String> {
-    let mut guard = state.0.lock().map_err(text)?;
-    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     let ids: Vec<usize> = connection
         .log
         .iter()

@@ -3,7 +3,7 @@ import { call, inTauri } from "./api";
 import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
 import { forgetFieldTables } from "./fieldTables";
-import { describeGame, formatDate } from "./format";
+import { describeError, describeGame, formatDate } from "./format";
 import { GraphicsStatus } from "./GraphicsStatus";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { appText, changesText, clubListText, playerListText, staffListText } from "./labels";
@@ -223,7 +223,7 @@ function ConnectPanel(props: { detection: Detection | null; busy: boolean; onCon
         <p className="muted">{text.intro}</p>
 
         {detection && detection.games.length === 0 && <p className="hint">{text.notRunning}</p>}
-        {game && !game.info && <p className="hint error">{text.openFailed(game.error ?? "")}</p>}
+        {game && !game.info && <p className="hint error">{text.openFailed(describeError(game.error))}</p>}
         {game?.info && (
           <dl className="facts">
             <dt>{text.game}</dt>
