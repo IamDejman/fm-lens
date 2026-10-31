@@ -127,6 +127,9 @@ enum Command {
         /// Write the old value back afterwards and check it: tests a field without changing the save.
         #[arg(long)]
         restore: bool,
+        /// With --restore, how many seconds to wait before writing the old value back, to look at the game.
+        #[arg(long, default_value_t = 0)]
+        hold: u64,
     },
     /// Move a player to another club's senior team in the running game.
     Move {
@@ -144,6 +147,20 @@ enum Command {
         #[arg(long)]
         restore: bool,
         /// With --restore, how many seconds to wait before moving him back, to look at the game meanwhile.
+        #[arg(long, default_value_t = 0)]
+        hold: u64,
+    },
+    /// Show a player's current injuries, and with --heal heal them in the running game.
+    Heal {
+        /// The player's UID.
+        uid: u32,
+        /// Heal them: empty his list of current injuries.
+        #[arg(long)]
+        heal: bool,
+        /// With --heal, list them again afterwards and check it.
+        #[arg(long)]
+        restore: bool,
+        /// With --restore, how many seconds to wait before listing them again, to look at the game.
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
@@ -247,6 +264,28 @@ enum Command {
     },
     /// Read every team's player list and show how the game's allocator spaces their buffers.
     Squads,
+    /// Print the records the player's +0xF8 history holds (what looks like his injuries), for
+    /// the players of one club.
+    Injuries {
+        /// The club's UID.
+        club: u32,
+    },
+    /// Scan the player object for fields no layout names yet: u16 values in a range across all
+    /// players, pointer lists that only a few players have, and the values of one club's players.
+    Stats {
+        /// Smallest u16 value a candidate takes.
+        #[arg(long, default_value_t = 0)]
+        min: u16,
+        /// Largest u16 value a candidate takes.
+        #[arg(long, default_value_t = 10_000)]
+        max: u16,
+        /// Also print, for the players of the club with this UID, each candidate's value.
+        #[arg(long)]
+        club: Option<u32>,
+        /// Also list the pointers only some players have, marking those this player (UID) has.
+        #[arg(long)]
+        player: Option<u32>,
+    },
     /// Count the values one field holds across all players, with their average age and a few names: what
     /// codes a field uses, or which offset holds a value the game shows.
     Histogram {
@@ -349,7 +388,10 @@ fn run(cli: Cli) -> Result<()> {
         return graphics(root, &clubs);
     }
     let elevated = is_current_process_elevated();
-    let writes = matches!(cli.command, Some(Command::Set { .. } | Command::Move { .. } | Command::Swap { .. }));
+    let writes = matches!(
+        cli.command,
+        Some(Command::Set { .. } | Command::Move { .. } | Command::Swap { .. } | Command::Heal { heal: true, .. })
+    );
     let process = attach(cli.pid, elevated, writes)?;
     let json = cli.json.as_deref();
 
@@ -380,14 +422,18 @@ fn run(cli: Cli) -> Result<()> {
         Command::Get { entity, uid, fields } => {
             get(&Session::connect(process, ArraySource::ProfileFirst)?, entity.into(), uid, &fields)
         }
-        Command::Set { entity, uid, field, value, shown, restore } => {
+        Command::Set { entity, uid, field, value, shown, restore, hold } => {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
-            set(&session, entity.into(), uid, &field, &value, shown, restore)
+            set(&session, entity.into(), uid, &field, &value, shown, restore.then_some(hold))
         }
         Command::Move { uid, club, wage, expires, restore, hold } => {
             let expires = expires.as_deref().map(parse_iso_date).transpose()?.map(FmDate::to_number);
             let terms = MoveTerms { wage, expires };
             move_player(&Session::connect(process, ArraySource::ProfileFirst)?, uid, club, terms, restore, hold)
+        }
+        Command::Heal { uid, heal, restore, hold } => {
+            let restore_after = restore.then_some(hold);
+            heal_player(&Session::connect(process, ArraySource::ProfileFirst)?, uid, heal, restore_after)
         }
         Command::Swap { uid, other, restore } => {
             swap_players(&Session::connect(process, ArraySource::ProfileFirst)?, uid, other, restore)
@@ -419,6 +465,10 @@ fn run(cli: Cli) -> Result<()> {
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
         }
         Command::Squads => squads(&Session::connect(process, ArraySource::ProfileFirst)?),
+        Command::Injuries { club } => injuries(&Session::connect(process, ArraySource::ProfileFirst)?, club),
+        Command::Stats { min, max, club, player } => {
+            stats(&Session::connect(process, ArraySource::ProfileFirst)?, min, max, club, player)
+        }
         Command::Histogram { offset, kind, contract, club, top } => {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             histogram(&session, parse_hex(&offset)?, kind, contract, club.as_deref(), top)
@@ -738,6 +788,173 @@ fn squads(session: &Session) -> Result<()> {
             if g == 0 { "-".to_owned() } else { g.to_string() },
             slack.join(" ")
         );
+    }
+    Ok(())
+}
+
+/// Prints, for each player of the club `club`, the records of the list his +0xF8 record
+/// starts with: a type pointer (+0x08), a team (+0x18), a date (+0x20), the word after it,
+/// two u16 (+0x28, +0x2A) and four bytes (+0x30).
+fn injuries(session: &Session, club: u32) -> Result<()> {
+    let process = &session.process;
+    let modules = list_modules(process.pid())?;
+    // How long the lists are across all plain players: an empty one would be a state the game itself makes.
+    let mut lengths: std::collections::BTreeMap<u64, usize> = std::collections::BTreeMap::new();
+    let mut without = 0;
+    for player in session.players()?.into_iter().filter(|p| p.shift == 0) {
+        let history = process.read_u64(player.address + 0xF8).unwrap_or(0);
+        if !is_user_pointer(history) {
+            without += 1;
+            continue;
+        }
+        let (begin, end) = (process.read_u64(history)?, process.read_u64(history + 8)?);
+        *lengths.entry(end.saturating_sub(begin) / 8).or_default() += 1;
+    }
+    println!("players without the record: {without}; with it, by list length: {lengths:?}");
+    let date = |raw: u32| -> String {
+        let (day, year) = ((raw & 0x1FF) as u16, (raw >> 16) as u16);
+        FmDate::from_raw(day, year)
+            .map_or_else(|| format!("{raw:#010x}"), |d| format!("{:04}-{:02}-{:02}", d.year, d.month, d.day))
+    };
+    for player in session.players()?.into_iter().filter(|p| p.club_uid == Some(club) && p.shift == 0) {
+        let history = process.read_u64(player.address + 0xF8)?;
+        if !is_user_pointer(history) {
+            continue;
+        }
+        let (begin, end) = (process.read_u64(history)?, process.read_u64(history + 8)?);
+        if !is_user_pointer(begin) || end <= begin || end - begin > 8 * 64 {
+            continue;
+        }
+        println!("{} (UID {})", player.name, player.uid);
+        for slot in (begin..end).step_by(8) {
+            let record = process.read_u64(slot)?;
+            let b = process.read_bytes(record, 0x38)?;
+            let u64_at = |o: usize| u64::from_le_bytes(b[o..o + 8].try_into().expect("8 bytes"));
+            let u32_at = |o: usize| u32::from_le_bytes(b[o..o + 4].try_into().expect("4 bytes"));
+            let u16_at = |o: usize| u16::from_le_bytes([b[o], b[o + 1]]);
+            println!(
+                "  {record:#x}: type {} team {:#x} date {} ({:#06x}) then {:#010x}; {} {}; bytes {:02x} {:02x} {:02x} {:02x}",
+                pointer_hint(u64_at(8), &modules),
+                u64_at(0x18),
+                date(u32_at(0x20)),
+                u16_at(0x20),
+                u32_at(0x24),
+                u16_at(0x28),
+                u16_at(0x2A),
+                b[0x30],
+                b[0x31],
+                b[0x32],
+                b[0x33]
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Scans the plain player objects (person block not shifted) for fields the layout does not
+/// name: u16 offsets whose every value lies in `min..=max` and that vary, and pointer pairs
+/// that hold a short list for a few players only.
+fn stats(session: &Session, min: u16, max: u16, club: Option<u32>, player: Option<u32>) -> Result<()> {
+    let process = &session.process;
+    let p = &session.layout.player;
+    let len = p.end() as usize;
+    let players: Vec<_> = session.players()?.into_iter().filter(|player| player.shift == 0).collect();
+    let mut objects = Vec::with_capacity(players.len());
+    for player in &players {
+        if let Ok(bytes) = process.read_bytes(player.address, len) {
+            objects.push((player, bytes));
+        }
+    }
+    let total = objects.len();
+    println!("{total} plain players, {len:#x} bytes each");
+
+    // u16 offsets in range for every player, with how many distinct values and their mean.
+    println!("u16 offsets with every value in {min}..={max}:");
+    println!("{:>8}  {:>9}  {:>8}  {:>8}  {:>8}", "offset", "distinct", "mean", "lowest", "highest");
+    let mut candidates = Vec::new();
+    for offset in (0..len - 1).step_by(2) {
+        let values: Vec<u16> = objects.iter().map(|(_, b)| u16::from_le_bytes([b[offset], b[offset + 1]])).collect();
+        if !values.iter().all(|v| (min..=max).contains(v)) {
+            continue;
+        }
+        let mut distinct = values.clone();
+        distinct.sort_unstable();
+        distinct.dedup();
+        // A constant is no live value, and a handful of values is a code, not an amount.
+        if distinct.len() < 20 {
+            continue;
+        }
+        let mean = values.iter().map(|&v| f64::from(v)).sum::<f64>() / total as f64;
+        println!(
+            "{offset:#8x}  {:>9}  {mean:>8.0}  {:>8}  {:>8}",
+            distinct.len(),
+            distinct[0],
+            distinct[distinct.len() - 1]
+        );
+        candidates.push(offset);
+    }
+
+    // Pointer pairs that hold a short list for some players and nothing for most.
+    println!("pointer pairs that hold a list for some players:");
+    for offset in (0..len - 15).step_by(8) {
+        let mut holding = 0;
+        let mut valid = 0;
+        for (_, b) in &objects {
+            let begin = u64::from_le_bytes(b[offset..offset + 8].try_into().expect("8 bytes"));
+            let end = u64::from_le_bytes(b[offset + 8..offset + 16].try_into().expect("8 bytes"));
+            if begin == end && (begin == 0 || is_user_pointer(begin)) {
+                valid += 1;
+            } else if is_user_pointer(begin) && end > begin && (end - begin).is_multiple_of(8) && end - begin <= 8 * 64
+            {
+                valid += 1;
+                holding += 1;
+            }
+        }
+        if valid == total && holding > 0 && holding < total / 2 {
+            // The best players among them, with the list's address and length, to look at with `dump`.
+            let mut holders: Vec<(u16, String)> = objects
+                .iter()
+                .filter_map(|(player, b)| {
+                    let begin = u64::from_le_bytes(b[offset..offset + 8].try_into().expect("8 bytes"));
+                    let end = u64::from_le_bytes(b[offset + 8..offset + 16].try_into().expect("8 bytes"));
+                    (end > begin).then(|| {
+                        let entry = format!("{} (UID {}, {begin:#x}, {})", player.name, player.uid, (end - begin) / 8);
+                        (player.current_ability, entry)
+                    })
+                })
+                .collect();
+            holders.sort_by_key(|(ability, _)| std::cmp::Reverse(*ability));
+            let best: Vec<String> = holders.into_iter().take(4).map(|(_, entry)| entry).collect();
+            println!("  {offset:#6x}: {holding} of {total} players hold a list; {}", best.join("; "));
+        }
+    }
+
+    // Single pointers that only some players have; the ones `player` has are marked.
+    if let Some(uid) = player {
+        let mine = objects.iter().find(|(p, _)| p.uid == uid).map(|(_, b)| b);
+        println!("pointers only some players have (* = player {uid} has one):");
+        for offset in (0..len - 7).step_by(8) {
+            let at = |b: &Vec<u8>| u64::from_le_bytes(b[offset..offset + 8].try_into().expect("8 bytes"));
+            let set = objects.iter().filter(|(_, b)| is_user_pointer(at(b))).count();
+            let null = objects.iter().filter(|(_, b)| at(b) == 0).count();
+            if set > 0 && set + null == total && set < total / 4 {
+                let marked = mine.is_some_and(|b| is_user_pointer(at(b)));
+                let value = mine.map_or(0, at);
+                println!(
+                    "  {} {offset:#6x}: {set} of {total} players; this player: {value:#x}",
+                    if marked { "*" } else { " " }
+                );
+            }
+        }
+    }
+
+    if let Some(club) = club {
+        println!("players of club {club} at the candidate offsets:");
+        for (player, b) in objects.iter().filter(|(player, _)| player.club_uid == Some(club)) {
+            let values: Vec<String> =
+                candidates.iter().map(|&o| format!("{o:#x}={}", u16::from_le_bytes([b[o], b[o + 1]]))).collect();
+            println!("  {:<24} {}", clip(&player.name, 24), values.join(" "));
+        }
     }
     Ok(())
 }
@@ -1353,6 +1570,7 @@ fn shown(field: &Field, stored: i64) -> String {
     match field.scale {
         Scale::Plain => stored.to_string(),
         Scale::Attribute => format!("{stored} ({})", field.scale.shown(stored)),
+        Scale::Percent => format!("{stored} ({}%)", field.scale.shown(stored)),
     }
 }
 
@@ -1434,7 +1652,7 @@ fn set(
     key: &str,
     value: &str,
     as_shown: bool,
-    restore: bool,
+    restore_after: Option<u64>,
 ) -> Result<()> {
     let (target, name) = find_target(session, entity, uid)?;
     let field = session.field(entity, key)?;
@@ -1453,7 +1671,11 @@ fn set(
         shown(&field, change.new),
         shown(&field, read)
     );
-    if restore {
+    if let Some(hold) = restore_after {
+        if hold > 0 {
+            println!("  restoring in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
         let back = session.revert(&target, &change)?;
         let read = session.read_field(&target, &field)?;
         ensure!(read == change.old, "{key} reads {read} after restoring {}", change.old);
@@ -1492,6 +1714,45 @@ fn move_player(session: &Session, uid: u32, club: u32, terms: MoveTerms, restore
         }
         session.undo_club_move(&done)?;
         ensure!(club_now("moved back to")? == Some(plan.from_club), "the player is not back at {from}");
+    }
+    Ok(())
+}
+
+fn heal_player(session: &Session, uid: u32, heal: bool, restore_after: Option<u64>) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let show = |label: &str| -> Result<usize> {
+        let injuries = session.injuries(player)?;
+        println!(
+            "{} (UID {uid}) {label}: {} current injur{}",
+            player.name,
+            injuries.len(),
+            if injuries.len() == 1 { "y" } else { "ies" }
+        );
+        for injury in &injuries {
+            println!(
+                "  {}: since {}, back between {} and {}",
+                injury.name.as_deref().unwrap_or("?"),
+                iso_date(injury.started),
+                iso_date(injury.back_soonest),
+                iso_date(injury.back_latest)
+            );
+        }
+        Ok(injuries.len())
+    };
+    let before = show("now")?;
+    if !heal {
+        return Ok(());
+    }
+    let done = session.apply_heal(&session.plan_heal(player)?)?;
+    ensure!(show("healed")? == 0, "he still has injuries");
+    if let Some(hold) = restore_after {
+        if hold > 0 {
+            println!("  listing them again in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
+        session.undo_heal(&done)?;
+        ensure!(show("restored")? == before, "his injuries are not all back");
     }
     Ok(())
 }

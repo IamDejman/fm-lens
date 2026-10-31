@@ -100,6 +100,8 @@ pub enum Scale {
     Plain,
     /// Stored 0–100, shown 1–20 (see [`crate::Attribute`]).
     Attribute,
+    /// Stored 0–10000, shown as a percentage 0–100.
+    Percent,
 }
 
 impl Scale {
@@ -108,6 +110,7 @@ impl Scale {
         match self {
             Scale::Plain => stored,
             Scale::Attribute => ((stored + 2) / 5).clamp(1, 20),
+            Scale::Percent => (stored + 50) / 100,
         }
     }
 
@@ -116,6 +119,7 @@ impl Scale {
         match self {
             Scale::Plain => shown,
             Scale::Attribute => shown * 5,
+            Scale::Percent => shown * 100,
         }
     }
 }
@@ -200,6 +204,11 @@ impl Field {
 
     fn attribute(mut self) -> Self {
         self.scale = Scale::Attribute;
+        self
+    }
+
+    fn percent(mut self) -> Self {
+        self.scale = Scale::Percent;
         self
     }
 
@@ -335,6 +344,10 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         field("international.goals", p.international_goals, Kind::U16, 0..=1_000),
         field("international.u21_caps", p.u21_caps, Kind::U8, 0..=255),
         field("international.u21_goals", p.u21_goals, Kind::U8, 0..=255),
+        // What the game changes every day: energy, match fitness and happiness.
+        field("condition", p.condition, Kind::U16, 0..=10_000).percent(),
+        field("match_sharpness", p.match_sharpness, Kind::U16, 0..=10_000).percent(),
+        field("happiness", p.happiness, Kind::U8, 0..=20),
     ];
     out.extend(crate::ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter()).filter_map(|key| {
         let offset = *p.attributes.get(*key)?;
@@ -916,6 +929,11 @@ mod tests {
         }
         assert_eq!(Scale::Attribute.shown(97), 19);
         assert_eq!(Scale::Plain.stored(15), 15);
+        for shown in 0..=100 {
+            assert_eq!(Scale::Percent.shown(Scale::Percent.stored(shown)), shown);
+        }
+        assert_eq!(Scale::Percent.shown(8865), 89);
+        assert_eq!(Scale::Percent.shown(6950), 70);
     }
 
     #[test]
@@ -951,9 +969,10 @@ mod tests {
         let players = fields(&layout, Entity::Player);
         // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
         // transfer and loan listing, which only players have.
+        // The 10 basic fields and the 3 live ones (condition, match sharpness, happiness).
         assert_eq!(
             players.len(),
-            10 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
+            10 + 3 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
         );
         assert!(!key(&players, "contract.squad_number").mass);
         assert!(key(&players, "contract.wage").mass);

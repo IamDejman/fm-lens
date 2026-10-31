@@ -25,6 +25,17 @@ person_block = 0x288
 person_block_shifts = [0x0, 0xF8]
 
 height = 0x22E            # u16, centimetres
+# Live values, 0..10000 (100.00%). Checked against the game's own words on the test save:
+# Matthijs de Ligt, injured, 3500 sharpness ("lacking match fitness"); Bruno Fernandes 6700
+# ("gaining match fitness"); both "fresh" at 8980 and 10000 condition.
+match_sharpness = 0x258   # u16; the game keeps it at 3500 or above
+condition = 0x25C         # u16, the energy the game shows
+# u8, 0..20. Arda Güler at 20 read "content" (Memnun) as his happiness in the game.
+happiness = 0x1F1
+# Pointer to the player's injury record, null for a player who was never injured. The record
+# starts with the list (begin, end, capacity) of his current injuries; a player who has got
+# over his injuries keeps the record with an empty list.
+injuries = 0xF8
 asking_price = 0x238      # i32, pounds; -1 when not set
 home_reputation = 0x25E   # u16
 current_reputation = 0x260
@@ -167,6 +178,15 @@ sports_science = 0x3F
 [staff.ratings]
 working_with_youngsters = 0x1C
 authority = 0x14
+
+# One current injury, from a player's list of them (see `injuries` above).
+[injury]
+kind = 0x08               # pointer to the kind of injury; its name, an FM string, is at kind+0x18
+team = 0x18               # the team he was with when it happened
+started = 0x20            # date
+longest = 0x28            # u16 days from `started` until he is back at the latest
+shortest = 0x2A           # u16 days until he is back at the soonest
+kind_name = 0x18
 
 [team]
 club = 0x30               # club pointer

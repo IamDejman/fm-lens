@@ -43,7 +43,7 @@ const LONGEST_LIST: u64 = 2_000;
 
 /// Bytes the editor writes at one address, with the bytes it expects to find there.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Patch {
+pub(crate) struct Patch {
     address: u64,
     before: Vec<u8>,
     after: Vec<u8>,
@@ -143,6 +143,8 @@ pub enum MoveError {
     NoRoom {
         players: u64,
     },
+    /// Healing asked for a player who has no current injury.
+    NotInjured,
     /// A contract term the editor does not write, such as an end date that has passed.
     OutOfRange {
         field: &'static str,
@@ -184,6 +186,7 @@ impl fmt::Display for MoveError {
                 "the club's squad list has no room for another player ({players} now), and the editor cannot \
                  make it bigger"
             ),
+            MoveError::NotInjured => f.write_str("the player has no injury to heal"),
             MoveError::OutOfRange { field, value, min, max } => {
                 write!(f, "{value} is not a valid {field}; it takes {min} to {max}")
             }
@@ -212,6 +215,7 @@ impl Coded for MoveError {
             MoveError::MenAndWomen => "move.menAndWomen",
             MoveError::NotListed => "move.notListed",
             MoveError::NoRoom { .. } => "move.noRoom",
+            MoveError::NotInjured => "heal.notInjured",
             MoveError::OutOfRange { .. } => "move.outOfRange",
             MoveError::Changed { .. } => "move.changed",
             MoveError::NotApplied { .. } => "move.notApplied",
@@ -302,10 +306,10 @@ fn removal_patches(list: &PointerList, index: usize, elements: &[u64], patches: 
 
 /// Collects the patches of a move, leaving out the ones that would change nothing.
 #[derive(Default)]
-struct Patches(Vec<Patch>);
+pub(crate) struct Patches(pub(crate) Vec<Patch>);
 
 impl Patches {
-    fn push(&mut self, address: u64, before: impl Into<Vec<u8>>, after: impl Into<Vec<u8>>) {
+    pub(crate) fn push(&mut self, address: u64, before: impl Into<Vec<u8>>, after: impl Into<Vec<u8>>) {
         let (before, after) = (before.into(), after.into());
         if before != after {
             self.0.push(Patch { address, before, after });
@@ -546,17 +550,7 @@ impl Session {
     /// Writes a planned move. Every write lands only on the bytes the plan found, and is
     /// read back; when one fails, the ones before it are put back.
     pub fn apply_club_move(&self, plan: &MovePlan) -> Result<ClubMove, MoveError> {
-        for patch in &plan.patches {
-            self.expect(patch.address, &patch.before)?;
-        }
-        for (i, patch) in plan.patches.iter().enumerate() {
-            if let Err(err) = self.write_patch(patch.address, &patch.before, &patch.after) {
-                for done in plan.patches[..i].iter().rev() {
-                    let _ = self.write_patch(done.address, &done.after, &done.before);
-                }
-                return Err(err);
-            }
-        }
+        self.apply_patches(&plan.patches)?;
         let MovePlan { player, from_club, to_club, other, ref patches } = *plan;
         Ok(ClubMove { player, from_club, to_club, other, patches: patches.clone() })
     }
@@ -564,12 +558,35 @@ impl Session {
     /// Moves the player back as he was, provided memory still holds everything the move
     /// wrote. When a write fails, the ones already undone are written again.
     pub fn undo_club_move(&self, done: &ClubMove) -> Result<(), MoveError> {
-        for patch in &done.patches {
+        self.undo_patches(&done.patches)
+    }
+
+    /// Writes `patches` in order, each over the bytes it expects, after checking them all;
+    /// when one fails, the ones before it are put back.
+    pub(crate) fn apply_patches(&self, patches: &[Patch]) -> Result<(), MoveError> {
+        for patch in patches {
+            self.expect(patch.address, &patch.before)?;
+        }
+        for (i, patch) in patches.iter().enumerate() {
+            if let Err(err) = self.write_patch(patch.address, &patch.before, &patch.after) {
+                for done in patches[..i].iter().rev() {
+                    let _ = self.write_patch(done.address, &done.after, &done.before);
+                }
+                return Err(err);
+            }
+        }
+        Ok(())
+    }
+
+    /// Writes back what `patches` found, in reverse order, provided memory still holds all
+    /// they wrote; when a write fails, the ones already undone are written again.
+    pub(crate) fn undo_patches(&self, patches: &[Patch]) -> Result<(), MoveError> {
+        for patch in patches {
             self.expect(patch.address, &patch.after)?;
         }
-        for (i, patch) in done.patches.iter().enumerate().rev() {
+        for (i, patch) in patches.iter().enumerate().rev() {
             if let Err(err) = self.write_patch(patch.address, &patch.after, &patch.before) {
-                for redo in &done.patches[i + 1..] {
+                for redo in &patches[i + 1..] {
                     let _ = self.write_patch(redo.address, &redo.before, &redo.after);
                 }
                 return Err(err);

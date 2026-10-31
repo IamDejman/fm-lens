@@ -50,6 +50,22 @@ impl FmDate {
         i64::from(self.year) * 10_000 + i64::from(self.month) * 100 + i64::from(self.day)
     }
 
+    /// The date `days` after this one (before it, for a negative count).
+    pub fn plus_days(self, days: i64) -> Self {
+        let mut year = self.year;
+        let mut day = i64::from(self.day_of_year()) + days;
+        let year_length = |year: u16| if is_leap(year) { 366 } else { 365 };
+        while day > year_length(year) {
+            day -= year_length(year);
+            year += 1;
+        }
+        while day < 1 {
+            year -= 1;
+            day += year_length(year);
+        }
+        Self::from_raw(day as u16, year).expect("a day within its year")
+    }
+
     /// The date a number like 20290630 stands for, if it is a real one.
     pub fn from_number(number: i64) -> Option<Self> {
         let year = u16::try_from(number / 10_000).ok()?;
@@ -109,6 +125,17 @@ mod tests {
         assert_eq!(FmDate::from_number(20280229), date(2028, 2, 29));
         assert_eq!(FmDate::from_number(0), None);
         assert_eq!(FmDate::from_number(20291301), None);
+    }
+
+    #[test]
+    fn adds_days_across_years() {
+        // Matthijs de Ligt's injury on the test save: 30 Nov 2025, back after 265 to 295 days.
+        let started = FmDate { year: 2025, month: 11, day: 30 };
+        assert_eq!(started.plus_days(265), FmDate { year: 2026, month: 8, day: 22 });
+        assert_eq!(started.plus_days(295), FmDate { year: 2026, month: 9, day: 21 });
+        assert_eq!(started.plus_days(0), started);
+        assert_eq!(FmDate { year: 2028, month: 2, day: 28 }.plus_days(1), FmDate { year: 2028, month: 2, day: 29 });
+        assert_eq!(FmDate { year: 2026, month: 1, day: 1 }.plus_days(-1), FmDate { year: 2025, month: 12, day: 31 });
     }
 
     #[test]
