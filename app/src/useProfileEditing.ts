@@ -250,7 +250,9 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
       if (result.applied.length > 0) {
         onEdited();
       }
-      const problems = result.failed.map((failed) => editText.refused(fieldLabel(entity, failed.field), failed.error));
+      const problems = result.failed.map((failed) =>
+        editText.refused(fieldLabel(entity, failed.field), describeError(failed.error)),
+      );
       let values: FieldValues | null = null;
       try {
         values = await readValues(entity, uid);
@@ -260,7 +262,9 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
       if (!alive.current) {
         return;
       }
-      const refusals = Object.fromEntries(result.failed.map((failed) => [failed.field, failed.error] as const));
+      const refusals = Object.fromEntries(
+        result.failed.map((failed) => [failed.field, describeError(failed.error)] as const),
+      );
       const refusedKeys = Object.keys(refusals);
       // The inputs show the game's values again; the ones the game refused keep what was typed.
       setStart((old) => values ?? withWritten(old, result.applied));

@@ -22,6 +22,7 @@ use fmlibre_mem::{Process, is_user_pointer};
 use serde::Deserialize;
 
 use crate::clubs::ClubSummary;
+use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::edit::{Entity, Kind};
 use crate::players::PlayerSummary;
@@ -167,6 +168,46 @@ impl fmt::Display for MoveError {
 }
 
 impl std::error::Error for MoveError {}
+
+impl Coded for MoveError {
+    fn code(&self) -> &'static str {
+        match self {
+            MoveError::Moved { .. } => "move.moved",
+            MoveError::NotAClub { .. } => "move.notAClub",
+            MoveError::FreeAgent => "move.freeAgent",
+            MoveError::SameClub => "move.sameClub",
+            MoveError::OnLoan => "move.onLoan",
+            MoveError::PlayerCoach => "move.playerCoach",
+            MoveError::UnusualContract => "move.unusualContract",
+            MoveError::HumanClub => "move.humanClub",
+            MoveError::MenAndWomen => "move.menAndWomen",
+            MoveError::NotListed => "move.notListed",
+            MoveError::NoRoom { .. } => "move.noRoom",
+            MoveError::OutOfRange { .. } => "move.outOfRange",
+            MoveError::Changed { .. } => "move.changed",
+            MoveError::NotApplied { .. } => "move.notApplied",
+            MoveError::Memory(err) => err.code(),
+        }
+    }
+
+    fn params(&self) -> Vec<(&'static str, String)> {
+        match self {
+            MoveError::Moved { uid } | MoveError::NotAClub { uid } => vec![("uid", uid.to_string())],
+            MoveError::NoRoom { players } => vec![("players", players.to_string())],
+            MoveError::OutOfRange { field, value, min, max } => vec![
+                ("field", (*field).to_owned()),
+                ("value", value.to_string()),
+                ("min", min.to_string()),
+                ("max", max.to_string()),
+            ],
+            MoveError::Changed { address } | MoveError::NotApplied { address } => {
+                vec![("address", format!("{address:#x}"))]
+            }
+            MoveError::Memory(err) => err.params(),
+            _ => Vec::new(),
+        }
+    }
+}
 
 impl From<fmlibre_mem::Error> for MoveError {
     fn from(err: fmlibre_mem::Error) -> Self {

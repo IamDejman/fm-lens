@@ -13,6 +13,7 @@
 // language builds its sentences itself.
 
 import type { Entity, GraphicsCounts, MassOperationKind, MassPreview, PlayerSort, Storefront } from "../types";
+import { fieldName } from "./fieldNames";
 
 const numbers = new Intl.NumberFormat("en-GB");
 const percents = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
@@ -42,6 +43,30 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Star player",
   2: "Important player",
   5: "Impact sub",
+};
+
+/**
+ * Sentences for the failures of the Rust commands, by code (see `describeError` in format.ts). Each gets the values
+ * the failure names, its amounts and dates already written out; fields come as keys, which `fieldName` names. A code
+ * a dictionary leaves out shows the English message the command sent.
+ */
+export type ErrorTexts = Partial<Record<string, (params: Readonly<Record<string, string>>) => string>>;
+
+/** The name of the field a failure names. */
+const field = (key: string | undefined) => fieldName(en, key ?? "");
+
+/** The commands' own English is kept where it names no field. */
+const errors: ErrorTexts = {
+  "edit.unknownField": (p) => `There is no editable field “${p.field}” here.`,
+  "edit.outOfRange": (p) => `${p.value} is not a valid ${field(p.field)}: it takes ${p.min} to ${p.max}.`,
+  "edit.notADate": (p) => `${p.value} is not a date for ${field(p.field)}.`,
+  "edit.unsupported": (p) => `${field(p.field)} cannot be changed that way: ${p.reason}.`,
+  "edit.noRecord": (p) => `${field(p.field)} cannot be changed here: its record is missing or does not check out.`,
+  "edit.unset": (p) => `${field(p.field)} is not set in the game, so it was left alone.`,
+  "edit.implausible": (p) => `${field(p.field)} reads ${p.value}, which it cannot hold; it was left alone to be safe.`,
+  "edit.notApplied": (p) => `${field(p.field)}: wrote ${p.wrote} but read back ${p.read}.`,
+  "edit.conflict": (p) => `${field(p.field)} is now ${p.found}, not ${p.expected}: the game has changed it since.`,
+  "move.outOfRange": (p) => `${p.value} is not a valid ${field(p.field)}: it takes ${p.min} to ${p.max}.`,
 };
 
 export const en = {
@@ -933,6 +958,8 @@ export const en = {
       unknown: "Unknown store",
     } satisfies Record<Storefront, string>,
   },
+
+  errors,
 };
 
 /** What a dictionary has to provide. */

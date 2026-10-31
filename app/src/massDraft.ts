@@ -2,6 +2,7 @@
 
 import { valueText } from "./editDraft";
 import { numberFromIso, shownRange, storedValue } from "./editing";
+import { describeError } from "./format";
 import {
   editText,
   fieldLabel,
@@ -238,6 +239,6 @@ export function undoFailureLines(failed: BatchUndo["failed"], log: readonly Logg
   return failed.map(({ id, error }) => {
     const change = byId.get(id);
     const who = change ? `${change.name} · ${fieldLabel(change.entity, change.field)}` : massEditText.changeNumber(id);
-    return massEditText.undoFailure(who, error);
+    return massEditText.undoFailure(who, describeError(error));
   });
 }

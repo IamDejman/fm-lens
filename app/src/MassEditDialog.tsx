@@ -486,7 +486,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: Entity; scope: Mas
               <p>{text.applied(report.applied)}</p>
               <Problems
                 lines={report.failed.map((failed) =>
-                  text.failure(failed.name, fieldLabel(entity, failed.field), failed.error),
+                  text.failure(failed.name, fieldLabel(entity, failed.field), describeError(failed.error)),
                 )}
               />
             </>
@@ -729,7 +729,9 @@ function SkippedList({ entity, preview }: { entity: Entity; preview: MassPreview
                 <td className="name">{skipped.name}</td>
                 <td className="uid">{skipped.uid}</td>
                 <td>{fieldLabel(entity, skipped.field)}</td>
-                <td className="reason">{skipped.reason}</td>
+                <td className="reason">
+                  {describeError({ code: skipped.code, params: skipped.params, message: skipped.reason })}
+                </td>
               </tr>
             ))}
           </tbody>

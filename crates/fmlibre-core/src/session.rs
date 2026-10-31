@@ -5,6 +5,7 @@ use fmlibre_mem::{Module, PeImage, Process, find_processes, list_modules};
 
 use crate::calibrate::{EntityArrays, calibrate};
 use crate::clubs::{ClubDetails, ClubSummary, full_finance_class, read_club_details, read_clubs};
+use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::details::{PlayerDetails, read_player_details};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
@@ -48,6 +49,34 @@ impl fmt::Display for SessionError {
 }
 
 impl std::error::Error for SessionError {}
+
+impl Coded for SessionError {
+    fn code(&self) -> &'static str {
+        match self {
+            SessionError::NotRunning => "session.notRunning",
+            SessionError::NoSuchProcess(_) => "session.noSuchProcess",
+            SessionError::SeveralRunning(_) => "session.severalRunning",
+            SessionError::Memory(err) => err.code(),
+            SessionError::PluginNotLoaded => "session.pluginNotLoaded",
+            SessionError::UnsupportedEdition(Some(_)) => "session.unsupportedEdition",
+            SessionError::UnsupportedEdition(None) => "session.unknownEdition",
+            SessionError::PlayersNotFound => "session.playersNotFound",
+        }
+    }
+
+    fn params(&self) -> Vec<(&'static str, String)> {
+        match self {
+            SessionError::NoSuchProcess(pid) => vec![("pid", pid.to_string())],
+            SessionError::SeveralRunning(pids) => {
+                let pids: Vec<String> = pids.iter().map(u32::to_string).collect();
+                vec![("count", pids.len().to_string()), ("pids", pids.join(", "))]
+            }
+            SessionError::Memory(err) => err.params(),
+            SessionError::UnsupportedEdition(Some(edition)) => vec![("edition", edition.to_string())],
+            _ => Vec::new(),
+        }
+    }
+}
 
 impl From<fmlibre_mem::Error> for SessionError {
     fn from(err: fmlibre_mem::Error) -> Self {

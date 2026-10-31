@@ -11,6 +11,7 @@ import type {
   ClubSummary,
   ConnectionInfo,
   Detection,
+  Failure,
   FmDate,
   GameInfo,
   PlayerDetails,
@@ -399,6 +400,14 @@ function withWrittenClub(d: ClubDetails): ClubDetails {
   return d;
 }
 
+/** A failure the way the real commands report one (see `Failure`): its code, the values it names, and the English. */
+function failure(code: string, message: string, params: Record<string, string | number> = {}): Failure {
+  return { code, message, params: Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)])) };
+}
+
+/** The real commands' failure for a player, member of staff or club the lists do not have. */
+const notFound = (entity: Entity, uid: number) => failure("app.notFound", `No ${entity} with id ${uid}`, { entity, uid });
+
 /** The profile of the person or club, or an error like the real commands give. */
 function profileOf(entity: Entity, uid: number): PlayerDetails | StaffDetails | ClubDetails {
   const found =
@@ -408,7 +417,7 @@ function profileOf(entity: Entity, uid: number): PlayerDetails | StaffDetails | 
         ? staff.find((s) => s.uid === uid)
         : clubs.find((c) => c.uid === uid);
   if (!found) {
-    throw new Error(`No ${entity} with id ${uid}`);
+    throw notFound(entity, uid);
   }
   return entity === "player"
     ? details(found as PlayerSummary)
@@ -504,21 +513,26 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
   for (const edit of edits) {
     const field = fieldTable(entity).find((f) => f.key === edit.field);
     if (!field) {
-      report.failed.push({ ...edit, error: `${entity} has no editable field ${edit.field}` });
+      const message = `${entity} has no editable field ${edit.field}`;
+      report.failed.push({ ...edit, error: failure("edit.unknownField", message, { entity, field: edit.field }) });
       continue;
     }
     if (!Number.isInteger(edit.value) || edit.value < field.min || edit.value > field.max) {
-      report.failed.push({ ...edit, error: `${edit.value} is not a valid ${field.key}; it takes ${field.min} to ${field.max}` });
+      const message = `${edit.value} is not a valid ${field.key}; it takes ${field.min} to ${field.max}`;
+      const params = { field: field.key, value: edit.value, min: field.min, max: field.max };
+      report.failed.push({ ...edit, error: failure("edit.outOfRange", message, params) });
       continue;
     }
     if (field.kind === "date" && dateFromNumber(edit.value) === null) {
-      report.failed.push({ ...edit, error: `${edit.value} is not a date for ${field.key}` });
+      const message = `${edit.value} is not a date for ${field.key}`;
+      report.failed.push({ ...edit, error: failure("edit.notADate", message, { field: field.key, value: edit.value }) });
       continue;
     }
     const old: number | undefined = currentValues(entity, uid)[field.key];
     if (old === undefined) {
       // No contract, no contract end, or a club without full finances.
-      report.failed.push({ ...edit, error: `${field.key} cannot be changed here: its record is missing or does not check out` });
+      const message = `${field.key} cannot be changed here: its record is missing or does not check out`;
+      report.failed.push({ ...edit, error: failure("edit.noRecord", message, { field: field.key }) });
       continue;
     }
     if (old === edit.value) {
@@ -547,10 +561,10 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
 function undoChange(id: number): LoggedChange {
   const entry = changes.find((c) => c.id === id);
   if (!entry) {
-    throw new Error(`No change ${id}`);
+    throw failure("app.noChange", `No change ${id}`, { id });
   }
   if (entry.undoneAt !== null) {
-    throw new Error("This change has already been undone.");
+    throw failure("app.alreadyUndone", "This change has already been undone.");
   }
   if (entry.moved) {
     undoMove(entry);
@@ -559,7 +573,8 @@ function undoChange(id: number): LoggedChange {
   }
   const found = currentValues(entry.entity, entry.uid)[entry.field];
   if (found !== entry.new) {
-    throw new Error(`${entry.field} is now ${found}, not ${entry.new}; the game has changed it since`);
+    const message = `${entry.field} is now ${found}, not ${entry.new}; the game has changed it since`;
+    throw failure("edit.conflict", message, { field: entry.field, expected: entry.new, found: found ?? 0 });
   }
   writeValue(entry.entity, entry.uid, entry.field, entry.old);
   entry.undoneAt = Date.now();
@@ -582,34 +597,38 @@ function planMove(uid: number, clubUid: number, terms: MoveTerms): MovePreview {
   const player = players.find((p) => p.uid === uid);
   const to = clubs.find((c) => c.uid === clubUid);
   if (!player) {
-    throw new Error(`No player with id ${uid}`);
+    throw notFound("player", uid);
   }
   if (!to) {
-    throw new Error(`No club with id ${clubUid}`);
+    throw notFound("club", clubUid);
   }
+  const outOfRange = (field: string, value: number, min: number, max: number) =>
+    failure("move.outOfRange", `${value} is not a valid ${field}; it takes ${min} to ${max}`, { field, value, min, max });
   if (terms.wage !== undefined && (!Number.isInteger(terms.wage) || terms.wage < 0 || terms.wage > 10_000_000)) {
-    throw new Error(`${terms.wage} is not a valid contract.wage; it takes 0 to 10000000`);
+    throw outOfRange("contract.wage", terms.wage, 0, 10_000_000);
   }
   const tomorrow = numberFromDate(GAME_DATE) + 1;
   if (terms.expires !== undefined && (dateFromNumber(terms.expires) === null || terms.expires < tomorrow || terms.expires > 21001231)) {
-    throw new Error(`${terms.expires} is not a valid contract.expires; it takes ${tomorrow} to 21001231`);
+    throw outOfRange("contract.expires", terms.expires, tomorrow, 21001231);
   }
   if (player.clubUid === null) {
-    throw new Error("the player has no club; free agents cannot be moved yet");
+    throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
   }
   if (player.clubUid === clubUid) {
-    throw new Error("the player is at this club already");
+    throw failure("move.sameClub", "the player is at this club already");
   }
   if (staff.some((s) => s.isHuman && s.clubUid === player.clubUid)) {
-    throw new Error(
+    throw failure(
+      "move.humanClub",
       "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
     );
   }
   if (to.women) {
-    throw new Error("one club is a men's club and the other a women's club");
+    throw failure("move.menAndWomen", "one club is a men's club and the other a women's club");
   }
   if (clubUid === FULL_CLUB) {
-    throw new Error("the club's squad list has no room for another player (36 now), and the editor cannot make it bigger");
+    const message = "the club's squad list has no room for another player (36 now), and the editor cannot make it bigger";
+    throw failure("move.noRoom", message, { players: 36 });
   }
   const from = clubs.find((c) => c.uid === player.clubUid)!;
   return { from: { uid: from.uid, name: from.name }, to: { uid: to.uid, name: to.name } };
@@ -655,7 +674,7 @@ function undoMove(entry: LoggedChange): void {
   const player = players.find((p) => p.uid === entry.uid);
   const before = moveUndo.get(entry.id);
   if (!player || !before || player.clubUid !== entry.new) {
-    throw new Error("the game has changed the player's club since; reload and try again");
+    throw failure("move.changed", "the game has changed the player's club since; reload and try again");
   }
   Object.assign(player, before.row);
   if (before.written) {
@@ -717,23 +736,25 @@ function operate(field: EditField, operation: MassOperationKind, old: number): n
 /** `plan_mass_edit`, with the real command's checks and messages. */
 function planMass(entity: Entity, query: string, filters: MassFilters, operations: MassOperation[]): MassPreview {
   if (operations.length === 0) {
-    throw new Error("Choose at least one field to change.");
+    throw failure("mass.noOperations", "Choose at least one field to change.");
   }
   const targets = selectTargets(entity, query, filters);
   if (targets.length > MASS_LIMIT) {
-    throw new Error(`${targets.length} match. Narrow the search or the filters to ${MASS_LIMIT} or fewer for a mass edit.`);
+    const message = `${targets.length} match. Narrow the search or the filters to ${MASS_LIMIT} or fewer for a mass edit.`;
+    throw failure("mass.tooMany", message, { count: targets.length, limit: MASS_LIMIT });
   }
   const table = fieldTable(entity);
   const ops = operations.map(({ field: key, operation }) => {
     const field = table.find((f) => f.key === key);
     if (!field) {
-      throw new Error(`${entity} has no editable field ${key}`);
+      throw failure("edit.unknownField", `${entity} has no editable field ${key}`, { entity, field: key });
     }
     if (operation.op === "set" && (operation.value < field.min || operation.value > field.max)) {
-      throw new Error(`${operation.value} is not a valid ${key}; it takes ${field.min} to ${field.max}`);
+      const message = `${operation.value} is not a valid ${key}; it takes ${field.min} to ${field.max}`;
+      throw failure("edit.outOfRange", message, { field: key, value: operation.value, min: field.min, max: field.max });
     }
     if (operation.op !== "set" && field.kind === "date") {
-      throw new Error(`${key}: a date can only be set`);
+      throw failure("edit.unsupported", `${key}: a date can only be set`, { field: key, reason: "a date can only be set" });
     }
     return { field, operation };
   });
@@ -746,7 +767,8 @@ function planMass(entity: Entity, query: string, filters: MassFilters, operation
     for (const { field, operation } of ops) {
       const old: number | undefined = values[field.key];
       if (old === undefined) {
-        skipped.push({ uid, name, field: field.key, reason: `${field.key} cannot be changed here: its record is missing or does not check out` });
+        const reason = `${field.key} cannot be changed here: its record is missing or does not check out`;
+        skipped.push({ uid, name, field: field.key, reason, code: "edit.noRecord", params: { field: field.key } });
         continue;
       }
       const value = operate(field, operation, old);
@@ -773,7 +795,7 @@ function planMass(entity: Entity, query: string, filters: MassFilters, operation
 /** `apply_mass_edit`: the previewed changes, each only while the value is still the one previewed. */
 function applyMass(id: number): MassReport {
   if (!pendingMass || pendingMass.id !== id) {
-    throw new Error("This preview is out of date. Preview the mass edit again.");
+    throw failure("mass.outOfDate", "This preview is out of date. Preview the mass edit again.");
   }
   const { entity, planned } = pendingMass;
   pendingMass = null;
@@ -782,7 +804,9 @@ function applyMass(id: number): MassReport {
   for (const change of planned) {
     const found = currentValues(entity, change.uid)[change.field];
     if (found !== change.old) {
-      report.failed.push({ ...change, error: `${change.field} is now ${found}, not ${change.old}; the game has changed it since` });
+      const message = `${change.field} is now ${found}, not ${change.old}; the game has changed it since`;
+      const params = { field: change.field, expected: change.old, found: found ?? 0 };
+      report.failed.push({ ...change, error: failure("edit.conflict", message, params) });
       continue;
     }
     writeValue(entity, change.uid, change.field, change.new);
@@ -803,7 +827,8 @@ function undoMassBatch(batch: number): BatchUndo {
       undoChange(entry.id);
       report.undone++;
     } catch (e) {
-      report.failed.push({ id: entry.id, error: e instanceof Error ? e.message : String(e) });
+      // `undoChange` fails the way the real command does, with a failure.
+      report.failed.push({ id: entry.id, error: e as Failure });
     }
   }
   return report;
@@ -986,7 +1011,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const uid = Number(args?.uid);
       const club = clubs.find((c) => c.uid === uid);
       if (!club) {
-        throw new Error(`No club with UID ${uid}`);
+        throw notFound("club", uid);
       }
       return clubDetails(club) as T;
     }
@@ -1006,7 +1031,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const uid = Number(args?.uid);
       const member = staff.find((s) => s.uid === uid);
       if (!member) {
-        throw new Error(`No member of staff with id ${uid}`);
+        throw notFound("staff", uid);
       }
       return staffDetails(member) as T;
     }
@@ -1014,7 +1039,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const uid = Number(args?.uid);
       const player = players.find((p) => p.uid === uid);
       if (!player) {
-        throw new Error(`No player with UID ${uid}`);
+        throw notFound("player", uid);
       }
       return details(player) as T;
     }

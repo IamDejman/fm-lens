@@ -11,6 +11,7 @@ use fmlibre_mem::is_user_pointer;
 use serde::{Deserialize, Serialize};
 
 use crate::clubs::{ClubSummary, finances_look_real};
+use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::details::{PERSONALITY, POSITIONS};
 use crate::players::PlayerSummary;
@@ -473,6 +474,48 @@ impl fmt::Display for EditError {
 }
 
 impl std::error::Error for EditError {}
+
+impl Coded for EditError {
+    fn code(&self) -> &'static str {
+        match self {
+            EditError::UnknownField { .. } => "edit.unknownField",
+            EditError::OutOfRange { .. } => "edit.outOfRange",
+            EditError::NotADate { .. } => "edit.notADate",
+            EditError::Unsupported { .. } => "edit.unsupported",
+            EditError::Moved { .. } => "edit.moved",
+            EditError::NoRecord { .. } => "edit.noRecord",
+            EditError::Unset { .. } => "edit.unset",
+            EditError::Implausible { .. } => "edit.implausible",
+            EditError::NotApplied { .. } => "edit.notApplied",
+            EditError::Conflict { .. } => "edit.conflict",
+            EditError::Memory(err) => err.code(),
+        }
+    }
+
+    fn params(&self) -> Vec<(&'static str, String)> {
+        let field = |key: &String| ("field", key.clone());
+        let number = |name: &'static str, value: &i64| (name, value.to_string());
+        match self {
+            EditError::UnknownField { entity, key } => vec![("entity", entity.to_string()), field(key)],
+            EditError::OutOfRange { field: key, value, min, max } => {
+                vec![field(key), number("value", value), number("min", min), number("max", max)]
+            }
+            EditError::NotADate { field: key, value } | EditError::Implausible { field: key, value } => {
+                vec![field(key), number("value", value)]
+            }
+            EditError::Unsupported { field: key, reason } => vec![field(key), ("reason", (*reason).to_owned())],
+            EditError::Moved { entity, uid } => vec![("entity", entity.to_string()), ("uid", uid.to_string())],
+            EditError::NoRecord { field: key } | EditError::Unset { field: key } => vec![field(key)],
+            EditError::NotApplied { field: key, wrote, read } => {
+                vec![field(key), number("wrote", wrote), number("read", read)]
+            }
+            EditError::Conflict { field: key, expected, found } => {
+                vec![field(key), number("expected", expected), number("found", found)]
+            }
+            EditError::Memory(err) => err.params(),
+        }
+    }
+}
 
 impl From<fmlibre_mem::Error> for EditError {
     fn from(err: fmlibre_mem::Error) -> Self {
