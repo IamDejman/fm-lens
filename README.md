@@ -15,6 +15,8 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 >   undoes them.
 > - **Many at once:** a mass edit changes every player, member of staff or club the
 >   list selects. It is previewed before it is applied and undone as one batch.
+>
+> The interface is in English and Turkish.
 
 ## Goals
 

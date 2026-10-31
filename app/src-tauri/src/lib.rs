@@ -44,6 +44,21 @@ impl Connection {
         Ok(Self { session, players, staff, clubs, log, mass: None, next_id })
     }
 
+    /// What the window shows about the connection; `load_ms` is how long reading took.
+    fn info(&self, load_ms: u128) -> ConnectionInfo {
+        ConnectionInfo {
+            game: self.session.game.clone(),
+            profile: self.session.profile.as_ref().map(|p| p.name.clone()),
+            arrays: self.session.arrays.clone(),
+            players: self.players.len(),
+            staff: self.staff.len(),
+            clubs: self.clubs.len(),
+            game_date: self.session.game_date(),
+            load_ms,
+            editable: self.session.process.can_write(),
+        }
+    }
+
     fn fresh_id(&mut self) -> u32 {
         self.next_id += 1;
         self.next_id - 1
@@ -330,19 +345,18 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
     .await
     .map_err(text)??;
 
-    let info = ConnectionInfo {
-        game: connection.session.game.clone(),
-        profile: connection.session.profile.as_ref().map(|p| p.name.clone()),
-        arrays: connection.session.arrays.clone(),
-        players: connection.players.len(),
-        staff: connection.staff.len(),
-        clubs: connection.clubs.len(),
-        game_date: connection.session.game_date(),
-        load_ms: started.elapsed().as_millis(),
-        editable: connection.session.process.can_write(),
-    };
+    let info = connection.info(started.elapsed().as_millis());
     *state.0.lock().map_err(text)? = Some(connection);
     Ok(info)
+}
+
+/// The connection made before, if the app is still attached, without reading the game
+/// again: lets the window pick it up after a reload (e.g. to change the language) with
+/// the lists and the change log as they were.
+#[tauri::command]
+fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInfo>, String> {
+    let guard = state.0.lock().map_err(text)?;
+    Ok(guard.as_ref().map(|connection| connection.info(0)))
 }
 
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails.
@@ -635,6 +649,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             detect_game,
             connect,
+            current_connection,
             reload,
             search_players,
             search_staff,

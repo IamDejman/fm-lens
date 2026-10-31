@@ -1,10 +1,11 @@
 import type { CSSProperties } from "react";
+import { profileText } from "./labels";
 
 /** Current or potential ability (1–200) with a bar; negative potentials are ranges. */
 export function Ability({ value }: { value: number }) {
   if (value < 0) {
     return (
-      <span className="ability range" title="Potential set as a range">
+      <span className="ability range" title={profileText.potentialRange}>
         {value}
       </span>
     );

@@ -1,7 +1,7 @@
 // What the inputs of an edit session hold and what Apply would write. No React here: the components only draw it.
 
 import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
-import { formatDate, formatPounds } from "./format";
+import { formatDate, formatNumber, formatPounds } from "./format";
 import { editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
 
@@ -50,7 +50,7 @@ export function valueText(field: EditField | undefined, shown: number): string {
       // FM stores a negative transfer budget when the board has not set one.
       return field.key === "finance.transfer_budget" && shown < 0 ? profileText.notSet : formatPounds(shown);
     default:
-      return shown.toLocaleString();
+      return formatNumber(shown);
   }
 }
 

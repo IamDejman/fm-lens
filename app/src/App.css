@@ -193,10 +193,63 @@ nav small {
   font-size: 11px;
 }
 
+/* The foot of the sidebar: the note, and under it the language switch. */
+.sidebar-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+}
+
 .sidebar-note {
-  margin: auto 0 0;
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* "EN | TR": two buttons in one frame; the pressed one is the language in use. */
+.language-switch {
+  display: inline-flex;
+  align-self: flex-start;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.language-switch button {
+  min-width: 40px;
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.language-switch button + button {
+  border-left: 1px solid var(--border);
+}
+
+/* The accent border every button gets on hover would colour the divider only: the buttons share one frame. */
+.language-switch button:hover:not(:disabled) {
+  border-color: var(--border);
+}
+
+.language-switch button:hover:not(:disabled, [aria-pressed="true"]) {
+  background: var(--raised);
+  color: var(--text);
+}
+
+.language-switch button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+.language-switch button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .main {
