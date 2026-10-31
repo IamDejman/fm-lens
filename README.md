@@ -76,6 +76,11 @@ published builds yet.
 `npm run dev` in `app/` serves the interface in a plain browser with made-up sample
 players, for working on the UI without the game.
 
+The app reads graphics packs from
+`Documents\Sports Interactive\Football Manager 27\graphics`. If FM keeps its user
+data somewhere else, set the environment variable `FMLIBRE_GRAPHICS` to that
+graphics folder before starting the app.
+
 ## Using the probe
 
 Start FM27, load a save, then run:

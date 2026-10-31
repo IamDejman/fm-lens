@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -13,6 +14,10 @@ use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
 
 const NOT_CONNECTED: &str = "Not connected to the game";
+
+/// The environment variable that names the graphics folder to read packs from, instead of
+/// `Documents\Sports Interactive\Football Manager 27\graphics`.
+const GRAPHICS_FOLDER: &str = "FMLIBRE_GRAPHICS";
 
 /// The connected game, the people read from it and the changes written this session.
 struct Connection {
@@ -722,8 +727,12 @@ pub fn run() {
         .manage(AppState::default())
         .manage(Graphics::default())
         .setup(|app| {
-            // Reading the packs' config files takes a moment: do it beside the window.
-            let root = app.path().document_dir().ok().map(|documents| GraphicsIndex::default_root(&documents, 27));
+            // Reading the packs' config files takes a moment: do it beside the window. FM can keep its user
+            // data somewhere else than the documents folder, so GRAPHICS_FOLDER can name the graphics folder.
+            let root = match std::env::var_os(GRAPHICS_FOLDER) {
+                Some(folder) => Some(PathBuf::from(folder)),
+                None => app.path().document_dir().ok().map(|documents| GraphicsIndex::default_root(&documents, 27)),
+            };
             let graphics = app.state::<Graphics>().0.clone();
             std::thread::spawn(move || {
                 let index = root.map_or_else(GraphicsIndex::default, |root| GraphicsIndex::scan(&root));
