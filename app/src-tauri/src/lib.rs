@@ -4,7 +4,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, Entity, EntityArrays, Field, FmDate, GAME_EXE,
-    GAME_PLUGIN, GameInfo, Listed, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session,
+    GAME_PLUGIN, GameInfo, Kind, Listed, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session,
     StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -30,11 +30,12 @@ impl Connection {
         Ok(Self { session, players, staff, clubs, log })
     }
 
-    /// Where the player or member of staff with `uid` lives in the game, and their name.
+    /// Where the player, member of staff or club with `uid` lives in the game, and its name.
     fn target(&self, entity: Entity, uid: u32) -> Result<(Target, String), String> {
         match entity {
             Entity::Player => self.players.get(uid).map(|p| (p.target(), p.name.clone())),
             Entity::Staff => self.staff.get(uid).map(|s| (s.target(), s.name.clone())),
+            Entity::Club => self.clubs.get(uid).map(|c| (c.target(), c.name.clone())),
         }
         .ok_or_else(|| format!("No {entity} with id {uid}"))
     }
@@ -44,6 +45,7 @@ impl Connection {
         match change.entity {
             Entity::Player => self.players.update(change.uid, |p| p.note_change(&change.field, value)),
             Entity::Staff => self.staff.update(change.uid, |s| s.note_change(&change.field, value)),
+            Entity::Club => self.clubs.update(change.uid, |c| c.note_change(&change.field, value)),
         };
     }
 }
@@ -323,7 +325,9 @@ fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>,
     Ok(connection.session.fields(entity))
 }
 
-/// The value of every editable field of one player or member of staff, as stored, read now.
+/// The value of every field of one player, member of staff or club that can be edited
+/// now, as stored, read now. Fields without their record (no contract, a club without
+/// full finances) and dates the game has not set are left out.
 #[tauri::command]
 fn read_values(state: State<'_, AppState>, entity: Entity, uid: u32) -> Result<BTreeMap<String, i64>, String> {
     let guard = state.0.lock().map_err(text)?;
@@ -331,7 +335,14 @@ fn read_values(state: State<'_, AppState>, entity: Entity, uid: u32) -> Result<B
     let (target, _) = connection.target(entity, uid)?;
     let fields = connection.session.fields(entity);
     let values = connection.session.read_fields(&target, &fields).map_err(text)?;
-    Ok(fields.into_iter().map(|field| field.key).zip(values).collect())
+    Ok(fields
+        .into_iter()
+        .zip(values)
+        .filter_map(|(field, value)| {
+            let value = value.filter(|&value| field.is_plausible(value))?;
+            (field.kind != Kind::Date || value != 0).then_some((field.key, value))
+        })
+        .collect())
 }
 
 /// Writes `edits` (values as stored) to one player or member of staff. Each edit is

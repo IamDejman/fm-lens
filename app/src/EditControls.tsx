@@ -1,16 +1,18 @@
 // What editing draws: the inputs, the Edit button, the bar under a profile, and the groups only editing has.
 
 import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
-import type { Pending } from "./editDraft";
+import { valueText, type Pending } from "./editDraft";
+import { isoFromNumber } from "./editing";
 import { changesText, editText, fieldLabel, POSITION_LABELS, valueChange } from "./labels";
 import { PITCH_ORDER } from "./PositionPitch";
 import type { Entity } from "./types";
 import { useEditableField, useEditSession, type ProfileEditing, type Report } from "./useProfileEditing";
 
 /**
- * The number input of an editable field, showing the value as the game shows it and taking the values it
- * takes. A changed input is outlined in the accent colour and says what it was; one that cannot be applied is
- * outlined as an error. Nothing while the profile is not being edited.
+ * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
+ * input, with the pound sign before it for an amount of money, or a date input (`YYYY-MM-DD`, with the calendar of
+ * the browser) for a date. A changed input is outlined in the accent colour and says what it was; one that cannot
+ * be applied is outlined as an error. Nothing while the profile is not being edited.
  */
 export function EditInput({ field }: { field: string }) {
   const session = useEditSession();
@@ -18,16 +20,20 @@ export function EditInput({ field }: { field: string }) {
   if (!session || !input) {
     return null;
   }
-  const { text, range, status, was, message } = input;
-  const title = [message, status !== "same" && editText.was(was.toLocaleString())].filter(Boolean).join(" · ");
-  return (
+  const { field: spec, text, range, status, was, message } = input;
+  const date = spec.kind === "date";
+  const title = [message, status !== "same" && editText.was(valueText(spec, was))].filter(Boolean).join(" · ");
+  // As wide as the longest value it takes, a minus sign included.
+  const digits = Math.max(String(range.min).length, String(range.max).length);
+  const control = (
     <input
-      type="number"
+      type={date ? "date" : "number"}
       className={status === "same" ? "edit-input" : `edit-input ${status}`}
-      style={{ "--digits": String(range.max).length } as CSSProperties}
-      min={range.min}
-      max={range.max}
-      step={1}
+      // A date input is as wide as the browser makes it.
+      style={date ? undefined : ({ "--digits": digits } as CSSProperties)}
+      min={date ? isoFromNumber(range.min) : range.min}
+      max={date ? isoFromNumber(range.max) : range.max}
+      step={date ? undefined : 1}
       value={text}
       readOnly={session.busy}
       aria-label={fieldLabel(session.entity, field)}
@@ -38,6 +44,16 @@ export function EditInput({ field }: { field: string }) {
       // A wheel turned over the focused input would change its value: let go of it, so the profile scrolls instead.
       onWheel={(e) => e.currentTarget.blur()}
     />
+  );
+  return spec.kind === "i32" ? (
+    <span className="edit-money">
+      <span className="edit-unit" aria-hidden="true">
+        {editText.pounds}
+      </span>
+      {control}
+    </span>
+  ) : (
+    control
   );
 }
 
@@ -185,7 +201,10 @@ function ReportText({ report }: { report: Report }) {
   );
 }
 
-/** What Apply would write, as "Finishing 17 → 20"; the hover text of an attribute has the stored values. */
+/**
+ * What Apply would write, as "Finishing 17 → 20", "Contract end 30 Jun 2029 → 30 Jun 2031" or "Balance £1,000 →
+ * £2,000"; the hover text of an attribute has the stored values.
+ */
 function ReviewList({ id, changes }: { id: string; changes: Pending[] }) {
   return (
     <ul id={id} className="edit-review" aria-label={editText.reviewList}>
@@ -195,7 +214,7 @@ function ReviewList({ id, changes }: { id: string; changes: Pending[] }) {
           title={field.scale === "attribute" ? changesText.stored(valueChange(wasStored, edit.value)) : undefined}
         >
           <span>{fieldLabel(field.entity, field.key)}</span>{" "}
-          <span className="edit-delta">{valueChange(was, now)}</span>
+          <span className="edit-delta">{valueChange(valueText(field, was), valueText(field, now))}</span>
         </li>
       ))}
     </ul>

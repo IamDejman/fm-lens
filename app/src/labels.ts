@@ -498,11 +498,11 @@ export const appText = {
 /** "No changes", "1 change", "3 changes". */
 const changeCount = (count: number) => (count === 0 ? "No changes" : count === 1 ? "1 change" : `${count} changes`);
 
-/** Editing a person: the Edit button, the inputs, and the footer under the profile. */
+/** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
 export const editText = {
   /** The button in the header of a profile that can be edited. */
   edit: "Edit",
-  editTitle: "Change this person's values in the game",
+  editTitle: "Change this profile's values in the game",
   /** Why editing did not start: the field table or the values could not be read. */
   startFailed: (reason: string) => `Could not start editing: ${reason}`,
   /** The group of current and potential ability, above the attributes. */
@@ -515,6 +515,12 @@ export const editText = {
   was: (value: string) => `was ${value}`,
   /** Hover text of an input that cannot be applied; `min` and `max` are the values it takes, as shown. */
   invalid: (min: number, max: number) => `Enter a whole number from ${min} to ${max}`,
+  /** The same for a date input; `from` and `to` are the earliest and the latest date it takes, as dates are shown. */
+  invalidDate: (from: string, to: string) => `Enter a date from ${from} to ${to}`,
+  /** The same for an amount of money, in whole pounds; `from` and `to` are the least and the most it takes. */
+  invalidMoney: (from: string, to: string) => `Enter a whole number of pounds from ${from} to ${to}`,
+  /** Before the input of an amount of money: the game stores pounds. */
+  pounds: "£",
 
   // The footer
   footer: "Editing",
@@ -557,16 +563,17 @@ export const changesText = {
     const count = changeCount(total);
     return undone === 0 ? count : `${count} · ${undone} undone`;
   },
-  empty: "No changes yet. Open a player or member of staff and choose Edit.",
+  empty: "No changes yet. Open a player, a member of staff or a club and choose Edit.",
   columns: {
     time: "Time",
-    person: "Person",
+    /** The player, member of staff or club the change was made to. */
+    name: "Name",
     field: "Field",
     change: "Change",
     status: "Status",
   },
   /** The small tag after a name. */
-  kinds: { player: "Player", staff: "Staff" } satisfies Record<Entity, string>,
+  kinds: { player: "Player", staff: "Staff", club: "Club" } satisfies Record<Entity, string>,
   /** Hover text of a change of an attribute: the values as stored; `change` is from `valueChange`. */
   stored: (change: string) => `stored ${change}`,
   undone: (time: string) => `Undone at ${time}`,
@@ -575,8 +582,13 @@ export const changesText = {
   undoTitle: (label: string) => `Write the old value of ${label} back to the game`,
 };
 
-/** "17 → 20": a value before and after a change, as shown. */
-export const valueChange = (from: number, to: number) => `${from.toLocaleString()} → ${to.toLocaleString()}`;
+const asText = (value: number | string) => (typeof value === "number" ? value.toLocaleString() : value);
+
+/**
+ * "17 → 20": a value before and after a change, as shown. A number gets the reader's thousands separators; text,
+ * such as a date or an amount of money already written out (see `valueText` in editDraft.ts), is used as it is.
+ */
+export const valueChange = (from: number | string, to: number | string) => `${asText(from)} → ${asText(to)}`;
 
 /** The text of `table` for `key`; nothing for a key the table lacks, however it is spelled (e.g. "constructor"). */
 function labelIn(table: object, key: string): string | undefined {
@@ -595,11 +607,24 @@ const FIELD_LABELS: Readonly<Record<string, string>> = {
   "international.goals": "International goals",
   "international.u21_caps": "U21 caps",
   "international.u21_goals": "U21 goals",
+  "contract.wage": "Wage per week",
+  "contract.expires": "Contract end",
+  // A club's own reputation, which has no home, current or world.
+  reputation: "Reputation",
+  "facilities.training": "Training facilities",
+  "facilities.youth_facilities": "Youth facilities",
+  "facilities.youth_coaching": "Youth coaching",
+  "facilities.youth_recruitment": "Youth recruitment",
+  "facilities.corporate": "Corporate facilities",
+  "finance.balance": "Balance",
+  "finance.transfer_budget": "Transfer budget",
+  "finance.wage_budget": "Wage budget",
+  "finance.total_wage_budget": "Total wage budget",
 };
 
 /**
  * The name of an editable field, from the key `edit_fields` gives it ("current_ability", "attribute.finishing",
- * "position.st", …). A key it does not know is returned as it is.
+ * "position.st", "contract.wage", "finance.balance", …). A key it does not know is returned as it is.
  */
 export function fieldLabel(entity: Entity, key: string): string {
   const fixed = labelIn(FIELD_LABELS, key);

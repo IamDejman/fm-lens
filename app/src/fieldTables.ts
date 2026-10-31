@@ -5,7 +5,10 @@ import type { EditField, Entity } from "./types";
 
 const tables = new Map<Entity, Promise<EditField[]>>();
 
-/** The editable fields of players or of staff. The table never changes during a connection, so it is fetched once. */
+/**
+ * The editable fields of players, of staff or of clubs. The table never changes during a connection, so it is
+ * fetched once.
+ */
 export function fieldTable(entity: Entity): Promise<EditField[]> {
   let table = tables.get(entity);
   if (table === undefined) {

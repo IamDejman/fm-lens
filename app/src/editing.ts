@@ -1,7 +1,7 @@
 // Editing: the Rust commands that change the game, and how stored values are shown.
 
 import { call } from "./api";
-import type { ApplyReport, EditField, Entity, FieldEdit, FieldValues, LoggedChange } from "./types";
+import type { ApplyReport, EditField, Entity, FieldEdit, FieldValues, FmDate, LoggedChange } from "./types";
 
 /** The fields of players or of staff the editor can change, in display order. */
 export const editFields = (entity: Entity) => call<EditField[]>("edit_fields", { entity });
@@ -40,4 +40,33 @@ export function shownRange(field: EditField): { min: number; max: number } {
  */
 export function editFor(field: EditField, stored: number, shown: number): FieldEdit | null {
   return shownValue(field, stored) === shown ? null : { field: field.key, value: storedValue(field, shown) };
+}
+
+/** The date a stored date value (a number like 20290630) stands for; null for 0 or anything that is not a date. */
+export function dateFromNumber(value: number): FmDate | null {
+  const year = Math.floor(value / 10_000);
+  const month = Math.floor(value / 100) % 100;
+  const day = value % 100;
+  const days = new Date(Date.UTC(year, month, 0)).getUTCDate(); // days in that month
+  return value > 0 && month >= 1 && month <= 12 && day >= 1 && day <= days ? { year, month, day } : null;
+}
+
+/** The stored value of a date: a number like 20290630. */
+export const numberFromDate = (date: FmDate): number => date.year * 10_000 + date.month * 100 + date.day;
+
+/** A stored date value as a date input holds it (`YYYY-MM-DD`); "" for 0 or anything that is not a date. */
+export function isoFromNumber(value: number): string {
+  const date = dateFromNumber(value);
+  const pad = (n: number, width = 2) => String(n).padStart(width, "0");
+  return date ? `${pad(date.year, 4)}-${pad(date.month)}-${pad(date.day)}` : "";
+}
+
+/** The stored date value of a date input's `YYYY-MM-DD`; null until it holds a whole, real date. */
+export function numberFromIso(text: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim());
+  if (!match) {
+    return null;
+  }
+  const value = Number(match[1]) * 10_000 + Number(match[2]) * 100 + Number(match[3]);
+  return dateFromNumber(value) ? value : null;
 }

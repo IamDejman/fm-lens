@@ -1,9 +1,10 @@
 use std::fmt;
+use std::sync::OnceLock;
 
 use fmlibre_mem::{Module, PeImage, Process, find_processes, list_modules};
 
 use crate::calibrate::{EntityArrays, calibrate};
-use crate::clubs::{ClubDetails, ClubSummary, read_club_details, read_clubs};
+use crate::clubs::{ClubDetails, ClubSummary, full_finance_class, read_club_details, read_clubs};
 use crate::date::FmDate;
 use crate::details::{PlayerDetails, read_player_details};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
@@ -85,6 +86,8 @@ pub struct Session {
     pub profile: Option<BuildProfile>,
     pub layout: Layout,
     pub arrays: EntityArrays,
+    /// The class of the full club finance record, found the first time it is needed.
+    finance_class: OnceLock<Option<u64>>,
 }
 
 impl Session {
@@ -104,7 +107,16 @@ impl Session {
         if arrays.players.is_none() {
             return Err(SessionError::PlayersNotFound);
         }
-        Ok(Self { process, game, plugin, fingerprint, profile, layout, arrays })
+        Ok(Self { process, game, plugin, fingerprint, profile, layout, arrays, finance_class: OnceLock::new() })
+    }
+
+    /// The class (vtable) of the full club finance record, the only one the budgets can be
+    /// written to; `None` when it cannot be told apart.
+    pub fn finance_class(&self) -> Option<u64> {
+        *self.finance_class.get_or_init(|| {
+            let array = self.arrays.clubs.as_ref()?;
+            full_finance_class(&self.process, &self.plugin, array, &self.layout)
+        })
     }
 
     /// The current in-game date, when it can be read and looks like a real date.

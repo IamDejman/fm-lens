@@ -1,6 +1,7 @@
 // Stand-ins for the Rust commands so the UI can be developed in a plain browser
 // (`npm run dev`) without the game or Tauri. Every player here is made up.
 
+import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
 import type {
   ApplyReport,
@@ -266,6 +267,17 @@ function fieldTable(entity: Entity): EditField[] {
   ];
   const reputation = ["home", "current", "world"].map((key) => field(`reputation.${key}`, "u16", 0, 10_000));
   const personality = PERSONALITY.map((key) => field(`personality.${key}`, "u8", 1, 20));
+  const contract = [field("contract.wage", "i32", 0, 10_000_000), field("contract.expires", "date", 20000101, 21001231)];
+  if (entity === "club") {
+    return [
+      field("reputation", "u16", 0, 10_000),
+      ...CLUB_FACILITIES.map((key) => field(`facilities.${key}`, "u8", 1, 20)),
+      field("finance.balance", "i32", -2_000_000_000, 2_000_000_000),
+      field("finance.transfer_budget", "i32", 0, 2_000_000_000),
+      field("finance.wage_budget", "i32", 0, 100_000_000),
+      field("finance.total_wage_budget", "i32", 0, 100_000_000),
+    ];
+  }
   if (entity === "player") {
     return [
       ...common,
@@ -279,6 +291,7 @@ function fieldTable(entity: Entity): EditField[] {
       // The game no longer plays a sweeper, so the real table leaves it out.
       ...POSITIONS.filter((key) => key !== "sw").map((key) => field(`position.${key}`, "u8", 1, 20)),
       ...personality,
+      ...contract,
     ];
   }
   return [
@@ -290,8 +303,20 @@ function fieldTable(entity: Entity): EditField[] {
         : field(`attribute.${key}`, "u8", 0, 100, "attribute"),
     ),
     ...personality,
+    ...contract,
   ];
 }
+
+/** The club facilities the editor changes, in the order of the real field table. */
+const CLUB_FACILITIES = ["training", "youth_facilities", "youth_coaching", "youth_recruitment", "corporate"];
+
+/** The finance fields' keys and the profile's names for them. */
+const FINANCE = {
+  balance: "balance",
+  transfer_budget: "transferBudget",
+  wage_budget: "wageBudget",
+  total_wage_budget: "totalWageBudget",
+} as const;
 
 /**
  * Values written through the editor that the generated profiles would not show, by `entity:uid` and field key.
@@ -324,70 +349,127 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
       case "international":
         (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
         break;
+      case "contract":
+        if (d.contract && name === "wage") {
+          d.contract.wage = value;
+        } else if (d.contract && name === "expires") {
+          d.contract.expires = dateFromNumber(value);
+        }
+        break;
     }
   }
   return d;
 }
 
-/** The person's profile, or an error like the real commands give. */
-function profileOf(entity: Entity, uid: number): PlayerDetails | StaffDetails {
-  if (entity === "player") {
-    const player = players.find((p) => p.uid === uid);
-    if (player) {
-      return details(player);
-    }
-  } else {
-    const member = staff.find((s) => s.uid === uid);
-    if (member) {
-      return staffDetails(member);
+/** A generated club profile with the values written through the editor on top. */
+function withWrittenClub(d: ClubDetails): ClubDetails {
+  for (const [key, value] of Object.entries(written.get(`club:${d.uid}`) ?? {})) {
+    const [group, name = ""] = key.split(".");
+    if (group === "facilities") {
+      d.facilities[name] = value;
+    } else if (group === "finance" && d.finances) {
+      d.finances[FINANCE[name as keyof typeof FINANCE]] = value;
     }
   }
-  throw new Error(`No ${entity} with id ${uid}`);
+  return d;
 }
 
-/** The stored value of every editable field, as `read_values` returns it. */
+/** The profile of the person or club, or an error like the real commands give. */
+function profileOf(entity: Entity, uid: number): PlayerDetails | StaffDetails | ClubDetails {
+  const found =
+    entity === "player"
+      ? players.find((p) => p.uid === uid)
+      : entity === "staff"
+        ? staff.find((s) => s.uid === uid)
+        : clubs.find((c) => c.uid === uid);
+  if (!found) {
+    throw new Error(`No ${entity} with id ${uid}`);
+  }
+  return entity === "player"
+    ? details(found as PlayerSummary)
+    : entity === "staff"
+      ? staffDetails(found as StaffSummary)
+      : clubDetails(found as ClubSummary);
+}
+
+/**
+ * The stored value of every field that can be edited now, as `read_values` returns it: like the real command it
+ * leaves out contract fields without a contract, a contract end that is not set, and a club's missing finances.
+ */
 function currentValues(entity: Entity, uid: number): FieldValues {
   const d = profileOf(entity, uid);
-  const value = (key: string): number => {
+  const person = d as PlayerDetails & StaffDetails;
+  const club = d as ClubDetails;
+  const value = (key: string): number | null | undefined => {
     const [group, name = ""] = key.split(".");
     switch (group) {
       case "current_ability":
-        return d.currentAbility;
+        return person.currentAbility;
       case "potential_ability":
-        return d.potentialAbility;
+        return person.potentialAbility;
       case "height":
-        return (d as PlayerDetails).heightCm;
+        return person.heightCm;
       case "reputation":
-        return d.reputation[name as "home" | "current" | "world"];
+        return entity === "club" ? club.reputation : person.reputation[name as "home" | "current" | "world"];
       case "international":
-        return (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]];
+        return person.international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]];
       case "attribute":
-        return d.attributes[name].raw;
+        return person.attributes[name].raw;
       case "position":
-        return (d as PlayerDetails).positionRatings[name];
+        return person.positionRatings[name];
       case "personality":
-        return d.personality[name];
+        return person.personality[name];
+      case "contract":
+        return name === "wage"
+          ? person.contract?.wage
+          : person.contract?.expires && numberFromDate(person.contract.expires);
+      case "facilities":
+        return club.facilities[name];
+      case "finance":
+        return club.finances?.[FINANCE[name as keyof typeof FINANCE]];
     }
     throw new Error(`No fixture value for ${key}`);
   };
-  return Object.fromEntries(fieldTable(entity).map((f) => [f.key, value(f.key)]));
+  return Object.fromEntries(
+    fieldTable(entity).flatMap((f) => {
+      const v = value(f.key);
+      return v === null || v === undefined ? [] : [[f.key, v]];
+    }),
+  );
 }
 
-/** Stores `value` as the game would: ability and positions in the list rows, the rest on top of the profiles. */
+/** Stores `value` as the game would: what the list rows show in them, the rest on top of the profiles. */
 function writeValue(entity: Entity, uid: number, key: string, value: number): void {
   const [group, name = ""] = key.split(".");
-  const row = entity === "player" ? players.find((p) => p.uid === uid) : staff.find((s) => s.uid === uid);
-  if (row && group === "current_ability") {
-    row.currentAbility = value;
-  } else if (row && group === "potential_ability") {
-    row.potentialAbility = value;
-  } else if (entity === "player" && group === "position") {
-    ratings[uid][name] = value;
-    (row as PlayerSummary).positions = playablePositions(ratings[uid]);
+  if (entity === "club") {
+    const club = clubs.find((c) => c.uid === uid);
+    if (club && key === "reputation") {
+      club.reputation = value;
+      return;
+    }
   } else {
-    const slot = `${entity}:${uid}`;
-    written.set(slot, { ...written.get(slot), [key]: value });
+    const row = entity === "player" ? players.find((p) => p.uid === uid) : staff.find((s) => s.uid === uid);
+    if (row && group === "current_ability") {
+      row.currentAbility = value;
+      return;
+    }
+    if (row && group === "potential_ability") {
+      row.potentialAbility = value;
+      return;
+    }
+    if (entity === "player" && group === "position") {
+      ratings[uid][name] = value;
+      (row as PlayerSummary).positions = playablePositions(ratings[uid]);
+      return;
+    }
+    if (entity === "player" && key === "contract.expires") {
+      // The list row has the contract end, and the profile builds its contract from the row.
+      (row as PlayerSummary).contractExpires = dateFromNumber(value);
+      return;
+    }
   }
+  const slot = `${entity}:${uid}`;
+  written.set(slot, { ...written.get(slot), [key]: value });
 }
 
 /** `apply_edits`: every edit is checked and written on its own, like the real command, with the same messages. */
@@ -404,7 +486,16 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
       report.failed.push({ ...edit, error: `${edit.value} is not a valid ${field.key}; it takes ${field.min} to ${field.max}` });
       continue;
     }
-    const old = currentValues(entity, uid)[field.key];
+    if (field.kind === "date" && dateFromNumber(edit.value) === null) {
+      report.failed.push({ ...edit, error: `${edit.value} is not a date for ${field.key}` });
+      continue;
+    }
+    const old: number | undefined = currentValues(entity, uid)[field.key];
+    if (old === undefined) {
+      // No contract, no contract end, or a club without full finances.
+      report.failed.push({ ...edit, error: `${field.key} cannot be changed here: its record is missing or does not check out` });
+      continue;
+    }
     if (old === edit.value) {
       continue;
     }
@@ -454,7 +545,7 @@ function clubDetails(club: ClubSummary): ClubDetails {
   const next = random(club.uid);
   const rating = () => Math.round(5 + next() * 15);
   const mix = [10, 35, 15, 20, 6, 14];
-  return {
+  return withWrittenClub({
     ...club,
     seasonTickets: Math.round(5000 + next() * 45000),
     socialMedia: Math.round(next() * 9_000_000),
@@ -474,7 +565,7 @@ function clubDetails(club: ClubSummary): ClubDetails {
           totalWageBudget: Math.round(1_200_000 + next() * 3_200_000),
           ticketPrice: Math.round(20 + next() * 60),
         },
-  };
+  });
 }
 
 /** A date as a number that orders like the date. */

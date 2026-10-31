@@ -1,6 +1,7 @@
 // The Changes view: everything written to the game this session, newest first, with an Undo for each change.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { valueText } from "./editDraft";
 import { changeLog, shownValue, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError, formatTime } from "./format";
@@ -40,14 +41,17 @@ export function useChangeLog() {
   return { log, error, reload, clear };
 }
 
-/** The editable fields of players and staff by `entity:key`, to turn stored values into shown ones; null until read. */
+/**
+ * The editable fields of players, staff and clubs by `entity:key`, to turn stored values into shown ones and to
+ * know what kind of value they are (a date, an amount of money); null until read.
+ */
 function useFieldIndex(): { fields: ReadonlyMap<string, EditField> | null; error: string | null } {
   const [fields, setFields] = useState<ReadonlyMap<string, EditField> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fieldTable("player"), fieldTable("staff")]).then(
+    Promise.all([fieldTable("player"), fieldTable("staff"), fieldTable("club")]).then(
       (tables) => {
         if (!cancelled) {
           setFields(new Map(tables.flat().map((field) => [`${field.entity}:${field.key}`, field] as const)));
@@ -131,7 +135,7 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
             <thead>
               <tr>
                 <th>{text.columns.time}</th>
-                <th>{text.columns.person}</th>
+                <th>{text.columns.name}</th>
                 <th>{text.columns.field}</th>
                 <th>{text.columns.change}</th>
                 <th>{text.columns.status}</th>
@@ -160,7 +164,10 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
 
 interface ChangeRowProps {
   change: LoggedChange;
-  /** The field's entry in the field table, for the conversion of its values; none when the table lacks it. */
+  /**
+   * The field's entry in the field table, for the conversion of its values and to tell a date or an amount of
+   * money from a plain number; none when the table lacks it.
+   */
   field: EditField | undefined;
   /** Why the last try to undo it failed. */
   failure: string | undefined;
@@ -186,12 +193,12 @@ function ChangeRow({ change, field, failure, undoing, onUndo }: ChangeRowProps) 
           <span className="tag kind">{text.kinds[change.entity]}</span>
         </div>
         <div className="sub uid">
-          {change.entity === "player" ? profileText.uid : profileText.id} {change.uid}
+          {change.entity === "staff" ? profileText.id : profileText.uid} {change.uid}
         </div>
       </td>
       <td>{label}</td>
       <td className="change-value" title={storedNote}>
-        {valueChange(shown(change.old), shown(change.new))}
+        {valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)))}
       </td>
       <td className="col-status">
         {change.undoneAt === null ? (

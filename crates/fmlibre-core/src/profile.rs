@@ -98,6 +98,8 @@ impl PlayerLayout {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ContractLayout {
+    /// Points back at the person block of the player or member of staff the contract belongs to.
+    pub owner: u64,
     pub wage: u64,
     pub signed: u64,
     pub expires: u64,
@@ -113,6 +115,7 @@ impl ContractLayout {
     /// One past the last byte of every contract field.
     pub fn end(&self) -> u64 {
         [
+            self.owner + 8,
             self.wage + 4,
             self.signed + 4,
             self.expires + 4,

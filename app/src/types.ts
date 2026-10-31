@@ -267,18 +267,22 @@ export interface PlayerDetails extends PlayerSummary {
   contract: Contract | null;
 }
 
-/** Whom an edit is for. */
-export type Entity = "player" | "staff";
+/** What an edit is for. */
+export type Entity = "player" | "staff" | "club";
 
-/** A value of a player or member of staff that the editor can change, from `edit_fields`. */
+/** A value of a player, member of staff or club that the editor can change, from `edit_fields`. */
 export interface EditField {
   /**
-   * E.g. "current_ability", "potential_ability", "height", "reputation.home", "international.caps",
-   * "attribute.finishing", "position.st", "personality.ambition".
+   * People: "current_ability", "potential_ability", "height", "reputation.home", "international.caps",
+   * "attribute.finishing", "position.st", "personality.ambition", "contract.wage", "contract.expires".
+   * Clubs: "reputation", "facilities.training", "facilities.youth_facilities", "facilities.youth_coaching",
+   * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
+   * "finance.wage_budget", "finance.total_wage_budget".
    */
   key: string;
   entity: Entity;
-  kind: "u8" | "u16" | "i16";
+  /** "date": values are numbers like 20290630 (see `dateFromNumber` in editing.ts); "i32": money in pounds. */
+  kind: "u8" | "u16" | "i16" | "i32" | "date";
   /** "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "plain": shown as stored. */
   scale: "plain" | "attribute";
   /** Smallest stored value the editor writes. */
@@ -287,7 +291,10 @@ export interface EditField {
   max: number;
 }
 
-/** Field key → value as stored, from `read_values`. */
+/**
+ * Field key → value as stored, from `read_values`. Only fields that can be edited now are there: no contract
+ * fields without a contract, no contract end the game has not set, no finances for a club without full finances.
+ */
 export type FieldValues = Record<string, number>;
 
 /** One value to write, as stored. */
