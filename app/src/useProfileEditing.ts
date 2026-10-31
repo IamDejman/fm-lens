@@ -1,5 +1,5 @@
-// The state of editing one person's profile: the inputs, what Apply did, and the question asked before
-// changes are lost.
+// The state of editing one profile (a player's, a member of staff's or a club's): the inputs, what Apply did,
+// and the question asked before changes are lost.
 
 import {
   createContext,
@@ -28,7 +28,7 @@ export interface EditorState {
 
 export const EditorContext = createContext<EditorState>({ editable: false, onEdited: () => {} });
 
-/** The inputs of the profile being edited, for the components that draw them. */
+/** The inputs of the profile being edited (header and body), for the components that draw them. */
 export interface EditSession {
   entity: Entity;
   /** Whether the field with this key can be edited here. */
@@ -112,7 +112,7 @@ export function askToLeave(proceed: () => void): void {
   }
 }
 
-/** The editing of the person `uid`, a player or a member of staff as `entity` says. Mount it with `key={uid}`. */
+/** The editing of the player, member of staff or club `uid`, as `entity` says. Mount it with `key={uid}`. */
 export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
   const { editable, onEdited } = useContext(EditorContext);
   const [stage, setStage] = useState<Stage>("view");

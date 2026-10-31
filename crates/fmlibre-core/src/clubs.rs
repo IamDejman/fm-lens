@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::calibrate::ArrayRef;
 use crate::index::{Listed, SearchIndex};
-use crate::profile::Layout;
+use crate::profile::{ClubFinanceLayout, Layout};
 use crate::text::read_fm_string;
 
 /// Supporter-mix percentages in the order FM stores them.
@@ -192,32 +192,68 @@ pub fn read_club_details(
     let f = &layout.club_finance;
     let finance = u64_at(c.finance);
     if let Some(bytes) = is_user_pointer(finance).then(|| process.read_bytes(finance, f.end() as usize).ok()).flatten()
+        && finances_look_real(&bytes, f)
     {
         let i32_at =
             |offset: u64| i32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"));
-        let ticket_price = f32::from_le_bytes(
-            bytes[f.ticket_price as usize..f.ticket_price as usize + 4].try_into().expect("4 bytes"),
-        );
-        let corporate = bytes[f.corporate as usize];
-        let finances = Finances {
+        details.facilities.insert("corporate", bytes[f.corporate as usize]);
+        details.finances = Some(Finances {
             balance: i32_at(f.balance),
             transfer_budget: i32_at(f.transfer_budget),
             wage_budget: i32_at(f.wage_budget),
             total_wage_budget: i32_at(f.total_wage_budget),
-            ticket_price,
-        };
-        // The smaller finance class ends long before these offsets, so only trust
-        // values that look like a real club's.
-        let sane = ticket_price.is_finite()
-            && (1.0..=1000.0).contains(&ticket_price)
-            && (1..=20).contains(&corporate)
-            && finances.transfer_budget >= -1
-            && finances.wage_budget >= 0
-            && finances.total_wage_budget >= 0;
-        if sane {
-            details.facilities.insert("corporate", corporate);
-            details.finances = Some(finances);
-        }
+            ticket_price: f32_at(&bytes, f.ticket_price),
+        });
     }
     Ok(Some(details))
+}
+
+fn f32_at(bytes: &[u8], offset: u64) -> f32 {
+    f32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"))
+}
+
+/// Whether the bytes of a finance record (from its start to [`ClubFinanceLayout::end`])
+/// look like a real club's full record. The smaller finance class ends long before the
+/// budget fields, so what is read there belongs to something else and looks wrong.
+pub(crate) fn finances_look_real(bytes: &[u8], f: &ClubFinanceLayout) -> bool {
+    let i32_at =
+        |offset: u64| i32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"));
+    let ticket_price = f32_at(bytes, f.ticket_price);
+    ticket_price.is_finite()
+        && (1.0..=1000.0).contains(&ticket_price)
+        && (1..=20).contains(&bytes[f.corporate as usize])
+        && i32_at(f.transfer_budget) >= -1
+        && i32_at(f.wage_budget) >= 0
+        && i32_at(f.total_wage_budget) >= 0
+}
+
+/// The class (vtable) of the full finance record: the one shared by the clubs whose
+/// finances look real, when nearly all of them share one. Only records of this class
+/// are long enough to hold the budgets, so only they are ever written.
+pub(crate) fn full_finance_class(process: &Process, module: &Module, array: &ArrayRef, layout: &Layout) -> Option<u64> {
+    let f = &layout.club_finance;
+    let (begin, count) = array.locate(process, module).ok()?;
+    let pointers = process.read_bytes(begin, (count * 8) as usize).ok()?;
+    let mut classes: BTreeMap<u64, usize> = BTreeMap::new();
+    let mut real = 0;
+    for chunk in pointers.as_chunks::<8>().0 {
+        let club = u64::from_le_bytes(*chunk);
+        let Some(finance) = is_user_pointer(club).then(|| process.read_u64(club + layout.club.finance).ok()).flatten()
+        else {
+            continue;
+        };
+        if !is_user_pointer(finance) {
+            continue;
+        }
+        let Ok(bytes) = process.read_bytes(finance, f.end() as usize) else {
+            continue;
+        };
+        if finances_look_real(&bytes, f) {
+            real += 1;
+            *classes.entry(u64::from_le_bytes(bytes[..8].try_into().expect("8 bytes"))).or_default() += 1;
+        }
+    }
+    let (&class, &count) = classes.iter().max_by_key(|&(_, &count)| count)?;
+    // One class for (nearly) every real-looking record, and more than a handful of them.
+    (count >= 10 && count * 100 >= real * 99).then_some(class)
 }

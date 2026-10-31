@@ -1,10 +1,14 @@
 // What the inputs of an edit session hold and what Apply would write. No React here: the components only draw it.
 
-import { editFor, shownRange, shownValue } from "./editing";
-import { editText } from "./labels";
+import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
+import { formatDate, formatPounds } from "./format";
+import { editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
 
-/** The text of each input that was typed into, by field key; the others still show the value the game had. */
+/**
+ * The text of each input that was typed into, by field key; the others still show the value the game had. A number
+ * input holds the number as typed, a date input `YYYY-MM-DD` (or nothing while the date is not whole).
+ */
 export type Typed = Partial<Record<string, string>>;
 
 /** How the text of an input stands against the value the game had. */
@@ -17,18 +21,51 @@ const SAME: Verdict = { status: "same" };
 const INVALID: Verdict = { status: "invalid" };
 
 /**
- * Whether `text` in the input of `field` is a change to write, no change, or unusable: empty, not a whole number,
- * or outside what the input takes. `stored` is the value the game had when editing began. The value the game shows
- * for it is no change, so an attribute's stored value is not rounded for nothing, and an `undefined` text is the
- * input that was not touched.
+ * The value `text` stands for in the input of `field`, as shown (for a date, the number like 20290630); null when
+ * it stands for none: empty, not a whole number, or for a date not a whole, real `YYYY-MM-DD`.
+ */
+function parseInput(field: EditField, text: string): number | null {
+  const trimmed = text.trim();
+  if (field.kind === "date") {
+    return numberFromIso(trimmed);
+  }
+  const shown = Number(trimmed);
+  return trimmed === "" || !Number.isInteger(shown) ? null : shown;
+}
+
+/** What the input of `field` holds for the value `shown`: the number, or `YYYY-MM-DD` for a date. */
+function inputText(field: EditField, shown: number): string {
+  return field.kind === "date" ? isoFromNumber(shown) : String(shown);
+}
+
+/**
+ * A value of `field`, as shown, written out: a date as the app shows dates, an amount of money in pounds, anything
+ * else as a number. A field the table lacks (`undefined`) is a number.
+ */
+export function valueText(field: EditField | undefined, shown: number): string {
+  switch (field?.kind) {
+    case "date":
+      return formatDate(dateFromNumber(shown)) || String(shown);
+    case "i32":
+      // FM stores a negative transfer budget when the board has not set one.
+      return field.key === "finance.transfer_budget" && shown < 0 ? profileText.notSet : formatPounds(shown);
+    default:
+      return shown.toLocaleString();
+  }
+}
+
+/**
+ * Whether `text` in the input of `field` is a change to write, no change, or unusable: empty, not a whole number
+ * (a date: not a whole, real date), or outside what the input takes. `stored` is the value the game had when
+ * editing began. The value the game shows for it is no change, so an attribute's stored value is not rounded for
+ * nothing, and an `undefined` text is the input that was not touched.
  */
 export function judge(field: EditField, stored: number, text: string | undefined): Verdict {
   if (text === undefined) {
     return SAME;
   }
-  const trimmed = text.trim();
-  const shown = Number(trimmed);
-  if (trimmed === "" || !Number.isInteger(shown)) {
+  const shown = parseInput(field, text);
+  if (shown === null) {
     return INVALID;
   }
   if (shown === shownValue(field, stored)) {
@@ -41,9 +78,11 @@ export function judge(field: EditField, stored: number, text: string | undefined
 
 /** How one input stands. */
 export interface InputState {
-  /** What the input holds. */
+  /** The field the input is for: its kind says what the input is (a number, an amount of money, a date). */
+  field: EditField;
+  /** What the input holds: the number as typed, or `YYYY-MM-DD` for a date. */
   text: string;
-  /** The values it takes, as shown. */
+  /** The values it takes, as shown (for a date, numbers like 20290630: see `isoFromNumber`). */
   range: { min: number; max: number };
   /** "changed": Apply would write it. "invalid": it cannot be written, or the game refused it. */
   status: "same" | "changed" | "invalid";
@@ -51,6 +90,18 @@ export interface InputState {
   was: number;
   /** Why it is invalid. */
   message: string | null;
+}
+
+/** What to tell about an input that cannot be applied, by what it takes. */
+function invalidMessage(field: EditField, range: { min: number; max: number }): string {
+  switch (field.kind) {
+    case "date":
+      return editText.invalidDate(valueText(field, range.min), valueText(field, range.max));
+    case "i32":
+      return editText.invalidMoney(valueText(field, range.min), valueText(field, range.max));
+    default:
+      return editText.invalid(range.min, range.max);
+  }
 }
 
 /**
@@ -67,18 +118,19 @@ export function inputState(
   const range = shownRange(field);
   const was = shownValue(field, stored);
   return {
-    text: text ?? String(was),
+    field,
+    text: text ?? inputText(field, was),
     range,
     status: verdict.status === "invalid" || refusal !== undefined ? "invalid" : verdict.status,
     was,
-    message: verdict.status === "invalid" ? editText.invalid(range.min, range.max) : (refusal ?? null),
+    message: verdict.status === "invalid" ? invalidMessage(field, range) : (refusal ?? null),
   };
 }
 
 /** A change Apply would write. */
 export interface Pending {
   field: EditField;
-  /** The value the game showed when editing began, and the one typed: both as shown. */
+  /** The value the game showed when editing began, and the one typed: both as shown (see `valueText`). */
   was: number;
   now: number;
   /** The value the game had when editing began, as stored. */

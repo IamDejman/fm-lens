@@ -1313,6 +1313,25 @@ nav small {
   opacity: 0.6;
 }
 
+/* A date: the browser sizes its fields and its calendar button (no --digits), and the date reads from the left. */
+.edit-input[type="date"] {
+  width: auto;
+  text-align: left;
+  appearance: auto;
+}
+
+/* An amount of money: the pound sign before an input that takes plain whole pounds. */
+.edit-money {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edit-unit {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 /* Current and potential ability side by side, not as two rows across the whole panel. */
 .edit-ability .stats {
   display: flex;

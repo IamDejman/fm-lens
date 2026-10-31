@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { EditableValue } from "./EditControls";
 import { formatPounds } from "./format";
 import {
   CLUB_FACILITY_LABELS,
@@ -18,6 +19,7 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type { ClubDetails, ClubSummary, Finances } from "./types";
+import { useProfileEditing } from "./useProfileEditing";
 
 const text = clubProfileText;
 
@@ -32,6 +34,7 @@ interface ClubProfileProps {
 /** The profile of one club. Mount it with `key={uid}` so a new club starts at the top. */
 export function ClubProfile({ club, version, onClose }: ClubProfileProps) {
   const loaded = useProfileDetails<ClubDetails>("club_details", club.uid, version);
+  const editing = useProfileEditing("club", club.uid);
   const details = loaded?.details;
   const info: ClubSummary = details ?? club;
   const vitals = [info.founded !== null && text.founded(info.founded), `${profileText.uid} ${info.uid}`]
@@ -45,14 +48,18 @@ export function ClubProfile({ club, version, onClose }: ClubProfileProps) {
       badge={info.women ? <span className="tag women">{text.womensClub}</span> : undefined}
       vitals={vitals}
       side={
-        // Laid out like the abilities of a person: a label and a bar with the number on it.
+        // Laid out like the abilities of a person: a label and a bar with the number on it. While the club is
+        // edited the number is an input, where it is shown.
         <div className="profile-abilities">
           <abbr title={text.reputationTitle}>{text.reputationShort}</abbr>
-          <ReputationMeter value={info.reputation} />
+          <EditableValue field="reputation">
+            <ReputationMeter value={info.reputation} />
+          </EditableValue>
         </div>
       }
       loaded={loaded}
       onClose={onClose}
+      editing={editing}
     >
       {details && <ClubBody details={details} />}
     </ProfileFrame>
@@ -80,13 +87,26 @@ function knownKeys<K extends string>(labels: Record<K, string>, values: Record<s
   return (Object.keys(labels) as K[]).filter((key) => values[key] !== undefined);
 }
 
-/** Rating rows for the keys of `labels` that `values` has; a rating the game does not give is left out. */
-function ratingRows(labels: Record<string, string>, values: Record<string, number>): RatingRow[] {
-  return knownKeys(labels, values).map((key) => ({ key, label: labels[key], value: values[key] }));
+/**
+ * Rating rows for the keys of `labels` that `values` has; a rating the game does not give is left out. The rows of
+ * values the editor can change have `fieldGroup` (e.g. "facilities"): their field is `fieldGroup.key`.
+ */
+function ratingRows(
+  labels: Record<string, string>,
+  values: Record<string, number>,
+  fieldGroup?: string,
+): RatingRow[] {
+  return knownKeys(labels, values).map((key) => ({
+    key,
+    field: fieldGroup === undefined ? undefined : `${fieldGroup}.${key}`,
+    label: labels[key],
+    value: values[key],
+  }));
 }
 
+/** The club's facilities as ratings; inputs while the club is edited. */
 function Facilities({ facilities }: { facilities: Record<string, number> }) {
-  const rows = ratingRows(CLUB_FACILITY_LABELS, facilities);
+  const rows = ratingRows(CLUB_FACILITY_LABELS, facilities, "facilities");
   return rows.length > 0 ? <RatingGroup title={text.facilities} rows={rows} /> : null;
 }
 
@@ -157,6 +177,7 @@ function SupporterMix({ segments }: { segments: MixSegment[] }) {
   );
 }
 
+/** The club's money; the four amounts the editor can change are inputs while the club is edited. */
 function FinancesGroup({ finances }: { finances: Finances | null }) {
   return (
     <section className="profile-group">
@@ -165,14 +186,22 @@ function FinancesGroup({ finances }: { finances: Finances | null }) {
         <>
           <dl className="stats">
             <Fact label={text.balance}>
-              <span className={finances.balance < 0 ? "negative" : undefined}>{formatPounds(finances.balance)}</span>
+              <EditableValue field="finance.balance">
+                <span className={finances.balance < 0 ? "negative" : undefined}>{formatPounds(finances.balance)}</span>
+              </EditableValue>
             </Fact>
             <Fact label={text.transferBudget}>
-              {/* FM stores -1 when the board has not set a transfer budget. */}
-              {finances.transferBudget < 0 ? profileText.notSet : formatPounds(finances.transferBudget)}
+              <EditableValue field="finance.transfer_budget">
+                {/* FM stores -1 when the board has not set a transfer budget. */}
+                {finances.transferBudget < 0 ? profileText.notSet : formatPounds(finances.transferBudget)}
+              </EditableValue>
             </Fact>
-            <Fact label={perWeek(text.wageBudget)}>{formatPounds(finances.wageBudget)}</Fact>
-            <Fact label={perWeek(text.totalWageBudget)}>{formatPounds(finances.totalWageBudget)}</Fact>
+            <Fact label={perWeek(text.wageBudget)}>
+              <EditableValue field="finance.wage_budget">{formatPounds(finances.wageBudget)}</EditableValue>
+            </Fact>
+            <Fact label={perWeek(text.totalWageBudget)}>
+              <EditableValue field="finance.total_wage_budget">{formatPounds(finances.totalWageBudget)}</EditableValue>
+            </Fact>
             <Fact label={text.ticketPrice}>{formatTicketPrice(finances.ticketPrice)}</Fact>
           </dl>
           <p className="note">{profileText.wageNote}</p>

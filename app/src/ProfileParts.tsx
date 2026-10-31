@@ -8,7 +8,7 @@ import type { Attribute, FmDate, Reputation } from "./types";
 import { SessionContext, useEditableField, type ProfileEditing } from "./useProfileEditing";
 
 // What the player, staff and club profiles have in common: the panel frame, loading, rating rows and
-// the label/value blocks. The frame also holds what editing adds to a person's profile (see EditControls).
+// the label/value blocks. The frame also holds what editing adds to a profile (see EditControls).
 
 /** Reputation is stored on a 0–10000 scale. */
 const REPUTATION_MAX = 10000;
@@ -60,8 +60,8 @@ interface ProfileFrameProps {
   loaded: Loaded<unknown> | null;
   onClose: () => void;
   /**
-   * The editing of a person's profile, from `useProfileEditing`: it adds the Edit button, the footer and the
-   * inputs of the body, and makes closing the profile ask first while changes are pending.
+   * The editing of a profile, from `useProfileEditing`: it adds the Edit button, the footer and the inputs (of the
+   * body, and of the header too: see `side`), and makes closing the profile ask first while changes are pending.
    */
   editing?: ProfileEditing;
   /** The body, once the profile has loaded. */
@@ -89,65 +89,68 @@ export function ProfileFrame(props: ProfileFrameProps) {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onEscape]);
 
+  // The inputs reach the whole panel, so `side` can hold one too (a club's reputation is in the header).
   return (
-    <section
-      className={editing?.stage === "edit" ? "profile editing" : "profile"}
-      role="dialog"
-      aria-label={name}
-      aria-busy={!loaded}
-    >
-      <header className="profile-head">
-        <div className="profile-id">
-          <h2>
-            {name}
-            {badge}
-          </h2>
-          {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
-          {meta !== undefined && <p className="profile-meta">{meta}</p>}
-          <p className="profile-vitals">{vitals}</p>
-        </div>
-        <div className="profile-side">
-          <div className="profile-actions">
-            {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
-            <button
-              className="icon-button"
-              onClick={closeProfile}
-              aria-label={profileText.close}
-              title={profileText.close}
-            >
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <path d="m5 5 10 10M15 5 5 15" />
-              </svg>
-            </button>
+    <SessionContext.Provider value={editing?.session ?? null}>
+      <section
+        className={editing?.stage === "edit" ? "profile editing" : "profile"}
+        role="dialog"
+        aria-label={name}
+        aria-busy={!loaded}
+      >
+        <header className="profile-head">
+          <div className="profile-id">
+            <h2>
+              {name}
+              {badge}
+            </h2>
+            {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
+            {meta !== undefined && <p className="profile-meta">{meta}</p>}
+            <p className="profile-vitals">{vitals}</p>
           </div>
-          {side ??
-            (currentAbility !== undefined && potentialAbility !== undefined && (
-              <div className="profile-abilities">
-                <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
-                <Ability value={currentAbility} />
-                <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
-                <Ability value={potentialAbility} />
-              </div>
-            ))}
-        </div>
-      </header>
-
-      <div className="profile-body">
-        {!loaded && (
-          <p className="profile-status" role="status">
-            {profileText.loading}
-          </p>
-        )}
-        {loaded?.error !== undefined && (
-          <div className="banner" role="alert">
-            {loaded.error}
+          <div className="profile-side">
+            <div className="profile-actions">
+              {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
+              <button
+                className="icon-button"
+                onClick={closeProfile}
+                aria-label={profileText.close}
+                title={profileText.close}
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="m5 5 10 10M15 5 5 15" />
+                </svg>
+              </button>
+            </div>
+            {side ??
+              (currentAbility !== undefined && potentialAbility !== undefined && (
+                <div className="profile-abilities">
+                  <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
+                  <Ability value={currentAbility} />
+                  <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
+                  <Ability value={potentialAbility} />
+                </div>
+              ))}
           </div>
-        )}
-        <SessionContext.Provider value={editing?.session ?? null}>{children}</SessionContext.Provider>
-      </div>
+        </header>
 
-      {editing && <EditBar editing={editing} />}
-    </section>
+        <div className="profile-body">
+          {!loaded && (
+            <p className="profile-status" role="status">
+              {profileText.loading}
+            </p>
+          )}
+          {loaded?.error !== undefined && (
+            <div className="banner" role="alert">
+              {loaded.error}
+            </div>
+          )}
+          {children}
+        </div>
+
+        {editing && <EditBar editing={editing} />}
+      </section>
+    </SessionContext.Provider>
   );
 }
 
@@ -265,18 +268,21 @@ export function Fact({ label, children }: { label: ReactNode; children: ReactNod
   );
 }
 
-/** The weekly wage, with the note that the game stores it in pounds. */
+/** The weekly wage, with the note that the game stores it in pounds; an input while the wage can be edited. */
 export function WageFact({ wage }: { wage: number }) {
   return (
     <>
       <dl className="stats">
-        <Fact label={profileText.wage}>{formatPounds(wage)}</Fact>
+        <Fact label={profileText.wage}>
+          <EditableValue field="contract.wage">{formatPounds(wage)}</EditableValue>
+        </Fact>
       </dl>
       <p className="note">{profileText.wageNote}</p>
     </>
   );
 }
 
+/** When the contract was signed, ends and began; the end is a date input while it can be edited. */
 export function ContractDates({
   contract,
 }: {
@@ -286,7 +292,9 @@ export function ContractDates({
   return (
     <dl className="stats">
       <Fact label={profileText.signed}>{date(contract.signed)}</Fact>
-      <Fact label={profileText.expires}>{date(contract.expires)}</Fact>
+      <Fact label={profileText.expires}>
+        <EditableValue field="contract.expires">{date(contract.expires)}</EditableValue>
+      </Fact>
       <Fact label={profileText.joined}>{date(contract.joined)}</Fact>
     </dl>
   );

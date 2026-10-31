@@ -12,9 +12,9 @@ use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, Entity, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo,
-    PERSONALITY, POSITIONS, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX,
-    SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, find_game, job_name,
-    scan_object_arrays, sort_players,
+    Kind, PERSONALITY, POSITIONS, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS,
+    SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, find_game,
+    job_name, scan_object_arrays, sort_players,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -96,30 +96,31 @@ enum Command {
     Fields {
         #[arg(value_enum)]
         entity: EntityArg,
-        /// Read every player or member of staff and show the values each field holds.
+        /// Read every player, member of staff or club and show the values each field holds.
         #[arg(long)]
         stats: bool,
     },
-    /// Show the editable fields of one player or member of staff.
+    /// Show the editable fields of one player, member of staff or club.
     Get {
         #[arg(value_enum)]
         entity: EntityArg,
-        /// UID of the player, or staff id.
+        /// UID of the player or club, or staff id.
         uid: u32,
         /// Field keys, from `fields`; all fields when none are given.
         fields: Vec<String>,
     },
-    /// Change one field of a player or member of staff in the running game.
+    /// Change one field of a player, member of staff or club in the running game.
     Set {
         #[arg(value_enum)]
         entity: EntityArg,
-        /// UID of the player, or staff id.
+        /// UID of the player or club, or staff id.
         uid: u32,
         /// The field's key, from `fields`.
         field: String,
-        /// The new value as stored (attributes 0-100), or as shown with --shown (1-20).
+        /// The new value as stored (attributes 0-100), as shown with --shown (1-20), or a
+        /// date as YYYY-MM-DD.
         #[arg(allow_negative_numbers = true)]
-        value: i64,
+        value: String,
         /// VALUE is as the game shows it.
         #[arg(long)]
         shown: bool,
@@ -193,6 +194,7 @@ enum Command {
 enum EntityArg {
     Player,
     Staff,
+    Club,
 }
 
 impl From<EntityArg> for Entity {
@@ -200,6 +202,7 @@ impl From<EntityArg> for Entity {
         match arg {
             EntityArg::Player => Entity::Player,
             EntityArg::Staff => Entity::Staff,
+            EntityArg::Club => Entity::Club,
         }
     }
 }
@@ -286,7 +289,7 @@ fn run(cli: Cli) -> Result<()> {
         }
         Command::Set { entity, uid, field, value, shown, restore } => {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
-            set(&session, entity.into(), uid, &field, value, shown, restore)
+            set(&session, entity.into(), uid, &field, &value, shown, restore)
         }
         Command::Scan { min, max, top } => {
             let (game, modules) = inspect(&process)?;
@@ -725,11 +728,12 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
 // ---------------------------------------------------------------------------
 // fields / get / set
 
-/// Every player or member of staff, as edit targets with their names.
+/// Every player, member of staff or club, as edit targets with their names.
 fn targets(session: &Session, entity: Entity) -> Result<Vec<(Target, String)>> {
     Ok(match entity {
         Entity::Player => session.players()?.into_iter().map(|p| (p.target(), p.name)).collect(),
         Entity::Staff => session.staff()?.into_iter().map(|s| (s.target(), s.name)).collect(),
+        Entity::Club => session.clubs()?.into_iter().map(|c| (c.target(), c.name)).collect(),
     })
 }
 
@@ -740,8 +744,11 @@ fn find_target(session: &Session, entity: Entity, uid: u32) -> Result<(Target, S
         .with_context(|| format!("no {entity} with id {uid}"))
 }
 
-/// A stored value, with the value the game shows when that differs.
+/// A stored value as the probe prints it: dates as dates, attributes also as shown.
 fn shown(field: &Field, stored: i64) -> String {
+    if field.kind == Kind::Date {
+        return FmDate::from_number(stored).map_or_else(|| "not set".to_owned(), |date| iso_date(Some(date)));
+    }
     match field.scale {
         Scale::Plain => stored.to_string(),
         Scale::Attribute => format!("{stored} ({})", field.scale.shown(stored)),
@@ -751,35 +758,49 @@ fn shown(field: &Field, stored: i64) -> String {
 fn fields(session: &Session, entity: Entity, stats: bool) -> Result<()> {
     let fields = session.fields(entity);
     if !stats {
-        println!("{:<34}  {:<4}  {:<9}  {:>6}  {:>6}", "Field", "Type", "Scale", "Min", "Max");
+        println!("{:<34}  {:<4}  {:<9}  {:>11}  {:>11}", "Field", "Type", "Scale", "Min", "Max");
         for f in &fields {
             let scale = format!("{:?}", f.scale).to_lowercase();
             let kind = format!("{:?}", f.kind).to_lowercase();
-            println!("{:<34}  {kind:<4}  {scale:<9}  {:>6}  {:>6}", f.key, f.min, f.max);
+            println!("{:<34}  {kind:<4}  {scale:<9}  {:>11}  {:>11}", f.key, shown(f, f.min), shown(f, f.max));
         }
         return Ok(());
     }
 
     let started = Instant::now();
     let targets = targets(session, entity)?;
-    let mut seen: Vec<(i64, i64, usize)> = vec![(i64::MAX, i64::MIN, 0); fields.len()];
+    // Lowest and highest value found, how many are implausible, and how many lack the field's record.
+    let mut seen: Vec<(i64, i64, usize, usize)> = vec![(i64::MAX, i64::MIN, 0, 0); fields.len()];
     let mut read = 0;
     for (target, _) in &targets {
         let Ok(values) = session.read_fields(target, &fields) else {
             continue;
         };
         read += 1;
-        for ((low, high, odd), (field, value)) in seen.iter_mut().zip(fields.iter().zip(values)) {
-            *low = (*low).min(value);
-            *high = (*high).max(value);
-            *odd += usize::from(!field.is_plausible(value));
+        for ((low, high, odd, missing), (field, value)) in seen.iter_mut().zip(fields.iter().zip(values)) {
+            match value {
+                Some(value) => {
+                    *low = (*low).min(value);
+                    *high = (*high).max(value);
+                    *odd += usize::from(!field.is_plausible(value));
+                }
+                None => *missing += 1,
+            }
         }
     }
     println!("Read {read} of {} {entity} objects in {:.1} s.", targets.len(), started.elapsed().as_secs_f64());
+    if entity == Entity::Club {
+        match session.finance_class() {
+            Some(class) => println!("Full finance record class: {class:#x}"),
+            None => println!("Full finance record class: not found; finances are not writable"),
+        }
+    }
     println!();
-    println!("{:<34}  {:>13}  {:>13}  {:>11}", "Field", "Writes", "Found", "Implausible");
-    for (f, (low, high, odd)) in fields.iter().zip(seen) {
-        println!("{:<34}  {:>13}  {:>13}  {odd:>11}", f.key, format!("{}..{}", f.min, f.max), format!("{low}..{high}"));
+    println!("{:<30}  {:>25}  {:>25}  {:>11}  {:>9}", "Field", "Writes", "Found", "Implausible", "No record");
+    for (f, (low, high, odd, missing)) in fields.iter().zip(seen) {
+        let found = if low > high { "-".to_owned() } else { format!("{}..{}", shown(f, low), shown(f, high)) };
+        let writes = format!("{}..{}", shown(f, f.min), shown(f, f.max));
+        println!("{:<30}  {writes:>25}  {found:>25}  {odd:>11}  {missing:>9}", f.key);
     }
     Ok(())
 }
@@ -794,8 +815,13 @@ fn get(session: &Session, entity: Entity, uid: u32, keys: &[String]) -> Result<(
     let values = session.read_fields(&target, &fields)?;
     println!("{name} ({entity} {uid})");
     for (field, value) in fields.iter().zip(values) {
-        let note = if field.is_plausible(value) { "" } else { "  (implausible: not writable)" };
-        println!("  {:<34} {}{note}", field.key, shown(field, value));
+        match value {
+            Some(value) => {
+                let note = if field.is_plausible(value) { "" } else { "  (implausible: not writable)" };
+                println!("  {:<34} {}{note}", field.key, shown(field, value));
+            }
+            None => println!("  {:<34} -  (no record: not writable)", field.key),
+        }
     }
     Ok(())
 }
@@ -805,13 +831,18 @@ fn set(
     entity: Entity,
     uid: u32,
     key: &str,
-    value: i64,
+    value: &str,
     as_shown: bool,
     restore: bool,
 ) -> Result<()> {
     let (target, name) = find_target(session, entity, uid)?;
     let field = session.field(entity, key)?;
-    let stored = if as_shown { field.scale.stored(value) } else { value };
+    let stored = if field.kind == Kind::Date {
+        parse_iso_date(value)?.to_number()
+    } else {
+        let value: i64 = value.trim().parse().with_context(|| format!("not a number: {value}"))?;
+        if as_shown { field.scale.stored(value) } else { value }
+    };
     let change = session.write_field(&target, &field, stored)?;
     let read = session.read_field(&target, &field)?;
     println!("{name} ({entity} {uid})");

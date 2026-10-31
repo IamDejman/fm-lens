@@ -99,6 +99,7 @@ right_foot = 0x178
 
 # Fields of the contract a player's `contract` pointer leads to.
 [contract]
+owner = 0x08              # pointer back to the person block of the player or member of staff it belongs to
 wage = 0x20               # i32, pounds per week
 signed = 0x44             # date
 expires = 0x48            # date

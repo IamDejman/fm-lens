@@ -62,7 +62,12 @@ before trusting them.
     invalid values;
   - a review of the pending changes;
   - a Changes view that logs every change of the session, with Undo.
-- [ ] Contracts and club finances.
+- [x] Contracts and clubs, in the probe and the app:
+  - player and staff contracts (wage, end date);
+  - club reputation, facilities and finances.
+
+  Each record is checked before it is written: a contract must point back at its
+  owner, the senior team at its club, and finances must be the full finance record.
 - [ ] Mass editing with a preview.
 
 ## Phase 5: polish and reach

@@ -38,10 +38,35 @@ impl FmDate {
         let birthday_passed = (today.month, today.day) >= (self.month, self.day);
         Some(today.year - self.year - u16::from(!birthday_passed))
     }
+
+    /// The day of the year, 1-based, as FM stores it.
+    pub fn day_of_year(self) -> u16 {
+        let before: u16 = (1..self.month).map(|month| month_length(self.year, month)).sum();
+        before + u16::from(self.day)
+    }
+
+    /// The date as a number like 20290630, which orders like the date.
+    pub fn to_number(self) -> i64 {
+        i64::from(self.year) * 10_000 + i64::from(self.month) * 100 + i64::from(self.day)
+    }
+
+    /// The date a number like 20290630 stands for, if it is a real one.
+    pub fn from_number(number: i64) -> Option<Self> {
+        let year = u16::try_from(number / 10_000).ok()?;
+        let month = u8::try_from(number / 100 % 100).ok()?;
+        let day = u8::try_from(number % 100).ok()?;
+        let real = number > 0 && (1..=12).contains(&month) && day >= 1 && u16::from(day) <= month_length(year, month);
+        real.then_some(Self { year, month, day })
+    }
 }
 
 fn is_leap(year: u16) -> bool {
     (year.is_multiple_of(4) && !year.is_multiple_of(100)) || year.is_multiple_of(400)
+}
+
+/// Days in `month` (1–12) of `year`.
+fn month_length(year: u16, month: u8) -> u16 {
+    if month == 2 && is_leap(year) { 29 } else { MONTH_LENGTHS[usize::from(month - 1)] }
 }
 
 #[cfg(test)]
@@ -69,6 +94,21 @@ mod tests {
         assert_eq!(FmDate { year: 2000, month: 7, day: 21 }.age_on(today), Some(25)); // Haaland, birthday not yet
         assert_eq!(FmDate { year: 2000, month: 7, day: 18 }.age_on(today), Some(26)); // birthday today
         assert_eq!(FmDate { year: 2027, month: 1, day: 1 }.age_on(today), None);
+    }
+
+    #[test]
+    fn day_of_year_and_numbers_round_trip() {
+        for (year, day) in [(2026, 1), (2026, 181), (2028, 60), (2028, 366), (2030, 365)] {
+            let date = FmDate::from_raw(day, year).expect("a real date");
+            assert_eq!(date.day_of_year(), day);
+            assert_eq!(FmDate::from_number(date.to_number()), Some(date));
+        }
+        assert_eq!(FmDate { year: 2029, month: 6, day: 30 }.to_number(), 20290630);
+        assert_eq!(FmDate::from_number(20290631), None);
+        assert_eq!(FmDate::from_number(20270229), None);
+        assert_eq!(FmDate::from_number(20280229), date(2028, 2, 29));
+        assert_eq!(FmDate::from_number(0), None);
+        assert_eq!(FmDate::from_number(20291301), None);
     }
 
     #[test]

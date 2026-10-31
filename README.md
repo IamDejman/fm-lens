@@ -7,12 +7,13 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 > profiles: attributes, positions, personality, contracts, facilities, supporters
 > and finances.
 >
-> Players and staff can be edited:
-> - **What:** abilities, attributes, positions, personality, reputation and caps,
->   from an Edit mode in their profiles.
+> Players, staff and clubs can be edited, from an Edit mode in their profiles:
+> - **Players and staff:** abilities, attributes, positions, personality,
+>   reputation, caps, and their contract's wage and end date.
+> - **Clubs:** reputation, facilities and finances.
 > - **How:** changes are reviewed before they are applied, and a Changes view
 >   undoes them.
-> - **Not yet:** contracts, clubs and editing many players at once.
+> - **Not yet:** editing many players at once.
 
 ## Goals
 

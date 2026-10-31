@@ -304,3 +304,50 @@ These values were written, read back and restored on the test save with
 | Mikel Arteta (staff) | tactical (raw), authority, ambition | 80 → 99 → 80 / 16 → 19 → 16 / 18 → 1 → 18 |
 
 It has not been checked yet whether the game's own screens show an edited value.
+
+### Writing contracts and clubs
+
+These fields sit in records reached through pointers. A write follows a pointer only
+to a record that checks out:
+
+- **Contracts (players and staff):** the contract's `+0x08` must point back at the
+  owner's person block, including its shift. All checked cases pass: Messi,
+  Arteta, and the player-coach Paul Ifill, whose person block is shifted by
+  `0xF8`.
+  - 6,795 players and 12,606 staff have no contract that passes this check. They
+    are free agents and the unemployed.
+  - A contract end the game has not set (a rolling contract) is left alone.
+  - Dates are written with the flag bits the game keeps above the day.
+- **Club reputation:** it is on the senior team. The team's `+0x30` must point back
+  at the club.
+- **Facilities:** they are in the club's info record, a plain struct without a
+  vtable.
+  - Training facilities read 1–20 for every club.
+  - The youth fields read 255 for a few hundred clubs. 255 looks like "not set", so
+    those fields are not plausible and not offered there.
+- **Finances:** only clubs in the leagues being played have the full finance record;
+  the rest use a smaller class that ends before the budgets.
+  - The full class is the vtable shared by the records whose values look real. On
+    this save that is 274 clubs, one class.
+  - A finance write needs that class and real-looking values, so a club outside
+    the played leagues (Kayserispor here) is refused.
+
+These values were written, read back and restored on the test save with
+`set ... --restore`:
+
+| Who | Field | Old → new → restored |
+|---|---|---|
+| Lionel Messi | wage per week | 404,321 → 404,322 → 404,321 |
+| Lionel Messi | contract end | 2028-12-31 → 2029-06-30 → 2028-12-31 |
+| Mikel Arteta | wage per week, contract end | 375,000 → 400,000 → 375,000 / 2030-06-30 → 2031-06-30 → 2030-06-30 |
+| Tottenham Hotspur | reputation | 7650 → 7651 → 7650 |
+| Tottenham Hotspur | training, corporate facilities | 20 → 19 → 20 |
+| Tottenham Hotspur | balance | 161,320,637 → 200,000,000 → 161,320,637 |
+| Tottenham Hotspur | transfer budget | 24,250,000 → 50,000,000 → 24,250,000 |
+| Tottenham Hotspur | wage budget, total wage budget | 4,438,849 → 5,000,000 → 4,438,849 / 4,627,024 → 5,000,000 → 4,627,024 |
+
+These were refused, and nothing was written:
+- Kayserispor's transfer budget (no full finance record);
+- Paul Ifill's unset contract end;
+- 30 February as a date;
+- 21 as training facilities.
