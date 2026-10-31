@@ -5,9 +5,9 @@
 // Keys of the game data map to the names FM uses; every other string of the panels is in `profile` (those only the
 // club panel has, in `clubProfile`), and those of the player, staff and club lists in `playerList`, `staffList` and
 // `clubList` (the saved player filters are in `playerList.filters.saved`). Editing has `edit` (and `fields` for the
-// names of the fields), the Changes view `changes`, mass editing `massEdit`, comparing players `comparison`, the
-// sidebar and the connect panel `app`, and the graphics packs the pictures come from `graphics`. The components read
-// them through `labels.ts`.
+// names of the fields), the Changes view `changes`, mass editing `massEdit`, comparing players `comparison`, moving a
+// player to another club `move`, the sidebar and the connect panel `app`, and the graphics packs the pictures come
+// from `graphics`. The components read them through `labels.ts`.
 //
 // The text functions (counts, summaries, "was …") are written per language: plurals and word order differ, so a
 // language builds its sentences itself.
@@ -867,6 +867,59 @@ export const en = {
     /** The heading of the rows with the positions, height, reputation and contract. */
     profile: "Profile",
     close: "Close",
+  },
+
+  /** Moving a player to another club: the button in his profile and the dialog it opens. */
+  move: {
+    /** The button in the header of a player's profile. */
+    button: "Move to another club",
+    buttonTitle: "Move this player to another club in the game",
+
+    // The dialog
+    title: "Move to another club",
+    /** The club the player is at, and the club he moves to. */
+    from: "From",
+    to: "To",
+
+    // Choosing the club
+    /** The name of the search box, and of the list of clubs under it, for assistive technology. */
+    searchLabel: "Search for the club to move to",
+    resultsLabel: "Clubs found",
+    searching: "Searching clubs…",
+    searchFailed: (reason: string) => `Could not search the clubs: ${reason}`,
+    /** Under the list when the search found more clubs than it lists; `count` is how many more. */
+    more: (count: number) => `and ${format(count)} more; type to narrow the search`,
+    /** Takes the place of the search once a club is picked: the button that brings it back. */
+    change: "Choose another club",
+
+    // The contract
+    /** Under an input that cannot be sent. */
+    wageInvalid: "Enter a whole number of pounds, 0 or more",
+    expiresInvalid: "Enter a date",
+
+    // What the dialog says about the move itself
+    chooseClub: "Choose the club to move the player to.",
+    fixTerms: "Fix the contract values first.",
+    checking: "Checking the move…",
+    /** The move can be made; `from` and `to` are the names of the clubs. */
+    route: (from: string, to: string) => `${from} → ${to}`,
+    doesHeading: "What the move does",
+    /** What the game does to the player, one line each. */
+    does: [
+      "Joins the senior team of the new club",
+      "Contract dated from the game's date; squad number cleared",
+      "Comes off the transfer and loan lists",
+      "Wage and contract end change only if you set new ones",
+      "No fee is paid; career history is not updated",
+      "Listed under Changes, where it can be undone",
+    ],
+
+    // The foot
+    /** Nothing changes in the game until Move. */
+    hint: "Nothing changes in the game until you press Move.",
+    move: "Move",
+    moving: "Moving…",
+    cancel: "Cancel",
   },
 
   /** The game, as `describeGame` in `format.ts` names it. */

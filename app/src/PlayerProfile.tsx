@@ -2,6 +2,7 @@ import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { formatPounds } from "./format";
 import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
+import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { PositionPitch } from "./PositionPitch";
@@ -77,7 +78,20 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
       loaded={loaded}
       onClose={onClose}
       editing={editing}
-      actions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
+      actions={
+        <>
+          {/* Only while the profile is read, not edited, and for a player who has a club to leave. The dialog starts
+              from his contract, so the button waits for the details. */}
+          {editing.editable && editing.stage === "view" && info.club !== null && (
+            <MoveButton
+              player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
+              contract={details?.contract ?? null}
+              ready={details !== undefined}
+            />
+          )}
+          <CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />
+        </>
+      }
     >
       {details && <ProfileBody details={details} />}
     </ProfileFrame>
