@@ -45,9 +45,7 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
     bornText(info),
     details && details.heightCm > 0 && profileText.height(details.heightCm),
     `${profileText.uid} ${info.uid}`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ];
 
   return (
     <ProfileFrame

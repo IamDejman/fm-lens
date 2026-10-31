@@ -209,7 +209,7 @@ export function EditBar({ editing }: { editing: ProfileEditing }) {
             </>
           ) : (
             <>
-              <span className="edit-count">
+              <span className={changes.length > 0 ? "edit-count pending" : "edit-count"}>
                 {editText.changes(changes.length)}
                 {invalid > 0 && <span className="edit-invalid"> · {editText.invalidCount(invalid)}</span>}
               </span>

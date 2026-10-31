@@ -69,10 +69,10 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
 function ClubCells({ club: c }: { club: ClubSummary }) {
   return (
     <>
-      <td className="col-name">
+      <td className="col-name" title={c.name}>
         <WithPicture picture={<ClubLogo uid={c.uid} name={c.name} size={PICTURE_SIZE.clubRowLogo} />}>
           <div className="name">
-            {c.name}
+            <span className="name-text">{c.name}</span>
             {c.women && <span className="tag women">{clubListText.women}</span>}
           </div>
           {c.shortName && c.shortName !== c.name && <div className="sub">{c.shortName}</div>}

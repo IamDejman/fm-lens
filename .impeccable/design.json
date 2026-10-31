@@ -1,0 +1,713 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-31T00:00:00Z",
+  "title": "Design System: FMLibreEditor",
+  "extensions": {
+    "colorMeta": {
+      "rail": {
+        "role": "neutral",
+        "displayName": "Rail Indigo",
+        "purpose": "The sidebar, the deepest ground.",
+        "cssVar": "--rail",
+        "lightTheme": "#e3e7ef",
+        "canonical": "oklch(16.0% 0.013 270)",
+        "tonalRamp": [
+          "#090b11",
+          "#21242b",
+          "#3d4047",
+          "#5b5d65",
+          "#7a7d85",
+          "#9b9ea7",
+          "#c1c4cd",
+          "#ebeef8"
+        ]
+      },
+      "ground": {
+        "role": "neutral",
+        "displayName": "Indigo Ground",
+        "purpose": "The app background behind lists.",
+        "cssVar": "--bg",
+        "lightTheme": "#edf0f5",
+        "canonical": "oklch(18.8% 0.017 274)",
+        "tonalRamp": [
+          "#090b12",
+          "#21242c",
+          "#3d3f49",
+          "#5a5d67",
+          "#7a7d87",
+          "#9b9ea9",
+          "#c0c4cf",
+          "#ebeefa"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Indigo Panel",
+        "purpose": "Profiles, cards and dialogs.",
+        "cssVar": "--panel",
+        "lightTheme": "#ffffff",
+        "canonical": "oklch(22.4% 0.020 272)",
+        "tonalRamp": [
+          "#080b14",
+          "#20242e",
+          "#3c3f4b",
+          "#595d69",
+          "#797d8a",
+          "#9a9eab",
+          "#bfc4d2",
+          "#e9eefd"
+        ]
+      },
+      "raised": {
+        "role": "neutral",
+        "displayName": "Raised Indigo",
+        "purpose": "Table headers, profile and dialog heads, edit footer, default buttons, menus.",
+        "cssVar": "--raised",
+        "lightTheme": "#eef1f6",
+        "canonical": "oklch(26.7% 0.027 272)",
+        "tonalRamp": [
+          "#070a16",
+          "#1f2331",
+          "#3b3f4e",
+          "#585d6d",
+          "#777d8e",
+          "#989eb0",
+          "#bec3d6",
+          "#e9eefe"
+        ]
+      },
+      "hover": {
+        "role": "neutral",
+        "displayName": "Hover Indigo",
+        "purpose": "Hover state of rows and buttons.",
+        "cssVar": "--hover",
+        "lightTheme": "#e4e8f0",
+        "canonical": "oklch(29.6% 0.030 271)",
+        "tonalRamp": [
+          "#070a18",
+          "#1f2333",
+          "#3a3f50",
+          "#575d6f",
+          "#767d90",
+          "#979eb2",
+          "#bdc4d8",
+          "#e8eeff"
+        ]
+      },
+      "field": {
+        "role": "neutral",
+        "displayName": "Field Well",
+        "purpose": "Inputs, a step below their panel.",
+        "cssVar": "--field",
+        "lightTheme": "#ffffff",
+        "canonical": "oklch(17.9% 0.015 272)",
+        "tonalRamp": [
+          "#090b11",
+          "#21242b",
+          "#3d3f48",
+          "#5b5d66",
+          "#7a7d86",
+          "#9b9ea8",
+          "#c1c4ce",
+          "#ebeef9"
+        ]
+      },
+      "zebra": {
+        "role": "neutral",
+        "displayName": "Zebra Stripe",
+        "purpose": "Every other row of a table or value list.",
+        "cssVar": "--zebra",
+        "lightTheme": "rgb(20 30 60 / 0.03)"
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "purpose": "1px dividers.",
+        "cssVar": "--border",
+        "lightTheme": "#d6dbe5",
+        "canonical": "oklch(30.8% 0.032 272)",
+        "tonalRamp": [
+          "#070a18",
+          "#1e2333",
+          "#3a3f51",
+          "#575d70",
+          "#767d91",
+          "#979eb3",
+          "#bdc3d9",
+          "#e9eefe"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Strong Rule",
+        "purpose": "Under table headers and group headings; control outlines.",
+        "cssVar": "--border-strong",
+        "lightTheme": "#bcc4d3",
+        "canonical": "oklch(37.8% 0.039 271)",
+        "tonalRamp": [
+          "#060a1b",
+          "#1d2337",
+          "#383f55",
+          "#555d74",
+          "#747c95",
+          "#959eb7",
+          "#bac3de",
+          "#e8eeff"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "purpose": "Text.",
+        "cssVar": "--text",
+        "lightTheme": "#151923",
+        "canonical": "oklch(94.9% 0.008 271)",
+        "tonalRamp": [
+          "#0a0b0f",
+          "#222428",
+          "#3e4044",
+          "#5c5d62",
+          "#7b7d82",
+          "#9c9ea4",
+          "#c2c4ca",
+          "#eceef4"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "purpose": "Secondary text, labels, table header text.",
+        "cssVar": "--muted",
+        "lightTheme": "#566074",
+        "canonical": "oklch(71.4% 0.032 271)",
+        "tonalRamp": [
+          "#070a18",
+          "#1e2334",
+          "#393f51",
+          "#575d70",
+          "#767d91",
+          "#979eb3",
+          "#bcc4d9",
+          "#e9eefe"
+        ]
+      },
+      "royal-blue": {
+        "role": "primary",
+        "displayName": "Royal Blue",
+        "purpose": "Selection, the main action, active section, pressed switch.",
+        "cssVar": "--accent",
+        "lightTheme": "#2458d3",
+        "canonical": "oklch(57.9% 0.204 262)",
+        "tonalRamp": [
+          "#00003a",
+          "#001963",
+          "#013398",
+          "#1250ce",
+          "#3474f4",
+          "#6c9cf9",
+          "#a5c5fe",
+          "#e6efff"
+        ]
+      },
+      "royal-blue-hover": {
+        "role": "primary",
+        "displayName": "Royal Blue Hover",
+        "purpose": "Hover of primary buttons.",
+        "cssVar": "--accent-hover",
+        "lightTheme": "#1f4ebf",
+        "canonical": "oklch(62.2% 0.189 262)",
+        "tonalRamp": [
+          "#00003a",
+          "#001864",
+          "#003399",
+          "#1953c6",
+          "#3976ec",
+          "#6b9cf9",
+          "#a5c5ff",
+          "#e6efff"
+        ]
+      },
+      "royal-blue-text": {
+        "role": "primary",
+        "displayName": "Royal Blue Text",
+        "purpose": "Focus rings, outlined badges, caret.",
+        "cssVar": "--accent-text",
+        "lightTheme": "#1d4fc4",
+        "canonical": "oklch(75.3% 0.126 264)",
+        "tonalRamp": [
+          "#000037",
+          "#041a60",
+          "#1c3a81",
+          "#3859a4",
+          "#567ac8",
+          "#769ced",
+          "#a9c4fb",
+          "#e7effe"
+        ]
+      },
+      "royal-blue-soft": {
+        "role": "primary",
+        "displayName": "Royal Blue Wash",
+        "purpose": "The picked table row, pressed Compare, text selection.",
+        "cssVar": "--accent-soft",
+        "lightTheme": "rgb(36 88 211 / 0.16)"
+      },
+      "royal-blue-faint": {
+        "role": "primary",
+        "displayName": "Royal Blue Faint Wash",
+        "purpose": "Best value in a comparison row; the row Enter picks.",
+        "cssVar": "--accent-faint",
+        "lightTheme": "rgb(36 88 211 / 0.06)"
+      },
+      "title-strip": {
+        "role": "primary",
+        "displayName": "Title Strip Blue",
+        "purpose": "The solid title strip with white type.",
+        "cssVar": "--strip",
+        "lightTheme": "#2154c9",
+        "canonical": "oklch(48.8% 0.190 263)",
+        "tonalRamp": [
+          "#00003a",
+          "#000576",
+          "#022da1",
+          "#2052c6",
+          "#3f75ec",
+          "#6d9bfa",
+          "#a6c4ff",
+          "#e6efff"
+        ]
+      },
+      "on-accent": {
+        "role": "primary",
+        "displayName": "On Accent White",
+        "purpose": "Text on Royal Blue and the strip.",
+        "cssVar": "--on-accent",
+        "lightTheme": "#ffffff",
+        "canonical": "oklch(100.0% 0.000 90)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "pending-gold": {
+        "role": "secondary",
+        "displayName": "Pending Gold",
+        "purpose": "An edit not yet applied, and nothing else.",
+        "cssVar": "--pending",
+        "lightTheme": "#8a5c00",
+        "canonical": "oklch(80.6% 0.136 85)",
+        "tonalRamp": [
+          "#140900",
+          "#302100",
+          "#523c00",
+          "#775802",
+          "#9d7713",
+          "#c5961d",
+          "#edbc4f",
+          "#feedc9"
+        ]
+      },
+      "pending-gold-soft": {
+        "role": "secondary",
+        "displayName": "Pending Gold Wash",
+        "purpose": "Fill of a changed input and the pressed Edit toggle.",
+        "cssVar": "--pending-soft",
+        "lightTheme": "rgb(234 170 30 / 0.18)"
+      },
+      "danger-red": {
+        "role": "tertiary",
+        "displayName": "Danger Red",
+        "purpose": "Removal, invalid values, errors, negative amounts.",
+        "cssVar": "--danger",
+        "lightTheme": "#c23a31",
+        "canonical": "oklch(68.5% 0.173 26)",
+        "tonalRamp": [
+          "#220000",
+          "#4b0005",
+          "#7b050f",
+          "#aa2023",
+          "#d04843",
+          "#f76c63",
+          "#fdaca4",
+          "#fee9e6"
+        ]
+      },
+      "danger-red-soft": {
+        "role": "tertiary",
+        "displayName": "Danger Red Wash",
+        "purpose": "Fill of invalid inputs and error banners.",
+        "cssVar": "--danger-soft",
+        "lightTheme": "rgb(194 58 49 / 0.1)"
+      },
+      "scrim": {
+        "role": "neutral",
+        "displayName": "Scrim",
+        "purpose": "Dims the app behind a dialog.",
+        "cssVar": "--scrim",
+        "lightTheme": "rgb(20 26 40 / 0.42)"
+      },
+      "tier-1": {
+        "role": "tertiary",
+        "displayName": "Band 1–5",
+        "purpose": "FM rating band for 1–5; lesser positions on the pitch.",
+        "cssVar": "--tier-1",
+        "lightTheme": "#b8332b",
+        "canonical": "oklch(66.9% 0.179 26)",
+        "tonalRamp": [
+          "#220000",
+          "#4c0003",
+          "#7d000a",
+          "#ac1a1f",
+          "#d34540",
+          "#fa6960",
+          "#ffaba2",
+          "#ffe9e6"
+        ]
+      },
+      "tier-2": {
+        "role": "tertiary",
+        "displayName": "Band 6–10",
+        "purpose": "FM rating band for 6–10.",
+        "cssVar": "--tier-2",
+        "lightTheme": "#a65f00",
+        "canonical": "oklch(77.1% 0.142 74)",
+        "tonalRamp": [
+          "#170700",
+          "#341f00",
+          "#583800",
+          "#7f5301",
+          "#a77012",
+          "#d28f1c",
+          "#fbb54e",
+          "#feebd4"
+        ]
+      },
+      "tier-3": {
+        "role": "tertiary",
+        "displayName": "Band 11–15",
+        "purpose": "FM rating band for 11–15; accomplished positions.",
+        "cssVar": "--tier-3",
+        "lightTheme": "#587a0c",
+        "canonical": "oklch(82.8% 0.148 119)",
+        "tonalRamp": [
+          "#090e00",
+          "#212800",
+          "#3b4506",
+          "#576510",
+          "#75880a",
+          "#95ab2d",
+          "#bad159",
+          "#e3fd85"
+        ]
+      },
+      "tier-4": {
+        "role": "tertiary",
+        "displayName": "Band 16–20",
+        "purpose": "FM rating band for 16–20; natural positions and the pitch grass.",
+        "cssVar": "--tier-4",
+        "lightTheme": "#16714f",
+        "canonical": "oklch(75.5% 0.138 160)",
+        "tonalRamp": [
+          "#001005",
+          "#002d1a",
+          "#004d30",
+          "#037048",
+          "#189463",
+          "#39b880",
+          "#67dfa5",
+          "#c6fede"
+        ]
+      },
+      "on-tier": {
+        "role": "tertiary",
+        "displayName": "On Band",
+        "purpose": "Text on a solid band colour (pitch markers).",
+        "cssVar": "--on-tier",
+        "lightTheme": "#ffffff"
+      }
+    },
+    "categoricalColors": {
+      "note": "Supporter-mix bar only, one hue per kind of supporter in a fixed order.",
+      "dark": [
+        "#3987e5",
+        "#d95926",
+        "#199e70",
+        "#c98500",
+        "#d55181",
+        "#008300"
+      ],
+      "light": [
+        "#2a78d6",
+        "#eb6834",
+        "#1baf7a",
+        "#eda100",
+        "#e87ba4",
+        "#008300"
+      ]
+    },
+    "clubBadge": {
+      "value": "hsl(var(--hue) 50% 30%)",
+      "purpose": "Initials badge for a club with no logo; hue from the club name; white initials keep 4.5:1."
+    },
+    "themes": {
+      "default": "dark",
+      "light": "prefers-color-scheme: light redefines every color role; values in colorMeta.*.lightTheme."
+    },
+    "typographyMeta": {
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "CA in the profile head; PA at 20px/600 muted."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Person or club name in the profile head."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Section name on the title strip; dialog heads."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "App default; ratings at 700."
+      },
+      "body-dense": {
+        "displayName": "Body Dense",
+        "purpose": "Buttons (600), value lists, attribute rows."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Notes, sub-lines, sidebar note."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Uppercase table headers and ruled group headings (0.5–0.6px tracking)."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "UIDs and the macOS launch option."
+      }
+    },
+    "shadows": [
+      {
+        "name": "overlay-dialog",
+        "value": "0 18px 48px rgb(0 0 0 / 0.45)",
+        "purpose": "Dialogs over the scrim. Overlay exception only."
+      },
+      {
+        "name": "overlay-menu",
+        "value": "0 10px 28px rgb(0 0 0 / 0.4)",
+        "purpose": "The squad row menu. Overlay exception only."
+      },
+      {
+        "name": "ring-pending",
+        "value": "inset 0 0 0 1px var(--pending)",
+        "purpose": "Doubles the border of a changed input; not elevation."
+      },
+      {
+        "name": "ring-invalid",
+        "value": "inset 0 0 0 1px var(--danger)",
+        "purpose": "Doubles the border of an invalid input; not elevation."
+      },
+      {
+        "name": "ring-focus-search",
+        "value": "0 0 0 1px var(--accent)",
+        "purpose": "Search field focus; not elevation."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-change",
+        "value": "120ms ease-out",
+        "purpose": "Button background, border and colour transitions only."
+      },
+      {
+        "name": "loading-pulse",
+        "value": "1.4s ease-in-out infinite (opacity to 0.45)",
+        "purpose": "Profile loading text; off under prefers-reduced-motion."
+      }
+    ],
+    "focus": {
+      "default": "2px solid var(--accent-text), offset 2px (buttons) or -2px inset (rows, nav, tabs)",
+      "onStrip": "2px solid #fff"
+    },
+    "breakpoints": [
+      {
+        "name": "window-min",
+        "value": "960x600"
+      },
+      {
+        "name": "short-window",
+        "value": "max-height: 640px"
+      },
+      {
+        "name": "dialog-narrow",
+        "value": "max-width: 720px"
+      },
+      {
+        "name": "list-container",
+        "value": "@container on the table: 1200, 960, 880, 780, 680, 580, 560, 420, 320, 300px"
+      }
+    ],
+    "layout": {
+      "rail": "216px",
+      "titleStrip": "52px",
+      "profile": "flex 0 1 560px, min 440px; squad tab 880px",
+      "listMin": "240px"
+    }
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default button: raised ink, square, dense.",
+      "html": "<button class=\"ds-btn\">Bulk edit</button>",
+      "css": ".ds-btn{min-height:30px;padding:5px 12px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--raised,#212533);color:var(--text,#eceef4);font:600 13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color 120ms ease-out,border-color 120ms ease-out,color 120ms ease-out}.ds-btn:hover{background:var(--hover,#272c3c)}.ds-btn:active{background:var(--border,#2a2f40)}.ds-btn:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:2px}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action of a place: Connect, Apply, Edit.",
+      "html": "<button class=\"ds-btn-primary\">Apply</button>",
+      "css": ".ds-btn-primary{min-height:30px;padding:5px 12px;border:1px solid var(--accent,#3170f0);border-radius:4px;background:var(--accent,#3170f0);color:var(--on-accent,#fff);font:600 13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color 120ms ease-out,border-color 120ms ease-out}.ds-btn-primary:hover{border-color:var(--accent-hover,#4380f7);background:var(--accent-hover,#4380f7)}.ds-btn-primary:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "What removes or drops: red outline, transparent.",
+      "html": "<button class=\"ds-btn-danger\">Discard</button>",
+      "css": ".ds-btn-danger{min-height:30px;padding:5px 12px;border:1px solid var(--danger,#f2675f);border-radius:4px;background:transparent;color:var(--danger,#f2675f);font:600 13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color 120ms ease-out}.ds-btn-danger:hover{background:var(--danger-soft,rgb(242 103 95/.14))}.ds-btn-danger:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:2px}"
+    },
+    {
+      "name": "Title Strip",
+      "kind": "nav",
+      "refersTo": "title-strip",
+      "description": "The solid royal-blue strip: section name left, game date and Refresh right, all white.",
+      "html": "<header class=\"ds-strip\"><h1 class=\"ds-strip-title\">Players</h1><span class=\"ds-strip-status\">FM27 · 400 players</span><span class=\"ds-strip-spacer\"></span><span class=\"ds-strip-date\">18 Jul 2026</span><button class=\"ds-strip-btn\">Refresh</button></header>",
+      "css": ".ds-strip{display:flex;align-items:center;gap:14px;min-height:52px;padding:0 16px 0 20px;background:var(--strip,#2254c9);color:#fff;font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}.ds-strip-title{margin:0;font-size:17px;font-weight:700;letter-spacing:-.1px}.ds-strip-status{color:rgb(255 255 255/.68);font-size:12.5px}.ds-strip-spacer{flex:1}.ds-strip-date{font-size:14px;font-weight:700}.ds-strip-btn{min-height:30px;padding:5px 12px;border:1px solid rgb(255 255 255/.45);border-radius:4px;background:transparent;color:#fff;font:600 13px/1.3 inherit;cursor:pointer}.ds-strip-btn:hover{background:rgb(255 255 255/.14)}.ds-strip-btn:focus-visible{outline:2px solid #fff;outline-offset:2px}"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "The sidebar sections; the active one solid royal blue.",
+      "html": "<nav class=\"ds-rail\"><button class=\"ds-nav ds-nav-active\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/></svg>Players</button><button class=\"ds-nav\"><svg viewBox=\"0 0 24 24\"><path d=\"M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z\"/></svg>Clubs</button><button class=\"ds-nav\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 12a8 8 0 1 0 3-6.2M4 4v5h5\"/></svg>Changes<small>3</small></button></nav>",
+      "css": ".ds-rail{display:flex;flex-direction:column;gap:2px;width:196px;padding:10px;background:var(--rail,#0b0d13)}.ds-nav{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:var(--muted,#9ba2b7);font:600 14px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;text-align:left;cursor:pointer}.ds-nav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.ds-nav:hover:not(.ds-nav-active){background:var(--raised,#212533);color:var(--text,#eceef4)}.ds-nav:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:-2px}.ds-nav-active{background:var(--accent,#3170f0);color:#fff}.ds-nav small{margin-left:auto;min-width:20px;padding:0 6px;border-radius:3px;background:var(--raised,#212533);color:var(--text,#eceef4);font-size:11.5px;font-weight:700;line-height:18px;text-align:center}"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "The search that leads every list.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M20 20l-4-4\"/></svg><input placeholder=\"Search by name or UID\"></label>",
+      "css": ".ds-search{display:flex;align-items:center;gap:8px;width:min(440px,100%);min-height:36px;padding:0 12px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--field,#0f1118)}.ds-search:hover{border-color:var(--muted,#9ba2b7)}.ds-search:focus-within{border-color:var(--accent,#3170f0);box-shadow:0 0 0 1px var(--accent,#3170f0)}.ds-search svg{width:16px;height:16px;fill:none;stroke:var(--muted,#9ba2b7);stroke-width:1.8;stroke-linecap:round}.ds-search input{flex:1;min-width:0;padding:8px 0;border:0;outline:0;background:transparent;color:var(--text,#eceef4);font:14px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}"
+    },
+    {
+      "name": "Attribute Rows with Edit Input",
+      "kind": "custom",
+      "refersTo": "edit-input",
+      "description": "A ruled group heading over zebra label-value rows; ratings in their band; a changed input turns gold.",
+      "html": "<div class=\"ds-group\"><h3>Technical</h3><dl><div class=\"ds-stat\"><dt>Corners</dt><dd class=\"ds-v4\">19</dd></div><div class=\"ds-stat\"><dt>Crossing</dt><dd class=\"ds-v3\">14</dd></div><div class=\"ds-stat\"><dt>Dribbling</dt><dd class=\"ds-v2\">8</dd></div><div class=\"ds-stat\"><dt>Finishing</dt><dd><input class=\"ds-edit ds-edit-changed\" value=\"20\"></dd></div></dl></div>",
+      "css": ".ds-group{width:220px;background:var(--panel,#181b25);font:13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;color:var(--text,#eceef4)}.ds-group h3{margin:0 0 2px;padding:0 8px 5px;border-bottom:1px solid var(--border-strong,#3a4157);font-size:11.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}.ds-group dl{margin:0}.ds-stat{display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:2px 8px}.ds-stat:nth-child(even){background:var(--zebra,rgb(255 255 255/.025))}.ds-stat:hover{background:var(--hover,#272c3c)}.ds-stat dt{color:var(--muted,#9ba2b7)}.ds-stat dd{margin:0;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}.ds-v4{color:var(--tier-4,#4fca91)}.ds-v3{color:var(--tier-3,#bcd45c)}.ds-v2{color:var(--tier-2,#eaa53c)}.ds-edit{width:calc(2ch + 1.2rem);padding:2px 6px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--field,#0f1118);color:var(--text,#eceef4);font:600 13px inherit;text-align:right;font-variant-numeric:tabular-nums}.ds-edit:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:1px}.ds-edit-changed{border-color:var(--pending,#e8b84a);background:var(--pending-soft,rgb(232 184 74/.16));box-shadow:inset 0 0 0 1px var(--pending,#e8b84a)}"
+    },
+    {
+      "name": "Squad Table",
+      "kind": "custom",
+      "refersTo": "table-row",
+      "description": "FM's squad table: raised uppercase header, zebra rows, royal-blue selection.",
+      "html": "<table class=\"ds-grid\"><thead><tr><th>Name</th><th>Positions</th><th class=\"ds-num\">CA</th></tr></thead><tbody><tr class=\"ds-sel\"><td><b>Lukas Kowalski</b></td><td>AMR</td><td class=\"ds-num\"><b>189</b></td></tr><tr><td><b>Mateo Silva</b></td><td>AML ST DC</td><td class=\"ds-num\"><b>189</b></td></tr><tr><td><b>Rafael Novák</b></td><td>DM ST</td><td class=\"ds-num\"><b>189</b></td></tr></tbody></table>",
+      "css": ".ds-grid{width:100%;border-collapse:collapse;background:var(--bg,#11131b);color:var(--text,#eceef4);font:14px/1.45 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;font-variant-numeric:tabular-nums}.ds-grid th{height:34px;padding:0 12px;border-bottom:1px solid var(--border-strong,#3a4157);background:var(--raised,#212533);color:var(--muted,#9ba2b7);font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;text-align:left}.ds-grid td{height:36px;padding:4px 12px;white-space:nowrap}.ds-grid tbody tr:nth-child(even) td{background:var(--zebra,rgb(255 255 255/.025))}.ds-grid tbody tr:hover td{background:var(--hover,#272c3c)}.ds-grid tbody tr.ds-sel td{background:var(--accent-soft,rgb(49 112 240/.26))}.ds-grid .ds-num{text-align:right}"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "A quiet outlined label beside a value.",
+      "html": "<span class=\"ds-tag\">preview</span> <span class=\"ds-tag ds-tag-you\">You</span>",
+      "css": ".ds-tag{display:inline-block;padding:0 6px;border:1px solid var(--border-strong,#3a4157);border-radius:3px;color:var(--muted,#9ba2b7);font:600 11.5px/18px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;white-space:nowrap}.ds-tag-you{border-color:var(--accent,#3170f0);background:var(--accent,#3170f0);color:#fff}"
+    },
+    {
+      "name": "Dialog",
+      "kind": "card",
+      "refersTo": "dialog",
+      "description": "Overlay box with a raised head band; one of the two places a shadow is allowed.",
+      "html": "<div class=\"ds-modal\"><div class=\"ds-modal-head\"><h2>Bulk edit</h2><p>Preview before applying.</p></div><div class=\"ds-modal-body\">Fields to change.</div><div class=\"ds-modal-foot\"><button class=\"ds-modal-btn\">Cancel</button><button class=\"ds-modal-btn ds-modal-primary\">Preview</button></div></div>",
+      "css": ".ds-modal{width:min(480px,100%);overflow:hidden;border:1px solid var(--border-strong,#3a4157);border-radius:6px;background:var(--panel,#181b25);color:var(--text,#eceef4);box-shadow:0 18px 48px rgb(0 0 0/.45);font:14px/1.45 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}.ds-modal-head{padding:14px 20px 12px;border-bottom:1px solid var(--border,#2a2f40);background:var(--raised,#212533)}.ds-modal-head h2{margin:0 0 4px;font-size:17px;font-weight:700}.ds-modal-head p{margin:0;color:var(--muted,#9ba2b7)}.ds-modal-body{padding:16px 20px}.ds-modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border,#2a2f40)}.ds-modal-btn{min-height:30px;padding:5px 12px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--raised,#212533);color:inherit;font:600 13px/1.3 inherit;cursor:pointer}.ds-modal-btn:hover{background:var(--hover,#272c3c)}.ds-modal-primary{border-color:var(--accent,#3170f0);background:var(--accent,#3170f0);color:#fff}.ds-modal-primary:hover{background:var(--accent-hover,#4380f7)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "One More Screen of Football Manager",
+    "overview": "The editor speaks Football Manager's own interface grammar, so a player who alt-tabs in from the full-screen game is already fluent. Deep indigo-charcoal grounds, a solid royal-blue title strip with white type, dense zebra tables, panels headed by ruled strips of small capitals, and FM's four attribute bands. Every screen has one lead: the search field over the squad table, the profile head with its two ability figures, the gold of what waits to be applied.\n\nDensity is high and deliberate. Rows are 36px, attribute rows 26px, one system sans at a tight scale, 1px rules, small corners. Colour is a vocabulary, not decoration: royal blue is what is picked and the main action, gold is an edit not yet applied, red is danger, and the four bands rate a 1–20 value. Everything else is ink on indigo. The editor reads no club's kit colours; FM's club-coloured title bar becomes the editor's own blue strip.\n\nThe world refuses the category default: a dark dashboard of identical grey cards with neon pills. It runs in a dark theme and a light theme that follow the OS, with the same roles in both.",
+    "keyCharacteristics": [
+      "Stepped indigo grounds (rail, ground, panel, raised) carry depth; panels, cards and tables cast no shadow.",
+      "A 52px royal-blue title strip, level with the sidebar's brand block, so the two read as one band.",
+      "Dense FM squad tables: raised uppercase header row, zebra rows with no rules between them, selection in royal blue.",
+      "1–20 values coloured by FM's four bands; the position pitch in the same bands.",
+      "Gold marks pending edits everywhere they appear: the input, the profile head's rule, the count, the Edit toggle.",
+      "One system sans; tabular digits in every column of numbers."
+    ],
+    "rules": [
+      {
+        "name": "The Meaning-Only Rule",
+        "body": "Colour always means something: blue is picked or primary, gold is pending, red is danger, the bands rate a value. A hue that carries none of these is not added.",
+        "section": "colors"
+      },
+      {
+        "name": "The Gold Waits Rule",
+        "body": "Gold appears only on what has been changed and not yet applied. When the change lands or is dropped, the gold goes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Strip Rule",
+        "body": "On the title strip everything is white; secondary text is the same white dimmed (68–85% opacity), never grey. Buttons on the strip are white-outlined and transparent.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Sans Rule",
+        "body": "One system sans at a tight scale (11.5–24px). No web font, no display face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Digits Rule",
+        "body": "Tables, value lists, abilities and figures use `tabular-nums`, numbers right-aligned so digits line up down every column.",
+        "section": "typography"
+      },
+      {
+        "name": "The Columns Go First Rule",
+        "body": "When room runs out, whole columns drop; the name and CA are the last to leave.",
+        "section": "layout"
+      },
+      {
+        "name": "The Overlay Exception Rule",
+        "body": "Only overlays (dialogs and menus) cast a shadow, offset and blurred, because they float over the page. Everything on the page is flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** give every screen one lead: the search field over the table, the profile head, or the gold of pending edits.",
+      "**Do** colour 1–20 values by FM's four bands (`tier-1` to `tier-4`), as the number itself, bold.",
+      "**Do** mark the picked row, the active section and the main action in Royal Blue, and nothing decorative.",
+      "**Do** show every pending edit in gold until it is applied or dropped.",
+      "**Do** carry depth with the ground steps (rail, ground, panel, raised) and 1px rules.",
+      "**Do** keep numbers in `tabular-nums`, right-aligned.",
+      "**Do** drop whole columns before a name wraps or is cut.",
+      "**Do** keep white type on the title strip, secondary text as dimmed white."
+    ],
+    "donts": [
+      "**Don't** put shadows on panels, cards, tables or the profile; only dialogs and menus cast one.",
+      "**Don't** use gold for anything but an edit not yet applied.",
+      "**Don't** read club kit colours into the chrome; the strip is always the editor's own blue.",
+      "**Don't** build a dashboard of identical grey cards with neon pills; no full-radius pills.",
+      "**Don't** add a web font or display face; the system sans carries every role.",
+      "**Don't** round corners past 6px on any rectangle."
+    ]
+  }
+}

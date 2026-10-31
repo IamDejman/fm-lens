@@ -1,25 +1,50 @@
+/*
+ * FMLibreEditor speaks Football Manager's own interface language: deep indigo panels, a solid title strip,
+ * dense striped tables and FM's attribute colours, so a player who alt-tabs in from the game is already at home.
+ * Colour means something: royal blue is selection and the main action, gold is an edit not yet applied, red is
+ * danger, and the four bands rate a 1–20 value. Everything else is ink.
+ */
 :root {
-  --bg: #0e1217;
-  --panel: #151b22;
-  --raised: #1b232c;
-  --border: #252f3a;
-  --text: #e6edf3;
-  --muted: #8a97a6;
-  --accent: #3fb68b;
-  --accent-soft: rgba(63, 182, 139, 0.22);
-  /* A wash faint enough for text to keep its contrast on it: the best value of a row in the comparison. */
-  --accent-faint: rgba(63, 182, 139, 0.08);
-  --danger: #ef6b62;
-  --danger-soft: rgba(239, 107, 98, 0.12);
-  /* What dims the app behind a dialog. */
-  --scrim: rgba(4, 7, 10, 0.62);
+  /* Grounds, from the back: the sidebar rail, the app, the panels on it, and what sits raised on a panel. */
+  --rail: #0b0d13;
+  --bg: #11131b;
+  --panel: #181b25;
+  --raised: #212533;
+  --hover: #272c3c;
+  /* An input sits a step below its panel. */
+  --field: #0f1118;
+  /* Every other row of a table and of a list of values. */
+  --zebra: rgb(255 255 255 / 0.025);
+  --border: #2a2f40;
+  --border-strong: #3a4157;
+  --text: #eceef4;
+  --muted: #9ba2b7;
 
-  /* Rating bands: 1–5, 6–10, 11–15, 16–20; --on-tier is the text colour on a solid band colour. */
-  --tier-1: #ef6b62;
-  --tier-2: #e6a23c;
-  --tier-3: #a6c95c;
-  --tier-4: var(--accent);
-  --on-tier: #0e1217;
+  /* Royal blue: what is picked and the main action. --strip is the title strip, a step deeper for its white type. */
+  --accent: #3170f0;
+  --accent-hover: #4380f7;
+  --accent-text: #86adff;
+  --accent-soft: rgb(49 112 240 / 0.26);
+  /* A wash faint enough for text to keep its contrast on it: the best value of a row in the comparison. */
+  --accent-faint: rgb(49 112 240 / 0.1);
+  --strip: #2254c9;
+  --on-accent: #ffffff;
+
+  /* Gold: a value changed in the editor and not applied yet. */
+  --pending: #e8b84a;
+  --pending-soft: rgb(232 184 74 / 0.16);
+
+  --danger: #f2675f;
+  --danger-soft: rgb(242 103 95 / 0.14);
+  /* What dims the app behind a dialog. */
+  --scrim: rgb(5 6 10 / 0.66);
+
+  /* Rating bands, as FM colours them: 1–5, 6–10, 11–15, 16–20; --on-tier is the text colour on a solid band colour. */
+  --tier-1: #ef5f57;
+  --tier-2: #eaa53c;
+  --tier-3: #bcd45c;
+  --tier-4: #4fca91;
+  --on-tier: #11131b;
 
   /* The kinds of supporters in the supporter-mix bar: six distinct hues, one per kind, in a fixed order. */
   --mix-1: #3987e5;
@@ -36,28 +61,46 @@
   --badge-saturation: 50%;
   --badge-lightness: 30%;
 
+  --radius: 4px;
+  --scroll: #343a4e;
+
   color-scheme: dark;
-  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 14px;
   line-height: 1.45;
   color: var(--text);
   background: var(--bg);
+  caret-color: var(--accent-text);
+  -webkit-font-smoothing: antialiased;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
-    --bg: #f4f6f8;
+    --rail: #e3e7ef;
+    --bg: #edf0f5;
     --panel: #ffffff;
-    --raised: #eef1f4;
-    --border: #dce2e8;
-    --text: #18212b;
-    --muted: #5f6c7a;
-    --accent: #1f8a64;
-    --accent-soft: rgba(31, 138, 100, 0.16);
-    --accent-faint: rgba(31, 138, 100, 0.06);
-    --danger: #c43c33;
-    --danger-soft: rgba(196, 60, 51, 0.1);
-    --scrim: rgba(24, 33, 43, 0.4);
+    --raised: #eef1f6;
+    --hover: #e4e8f0;
+    --field: #ffffff;
+    --zebra: rgb(20 30 60 / 0.03);
+    --border: #d6dbe5;
+    --border-strong: #bcc4d3;
+    --text: #151923;
+    --muted: #566074;
+
+    --accent: #2458d3;
+    --accent-hover: #1f4ebf;
+    --accent-text: #1d4fc4;
+    --accent-soft: rgb(36 88 211 / 0.16);
+    --accent-faint: rgb(36 88 211 / 0.06);
+    --strip: #2154c9;
+
+    --pending: #8a5c00;
+    --pending-soft: rgb(234 170 30 / 0.18);
+
+    --danger: #c23a31;
+    --danger-soft: rgb(194 58 49 / 0.1);
+    --scrim: rgb(20 26 40 / 0.42);
 
     --tier-1: #b8332b;
     --tier-2: #a65f00;
@@ -72,7 +115,10 @@
     --mix-5: #e87ba4;
     --mix-6: #008300;
 
+    --scroll: #c3cad7;
+
     color-scheme: light;
+    -webkit-font-smoothing: auto;
   }
 }
 
@@ -84,34 +130,99 @@ body {
   margin: 0;
 }
 
-button {
-  padding: 6px 14px;
-  border: 1px solid var(--border);
+::selection {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
+/* Scrollbars in the panel's own colours, thin, in both engines (WebView2 and WebKit). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
   border-radius: 6px;
+  background: var(--scroll) padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong) padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* One button: raised ink by default, royal blue for the main action of a place, red outline for what removes. */
+button {
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   background: var(--raised);
   color: var(--text);
   font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
   cursor: pointer;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out;
 }
 
 button:hover:not(:disabled) {
-  border-color: var(--accent);
+  background: var(--hover);
+}
+
+button:active:not(:disabled) {
+  background: var(--border);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
 }
 
 button:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: default;
 }
 
 button.primary {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
-  font-weight: 600;
+  color: var(--on-accent);
+}
+
+button.primary:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
 }
 
 .muted {
   color: var(--muted);
+}
+
+/* Numbers line up in every column and every row. */
+table,
+dd,
+.ability,
+.value,
+.figure {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Text for assistive technology only: out of sight, but read out. */
@@ -131,45 +242,54 @@ button.primary {
 
 .app {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 216px 1fr;
   height: 100vh;
 }
 
+/* The rail: the app's name, its sections and, at its foot, the notes and the language. */
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 18px 14px;
+  gap: 18px;
+  padding: 0 10px 14px;
   border-right: 1px solid var(--border);
-  background: var(--panel);
+  background: var(--rail);
 }
 
+/* As tall as the title strip beside it, so the two read as one band across the window. */
 .brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  height: 52px;
+  margin: 0 -10px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
 }
 
 .brand .logo {
   display: grid;
+  flex: none;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--accent);
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(160deg, #3fb68b, #24875f);
   color: #fff;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
 }
 
 .brand strong {
   display: block;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.2;
 }
 
 .brand span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
 }
 
 nav {
@@ -180,54 +300,83 @@ nav {
 
 .nav-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
   width: 100%;
-  padding: 7px 10px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
   text-align: left;
+}
+
+.nav-item svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .nav-item:hover:not(:disabled, .active) {
   background: var(--raised);
+  color: var(--text);
 }
 
 .nav-item:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
 .nav-item.active {
-  background: var(--accent-soft);
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .nav-item:disabled {
-  color: var(--muted);
   opacity: 1;
 }
 
+/* How many changes the log holds, at the end of its row. */
 nav small {
+  min-width: 20px;
+  margin-left: auto;
   padding: 0 6px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 11px;
+  border-radius: 3px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.nav-item.active small {
+  background: rgb(255 255 255 / 0.2);
+  color: var(--on-accent);
 }
 
 /* The foot of the sidebar: the note, and under it the language switch. */
 .sidebar-foot {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   margin-top: auto;
+  padding: 0 4px;
 }
 
 .sidebar-note {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.4;
 }
 
 /* What the graphics packs hold is a note of its own; with no packs it is two: that, and where they go. */
@@ -245,35 +394,30 @@ nav small {
   display: inline-flex;
   align-self: flex-start;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
 }
 
 .language-switch button,
 .move-mode button,
 .squad-teams button {
   min-width: 40px;
+  min-height: 26px;
   padding: 3px 10px;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
 }
 
 .language-switch button + button,
 .move-mode button + button,
 .squad-teams button + button {
-  border-left: 1px solid var(--border);
-}
-
-/* The accent border every button gets on hover would colour the divider only: the buttons share one frame. */
-.language-switch button:hover:not(:disabled),
-.move-mode button:hover:not(:disabled),
-.squad-teams button:hover:not(:disabled) {
-  border-color: var(--border);
+  border-left: 1px solid var(--border-strong);
 }
 
 .language-switch button:hover:not(:disabled, [aria-pressed="true"]),
@@ -286,14 +430,14 @@ nav small {
 .language-switch button[aria-pressed="true"],
 .move-mode button[aria-pressed="true"],
 .squad-teams button[aria-pressed="true"] {
-  background: var(--accent-soft);
-  color: var(--text);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 .language-switch button:focus-visible,
 .move-mode button:focus-visible,
 .squad-teams button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
@@ -304,43 +448,104 @@ nav small {
   min-height: 0;
 }
 
+/*
+ * The title strip, as FM's title bar: the section's name, the game it reads and, at the right, the game's date and
+ * the action that reads it again. White type on the strip; what is secondary is the same white, dimmed, never grey.
+ */
 .topbar {
   display: flex;
+  flex: none;
   align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border);
+  gap: 14px;
+  min-height: 52px;
+  padding: 0 16px 0 20px;
+  background: var(--strip);
+  color: var(--on-accent);
+}
+
+.topbar-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+  white-space: nowrap;
 }
 
 .status {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
+  color: rgb(255 255 255 / 0.68);
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.status.on {
-  color: var(--text);
+/* The words are cut short at the end, with an ellipsis, when the window leaves them too little room. */
+.status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status .dot {
   width: 8px;
   height: 8px;
+  flex: none;
   border-radius: 50%;
-  background: var(--muted);
+  background: rgb(255 255 255 / 0.45);
 }
 
 .status.on .dot {
-  background: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: #6ee7a8;
 }
 
+.topbar .tag {
+  border-color: rgb(255 255 255 / 0.4);
+  color: rgb(255 255 255 / 0.85);
+}
+
+/* The game's date, as FM shows it beside Continue. */
+.game-date {
+  flex: none;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.topbar button {
+  flex: none;
+  border-color: rgb(255 255 255 / 0.45);
+  background: transparent;
+  color: var(--on-accent);
+}
+
+.topbar button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.14);
+}
+
+.topbar button:active:not(:disabled) {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.topbar button:focus-visible {
+  outline-color: #fff;
+}
+
+/* A label beside a value: square-cornered, outlined, quiet. */
 .tag {
-  padding: 1px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
 }
 
 .spacer {
@@ -348,7 +553,7 @@ nav small {
 }
 
 .busy {
-  color: var(--muted);
+  color: rgb(255 255 255 / 0.85);
   font-size: 13px;
 }
 
@@ -356,7 +561,7 @@ nav small {
   margin: 12px 20px 0;
   padding: 10px 14px;
   border: 1px solid var(--danger);
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: var(--danger-soft);
   color: var(--danger);
 }
@@ -368,33 +573,45 @@ nav small {
   place-items: center;
   flex: 1;
   padding: 24px;
+  overflow-y: auto;
 }
 
+/* A panel on the app's ground: the connect card, with a heading, the facts it found and its one action. */
 .card {
-  width: min(520px, 100%);
-  padding: 24px;
+  width: min(540px, 100%);
+  padding: 22px 24px 24px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 6px;
   background: var(--panel);
 }
 
 .card h2 {
   margin: 0 0 6px;
-  font-size: 18px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
 }
 
 .card .muted {
   margin: 0 0 18px;
 }
 
+.card > button.primary {
+  min-height: 36px;
+  padding-inline: 16px;
+  font-size: 14px;
+}
+
+/* Label and value rows on a striped field, as FM lists facts. */
 .facts {
   display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 6px 12px;
+  grid-template-columns: 120px 1fr;
   margin: 0 0 20px;
-  padding: 14px 16px;
-  border-radius: 8px;
-  background: var(--raised);
+}
+
+.facts dt,
+.facts dd {
+  padding: 6px 12px;
 }
 
 .facts dt {
@@ -403,6 +620,11 @@ nav small {
 
 .facts dd {
   margin: 0;
+  font-weight: 600;
+}
+
+.facts :is(dt, dd):nth-of-type(even) {
+  background: var(--zebra);
 }
 
 .hint {
@@ -413,12 +635,12 @@ nav small {
   color: var(--danger);
 }
 
-/* macOS: the bridge the game loads. First in the card while it is not set up, under the button once it is. */
+/* macOS: the bridge the game loads, a section of the card under a rule. First while it is not set up, under the
+   button once it is. */
 .bridge {
   margin: 0 0 20px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 16px 0 0;
+  border-top: 1px solid var(--border-strong);
 }
 
 .card > button + .bridge {
@@ -463,8 +685,10 @@ nav small {
   flex: 1;
   min-width: 0;
   padding: 8px 10px;
-  border-radius: 6px;
-  background: var(--raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--field);
+  font-family: "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
   overflow-wrap: anywhere;
   user-select: all;
@@ -503,30 +727,37 @@ nav small {
   flex: 1;
   min-width: 240px;
   min-height: 0;
-  padding: 16px 20px 0;
+  padding: 14px 16px 0;
 }
 
 .toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 16px;
-  margin-bottom: 12px;
+  gap: 8px 14px;
+  margin-bottom: 10px;
 }
 
+/* The search field leads the list: the first thing to type into after alt-tabbing in. */
 .search {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: min(420px, 100%);
+  width: min(440px, 100%);
+  min-height: 36px;
   padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+}
+
+.search:hover {
+  border-color: var(--muted);
 }
 
 .search:focus-within {
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .search svg {
@@ -541,12 +772,20 @@ nav small {
 
 .search input {
   flex: 1;
-  padding: 9px 0;
+  min-width: 0;
+  padding: 8px 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--text);
   font: inherit;
+  text-overflow: ellipsis;
+}
+
+.search input::placeholder,
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
 }
 
 .count {
@@ -577,7 +816,6 @@ nav small {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  font-size: 13px;
 }
 
 .filter-toggle svg {
@@ -597,9 +835,10 @@ nav small {
 /* How many filters are in effect. */
 .filter-count {
   min-width: 18px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--accent-soft);
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--on-accent);
   font-size: 11px;
   font-weight: 700;
   line-height: 18px;
@@ -610,39 +849,61 @@ nav small {
   padding: 4px 8px;
   border-color: transparent;
   background: transparent;
-  color: var(--muted);
-  font-size: 13px;
+  color: var(--accent-text);
 }
 
 .filter-clear:hover:not(:disabled) {
-  color: var(--text);
+  background: var(--accent-faint);
 }
 
-/* The inputs wrap onto a second row, and more when the list is narrow. */
+/* The filters as a form: a grid of equal cells, as many to a row as fit, each a label over its control, so no field is
+   left on a line of its own and every input is as wide as its cell. */
 .filter-fields {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 18px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+  align-items: end;
+  gap: 10px 14px;
   font-size: 13px;
 }
 
-/* A label and its input, or the label of a pair of inputs. */
+/* A label over its input. */
 .filter-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  min-width: 0;
   color: var(--muted);
+}
+
+/* Age: min and max side by side under the one label. */
+.filter-field[role="group"] {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 6px;
+}
+
+.filter-field[role="group"] > span:first-child {
+  grid-column: 1 / -1;
+}
+
+/* A yes-or-no: the box and its words on one line, level with the inputs beside it. */
+.filter-field:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  color: var(--text);
 }
 
 /* The inputs of the filters, and those of the saved filters in the head of the bar (see below). */
 .filter-fields :is(select, input:not([type="checkbox"])),
 .saved-select,
 .saved-form input {
+  min-height: 30px;
   padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
   color: var(--text);
   font: inherit;
 }
@@ -650,16 +911,14 @@ nav small {
 .filter-fields :is(select, input:not([type="checkbox"])):focus-visible,
 .saved-select:focus-visible,
 .saved-form input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 0;
 }
 
-.filter-fields input[type="number"] {
-  width: 4.75rem;
-}
-
-.filter-fields input[type="text"] {
-  width: 9rem;
+.filter-fields :is(select, input:not([type="checkbox"])) {
+  width: 100%;
+  min-width: 0;
 }
 
 .filter-fields input[type="checkbox"] {
@@ -674,10 +933,11 @@ nav small {
   overflow: auto;
   border: 1px solid var(--border);
   border-bottom: 0;
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
   background: var(--panel);
 }
 
+/* FM's squad table: a raised header row, then dense rows striped in turn, with no rules between them. */
 .grid {
   width: 100%;
   border-collapse: collapse;
@@ -687,15 +947,17 @@ nav small {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--border);
+  height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-strong);
   background: var(--raised);
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 700;
   text-align: left;
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 /* A header that sorts the list: a button that looks like the header, with an arrow once its column is the sort. */
@@ -712,12 +974,19 @@ nav small {
   text-transform: inherit;
 }
 
-.grid th .sort:hover {
+.grid th .sort {
+  min-height: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.grid th .sort:hover:not(:disabled) {
+  background: none;
   color: var(--text);
 }
 
 .grid th .sort:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -727,7 +996,7 @@ nav small {
 }
 
 .grid th[aria-sort] {
-  color: var(--text);
+  color: var(--accent-text);
 }
 
 /* Always there, though hidden, so a column does not change its width when it becomes the sort. */
@@ -757,9 +1026,13 @@ nav small {
 }
 
 .grid td {
-  padding: 7px 12px;
-  border-bottom: 1px solid var(--border);
+  height: 36px;
+  padding: 4px 12px;
   white-space: nowrap;
+}
+
+.grid tbody tr:nth-child(even) td {
+  background: var(--zebra);
 }
 
 .grid tbody tr {
@@ -767,15 +1040,16 @@ nav small {
 }
 
 .grid tbody tr:hover td {
-  background: var(--raised);
+  background: var(--hover);
 }
 
+/* The row whose profile is open: royal blue, as FM marks what is picked. */
 .grid tbody tr.selected td {
   background: var(--accent-soft);
 }
 
 .grid tbody tr:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
@@ -816,10 +1090,52 @@ nav small {
   }
 }
 
-/* Narrower still, names and clubs wrap rather than push CA and PA out of view. */
+/* Narrower still, as beside an open profile: one line a row. The second name goes, and names and clubs are cut
+   short (their whole text is in the cell's hover) rather than wrap or push CA and PA out of view. */
 @container (max-width: 560px) {
-  .player-grid :is(.col-name, .col-club) {
-    white-space: normal;
+  .player-grid .col-name .sub {
+    display: none;
+  }
+
+  .player-grid :is(th, td) {
+    padding-inline: 8px;
+  }
+
+  .player-grid td.col-name {
+    width: 46%;
+  }
+
+  .player-grid td.col-club {
+    width: 30%;
+  }
+
+  .player-grid .ability {
+    min-width: 0;
+  }
+
+  /* Beside an open profile the list is for picking the next player: name, positions and CA, the name with the room. */
+  .with-profile .player-grid :is(.col-age, .col-club, .col-pa) {
+    display: none;
+  }
+
+  .with-profile .player-grid .col-positions {
+    display: table-cell;
+    color: var(--muted);
+  }
+
+  .with-profile .player-grid td.col-name {
+    width: 62%;
+  }
+}
+
+/* The narrowest list, beside a profile in the smallest window: name and CA. */
+@container (max-width: 320px) {
+  .with-profile .player-grid .col-positions {
+    display: none;
+  }
+
+  .with-profile .player-grid td.col-name {
+    width: 100%;
   }
 }
 
@@ -827,8 +1143,28 @@ nav small {
  * The clubs table is short: with a profile open only UID drops out (above), and Founded when the
  * list gets very narrow. A long name wraps instead of pushing the other columns out.
  */
-.club-grid .col-name {
-  white-space: normal;
+.club-grid td.col-name {
+  width: 100%;
+  max-width: 0;
+}
+
+.club-grid .col-name .name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.club-grid .col-name :is(.name-text, .sub) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.club-grid .col-name .tag.women {
+  flex: none;
+  margin-left: 0;
 }
 
 @container (max-width: 420px) {
@@ -920,6 +1256,7 @@ nav small {
 .grid .sub {
   color: var(--muted);
   font-size: 12px;
+  line-height: 1.3;
 }
 
 .grid .date {
@@ -928,33 +1265,31 @@ nav small {
 
 .grid .uid {
   color: var(--muted);
-  font-family: "Cascadia Mono", Consolas, monospace;
+  font-family: "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
   font-size: 12px;
 }
 
+/* Current and potential ability, reputation: a plain number, bold, the digits in line down the column. */
 .ability {
   display: inline-block;
   min-width: 46px;
-  padding: 1px 8px;
-  border-radius: 5px;
-  background: linear-gradient(90deg, var(--accent-soft) var(--fill), transparent var(--fill));
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 700;
   text-align: right;
 }
 
 .ability.range {
-  background: none;
   color: var(--muted);
+  font-weight: 600;
 }
 
-/* A reputation reaches 10,000: room for its five digits and the separator, so every bar is as long as the next. */
+/* A reputation reaches 10,000: room for its five digits and the separator. */
 .ability.rep {
   min-width: 64px;
 }
 
 .empty {
-  padding: 24px;
+  padding: 28px 24px;
   color: var(--muted);
   text-align: center;
 }
@@ -1032,8 +1367,6 @@ nav small {
   display: block;
   width: 100%;
   height: 100%;
-  border: 1px solid var(--border);
-  border-radius: 2px;
 }
 
 /* A picture beside the words it goes with, in a table cell. */
@@ -1080,12 +1413,14 @@ nav small {
   flex-basis: 880px;
 }
 
+/* The head of a profile, as FM's: the name large, what he is under it, his abilities and the actions at the right. */
 .profile-head {
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 14px 16px 12px;
+  padding: 16px 16px 14px;
   border-bottom: 1px solid var(--border);
+  background: var(--raised);
 }
 
 .profile-id {
@@ -1096,7 +1431,9 @@ nav small {
 .profile-id h2 {
   margin: 0;
   font-size: 22px;
+  font-weight: 700;
   line-height: 1.2;
+  letter-spacing: -0.2px;
   overflow-wrap: anywhere;
 }
 
@@ -1117,6 +1454,10 @@ nav small {
   font-size: 13px;
 }
 
+.profile-vitals .vital {
+  white-space: nowrap;
+}
+
 /* A profile with no line of its own under the names (a club) still wants air above its small print. */
 .profile-id :is(h2, .profile-fullname) + .profile-vitals {
   margin-top: 6px;
@@ -1133,8 +1474,9 @@ nav small {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  min-height: 30px;
+  height: 30px;
   padding: 0;
   border-color: transparent;
   background: transparent;
@@ -1142,7 +1484,7 @@ nav small {
 }
 
 .icon-button:hover:not(:disabled) {
-  background: var(--raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -1155,26 +1497,37 @@ nav small {
   stroke-linecap: round;
 }
 
+/* Current and potential ability, large, side by side: the two numbers a player reads first. */
 .profile-abilities {
   display: grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  gap: 4px 8px;
+  grid-auto-flow: column;
+  grid-template-rows: auto auto;
+  align-items: baseline;
+  gap: 0 18px;
 }
 
 .profile-abilities abbr,
 .compare-abilities abbr,
 .move-abilities abbr {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
   text-decoration: none;
+  text-transform: uppercase;
   cursor: help;
 }
 
 .profile-abilities .ability {
   display: block;
-  min-width: 100px;
+  min-width: 0;
+  font-size: 24px;
+  line-height: 1.1;
+  text-align: left;
+}
+
+.profile-abilities .ability.range {
+  font-size: 20px;
 }
 
 .profile-body {
@@ -1186,7 +1539,7 @@ nav small {
 }
 
 .profile-body > * + * {
-  margin-top: 20px;
+  margin-top: 22px;
 }
 
 .profile-body .banner {
@@ -1215,30 +1568,32 @@ nav small {
 .profile-columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 14px;
+  gap: 0 12px;
   align-items: start;
 }
 
 .profile-split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 20px;
+  gap: 0 16px;
   align-items: start;
 }
 
 .profile-stack {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
+/* A group's name heads it as FM heads a panel: a ruled strip of small capitals over the rows. */
 .profile-group h3,
 .profile-group h4 {
-  margin: 0 0 4px;
-  padding: 0 6px;
-  color: var(--muted);
+  margin: 0 0 2px;
+  padding: 0 8px 5px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text);
   font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
@@ -1255,18 +1610,28 @@ nav small {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 24px;
-  padding: 2px 6px;
-  border-radius: 5px;
+  min-height: 26px;
+  padding: 2px 8px;
+}
+
+.stat:nth-child(even) {
+  background: var(--zebra);
 }
 
 .stat:hover {
-  background: var(--raised);
+  background: var(--hover);
 }
 
 .stat dt {
   min-width: 0;
   color: var(--muted);
+}
+
+/* While editing, a row holds an input: it gives up a little of its air so the longest one-word name ("Konsantrasyon")
+   still fits beside it in the narrowest profile. Names wrap only between words. */
+.profile.editing .stat {
+  gap: 6px;
+  padding-inline: 6px;
 }
 
 .stat dd {
@@ -1285,28 +1650,15 @@ nav small {
   font-size: 11.5px;
 }
 
-/* A 1–20 rating as a number on a tinted chip, coloured by band; the comparison has them in its cells. */
+/* A 1–20 rating as FM shows it: the number itself in its band's colour, bold, the digits in line. */
 .stat .value,
 .compare-grid .value {
-  position: relative;
   flex: none;
-  min-width: 26px;
-  padding: 1px 6px;
-  isolation: isolate;
-  border-radius: 5px;
+  min-width: 24px;
   color: var(--muted);
+  font-size: 14px;
   font-weight: 700;
-  text-align: center;
-}
-
-.value::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: currentColor;
-  opacity: 0.13;
+  text-align: right;
 }
 
 .value.tier-1 {
@@ -1354,8 +1706,8 @@ nav small {
 .tag.you {
   margin-left: 8px;
   border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--on-accent);
   vertical-align: middle;
 }
 
@@ -1382,8 +1734,8 @@ nav small {
 .bar {
   position: relative;
   flex: 1;
-  height: 4px;
-  border-radius: 2px;
+  height: 6px;
+  border-radius: 1px;
   background: var(--border);
 }
 
@@ -1412,17 +1764,18 @@ nav small {
   margin: 0 auto;
 }
 
+/* The pitch is grass, whatever colour the app picks things in. */
 .pitch-field {
-  fill: var(--accent);
-  fill-opacity: 0.06;
-  stroke: var(--accent);
-  stroke-opacity: 0.35;
+  fill: var(--tier-4);
+  fill-opacity: 0.1;
+  stroke: var(--tier-4);
+  stroke-opacity: 0.4;
 }
 
 .pitch-lines {
   fill: none;
-  stroke: var(--accent);
-  stroke-opacity: 0.28;
+  stroke: var(--tier-4);
+  stroke-opacity: 0.32;
 }
 
 .pitch-marker rect {
@@ -1490,7 +1843,7 @@ nav small {
   flex: none;
   width: 14px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--pos);
 }
 
@@ -1535,9 +1888,9 @@ nav small {
   display: flex;
   gap: 2px;
   height: 12px;
-  margin: 6px 6px 0;
+  margin: 6px 8px 0;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 /* A segment grows by its percent (flex-grow is set on it), so the bar is full even when they do not add up to 100. */
@@ -1566,15 +1919,31 @@ nav small {
 .move-toggle,
 .heal-toggle,
 .squad-action {
-  padding: 3px 12px;
-  font-size: 13px;
+  padding: 4px 12px;
+}
+
+/* Edit is a profile's main action: royal blue until it is on, then gold, as the values it leaves to apply. */
+.edit-toggle {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.edit-toggle:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
 }
 
 .edit-toggle[aria-pressed="true"],
+.edit-toggle[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--pending);
+  background: var(--pending-soft);
+  color: var(--pending);
+}
+
 .compare-toggle[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
-  font-weight: 600;
 }
 
 /* A full comparison takes no one more: the button is dimmed, and its hover text says why. It stays a Tab stop. So does
@@ -1589,23 +1958,23 @@ nav small {
 .compare-toggle[aria-disabled="true"]:hover,
 .heal-toggle[aria-disabled="true"]:hover,
 .squad-action[aria-disabled="true"]:hover {
-  border-color: var(--border);
+  background: var(--raised);
 }
 
-/* The profile that is being edited has the accent colour under its header. */
+/* The profile that is being edited has a gold rule under its head: what changes waits to be applied. */
 .profile.editing .profile-head {
-  border-bottom-color: var(--accent);
+  border-bottom: 2px solid var(--pending);
 }
 
 /* An input where a value was, a number input unless it says otherwise below. Its width follows the digits of the
    largest value it takes (--digits). */
 .edit-input {
   flex: none;
-  width: calc(var(--digits, 2) * 1ch + 1.6rem);
+  width: calc(var(--digits, 2) * 1ch + 1.2rem);
   padding: 2px 6px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
   color: var(--text);
   font: inherit;
   font-variant-numeric: tabular-nums;
@@ -1628,16 +1997,16 @@ nav small {
 }
 
 .edit-input:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 1px;
 }
 
-/* A value other than the game's: the accent colour, as a tint and a second line inside the border. */
+/* A value other than the game's: gold, as a tint and a second line inside the border, until it is applied. */
 .edit-input.changed,
 .edit-flag.changed {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  border-color: var(--pending);
+  background: var(--pending-soft);
+  box-shadow: inset 0 0 0 1px var(--pending);
 }
 
 /* A value that cannot be applied: empty, out of range or not whole, or one the game refused. */
@@ -1678,9 +2047,9 @@ select.edit-input {
   align-items: center;
   gap: 6px;
   padding: 2px 10px 2px 8px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
   font-size: 13px;
   cursor: pointer;
 }
@@ -1695,7 +2064,7 @@ select.edit-input {
 }
 
 .edit-flag:has(input:focus-visible) {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 1px;
 }
 
@@ -1764,6 +2133,10 @@ select.edit-input {
   background: var(--raised);
 }
 
+.edit-report:not(:empty) .icon-button {
+  min-height: 26px;
+}
+
 .edit-report p {
   margin: 0;
   font-weight: 600;
@@ -1791,7 +2164,7 @@ select.edit-input {
   padding: 8px 16px;
   overflow-y: auto;
   border-top: 1px solid var(--border);
-  background: var(--raised);
+  background: var(--pending-soft);
   font-size: 13px;
   list-style: none;
 }
@@ -1808,25 +2181,27 @@ select.edit-input {
   font-weight: 600;
 }
 
+/* What waits to be applied, and the buttons that review, apply or drop it: a raised bar under the profile. */
 .edit-footer {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border-top: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.edit-footer button {
-  padding: 4px 12px;
-  font-size: 13px;
+  border-top: 1px solid var(--border-strong);
+  background: var(--raised);
 }
 
 .edit-count {
   flex: 1;
   min-width: 7rem;
-  font-weight: 600;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* Changes wait to be applied: gold, as the values themselves. */
+.edit-count.pending {
+  color: var(--pending);
 }
 
 .edit-invalid {
@@ -1835,6 +2210,7 @@ select.edit-input {
 
 button.danger {
   border-color: var(--danger);
+  background: transparent;
   color: var(--danger);
 }
 
@@ -1848,6 +2224,7 @@ button.danger:hover:not(:disabled) {
 .view-title {
   margin: 0;
   font-size: 18px;
+  font-weight: 700;
 }
 
 .changes .toolbar {
@@ -1892,8 +2269,8 @@ button.danger:hover:not(:disabled) {
 }
 
 .changes-grid .col-status button {
+  min-height: 26px;
   padding: 2px 12px;
-  font-size: 13px;
 }
 
 .changes-grid .row-error {
@@ -1918,8 +2295,6 @@ button.danger:hover:not(:disabled) {
 /* The button at the end of a list's toolbar. */
 .toolbar .mass-edit-toggle {
   margin-left: auto;
-  padding: 4px 12px;
-  font-size: 13px;
 }
 
 /* A dialog over the whole app: the dimmed backdrop, and the box with a head, a scrolling body and a foot. */
@@ -1939,10 +2314,11 @@ button.danger:hover:not(:disabled) {
   flex-direction: column;
   width: min(960px, 100%);
   max-height: 100%;
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
   background: var(--panel);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.45);
 }
 
 /* Focus goes to the box itself when the dialog opens: no ring around the whole dialog. */
@@ -1957,14 +2333,17 @@ button.danger:hover:not(:disabled) {
   flex: none;
 }
 
+/* A dialog's head is a raised band, as FM's pop-ups are. */
 .modal-head {
-  padding: 16px 20px 12px;
+  padding: 14px 20px 12px;
   border-bottom: 1px solid var(--border);
+  background: var(--raised);
 }
 
 .modal-head h2 {
   margin: 0 0 4px;
-  font-size: 18px;
+  font-size: 17px;
+  font-weight: 700;
 }
 
 .modal-body {
@@ -1993,10 +2372,7 @@ button.danger:hover:not(:disabled) {
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
-}
-
-.modal-foot button {
-  padding: 5px 14px;
+  background: var(--raised);
 }
 
 .mass-scope {
@@ -2037,18 +2413,20 @@ button.danger:hover:not(:disabled) {
 .mass-row select,
 .mass-input {
   min-width: 0;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
   color: var(--text);
   font: inherit;
 }
 
 .mass-row select:focus-visible,
 .mass-input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 0;
 }
 
 .mass-row select:disabled,
@@ -2151,8 +2529,13 @@ button.danger:hover:not(:disabled) {
 
 .mass-preview:not(:disabled) {
   border-color: var(--accent);
-  background: var(--accent-soft);
-  font-weight: 600;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.mass-preview:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
 }
 
 /* The live region of the preview: it is always there, so that it is read out when it fills, and out of the layout while empty. */
@@ -2176,7 +2559,7 @@ button.danger:hover:not(:disabled) {
   max-height: 16rem;
   overflow: auto;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 
@@ -2215,7 +2598,7 @@ button.danger:hover:not(:disabled) {
 
 .mass-skipped summary:focus-visible {
   border-radius: 3px;
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -2278,9 +2661,8 @@ button.danger:hover:not(:disabled) {
 /* Marks a change that was part of a mass edit, beside the name. */
 .changes-grid .tag.batch {
   margin-left: 6px;
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 500;
+  border-color: var(--accent-text);
+  color: var(--accent-text);
   vertical-align: middle;
 }
 
@@ -2317,14 +2699,14 @@ button.danger:hover:not(:disabled) {
 
 /* Changes: pages, and the changes of a mass edit under its row */
 
-/* A mass edit is a row of its own, tinted. Its changes, once shown, follow it with a bar at their left edge. */
+/* A mass edit is a row of its own, tinted. Its changes, once shown, follow it set in, under it. */
 .changes-grid tr.batch-row td,
 .changes-grid tr.batch-pager td {
   background: var(--accent-faint);
 }
 
 .changes-grid tr.in-batch td:first-child {
-  box-shadow: inset 3px 0 0 var(--accent-soft);
+  padding-left: 28px;
 }
 
 /* The fields a mass edit changed may be several: their names wrap rather than widen the table. */
@@ -2454,7 +2836,7 @@ button.danger:hover:not(:disabled) {
   max-width: 100%;
   padding: 1px 2px 1px 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--panel);
   font-size: 13px;
 }
@@ -2470,7 +2852,7 @@ button.danger:hover:not(:disabled) {
 .compare-chip .icon-button {
   width: 22px;
   height: 22px;
-  border-radius: 999px;
+  border-radius: 3px;
 }
 
 .compare-chip .icon-button svg {
@@ -2516,12 +2898,12 @@ button.danger:hover:not(:disabled) {
   min-height: 0;
   overflow: auto;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 
 .compare-wrap:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
@@ -2571,12 +2953,13 @@ button.danger:hover:not(:disabled) {
 
 /* The heading of a group of rows, as the headings of the profile are. */
 .compare-grid th.compare-group {
-  padding: 8px 12px 4px;
+  padding: 10px 12px 5px;
+  border-bottom: 1px solid var(--border-strong);
   background: var(--raised);
-  color: var(--muted);
+  color: var(--text);
   font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
   text-align: left;
   text-transform: uppercase;
 }
@@ -2638,7 +3021,7 @@ button.danger:hover:not(:disabled) {
 .compare-figure {
   display: inline-block;
   padding: 1px 6px;
-  border-radius: 5px;
+  border-radius: 3px;
   font-weight: 600;
 }
 
@@ -2654,7 +3037,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .compare-grid td.best :is(.value, .ability, .compare-figure) {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 1px;
 }
 
@@ -2672,7 +3055,7 @@ button.danger:hover:not(:disabled) {
 .compare-positions li {
   padding: 1px 7px;
   border: 1px solid var(--pos);
-  border-radius: 5px;
+  border-radius: 3px;
   color: var(--pos);
   font-size: 12px;
   font-weight: 700;
@@ -2720,12 +3103,13 @@ button.danger:hover:not(:disabled) {
 
 /* The headings of the sections, as the profile's are. */
 .move-section h3 {
-  margin: 0 0 6px;
-  padding: 0 2px;
-  color: var(--muted);
+  margin: 0 0 8px;
+  padding: 0 2px 5px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text);
   font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
@@ -2736,7 +3120,7 @@ button.danger:hover:not(:disabled) {
   gap: 12px;
   padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--raised);
 }
 
@@ -2820,7 +3204,7 @@ button.danger:hover:not(:disabled) {
   margin-top: 8px;
   padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 
@@ -2846,7 +3230,7 @@ button.danger:hover:not(:disabled) {
   justify-content: space-between;
   gap: 12px;
   padding: 5px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
@@ -2858,7 +3242,7 @@ button.danger:hover:not(:disabled) {
    to keep the reputation bar on it in view) and an outline, which also holds in forced-colors mode. */
 .move-option.active {
   background: var(--accent-faint);
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
@@ -2913,10 +3297,11 @@ button.danger:hover:not(:disabled) {
 
 .move-input {
   min-width: 0;
-  padding: 5px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
   color: var(--text);
   font: inherit;
   font-variant-numeric: tabular-nums;
@@ -2937,15 +3322,15 @@ button.danger:hover:not(:disabled) {
 }
 
 .move-input:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -1px;
 }
 
-/* A value other than the contract's: the accent colour, as a tint and a second line inside the border. */
+/* A value other than the contract's: gold, as an edit in a profile is, until the move is made. */
 .move-input.changed {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  border-color: var(--pending);
+  background: var(--pending-soft);
+  box-shadow: inset 0 0 0 1px var(--pending);
 }
 
 /* A value that cannot be sent. */
@@ -2980,7 +3365,7 @@ button.danger:hover:not(:disabled) {
   margin: 0;
   padding: 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--raised);
   font-weight: 600;
   overflow-wrap: anywhere;
@@ -2994,8 +3379,8 @@ button.danger:hover:not(:disabled) {
 }
 
 .move-plan.ok {
-  border-color: var(--accent);
-  background: var(--accent-faint);
+  border-color: var(--tier-4);
+  background: color-mix(in srgb, var(--tier-4) 10%, transparent);
 }
 
 .move-plan.refused {
@@ -3044,7 +3429,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .injuries-none:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -3124,7 +3509,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .profile-tab:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
@@ -3211,12 +3596,12 @@ button.danger:hover:not(:disabled) {
 .squad-result:not(:empty) {
   padding: 8px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--raised);
 }
 
 .squad-result:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
@@ -3242,7 +3627,7 @@ button.danger:hover:not(:disabled) {
   min-height: 14rem;
   overflow: auto;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--panel);
 }
 
@@ -3302,9 +3687,9 @@ button.danger:hover:not(:disabled) {
 /* C and VC after a name: the captain's is filled in the accent colour, the vice-captain's outlined. */
 .role-badge {
   padding: 0 5px;
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  color: var(--accent);
+  border: 1px solid var(--accent-text);
+  border-radius: 3px;
+  color: var(--accent-text);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.6;
@@ -3313,8 +3698,9 @@ button.danger:hover:not(:disabled) {
 }
 
 .role-badge.captain {
+  border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* The menu button at the end of a row is the dots of the icon buttons, bolder; the menu hangs from it over the window
@@ -3340,26 +3726,26 @@ button.danger:hover:not(:disabled) {
   flex-direction: column;
   min-width: 12rem;
   padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--raised);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
 }
 
 .squad-menu button {
   padding: 6px 10px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 3px;
   background: transparent;
   text-align: left;
 }
 
 .squad-menu button:hover,
 .squad-menu button:focus-visible {
-  background: var(--raised);
+  background: var(--hover);
 }
 
 .squad-menu button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }

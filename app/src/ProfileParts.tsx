@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
@@ -58,8 +58,8 @@ interface ProfileFrameProps {
   badge?: ReactNode;
   /** The line under the names; a profile with nothing to say there leaves it out. */
   meta?: ReactNode;
-  /** The small print under that, e.g. the birth date. */
-  vitals: string;
+  /** The small print under that, e.g. the birth date: its parts, set apart by dots, each kept on one line. */
+  vitals: ReadonlyArray<string | false | null | undefined>;
   /** The abilities of a person, under the close button. */
   currentAbility?: number;
   potentialAbility?: number;
@@ -121,7 +121,15 @@ export function ProfileFrame(props: ProfileFrameProps) {
             </h2>
             {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
             {meta !== undefined && <p className="profile-meta">{meta}</p>}
-            <p className="profile-vitals">{vitals}</p>
+            <p className="profile-vitals">
+              {/* The dot stays at the end of a line, with the part before it. */}
+              {vitals.filter(Boolean).map((part, i) => (
+                <Fragment key={i}>
+                  {i > 0 && " · "}
+                  <span className="vital">{part}</span>
+                </Fragment>
+              ))}
+            </p>
           </div>
           <div className="profile-side">
             <div className="profile-actions">
