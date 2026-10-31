@@ -1,8 +1,10 @@
-//! Read-only access to another process's memory on Windows.
+//! Access to another process's memory on Windows.
 //!
 //! This crate knows nothing about Football Manager. It finds and opens
 //! processes, lists their modules and memory regions, reads bytes and parses
-//! PE headers straight from the target's memory. It never writes.
+//! PE headers straight from the target's memory. It writes only through
+//! [`Process::write_bytes`], on a process opened for writing, and only into heap
+//! data: never into a module's code or data.
 
 #![cfg(windows)]
 
@@ -17,7 +19,7 @@ pub use error::{Error, Result};
 pub use module::{Module, list_modules};
 pub use pe::{Export, PeImage, Section};
 pub use process::{Process, ProcessEntry, find_processes, is_current_process_elevated};
-pub use region::{Region, regions};
+pub use region::{Region, region_at, regions};
 
 /// Whether `p` looks like a user-mode pointer: 8-byte aligned and inside the
 /// canonical user address range of a 64-bit Windows process.

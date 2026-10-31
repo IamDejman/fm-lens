@@ -10,6 +10,13 @@ pub enum Error {
     Win32 { op: &'static str, code: u32 },
     /// Reading target memory failed (unmapped, guarded or freed pages).
     Read { addr: u64, len: usize, code: u32 },
+    /// Writing target memory failed.
+    Write { addr: u64, len: usize, code: u32 },
+    /// The process was opened for reading only.
+    ReadOnly,
+    /// The range is not data the editor may change: it must lie in one region of
+    /// committed, private, writable, non-executable memory (the heap), never in a module.
+    NotWritable { addr: u64, len: usize },
     /// The bytes at `base` are not a 64-bit PE image.
     InvalidPe { base: u64, reason: &'static str },
 }
@@ -31,6 +38,13 @@ impl fmt::Display for Error {
             Error::Win32 { op, code } => write!(f, "{op} failed: {}", describe(*code)),
             Error::Read { addr, len, code } => {
                 write!(f, "reading {len:#x} bytes at {addr:#x} failed: {}", describe(*code))
+            }
+            Error::Write { addr, len, code } => {
+                write!(f, "writing {len:#x} bytes at {addr:#x} failed: {}", describe(*code))
+            }
+            Error::ReadOnly => write!(f, "the game was opened for reading only"),
+            Error::NotWritable { addr, len } => {
+                write!(f, "refusing to write {len:#x} bytes at {addr:#x}: not in the game's writable heap memory")
             }
             Error::InvalidPe { base, reason } => write!(f, "no valid PE image at {base:#x}: {reason}"),
         }

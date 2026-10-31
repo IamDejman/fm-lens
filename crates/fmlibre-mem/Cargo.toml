@@ -1,6 +1,6 @@
 [package]
 name = "fmlibre-mem"
-description = "Read-only access to another process's memory on Windows"
+description = "Access to another process's memory on Windows"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -265,3 +265,42 @@ Nation names come from the game's own translations, so they follow the game
 language (e.g. `Arjantin` in a Turkish game).
 
 `fmlibre-probe players` reads all 59,304 players in 0.5 s (debug build).
+
+### Writing
+
+`fmlibre-probe set` opens the process with `PROCESS_VM_WRITE | PROCESS_VM_OPERATION`
+on top of the read rights. Like reading, this works on the Game Pass build without
+administrator rights. Every write goes through `WriteProcessMemory`, and only after
+these checks:
+
+- The whole range lies in one region of committed, private, writable,
+  non-executable memory, that is the game's heap. Module images, including code and
+  the `.ecode` array pairs, are refused before Windows is asked, because
+  `WriteProcessMemory` would otherwise lift a page's protection to write it.
+- The object at the address still carries the target's UID.
+- The new value is in the field's range, and the current value is plausible for the
+  field. If it is not, the layout does not fit this object and nothing is written.
+- The value is read back afterwards. If it differs, the old value is put back.
+
+`fmlibre-probe fields player --stats` reads every object and checks each field
+against its range. All 59,304 players and 29,499 staff hold plausible values in every
+field. Every player rates 1 as a sweeper (`+0x151`): the game no longer uses that
+position, so it is not offered for editing.
+
+Each editable field has two confirmations: the offset from fm-editor's Steam notes,
+and a live read on this build matching known data, such as Messi's ratings above,
+Paul Ifill's player-coach record and Mikel Arteta's staff profile.
+
+These values were written, read back and restored on the test save with
+`set ... --restore`:
+
+| Who | Field | Old → new → restored |
+|---|---|---|
+| Lionel Messi | finishing (raw) | 85 → 90 → 85 |
+| Lionel Messi | current / potential ability | 170 → 171 → 170 / 200 → 199 → 200 |
+| Lionel Messi | ambition, international caps (person block) | 18 → 17 → 18 / 207 → 208 → 207 |
+| Lionel Messi | DC rating | 1 → 15 → 1 |
+| Paul Ifill (player-coach, shift `0xF8`) | ambition, international caps | 13 → 20 → 13 / 10 → 3 → 10 |
+| Mikel Arteta (staff) | tactical (raw), authority, ambition | 80 → 99 → 80 / 16 → 19 → 16 / 18 → 1 → 18 |
+
+It has not been checked yet whether the game's own screens show an edited value.
