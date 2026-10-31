@@ -1,11 +1,12 @@
 # FMLibreEditor
 
-A free, open-source real-time editor for **Football Manager 27**, built Game Pass first.
+A free, open-source real-time editor for **Football Manager 27** on Windows, for both the
+Game Pass and the Steam build.
 
 > **Status: pre-alpha.** The app lists, searches, filters and sorts every player,
-> member of staff and club of a running FM27 (Game Pass build), and shows their
-> profiles: attributes, positions, personality, contracts, facilities, supporters
-> and finances.
+> member of staff and club of a running FM27 (Game Pass or Steam build), and shows
+> their profiles: attributes, positions, personality, contracts, facilities,
+> supporters and finances.
 >
 > Players, staff and clubs can be edited, from an Edit mode in their profiles:
 > - **Players and staff:** abilities, attributes, positions, personality,
@@ -35,7 +36,8 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 
 - Attach to a running FM27 and edit players, staff and clubs live, in the spirit of
   FMRTE and FM Live Editor, but free and open source.
-- First-class support for the **Game Pass / Microsoft Store** build, then Steam and Epic.
+- First-class support for the **Game Pass / Microsoft Store** and **Steam** builds; Epic
+  later.
 - A modern interface that feels like FM: attribute colours, a pitch position map,
   faces and logos from your installed graphics packs, mass editing with a preview,
   and an undo history.

@@ -1186,6 +1186,8 @@ export const en = {
       epic: "Epic Games",
       unknown: "Unknown store",
     } satisfies Record<Storefront, string>,
+    /** Steam's build id of the install, e.g. `"build 26227640`". */
+    steamBuild: (id: string) => `build ${id}`,
   },
 
   errors,
