@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import { AbilityEditGroup } from "./EditControls";
 import { jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
 import {
   attributeRow,
@@ -14,6 +15,7 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type { StaffContract, StaffDetails, StaffSummary } from "./types";
+import { useProfileEditing } from "./useProfileEditing";
 
 // Attributes in the order FM lists them, by group.
 const COACHING: StaffAttributeKey[] = [
@@ -72,6 +74,7 @@ interface StaffProfileProps {
 /** The profile of one member of staff. Mount it with `key={uid}` so a new person starts at the top. */
 export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
   const loaded = useProfileDetails<StaffDetails>("staff_details", member.uid, version);
+  const editing = useProfileEditing("staff", member.uid);
   const details = loaded?.details;
   const info: StaffSummary = details ?? member;
   const vitals = [bornText(info), `${profileText.id} ${info.uid}`].filter(Boolean).join(" · ");
@@ -87,6 +90,7 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
       potentialAbility={info.potentialAbility}
       loaded={loaded}
       onClose={onClose}
+      editing={editing}
     >
       {details && <StaffBody details={details} />}
     </ProfileFrame>
@@ -96,6 +100,8 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
 function StaffBody({ details }: { details: StaffDetails }) {
   return (
     <>
+      <AbilityEditGroup entity="staff" />
+
       <div className="profile-columns">
         <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />
         <div className="profile-stack">

@@ -57,8 +57,11 @@ before trusting them.
   - Undo works when the game has not changed the value since.
   - The probe has `fields`, `get` and `set`. Each field was written, read back and
     restored live on the test save.
-- [ ] Editing in the app: edit mode in the profiles, a pending-changes review,
-  undo history and a change log.
+- [x] Editing in the app:
+  - an Edit mode in the player and staff profiles that marks changed and
+    invalid values;
+  - a review of the pending changes;
+  - a Changes view that logs every change of the session, with Undo.
 - [ ] Contracts and club finances.
 - [ ] Mass editing with a preview.
 

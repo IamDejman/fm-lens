@@ -3,6 +3,7 @@
 
 import { fold } from "../format";
 import type {
+  ApplyReport,
   ClubDetails,
   ClubFilter,
   ClubPage,
@@ -21,6 +22,11 @@ import type {
   StaffFilter,
   StaffPage,
   StaffSummary,
+  EditField,
+  Entity,
+  FieldEdit,
+  FieldValues,
+  LoggedChange,
 } from "../types";
 
 const GAME_DATE: FmDate = { year: 2026, month: 7, day: 18 };
@@ -135,7 +141,7 @@ const PERSONALITY = [
 function details(player: PlayerSummary): PlayerDetails {
   const next = random(player.uid);
   const keeper = isKeeper(player.uid);
-  const level = player.currentAbility / 2; // raw attribute centre, 0–100
+  const level = generatedAbility.get(player.uid)! / 2; // raw attribute centre, 0–100
   const attributes = Object.fromEntries(
     ATTRIBUTES.map((key) => {
       const centre = GK_ONLY.has(key) !== keeper ? 12 : level;
@@ -144,19 +150,19 @@ function details(player: PlayerSummary): PlayerDetails {
     }),
   );
   const personality = Object.fromEntries(PERSONALITY.map((key) => [key, Math.round(1 + next() * 19)]));
-  return {
+  return withWritten("player", {
     ...player,
     heightCm: Math.round(168 + next() * 26),
     askingPrice: next() < 0.2 ? Math.round(next() * 40) * 1_000_000 : null,
     reputation: { home: Math.round(next() * 10000), current: Math.round(next() * 10000), world: Math.round(next() * 10000) },
     international: { caps: Math.round(next() * 90), goals: Math.round(next() * 30), u21Caps: Math.round(next() * 20), u21Goals: Math.round(next() * 8) },
     // The ratings behind the positions of the list row: the profile and the row agree.
-    positionRatings: ratings[player.uid],
+    positionRatings: { ...ratings[player.uid] },
     personality,
     attributes,
     contract: player.club
       ? {
-          wage: Math.round(player.currentAbility * 900 + next() * 20000),
+          wage: Math.round(generatedAbility.get(player.uid)! * 900 + next() * 20000),
           signed: { year: 2024, month: 7, day: 1 },
           expires: player.contractExpires,
           joined: { year: 2022, month: 8, day: 15 },
@@ -166,7 +172,7 @@ function details(player: PlayerSummary): PlayerDetails {
           loanListed: false,
         }
       : null,
-  };
+  });
 }
 
 /** Job codes as stored in contracts (see labels.ts). */
@@ -204,7 +210,7 @@ const staff: StaffSummary[] = (() => {
 /** Made-up but self-consistent profile for a fixture member of staff. */
 function staffDetails(member: StaffSummary): StaffDetails {
   const next = random(member.uid);
-  const level = member.currentAbility / 2;
+  const level = generatedAbility.get(member.uid)! / 2;
   const attributes = Object.fromEntries([
     ...STAFF_ATTRIBUTES.map((key) => {
       const raw = Math.max(1, Math.min(100, Math.round(level + (next() - 0.5) * 50)));
@@ -216,7 +222,7 @@ function staffDetails(member: StaffSummary): StaffDetails {
     }),
   ]);
   const personality = Object.fromEntries(PERSONALITY.map((key) => [key, Math.round(1 + next() * 19)]));
-  return {
+  return withWritten("staff", {
     ...member,
     reputation: { home: Math.round(next() * 10000), current: Math.round(next() * 10000), world: Math.round(next() * 10000) },
     personality,
@@ -225,13 +231,217 @@ function staffDetails(member: StaffSummary): StaffDetails {
       member.job === null
         ? null
         : {
-            wage: Math.round(member.currentAbility * 400 + next() * 20000),
+            wage: Math.round(generatedAbility.get(member.uid)! * 400 + next() * 20000),
             signed: { year: 2026, month: 6, day: 29 },
             expires: { year: 2027 + Math.floor(next() * 4), month: 6, day: 30 },
             joined: { year: 2021 + Math.floor(next() * 5), month: 7, day: 1 },
             job: member.job,
           },
+  });
+}
+
+/** Each fixture person's current ability as generated: their made-up profile is built around it, edited or not. */
+const generatedAbility = new Map<number, number>([...players, ...staff].map((p) => [p.uid, p.currentAbility]));
+
+// Editing ---------------------------------------------------------------------------------------------------------
+
+/** The staff attributes in the order the real field table has them (coaching, mental, knowledge, medical). */
+const STAFF_ATTRIBUTE_ORDER = [
+  "attacking", "defending", "fitness", "goalkeeping", "possession", "set_pieces", "tactical", "technical",
+  "working_with_youngsters", "authority", "determination", "motivating", "people_management", "data_analysis",
+  "judging_ability", "judging_potential", "judging_staff", "negotiating", "tactical_knowledge", "physiotherapy",
+  "sports_science",
+];
+
+/** The international fields' keys and the profile's names for them. */
+const INTERNATIONAL = { caps: "caps", goals: "goals", u21_caps: "u21Caps", u21_goals: "u21Goals" } as const;
+
+/** The editable fields, as the real `edit_fields` lists them. */
+function fieldTable(entity: Entity): EditField[] {
+  const field = (key: string, kind: EditField["kind"], min: number, max: number, scale: EditField["scale"] = "plain") =>
+    ({ key, entity, kind, scale, min, max }) satisfies EditField;
+  const common = [
+    field("current_ability", "u16", 1, 200),
+    field("potential_ability", "i16", 1, 200),
+  ];
+  const reputation = ["home", "current", "world"].map((key) => field(`reputation.${key}`, "u16", 0, 10_000));
+  const personality = PERSONALITY.map((key) => field(`personality.${key}`, "u8", 1, 20));
+  if (entity === "player") {
+    return [
+      ...common,
+      field("height", "u16", 140, 220),
+      ...reputation,
+      field("international.caps", "u16", 0, 1000),
+      field("international.goals", "u16", 0, 1000),
+      field("international.u21_caps", "u8", 0, 255),
+      field("international.u21_goals", "u8", 0, 255),
+      ...ATTRIBUTES.map((key) => field(`attribute.${key}`, "u8", 1, 100, "attribute")),
+      // The game no longer plays a sweeper, so the real table leaves it out.
+      ...POSITIONS.filter((key) => key !== "sw").map((key) => field(`position.${key}`, "u8", 1, 20)),
+      ...personality,
+    ];
+  }
+  return [
+    ...common,
+    ...reputation,
+    ...STAFF_ATTRIBUTE_ORDER.map((key) =>
+      STAFF_RATINGS.includes(key)
+        ? field(`attribute.${key}`, "u8", 1, 20)
+        : field(`attribute.${key}`, "u8", 0, 100, "attribute"),
+    ),
+    ...personality,
+  ];
+}
+
+/**
+ * Values written through the editor that the generated profiles would not show, by `entity:uid` and field key.
+ * Ability and position ratings go straight into the list rows instead, which the profiles are built from.
+ */
+const written = new Map<string, FieldValues>();
+
+/** Every change written in this browser session, oldest first. */
+const changes: LoggedChange[] = [];
+
+/** A generated profile with the values written through the editor on top. */
+function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: D): D {
+  for (const [key, value] of Object.entries(written.get(`${entity}:${d.uid}`) ?? {})) {
+    const [group, name = ""] = key.split(".");
+    switch (group) {
+      case "attribute":
+        d.attributes[name] = STAFF_RATINGS.includes(name)
+          ? { raw: value, value }
+          : { raw: value, value: Math.max(1, Math.min(20, Math.floor((value + 2) / 5))) };
+        break;
+      case "personality":
+        d.personality[name] = value;
+        break;
+      case "reputation":
+        d.reputation[name as "home" | "current" | "world"] = value;
+        break;
+      case "height":
+        (d as PlayerDetails).heightCm = value;
+        break;
+      case "international":
+        (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
+        break;
+    }
+  }
+  return d;
+}
+
+/** The person's profile, or an error like the real commands give. */
+function profileOf(entity: Entity, uid: number): PlayerDetails | StaffDetails {
+  if (entity === "player") {
+    const player = players.find((p) => p.uid === uid);
+    if (player) {
+      return details(player);
+    }
+  } else {
+    const member = staff.find((s) => s.uid === uid);
+    if (member) {
+      return staffDetails(member);
+    }
+  }
+  throw new Error(`No ${entity} with id ${uid}`);
+}
+
+/** The stored value of every editable field, as `read_values` returns it. */
+function currentValues(entity: Entity, uid: number): FieldValues {
+  const d = profileOf(entity, uid);
+  const value = (key: string): number => {
+    const [group, name = ""] = key.split(".");
+    switch (group) {
+      case "current_ability":
+        return d.currentAbility;
+      case "potential_ability":
+        return d.potentialAbility;
+      case "height":
+        return (d as PlayerDetails).heightCm;
+      case "reputation":
+        return d.reputation[name as "home" | "current" | "world"];
+      case "international":
+        return (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]];
+      case "attribute":
+        return d.attributes[name].raw;
+      case "position":
+        return (d as PlayerDetails).positionRatings[name];
+      case "personality":
+        return d.personality[name];
+    }
+    throw new Error(`No fixture value for ${key}`);
   };
+  return Object.fromEntries(fieldTable(entity).map((f) => [f.key, value(f.key)]));
+}
+
+/** Stores `value` as the game would: ability and positions in the list rows, the rest on top of the profiles. */
+function writeValue(entity: Entity, uid: number, key: string, value: number): void {
+  const [group, name = ""] = key.split(".");
+  const row = entity === "player" ? players.find((p) => p.uid === uid) : staff.find((s) => s.uid === uid);
+  if (row && group === "current_ability") {
+    row.currentAbility = value;
+  } else if (row && group === "potential_ability") {
+    row.potentialAbility = value;
+  } else if (entity === "player" && group === "position") {
+    ratings[uid][name] = value;
+    (row as PlayerSummary).positions = playablePositions(ratings[uid]);
+  } else {
+    const slot = `${entity}:${uid}`;
+    written.set(slot, { ...written.get(slot), [key]: value });
+  }
+}
+
+/** `apply_edits`: every edit is checked and written on its own, like the real command, with the same messages. */
+function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyReport {
+  const name = profileOf(entity, uid).name;
+  const report: ApplyReport = { applied: [], failed: [] };
+  for (const edit of edits) {
+    const field = fieldTable(entity).find((f) => f.key === edit.field);
+    if (!field) {
+      report.failed.push({ ...edit, error: `${entity} has no editable field ${edit.field}` });
+      continue;
+    }
+    if (!Number.isInteger(edit.value) || edit.value < field.min || edit.value > field.max) {
+      report.failed.push({ ...edit, error: `${edit.value} is not a valid ${field.key}; it takes ${field.min} to ${field.max}` });
+      continue;
+    }
+    const old = currentValues(entity, uid)[field.key];
+    if (old === edit.value) {
+      continue;
+    }
+    writeValue(entity, uid, field.key, edit.value);
+    const logged: LoggedChange = {
+      id: changes.length + 1,
+      at: Date.now(),
+      name,
+      entity,
+      uid,
+      field: field.key,
+      old,
+      new: edit.value,
+      undoneAt: null,
+    };
+    changes.push(logged);
+    report.applied.push({ ...logged });
+  }
+  return report;
+}
+
+/** `undo_change`: writes the old value back unless the value has changed since. */
+function undoChange(id: number): LoggedChange {
+  const entry = changes.find((c) => c.id === id);
+  if (!entry) {
+    throw new Error(`No change ${id}`);
+  }
+  if (entry.undoneAt !== null) {
+    throw new Error("This change has already been undone.");
+  }
+  const found = currentValues(entry.entity, entry.uid)[entry.field];
+  if (found !== entry.new) {
+    throw new Error(`${entry.field} is now ${found}, not ${entry.new}; the game has changed it since`);
+  }
+  writeValue(entry.entity, entry.uid, entry.field, entry.old);
+  entry.undoneAt = Date.now();
+  return { ...entry };
 }
 
 const clubs: ClubSummary[] = CLUBS.flatMap((name, i) => [
@@ -362,6 +572,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         clubs: clubs.length,
         gameDate: GAME_DATE,
         loadMs: 480,
+        editable: true,
       };
       return info as T;
     }
@@ -432,6 +643,16 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       }
       return details(player) as T;
     }
+    case "edit_fields":
+      return fieldTable(args?.entity as Entity) as T;
+    case "read_values":
+      return currentValues(args?.entity as Entity, Number(args?.uid)) as T;
+    case "apply_edits":
+      return applyEdits(args?.entity as Entity, Number(args?.uid), (args?.edits ?? []) as FieldEdit[]) as T;
+    case "change_log":
+      return changes.map((c) => ({ ...c })).reverse() as T;
+    case "undo_change":
+      return undoChange(Number(args?.id)) as T;
     default:
       throw new Error(`No fixture for command "${command}"`);
   }

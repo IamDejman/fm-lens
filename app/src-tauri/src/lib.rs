@@ -1,32 +1,92 @@
+use std::collections::BTreeMap;
 use std::sync::Mutex;
-use std::time::Instant;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    ArraySource, ClubDetails, ClubFilter, ClubIndex, EntityArrays, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, Listed,
-    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session, StaffDetails, StaffFilter, StaffIndex,
-    find_game, sort_players,
+    ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, Entity, EntityArrays, Field, FmDate, GAME_EXE,
+    GAME_PLUGIN, GameInfo, Listed, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session,
+    StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::State;
 
 const NOT_CONNECTED: &str = "Not connected to the game";
 
-/// The connected game and the people read from it.
+/// The connected game, the people read from it and the changes written this session.
 struct Connection {
     session: Session,
     players: PlayerIndex,
     staff: StaffIndex,
     clubs: ClubIndex,
+    log: Vec<LoggedChange>,
 }
 
 impl Connection {
-    fn load(session: Session) -> Result<Self, String> {
+    fn load(session: Session, log: Vec<LoggedChange>) -> Result<Self, String> {
         let players = PlayerIndex::new(session.players().map_err(text)?);
         let staff = StaffIndex::new(session.staff().map_err(text)?);
         let clubs = ClubIndex::new(session.clubs().map_err(text)?);
-        Ok(Self { session, players, staff, clubs })
+        Ok(Self { session, players, staff, clubs, log })
     }
+
+    /// Where the player or member of staff with `uid` lives in the game, and their name.
+    fn target(&self, entity: Entity, uid: u32) -> Result<(Target, String), String> {
+        match entity {
+            Entity::Player => self.players.get(uid).map(|p| (p.target(), p.name.clone())),
+            Entity::Staff => self.staff.get(uid).map(|s| (s.target(), s.name.clone())),
+        }
+        .ok_or_else(|| format!("No {entity} with id {uid}"))
+    }
+
+    /// Keeps the list rows in step with `value`, just written to the field `change` names.
+    fn note_change(&mut self, change: &Change, value: i64) {
+        match change.entity {
+            Entity::Player => self.players.update(change.uid, |p| p.note_change(&change.field, value)),
+            Entity::Staff => self.staff.update(change.uid, |s| s.note_change(&change.field, value)),
+        };
+    }
+}
+
+/// A change written to the game this session.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LoggedChange {
+    id: usize,
+    /// When it was written, in milliseconds since 1970.
+    at: u64,
+    /// The person's name when it was written.
+    name: String,
+    #[serde(flatten)]
+    change: Change,
+    /// When it was undone, if it was.
+    undone_at: Option<u64>,
+}
+
+/// One value to write, as stored.
+#[derive(Deserialize)]
+struct FieldEdit {
+    field: String,
+    value: i64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FailedEdit {
+    field: String,
+    value: i64,
+    error: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ApplyReport {
+    applied: Vec<LoggedChange>,
+    failed: Vec<FailedEdit>,
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |since| since.as_millis() as u64)
 }
 
 #[derive(Default)]
@@ -59,6 +119,8 @@ struct ConnectionInfo {
     clubs: usize,
     game_date: Option<FmDate>,
     load_ms: u128,
+    /// Whether Windows let the app open the game for writing, which editing needs.
+    editable: bool,
 }
 
 #[derive(Serialize)]
@@ -115,14 +177,16 @@ fn inspect(pid: u32) -> DetectedGame {
     }
 }
 
-/// Attaches to the running game, locates its data and reads every player and member of
-/// staff. Only reads memory.
+/// Attaches to the running game, locates its data and reads every player, member of
+/// staff and club. Only reads memory; the game is opened for writing too when Windows
+/// allows it, so that edits can be applied later.
 #[tauri::command]
 async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
     let started = Instant::now();
     let connection = tauri::async_runtime::spawn_blocking(|| -> Result<Connection, String> {
-        let process = Process::open_read(find_game(None).map_err(text)?).map_err(text)?;
-        Connection::load(Session::connect(process, ArraySource::ProfileFirst).map_err(text)?)
+        let pid = find_game(None).map_err(text)?;
+        let process = Process::open_read_write(pid).or_else(|_| Process::open_read(pid)).map_err(text)?;
+        Connection::load(Session::connect(process, ArraySource::ProfileFirst).map_err(text)?, Vec::new())
     })
     .await
     .map_err(text)??;
@@ -136,6 +200,7 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
         clubs: connection.clubs.len(),
         game_date: connection.session.game_date(),
         load_ms: started.elapsed().as_millis(),
+        editable: connection.session.process.can_write(),
     };
     *state.0.lock().map_err(text)? = Some(connection);
     Ok(info)
@@ -145,8 +210,9 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, String> {
 #[tauri::command]
 async fn reload(state: State<'_, AppState>) -> Result<ReloadInfo, String> {
     let connection = state.0.lock().map_err(text)?.take().ok_or_else(|| NOT_CONNECTED.to_owned())?;
-    let connection =
-        tauri::async_runtime::spawn_blocking(move || Connection::load(connection.session)).await.map_err(text)??;
+    let connection = tauri::async_runtime::spawn_blocking(move || Connection::load(connection.session, connection.log))
+        .await
+        .map_err(text)??;
     let info = ReloadInfo {
         players: connection.players.len(),
         staff: connection.staff.len(),
@@ -249,6 +315,91 @@ fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, S
         .ok_or_else(|| "This person's data has changed in the game; reload and try again.".to_owned())
 }
 
+/// The fields of players or of staff that the editor can change.
+#[tauri::command]
+fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    Ok(connection.session.fields(entity))
+}
+
+/// The value of every editable field of one player or member of staff, as stored, read now.
+#[tauri::command]
+fn read_values(state: State<'_, AppState>, entity: Entity, uid: u32) -> Result<BTreeMap<String, i64>, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let (target, _) = connection.target(entity, uid)?;
+    let fields = connection.session.fields(entity);
+    let values = connection.session.read_fields(&target, &fields).map_err(text)?;
+    Ok(fields.into_iter().map(|field| field.key).zip(values).collect())
+}
+
+/// Writes `edits` (values as stored) to one player or member of staff. Each edit is
+/// checked and written on its own: the ones that fail change nothing and are reported.
+#[tauri::command]
+fn apply_edits(
+    state: State<'_, AppState>,
+    entity: Entity,
+    uid: u32,
+    edits: Vec<FieldEdit>,
+) -> Result<ApplyReport, String> {
+    let mut guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let (target, name) = connection.target(entity, uid)?;
+    let mut report = ApplyReport { applied: Vec::new(), failed: Vec::new() };
+    for edit in edits {
+        let written = connection
+            .session
+            .field(entity, &edit.field)
+            .and_then(|field| connection.session.write_field(&target, &field, edit.value));
+        match written {
+            // Already the value asked for: nothing was written.
+            Ok(change) if change.old == change.new => {}
+            Ok(change) => {
+                connection.note_change(&change, change.new);
+                let logged = LoggedChange {
+                    id: connection.log.len() + 1,
+                    at: now_ms(),
+                    name: name.clone(),
+                    change,
+                    undone_at: None,
+                };
+                connection.log.push(logged.clone());
+                report.applied.push(logged);
+            }
+            Err(err) => report.failed.push(FailedEdit { field: edit.field, value: edit.value, error: err.to_string() }),
+        }
+    }
+    Ok(report)
+}
+
+/// Every change written this session, newest first.
+#[tauri::command]
+fn change_log(state: State<'_, AppState>) -> Result<Vec<LoggedChange>, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    Ok(connection.log.iter().rev().cloned().collect())
+}
+
+/// Writes back the old value of the logged change `id`, provided the game still holds the
+/// value that change wrote.
+#[tauri::command]
+fn undo_change(state: State<'_, AppState>, id: usize) -> Result<LoggedChange, String> {
+    let mut guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let entry =
+        connection.log.iter().find(|logged| logged.id == id).cloned().ok_or_else(|| format!("No change {id}"))?;
+    if entry.undone_at.is_some() {
+        return Err("This change has already been undone.".to_owned());
+    }
+    let (target, _) = connection.target(entry.change.entity, entry.change.uid)?;
+    connection.session.revert(&target, &entry.change).map_err(text)?;
+    connection.note_change(&entry.change, entry.change.old);
+    let logged = connection.log.iter_mut().find(|logged| logged.id == id).expect("found above");
+    logged.undone_at = Some(now_ms());
+    Ok(logged.clone())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -262,7 +413,12 @@ pub fn run() {
             search_clubs,
             player_details,
             staff_details,
-            club_details
+            club_details,
+            edit_fields,
+            read_values,
+            apply_edits,
+            change_log,
+            undo_change
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

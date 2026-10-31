@@ -240,11 +240,35 @@ impl PlayerSummary {
     pub fn target(&self) -> Target {
         Target { entity: Entity::Player, uid: self.uid, address: self.address, shift: self.shift }
     }
+
+    /// Brings the fields a list row shows up to date after `field` was set to `value`.
+    pub fn note_change(&mut self, field: &str, value: i64) {
+        match field {
+            "current_ability" => self.current_ability = value as u16,
+            "potential_ability" => self.potential_ability = value as i16,
+            _ => {
+                let position = field.strip_prefix("position.").and_then(|key| POSITIONS.iter().position(|&k| k == key));
+                if let Some(i) = position {
+                    self.position_ratings[i] = value as u8;
+                    self.positions = crate::players::natural_positions(&self.position_ratings);
+                }
+            }
+        }
+    }
 }
 
 impl StaffSummary {
     pub fn target(&self) -> Target {
         Target { entity: Entity::Staff, uid: self.uid, address: self.address, shift: self.shift }
+    }
+
+    /// Brings the fields a list row shows up to date after `field` was set to `value`.
+    pub fn note_change(&mut self, field: &str, value: i64) {
+        match field {
+            "current_ability" => self.current_ability = value as u16,
+            "potential_ability" => self.potential_ability = value as i16,
+            _ => {}
+        }
     }
 }
 
@@ -477,6 +501,36 @@ mod tests {
             key(&players, "personality.adaptability").address(&target),
             0x1000 + layout.player.personality + 0xF8
         );
+    }
+
+    #[test]
+    fn list_rows_follow_edits() {
+        let mut position_ratings = [1u8; 15];
+        position_ratings[12] = 18; // ST
+        let mut player = PlayerSummary {
+            uid: 1,
+            name: "A".to_owned(),
+            full_name: None,
+            date_of_birth: None,
+            age: None,
+            nation: None,
+            club: None,
+            positions: vec!["st"],
+            contract_expires: None,
+            current_ability: 120,
+            potential_ability: 150,
+            position_ratings,
+            address: 0,
+            shift: 0,
+        };
+        player.note_change("current_ability", 130);
+        player.note_change("potential_ability", 160);
+        player.note_change("position.dc", 19);
+        player.note_change("attribute.finishing", 90); // not on the row
+        assert_eq!((player.current_ability, player.potential_ability), (130, 160));
+        assert_eq!(player.positions, ["dc", "st"]);
+        player.note_change("position.st", 10);
+        assert_eq!(player.positions, ["dc"]);
     }
 
     #[test]

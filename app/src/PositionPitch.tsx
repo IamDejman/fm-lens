@@ -37,6 +37,9 @@ const SPOTS: readonly (readonly [PositionKey, number, number])[] = [
   ["gk", 75, 170],
 ];
 
+/** The positions in the order the pitch has them, front to back and left to right. */
+export const PITCH_ORDER: readonly PositionKey[] = SPOTS.map(([key]) => key);
+
 /** A portrait pitch with one marker per position, filled by how well the player can play there. */
 export function PositionPitch({ ratings }: { ratings: Record<string, number> }) {
   const rating = (key: PositionKey): number => ratings[key] ?? 0;

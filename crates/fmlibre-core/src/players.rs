@@ -150,7 +150,7 @@ pub fn read_players(
 pub const PLAYABLE_RATING: u8 = 15;
 
 /// Positions rated at least [`PLAYABLE_RATING`], best first.
-fn natural_positions(ratings: &[u8; POSITIONS.len()]) -> Vec<&'static str> {
+pub(crate) fn natural_positions(ratings: &[u8; POSITIONS.len()]) -> Vec<&'static str> {
     let mut playable: Vec<(u8, usize)> =
         ratings.iter().enumerate().filter(|&(_, &r)| r >= PLAYABLE_RATING).map(|(i, &r)| (r, i)).collect();
     playable.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));

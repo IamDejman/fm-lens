@@ -3,10 +3,16 @@
 A free, open-source real-time editor for **Football Manager 27**, built Game Pass first.
 
 > **Status: pre-alpha.** The app lists, searches, filters and sorts every player,
-> member of staff and club of a running FM27 (Game Pass build) and shows their
-> profiles (attributes, positions, personality, contracts, facilities, supporters,
-> finances), read-only. Editing has started in the probe: it changes one checked
-> field of a player or member of staff at a time. The app gets editing next.
+> member of staff and club of a running FM27 (Game Pass build), and shows their
+> profiles: attributes, positions, personality, contracts, facilities, supporters
+> and finances.
+>
+> Players and staff can be edited:
+> - **What:** abilities, attributes, positions, personality, reputation and caps,
+>   from an Edit mode in their profiles.
+> - **How:** changes are reviewed before they are applied, and a Changes view
+>   undoes them.
+> - **Not yet:** contracts, clubs and editing many players at once.
 
 ## Goals
 

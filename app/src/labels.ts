@@ -1,10 +1,11 @@
 // Text of the player, staff and club profiles and lists. Keys of the game data map to the names FM uses;
 // every other string of the panels is in `profileText` (those only the club panel has, in
 // `clubProfileText`), and those of the player, staff and club lists in `playerListText`, `staffListText`
-// and `clubListText`.
+// and `clubListText`. Editing has `editText` (and `fieldLabel` for the names of the fields), the Changes
+// view `changesText`, and the sidebar `appText`.
 // A translation only has to replace the values here.
 
-import type { PlayerSort } from "./types";
+import type { Entity, PlayerSort } from "./types";
 
 export const ATTRIBUTE_LABELS = {
   // Technical
@@ -484,3 +485,138 @@ export const clubListText = {
     women: "Women's clubs",
   },
 };
+
+/** The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`). */
+export const appText = {
+  /** Connected, and the game was opened for writing. */
+  noteEditable: "Edits reach the game only when you apply them. Back up your save first.",
+  /** Connected, but Windows did not allow writing. */
+  noteReadOnly: "Read-only: Windows did not let FMLibreEditor write to the game.",
+  noteNotConnected: "Nothing in the game changes until you edit and apply.",
+};
+
+/** "No changes", "1 change", "3 changes". */
+const changeCount = (count: number) => (count === 0 ? "No changes" : count === 1 ? "1 change" : `${count} changes`);
+
+/** Editing a person: the Edit button, the inputs, and the footer under the profile. */
+export const editText = {
+  /** The button in the header of a profile that can be edited. */
+  edit: "Edit",
+  editTitle: "Change this person's values in the game",
+  /** Why editing did not start: the field table or the values could not be read. */
+  startFailed: (reason: string) => `Could not start editing: ${reason}`,
+  /** The group of current and potential ability, above the attributes. */
+  ability: "Ability",
+  /** The grid of inputs under the pitch. */
+  positionRatings: "Position ratings",
+  /** The name of a position's field, e.g. "ST rating"; `position` is its entry in `POSITION_LABELS`. */
+  positionRating: (position: string) => `${position} rating`,
+  /** Hover text of a changed input: the value it started from, as shown. */
+  was: (value: string) => `was ${value}`,
+  /** Hover text of an input that cannot be applied; `min` and `max` are the values it takes, as shown. */
+  invalid: (min: number, max: number) => `Enter a whole number from ${min} to ${max}`,
+
+  // The footer
+  footer: "Editing",
+  changes: changeCount,
+  /** After the number of changes, while some inputs hold values that cannot be applied. */
+  invalidCount: (count: number) => `${count} invalid`,
+  /** Opens the list of the changes Apply would write. */
+  review: "Review",
+  reviewList: "Changes to apply",
+  /** Puts the inputs back to the values the game has. */
+  discard: "Discard",
+  apply: "Apply",
+  applying: "Applying…",
+  /** Hover text of Apply while an input holds a value that cannot be written. */
+  applyBlocked: "Fix the invalid values first",
+  /** Leaves edit mode. */
+  done: "Done",
+  /** Takes the place of the buttons when leaving (Done, close, another row) would lose `count` changes. */
+  confirmDiscard: (count: number) => `Discard ${changeCount(count)}?`,
+  keepEditing: "Keep editing",
+
+  // After Apply
+  applied: (count: number) => `Applied ${changeCount(count)}`,
+  /** Every value asked for was the game's already. */
+  nothingToChange: "Nothing to change: the game already has these values.",
+  /** A change the game refused; `label` is the field's name (see `fieldLabel`) and `reason` the game's answer. */
+  refused: (label: string, reason: string) => `${label}: ${reason}`,
+  rereadFailed: (reason: string) => `Could not read the values back: ${reason}`,
+  dismiss: "Dismiss",
+};
+
+/** The Changes view: what was written to the game this session. */
+export const changesText = {
+  /** The entry in the sidebar. */
+  nav: "Changes",
+  title: "Changes this session",
+  hint: "Newest first. A change can be undone only while the game still holds the value it wrote.",
+  /** The line beside the title; `undone` of the `total` changes were undone. */
+  count: (total: number, undone: number) => {
+    const count = changeCount(total);
+    return undone === 0 ? count : `${count} · ${undone} undone`;
+  },
+  empty: "No changes yet. Open a player or member of staff and choose Edit.",
+  columns: {
+    time: "Time",
+    person: "Person",
+    field: "Field",
+    change: "Change",
+    status: "Status",
+  },
+  /** The small tag after a name. */
+  kinds: { player: "Player", staff: "Staff" } satisfies Record<Entity, string>,
+  /** Hover text of a change of an attribute: the values as stored; `change` is from `valueChange`. */
+  stored: (change: string) => `stored ${change}`,
+  undone: (time: string) => `Undone at ${time}`,
+  undo: "Undo",
+  /** Hover text of Undo; `label` is the field's name. */
+  undoTitle: (label: string) => `Write the old value of ${label} back to the game`,
+};
+
+/** "17 → 20": a value before and after a change, as shown. */
+export const valueChange = (from: number, to: number) => `${from.toLocaleString()} → ${to.toLocaleString()}`;
+
+/** The text of `table` for `key`; nothing for a key the table lacks, however it is spelled (e.g. "constructor"). */
+function labelIn(table: object, key: string): string | undefined {
+  return Object.prototype.hasOwnProperty.call(table, key) ? (table as Record<string, string>)[key] : undefined;
+}
+
+/** The names of the fields that are not attributes, personality or positions, by key. */
+const FIELD_LABELS: Readonly<Record<string, string>> = {
+  current_ability: "Current ability",
+  potential_ability: "Potential ability",
+  height: "Height (cm)",
+  "reputation.home": "Home reputation",
+  "reputation.current": "Current reputation",
+  "reputation.world": "World reputation",
+  "international.caps": "Caps",
+  "international.goals": "International goals",
+  "international.u21_caps": "U21 caps",
+  "international.u21_goals": "U21 goals",
+};
+
+/**
+ * The name of an editable field, from the key `edit_fields` gives it ("current_ability", "attribute.finishing",
+ * "position.st", …). A key it does not know is returned as it is.
+ */
+export function fieldLabel(entity: Entity, key: string): string {
+  const fixed = labelIn(FIELD_LABELS, key);
+  if (fixed !== undefined) {
+    return fixed;
+  }
+  const [group, name = ""] = key.split(".");
+  switch (group) {
+    case "attribute":
+      return labelIn(entity === "staff" ? STAFF_ATTRIBUTE_LABELS : ATTRIBUTE_LABELS, name) ?? key;
+    case "personality":
+      return labelIn(PERSONALITY_LABELS, name) ?? key;
+    case "position": {
+      const position = labelIn(POSITION_LABELS, name);
+      return position === undefined ? key : editText.positionRating(position);
+    }
+    default:
+      return key;
+  }
+}

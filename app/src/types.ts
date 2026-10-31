@@ -46,6 +46,8 @@ export interface ConnectionInfo {
   /** Current in-game date, when it could be read. */
   gameDate: FmDate | null;
   loadMs: number;
+  /** Whether Windows let the app open the game for writing; without it nothing can be edited. */
+  editable: boolean;
 }
 
 export interface ReloadInfo {
@@ -263,4 +265,65 @@ export interface PlayerDetails extends PlayerSummary {
   /** Attribute key (e.g. "first_touch") → raw and shown value. */
   attributes: Record<string, Attribute>;
   contract: Contract | null;
+}
+
+/** Whom an edit is for. */
+export type Entity = "player" | "staff";
+
+/** A value of a player or member of staff that the editor can change, from `edit_fields`. */
+export interface EditField {
+  /**
+   * E.g. "current_ability", "potential_ability", "height", "reputation.home", "international.caps",
+   * "attribute.finishing", "position.st", "personality.ambition".
+   */
+  key: string;
+  entity: Entity;
+  kind: "u8" | "u16" | "i16";
+  /** "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "plain": shown as stored. */
+  scale: "plain" | "attribute";
+  /** Smallest stored value the editor writes. */
+  min: number;
+  /** Largest stored value the editor writes. */
+  max: number;
+}
+
+/** Field key → value as stored, from `read_values`. */
+export type FieldValues = Record<string, number>;
+
+/** One value to write, as stored. */
+export interface FieldEdit {
+  field: string;
+  value: number;
+}
+
+/** A change written to the game this session, from `apply_edits` and `change_log`. */
+export interface LoggedChange {
+  id: number;
+  /** When it was written, in milliseconds since 1970. */
+  at: number;
+  /** The person's name when it was written. */
+  name: string;
+  entity: Entity;
+  uid: number;
+  /** The field's key. */
+  field: string;
+  /** The value before, as stored. */
+  old: number;
+  /** The value written, as stored. */
+  new: number;
+  /** When it was undone, if it was. */
+  undoneAt: number | null;
+}
+
+/** An edit `apply_edits` refused; it changed nothing. */
+export interface FailedEdit {
+  field: string;
+  value: number;
+  /** Why, e.g. "250 is not a valid current_ability; it takes 1 to 200". */
+  error: string;
+}
+
+export interface ApplyReport {
+  applied: LoggedChange[];
+  failed: FailedEdit[];
 }

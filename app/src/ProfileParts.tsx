@@ -1,12 +1,14 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
+import { EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
 import { formatDate, formatPounds } from "./format";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import type { Attribute, FmDate, Reputation } from "./types";
+import { SessionContext, useEditableField, type ProfileEditing } from "./useProfileEditing";
 
 // What the player, staff and club profiles have in common: the panel frame, loading, rating rows and
-// the label/value blocks.
+// the label/value blocks. The frame also holds what editing adds to a person's profile (see EditControls).
 
 /** Reputation is stored on a 0–10000 scale. */
 const REPUTATION_MAX = 10000;
@@ -57,6 +59,11 @@ interface ProfileFrameProps {
   side?: ReactNode;
   loaded: Loaded<unknown> | null;
   onClose: () => void;
+  /**
+   * The editing of a person's profile, from `useProfileEditing`: it adds the Edit button, the footer and the
+   * inputs of the body, and makes closing the profile ask first while changes are pending.
+   */
+  editing?: ProfileEditing;
   /** The body, once the profile has loaded. */
   children?: ReactNode;
 }
@@ -67,21 +74,28 @@ interface ProfileFrameProps {
  * a new person starts at the top.
  */
 export function ProfileFrame(props: ProfileFrameProps) {
-  const { name, fullName, badge, meta, vitals, currentAbility, potentialAbility, side, loaded, onClose, children } =
-    props;
+  const { name, fullName, badge, meta, vitals, currentAbility, potentialAbility, side, loaded, onClose } = props;
+  const { editing, children } = props;
+  const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
+  const onEscape = editing ? () => editing.escape(onClose) : onClose;
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !event.isComposing) {
-        onClose();
+        onEscape();
       }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
+  }, [onEscape]);
 
   return (
-    <section className="profile" role="dialog" aria-label={name} aria-busy={!loaded}>
+    <section
+      className={editing?.stage === "edit" ? "profile editing" : "profile"}
+      role="dialog"
+      aria-label={name}
+      aria-busy={!loaded}
+    >
       <header className="profile-head">
         <div className="profile-id">
           <h2>
@@ -93,11 +107,19 @@ export function ProfileFrame(props: ProfileFrameProps) {
           <p className="profile-vitals">{vitals}</p>
         </div>
         <div className="profile-side">
-          <button className="icon-button" onClick={onClose} aria-label={profileText.close} title={profileText.close}>
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="m5 5 10 10M15 5 5 15" />
-            </svg>
-          </button>
+          <div className="profile-actions">
+            {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
+            <button
+              className="icon-button"
+              onClick={closeProfile}
+              aria-label={profileText.close}
+              title={profileText.close}
+            >
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m5 5 10 10M15 5 5 15" />
+              </svg>
+            </button>
+          </div>
           {side ??
             (currentAbility !== undefined && potentialAbility !== undefined && (
               <div className="profile-abilities">
@@ -121,8 +143,10 @@ export function ProfileFrame(props: ProfileFrameProps) {
             {loaded.error}
           </div>
         )}
-        {children}
+        <SessionContext.Provider value={editing?.session ?? null}>{children}</SessionContext.Provider>
       </div>
+
+      {editing && <EditBar editing={editing} />}
     </section>
   );
 }
@@ -138,6 +162,8 @@ export function bornText(person: { dateOfBirth: FmDate | null; age: number | nul
 
 export interface RatingRow {
   key: string;
+  /** The key of the editable field behind the row, e.g. "attribute.finishing"; while editing, its value is an input. */
+  field?: string;
   label: string;
   value: number | undefined;
   /** Hover text, e.g. the value as stored. */
@@ -164,6 +190,7 @@ export function attributeRow(
   const notes = [attribute && profileText.raw(attribute.raw, scale), lowerIsBetter && profileText.lowerIsBetter];
   return {
     key,
+    field: `attribute.${key}`,
     label,
     value: attribute?.value,
     title: notes.filter(Boolean).join(" · ") || undefined,
@@ -176,6 +203,7 @@ export function personalityRows(personality: Record<string, number>): RatingRow[
     const lowerIsBetter = LOWER_IS_BETTER.has(key);
     return {
       key,
+      field: `personality.${key}`,
       label: PERSONALITY_LABELS[key],
       value: personality[key],
       title: lowerIsBetter ? profileText.lowerIsBetter : undefined,
@@ -190,19 +218,32 @@ function tierClass(value: number, lowerIsBetter = false): string {
   return `tier-${score <= 5 ? 1 : score <= 10 ? 2 : score <= 15 ? 3 : 4}`;
 }
 
-/** The rows of a rating group: a label and the value on a chip coloured by band. */
+/** The rows of a rating group: a label and the value on a chip coloured by band, or an input while editing. */
 export function RatingList({ rows }: { rows: RatingRow[] }) {
   return (
     <dl className="stats ratings">
       {rows.map((row) => (
-        <div className="stat" key={row.key} title={row.title}>
-          <dt>{row.label}</dt>
-          <dd className={row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}>
-            {row.value ?? profileText.none}
-          </dd>
-        </div>
+        <RatingItem key={row.key} row={row} />
       ))}
     </dl>
+  );
+}
+
+function RatingItem({ row }: { row: RatingRow }) {
+  const editing = useEditableField(row.field);
+  return (
+    <div className="stat" title={row.title}>
+      <dt>{row.label}</dt>
+      {editing && row.field ? (
+        <dd className="edit-cell">
+          <EditInput field={row.field} />
+        </dd>
+      ) : (
+        <dd className={row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}>
+          {row.value ?? profileText.none}
+        </dd>
+      )}
+    </div>
   );
 }
 
@@ -251,25 +292,27 @@ export function ContractDates({
   );
 }
 
-/** Home, current and world reputation as bars. */
+/** Home, current and world reputation as bars; the figures are inputs while the person is edited. */
 export function ReputationBars({ reputation }: { reputation: Reputation }) {
   return (
     <dl className="stats">
-      <ReputationBar label={profileText.reputationHome} value={reputation.home} />
-      <ReputationBar label={profileText.reputationCurrent} value={reputation.current} />
-      <ReputationBar label={profileText.reputationWorld} value={reputation.world} />
+      <ReputationBar label={profileText.reputationHome} value={reputation.home} field="reputation.home" />
+      <ReputationBar label={profileText.reputationCurrent} value={reputation.current} field="reputation.current" />
+      <ReputationBar label={profileText.reputationWorld} value={reputation.world} field="reputation.world" />
     </dl>
   );
 }
 
-function ReputationBar({ label, value }: { label: string; value: number }) {
+function ReputationBar({ label, value, field }: { label: string; value: number; field: string }) {
   const style = { "--fill": reputationFill(value) } as CSSProperties;
   return (
     <div className="stat bar-stat">
       <dt>{label}</dt>
       <dd>
         <span className="bar" style={style} aria-hidden="true" />
-        <span className="figure">{value.toLocaleString()}</span>
+        <EditableValue field={field}>
+          <span className="figure">{value.toLocaleString()}</span>
+        </EditableValue>
       </dd>
     </div>
   );
