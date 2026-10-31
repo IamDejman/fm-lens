@@ -28,6 +28,14 @@ import type {
   FieldEdit,
   FieldValues,
   LoggedChange,
+  BatchUndo,
+  MassFilters,
+  MassOperation,
+  MassOperationKind,
+  MassPreview,
+  MassReport,
+  PlannedChange,
+  SkippedField,
 } from "../types";
 
 const GAME_DATE: FmDate = { year: 2026, month: 7, day: 18 };
@@ -510,6 +518,7 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
       old,
       new: edit.value,
       undoneAt: null,
+      batch: null,
     };
     changes.push(logged);
     report.applied.push({ ...logged });
@@ -533,6 +542,144 @@ function undoChange(id: number): LoggedChange {
   writeValue(entry.entity, entry.uid, entry.field, entry.old);
   entry.undoneAt = Date.now();
   return { ...entry };
+}
+
+// Mass edits --------------------------------------------------------------------------------------------------------
+
+/** Most targets one mass edit may change, and most rows a preview lists, as with the real commands. */
+const MASS_LIMIT = 10_000;
+const PREVIEW_ROWS = 500;
+
+/** Whether `name` (with the other names it is found by) and `uid` match `query`, as the real search does. */
+function matchesQuery(query: string, uid: number, names: string): boolean {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  return String(uid) === query.trim() || words.every((w) => fold(names).includes(w));
+}
+
+/** The players, staff or clubs a search and the entity's filter select, as the real `plan_mass_edit` does. */
+function selectTargets(entity: Entity, query: string, filters: MassFilters): { uid: number; name: string }[] {
+  if (entity === "player") {
+    const filter = filters.playerFilter ?? {};
+    return players.filter((p) => matchesQuery(query, p.uid, `${p.name} ${p.fullName ?? ""}`) && matchesPlayerFilter(p, filter));
+  }
+  if (entity === "staff") {
+    const filter = filters.staffFilter ?? {};
+    return staff.filter((s) => matchesQuery(query, s.uid, `${s.name} ${s.fullName ?? ""}`) && matchesStaffFilter(s, filter));
+  }
+  const women = filters.clubFilter?.women;
+  return clubs.filter((c) => matchesQuery(query, c.uid, `${c.name} ${c.shortName ?? ""}`) && (women === undefined || c.women === women));
+}
+
+/** The mass edit last previewed, until it is applied or replaced. */
+let pendingMass: { id: number; entity: Entity; planned: PlannedChange[] } | null = null;
+let nextMassId = 1;
+
+/** What an operation turns `old` into, as the real one does: added and scaled values stay within the field's range. */
+function operate(field: EditField, operation: MassOperationKind, old: number): number {
+  const clamp = (value: number) => Math.min(field.max, Math.max(field.min, value));
+  switch (operation.op) {
+    case "set":
+      return operation.value;
+    case "add":
+      return clamp(old + operation.amount);
+    case "scale":
+      return clamp(Math.round((old * operation.percent) / 100));
+  }
+}
+
+/** `plan_mass_edit`, with the real command's checks and messages. */
+function planMass(entity: Entity, query: string, filters: MassFilters, operations: MassOperation[]): MassPreview {
+  if (operations.length === 0) {
+    throw new Error("Choose at least one field to change.");
+  }
+  const targets = selectTargets(entity, query, filters);
+  if (targets.length > MASS_LIMIT) {
+    throw new Error(`${targets.length} match. Narrow the search or the filters to ${MASS_LIMIT} or fewer for a mass edit.`);
+  }
+  const table = fieldTable(entity);
+  const ops = operations.map(({ field: key, operation }) => {
+    const field = table.find((f) => f.key === key);
+    if (!field) {
+      throw new Error(`${entity} has no editable field ${key}`);
+    }
+    if (operation.op === "set" && (operation.value < field.min || operation.value > field.max)) {
+      throw new Error(`${operation.value} is not a valid ${key}; it takes ${field.min} to ${field.max}`);
+    }
+    if (operation.op !== "set" && field.kind === "date") {
+      throw new Error(`${key}: a date can only be set`);
+    }
+    return { field, operation };
+  });
+  const planned: PlannedChange[] = [];
+  const skipped: SkippedField[] = [];
+  let unchanged = 0;
+  for (const { uid, name } of targets) {
+    const values = currentValues(entity, uid);
+    let changed = false;
+    for (const { field, operation } of ops) {
+      const old: number | undefined = values[field.key];
+      if (old === undefined) {
+        skipped.push({ uid, name, field: field.key, reason: `${field.key} cannot be changed here: its record is missing or does not check out` });
+        continue;
+      }
+      const value = operate(field, operation, old);
+      if (value !== old) {
+        changed = true;
+        planned.push({ uid, name, field: field.key, old, new: value });
+      }
+    }
+    unchanged += changed ? 0 : 1;
+  }
+  const id = nextMassId++;
+  pendingMass = { id, entity, planned };
+  return {
+    id,
+    targets: targets.length,
+    unchanged,
+    changes: planned.length,
+    rows: planned.slice(0, PREVIEW_ROWS),
+    skippedCount: skipped.length,
+    skipped: skipped.slice(0, PREVIEW_ROWS),
+  };
+}
+
+/** `apply_mass_edit`: the previewed changes, each only while the value is still the one previewed. */
+function applyMass(id: number): MassReport {
+  if (!pendingMass || pendingMass.id !== id) {
+    throw new Error("This preview is out of date. Preview the mass edit again.");
+  }
+  const { entity, planned } = pendingMass;
+  pendingMass = null;
+  const batch = nextMassId++;
+  const report: MassReport = { batch, applied: 0, failed: [] };
+  for (const change of planned) {
+    const found = currentValues(entity, change.uid)[change.field];
+    if (found !== change.old) {
+      report.failed.push({ ...change, error: `${change.field} is now ${found}, not ${change.old}; the game has changed it since` });
+      continue;
+    }
+    writeValue(entity, change.uid, change.field, change.new);
+    changes.push({ ...change, id: changes.length + 1, at: Date.now(), entity, undoneAt: null, batch });
+    report.applied++;
+  }
+  return report;
+}
+
+/** `undo_batch`: every change of the batch not undone yet, newest first. */
+function undoMassBatch(batch: number): BatchUndo {
+  const report: BatchUndo = { undone: 0, failed: [] };
+  for (const entry of [...changes].reverse()) {
+    if (entry.batch !== batch || entry.undoneAt !== null) {
+      continue;
+    }
+    try {
+      undoChange(entry.id);
+      report.undone++;
+    } catch (e) {
+      report.failed.push({ id: entry.id, error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  return report;
 }
 
 const clubs: ClubSummary[] = CLUBS.flatMap((name, i) => [
@@ -744,6 +891,17 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return changes.map((c) => ({ ...c })).reverse() as T;
     case "undo_change":
       return undoChange(Number(args?.id)) as T;
+    case "plan_mass_edit":
+      return planMass(
+        args?.entity as Entity,
+        String(args?.query ?? ""),
+        (args?.filters ?? {}) as MassFilters,
+        (args?.operations ?? []) as MassOperation[],
+      ) as T;
+    case "apply_mass_edit":
+      return applyMass(Number(args?.id)) as T;
+    case "undo_batch":
+      return undoMassBatch(Number(args?.batch)) as T;
     default:
       throw new Error(`No fixture for command "${command}"`);
   }

@@ -320,6 +320,8 @@ export interface LoggedChange {
   new: number;
   /** When it was undone, if it was. */
   undoneAt: number | null;
+  /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
+  batch: number | null;
 }
 
 /** An edit `apply_edits` refused; it changed nothing. */
@@ -333,4 +335,76 @@ export interface FailedEdit {
 export interface ApplyReport {
   applied: LoggedChange[];
   failed: FailedEdit[];
+}
+
+/** What a mass edit does to a field. Values are as stored, like every edit's. */
+export type MassOperationKind =
+  | { op: "set"; value: number }
+  /** May be negative; the result stays within the field's range. */
+  | { op: "add"; amount: number }
+  /** Multiplies by percent / 100, rounded; the result stays within the field's range. */
+  | { op: "scale"; percent: number };
+
+/** One field of a mass edit and what to do with it. Dates can only be set. */
+export interface MassOperation {
+  field: string;
+  operation: MassOperationKind;
+}
+
+/** The filter of the list a mass edit applies to; only the one for its entity is used. */
+export interface MassFilters {
+  playerFilter?: PlayerFilter;
+  staffFilter?: StaffFilter;
+  clubFilter?: ClubFilter;
+}
+
+/** A change a mass edit would write: as stored. */
+export interface PlannedChange {
+  uid: number;
+  name: string;
+  field: string;
+  old: number;
+  new: number;
+}
+
+/** A value a mass edit leaves alone, and why (no contract, not set, not plausible, ...). */
+export interface SkippedField {
+  uid: number;
+  name: string;
+  field: string;
+  reason: string;
+}
+
+/** From `plan_mass_edit`: what applying would change. Nothing is written yet. */
+export interface MassPreview {
+  /** Pass to `apply_mass_edit` to write exactly these changes. */
+  id: number;
+  /** How many players, staff or clubs the search and filter selected. */
+  targets: number;
+  /** How many of them already have the values the edit would give them. */
+  unchanged: number;
+  /** How many values would change, in all. */
+  changes: number;
+  /** The first 500 changes. */
+  rows: PlannedChange[];
+  /** How many values are left alone, in all. */
+  skippedCount: number;
+  /** The first 500 of them. */
+  skipped: SkippedField[];
+}
+
+/** From `apply_mass_edit`. */
+export interface MassReport {
+  /** The batch the changes are logged under; `undo_batch` undoes them together. */
+  batch: number;
+  applied: number;
+  /** Changes not written, e.g. because the game changed the value after the preview. */
+  failed: { uid: number; name: string; field: string; error: string }[];
+}
+
+/** From `undo_batch`. */
+export interface BatchUndo {
+  undone: number;
+  /** Changes the game has changed since, left as they are. */
+  failed: { id: number; error: string }[];
 }

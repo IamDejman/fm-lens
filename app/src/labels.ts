@@ -2,10 +2,10 @@
 // every other string of the panels is in `profileText` (those only the club panel has, in
 // `clubProfileText`), and those of the player, staff and club lists in `playerListText`, `staffListText`
 // and `clubListText`. Editing has `editText` (and `fieldLabel` for the names of the fields), the Changes
-// view `changesText`, and the sidebar `appText`.
+// view `changesText`, mass editing `massEditText`, and the sidebar `appText`.
 // A translation only has to replace the values here.
 
-import type { Entity, PlayerSort } from "./types";
+import type { Entity, MassOperationKind, MassPreview, PlayerSort } from "./types";
 
 export const ATTRIBUTE_LABELS = {
   // Technical
@@ -495,8 +495,9 @@ export const appText = {
   noteNotConnected: "Nothing in the game changes until you edit and apply.",
 };
 
-/** "No changes", "1 change", "3 changes". */
-const changeCount = (count: number) => (count === 0 ? "No changes" : count === 1 ? "1 change" : `${count} changes`);
+/** "No changes", "1 change", "3 changes", "12,345 changes". */
+const changeCount = (count: number) =>
+  count === 0 ? "No changes" : count === 1 ? "1 change" : `${count.toLocaleString()} changes`;
 
 /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
 export const editText = {
@@ -563,7 +564,7 @@ export const changesText = {
     const count = changeCount(total);
     return undone === 0 ? count : `${count} · ${undone} undone`;
   },
-  empty: "No changes yet. Open a player, a member of staff or a club and choose Edit.",
+  empty: "No changes yet. Open a player, a member of staff or a club and choose Edit, or use Mass edit in a list.",
   columns: {
     time: "Time",
     /** The player, member of staff or club the change was made to. */
@@ -580,6 +581,157 @@ export const changesText = {
   undo: "Undo",
   /** Hover text of Undo; `label` is the field's name. */
   undoTitle: (label: string) => `Write the old value of ${label} back to the game`,
+  /** The small tag after the name of a change that was part of a mass edit. */
+  batch: "Mass edit",
+  /** Hover text of that tag; `count` is how many changes the mass edit made. */
+  batchTitle: (count: number) => `Part of a mass edit of ${changeCount(count)}`,
+  /** Undoes the whole mass edit; it sits on the newest change of the mass edit. */
+  undoBatch: "Undo mass edit",
+  /** Hover text of Undo mass edit; `remaining` is how many of its changes are not undone yet. */
+  undoBatchTitle: (remaining: number) =>
+    `Write the old values of this mass edit back to the game (${remaining.toLocaleString()} still in place)`,
+};
+
+/** "1 value left alone", "12 values left alone". */
+const valuesLeftAlone = (count: number) =>
+  count === 1 ? "1 value left alone" : `${count.toLocaleString()} values left alone`;
+
+/** "237 players", "1 player", "237 staff", "1 member of staff", "12 clubs", "1 club". */
+const entityCount: Record<Entity, (count: number) => string> = {
+  player: (count) => (count === 1 ? "1 player" : `${count.toLocaleString()} players`),
+  staff: (count) => (count === 1 ? "1 member of staff" : `${count.toLocaleString()} staff`),
+  club: (count) => (count === 1 ? "1 club" : `${count.toLocaleString()} clubs`),
+};
+
+/** What each list holds, in the plural. */
+const entityNouns: Record<Entity, string> = { player: "players", staff: "staff", club: "clubs" };
+
+/** Mass editing: the button in the toolbar of a list and the dialog it opens. */
+export const massEditText = {
+  /** The button in the toolbar of the player, staff and club lists. */
+  button: "Mass edit",
+  buttonTitle: "Change values of everything the list shows, with a preview first",
+  title: {
+    player: "Mass edit players",
+    staff: "Mass edit staff",
+    club: "Mass edit clubs",
+  } satisfies Record<Entity, string>,
+
+  // What it applies to
+  /** `total` is the list's: the search and the filters of the list select them. */
+  scope: (entity: Entity, total: number) => `The ${entityCount[entity](total)} the list shows now (search and filters)`,
+  /** After the scope, when the list shows only the first `shown` rows of its `total`. */
+  scopeAll: (shown: number) => `That is every match, not only the first ${shown.toLocaleString()} rows on screen.`,
+  scopeNone: (entity: Entity) =>
+    `No ${entityNouns[entity]} match the search and filters, so there is nothing to change.`,
+  /** `limit` is the most one mass edit takes. */
+  scopeTooMany: (entity: Entity, total: number, limit: number) =>
+    `The ${entityCount[entity](total)} the list shows are more than one mass edit takes (${limit.toLocaleString()}). ` +
+    "Narrow the search or the filters first.",
+  loadingFields: "Reading the fields…",
+  fieldsFailed: (reason: string) => `Could not read the fields: ${reason}`,
+
+  // The fields to change
+  /** The groups of the field select, in the order the dialog lists them. */
+  groups: {
+    ability: "Ability",
+    technical: "Technical attributes",
+    mental: "Mental attributes",
+    physical: "Physical attributes",
+    goalkeeping: "Goalkeeping attributes",
+    hidden: "Hidden attributes",
+    feet: "Feet",
+    coaching: "Coaching attributes",
+    knowledge: "Knowledge attributes",
+    medical: "Medical attributes",
+    positions: "Positions",
+    personality: "Personality",
+    reputation: "Reputation",
+    international: "International",
+    contract: "Contract",
+    facilities: "Facilities",
+    finances: "Finances",
+    /** Whatever the other groups do not have, e.g. a player's height. */
+    other: "Other",
+  },
+  fieldsLabel: "Fields to change",
+  /** The name of a row of the dialog for assistive technology; `position` counts from 1. */
+  row: (position: number) => `Change ${position}`,
+  field: "Field",
+  operation: "Operation",
+  operations: { set: "Set to", add: "Add", scale: "Scale to %" } satisfies Record<MassOperationKind["op"], string>,
+  /** The name of the value input, by operation. */
+  values: { set: "Value", add: "Amount", scale: "Percent" } satisfies Record<MassOperationKind["op"], string>,
+  /** Hover text of the amount of an Add. */
+  addTitle: "Added to every value as shown; a negative number takes away",
+  /** The hint in an empty value input: what it takes. */
+  rangeHint: (min: number, max: number) => `${min.toLocaleString()}–${max.toLocaleString()}`,
+  /** The same for an amount, which may be negative: up to `max` either way. */
+  amountHint: (max: number) => `±${max.toLocaleString()}`,
+  /** After the input of a Scale: the number is a percent of the value the game has now. */
+  ofCurrent: "% of current",
+  percentTitle: "A percent of the current value: 100 keeps it, 110 raises it by a tenth, 50 halves it",
+  /** Hover text of an amount that cannot be applied; `min` and `max` are what it takes. */
+  invalidAdd: (min: number, max: number) =>
+    `Enter a whole number from ${min.toLocaleString()} to ${max.toLocaleString()}`,
+  invalidPercent: (min: number, max: number) => `Enter a whole percent from ${min} to ${max}`,
+  /** A date cannot be added to or scaled. */
+  dateSetOnly: "A date can only be set",
+  addField: "Add a field",
+  /** Hover text of Add a field when the rows are full; `max` is how many fields one mass edit changes. */
+  addFieldFull: (max: number) => `A mass edit changes up to ${max} fields`,
+  remove: "Remove this field",
+  /** Hover text of Remove on the only row. */
+  removeLast: "A mass edit needs at least one field",
+
+  // The preview
+  preview: "Preview",
+  previewing: "Previewing…",
+  /** Beside Preview while it cannot be pressed. */
+  previewBlocked: "Fill in every field with a valid value to preview",
+  /** "312 changes for 140 of 237 players · 97 already have these values · 12 values left alone". */
+  summary: (entity: Entity, preview: MassPreview) =>
+    [
+      preview.changes === 0
+        ? "No changes"
+        : `${changeCount(preview.changes)} for ${(preview.targets - preview.unchanged).toLocaleString()} of ` +
+          entityCount[entity](preview.targets),
+      preview.unchanged > 0 &&
+        (preview.unchanged === 1
+          ? "1 already has these values"
+          : `${preview.unchanged.toLocaleString()} already have these values`),
+      preview.skippedCount > 0 && valuesLeftAlone(preview.skippedCount),
+    ]
+      .filter(Boolean)
+      .join(" · "),
+  tableLabel: "Changes the mass edit would make",
+  columns: { name: "Name", field: "Field", change: "Change", reason: "Reason" },
+  /** Under a table or a list that shows only the first rows; `count` is how many more there are. */
+  more: (count: number) => `and ${count.toLocaleString()} more`,
+  /** The line that opens the list of the values left alone. */
+  skippedHeading: valuesLeftAlone,
+  skippedLabel: "Values the mass edit leaves alone",
+
+  // Apply and undo
+  apply: "Apply",
+  applying: "Applying…",
+  /** Hover text of Apply; `changes` is how many values it writes. */
+  applyTitle: (changes: number) => `Write ${changeCount(changes)} to the game`,
+  applyFirst: "Preview the mass edit first",
+  applyNothing: "The preview has no changes to write",
+  /** Nothing changes in the game until Apply. */
+  hint: "Nothing changes in the game until you apply.",
+  applied: (count: number) => (count === 0 ? "No changes were written" : `Applied ${changeCount(count)}`),
+  /** A change the game refused: who, which field (see `fieldLabel`) and the game's answer. */
+  failure: (name: string, label: string, reason: string) => `${name} · ${label}: ${reason}`,
+  undo: "Undo this mass edit",
+  undoing: "Undoing…",
+  undoTitle: "Write the old values of this mass edit back to the game",
+  undone: (count: number) => (count === 0 ? "Nothing was undone" : `Undid ${changeCount(count)}`),
+  /** A change an undo could not take back: `who` names the person and the field, or the change by its number. */
+  undoFailure: (who: string, reason: string) => `${who}: ${reason}`,
+  changeNumber: (id: number) => `Change ${id}`,
+  close: "Close",
 };
 
 const asText = (value: number | string) => (typeof value === "number" ? value.toLocaleString() : value);

@@ -3,6 +3,7 @@ import { Ability } from "./Ability";
 import { formatDate } from "./format";
 import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
+import { MassEditButton } from "./MassEditDialog";
 import { employerOf, HumanBadge, StaffProfile } from "./StaffProfile";
 import type { StaffFilter, StaffSummary } from "./types";
 
@@ -49,6 +50,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
           </div>
         </div>
       }
+      toolbarActions={(list) => <MassEditButton entity="staff" filters={{ staffFilter: filter }} list={list} />}
       tableClass="staff-grid"
       header={
         <>

@@ -3,6 +3,7 @@ import { Ability } from "./Ability";
 import { formatDate } from "./format";
 import { playerListText, POSITION_LABELS, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
+import { MassEditButton } from "./MassEditDialog";
 import {
   countFilters,
   NO_PLAYER_FILTERS,
@@ -51,6 +52,7 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
       }
       empty={(query) => text.empty(query, filterCount > 0)}
       filterBar={<PlayerFilterBar fields={fields} onChange={setFields} active={filterCount} />}
+      toolbarActions={(list) => <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />}
       tableClass="player-grid"
       header={
         <>
