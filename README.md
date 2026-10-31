@@ -11,8 +11,10 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 > - **Players and staff:** abilities, attributes, positions, personality,
 >   reputation, caps, and their contract's wage and end date.
 > - **Players only:** squad number, squad status, transfer and loan listing,
->   energy, match sharpness and happiness. Injuries can be healed.
-> - **Clubs:** reputation, facilities and finances.
+>   energy, match sharpness and morale. Injuries can be healed.
+> - **Clubs:** reputation, facilities and finances. The club's squad tab lists each
+>   team's players with their fitness and morale. It sets the captain and
+>   vice-captain, and heals, inspires or refreshes a whole team at once.
 > - **How:** changes are reviewed before they are applied, and a Changes view
 >   undoes them.
 > - **Many at once:** a mass edit changes every player, member of staff or club the
@@ -110,6 +112,8 @@ fmlibre-probe move 13200568 1139 --restore           # move a player to a club a
 fmlibre-probe swap 13200568 72048035 --restore       # two players swap clubs and back: this writes too
 fmlibre-probe injuries 728                           # the current injuries of a club's players
 fmlibre-probe heal 37055843 --heal --restore         # heal a player and list his injuries again: this writes too
+fmlibre-probe teams 680                              # a club's teams: kinds, captains, players' fitness and morale
+fmlibre-probe captain 680 43425040 --restore         # make a player captain (--vice: vice-captain) and back
 fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
 fmlibre-probe refs 0x1a5a5396990 --span 0x3c8        # every pointer into an object (holders, lists, squads too)
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
@@ -123,13 +127,15 @@ Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `sc
 to save the results. `calibrate --scan` ignores the build profile and finds the
 arrays the way it would on an unknown build.
 
-Only `set`, `move`, `swap` and `heal --heal` write to the game. `set` changes one
-field after the checks above. Values are as stored: attributes run 0–100, or 1–20
-with `--shown`. `move` moves a player to a club's senior team. With `--restore`,
-each one puts the old values back straight away, to test without changing the
-save; `set` and `heal` also take `--hold <seconds>` to wait first, so the change
-can be looked at in the game. If Windows denies access, run the probe from an
-administrator terminal.
+Only `set`, `move`, `swap`, `heal --heal` and `captain` write to the game.
+- `set` changes one field after the checks above. Values are as stored:
+  attributes run 0–100, or 1–20 with `--shown`.
+- `move` moves a player to a club's senior team.
+- With `--restore`, each one puts the old values back straight away, to test
+  without changing the save. `set`, `heal` and `captain` also take
+  `--hold <seconds>` to wait first, so the change can be looked at in the game.
+
+If Windows denies access, run the probe from an administrator terminal.
 
 ## Safety
 
