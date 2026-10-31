@@ -15,6 +15,10 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 >   undoes them.
 > - **Many at once:** a mass edit changes every player, member of staff or club the
 >   list selects. It is previewed before it is applied and undone as one batch.
+> - **Moving players:** a player can move to another club's senior team, on his
+>   contract or new terms. Free agents, loans and players at your own club are
+>   refused for now, and so is a club whose squad list has no room left (see
+>   [the notes](docs/recon/fm27-gamepass-0.9.2355.md#squad-lists-and-moving-players-between-clubs)).
 >
 > The interface is in English and Turkish. Club logos, flags and faces come from the
 > graphics packs installed in the game's graphics folder.
@@ -35,9 +39,9 @@ A free, open-source real-time editor for **Football Manager 27**, built Game Pas
 FM27's interface is Unity (IL2CPP), but the game itself, its database and
 simulation, lives in a native, anti-tamper protected module: `game_plugin.dll`.
 FMLibreEditor runs as a separate process and reads that module's heap data with
-`ReadProcessMemory`. To edit, it writes single values back with `WriteProcessMemory`,
-and only into the game's heap. It never injects code and never patches the game's
-code.
+`ReadProcessMemory`. To edit, it writes values back with `WriteProcessMemory`, and
+only into the game's heap. It never injects code, never patches the game's code and
+never allocates memory in the game.
 
 Before every write it checks four things:
 - the object still belongs to the same person;
@@ -96,7 +100,9 @@ fmlibre-probe clubs tottenham                        # search clubs; club <uid> 
 fmlibre-probe fields player                          # what the editor can change (also: staff)
 fmlibre-probe get player 7458500                     # those fields' values for one player
 fmlibre-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
+fmlibre-probe move 13200568 1139 --restore           # move a player to a club and back: this writes too
 fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
+fmlibre-probe refs 0x1a5a5396990 --span 0x3c8        # every pointer into an object (holders, lists, squads too)
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
 fmlibre-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0
 fmlibre-probe column game_plugin.dll+0x5681dc0 0x294 --find 7458500   # find a player by UID
@@ -108,10 +114,11 @@ Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `sc
 to save the results. `calibrate --scan` ignores the build profile and finds the
 arrays the way it would on an unknown build.
 
-Only `set` writes to the game. It changes one field after the checks above. Values
-are as stored: attributes run 0–100, or 1–20 with `--shown`. `set --restore` writes
-the old value back straight away, to test a field without changing the save. If
-Windows denies access, run the probe from an administrator terminal.
+Only `set` and `move` write to the game. `set` changes one field after the checks
+above. Values are as stored: attributes run 0–100, or 1–20 with `--shown`. `move`
+moves a player to a club's senior team. With `--restore`, either one puts the old
+values back straight away, to test without changing the save. If Windows denies
+access, run the probe from an administrator terminal.
 
 ## Safety
 

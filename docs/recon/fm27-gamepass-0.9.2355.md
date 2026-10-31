@@ -391,3 +391,84 @@ These were refused:
 - **On the test machine:** the "Logos TCM26" pack gives 68,131 club logos, 250 flags
   and 5,802 competition logos, read in 0.2 s. Among the 200 best players, every club
   had a logo and every nation a flag.
+
+### Squad lists and moving players between clubs
+
+Mapped with the probe's `refs` (every pointer to an object), `holders` (the arrays
+that hold an address), `lists` (the arrays inside an object) and `squads`.
+
+- **Teams:** a club's `+0x18` is a `(begin, end, capacity)` vector of its teams; the
+  first is the senior team. A team object is `0xB8` bytes:
+  - `+0x08`: its id and its club's UID;
+  - `+0x30`: the club;
+  - `+0x38`: the player list, as `(begin, end, capacity)`;
+  - `+0xA8`: the reputation.
+- **Who is in a team's list:** the players under contract with the team, those
+  out on loan included, and the players on loan to it. Every player with a team is
+  in that team's list. A youngster who plays for the U18 side while under contract
+  with the senior team is in the U18 list, and sometimes in the senior list too.
+- **Pointers:** a player's `+0x130` points at the team he plays for. His contract's
+  `+0x10` points at the team that employs him, and `+0x18` at the employer's senior
+  team.
+  - The two contract pointers differ only for player-coaches, 766 of them.
+  - A player on loan has a second contract, of another class, with the club he is
+    on loan to.
+- **References:** for a player at an AI club, everything else that points at him is
+  game-wide (the people arrays), national squads, or match records. A player at the
+  human manager's club is also pointed at by its tactics, training and similar
+  records: 53 references for Youri Tielemans, against 21 for Mohammed Kudus at
+  Tottenham.
+
+**The allocator.** List buffers have no header. They sit in blocks of fixed size
+classes, and the bytes from a list's end to its block's end are zero. Across the
+5,881 non-empty team lists of the test save:
+- 19 or 20 pointers sit in 160-byte blocks, then 192, 224, 256, 288 and 320;
+- from 41 pointers the classes go up in steps of 64 bytes, to 512;
+- capacity equals length for nearly every list. In 374 lists the capacity was
+  above the length.
+
+`profiles/fm27/layout.toml` keeps these sizes. The editor relies on them only for
+buffers above 144 bytes and up to 512.
+
+**A move** takes nothing new from the game's allocator; the editor cannot allocate
+there. It writes:
+1. the player into the first free slot of the new senior team's list, then the
+   list's end, and its capacity when the block has room beyond it;
+2. both team pointers of the contract, the signed and joined dates (the game's
+   date), the squad number (none) and the listing bits (off the transfer and loan
+   lists), plus a new wage and contract end when they are given;
+3. the player's team;
+4. for each old list that holds him: the later players move up one, the end goes
+   back one, and the slot given up is cleared. The list never holds a null on the
+   way.
+
+Each write keeps the bytes it found, so an undo writes them back in reverse order.
+It does so only while memory still holds every byte the move wrote.
+
+These moves were made and undone on the test save with `move ... --restore`, and
+the lists, contract dates and squad number read as before each time:
+
+| Who | From → to | Writes |
+|---|---|---|
+| Mohammed Kudus | Tottenham → Juventus | 11 |
+| Mohammed Kudus | Tottenham → Juventus, new wage and contract end | 13 |
+| Mohammed Kudus | Tottenham → Manchester United (the human club) | 11 |
+| Luca Williams-Barnett (plays for Tottenham U18) | Tottenham → Juventus | 10 |
+
+While Kudus was held at Juventus for 20 seconds, the lists read as follows:
+- **Tottenham:** 36 players in its 37-slot buffer, in their old order.
+- **Juventus:** 35 players. Its 34-slot buffer had grown into the 288-byte block,
+  and the slot after it was still zero.
+- **Kudus's contract:** signed and joined on the game's date, with no squad number.
+
+These were refused, and nothing was written:
+- a player at the human manager's club;
+- a player on loan;
+- a free agent;
+- a player-coach;
+- a move to his own club;
+- a move to a women's club;
+- a contract end in the past.
+
+It has not been checked yet whether the game's own screens and its next days
+accept the move.

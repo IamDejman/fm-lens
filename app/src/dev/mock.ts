@@ -34,6 +34,8 @@ import type {
   MassOperationKind,
   MassPreview,
   MassReport,
+  MovePreview,
+  MoveTerms,
   PlannedChange,
   SkippedField,
 } from "../types";
@@ -188,6 +190,13 @@ function details(player: PlayerSummary): PlayerDetails {
           squadNumber: 1 + Math.floor(next() * 40),
           transferListed: next() < 0.1,
           loanListed: false,
+          // A player moved to another club signed today, without a squad number, off the transfer list.
+          ...(movedPlayers.has(player.uid) && {
+            signed: GAME_DATE,
+            joined: GAME_DATE,
+            squadNumber: null,
+            transferListed: false,
+          }),
         }
       : null,
   });
@@ -543,6 +552,11 @@ function undoChange(id: number): LoggedChange {
   if (entry.undoneAt !== null) {
     throw new Error("This change has already been undone.");
   }
+  if (entry.moved) {
+    undoMove(entry);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   const found = currentValues(entry.entity, entry.uid)[entry.field];
   if (found !== entry.new) {
     throw new Error(`${entry.field} is now ${found}, not ${entry.new}; the game has changed it since`);
@@ -550,6 +564,111 @@ function undoChange(id: number): LoggedChange {
   writeValue(entry.entity, entry.uid, entry.field, entry.old);
   entry.undoneAt = Date.now();
   return { ...entry };
+}
+
+// Moves to other clubs ----------------------------------------------------------------------------------------------
+
+/** The players moved to another club, with how many of their moves are not undone. */
+const movedPlayers = new Map<number, number>();
+
+/** What each move (by the id of its logged change) found in the list row and on top of the profile, for its undo. */
+const moveUndo = new Map<number, { row: Pick<PlayerSummary, "club" | "clubUid" | "contractExpires">; written?: FieldValues }>();
+
+/** The men's fixture club whose squad list is full, so that the move dialog's refusal can be seen. */
+const FULL_CLUB = 500 + (CLUBS.length - 1) * 7;
+
+/** `plan_club_move`: the checks of the real command that the fixtures can have, with its messages. */
+function planMove(uid: number, clubUid: number, terms: MoveTerms): MovePreview {
+  const player = players.find((p) => p.uid === uid);
+  const to = clubs.find((c) => c.uid === clubUid);
+  if (!player) {
+    throw new Error(`No player with id ${uid}`);
+  }
+  if (!to) {
+    throw new Error(`No club with id ${clubUid}`);
+  }
+  if (terms.wage !== undefined && (!Number.isInteger(terms.wage) || terms.wage < 0 || terms.wage > 10_000_000)) {
+    throw new Error(`${terms.wage} is not a valid contract.wage; it takes 0 to 10000000`);
+  }
+  const tomorrow = numberFromDate(GAME_DATE) + 1;
+  if (terms.expires !== undefined && (dateFromNumber(terms.expires) === null || terms.expires < tomorrow || terms.expires > 21001231)) {
+    throw new Error(`${terms.expires} is not a valid contract.expires; it takes ${tomorrow} to 21001231`);
+  }
+  if (player.clubUid === null) {
+    throw new Error("the player has no club; free agents cannot be moved yet");
+  }
+  if (player.clubUid === clubUid) {
+    throw new Error("the player is at this club already");
+  }
+  if (staff.some((s) => s.isHuman && s.clubUid === player.clubUid)) {
+    throw new Error(
+      "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
+    );
+  }
+  if (to.women) {
+    throw new Error("one club is a men's club and the other a women's club");
+  }
+  if (clubUid === FULL_CLUB) {
+    throw new Error("the club's squad list has no room for another player (36 now), and the editor cannot make it bigger");
+  }
+  const from = clubs.find((c) => c.uid === player.clubUid)!;
+  return { from: { uid: from.uid, name: from.name }, to: { uid: to.uid, name: to.name } };
+}
+
+/** `move_player`: moves the fixture player and logs it as a change of his `club`. */
+function movePlayer(uid: number, clubUid: number, terms: MoveTerms): LoggedChange {
+  const preview = planMove(uid, clubUid, terms);
+  const player = players.find((p) => p.uid === uid)!;
+  const id = changes.length + 1;
+  moveUndo.set(id, {
+    row: { club: player.club, clubUid: player.clubUid, contractExpires: player.contractExpires },
+    written: written.get(`player:${uid}`),
+  });
+  player.club = preview.to.name;
+  player.clubUid = preview.to.uid;
+  if (terms.expires !== undefined) {
+    player.contractExpires = dateFromNumber(terms.expires);
+  }
+  if (terms.wage !== undefined) {
+    writeValue("player", uid, "contract.wage", terms.wage);
+  }
+  movedPlayers.set(uid, (movedPlayers.get(uid) ?? 0) + 1);
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "club",
+    old: preview.from.uid,
+    new: preview.to.uid,
+    undoneAt: null,
+    batch: null,
+    moved: { from: preview.from.name, to: preview.to.name },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** Puts back what the move logged as `entry` changed, unless the player has moved again since. */
+function undoMove(entry: LoggedChange): void {
+  const player = players.find((p) => p.uid === entry.uid);
+  const before = moveUndo.get(entry.id);
+  if (!player || !before || player.clubUid !== entry.new) {
+    throw new Error("the game has changed the player's club since; reload and try again");
+  }
+  Object.assign(player, before.row);
+  if (before.written) {
+    written.set(`player:${entry.uid}`, before.written);
+  } else {
+    written.delete(`player:${entry.uid}`);
+  }
+  const live = (movedPlayers.get(entry.uid) ?? 1) - 1;
+  if (live > 0) {
+    movedPlayers.set(entry.uid, live);
+  } else {
+    movedPlayers.delete(entry.uid);
+  }
 }
 
 // Mass edits --------------------------------------------------------------------------------------------------------
@@ -920,6 +1039,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return applyMass(Number(args?.id)) as T;
     case "undo_batch":
       return undoMassBatch(Number(args?.batch)) as T;
+    case "plan_club_move":
+      return planMove(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
+    case "move_player":
+      return movePlayer(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
     default:
       throw new Error(`No fixture for command "${command}"`);
   }

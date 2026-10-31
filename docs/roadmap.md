@@ -91,4 +91,20 @@ before trusting them.
 - [x] Player comparisons and saved filters:
   - up to four players side by side, with the best value of each row marked;
   - player filters and sort saved under a name.
-- [ ] Steam and Epic builds; possibly Linux/Proton.
+- [ ] Steam and Epic builds; possibly Linux/Proton. On hold until the Game Pass
+  build is complete.
+
+## Phase 6: Game Pass completeness (in progress)
+
+- [x] Move a player to another club's senior team, on his contract or new terms,
+  with undo. Nothing is allocated in the game, so the new club's squad list must
+  have room in its block. Loans, free agents and players at a human manager's club
+  are refused.
+- [ ] The rough edges of what shipped:
+  - opening a mass edit asks about unapplied profile edits;
+  - the Changes view pages and folds mass edits;
+  - a language switch keeps the view, the filters and the open profile;
+  - the Rust side's errors appear in Turkish too;
+  - faces are checked against a real face pack.
+- [ ] Check in the game that moved players play for their new club and that the
+  following days run normally.

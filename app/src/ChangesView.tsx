@@ -475,7 +475,10 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       </td>
       <td>{label}</td>
       <td className="change-value" title={storedNote}>
-        {valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)))}
+        {/* A move to another club is logged with the clubs' UIDs as its values: their names say more. */}
+        {change.moved
+          ? valueChange(change.moved.from, change.moved.to)
+          : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)))}
       </td>
       <td className="col-status">
         <div className="row-actions">

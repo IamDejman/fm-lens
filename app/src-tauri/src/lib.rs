@@ -4,10 +4,10 @@ use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, Entity, EntityArrays, Field, FmDate, GAME_EXE,
-    GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Kind, Listed, Operation, Picture, Planned, PlayerDetails,
-    PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session, Skipped, StaffDetails, StaffFilter, StaffIndex,
-    Target, find_game, sort_players,
+    ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Entity, EntityArrays, Field, FmDate, GAME_EXE,
+    GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Kind, Listed, MovePlan, MoveTerms, Operation, Picture,
+    Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session, Skipped, StaffDetails,
+    StaffFilter, StaffIndex, Target, find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -25,6 +25,8 @@ struct Connection {
     players: PlayerIndex,
     staff: StaffIndex,
     clubs: ClubIndex,
+    /// The clubs human managers run: their players are not moved to other clubs.
+    human_clubs: Vec<u32>,
     log: Vec<LoggedChange>,
     /// The mass edit last previewed, until it is applied or replaced.
     mass: Option<PendingMass>,
@@ -44,10 +46,12 @@ impl Connection {
     /// since its people may have moved.
     fn load(session: Session, log: Vec<LoggedChange>) -> Result<Self, String> {
         let players = PlayerIndex::new(session.players().map_err(text)?);
-        let staff = StaffIndex::new(session.staff().map_err(text)?);
+        let staff = session.staff().map_err(text)?;
+        let human_clubs = staff.iter().filter(|member| member.is_human).filter_map(|member| member.club_uid).collect();
+        let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs().map_err(text)?);
         let next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
-        Ok(Self { session, players, staff, clubs, log, mass: None, next_id })
+        Ok(Self { session, players, staff, clubs, human_clubs, log, mass: None, next_id })
     }
 
     /// What the window shows about the connection; `load_ms` is how long reading took.
@@ -94,20 +98,89 @@ impl Connection {
     /// Logs a change just written; `batch` groups the changes of one mass edit.
     fn log_change(&mut self, change: Change, name: String, batch: Option<u32>) -> LoggedChange {
         self.note_change(&change, change.new);
-        let logged = LoggedChange { id: self.log.len() + 1, at: now_ms(), name, change, undone_at: None, batch };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change,
+            undone_at: None,
+            batch,
+            moved: None,
+            club_move: None,
+        };
         self.log.push(logged.clone());
         logged
     }
 
-    /// Writes back the old value of the logged change `id`, if the game still holds the new one.
+    /// Works out moving the player `uid` to the club `club` on the contract `terms`.
+    fn plan_move(&self, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePlan, String> {
+        let player = self.players.get(uid).ok_or_else(|| format!("No player with id {uid}"))?;
+        let to = self.clubs.get(club).ok_or_else(|| format!("No club with id {club}"))?;
+        self.session.plan_club_move(player, to, terms, &self.human_clubs).map_err(text)
+    }
+
+    fn club_name(&self, uid: u32) -> String {
+        self.clubs.get(uid).map_or_else(|| uid.to_string(), |club| club.name.clone())
+    }
+
+    /// Logs a move just written, as a change of the player's `club` from one club UID to the other.
+    fn log_move(&mut self, done: ClubMove, terms: MoveTerms) -> LoggedChange {
+        let (from, to) = (self.club_name(done.from_club), self.club_name(done.to_club));
+        let row = self.players.get(done.player);
+        let name = row.map_or_else(|| done.player.to_string(), |player| player.name.clone());
+        let before = LoggedMove {
+            done: done.clone(),
+            club: row.and_then(|player| player.club.clone()),
+            club_uid: row.and_then(|player| player.club_uid),
+            contract_expires: row.and_then(|player| player.contract_expires),
+        };
+        self.players.update(done.player, |player| {
+            player.club = Some(to.clone());
+            player.club_uid = Some(done.to_club);
+            if let Some(expires) = terms.expires {
+                player.contract_expires = FmDate::from_number(expires);
+            }
+        });
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "club".to_owned(),
+            old: i64::from(done.from_club),
+            new: i64::from(done.to_club),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change,
+            undone_at: None,
+            batch: None,
+            moved: Some(MovedClubs { from, to }),
+            club_move: Some(before),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Writes back the old value of the logged change `id`, if the game still holds the new
+    /// one; a move goes back if the game still holds everything it wrote.
     fn undo(&mut self, id: usize) -> Result<LoggedChange, String> {
         let entry = self.log.iter().find(|logged| logged.id == id).cloned().ok_or_else(|| format!("No change {id}"))?;
         if entry.undone_at.is_some() {
             return Err("This change has already been undone.".to_owned());
         }
-        let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
-        self.session.revert(&target, &entry.change).map_err(text)?;
-        self.note_change(&entry.change, entry.change.old);
+        if let Some(moved) = entry.club_move {
+            self.session.undo_club_move(&moved.done).map_err(text)?;
+            self.players.update(moved.done.player, |player| {
+                player.club = moved.club;
+                player.club_uid = moved.club_uid;
+                player.contract_expires = moved.contract_expires;
+            });
+        } else {
+            let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
+            self.session.revert(&target, &entry.change).map_err(text)?;
+            self.note_change(&entry.change, entry.change.old);
+        }
         let logged = self.log.iter_mut().find(|logged| logged.id == id).expect("found above");
         logged.undone_at = Some(now_ms());
         Ok(logged.clone())
@@ -148,6 +221,43 @@ struct LoggedChange {
     undone_at: Option<u64>,
     /// The mass edit it was part of, if any.
     batch: Option<u32>,
+    /// For a move to another club, logged as a change of the field `club` from one club UID
+    /// to the other: the clubs' names.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    moved: Option<MovedClubs>,
+    /// For a move: what undoing it takes.
+    #[serde(skip)]
+    club_move: Option<LoggedMove>,
+}
+
+#[derive(Clone, Serialize)]
+struct MovedClubs {
+    from: String,
+    to: String,
+}
+
+/// A move as the log keeps it: the writes to undo, and what the player's list row said
+/// about his club and contract before.
+#[derive(Clone)]
+struct LoggedMove {
+    done: ClubMove,
+    club: Option<String>,
+    club_uid: Option<u32>,
+    contract_expires: Option<FmDate>,
+}
+
+/// The clubs a move is between.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MovePreview {
+    from: ClubName,
+    to: ClubName,
+}
+
+#[derive(Serialize)]
+struct ClubName {
+    uid: u32,
+    name: String,
 }
 
 /// The filter of the list a mass edit applies to; only the one for its entity is used.
@@ -620,6 +730,28 @@ fn undo_change(state: State<'_, AppState>, id: usize) -> Result<LoggedChange, St
     connection.undo(id)
 }
 
+/// Checks that the player `uid` can move to the club `club` on the contract `terms`, and
+/// names the clubs; the error says why he cannot. Nothing is written.
+#[tauri::command]
+fn plan_club_move(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePreview, String> {
+    let guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_ref().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let plan = connection.plan_move(uid, club, terms)?;
+    let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
+    Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club) })
+}
+
+/// Moves the player `uid` to the senior team of the club `club` on the contract `terms`,
+/// worked out again from the game as it is now, and logs the move.
+#[tauri::command]
+fn move_player(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<LoggedChange, String> {
+    let mut guard = state.0.lock().map_err(text)?;
+    let connection = guard.as_mut().ok_or_else(|| NOT_CONNECTED.to_owned())?;
+    let plan = connection.plan_move(uid, club, terms)?;
+    let done = connection.session.apply_club_move(&plan).map_err(text)?;
+    Ok(connection.log_move(done, terms))
+}
+
 /// Works out a mass edit: `operations` applied to every player, member of staff or club
 /// that `query` and the entity's filter select, from the values the game holds now.
 /// Nothing is written; the plan waits for `apply_mass_edit` with the preview's id.
@@ -765,6 +897,8 @@ pub fn run() {
             plan_mass_edit,
             apply_mass_edit,
             undo_batch,
+            plan_club_move,
+            move_player,
             graphics_info
         ])
         .run(tauri::generate_context!())

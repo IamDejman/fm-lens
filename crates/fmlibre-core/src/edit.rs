@@ -59,7 +59,7 @@ impl Kind {
         }
     }
 
-    fn decode(self, bytes: &[u8]) -> i64 {
+    pub(crate) fn decode(self, bytes: &[u8]) -> i64 {
         let u16_at = |i: usize| u16::from_le_bytes([bytes[i], bytes[i + 1]]);
         match self {
             Kind::U8 => i64::from(bytes[0]),
@@ -72,7 +72,7 @@ impl Kind {
 
     /// The bytes of `value`, which must fit the kind, written over `old`: a date keeps
     /// the flags the game keeps next to its day.
-    fn encode(self, value: i64, old: &[u8]) -> Vec<u8> {
+    pub(crate) fn encode(self, value: i64, old: &[u8]) -> Vec<u8> {
         const FITS: &str = "checked against the field's range";
         match self {
             Kind::U8 => vec![u8::try_from(value).expect(FITS)],

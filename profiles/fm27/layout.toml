@@ -108,6 +108,7 @@ squad_status = 0x54       # u8 (1 star player, 2 important player, 5 impact sub)
 listing = 0x57            # u8; bit 0 transfer listed, bit 1 loan listed
 squad_number = 0x5D       # u8; 255 = none
 team = 0x10               # team pointer (the employer, for staff); its club is at team+0x30
+senior_team = 0x18        # the employer's senior team; the same as `team` except for player-coaches
 job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant coach, ...)
 
 # Static data in game_plugin.dll next to the entity arrays. Offsets are relative to
@@ -169,7 +170,19 @@ authority = 0x14
 
 [team]
 club = 0x30               # club pointer
+# Player pointers as (begin, end, capacity): the players under contract with the team
+# (those out on loan too) and the players on loan to it. A player is always in the list
+# of the team he plays for (player `team`).
+players = 0x38
 reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its senior team
+
+# The game's allocator hands out blocks in size classes, without headers. Measured on
+# the buffers of the teams' player lists (probe `squads`): a list of n pointers sits in
+# the smallest of these blocks that holds 8 * n bytes, and the bytes after its end up to
+# the block's end are zero. Only sizes from just above the first value to the last one
+# are relied on; smaller and larger lists were not measured well enough.
+[heap]
+block_sizes = [144, 160, 192, 224, 256, 288, 320, 384, 448, 512]
 
 # Checked on Tottenham Hotspur (UID 728) in the Game Pass build, against values
 # fm-editor witnessed on Steam (founded 1882, 50,000 season tickets, 6.8M social

@@ -223,6 +223,7 @@ export const tr: Strings = {
     "international.u21_goals": "U21 gol",
     "contract.wage": "Haftalık maaş",
     "contract.expires": "Sözleşme bitişi",
+    club: "Kulüp",
     reputation: "İtibar",
     "facilities.training": "Antrenman tesisleri",
     "facilities.youth_facilities": "Altyapı tesisleri",
@@ -746,6 +747,49 @@ export const tr: Strings = {
     lowest: "en düşük",
     profile: "Profil",
     close: "Kapat",
+  },
+
+  move: {
+    button: "Başka kulübe taşı",
+    buttonTitle: "Bu oyuncuyu oyunda başka bir kulübe taşı",
+
+    // The dialog
+    title: "Başka kulübe taşı",
+    from: "Mevcut kulüp",
+    to: "Yeni kulüp",
+
+    // Choosing the club
+    searchLabel: "Taşınacağı kulübü ara",
+    resultsLabel: "Bulunan kulüpler",
+    searching: "Kulüpler aranıyor…",
+    searchFailed: (reason) => `Kulüpler aranamadı: ${reason}`,
+    more: (count) => `ve ${format(count)} tane daha; aramayı daraltmak için yazın`,
+    change: "Başka kulüp seç",
+
+    // The contract
+    wageInvalid: "0 veya daha büyük, tam sayı bir sterlin tutarı girin",
+    expiresInvalid: "Bir tarih girin",
+
+    // What the dialog says about the move itself
+    chooseClub: "Oyuncunun taşınacağı kulübü seçin.",
+    fixTerms: "Önce sözleşme değerlerini düzeltin.",
+    checking: "Taşıma kontrol ediliyor…",
+    route: (from, to) => `${from} → ${to}`,
+    doesHeading: "Taşıma işlemi ne yapar",
+    does: [
+      "Yeni kulübün A takımına katılır",
+      "Sözleşme oyundaki tarihle başlar; forma numarası silinir",
+      "Transfer ve kiralık listelerinden çıkar",
+      "Maaş ve sözleşme bitişi, siz yeni değer girmedikçe aynı kalır",
+      "Bedel ödenmez; kariyer geçmişi güncellenmez",
+      "Değişiklikler bölümünde listelenir ve oradan geri alınabilir",
+    ],
+
+    // The foot
+    hint: "Siz taşımadan oyunda hiçbir şey değişmez.",
+    move: "Taşı",
+    moving: "Taşınıyor…",
+    cancel: "İptal",
   },
 
   game: {
