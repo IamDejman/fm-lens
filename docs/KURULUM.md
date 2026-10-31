@@ -2,7 +2,8 @@
 
 FMLibreEditor, Football Manager 27 açıkken oyuncuları, personeli ve kulüpleri anında
 düzenlemenizi sağlayan ücretsiz bir programdır. Windows 10 ve 11'de, oyunun **Xbox / Game
-Pass** ve **Steam** sürümleriyle çalışır.
+Pass** ve **Steam** sürümleriyle, Mac'te ise **Steam** sürümüyle çalışır (bkz.
+[Mac'te](#macte)).
 
 *English: [INSTALL.md](INSTALL.md)*
 
@@ -48,6 +49,35 @@ Zip'e sağ tıklayıp **Tümünü ayıkla** deyin ve klasördeki **FMLibreEditor
 
 ![Kulübün kadro sekmesi](images/kadro.png)
 
+## Mac'te
+
+FMLibreEditor, Apple silicon ya da Intel işlemcili Mac'lerde FM27'nin **Steam** sürümüyle
+çalışır. macOS hiçbir uygulamayı başka bir uygulamanın belleğine sokmaz; bu yüzden FM27
+belleğini kendisi açar: Steam onu bir başlatma seçeneğiyle başlattığında FMLibreEditor'ın
+küçük köprü kütüphanesini yükler. Uygulama bunu sizin için ayarlar; Sistem Bütünlüğü Koruması
+(SIP) hep açık kalır.
+
+1. **İndirin:**
+   [FMLibreEditor-macOS.zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-macOS.zip).
+   Tarayıcınız açmadıysa zip'i açın ve **FMLibreEditor**'ı **Uygulamalar** klasörüne
+   sürükleyin.
+2. **İlk kez açın.** macOS, FMLibreEditor'ı doğrulayamadığını söyleyebilir; çünkü uygulama
+   henüz Apple'ın onayından (notarization) geçmedi. **Bitti**'ye basın, **Sistem Ayarları ›
+   Gizlilik ve Güvenlik**'i açın ve FMLibreEditor'ın yanındaki **Yine de Aç**'a basın.
+3. **Köprüyü bir kez kurun.** Steam'den tamamen çıkın (menü çubuğundaki **Steam**
+   menüsünden; penceresini kapatmak yetmez), sonra FMLibreEditor'da **Köprüyü kur**'a basın.
+   Uygulama köprüyü `~/Library/Application Support/FMLibreEditor` klasörüne kopyalar ve
+   Steam'de FM27'ye bir başlatma seçeneği ekler.
+   - Steam hâlâ açıksa uygulama seçeneği size gösterir. Steam'de Football Manager 27'ye sağ
+     tıklayıp **Özellikler › Genel › Başlatma Seçenekleri**'ne yapıştırın.
+4. **FM27'yi Steam'den başlatın** ve **bir kayıt yükleyin**. FM27 zaten açıksa kapatıp
+   yeniden başlatın. Ardından FMLibreEditor'da **Bağlan**'a basın. Sonrası yukarıdaki 3.
+   adımdaki gibidir.
+
+Köprüyü kaldırmak için Steam'den çıkın ve uygulamada **Köprüyü kaldır**'a basın.
+`~/Library/Application Support/FMLibreEditor` içindeki dosyaları elle silmeyin: başlatıcısı
+olmayan bir başlatma seçeneğiyle Steam oyunu başlatamaz.
+
 ## Bilmeniz gerekenler
 
 - **Önce kaydınızı yedekleyin.** Düzenleyici oyunun belleğine yazar; değişiklikler, oyunda
@@ -68,6 +98,12 @@ Zip'e sağ tıklayıp **Tümünü ayıkla** deyin ve klasördeki **FMLibreEditor
 - **Güncellemek için** yukarıdaki indirme bağlantısını yeniden kullanıp kurun; yeni sürüm
   eskisinin üzerine kurulur.
 - **Kaldırmak için:** Windows Ayarlar → Uygulamalar → FMLibreEditor → Kaldır.
+- **Mac'te güncellemek için** zip'i yeniden indirin ve yeni FMLibreEditor'ı
+  Uygulamalar'daki eskisinin yerine koyun. Bir sürümün notlarında köprünün değiştiği
+  yazıyorsa, Steam kapalıyken uygulamada önce **Köprüyü kaldır**'a, sonra **Köprüyü kur**'a
+  da basın.
+- **Mac'te kaldırmak için** Steam kapalıyken **Köprüyü kaldır**'a basın, sonra
+  FMLibreEditor'ı Uygulamalar'dan Çöp Sepeti'ne taşıyın.
 
 ## Sık sorulanlar
 
@@ -76,7 +112,14 @@ Zip'e sağ tıklayıp **Tümünü ayıkla** deyin ve klasördeki **FMLibreEditor
 - **"Oyuncu listesi bulunamadı" diyor.** Oyun ana menüde; bir kayıt yükleyin.
 - **Program yalnızca okuma modunda açıldı.** Windows oyuna yazmaya izin vermemiş. Programı
   kapatıp yeniden açın; olmazsa sağ tıklayıp **Yönetici olarak çalıştır** deyin.
+- **Mac'te oyuna giremiyor.** FM27'yi Steam'in başlatma seçeneğiyle başlatması gerekir:
+  FM27'yi kapatıp Steam'den yeniden başlatın. Bağlantı paneli başlatma seçeneğinin ayarlı
+  olmadığını söylüyorsa Steam kapalıyken köprüyü yeniden kurun.
+- **macOS uygulamanın hasarlı olduğunu ve açılamayacağını söylüyor.** macOS bunu, kontrol
+  edemediği indirilmiş uygulamalar için söyleyebilir. Terminal'de
+  `xattr -dr com.apple.quarantine /Applications/FMLibreEditor.app` komutu indirme işaretini
+  kaldırır ve uygulama açılır.
 - **Hangi sürümler destekleniyor?** FM27'nin Windows'taki Xbox / Game Pass ve Steam
-  sürümleri. Epic ve Mac henüz desteklenmiyor.
+  sürümleri ile Mac'teki Steam sürümü. Epic henüz desteklenmiyor.
 - **Ücretli mi?** Hayır. FMLibreEditor ücretsiz ve açık kaynaklıdır (GNU GPL, sürüm 3 ya da
   sonrası).

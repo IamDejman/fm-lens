@@ -4,6 +4,9 @@
     "resources": {
       "../../target/universal-apple-darwin/release/libfmlibre_bridge.dylib": "libfmlibre_bridge.dylib",
       "../../target/universal-apple-darwin/release/fmlibre-launch": "fmlibre-launch"
+    },
+    "macOS": {
+      "signingIdentity": "-"
     }
   }
 }
