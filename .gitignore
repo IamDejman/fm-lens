@@ -7,3 +7,7 @@ node_modules/
 /reports
 
 # Local tooling state.
+
+# Impeccable's working files: review captures and decision-page logs.
+/.impeccable/review/
+/.impeccable/questions/
