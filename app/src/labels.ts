@@ -65,6 +65,19 @@ export function jobLabel(code: number | null): string {
   return coach !== undefined ? profileText.playerCoach(coach) : profileText.unknownJob(code);
 }
 
+/** How the codes of a field that holds codes from a list (see `EditField.choices`) are named, by the field's key. */
+const CHOICE_NAMES = new Map<string, (code: number) => string>([
+  ["contract.squad_status", profileText.squadStatusName],
+]);
+
+/**
+ * The name of `code`, a value of the field `key` that holds codes from a list; a field whose codes have no names
+ * shows them as numbers. A code the game holds that the field does not offer is named the same way.
+ */
+export function choiceLabel(key: string, code: number): string {
+  return CHOICE_NAMES.get(key)?.(code) ?? formatNumber(code);
+}
+
 /**
  * The jobs the staff list can be filtered by, one entry each, in the order of their names (as the language
  * sorts them). The odd codes (player-coaches) are left out: a filter on a coaching job finds them too. So is

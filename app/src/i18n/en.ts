@@ -655,6 +655,14 @@ export const en = {
     invalidMoney: (from: string, to: string) => `Enter a whole number of pounds from ${from} to ${to}`,
     /** Before the input of an amount of money: the game stores pounds. */
     pounds: "£",
+    /** The two values of a yes-or-no field, as the lists of changes and the hover text of its checkbox say them. */
+    yes: "Yes",
+    no: "No",
+    /**
+     * What an input that may be left empty reads as then, in its hint, the hover text and the lists of changes:
+     * "Squad number 20 → none". The profile itself shows a dash for it (`profile.none`).
+     */
+    none: "none",
 
     // The footer
     footer: "Editing",

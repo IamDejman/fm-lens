@@ -2,12 +2,13 @@
 
 import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
 import { formatDate, formatNumber, formatPounds } from "./format";
-import { editText, profileText } from "./labels";
+import { choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
 
 /**
  * The text of each input that was typed into, by field key; the others still show the value the game had. A number
- * input holds the number as typed, a date input `YYYY-MM-DD` (or nothing while the date is not whole).
+ * input holds the number as typed (nothing, for a field with a blank, when it is left empty), a date input
+ * `YYYY-MM-DD` (or nothing while the date is not whole), a select the code picked, and a checkbox "1" or "0".
  */
 export type Typed = Partial<Record<string, string>>;
 
@@ -33,36 +34,55 @@ function parseInput(field: EditField, text: string): number | null {
   return trimmed === "" || !Number.isInteger(shown) ? null : shown;
 }
 
-/** What the input of `field` holds for the value `shown`: the number, or `YYYY-MM-DD` for a date. */
+/**
+ * What the input of `field` holds for the value `shown`: the number, `YYYY-MM-DD` for a date, nothing for the blank
+ * (an empty input is how a squad number says "none").
+ */
 function inputText(field: EditField, shown: number): string {
-  return field.kind === "date" ? isoFromNumber(shown) : String(shown);
+  if (field.kind === "date") {
+    return isoFromNumber(shown);
+  }
+  return shown === field.blank ? "" : String(shown);
 }
 
 /**
- * A value of `field`, as shown, written out: a date as the app shows dates, an amount of money in pounds, anything
- * else as a number. A field the table lacks (`undefined`) is a number.
+ * A value of `field`, as shown, written out: a date as the app shows dates, an amount of money in pounds, a flag as
+ * Yes or No, a code from a list by its name, the blank as "none", anything else as a number. A field the table lacks
+ * (`undefined`) is a number.
  */
 export function valueText(field: EditField | undefined, shown: number): string {
+  if (field !== undefined && shown === field.blank) {
+    return editText.none;
+  }
   switch (field?.kind) {
     case "date":
       return formatDate(dateFromNumber(shown)) || String(shown);
+    case "flag":
+      return shown === 0 ? editText.no : editText.yes;
     case "i32":
       // FM stores a negative transfer budget when the board has not set one.
       return field.key === "finance.transfer_budget" && shown < 0 ? profileText.notSet : formatPounds(shown);
     default:
-      return formatNumber(shown);
+      return field?.choices ? choiceLabel(field.key, shown) : formatNumber(shown);
   }
 }
 
 /**
- * Whether `text` in the input of `field` is a change to write, no change, or unusable: empty, not a whole number
- * (a date: not a whole, real date), or outside what the input takes. `stored` is the value the game had when
+ * Whether `text` in the input of `field` is a change to write, no change, or unusable: empty (unless the field has a
+ * blank, which an empty input stands for), not a whole number (a date: not a whole, real date), or outside what the
+ * input takes, a code that is not among the field's choices included. `stored` is the value the game had when
  * editing began. The value the game shows for it is no change, so an attribute's stored value is not rounded for
- * nothing, and an `undefined` text is the input that was not touched.
+ * nothing, and neither is a code the game holds that the field does not offer; an `undefined` text is the input that
+ * was not touched.
  */
 export function judge(field: EditField, stored: number, text: string | undefined): Verdict {
   if (text === undefined) {
     return SAME;
+  }
+  if (field.blank !== null && text.trim() === "") {
+    // The blank is on no scale: it is shown as it is stored (no field with one is an attribute).
+    const edit = { field: field.key, value: field.blank };
+    return stored === field.blank ? SAME : { status: "changed", shown: field.blank, edit };
   }
   const shown = parseInput(field, text);
   if (shown === null) {
@@ -72,15 +92,19 @@ export function judge(field: EditField, stored: number, text: string | undefined
     return SAME;
   }
   const { min, max } = shownRange(field);
-  const edit = shown < min || shown > max ? null : editFor(field, stored, shown);
+  const offered = field.choices === null || field.choices.includes(shown);
+  const edit = shown < min || shown > max || !offered ? null : editFor(field, stored, shown);
   return edit === null ? INVALID : { status: "changed", shown, edit };
 }
 
 /** How one input stands. */
 export interface InputState {
-  /** The field the input is for: its kind says what the input is (a number, an amount of money, a date). */
+  /**
+   * The field the input is for: its kind says what the input is (a number, an amount of money, a date, a checkbox for
+   * a flag), unless it has choices, which are picked from a select.
+   */
   field: EditField;
-  /** What the input holds: the number as typed, or `YYYY-MM-DD` for a date. */
+  /** What the input holds (see `Typed`): the number as typed, `YYYY-MM-DD` for a date, "1" or "0" for a flag. */
   text: string;
   /** The values it takes, as shown (for a date, numbers like 20290630: see `isoFromNumber`). */
   range: { min: number; max: number };
@@ -92,8 +116,12 @@ export interface InputState {
   message: string | null;
 }
 
-/** What to tell about an input that cannot be applied, by what it takes. */
-function invalidMessage(field: EditField, range: { min: number; max: number }): string {
+/** What to tell about an input that cannot be applied, by what it takes; nothing for a flag or a choice. */
+function invalidMessage(field: EditField, range: { min: number; max: number }): string | null {
+  if (field.kind === "flag" || field.choices !== null) {
+    // A checkbox and a select only hold what they offer, so no value of theirs needs correcting.
+    return null;
+  }
   switch (field.kind) {
     case "date":
       return editText.invalidDate(valueText(field, range.min), valueText(field, range.max));

@@ -140,7 +140,12 @@ function attributeRows(details: PlayerDetails, keys: readonly AttributeKey[]): R
   );
 }
 
+/**
+ * The wage, squad status and number, the dates and the lists the player is on. While he is edited the figures are
+ * inputs, and both lists show as checkboxes: a tag shows only for a list he is on.
+ */
 function ContractGroup({ contract }: { contract: Contract }) {
+  const editingListing = useEditableField("contract.transfer_listed");
   return (
     <section className="profile-group">
       <h3>{profileText.contract}</h3>
@@ -148,17 +153,30 @@ function ContractGroup({ contract }: { contract: Contract }) {
         <div>
           <WageFact wage={contract.wage} />
           <dl className="stats">
-            <Fact label={profileText.squadStatus}>{profileText.squadStatusName(contract.squadStatus)}</Fact>
-            <Fact label={profileText.squadNumber}>{contract.squadNumber ?? profileText.none}</Fact>
+            <Fact label={profileText.squadStatus}>
+              <EditableValue field="contract.squad_status">
+                {profileText.squadStatusName(contract.squadStatus)}
+              </EditableValue>
+            </Fact>
+            <Fact label={profileText.squadNumber}>
+              <EditableValue field="contract.squad_number">{contract.squadNumber ?? profileText.none}</EditableValue>
+            </Fact>
           </dl>
         </div>
         <ContractDates contract={contract} />
       </div>
-      {(contract.transferListed || contract.loanListed) && (
+      {editingListing ? (
         <div className="tags">
-          {contract.transferListed && <span className="tag listed">{profileText.transferListed}</span>}
-          {contract.loanListed && <span className="tag listed">{profileText.loanListed}</span>}
+          <EditInput field="contract.transfer_listed" />
+          <EditInput field="contract.loan_listed" />
         </div>
+      ) : (
+        (contract.transferListed || contract.loanListed) && (
+          <div className="tags">
+            {contract.transferListed && <span className="tag listed">{profileText.transferListed}</span>}
+            {contract.loanListed && <span className="tag listed">{profileText.loanListed}</span>}
+          </div>
+        )
       )}
     </section>
   );

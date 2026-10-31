@@ -557,7 +557,9 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
       report.failed.push({ ...edit, error: failure("edit.unknownField", message, { entity, field: edit.field }) });
       continue;
     }
-    if (!Number.isInteger(edit.value) || edit.value < field.min || edit.value > field.max) {
+    // Like the real command, a field also takes its blank (a squad number of 255 is none).
+    const takes = edit.value === field.blank || (edit.value >= field.min && edit.value <= field.max);
+    if (!Number.isInteger(edit.value) || !takes) {
       const message = `${edit.value} is not a valid ${field.key}; it takes ${field.min} to ${field.max}`;
       const params = { field: field.key, value: edit.value, min: field.min, max: field.max };
       report.failed.push({ ...edit, error: failure("edit.outOfRange", message, params) });

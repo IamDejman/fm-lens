@@ -152,14 +152,16 @@ function MassEditDialog({ entity, scope, onClose }: { entity: Entity; scope: Mas
     };
   }, []);
 
-  // The field table of the list's kind of entity: one row to start with, for its first field.
+  // The field table of the list's kind of entity, without the fields a mass edit may not change (`mass: false`, such as
+  // a squad number, which is changed one player at a time): one row to start with, for its first field.
   useEffect(() => {
     let cancelled = false;
     fieldTable(entity).then(
-      (table) => {
+      (all) => {
         if (cancelled) {
           return;
         }
+        const table = all.filter((field) => field.mass);
         setFields(table);
         if (table.length > 0) {
           setRows([{ id: nextId.current++, field: table[0].key, kind: "set", text: "" }]);

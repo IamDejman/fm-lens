@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { valueText, type Pending } from "./editDraft";
 import { isoFromNumber } from "./editing";
-import { changesText, editText, fieldLabel, POSITION_LABELS, valueChange } from "./labels";
+import { changesText, choiceLabel, editText, fieldLabel, POSITION_LABELS, valueChange } from "./labels";
 import { PITCH_ORDER } from "./PositionPitch";
 import type { Entity } from "./types";
 import { useEditableField, useEditSession, type ProfileEditing, type Report } from "./useProfileEditing";
@@ -11,8 +11,10 @@ import { useEditableField, useEditSession, type ProfileEditing, type Report } fr
 /**
  * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
  * input, with the pound sign before it for an amount of money, or a date input (`YYYY-MM-DD`, with the calendar of
- * the browser) for a date. A changed input is outlined in the accent colour and says what it was; one that cannot
- * be applied is outlined as an error. Nothing while the profile is not being edited.
+ * the browser) for a date. A field that holds a code from a list is a select of its choices, and a yes-or-no a
+ * checkbox with the name of the field. A number that may be left empty says "none" while it is. A changed input is
+ * outlined in the accent colour and says what it was; one that cannot be applied is outlined as an error. Nothing
+ * while the profile is not being edited.
  */
 export function EditInput({ field }: { field: string }) {
   const session = useEditSession();
@@ -21,25 +23,75 @@ export function EditInput({ field }: { field: string }) {
     return null;
   }
   const { field: spec, text, range, status, was, message } = input;
-  const date = spec.kind === "date";
+  const label = fieldLabel(session.entity, field);
   const title = [message, status !== "same" && editText.was(valueText(spec, was))].filter(Boolean).join(" · ");
-  // As wide as the longest value it takes, a minus sign included.
-  const digits = Math.max(String(range.min).length, String(range.max).length);
+  const outline = status === "same" ? "" : ` ${status}`;
+  // What every kind of input carries: whether it holds something that cannot be applied, and its field, which focus
+  // goes back to when an Apply refused its value.
+  const common = { "aria-invalid": status === "invalid" || undefined, "data-field": field };
+
+  // A yes-or-no is a checkbox in a pill, like the tag that shows it while the profile is read: the pill carries the
+  // outline and the name of the field.
+  if (spec.kind === "flag") {
+    return (
+      <label className={`edit-flag${outline}`} title={title || undefined}>
+        <input
+          type="checkbox"
+          checked={text === "1"}
+          disabled={session.busy}
+          {...common}
+          onChange={(e) => session.type(field, e.currentTarget.checked ? "1" : "0")}
+        />
+        {label}
+      </label>
+    );
+  }
+
+  if (spec.choices !== null) {
+    // A code the game holds that the field does not offer stays on the list as the current one, so that a code picked
+    // instead can be put back.
+    const codes = spec.choices.includes(was) ? spec.choices : [was, ...spec.choices];
+    return (
+      <select
+        className={`edit-input${outline}`}
+        value={text}
+        disabled={session.busy}
+        aria-label={label}
+        title={title || undefined}
+        {...common}
+        onChange={(e) => session.type(field, e.currentTarget.value)}
+      >
+        {codes.map((code) => (
+          <option key={code} value={code}>
+            {choiceLabel(spec.key, code)}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  const date = spec.kind === "date";
+  // A number that may be left empty is a text input: a number input reads what is no number (a lone minus sign) as
+  // empty, which here would stand for "none".
+  const clearable = spec.blank !== null;
+  // As wide as the longest value it takes, a minus sign included; an input that may be empty has room for its hint.
+  const digits = Math.max(String(range.min).length, String(range.max).length, clearable ? editText.none.length : 0);
   const control = (
     <input
-      type={date ? "date" : "number"}
-      className={status === "same" ? "edit-input" : `edit-input ${status}`}
+      type={date ? "date" : clearable ? "text" : "number"}
+      inputMode={clearable ? "numeric" : undefined}
+      className={`edit-input${outline}`}
       // A date input is as wide as the browser makes it.
       style={date ? undefined : ({ "--digits": digits } as CSSProperties)}
       min={date ? isoFromNumber(range.min) : range.min}
       max={date ? isoFromNumber(range.max) : range.max}
       step={date ? undefined : 1}
+      placeholder={clearable ? editText.none : undefined}
       value={text}
       readOnly={session.busy}
-      aria-label={fieldLabel(session.entity, field)}
-      aria-invalid={status === "invalid" || undefined}
+      aria-label={label}
       title={title || undefined}
-      data-field={field}
+      {...common}
       onChange={(e) => session.type(field, e.currentTarget.value)}
       // A wheel turned over the focused input would change its value: let go of it, so the profile scrolls instead.
       onWheel={(e) => e.currentTarget.blur()}

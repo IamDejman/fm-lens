@@ -627,6 +627,9 @@ export const tr: Strings = {
     invalidDate: (from, to) => `${from} ile ${to} arasında bir tarih girin`,
     invalidMoney: (from, to) => `${from} ile ${to} arasında tam sayı bir sterlin tutarı girin`,
     pounds: "£",
+    yes: "Evet",
+    no: "Hayır",
+    none: "yok",
 
     // The footer
     footer: "Düzenleme",

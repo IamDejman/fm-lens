@@ -1504,7 +1504,8 @@ nav small {
   border-bottom-color: var(--accent);
 }
 
-/* A number input where a value was. Its width follows the digits of the largest value it takes (--digits). */
+/* An input where a value was, a number input unless it says otherwise below. Its width follows the digits of the
+   largest value it takes (--digits). */
 .edit-input {
   flex: none;
   width: calc(var(--digits, 2) * 1ch + 1.6rem);
@@ -1527,7 +1528,9 @@ nav small {
   appearance: none;
 }
 
-.edit-input:not(.changed, .invalid):hover:not(:read-only) {
+/* A select matches :read-only like anything that is not a text field, so what waits is spelled out here and below: an
+   input that is read-only, or a control that is disabled. */
+.edit-input:not(.changed, .invalid):hover:not(input:read-only, :disabled) {
   border-color: var(--muted);
 }
 
@@ -1537,14 +1540,16 @@ nav small {
 }
 
 /* A value other than the game's: the accent colour, as a tint and a second line inside the border. */
-.edit-input.changed {
+.edit-input.changed,
+.edit-flag.changed {
   border-color: var(--accent);
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 /* A value that cannot be applied: empty, out of range or not whole, or one the game refused. */
-.edit-input.invalid {
+.edit-input.invalid,
+.edit-flag.invalid {
   border-color: var(--danger);
   background: var(--danger-soft);
   box-shadow: inset 0 0 0 1px var(--danger);
@@ -1554,8 +1559,8 @@ nav small {
   outline-color: var(--danger);
 }
 
-/* While the changes are being written. */
-.edit-input:read-only {
+/* While the changes are being written: an input reads only, a select or a checkbox is disabled. */
+.edit-input:is(input:read-only, :disabled) {
   opacity: 0.6;
 }
 
@@ -1564,6 +1569,50 @@ nav small {
   width: auto;
   text-align: left;
   appearance: auto;
+}
+
+/* A choice from a list: the select is as wide as its longest entry, and the name reads from the left. */
+select.edit-input {
+  width: auto;
+  max-width: 100%;
+  text-align: left;
+  appearance: auto;
+}
+
+/* A yes-or-no: a checkbox in a pill like a tag, with the name of the field. The pill is outlined as an input is. */
+.edit-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.edit-flag input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.edit-flag:not(.changed, .invalid):hover {
+  border-color: var(--muted);
+}
+
+.edit-flag:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.edit-flag.invalid:has(input:focus-visible) {
+  outline-color: var(--danger);
+}
+
+.edit-flag:has(input:disabled) {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* An amount of money: the pound sign before an input that takes plain whole pounds. */
