@@ -11,10 +11,10 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
-    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, ClubIndex, Entity, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo,
-    GraphicsIndex, Kind, MoveTerms, PERSONALITY, POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder,
-    PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError,
-    StaffIndex, Target, find_game, job_name, scan_object_arrays, sort_players,
+    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, CaptainRole, ClubIndex, Entity, Field, FmDate, GAME_EXE,
+    GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms, PERSONALITY, POSITIONS, Picture, PlayerFilter,
+    PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions,
+    Session, SessionError, StaffIndex, Target, find_game, job_name, scan_object_arrays, sort_players,
 };
 use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
@@ -173,6 +173,30 @@ enum Command {
         /// Swap them back afterwards and check it: tests a swap without changing the save.
         #[arg(long)]
         restore: bool,
+    },
+    /// Show a club's teams: their kind, captains and players with their live values.
+    Teams {
+        /// The club's UID.
+        club: u32,
+    },
+    /// Make a player the captain or vice-captain of his team in the running game.
+    Captain {
+        /// The club's UID.
+        club: u32,
+        /// The player's UID; he must play for the team.
+        uid: u32,
+        /// Make him vice-captain instead.
+        #[arg(long)]
+        vice: bool,
+        /// Which of the club's teams, 0 for the senior team.
+        #[arg(long, default_value_t = 0)]
+        team: usize,
+        /// Give the role back afterwards and check it.
+        #[arg(long)]
+        restore: bool,
+        /// With --restore, how many seconds to wait before giving it back, to look at the game.
+        #[arg(long, default_value_t = 0)]
+        hold: u64,
     },
     /// Read the graphics packs (logos, faces, flags) and show what they hold. Needs no game.
     Graphics {
@@ -389,7 +413,13 @@ fn run(cli: Cli) -> Result<()> {
     let elevated = is_current_process_elevated();
     let writes = matches!(
         cli.command,
-        Some(Command::Set { .. } | Command::Move { .. } | Command::Swap { .. } | Command::Heal { heal: true, .. })
+        Some(
+            Command::Set { .. }
+                | Command::Move { .. }
+                | Command::Swap { .. }
+                | Command::Heal { heal: true, .. }
+                | Command::Captain { .. }
+        )
     );
     let process = attach(cli.pid, elevated, writes)?;
     let json = cli.json.as_deref();
@@ -436,6 +466,12 @@ fn run(cli: Cli) -> Result<()> {
         }
         Command::Swap { uid, other, restore } => {
             swap_players(&Session::connect(process, ArraySource::ProfileFirst)?, uid, other, restore)
+        }
+        Command::Teams { club } => teams(&Session::connect(process, ArraySource::ProfileFirst)?, club),
+        Command::Captain { club, uid, vice, team, restore, hold } => {
+            let role = if vice { CaptainRole::ViceCaptain } else { CaptainRole::Captain };
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            captain(&session, club, team, role, uid, restore.then_some(hold))
         }
         Command::Graphics { .. } => unreachable!("handled before attaching"),
         Command::Scan { min, max, top } => {
@@ -1791,6 +1827,92 @@ fn swap_players(session: &Session, uid: u32, other: u32, restore: bool) -> Resul
     if restore {
         session.undo_club_move(&done)?;
         ensure!(clubs_now("back")? == (Some(plan.from_club), Some(plan.to_club)), "the players are not back");
+    }
+    Ok(())
+}
+
+fn teams(session: &Session, uid: u32) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let club = clubs.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+    let name = |uid: Option<u32>| uid.and_then(|uid| players.get(uid)).map_or("-", |p| p.name.as_str());
+    for team in session.club_teams(club, &players)? {
+        println!(
+            "{} team {} (kind {}, {}): captain {}, vice-captain {}, {} players",
+            club.name,
+            team.index,
+            team.kind,
+            team.age_limit.map_or_else(|| "no age limit".to_owned(), |age| format!("under {age}")),
+            name(team.captain),
+            name(team.vice_captain),
+            team.players.len()
+        );
+        for member in &team.players {
+            let tags = [
+                (!member.plays_here).then_some("elsewhere"),
+                (member.loan == Some(Loan::In)).then_some("loan in"),
+                (member.loan == Some(Loan::Out)).then_some("loan out"),
+                (member.injuries > 0).then_some("injured"),
+            ];
+            let tags: Vec<&str> = tags.into_iter().flatten().collect();
+            println!(
+                "  {:>10}  {:<28}  energy {:>5}  sharpness {:>5}  morale {:>2}  happiness {:>2}  {}",
+                member.uid,
+                clip(name(Some(member.uid)), 28),
+                member.condition,
+                member.match_sharpness,
+                member.morale,
+                member.happiness,
+                tags.join(", ")
+            );
+        }
+    }
+    Ok(())
+}
+
+fn captain(
+    session: &Session,
+    club_uid: u32,
+    team: usize,
+    role: CaptainRole,
+    uid: u32,
+    restore_after: Option<u64>,
+) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let club = clubs.get(club_uid).with_context(|| format!("no club with UID {club_uid}"))?;
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let name = |uid: Option<u32>| uid.and_then(|uid| players.get(uid)).map_or("-", |p| p.name.as_str());
+    let holders = |label: &str| -> Result<(Option<u32>, Option<u32>)> {
+        let teams = session.club_teams(club, &players)?;
+        let now = teams.get(team).context("the team is gone")?;
+        println!("  {label}: captain {}, vice-captain {}", name(now.captain), name(now.vice_captain));
+        Ok((now.captain, now.vice_captain))
+    };
+    let before = holders("now")?;
+    let plan = session.plan_captain(club, team, role, player, &players)?;
+    println!(
+        "{} becomes {role:?} of {} team {team} after {}; {} writes{}",
+        player.name,
+        club.name,
+        name(plan.old),
+        plan.writes(),
+        if plan.swapped { ", the two captains swap" } else { "" }
+    );
+    let done = session.apply_captain(&plan)?;
+    let after = holders("set")?;
+    let holder = match role {
+        CaptainRole::Captain => after.0,
+        CaptainRole::ViceCaptain => after.1,
+    };
+    ensure!(holder == Some(uid), "he does not hold the role");
+    if let Some(hold) = restore_after {
+        if hold > 0 {
+            println!("  giving it back in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
+        session.undo_captain(&done)?;
+        ensure!(holders("restored")? == before, "the captains are not as they were");
     }
     Ok(())
 }

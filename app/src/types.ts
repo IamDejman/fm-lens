@@ -288,6 +288,8 @@ export interface PlayerDetails extends PlayerSummary {
   /** Energy ("condition") and match sharpness, 0–10000 for 0–100%: what the game changes every day. */
   condition: number;
   matchSharpness: number;
+  /** 1–20: what FM Live Editor shows as morale ("Okay" at 10, "Good" at 13, "Very Good" at 15). */
+  morale: number;
   /** 0–20; at 20 the game calls him content. */
   happiness: number;
   /** His current injuries; empty when he has none. */
@@ -387,7 +389,61 @@ export interface LoggedChange {
     /** For a swap of two players, logged as one change, the player who went the other way. */
     with?: string;
   };
+  /**
+   * Set for a captaincy (`set_captain`), which is logged as a change of the club's field `captain` or
+   * `vice_captain` whose old and new values are the players' UIDs (0 for nobody); `name` is the club's.
+   */
+  captaincy?: {
+    /** Where the team is in the club's list of teams (see `ClubTeam.index`). */
+    team: number;
+    /** Who held the role (null for nobody), and who took it. */
+    from: string | null;
+    to: string;
+    /** Whether the player who took the role held the other one, which `from` now holds. */
+    swapped: boolean;
+  };
 }
+
+/** One of a club's teams as its squad screen shows it, from `club_squads`; the senior team comes first. */
+export interface ClubTeam {
+  /** Where it is in the club's list of teams; 0 is the senior team. */
+  index: number;
+  /**
+   * The game's code for the kind of team. Seen on the test save: 0 the first team, 3 a B team (Juventus Next Gen),
+   * 10 under-21s, 18 under-20s, 12 under-18s. Name a team by its `ageLimit` where it has one.
+   */
+  kind: number;
+  /** The oldest its players may be, e.g. 21; null for a team without a limit. */
+  ageLimit: number | null;
+  /** UIDs of the captain and the vice-captain; null when the team has none. */
+  captain: number | null;
+  viceCaptain: number | null;
+  players: SquadPlayer[];
+}
+
+/** A player in a team's list: his list row and the live values a squad screen shows. */
+export interface SquadPlayer extends PlayerSummary {
+  /** Whether he plays for this team; one under contract with it may play for another team of the club, or on loan. */
+  playsHere: boolean;
+  /** "in": here on loan from another club; "out": on loan to another club; null when he is not on loan. */
+  loan: "in" | "out" | null;
+  /** As stored, like `PlayerDetails`: energy and match sharpness 0–10000, morale 1–20, happiness 0–20. */
+  condition: number;
+  matchSharpness: number;
+  morale: number;
+  happiness: number;
+  /** How many current injuries he has. */
+  injuries: number;
+}
+
+/** A team's two captaincies. */
+export type CaptainRole = "captain" | "viceCaptain";
+
+/**
+ * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
+ * "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
+ */
+export type TeamAction = "heal" | "inspire" | "refresh";
 
 /** The contract a move to another club gives the player, as stored; what is left out stays as it is. */
 export interface MoveTerms {

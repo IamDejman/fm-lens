@@ -32,6 +32,10 @@ match_sharpness = 0x258   # u16; the game keeps it at 3500 or above
 condition = 0x25C         # u16, the energy the game shows
 # u8, 0..20. Arda Güler at 20 read "content" (Memnun) as his happiness in the game.
 happiness = 0x1F1
+# u8, 1..20, what FM Live Editor 27 shows as morale. Its words for 15 Manchester United players
+# on the test save fell in line with it: Okay 10, Fairly Good 11, Quite Good 12, Good 13,
+# Really Good 14, Very Good 15.
+morale = 0x26C
 # Pointer to the player's injury record, null for a player who was never injured. The record
 # starts with the list (begin, end, capacity) of his current injuries; a player who has got
 # over his injuries keeps the record with an empty list.
@@ -190,10 +194,18 @@ kind_name = 0x18
 
 [team]
 club = 0x30               # club pointer
+# u8, the kind of team: on the test save 0 for the first team, 10 for the under-21s and
+# 12 for the under-18s (Manchester United).
+kind = 0x28
+age_limit = 0x2C          # u8, the oldest its players may be (21, 18); 100 for no limit
 # Player pointers as (begin, end, capacity): the players under contract with the team
 # (those out on loan too) and the players on loan to it. A player is always in the list
 # of the team he plays for (player `team`).
 players = 0x38
+# Pointers to the person blocks of the captain and the vice-captain; null when the team has
+# none. Manchester United's are Bruno Fernandes and Lisandro Martínez, as the game shows.
+captain = 0x88
+vice_captain = 0x90
 reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its senior team
 
 # The game's allocator hands out blocks in size classes, without headers. Measured on

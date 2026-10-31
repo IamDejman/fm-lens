@@ -105,10 +105,11 @@ pub struct PlayerDetails {
     pub personality: BTreeMap<&'static str, u8>,
     pub attributes: BTreeMap<String, Attribute>,
     pub contract: Option<Contract>,
-    /// Energy and match sharpness, 0–10000 (100.00%), and happiness, 0–20: what the game
-    /// changes every day.
+    /// Energy and match sharpness, 0–10000 (100.00%), morale, 1–20, and happiness, 0–20: what
+    /// the game changes every day.
     pub condition: u16,
     pub match_sharpness: u16,
+    pub morale: u8,
     pub happiness: u8,
     /// Current injuries (see [`crate::Session::injuries`]).
     pub injuries: Vec<Injury>,
@@ -204,6 +205,7 @@ pub fn read_player_details(
         contract: read_contract(process, layout, u64_at(p.contract)),
         condition: u16_at(p.condition),
         match_sharpness: u16_at(p.match_sharpness),
+        morale: u8_at(p.morale),
         happiness: u8_at(p.happiness),
         // The session reads them, as they hang off a record of their own.
         injuries: Vec::new(),

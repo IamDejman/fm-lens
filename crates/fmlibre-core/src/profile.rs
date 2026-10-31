@@ -84,6 +84,8 @@ pub struct PlayerLayout {
     pub condition: u64,
     /// `u8` 0..20: how happy the player is, which the game shows in words.
     pub happiness: u64,
+    /// `u8` 1..20: his morale, which the game shows in words too.
+    pub morale: u64,
     /// Pointer to the injury record; see [`InjuryLayout`].
     pub injuries: u64,
     /// First of the 15 position ratings, in [`crate::POSITIONS`] order.
@@ -122,6 +124,7 @@ impl PlayerLayout {
             self.match_sharpness + 2,
             self.condition + 2,
             self.happiness + 1,
+            self.morale + 1,
             self.injuries + 8,
             self.positions + crate::POSITIONS.len() as u64,
             self.personality + crate::PERSONALITY.len() as u64,
@@ -245,9 +248,34 @@ impl StaffLayout {
 #[serde(deny_unknown_fields)]
 pub struct TeamLayout {
     pub club: u64,
+    /// `u8`: the kind of team, 0 for the first team.
+    pub kind: u64,
+    /// `u8`: the oldest its players may be; 100 for a team without a limit.
+    pub age_limit: u64,
     /// The team's player pointers as `(begin, end, capacity)`.
     pub players: u64,
+    /// Pointers to the person blocks of the captain and the vice-captain, null for none.
+    pub captain: u64,
+    pub vice_captain: u64,
     pub reputation: u64,
+}
+
+impl TeamLayout {
+    /// One past the last byte of every team field.
+    pub fn end(&self) -> u64 {
+        [
+            self.club + 8,
+            self.kind + 1,
+            self.age_limit + 1,
+            self.players + 24,
+            self.captain + 8,
+            self.vice_captain + 8,
+            self.reputation + 2,
+        ]
+        .into_iter()
+        .max()
+        .unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
