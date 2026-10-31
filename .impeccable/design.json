@@ -1,289 +1,70 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-31T00:00:00Z",
+  "generatedAt": "2026-10-31T21:10:51Z",
   "title": "Design System: FMLibreEditor",
   "extensions": {
     "colorMeta": {
-      "rail": {
+      "page": {
         "role": "neutral",
-        "displayName": "Rail Indigo",
-        "purpose": "The sidebar, the deepest ground.",
-        "cssVar": "--rail",
-        "lightTheme": "#e3e7ef",
-        "canonical": "oklch(16.0% 0.013 270)",
+        "displayName": "Cool Paper",
+        "purpose": "The one sheet: the page, panels and dialogs by day.",
+        "edition": "day",
+        "canonical": "#f6f7f9",
+        "oklch": "oklch(97.6% 0.003 265)",
         "tonalRamp": [
-          "#090b11",
-          "#21242b",
-          "#3d4047",
-          "#5b5d65",
-          "#7a7d85",
-          "#9b9ea7",
-          "#c1c4cd",
-          "#ebeef8"
-        ]
-      },
-      "ground": {
-        "role": "neutral",
-        "displayName": "Indigo Ground",
-        "purpose": "The app background behind lists.",
-        "cssVar": "--bg",
-        "lightTheme": "#edf0f5",
-        "canonical": "oklch(18.8% 0.017 274)",
-        "tonalRamp": [
-          "#090b12",
-          "#21242c",
-          "#3d3f49",
-          "#5a5d67",
-          "#7a7d87",
-          "#9b9ea9",
-          "#c0c4cf",
-          "#ebeefa"
-        ]
-      },
-      "panel": {
-        "role": "neutral",
-        "displayName": "Indigo Panel",
-        "purpose": "Profiles, cards and dialogs.",
-        "cssVar": "--panel",
-        "lightTheme": "#ffffff",
-        "canonical": "oklch(22.4% 0.020 272)",
-        "tonalRamp": [
-          "#080b14",
-          "#20242e",
-          "#3c3f4b",
-          "#595d69",
-          "#797d8a",
-          "#9a9eab",
-          "#bfc4d2",
-          "#e9eefd"
+          "#0b0b0c",
+          "#232425",
+          "#3f4041",
+          "#5d5e5f",
+          "#7c7d7f",
+          "#9d9ea0",
+          "#c3c4c6",
+          "#edeef0"
         ]
       },
       "raised": {
         "role": "neutral",
-        "displayName": "Raised Indigo",
-        "purpose": "Table headers, profile and dialog heads, edit footer, default buttons, menus.",
-        "cssVar": "--raised",
-        "lightTheme": "#eef1f6",
-        "canonical": "oklch(26.7% 0.027 272)",
+        "displayName": "Raised",
+        "purpose": "A pressed control, the comparison tray, the edit report.",
+        "edition": "day",
+        "canonical": "#eceef1",
+        "oklch": "oklch(94.8% 0.005 258)",
         "tonalRamp": [
-          "#070a16",
-          "#1f2331",
-          "#3b3f4e",
-          "#585d6d",
-          "#777d8e",
-          "#989eb0",
-          "#bec3d6",
-          "#e9eefe"
+          "#0a0b0d",
+          "#232426",
+          "#3e4042",
+          "#5c5e60",
+          "#7c7d80",
+          "#9d9ea1",
+          "#c2c4c7",
+          "#edeff2"
         ]
       },
       "hover": {
         "role": "neutral",
-        "displayName": "Hover Indigo",
-        "purpose": "Hover state of rows and buttons.",
-        "cssVar": "--hover",
-        "lightTheme": "#e4e8f0",
-        "canonical": "oklch(29.6% 0.030 271)",
+        "displayName": "Hover",
+        "purpose": "Row and button hover.",
+        "edition": "day",
+        "canonical": "#e7e9ed",
+        "oklch": "oklch(93.4% 0.006 265)",
         "tonalRamp": [
-          "#070a18",
-          "#1f2333",
-          "#3a3f50",
-          "#575d6f",
-          "#767d90",
-          "#979eb2",
-          "#bdc4d8",
-          "#e8eeff"
+          "#0a0b0e",
+          "#232427",
+          "#3e4043",
+          "#5c5e61",
+          "#7b7d81",
+          "#9c9ea2",
+          "#c2c4c8",
+          "#eceef2"
         ]
       },
       "field": {
         "role": "neutral",
-        "displayName": "Field Well",
-        "purpose": "Inputs, a step below their panel.",
-        "cssVar": "--field",
-        "lightTheme": "#ffffff",
-        "canonical": "oklch(17.9% 0.015 272)",
-        "tonalRamp": [
-          "#090b11",
-          "#21242b",
-          "#3d3f48",
-          "#5b5d66",
-          "#7a7d86",
-          "#9b9ea8",
-          "#c1c4ce",
-          "#ebeef9"
-        ]
-      },
-      "zebra": {
-        "role": "neutral",
-        "displayName": "Zebra Stripe",
-        "purpose": "Every other row of a table or value list.",
-        "cssVar": "--zebra",
-        "lightTheme": "rgb(20 30 60 / 0.03)"
-      },
-      "rule": {
-        "role": "neutral",
-        "displayName": "Rule",
-        "purpose": "1px dividers.",
-        "cssVar": "--border",
-        "lightTheme": "#d6dbe5",
-        "canonical": "oklch(30.8% 0.032 272)",
-        "tonalRamp": [
-          "#070a18",
-          "#1e2333",
-          "#3a3f51",
-          "#575d70",
-          "#767d91",
-          "#979eb3",
-          "#bdc3d9",
-          "#e9eefe"
-        ]
-      },
-      "rule-strong": {
-        "role": "neutral",
-        "displayName": "Strong Rule",
-        "purpose": "Under table headers and group headings; control outlines.",
-        "cssVar": "--border-strong",
-        "lightTheme": "#bcc4d3",
-        "canonical": "oklch(37.8% 0.039 271)",
-        "tonalRamp": [
-          "#060a1b",
-          "#1d2337",
-          "#383f55",
-          "#555d74",
-          "#747c95",
-          "#959eb7",
-          "#bac3de",
-          "#e8eeff"
-        ]
-      },
-      "ink": {
-        "role": "neutral",
-        "displayName": "Ink",
-        "purpose": "Text.",
-        "cssVar": "--text",
-        "lightTheme": "#151923",
-        "canonical": "oklch(94.9% 0.008 271)",
-        "tonalRamp": [
-          "#0a0b0f",
-          "#222428",
-          "#3e4044",
-          "#5c5d62",
-          "#7b7d82",
-          "#9c9ea4",
-          "#c2c4ca",
-          "#eceef4"
-        ]
-      },
-      "ink-muted": {
-        "role": "neutral",
-        "displayName": "Muted Ink",
-        "purpose": "Secondary text, labels, table header text.",
-        "cssVar": "--muted",
-        "lightTheme": "#566074",
-        "canonical": "oklch(71.4% 0.032 271)",
-        "tonalRamp": [
-          "#070a18",
-          "#1e2334",
-          "#393f51",
-          "#575d70",
-          "#767d91",
-          "#979eb3",
-          "#bcc4d9",
-          "#e9eefe"
-        ]
-      },
-      "royal-blue": {
-        "role": "primary",
-        "displayName": "Royal Blue",
-        "purpose": "Selection, the main action, active section, pressed switch.",
-        "cssVar": "--accent",
-        "lightTheme": "#2458d3",
-        "canonical": "oklch(57.9% 0.204 262)",
-        "tonalRamp": [
-          "#00003a",
-          "#001963",
-          "#013398",
-          "#1250ce",
-          "#3474f4",
-          "#6c9cf9",
-          "#a5c5fe",
-          "#e6efff"
-        ]
-      },
-      "royal-blue-hover": {
-        "role": "primary",
-        "displayName": "Royal Blue Hover",
-        "purpose": "Hover of primary buttons.",
-        "cssVar": "--accent-hover",
-        "lightTheme": "#1f4ebf",
-        "canonical": "oklch(62.2% 0.189 262)",
-        "tonalRamp": [
-          "#00003a",
-          "#001864",
-          "#003399",
-          "#1953c6",
-          "#3976ec",
-          "#6b9cf9",
-          "#a5c5ff",
-          "#e6efff"
-        ]
-      },
-      "royal-blue-text": {
-        "role": "primary",
-        "displayName": "Royal Blue Text",
-        "purpose": "Focus rings, outlined badges, caret.",
-        "cssVar": "--accent-text",
-        "lightTheme": "#1d4fc4",
-        "canonical": "oklch(75.3% 0.126 264)",
-        "tonalRamp": [
-          "#000037",
-          "#041a60",
-          "#1c3a81",
-          "#3859a4",
-          "#567ac8",
-          "#769ced",
-          "#a9c4fb",
-          "#e7effe"
-        ]
-      },
-      "royal-blue-soft": {
-        "role": "primary",
-        "displayName": "Royal Blue Wash",
-        "purpose": "The picked table row, pressed Compare, text selection.",
-        "cssVar": "--accent-soft",
-        "lightTheme": "rgb(36 88 211 / 0.16)"
-      },
-      "royal-blue-faint": {
-        "role": "primary",
-        "displayName": "Royal Blue Faint Wash",
-        "purpose": "Best value in a comparison row; the row Enter picks.",
-        "cssVar": "--accent-faint",
-        "lightTheme": "rgb(36 88 211 / 0.06)"
-      },
-      "title-strip": {
-        "role": "primary",
-        "displayName": "Title Strip Blue",
-        "purpose": "The solid title strip with white type.",
-        "cssVar": "--strip",
-        "lightTheme": "#2154c9",
-        "canonical": "oklch(48.8% 0.190 263)",
-        "tonalRamp": [
-          "#00003a",
-          "#000576",
-          "#022da1",
-          "#2052c6",
-          "#3f75ec",
-          "#6d9bfa",
-          "#a6c4ff",
-          "#e6efff"
-        ]
-      },
-      "on-accent": {
-        "role": "primary",
-        "displayName": "On Accent White",
-        "purpose": "Text on Royal Blue and the strip.",
-        "cssVar": "--on-accent",
-        "lightTheme": "#ffffff",
-        "canonical": "oklch(100.0% 0.000 90)",
+        "displayName": "Field",
+        "purpose": "Inputs.",
+        "edition": "day",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 90)",
         "tonalRamp": [
           "#0b0b0b",
           "#242424",
@@ -295,270 +76,1231 @@
           "#eeeeee"
         ]
       },
-      "pending-gold": {
-        "role": "secondary",
-        "displayName": "Pending Gold",
-        "purpose": "An edit not yet applied, and nothing else.",
-        "cssVar": "--pending",
-        "lightTheme": "#8a5c00",
-        "canonical": "oklch(80.6% 0.136 85)",
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "purpose": "1px rules between rows and quiet frames.",
+        "edition": "day",
+        "canonical": "#d6d9df",
+        "oklch": "oklch(88.5% 0.009 265)",
         "tonalRamp": [
-          "#140900",
-          "#302100",
-          "#523c00",
-          "#775802",
-          "#9d7713",
-          "#c5961d",
-          "#edbc4f",
-          "#feedc9"
+          "#090b0f",
+          "#222428",
+          "#3d4045",
+          "#5b5e63",
+          "#7b7d83",
+          "#9c9ea4",
+          "#c1c4ca",
+          "#ebeef5"
         ]
       },
-      "pending-gold-soft": {
-        "role": "secondary",
-        "displayName": "Pending Gold Wash",
-        "purpose": "Fill of a changed input and the pressed Edit toggle.",
-        "cssVar": "--pending-soft",
-        "lightTheme": "rgb(234 170 30 / 0.18)"
-      },
-      "danger-red": {
-        "role": "tertiary",
-        "displayName": "Danger Red",
-        "purpose": "Removal, invalid values, errors, negative amounts.",
-        "cssVar": "--danger",
-        "lightTheme": "#c23a31",
-        "canonical": "oklch(68.5% 0.173 26)",
+      "frame": {
+        "role": "neutral",
+        "displayName": "Frame",
+        "purpose": "1px outlines of buttons, inputs, tags.",
+        "edition": "day",
+        "canonical": "#a6abb4",
+        "oklch": "oklch(74.0% 0.014 262)",
         "tonalRamp": [
-          "#220000",
-          "#4b0005",
-          "#7b050f",
-          "#aa2023",
-          "#d04843",
-          "#f76c63",
-          "#fdaca4",
-          "#fee9e6"
+          "#080b11",
+          "#20242b",
+          "#3c4047",
+          "#595e66",
+          "#797d86",
+          "#9a9fa7",
+          "#bfc4ce",
+          "#e9eff8"
         ]
       },
-      "danger-red-soft": {
+      "ink": {
+        "role": "primary",
+        "displayName": "Almanac Ink",
+        "purpose": "Text, main action fill, reverse-print selection, thick rules.",
+        "edition": "day",
+        "canonical": "#16181d",
+        "oklch": "oklch(20.9% 0.010 268)",
+        "tonalRamp": [
+          "#090b10",
+          "#222429",
+          "#3d4045",
+          "#5b5d64",
+          "#7a7d84",
+          "#9c9ea5",
+          "#c1c4cb",
+          "#ebeef6"
+        ]
+      },
+      "ink-hover": {
+        "role": "primary",
+        "displayName": "Ink Hover",
+        "purpose": "Hover of an ink-filled action.",
+        "edition": "day",
+        "canonical": "#30343c",
+        "oklch": "oklch(32.4% 0.015 264)",
+        "tonalRamp": [
+          "#080b12",
+          "#20242c",
+          "#3c4048",
+          "#595e67",
+          "#797d87",
+          "#9a9fa8",
+          "#bfc4ce",
+          "#e9eff9"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "purpose": "Small print, labels, column heads.",
+        "edition": "day",
+        "canonical": "#5b6069",
+        "oklch": "oklch(48.8% 0.016 262)",
+        "tonalRamp": [
+          "#080b12",
+          "#20242c",
+          "#3b4048",
+          "#595e67",
+          "#787d87",
+          "#999fa9",
+          "#bfc4cf",
+          "#e9eff9"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Ink Soft",
+        "purpose": "Wash on a pressed Compare toggle.",
+        "edition": "day",
+        "canonical": "rgb(22 24 29 / 0.08)"
+      },
+      "ink-faint": {
+        "role": "neutral",
+        "displayName": "Ink Faint",
+        "purpose": "Wash on a mass-edit row or best comparison value.",
+        "edition": "day",
+        "canonical": "rgb(22 24 29 / 0.05)"
+      },
+      "masthead": {
+        "role": "primary",
+        "displayName": "Masthead Ink",
+        "purpose": "The masthead band.",
+        "edition": "day",
+        "canonical": "#16181d",
+        "oklch": "oklch(20.9% 0.010 268)",
+        "tonalRamp": [
+          "#090b10",
+          "#222429",
+          "#3d4045",
+          "#5b5d64",
+          "#7a7d84",
+          "#9c9ea5",
+          "#c1c4cb",
+          "#ebeef6"
+        ]
+      },
+      "on-masthead": {
+        "role": "neutral",
+        "displayName": "Masthead Paper",
+        "purpose": "Text on the masthead.",
+        "edition": "day",
+        "canonical": "#f6f7f9",
+        "oklch": "oklch(97.6% 0.003 265)",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#232425",
+          "#3f4041",
+          "#5d5e5f",
+          "#7c7d7f",
+          "#9d9ea0",
+          "#c3c4c6",
+          "#edeef0"
+        ]
+      },
+      "focus-blue": {
         "role": "tertiary",
-        "displayName": "Danger Red Wash",
-        "purpose": "Fill of invalid inputs and error banners.",
-        "cssVar": "--danger-soft",
-        "lightTheme": "rgb(194 58 49 / 0.1)"
+        "displayName": "Focus Blue",
+        "purpose": "The keyboard focus ring, and nothing else.",
+        "edition": "day",
+        "canonical": "#2457c5",
+        "oklch": "oklch(49.1% 0.181 263)",
+        "tonalRamp": [
+          "#090056",
+          "#000179",
+          "#01309d",
+          "#2154c1",
+          "#4076e7",
+          "#6099ff",
+          "#84c0ff",
+          "#c4efff"
+        ]
+      },
+      "focus-blue-on-ink": {
+        "role": "tertiary",
+        "displayName": "Focus Blue on Ink",
+        "purpose": "Focus ring on the masthead in both editions.",
+        "edition": "day",
+        "canonical": "#8fb1ff",
+        "oklch": "oklch(76.6% 0.119 266)",
+        "tonalRamp": [
+          "#02003c",
+          "#081b5c",
+          "#213a7d",
+          "#3d5aa0",
+          "#5b7ac4",
+          "#7b9ce8",
+          "#a0c2ff",
+          "#c9edff"
+        ]
+      },
+      "highlighter": {
+        "role": "secondary",
+        "displayName": "Marker Highlighter",
+        "purpose": "An edit not yet applied.",
+        "edition": "day",
+        "canonical": "#ffe27a",
+        "oklch": "oklch(91.6% 0.128 94)",
+        "tonalRamp": [
+          "#1c0300",
+          "#381e00",
+          "#563b00",
+          "#755a00",
+          "#967b00",
+          "#b89c2e",
+          "#dfc35a",
+          "#ffee8d"
+        ]
+      },
+      "highlighter-edge": {
+        "role": "secondary",
+        "displayName": "Highlighter Edge",
+        "purpose": "Outline of the pending swatch.",
+        "edition": "day",
+        "canonical": "#8a6a00",
+        "oklch": "oklch(54.1% 0.111 88)",
+        "tonalRamp": [
+          "#1d0200",
+          "#3a1c00",
+          "#583a00",
+          "#785800",
+          "#99781d",
+          "#bb9a45",
+          "#e2c06c",
+          "#ffeb96"
+        ]
+      },
+      "brick": {
+        "role": "secondary",
+        "displayName": "Brick",
+        "purpose": "Danger.",
+        "edition": "day",
+        "canonical": "#b23a2b",
+        "oklch": "oklch(52.1% 0.158 30)",
+        "tonalRamp": [
+          "#360000",
+          "#5a0000",
+          "#7f0000",
+          "#a42c1e",
+          "#ca5040",
+          "#f17360",
+          "#ff9985",
+          "#ffd0be"
+        ]
+      },
+      "brick-soft": {
+        "role": "secondary",
+        "displayName": "Brick Wash",
+        "purpose": "Ground of an invalid value or an error.",
+        "edition": "day",
+        "canonical": "rgb(178 58 43 / 0.09)"
+      },
+      "ok-green": {
+        "role": "tertiary",
+        "displayName": "OK Green",
+        "purpose": "Connected dot; an accepted move.",
+        "edition": "day",
+        "canonical": "#1f7547",
+        "oklch": "oklch(50.0% 0.109 155)",
+        "tonalRamp": [
+          "#001500",
+          "#003107",
+          "#004f24",
+          "#166f42",
+          "#3f9060",
+          "#62b381",
+          "#88d9a5",
+          "#b2ffcf"
+        ]
       },
       "scrim": {
         "role": "neutral",
         "displayName": "Scrim",
         "purpose": "Dims the app behind a dialog.",
-        "cssVar": "--scrim",
-        "lightTheme": "rgb(20 26 40 / 0.42)"
+        "edition": "day",
+        "canonical": "rgb(22 24 29 / 0.42)"
       },
-      "tier-1": {
+      "band-1": {
         "role": "tertiary",
-        "displayName": "Band 1–5",
-        "purpose": "FM rating band for 1–5; lesser positions on the pitch.",
-        "cssVar": "--tier-1",
-        "lightTheme": "#b8332b",
-        "canonical": "oklch(66.9% 0.179 26)",
+        "displayName": "Brick Band",
+        "purpose": "FM attribute band 1 to 5; pitch-map position colour.",
+        "edition": "day",
+        "canonical": "#b3402f",
+        "oklch": "oklch(53.0% 0.153 31)",
+        "tonalRamp": [
+          "#350000",
+          "#590000",
+          "#7d0000",
+          "#a23020",
+          "#c85341",
+          "#ee7561",
+          "#ff9c86",
+          "#ffd0bd"
+        ]
+      },
+      "band-2": {
+        "role": "tertiary",
+        "displayName": "Ochre Band",
+        "purpose": "FM attribute band 6 to 10; pitch-map position colour.",
+        "edition": "day",
+        "canonical": "#8f5d0e",
+        "oklch": "oklch(52.1% 0.107 71)",
+        "tonalRamp": [
+          "#230000",
+          "#421500",
+          "#613300",
+          "#825100",
+          "#a5712b",
+          "#c8934e",
+          "#f0b874",
+          "#ffe39e"
+        ]
+      },
+      "band-3": {
+        "role": "tertiary",
+        "displayName": "Olive Band",
+        "purpose": "FM attribute band 11 to 15; pitch-map position colour.",
+        "edition": "day",
+        "canonical": "#5a761b",
+        "oklch": "oklch(52.6% 0.120 126)",
+        "tonalRamp": [
+          "#021000",
+          "#162c00",
+          "#314900",
+          "#4d6904",
+          "#6c8932",
+          "#8dab55",
+          "#b2d27a",
+          "#dbfda4"
+        ]
+      },
+      "band-4": {
+        "role": "tertiary",
+        "displayName": "Pitch Green Band",
+        "purpose": "FM attribute band 16 to 20; pitch-map position colour.",
+        "edition": "day",
+        "canonical": "#1f7547",
+        "oklch": "oklch(50.0% 0.109 155)",
+        "tonalRamp": [
+          "#001500",
+          "#003107",
+          "#004f24",
+          "#166f42",
+          "#3f9060",
+          "#62b381",
+          "#88d9a5",
+          "#b2ffcf"
+        ]
+      },
+      "on-band": {
+        "role": "neutral",
+        "displayName": "On Band",
+        "purpose": "Text on a band fill.",
+        "edition": "day",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 90)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "mix-1": {
+        "role": "tertiary",
+        "displayName": "Supporter Mix 1",
+        "purpose": "Supporter-mix bar: Hardcore supporters.",
+        "edition": "day",
+        "canonical": "#a8483a",
+        "oklch": "oklch(52.5% 0.130 30)",
+        "tonalRamp": [
+          "#300000",
+          "#520000",
+          "#75180d",
+          "#993b2d",
+          "#be5c4d",
+          "#e37d6d",
+          "#ffa391",
+          "#ffd0be"
+        ]
+      },
+      "mix-2": {
+        "role": "tertiary",
+        "displayName": "Supporter Mix 2",
+        "purpose": "Supporter-mix bar: Core supporters.",
+        "edition": "day",
+        "canonical": "#a8781e",
+        "oklch": "oklch(60.6% 0.116 78)",
         "tonalRamp": [
           "#220000",
-          "#4c0003",
-          "#7d000a",
-          "#ac1a1f",
-          "#d34540",
-          "#fa6960",
-          "#ffaba2",
-          "#ffe9e6"
+          "#411600",
+          "#603400",
+          "#815300",
+          "#a37316",
+          "#c69541",
+          "#eeba68",
+          "#ffe592"
         ]
       },
-      "tier-2": {
+      "mix-3": {
         "role": "tertiary",
-        "displayName": "Band 6–10",
-        "purpose": "FM rating band for 6–10.",
-        "cssVar": "--tier-2",
-        "lightTheme": "#a65f00",
-        "canonical": "oklch(77.1% 0.142 74)",
+        "displayName": "Supporter Mix 3",
+        "purpose": "Supporter-mix bar: Family supporters.",
+        "edition": "day",
+        "canonical": "#6f8a2c",
+        "oklch": "oklch(59.3% 0.124 124)",
         "tonalRamp": [
-          "#170700",
-          "#341f00",
-          "#583800",
-          "#7f5301",
-          "#a77012",
-          "#d28f1c",
-          "#fbb54e",
-          "#feebd4"
+          "#031000",
+          "#182b00",
+          "#334900",
+          "#4f6800",
+          "#6e892b",
+          "#8eab4f",
+          "#b3d275",
+          "#defda2"
         ]
       },
-      "tier-3": {
+      "mix-4": {
         "role": "tertiary",
-        "displayName": "Band 11–15",
-        "purpose": "FM rating band for 11–15; accomplished positions.",
-        "cssVar": "--tier-3",
-        "lightTheme": "#587a0c",
-        "canonical": "oklch(82.8% 0.148 119)",
+        "displayName": "Supporter Mix 4",
+        "purpose": "Supporter-mix bar: Fair-weather supporters.",
+        "edition": "day",
+        "canonical": "#2f7a52",
+        "oklch": "oklch(52.1% 0.098 157)",
         "tonalRamp": [
-          "#090e00",
-          "#212800",
-          "#3b4506",
-          "#576510",
-          "#75880a",
-          "#95ab2d",
-          "#bad159",
-          "#e3fd85"
+          "#001500",
+          "#00310e",
+          "#004e29",
+          "#216e47",
+          "#458f65",
+          "#67b186",
+          "#8dd8ab",
+          "#b7ffd4"
         ]
       },
-      "tier-4": {
+      "mix-5": {
         "role": "tertiary",
-        "displayName": "Band 16–20",
-        "purpose": "FM rating band for 16–20; natural positions and the pitch grass.",
-        "cssVar": "--tier-4",
-        "lightTheme": "#16714f",
-        "canonical": "oklch(75.5% 0.138 160)",
+        "displayName": "Supporter Mix 5",
+        "purpose": "Supporter-mix bar: Casual supporters.",
+        "edition": "day",
+        "canonical": "#4f5b6b",
+        "oklch": "oklch(46.7% 0.030 256)",
         "tonalRamp": [
-          "#001005",
-          "#002d1a",
-          "#004d30",
-          "#037048",
-          "#189463",
-          "#39b880",
-          "#67dfa5",
-          "#c6fede"
+          "#040b18",
+          "#1a2533",
+          "#354150",
+          "#535f6f",
+          "#727e8f",
+          "#92a0b1",
+          "#b8c5d8",
+          "#e2f0ff"
         ]
       },
-      "on-tier": {
+      "mix-6": {
         "role": "tertiary",
-        "displayName": "On Band",
-        "purpose": "Text on a solid band colour (pitch markers).",
-        "cssVar": "--on-tier",
-        "lightTheme": "#ffffff"
+        "displayName": "Supporter Mix 6",
+        "purpose": "Supporter-mix bar: Other supporters.",
+        "edition": "day",
+        "canonical": "#7c4a6e",
+        "oklch": "oklch(48.0% 0.084 338)",
+        "tonalRamp": [
+          "#1e0017",
+          "#3c0f32",
+          "#5b2c4f",
+          "#7c4a6e",
+          "#9e698f",
+          "#c18ab1",
+          "#e9afd7",
+          "#ffd9ff"
+        ]
+      },
+      "mark-band-1": {
+        "role": "tertiary",
+        "displayName": "Mark Brick Band",
+        "purpose": "The FML mark and the app icon only.",
+        "edition": "day",
+        "canonical": "#c4513f",
+        "oklch": "oklch(58.2% 0.151 31)",
+        "tonalRamp": [
+          "#340000",
+          "#580000",
+          "#7d0200",
+          "#a13121",
+          "#c75441",
+          "#ed7662",
+          "#ff9c86",
+          "#ffd0bd"
+        ]
+      },
+      "mark-band-2": {
+        "role": "tertiary",
+        "displayName": "Mark Ochre Band",
+        "purpose": "The FML mark and the app icon only.",
+        "edition": "day",
+        "canonical": "#c98a2b",
+        "oklch": "oklch(68.1% 0.130 73)",
+        "tonalRamp": [
+          "#270000",
+          "#470e00",
+          "#672e00",
+          "#894e00",
+          "#ab6e00",
+          "#cf9033",
+          "#f7b65d",
+          "#ffe291"
+        ]
+      },
+      "mark-band-3": {
+        "role": "tertiary",
+        "displayName": "Mark Olive Band",
+        "purpose": "The FML mark and the app icon only.",
+        "edition": "day",
+        "canonical": "#8aa33a",
+        "oklch": "oklch(67.5% 0.134 122)",
+        "tonalRamp": [
+          "#060f00",
+          "#1c2b00",
+          "#364800",
+          "#526800",
+          "#718918",
+          "#91ab43",
+          "#b6d26a",
+          "#e2fc9f"
+        ]
+      },
+      "mark-band-4": {
+        "role": "tertiary",
+        "displayName": "Mark Pitch Green Band",
+        "purpose": "The FML mark and the app icon only.",
+        "edition": "day",
+        "canonical": "#2e8a5b",
+        "oklch": "oklch(56.7% 0.113 157)",
+        "tonalRamp": [
+          "#001600",
+          "#003209",
+          "#005026",
+          "#027043",
+          "#369162",
+          "#5bb482",
+          "#82daa7",
+          "#acffd0"
+        ]
+      },
+      "night-page": {
+        "role": "neutral",
+        "displayName": "Night Cool Paper",
+        "purpose": "Night edition. The one sheet: the page, panels and dialogs by day.",
+        "edition": "night",
+        "canonical": "#15161a",
+        "oklch": "oklch(20.1% 0.008 275)",
+        "tonalRamp": [
+          "#0a0b0f",
+          "#232428",
+          "#3e3f44",
+          "#5c5d62",
+          "#7c7d82",
+          "#9d9ea4",
+          "#c2c4c9",
+          "#edeef4"
+        ]
+      },
+      "night-raised": {
+        "role": "neutral",
+        "displayName": "Night Raised",
+        "purpose": "Night edition. A pressed control, the comparison tray, the edit report.",
+        "edition": "night",
+        "canonical": "#1e2024",
+        "oklch": "oklch(24.3% 0.008 264)",
+        "tonalRamp": [
+          "#090b0f",
+          "#222428",
+          "#3d4044",
+          "#5b5e62",
+          "#7b7d82",
+          "#9c9ea4",
+          "#c1c4ca",
+          "#eceef4"
+        ]
+      },
+      "night-hover": {
+        "role": "neutral",
+        "displayName": "Night Hover",
+        "purpose": "Night edition. Row and button hover.",
+        "edition": "night",
+        "canonical": "#24262b",
+        "oklch": "oklch(26.9% 0.010 268)",
+        "tonalRamp": [
+          "#090b0f",
+          "#222429",
+          "#3d4045",
+          "#5b5d63",
+          "#7b7d83",
+          "#9c9ea5",
+          "#c1c4cb",
+          "#eceef5"
+        ]
+      },
+      "night-field": {
+        "role": "neutral",
+        "displayName": "Night Field",
+        "purpose": "Night edition. Inputs.",
+        "edition": "night",
+        "canonical": "#0f1013",
+        "oklch": "oklch(17.3% 0.006 271)",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#232427",
+          "#3e4043",
+          "#5c5d61",
+          "#7c7d81",
+          "#9d9ea2",
+          "#c2c4c8",
+          "#edeef3"
+        ]
+      },
+      "night-hairline": {
+        "role": "neutral",
+        "displayName": "Night Hairline",
+        "purpose": "Night edition. 1px rules between rows and quiet frames.",
+        "edition": "night",
+        "canonical": "#2c2f35",
+        "oklch": "oklch(30.5% 0.012 264)",
+        "tonalRamp": [
+          "#090b10",
+          "#21242a",
+          "#3d4046",
+          "#5a5e64",
+          "#7a7d84",
+          "#9b9ea6",
+          "#c0c4cc",
+          "#ebeff7"
+        ]
+      },
+      "night-frame": {
+        "role": "neutral",
+        "displayName": "Night Frame",
+        "purpose": "Night edition. 1px outlines of buttons, inputs, tags.",
+        "edition": "night",
+        "canonical": "#4b4f58",
+        "oklch": "oklch(42.7% 0.016 267)",
+        "tonalRamp": [
+          "#080b12",
+          "#20242c",
+          "#3c4048",
+          "#595e67",
+          "#797d87",
+          "#9a9ea9",
+          "#bfc4cf",
+          "#eaeefa"
+        ]
+      },
+      "night-ink": {
+        "role": "primary",
+        "displayName": "Night Almanac Ink",
+        "purpose": "Night edition. Text, main action fill, reverse-print selection, thick rules.",
+        "edition": "night",
+        "canonical": "#ecede8",
+        "oklch": "oklch(94.4% 0.007 116)",
+        "tonalRamp": [
+          "#0b0c08",
+          "#242421",
+          "#3f403c",
+          "#5d5e5a",
+          "#7d7e79",
+          "#9e9f9a",
+          "#c4c5c0",
+          "#eeefea"
+        ]
+      },
+      "night-ink-hover": {
+        "role": "primary",
+        "displayName": "Night Ink Hover",
+        "purpose": "Night edition. Hover of an ink-filled action.",
+        "edition": "night",
+        "canonical": "#ffffff",
+        "oklch": "oklch(100.0% 0.000 90)",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "night-ink-muted": {
+        "role": "neutral",
+        "displayName": "Night Muted Ink",
+        "purpose": "Night edition. Small print, labels, column heads.",
+        "edition": "night",
+        "canonical": "#a3a7af",
+        "oklch": "oklch(72.8% 0.012 264)",
+        "tonalRamp": [
+          "#090b10",
+          "#21242a",
+          "#3c4047",
+          "#5a5e65",
+          "#7a7d85",
+          "#9a9ea6",
+          "#c0c4cc",
+          "#eaeff7"
+        ]
+      },
+      "night-ink-soft": {
+        "role": "neutral",
+        "displayName": "Night Ink Soft",
+        "purpose": "Night edition. Wash on a pressed Compare toggle.",
+        "edition": "night",
+        "canonical": "rgb(236 237 232 / 0.1)"
+      },
+      "night-ink-faint": {
+        "role": "neutral",
+        "displayName": "Night Ink Faint",
+        "purpose": "Night edition. Wash on a mass-edit row or best comparison value.",
+        "edition": "night",
+        "canonical": "rgb(236 237 232 / 0.06)"
+      },
+      "night-masthead": {
+        "role": "primary",
+        "displayName": "Night Masthead Ink",
+        "purpose": "Night edition. The masthead band.",
+        "edition": "night",
+        "canonical": "#0a0b0d",
+        "oklch": "oklch(14.9% 0.005 264)",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232426",
+          "#3e4042",
+          "#5c5e60",
+          "#7c7d80",
+          "#9d9ea1",
+          "#c2c4c7",
+          "#edeef2"
+        ]
+      },
+      "night-focus-blue": {
+        "role": "tertiary",
+        "displayName": "Night Focus Blue",
+        "purpose": "Night edition. The keyboard focus ring, and nothing else.",
+        "edition": "night",
+        "canonical": "#8fb1ff",
+        "oklch": "oklch(76.6% 0.119 266)",
+        "tonalRamp": [
+          "#02003c",
+          "#081b5c",
+          "#213a7d",
+          "#3d5aa0",
+          "#5b7ac4",
+          "#7b9ce8",
+          "#a0c2ff",
+          "#c9edff"
+        ]
+      },
+      "night-highlighter": {
+        "role": "secondary",
+        "displayName": "Night Marker Highlighter",
+        "purpose": "Night edition. An edit not yet applied.",
+        "edition": "night",
+        "canonical": "#e8c547",
+        "oklch": "oklch(83.2% 0.145 93)",
+        "tonalRamp": [
+          "#1f0100",
+          "#3c1b00",
+          "#5a3900",
+          "#7a5800",
+          "#9b7900",
+          "#bd9b00",
+          "#e4c142",
+          "#ffed8d"
+        ]
+      },
+      "night-brick": {
+        "role": "secondary",
+        "displayName": "Night Brick",
+        "purpose": "Night edition. Danger.",
+        "edition": "night",
+        "canonical": "#f0705f",
+        "oklch": "oklch(69.5% 0.161 29)",
+        "tonalRamp": [
+          "#370000",
+          "#5b0000",
+          "#800000",
+          "#a52a1f",
+          "#cb4f40",
+          "#f27261",
+          "#ff9885",
+          "#ffd0bf"
+        ]
+      },
+      "night-brick-soft": {
+        "role": "secondary",
+        "displayName": "Night Brick Wash",
+        "purpose": "Night edition. Ground of an invalid value or an error.",
+        "edition": "night",
+        "canonical": "rgb(240 112 95 / 0.14)"
+      },
+      "night-ok-green": {
+        "role": "tertiary",
+        "displayName": "Night OK Green",
+        "purpose": "Night edition. Connected dot; an accepted move.",
+        "edition": "night",
+        "canonical": "#57b784",
+        "oklch": "oklch(70.7% 0.119 158)",
+        "tonalRamp": [
+          "#001600",
+          "#003309",
+          "#005125",
+          "#007143",
+          "#2e9261",
+          "#55b582",
+          "#7cdca7",
+          "#a7ffd0"
+        ]
+      },
+      "night-scrim": {
+        "role": "neutral",
+        "displayName": "Night Scrim",
+        "purpose": "Night edition. Dims the app behind a dialog.",
+        "edition": "night",
+        "canonical": "rgb(0 0 0 / 0.6)"
+      },
+      "night-band-1": {
+        "role": "tertiary",
+        "displayName": "Night Brick Band",
+        "purpose": "Night edition. FM attribute band 1 to 5; pitch-map position colour.",
+        "edition": "night",
+        "canonical": "#e8775f",
+        "oklch": "oklch(69.4% 0.145 33)",
+        "tonalRamp": [
+          "#330000",
+          "#560000",
+          "#7a0c00",
+          "#9f351f",
+          "#c45740",
+          "#ea7961",
+          "#ff9f85",
+          "#ffd1ba"
+        ]
+      },
+      "night-band-2": {
+        "role": "tertiary",
+        "displayName": "Night Ochre Band",
+        "purpose": "Night edition. FM attribute band 6 to 10; pitch-map position colour.",
+        "edition": "night",
+        "canonical": "#dca244",
+        "oklch": "oklch(75.0% 0.129 76)",
+        "tonalRamp": [
+          "#250000",
+          "#441200",
+          "#643100",
+          "#855000",
+          "#a87100",
+          "#cb9231",
+          "#f3b85c",
+          "#ffe48f"
+        ]
+      },
+      "night-band-3": {
+        "role": "tertiary",
+        "displayName": "Night Olive Band",
+        "purpose": "Night edition. FM attribute band 11 to 15; pitch-map position colour.",
+        "edition": "night",
+        "canonical": "#a8c45e",
+        "oklch": "oklch(77.8% 0.133 122)",
+        "tonalRamp": [
+          "#050f00",
+          "#1a2b00",
+          "#354900",
+          "#516800",
+          "#70891b",
+          "#90ab45",
+          "#b5d26c",
+          "#e0fca0"
+        ]
+      },
+      "night-band-4": {
+        "role": "tertiary",
+        "displayName": "Night Pitch Green Band",
+        "purpose": "Night edition. FM attribute band 16 to 20; pitch-map position colour.",
+        "edition": "night",
+        "canonical": "#57b784",
+        "oklch": "oklch(70.7% 0.119 158)",
+        "tonalRamp": [
+          "#001600",
+          "#003309",
+          "#005125",
+          "#007143",
+          "#2e9261",
+          "#55b582",
+          "#7cdca7",
+          "#a7ffd0"
+        ]
+      },
+      "night-on-band": {
+        "role": "neutral",
+        "displayName": "Night On Band",
+        "purpose": "Night edition. Text on a band fill.",
+        "edition": "night",
+        "canonical": "#15161a",
+        "oklch": "oklch(20.1% 0.008 275)",
+        "tonalRamp": [
+          "#0a0b0f",
+          "#232428",
+          "#3e3f44",
+          "#5c5d62",
+          "#7c7d82",
+          "#9d9ea4",
+          "#c2c4c9",
+          "#edeef4"
+        ]
+      },
+      "night-mix-1": {
+        "role": "tertiary",
+        "displayName": "Night Supporter Mix 1",
+        "purpose": "Night edition. Supporter-mix bar: Hardcore supporters.",
+        "edition": "night",
+        "canonical": "#d4765f",
+        "oklch": "oklch(66.6% 0.123 35)",
+        "tonalRamp": [
+          "#2e0000",
+          "#500000",
+          "#731d07",
+          "#963e2a",
+          "#bb5f49",
+          "#e08169",
+          "#ffa68e",
+          "#ffd1b8"
+        ]
+      },
+      "night-mix-2": {
+        "role": "tertiary",
+        "displayName": "Night Supporter Mix 2",
+        "purpose": "Night edition. Supporter-mix bar: Core supporters.",
+        "edition": "night",
+        "canonical": "#d6a24a",
+        "oklch": "oklch(74.4% 0.121 78)",
+        "tonalRamp": [
+          "#230000",
+          "#421500",
+          "#613300",
+          "#825200",
+          "#a47307",
+          "#c7943b",
+          "#efba63",
+          "#ffe58f"
+        ]
+      },
+      "night-mix-3": {
+        "role": "tertiary",
+        "displayName": "Night Supporter Mix 3",
+        "purpose": "Night edition. Supporter-mix bar: Family supporters.",
+        "edition": "night",
+        "canonical": "#a3bd5c",
+        "oklch": "oklch(75.8% 0.127 122)",
+        "tonalRamp": [
+          "#050f00",
+          "#1b2b00",
+          "#354800",
+          "#526800",
+          "#718823",
+          "#91ab49",
+          "#b6d170",
+          "#e1fc9f"
+        ]
+      },
+      "night-mix-4": {
+        "role": "tertiary",
+        "displayName": "Night Supporter Mix 4",
+        "purpose": "Night edition. Supporter-mix bar: Fair-weather supporters.",
+        "edition": "night",
+        "canonical": "#5bb383",
+        "oklch": "oklch(69.9% 0.112 158)",
+        "tonalRamp": [
+          "#001600",
+          "#00320b",
+          "#005027",
+          "#037044",
+          "#379163",
+          "#5bb383",
+          "#82daa8",
+          "#adffd2"
+        ]
+      },
+      "night-mix-5": {
+        "role": "tertiary",
+        "displayName": "Night Supporter Mix 5",
+        "purpose": "Night edition. Supporter-mix bar: Casual supporters.",
+        "edition": "night",
+        "canonical": "#8d9aab",
+        "oklch": "oklch(68.2% 0.029 255)",
+        "tonalRamp": [
+          "#040b17",
+          "#1a2532",
+          "#35414f",
+          "#535f6e",
+          "#727e8f",
+          "#93a0b1",
+          "#b8c5d7",
+          "#e2f0ff"
+        ]
+      },
+      "night-mix-6": {
+        "role": "tertiary",
+        "displayName": "Night Supporter Mix 6",
+        "purpose": "Night edition. Supporter-mix bar: Other supporters.",
+        "edition": "night",
+        "canonical": "#b87fa8",
+        "oklch": "oklch(66.7% 0.089 337)",
+        "tonalRamp": [
+          "#1f0018",
+          "#3d0d33",
+          "#5d2b50",
+          "#7d4970",
+          "#9f6890",
+          "#c389b2",
+          "#eaaed9",
+          "#ffd8ff"
+        ]
       }
     },
-    "categoricalColors": {
-      "note": "Supporter-mix bar only, one hue per kind of supporter in a fixed order.",
-      "dark": [
-        "#3987e5",
-        "#d95926",
-        "#199e70",
-        "#c98500",
-        "#d55181",
-        "#008300"
-      ],
-      "light": [
-        "#2a78d6",
-        "#eb6834",
-        "#1baf7a",
-        "#eda100",
-        "#e87ba4",
-        "#008300"
-      ]
-    },
-    "clubBadge": {
-      "value": "hsl(var(--hue) 50% 30%)",
-      "purpose": "Initials badge for a club with no logo; hue from the club name; white initials keep 4.5:1."
-    },
-    "themes": {
-      "default": "dark",
-      "light": "prefers-color-scheme: light redefines every color role; values in colorMeta.*.lightTheme."
-    },
     "typographyMeta": {
-      "figure": {
-        "displayName": "Figure",
-        "purpose": "CA in the profile head; PA at 20px/600 muted."
+      "mark": {
+        "displayName": "Mark",
+        "purpose": "FML in the masthead."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "A name at the head of a profile."
+      },
+      "figure-large": {
+        "displayName": "Figure Large",
+        "purpose": "CA and PA in a profile head."
       },
       "headline": {
         "displayName": "Headline",
-        "purpose": "Person or club name in the profile head."
+        "purpose": "Connect card; Changes title at 24px."
+      },
+      "dialog-title": {
+        "displayName": "Dialog Title",
+        "purpose": "Dialog titles."
+      },
+      "dateline": {
+        "displayName": "Dateline",
+        "purpose": "The in-game date in the masthead."
       },
       "title": {
         "displayName": "Title",
-        "purpose": "Section name on the title strip; dialog heads."
+        "purpose": "A name in a table row."
+      },
+      "tab": {
+        "displayName": "Tab",
+        "purpose": "Section tabs; profile tabs at 14px."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Ability and reputation in tables."
+      },
+      "rating": {
+        "displayName": "Rating",
+        "purpose": "A 1 to 20 value in its band's colour."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "App default; ratings at 700."
+        "purpose": "Running text."
       },
-      "body-dense": {
-        "displayName": "Body Dense",
-        "purpose": "Buttons (600), value lists, attribute rows."
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "Stat rows, notes, review lists."
       },
-      "small": {
-        "displayName": "Small",
-        "purpose": "Notes, sub-lines, sidebar note."
+      "button": {
+        "displayName": "Button",
+        "purpose": "Every button."
+      },
+      "group-head": {
+        "displayName": "Group Head",
+        "purpose": "Group heading, uppercase, under a 3px ink rule."
+      },
+      "column-head": {
+        "displayName": "Column Head",
+        "purpose": "Table column heads, uppercase."
+      },
+      "small-print": {
+        "displayName": "Small Print",
+        "purpose": "The colophon and sub-lines."
       },
       "label": {
         "displayName": "Label",
-        "purpose": "Uppercase table headers and ruled group headings (0.5–0.6px tracking)."
-      },
-      "mono": {
-        "displayName": "Mono",
-        "purpose": "UIDs and the macOS launch option."
+        "purpose": "Tags, uppercase in a hairline frame."
       }
     },
+    "fontSource": {
+      "family": "Archivo Variable",
+      "package": "@fontsource-variable/archivo/wdth.css",
+      "axes": {
+        "wght": "100-900 (used 400 to 850)",
+        "wdth": "62-125 (used 72% to 100% via font-stretch)"
+      },
+      "figures": "font-variant-numeric: tabular-nums on tables, definition values, abilities, ratings and figures",
+      "license": "SIL OFL 1.1",
+      "mono": "Cascadia Mono, SF Mono, Menlo, Consolas, monospace (macOS launch option only)"
+    },
+    "themes": [
+      {
+        "name": "day",
+        "selector": ":root",
+        "note": "The default edition: cool paper, near-black ink."
+      },
+      {
+        "name": "night",
+        "selector": "@media (prefers-color-scheme: dark) :root",
+        "note": "The night edition: the same custom properties swapped; night-* tokens."
+      }
+    ],
+    "rules": [
+      {
+        "name": "hairline",
+        "value": "1px solid var(--border)",
+        "purpose": "Between rows, under a dialog head, around quiet frames, above the colophon."
+      },
+      {
+        "name": "frame",
+        "value": "1px solid var(--border-strong)",
+        "purpose": "Buttons, inputs, tags, segmented switches, the profile's left edge."
+      },
+      {
+        "name": "head-rule",
+        "value": "2px solid var(--text)",
+        "purpose": "Under column heads and a profile head; over the edit footer and the macOS bridge section."
+      },
+      {
+        "name": "section-rule",
+        "value": "3px solid var(--text)",
+        "purpose": "Over every group heading, the connect card and the top of a dialog."
+      },
+      {
+        "name": "highlighter-rule",
+        "value": "4px solid var(--pending-soft)",
+        "purpose": "Under a profile head while Edit is on."
+      }
+    ],
+    "focus": [
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--accent-text); outline-offset: 2px",
+        "purpose": "Every focusable control; inset (-2px or -3px) where the control sits flush."
+      },
+      {
+        "name": "focus-ring-on-ink",
+        "value": "outline-color: #8fb1ff",
+        "purpose": "Controls on the masthead, both editions."
+      },
+      {
+        "name": "field-focus",
+        "value": "border-color: var(--accent); outline: 1px solid var(--accent); outline-offset: 0",
+        "purpose": "Filter and saved-filter fields."
+      },
+      {
+        "name": "search-focus",
+        "value": "border-color: var(--text); box-shadow: 0 0 0 1px var(--text)",
+        "purpose": "The list search box."
+      }
+    ],
     "shadows": [
       {
-        "name": "overlay-dialog",
-        "value": "0 18px 48px rgb(0 0 0 / 0.45)",
-        "purpose": "Dialogs over the scrim. Overlay exception only."
+        "name": "dialog",
+        "value": "0 18px 48px rgb(0 0 0 / 0.3)",
+        "purpose": "A modal over the scrim."
       },
       {
-        "name": "overlay-menu",
-        "value": "0 10px 28px rgb(0 0 0 / 0.4)",
-        "purpose": "The squad row menu. Overlay exception only."
+        "name": "menu",
+        "value": "0 10px 28px rgb(0 0 0 / 0.25)",
+        "purpose": "The captain menu hanging from a squad row."
       },
       {
-        "name": "ring-pending",
-        "value": "inset 0 0 0 1px var(--pending)",
-        "purpose": "Doubles the border of a changed input; not elevation."
+        "name": "ink-ring",
+        "value": "inset 0 0 0 1px var(--text)",
+        "purpose": "Pressed Edit toggle; a doubled line, not depth."
       },
       {
-        "name": "ring-invalid",
+        "name": "brick-ring",
         "value": "inset 0 0 0 1px var(--danger)",
-        "purpose": "Doubles the border of an invalid input; not elevation."
-      },
-      {
-        "name": "ring-focus-search",
-        "value": "0 0 0 1px var(--accent)",
-        "purpose": "Search field focus; not elevation."
+        "purpose": "An invalid input."
       }
     ],
     "motion": [
       {
-        "name": "state-change",
-        "value": "120ms ease-out",
-        "purpose": "Button background, border and colour transitions only."
+        "name": "state-fade",
+        "value": "background-color, border-color, color 120ms ease-out",
+        "purpose": "Buttons and tabs changing state."
       },
       {
-        "name": "loading-pulse",
-        "value": "1.4s ease-in-out infinite (opacity to 0.45)",
-        "purpose": "Profile loading text; off under prefers-reduced-motion."
+        "name": "entry-open",
+        "value": "200ms cubic-bezier(0.2, 0.7, 0.2, 1); from opacity 0, translateX(12px)",
+        "purpose": "A profile opening beside its row."
+      },
+      {
+        "name": "profile-pulse",
+        "value": "1.4s ease-in-out infinite; opacity to 0.45 at 50%",
+        "purpose": "A profile's loading line."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "@media (prefers-reduced-motion: reduce) { .profile, .profile-status { animation: none } }",
+        "purpose": "Entry slide and pulse off; only colour fades remain."
       }
     ],
-    "focus": {
-      "default": "2px solid var(--accent-text), offset 2px (buttons) or -2px inset (rows, nav, tabs)",
-      "onStrip": "2px solid #fff"
-    },
     "breakpoints": [
+      {
+        "name": "window-default",
+        "value": "1280x800"
+      },
       {
         "name": "window-min",
         "value": "960x600"
       },
       {
-        "name": "short-window",
-        "value": "max-height: 640px"
+        "name": "table-container",
+        "value": "1200px, 960px, 880px, 780px, 680px, 580px, 560px, 420px, 320px, 300px (container queries on the table wrap)"
       },
       {
-        "name": "dialog-narrow",
+        "name": "mass-edit-narrow",
         "value": "max-width: 720px"
       },
       {
-        "name": "list-container",
-        "value": "@container on the table: 1200, 960, 880, 780, 680, 580, 560, 420, 320, 300px"
+        "name": "short-window",
+        "value": "max-height: 640px"
       }
     ],
-    "layout": {
-      "rail": "216px",
-      "titleStrip": "52px",
-      "profile": "flex 0 1 560px, min 440px; squad tab 880px",
-      "listMin": "240px"
+    "icon": {
+      "source": "app/src-tauri/icons/make-icon.py",
+      "full": "FML in Archivo (wght 850, wdth 72) in paper #f6f7f9 on a rounded ink #16181d tile (824/1024, radius 186), under a 26-unit paper rule, over four mark bands (44 tall, 14 gaps).",
+      "smallCut": "At 48px and under: no rule, tile 912/1024 (radius 200), larger letters (520) and bands (110 tall, 24 gaps).",
+      "inApp": "BrandMark in the masthead: FML (20px, wdth 72, wght 850) over a 3px bar of the four mark bands.",
+      "letters": "FML"
     }
   },
   "components": [
@@ -566,148 +1308,150 @@
       "name": "Button",
       "kind": "button",
       "refersTo": "button",
-      "description": "Default button: raised ink, square, dense.",
-      "html": "<button class=\"ds-btn\">Bulk edit</button>",
-      "css": ".ds-btn{min-height:30px;padding:5px 12px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--raised,#212533);color:var(--text,#eceef4);font:600 13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color 120ms ease-out,border-color 120ms ease-out,color 120ms ease-out}.ds-btn:hover{background:var(--hover,#272c3c)}.ds-btn:active{background:var(--border,#2a2f40)}.ds-btn:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:2px}"
+      "description": "The default control: an outline on the page.",
+      "html": "<button class=\"ds-btn\">Reload</button>",
+      "css": ".ds-btn { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; min-height: 30px; padding: 5px 12px; border: 1px solid var(--border-strong, #a6abb4); border-radius: 3px; background: transparent; color: var(--text, #16181d); font-size: 13px; font-stretch: 94%; font-weight: 650; line-height: 1.3; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out; } .ds-btn:hover { border-color: var(--text, #16181d); background: var(--hover, #e7e9ed); } .ds-btn:active { background: var(--raised, #eceef1); } .ds-btn:focus-visible { outline: 2px solid var(--accent-text, #2457c5); outline-offset: 2px; }"
     },
     {
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one main action of a place: Connect, Apply, Edit.",
-      "html": "<button class=\"ds-btn-primary\">Apply</button>",
-      "css": ".ds-btn-primary{min-height:30px;padding:5px 12px;border:1px solid var(--accent,#3170f0);border-radius:4px;background:var(--accent,#3170f0);color:var(--on-accent,#fff);font:600 13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color 120ms ease-out,border-color 120ms ease-out}.ds-btn-primary:hover{border-color:var(--accent-hover,#4380f7);background:var(--accent-hover,#4380f7)}.ds-btn-primary:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:2px}"
+      "description": "The one main action of a surface, filled with ink.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Apply</button>",
+      "css": ".ds-btn { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; min-height: 30px; padding: 5px 12px; border: 1px solid var(--border-strong, #a6abb4); border-radius: 3px; background: transparent; color: var(--text, #16181d); font-size: 13px; font-stretch: 94%; font-weight: 650; line-height: 1.3; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out; } .ds-btn:hover { border-color: var(--text, #16181d); background: var(--hover, #e7e9ed); } .ds-btn:active { background: var(--raised, #eceef1); } .ds-btn:focus-visible { outline: 2px solid var(--accent-text, #2457c5); outline-offset: 2px; } .ds-btn-primary { border-color: var(--accent, #16181d); background: var(--accent, #16181d); color: var(--on-accent, #f6f7f9); } .ds-btn-primary:hover { border-color: var(--accent-hover, #30343c); background: var(--accent-hover, #30343c); }"
     },
     {
       "name": "Danger Button",
       "kind": "button",
       "refersTo": "button-danger",
-      "description": "What removes or drops: red outline, transparent.",
-      "html": "<button class=\"ds-btn-danger\">Discard</button>",
-      "css": ".ds-btn-danger{min-height:30px;padding:5px 12px;border:1px solid var(--danger,#f2675f);border-radius:4px;background:transparent;color:var(--danger,#f2675f);font:600 13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;cursor:pointer;transition:background-color 120ms ease-out}.ds-btn-danger:hover{background:var(--danger-soft,rgb(242 103 95/.14))}.ds-btn-danger:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:2px}"
+      "description": "An action that removes or undoes: brick outline and text.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Discard</button>",
+      "css": ".ds-btn { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; min-height: 30px; padding: 5px 12px; border: 1px solid var(--border-strong, #a6abb4); border-radius: 3px; background: transparent; color: var(--text, #16181d); font-size: 13px; font-stretch: 94%; font-weight: 650; line-height: 1.3; cursor: pointer; transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out; } .ds-btn:hover { border-color: var(--text, #16181d); background: var(--hover, #e7e9ed); } .ds-btn:active { background: var(--raised, #eceef1); } .ds-btn:focus-visible { outline: 2px solid var(--accent-text, #2457c5); outline-offset: 2px; } .ds-btn-danger { border-color: var(--danger, #b23a2b); color: var(--danger, #b23a2b); } .ds-btn-danger:hover { border-color: var(--danger, #b23a2b); background: var(--danger-soft, rgb(178 58 43 / 0.09)); }"
     },
     {
-      "name": "Title Strip",
+      "name": "Masthead and Tabs",
       "kind": "nav",
-      "refersTo": "title-strip",
-      "description": "The solid royal-blue strip: section name left, game date and Refresh right, all white.",
-      "html": "<header class=\"ds-strip\"><h1 class=\"ds-strip-title\">Players</h1><span class=\"ds-strip-status\">FM27 · 400 players</span><span class=\"ds-strip-spacer\"></span><span class=\"ds-strip-date\">18 Jul 2026</span><button class=\"ds-strip-btn\">Refresh</button></header>",
-      "css": ".ds-strip{display:flex;align-items:center;gap:14px;min-height:52px;padding:0 16px 0 20px;background:var(--strip,#2254c9);color:#fff;font-family:'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}.ds-strip-title{margin:0;font-size:17px;font-weight:700;letter-spacing:-.1px}.ds-strip-status{color:rgb(255 255 255/.68);font-size:12.5px}.ds-strip-spacer{flex:1}.ds-strip-date{font-size:14px;font-weight:700}.ds-strip-btn{min-height:30px;padding:5px 12px;border:1px solid rgb(255 255 255/.45);border-radius:4px;background:transparent;color:#fff;font:600 13px/1.3 inherit;cursor:pointer}.ds-strip-btn:hover{background:rgb(255 255 255/.14)}.ds-strip-btn:focus-visible{outline:2px solid #fff;outline-offset:2px}"
+      "refersTo": "masthead",
+      "description": "The ink masthead with the FML mark and the section tabs; the open tab joins the page.",
+      "html": "<header class=\"ds-mast\"><span class=\"ds-mark\"><span class=\"ds-mark-word\">FML</span><span class=\"ds-mark-bands\"><i></i><i></i><i></i><i></i></span></span><nav class=\"ds-tabs\"><button class=\"ds-tab ds-tab-on\">Players</button><button class=\"ds-tab\">Staff</button><button class=\"ds-tab\">Clubs</button><button class=\"ds-tab\">Changes <small>3</small></button></nav><span class=\"ds-dateline\">18 Jul 2026</span></header>",
+      "css": ".ds-mast { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; align-items: flex-end; gap: 18px; min-height: 52px; padding: 0 14px 0 18px; background: var(--strip, #16181d); color: var(--on-strip, #f6f7f9); } .ds-mark { display: inline-flex; flex-direction: column; gap: 3px; align-self: center; } .ds-mark-word { font-size: 20px; font-stretch: 72%; font-weight: 850; line-height: 1; letter-spacing: 0.5px; } .ds-mark-bands { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; height: 3px; } .ds-mark-bands i:nth-child(1) { background: #c4513f; } .ds-mark-bands i:nth-child(2) { background: #c98a2b; } .ds-mark-bands i:nth-child(3) { background: #8aa33a; } .ds-mark-bands i:nth-child(4) { background: #2e8a5b; } .ds-tabs { display: flex; gap: 2px; } .ds-tab { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 16px; border: 0; border-radius: 4px 4px 0 0; background: transparent; color: rgb(246 247 249 / 0.66); font-size: 14.5px; font-stretch: 88%; font-weight: 750; cursor: pointer; transition: background-color 120ms ease-out, color 120ms ease-out; } .ds-tab:hover { background: rgb(246 247 249 / 0.08); color: #f6f7f9; } .ds-tab:focus-visible { outline: 2px solid #8fb1ff; outline-offset: -3px; } .ds-tab-on, .ds-tab-on:hover { background: var(--bg, #f6f7f9); color: var(--text, #16181d); } .ds-tab small { min-width: 20px; padding: 0 6px; border-radius: 2px; background: rgb(246 247 249 / 0.16); font-size: 11.5px; font-weight: 800; line-height: 18px; text-align: center; } .ds-tab-on small { background: var(--accent, #16181d); color: var(--on-accent, #f6f7f9); } .ds-dateline { margin-left: auto; align-self: center; font-size: 15px; font-stretch: 85%; font-weight: 800; }"
     },
     {
-      "name": "Rail Navigation",
-      "kind": "nav",
-      "refersTo": "nav-item",
-      "description": "The sidebar sections; the active one solid royal blue.",
-      "html": "<nav class=\"ds-rail\"><button class=\"ds-nav ds-nav-active\"><svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/></svg>Players</button><button class=\"ds-nav\"><svg viewBox=\"0 0 24 24\"><path d=\"M12 3l8 3v6c0 5-4 8-8 9-4-1-8-4-8-9V6z\"/></svg>Clubs</button><button class=\"ds-nav\"><svg viewBox=\"0 0 24 24\"><path d=\"M4 12a8 8 0 1 0 3-6.2M4 4v5h5\"/></svg>Changes<small>3</small></button></nav>",
-      "css": ".ds-rail{display:flex;flex-direction:column;gap:2px;width:196px;padding:10px;background:var(--rail,#0b0d13)}.ds-nav{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:var(--muted,#9ba2b7);font:600 14px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;text-align:left;cursor:pointer}.ds-nav svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.ds-nav:hover:not(.ds-nav-active){background:var(--raised,#212533);color:var(--text,#eceef4)}.ds-nav:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:-2px}.ds-nav-active{background:var(--accent,#3170f0);color:#fff}.ds-nav small{margin-left:auto;min-width:20px;padding:0 6px;border-radius:3px;background:var(--raised,#212533);color:var(--text,#eceef4);font-size:11.5px;font-weight:700;line-height:18px;text-align:center}"
+      "name": "Almanac Table",
+      "kind": "custom",
+      "refersTo": "table-row-selected",
+      "description": "The yearbook table: ink-ruled head, hairline rows, the picked row in reverse print.",
+      "html": "<table class=\"ds-grid\"><thead><tr><th>Name</th><th class=\"ds-num\">Age</th><th class=\"ds-num\">CA</th></tr></thead><tbody><tr class=\"ds-sel\"><td><div class=\"ds-name\">Lukas Kowalski</div><div class=\"ds-sub\">Lukas Kowalski Moreau</div></td><td class=\"ds-num\">29</td><td class=\"ds-num ds-fig\">189</td></tr><tr tabindex=\"0\"><td><div class=\"ds-name\">Mateo Silva</div><div class=\"ds-sub\">Mateo Silva Aydin</div></td><td class=\"ds-num\">25</td><td class=\"ds-num ds-fig\">189</td></tr></tbody></table>",
+      "css": ".ds-grid { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text, #16181d); } .ds-grid th { height: 32px; padding: 0 12px; border-bottom: 2px solid var(--text, #16181d); color: var(--muted, #5b6069); font-size: 11px; font-stretch: 88%; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; text-align: left; } .ds-grid td { height: 34px; padding: 3px 12px; border-bottom: 1px solid var(--border, #d6d9df); } .ds-grid tbody tr { cursor: pointer; } .ds-grid tbody tr:hover td { background: var(--hover, #e7e9ed); } .ds-grid tbody tr:focus-visible { outline: 2px solid var(--accent-text, #2457c5); outline-offset: -2px; } .ds-grid .ds-num { text-align: right; } .ds-name { font-size: 14.5px; font-stretch: 86%; font-weight: 750; } .ds-sub { color: var(--muted, #5b6069); font-size: 12px; line-height: 1.3; } .ds-fig { font-size: 15px; font-stretch: 82%; font-weight: 850; } .ds-grid tbody tr.ds-sel td, .ds-grid tbody tr.ds-sel:hover td { border-bottom-color: var(--accent, #16181d); background: var(--accent, #16181d); color: var(--on-accent, #f6f7f9); } .ds-grid tr.ds-sel .ds-sub { color: color-mix(in srgb, var(--on-accent, #f6f7f9) 72%, transparent); }"
     },
     {
-      "name": "Search Field",
+      "name": "Profile Group",
+      "kind": "card",
+      "refersTo": "group-head",
+      "description": "A group of an entry: heading under a 3px ink rule, hairline rows, ratings in band ink.",
+      "html": "<section class=\"ds-group\"><h3>Technical</h3><dl><div class=\"ds-stat\"><dt>Corners</dt><dd class=\"ds-val ds-t4\">19</dd></div><div class=\"ds-stat\"><dt>Crossing</dt><dd class=\"ds-val ds-t3\">15</dd></div><div class=\"ds-stat\"><dt>Heading</dt><dd class=\"ds-val ds-t2\">9</dd></div><div class=\"ds-stat\"><dt>Marking</dt><dd class=\"ds-val ds-t1\">4</dd></div></dl></section>",
+      "css": ".ds-group { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; width: 220px; color: var(--text, #16181d); } .ds-group h3 { margin: 0 0 2px; padding: 5px 0 4px; border-top: 3px solid var(--text, #16181d); font-size: 12.5px; font-stretch: 85%; font-weight: 850; letter-spacing: 0.5px; text-transform: uppercase; } .ds-group dl { margin: 0; font-size: 13px; line-height: 1.3; } .ds-stat { display: flex; align-items: center; justify-content: space-between; min-height: 27px; padding: 2px; border-bottom: 1px solid var(--border, #d6d9df); } .ds-stat:hover { background: var(--hover, #e7e9ed); } .ds-stat dd { margin: 0; } .ds-val { font-size: 15px; font-stretch: 85%; font-weight: 800; font-variant-numeric: tabular-nums; } .ds-t1 { color: var(--tier-1, #b3402f); } .ds-t2 { color: var(--tier-2, #8f5d0e); } .ds-t3 { color: var(--tier-3, #5a761b); } .ds-t4 { color: var(--tier-4, #1f7547); }"
+    },
+    {
+      "name": "Edit Input with Highlighter",
       "kind": "input",
-      "refersTo": "search-field",
+      "refersTo": "edit-input-changed",
+      "description": "An editable value; a changed one waits in highlighter, an invalid one turns brick.",
+      "html": "<span class=\"ds-edits\"><input class=\"ds-edit\" value=\"17\"><input class=\"ds-edit ds-changed\" value=\"20\"><input class=\"ds-edit ds-invalid\" value=\"24\"></span>",
+      "css": ".ds-edits { display: inline-flex; gap: 8px; } .ds-edit { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; width: calc(2ch + 1.2rem); padding: 2px 6px; border: 1px solid var(--border-strong, #a6abb4); border-radius: 3px; background: var(--field, #ffffff); color: var(--text, #16181d); font-size: 14px; font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; } .ds-edit:hover { border-color: var(--muted, #5b6069); } .ds-edit:focus-visible { outline: 2px solid var(--accent-text, #2457c5); outline-offset: 1px; } .ds-changed, .ds-changed:hover { border-color: var(--text, #16181d); background: var(--pending-soft, #ffe27a); color: var(--on-pending, #16181d); } .ds-invalid, .ds-invalid:hover { border-color: var(--danger, #b23a2b); background: var(--danger-soft, rgb(178 58 43 / 0.09)); box-shadow: inset 0 0 0 1px var(--danger, #b23a2b); } .ds-invalid:focus-visible { outline-color: var(--danger, #b23a2b); }"
+    },
+    {
+      "name": "Search",
+      "kind": "input",
+      "refersTo": "search",
       "description": "The search that leads every list.",
-      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"M20 20l-4-4\"/></svg><input placeholder=\"Search by name or UID\"></label>",
-      "css": ".ds-search{display:flex;align-items:center;gap:8px;width:min(440px,100%);min-height:36px;padding:0 12px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--field,#0f1118)}.ds-search:hover{border-color:var(--muted,#9ba2b7)}.ds-search:focus-within{border-color:var(--accent,#3170f0);box-shadow:0 0 0 1px var(--accent,#3170f0)}.ds-search svg{width:16px;height:16px;fill:none;stroke:var(--muted,#9ba2b7);stroke-width:1.8;stroke-linecap:round}.ds-search input{flex:1;min-width:0;padding:8px 0;border:0;outline:0;background:transparent;color:var(--text,#eceef4);font:14px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}"
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 16 16\"><circle cx=\"7\" cy=\"7\" r=\"5\"/><path d=\"M11 11l3.5 3.5\"/></svg><input placeholder=\"Search by name or UID\"></label>",
+      "css": ".ds-search { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; align-items: center; gap: 8px; width: 320px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border-strong, #a6abb4); border-radius: 3px; background: var(--field, #ffffff); } .ds-search:hover { border-color: var(--text, #16181d); } .ds-search:focus-within { border-color: var(--text, #16181d); box-shadow: 0 0 0 1px var(--text, #16181d); } .ds-search svg { width: 16px; height: 16px; fill: none; stroke: var(--muted, #5b6069); stroke-width: 1.8; stroke-linecap: round; } .ds-search input { flex: 1; min-width: 0; padding: 8px 0; border: 0; outline: 0; background: transparent; color: var(--text, #16181d); font: inherit; font-size: 14px; } .ds-search input::placeholder { color: var(--muted, #5b6069); }"
     },
     {
-      "name": "Attribute Rows with Edit Input",
-      "kind": "custom",
-      "refersTo": "edit-input",
-      "description": "A ruled group heading over zebra label-value rows; ratings in their band; a changed input turns gold.",
-      "html": "<div class=\"ds-group\"><h3>Technical</h3><dl><div class=\"ds-stat\"><dt>Corners</dt><dd class=\"ds-v4\">19</dd></div><div class=\"ds-stat\"><dt>Crossing</dt><dd class=\"ds-v3\">14</dd></div><div class=\"ds-stat\"><dt>Dribbling</dt><dd class=\"ds-v2\">8</dd></div><div class=\"ds-stat\"><dt>Finishing</dt><dd><input class=\"ds-edit ds-edit-changed\" value=\"20\"></dd></div></dl></div>",
-      "css": ".ds-group{width:220px;background:var(--panel,#181b25);font:13px/1.3 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;color:var(--text,#eceef4)}.ds-group h3{margin:0 0 2px;padding:0 8px 5px;border-bottom:1px solid var(--border-strong,#3a4157);font-size:11.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}.ds-group dl{margin:0}.ds-stat{display:flex;align-items:center;justify-content:space-between;min-height:26px;padding:2px 8px}.ds-stat:nth-child(even){background:var(--zebra,rgb(255 255 255/.025))}.ds-stat:hover{background:var(--hover,#272c3c)}.ds-stat dt{color:var(--muted,#9ba2b7)}.ds-stat dd{margin:0;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}.ds-v4{color:var(--tier-4,#4fca91)}.ds-v3{color:var(--tier-3,#bcd45c)}.ds-v2{color:var(--tier-2,#eaa53c)}.ds-edit{width:calc(2ch + 1.2rem);padding:2px 6px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--field,#0f1118);color:var(--text,#eceef4);font:600 13px inherit;text-align:right;font-variant-numeric:tabular-nums}.ds-edit:focus-visible{outline:2px solid var(--accent-text,#86adff);outline-offset:1px}.ds-edit-changed{border-color:var(--pending,#e8b84a);background:var(--pending-soft,rgb(232 184 74/.16));box-shadow:inset 0 0 0 1px var(--pending,#e8b84a)}"
-    },
-    {
-      "name": "Squad Table",
-      "kind": "custom",
-      "refersTo": "table-row",
-      "description": "FM's squad table: raised uppercase header, zebra rows, royal-blue selection.",
-      "html": "<table class=\"ds-grid\"><thead><tr><th>Name</th><th>Positions</th><th class=\"ds-num\">CA</th></tr></thead><tbody><tr class=\"ds-sel\"><td><b>Lukas Kowalski</b></td><td>AMR</td><td class=\"ds-num\"><b>189</b></td></tr><tr><td><b>Mateo Silva</b></td><td>AML ST DC</td><td class=\"ds-num\"><b>189</b></td></tr><tr><td><b>Rafael Novák</b></td><td>DM ST</td><td class=\"ds-num\"><b>189</b></td></tr></tbody></table>",
-      "css": ".ds-grid{width:100%;border-collapse:collapse;background:var(--bg,#11131b);color:var(--text,#eceef4);font:14px/1.45 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;font-variant-numeric:tabular-nums}.ds-grid th{height:34px;padding:0 12px;border-bottom:1px solid var(--border-strong,#3a4157);background:var(--raised,#212533);color:var(--muted,#9ba2b7);font-size:11.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;text-align:left}.ds-grid td{height:36px;padding:4px 12px;white-space:nowrap}.ds-grid tbody tr:nth-child(even) td{background:var(--zebra,rgb(255 255 255/.025))}.ds-grid tbody tr:hover td{background:var(--hover,#272c3c)}.ds-grid tbody tr.ds-sel td{background:var(--accent-soft,rgb(49 112 240/.26))}.ds-grid .ds-num{text-align:right}"
-    },
-    {
-      "name": "Tag",
+      "name": "Tags",
       "kind": "chip",
       "refersTo": "tag",
-      "description": "A quiet outlined label beside a value.",
-      "html": "<span class=\"ds-tag\">preview</span> <span class=\"ds-tag ds-tag-you\">You</span>",
-      "css": ".ds-tag{display:inline-block;padding:0 6px;border:1px solid var(--border-strong,#3a4157);border-radius:3px;color:var(--muted,#9ba2b7);font:600 11.5px/18px 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;white-space:nowrap}.ds-tag-you{border-color:var(--accent,#3170f0);background:var(--accent,#3170f0);color:#fff}"
+      "description": "Small uppercase labels in a hairline frame; ink-filled for the user's manager, brick for injured.",
+      "html": "<span class=\"ds-tags\"><span class=\"ds-tag\">Women</span><span class=\"ds-tag ds-tag-you\">You</span><span class=\"ds-tag ds-tag-inj\">Injured</span></span>",
+      "css": ".ds-tags { display: inline-flex; gap: 6px; } .ds-tag { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; display: inline-block; padding: 0 5px; border: 1px solid var(--border-strong, #a6abb4); border-radius: 2px; color: var(--muted, #5b6069); font-size: 10.5px; font-stretch: 90%; font-weight: 750; letter-spacing: 0.3px; line-height: 16px; text-transform: uppercase; } .ds-tag-you { border-color: var(--accent, #16181d); background: var(--accent, #16181d); color: var(--on-accent, #f6f7f9); } .ds-tag-inj { border-color: var(--danger, #b23a2b); color: var(--danger, #b23a2b); }"
     },
     {
-      "name": "Dialog",
-      "kind": "card",
-      "refersTo": "dialog",
-      "description": "Overlay box with a raised head band; one of the two places a shadow is allowed.",
-      "html": "<div class=\"ds-modal\"><div class=\"ds-modal-head\"><h2>Bulk edit</h2><p>Preview before applying.</p></div><div class=\"ds-modal-body\">Fields to change.</div><div class=\"ds-modal-foot\"><button class=\"ds-modal-btn\">Cancel</button><button class=\"ds-modal-btn ds-modal-primary\">Preview</button></div></div>",
-      "css": ".ds-modal{width:min(480px,100%);overflow:hidden;border:1px solid var(--border-strong,#3a4157);border-radius:6px;background:var(--panel,#181b25);color:var(--text,#eceef4);box-shadow:0 18px 48px rgb(0 0 0/.45);font:14px/1.45 'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif}.ds-modal-head{padding:14px 20px 12px;border-bottom:1px solid var(--border,#2a2f40);background:var(--raised,#212533)}.ds-modal-head h2{margin:0 0 4px;font-size:17px;font-weight:700}.ds-modal-head p{margin:0;color:var(--muted,#9ba2b7)}.ds-modal-body{padding:16px 20px}.ds-modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border,#2a2f40)}.ds-modal-btn{min-height:30px;padding:5px 12px;border:1px solid var(--border-strong,#3a4157);border-radius:4px;background:var(--raised,#212533);color:inherit;font:600 13px/1.3 inherit;cursor:pointer}.ds-modal-btn:hover{background:var(--hover,#272c3c)}.ds-modal-primary{border-color:var(--accent,#3170f0);background:var(--accent,#3170f0);color:#fff}.ds-modal-primary:hover{background:var(--accent-hover,#4380f7)}"
+      "name": "Colophon",
+      "kind": "custom",
+      "refersTo": "colophon",
+      "description": "Small print along the foot: the game on the first line, the notes beside it or on a second line of their own.",
+      "html": "<footer class=\"ds-colophon\"><div class=\"ds-col-main\"><span class=\"ds-col-name\">FMLibreEditor · pre-alpha</span><span class=\"ds-col-status\"><i></i>FM27 · 400 players · 120 staff · 12 clubs</span></div><div class=\"ds-col-notes\"><span>Edits reach the game only when you apply them. Back up your save first.</span><span>No graphics packs found</span></div></footer>",
+      "css": ".ds-colophon { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 32px; width: 640px; padding: 0 18px; border-top: 1px solid var(--border, #d6d9df); color: var(--muted, #5b6069); font-size: 12px; line-height: 27px; white-space: nowrap; } .ds-col-main, .ds-col-notes { display: flex; align-items: center; gap: 16px; min-width: 0; } .ds-col-notes { flex-wrap: wrap; height: 27px; overflow: hidden; } .ds-col-name { color: var(--text, #16181d); font-stretch: 88%; font-weight: 750; } .ds-col-status { display: inline-flex; align-items: center; gap: 7px; } .ds-col-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #1f7547); }"
     }
   ],
   "narrative": {
-    "northStar": "One More Screen of Football Manager",
-    "overview": "The editor speaks Football Manager's own interface grammar, so a player who alt-tabs in from the full-screen game is already fluent. Deep indigo-charcoal grounds, a solid royal-blue title strip with white type, dense zebra tables, panels headed by ruled strips of small capitals, and FM's four attribute bands. Every screen has one lead: the search field over the squad table, the profile head with its two ability figures, the gold of what waits to be applied.\n\nDensity is high and deliberate. Rows are 36px, attribute rows 26px, one system sans at a tight scale, 1px rules, small corners. Colour is a vocabulary, not decoration: royal blue is what is picked and the main action, gold is an edit not yet applied, red is danger, and the four bands rate a 1–20 value. Everything else is ink on indigo. The editor reads no club's kit colours; FM's club-coloured title bar becomes the editor's own blue strip.\n\nThe world refuses the category default: a dark dashboard of identical grey cards with neon pills. It runs in a dark theme and a light theme that follow the OS, with the same roles in both.",
+    "northStar": "The Season Almanac",
+    "overview": "**Creative North Star: \"The Season Almanac\"**\n\nFMLibreEditor is set like a football yearbook, the annual that prints every squad as a table. A cool white page carries near-black ink, hairline rules part the rows, and a thick ink rule stands over every section heading. One typeface does all the work: Archivo, bundled with the app so Windows (WebView2) and macOS (WKWebView) read alike, condensed and heavy for names, headings and big figures, regular width for running text. The page is dense the way an almanac is dense: rows of 34px, small print in the margins, figures that line up down every column.\n\nColour is not decoration here. It appears only where it means something: FM's four attribute bands, retuned as earthy inks, rate every 1 to 20 value and every position on the pitch; a marker-yellow highlighter marks an edit not yet applied; brick red marks danger; blue is the keyboard's focus and nothing else. What is picked is printed in reverse, white on ink. At night the page turns: the night edition swaps paper and ink and keeps every meaning.\n\nThe maintainer rejected two earlier looks as generic: a grey-green dashboard, then an imitation of FM's own skin. This system is neither. It owes FM only the attribute bands and the pitch map, the two things players read the way the game shows them.",
     "keyCharacteristics": [
-      "Stepped indigo grounds (rail, ground, panel, raised) carry depth; panels, cards and tables cast no shadow.",
-      "A 52px royal-blue title strip, level with the sidebar's brand block, so the two read as one band.",
-      "Dense FM squad tables: raised uppercase header row, zebra rows with no rules between them, selection in royal blue.",
-      "1–20 values coloured by FM's four bands; the position pitch in the same bands.",
-      "Gold marks pending edits everywhere they appear: the input, the profile head's rule, the count, the Edit toggle.",
-      "One system sans; tabular digits in every column of numbers."
+      "Cool white page (never cream), near-black ink, a night edition that inverts them.",
+      "One family, Archivo, with its width axis doing the work of a second face.",
+      "Hairline rules between rows; 2px ink rules under heads; 3px ink rules over section headings.",
+      "Reverse print for selection; ink fill for the main action.",
+      "Colour by meaning only: four bands, one highlighter, one red, one focus blue.",
+      "Flat paper; shadows only on what floats over the page."
     ],
     "rules": [
       {
-        "name": "The Meaning-Only Rule",
-        "body": "Colour always means something: blue is picked or primary, gold is pending, red is danger, the bands rate a value. A hue that carries none of these is not added.",
+        "name": "The One Meaning Rule",
+        "body": "Every colour other than paper and ink means one thing. Blue is focus. Yellow is an edit not yet applied. Red is danger. The four bands rate a value or a position. If a new element needs colour for any other reason, it gets ink.",
         "section": "colors"
       },
       {
-        "name": "The Gold Waits Rule",
-        "body": "Gold appears only on what has been changed and not yet applied. When the change lands or is dropped, the gold goes.",
+        "name": "The Cool Paper Rule",
+        "body": "The page is a cool white (page) and never cream, ivory or warm grey. The night page is a cool near-black.",
         "section": "colors"
       },
       {
-        "name": "The Strip Rule",
-        "body": "On the title strip everything is white; secondary text is the same white dimmed (68–85% opacity), never grey. Buttons on the strip are white-outlined and transparent.",
+        "name": "The Reverse Print Rule",
+        "body": "What is picked is printed in reverse: ink fill, paper text, its small print kept at 72% of the paper colour. No tinted selection, no accent-coloured row.",
         "section": "colors"
       },
       {
-        "name": "The One Sans Rule",
-        "body": "One system sans at a tight scale (11.5–24px). No web font, no display face.",
+        "name": "The Lined Figures Rule",
+        "body": "Every number sits in tabular figures: tables, definition values, abilities, ratings, figures and deltas. Digits line up down every column and every row.",
         "section": "typography"
       },
       {
-        "name": "The Tabular Digits Rule",
-        "body": "Tables, value lists, abilities and figures use `tabular-nums`, numbers right-aligned so digits line up down every column.",
+        "name": "The One Family Rule",
+        "body": "Archivo only. Width and weight make the hierarchy; no second display face, no system display face.",
         "section": "typography"
       },
       {
-        "name": "The Columns Go First Rule",
-        "body": "When room runs out, whole columns drop; the name and CA are the last to leave.",
-        "section": "layout"
-      },
-      {
-        "name": "The Overlay Exception Rule",
-        "body": "Only overlays (dialogs and menus) cast a shadow, offset and blurred, because they float over the page. Everything on the page is flat.",
+        "name": "The Flat Paper Rule",
+        "body": "Surfaces are flat. A shadow means the thing is floating over the page (dialog, menu); nothing at rest casts one.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "**Do** give every screen one lead: the search field over the table, the profile head, or the gold of pending edits.",
-      "**Do** colour 1–20 values by FM's four bands (`tier-1` to `tier-4`), as the number itself, bold.",
-      "**Do** mark the picked row, the active section and the main action in Royal Blue, and nothing decorative.",
-      "**Do** show every pending edit in gold until it is applied or dropped.",
-      "**Do** carry depth with the ground steps (rail, ground, panel, raised) and 1px rules.",
-      "**Do** keep numbers in `tabular-nums`, right-aligned.",
-      "**Do** drop whole columns before a name wraps or is cut.",
-      "**Do** keep white type on the title strip, secondary text as dimmed white."
+      "Do keep the page cool white (page) by day and cool near-black (night-page) at night; ink is near-black (ink) and warm white (night-ink).",
+      "Do use blue only for focus: the 2px focus ring, and the stand-in ring on a row that Enter will pick while focus stays elsewhere.",
+      "Do use the highlighter only for an edit not yet applied: a changed input, the review list, the pending swatch, the 4px rule under an editing head.",
+      "Do use brick only for danger: invalid values, refusals, errors, destructive actions, negative amounts, injuries.",
+      "Do colour 1 to 20 values and pitch positions by FM's four bands, and nothing else by them.",
+      "Do print the picked row in reverse (ink fill, paper text) and fill the main action with ink.",
+      "Do put a 3px ink rule over every group heading and a 2px ink rule under every table and profile head; part rows with 1px hairlines.",
+      "Do set every number in tabular figures, and set names, headings and figures in condensed heavy Archivo (width 72 to 88%, weight 750 to 850).",
+      "Do define every colour as a custom property with a night value; the night edition is a swap of tokens, never a separate stylesheet.",
+      "Do let the colophon's notes take a second line rather than cut the advice on applying edits.",
+      "Do switch off the entry slide and the pulse under reduced motion."
     ],
     "donts": [
-      "**Don't** put shadows on panels, cards, tables or the profile; only dialogs and menus cast one.",
-      "**Don't** use gold for anything but an edit not yet applied.",
-      "**Don't** read club kit colours into the chrome; the strip is always the editor's own blue.",
-      "**Don't** build a dashboard of identical grey cards with neon pills; no full-radius pills.",
-      "**Don't** add a web font or display face; the system sans carries every role.",
-      "**Don't** round corners past 6px on any rectangle."
+      "Don't use blue for a tag, a link, a selection, a best value or a brand accent.",
+      "Don't use yellow for anything but an unapplied edit: not for warnings, highlights of interest, or selection.",
+      "Don't use red for anything but danger.",
+      "Don't make the page cream, ivory, beige or any warm paper.",
+      "Don't stripe table rows or tint them as a zebra; hairlines part them.",
+      "Don't add cards with shadows, rounded panels or a sidebar of tinted surfaces; the page is one flat sheet.",
+      "Don't imitate FM's skin (royal-blue selection, raised panel heads, striped grids) or return to a grey-green dashboard look.",
+      "Don't add a second typeface or fall back to a system display face for headings.",
+      "Don't use glyph characters as icons; icons are inline SVG line drawings.",
+      "Don't put any letters other than \"FML\" in the icon or mark."
     ]
   }
 }

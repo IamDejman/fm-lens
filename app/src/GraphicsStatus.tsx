@@ -10,7 +10,7 @@ const text = graphicsText;
 const POLL_MS = 1000;
 const POLL_FOR_MS = 20_000;
 
-/** What the sidebar knows about the packs. `info` is null when the app could not say, or never finished reading. */
+/** What the colophon knows about the packs. `info` is null when the app could not say, or never finished reading. */
 type Graphics = { phase: "asking" } | { phase: "reading" } | { phase: "known"; info: GraphicsInfo | null };
 
 /**
@@ -65,8 +65,8 @@ const hasPictures = (counts: GraphicsCounts): boolean =>
   counts.clubLogos + counts.faces + counts.flags + counts.competitionLogos > 0;
 
 /**
- * What the graphics packs hold, for the foot of the sidebar: how many club logos, flags and faces, or that there are
- * no packs, and where they go. The folder they are read from is in the hover text.
+ * What the graphics packs hold, for the colophon at the foot of the window: how many club logos, flags and faces, or
+ * that there are no packs. Where packs go, and the folder they are read from, are in the hover text.
  */
 export function GraphicsStatus() {
   const graphics = useGraphics();
@@ -85,9 +85,8 @@ export function GraphicsStatus() {
     );
   }
   return (
-    <div className="graphics-status" title={info?.root ?? undefined}>
-      <p className="sidebar-note">{text.none}</p>
-      <p className="sidebar-note">{text.noneHint}</p>
-    </div>
+    <p className="sidebar-note" title={[text.noneHint, info?.root].filter(Boolean).join("\n")}>
+      {text.none}
+    </p>
   );
 }

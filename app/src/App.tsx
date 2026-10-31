@@ -27,19 +27,21 @@ const VIEWS: { id: View; label: string }[] = [
 /** The view the window was in before the language was switched; the first one when there was no such switch. */
 const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
 
-/** The outline drawn beside each section in the sidebar: a person, a clipboard, a crest and the history arrow. */
-const VIEW_ICONS: Record<View, string> = {
-  players: "M12 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM5 20c0-3.6 3.1-6 7-6s7 2.4 7 6",
-  staff: "M8 5H6.5A1.5 1.5 0 0 0 5 6.5v13A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 17.5 5H16M9 3h6v4H9zM9 12h6M9 16h4",
-  clubs: "M12 3 5 6v5.5c0 4.3 2.9 7.8 7 9.5 4.1-1.7 7-5.2 7-9.5V6l-7-3Z",
-  changes: "M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2",
-};
-
-function NavIcon({ view }: { view: View }) {
+/** The app's mark, as on its icon: FML over FM's four bands. */
+function BrandMark() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d={VIEW_ICONS[view]} />
-    </svg>
+    <span className="brand" title="FMLibreEditor">
+      <span className="brand-word" aria-hidden="true">
+        FML
+      </span>
+      <span className="brand-bands" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+      </span>
+      <span className="sr-only">FMLibreEditor</span>
+    </span>
   );
 }
 
@@ -135,6 +137,8 @@ function App() {
   }, [reloadLog]);
 
   const editable = connection?.editable ?? false;
+  // The note on applying edits, the colophon's first: whole in its hover too, should a window ever be too narrow for it.
+  const note = connection ? (editable ? appText.noteEditable : appText.noteReadOnly) : appText.noteNotConnected;
   const editor = useMemo(() => ({ editable, onEdited: edited }), [editable, edited]);
 
   // With edits pending in the open profile, leaving for another view asks first.
@@ -146,56 +150,23 @@ function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="logo">FL</span>
-          <div>
-            <strong>FMLibreEditor</strong>
-            <span>{appText.stage}</span>
-          </div>
-        </div>
-        <nav>
+      <header className="masthead">
+        <BrandMark />
+        <nav className="tabs">
           {VIEWS.map(({ id, label }) => (
             <button
               key={id}
               type="button"
-              className={id === view ? "nav-item active" : "nav-item"}
+              className={id === view ? "tab active" : "tab"}
               aria-current={id === view ? "page" : undefined}
               onClick={() => show(id)}
             >
-              <NavIcon view={id} />
               {label}
               {id === "changes" && log.length > 0 && <small>{log.length}</small>}
             </button>
           ))}
         </nav>
-        <div className="sidebar-foot">
-          <GraphicsStatus />
-          <p className="sidebar-note">
-            {connection ? (editable ? appText.noteEditable : appText.noteReadOnly) : appText.noteNotConnected}
-          </p>
-          <LanguageSwitch busy={busy !== null} />
-        </div>
-      </aside>
-
-      <div className="main">
-        <header className="topbar">
-          {connection && <h1 className="topbar-title">{VIEWS.find(({ id }) => id === view)?.label}</h1>}
-          <span className={`status ${connection ? "on" : ""}`}>
-            <span className="dot" />
-            <span className="status-text">
-              {connection
-                ? [
-                    describeGame(connection.game),
-                    playerListText.count(connection.players),
-                    staffListText.count(connection.staff),
-                    clubListText.count(connection.clubs),
-                  ].join(" · ")
-                : appText.notConnected}
-            </span>
-          </span>
-          {!inTauri && <span className="tag">{appText.previewTag}</span>}
-          <span className="spacer" />
+        <div className="masthead-side">
           {busy && <span className="busy">{busy}</span>}
           {connection?.gameDate && <span className="game-date">{formatDate(connection.gameDate)}</span>}
           {connection ? (
@@ -207,8 +178,11 @@ function App() {
               {appText.refresh}
             </button>
           )}
-        </header>
+          <LanguageSwitch busy={busy !== null} />
+        </div>
+      </header>
 
+      <div className="main">
         {error && <div className="banner">{error}</div>}
 
         {connection ? (
@@ -232,6 +206,34 @@ function App() {
           )
         )}
       </div>
+
+      <footer className="colophon">
+        <div className="colophon-main">
+          <span className="colophon-name">
+            FMLibreEditor · {appText.stage}
+          </span>
+          <span className={`status ${connection ? "on" : ""}`}>
+            <span className="dot" />
+            <span className="status-text">
+              {connection
+                ? [
+                    describeGame(connection.game),
+                    playerListText.count(connection.players),
+                    staffListText.count(connection.staff),
+                    clubListText.count(connection.clubs),
+                  ].join(" · ")
+                : appText.notConnected}
+            </span>
+          </span>
+          {!inTauri && <span className="tag">{appText.previewTag}</span>}
+        </div>
+        <div className="colophon-notes">
+          <p className="sidebar-note" title={note}>
+            {note}
+          </p>
+          <GraphicsStatus />
+        </div>
+      </footer>
     </div>
   );
 }
