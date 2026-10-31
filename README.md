@@ -3,25 +3,16 @@
 A free, open-source real-time editor for **Football Manager 27** on Windows, for both the
 Game Pass and the Steam build, and on macOS, for the Steam build.
 
-## Download / İndir
+## Download
 
-### **[⬇ FMLibreEditor-Setup.exe](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-Setup.exe)**
+- **Windows 10 or 11** (Game Pass or Steam):
+  [FMLibreEditor-Setup.exe](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-Setup.exe),
+  or the [portable zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-portable.zip)
+  to use it without installing.
+- **macOS** (Steam):
+  [FMLibreEditor-macOS.zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-macOS.zip).
 
-Windows 10 or 11, with Football Manager 27 from Xbox / Game Pass or Steam. There is also a
-[portable zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-portable.zip)
-that needs no installation.
-
-### **[⬇ FMLibreEditor-macOS.zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-macOS.zip)**
-
-macOS on Apple silicon or Intel, with Football Manager 27 from Steam. Move **FMLibreEditor**
-to Applications, then set up its bridge from the app once, with Steam closed (see
-[On macOS](#on-macos)).
-
-- **Step by step, with pictures:** [English](docs/INSTALL.md) · [Türkçe](docs/KURULUM.md)
-- **Windows warning:** Windows may say "Windows protected your PC", because the program is
-  not signed yet. Choose **More info**, then **Run anyway**.
-- **macOS warning:** macOS may say it could not verify FMLibreEditor, because the app is not
-  notarized yet. Open **System Settings › Privacy & Security** and choose **Open Anyway**.
+How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 
 > **Status: pre-alpha.** The app lists, searches, filters and sorts every player,
 > member of staff and club of a running FM27 (Game Pass or Steam build), and shows
@@ -218,7 +209,7 @@ fmlibre-probe refs 0x1a5a5396990 --span 0x3c8        # every pointer into an obj
 fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
 fmlibre-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0
 fmlibre-probe column game_plugin.dll+0x5681dc0 0x294 --find 7458500   # find a player by UID
-fmlibre-probe find "18 Temmuz 2026"                  # search memory for text (UTF-8 and UTF-16)
+fmlibre-probe find "18 July 2026"                    # search memory for text (UTF-8 and UTF-16)
 fmlibre-probe find "c7 80 ea 07" --as hex --module game_plugin.dll
 ```
 
