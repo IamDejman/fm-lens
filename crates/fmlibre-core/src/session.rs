@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::OnceLock;
 
-use fmlibre_mem::{Module, PeImage, Process, find_processes, list_modules};
+use fmlibre_mem::{Module, Process, find_processes, list_modules};
 
 use crate::calibrate::{EntityArrays, calibrate};
 use crate::clubs::{ClubDetails, ClubSummary, full_finance_class, read_club_details, read_clubs};
@@ -66,10 +66,10 @@ impl Coded for SessionError {
 
     fn params(&self) -> Vec<(&'static str, String)> {
         match self {
-            SessionError::NoSuchProcess(pid) => vec![("pid", pid.to_string())],
+            SessionError::NoSuchProcess(pid) => vec![("pid", pid.to_string()), ("exe", GAME_EXE.to_owned())],
             SessionError::SeveralRunning(pids) => {
                 let pids: Vec<String> = pids.iter().map(u32::to_string).collect();
-                vec![("count", pids.len().to_string()), ("pids", pids.join(", "))]
+                vec![("count", pids.len().to_string()), ("pids", pids.join(", ")), ("exe", GAME_EXE.to_owned())]
             }
             SessionError::Memory(err) => err.params(),
             SessionError::UnsupportedEdition(Some(edition)) => vec![("edition", edition.to_string())],
@@ -123,11 +123,11 @@ impl Session {
     /// Identifies the build behind `process` and locates its entity arrays. Only reads memory.
     pub fn connect(process: Process, source: ArraySource) -> Result<Self, SessionError> {
         let game = GameInfo::inspect(&process)?;
-        let plugin = list_modules(process.pid())?
+        let plugin = list_modules(&process)?
             .into_iter()
             .find(|m| m.name.eq_ignore_ascii_case(GAME_PLUGIN))
             .ok_or(SessionError::PluginNotLoaded)?;
-        let fingerprint = PluginFingerprint::of(&PeImage::read(&process, plugin.base)?);
+        let fingerprint = PluginFingerprint::read(&process, &plugin)?;
         let profile = profile_for(fingerprint);
         let edition = profile.as_ref().map(|p| p.edition).or(game.edition);
         let layout = edition.and_then(layout_for).ok_or(SessionError::UnsupportedEdition(edition))?;
@@ -150,8 +150,11 @@ impl Session {
 
     /// The current in-game date, when it can be read and looks like a real date.
     pub fn game_date(&self) -> Option<FmDate> {
-        let players = self.arrays.players.as_ref()?;
-        let raw = self.process.read_u32(self.plugin.base + players.pair_rva + self.layout.cluster.current_date).ok()?;
+        let rva = match self.profile.as_ref().and_then(|profile| profile.current_date) {
+            Some(rva) => rva,
+            None => self.arrays.players.as_ref()?.pair_rva + self.layout.cluster.current_date,
+        };
+        let raw = self.process.read_u32(self.plugin.base + rva).ok()?;
         FmDate::from_raw(raw as u16, (raw >> 16) as u16).filter(|date| (2000..=2200).contains(&date.year))
     }
 

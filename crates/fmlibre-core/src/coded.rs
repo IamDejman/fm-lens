@@ -17,24 +17,47 @@ pub trait Coded: std::fmt::Display {
 impl Coded for MemoryError {
     fn code(&self) -> &'static str {
         match self {
+            #[cfg(windows)]
             MemoryError::Win32 { .. } => "memory.win32",
+            #[cfg(target_os = "macos")]
+            MemoryError::Mach { .. } => "memory.mach",
+            #[cfg(target_os = "macos")]
+            MemoryError::Posix { .. } => "memory.posix",
+            #[cfg(target_os = "macos")]
+            MemoryError::NoBridge { .. } => "memory.noBridge",
+            #[cfg(target_os = "macos")]
+            MemoryError::Bridge { .. } => "memory.bridge",
             MemoryError::Read { .. } => "memory.read",
             MemoryError::Write { .. } => "memory.write",
             MemoryError::ReadOnly => "memory.readOnly",
             MemoryError::NotWritable { .. } => "memory.notWritable",
+            #[cfg(windows)]
             MemoryError::InvalidPe { .. } => "memory.invalidPe",
+            #[cfg(target_os = "macos")]
+            MemoryError::InvalidMachO { .. } => "memory.invalidMachO",
         }
     }
 
     fn params(&self) -> Vec<(&'static str, String)> {
         match self {
+            #[cfg(windows)]
             MemoryError::Win32 { op, code } => vec![("operation", (*op).to_owned()), ("code", code.to_string())],
+            #[cfg(target_os = "macos")]
+            MemoryError::Mach { op, code } | MemoryError::Posix { op, code } => {
+                vec![("operation", (*op).to_owned()), ("code", code.to_string())]
+            }
+            #[cfg(target_os = "macos")]
+            MemoryError::NoBridge { pid } => vec![("pid", pid.to_string())],
+            #[cfg(target_os = "macos")]
+            MemoryError::Bridge { pid, reason } => vec![("pid", pid.to_string()), ("reason", (*reason).to_owned())],
             MemoryError::Read { addr, code, .. } | MemoryError::Write { addr, code, .. } => {
                 vec![("address", format!("{addr:#x}")), ("code", code.to_string())]
             }
-            MemoryError::NotWritable { addr, .. } | MemoryError::InvalidPe { base: addr, .. } => {
-                vec![("address", format!("{addr:#x}"))]
-            }
+            MemoryError::NotWritable { addr, .. } => vec![("address", format!("{addr:#x}"))],
+            #[cfg(windows)]
+            MemoryError::InvalidPe { base, .. } => vec![("address", format!("{base:#x}"))],
+            #[cfg(target_os = "macos")]
+            MemoryError::InvalidMachO { base, .. } => vec![("address", format!("{base:#x}"))],
             MemoryError::ReadOnly => Vec::new(),
         }
     }

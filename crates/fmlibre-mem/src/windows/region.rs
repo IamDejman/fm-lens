@@ -6,7 +6,7 @@ use windows_sys::Win32::System::Memory::{
     VirtualQueryEx,
 };
 
-use crate::process::Process;
+use super::process::Process;
 
 /// A run of pages with identical state and protection, as reported by `VirtualQueryEx`.
 #[derive(Debug, Clone, Copy)]

@@ -17,20 +17,34 @@ use fmlibre_core::{
     PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions,
     Session, SessionError, StaffIndex, Target, find_game, job_name, scan_object_arrays, sort_players,
 };
-use fmlibre_mem::{Module, PeImage, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
+#[cfg(target_os = "macos")]
+use fmlibre_mem::MachImage;
+#[cfg(windows)]
+use fmlibre_mem::PeImage;
+use fmlibre_mem::{Module, Process, is_current_process_elevated, is_user_pointer, list_modules, regions};
 use serde::Serialize;
 
+#[cfg(windows)]
 const KEY_MODULES: [&str; 4] = [GAME_EXE, "UnityPlayer.dll", "GameAssembly.dll", GAME_PLUGIN];
+#[cfg(target_os = "macos")]
+const KEY_MODULES: [&str; 4] = [GAME_EXE, "UnityPlayer.dylib", "GameAssembly.dylib", GAME_PLUGIN];
+
+/// What being allowed more than a user is called: it opens the game on Windows, and not on macOS.
+#[cfg(windows)]
+const ELEVATED: &str = "Running as administrator";
+#[cfg(target_os = "macos")]
+const ELEVATED: &str = "Running as root";
 
 #[derive(Parser)]
 #[command(
     name = "fmlibre-probe",
     version,
     about = "Probe for a running Football Manager 27 process. Only `set` writes to the game.",
-    after_help = "Addresses and lengths are hexadecimal; ADDR is 0x... or module.dll+0x...; INDEX is decimal."
+    after_help = "Addresses and lengths are hexadecimal; ADDR is 0x... or module+0x..., e.g. game_plugin.dll+0x10 \
+                  (game_plugin+0x10 on macOS); INDEX is decimal."
 )]
 struct Cli {
-    /// Process id to use when several fm.exe instances are running.
+    /// Process id to use when several copies of the game are running.
     #[arg(long, global = true)]
     pid: Option<u32>,
 
@@ -42,9 +56,22 @@ struct Cli {
     command: Option<Command>,
 }
 
+#[cfg(target_os = "macos")]
+#[derive(Subcommand)]
+enum BridgeAction {
+    /// Install the bridge and its launcher, and have Steam start FM27 through the launcher.
+    Setup {
+        /// The folder with libfmlibre_bridge.dylib and fmlibre-launch; by default the probe's own.
+        #[arg(long, value_name = "FOLDER")]
+        from: Option<PathBuf>,
+    },
+    /// Take the launcher out of FM27's Steam launch options and remove the bridge.
+    Remove,
+}
+
 #[derive(Subcommand)]
 enum Command {
-    /// Show the process, storefront, modules and the layout of game_plugin.dll (default).
+    /// Show the process, storefront, modules and the layout of the game plugin (default).
     Info,
     /// Identify the build and locate the player, staff and club arrays.
     Calibrate {
@@ -201,13 +228,21 @@ enum Command {
     },
     /// Read the graphics packs (logos, faces, flags) and show what they hold. Needs no game.
     Graphics {
-        /// The graphics folder; by default Documents\Sports Interactive\Football Manager 27\graphics.
+        /// The graphics folder; by default Documents\Sports Interactive\Football Manager 27\graphics
+        /// (~/Library/Application Support/Sports Interactive/Football Manager 27/graphics on macOS).
         #[arg(long)]
         root: Option<PathBuf>,
         /// Club UIDs to look up.
         clubs: Vec<u32>,
     },
-    /// Find (begin, end) arrays of game objects in game_plugin.dll and count their vtables.
+    /// macOS: show whether Football Manager loads the FMLibreEditor bridge when Steam starts it,
+    /// or set it up or take it out (Steam must not be running). Needs no game.
+    #[cfg(target_os = "macos")]
+    Bridge {
+        #[command(subcommand)]
+        action: Option<BridgeAction>,
+    },
+    /// Find (begin, end) arrays of game objects in the game plugin and count their vtables.
     Scan {
         /// Smallest array to report.
         #[arg(long, default_value_t = 500)]
@@ -455,6 +490,10 @@ fn run(cli: Cli) -> Result<()> {
     if let Some(Command::Graphics { root, clubs }) = cli.command {
         return graphics(root, &clubs);
     }
+    #[cfg(target_os = "macos")]
+    if let Some(Command::Bridge { action }) = cli.command {
+        return bridge(action);
+    }
     let elevated = is_current_process_elevated();
     let writes = matches!(
         cli.command,
@@ -519,29 +558,31 @@ fn run(cli: Cli) -> Result<()> {
             captain(&session, club, team, role, uid, restore.then_some(hold))
         }
         Command::Graphics { .. } => unreachable!("handled before attaching"),
+        #[cfg(target_os = "macos")]
+        Command::Bridge { .. } => unreachable!("handled before attaching"),
         Command::Scan { min, max, top } => {
             let (game, modules) = inspect(&process)?;
             let opts = ScanOptions { min_count: min, max_count: max, ..ScanOptions::default() };
             scan(&process, &game, &modules, &opts, top, json)
         }
         Command::Dump { addr, len } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             dump(&process, &modules, resolve(&addr, &modules)?, parse_hex(&len)?)
         }
         Command::Element { pair, index, len } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             element(&process, &modules, resolve(&pair, &modules)?, index, parse_hex(&len)?)
         }
         Command::Column { pair, offset, kind, first, find } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             column(&process, &modules, resolve(&pair, &modules)?, parse_hex(&offset)?, kind, first, find)
         }
         Command::Find { pattern, kind, module, max } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             find(&process, &modules, &pattern, kind, module.as_deref(), max)
         }
         Command::Refs { addr, span, max } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
         }
         Command::Squads => squads(&Session::connect(process, ArraySource::ProfileFirst)?),
@@ -564,7 +605,7 @@ fn run(cli: Cli) -> Result<()> {
             histogram(&session, parse_hex(&offset)?, kind, contract, club.as_deref(), top)
         }
         Command::Region { addr } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             let addr = resolve(&addr, &modules)?;
             let r = fmlibre_mem::region_at(&process, addr).with_context(|| format!("{addr:#x} is not mapped"))?;
             println!(
@@ -586,11 +627,11 @@ fn run(cli: Cli) -> Result<()> {
             dump(&process, &modules, r.allocation_base, 0x40)
         }
         Command::Holders { addr, max } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             holders(&process, &modules, resolve(&addr, &modules)?, max)
         }
         Command::Lists { addr, len } => {
-            let modules = list_modules(process.pid()).context("listing modules")?;
+            let modules = list_modules(&process).context("listing modules")?;
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             lists(&session, &modules, resolve(&addr, &modules)?, parse_hex(&len)?)
         }
@@ -696,8 +737,9 @@ fn holders(process: &Process, modules: &[Module], addr: u64, max: usize) -> Resu
 }
 
 /// Reads the player list of every team (team + 0x38: begin, end, capacity) and reports,
-/// per list length, the spacing of list buffers that share a 64 KiB page: a slab
-/// allocator puts blocks of one size class at multiples of that size.
+/// per capacity, the spacing of list buffers that share a 64 KiB page (a slab allocator
+/// puts blocks of one size class at multiples of that size), and whether the rest of the
+/// block the layout's heap gives them is zero.
 fn squads(session: &Session) -> Result<()> {
     let process = &session.process;
     let mut lists: Vec<(u64, u64, u64)> = Vec::new(); // (begin, length, capacity)
@@ -846,16 +888,19 @@ fn squads(session: &Session) -> Result<()> {
         println!("  two teams: {}", examples.join(", "));
     }
 
-    // GCD of the distances between lists of the same length on the same 64 KiB page.
-    let mut by_length: std::collections::BTreeMap<u64, Vec<u64>> = std::collections::BTreeMap::new();
-    for &(begin, len, _) in &lists {
-        by_length.entry(len).or_default().push(begin);
+    // Per capacity, which decides the block: the GCD of the distances between lists on the
+    // same 64 KiB page, the block the layout's heap gives, and how many words after the
+    // capacity are zero (at most 8), with how many lists have each count.
+    let mut by_capacity: std::collections::BTreeMap<u64, Vec<u64>> = std::collections::BTreeMap::new();
+    for &(begin, _, capacity) in &lists {
+        by_capacity.entry(capacity).or_default().push(begin);
     }
     fn gcd(a: u64, b: u64) -> u64 {
         if b == 0 { a } else { gcd(b, a % b) }
     }
-    println!("length  lists  spacing (bytes, gcd on shared pages)  zeroed slack after the end (slots)");
-    for (len, mut begins) in by_length {
+    let (mut zeroed, mut other) = (0, 0);
+    println!("capacity  lists  spacing (bytes, gcd on shared pages)  block  zero words after the capacity: lists");
+    for (capacity, mut begins) in by_capacity {
         begins.sort_unstable();
         let mut g = 0;
         for pair in begins.windows(2) {
@@ -863,22 +908,30 @@ fn squads(session: &Session) -> Result<()> {
                 g = gcd(g, pair[1] - pair[0]);
             }
         }
-        // How many words after the end are zero, at most 8, for the first few lists.
-        let slack: Vec<String> = begins
-            .iter()
-            .take(6)
-            .map(|&b| {
-                let after = process.read_bytes(b + len * 8, 64).unwrap_or_default();
-                after.as_chunks::<8>().0.iter().take_while(|w| u64::from_le_bytes(**w) == 0).count().to_string()
-            })
-            .collect();
+        let block = session.layout.heap.block_size(capacity * 8);
+        let mut zeros: std::collections::BTreeMap<u64, usize> = std::collections::BTreeMap::new();
+        for &begin in &begins {
+            let after = process.read_bytes(begin + capacity * 8, 64).unwrap_or_default();
+            let count = after.as_chunks::<8>().0.iter().take_while(|w| u64::from_le_bytes(**w) == 0).count() as u64;
+            *zeros.entry(count).or_default() += 1;
+            match block {
+                Some(block) if count * 8 >= block - capacity * 8 => zeroed += 1,
+                Some(_) => other += 1,
+                None => {}
+            }
+        }
+        let zeros: Vec<String> = zeros.iter().map(|(count, lists)| format!("{count}: {lists}")).collect();
         println!(
-            "{len:>6}  {:>5}  {:>6}  {}",
+            "{capacity:>8}  {:>5}  {:>6}  {:>5}  {}",
             begins.len(),
             if g == 0 { "-".to_owned() } else { g.to_string() },
-            slack.join(" ")
+            block.map_or("-".to_owned(), |block| block.to_string()),
+            zeros.join(", ")
         );
     }
+    println!(
+        "lists in a block the layout's heap knows: {zeroed} with the rest of it zero, {other} with other data there"
+    );
     Ok(())
 }
 
@@ -887,7 +940,7 @@ fn squads(session: &Session) -> Result<()> {
 /// two u16 (+0x28, +0x2A) and four bytes (+0x30).
 fn injuries(session: &Session, club: u32) -> Result<()> {
     let process = &session.process;
-    let modules = list_modules(process.pid())?;
+    let modules = list_modules(process)?;
     // How long the lists are across all plain players: an empty one would be a state the game itself makes.
     let mut lengths: std::collections::BTreeMap<u64, usize> = std::collections::BTreeMap::new();
     let mut without = 0;
@@ -1302,7 +1355,7 @@ fn attach(pid: Option<u32>, elevated: bool, writes: bool) -> Result<Process> {
 
 fn inspect(process: &Process) -> Result<(GameInfo, Vec<Module>)> {
     let game = GameInfo::inspect(process).context("inspecting the game process")?;
-    let modules = list_modules(process.pid()).context("listing modules")?;
+    let modules = list_modules(process).context("listing modules")?;
     Ok((game, modules))
 }
 
@@ -1310,11 +1363,7 @@ fn inspect(process: &Process) -> Result<(GameInfo, Vec<Module>)> {
 // calibrate / players
 
 fn calibrate(session: &Session) -> Result<()> {
-    let fingerprint = session.fingerprint;
-    println!(
-        "{GAME_PLUGIN} build: size of image {:#x}, link timestamp {:#010x}",
-        fingerprint.size_of_image, fingerprint.link_timestamp
-    );
+    println!("{GAME_PLUGIN} build: {}", session.fingerprint);
     match &session.profile {
         Some(profile) => println!("Build profile: {}", profile.name),
         None => println!("Build profile: none for this build"),
@@ -1606,14 +1655,69 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
 }
 
 // ---------------------------------------------------------------------------
+// bridge (macOS)
+
+#[cfg(target_os = "macos")]
+fn bridge(action: Option<BridgeAction>) -> Result<()> {
+    use fmlibre_core::bridge_setup::{self, Places};
+
+    let home = std::env::var_os("HOME").context("HOME is not set")?;
+    let places = Places::of(Path::new(&home));
+    let status = match action {
+        None => bridge_setup::status(&places),
+        Some(BridgeAction::Setup { from }) => {
+            let from = match from {
+                Some(from) => from,
+                None => std::env::current_exe()?.parent().context("the probe has no folder")?.to_owned(),
+            };
+            bridge_setup::set_up(&places, &from)?
+        }
+        Some(BridgeAction::Remove) => bridge_setup::remove(&places)?,
+    };
+    let yes_no = |yes: bool| if yes { "yes" } else { "no" };
+    let found = |path: &Path| if path.is_file() { "installed" } else { "missing" };
+    println!("Bridge library   {} ({})", places.bridge.display(), found(&places.bridge));
+    println!("Launcher         {} ({})", places.launcher.display(), found(&places.launcher));
+    println!("Steam running    {}", yes_no(status.steam_running));
+    if status.accounts.is_empty() {
+        println!("Steam accounts   none found in {}", places.steam_users.display());
+    }
+    for account in &status.accounts {
+        let folder = account.config.ancestors().nth(2).and_then(Path::file_name).unwrap_or_default();
+        println!(
+            "Steam account {}  FM27 loads the bridge: {}; launch options: {}",
+            folder.to_string_lossy(),
+            yes_no(account.loads_bridge),
+            account.launch_options.as_deref().unwrap_or("none")
+        );
+    }
+    println!();
+    if status.ready() {
+        println!("Ready: start Football Manager 27 from Steam, load a save, then run the probe or the app.");
+    } else {
+        println!("Not set up. Quit Steam and run `fmlibre-probe bridge setup`, or set FM27's launch options");
+        println!("in Steam (Properties > General > Launch Options) to:");
+        println!("  {}", status.launch_option);
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // graphics
 
 fn graphics(root: Option<PathBuf>, clubs: &[u32]) -> Result<()> {
     let root = match root {
         Some(root) => root,
         None => {
-            let home = std::env::var_os("USERPROFILE").context("USERPROFILE is not set; pass --root")?;
-            GraphicsIndex::default_root(&PathBuf::from(home).join("Documents"), 27)
+            // FM keeps its user data in the documents folder on Windows, in Application Support on macOS.
+            #[cfg(windows)]
+            let user_data =
+                PathBuf::from(std::env::var_os("USERPROFILE").context("USERPROFILE is not set; pass --root")?)
+                    .join("Documents");
+            #[cfg(target_os = "macos")]
+            let user_data = PathBuf::from(std::env::var_os("HOME").context("HOME is not set; pass --root")?)
+                .join("Library/Application Support");
+            GraphicsIndex::default_root(&user_data, 27)
         }
     };
     let started = Instant::now();
@@ -2064,6 +2168,7 @@ struct ModuleReport {
     path: PathBuf,
 }
 
+#[cfg(windows)]
 #[derive(Serialize)]
 struct PluginReport {
     link_timestamp: String,
@@ -2071,6 +2176,16 @@ struct PluginReport {
     sections: Vec<SectionReport>,
     export_count: usize,
     build_stamp: Option<String>,
+    writable_regions: usize,
+    writable_bytes: u64,
+}
+
+#[cfg(target_os = "macos")]
+#[derive(Serialize)]
+struct PluginReport {
+    uuid: Option<String>,
+    size: String,
+    sections: Vec<SectionReport>,
     writable_regions: usize,
     writable_bytes: u64,
 }
@@ -2085,7 +2200,7 @@ struct SectionReport {
 
 fn info(process: &Process, game: &GameInfo, modules: &[Module], elevated: bool, json: Option<&Path>) -> Result<()> {
     println!("FMLibreEditor probe {} (read-only)", env!("CARGO_PKG_VERSION"));
-    println!("Running as administrator: {}", if elevated { "yes" } else { "no" });
+    println!("{ELEVATED}: {}", if elevated { "yes" } else { "no" });
     println!();
     println!("Game process");
     println!("  pid          {}", game.pid);
@@ -2132,6 +2247,7 @@ fn info(process: &Process, game: &GameInfo, modules: &[Module], elevated: bool, 
     Ok(())
 }
 
+#[cfg(windows)]
 fn plugin_report(process: &Process, module: &Module) -> Result<PluginReport> {
     let pe = PeImage::read(process, module.base).with_context(|| format!("reading {GAME_PLUGIN} headers"))?;
     println!();
@@ -2178,7 +2294,45 @@ fn plugin_report(process: &Process, module: &Module) -> Result<PluginReport> {
     })
 }
 
+#[cfg(target_os = "macos")]
+fn plugin_report(process: &Process, module: &Module) -> Result<PluginReport> {
+    let image = MachImage::read(process, module.base).with_context(|| format!("reading {GAME_PLUGIN} headers"))?;
+    println!();
+    println!("{GAME_PLUGIN} (headers read from memory)");
+    println!("  UUID             {}", image.uuid_text().as_deref().unwrap_or("none"));
+    println!("  size             {:#x}", image.size());
+    println!("  segments");
+    for s in &image.segments {
+        println!("    {:<13} rva {:#010x}  size {:#010x}  {}", s.name, s.rva, s.size, s.flags());
+    }
+
+    let writable: Vec<_> =
+        regions(process, module.base, module.end()).into_iter().filter(|r| r.is_writable()).collect();
+    let writable_bytes: u64 = writable.iter().map(|r| r.size).sum();
+    println!("  writable memory  {} regions, {:.1} MiB", writable.len(), writable_bytes as f64 / 1_048_576.0);
+
+    Ok(PluginReport {
+        uuid: image.uuid_text(),
+        size: format!("{:#x}", image.size()),
+        sections: image
+            .segments
+            .iter()
+            .flat_map(|segment| {
+                segment.sections.iter().map(|s| SectionReport {
+                    name: format!("{},{}", s.segment, s.name),
+                    rva: format!("{:#x}", s.rva),
+                    size: format!("{:#x}", s.size),
+                    flags: segment.flags(),
+                })
+            })
+            .collect(),
+        writable_regions: writable.len(),
+        writable_bytes,
+    })
+}
+
 /// Best-effort description of an exported symbol: a string, a pointer to a string, or raw bytes.
+#[cfg(windows)]
 fn describe_symbol(process: &Process, pe: &PeImage, rva: u32) -> String {
     let location = match pe.section_for_rva(rva.into()) {
         Some(s) => format!("rva {rva:#x} in {} [{}]", s.name, s.flags()),
@@ -2199,6 +2353,7 @@ fn describe_symbol(process: &Process, pe: &PeImage, rva: u32) -> String {
 }
 
 /// The printable ASCII text at the start of `bytes`, if it is at least 4 characters long.
+#[cfg(windows)]
 fn ascii_prefix(bytes: &[u8]) -> Option<String> {
     let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
     let text = &bytes[..len];
@@ -2228,10 +2383,7 @@ fn scan(
 ) -> Result<()> {
     let module = find_module(modules, GAME_PLUGIN)
         .with_context(|| format!("{GAME_PLUGIN} is not loaded yet; wait for the main menu"))?;
-    let pe = PeImage::read(process, module.base).ok();
-    let section = |rva: u64| {
-        pe.as_ref().and_then(|pe| pe.section_for_rva(rva)).map_or_else(|| "?".to_owned(), |s| s.name.clone())
-    };
+    let section = section_names(process, module);
 
     println!(
         "Scanning writable memory of {GAME_PLUGIN} for object arrays ({}..={} elements)...",
@@ -2272,6 +2424,25 @@ fn scan(
         write_json(path, &report)?;
     }
     Ok(())
+}
+
+/// Names the section of `module` an RVA is in, or "?".
+#[cfg(windows)]
+fn section_names(process: &Process, module: &Module) -> impl Fn(u64) -> String {
+    let pe = PeImage::read(process, module.base).ok();
+    move |rva| pe.as_ref().and_then(|pe| pe.section_for_rva(rva)).map_or_else(|| "?".to_owned(), |s| s.name.clone())
+}
+
+/// Names the section of `module` an RVA is in, e.g. "__DATA,__bss", or "?".
+#[cfg(target_os = "macos")]
+fn section_names(process: &Process, module: &Module) -> impl Fn(u64) -> String {
+    let image = MachImage::read(process, module.base).ok();
+    move |rva| {
+        image
+            .as_ref()
+            .and_then(|image| image.section_for_rva(rva))
+            .map_or_else(|| "?".to_owned(), |s| format!("{},{}", s.segment, s.name))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -2492,10 +2663,10 @@ fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, t
     // Each pointer is told by the record that holds it: the nearest vtable before it (a word that
     // points into game_plugin.dll) and how far before. Records of one kind are compared with each
     // other only, which keeps a value that one of a thousand pointers happens to have from matching.
-    let plugin = list_modules(process.pid())?
+    let plugin = list_modules(process)?
         .into_iter()
         .find(|m| m.name.eq_ignore_ascii_case(GAME_PLUGIN))
-        .context("game_plugin.dll is not loaded")?;
+        .with_context(|| format!("{GAME_PLUGIN} is not loaded"))?;
     let in_plugin = |value: u64| (plugin.base..plugin.base + plugin.size).contains(&value);
     type Kind = (u64, u64);
     let mut kinds: Vec<BTreeMap<Kind, Vec<Vec<u8>>>> = vec![BTreeMap::new(); clubs.len()];

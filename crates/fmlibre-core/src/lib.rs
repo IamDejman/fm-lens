@@ -1,8 +1,10 @@
 //! Football Manager specific logic shared by the probe and the app: recognising a
 //! running game, locating its entity arrays, decoding what they hold and changing it.
 
-#![cfg(windows)]
+#![cfg(any(windows, target_os = "macos"))]
 
+#[cfg(target_os = "macos")]
+pub mod bridge_setup;
 mod calibrate;
 mod clubs;
 mod coded;

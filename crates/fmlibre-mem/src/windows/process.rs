@@ -13,9 +13,9 @@ use windows_sys::Win32::System::Threading::{
     PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE, QueryFullProcessImageNameW,
 };
 
+use super::handle::{OwnedHandle, create_snapshot, from_wide};
+use super::region::region_at;
 use crate::error::{Error, Result, last_error};
-use crate::handle::{OwnedHandle, create_snapshot, from_wide};
-use crate::region::region_at;
 
 /// A process seen in a system snapshot; not opened.
 #[derive(Debug, Clone)]

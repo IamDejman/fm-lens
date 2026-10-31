@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { call, inTauri } from "./api";
+import { BridgeSetup } from "./BridgeSetup";
 import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
 import { forgetFieldTables } from "./fieldTables";
@@ -10,7 +11,7 @@ import { appText, changesText, clubListText, playerListText, staffListText } fro
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
-import type { ConnectionInfo, Detection, ReloadInfo } from "./types";
+import type { BridgeInfo, ConnectionInfo, Detection, ReloadInfo } from "./types";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
@@ -203,16 +204,31 @@ function App() {
             </div>
           </EditorContext.Provider>
         ) : (
-          checked && <ConnectPanel detection={detection} busy={busy !== null} onConnect={connect} />
+          checked && (
+            <ConnectPanel
+              detection={detection}
+              busy={busy !== null}
+              onConnect={connect}
+              onBridge={(bridge) => setDetection((d) => d && { ...d, bridge })}
+            />
+          )
         )}
       </div>
     </div>
   );
 }
 
-function ConnectPanel(props: { detection: Detection | null; busy: boolean; onConnect: () => void }) {
-  const { detection, busy, onConnect } = props;
+function ConnectPanel(props: {
+  detection: Detection | null;
+  busy: boolean;
+  onConnect: () => void;
+  onBridge: (bridge: BridgeInfo) => void;
+}) {
+  const { detection, busy, onConnect, onBridge } = props;
   const game = detection?.games[0];
+  // macOS: the bridge comes first while it is not set up, as nothing connects without it.
+  const bridge = detection?.bridge;
+  const bridgeSetup = bridge && <BridgeSetup bridge={bridge} busy={busy} onChange={onBridge} />;
   const ready = Boolean(game?.info && game.pluginLoaded);
   const text = appText.connect;
 
@@ -221,6 +237,7 @@ function ConnectPanel(props: { detection: Detection | null; busy: boolean; onCon
       <div className="card">
         <h2>{text.title}</h2>
         <p className="muted">{text.intro}</p>
+        {bridge && !bridge.ready && bridgeSetup}
 
         {detection && detection.games.length === 0 && <p className="hint">{text.notRunning}</p>}
         {game && !game.info && <p className="hint error">{text.openFailed(describeError(game.error))}</p>}
@@ -239,6 +256,7 @@ function ConnectPanel(props: { detection: Detection | null; busy: boolean; onCon
         <button className="primary" onClick={onConnect} disabled={busy || !ready}>
           {text.button}
         </button>
+        {bridge?.ready && bridgeSetup}
       </div>
     </section>
   );

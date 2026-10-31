@@ -437,7 +437,7 @@ impl Session {
             |offset: u64| u64::from_le_bytes(record[offset as usize..offset as usize + 8].try_into().expect("8 bytes"));
         let byte = |offset: u64| record[offset as usize];
         let employer = word(c.team);
-        if word(c.owner) != object + p.person_block
+        if word(c.owner) != object + p.identity()
             || byte(c.job) != PLAYER_JOB
             || word(c.senior_team) != employer
             || !is_user_pointer(employer)

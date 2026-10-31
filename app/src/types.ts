@@ -34,6 +34,20 @@ export interface DetectedGame {
 export interface Detection {
   elevated: boolean;
   games: DetectedGame[];
+  /** macOS: whether the game loads the bridge, without which the app cannot reach it; null elsewhere. */
+  bridge: BridgeInfo | null;
+}
+
+/** How far the bridge is set up on macOS: the library FM27 loads so that the app can reach its memory. */
+export interface BridgeInfo {
+  /** Whether starting the game from Steam loads the bridge. */
+  ready: boolean;
+  installed: boolean;
+  /** The launch option that loads the bridge, to set in Steam by hand. */
+  launchOption: string;
+  steamRunning: boolean;
+  /** FM27's launch options in each Steam account on this Mac. */
+  accounts: { id: string; launchOptions: string | null; loadsBridge: boolean }[];
 }
 
 export interface ArrayRef {

@@ -5,6 +5,7 @@ import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
 import type {
   ApplyReport,
+  BridgeInfo,
   CaptainRole,
   ClubTeam,
   SquadPlayer,
@@ -1328,13 +1329,58 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
 /** The fixture connection, once `connect` has been called in this page. */
 let mockConnection: ConnectionInfo | null = null;
 
+/**
+ * `?macos` in the address previews the connect panel on macOS: the bridge is not set up, Steam is running, and the game
+ * was started without the bridge. The first set-up meets a running Steam, as the real one would; the next one works.
+ */
+const macPreview = new URLSearchParams(window.location.search).has("macos");
+const notSetUp = (): BridgeInfo => ({
+  ready: false,
+  installed: false,
+  launchOption:
+    'DYLD_INSERT_LIBRARIES="/Users/me/Library/Application Support/FMLibreEditor/libfmlibre_bridge.dylib" %command%',
+  steamRunning: true,
+  accounts: [{ id: "123456789", launchOptions: null, loadsBridge: false }],
+});
+let mockBridge = notSetUp();
+
 export async function mockInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((resolve) => setTimeout(resolve, 150));
   switch (command) {
     case "detect_game": {
-      const detection: Detection = { elevated: false, games: [{ pid: game.pid, info: game, pluginLoaded: true, error: null }] };
+      const noBridge: Failure = {
+        code: "memory.noBridge",
+        params: { pid: String(game.pid) },
+        message: `macOS does not let FMLibreEditor into the game (pid ${game.pid}): it was started without the bridge`,
+      };
+      const reachable = !macPreview || mockBridge.ready;
+      const detection: Detection = {
+        elevated: false,
+        games: [
+          reachable
+            ? { pid: game.pid, info: game, pluginLoaded: true, error: null }
+            : { pid: game.pid, info: null, pluginLoaded: false, error: noBridge },
+        ],
+        bridge: macPreview ? mockBridge : null,
+      };
       return detection as T;
     }
+    case "set_up_bridge": {
+      const wasRunning = mockBridge.steamRunning;
+      mockBridge = { ...mockBridge, installed: true, steamRunning: false };
+      if (wasRunning) {
+        const failure: Failure = { code: "setup.steamRunning", params: {}, message: "Steam is running" };
+        throw failure;
+      }
+      const launchOptions = mockBridge.launchOption;
+      mockBridge = { ...mockBridge, ready: true, accounts: [{ id: "123456789", launchOptions, loadsBridge: true }] };
+      return mockBridge as T;
+    }
+    case "remove_bridge":
+      mockBridge = { ...notSetUp(), steamRunning: false };
+      return mockBridge as T;
+    case "bridge_status":
+      return (macPreview ? mockBridge : null) as T;
     case "connect": {
       const info: ConnectionInfo = {
         game,

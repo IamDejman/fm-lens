@@ -4,10 +4,21 @@ use fmlibre_mem::Process;
 use serde::{Deserialize, Serialize};
 
 /// Executable name of Football Manager on Windows (Steam, Epic and Game Pass alike).
+#[cfg(windows)]
 pub const GAME_EXE: &str = "fm.exe";
 
+/// Executable name of Football Manager 27 on macOS, inside `fm.app/Contents/MacOS`.
+#[cfg(target_os = "macos")]
+pub const GAME_EXE: &str = "Football Manager 27";
+
 /// Native module that holds the game database and simulation.
+#[cfg(windows)]
 pub const GAME_PLUGIN: &str = "game_plugin.dll";
+
+/// Native module that holds the game database and simulation: the executable of
+/// `game_plugin.bundle`, in the app's plug-ins.
+#[cfg(target_os = "macos")]
+pub const GAME_PLUGIN: &str = "game_plugin";
 
 /// Where the running copy of the game was installed from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,15 +33,15 @@ pub enum Storefront {
 impl Storefront {
     /// Guesses the storefront from the package identity and the install path.
     pub fn detect(exe_path: &Path, package_full_name: Option<&str>) -> Self {
-        let path = exe_path.to_string_lossy().to_ascii_lowercase();
+        // Windows and macOS paths alike, with forward slashes.
+        let path = exe_path.to_string_lossy().to_ascii_lowercase().replace('\\', "/");
         let gdk_config = exe_path.parent().is_some_and(|dir| dir.join("MicrosoftGame.config").exists());
 
-        if package_full_name.is_some() || gdk_config || path.contains(r"\windowsapps\") || path.contains(r"\xboxgames\")
-        {
+        if package_full_name.is_some() || gdk_config || path.contains("/windowsapps/") || path.contains("/xboxgames/") {
             Storefront::GamePass
-        } else if path.contains(r"\steamapps\") {
+        } else if path.contains("/steamapps/") {
             Storefront::Steam
-        } else if path.contains(r"\epic games\") {
+        } else if path.contains("/epic games/") {
             Storefront::Epic
         } else {
             Storefront::Unknown
@@ -84,7 +95,7 @@ impl GameInfo {
 /// The build id Steam records for the install that `exe_path` is in: one of the
 /// `steamapps\appmanifest_*.acf` files names the install folder and its build.
 fn steam_build(exe_path: &Path) -> Option<String> {
-    let install = exe_path.parent()?;
+    let install = steam_install(exe_path)?;
     let folder = install.file_name()?.to_str()?;
     let steamapps = install.parent()?.parent()?;
     std::fs::read_dir(steamapps).ok()?.flatten().find_map(|entry| {
@@ -96,6 +107,14 @@ fn steam_build(exe_path: &Path) -> Option<String> {
         let text = std::fs::read_to_string(entry.path()).ok()?;
         acf_value(&text, "installdir")?.eq_ignore_ascii_case(folder).then(|| acf_value(&text, "buildid")).flatten()
     })
+}
+
+/// The install folder in `steamapps\common` that `exe_path` is in: it holds `fm.exe` on
+/// Windows, and `fm.app`, which holds the executable, on macOS.
+fn steam_install(exe_path: &Path) -> Option<&Path> {
+    exe_path
+        .ancestors()
+        .find(|dir| dir.parent().and_then(Path::file_name).is_some_and(|name| name.eq_ignore_ascii_case("common")))
 }
 
 /// The value of the first `key` in Steam's KeyValues text, where a line holds a quoted key and a quoted
@@ -136,6 +155,19 @@ mod tests {
     }
 
     #[test]
+    fn steam_install_folder() {
+        let windows = Path::new("C:/Steam/steamapps/common/Football Manager 27/fm.exe");
+        assert_eq!(steam_install(windows), Some(Path::new("C:/Steam/steamapps/common/Football Manager 27")));
+        let mac = Path::new(
+            "/Users/me/Library/Application Support/Steam/steamapps/common/Football Manager 27/fm.app/Contents/MacOS/\
+             Football Manager 27",
+        );
+        let install = Path::new("/Users/me/Library/Application Support/Steam/steamapps/common/Football Manager 27");
+        assert_eq!(steam_install(mac), Some(install));
+        assert_eq!(steam_install(Path::new("/Applications/fm.app/Contents/MacOS/Football Manager 27")), None);
+    }
+
+    #[test]
     fn storefront_from_path() {
         let steam = Path::new(r"C:\Steam\steamapps\common\Football Manager 27\fm.exe");
         assert_eq!(Storefront::detect(steam, None), Storefront::Steam);
@@ -145,5 +177,13 @@ mod tests {
             r"C:\Program Files\WindowsApps\SportsInteractive.FootballManager27_0.9.2355.0_x64__5w3tn6tb6stnm\fm.exe",
         );
         assert_eq!(Storefront::detect(store, None), Storefront::GamePass);
+        let mac = Path::new(
+            "/Users/me/Library/Application Support/Steam/steamapps/common/Football Manager 27/fm.app/Contents/MacOS/\
+             Football Manager 27",
+        );
+        assert_eq!(Storefront::detect(mac, None), Storefront::Steam);
+        assert_eq!(number_after(&mac.to_string_lossy(), "Football Manager "), Some(27));
+        let epic = Path::new("/Users/Shared/Epic Games/FootballManager27/fm.app/Contents/MacOS/Football Manager 27");
+        assert_eq!(Storefront::detect(epic, None), Storefront::Epic);
     }
 }

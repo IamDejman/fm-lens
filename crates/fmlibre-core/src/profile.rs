@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
+use std::fmt;
 
-use fmlibre_mem::PeImage;
-use serde::Deserialize;
+use fmlibre_mem::{Module, Process};
+use serde::{Deserialize, Deserializer};
 
 use crate::game::Storefront;
 
@@ -67,6 +68,10 @@ pub struct PlayerLayout {
     pub team: u64,
     /// Start of the person block; fields from here on move with the person-block shift.
     pub person_block: u64,
+    /// The block with the UID that contracts and captaincies point at, when it does not
+    /// start the person block (on macOS it ends it).
+    #[serde(default)]
+    pub identity: Option<u64>,
     /// Shifts of the person block seen across player classes (player-coaches use 0xF8).
     pub person_block_shifts: Vec<u64>,
     pub height: u64,
@@ -98,6 +103,11 @@ impl PlayerLayout {
     /// Where `offset` lands in an object whose person block is shifted by `shift`.
     pub fn at(&self, offset: u64, shift: u64) -> u64 {
         if offset >= self.person_block { offset + shift } else { offset }
+    }
+
+    /// Where the block that contracts and captaincies point at starts, before any shift.
+    pub fn identity(&self) -> u64 {
+        self.identity.unwrap_or(self.person_block)
     }
 
     /// One past the last byte of every direct player field, before any shift.
@@ -203,6 +213,10 @@ pub struct StaffLayout {
     pub potential_ability: u64,
     /// Start of the person block; fields from here on move with the person-block shift.
     pub person_block: u64,
+    /// The block with the UID that contracts point at, when it does not start the person
+    /// block (on macOS it ends it).
+    #[serde(default)]
+    pub identity: Option<u64>,
     /// Shifts of the person block seen across staff classes (the human manager uses 0x340).
     pub person_block_shifts: Vec<u64>,
     /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
@@ -215,6 +229,11 @@ impl StaffLayout {
     /// Where `offset` lands in an object whose person block is shifted by `shift`.
     pub fn at(&self, offset: u64, shift: u64) -> u64 {
         if offset >= self.person_block { offset + shift } else { offset }
+    }
+
+    /// Where the block that contracts point at starts, before any shift.
+    pub fn identity(&self) -> u64 {
+        self.identity.unwrap_or(self.person_block)
     }
 
     /// One past the last byte of every staff field, before any shift.
@@ -393,7 +412,7 @@ impl HeapLayout {
     }
 }
 
-/// Addresses that change with every build of `game_plugin.dll`.
+/// Addresses that change with every build of the game plugin.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BuildProfile {
@@ -403,23 +422,69 @@ pub struct BuildProfile {
     pub package_version: Option<String>,
     pub plugin: PluginFingerprint,
     pub arrays: ArrayRvas,
+    /// RVA in the game plugin of the in-game date, where it is not next to the arrays at
+    /// [`ClusterLayout::current_date`]: on macOS it is a variable of its own.
+    pub current_date: Option<u64>,
 }
 
-/// Identifies a build of `game_plugin.dll` from its headers as mapped in memory.
+/// Identifies a build of the game plugin from its headers as mapped in memory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct PluginFingerprint {
-    pub size_of_image: u32,
-    pub link_timestamp: u32,
+#[serde(untagged, deny_unknown_fields)]
+pub enum PluginFingerprint {
+    /// `game_plugin.dll` on Windows: two values of its PE header.
+    Pe { size_of_image: u32, link_timestamp: u32 },
+    /// `game_plugin` on macOS: its `LC_UUID`. The arm64 and the Intel half of the universal
+    /// binary have one each, so a build has a profile per architecture.
+    MachO {
+        #[serde(deserialize_with = "uuid_from_text")]
+        uuid: [u8; 16],
+    },
 }
 
 impl PluginFingerprint {
-    pub fn of(image: &PeImage) -> Self {
-        Self { size_of_image: image.size_of_image, link_timestamp: image.timestamp }
+    /// Reads the fingerprint of the game plugin `plugin` from the headers mapped in `process`.
+    #[cfg(windows)]
+    pub fn read(process: &Process, plugin: &Module) -> fmlibre_mem::Result<Self> {
+        let image = fmlibre_mem::PeImage::read(process, plugin.base)?;
+        Ok(Self::Pe { size_of_image: image.size_of_image, link_timestamp: image.timestamp })
+    }
+
+    /// Reads the fingerprint of the game plugin `plugin` from the headers mapped in `process`.
+    #[cfg(target_os = "macos")]
+    pub fn read(process: &Process, plugin: &Module) -> fmlibre_mem::Result<Self> {
+        let image = fmlibre_mem::MachImage::read(process, plugin.base)?;
+        let uuid = image.uuid.ok_or(fmlibre_mem::Error::InvalidMachO { base: plugin.base, reason: "no LC_UUID" })?;
+        Ok(Self::MachO { uuid })
     }
 }
 
-/// RVAs in `game_plugin.dll` of the `(begin, end)` pairs of the entity arrays.
+impl fmt::Display for PluginFingerprint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PluginFingerprint::Pe { size_of_image, link_timestamp } => {
+                write!(f, "size of image {size_of_image:#x}, link timestamp {link_timestamp:#010x}")
+            }
+            PluginFingerprint::MachO { uuid } => {
+                let hex = |bytes: &[u8]| bytes.iter().map(|b| format!("{b:02X}")).collect::<String>();
+                let (a, b, c, d, e) = (&uuid[..4], &uuid[4..6], &uuid[6..8], &uuid[8..10], &uuid[10..]);
+                write!(f, "UUID {}-{}-{}-{}-{}", hex(a), hex(b), hex(c), hex(d), hex(e))
+            }
+        }
+    }
+}
+
+/// A UUID as macOS writes it, e.g. "9E8E47DE-F704-314C-917D-C32D12637678".
+fn uuid_from_text<'de, D: Deserializer<'de>>(deserializer: D) -> Result<[u8; 16], D::Error> {
+    let text = String::deserialize(deserializer)?;
+    let hex: String = text.chars().filter(|&c| c != '-').collect();
+    let bytes: Option<Vec<u8>> = (0..hex.len())
+        .step_by(2)
+        .map(|i| hex.get(i..i + 2).and_then(|pair| u8::from_str_radix(pair, 16).ok()))
+        .collect();
+    bytes.and_then(|bytes| bytes.try_into().ok()).ok_or_else(|| serde::de::Error::custom(format!("not a UUID: {text}")))
+}
+
+/// RVAs in the game plugin of the `(begin, end)` pairs of the entity arrays.
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ArrayRvas {
@@ -428,11 +493,18 @@ pub struct ArrayRvas {
     pub clubs: u64,
 }
 
+#[cfg(windows)]
 const LAYOUTS: &[&str] = &[include_str!("../../../profiles/fm27/layout.toml")];
+
+/// On macOS the game is built with clang, which lays some of its classes out otherwise.
+#[cfg(target_os = "macos")]
+const LAYOUTS: &[&str] = &[include_str!("../../../profiles/fm27/layout-macos.toml")];
 
 const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/gamepass-0.9.2355.0.toml"),
     include_str!("../../../profiles/fm27/steam-26227640.toml"),
+    include_str!("../../../profiles/fm27/steam-26227640-macos-x86_64.toml"),
+    include_str!("../../../profiles/fm27/steam-26227640-macos-arm64.toml"),
 ];
 
 /// The built-in object layout for `edition`, if there is one.
@@ -453,20 +525,73 @@ fn parse<T: serde::de::DeserializeOwned>(text: &str) -> T {
 mod tests {
     use super::*;
 
+    const WINDOWS: &str = include_str!("../../../profiles/fm27/layout.toml");
+    const MACOS: &str = include_str!("../../../profiles/fm27/layout-macos.toml");
+
     #[test]
     fn attribute_groups_cover_the_layout() {
-        let layout = layout_for(27).expect("FM27 layout");
-        let mut grouped: Vec<&str> =
-            crate::ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter().copied()).collect();
-        grouped.sort_unstable();
-        let mut mapped: Vec<&str> = layout.player.attributes.keys().map(String::as_str).collect();
-        mapped.sort_unstable();
-        assert_eq!(grouped, mapped);
+        for text in [WINDOWS, MACOS] {
+            let layout: Layout = parse(text);
+            let mut grouped: Vec<&str> =
+                crate::ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter().copied()).collect();
+            grouped.sort_unstable();
+            let mut mapped: Vec<&str> = layout.player.attributes.keys().map(String::as_str).collect();
+            mapped.sort_unstable();
+            assert_eq!(grouped, mapped);
+        }
+    }
+
+    #[test]
+    fn the_mac_layout_follows_the_windows_one() {
+        let (windows, mac): (Layout, Layout) = (parse(WINDOWS), parse(MACOS));
+        assert_eq!(windows.player.identity(), windows.player.person_block);
+        assert_eq!(windows.staff.identity(), windows.staff.person_block);
+
+        // The player's own fields sit 8 bytes earlier, the person's 0x40, the identity block 0x100 later.
+        for (key, &offset) in &windows.player.attributes {
+            assert_eq!(mac.player.attributes[key], offset - 8, "{key}");
+        }
+        assert_eq!(
+            (mac.player.positions, mac.player.morale),
+            (windows.player.positions - 8, windows.player.morale - 8)
+        );
+        assert_eq!(mac.player.date_of_birth, windows.player.date_of_birth - 0x40);
+        assert_eq!(mac.player.international_caps, windows.player.international_caps - 0x40);
+        assert_eq!(mac.player.identity(), windows.player.identity() + 0x100);
+        assert_eq!(mac.player.uid - mac.player.identity(), windows.player.uid - windows.player.identity());
+        // Paul Ifill, a player-coach: his UID at 0x48C.
+        assert_eq!(mac.player.at(mac.player.uid, 0xF8), 0x48C);
+        assert_eq!(mac.player.at(mac.player.team, 0xF8), mac.player.team);
+
+        // Staff keep their own fields where they are; their identity block also ends the person.
+        assert_eq!(mac.staff.attributes, windows.staff.attributes);
+        assert_eq!(mac.staff.current_ability, windows.staff.current_ability);
+        assert_eq!(mac.staff.uid - mac.staff.identity(), windows.staff.uid - windows.staff.identity());
+        assert_eq!(mac.player.identity() - mac.player.person_block, mac.staff.identity() - mac.staff.person_block);
+
+        // The records the people point at are laid out alike.
+        assert_eq!(mac.contract.end(), windows.contract.end());
+        assert_eq!(mac.team.end(), windows.team.end());
+        assert_eq!(mac.club_finance.end(), windows.club_finance.end());
+        // The game's own allocator, with the same size classes on both systems.
+        assert_eq!(mac.heap.block_sizes, windows.heap.block_sizes);
+    }
+
+    #[test]
+    fn fingerprints_parse() {
+        let pe: PluginFingerprint = toml::from_str("size_of_image = 0x10\nlink_timestamp = 0x20").expect("PE");
+        assert_eq!(pe, PluginFingerprint::Pe { size_of_image: 0x10, link_timestamp: 0x20 });
+        let mach_o: PluginFingerprint =
+            toml::from_str(r#"uuid = "9E8E47DE-F704-314C-917D-C32D12637678""#).expect("Mach-O");
+        assert_eq!(mach_o.to_string(), "UUID 9E8E47DE-F704-314C-917D-C32D12637678");
+        assert!(toml::from_str::<PluginFingerprint>(r#"uuid = "9E8E47DE-F704""#).is_err());
+        assert!(toml::from_str::<PluginFingerprint>("size_of_image = 1\nlink_timestamp = 2\nuuid = 3").is_err());
     }
 
     #[test]
     fn built_in_profiles_parse() {
-        let layout = layout_for(27).expect("FM27 layout");
+        assert!(layout_for(27).is_some());
+        let layout: Layout = parse(WINDOWS);
         assert_eq!(layout.player.uid, 0x294);
         assert_eq!(layout.player.at(layout.player.uid, 0xF8), 0x38C);
         assert_eq!(layout.player.at(layout.player.team, 0xF8), 0x130);
@@ -480,17 +605,33 @@ mod tests {
         assert_eq!(layout.heap.block_size(18 * 8), None);
         assert_eq!(layout.heap.block_size(65 * 8), None);
 
-        let fingerprint = PluginFingerprint { size_of_image: 0x1943_6000, link_timestamp: 0x6ADF_B161 };
+        let fingerprint = PluginFingerprint::Pe { size_of_image: 0x1943_6000, link_timestamp: 0x6ADF_B161 };
         let profile = profile_for(fingerprint).expect("Game Pass 0.9.2355.0 profile");
         assert_eq!(profile.storefront, Storefront::GamePass);
         assert_eq!(profile.arrays.players, 0x568_1DC0);
         assert_eq!(profile.edition, layout.edition);
 
         // The same version on Steam, packaged differently: another fingerprint and other RVAs.
-        let fingerprint = PluginFingerprint { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
+        let fingerprint = PluginFingerprint::Pe { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
         let profile = profile_for(fingerprint).expect("Steam build 26227640 profile");
         assert_eq!(profile.storefront, Storefront::Steam);
         assert_eq!(profile.arrays.players, 0x570_37D0);
         assert_eq!(profile.edition, layout.edition);
+
+        // On macOS, the Intel half of the same build: told apart by its LC_UUID.
+        let uuid = [0x22, 0xCF, 0xE5, 0xC3, 0xB5, 0xCF, 0x3C, 0x00, 0x80, 0x43, 0x1E, 0xA1, 0x90, 0xA6, 0x9B, 0x89];
+        let profile = profile_for(PluginFingerprint::MachO { uuid }).expect("Steam build 26227640 on macOS profile");
+        assert_eq!(profile.storefront, Storefront::Steam);
+        assert_eq!(profile.arrays.players, 0x5C8_91C8);
+        assert_eq!((profile.arrays.staff, profile.arrays.clubs), (0x5C8_9210, 0x5C8_9380));
+
+        // Its arm64 half, which Apple silicon runs natively: other RVAs, and the date apart.
+        let uuid = [0x9E, 0x8E, 0x47, 0xDE, 0xF7, 0x04, 0x31, 0x4C, 0x91, 0x7D, 0xC3, 0x2D, 0x12, 0x63, 0x76, 0x78];
+        let profile = profile_for(PluginFingerprint::MachO { uuid }).expect("the arm64 half's profile");
+        assert_eq!(profile.arrays.players, 0x56D_2E18);
+        assert_eq!(profile.current_date, Some(0x56B_1DB8));
+        // On Windows the date sits with the arrays.
+        let fingerprint = PluginFingerprint::Pe { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
+        assert_eq!(profile_for(fingerprint).and_then(|profile| profile.current_date), None);
     }
 }

@@ -92,18 +92,32 @@ const errors: ErrorTexts = {
   "captain.notInTeam": () => "Oyuncu bu takımda oynamıyor; kaptan ancak takımın kendi oyuncularından seçilebilir.",
   "captain.unchanged": () => "Oyuncu bu görevi zaten üstleniyor.",
   "session.notRunning": () => "Football Manager 27 çalışmıyor. Oyunu başlatıp bir kayıt yükleyin, sonra tekrar deneyin.",
-  "session.noSuchProcess": (p) => `${p.pid} işlem numaralı bir fm.exe yok.`,
-  "session.severalRunning": (p) => `fm.exe'nin ${p.count} kopyası çalışıyor (${p.pids}); birini seçin.`,
+  "session.noSuchProcess": (p) => `${p.pid} işlem numaralı bir ${p.exe ?? "fm.exe"} yok.`,
+  "session.severalRunning": (p) => `${p.exe ?? "fm.exe"} için ${p.count} kopya çalışıyor (${p.pids}); birini seçin.`,
   "session.pluginNotLoaded": () => "Oyunun verisi henüz yüklenmedi; ana menüyü bekleyip tekrar deneyin.",
   "session.unsupportedEdition": (p) => `FM${p.edition} henüz desteklenmiyor.`,
   "session.unknownEdition": () => "Bunun hangi Football Manager olduğu anlaşılamadı.",
   "session.playersNotFound": () => "Oyuncu listesi bulunamadı; bir kayıt yükleyin (ana menü yetmez) ve tekrar deneyin.",
   "memory.win32": (p) => `Windows bir işlemi reddetti (${p.operation}, hata ${p.code}).`,
-  "memory.read": (p) => `Oyunun belleği okunamadı (Windows hatası ${p.code}).`,
-  "memory.write": (p) => `Oyunun belleğine yazılamadı (Windows hatası ${p.code}).`,
+  "memory.read": (p) => `Oyunun belleği okunamadı (sistem hatası ${p.code}).`,
+  "memory.write": (p) => `Oyunun belleğine yazılamadı (sistem hatası ${p.code}).`,
   "memory.readOnly": () => "Oyun yalnızca okunmak üzere açıldı; Windows yazmaya izin vermedi.",
   "memory.notWritable": () => "Bu adres oyunun yazılabilir veri belleğinde değil, bu yüzden yazılmadı.",
   "memory.invalidPe": () => "Oyunun modülü okunamadı.",
+  "memory.invalidMachO": () => "Oyunun modülü okunamadı.",
+  "memory.mach": (p) => `macOS bir işlemi reddetti (${p.operation}, hata ${p.code}).`,
+  "memory.posix": (p) => `macOS bir işlemi reddetti (${p.operation}, errno ${p.code}).`,
+  "memory.noBridge": () =>
+    "macOS, FMLibreEditor'ın oyuna girmesine izin vermiyor: oyun, FMLibreEditor köprüsü olmadan başlatılmış. " +
+    "Köprüyü kurun, ardından oyunu Steam'den yeniden başlatın.",
+  "memory.bridge": (p) => `Oyundaki FMLibreEditor köprüsü belleği vermedi (${p.reason}).`,
+  "setup.steamRunning": () =>
+    "Steam açık olduğu için FM27'nin başlatma seçeneklerine dokunulmadı; köprünün kendisi kuruldu. Steam'den çıkıp " +
+    "yeniden deneyin ya da başlatma seçeneğini Steam'de kendiniz girin.",
+  "setup.noSteamAccount": () => "Bu Mac'te bir Steam hesabı bulunamadı; Steam'i bir kez açıp giriş yapın.",
+  "setup.noLibrary": (p) => `Köprü kütüphanesi uygulamada eksik: ${p.path}`,
+  "setup.unknownConfig": (p) => `${p.path} FMLibreEditor'ın tanıdığı biçimde değil, bu yüzden dokunulmadı.`,
+  "setup.io": (p) => `${p.path}: ${p.error}`,
   "app.internal": () => "Uygulamada beklenmeyen bir hata oluştu.",
   "app.notConnected": () => "Oyuna bağlı değil.",
   "app.notFound": (p) => `Listelerde ${p.uid} kimlikli bir ${recordNoun(p.entity)} yok; verileri yeniden okuyun.`,
@@ -629,6 +643,32 @@ export const tr: Strings = {
       pid: (pid) => `pid ${pid}`,
       several: "Oyunun birden fazla kopyası çalışıyor; ilki kullanılıyor.",
       button: "Bağlan ve oyuncuları, personeli ve kulüpleri oku",
+
+      bridge: {
+        title: "Köprü (macOS)",
+        intro:
+          "macOS, hiçbir uygulamayı başka bir uygulamanın belleğine sokmaz; bu yüzden FM27 belleğini kendisi açmalı. " +
+          "Bunu FMLibreEditor'ın köprüsünü yüklediğinde yapar: köprü, oyunda hiçbir şeye kanca atmayan ve hiçbir " +
+          "şeyi değiştirmeyen, oyunun belleğini yalnızca bu uygulamaya veren küçük bir kütüphanedir. FM27'nin onu " +
+          "yüklemesi için Steam'de bir başlatma seçeneği gerekir.",
+        library: "Köprü",
+        installed: "Kurulu",
+        missing: "Kurulu değil",
+        launchOption: "Başlatma seçeneği",
+        set: "Steam'de ayarlı",
+        notSet: "Ayarlı değil",
+        ready:
+          "Hazır. FM27'yi Steam'den başlatın (açıksa kapatıp yeniden başlatın), bir kayıt yükleyin, ardından bağlanın.",
+        steamRunning:
+          "Steam açık ve açıkken başlatma seçeneklerini kendisi tutuyor. Seçeneğin sizin için ayarlanması için " +
+          "Steam'den çıkın ya da seçeneği Steam'de kendiniz girin.",
+        setUp: "Köprüyü kur",
+        remove: "Köprüyü kaldır",
+        manual:
+          "Ya da Steam'de Football Manager 27'ye sağ tıklayıp Özellikler › Genel › Başlatma Seçenekleri'ne şunu girin:",
+        copy: "Kopyala",
+        copied: "Kopyalandı",
+      },
     },
   },
 

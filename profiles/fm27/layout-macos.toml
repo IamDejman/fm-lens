@@ -1,0 +1,243 @@
+# Field offsets inside FM27 objects on macOS (heap data owned by game_plugin).
+#
+# The Mac build is compiled by clang, which lays classes out by the Itanium C++ ABI where
+# Windows uses MSVC's; see docs/recon/fm27-steam-macos.md. The records the people point at
+# (contracts, clubs, club info and finances, teams, nations, injuries) are laid out as on
+# Windows. Players and staff differ:
+# - the player's own fields sit 8 bytes earlier: MSVC keeps a pointer for the virtual bases
+#   (a vbptr) there, which clang does not;
+# - the person, with the names, birth date, contract and caps, comes right after them, and
+#   its fields sit 0x40 earlier than on Windows;
+# - the identity block, with the UID, which contracts and captaincies point at, comes last,
+#   0x100 later than on Windows. On Windows it comes before the person.
+# Measured on the Steam build 26227640 with a new save (13 July 2026): Lionel Messi (UID
+# 7458500), Erling Haaland, Paul Ifill (player-coach), René Henriksen and the human manager
+# (staff), Tottenham Hotspur and its captains, and injured players.
+edition = 27
+
+[player]
+uid = 0x394               # u32, in the identity block; the next u32 holds it again
+full_name = 0x288         # FM string pointer; may be null
+first_name = 0x298        # name-table entry pointer
+last_name = 0x2A0         # name-table entry pointer
+common_name = 0x2A8       # name-table entry pointer; null when the player has none
+date_of_birth = 0x2D0     # u16 day of year (low 9 bits) + u16 year
+current_ability = 0x25C   # u16, 1..200
+potential_ability = 0x25E # i16, 1..200; negative values are ranges
+nation = 0x2B0            # nation pointer
+team = 0x128              # team pointer; the club hangs off the team
+
+# The person starts here, and the identity block follows it. Player-coaches carry an extra
+# block in front of the person, so both sit 0xF8 further for them, as on Windows.
+person_block = 0x278
+identity = 0x388
+person_block_shifts = [0x0, 0xF8]
+
+height = 0x226            # u16, centimetres
+match_sharpness = 0x250   # u16, 0..10000
+condition = 0x254         # u16, the energy the game shows
+morale = 0x264            # u8, 1..20
+injuries = 0xF0           # pointer to the injury record; null for a player who was never injured
+asking_price = 0x230      # i32, pounds; -1 when not set
+home_reputation = 0x256   # u16
+current_reputation = 0x258
+world_reputation = 0x25A
+international_caps = 0x37C  # u16 (Messi: 207 caps, 125 goals)
+international_goals = 0x37E # u16
+u21_caps = 0x380          # u8 (Messi: 18 caps, 14 goals)
+u21_goals = 0x381         # u8
+contract = 0x2F0          # contract pointer
+# 15 ratings, 1..20: GK, SW, DL, DC, DR, DM, ML, MC, MR, AML, AMC, AMR, ST, WBL, WBR
+positions = 0x148
+# 8 ratings, 1..20: adaptability, ambition, loyalty, pressure, professionalism,
+# sportsmanship, temperament, controversy
+personality = 0x2B8
+
+# u8, raw 0..100, shown in game as (raw + 2) / 5; each 8 bytes earlier than on Windows
+[player.attributes]
+corners = 0x172
+crossing = 0x157
+dribbling = 0x158
+finishing = 0x159
+first_touch = 0x16D
+free_kicks = 0x17A
+heading = 0x15A
+long_shots = 0x15B
+long_throws = 0x175
+marking = 0x15C
+passing = 0x15E
+penalty_taking = 0x15F
+tackling = 0x160
+technique = 0x16E
+aggression = 0x184
+anticipation = 0x168
+bravery = 0x182
+composure = 0x18B
+concentration = 0x18C
+decisions = 0x169
+determination = 0x18A
+flair = 0x171
+leadership = 0x17F
+off_the_ball = 0x15D
+positioning = 0x16B
+teamwork = 0x173
+vision = 0x161
+work_rate = 0x174
+acceleration = 0x179
+agility = 0x185
+balance = 0x181
+jumping_reach = 0x17E
+natural_fitness = 0x189
+pace = 0x17D
+stamina = 0x17C
+strength = 0x17B
+aerial_reach = 0x163
+command_of_area = 0x164
+communication = 0x165
+eccentricity = 0x176
+handling = 0x162
+kicking = 0x166
+one_on_ones = 0x16A
+punching = 0x178
+reflexes = 0x16C
+rushing_out = 0x177
+throwing = 0x167
+consistency = 0x183
+dirtiness = 0x180
+important_matches = 0x186
+injury_proneness = 0x187
+versatility = 0x188
+left_foot = 0x16F
+right_foot = 0x170
+
+# As on Windows: a contract's owner points at the identity block of its player or member of
+# staff (Messi: wage, joined 15 July 2023, squad number 10).
+[contract]
+owner = 0x08
+wage = 0x20
+signed = 0x44
+expires = 0x48
+joined = 0x4C
+squad_status = 0x54
+listing = 0x57
+squad_number = 0x5D
+team = 0x10
+senior_team = 0x18
+job = 0x26
+
+# Relative to the players (begin, end) pair, as on Windows; the static data between them is
+# laid out differently, so this sits 0xC0 further. It read the date in a new game, but an
+# unset date (1 January 1900) right after loading a save: the build profiles name the date
+# itself, a variable of its own away from the arrays.
+[cluster]
+current_date = 0x908
+
+# Staff's own fields (attributes, reputation, CA/PA) are where they are on Windows. The
+# person starts at 0xF8, 8 earlier than the identity block on Windows, and the identity
+# block follows it at 0x208. The human manager's person and identity block sit 0x340
+# further, as on Windows (checked on the test save's own manager).
+[staff]
+uid = 0x214               # u32 staff id, in the identity block
+full_name = 0x108         # FM string pointer; often null
+first_name = 0x118        # name-table entry pointer
+last_name = 0x120         # name-table entry pointer
+common_name = 0x128       # name-table entry pointer
+nation = 0x130            # nation pointer
+personality = 0x138       # 8 ratings, same order as for players
+date_of_birth = 0x150     # date
+contract = 0x170          # contract pointer
+home_reputation = 0xD4    # u16
+current_reputation = 0xD6
+world_reputation = 0xD8
+current_ability = 0xDA    # u16
+potential_ability = 0xDC  # u16
+person_block = 0xF8
+identity = 0x208
+person_block_shifts = [0x0, 0x340]
+
+# u8, raw 0..100, shown as (raw + 2) / 5; as on Windows
+[staff.attributes]
+attacking = 0x32
+defending = 0x33
+fitness = 0x34
+goalkeeping = 0x2B
+possession = 0x35
+tactical = 0x37
+technical = 0x36
+set_pieces = 0x43
+determination = 0x1D
+motivating = 0x2F
+people_management = 0x2E
+judging_ability = 0x2C
+judging_potential = 0x2D
+judging_staff = 0x42
+negotiating = 0x41
+tactical_knowledge = 0x31
+data_analysis = 0x3C
+physiotherapy = 0x30
+sports_science = 0x3F
+
+# u8 ratings stored as shown, 1..20; as on Windows
+[staff.ratings]
+working_with_youngsters = 0x1C
+authority = 0x14
+
+# The injury, team, club and nation records are laid out as on Windows.
+[injury]
+kind = 0x08
+team = 0x18
+started = 0x20
+longest = 0x28
+shortest = 0x2A
+kind_name = 0x18
+
+[team]
+club = 0x30
+kind = 0x28
+age_limit = 0x2C
+players = 0x38
+captain = 0x88            # Tottenham: Micky van de Ven, as on Windows
+vice_captain = 0x90       # Tottenham: Pedro Porro
+reputation = 0xA8         # Tottenham: 7650
+
+# The game brings its own allocator to macOS: it carves the chunks it gets from malloc into
+# blocks of the same size classes as on Windows (blocks of 8 bytes too, which malloc never
+# hands out). Measured natively with probe `squads`: 837 of the 853 team lists of 145 to
+# 512 bytes had their class's slack zeroed after their capacity. The other 16 had grown
+# past their length and held old data there, at their class's spacing.
+[heap]
+block_sizes = [144, 160, 192, 224, 256, 288, 320, 384, 448, 512]
+
+# Tottenham Hotspur (UID 728): 50,000 season tickets, founded 1882, supporter traits
+# 18/14/7/14/7/14, £65 tickets, corporate facilities 20.
+[club]
+uid = 0x0C
+name = 0xC0
+short_name = 0xC8
+women = 0xB9
+teams = 0x18
+info = 0x100
+finance = 0x150
+
+[club_info]
+season_tickets = 0xC0
+founded = 0xD8
+social_media = 0xF8
+supporter_mix = 0x106
+supporter_traits = 0x114
+training = 0x120
+youth_facilities = 0x12B
+youth_coaching = 0x12C
+youth_recruitment = 0x12D
+
+[club_finance]
+balance = 0x0C
+transfer_budget = 0x7C4
+total_wage_budget = 0x808
+wage_budget = 0x814
+ticket_price = 0x864
+corporate = 0x8A9
+
+[nation]
+uid = 0x0C                # Argentina: 1649
+name = 0x18

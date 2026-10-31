@@ -1,6 +1,6 @@
 [package]
 name = "fmlibre-mem"
-description = "Access to another process's memory on Windows"
+description = "Access to another process's memory on Windows and macOS"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,3 +9,7 @@ authors.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_Storage_Packaging_Appx", "Win32_System_Diagnostics_Debug", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Memory", "Win32_System_Threading"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2.191"
+mach2 = "0.7.0"

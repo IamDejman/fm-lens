@@ -93,8 +93,22 @@ before trusting them.
   - player filters and sort saved under a name.
 - [x] The Steam build on Windows (build 26227640), with its own build profile. Every
   release from here on is checked on both Game Pass and Steam.
-- [ ] Epic; possibly Linux/Proton. macOS is set aside: it needs a Mac and its own
-  memory access.
+- [x] macOS, the Steam build (see the [macOS notes](recon/fm27-steam-macos.md)):
+  - memory access through a task port that the game hands over: a small bridge library,
+    which the game loads as it does Steam's overlay, through a launcher that a Steam launch
+    option names. System Integrity Protection stays on;
+  - the same guarded, heap-only writes as on Windows: a module's data is refused even once
+    the game has written to it;
+  - the app sets the bridge up and takes it out again, and gives the launch option to
+    enter in Steam by hand while Steam runs;
+  - a universal bridge and launcher, so that Intel builds of the game load it too;
+  - the Mac build's own object layout (`layout-macos.toml`), checked on a save: reads,
+    edits, captaincies, swaps and moves;
+  - build profiles for both halves of the universal `game_plugin`, with the in-game date
+    the Mac build keeps apart;
+  - the game's own allocator, with the same size classes as on Windows, so a move can use
+    the room a full squad list's block has past its capacity.
+- [ ] Epic; possibly Linux/Proton.
 
 ## Phase 6: Game Pass completeness (in progress)
 

@@ -1,0 +1,19 @@
+# FM27 Launch Preview on Steam for macOS (app 4530370, build 26227640): the arm64 half of the
+# universal game_plugin, which Apple silicon Macs run natively. Its arrays sit as close together
+# as on Windows: staff 0x48 and clubs 0x1B8 after the players.
+name = "FM27 Steam build 26227640 (Launch Preview, macOS, Apple silicon)"
+edition = 27
+storefront = "steam"
+
+# The in-game date, a variable of its own: 14 July 2026 right after loading the test save.
+current_date = 0x56B1DB8
+
+# game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
+[plugin]
+uuid = "9E8E47DE-F704-314C-917D-C32D12637678"
+
+# RVAs in game_plugin of the (begin, end) pointer pairs of the entity arrays.
+[arrays]
+players = 0x56D2E18
+staff = 0x56D2E60
+clubs = 0x56D2FD0

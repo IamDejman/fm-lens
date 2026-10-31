@@ -1,5 +1,5 @@
+use super::process::Process;
 use crate::error::{Error, Result};
-use crate::process::Process;
 
 const SCN_MEM_EXECUTE: u32 = 0x2000_0000;
 const SCN_MEM_READ: u32 = 0x4000_0000;

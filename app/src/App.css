@@ -413,6 +413,63 @@ nav small {
   color: var(--danger);
 }
 
+/* macOS: the bridge the game loads. First in the card while it is not set up, under the button once it is. */
+.bridge {
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.card > button + .bridge {
+  margin: 20px 0 0;
+}
+
+.bridge h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.bridge .muted {
+  margin: 0 0 14px;
+}
+
+.bridge .facts {
+  grid-template-columns: 140px 1fr;
+  margin-bottom: 14px;
+}
+
+.bridge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bridge-manual {
+  margin-top: 16px;
+}
+
+.bridge-manual .muted {
+  margin-bottom: 8px;
+}
+
+.launch-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.launch-option code {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--raised);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 /* Players and staff */
 
 /* Holds one workspace per list. All stay mounted so each keeps its search, rows, scroll position and selection. */

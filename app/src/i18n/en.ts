@@ -79,6 +79,12 @@ const errors: ErrorTexts = {
   "edit.notApplied": (p) => `${field(p.field)}: wrote ${p.wrote} but read back ${p.read}.`,
   "edit.conflict": (p) => `${field(p.field)} is now ${p.found}, not ${p.expected}: the game has changed it since.`,
   "move.outOfRange": (p) => `${p.value} is not a valid ${field(p.field)}: it takes ${p.min} to ${p.max}.`,
+  "memory.noBridge": () =>
+    "macOS does not let FMLibreEditor into the game: the game was started without the FMLibreEditor bridge. Set " +
+    "the bridge up, then start the game again from Steam.",
+  "setup.steamRunning": () =>
+    "Steam is running, so FM27's launch options were left alone; the bridge itself is installed. Quit Steam and " +
+    "try again, or enter the launch option in Steam yourself.",
 };
 
 export const en = {
@@ -656,6 +662,30 @@ export const en = {
       pid: (pid: number) => `pid ${pid}`,
       several: "Several copies of the game are running; the first one is used.",
       button: "Connect and read players, staff and clubs",
+
+      /** macOS: the bridge FM27 has to load before the app can reach it, and setting it up. */
+      bridge: {
+        title: "The bridge (macOS)",
+        intro:
+          "macOS lets no app into another app's memory, so FM27 has to hand its memory over itself. It does once it " +
+          "loads FMLibreEditor's bridge: a small library that hooks and changes nothing in the game and gives its " +
+          "memory to this app only. A launch option in Steam has FM27 load it.",
+        library: "Bridge",
+        installed: "Installed",
+        missing: "Not installed",
+        launchOption: "Launch option",
+        set: "Set in Steam",
+        notSet: "Not set",
+        ready: "Set up. Start FM27 from Steam (quit it and start it again if it is running), load a save, then connect.",
+        steamRunning:
+          "Steam is running, and keeps the launch options while it does. Quit Steam to have the launch option set " +
+          "for you, or enter it in Steam yourself.",
+        setUp: "Set up the bridge",
+        remove: "Remove the bridge",
+        manual: "Or, in Steam, right-click Football Manager 27 › Properties › General › Launch Options, and enter:",
+        copy: "Copy",
+        copied: "Copied",
+      },
     },
   },
 

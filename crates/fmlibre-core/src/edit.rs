@@ -861,16 +861,16 @@ impl Session {
         Ok(match (place, target.entity) {
             (Place::Object, _) => Some(target.address),
             (Place::Contract, Entity::Player | Entity::Staff) => {
-                let (contract, person_block) = match target.entity {
-                    Entity::Player => (self.layout.player.contract, self.layout.player.person_block),
-                    _ => (self.layout.staff.contract, self.layout.staff.person_block),
+                let (contract, identity) = match target.entity {
+                    Entity::Player => (self.layout.player.contract, self.layout.player.identity()),
+                    _ => (self.layout.staff.contract, self.layout.staff.identity()),
                 };
-                // Both the pointer and the person block it must point back at move with the shift.
+                // Both the pointer and the identity block it must point back at move with the shift.
                 let Some(record) = pointer(contract + target.shift)? else {
                     return Ok(None);
                 };
                 let owner = self.process.read_u64(record + self.layout.contract.owner)?;
-                (owner == target.address + person_block + target.shift).then_some(record)
+                (owner == target.address + identity + target.shift).then_some(record)
             }
             (Place::ClubInfo, Entity::Club) => pointer(club.info)?,
             (Place::ClubFinance, Entity::Club) => {

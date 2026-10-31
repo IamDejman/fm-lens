@@ -1,3 +1,5 @@
+mod bridge;
+
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -15,7 +17,8 @@ use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
 
 /// The environment variable that names the graphics folder to read packs from, instead of
-/// `Documents\Sports Interactive\Football Manager 27\graphics`.
+/// `Documents\Sports Interactive\Football Manager 27\graphics` on Windows and
+/// `~/Library/Application Support/Sports Interactive/Football Manager 27/graphics` on macOS.
 const GRAPHICS_FOLDER: &str = "FMLIBRE_GRAPHICS";
 
 /// The connected game, the people read from it and the changes written this session.
@@ -652,6 +655,8 @@ fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Ve
 struct Detection {
     elevated: bool,
     games: Vec<DetectedGame>,
+    /// macOS: whether the game loads the bridge, without which the app cannot reach it.
+    bridge: Option<bridge::BridgeInfo>,
 }
 
 #[derive(Serialize)]
@@ -773,16 +778,16 @@ fn data_changed() -> Failure {
 
 /// Lists running Football Manager processes and whether they can be opened for reading.
 #[tauri::command]
-async fn detect_game() -> Result<Detection, Failure> {
+async fn detect_game(app: tauri::AppHandle) -> Result<Detection, Failure> {
     let running = find_processes(GAME_EXE)?;
     let games = running.into_iter().map(|entry| inspect(entry.pid)).collect();
-    Ok(Detection { elevated: is_current_process_elevated(), games })
+    Ok(Detection { elevated: is_current_process_elevated(), games, bridge: bridge::status(&app) })
 }
 
 fn inspect(pid: u32) -> DetectedGame {
     let result = Process::open_read(pid).and_then(|process| {
         let info = GameInfo::inspect(&process)?;
-        let plugin_loaded = list_modules(pid)?.iter().any(|m| m.name.eq_ignore_ascii_case(GAME_PLUGIN));
+        let plugin_loaded = list_modules(&process)?.iter().any(|m| m.name.eq_ignore_ascii_case(GAME_PLUGIN));
         Ok((info, plugin_loaded))
     });
     match result {
@@ -792,7 +797,7 @@ fn inspect(pid: u32) -> DetectedGame {
 }
 
 /// Attaches to the running game, locates its data and reads every player, member of
-/// staff and club. Only reads memory; the game is opened for writing too when Windows
+/// staff and club. Only reads memory; the game is opened for writing too when the system
 /// allows it, so that edits can be applied later.
 #[tauri::command]
 async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> {
@@ -1248,11 +1253,16 @@ pub fn run() {
         .manage(AppState::default())
         .manage(Graphics::default())
         .setup(|app| {
-            // Reading the packs' config files takes a moment: do it beside the window. FM can keep its user
-            // data somewhere else than the documents folder, so GRAPHICS_FOLDER can name the graphics folder.
+            // Reading the packs' config files takes a moment: do it beside the window. FM keeps its user data
+            // in the documents folder on Windows and in Application Support on macOS, or somewhere else, which
+            // GRAPHICS_FOLDER can name.
+            #[cfg(target_os = "macos")]
+            let user_data = app.path().data_dir();
+            #[cfg(not(target_os = "macos"))]
+            let user_data = app.path().document_dir();
             let root = match std::env::var_os(GRAPHICS_FOLDER) {
                 Some(folder) => Some(PathBuf::from(folder)),
-                None => app.path().document_dir().ok().map(|documents| GraphicsIndex::default_root(&documents, 27)),
+                None => user_data.ok().map(|folder| GraphicsIndex::default_root(&folder, 27)),
             };
             let graphics = app.state::<Graphics>().0.clone();
             std::thread::spawn(move || {
@@ -1294,7 +1304,10 @@ pub fn run() {
             club_squads,
             set_captain,
             team_action,
-            graphics_info
+            graphics_info,
+            bridge::bridge_status,
+            bridge::set_up_bridge,
+            bridge::remove_bridge
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

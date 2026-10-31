@@ -159,7 +159,7 @@ impl Session {
         }
         let head = self.process.read_bytes(object, t.end() as usize)?;
         let age_limit = head[t.age_limit as usize];
-        let block = player.address + p.person_block + player.shift;
+        let block = player.address + p.identity() + player.shift;
         let (here, there) = (object + role.offset(t), object + role.other().offset(t));
         let (held, other) = (self.process.read_u64(here)?, self.process.read_u64(there)?);
         let mut patches = Patches::default();
@@ -245,17 +245,14 @@ impl Session {
         })
     }
 
-    /// The player whose person block `block` is, if the index has him there.
+    /// The player whose identity block `block` is, if the index has him there.
     fn captain_uid(&self, block: u64, players: &PlayerIndex) -> Option<u32> {
         let p = &self.layout.player;
         if !is_user_pointer(block) {
             return None;
         }
-        let uid = self.process.read_u32(block + (p.uid - p.person_block)).ok()?;
-        players
-            .get(uid)
-            .filter(|player| player.address + p.person_block + player.shift == block)
-            .map(|player| player.uid)
+        let uid = self.process.read_u32(block + (p.uid - p.identity())).ok()?;
+        players.get(uid).filter(|player| player.address + p.identity() + player.shift == block).map(|player| player.uid)
     }
 
     /// The player at `object` in the list of `team`, if the index has him at that address.
