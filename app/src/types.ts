@@ -8,7 +8,10 @@ export interface GameInfo {
   storefront: Storefront;
   edition: number | null;
   packageFullName: string | null;
+  /** Package version of a Game Pass install, e.g. "0.9.2355.0". */
   packageVersion: string | null;
+  /** Steam's build id of a Steam install, e.g. "26227640". */
+  steamBuild: string | null;
 }
 
 /**

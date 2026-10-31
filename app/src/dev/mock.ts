@@ -55,6 +55,7 @@ const game: GameInfo = {
   edition: 27,
   packageFullName: "SportsInteractive.FootballManager27_0.9.2355.0_x64__5w3tn6tb6stnm",
   packageVersion: "0.9.2355.0",
+  steamBuild: null,
 };
 
 const FIRST = ["Arda", "Mateo", "Lukas", "Kerem", "Jonas", "Rafael", "Emre", "Noah", "Tiago", "Søren", "Ilkay", "Bruno"];

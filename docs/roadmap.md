@@ -91,8 +91,10 @@ before trusting them.
 - [x] Player comparisons and saved filters:
   - up to four players side by side, with the best value of each row marked;
   - player filters and sort saved under a name.
-- [ ] Steam and Epic builds; possibly Linux/Proton. On hold until the Game Pass
-  build is complete.
+- [x] The Steam build on Windows (build 26227640), with its own build profile. Every
+  release from here on is checked on both Game Pass and Steam.
+- [ ] Epic; possibly Linux/Proton. macOS is set aside: it needs a Mac and its own
+  memory access.
 
 ## Phase 6: Game Pass completeness (in progress)
 

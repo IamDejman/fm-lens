@@ -1,0 +1,17 @@
+# FM27 Launch Preview on Steam (app 4530370, build 26227640). Its game_plugin.dll was linked
+# 69 seconds before the Game Pass one and differs in its packaging only: the object layout is
+# the same, and these RVAs are the ones fm-editor noted on Steam.
+name = "FM27 Steam build 26227640 (Launch Preview)"
+edition = 27
+storefront = "steam"
+
+# game_plugin.dll as mapped in memory; these two values identify the build.
+[plugin]
+size_of_image = 0x19E69000
+link_timestamp = 0x6ADFB11C
+
+# RVAs in game_plugin.dll of the (begin, end) pointer pairs of the entity arrays.
+[arrays]
+players = 0x57037D0
+staff = 0x5703818
+clubs = 0x5703988

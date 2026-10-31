@@ -59,6 +59,8 @@ pub struct GameInfo {
     pub package_full_name: Option<String>,
     /// Package version of a Game Pass install, e.g. "0.9.2355.0".
     pub package_version: Option<String>,
+    /// Steam's build id of a Steam install, e.g. "26227640", from its app manifest.
+    pub steam_build: Option<String>,
 }
 
 impl GameInfo {
@@ -73,9 +75,34 @@ impl GameInfo {
             .as_deref()
             .and_then(|name| number_after(name, "FootballManager"))
             .or_else(|| number_after(&exe_path.to_string_lossy(), "Football Manager "));
+        let steam_build = (storefront == Storefront::Steam).then(|| steam_build(&exe_path)).flatten();
 
-        Ok(Self { pid: process.pid(), exe_path, storefront, edition, package_full_name, package_version })
+        Ok(Self { pid: process.pid(), exe_path, storefront, edition, package_full_name, package_version, steam_build })
     }
+}
+
+/// The build id Steam records for the install that `exe_path` is in: one of the
+/// `steamapps\appmanifest_*.acf` files names the install folder and its build.
+fn steam_build(exe_path: &Path) -> Option<String> {
+    let install = exe_path.parent()?;
+    let folder = install.file_name()?.to_str()?;
+    let steamapps = install.parent()?.parent()?;
+    std::fs::read_dir(steamapps).ok()?.flatten().find_map(|entry| {
+        let name = entry.file_name();
+        let name = name.to_str()?;
+        if !name.starts_with("appmanifest_") || !name.ends_with(".acf") {
+            return None;
+        }
+        let text = std::fs::read_to_string(entry.path()).ok()?;
+        acf_value(&text, "installdir")?.eq_ignore_ascii_case(folder).then(|| acf_value(&text, "buildid")).flatten()
+    })
+}
+
+/// The value of the first `key` in Steam's KeyValues text, where a line holds a quoted key and a quoted
+/// value apart by tabs, e.g. `"buildid"` and `"26227640"`.
+fn acf_value(text: &str, key: &str) -> Option<String> {
+    let quoted = format!("\"{key}\"");
+    text.lines().find_map(|line| Some(line.trim().strip_prefix(&quoted)?.trim().trim_matches('"').to_owned()))
 }
 
 /// The number right after `marker`, e.g. 27 in "SportsInteractive.FootballManager27_...".
@@ -96,6 +123,16 @@ mod tests {
         let steam = r"C:\Steam\steamapps\common\Football Manager 27\fm.exe";
         assert_eq!(number_after(steam, "Football Manager "), Some(27));
         assert_eq!(number_after("fm.exe", "Football Manager "), None);
+    }
+
+    #[test]
+    fn steam_manifest_values() {
+        let manifest = "\"AppState\"\n{\n\t\"appid\"\t\t\"4530370\"\n\t\"name\"\t\t\"Football Manager 27\"\n\
+                        \t\"installdir\"\t\t\"Football Manager 27\"\n\t\"buildid\"\t\t\"26227640\"\n\
+                        \t\"TargetBuildID\"\t\t\"0\"\n}\n";
+        assert_eq!(acf_value(manifest, "installdir").as_deref(), Some("Football Manager 27"));
+        assert_eq!(acf_value(manifest, "buildid").as_deref(), Some("26227640"));
+        assert_eq!(acf_value(manifest, "LastOwner"), None);
     }
 
     #[test]

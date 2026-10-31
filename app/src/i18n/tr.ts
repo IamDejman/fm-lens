@@ -1035,6 +1035,7 @@ export const tr: Strings = {
       epic: "Epic Games",
       unknown: "Bilinmeyen mağaza",
     } satisfies Record<Storefront, string>,
+    steamBuild: (id) => `derleme ${id}`,
   },
 
   errors,

@@ -430,7 +430,10 @@ pub struct ArrayRvas {
 
 const LAYOUTS: &[&str] = &[include_str!("../../../profiles/fm27/layout.toml")];
 
-const BUILDS: &[&str] = &[include_str!("../../../profiles/fm27/gamepass-0.9.2355.0.toml")];
+const BUILDS: &[&str] = &[
+    include_str!("../../../profiles/fm27/gamepass-0.9.2355.0.toml"),
+    include_str!("../../../profiles/fm27/steam-26227640.toml"),
+];
 
 /// The built-in object layout for `edition`, if there is one.
 pub fn layout_for(edition: u32) -> Option<Layout> {
@@ -481,6 +484,13 @@ mod tests {
         let profile = profile_for(fingerprint).expect("Game Pass 0.9.2355.0 profile");
         assert_eq!(profile.storefront, Storefront::GamePass);
         assert_eq!(profile.arrays.players, 0x568_1DC0);
+        assert_eq!(profile.edition, layout.edition);
+
+        // The same version on Steam, packaged differently: another fingerprint and other RVAs.
+        let fingerprint = PluginFingerprint { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
+        let profile = profile_for(fingerprint).expect("Steam build 26227640 profile");
+        assert_eq!(profile.storefront, Storefront::Steam);
+        assert_eq!(profile.arrays.players, 0x570_37D0);
         assert_eq!(profile.edition, layout.edition);
     }
 }
