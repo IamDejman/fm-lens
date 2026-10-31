@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { valueText } from "./editDraft";
 import { changeLog, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
-import { describeError, formatTime } from "./format";
+import { describeError, formatDateTime, formatTime } from "./format";
 import { changesText as text, fieldLabel, massEditText, profileText, valueChange } from "./labels";
 import { undoFailureLines } from "./massDraft";
 import type { EditField, LoggedChange } from "./types";
@@ -260,7 +260,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, batch, newest, out
 
   return (
     <tr className={change.undoneAt === null ? undefined : "undone"}>
-      <td className="date" title={new Date(change.at).toLocaleString()}>
+      <td className="date" title={formatDateTime(change.at)}>
         {formatTime(change.at)}
       </td>
       <td className="col-person">

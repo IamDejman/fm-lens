@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { EditableValue } from "./EditControls";
-import { formatPounds } from "./format";
+import { formatNumber, formatPounds } from "./format";
 import {
   CLUB_FACILITY_LABELS,
   clubProfileText,
@@ -227,11 +227,11 @@ function perWeek(label: string): ReactNode {
 function formatTicketPrice(price: number): string {
   return Number.isInteger(price)
     ? formatPounds(price)
-    : `£${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    : `£${formatNumber(price, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function ClubInfo({ details }: { details: ClubDetails }) {
-  const count = (value: number | null) => (value === null ? profileText.none : value.toLocaleString());
+  const count = (value: number | null) => (value === null ? profileText.none : formatNumber(value));
   return (
     <section className="profile-group">
       <h3>{text.info}</h3>

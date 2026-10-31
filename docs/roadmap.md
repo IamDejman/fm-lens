@@ -77,8 +77,13 @@ before trusting them.
     holds the previewed value.
   - **Undo:** the whole batch at once, from the Changes view.
 
-## Phase 5: polish and reach
+## Phase 5: polish and reach (in progress)
 
-- Faces and logos from the user's graphics packs, pitch position map, comparisons,
-  saved filters.
-- Turkish and English UI; Steam and Epic builds; possibly Linux/Proton.
+- [x] Turkish and English UI:
+  - an EN | TR switch in the sidebar;
+  - dates and numbers follow the language;
+  - the connection and the change log survive the switch.
+- [x] Pitch position map.
+- [ ] Faces and logos from the user's graphics packs.
+- [ ] Player comparisons and saved filters.
+- [ ] Steam and Epic builds; possibly Linux/Proton.

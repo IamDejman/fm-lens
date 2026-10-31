@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
-import { formatDate, formatPounds } from "./format";
+import { formatDate, formatNumber, formatPounds } from "./format";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import type { Attribute, FmDate, Reputation } from "./types";
 import { SessionContext, useEditableField, type ProfileEditing } from "./useProfileEditing";
@@ -319,7 +319,7 @@ function ReputationBar({ label, value, field }: { label: string; value: number; 
       <dd>
         <span className="bar" style={style} aria-hidden="true" />
         <EditableValue field={field}>
-          <span className="figure">{value.toLocaleString()}</span>
+          <span className="figure">{formatNumber(value)}</span>
         </EditableValue>
       </dd>
     </div>
@@ -342,7 +342,7 @@ export function ReputationMeter({ value }: { value: number | null }) {
   const style = { "--fill": reputationFill(value) } as CSSProperties;
   return (
     <span className="ability rep" style={style}>
-      {value.toLocaleString()}
+      {formatNumber(value)}
     </span>
   );
 }

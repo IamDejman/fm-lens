@@ -788,6 +788,9 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
   );
 }
 
+/** The fixture connection, once `connect` has been called in this page. */
+let mockConnection: ConnectionInfo | null = null;
+
 export async function mockInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   await new Promise((resolve) => setTimeout(resolve, 150));
   switch (command) {
@@ -812,8 +815,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         loadMs: 480,
         editable: true,
       };
+      mockConnection = info;
       return info as T;
     }
+    case "current_connection":
+      // Like the real command after a window reload; here a reload starts the fixtures afresh, so it is null then.
+      return (mockConnection && { ...mockConnection, loadMs: 0 }) as T;
     case "reload": {
       const reloaded: ReloadInfo = { players: players.length, staff: staff.length, clubs: clubs.length, gameDate: GAME_DATE };
       return reloaded as T;
