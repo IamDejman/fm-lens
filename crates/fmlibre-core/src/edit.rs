@@ -344,13 +344,12 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         field("international.goals", p.international_goals, Kind::U16, 0..=1_000),
         field("international.u21_caps", p.u21_caps, Kind::U8, 0..=255),
         field("international.u21_goals", p.u21_goals, Kind::U8, 0..=255),
-        // What the game changes every day: energy, match fitness, morale and happiness. No player
-        // on the test save had less than 35% match sharpness, so the editor does not write less
-        // either; morale ran from 1 to 20.
+        // What the game changes every day: energy, match fitness and morale. No player on the test
+        // save had less than 35% match sharpness, so the editor does not write less either; morale
+        // ran from 1 to 20.
         field("condition", p.condition, Kind::U16, 0..=10_000).percent(),
         field("match_sharpness", p.match_sharpness, Kind::U16, 3_500..=10_000).percent(),
         field("morale", p.morale, Kind::U8, 1..=20),
-        field("happiness", p.happiness, Kind::U8, 0..=20),
     ];
     out.extend(crate::ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter()).filter_map(|key| {
         let offset = *p.attributes.get(*key)?;
@@ -972,10 +971,10 @@ mod tests {
         let players = fields(&layout, Entity::Player);
         // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
         // transfer and loan listing, which only players have.
-        // The 10 basic fields and the 3 live ones (condition, match sharpness, happiness).
+        // The 10 basic fields and the 3 live ones (condition, match sharpness, morale).
         assert_eq!(
             players.len(),
-            10 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
+            10 + 3 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
         );
         assert!(!key(&players, "contract.squad_number").mass);
         assert!(key(&players, "contract.wage").mass);

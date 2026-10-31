@@ -152,6 +152,8 @@ impl Connection {
         };
         let captaincy = Captaincy {
             team: done.team,
+            kind: done.kind,
+            age_limit: done.age_limit,
             from: done.old.map(|uid| self.player_name(uid)),
             to: self.player_name(done.new),
             swapped: done.swapped,
@@ -381,6 +383,9 @@ enum Undo {
 struct Captaincy {
     /// Where the team is in its club's list of teams; 0 is the senior team.
     team: usize,
+    /// The team's kind and age limit, to name it by (see `TeamView`).
+    kind: u8,
+    age_limit: Option<u8>,
     /// Who held the role, and who took it.
     from: Option<String>,
     to: String,
@@ -412,7 +417,6 @@ struct SquadRow {
     condition: u16,
     match_sharpness: u16,
     morale: u8,
-    happiness: u8,
     injuries: usize,
 }
 
@@ -1070,7 +1074,6 @@ fn club_squads(state: State<'_, AppState>, uid: u32) -> Result<Vec<TeamView>, Fa
                         condition: member.condition,
                         match_sharpness: member.match_sharpness,
                         morale: member.morale,
-                        happiness: member.happiness,
                         injuries: member.injuries,
                     })
                 })

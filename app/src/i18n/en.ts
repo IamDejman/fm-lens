@@ -51,7 +51,7 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Star player",
   2: "Important player",
   3: "Regular starter",
-  4: "Squad player",
+  4: "Rotation player",
   5: "Impact sub",
 };
 
@@ -272,7 +272,6 @@ export const en = {
     condition: "Energy",
     match_sharpness: "Match sharpness",
     morale: "Morale",
-    happiness: "Happiness",
     "contract.wage": "Wage per week",
     "contract.expires": "Contract end",
     "contract.squad_number": "Squad number",
@@ -372,10 +371,8 @@ export const en = {
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
     /** A player's morale, 1–20. */
     morale: (value: number) => `${value} / 20`,
-    /** A player's happiness, 0–20. */
-    happiness: (value: number) => `${value} / 20`,
-    /** Hover text of his happiness. */
-    happinessTitle: "At 20 the game calls a player content",
+    /** Hover text of his morale: the game shows it as his overall happiness. */
+    moraleTitle: "The game shows morale as the player's overall happiness: content at 10, slightly happy at 11, extremely happy at 15 and 20",
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
@@ -847,7 +844,7 @@ export const en = {
       contract: "Contract",
       facilities: "Facilities",
       finances: "Finances",
-      /** A player's energy, match sharpness, morale and happiness: the Medical group of his profile. */
+      /** A player's energy, match sharpness and morale: the Medical group of his profile. */
       health: "Medical",
       /** Whatever the other groups do not have, e.g. a player's height. */
       other: "Other",
@@ -1151,7 +1148,6 @@ export const en = {
       condition: "Energy",
       matchSharpness: "Sharpness",
       morale: "Morale",
-      happiness: "Happiness",
       /** The last column has no heading but this one, for assistive technology: it holds the captaincy menus. */
       actions: "Captaincy",
     } satisfies Record<SquadSort | "actions", string>,
@@ -1166,7 +1162,6 @@ export const en = {
       condition: "energy",
       matchSharpness: "match sharpness",
       morale: "morale",
-      happiness: "happiness",
     } satisfies Record<SquadSort, string>,
 
     // The tags after a name, with what each means as hover text

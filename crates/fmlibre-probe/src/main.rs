@@ -1856,13 +1856,12 @@ fn teams(session: &Session, uid: u32) -> Result<()> {
             ];
             let tags: Vec<&str> = tags.into_iter().flatten().collect();
             println!(
-                "  {:>10}  {:<28}  energy {:>5}  sharpness {:>5}  morale {:>2}  happiness {:>2}  {}",
+                "  {:>10}  {:<28}  energy {:>5}  sharpness {:>5}  morale {:>2}  {}",
                 member.uid,
                 clip(name(Some(member.uid)), 28),
                 member.condition,
                 member.match_sharpness,
                 member.morale,
-                member.happiness,
                 tags.join(", ")
             );
         }

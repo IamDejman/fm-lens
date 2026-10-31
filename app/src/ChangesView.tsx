@@ -471,7 +471,7 @@ function captaincyNotes({ captaincy, field }: LoggedChange): string[] {
   }
   const notes: string[] = [];
   if (captaincy.team !== 0) {
-    notes.push(teamLabel({ index: captaincy.team }));
+    notes.push(teamLabel({ index: captaincy.team, kind: captaincy.kind, ageLimit: captaincy.ageLimit }));
   }
   if (captaincy.swapped) {
     notes.push(swapNote(field === "captain" ? "captain" : "viceCaptain", captaincy.from));

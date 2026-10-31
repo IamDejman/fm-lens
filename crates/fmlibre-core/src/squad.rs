@@ -47,11 +47,10 @@ pub struct SquadMember {
     /// team of the club, or for another club on loan.
     pub plays_here: bool,
     pub loan: Option<Loan>,
-    /// As stored: energy and match sharpness 0–10000, morale 1–20, happiness 0–20.
+    /// As stored: energy and match sharpness 0–10000, morale 1–20.
     pub condition: u16,
     pub match_sharpness: u16,
     pub morale: u8,
-    pub happiness: u8,
     /// How many current injuries he has.
     pub injuries: usize,
 }
@@ -95,6 +94,9 @@ impl CaptainRole {
 pub struct CaptainPlan {
     pub club: u32,
     pub team: usize,
+    /// The team's kind and age limit, to name it by (see [`ClubTeam`]).
+    pub kind: u8,
+    pub age_limit: Option<u8>,
     pub role: CaptainRole,
     /// Who holds the role now, and who takes it.
     pub old: Option<u32>,
@@ -116,6 +118,8 @@ impl CaptainPlan {
 pub struct CaptainSet {
     pub club: u32,
     pub team: usize,
+    pub kind: u8,
+    pub age_limit: Option<u8>,
     pub role: CaptainRole,
     pub old: Option<u32>,
     pub new: u32,
@@ -153,6 +157,8 @@ impl Session {
         {
             return Err(MoveError::NotInTeam);
         }
+        let head = self.process.read_bytes(object, t.end() as usize)?;
+        let age_limit = head[t.age_limit as usize];
         let block = player.address + p.person_block + player.shift;
         let (here, there) = (object + role.offset(t), object + role.other().offset(t));
         let (held, other) = (self.process.read_u64(here)?, self.process.read_u64(there)?);
@@ -165,6 +171,8 @@ impl Session {
         Ok(CaptainPlan {
             club: club.uid,
             team,
+            kind: head[t.kind as usize],
+            age_limit: (age_limit != NO_AGE_LIMIT).then_some(age_limit),
             role,
             old: self.captain_uid(held, players),
             new: player.uid,
@@ -176,8 +184,8 @@ impl Session {
     /// Writes a planned captaincy, each write only over what the plan found.
     pub fn apply_captain(&self, plan: &CaptainPlan) -> Result<CaptainSet, MoveError> {
         self.apply_patches(&plan.patches)?;
-        let CaptainPlan { club, team, role, old, new, swapped, ref patches } = *plan;
-        Ok(CaptainSet { club, team, role, old, new, swapped, patches: patches.clone() })
+        let CaptainPlan { club, team, kind, age_limit, role, old, new, swapped, ref patches } = *plan;
+        Ok(CaptainSet { club, team, kind, age_limit, role, old, new, swapped, patches: patches.clone() })
     }
 
     /// Gives the role back to whoever held it, provided the team still has it as it was left.
@@ -289,7 +297,6 @@ impl Session {
             condition: u16_at(p.condition),
             match_sharpness: u16_at(p.match_sharpness),
             morale: buf[at(p.morale)],
-            happiness: buf[at(p.happiness)],
             injuries: self.injury_count(player),
         })
     }

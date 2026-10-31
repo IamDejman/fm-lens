@@ -205,10 +205,9 @@ function details(player: PlayerSummary): PlayerDetails {
           }),
         }
       : null,
-    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more), happiness 0–20.
+    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more).
     condition: Math.round(7000 + next() * 3000),
     matchSharpness: Math.round(3500 + next() * 6500),
-    happiness: Math.round(4 + next() * 16),
     injuries: injuriesOf(player.uid),
     // Drawn last, so that the values above come out as before.
     morale: Math.round(7 + next() * 10),
@@ -365,7 +364,6 @@ function fieldTable(entity: Entity): EditField[] {
       field("condition", "u16", 0, 10_000, "percent"),
       field("match_sharpness", "u16", 3_500, 10_000, "percent"),
       field("morale", "u8", 1, 20),
-      field("happiness", "u8", 0, 20),
       ...ATTRIBUTES.map((key) => field(`attribute.${key}`, "u8", 1, 100, "attribute")),
       // The game no longer plays a sweeper, so the real table leaves it out.
       ...POSITIONS.filter((key) => key !== "sw").map((key) => field(`position.${key}`, "u8", 1, 20)),
@@ -431,9 +429,6 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "match_sharpness":
         (d as PlayerDetails).matchSharpness = value;
-        break;
-      case "happiness":
-        (d as PlayerDetails).happiness = value;
         break;
       case "morale":
         (d as PlayerDetails).morale = value;
@@ -525,8 +520,6 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.condition;
       case "match_sharpness":
         return person.matchSharpness;
-      case "happiness":
-        return person.happiness;
       case "morale":
         return person.morale;
       case "reputation":
@@ -972,7 +965,6 @@ function clubSquads(clubUid: number): ClubTeam[] {
         condition: d.condition,
         matchSharpness: d.matchSharpness,
         morale: d.morale,
-        happiness: d.happiness,
         injuries: d.injuries.length,
       };
     }),
@@ -1016,7 +1008,14 @@ function setCaptain(clubUid: number, index: number, role: CaptainRole, uid: numb
     new: uid,
     undoneAt: null,
     batch: null,
-    captaincy: { team: index, from: old === null ? null : nameOf(old), to: nameOf(uid), swapped },
+    captaincy: {
+      team: index,
+      kind: team.kind,
+      ageLimit: team.ageLimit,
+      from: old === null ? null : nameOf(old),
+      to: nameOf(uid),
+      swapped,
+    },
   };
   captainUndo.set(logged.id, { key: keyOf, before, after });
   changes.push(logged);

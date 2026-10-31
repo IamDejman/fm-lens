@@ -1,4 +1,4 @@
-// The Medical group of a player's profile: his energy, match sharpness, morale and happiness, his current injuries, and
+// The Medical group of a player's profile: his energy, match sharpness and morale, his current injuries, and
 // the button that heals them.
 
 import { useContext, useEffect, useRef, useState } from "react";
@@ -14,7 +14,7 @@ import { EditorContext } from "./useProfileEditing";
 export const percentText = (stored: number) => formatPercent(wholePercent(stored));
 
 /**
- * Energy and match sharpness as whole percentages, morale and happiness out of 20, which are inputs while the player
+ * Energy and match sharpness as whole percentages, morale out of 20, which are inputs while the player
  * is edited, and under them his injuries.
  */
 export function MedicalGroup({ details }: { details: PlayerDetails }) {
@@ -41,11 +41,8 @@ export function MedicalGroup({ details }: { details: PlayerDetails }) {
         <Fact label={fieldLabel("player", "match_sharpness")}>
           <EditableValue field="match_sharpness">{percentText(details.matchSharpness)}</EditableValue>
         </Fact>
-        <Fact label={fieldLabel("player", "morale")}>
+        <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
           <EditableValue field="morale">{profileText.morale(details.morale)}</EditableValue>
-        </Fact>
-        <Fact label={fieldLabel("player", "happiness")} title={profileText.happinessTitle}>
-          <EditableValue field="happiness">{profileText.happiness(details.happiness)}</EditableValue>
         </Fact>
       </dl>
       {injured ? (

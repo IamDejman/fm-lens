@@ -82,9 +82,7 @@ pub struct PlayerLayout {
     /// `u16` 0..10000, live values the game changes every day.
     pub match_sharpness: u64,
     pub condition: u64,
-    /// `u8` 0..20: how happy the player is, which the game shows in words.
-    pub happiness: u64,
-    /// `u8` 1..20: his morale, which the game shows in words too.
+    /// `u8` 1..20: his morale, which the game shows in words as his overall happiness.
     pub morale: u64,
     /// Pointer to the injury record; see [`InjuryLayout`].
     pub injuries: u64,
@@ -123,7 +121,6 @@ impl PlayerLayout {
             self.contract + 8,
             self.match_sharpness + 2,
             self.condition + 2,
-            self.happiness + 1,
             self.morale + 1,
             self.injuries + 8,
             self.positions + crate::POSITIONS.len() as u64,

@@ -37,7 +37,7 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Yıldız oyuncu",
   2: "Önemli oyuncu",
   3: "Düzenli ilk 11 oyuncusu",
-  4: "Kadro oyuncusu",
+  4: "Rotasyon oyuncusu",
   5: "Etkili yedek",
 };
 
@@ -302,7 +302,6 @@ export const tr: Strings = {
     condition: "Enerji",
     match_sharpness: "Maç kondisyonu",
     morale: "Moral",
-    happiness: "Mutluluk",
     "contract.wage": "Haftalık maaş",
     "contract.expires": "Sözleşme bitişi",
     "contract.squad_number": "Forma numarası",
@@ -393,8 +392,7 @@ export const tr: Strings = {
 
     // Medical
     morale: (value) => `${value} / 20`,
-    happiness: (value) => `${value} / 20`,
-    happinessTitle: "Oyun, mutluluğu 20 olan oyuncuyu memnun sayar",
+    moraleTitle: "Oyun morali Genel Mutluluk olarak gösterir: 10'da Memnun, 11'de Biraz Mutlu, 15 ve 20'de Aşırı Mutlu",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
@@ -1003,7 +1001,6 @@ export const tr: Strings = {
       condition: "Enerji",
       matchSharpness: "Maç kond.",
       morale: "Moral",
-      happiness: "Mutluluk",
       actions: "Kaptanlık",
     } satisfies Record<SquadSort | "actions", string>,
     sortBy: (by) => `Sırala: ${by}`,
@@ -1017,7 +1014,6 @@ export const tr: Strings = {
       condition: "enerji",
       matchSharpness: "maç kondisyonu",
       morale: "moral",
-      happiness: "mutluluk",
     } satisfies Record<SquadSort, string>,
 
     // The tags after a name

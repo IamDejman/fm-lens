@@ -102,8 +102,6 @@ function sortValue(player: SquadPlayer, by: SquadSort): string | number | null {
       return player.matchSharpness;
     case "morale":
       return player.morale;
-    case "happiness":
-      return player.happiness;
   }
 }
 
@@ -336,7 +334,6 @@ export function SquadTab({ clubUid, version, panel }: SquadTabProps) {
                   <SortHeader by="condition" order={order} onSort={sortBy} className="num" />
                   <SortHeader by="matchSharpness" order={order} onSort={sortBy} className="num" />
                   <SortHeader by="morale" order={order} onSort={sortBy} className="num" />
-                  <SortHeader by="happiness" order={order} onSort={sortBy} className="num" />
                   <th className="col-actions">
                     <span className="sr-only">{text.columns.actions}</span>
                   </th>
@@ -592,7 +589,6 @@ function SquadRow({ player, role, editable, busy, onCaptain }: SquadRowProps) {
       <td className="num">{percentText(player.condition)}</td>
       <td className="num">{percentText(player.matchSharpness)}</td>
       <td className="num">{profileText.morale(player.morale)}</td>
-      <td className="num">{profileText.happiness(player.happiness)}</td>
       <td className="col-actions">
         {player.playsHere && (
           <CaptainMenu name={player.name} holds={role} editable={editable} busy={busy} onPick={onCaptain} />

@@ -288,10 +288,11 @@ export interface PlayerDetails extends PlayerSummary {
   /** Energy ("condition") and match sharpness, 0–10000 for 0–100%: what the game changes every day. */
   condition: number;
   matchSharpness: number;
-  /** 1–20: what FM Live Editor shows as morale ("Okay" at 10, "Good" at 13, "Very Good" at 15). */
+  /**
+   * 1–20: his morale, which the game shows as his overall happiness ("Memnun" at 10, "Biraz Mutlu" at 11, "Aşırı
+   * Mutlu" at 15 and 20 in the Turkish game) and FM Live Editor as morale ("Okay" at 10, "Very Good" at 15).
+   */
   morale: number;
-  /** 0–20; at 20 the game calls him content. */
-  happiness: number;
   /** His current injuries; empty when he has none. */
   injuries: Injury[];
 }
@@ -396,6 +397,9 @@ export interface LoggedChange {
   captaincy?: {
     /** Where the team is in the club's list of teams (see `ClubTeam.index`). */
     team: number;
+    /** The team's kind and age limit, to name it by like a `ClubTeam`. */
+    kind: number;
+    ageLimit: number | null;
     /** Who held the role (null for nobody), and who took it. */
     from: string | null;
     to: string;
@@ -427,11 +431,10 @@ export interface SquadPlayer extends PlayerSummary {
   playsHere: boolean;
   /** "in": here on loan from another club; "out": on loan to another club; null when he is not on loan. */
   loan: "in" | "out" | null;
-  /** As stored, like `PlayerDetails`: energy and match sharpness 0–10000, morale 1–20, happiness 0–20. */
+  /** As stored, like `PlayerDetails`: energy and match sharpness 0–10000, morale 1–20. */
   condition: number;
   matchSharpness: number;
   morale: number;
-  happiness: number;
   /** How many current injuries he has. */
   injuries: number;
 }
@@ -454,8 +457,7 @@ export type SquadSort =
   | "potentialAbility"
   | "condition"
   | "matchSharpness"
-  | "morale"
-  | "happiness";
+  | "morale";
 
 /** The contract a move to another club gives the player, as stored; what is left out stays as it is. */
 export interface MoveTerms {
