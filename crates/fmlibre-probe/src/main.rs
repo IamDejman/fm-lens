@@ -237,6 +237,23 @@ enum Command {
     },
     /// Read every team's player list and show how the game's allocator spaces their buffers.
     Squads,
+    /// Count the values one field holds across all players, with their average age and a few names: what
+    /// codes a field uses, or which offset holds a value the game shows.
+    Histogram {
+        /// Offset in the player object (before any person-block shift), or with --contract in his contract.
+        offset: String,
+        #[arg(long = "type", value_enum, default_value_t = FieldType::U8)]
+        kind: FieldType,
+        /// Read the field from the player's contract.
+        #[arg(long)]
+        contract: bool,
+        /// Only players of clubs whose name contains this text.
+        #[arg(long)]
+        club: Option<String>,
+        /// Show at most this many values, the most frequent first.
+        #[arg(long, default_value_t = 30)]
+        top: usize,
+    },
     /// Show the memory region that holds ADDR and the start of its allocation.
     Region {
         /// Any address in the game process.
@@ -389,6 +406,10 @@ fn run(cli: Cli) -> Result<()> {
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
         }
         Command::Squads => squads(&Session::connect(process, ArraySource::ProfileFirst)?),
+        Command::Histogram { offset, kind, contract, club, top } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            histogram(&session, parse_hex(&offset)?, kind, contract, club.as_deref(), top)
+        }
         Command::Region { addr } => {
             let modules = list_modules(process.pid()).context("listing modules")?;
             let addr = resolve(&addr, &modules)?;
@@ -547,6 +568,47 @@ fn squads(session: &Session) -> Result<()> {
     let with_room = lists.iter().filter(|l| l.2 > l.1).count();
     println!("{teams} teams, {} non-empty lists, {with_room} with capacity above their length", lists.len());
 
+    // Squad numbers: repeated within one team's list, and within one club's lists taken together.
+    let number_of = |player: u64| -> Option<u8> {
+        let contract = process.read_u64(player + session.layout.player.contract).ok()?;
+        if !is_user_pointer(contract) {
+            return None;
+        }
+        let number = process.read_bytes(contract + session.layout.contract.squad_number, 1).ok()?[0];
+        (number != 255).then_some(number)
+    };
+    let (mut in_team, mut in_club, mut clubs_seen) = (0, 0, 0);
+    for club in session.clubs()? {
+        let teams_at = club.address + session.layout.club.teams;
+        let (Ok(begin), Ok(end)) = (process.read_u64(teams_at), process.read_u64(teams_at + 8)) else { continue };
+        if !is_user_pointer(begin) || end <= begin || end - begin > 8 * 16 {
+            continue;
+        }
+        clubs_seen += 1;
+        let mut club_numbers: std::collections::HashMap<u8, std::collections::HashSet<u64>> = Default::default();
+        for i in 0..(end - begin) / 8 {
+            let Ok(team) = process.read_u64(begin + i * 8) else { continue };
+            let (Ok(b), Ok(e)) = (process.read_u64(team + 0x38), process.read_u64(team + 0x40)) else { continue };
+            if !is_user_pointer(b) || e <= b || e - b > 8 * 5000 {
+                continue;
+            }
+            let mut team_numbers: std::collections::HashMap<u8, usize> = Default::default();
+            for element in process.read_bytes(b, (e - b) as usize).unwrap_or_default().as_chunks::<8>().0 {
+                let player = u64::from_le_bytes(*element);
+                if let Some(number) = number_of(player) {
+                    *team_numbers.entry(number).or_default() += 1;
+                    club_numbers.entry(number).or_default().insert(player);
+                }
+            }
+            in_team += team_numbers.values().filter(|&&n| n > 1).count();
+        }
+        in_club += club_numbers.values().filter(|players| players.len() > 1).count();
+    }
+    println!(
+        "squad numbers over {clubs_seen} clubs: {in_team} repeated within a team's list, {in_club} repeated \
+         across a club's lists"
+    );
+
     // Which team lists hold each player: the team the player is at, the contract's team, both, neither.
     let mut listed: std::collections::HashMap<u64, Vec<u64>> = std::collections::HashMap::new();
     for club in session.clubs()? {
@@ -663,6 +725,65 @@ fn squads(session: &Session) -> Result<()> {
             if g == 0 { "-".to_owned() } else { g.to_string() },
             slack.join(" ")
         );
+    }
+    Ok(())
+}
+
+/// Counts the values of the field at `offset` (in the player, or in his contract) across all
+/// players, optionally only those of clubs whose name contains `club`.
+fn histogram(
+    session: &Session,
+    offset: u64,
+    kind: FieldType,
+    contract: bool,
+    club: Option<&str>,
+    top: usize,
+) -> Result<()> {
+    let process = &session.process;
+    let p = &session.layout.player;
+    let wanted = club.map(fmlibre_core::fold);
+    /// What the players holding one value have in common.
+    #[derive(Default)]
+    struct Tally {
+        players: usize,
+        ages: u64,
+        aged: usize,
+        /// Current ability and name of each.
+        names: Vec<(u16, String)>,
+    }
+    let mut seen: std::collections::BTreeMap<u64, Tally> = std::collections::BTreeMap::new();
+    for player in session.players()? {
+        if let Some(wanted) = &wanted
+            && !player.club.as_deref().is_some_and(|name| fmlibre_core::fold(name).contains(wanted.as_str()))
+        {
+            continue;
+        }
+        let address = if contract {
+            let record = process.read_u64(player.address + p.at(p.contract, player.shift)).unwrap_or(0);
+            if !is_user_pointer(record) {
+                continue;
+            }
+            record + offset
+        } else {
+            player.address + p.at(offset, player.shift)
+        };
+        let Ok(bytes) = process.read_bytes(address, kind.width()) else { continue };
+        let tally = seen.entry(kind.decode(&bytes)).or_default();
+        tally.players += 1;
+        if let Some(age) = player.age {
+            tally.ages += u64::from(age);
+            tally.aged += 1;
+        }
+        tally.names.push((player.current_ability, player.name.clone()));
+    }
+    let mut rows: Vec<_> = seen.into_iter().collect();
+    rows.sort_by(|a, b| b.1.players.cmp(&a.1.players).then(a.0.cmp(&b.0)));
+    println!("{:>10}  {:>7}  {:>5}  best by current ability", "value", "players", "age");
+    for (value, mut tally) in rows.into_iter().take(top) {
+        tally.names.sort_by_key(|(ability, _)| std::cmp::Reverse(*ability));
+        let names: Vec<String> = tally.names.into_iter().take(3).map(|(_, name)| name).collect();
+        let age = if tally.aged > 0 { format!("{:.1}", tally.ages as f64 / tally.aged as f64) } else { "-".to_owned() };
+        println!("{value:>10}  {:>7}  {age:>5}  {}", tally.players, names.join(", "));
     }
     Ok(())
 }

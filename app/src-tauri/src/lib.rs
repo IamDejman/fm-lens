@@ -117,6 +117,18 @@ impl Connection {
         Ok(self.session.plan_club_move(player, to, terms, &self.human_clubs)?)
     }
 
+    /// `failure` with the name of the player it names by UID, for the window to say who.
+    fn with_names(&self, failure: Failure) -> Failure {
+        let holder = failure.params.get("uid").and_then(|uid| uid.parse().ok());
+        match holder.and_then(|uid| self.players.get(uid)) {
+            Some(player) if failure.code == "edit.taken" => {
+                let name = player.name.clone();
+                failure.with("name", name)
+            }
+            _ => failure,
+        }
+    }
+
     fn club_name(&self, uid: u32) -> String {
         self.clubs.get(uid).map_or_else(|| uid.to_string(), |club| club.name.clone())
     }
@@ -755,7 +767,10 @@ fn apply_edits(
             // Already the value asked for: nothing was written.
             Ok(change) if change.old == change.new => {}
             Ok(change) => report.applied.push(connection.log_change(change, name.clone(), None)),
-            Err(err) => report.failed.push(FailedEdit { field: edit.field, value: edit.value, error: err.into() }),
+            Err(err) => {
+                let error = connection.with_names(err.into());
+                report.failed.push(FailedEdit { field: edit.field, value: edit.value, error });
+            }
         }
     }
     Ok(report)

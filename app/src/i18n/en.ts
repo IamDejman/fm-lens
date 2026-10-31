@@ -42,6 +42,8 @@ const entityNouns: Record<Entity, string> = { player: "players", staff: "staff",
 const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Star player",
   2: "Important player",
+  3: "Regular starter",
+  4: "Squad player",
   5: "Impact sub",
 };
 
@@ -60,6 +62,8 @@ const errors: ErrorTexts = {
   "edit.unknownField": (p) => `There is no editable field “${p.field}” here.`,
   "edit.outOfRange": (p) => `${p.value} is not a valid ${field(p.field)}: it takes ${p.min} to ${p.max}.`,
   "edit.notADate": (p) => `${p.value} is not a date for ${field(p.field)}.`,
+  "edit.notAChoice": (p) => `${p.value} is not one of the values ${field(p.field)} takes.`,
+  "edit.taken": (p) => `Squad number ${p.value} is taken: ${p.name ?? `the player with UID ${p.uid}`} wears it.`,
   "edit.unsupported": (p) => `${field(p.field)} cannot be changed that way: ${p.reason}.`,
   "edit.noRecord": (p) => `${field(p.field)} cannot be changed here: its record is missing or does not check out.`,
   "edit.unset": (p) => `${field(p.field)} is not set in the game, so it was left alone.`,
@@ -258,6 +262,10 @@ export const en = {
     "international.u21_goals": "U21 goals",
     "contract.wage": "Wage per week",
     "contract.expires": "Contract end",
+    "contract.squad_number": "Squad number",
+    "contract.squad_status": "Squad status",
+    "contract.transfer_listed": "Transfer listed",
+    "contract.loan_listed": "Loan listed",
     // A move to another club, which the change log keeps as a change of the player's club.
     club: "Club",
     // A club's own reputation, which has no home, current or world.
@@ -647,6 +655,14 @@ export const en = {
     invalidMoney: (from: string, to: string) => `Enter a whole number of pounds from ${from} to ${to}`,
     /** Before the input of an amount of money: the game stores pounds. */
     pounds: "£",
+    /** The two values of a yes-or-no field, as the lists of changes and the hover text of its checkbox say them. */
+    yes: "Yes",
+    no: "No",
+    /**
+     * What an input that may be left empty reads as then, in its hint, the hover text and the lists of changes:
+     * "Squad number 20 → none". The profile itself shows a dash for it (`profile.none`).
+     */
+    none: "none",
 
     // The footer
     footer: "Editing",
