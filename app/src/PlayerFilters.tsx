@@ -1,11 +1,11 @@
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { playerListText, POSITION_LABELS, type PositionKey } from "./labels";
 import type { FmDate, PlayerFilter } from "./types";
 
 const text = playerListText.filters;
 
 /** The positions in the select, from the goal to the front; their labels are in `POSITION_LABELS`. */
-const POSITION_ORDER: readonly PositionKey[] = [
+export const POSITION_ORDER: readonly PositionKey[] = [
   "gk", "sw", "dl", "dc", "dr", "wbl", "wbr", "dm", "ml", "mc", "mr", "aml", "amc", "amr", "st",
 ];
 
@@ -93,10 +93,12 @@ interface PlayerFilterBarProps {
   onChange: (fields: PlayerFilterFields) => void;
   /** How many filters are in effect, from `countFilters`. */
   active: number;
+  /** More controls after Clear in the head of the bar, e.g. those of the saved filters. */
+  actions?: ReactNode;
 }
 
 /** The filter bar of the player list: a button with the number of filters in effect, and the inputs behind it. */
-export function PlayerFilterBar({ fields, onChange, active }: PlayerFilterBarProps) {
+export function PlayerFilterBar({ fields, onChange, active, actions }: PlayerFilterBarProps) {
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const ageLabel = useId();
@@ -134,6 +136,7 @@ export function PlayerFilterBar({ fields, onChange, active }: PlayerFilterBarPro
             {text.clear}
           </button>
         )}
+        {actions}
       </div>
 
       {open && (

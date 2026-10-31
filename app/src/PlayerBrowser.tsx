@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Ability } from "./Ability";
+import { ComparisonTray } from "./Comparison";
 import { formatDate } from "./format";
-import { playerListText, POSITION_LABELS, profileText } from "./labels";
+import { playerListText, positionLabel, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -13,7 +14,9 @@ import {
   type PlayerFilterFields,
 } from "./PlayerFilters";
 import { PlayerProfile } from "./PlayerProfile";
+import { SavedFilterControls } from "./SavedFilterControls";
 import type { PlayerOrder, PlayerSort, PlayerSummary } from "./types";
+import { useComparison } from "./useComparison";
 
 const text = playerListText;
 
@@ -31,6 +34,9 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
   const [fields, setFields] = useState<PlayerFilterFields>(NO_PLAYER_FILTERS);
   // Null until a header is clicked: no order is asked for, and the search answers with the best current ability first.
   const [order, setOrder] = useState<PlayerOrder | null>(null);
+  // The players picked for a comparison. They are kept here, as the list is: every list stays mounted while another
+  // view is shown (see `App`), so the set survives switching views.
+  const comparison = useComparison();
 
   const filter = toPlayerFilter(fields);
   const filterCount = countFilters(filter);
@@ -52,8 +58,26 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         text.summary(total, shown, order && { by: text.sortNames[order.by], ascending: order.ascending })
       }
       empty={(query) => text.empty(query, filterCount > 0)}
-      filterBar={<PlayerFilterBar fields={fields} onChange={setFields} active={filterCount} />}
+      filterBar={
+        <PlayerFilterBar
+          fields={fields}
+          onChange={setFields}
+          active={filterCount}
+          actions={
+            <SavedFilterControls
+              fields={fields}
+              order={order}
+              filtered={filterCount > 0}
+              onApply={(savedFields, savedOrder) => {
+                setFields(savedFields);
+                setOrder(savedOrder);
+              }}
+            />
+          }
+        />
+      }
       toolbarActions={(list) => <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />}
+      footer={<ComparisonTray comparison={comparison} />}
       tableClass="player-grid"
       header={
         <>
@@ -97,7 +121,9 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
           <td className="num uid col-uid">{p.uid}</td>
         </>
       )}
-      profile={(p, panel) => <PlayerProfile player={p} version={panel.version} onClose={panel.onClose} />}
+      profile={(p, panel) => (
+        <PlayerProfile player={p} version={panel.version} onClose={panel.onClose} comparison={comparison} />
+      )}
     />
   );
 }
@@ -125,9 +151,6 @@ function SortHeader({ by, order, onSort, className }: SortHeaderProps) {
     </th>
   );
 }
-
-const positionLabel = (key: string): string =>
-  (POSITION_LABELS as Readonly<Record<string, string>>)[key] ?? key.toUpperCase();
 
 /** The positions a player can play, best first: three at most, then an ellipsis; the hover text has all of them. */
 function PositionsCell({ positions }: { positions: readonly string[] }) {

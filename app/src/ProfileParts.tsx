@@ -59,6 +59,8 @@ interface ProfileFrameProps {
   potentialAbility?: number;
   /** Under the close button instead of the abilities, e.g. the reputation of a club. */
   side?: ReactNode;
+  /** Buttons before Edit in the header, e.g. the player's Compare button. */
+  actions?: ReactNode;
   loaded: Loaded<unknown> | null;
   onClose: () => void;
   /**
@@ -77,7 +79,7 @@ interface ProfileFrameProps {
  */
 export function ProfileFrame(props: ProfileFrameProps) {
   const { picture, name, fullName, badge, meta, vitals, currentAbility, potentialAbility } = props;
-  const { side, loaded, onClose, editing, children } = props;
+  const { side, actions, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
 
@@ -113,6 +115,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
           </div>
           <div className="profile-side">
             <div className="profile-actions">
+              {actions}
               {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
               <button
                 className="icon-button"
@@ -219,7 +222,7 @@ export function personalityRows(personality: Record<string, number>): RatingRow[
 }
 
 /** FM's colour bands for a 1–20 rating: 1–5, 6–10, 11–15 and 16–20. */
-function tierClass(value: number, lowerIsBetter = false): string {
+export function tierClass(value: number, lowerIsBetter = false): string {
   const score = lowerIsBetter ? 21 - value : value;
   return `tier-${score <= 5 ? 1 : score <= 10 ? 2 : score <= 15 ? 3 : 4}`;
 }

@@ -4,9 +4,10 @@
 //
 // Keys of the game data map to the names FM uses; every other string of the panels is in `profile` (those only the
 // club panel has, in `clubProfile`), and those of the player, staff and club lists in `playerList`, `staffList` and
-// `clubList`. Editing has `edit` (and `fields` for the names of the fields), the Changes view `changes`, mass editing
-// `massEdit`, the sidebar and the connect panel `app`, and the graphics packs the pictures come from `graphics`. The
-// components read them through `labels.ts`.
+// `clubList` (the saved player filters are in `playerList.filters.saved`). Editing has `edit` (and `fields` for the
+// names of the fields), the Changes view `changes`, mass editing `massEdit`, comparing players `comparison`, the
+// sidebar and the connect panel `app`, and the graphics packs the pictures come from `graphics`. The components read
+// them through `labels.ts`.
 //
 // The text functions (counts, summaries, "was …") are written per language: plurals and word order differ, so a
 // language builds its sentences itself.
@@ -405,6 +406,28 @@ export const en = {
       club: "Club",
       freeAgentsOnly: "Free agents only",
       contractEndsBy: "Contract ends by",
+      /** Saving the filters in effect, and the sort, under a name of the user's own; the names stay as typed. */
+      saved: {
+        /** The button that starts saving, and its hover text. */
+        save: "Save",
+        saveTitle: "Save the filters and the sort in effect under a name",
+        /** The name input, for assistive technology, and the hint in it while it is empty. */
+        name: "Name of the saved filter",
+        namePlaceholder: "Filter name",
+        ok: "OK",
+        cancel: "Cancel",
+        /** The select of the saved filters: its name, and what it shows while none is the one in effect. */
+        select: "Saved filters",
+        delete: "Delete",
+        /** The name and hover text of Delete; `name` is the saved filter's. */
+        deleteTitle: (name: string) => `Delete the saved filter: ${name}`,
+        /** The question when the name is taken; `name` is the one typed. */
+        replaceQuestion: (name: string) => `A saved filter named “${name}” already exists. Replace it?`,
+        replace: "Replace",
+        /** When the name is a new one and `max` filters are saved already. */
+        full: (max: number) =>
+          `Up to ${max} filters can be saved. Delete one first, or use the name of a saved filter to replace it.`,
+      },
     },
   },
 
@@ -792,6 +815,40 @@ export const en = {
     /** A change an undo could not take back: `who` names the person and the field, or the change by its number. */
     undoFailure: (who: string, reason: string) => `${who}: ${reason}`,
     changeNumber: (id: number) => `Change ${id}`,
+    close: "Close",
+  },
+
+  /** Comparing players: the button in a player's profile, the tray under the player list and the dialog. */
+  comparison: {
+    /** The button in the header of a player's profile. */
+    compare: "Compare",
+    /** Hover text of that button while the player is not in the comparison, and while they are. */
+    add: "Add to comparison",
+    remove: "Remove from comparison",
+    /** Hover text of the button while the comparison is full and cannot take this player; `max` is its size. */
+    full: (max: number) => `A comparison holds up to ${max} players. Remove one to add this player.`,
+
+    // The tray under the player list
+    trayLabel: "Players to compare",
+    /** The name and hover text of the × on a player's chip. */
+    removePlayer: (name: string) => `Remove from comparison: ${name}`,
+    clear: "Clear",
+    /** The button that opens the dialog; `count` is how many players are picked. */
+    open: (count: number) => `Compare (${count})`,
+
+    // The dialog
+    title: "Comparison",
+    /** Under the title: what the highlight in the table means. */
+    hint: "The best value in each row is highlighted: the highest, or the lowest where lower is better.",
+    /** What the dialog says when fewer than two players are picked. */
+    tooFew: "Add at least two players to compare them.",
+    loading: "Loading the players…",
+    tableLabel: "Values of the compared players",
+    /** Said after the highlighted value of a row, for assistive technology. */
+    highest: "highest",
+    lowest: "lowest",
+    /** The heading of the rows with the positions, height, reputation and contract. */
+    profile: "Profile",
     close: "Close",
   },
 

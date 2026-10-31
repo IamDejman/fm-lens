@@ -1,7 +1,9 @@
+import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { formatPounds } from "./format";
 import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
+import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { PositionPitch } from "./PositionPitch";
 import {
   attributeRow,
@@ -18,29 +20,8 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type { Contract, PlayerDetails, PlayerSummary } from "./types";
+import type { Comparison } from "./useComparison";
 import { useEditableField, useProfileEditing } from "./useProfileEditing";
-
-// Attributes in the order FM lists them.
-const TECHNICAL: AttributeKey[] = [
-  "corners", "crossing", "dribbling", "finishing", "first_touch", "free_kicks", "heading",
-  "long_shots", "long_throws", "marking", "passing", "penalty_taking", "tackling", "technique",
-];
-const MENTAL: AttributeKey[] = [
-  "aggression", "anticipation", "bravery", "composure", "concentration", "decisions", "determination",
-  "flair", "leadership", "off_the_ball", "positioning", "teamwork", "vision", "work_rate",
-];
-const PHYSICAL: AttributeKey[] = [
-  "acceleration", "agility", "balance", "jumping_reach", "natural_fitness", "pace", "stamina", "strength",
-];
-const GOALKEEPING: AttributeKey[] = [
-  "aerial_reach", "command_of_area", "communication", "eccentricity", "first_touch", "handling", "kicking",
-  "one_on_ones", "passing", "punching", "reflexes", "rushing_out", "throwing",
-];
-const HIDDEN: AttributeKey[] = ["consistency", "dirtiness", "important_matches", "injury_proneness", "versatility"];
-const FEET: AttributeKey[] = ["left_foot", "right_foot"];
-
-/** A player counts as a goalkeeper from this rating at gk; the panel then shows Goalkeeping instead of Technical. */
-const GOALKEEPER_RATING = 15;
 
 interface PlayerProfileProps {
   /** The row that was picked; its fields fill the header while the full profile loads. */
@@ -48,10 +29,12 @@ interface PlayerProfileProps {
   /** Changes when the game data is read again, so the profile is too. */
   version: number;
   onClose: () => void;
+  /** The players picked for a comparison: the header has the button that adds this player to it, or takes them out. */
+  comparison: Comparison;
 }
 
 /** The profile of one player. Mount it with `key={uid}` so a new player starts at the top. */
-export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) {
+export function PlayerProfile({ player, version, onClose, comparison }: PlayerProfileProps) {
   const loaded = useProfileDetails<PlayerDetails>("player_details", player.uid, version);
   const editing = useProfileEditing("player", player.uid);
   const details = loaded?.details;
@@ -94,6 +77,7 @@ export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) 
       loaded={loaded}
       onClose={onClose}
       editing={editing}
+      actions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
     >
       {details && <ProfileBody details={details} />}
     </ProfileFrame>
@@ -101,7 +85,7 @@ export function PlayerProfile({ player, version, onClose }: PlayerProfileProps) 
 }
 
 function ProfileBody({ details }: { details: PlayerDetails }) {
-  const goalkeeper = (details.positionRatings.gk ?? 0) >= GOALKEEPER_RATING;
+  const goalkeeper = isGoalkeeper(details);
   return (
     <>
       <AbilityEditGroup entity="player" />
@@ -136,7 +120,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
   );
 }
 
-function attributeRows(details: PlayerDetails, keys: AttributeKey[]): RatingRow[] {
+function attributeRows(details: PlayerDetails, keys: readonly AttributeKey[]): RatingRow[] {
   return keys.map((key) =>
     attributeRow(key, ATTRIBUTE_LABELS[key], details.attributes[key], { lowerIsBetter: LOWER_IS_BETTER.has(key) }),
   );

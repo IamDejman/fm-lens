@@ -11,7 +11,8 @@ const TIERS = [
 
 type TierName = (typeof TIERS)[number]["name"];
 
-function tierOf(rating: number): TierName {
+/** The band of a position rating, as the pitch (and the comparison of players) colours it. */
+export function tierOf(rating: number): TierName {
   return TIERS.find((tier) => rating >= tier.min)?.name ?? "ineffective";
 }
 
