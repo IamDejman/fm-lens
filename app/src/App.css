@@ -2136,7 +2136,7 @@ button.danger:hover:not(:disabled) {
   color: var(--muted);
 }
 
-/* Undo and Undo mass edit side by side, one under the other when the column is narrow. */
+/* The buttons of a row (Undo mass edit, Show changes) side by side, one under the other when the column is narrow. */
 .changes-grid .row-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2160,6 +2160,56 @@ button.danger:hover:not(:disabled) {
   max-height: 9rem;
   margin-top: 2px;
   overflow-y: auto;
+}
+
+/* Changes: pages, and the changes of a mass edit under its row */
+
+/* A mass edit is a row of its own, tinted. Its changes, once shown, follow it with a bar at their left edge. */
+.changes-grid tr.batch-row td,
+.changes-grid tr.batch-pager td {
+  background: var(--accent-faint);
+}
+
+.changes-grid tr.in-batch td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent-soft);
+}
+
+/* The fields a mass edit changed may be several: their names wrap rather than widen the table. */
+.changes-grid .col-batch {
+  white-space: normal;
+}
+
+/* Previous, the rows on show, Next. */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.pager button {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.pager-range {
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The pager of the list joins the foot of the table, as the comparison tray does: the table has no bottom border
+   either, as it ends at the edge of the window. */
+.pager-bar {
+  flex: none;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  background: var(--raised);
+}
+
+/* The pager of a mass edit takes a row of the table, under the row of the mass edit. */
+.changes-grid .batch-pager td {
+  padding: 4px 12px;
 }
 
 /* Saved filters */

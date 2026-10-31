@@ -5,17 +5,25 @@ import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labe
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
+import { restored, useSnapshot } from "./restore";
 import { employerOf, HumanBadge, StaffProfile } from "./StaffProfile";
 import type { StaffFilter, StaffSummary } from "./types";
 
 const columns = staffListText.columns;
 const filters = staffListText.filters;
 
+/** The job filter saved before the language was switched: a job the select offers, or "" for any. */
+const readJob = (value: unknown) =>
+  typeof value === "string" && JOB_FILTER_OPTIONS.some(({ code }) => String(code) === value) ? value : "";
+
 /** The staff table with the profile of the selected member of staff beside it. */
 export function StaffBrowser({ version, active }: { version: number; active: boolean }) {
+  // The filters start as they were before the language was switched, if it was (see `restore.ts`).
   // The job as the select holds it: a job code, or "" for any.
-  const [job, setJob] = useState("");
-  const [unemployed, setUnemployed] = useState(false);
+  const [job, setJob] = useState(() => restored("staffJob", readJob));
+  const [unemployed, setUnemployed] = useState(() => restored("staffUnemployed", (value) => value === true));
+  useSnapshot("staffJob", () => job);
+  useSnapshot("staffUnemployed", () => unemployed);
   const filter: StaffFilter | undefined =
     job === "" && !unemployed
       ? undefined
@@ -23,6 +31,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
 
   return (
     <ListBrowser<StaffSummary>
+      name="staff"
       command="search_staff"
       requestArgs={{ filter }}
       version={version}

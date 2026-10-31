@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { intlLocale } from "./i18n";
 import { NO_PLAYER_FILTERS, POSITION_ORDER, type PlayerFilterFields } from "./PlayerFilters";
+import { isRecord } from "./restore";
 import type { PlayerOrder, PlayerSort } from "./types";
 
 /** Where the saved filters are kept: a JSON array of `SavedPlayerFilter`. */
@@ -42,9 +43,6 @@ const POSITION_KEYS: ReadonlySet<string> = new Set(POSITION_ORDER);
 /** A date input's `YYYY-MM-DD`. */
 const DATE_TEXT = /^\d{4}-\d{2}-\d{2}$/;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
 /** A number as a number input holds it: empty, or something `Number` reads. */
 const isNumberText = (text: string) => text.trim() === "" || Number.isFinite(Number(text));
 
@@ -53,8 +51,11 @@ function textOr(value: unknown, fallback: string, fits: (text: string) => boolea
   return typeof value === "string" && value.length <= MAX_TEXT_LENGTH && fits(value) ? value : fallback;
 }
 
-/** The fields of the filter bar from a stored value; a field that is missing or is not what the bar holds is empty. */
-function readFields(value: unknown): PlayerFilterFields {
+/**
+ * The fields of the filter bar from a stored value; a field that is missing or is not what the bar holds is empty. It
+ * also brings the bar back after the language was switched (see `restore.ts`).
+ */
+export function readFields(value: unknown): PlayerFilterFields {
   const given = isRecord(value) ? value : {};
   const none = NO_PLAYER_FILTERS;
   return {
@@ -74,8 +75,11 @@ function readFields(value: unknown): PlayerFilterFields {
   };
 }
 
-/** The sort from a stored value; the list's own order when it is missing or is not a sort. */
-function readOrder(value: unknown): PlayerOrder | null {
+/**
+ * The sort from a stored value; the list's own order when it is missing or is not a sort. It also brings the sort back
+ * after the language was switched.
+ */
+export function readOrder(value: unknown): PlayerOrder | null {
   if (
     isRecord(value) &&
     typeof value.by === "string" &&
