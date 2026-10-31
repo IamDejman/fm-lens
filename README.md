@@ -54,8 +54,7 @@ to Applications, then set up its bridge from the app once, with Steam closed (se
 >
 > **macOS (Steam build):** the app and the probe attach to the game through the bridge
 > described below, without turning System Integrity Protection off, with the Mac build's
-> own object layout. Reading and editing were checked on a Mac save; moving a player is
-> refused there unless the new club's squad list has room already.
+> own object layout. Reading, editing and moving players were checked on a Mac save.
 
 ## Goals
 
