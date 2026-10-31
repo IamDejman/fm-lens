@@ -124,6 +124,9 @@ before trusting them.
   - captain and vice-captain;
   - heal all, inspire all (morale to 20) and refresh all (energy and match
     sharpness to 100%), each undone as one batch.
-- [ ] Next: team cohesion and tactical familiarity (FMLE's "Max Cohesion" and "Max
-  Tactics"), suspensions ("Unban All"), and the squad status codes past 5 (youth
-  and backup roles), once the game's own data names them.
+- [ ] Next: suspensions ("Unban All"), and the squad status codes past 5 (youth and
+  backup roles), once the game's own data names them.
+- [ ] Team cohesion and tactical familiarity (FMLE's "Max Cohesion" and "Max
+  Tactics"). Set aside: no single stored value matched ten clubs' readings, so they
+  look derived (see the Steam notes). The probe's `related`, `nearby` and
+  `team-average` searches are there for another try.
