@@ -11,9 +11,17 @@ Windows 10 or 11, with Football Manager 27 from Xbox / Game Pass or Steam. There
 [portable zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-portable.zip)
 that needs no installation.
 
+### **[⬇ FMLibreEditor-macOS.zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-macOS.zip)**
+
+macOS on Apple silicon or Intel, with Football Manager 27 from Steam. Move **FMLibreEditor**
+to Applications, then set up its bridge from the app once, with Steam closed (see
+[On macOS](#on-macos)).
+
 - **Step by step, with pictures:** [English](docs/INSTALL.md) · [Türkçe](docs/KURULUM.md)
 - **Windows warning:** Windows may say "Windows protected your PC", because the program is
   not signed yet. Choose **More info**, then **Run anyway**.
+- **macOS warning:** macOS may say it could not verify FMLibreEditor, because the app is not
+  notarized yet. Open **System Settings › Privacy & Security** and choose **Open Anyway**.
 
 > **Status: pre-alpha.** The app lists, searches, filters and sorts every player,
 > member of staff and club of a running FM27 (Game Pass or Steam build), and shows
@@ -140,26 +148,6 @@ npm run release                            # build target\release\FMLibreEditor.
 `npm run release` builds a stand-alone `FMLibreEditor.exe` without an installer. It
 needs the WebView2 runtime, which Windows 10 and 11 already have.
 
-### Releasing
-
-1. **Bump the version** in three places:
-   - `version` in the root `Cargo.toml` (`[workspace.package]`);
-   - `app/package.json`;
-   - `app/src-tauri/tauri.conf.json`.
-
-   Commit the bump.
-2. **Tag it and push the tag:** `git tag v0.1.0` and `git push origin v0.1.0`.
-3. **The `Release` workflow** (`.github/workflows/release.yml`) runs the checks and builds,
-   on GitHub's Windows machines:
-   - `FMLibreEditor-Setup.exe`, a per-user NSIS installer in English and Turkish;
-   - `FMLibreEditor-portable.zip`.
-
-   It opens a **draft** release with both files and `docs/release-notes.md` as its text.
-4. **Write what is new in the draft and publish it.**
-
-The download links above point at the latest published release. People outside the
-repository can use them once it is public.
-
 On macOS: Xcode's command line tools, Rust stable with the Intel target as well
 (`rustup target add x86_64-apple-darwin`, for the bridge to load in Intel builds of the
 game), and Node.js 20+.
@@ -171,9 +159,9 @@ npm run release:mac                        # build FMLibreEditor.app, universal,
 ```
 
 `npm run release:mac` writes the app to
-`target/universal-apple-darwin/release/bundle/macos/FMLibreEditor.app`. It is not signed
-with a Developer ID, so macOS asks before opening it the first time (Control-click the app,
-then **Open**).
+`target/universal-apple-darwin/release/bundle/macos/FMLibreEditor.app`, signed ad hoc: it
+has no Developer ID and is not notarized. macOS opens a copy downloaded from the internet
+only once it is allowed in **System Settings › Privacy & Security** (**Open Anyway**).
 
 `npm run dev` in `app/` serves the interface in a plain browser with made-up sample
 players, for working on the UI without the game.
@@ -183,6 +171,27 @@ The app reads graphics packs from
 `~/Library/Application Support/Sports Interactive/Football Manager 27/graphics` on macOS.
 If FM keeps its user data somewhere else, set the environment variable `FMLIBRE_GRAPHICS`
 to that graphics folder before starting the app.
+
+### Releasing
+
+1. **Bump the version** in three places:
+   - `version` in the root `Cargo.toml` (`[workspace.package]`);
+   - `app/package.json`;
+   - `app/src-tauri/tauri.conf.json`.
+
+   Commit the bump.
+2. **Tag it and push the tag:** `git tag v0.1.0` and `git push origin v0.1.0`.
+3. **The `Release` workflow** (`.github/workflows/release.yml`) runs the checks and builds,
+   on GitHub's Windows and macOS machines:
+   - `FMLibreEditor-Setup.exe`, a per-user NSIS installer in English and Turkish;
+   - `FMLibreEditor-portable.zip`;
+   - `FMLibreEditor-macOS.zip`, the universal app with the bridge and its launcher.
+
+   It opens a **draft** release with the three files and `docs/release-notes.md` as its text.
+4. **Write what is new in the draft and publish it.**
+
+The download links above point at the latest published release. People outside the
+repository can use them once it is public.
 
 ## Using the probe
 

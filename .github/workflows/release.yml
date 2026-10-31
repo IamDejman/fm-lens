@@ -1,10 +1,10 @@
-# Builds the Windows installer and the portable zip.
-# - A version tag (v0.1.0) runs the checks, builds, and opens a draft GitHub release with both
-#   files; a maintainer reviews the draft and publishes it.
+# Builds the Windows installer, the portable zip and the macOS app.
+# - A version tag (v0.1.0) runs the checks, builds, and opens a draft GitHub release with the
+#   three files; a maintainer reviews the draft and publishes it.
 # - A pull request that changes how releases are built, or a run started by hand, builds the
 #   same files and keeps them as workflow artifacts only.
 # Pull requests are otherwise checked locally before they are opened, which spares the Windows
-# minutes a private repository pays for.
+# and macOS minutes a private repository pays for (a macOS minute counts as ten).
 name: Release
 
 on:
@@ -14,6 +14,7 @@ on:
     paths:
       - ".github/workflows/release.yml"
       - "app/src-tauri/tauri.conf.json"
+      - "app/src-tauri/tauri.bridge.conf.json"
       - "docs/portable-readme.txt"
   workflow_dispatch:
 
@@ -84,13 +85,87 @@ jobs:
           name: FMLibreEditor-windows
           path: out/*
 
-      - name: Draft the release
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # Both architectures: the app and the bridge are universal, so that Intel builds of the
+      # game load the bridge too.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check that the tag matches the app's version
         if: startsWith(github.ref, 'refs/tags/v')
         env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version=$(node -p "require('./app/src-tauri/tauri.conf.json').version")
+          if [ "v$version" != "$TAG" ]; then
+            echo "The tag $TAG does not match the app's version $version (app/src-tauri/tauri.conf.json)." >&2
+            exit 1
+          fi
+
+      - name: Install the interface's packages
+        working-directory: app
+        run: npm ci
+
+      - name: Build the interface
+        working-directory: app
+        run: npm run build
+
+      # The macOS side of the code; the formatting is checked on Windows.
+      - name: Checks
+        run: |
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+
+      # FMLibreEditor.app, universal, with the bridge and its launcher among its resources,
+      # signed ad hoc as there is no Developer ID.
+      - name: Build the app
+        working-directory: app
+        run: npm run release:mac
+
+      - name: Package the app
+        run: |
+          mkdir -p out
+          ditto -c -k --sequesterRsrc --keepParent \
+            target/universal-apple-darwin/release/bundle/macos/FMLibreEditor.app out/FMLibreEditor-macOS.zip
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FMLibreEditor-macos
+          path: out/*
+
+  # Once both systems have built their files.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      - name: Draft the release
+        env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
         run: >
           gh release create "${{ github.ref_name }}"
-          out/FMLibreEditor-Setup.exe out/FMLibreEditor-portable.zip
+          out/FMLibreEditor-Setup.exe out/FMLibreEditor-portable.zip out/FMLibreEditor-macOS.zip
           --draft --title "FMLibreEditor ${{ github.ref_name }}"
           --notes-file docs/release-notes.md
