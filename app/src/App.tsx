@@ -8,6 +8,7 @@ import { GraphicsStatus } from "./GraphicsStatus";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { appText, changesText, clubListText, playerListText, staffListText } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
+import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
 import type { ConnectionInfo, Detection, ReloadInfo } from "./types";
 import { askToLeave, EditorContext } from "./useProfileEditing";
@@ -22,6 +23,9 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "changes", label: changesText.nav },
 ];
 
+/** The view the window was in before the language was switched; the first one when there was no such switch. */
+const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
+
 function App() {
   const [detection, setDetection] = useState<Detection | null>(null);
   const [connection, setConnection] = useState<ConnectionInfo | null>(null);
@@ -31,7 +35,8 @@ function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
-  const [view, setView] = useState<View>("players");
+  const [view, setView] = useState<View>(() => restored("view", readView));
+  useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog, clear: clearLog } = useChangeLog();
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {

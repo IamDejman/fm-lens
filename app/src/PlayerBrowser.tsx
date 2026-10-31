@@ -6,15 +6,11 @@ import { playerListText, positionLabel, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
-import {
-  countFilters,
-  NO_PLAYER_FILTERS,
-  PlayerFilterBar,
-  toPlayerFilter,
-  type PlayerFilterFields,
-} from "./PlayerFilters";
+import { countFilters, PlayerFilterBar, toPlayerFilter, type PlayerFilterFields } from "./PlayerFilters";
 import { PlayerProfile } from "./PlayerProfile";
+import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
+import { readFields, readOrder } from "./savedFilters";
 import type { PlayerOrder, PlayerSort, PlayerSummary } from "./types";
 import { useComparison } from "./useComparison";
 
@@ -31,9 +27,12 @@ const POSITIONS_SHOWN = 3;
 
 /** The players table with the profile of the selected player beside it. */
 export function PlayerBrowser({ version, active }: { version: number; active: boolean }) {
-  const [fields, setFields] = useState<PlayerFilterFields>(NO_PLAYER_FILTERS);
+  // The filters and the sort start as they were before the language was switched, if it was (see `restore.ts`).
+  const [fields, setFields] = useState<PlayerFilterFields>(() => restored("playerFields", readFields));
   // Null until a header is clicked: no order is asked for, and the search answers with the best current ability first.
-  const [order, setOrder] = useState<PlayerOrder | null>(null);
+  const [order, setOrder] = useState<PlayerOrder | null>(() => restored("playerOrder", readOrder));
+  useSnapshot("playerFields", () => fields);
+  useSnapshot("playerOrder", () => order);
   // The players picked for a comparison. They are kept here, as the list is: every list stays mounted while another
   // view is shown (see `App`), so the set survives switching views.
   const comparison = useComparison();
@@ -49,6 +48,7 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
 
   return (
     <ListBrowser<PlayerSummary>
+      name="players"
       command="search_players"
       requestArgs={{ filter, order: order ?? undefined }}
       version={version}

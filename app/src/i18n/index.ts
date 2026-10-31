@@ -2,6 +2,7 @@
 // otherwise Turkish for a Turkish browser or system and English for everything else. Changing it saves the choice and
 // reloads the window, so nothing in the app has to react to a language change while it runs.
 
+import { saveSnapshot } from "../restore";
 import { en, type Strings } from "./en";
 import { tr } from "./tr";
 
@@ -43,8 +44,9 @@ document.documentElement.lang = locale;
 
 /**
  * Makes `next` the language and reloads the window to apply it. The choice is saved first, so that the reload picks
- * it up; when it cannot be saved the window is left alone, as the reload would only bring the old language back.
- * Callers that have edits pending ask the user first (see `askToLeave`).
+ * it up; when it cannot be saved the window is left alone, as the reload would only bring the old language back. What
+ * the window shows is saved too, so that the app comes back where it was (see `restore.ts`). Callers that have edits
+ * pending ask the user first (see `askToLeave`).
  */
 export function setLocale(next: Locale): void {
   try {
@@ -52,5 +54,6 @@ export function setLocale(next: Locale): void {
   } catch {
     return;
   }
+  saveSnapshot();
   window.location.reload();
 }
