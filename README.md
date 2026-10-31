@@ -3,6 +3,18 @@
 A free, open-source real-time editor for **Football Manager 27** on Windows, for both the
 Game Pass and the Steam build.
 
+## Download / İndir
+
+### **[⬇ FMLibreEditor-Setup.exe](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-Setup.exe)**
+
+Windows 10 or 11, with Football Manager 27 from Xbox / Game Pass or Steam. There is also a
+[portable zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-portable.zip)
+that needs no installation.
+
+- **Step by step, with pictures:** [English](docs/INSTALL.md) · [Türkçe](docs/KURULUM.md)
+- **Windows warning:** Windows may say "Windows protected your PC", because the program is
+  not signed yet. Choose **More info**, then **Run anyway**.
+
 > **Status: pre-alpha.** The app lists, searches, filters and sorts every player,
 > member of staff and club of a running FM27 (Game Pass or Steam build), and shows
 > their profiles: attributes, positions, personality, contracts, facilities,
@@ -84,8 +96,27 @@ npm run release                            # build target\release\FMLibreEditor.
 ```
 
 `npm run release` builds a stand-alone `FMLibreEditor.exe` without an installer. It
-needs the WebView2 runtime, which Windows 10 and 11 already have. There are no
-published builds yet.
+needs the WebView2 runtime, which Windows 10 and 11 already have.
+
+### Releasing
+
+1. **Bump the version** in three places:
+   - `version` in the root `Cargo.toml` (`[workspace.package]`);
+   - `app/package.json`;
+   - `app/src-tauri/tauri.conf.json`.
+
+   Commit the bump.
+2. **Tag it and push the tag:** `git tag v0.1.0` and `git push origin v0.1.0`.
+3. **The `Release` workflow** (`.github/workflows/release.yml`) runs the checks and builds,
+   on GitHub's Windows machines:
+   - `FMLibreEditor-Setup.exe`, a per-user NSIS installer in English and Turkish;
+   - `FMLibreEditor-portable.zip`.
+
+   It opens a **draft** release with both files and `docs/release-notes.md` as its text.
+4. **Write what is new in the draft and publish it.**
+
+The download links above point at the latest published release. People outside the
+repository can use them once it is public.
 
 `npm run dev` in `app/` serves the interface in a plain browser with made-up sample
 players, for working on the UI without the game.

@@ -1,0 +1,96 @@
+# Builds the Windows installer and the portable zip.
+# - A version tag (v0.1.0) runs the checks, builds, and opens a draft GitHub release with both
+#   files; a maintainer reviews the draft and publishes it.
+# - A pull request that changes how releases are built, or a run started by hand, builds the
+#   same files and keeps them as workflow artifacts only.
+# Pull requests are otherwise checked locally before they are opened, which spares the Windows
+# minutes a private repository pays for.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - "app/src-tauri/tauri.conf.json"
+      - "docs/portable-readme.txt"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Check that the tag matches the app's version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = (Get-Content app/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            throw "The tag ${{ github.ref_name }} does not match the app's version $version (app/src-tauri/tauri.conf.json)."
+          }
+
+      - name: Install the interface's packages
+        working-directory: app
+        run: npm ci
+
+      # The Rust side embeds the built interface, so it is built first.
+      - name: Build the interface
+        working-directory: app
+        run: npm run build
+
+      - name: Checks
+        shell: bash
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+
+      - name: Build the installer
+        working-directory: app
+        run: npx tauri build --bundles nsis
+
+      - name: Package the installer and the portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          $setup = Get-ChildItem target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          Copy-Item $setup.FullName out/FMLibreEditor-Setup.exe
+          New-Item -ItemType Directory -Force portable/FMLibreEditor | Out-Null
+          Copy-Item target/release/FMLibreEditor.exe portable/FMLibreEditor/
+          Copy-Item docs/portable-readme.txt portable/FMLibreEditor/README.txt
+          Compress-Archive -Path portable/FMLibreEditor -DestinationPath out/FMLibreEditor-portable.zip
+          Get-ChildItem out | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FMLibreEditor-windows
+          path: out/*
+
+      - name: Draft the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: >
+          gh release create "${{ github.ref_name }}"
+          out/FMLibreEditor-Setup.exe out/FMLibreEditor-portable.zip
+          --draft --title "FMLibreEditor ${{ github.ref_name }}"
+          --notes-file docs/release-notes.md
