@@ -58,13 +58,16 @@ without turning System Integrity Protection off.
 
 - Name: FMLibreEditor. Pre-alpha. Plain, short-sentence voice in English and Turkish.
 - FM's attribute colours (by value band) and the pitch position map stay: players read
-  attributes and positions the way FM shows them.
-- A left sidebar holds the sections.
+  attributes and positions the way FM shows them. Their exact tones may change to sit in
+  the app's palette.
+- The look has an identity of its own, never a generic dashboard, and stays calm: the
+  maintainer rejected two looks as AI-generic (a grey-green dashboard, then an imitation of
+  FM's own skin). Colours are chosen to work together.
+- Letters in the app icon or logo are "FML".
 
 ## Evidence on Hand
 
-- App icons in `app/src-tauri/icons`; guide screenshots in `docs/images` (`players.png`,
-  `kadro.png`).
+- App icons in `app/src-tauri/icons`.
 - No logo beyond the app icon, and no testimonials, user counts or press: none may be
   invented.
 

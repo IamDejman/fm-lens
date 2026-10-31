@@ -1,343 +1,522 @@
 ---
 name: FMLibreEditor
-description: A real-time FM27 editor that reads as one more screen of Football Manager.
+description: A free real-time editor for Football Manager 27, set as a football season almanac.
 colors:
-  rail: "#0b0d13"
-  ground: "#11131b"
-  panel: "#181b25"
-  raised: "#212533"
-  hover: "#272c3c"
-  field: "#0f1118"
-  zebra: "rgb(255 255 255 / 0.025)"
-  rule: "#2a2f40"
-  rule-strong: "#3a4157"
-  ink: "#eceef4"
-  ink-muted: "#9ba2b7"
-  royal-blue: "#3170f0"
-  royal-blue-hover: "#4380f7"
-  royal-blue-text: "#86adff"
-  royal-blue-soft: "rgb(49 112 240 / 0.26)"
-  royal-blue-faint: "rgb(49 112 240 / 0.1)"
-  title-strip: "#2254c9"
-  on-accent: "#ffffff"
-  pending-gold: "#e8b84a"
-  pending-gold-soft: "rgb(232 184 74 / 0.16)"
-  danger-red: "#f2675f"
-  danger-red-soft: "rgb(242 103 95 / 0.14)"
-  scrim: "rgb(5 6 10 / 0.66)"
-  tier-1: "#ef5f57"
-  tier-2: "#eaa53c"
-  tier-3: "#bcd45c"
-  tier-4: "#4fca91"
-  on-tier: "#11131b"
+  page: "#f6f7f9"
+  raised: "#eceef1"
+  hover: "#e7e9ed"
+  field: "#ffffff"
+  hairline: "#d6d9df"
+  frame: "#a6abb4"
+  ink: "#16181d"
+  ink-hover: "#30343c"
+  ink-muted: "#5b6069"
+  ink-soft: "rgb(22 24 29 / 0.08)"
+  ink-faint: "rgb(22 24 29 / 0.05)"
+  masthead: "#16181d"
+  on-masthead: "#f6f7f9"
+  focus-blue: "#2457c5"
+  focus-blue-on-ink: "#8fb1ff"
+  highlighter: "#ffe27a"
+  highlighter-edge: "#8a6a00"
+  brick: "#b23a2b"
+  brick-soft: "rgb(178 58 43 / 0.09)"
+  ok-green: "#1f7547"
+  scrim: "rgb(22 24 29 / 0.42)"
+  band-1: "#b3402f"
+  band-2: "#8f5d0e"
+  band-3: "#5a761b"
+  band-4: "#1f7547"
+  on-band: "#ffffff"
+  mix-1: "#a8483a"
+  mix-2: "#a8781e"
+  mix-3: "#6f8a2c"
+  mix-4: "#2f7a52"
+  mix-5: "#4f5b6b"
+  mix-6: "#7c4a6e"
+  mark-band-1: "#c4513f"
+  mark-band-2: "#c98a2b"
+  mark-band-3: "#8aa33a"
+  mark-band-4: "#2e8a5b"
+  night-page: "#15161a"
+  night-raised: "#1e2024"
+  night-hover: "#24262b"
+  night-field: "#0f1013"
+  night-hairline: "#2c2f35"
+  night-frame: "#4b4f58"
+  night-ink: "#ecede8"
+  night-ink-hover: "#ffffff"
+  night-ink-muted: "#a3a7af"
+  night-ink-soft: "rgb(236 237 232 / 0.1)"
+  night-ink-faint: "rgb(236 237 232 / 0.06)"
+  night-masthead: "#0a0b0d"
+  night-focus-blue: "#8fb1ff"
+  night-highlighter: "#e8c547"
+  night-brick: "#f0705f"
+  night-brick-soft: "rgb(240 112 95 / 0.14)"
+  night-ok-green: "#57b784"
+  night-scrim: "rgb(0 0 0 / 0.6)"
+  night-band-1: "#e8775f"
+  night-band-2: "#dca244"
+  night-band-3: "#a8c45e"
+  night-band-4: "#57b784"
+  night-on-band: "#15161a"
+  night-mix-1: "#d4765f"
+  night-mix-2: "#d6a24a"
+  night-mix-3: "#a3bd5c"
+  night-mix-4: "#5bb383"
+  night-mix-5: "#8d9aab"
+  night-mix-6: "#b87fa8"
 typography:
-  figure:
-    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-    fontSize: "24px"
-    fontWeight: 700
-    lineHeight: 1.1
-    fontFeature: "tnum"
+  mark:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "20px"
+    fontWeight: 850
+    lineHeight: 1
+    letterSpacing: "0.5px"
+    fontVariation: "'wdth' 72"
+  display:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "28px"
+    fontWeight: 850
+    lineHeight: 1.05
+    fontVariation: "'wdth' 75"
+  figure-large:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "30px"
+    fontWeight: 850
+    lineHeight: 1
+    fontFeature: "'tnum' 1"
+    fontVariation: "'wdth' 76"
   headline:
-    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "26px"
+    fontWeight: 850
+    lineHeight: 1.1
+    fontVariation: "'wdth' 78"
+  dialog-title:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "22px"
-    fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "-0.2px"
+    fontWeight: 850
+    fontVariation: "'wdth' 78"
+  dateline:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "15px"
+    fontWeight: 800
+    fontVariation: "'wdth' 85"
   title:
-    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-    fontSize: "17px"
-    fontWeight: 700
-    lineHeight: 1.45
-    letterSpacing: "-0.1px"
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "14.5px"
+    fontWeight: 750
+    fontVariation: "'wdth' 86"
+  tab:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "14.5px"
+    fontWeight: 750
+    fontVariation: "'wdth' 88"
+  figure:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "15px"
+    fontWeight: 850
+    fontFeature: "'tnum' 1"
+    fontVariation: "'wdth' 82"
+  rating:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "15px"
+    fontWeight: 800
+    fontFeature: "'tnum' 1"
+    fontVariation: "'wdth' 85"
   body:
-    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "14px"
     fontWeight: 400
     lineHeight: 1.45
-  body-dense:
-    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
+    fontVariation: "'wdth' 100"
+  body-small:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "13px"
     fontWeight: 400
     lineHeight: 1.3
-  small:
-    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-    fontSize: "12px"
-    fontWeight: 400
-    lineHeight: 1.4
-  label:
-    fontFamily: "Segoe UI Variable Text, Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif"
-    fontSize: "11.5px"
-    fontWeight: 700
+    fontFeature: "'tnum' 1"
+  button:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "13px"
+    fontWeight: 650
+    lineHeight: 1.3
+    fontVariation: "'wdth' 94"
+  group-head:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "12.5px"
+    fontWeight: 850
     letterSpacing: "0.5px"
-  mono:
-    fontFamily: "Cascadia Mono, SF Mono, Menlo, Consolas, monospace"
+    fontVariation: "'wdth' 85"
+  column-head:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "11px"
+    fontWeight: 800
+    letterSpacing: "0.5px"
+    fontVariation: "'wdth' 88"
+  small-print:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "12px"
     fontWeight: 400
+    lineHeight: "27px"
+  label:
+    fontFamily: "Archivo Variable, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontSize: "10.5px"
+    fontWeight: 750
+    lineHeight: "16px"
+    letterSpacing: "0.3px"
+    fontVariation: "'wdth' 90"
 rounded:
-  tight: "3px"
-  base: "4px"
-  panel: "6px"
+  none: "0px"
+  hair: "2px"
+  sm: "3px"
+  tab: "4px 4px 0 0"
+  badge: "22%"
+  dot: "50%"
 spacing:
-  xxs: "4px"
-  xs: "6px"
-  sm: "8px"
-  md: "12px"
-  lg: "16px"
-  xl: "20px"
+  hair: "2px"
+  xs: "4px"
+  sm: "6px"
+  md: "8px"
+  cell: "12px"
+  lg: "14px"
+  xl: "16px"
+  gutter: "18px"
+  dialog: "20px"
+  group: "22px"
   xxl: "24px"
 components:
-  button:
-    backgroundColor: "{colors.raised}"
+  masthead:
+    backgroundColor: "{colors.masthead}"
+    textColor: "{colors.on-masthead}"
+    height: "52px"
+    padding: "0 14px 0 18px"
+  tab:
+    backgroundColor: "transparent"
+    textColor: "rgb(246 247 249 / 0.66)"
+    typography: "{typography.tab}"
+    rounded: "{rounded.tab}"
+    padding: "0 16px"
+    height: "38px"
+  tab-active:
+    backgroundColor: "{colors.page}"
     textColor: "{colors.ink}"
-    typography: "{typography.body-dense}"
-    rounded: "{rounded.base}"
+    typography: "{typography.tab}"
+    rounded: "{rounded.tab}"
+  button:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    typography: "{typography.button}"
+    rounded: "{rounded.sm}"
     padding: "5px 12px"
     height: "30px"
   button-hover:
     backgroundColor: "{colors.hover}"
+    textColor: "{colors.ink}"
   button-primary:
-    backgroundColor: "{colors.royal-blue}"
-    textColor: "{colors.on-accent}"
-    rounded: "{rounded.base}"
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.page}"
+    typography: "{typography.button}"
+    rounded: "{rounded.sm}"
     padding: "5px 12px"
     height: "30px"
   button-primary-hover:
-    backgroundColor: "{colors.royal-blue-hover}"
+    backgroundColor: "{colors.ink-hover}"
+    textColor: "{colors.page}"
   button-danger:
-    textColor: "{colors.danger-red}"
-    rounded: "{rounded.base}"
-    padding: "5px 12px"
-  button-on-strip:
-    textColor: "{colors.on-accent}"
-    rounded: "{rounded.base}"
-  edit-toggle-on:
-    backgroundColor: "{colors.pending-gold-soft}"
-    textColor: "{colors.pending-gold}"
-  nav-item:
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.base}"
-    padding: "0 10px"
-    height: "36px"
-  nav-item-active:
-    backgroundColor: "{colors.royal-blue}"
-    textColor: "{colors.on-accent}"
-  title-strip:
-    backgroundColor: "{colors.title-strip}"
-    textColor: "{colors.on-accent}"
-    typography: "{typography.title}"
-    height: "52px"
-  search-field:
+    backgroundColor: "transparent"
+    textColor: "{colors.brick}"
+    rounded: "{rounded.sm}"
+  button-danger-hover:
+    backgroundColor: "{colors.brick-soft}"
+    textColor: "{colors.brick}"
+  segmented-pressed:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.page}"
+    padding: "3px 10px"
+    height: "26px"
+  search:
     backgroundColor: "{colors.field}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.base}"
+    rounded: "{rounded.sm}"
     padding: "0 12px"
     height: "36px"
+  table-row:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    padding: "3px 12px"
+    height: "34px"
+  table-row-selected:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.page}"
+  column-head:
+    backgroundColor: "{colors.page}"
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.column-head}"
+    padding: "0 12px"
+    height: "32px"
+  group-head:
+    textColor: "{colors.ink}"
+    typography: "{typography.group-head}"
+    padding: "5px 0 4px"
+  stat-row:
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.body-small}"
+    padding: "2px"
+    height: "27px"
   edit-input:
     backgroundColor: "{colors.field}"
     textColor: "{colors.ink}"
-    rounded: "{rounded.base}"
+    rounded: "{rounded.sm}"
     padding: "2px 6px"
   edit-input-changed:
-    backgroundColor: "{colors.pending-gold-soft}"
+    backgroundColor: "{colors.highlighter}"
+    textColor: "{colors.ink}"
   edit-input-invalid:
-    backgroundColor: "{colors.danger-red-soft}"
-  table-header:
-    backgroundColor: "{colors.raised}"
+    backgroundColor: "{colors.brick-soft}"
+    textColor: "{colors.ink}"
+  edit-review:
+    backgroundColor: "{colors.highlighter}"
+    textColor: "{colors.ink}"
+    padding: "8px 16px"
+  tag:
+    backgroundColor: "transparent"
     textColor: "{colors.ink-muted}"
     typography: "{typography.label}"
-    padding: "0 12px"
-    height: "34px"
-  table-row:
-    textColor: "{colors.ink}"
-    padding: "4px 12px"
-    height: "36px"
-  table-row-selected:
-    backgroundColor: "{colors.royal-blue-soft}"
-  tag:
-    textColor: "{colors.ink-muted}"
-    rounded: "{rounded.tight}"
-    padding: "0 6px"
-  panel-card:
-    backgroundColor: "{colors.panel}"
-    rounded: "{rounded.panel}"
-    padding: "22px 24px 24px"
+    rounded: "{rounded.hair}"
+    padding: "0 5px"
+  tag-filled:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.page}"
+    rounded: "{rounded.hair}"
   dialog:
-    backgroundColor: "{colors.panel}"
-    rounded: "{rounded.panel}"
-  dialog-head:
-    backgroundColor: "{colors.raised}"
-    padding: "14px 20px 12px"
-  profile-tab:
-    textColor: "{colors.ink-muted}"
-    padding: "8px 14px"
-  profile-tab-selected:
+    backgroundColor: "{colors.page}"
     textColor: "{colors.ink}"
+    rounded: "{rounded.none}"
+    width: "min(960px, 100%)"
+  colophon:
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.small-print}"
+    padding: "0 18px"
 ---
 
 # Design System: FMLibreEditor
 
 ## Overview
 
-**Creative North Star: "One More Screen of Football Manager"**
+**Creative North Star: "The Season Almanac"**
 
-The editor speaks Football Manager's own interface grammar, so a player who alt-tabs in from the full-screen game is already fluent. Deep indigo-charcoal grounds, a solid royal-blue title strip with white type, dense zebra tables, panels headed by ruled strips of small capitals, and FM's four attribute bands. Every screen has one lead: the search field over the squad table, the profile head with its two ability figures, the gold of what waits to be applied.
+FMLibreEditor is set like a football yearbook, the annual that prints every squad as a table. A cool white page carries near-black ink, hairline rules part the rows, and a thick ink rule stands over every section heading. One typeface does all the work: Archivo, bundled with the app so Windows (WebView2) and macOS (WKWebView) read alike, condensed and heavy for names, headings and big figures, regular width for running text. The page is dense the way an almanac is dense: rows of 34px, small print in the margins, figures that line up down every column.
 
-Density is high and deliberate. Rows are 36px, attribute rows 26px, one system sans at a tight scale, 1px rules, small corners. Colour is a vocabulary, not decoration: royal blue is what is picked and the main action, gold is an edit not yet applied, red is danger, and the four bands rate a 1–20 value. Everything else is ink on indigo. The editor reads no club's kit colours; FM's club-coloured title bar becomes the editor's own blue strip.
+Colour is not decoration here. It appears only where it means something: FM's four attribute bands, retuned as earthy inks, rate every 1 to 20 value and every position on the pitch; a marker-yellow highlighter marks an edit not yet applied; brick red marks danger; blue is the keyboard's focus and nothing else. What is picked is printed in reverse, white on ink. At night the page turns: the night edition swaps paper and ink and keeps every meaning.
 
-The world refuses the category default: a dark dashboard of identical grey cards with neon pills. It runs in a dark theme and a light theme that follow the OS, with the same roles in both.
+The maintainer rejected two earlier looks as generic: a grey-green dashboard, then an imitation of FM's own skin. This system is neither. It owes FM only the attribute bands and the pitch map, the two things players read the way the game shows them.
 
 **Key Characteristics:**
-- Stepped indigo grounds (rail, ground, panel, raised) carry depth; panels, cards and tables cast no shadow.
-- A 52px royal-blue title strip, level with the sidebar's brand block, so the two read as one band.
-- Dense FM squad tables: raised uppercase header row, zebra rows with no rules between them, selection in royal blue.
-- 1–20 values coloured by FM's four bands; the position pitch in the same bands.
-- Gold marks pending edits everywhere they appear: the input, the profile head's rule, the count, the Edit toggle.
-- One system sans; tabular digits in every column of numbers.
+- Cool white page (never cream), near-black ink, a night edition that inverts them.
+- One family, Archivo, with its width axis doing the work of a second face.
+- Hairline rules between rows; 2px ink rules under heads; 3px ink rules over section headings.
+- Reverse print for selection; ink fill for the main action.
+- Colour by meaning only: four bands, one highlighter, one red, one focus blue.
+- Flat paper; shadows only on what floats over the page.
 
 ## Colors
 
-A cool indigo-charcoal neutral field with four meaning-bearing hues and FM's four rating bands. Frontmatter values are the dark theme; the light theme (under `prefers-color-scheme: light`) redefines every role with the same meaning, and its values are recorded in the sidecar.
+A monochrome page of cool paper and near-black ink, with a handful of inks that each carry exactly one meaning. Every token has a day value and a night value; the night edition is applied under `prefers-color-scheme: dark` by swapping the same custom properties on `:root`.
 
 ### Primary
-- **Royal Blue** (`royal-blue`): the main action of a place (primary buttons, Edit), the active section in the rail, the pressed half of a segmented switch, the captain badge, the selected tab's underline. Its **soft** wash marks the picked table row and a pressed Compare; its **faint** wash marks the best value of a comparison row and the row Enter will pick, faint enough for text and chips to keep contrast. **Royal Blue Text** is the readable form for focus rings, outlined badges and the caret.
-- **Title Strip Blue** (`title-strip`): the solid strip across the top of the main area, one step deeper than Royal Blue so its white type holds contrast.
+- **Almanac Ink** (ink / night-ink): text, the main action's fill, the picked row in reverse print, the pressed half of a segmented switch, the captain's badge, the filter count, the thick rules over headings. At night it becomes the warm-white ink on the dark page, and fills invert with it.
+- **Masthead Ink** (masthead / night-masthead): the band across the top, ink in both editions; at night it drops to a deeper black than the page so the open tab still reads as joined to the page below.
 
 ### Secondary
-- **Pending Gold** (`pending-gold`): an edit not yet applied, and nothing else. Changed inputs (tint plus a doubled gold border), the 2px rule under a profile head while editing, the pending-change count, and the Edit toggle while it is on.
+- **Marker Highlighter** (highlighter / night-highlighter): an edit not yet applied. It fills a changed input, the review list of pending changes, the swatch before the change count, and draws the 4px rule under a profile's head while Edit is on. The **Highlighter Edge** (highlighter-edge) is the dark gold outline around its swatch on the day page.
+- **Brick** (brick / night-brick, with brick-soft): danger. Invalid inputs, refused moves, the error banner, Delete and Clear actions, negative amounts, the injury tag.
 
 ### Tertiary
-- **Danger Red** (`danger-red`): removal and failure. The outlined danger button, invalid inputs, error banners and bars, negative amounts.
-- **Rating Bands** (`tier-1` to `tier-4`): FM's colours for 1–5, 6–10, 11–15 and 16–20, kept from the incumbent design as a product commitment. A rating is the number itself in its band's colour, bold. The position pitch uses the same bands for natural, accomplished and lesser positions, and its grass is a faint `tier-4`.
+- **Focus Blue** (focus-blue / night-focus-blue): the 2px focus ring, offset 2px. On the masthead the ring is always the lighter **Focus Blue on Ink** (focus-blue-on-ink) so it holds against black in both editions.
+- **The Four Bands** (band-1 to band-4, night-band-1 to night-band-4): FM's attribute colours, retuned as brick, ochre, olive and pitch green. They colour a rating's digits by value (1 to 5, 6 to 10, 11 to 15, 16 to 20) and the pitch map's markers (unconvincing, competent, accomplished, natural). Text on a band fill uses on-band. The pitch itself is band-4 at 10% fill with 40% and 32% line opacity.
+- **The Mark's Bands** (mark-band-1 to mark-band-4): brighter fixed tints of the four bands used only in the FML mark and the app icon, identical in both editions.
+- **Supporter Mix** (mix-1 to mix-6): six data hues for the supporter-mix bar only, in a fixed order per kind of supporter.
+- **OK Green** (ok-green): the connected dot in the colophon and a move the game accepted.
 
 ### Neutral
-- **Rail** (`rail`): the sidebar, the deepest ground.
-- **Ground** (`ground`): the app background behind lists.
-- **Panel** (`panel`): profiles, cards, dialogs.
-- **Raised** (`raised`): what sits on a panel: table headers, profile heads, dialog heads, the edit footer, default buttons, menus.
-- **Hover** (`hover`): the hover state of rows and buttons.
-- **Field** (`field`): inputs, a step below the panel they sit on.
-- **Zebra** (`zebra`): every other row of a table or a value list.
-- **Rule / Rule Strong** (`rule`, `rule-strong`): 1px dividers; the strong rule under table headers and group headings and around controls.
-- **Ink / Ink Muted** (`ink`, `ink-muted`): text and secondary text.
-- **Scrim** (`scrim`): the dimmed app behind a dialog.
-
-The supporter-mix bar carries six fixed categorical hues (`--mix-1` to `--mix-6`, see sidecar), one per kind of supporter, used only in that bar. A club with no logo gets an initials badge in its name's hue at fixed 50% saturation and 30% lightness.
+- **Cool Paper** (page / night-page): the one sheet everything sits on. Panels are the page, not cards on it.
+- **Raised** (raised): one step off the page: a pressed control, the comparison tray, the edit report.
+- **Hover** (hover): the row and button hover.
+- **Field** (field): inputs; pure white by day, deeper than the page by night.
+- **Hairline** (hairline): 1px rules between rows and around quiet frames.
+- **Frame** (frame): 1px outlines of buttons, inputs, tags and the profile's left edge.
+- **Muted Ink** (ink-muted): small print, labels, column heads, the sub-line of a row.
+- **Ink Soft / Ink Faint** (ink-soft, ink-faint): washes of ink for a pressed Compare toggle, a mass-edit row, the best value in a comparison.
+- **Scrim** (scrim / night-scrim): dims the app behind a dialog.
 
 ### Named Rules
-**The Meaning-Only Rule.** Colour always means something: blue is picked or primary, gold is pending, red is danger, the bands rate a value. A hue that carries none of these is not added.
+**The One Meaning Rule.** Every colour other than paper and ink means one thing. Blue is focus. Yellow is an edit not yet applied. Red is danger. The four bands rate a value or a position. If a new element needs colour for any other reason, it gets ink.
 
-**The Gold Waits Rule.** Gold appears only on what has been changed and not yet applied. When the change lands or is dropped, the gold goes.
+**The Cool Paper Rule.** The page is a cool white (page) and never cream, ivory or warm grey. The night page is a cool near-black.
 
-**The Strip Rule.** On the title strip everything is white; secondary text is the same white dimmed (68–85% opacity), never grey. Buttons on the strip are white-outlined and transparent.
+**The Reverse Print Rule.** What is picked is printed in reverse: ink fill, paper text, its small print kept at 72% of the paper colour. No tinted selection, no accent-coloured row.
 
 ## Typography
 
-**Display Font:** none; the system sans carries every role.
-**Body Font:** Segoe UI Variable Text / Segoe UI on Windows, SF via `system-ui` on macOS.
-**Label/Mono Font:** Cascadia Mono, SF Mono, Menlo, Consolas, for UIDs and the launch option only.
+**Display Font:** Archivo Variable (with system-ui, -apple-system, Segoe UI, sans-serif)
+**Body Font:** Archivo Variable, the same family at regular width
+**Label/Mono Font:** Cascadia Mono, SF Mono, Menlo, Consolas, monospace, only for the launch option string in the macOS bridge setup
 
-**Character:** The platform's own UI sans, as a desktop tool in Operate mode should be. Hierarchy comes from weight (600 and 700 dominate) and a tight size scale, not from a display face.
+**Character:** One grotesque, two voices. Narrowed to 72 to 88% of its width and set at 750 to 850 weight, Archivo is the almanac's heading and figure face; at 100% width and 400 weight it is the quiet text face. The width axis comes from the bundled `@fontsource-variable/archivo/wdth.css`, set through `font-stretch` in the stylesheet.
 
 ### Hierarchy
-- **Figure** (700, 24px, 1.1, tabular): current ability in a profile head; potential ability at 20px weight 600 muted beside it.
-- **Headline** (700, 22px, 1.2, -0.2px): the person's or club's name in a profile head. The connect card heading sits at 19px.
-- **Title** (700, 17px, -0.1px): the section name on the title strip and dialog heads.
-- **Body** (400, 14px, 1.45): the app default; nav items at 600; ratings at 14px 700.
-- **Body Dense** (13px, 1.3): buttons (600), value lists, attribute rows, edit flags.
-- **Small** (12px, 1.4): notes, sub-lines in table cells, the sidebar note; 11.5px for tags and counters.
-- **Label** (700, 11.5px, 0.5–0.6px tracking, uppercase): table header cells, the ruled heading of a profile group, comparison group and move-dialog section, and the CA/PA abbreviations.
+- **Mark** (850, 20px, width 72%, 1): FML in the masthead.
+- **Display** (850, 28px, width 75%, 1.05): a person's or club's name at the head of a profile.
+- **Large Figure** (850, 30px, width 76%, 1; ranges 24px at 600 in muted ink): current and potential ability in a profile head.
+- **Headline** (850, 26px, width 78%, 1.1): the connect card; the Changes view title at 24px; dialog titles at 22px.
+- **Dateline** (800, 15px, width 85%): the in-game date in the masthead.
+- **Title** (750, 14.5px, width 86%): a name in a table row. Section tabs use the same size at width 88%; profile tabs 14px.
+- **Figure** (850, 15px, width 82%, tabular): ability and reputation in tables. **Rating** (800, 15px, width 85%, tabular) is a 1 to 20 value, coloured by its band.
+- **Body** (400, 14px, width 100%, 1.45): running text. Stat rows and notes step down to 13px at 1.3.
+- **Button** (650, 13px, width 94%, 1.3).
+- **Group Head** (850, 12.5px, width 85%, 0.5px tracking, uppercase): the heading of a profile group, a move-dialog section, a comparison group; always under a 3px ink rule.
+- **Column Head** (800, 11px, width 88%, 0.5px tracking, uppercase): table headers in muted ink, ink when the column is the sort.
+- **Small Print** (400, 12px, 27px line): the colophon, a row's sub-line, legends.
+- **Label** (750, 10.5px, width 90%, 0.3px tracking, uppercase): tags in a hairline frame.
 
 ### Named Rules
-**The One Sans Rule.** One system sans at a tight scale (11.5–24px). No web font, no display face.
+**The Lined Figures Rule.** Every number sits in tabular figures: tables, definition values, abilities, ratings, figures and deltas. Digits line up down every column and every row.
 
-**The Tabular Digits Rule.** Tables, value lists, abilities and figures use `tabular-nums`, numbers right-aligned so digits line up down every column.
+**The One Family Rule.** Archivo only. Width and weight make the hierarchy; no second display face, no system display face.
 
 ## Layout
 
-A fixed grid: a 216px sidebar rail, then the main column. The main column opens with the 52px title strip (section name left, in-game date and Refresh right), then the workspace. A workspace is the list (min 240px) and, when a row is picked, the profile beside it (flex basis 560px, min 440px; a club profile on its squad tab widens to 880px). Lists stay mounted when hidden so search, scroll and selection survive switching sections.
+The window opens at 1280×800 and holds down to 960×600. The shell is a column: the masthead (52px minimum), the page, and the colophon at the foot.
 
-The list adapts by container queries on the table's own width, not the window: columns drop in a fixed order (Born and UID, then Contract, Nation, Positions). Beside an open profile the players list narrows to name, positions and CA; at its narrowest (the 960×600 minimum window) it keeps name and CA. Names stay on one line and never wrap; columns drop before a name gives way, and only then is it cut with an ellipsis, the whole text in the hover.
+On the page, a list workspace puts the search, the toolbar, the filters and the almanac table on the left with an 18px gutter (`14px 18px 0`), and a picked row opens its entry beside it as a profile column (`flex: 0 1 560px`, at least 440px; a club with its squad tab widens to 880px), parted by a 1px frame rule. The table sits in a size container and sheds columns as its own width falls (container steps at 1200, 960, 880, 780, 680, 580, 560, 420, 320 and 300px): Born and UID go first, then Nation, then the second line of a name, down to name and CA beside a profile in the smallest window. Text cut short keeps its whole value in the hover.
 
-Profile bodies lay groups in three equal columns (attributes) or two (split facts), with 12–16px gutters and 22px between stacked blocks. Spacing steps are 4, 6, 8, 12, 16, 20, 24px; padding of 14px appears at the workspace and profile head. A window shorter than 640px lets the comparison head scroll away.
+Profiles group their rows into three columns (gap 12px) for attributes and two for split groups, 22px between groups, 16px inner padding. Dialogs center over a scrim with 24px around them, 20px gutters inside, 16px body padding and 14px between blocks.
 
-### Named Rules
-**The Columns Go First Rule.** When room runs out, whole columns drop; the name and CA are the last to leave.
+The spacing rhythm is small and even: 2, 4, 6, 8, 12, 14, 16, 18, 20, 22, 24px. Rows are 34px in tables and 27px in stat lists.
 
 ## Elevation & Depth
 
-Flat by default. Depth is tonal: rail, ground, panel, raised, each a step lighter (in light theme, the panel is white on a cool grey ground), with 1px rules between. Panels, cards, tables and the profile cast no shadow. Inset 1px rings are not elevation: they double a border (a changed or invalid input, the club badge's edge, the search field's focus).
+The almanac is flat paper. Depth comes from rules and from ink, not shadows: a 2px ink rule under a head, a 3px ink rule over a section, a raised tone for what is pressed. Only what floats above the page casts a shadow, and only two things do.
 
 ### Shadow Vocabulary
-- **Dialog** (`box-shadow: 0 18px 48px rgb(0 0 0 / 0.45)`): dialogs over the scrim.
-- **Menu** (`box-shadow: 0 10px 28px rgb(0 0 0 / 0.4)`): the squad row menu hanging over the window.
+- **Dialog** (`box-shadow: 0 18px 48px rgb(0 0 0 / 0.3)`): a modal over the scrim.
+- **Menu** (`box-shadow: 0 10px 28px rgb(0 0 0 / 0.25)`): the captain menu that hangs from a squad row.
+- **Ink ring** (`box-shadow: 0 0 0 1px` ink, or `inset 0 0 0 1px`): not depth but a doubled line: the focused search box, the pressed Edit toggle, an invalid input in brick, the highlighter swatch's edge.
+
+### Rule Weights
+- **Hairline** (1px, hairline): between rows, under a dialog's head, around quiet frames, above the colophon.
+- **Frame** (1px, frame): buttons, inputs, tags, segmented switches, the profile's left edge.
+- **Head rule** (2px, ink): under column heads, under a profile head, over the edit footer, over the macOS bridge section.
+- **Section rule** (3px, ink): over every group heading, the connect card and the top of a dialog.
+- **Highlighter rule** (4px, highlighter): under a profile head while Edit is on.
 
 ### Named Rules
-**The Overlay Exception Rule.** Only overlays (dialogs and menus) cast a shadow, offset and blurred, because they float over the page. Everything on the page is flat.
+**The Flat Paper Rule.** Surfaces are flat. A shadow means the thing is floating over the page (dialog, menu); nothing at rest casts one.
 
 ## Shapes
 
-Small corners, square geometry. Buttons, inputs, nav items, switches and banners are 4px; tags, badges, counters and menu items 3px; cards and dialogs 6px. Segmented switches (EN | TR, move or swap, squad teams) are one 4px frame of square-cornered halves split by a 1px rule. Circles are kept for faces, initials and the connection dot; club badges are rounded squares (22%). The supporter-mix bar is a 12px bar with 2px corners and 2px gaps. No full-radius pills.
+Corners are almost square. Buttons, inputs, the search box and switches take a 3px radius; tags, counts, badges and swatches 2px; dialogs and in-profile tabs none. The section tabs in the masthead round only their top corners (4px) so the open one reads as a thumb-index tab joined to the page. Circles are kept for the status dot; the stand-in club badge (initials on a muted hue taken from the club's name, saturation 28%, lightness 32%) rounds at 22%; a person without a face gets initials in a 2px-cornered frame; a nation without a flag gets an empty frame.
+
+Icons are inline SVG line drawings at 10 to 16px, stroke 1.6 to 1.8, round caps, in currentColor.
 
 ## Components
 
+### Masthead and Tabs
+The almanac's head: an ink band in both editions.
+- **Structure:** the FML mark at the left, the section tabs (Players, Staff, Clubs, Changes), and at the right the busy message, the in-game date set as a dateline, Reload and the EN | TR switch.
+- **Tabs:** transparent on ink, paper text at 66%; hover lifts to an 8% paper wash and full paper text; the open tab takes the page colour and ink text and touches the page below. The Changes tab carries a count chip (paper at 16% on ink; ink on the open tab).
+- **Controls on ink:** outlined in paper at 40%, hover 10% wash, pressed language in solid paper with ink text. Focus here is always focus-blue-on-ink.
+
+### The Almanac Table
+The signature: a tight yearbook table.
+- **Head:** sticky, 32px, page background, column heads in muted uppercase over a 2px ink rule. A sortable head is a button that looks like the head; its arrow is always laid out (hidden until it is the sort) so widths never jump.
+- **Rows:** 34px, 1px hairline between them, no stripes. Names in Title type with a muted sub-line; ability and reputation in Figure type, right-aligned.
+- **Hover:** the hover tone.
+- **Selection (reverse print):** the picked row fills with ink and prints in paper; its small print stays reversed at 72%. At night this becomes a paper-white bar with dark text.
+- **Focus:** a 2px focus-blue ring inset by 2px.
+
+### Entry and Profile Groups
+A page of the yearbook that opens beside the row.
+- **Head:** the name in Display type, the full name and vitals in muted small print, CA and PA as Large Figures at the right with their abbreviations in muted uppercase, and the actions above them (Compare and Move as outline buttons, Edit as the ink-filled main action, close as an icon button). A 2px ink rule closes the head.
+- **Groups:** a Group Head under a 3px ink rule, then label and value rows (27px, hairline between, muted label, value right-aligned). A 1 to 20 value is Rating type in its band's ink.
+- **Other parts:** the pitch map (band-coloured markers, ineffective positions barely visible), the legend, the supporter-mix bar (12px, 2px gaps), progress bars (6px, ink fill on hairline).
+- **Profile tabs** (a club's General and Squad): muted text over a hairline; the open tab gets a 3px ink underline.
+
+### Edit Mode and the Highlighter
+Every change waits in highlighter until it is applied.
+- **Entering:** the Edit toggle turns from ink-filled to pressed (raised fill, ink text, inset ink ring) and a 4px highlighter rule appears under the profile head.
+- **Inputs:** right-aligned tabular inputs sized to their largest value (`--digits`), field background, frame outline, no spin buttons. A changed value fills with highlighter and an ink edge; an invalid one turns brick-soft with a doubled brick edge; while writing, inputs dim to 60%. Yes-or-no fields are checkboxes in a tag-like frame.
+- **Footer:** a 2px ink rule, the change count led by a highlighter swatch, then Review, Discard, Apply (ink-filled) and Done. The review list opens above it on a highlighter ground; the Apply report sits on the raised tone, problems in brick.
+- The same highlighter marks changed values in the move dialog's contract fields.
+
+### Dialogs
+- **Box:** square corners, a 3px ink rule across the top, the page colour, the Dialog shadow, over the scrim. Up to 960px wide (the comparison wider, the move dialog narrower).
+- **Head:** the title in Headline type at 22px with a muted sub-line, a hairline under it. Body scrolls; tables inside scroll on their own with sticky heads. Sections inside take Group Heads under 3px ink rules.
+- **Foot:** a note at the left, actions at the right; failures appear as a brick bar across the foot.
+- **Move dialog:** a segmented switch (move or swap), a club search whose Enter target row carries a faint ink wash and a focus-blue outline because focus itself stays in the search box.
+
+### Colophon
+Small print along the foot, over a hairline.
+- **Line one:** "FMLibreEditor · pre-alpha" in ink at width 88% and weight 750, the connection status with its dot (frame grey, ok-green when connected) and the game, counts of players, staff and clubs; in the browser preview a framed tag.
+- **The two-line adaptation:** where the game and the notes fit, they share one line and the notes sit to the right. Where they do not (Turkish strings run long, and the minimum window is 960 wide), the notes wrap to a second line of their own. The note on applying edits and backing up is never cut except, with an ellipsis, in a window too narrow for it even alone; the graphics packs' note shows whole or wraps out of sight. Each line is 27px.
+
 ### Buttons
-Raised ink, dense and square.
-- **Shape:** gently cornered (4px), min height 30px, 13px weight 600.
-- **Default:** raised fill with a strong 1px rule; hover steps to the hover ground, active to the rule colour. Transitions on colour only, 120ms ease-out.
-- **Primary:** Royal Blue fill, white text; hover lightens. One per place: Connect, Apply, Edit.
-- **Danger:** transparent with a red outline and red text, for what removes or drops.
-- **On the strip:** transparent with a 45% white outline; hover is a 14% white wash.
-- **Focus:** 2px Royal Blue Text outline, 2px offset. Disabled is 50% opacity.
-- **Edit toggle:** primary blue until pressed, then gold outline, gold text and gold wash, as the edits it leaves.
+- **Shape:** gently squared (3px), 30px tall, `5px 12px`, Button type.
+- **Default:** transparent with a frame outline and ink text. Hover: ink outline on the hover tone. Active: raised tone.
+- **Primary:** ink fill, paper text; hover ink-hover. One main action per surface (Connect, Edit, Apply, Compare).
+- **Danger:** brick outline and text on transparent; hover brick-soft.
+- **Text action:** underlined ink text with no frame (Clear filters).
+- **Icon button:** 30px square, transparent, muted icon; hover tone on hover.
+- **Segmented switch** (language, move or swap, team): two or three buttons in one frame with frame dividers; the pressed one is ink-filled.
+- **Disabled:** 45% opacity. Controls that must stay Tab stops use `aria-disabled` at 55%.
+- **Focus:** `outline: 2px solid` focus blue, offset 2px (inset where the control sits flush). Fields in the filter bar take a 1px ink outline instead.
 
-### Chips and Tags
-- **Tag:** outlined, square-cornered (3px), 11.5px weight 600, muted; the "you" tag is solid blue.
-- **Role badge:** C is solid Royal Blue, VC outlined in Royal Blue Text.
-- **Comparison chip:** a tag-like chip per picked player in the tray under the list.
+### Inputs and Search
+- **Search:** leads every list; 36px, up to 440px, field background, frame outline, 3px radius, a 16px muted magnifier. Hover and focus turn the outline ink, and focus doubles it with a 1px ink ring.
+- **Filter fields:** 30px, a grid of equal cells, each a muted label over its control.
 
-### Cards / Containers
-- **Corner Style:** 6px.
-- **Background:** Panel on Ground.
-- **Shadow Strategy:** none (see Elevation).
-- **Border:** 1px Rule.
-- **Internal Padding:** 22px 24px 24px for the connect card; facts inside are label-value rows on zebra stripes.
+### Tags and Badges
+- **Tag:** Label type in a 2px-cornered frame outline, muted. Filled in ink for "you" (the user's manager); brick for injured; the women's-club tag at weight 500.
+- **Captain badges:** C filled in ink, VC outlined in ink.
 
-### Inputs / Fields
-- **Style:** Field fill (a step below its panel), 1px Rule Strong, 4px corners. Search is 36px tall with a muted stroke icon; edit inputs size to their digits and drop spin buttons.
-- **Focus:** search gains a Royal Blue border plus a 1px blue ring; filter fields a 1px blue outline; edit inputs a 2px Royal Blue Text outline.
-- **Changed:** gold border, gold wash and an inset gold ring.
-- **Invalid:** the same in red.
+### Motion
+- **State changes:** buttons fade background, border and colour over 120ms ease-out.
+- **Entry open:** the profile slides in 12px from the right and fades in over 200ms, `cubic-bezier(0.2, 0.7, 0.2, 1)`.
+- **Loading:** the profile's status line pulses to 45% opacity on a 1.4s ease-in-out loop.
+- **Reduced motion:** under `prefers-reduced-motion: reduce` the entry slide and the pulse are switched off; only the 120ms colour fades remain.
 
-### Navigation
-- **Rail:** 36px items, 14px weight 600, muted, 18px stroke icons; hover is raised fill with ink text; the active section is solid Royal Blue with white text. A change counter sits at the row's end.
-- **Profile tabs:** muted 600 text over a 1px rule; the open tab is ink with a 2px Royal Blue underline.
-- **Segmented switch:** a field-coloured frame; the pressed half is solid Royal Blue.
-
-### Squad Table (signature)
-FM's squad table: sticky 34px raised header in uppercase labels, sortable by header buttons with an arrow; 36px zebra rows with no rules between them; hover fills the row; the row whose profile is open is the Royal Blue wash; focus is an inset 2px outline. CA and PA are bold tabular figures, right-aligned.
-
-### Profile Head and Attribute Groups (signature)
-The head is a raised band: name large, meta muted under it, CA and PA as figures at the right with the actions. Groups are headed by a ruled strip of small capitals; rows are 26px label-value pairs on zebra stripes, the value coloured by its band. While editing, a 2px gold rule runs under the head and a raised footer holds the count and Review, Discard, Apply, Done.
-
-### Dialogs and Menus
-6px panel boxes on the scrim, with a raised head band, a scrolling body (16px 20px) and a foot. They and the squad row menu carry the overlay shadows.
+### The Icon and Mark
+- **App icon:** "FML" in Archivo at weight 850 and width 72, paper on a rounded ink tile that keeps macOS's margin (824 of 1024, radius 186), under a thick paper rule as the almanac sets its headings, over a bar of the four mark bands with 14px gaps.
+- **Small cut:** at 48px and under, the rule is dropped, the tile grows to 912 of 1024 (radius 200), and the letters and bands are drawn larger (bands 110 tall, 24px gaps) so they survive at 16 and 32px.
+- **In-app mark:** the masthead's BrandMark repeats it: FML in Mark type over a 3px bar of the four mark bands with 2px gaps.
+- The letters are always "FML". The icons are generated by `app/src-tauri/icons/make-icon.py` from the bundled font.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** give every screen one lead: the search field over the table, the profile head, or the gold of pending edits.
-- **Do** colour 1–20 values by FM's four bands (`tier-1` to `tier-4`), as the number itself, bold.
-- **Do** mark the picked row, the active section and the main action in Royal Blue, and nothing decorative.
-- **Do** show every pending edit in gold until it is applied or dropped.
-- **Do** carry depth with the ground steps (rail, ground, panel, raised) and 1px rules.
-- **Do** keep numbers in `tabular-nums`, right-aligned.
-- **Do** drop whole columns before a name wraps or is cut.
-- **Do** keep white type on the title strip, secondary text as dimmed white.
+- **Do** keep the page cool white (page) by day and cool near-black (night-page) at night; ink is near-black (ink) and warm white (night-ink).
+- **Do** use blue only for focus: the 2px focus ring, and the stand-in ring on a row that Enter will pick while focus stays elsewhere.
+- **Do** use the highlighter only for an edit not yet applied: a changed input, the review list, the pending swatch, the 4px rule under an editing head.
+- **Do** use brick only for danger: invalid values, refusals, errors, destructive actions, negative amounts, injuries.
+- **Do** colour 1 to 20 values and pitch positions by FM's four bands, and nothing else by them.
+- **Do** print the picked row in reverse (ink fill, paper text) and fill the main action with ink.
+- **Do** put a 3px ink rule over every group heading and a 2px ink rule under every table and profile head; part rows with 1px hairlines.
+- **Do** set every number in tabular figures, and set names, headings and figures in condensed heavy Archivo (width 72 to 88%, weight 750 to 850).
+- **Do** define every colour as a custom property with a night value; the night edition is a swap of tokens, never a separate stylesheet.
+- **Do** let the colophon's notes take a second line rather than cut the advice on applying edits.
+- **Do** switch off the entry slide and the pulse under reduced motion.
 
 ### Don't:
-- **Don't** put shadows on panels, cards, tables or the profile; only dialogs and menus cast one.
-- **Don't** use gold for anything but an edit not yet applied.
-- **Don't** read club kit colours into the chrome; the strip is always the editor's own blue.
-- **Don't** build a dashboard of identical grey cards with neon pills; no full-radius pills.
-- **Don't** add a web font or display face; the system sans carries every role.
-- **Don't** round corners past 6px on any rectangle.
+- **Don't** use blue for a tag, a link, a selection, a best value or a brand accent.
+- **Don't** use yellow for anything but an unapplied edit: not for warnings, highlights of interest, or selection.
+- **Don't** use red for anything but danger.
+- **Don't** make the page cream, ivory, beige or any warm paper.
+- **Don't** stripe table rows or tint them as a zebra; hairlines part them.
+- **Don't** add cards with shadows, rounded panels or a sidebar of tinted surfaces; the page is one flat sheet.
+- **Don't** imitate FM's skin (royal-blue selection, raised panel heads, striped grids) or return to a grey-green dashboard look.
+- **Don't** add a second typeface or fall back to a system display face for headings.
+- **Don't** use glyph characters as icons; icons are inline SVG line drawings.
+- **Don't** put any letters other than "FML" in the icon or mark.

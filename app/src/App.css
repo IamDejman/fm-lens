@@ -1,124 +1,129 @@
 /*
- * FMLibreEditor speaks Football Manager's own interface language: deep indigo panels, a solid title strip,
- * dense striped tables and FM's attribute colours, so a player who alt-tabs in from the game is already at home.
- * Colour means something: royal blue is selection and the main action, gold is an edit not yet applied, red is
- * danger, and the four bands rate a 1–20 value. Everything else is ink.
+ * FMLibreEditor reads as a football season almanac, the yearbook that prints every squad as a table: a cool white page,
+ * near-black ink, hairline rules between rows and a thick rule over every heading. One typeface, Archivo: condensed and
+ * bold for names, headings and figures, regular width for text. Colour appears only where it means something: FM's four
+ * bands rate a 1–20 value, a highlighter marks an edit not yet applied, brick red is danger, and blue is the keyboard's
+ * focus. What is picked is printed in reverse, white on ink. At night the page turns: the night edition.
  */
 :root {
-  /* Grounds, from the back: the sidebar rail, the app, the panels on it, and what sits raised on a panel. */
-  --rail: #0b0d13;
-  --bg: #11131b;
-  --panel: #181b25;
-  --raised: #212533;
-  --hover: #272c3c;
-  /* An input sits a step below its panel. */
-  --field: #0f1118;
-  /* Every other row of a table and of a list of values. */
-  --zebra: rgb(255 255 255 / 0.025);
-  --border: #2a2f40;
-  --border-strong: #3a4157;
-  --text: #eceef4;
-  --muted: #9ba2b7;
+  /* The page, one sheet; what sits a step off it (a header, a pressed control); the hover; an input. */
+  --bg: #f6f7f9;
+  --panel: #f6f7f9;
+  --raised: #eceef1;
+  --hover: #e7e9ed;
+  --field: #ffffff;
+  /* No striped rows: hairlines part them, as in print. */
+  --zebra: transparent;
+  --border: #d6d9df;
+  --border-strong: #a6abb4;
+  --text: #16181d;
+  --muted: #5b6069;
 
-  /* Royal blue: what is picked and the main action. --strip is the title strip, a step deeper for its white type. */
-  --accent: #3170f0;
-  --accent-hover: #4380f7;
-  --accent-text: #86adff;
-  --accent-soft: rgb(49 112 240 / 0.26);
-  /* A wash faint enough for text to keep its contrast on it: the best value of a row in the comparison. */
-  --accent-faint: rgb(49 112 240 / 0.1);
-  --strip: #2254c9;
-  --on-accent: #ffffff;
+  /* Ink: the main action, and what is picked, in reverse print. */
+  --accent: #16181d;
+  --accent-hover: #30343c;
+  --accent-soft: rgb(22 24 29 / 0.08);
+  --accent-faint: rgb(22 24 29 / 0.05);
+  --on-accent: #f6f7f9;
+  /* The masthead is ink in both editions. */
+  --strip: #16181d;
+  --on-strip: #f6f7f9;
+  /* Blue is for the keyboard's focus only. */
+  --accent-text: #2457c5;
 
-  /* Gold: a value changed in the editor and not applied yet. */
-  --pending: #e8b84a;
-  --pending-soft: rgb(232 184 74 / 0.16);
+  /* The highlighter: an edit not yet applied. --pending is its edge and its words on the page. */
+  --pending: #8a6a00;
+  --pending-soft: #ffe27a;
+  --on-pending: #16181d;
 
-  --danger: #f2675f;
-  --danger-soft: rgb(242 103 95 / 0.14);
+  --danger: #b23a2b;
+  --danger-soft: rgb(178 58 43 / 0.09);
+  --ok: #1f7547;
   /* What dims the app behind a dialog. */
-  --scrim: rgb(5 6 10 / 0.66);
+  --scrim: rgb(22 24 29 / 0.42);
 
-  /* Rating bands, as FM colours them: 1–5, 6–10, 11–15, 16–20; --on-tier is the text colour on a solid band colour. */
-  --tier-1: #ef5f57;
-  --tier-2: #eaa53c;
-  --tier-3: #bcd45c;
-  --tier-4: #4fca91;
-  --on-tier: #11131b;
+  /* FM's bands, 1–5, 6–10, 11–15, 16–20, as earthy inks that sit on the page; --on-tier is the text on a band's fill. */
+  --tier-1: #b3402f;
+  --tier-2: #8f5d0e;
+  --tier-3: #5a761b;
+  --tier-4: #1f7547;
+  --on-tier: #ffffff;
 
   /* The kinds of supporters in the supporter-mix bar: six distinct hues, one per kind, in a fixed order. */
-  --mix-1: #3987e5;
-  --mix-2: #d95926;
-  --mix-3: #199e70;
-  --mix-4: #c98500;
-  --mix-5: #d55181;
-  --mix-6: #008300;
+  --mix-1: #a8483a;
+  --mix-2: #a8781e;
+  --mix-3: #6f8a2c;
+  --mix-4: #2f7a52;
+  --mix-5: #4f5b6b;
+  --mix-6: #7c4a6e;
 
   /*
-   * The badge that stands in for a club's logo has the hue of the club's name (see `Picture.tsx`) at this
-   * saturation and lightness: dark enough for its white initials to keep 4.5:1 at every hue, in both themes.
+   * The badge that stands in for a club's logo has the hue of the club's name (see `Picture.tsx`) at this saturation
+   * and lightness: muted, so it sits in the almanac's ink, and dark enough for its white initials to keep 4.5:1.
    */
-  --badge-saturation: 50%;
-  --badge-lightness: 30%;
+  --badge-saturation: 28%;
+  --badge-lightness: 32%;
 
-  --radius: 4px;
-  --scroll: #343a4e;
+  --radius: 3px;
+  --scroll: #b8bcc4;
+  --display: "Archivo Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  color-scheme: dark;
-  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color-scheme: light;
+  font-family: var(--display);
   font-size: 14px;
+  font-stretch: 100%;
   line-height: 1.45;
   color: var(--text);
   background: var(--bg);
-  caret-color: var(--accent-text);
+  caret-color: var(--text);
   -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: light) {
+/* The night edition: the page turns dark and what was ink is now paper. */
+@media (prefers-color-scheme: dark) {
   :root {
-    --rail: #e3e7ef;
-    --bg: #edf0f5;
-    --panel: #ffffff;
-    --raised: #eef1f6;
-    --hover: #e4e8f0;
-    --field: #ffffff;
-    --zebra: rgb(20 30 60 / 0.03);
-    --border: #d6dbe5;
-    --border-strong: #bcc4d3;
-    --text: #151923;
-    --muted: #566074;
+    --bg: #15161a;
+    --panel: #15161a;
+    --raised: #1e2024;
+    --hover: #24262b;
+    --field: #0f1013;
+    --border: #2c2f35;
+    --border-strong: #4b4f58;
+    --text: #ecede8;
+    --muted: #a3a7af;
 
-    --accent: #2458d3;
-    --accent-hover: #1f4ebf;
-    --accent-text: #1d4fc4;
-    --accent-soft: rgb(36 88 211 / 0.16);
-    --accent-faint: rgb(36 88 211 / 0.06);
-    --strip: #2154c9;
+    --accent: #ecede8;
+    --accent-hover: #ffffff;
+    --accent-soft: rgb(236 237 232 / 0.1);
+    --accent-faint: rgb(236 237 232 / 0.06);
+    --on-accent: #15161a;
+    --strip: #0a0b0d;
+    --accent-text: #8fb1ff;
 
-    --pending: #8a5c00;
-    --pending-soft: rgb(234 170 30 / 0.18);
+    --pending: #e8c547;
+    --pending-soft: #e8c547;
 
-    --danger: #c23a31;
-    --danger-soft: rgb(194 58 49 / 0.1);
-    --scrim: rgb(20 26 40 / 0.42);
+    --danger: #f0705f;
+    --danger-soft: rgb(240 112 95 / 0.14);
+    --ok: #57b784;
+    --scrim: rgb(0 0 0 / 0.6);
 
-    --tier-1: #b8332b;
-    --tier-2: #a65f00;
-    --tier-3: #587a0c;
-    --tier-4: #16714f;
-    --on-tier: #ffffff;
+    --tier-1: #e8775f;
+    --tier-2: #dca244;
+    --tier-3: #a8c45e;
+    --tier-4: #57b784;
+    --on-tier: #15161a;
 
-    --mix-1: #2a78d6;
-    --mix-2: #eb6834;
-    --mix-3: #1baf7a;
-    --mix-4: #eda100;
-    --mix-5: #e87ba4;
-    --mix-6: #008300;
+    --mix-1: #d4765f;
+    --mix-2: #d6a24a;
+    --mix-3: #a3bd5c;
+    --mix-4: #5bb383;
+    --mix-5: #8d9aab;
+    --mix-6: #b87fa8;
 
-    --scroll: #c3cad7;
+    --scroll: #3d4047;
 
-    color-scheme: light;
-    -webkit-font-smoothing: auto;
+    color-scheme: dark;
   }
 }
 
@@ -130,12 +135,12 @@ body {
   margin: 0;
 }
 
+/* Selected text is printed in reverse, as the picked row is: the highlighter stays for values not yet applied. */
 ::selection {
-  background: var(--accent-soft);
-  color: var(--text);
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
-/* Scrollbars in the panel's own colours, thin, in both engines (WebView2 and WebKit). */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scroll) transparent;
@@ -164,17 +169,18 @@ body {
   background: transparent;
 }
 
-/* One button: raised ink by default, royal blue for the main action of a place, red outline for what removes. */
+/* One button: an outline on the page by default, filled with ink for the main action, red for what removes. */
 button {
   min-height: 30px;
   padding: 5px 12px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--raised);
+  background: transparent;
   color: var(--text);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-stretch: 94%;
+  font-weight: 650;
   line-height: 1.3;
   cursor: pointer;
   transition:
@@ -184,20 +190,21 @@ button {
 }
 
 button:hover:not(:disabled) {
+  border-color: var(--text);
   background: var(--hover);
 }
 
 button:active:not(:disabled) {
-  background: var(--border);
+  background: var(--raised);
 }
 
-button:focus-visible {
+:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: default;
 }
 
@@ -238,152 +245,163 @@ dd,
   white-space: nowrap;
 }
 
-/* Shell */
+/* Shell: the masthead with the section tabs, the page, and the colophon at the foot. */
 
 .app {
-  display: grid;
-  grid-template-columns: 216px 1fr;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
 }
 
-/* The rail: the app's name, its sections and, at its foot, the notes and the language. */
-.sidebar {
+.masthead {
   display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 0 10px 14px;
-  border-right: 1px solid var(--border);
-  background: var(--rail);
-}
-
-/* As tall as the title strip beside it, so the two read as one band across the window. */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 52px;
-  margin: 0 -10px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.brand .logo {
-  display: grid;
   flex: none;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: linear-gradient(160deg, #3fb68b, #24875f);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  align-items: flex-end;
+  gap: 18px;
+  min-height: 52px;
+  padding: 0 14px 0 18px;
+  background: var(--strip);
+  color: var(--on-strip);
 }
 
-.brand strong {
-  display: block;
-  font-size: 14px;
-  line-height: 1.2;
-}
-
-.brand span {
-  color: var(--muted);
-  font-size: 11.5px;
-}
-
-nav {
-  display: flex;
+/* The mark: FML set condensed and bold over FM's four bands, as on the app's icon. */
+.brand {
+  display: inline-flex;
+  flex: none;
   flex-direction: column;
+  align-self: center;
+  gap: 3px;
+  padding: 2px 0;
+}
+
+.brand-word {
+  font-size: 20px;
+  font-stretch: 72%;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0.5px;
+}
+
+.brand-bands {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  height: 3px;
+}
+
+.brand-bands span:nth-child(1) {
+  background: #c4513f;
+}
+
+.brand-bands span:nth-child(2) {
+  background: #c98a2b;
+}
+
+.brand-bands span:nth-child(3) {
+  background: #8aa33a;
+}
+
+.brand-bands span:nth-child(4) {
+  background: #2e8a5b;
+}
+
+/* The section tabs, as an almanac's thumb index: the open one is the page itself, joined to it below. */
+.tabs {
+  display: flex;
+  align-self: flex-end;
   gap: 2px;
 }
 
-.nav-item {
-  display: flex;
+.tab {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 36px;
-  padding: 0 10px;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
   border: 0;
-  border-radius: var(--radius);
+  border-radius: 4px 4px 0 0;
   background: transparent;
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 600;
-  text-align: left;
+  color: rgb(246 247 249 / 0.66);
+  font-size: 14.5px;
+  font-stretch: 88%;
+  font-weight: 750;
 }
 
-.nav-item svg {
-  width: 18px;
-  height: 18px;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.tab:hover:not(:disabled, .active) {
+  border-color: transparent;
+  background: rgb(246 247 249 / 0.08);
+  color: var(--on-strip);
 }
 
-.nav-item:hover:not(:disabled, .active) {
-  background: var(--raised);
+.tab.active {
+  background: var(--bg);
   color: var(--text);
 }
 
-.nav-item:focus-visible {
-  outline: 2px solid var(--accent-text);
-  outline-offset: -2px;
+.tab:focus-visible {
+  outline-color: #8fb1ff;
+  outline-offset: -3px;
 }
 
-.nav-item.active {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.nav-item:disabled {
-  opacity: 1;
-}
-
-/* How many changes the log holds, at the end of its row. */
-nav small {
+/* How many changes the log holds, after the tab's name. */
+.tab small {
   min-width: 20px;
-  margin-left: auto;
   padding: 0 6px;
-  border-radius: 3px;
-  background: var(--raised);
-  color: var(--text);
+  border-radius: 2px;
+  background: rgb(246 247 249 / 0.16);
   font-size: 11.5px;
-  font-weight: 700;
+  font-stretch: 90%;
+  font-weight: 800;
   line-height: 18px;
   text-align: center;
 }
 
-.nav-item.active small {
-  background: rgb(255 255 255 / 0.2);
+.tab.active small {
+  background: var(--accent);
   color: var(--on-accent);
 }
 
-/* The foot of the sidebar: the note, and under it the language switch. */
-.sidebar-foot {
+/* The right of the masthead: what the app is doing, the game's date, Reload and the language. */
+.masthead-side {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: auto;
-  padding: 0 4px;
+  align-items: center;
+  align-self: center;
+  gap: 12px;
+  min-width: 0;
+  margin-left: auto;
 }
 
-.sidebar-note {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
+.busy {
+  color: rgb(246 247 249 / 0.8);
+  font-size: 13px;
 }
 
-/* What the graphics packs hold is a note of its own; with no packs it is two: that, and where they go. */
-.graphics-status {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+/* The game's date, as the almanac's dateline. */
+.game-date {
+  flex: none;
+  font-size: 15px;
+  font-stretch: 85%;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.masthead button {
+  flex: none;
+  border-color: rgb(246 247 249 / 0.4);
+  color: var(--on-strip);
+}
+
+.masthead button:hover:not(:disabled) {
+  border-color: var(--on-strip);
+  background: rgb(246 247 249 / 0.1);
+}
+
+.masthead button:active:not(:disabled) {
+  background: rgb(246 247 249 / 0.18);
+}
+
+.masthead :focus-visible {
+  outline-color: #8fb1ff;
 }
 
 /* "EN | TR": two buttons in one frame; the pressed one is the language in use. The mode switch of the move dialog (see
@@ -396,7 +414,6 @@ nav small {
   overflow: hidden;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--field);
 }
 
 .language-switch button,
@@ -410,8 +427,8 @@ nav small {
   background: transparent;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
+  font-weight: 750;
+  letter-spacing: 0.3px;
 }
 
 .language-switch button + button,
@@ -423,7 +440,7 @@ nav small {
 .language-switch button:hover:not(:disabled, [aria-pressed="true"]),
 .move-mode button:hover:not(:disabled, [aria-pressed="true"]),
 .squad-teams button:hover:not(:disabled, [aria-pressed="true"]) {
-  background: var(--raised);
+  background: var(--hover);
   color: var(--text);
 }
 
@@ -437,50 +454,101 @@ nav small {
 .language-switch button:focus-visible,
 .move-mode button:focus-visible,
 .squad-teams button:focus-visible {
-  outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
+/* On the masthead the language switch is drawn in the masthead's paper. */
+.masthead .language-switch {
+  align-self: center;
+  border-color: rgb(246 247 249 / 0.4);
+}
+
+.masthead .language-switch button {
+  color: rgb(246 247 249 / 0.7);
+}
+
+.masthead .language-switch button + button {
+  border-left-color: rgb(246 247 249 / 0.4);
+}
+
+.masthead .language-switch button:hover:not(:disabled, [aria-pressed="true"]) {
+  background: rgb(246 247 249 / 0.1);
+  color: var(--on-strip);
+}
+
+.masthead .language-switch button[aria-pressed="true"] {
+  background: var(--on-strip);
+  color: var(--strip);
+}
+
+/* The page under the masthead: whatever the open tab holds. */
 .main {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
 }
 
-/*
- * The title strip, as FM's title bar: the section's name, the game it reads and, at the right, the game's date and
- * the action that reads it again. White type on the strip; what is secondary is the same white, dimmed, never grey.
- */
-.topbar {
+/* The colophon: the game it reads, then the notes, in small print along the foot. One line where both fit, the notes
+   to the right; where they do not, the notes take a second line of their own, so the advice on applying edits is
+   never cut. */
+.colophon {
   display: flex;
   flex: none;
-  align-items: center;
-  gap: 14px;
-  min-height: 52px;
-  padding: 0 16px 0 20px;
-  background: var(--strip);
-  color: var(--on-accent);
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0 32px;
+  padding: 0 18px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 27px;
+  white-space: nowrap;
 }
 
-.topbar-title {
+.colophon-main,
+.colophon-notes {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* The notes: the advice on applying edits first, cut at the end only in a window too narrow for it even on a line of
+   its own; the packs' note after it shows whole, or wraps out of sight. */
+.colophon-notes {
+  flex-wrap: wrap;
+  height: 27px;
+  overflow: hidden;
+}
+
+.colophon .sidebar-note {
+  flex: none;
   margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.1px;
-  white-space: nowrap;
+}
+
+.colophon .sidebar-note:first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.colophon-name {
+  flex: none;
+  color: var(--text);
+  font-stretch: 88%;
+  font-weight: 750;
 }
 
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
   overflow: hidden;
-  color: rgb(255 255 255 / 0.68);
-  font-size: 12.5px;
   white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
 /* The words are cut short at the end, with an ellipsis, when the window leaves them too little room. */
@@ -492,73 +560,35 @@ nav small {
 }
 
 .status .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   flex: none;
   border-radius: 50%;
-  background: rgb(255 255 255 / 0.45);
+  background: var(--border-strong);
 }
 
 .status.on .dot {
-  background: #6ee7a8;
+  background: var(--ok);
 }
 
-.topbar .tag {
-  border-color: rgb(255 255 255 / 0.4);
-  color: rgb(255 255 255 / 0.85);
-}
-
-/* The game's date, as FM shows it beside Continue. */
-.game-date {
-  flex: none;
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.topbar button {
-  flex: none;
-  border-color: rgb(255 255 255 / 0.45);
-  background: transparent;
-  color: var(--on-accent);
-}
-
-.topbar button:hover:not(:disabled) {
-  background: rgb(255 255 255 / 0.14);
-}
-
-.topbar button:active:not(:disabled) {
-  background: rgb(255 255 255 / 0.22);
-}
-
-.topbar button:focus-visible {
-  outline-color: #fff;
-}
-
-/* A label beside a value: square-cornered, outlined, quiet. */
+/* A label beside a value: small capitals in a hairline frame. */
 .tag {
   display: inline-block;
-  padding: 0 6px;
+  padding: 0 5px;
   border: 1px solid var(--border-strong);
-  border-radius: 3px;
+  border-radius: 2px;
   color: var(--muted);
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 18px;
+  font-size: 10.5px;
+  font-stretch: 90%;
+  font-weight: 750;
+  letter-spacing: 0.3px;
+  line-height: 16px;
+  text-transform: uppercase;
   white-space: nowrap;
-}
-
-.spacer {
-  flex: 1;
-}
-
-.busy {
-  color: rgb(255 255 255 / 0.85);
-  font-size: 13px;
 }
 
 .banner {
-  margin: 12px 20px 0;
+  margin: 12px 18px 0;
   padding: 10px 14px;
   border: 1px solid var(--danger);
   border-radius: var(--radius);
@@ -579,17 +609,16 @@ nav small {
 /* A panel on the app's ground: the connect card, with a heading, the facts it found and its one action. */
 .card {
   width: min(540px, 100%);
-  padding: 22px 24px 24px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
+  padding: 14px 0 0;
+  border-top: 3px solid var(--text);
 }
 
 .card h2 {
   margin: 0 0 6px;
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.1px;
+  font-size: 26px;
+  font-stretch: 78%;
+  font-weight: 850;
+  line-height: 1.1;
 }
 
 .card .muted {
@@ -602,11 +631,12 @@ nav small {
   font-size: 14px;
 }
 
-/* Label and value rows on a striped field, as FM lists facts. */
+/* Label and value rows, one to a hairline, as an almanac lists facts. */
 .facts {
   display: grid;
   grid-template-columns: 120px 1fr;
   margin: 0 0 20px;
+  border-top: 1px solid var(--border);
 }
 
 .facts dt,
@@ -624,7 +654,11 @@ nav small {
 }
 
 .facts :is(dt, dd):nth-of-type(even) {
-  background: var(--zebra);
+  background: transparent;
+}
+
+.facts :is(dt, dd) {
+  border-bottom: 1px solid var(--border);
 }
 
 .hint {
@@ -639,8 +673,8 @@ nav small {
    button once it is. */
 .bridge {
   margin: 0 0 20px;
-  padding: 16px 0 0;
-  border-top: 1px solid var(--border-strong);
+  padding: 12px 0 0;
+  border-top: 2px solid var(--text);
 }
 
 .card > button + .bridge {
@@ -727,7 +761,7 @@ nav small {
   flex: 1;
   min-width: 240px;
   min-height: 0;
-  padding: 14px 16px 0;
+  padding: 14px 18px 0;
 }
 
 .toolbar {
@@ -752,12 +786,12 @@ nav small {
 }
 
 .search:hover {
-  border-color: var(--muted);
+  border-color: var(--text);
 }
 
 .search:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text);
 }
 
 .search svg {
@@ -836,11 +870,11 @@ input::placeholder {
 .filter-count {
   min-width: 18px;
   padding: 0 5px;
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--accent);
   color: var(--on-accent);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 18px;
   text-align: center;
 }
@@ -849,11 +883,14 @@ input::placeholder {
   padding: 4px 8px;
   border-color: transparent;
   background: transparent;
-  color: var(--accent-text);
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .filter-clear:hover:not(:disabled) {
-  background: var(--accent-faint);
+  border-color: transparent;
+  background: var(--hover);
 }
 
 /* The filters as a form: a grid of equal cells, as many to a row as fit, each a label over its control, so no field is
@@ -931,13 +968,9 @@ input::placeholder {
   min-height: 0;
   container-type: inline-size;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-bottom: 0;
-  border-radius: var(--radius) var(--radius) 0 0;
-  background: var(--panel);
 }
 
-/* FM's squad table: a raised header row, then dense rows striped in turn, with no rules between them. */
+/* The almanac table: an ink rule under the head row, then dense rows on hairlines. */
 .grid {
   width: 100%;
   border-collapse: collapse;
@@ -947,13 +980,14 @@ input::placeholder {
   position: sticky;
   top: 0;
   z-index: 1;
-  height: 34px;
+  height: 32px;
   padding: 0 12px;
-  border-bottom: 1px solid var(--border-strong);
-  background: var(--raised);
+  border-bottom: 2px solid var(--text);
+  background: var(--bg);
   color: var(--muted);
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 11px;
+  font-stretch: 88%;
+  font-weight: 800;
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -996,7 +1030,7 @@ input::placeholder {
 }
 
 .grid th[aria-sort] {
-  color: var(--accent-text);
+  color: var(--text);
 }
 
 /* Always there, though hidden, so a column does not change its width when it becomes the sort. */
@@ -1026,8 +1060,9 @@ input::placeholder {
 }
 
 .grid td {
-  height: 36px;
-  padding: 4px 12px;
+  height: 34px;
+  padding: 3px 12px;
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
@@ -1043,9 +1078,16 @@ input::placeholder {
   background: var(--hover);
 }
 
-/* The row whose profile is open: royal blue, as FM marks what is picked. */
+/* The row whose profile is open is printed in reverse: paper letters on ink. */
 .grid tbody tr.selected td {
-  background: var(--accent-soft);
+  border-bottom-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* The picked row is printed in reverse: its small print keeps the reverse, dimmed. */
+.grid tbody tr.selected :is(.sub, .date, .uid, .muted, .ability.range, .col-positions) {
+  color: color-mix(in srgb, var(--on-accent) 72%, transparent);
 }
 
 .grid tbody tr:focus-visible {
@@ -1250,7 +1292,9 @@ input::placeholder {
 }
 
 .grid .name {
-  font-weight: 600;
+  font-size: 14.5px;
+  font-stretch: 86%;
+  font-weight: 750;
 }
 
 .grid .sub {
@@ -1265,16 +1309,18 @@ input::placeholder {
 
 .grid .uid {
   color: var(--muted);
-  font-family: "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Current and potential ability, reputation: a plain number, bold, the digits in line down the column. */
 .ability {
   display: inline-block;
   min-width: 46px;
+  font-size: 15px;
+  font-stretch: 82%;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 850;
   text-align: right;
 }
 
@@ -1321,7 +1367,7 @@ input::placeholder {
 }
 
 .picture.face {
-  border-radius: 50%;
+  border-radius: 2px;
   background: var(--raised);
 }
 
@@ -1352,8 +1398,8 @@ input::placeholder {
   place-items: center;
   width: 100%;
   height: 100%;
-  border: 1px solid var(--border);
-  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  border-radius: 2px;
   background: var(--raised);
   color: var(--muted);
   font-size: calc(var(--picture-h) * 0.36);
@@ -1397,14 +1443,22 @@ input::placeholder {
 
 /* Player profile */
 
+@keyframes entry-open {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
 .profile {
   display: flex;
   flex-direction: column;
   flex: 0 1 560px;
   min-width: 440px;
   min-height: 0;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--border-strong);
   background: var(--panel);
+  animation: entry-open 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 /* A profile with a table in it, a club's squad, takes more of the window than the others: the list beside it keeps no
@@ -1418,9 +1472,8 @@ input::placeholder {
   display: flex;
   align-items: flex-start;
   gap: 16px;
-  padding: 16px 16px 14px;
-  border-bottom: 1px solid var(--border);
-  background: var(--raised);
+  padding: 14px 16px 12px;
+  border-bottom: 2px solid var(--text);
 }
 
 .profile-id {
@@ -1430,10 +1483,10 @@ input::placeholder {
 
 .profile-id h2 {
   margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.2px;
+  font-size: 28px;
+  font-stretch: 75%;
+  font-weight: 850;
+  line-height: 1.05;
   overflow-wrap: anywhere;
 }
 
@@ -1484,6 +1537,7 @@ input::placeholder {
 }
 
 .icon-button:hover:not(:disabled) {
+  border-color: transparent;
   background: var(--hover);
   color: var(--text);
 }
@@ -1521,13 +1575,15 @@ input::placeholder {
 .profile-abilities .ability {
   display: block;
   min-width: 0;
-  font-size: 24px;
-  line-height: 1.1;
+  font-size: 30px;
+  font-stretch: 76%;
+  font-weight: 850;
+  line-height: 1;
   text-align: left;
 }
 
 .profile-abilities .ability.range {
-  font-size: 20px;
+  font-size: 24px;
 }
 
 .profile-body {
@@ -1560,7 +1616,8 @@ input::placeholder {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .profile-status {
+  .profile-status,
+  .profile {
     animation: none;
   }
 }
@@ -1588,12 +1645,13 @@ input::placeholder {
 .profile-group h3,
 .profile-group h4 {
   margin: 0 0 2px;
-  padding: 0 8px 5px;
-  border-bottom: 1px solid var(--border-strong);
+  padding: 5px 0 4px;
+  border-top: 3px solid var(--text);
   color: var(--text);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
+  font-size: 12.5px;
+  font-stretch: 85%;
+  font-weight: 850;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
@@ -1610,8 +1668,9 @@ input::placeholder {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 26px;
-  padding: 2px 8px;
+  min-height: 27px;
+  padding: 2px 2px;
+  border-bottom: 1px solid var(--border);
 }
 
 .stat:nth-child(even) {
@@ -1656,8 +1715,9 @@ input::placeholder {
   flex: none;
   min-width: 24px;
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 15px;
+  font-stretch: 85%;
+  font-weight: 800;
   text-align: right;
 }
 
@@ -1698,8 +1758,8 @@ input::placeholder {
 }
 
 .tag.listed {
-  border-color: var(--tier-2);
-  color: var(--tier-2);
+  border-color: var(--text);
+  color: var(--text);
 }
 
 /* Marks the manager the user controls, beside the name. */
@@ -1922,7 +1982,8 @@ input::placeholder {
   padding: 4px 12px;
 }
 
-/* Edit is a profile's main action: royal blue until it is on, then gold, as the values it leaves to apply. */
+/* Edit is a profile's main action: filled with ink until it is on, then pressed in; the highlighter is left to the
+   values it leaves to apply. */
 .edit-toggle {
   border-color: var(--accent);
   background: var(--accent);
@@ -1936,9 +1997,10 @@ input::placeholder {
 
 .edit-toggle[aria-pressed="true"],
 .edit-toggle[aria-pressed="true"]:hover:not(:disabled) {
-  border-color: var(--pending);
-  background: var(--pending-soft);
-  color: var(--pending);
+  border-color: var(--text);
+  background: var(--raised);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--text);
 }
 
 .compare-toggle[aria-pressed="true"] {
@@ -1961,9 +2023,9 @@ input::placeholder {
   background: var(--raised);
 }
 
-/* The profile that is being edited has a gold rule under its head: what changes waits to be applied. */
+/* The profile that is being edited has a highlighter rule under its head: what changes waits to be applied. */
 .profile.editing .profile-head {
-  border-bottom: 2px solid var(--pending);
+  border-bottom: 4px solid var(--pending-soft);
 }
 
 /* An input where a value was, a number input unless it says otherwise below. Its width follows the digits of the
@@ -2001,12 +2063,13 @@ input::placeholder {
   outline-offset: 1px;
 }
 
-/* A value other than the game's: gold, as a tint and a second line inside the border, until it is applied. */
+/* A value other than the game's is marked with the highlighter, inside an ink frame, until it is applied. */
 .edit-input.changed,
 .edit-flag.changed {
-  border-color: var(--pending);
+  border-color: var(--text);
   background: var(--pending-soft);
-  box-shadow: inset 0 0 0 1px var(--pending);
+  color: var(--on-pending);
+  box-shadow: none;
 }
 
 /* A value that cannot be applied: empty, out of range or not whole, or one the game refused. */
@@ -2165,6 +2228,7 @@ select.edit-input {
   overflow-y: auto;
   border-top: 1px solid var(--border);
   background: var(--pending-soft);
+  color: var(--on-pending);
   font-size: 13px;
   list-style: none;
 }
@@ -2188,8 +2252,8 @@ select.edit-input {
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border-top: 1px solid var(--border-strong);
-  background: var(--raised);
+  border-top: 2px solid var(--text);
+  background: var(--panel);
 }
 
 .edit-count {
@@ -2199,9 +2263,22 @@ select.edit-input {
   font-weight: 700;
 }
 
-/* Changes wait to be applied: gold, as the values themselves. */
+/* Changes wait to be applied: the count is marked as the values themselves are. */
 .edit-count.pending {
-  color: var(--pending);
+  color: var(--text);
+}
+
+/* A swatch of the highlighter before the count: these are the marked changes. */
+.edit-count.pending::before {
+  content: "";
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background: var(--pending-soft);
+  box-shadow: inset 0 0 0 1px var(--pending);
+  vertical-align: -1px;
 }
 
 .edit-invalid {
@@ -2223,8 +2300,9 @@ button.danger:hover:not(:disabled) {
 
 .view-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 24px;
+  font-stretch: 78%;
+  font-weight: 850;
 }
 
 .changes .toolbar {
@@ -2315,10 +2393,10 @@ button.danger:hover:not(:disabled) {
   width: min(960px, 100%);
   max-height: 100%;
   overflow: hidden;
-  border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-top: 3px solid var(--text);
+  border-radius: 0;
   background: var(--panel);
-  box-shadow: 0 18px 48px rgb(0 0 0 / 0.45);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.3);
 }
 
 /* Focus goes to the box itself when the dialog opens: no ring around the whole dialog. */
@@ -2333,17 +2411,17 @@ button.danger:hover:not(:disabled) {
   flex: none;
 }
 
-/* A dialog's head is a raised band, as FM's pop-ups are. */
+/* A dialog's head: its title and subject, over a hairline. */
 .modal-head {
   padding: 14px 20px 12px;
   border-bottom: 1px solid var(--border);
-  background: var(--raised);
 }
 
 .modal-head h2 {
   margin: 0 0 4px;
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 22px;
+  font-stretch: 78%;
+  font-weight: 850;
 }
 
 .modal-body {
@@ -2372,7 +2450,6 @@ button.danger:hover:not(:disabled) {
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
-  background: var(--raised);
 }
 
 .mass-scope {
@@ -2661,8 +2738,8 @@ button.danger:hover:not(:disabled) {
 /* Marks a change that was part of a mass edit, beside the name. */
 .changes-grid .tag.batch {
   margin-left: 6px;
-  border-color: var(--accent-text);
-  color: var(--accent-text);
+  border-color: var(--text);
+  color: var(--text);
   vertical-align: middle;
 }
 
@@ -2930,7 +3007,8 @@ button.danger:hover:not(:disabled) {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: var(--raised);
+  border-bottom: 2px solid var(--text);
+  background: var(--panel);
 }
 
 .compare-grid thead .compare-corner {
@@ -2954,12 +3032,14 @@ button.danger:hover:not(:disabled) {
 /* The heading of a group of rows, as the headings of the profile are. */
 .compare-grid th.compare-group {
   padding: 10px 12px 5px;
-  border-bottom: 1px solid var(--border-strong);
-  background: var(--raised);
+  border-top: 3px solid var(--text);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
   color: var(--text);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
+  font-size: 12.5px;
+  font-stretch: 85%;
+  font-weight: 850;
+  letter-spacing: 0.5px;
   text-align: left;
   text-transform: uppercase;
 }
@@ -3025,9 +3105,9 @@ button.danger:hover:not(:disabled) {
   font-weight: 600;
 }
 
-/* The best value of a row: its cell has a faint accent wash (faint, to keep the contrast of the chip on it), and the chip
-   has the accent colour round it: an outline, so that it stays in forced-colours mode and tells the best value apart
-   without colour. */
+/* The best value of a row: its cell has a faint ink wash (faint, to keep the contrast of the chip on it), and the chip
+   has an ink outline round it, so that it stays in forced-colours mode and tells the best value apart without
+   colour. */
 .compare-grid td.best {
   background: linear-gradient(var(--accent-faint), var(--accent-faint));
 }
@@ -3037,7 +3117,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .compare-grid td.best :is(.value, .ability, .compare-figure) {
-  outline: 2px solid var(--accent-text);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -3104,12 +3184,13 @@ button.danger:hover:not(:disabled) {
 /* The headings of the sections, as the profile's are. */
 .move-section h3 {
   margin: 0 0 8px;
-  padding: 0 2px 5px;
-  border-bottom: 1px solid var(--border-strong);
+  padding: 5px 2px 0;
+  border-top: 3px solid var(--text);
   color: var(--text);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
+  font-size: 12.5px;
+  font-stretch: 85%;
+  font-weight: 850;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
 }
 
@@ -3119,9 +3200,8 @@ button.danger:hover:not(:disabled) {
   align-items: center;
   gap: 12px;
   padding: 6px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--raised);
 }
 
 /* The club's line takes the room the rest leaves, and its name is cut short before it pushes them out. */
@@ -3203,9 +3283,8 @@ button.danger:hover:not(:disabled) {
   min-height: 21rem;
   margin-top: 8px;
   padding: 4px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--panel);
 }
 
 .move-results-box[aria-busy="true"] .move-results {
@@ -3326,11 +3405,13 @@ button.danger:hover:not(:disabled) {
   outline-offset: -1px;
 }
 
-/* A value other than the contract's: gold, as an edit in a profile is, until the move is made. */
+/* A value other than the contract's is marked with the highlighter, as an edit in a profile is, until the move is
+   made. */
 .move-input.changed {
-  border-color: var(--pending);
+  border-color: var(--text);
   background: var(--pending-soft);
-  box-shadow: inset 0 0 0 1px var(--pending);
+  color: var(--on-pending);
+  box-shadow: none;
 }
 
 /* A value that cannot be sent. */
@@ -3491,11 +3572,13 @@ button.danger:hover:not(:disabled) {
   margin-bottom: -1px;
   padding: 8px 14px;
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--muted);
-  font-weight: 600;
+  font-size: 14px;
+  font-stretch: 88%;
+  font-weight: 750;
 }
 
 .profile-tab:hover:not(:disabled, [aria-selected="true"]) {
@@ -3504,7 +3587,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .profile-tab[aria-selected="true"] {
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--text);
   color: var(--text);
 }
 
@@ -3626,9 +3709,7 @@ button.danger:hover:not(:disabled) {
   flex: 1;
   min-height: 14rem;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
+  border-top: 1px solid var(--border);
 }
 
 /* The players are read, not picked: no row is a link. The cells are tighter than a list's: there are more of them. */
@@ -3687,11 +3768,11 @@ button.danger:hover:not(:disabled) {
 /* C and VC after a name: the captain's is filled in the accent colour, the vice-captain's outlined. */
 .role-badge {
   padding: 0 5px;
-  border: 1px solid var(--accent-text);
-  border-radius: 3px;
-  color: var(--accent-text);
+  border: 1px solid var(--text);
+  border-radius: 2px;
+  color: var(--text);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.6;
   text-decoration: none;
   cursor: help;
@@ -3728,8 +3809,8 @@ button.danger:hover:not(:disabled) {
   padding: 4px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
-  background: var(--raised);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 0.4);
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
 }
 
 .squad-menu button {

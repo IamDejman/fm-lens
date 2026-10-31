@@ -250,3 +250,7 @@ by Anze Alexander.
 ## License
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
+
+The app's typeface, [Archivo](https://github.com/Omnibus-Type/Archivo) by Omnibus-Type, is
+bundled under the SIL Open Font License 1.1: see
+[app/licenses/Archivo-OFL.txt](app/licenses/Archivo-OFL.txt).
