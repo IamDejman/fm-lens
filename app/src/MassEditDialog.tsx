@@ -24,7 +24,7 @@ import {
 } from "./massDraft";
 import type { EditField, Entity, LoggedChange, MassFilters, MassPreview, MassReport } from "./types";
 import { useModal } from "./useModal";
-import { EditorContext } from "./useProfileEditing";
+import { askToLeave, EditorContext } from "./useProfileEditing";
 
 /** What a mass edit applies to: the list as it was when the dialog opened. */
 interface MassScope {
@@ -47,7 +47,8 @@ interface MassEditButtonProps {
 
 /**
  * The Mass edit button of a list's toolbar, and the dialog it opens (nothing while the game cannot be written to). The
- * dialog applies to what the list selects when it is opened; the list cannot change while the dialog is up.
+ * dialog applies to what the list selects when it is opened; the list cannot change while the dialog is up. Edits
+ * pending in the open profile are asked about before the dialog opens (see `askToLeave`).
  */
 export function MassEditButton({ entity, filters, list }: MassEditButtonProps) {
   const { editable } = useContext(EditorContext);
@@ -71,7 +72,9 @@ export function MassEditButton({ entity, filters, list }: MassEditButtonProps) {
   const { total } = list;
   const open = () => {
     if (total !== null) {
-      setScope({ query: list.query, filters, total, shown: list.shown });
+      // A mass edit would write under the edits pending in the open profile, which were read before it: the profile
+      // asks first, and the dialog opens only if they are discarded.
+      askToLeave(() => setScope({ query: list.query, filters, total, shown: list.shown }));
     }
   };
 
