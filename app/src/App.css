@@ -7,6 +7,8 @@
   --muted: #8a97a6;
   --accent: #3fb68b;
   --accent-soft: rgba(63, 182, 139, 0.22);
+  /* A wash faint enough for text to keep its contrast on it: the best value of a row in the comparison. */
+  --accent-faint: rgba(63, 182, 139, 0.08);
   --danger: #ef6b62;
   --danger-soft: rgba(239, 107, 98, 0.12);
   /* What dims the app behind a dialog. */
@@ -52,6 +54,7 @@
     --muted: #5f6c7a;
     --accent: #1f8a64;
     --accent-soft: rgba(31, 138, 100, 0.16);
+    --accent-faint: rgba(31, 138, 100, 0.06);
     --danger: #c43c33;
     --danger-soft: rgba(196, 60, 51, 0.1);
     --scrim: rgba(24, 33, 43, 0.4);
@@ -109,6 +112,19 @@ button.primary {
 
 .muted {
   color: var(--muted);
+}
+
+/* Text for assistive technology only: out of sight, but read out. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Shell */
@@ -476,10 +492,12 @@ nav small {
   margin-bottom: 12px;
 }
 
+/* Wraps when the saved filters and the name form do not fit beside the buttons. */
 .filter-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 6px 4px;
 }
 
 .filter-toggle {
@@ -545,7 +563,10 @@ nav small {
   color: var(--muted);
 }
 
-.filter-fields :is(select, input:not([type="checkbox"])) {
+/* The inputs of the filters, and those of the saved filters in the head of the bar (see below). */
+.filter-fields :is(select, input:not([type="checkbox"])),
+.saved-select,
+.saved-form input {
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -554,7 +575,9 @@ nav small {
   font: inherit;
 }
 
-.filter-fields :is(select, input:not([type="checkbox"])):focus-visible {
+.filter-fields :is(select, input:not([type="checkbox"])):focus-visible,
+.saved-select:focus-visible,
+.saved-form input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -1px;
 }
@@ -1054,7 +1077,8 @@ nav small {
   gap: 4px 8px;
 }
 
-.profile-abilities abbr {
+.profile-abilities abbr,
+.compare-abilities abbr {
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
@@ -1175,8 +1199,9 @@ nav small {
   font-size: 11.5px;
 }
 
-/* A 1–20 rating as a number on a tinted chip, coloured by band. */
-.stat .value {
+/* A 1–20 rating as a number on a tinted chip, coloured by band; the comparison has them in its cells. */
+.stat .value,
+.compare-grid .value {
   position: relative;
   flex: none;
   min-width: 26px;
@@ -1448,15 +1473,28 @@ nav small {
   gap: 6px;
 }
 
-.edit-toggle {
+/* The Compare button sits before Edit and looks like it: pressed while the player is in the comparison. */
+.edit-toggle,
+.compare-toggle {
   padding: 3px 12px;
   font-size: 13px;
 }
 
-.edit-toggle[aria-pressed="true"] {
+.edit-toggle[aria-pressed="true"],
+.compare-toggle[aria-pressed="true"] {
   border-color: var(--accent);
   background: var(--accent-soft);
   font-weight: 600;
+}
+
+/* A full comparison takes no one more: the button is dimmed, and its hover text says why. It stays a Tab stop. */
+.compare-toggle[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.compare-toggle[aria-disabled="true"]:hover {
+  border-color: var(--border);
 }
 
 /* The profile that is being edited has the accent colour under its header. */
@@ -2122,4 +2160,329 @@ button.danger:hover:not(:disabled) {
   max-height: 9rem;
   margin-top: 2px;
   overflow-y: auto;
+}
+
+/* Saved filters */
+
+/* Save, and the form that asks for the name in the head of the filter bar (no dialog), with what it asks beside it. */
+.filter-save,
+.saved-form button,
+.saved-ask button {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.saved-form,
+.saved-ask {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.saved-form input {
+  width: 12rem;
+  font-size: 13px;
+}
+
+/* Why the name cannot be kept. */
+.saved-note {
+  color: var(--danger);
+  font-size: 12.5px;
+}
+
+/* The select of the saved filters, and Delete for the one that is in effect, at the far end of the head. */
+.saved-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.saved-select {
+  max-width: 16rem;
+  font-size: 13px;
+}
+
+.saved-delete {
+  padding: 4px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.saved-delete:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* Comparison */
+
+/* The tray under the player list: a chip for each player picked, Clear and Compare. It joins the foot of the table,
+   which has no bottom border either, as it ends at the edge of the window. */
+.compare-tray {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  background: var(--raised);
+}
+
+.compare-chips {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compare-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 1px 2px 1px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  font-size: 13px;
+}
+
+.compare-chip-name {
+  min-width: 0;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compare-chip .icon-button {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.compare-chip .icon-button svg {
+  width: 11px;
+  height: 11px;
+}
+
+.compare-clear,
+.compare-open {
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+.compare-clear {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.compare-clear:hover:not(:disabled) {
+  color: var(--text);
+}
+
+/* The dialog is wider than the others: it holds up to four columns. The table scrolls inside it. */
+.compare-dialog {
+  width: min(1120px, 100%);
+}
+
+.compare-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.compare-status {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* The box the table scrolls in: it takes the room the dialog has, and its head stays in view. */
+.modal-body > .compare-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.compare-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.compare-grid {
+  width: 100%;
+  /* The names of the rows and 9.5rem for each column; the box scrolls sideways when the dialog is narrower. */
+  min-width: calc(12rem + var(--columns) * 9.5rem);
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.compare-grid :is(th, td) {
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-grid .compare-corner {
+  width: 12rem;
+}
+
+/* The head of the columns stays in view; so do the names of the rows when the table scrolls sideways. */
+.compare-grid thead :is(th, td) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--raised);
+}
+
+.compare-grid thead .compare-corner {
+  left: 0;
+  z-index: 3;
+}
+
+.compare-grid tbody th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel);
+  font-weight: 400;
+  text-align: left;
+}
+
+.compare-grid tbody tr:hover :is(th, td) {
+  background: var(--raised);
+}
+
+/* The heading of a group of rows, as the headings of the profile are. */
+.compare-grid th.compare-group {
+  padding: 8px 12px 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.compare-grid .compare-head {
+  padding: 10px 12px;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.compare-head-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.compare-name {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.compare-club,
+.compare-age {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.compare-abilities {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 6px;
+  margin-top: 2px;
+}
+
+/* A player whose profile could not be read: the reason, in the place of the club and abilities. */
+.compare-error {
+  color: var(--danger);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.compare-cell {
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* A rating is a chip, as in the profile; here it is a word in a line, so it needs a width of its own. */
+.compare-grid .value {
+  display: inline-block;
+}
+
+/* A number or an amount that is no rating: a chip like the others, so the highlight has something to go round. */
+.compare-figure {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-weight: 600;
+}
+
+/* The best value of a row: its cell has a faint accent wash (faint, to keep the contrast of the chip on it), and the chip
+   has the accent colour round it: an outline, so that it stays in forced-colours mode and tells the best value apart
+   without colour. */
+.compare-grid td.best {
+  background: linear-gradient(var(--accent-faint), var(--accent-faint));
+}
+
+.compare-grid tbody tr:hover td.best {
+  background: linear-gradient(var(--accent-faint), var(--accent-faint)), var(--raised);
+}
+
+.compare-grid td.best :is(.value, .ability, .compare-figure) {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.compare-positions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A position in the colour of its band, as on the pitch (.pos-natural and the others set --pos). */
+.compare-positions li {
+  padding: 1px 7px;
+  border: 1px solid var(--pos);
+  border-radius: 5px;
+  color: var(--pos);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compare-rating {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+/* A short window cannot spare the height of the head: it scrolls away with the rest. */
+@media (max-height: 640px) {
+  .compare-grid thead :is(th, td) {
+    top: auto;
+  }
 }

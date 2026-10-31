@@ -3,8 +3,9 @@
 // i18n/index.ts) under the names the components use. Keys of the game data map to the names FM uses; every other
 // string of the panels is in `profileText` (those only the club panel has, in `clubProfileText`), and those of the
 // player, staff and club lists in `playerListText`, `staffListText` and `clubListText`. Editing has `editText` (and
-// `fieldLabel` for the names of the fields), the Changes view `changesText`, mass editing `massEditText`, the
-// sidebar and the connect panel `appText`, and the status of the graphics packs `graphicsText`.
+// `fieldLabel` for the names of the fields), the Changes view `changesText`, mass editing `massEditText`, comparing
+// players `comparisonText`, the sidebar and the connect panel `appText`, and the status of the graphics packs
+// `graphicsText`.
 // A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts).
 
 import { formatNumber } from "./format";
@@ -27,6 +28,11 @@ export type PersonalityKey = keyof Strings["personality"];
 export const POSITION_LABELS = strings.positions;
 
 export type PositionKey = keyof Strings["positions"];
+
+/** The abbreviation of a position by its key ("st" is "ST"); a key the table lacks is shown upper-cased. */
+export function positionLabel(key: string): string {
+  return labelIn(POSITION_LABELS, key) ?? key.toUpperCase();
+}
 
 export const CLUB_FACILITY_LABELS = strings.clubFacilities;
 
@@ -99,6 +105,9 @@ export const changesText = strings.changes;
 
 /** Mass editing: the button in the toolbar of a list and the dialog it opens. */
 export const massEditText = strings.massEdit;
+
+/** Comparing players: the button in a profile, the tray under the player list and the dialog. */
+export const comparisonText = strings.comparison;
 
 const asText = (value: number | string) => (typeof value === "number" ? formatNumber(value) : value);
 

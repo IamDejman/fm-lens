@@ -378,6 +378,23 @@ export const tr: Strings = {
       club: "Kulüp",
       freeAgentsOnly: "Yalnızca serbest oyuncular",
       contractEndsBy: "Sözleşme bitişi (en geç)",
+      saved: {
+        save: "Kaydet",
+        saveTitle: "Geçerli filtreleri ve sıralamayı bir adla kaydet",
+        name: "Kayıtlı filtrenin adı",
+        namePlaceholder: "Filtre adı",
+        ok: "Tamam",
+        cancel: "İptal",
+        select: "Kayıtlı filtreler",
+        delete: "Sil",
+        // The name stays as the user typed it, so the ending is not put on it: "Kayıtlı filtreyi sil: …".
+        deleteTitle: (name) => `Kayıtlı filtreyi sil: ${name}`,
+        replaceQuestion: (name) => `“${name}” adında bir kayıtlı filtre zaten var. Değiştirilsin mi?`,
+        replace: "Değiştir",
+        full: (max) =>
+          `En fazla ${max} filtre kaydedilebilir. Önce birini silin ya da ` +
+          "değiştirmek için kayıtlı bir filtrenin adını kullanın.",
+      },
     },
   },
 
@@ -690,6 +707,33 @@ export const tr: Strings = {
     undone: (count) => (count === 0 ? "Hiçbir şey geri alınmadı" : `${changes(count)} geri alındı`),
     undoFailure: (who, reason) => `${who}: ${reason}`,
     changeNumber: (id) => `Değişiklik ${id}`,
+    close: "Kapat",
+  },
+
+  comparison: {
+    compare: "Karşılaştır",
+    add: "Karşılaştırmaya ekle",
+    remove: "Karşılaştırmadan çıkar",
+    full: (max) => `Karşılaştırma en fazla ${max} oyuncu alır. Bu oyuncuyu eklemek için birini çıkarın.`,
+
+    // The tray under the player list
+    trayLabel: "Karşılaştırılacak oyuncular",
+    // The name stays as the game has it, so the ending is not put on it: "Karşılaştırmadan çıkar: …".
+    removePlayer: (name) => `Karşılaştırmadan çıkar: ${name}`,
+    clear: "Temizle",
+    open: (count) => `Karşılaştır (${count})`,
+
+    // The dialog
+    title: "Karşılaştırma",
+    hint:
+      "Her satırdaki en iyi değer vurgulanır: en yüksek olan ya da " +
+      "düşük değerin daha iyi olduğu satırlarda en düşük olan.",
+    tooFew: "Karşılaştırmak için en az iki oyuncu ekleyin.",
+    loading: "Oyuncular yükleniyor…",
+    tableLabel: "Karşılaştırılan oyuncuların değerleri",
+    highest: "en yüksek",
+    lowest: "en düşük",
+    profile: "Profil",
     close: "Kapat",
   },
 

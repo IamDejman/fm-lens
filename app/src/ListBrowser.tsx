@@ -50,6 +50,8 @@ interface ListBrowserProps<Row extends { uid: number }> {
   filterBar?: ReactNode;
   /** Buttons at the end of the toolbar, e.g. Mass edit; they get the search text and the total. */
   toolbarActions?: (list: ListState) => ReactNode;
+  /** Under the table, e.g. the tray of the players picked for a comparison; it takes no room while it is empty. */
+  footer?: ReactNode;
   /** An extra class of the table, for column rules of that list. */
   tableClass?: string;
   /** The header cells. */
@@ -63,7 +65,7 @@ interface ListBrowserProps<Row extends { uid: number }> {
 /** A searchable table with the profile of the selected row beside it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
   const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
-  const { tableClass, header, cells, profile } = props;
+  const { footer, tableClass, header, cells, profile } = props;
   const [query, setQuery] = useState("");
   const [page, setPage] = useState<Page<Row> | null>(null);
   // The search text and arguments the rows on show were asked for: their total is the list's only while those are
@@ -190,6 +192,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
           </table>
           {page && page.rows.length === 0 && <p className="empty">{empty(query)}</p>}
         </div>
+        {footer}
       </section>
 
       {showProfile && (

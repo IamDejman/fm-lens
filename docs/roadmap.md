@@ -88,5 +88,7 @@ before trusting them.
   - club logos, flags and faces, in the lists and the profiles;
   - read from the packs' `config.xml` mappings in the FM27 graphics folder;
   - initials stand in where a pack has no picture.
-- [ ] Player comparisons and saved filters.
+- [x] Player comparisons and saved filters:
+  - up to four players side by side, with the best value of each row marked;
+  - player filters and sort saved under a name.
 - [ ] Steam and Epic builds; possibly Linux/Proton.
