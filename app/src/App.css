@@ -1473,9 +1473,11 @@ nav small {
   gap: 6px;
 }
 
-/* The Compare button sits before Edit and looks like it: pressed while the player is in the comparison. */
+/* The Compare button sits before Edit and looks like it: pressed while the player is in the comparison. So does Move to
+   another club (see Moving a player). */
 .edit-toggle,
-.compare-toggle {
+.compare-toggle,
+.move-toggle {
   padding: 3px 12px;
   font-size: 13px;
 }
@@ -2485,4 +2487,302 @@ button.danger:hover:not(:disabled) {
   .compare-grid thead :is(th, td) {
     top: auto;
   }
+}
+
+/* Moving a player */
+
+/*
+ * A player's header has Compare, Edit and Close, and Move to another club, which is wider than all of them: in one row
+ * they would squeeze the name to a sliver. So they are a grid, with Move across the top and the others under it (as
+ * wide as they were). Without Move (the profile cannot be edited, or is being edited) the row is as it was.
+ */
+.profile-actions:has(.move-toggle) {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  justify-content: end;
+}
+
+.move-toggle {
+  grid-column: 1 / -1;
+}
+
+/* Narrower than the dialogs that hold tables: a club, a few inputs and a short list. */
+.move-dialog {
+  width: min(560px, 100%);
+}
+
+.move-player {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* The headings of the sections, as the profile's are. */
+.move-section h3 {
+  margin: 0 0 6px;
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* A club in the box of a value that is only read: the club the player is at, and the one he moves to. */
+.move-club {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+}
+
+/* The club's line takes the room the rest leaves, and its name is cut short before it pushes them out. */
+.move-club > .with-picture,
+.move-option > .with-picture {
+  flex: 1;
+  min-width: 0;
+}
+
+.move-club-text {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.move-club-name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.move-club-text .tag {
+  flex: none;
+}
+
+.move-change {
+  flex: none;
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
+/* The search box is as wide as the dialog. */
+.move-search {
+  width: 100%;
+}
+
+/* The clubs the search found. The box keeps the room of a full list, so that the dialog does not jump while results
+   come and go; the list is dimmed while the search has not answered for what is typed. */
+.move-results-box {
+  min-height: 21rem;
+  margin-top: 8px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.move-results-box[aria-busy="true"] .move-results {
+  opacity: 0.55;
+}
+
+.move-results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.move-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.move-option:hover {
+  background: var(--raised);
+}
+
+/* The row Enter picks. Focus itself stays in the search box, so the row carries the mark: a faint accent wash (faint,
+   to keep the reputation bar on it in view) and an outline, which also holds in forced-colors mode. */
+.move-option.active {
+  background: var(--accent-faint);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* What the search says under its list: a live region that is always there, and out of the layout while it is empty. */
+.move-results-note {
+  margin: 4px 4px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.move-results-note:empty {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.move-results-note.error {
+  color: var(--danger);
+}
+
+/* The wage and the contract end side by side, one under the other when the dialog is narrow. */
+.move-terms {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 28px;
+}
+
+.move-term {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.move-term label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* The pound sign before the wage: the game stores pounds. */
+.move-money {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.move-unit {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.move-input {
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* The wage input is wide enough for ten million, and has no spin buttons, which would eat the room of the digits; the
+   arrow keys still step the value. A date input is as wide as the browser makes it. */
+.move-input[type="number"] {
+  width: 9rem;
+  appearance: textfield;
+}
+
+.move-input[type="number"]::-webkit-inner-spin-button,
+.move-input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.move-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+/* A value other than the contract's: the accent colour, as a tint and a second line inside the border. */
+.move-input.changed {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* A value that cannot be sent. */
+.move-input.invalid {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.move-input.invalid:focus-visible {
+  outline-color: var(--danger);
+}
+
+/* While the move is made. */
+.move-input:read-only {
+  opacity: 0.6;
+}
+
+/* Under an input: the value it started from once changed, or why it cannot be sent. */
+.move-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.move-note.invalid {
+  color: var(--danger);
+}
+
+/* What the move comes to, or why it cannot be made: a live region that is always there. */
+.move-plan {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--raised);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* Nothing to say yet: a hint, or the wait for the game's answer. */
+.move-plan.pending {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.move-plan.ok {
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.move-plan.refused {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.move-facts {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.move-facts li + li {
+  margin-top: 2px;
+}
+
+.move-foot-note {
+  flex: 1;
+  min-width: 8rem;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* A move that failed: a bar across the foot of the dialog. */
+.banner.move-error {
+  flex: none;
+  margin: 0;
+  padding: 10px 20px;
+  border-width: 1px 0 0;
+  border-radius: 0;
+  font-size: 13px;
 }
