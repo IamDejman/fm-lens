@@ -375,3 +375,19 @@ These were refused:
 - a selection of all 59,304 players (over the limit);
 - a preview replaced by a newer one;
 - adding to a date.
+
+### Nations and graphics packs
+
+- **Nation UID:** a nation object holds its UID at `+0x0C`, with its name at `+0x18`,
+  the same layout as a club's. Messi's nation reads 1649, the UID graphics packs give
+  Argentina's flag.
+- **Graphics packs:** they live in
+  `Documents\Sports Interactive\Football Manager 27\graphics`. Each folder's
+  `config.xml` maps picture files to what they show:
+  - `<record from="TCM1_728" to="graphics/pictures/club/728/logo"/>` is Tottenham's
+    logo, from the same folder;
+  - `from` can also name a file in a subfolder, e.g. `africa/alg` for a flag;
+  - faces map to `graphics/pictures/person/<uid>/portrait`.
+- **On the test machine:** the "Logos TCM26" pack gives 68,131 club logos, 250 flags
+  and 5,802 competition logos, read in 0.2 s. Among the 200 best players, every club
+  had a logo and every nation a flag.

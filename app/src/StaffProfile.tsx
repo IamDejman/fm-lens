@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import { AbilityEditGroup } from "./EditControls";
 import { jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
+import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
   attributeRow,
   bornText,
@@ -51,6 +52,18 @@ export function employerOf(member: StaffSummary): ReactNode {
   return member.job === null ? <span className="muted">{profileText.unemployed}</span> : null;
 }
 
+/** `employerOf` for a line of text: the club comes with its logo. */
+function employerLine(member: StaffSummary): ReactNode {
+  if (member.club === null) {
+    return employerOf(member);
+  }
+  return (
+    <WithPicture inline picture={<ClubLogo uid={member.clubUid} name={member.club} size={PICTURE_SIZE.textLogo} />}>
+      {member.club}
+    </WithPicture>
+  );
+}
+
 /** The parts that are there, with a dot between them. */
 function dotted(parts: ReactNode[]): ReactNode {
   return parts
@@ -81,10 +94,19 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
 
   return (
     <ProfileFrame
+      picture={<PersonFace uid={info.uid} name={info.name} size={PICTURE_SIZE.face} />}
       name={info.name}
       fullName={info.fullName}
       badge={info.isHuman ? <HumanBadge /> : undefined}
-      meta={dotted([info.job !== null && jobLabel(info.job), employerOf(info), info.nation])}
+      meta={dotted([
+        info.job !== null && jobLabel(info.job),
+        employerLine(info),
+        info.nation && (
+          <WithPicture inline picture={<NationFlag uid={info.nationUid} />}>
+            {info.nation}
+          </WithPicture>
+        ),
+      ])}
       vitals={vitals}
       currentAbility={info.currentAbility}
       potentialAbility={info.potentialAbility}

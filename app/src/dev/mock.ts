@@ -54,6 +54,16 @@ const LAST = ["Yılmaz", "Fernández", "Hoffmann", "Aydın", "Lindqvist", "Morea
 const NATIONS = ["Türkiye", "Spain", "Germany", "Brazil", "Denmark", "France", "Poland", "Portugal", "Czechia"];
 const CLUBS = ["Northbridge FC", "Atlético Riverside", "Sporting Harbour", "FC Lindenau", "Kuzey Spor", "Old Mill United"];
 
+/** A fixture person's nation and club with their UIDs, as the real rows have them; the clubs are the men's ones below. */
+function withUids(nation: string, club: string | null) {
+  return {
+    nation,
+    nationUid: 1000 + NATIONS.indexOf(nation),
+    club,
+    clubUid: club === null ? null : 500 + CLUBS.indexOf(club) * 7,
+  };
+}
+
 /** Small deterministic generator so the fixtures look the same on every reload. */
 function random(seed: number): () => number {
   let state = seed;
@@ -118,8 +128,7 @@ const { players, ratings } = (() => {
       fullName,
       dateOfBirth: born,
       age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
-      nation,
-      club,
+      ...withUids(nation, club),
       positions: playablePositions(ratings[uid]),
       contractExpires: club === null ? null : contractEnd(own),
       currentAbility: ca,
@@ -206,8 +215,7 @@ const staff: StaffSummary[] = (() => {
       fullName: null,
       dateOfBirth: born,
       age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
-      nation: pick(NATIONS),
-      club: employed ? pick(CLUBS) : null,
+      ...withUids(pick(NATIONS), employed ? pick(CLUBS) : null),
       job: i === 0 ? 16 : employed ? pick(JOBS) : null,
       currentAbility: ca,
       potentialAbility: Math.min(200, ca + Math.round(next() * 30)),
@@ -818,6 +826,9 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       mockConnection = info;
       return info as T;
     }
+    case "graphics_info":
+      // A plain browser has no graphics packs: every picture falls back.
+      return { root: null, ready: true, counts: { clubLogos: 0, faces: 0, flags: 0, competitionLogos: 0 } } as T;
     case "current_connection":
       // Like the real command after a window reload; here a reload starts the fixtures afresh, so it is null then.
       return (mockConnection && { ...mockConnection, loadMs: 0 }) as T;

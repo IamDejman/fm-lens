@@ -1,15 +1,16 @@
 use std::collections::BTreeMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     ArraySource, Change, ClubDetails, ClubFilter, ClubIndex, Entity, EntityArrays, Field, FmDate, GAME_EXE,
-    GAME_PLUGIN, GameInfo, Kind, Listed, Operation, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder,
-    SearchIndex, Session, Skipped, StaffDetails, StaffFilter, StaffIndex, Target, find_game, sort_players,
+    GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Kind, Listed, Operation, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, SearchIndex, Session, Skipped, StaffDetails, StaffFilter, StaffIndex,
+    Target, find_game, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Manager, State};
 
 const NOT_CONNECTED: &str = "Not connected to the game";
 
@@ -245,6 +246,79 @@ fn now_ms() -> u64 {
 
 #[derive(Default)]
 struct AppState(Mutex<Option<Connection>>);
+
+/// The pictures of the user's graphics packs, once the packs have been read.
+#[derive(Default)]
+struct Graphics(Arc<Mutex<Option<Arc<GraphicsIndex>>>>);
+
+impl Graphics {
+    fn index(&self) -> Option<Arc<GraphicsIndex>> {
+        self.0.lock().ok()?.clone()
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GraphicsInfo {
+    /// Where the packs are looked for.
+    root: Option<String>,
+    /// False while the packs are still being read.
+    ready: bool,
+    counts: GraphicsCounts,
+}
+
+/// Where the graphics packs are and how many pictures they hold.
+#[tauri::command]
+fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
+    match graphics.index() {
+        Some(index) => GraphicsInfo {
+            root: Some(index.root().display().to_string()).filter(|root| !root.is_empty()),
+            ready: true,
+            counts: index.counts(),
+        },
+        None => GraphicsInfo { root: None, ready: false, counts: GraphicsCounts::default() },
+    }
+}
+
+/// Serves `fmgfx` requests such as `/club/728`, `/face/7458500` or `/flag/765` from the
+/// graphics packs; anything unknown or missing is a 404.
+fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Vec<u8>> {
+    // The window's own origin differs from fmgfx's, so let it read the answers, not only show them.
+    let not_found = || {
+        tauri::http::Response::builder()
+            .status(404)
+            .header("Access-Control-Allow-Origin", "*")
+            .body(Vec::new())
+            .expect("a plain response")
+    };
+    let mut parts = path.trim_matches('/').split('/');
+    let picture = match parts.next() {
+        Some("club") => Picture::ClubLogo,
+        Some("face") => Picture::Face,
+        Some("flag") => Picture::Flag,
+        Some("competition") => Picture::CompetitionLogo,
+        _ => return not_found(),
+    };
+    let Some(id) = parts.next().and_then(|id| id.parse().ok()) else {
+        return not_found();
+    };
+    let Some(index) = graphics.index() else {
+        return not_found();
+    };
+    let Some(file) = index.file(picture, id) else {
+        return not_found();
+    };
+    let Ok(bytes) = std::fs::read(file) else {
+        return not_found();
+    };
+    let png = file.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
+    tauri::http::Response::builder()
+        .header("Content-Type", if png { "image/png" } else { "image/jpeg" })
+        .header("Cache-Control", "max-age=3600")
+        .header("Access-Control-Allow-Origin", "*")
+        .body(bytes)
+        .expect("a picture response")
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -646,6 +720,23 @@ fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, Strin
 pub fn run() {
     tauri::Builder::default()
         .manage(AppState::default())
+        .manage(Graphics::default())
+        .setup(|app| {
+            // Reading the packs' config files takes a moment: do it beside the window.
+            let root = app.path().document_dir().ok().map(|documents| GraphicsIndex::default_root(&documents, 27));
+            let graphics = app.state::<Graphics>().0.clone();
+            std::thread::spawn(move || {
+                let index = root.map_or_else(GraphicsIndex::default, |root| GraphicsIndex::scan(&root));
+                if let Ok(mut slot) = graphics.lock() {
+                    *slot = Some(Arc::new(index));
+                }
+            });
+            Ok(())
+        })
+        .register_uri_scheme_protocol("fmgfx", |ctx, request| {
+            let graphics = ctx.app_handle().state::<Graphics>();
+            picture_response(&graphics, request.uri().path())
+        })
         .invoke_handler(tauri::generate_handler![
             detect_game,
             connect,
@@ -664,7 +755,8 @@ pub fn run() {
             undo_change,
             plan_mass_edit,
             apply_mass_edit,
-            undo_batch
+            undo_batch,
+            graphics_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

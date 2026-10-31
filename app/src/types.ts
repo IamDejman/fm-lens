@@ -108,8 +108,12 @@ export interface StaffSummary {
   dateOfBirth: FmDate | null;
   age: number | null;
   nation: string | null;
+  /** The nation's UID, for its flag (see pictures.ts). */
+  nationUid: number | null;
   /** The employer. */
   club: string | null;
+  /** The employer's UID, for its logo (see pictures.ts). */
+  clubUid: number | null;
   /** FM job code from the contract; see `jobLabel` in labels.ts. */
   job: number | null;
   currentAbility: number;
@@ -160,7 +164,11 @@ export interface PlayerSummary {
   /** Age on the in-game date. */
   age: number | null;
   nation: string | null;
+  /** The nation's UID, for its flag (see pictures.ts). */
+  nationUid: number | null;
   club: string | null;
+  /** The club's UID, for its logo (see pictures.ts). */
+  clubUid: number | null;
   /** Position keys rated 15 or more, best first. */
   positions: string[];
   contractExpires: FmDate | null;
@@ -407,4 +415,21 @@ export interface BatchUndo {
   undone: number;
   /** Changes the game has changed since, left as they are. */
   failed: { id: number; error: string }[];
+}
+
+/** How many pictures of each kind the graphics packs hold. */
+export interface GraphicsCounts {
+  clubLogos: number;
+  faces: number;
+  flags: number;
+  competitionLogos: number;
+}
+
+/** From `graphics_info`: the user's graphics packs, read once in the background when the app starts. */
+export interface GraphicsInfo {
+  /** The folder they are read from, e.g. Documents\Sports Interactive\Football Manager 27\graphics. */
+  root: string | null;
+  /** False while the packs are still being read. */
+  ready: boolean;
+  counts: GraphicsCounts;
 }

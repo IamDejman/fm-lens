@@ -4,6 +4,7 @@ import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
 import { forgetFieldTables } from "./fieldTables";
 import { describeGame, formatDate } from "./format";
+import { GraphicsStatus } from "./GraphicsStatus";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { appText, changesText, clubListText, playerListText, staffListText } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
@@ -146,6 +147,7 @@ function App() {
           ))}
         </nav>
         <div className="sidebar-foot">
+          <GraphicsStatus />
           <p className="sidebar-note">
             {connection ? (editable ? appText.noteEditable : appText.noteReadOnly) : appText.noteNotConnected}
           </p>

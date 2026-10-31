@@ -43,6 +43,8 @@ export function useProfileDetails<T>(command: string, uid: number, version: numb
 }
 
 interface ProfileFrameProps {
+  /** Left of the names: a person's face, or a club's logo. */
+  picture?: ReactNode;
   name: string;
   /** A second name under the name when it differs: a person's full name, a club's short name. */
   fullName: string | null;
@@ -74,8 +76,8 @@ interface ProfileFrameProps {
  * a new person starts at the top.
  */
 export function ProfileFrame(props: ProfileFrameProps) {
-  const { name, fullName, badge, meta, vitals, currentAbility, potentialAbility, side, loaded, onClose } = props;
-  const { editing, children } = props;
+  const { picture, name, fullName, badge, meta, vitals, currentAbility, potentialAbility } = props;
+  const { side, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
 
@@ -99,6 +101,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
         aria-busy={!loaded}
       >
         <header className="profile-head">
+          {picture}
           <div className="profile-id">
             <h2>
               {name}

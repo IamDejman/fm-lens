@@ -4,6 +4,7 @@ import { formatDate } from "./format";
 import { playerListText, POSITION_LABELS, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
+import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
   countFilters,
   NO_PLAYER_FILTERS,
@@ -70,14 +71,21 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
       }
       cells={(p) => (
         <>
-          <td className="col-name">
+          {/* The hover text has what a long name, nation or club is cut to. */}
+          <td className="col-name" title={p.fullName && p.fullName !== p.name ? `${p.name}\n${p.fullName}` : p.name}>
             <div className="name">{p.name}</div>
             {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
           </td>
           <td className="num">{p.age ?? profileText.none}</td>
           <PositionsCell positions={p.positions} />
-          <td className="col-nation">{p.nation ?? profileText.none}</td>
-          <td className="col-club">{p.club ?? <span className="muted">{profileText.freeAgent}</span>}</td>
+          <td className="col-nation" title={p.nation ?? undefined}>
+            <WithPicture picture={<NationFlag uid={p.nationUid} />}>{p.nation ?? profileText.none}</WithPicture>
+          </td>
+          <td className="col-club" title={p.club ?? undefined}>
+            <WithPicture picture={<ClubLogo uid={p.clubUid} name={p.club} size={PICTURE_SIZE.rowLogo} />}>
+              {p.club ?? <span className="muted">{profileText.freeAgent}</span>}
+            </WithPicture>
+          </td>
           <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
           <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
           <td className="num">

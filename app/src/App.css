@@ -27,6 +27,13 @@
   --mix-5: #d55181;
   --mix-6: #008300;
 
+  /*
+   * The badge that stands in for a club's logo has the hue of the club's name (see `Picture.tsx`) at this
+   * saturation and lightness: dark enough for its white initials to keep 4.5:1 at every hue, in both themes.
+   */
+  --badge-saturation: 50%;
+  --badge-lightness: 30%;
+
   color-scheme: dark;
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   font-size: 14px;
@@ -205,6 +212,13 @@ nav small {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* What the graphics packs hold is a note of its own; with no packs it is two: that, and where they go. */
+.graphics-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* "EN | TR": two buttons in one frame; the pressed one is the language in use. */
@@ -738,6 +752,39 @@ nav small {
   text-overflow: ellipsis;
 }
 
+/* Beside the club's logo it is the club's name that is cut short. */
+.staff-grid .col-club .with-picture-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Real names run long ("Kylian Mbappé Lottin", "FC Bayern München"). The players table gives its name, nation
+ * and club columns a share of its width instead of their text's: `max-width: 0` lets a cell be narrower than
+ * its text, which is cut short (the whole text is in the cell's hover) rather than push CA and PA out of view.
+ */
+.player-grid td:is(.col-name, .col-nation, .col-club) {
+  max-width: 0;
+}
+
+.player-grid td.col-name {
+  width: 24%;
+}
+
+.player-grid td.col-nation {
+  width: 16%;
+}
+
+.player-grid td.col-club {
+  width: 20%;
+}
+
+.player-grid .col-name :is(.name, .sub),
+.player-grid :is(.col-nation, .col-club) .with-picture-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @container (max-width: 960px) {
   .staff-grid :is(.col-born, .col-uid) {
     display: none;
@@ -808,6 +855,109 @@ nav small {
   padding: 24px;
   color: var(--muted);
   text-align: center;
+}
+
+/* Pictures */
+
+/*
+ * A club's logo, a person's face or a nation's flag, in a box of a fixed size (--picture-w by --picture-h, which the
+ * component sets): a row or a header is as big before the picture has arrived, or when there is none, as with it.
+ */
+.picture {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--picture-w);
+  height: var(--picture-h);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+/* Logos and flags are shown whole, never stretched or cut; a face fills its circle. */
+.picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+.picture.face {
+  border-radius: 50%;
+  background: var(--raised);
+}
+
+.picture.face img {
+  object-fit: cover;
+  object-position: center top;
+}
+
+/* Where a club has no logo: a rounded badge with its initials; --hue comes from the club's name. */
+.picture-badge {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 22%;
+  background: hsl(var(--hue) var(--badge-saturation) var(--badge-lightness));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14);
+  color: #fff;
+  font-size: max(8px, calc(var(--picture-h) * 0.48));
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Where a person has no face: their initials in a neutral circle. */
+.picture-initials {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: calc(var(--picture-h) * 0.36);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Where a nation has no flag: an empty frame, not a flag that is not its own. */
+.picture-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+/* A picture beside the words it goes with, in a table cell. */
+.with-picture {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Never taller than a line of text, so a row with a picture is as tall as one without. */
+.with-picture > .picture {
+  margin-block: -3px;
+}
+
+/* The words give way to the picture, not the other way round: they wrap where the cell wraps. */
+.with-picture-text {
+  min-width: 0;
+}
+
+/* A picture in a line of text: it stays with the words after it, and the line keeps its baseline. */
+.picture-text {
+  display: inline-block;
+}
+
+.picture-text > .picture {
+  margin-right: 6px;
 }
 
 /* Player profile */

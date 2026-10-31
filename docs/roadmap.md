@@ -84,6 +84,9 @@ before trusting them.
   - dates and numbers follow the language;
   - the connection and the change log survive the switch.
 - [x] Pitch position map.
-- [ ] Faces and logos from the user's graphics packs.
+- [x] Pictures from the user's graphics packs:
+  - club logos, flags and faces, in the lists and the profiles;
+  - read from the packs' `config.xml` mappings in the FM27 graphics folder;
+  - initials stand in where a pack has no picture.
 - [ ] Player comparisons and saved filters.
 - [ ] Steam and Epic builds; possibly Linux/Proton.

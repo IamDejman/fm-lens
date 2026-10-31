@@ -5,12 +5,13 @@
 // Keys of the game data map to the names FM uses; every other string of the panels is in `profile` (those only the
 // club panel has, in `clubProfile`), and those of the player, staff and club lists in `playerList`, `staffList` and
 // `clubList`. Editing has `edit` (and `fields` for the names of the fields), the Changes view `changes`, mass editing
-// `massEdit`, and the sidebar and the connect panel `app`. The components read them through `labels.ts`.
+// `massEdit`, the sidebar and the connect panel `app`, and the graphics packs the pictures come from `graphics`. The
+// components read them through `labels.ts`.
 //
 // The text functions (counts, summaries, "was …") are written per language: plurals and word order differ, so a
 // language builds its sentences itself.
 
-import type { Entity, MassOperationKind, MassPreview, PlayerSort, Storefront } from "../types";
+import type { Entity, GraphicsCounts, MassOperationKind, MassPreview, PlayerSort, Storefront } from "../types";
 
 const numbers = new Intl.NumberFormat("en-GB");
 const percents = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
@@ -558,6 +559,19 @@ export const en = {
       several: "Several copies of the game are running; the first one is used.",
       button: "Connect and read players, staff and clubs",
     },
+  },
+
+  /** The graphics packs the pictures (club logos, faces, flags) come from: their status at the foot of the sidebar. */
+  graphics: {
+    /** While the app is still reading the packs, which takes a moment after it starts. */
+    reading: "Reading graphics packs…",
+    /** What the packs hold: "Graphics: 68,131 club logos · 250 flags · 0 faces". */
+    summary: ({ clubLogos, flags, faces }: Pick<GraphicsCounts, "clubLogos" | "flags" | "faces">) =>
+      `Graphics: ${format(clubLogos)} club ${clubLogos === 1 ? "logo" : "logos"} · ` +
+      `${format(flags)} ${flags === 1 ? "flag" : "flags"} · ${format(faces)} ${faces === 1 ? "face" : "faces"}`,
+    /** When the app found no pack, and under it where packs go. The folder itself is the hover text of both lines. */
+    none: "No graphics packs found",
+    noneHint: "Logo and face packs go in the FM27 graphics folder.",
   },
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
