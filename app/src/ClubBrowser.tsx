@@ -5,6 +5,7 @@ import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
+import { restored, useSnapshot } from "./restore";
 import type { ClubFilter, ClubSummary } from "./types";
 
 const columns = clubListText.columns;
@@ -13,13 +14,19 @@ const filters = clubListText.filters;
 /** Which clubs the list shows. */
 type ClubKind = "all" | "men" | "women";
 
+/** The kind of clubs saved before the language was switched; all of them when there is none. */
+const readKind = (value: unknown): ClubKind => (value === "men" || value === "women" ? value : "all");
+
 /** The clubs table with the profile of the selected club beside it. */
 export function ClubBrowser({ version, active }: { version: number; active: boolean }) {
-  const [kind, setKind] = useState<ClubKind>("all");
+  // It starts as it was before the language was switched, if it was (see `restore.ts`).
+  const [kind, setKind] = useState<ClubKind>(() => restored("clubKind", readKind));
+  useSnapshot("clubKind", () => kind);
   const filter: ClubFilter | undefined = kind === "all" ? undefined : { women: kind === "women" };
 
   return (
     <ListBrowser<ClubSummary>
+      name="clubs"
       command="search_clubs"
       requestArgs={{ filter }}
       version={version}

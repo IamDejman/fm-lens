@@ -1,9 +1,19 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { call } from "./api";
+import { isRecord, restored, useSnapshot } from "./restore";
 import { askToLeave } from "./useProfileEditing";
 
 /** Rows shown at once; the best come first. */
 const ROW_LIMIT = 200;
+
+/** The search text and the UID of the selected row that a list saved; what is missing or wrong is the list's start. */
+function readList(value: unknown): { query: string; selected: number | null } {
+  const given = isRecord(value) ? value : {};
+  return {
+    query: typeof given.query === "string" ? given.query : "",
+    selected: typeof given.selected === "number" && Number.isInteger(given.selected) ? given.selected : null,
+  };
+}
 
 interface Page<Row> {
   total: number;
@@ -24,6 +34,11 @@ export interface ListState {
 }
 
 interface ListBrowserProps<Row extends { uid: number }> {
+  /**
+   * What the list is called in the snapshot of the window that is kept when the language is switched (see
+   * `restore.ts`), which gives it back its search text and its selected row: no other list has the same name.
+   */
+  name: string;
   /**
    * The Rust command that searches, e.g. "search_players". It takes `{ query, limit, ...requestArgs }` and
    * returns a page.
@@ -65,14 +80,19 @@ interface ListBrowserProps<Row extends { uid: number }> {
 /** A searchable table with the profile of the selected row beside it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
   const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
-  const { footer, tableClass, header, cells, profile } = props;
-  const [query, setQuery] = useState("");
+  const { name, footer, tableClass, header, cells, profile } = props;
+  // What the list held before the language was switched, if it was: the search text, and the UID of the row to select
+  // as soon as the rows are there again.
+  const [start] = useState(() => restored(name, readList));
+  const [query, setQuery] = useState(start.query);
+  const wanted = useRef(start.selected);
   const [page, setPage] = useState<Page<Row> | null>(null);
   // The search text and arguments the rows on show were asked for: their total is the list's only while those are
   // the ones in the search box and the filters now.
   const [shownFor, setShownFor] = useState<{ query: string; argsKey: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
+  useSnapshot(name, () => ({ query, selected: selected?.uid ?? null }));
   const searchInput = useRef<HTMLInputElement>(null);
   const tableWrap = useRef<HTMLDivElement>(null);
   const selectedRow = useRef<HTMLTableRowElement>(null);
@@ -111,6 +131,16 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               // A new sort or filter starts at the top; reading the same list again keeps its place.
               shownArgs.current = argsKey;
               tableWrap.current?.scrollTo({ top: 0 });
+            }
+            // The first rows decide: the row that was selected before the language was switched is selected again if
+            // they have it, and not later, when the user has moved on.
+            const uid = wanted.current;
+            if (uid !== null) {
+              wanted.current = null;
+              const row = result.rows.find((candidate) => candidate.uid === uid);
+              if (row !== undefined) {
+                setSelected(row);
+              }
             }
           }
         } catch (e) {
