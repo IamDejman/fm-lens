@@ -445,6 +445,18 @@ export type CaptainRole = "captain" | "viceCaptain";
  */
 export type TeamAction = "heal" | "inspire" | "refresh";
 
+/** The columns that sort a squad table. */
+export type SquadSort =
+  | "name"
+  | "position"
+  | "age"
+  | "currentAbility"
+  | "potentialAbility"
+  | "condition"
+  | "matchSharpness"
+  | "morale"
+  | "happiness";
+
 /** The contract a move to another club gives the player, as stored; what is left out stays as it is. */
 export interface MoveTerms {
   /** Pounds per week. */

@@ -4,14 +4,14 @@
 // string of the panels is in `profileText` (those only the club panel has, in `clubProfileText`), and those of the
 // player, staff and club lists in `playerListText`, `staffListText` and `clubListText`. Editing has `editText` (and
 // `fieldLabel` for the names of the fields), the Changes view `changesText`, mass editing `massEditText`, comparing
-// players `comparisonText`, moving a player to another club (or swapping him with one) `moveText`, the sidebar and
-// the connect panel `appText`, and the status of the graphics packs `graphicsText`.
+// players `comparisonText`, moving a player to another club (or swapping him with one) `moveText`, a club's squad
+// `squadText`, the sidebar and the connect panel `appText`, and the status of the graphics packs `graphicsText`.
 // A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts).
 
 import { formatNumber } from "./format";
 import { intlLocale, strings } from "./i18n";
 import type { Strings } from "./i18n/en";
-import type { Entity } from "./types";
+import type { CaptainRole, Entity } from "./types";
 
 export const ATTRIBUTE_LABELS = strings.attributes;
 
@@ -124,6 +124,45 @@ export const comparisonText = strings.comparison;
 
 /** Moving a player to another club, or swapping him with one: the button in his profile and the dialog it opens. */
 export const moveText = strings.move;
+
+/** A club's squad: the tab of its profile with its teams' players, the actions on a team and the captains. */
+export const squadText = strings.squad;
+
+/** The kind of team the game calls a B team (see `ClubTeam.kind`). */
+const B_TEAM_KIND = 3;
+
+/** What names a team: its place in the club's list, and where it is known the kind and age limit the game gives it. */
+export interface TeamId {
+  index: number;
+  kind?: number;
+  ageLimit?: number | null;
+}
+
+/**
+ * The name of a club's team as its squad screen shows it: the first team, a team by its age limit ("U21"), a B team,
+ * and any other by its place in the club's list ("Team 3"). Where only the place is known, as in the Changes view, a
+ * team other than the first is named by it alone.
+ */
+export function teamLabel({ index, kind, ageLimit }: TeamId): string {
+  if (index === 0) {
+    return squadText.teams.first;
+  }
+  if (ageLimit !== undefined && ageLimit !== null) {
+    return squadText.teams.age(ageLimit);
+  }
+  return kind === B_TEAM_KIND ? squadText.teams.b : squadText.teams.other(index + 1);
+}
+
+/**
+ * What a captaincy that swapped the two captains says about the other player: `from` held `role`, which the new holder
+ * has taken, and now holds the role the new holder left. When nobody held `role` (`from` is null) that one is empty now.
+ */
+export function swapNote(role: CaptainRole, from: string | null): string {
+  if (role === "captain") {
+    return from === null ? squadText.noViceCaptain : squadText.nowViceCaptain(from);
+  }
+  return from === null ? squadText.noCaptain : squadText.nowCaptain(from);
+}
 
 const asText = (value: number | string) => (typeof value === "number" ? formatNumber(value) : value);
 

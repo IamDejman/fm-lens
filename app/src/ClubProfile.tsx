@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 import { EditableValue } from "./EditControls";
 import { formatNumber, formatPounds } from "./format";
 import {
@@ -17,30 +17,55 @@ import {
   RatingList,
   ReputationMeter,
   useProfileDetails,
+  type PanelIds,
   type RatingRow,
 } from "./ProfileParts";
+import { SquadTab } from "./SquadTab";
 import type { ClubDetails, ClubSummary, Finances } from "./types";
 import { useProfileEditing } from "./useProfileEditing";
 
 const text = clubProfileText;
+
+/** The tabs of the profile: what the club has, and its squad. */
+export type ClubTab = "overview" | "squad";
+
+const TABS: readonly ClubTab[] = ["overview", "squad"];
+
+/** The tab saved before the language was switched; the overview when there is none. */
+export const readTab = (value: unknown): ClubTab => (value === "squad" ? "squad" : "overview");
 
 interface ClubProfileProps {
   /** The row that was picked; its fields fill the header while the full profile loads. */
   club: ClubSummary;
   /** Changes when the game data is read again, so the profile is too. */
   version: number;
+  /** The open tab. The list keeps it, so that the next club picked opens on it too. */
+  tab: ClubTab;
+  onTab: (tab: ClubTab) => void;
   onClose: () => void;
 }
 
 /** The profile of one club. Mount it with `key={uid}` so a new club starts at the top. */
-export function ClubProfile({ club, version, onClose }: ClubProfileProps) {
+export function ClubProfile({ club, version, tab, onTab, onClose }: ClubProfileProps) {
   const loaded = useProfileDetails<ClubDetails>("club_details", club.uid, version);
   const editing = useProfileEditing("club", club.uid);
+  const base = useId();
   const details = loaded?.details;
   const info: ClubSummary = details ?? club;
   const vitals = [info.founded !== null && text.founded(info.founded), `${profileText.uid} ${info.uid}`]
     .filter(Boolean)
     .join(" · ");
+
+  // The club is edited on the Overview, which has its inputs: editing starts there, and the Squad tab is not offered
+  // until it is done.
+  const locked = editing.stage !== "view";
+  useEffect(() => {
+    if (locked) {
+      onTab("overview");
+    }
+  }, [locked, onTab]);
+  const shown = locked ? "overview" : tab;
+  const panel: PanelIds = { id: `${base}-panel`, labelledBy: `${base}-${shown}` };
 
   return (
     <ProfileFrame
@@ -59,19 +84,90 @@ export function ClubProfile({ club, version, onClose }: ClubProfileProps) {
           </EditableValue>
         </div>
       }
+      tabs={details && <ClubTabs tab={shown} base={base} locked={locked} onSelect={onTab} />}
+      wide={details !== undefined && shown === "squad"}
       loaded={loaded}
       onClose={onClose}
       editing={editing}
     >
-      {details && <ClubBody details={details} />}
+      {details &&
+        (shown === "squad" ? (
+          <SquadTab clubUid={club.uid} version={version} panel={panel} />
+        ) : (
+          <ClubBody details={details} panel={panel} />
+        ))}
     </ProfileFrame>
   );
 }
 
-/** Two columns: what the club has on the left, the people around it on the right. */
-function ClubBody({ details }: { details: ClubDetails }) {
+interface ClubTabsProps {
+  tab: ClubTab;
+  /** The start of the ids of the tabs, which the panel they open names itself by (see `PanelIds`). */
+  base: string;
+  /** Whether the club is being edited. */
+  locked: boolean;
+  onSelect: (tab: ClubTab) => void;
+}
+
+/** The tabs under the header. The arrow keys move between them, as in any tab list. */
+function ClubTabs({ tab, base, locked, onSelect }: ClubTabsProps) {
+  const buttons = useRef<Partial<Record<ClubTab, HTMLButtonElement | null>>>({});
+  // The Squad tab is out of reach while the club is edited.
+  const offered = TABS.filter((id) => !(locked && id === "squad"));
+
+  const keyDown = (event: KeyboardEvent) => {
+    const at = offered.indexOf(tab);
+    const target =
+      event.key === "ArrowRight"
+        ? offered[(at + 1) % offered.length]
+        : event.key === "ArrowLeft"
+          ? offered[(at - 1 + offered.length) % offered.length]
+          : event.key === "Home"
+            ? offered[0]
+            : event.key === "End"
+              ? offered[offered.length - 1]
+              : undefined;
+    if (target !== undefined) {
+      event.preventDefault();
+      onSelect(target);
+      buttons.current[target]?.focus();
+    }
+  };
+
   return (
-    <div className="profile-split">
+    <div className="profile-tabs" role="tablist" aria-label={text.tabsLabel} onKeyDown={keyDown}>
+      {TABS.map((id) => {
+        const unavailable = locked && id === "squad";
+        return (
+          <button
+            key={id}
+            ref={(button) => {
+              buttons.current[id] = button;
+            }}
+            type="button"
+            role="tab"
+            id={`${base}-${id}`}
+            className="profile-tab"
+            aria-selected={id === tab}
+            aria-controls={`${base}-panel`}
+            // Only the tab that is open is a Tab stop; the arrow keys reach the other.
+            tabIndex={id === tab ? 0 : -1}
+            disabled={unavailable}
+            title={unavailable ? text.squadLocked : undefined}
+            onClick={() => onSelect(id)}
+          >
+            {text.tabs[id]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Two columns: what the club has on the left, the people around it on the right. */
+function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds }) {
+  return (
+    <div className="profile-split" role="tabpanel" id={panel.id} aria-labelledby={panel.labelledBy}>
       <div className="profile-stack">
         <Facilities facilities={details.facilities} />
         <FinancesGroup finances={details.finances} />

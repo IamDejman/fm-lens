@@ -6,13 +6,21 @@
 // club panel has, in `clubProfile`), and those of the player, staff and club lists in `playerList`, `staffList` and
 // `clubList` (the saved player filters are in `playerList.filters.saved`). Editing has `edit` (and `fields` for the
 // names of the fields), the Changes view `changes`, mass editing `massEdit`, comparing players `comparison`, moving a
-// player to another club or swapping him with one `move`, the sidebar and the connect panel `app`, and the graphics
-// packs the pictures come from `graphics`. The components read them through `labels.ts`.
+// player to another club or swapping him with one `move`, a club's squad `squad`, the sidebar and the connect panel
+// `app`, and the graphics packs the pictures come from `graphics`. The components read them through `labels.ts`.
 //
 // The text functions (counts, summaries, "was …") are written per language: plurals and word order differ, so a
 // language builds its sentences itself.
 
-import type { Entity, GraphicsCounts, MassOperationKind, MassPreview, PlayerSort, Storefront } from "../types";
+import type {
+  Entity,
+  GraphicsCounts,
+  MassOperationKind,
+  MassPreview,
+  PlayerSort,
+  SquadSort,
+  Storefront,
+} from "../types";
 import { fieldName } from "./fieldNames";
 
 const numbers = new Intl.NumberFormat("en-GB");
@@ -263,6 +271,7 @@ export const en = {
     // What the game changes every day.
     condition: "Energy",
     match_sharpness: "Match sharpness",
+    morale: "Morale",
     happiness: "Happiness",
     "contract.wage": "Wage per week",
     "contract.expires": "Contract end",
@@ -274,6 +283,10 @@ export const en = {
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
+    // Making a player the captain or vice-captain of one of a club's teams, which the change log keeps as a change of
+    // the club's captain or vice-captain.
+    captain: "Captain",
+    vice_captain: "Vice-captain",
     // A club's own reputation, which has no home, current or world.
     reputation: "Reputation",
     "facilities.training": "Training facilities",
@@ -357,6 +370,8 @@ export const en = {
     reputationWorld: "World",
 
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
+    /** A player's morale, 1–20. */
+    morale: (value: number) => `${value} / 20`,
     /** A player's happiness, 0–20. */
     happiness: (value: number) => `${value} / 20`,
     /** Hover text of his happiness. */
@@ -532,6 +547,13 @@ export const en = {
     founded: (year: number) => `Founded ${year}`,
     reputationShort: "REP",
     reputationTitle: "Reputation",
+
+    // The tabs under the header: what the club has, and its squad (see `squad`).
+    /** The name of the tabs for assistive technology. */
+    tabsLabel: "Club sections",
+    tabs: { overview: "Overview", squad: "Squad" },
+    /** Hover text of the Squad tab while the club is edited: its values are on the Overview. */
+    squadLocked: "Finish editing to open the squad",
 
     facilities: "Facilities",
 
@@ -825,7 +847,7 @@ export const en = {
       contract: "Contract",
       facilities: "Facilities",
       finances: "Finances",
-      /** A player's energy, match sharpness and happiness: the Medical group of his profile. */
+      /** A player's energy, match sharpness, morale and happiness: the Medical group of his profile. */
       health: "Medical",
       /** Whatever the other groups do not have, e.g. a player's height. */
       other: "Other",
@@ -1043,6 +1065,120 @@ export const en = {
     swapHint: "Nothing changes in the game until you press Swap.",
     swap: "Swap",
     swapping: "Swapping…",
+  },
+
+  /**
+   * A club's squad: the tab of the club profile that lists the players of each of its teams, with the actions on a
+   * whole team and the captains.
+   */
+  squad: {
+    // The switch between the club's teams
+    /** The name of the switch for assistive technology. */
+    teamsLabel: "Team",
+    /**
+     * The names of the teams (see `teamLabel` in labels.ts): the first team, a B team, a team with an age limit, and
+     * any other, which is named by its place in the club's list (`place` counts from 1, the first team being the
+     * first).
+     */
+    teams: {
+      first: "First team",
+      b: "B team",
+      age: (limit: number) => `U${limit}`,
+      other: (place: number) => `Team ${place}`,
+    },
+    /** When the game lists no team for the club. */
+    noTeams: "This club has no teams.",
+    loading: "Reading the squad…",
+    /** The message under an empty table. */
+    empty: "No players in this team.",
+
+    // Above the table
+    players: (count: number) => (count === 1 ? "1 player" : `${format(count)} players`),
+    /** `age` is written out already, with one decimal. */
+    averageAge: (age: string) => `average age ${age}`,
+    /** `captain` and `viceCaptain` are names, or `profile.none` for nobody. */
+    captains: (captain: string, viceCaptain: string) => `Captain: ${captain} · Vice-captain: ${viceCaptain}`,
+
+    // The actions on the whole team
+    /** The name of the group of buttons for assistive technology. */
+    actionsLabel: "Actions on the whole team",
+    /** `injured` is how many of the team's players have an injury. */
+    healAll: (injured: number) => (injured === 0 ? "Heal all" : `Heal all (${format(injured)} injured)`),
+    healAllTitle: "Heal every injury of every player in this team",
+    /** Hover text of Heal all while nobody in the team is injured. */
+    healNone: "Nobody in this team is injured",
+    inspireAll: "Inspire all",
+    inspireAllTitle: "Set the morale of every player in this team to 20, the highest",
+    refreshAll: "Refresh all",
+    refreshAllTitle: "Set the energy and match sharpness of every player in this team to 100%",
+    /** Beside the buttons: whom they cover, and where undoing is. */
+    hint: "The actions cover every player in the list, those out on loan too. Undo is in the Changes view as well.",
+
+    // What an action did, under the buttons
+    /** `count` is how many values were written. */
+    written: (count: number) => `${changeCount(count)} written`,
+    /** A change the game refused: `name` is the player's, `reason` the game's answer (it names the value). */
+    refused: (name: string, reason: string) => `${name}: ${reason}`,
+    /** Takes back what the line beside it says was written. */
+    undo: "Undo",
+    undoTitle: "Write the old values of these changes back to the game",
+
+    // Captains
+    /** The badges after the name of the captain and of the vice-captain; their hover texts are the roles' names. */
+    captainShort: "C",
+    viceCaptainShort: "VC",
+    /** The menu button at the end of a row: its name for assistive technology (`name` is the player's), hover text. */
+    menuLabel: (name: string) => `Captaincy of ${name}`,
+    menuTitle: "Captaincy",
+    makeCaptain: "Make captain",
+    makeViceCaptain: "Make vice-captain",
+    /** Who holds a role now: said after a change, and in the Changes view under a captaincy that moved the other. */
+    nowCaptain: (name: string) => `${name} is now captain`,
+    nowViceCaptain: (name: string) => `${name} is now vice-captain`,
+    /** The same when there was nobody to take the role the new holder left, so that it stands empty. */
+    noCaptain: "Nobody is captain now",
+    noViceCaptain: "Nobody is vice-captain now",
+
+    // The table
+    /** The table's name for assistive technology; `team` is the name of the team. */
+    tableLabel: (team: string) => `Players of ${team}`,
+    columns: {
+      name: "Name",
+      position: "Pos",
+      age: "Age",
+      currentAbility: "CA",
+      potentialAbility: "PA",
+      condition: "Energy",
+      matchSharpness: "Sharpness",
+      morale: "Morale",
+      happiness: "Happiness",
+      /** The last column has no heading but this one, for assistive technology: it holds the captaincy menus. */
+      actions: "Captaincy",
+    } satisfies Record<SquadSort | "actions", string>,
+    /** Hover text of a column header that sorts the table; `by` is a name from `sortNames`. */
+    sortBy: (by: string) => `Sort by ${by}`,
+    sortNames: {
+      name: "name",
+      position: "position",
+      age: "age",
+      currentAbility: "current ability",
+      potentialAbility: "potential ability",
+      condition: "energy",
+      matchSharpness: "match sharpness",
+      morale: "morale",
+      happiness: "happiness",
+    } satisfies Record<SquadSort, string>,
+
+    // The tags after a name, with what each means as hover text
+    injured: "Injured",
+    /** `count` is how many injuries he has. */
+    injuredTitle: (count: number) => (count === 1 ? "1 injury" : `${format(count)} injuries`),
+    onLoan: "On loan",
+    onLoanTitle: "Out on loan to another club",
+    loanee: "Loanee",
+    loaneeTitle: "Here on loan from another club",
+    elsewhere: "Elsewhere",
+    elsewhereTitle: "Plays for another team of the club",
   },
 
   /** The game, as `describeGame` in `format.ts` names it. */
