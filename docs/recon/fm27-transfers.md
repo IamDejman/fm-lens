@@ -52,6 +52,35 @@ ones from the database. Anel Ahmedhodžić's move from Sheffield United to Burnl
 The player object also holds his previous club (`+0x350`: Sporting) and dates around it
 (`+0x360` on: 26 July 2025).
 
+## Watching a transfer the game made
+
+The maintainer bought Luke Bell (UID 2000039902, internal ID 24941), a Coventry City
+goalkeeper, for £1.2M, a fee easy to find in memory. Memory was read with the deal agreed
+but not yet accepted, then again once Accept and Continue had made the move (25 July 2026).
+
+**While agreed.** The deal is held in objects that name the player's identity block, the
+buying team (Arsenal's, twice), the selling team and the fee as a `u32` in pounds.
+A list of 32-byte entries also holds Coventry, the date, the person's ID and the fee, as a
+`u64` in pounds.
+
+**Once made.** The game writes events of its own into a game-wide stream of mixed records:
+small objects of several classes, laid out one after another, which nothing points at one by
+one. Three were new:
+
+| Class (`game_plugin+`) | Fields after the class pointer |
+| --- | --- |
+| `0x559FFB8`, 64 bytes | `+0x08` date, `+0x10` fee in pounds, `+0x18` the player's identity block, `+0x20` a pointer, `+0x28` buying club, `+0x30` selling club |
+| `0x55A0020` | date, fee, the player, the selling club (Coventry's sale) |
+| `0x55A0088` | date, fee, the player, the buying club (Arsenal's purchase) |
+
+- The date is 8 bytes: a sequence byte, then the `u16` day of the year with flags (`0x44CE`
+  is day 206 of 2026, 25 July), then the `u16` year.
+- The stream holds 2,748 events of the first class, all from transfers made in this save. The
+  database's own transfers, such as Gyökeres', are not among them; they are kept elsewhere.
+- No `(begin, end)` pair covers the stream, and no pointer leads to an event. To add one, the
+  game's write position and the room after it have to be found first. This is the riskiest
+  kind of write: a mistake would break the save's history.
+
 ## Still to find
 
 - Where the game keeps the fee it shows in a player's transfer history. The surest way: watch
@@ -59,4 +88,5 @@ The player object also holds his previous club (`+0x350`: Sporting) and dates ar
 - What the amount and the flags of the 48-byte records mean.
 - Who owns the records and the pointer array, and their capacities. Adding a transfer means
   inserting a record in person order without allocating.
-- Where agreed future transfers are kept.
+- Where the transfer events' stream keeps its write position and its room.
+- Where agreed future transfers are kept: the agreed-deal objects above are a start.
