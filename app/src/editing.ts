@@ -215,6 +215,13 @@ export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { u
  */
 export const liftBans = (uid: number) => call<LoggedChange>("lift_bans", { uid });
 
+/**
+ * Keeps the player from retiring: the retirement the game has planned for him is taken out of its plans, and he gets
+ * the trait "Will play football as long as possible" in place of "Will retire at top". Logged as one change of his
+ * field `retirement` to 0, and undone as one; fails with "retirement.none" when there is nothing to change.
+ */
+export const keepPlaying = (uid: number) => call<LoggedChange>("keep_playing", { uid });
+
 /** The teams of a club, the senior team first, with their players and the live values a squad screen shows. */
 export const clubSquads = (uid: number) => call<ClubTeam[]>("club_squads", { uid });
 

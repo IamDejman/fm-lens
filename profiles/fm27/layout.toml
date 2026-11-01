@@ -241,6 +241,18 @@ started = 0x10            # date the ban began
 marker = 0x16             # u16, 0xFFFF for a ban
 matches = 0x1C            # u8, matches left to miss
 
+# The retirements the game has planned (FMRTE's "Retire Date"), which its retirement manager (RETIREMENT_MANAGER)
+# keeps. Read on the Game Pass save (6 September 2026), where the manager listed 27, among them Cristiano Ronaldo on
+# 30 June 2027 and Daniel Wass on 1 July 2027 as FMRTE shows; nothing but the manager's two lists points at an entry.
+# An entry is 24 bytes: the person's id, a club's (-1 for a free agent), two dates, the date he retires and flags.
+[retirement]
+manager = -60768          # -0xED60: the static pointer to the manager, from the players (begin, end) pair
+planned = 0x30            # in the manager: (begin, end, capacity) of pointers to the entries
+by_person = 0x90          # in the manager: (begin, end, capacity) of 16-byte entries: u32 person id, 4 spare bytes, pointer; sorted by id
+person = 0x00             # in an entry: u32 person id
+date = 0x0C               # in an entry: the date he retires
+player_person = 0x290     # in a player: u32, the game's id of the person (Ronaldo 0x0A30, Wass 0x0E69)
+
 [team]
 club = 0x30               # club pointer
 # u8, the kind of team: on the test save 0 for the first team, 10 for the under-21s and

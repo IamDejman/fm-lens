@@ -122,6 +122,10 @@ pub struct PlayerDetails {
     /// has room for.
     pub ties: Vec<Relation>,
     pub tie_room: usize,
+    /// Whether the editor can read the retirements the game has planned (see
+    /// [`crate::Session::planned_retirement`]), and the date he retires on when the game has planned it.
+    pub retirement_known: bool,
+    pub retires: Option<FmDate>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -320,6 +324,8 @@ pub fn read_player_details(
         bans: Vec::new(),
         ties: Vec::new(),
         tie_room: 0,
+        retirement_known: false,
+        retires: None,
     }))
 }
 

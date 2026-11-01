@@ -210,6 +210,10 @@ pub enum MoveError {
     UnusualJob {
         job: u8,
     },
+    /// The editor cannot find the retirements the game has planned in this build, or they do not check out.
+    NoRetirements,
+    /// Keeping a player from retiring asked for one the game has not planned to retire who already has the traits.
+    NotRetiring,
     Memory(fmlibre_mem::Error),
 }
 
@@ -272,6 +276,12 @@ impl fmt::Display for MoveError {
                  make it bigger"
             ),
             MoveError::UnusualJob { job } => write!(f, "job {job} is not one the editor gives or takes away"),
+            MoveError::NoRetirements => {
+                f.write_str("the editor cannot find the retirements the game has planned in this version of the game")
+            }
+            MoveError::NotRetiring => {
+                f.write_str("the game has not planned the player's retirement, and he already means to play on")
+            }
             MoveError::Memory(err) => write!(f, "{err}"),
         }
     }
@@ -311,6 +321,8 @@ impl Coded for MoveError {
             MoveError::NotInDepartment => "staff.notListed",
             MoveError::DepartmentFull { .. } => "staff.noRoom",
             MoveError::UnusualJob { .. } => "staff.job",
+            MoveError::NoRetirements => "retirement.unknown",
+            MoveError::NotRetiring => "retirement.none",
             MoveError::Memory(err) => err.code(),
         }
     }

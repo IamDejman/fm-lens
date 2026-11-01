@@ -4,9 +4,9 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { valueText } from "./editDraft";
-import { changeLog, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
+import { changeLog, dateFromNumber, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
-import { describeError, formatDateTime, formatPounds, formatTime } from "./format";
+import { describeError, formatDate, formatDateTime, formatPounds, formatTime } from "./format";
 import {
   changesText as text,
   fieldLabel,
@@ -498,7 +498,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // A move to another club is logged with the clubs' UIDs as its values: their names say more (a release has no new
   // club: he became a free agent), and so do the players' for a captaincy. A heal is logged as a change of his
   // injuries from how many he had to none, and lifting his bans as one of his bans: "Healed 2 injuries" says it better
-  // than "2 → 0".
+  // than "2 → 0". Keeping him from retiring is logged with the date he was to retire on, which it names.
   const value = change.moved
     ? valueChange(change.moved.from, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
@@ -509,6 +509,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
         ? text.healed(change.old)
         : change.field === "bans"
           ? text.lifted(change.old)
+          : change.field === "retirement"
+            ? text.keptPlaying(change.old === 0 ? null : formatDate(dateFromNumber(change.old)))
           : change.field === "contract.job"
             ? valueChange(jobLabel(change.old), jobLabel(change.new))
             : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));

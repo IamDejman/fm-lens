@@ -96,6 +96,8 @@ const errors: ErrorTexts = {
   "move.notApplied": () => "Belleğe yazıldı ama geri okunan farklı çıktı.",
   "heal.notInjured": () => "Oyuncunun iyileştirilecek bir sakatlığı yok.",
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
+  "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
+  "retirement.none": () => "Oyun bu oyuncunun emekliliğini planlamamış ve oyuncu zaten oynamaya devam etmek istiyor.",
   "relation.missing": () => `Oyuncunun listesinde bu uyruk ya da yetiştiği yer artık yok; ${reload}.`,
   "relation.noRoom": () =>
     "Oyuncunun listesinde yer yok ve düzenleyici listeyi büyütemiyor; bunun yerine kayıtlardan birini değiştirin.",
@@ -447,6 +449,7 @@ export const tr: Strings = {
     club: "Kulüp",
     injuries: "Sakatlıklar",
     bans: "Cezalar",
+    retirement: "Emeklilik",
     captain: "Kaptan",
     vice_captain: "Yardımcı kaptan",
     reputation: "İtibar",
@@ -530,6 +533,13 @@ export const tr: Strings = {
     reputationHome: "Yerel",
     reputationCurrent: "Güncel",
     reputationWorld: "Dünya",
+    retirement: "Emeklilik",
+    retires: "Emeklilik planı",
+    noRetirement: "Oyun emekliliğini planlamamış",
+    keepPlaying: "Emekli olmasını engelle",
+    keepingPlaying: "Engelleniyor…",
+    keepPlayingTitle:
+      "Emekliliğini oyunun planlarından çıkarır ve “Zirvedeyken emekli olur” yerine “Olabildiğince uzun futbol oynar” özelliğini verir; Değişiklikler'den geri alınabilir",
 
     // Medical
     morale: (value) => `${value} / 20`,
@@ -935,6 +945,7 @@ export const tr: Strings = {
     fee: (amount) => `Bedel ${amount}`,
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
     lifted: (count) => `${format(count)} ceza kaldırıldı`,
+    keptPlaying: (date) => (date === null ? "Oynamaya devam edecek" : `${date} tarihli emeklilik engellendi`),
     count: (total, undone) => {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} geri alındı`;

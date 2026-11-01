@@ -28,6 +28,28 @@ pub struct Layout {
     /// A club's stadium; only in the layouts it has been checked in.
     #[serde(default)]
     pub stadium: Option<StadiumLayout>,
+    /// The retirements the game has planned; only in the layouts they have been checked in.
+    #[serde(default)]
+    pub retirement: Option<RetirementLayout>,
+}
+
+/// The retirements the game has planned, which its retirement manager keeps (`RETIREMENT_MANAGER`, one object a
+/// static next to the entity arrays points at). It lists them twice: as pointers to the entries, and as an index of
+/// 16-byte entries (the person id, 4 spare bytes, the pointer) sorted by person id.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RetirementLayout {
+    /// Where the static pointer to the manager is, from the players `(begin, end)` pair.
+    pub manager: i64,
+    /// In the manager: the `(begin, end, capacity)` list of pointers to the entries.
+    pub planned: u64,
+    /// In the manager: the `(begin, end, capacity)` index of the entries by person id.
+    pub by_person: u64,
+    /// In an entry: the `u32` id of the person who retires (`player_person`), and the date he retires.
+    pub person: u64,
+    pub date: u64,
+    /// In a player: the `u32` id the game gives the person.
+    pub player_person: u64,
 }
 
 /// A stadium, which a club's senior team points at.
@@ -725,6 +747,10 @@ mod tests {
         assert_eq!(profile.storefront, Storefront::GamePass);
         assert_eq!(profile.arrays.players, 0x568_1DC0);
         assert_eq!(profile.edition, layout.edition);
+        // The static pointer to the retirement manager, found at game_plugin.dll+0x5673060 on this build.
+        let retirement = layout.retirement.as_ref().expect("planned retirements");
+        assert_eq!(profile.arrays.players.checked_add_signed(retirement.manager), Some(0x567_3060));
+        assert!(parse::<Layout>(MACOS).retirement.is_none());
 
         // The same version on Steam, packaged differently: another fingerprint and other RVAs.
         let fingerprint = PluginFingerprint::Pe { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
