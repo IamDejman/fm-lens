@@ -161,6 +161,14 @@ changes many at once, and undo.
   - [x] Freeze a club's money: while the app runs, its balance does not go down.
   - Checked on the Mac Steam build: the filters on a real save, and each new field written, read back and
     restored. Next: the same on Game Pass and Steam for Windows, and freezing money through a game day.
+- Transfers, which users asked for next:
+  - [x] A move with a fee: the buying club pays it out of its balance and transfer budget, the selling
+    club's balance takes it, and one undo takes back the move and the fee (the money by what it changed, as
+    the game moves money on every day). Checked on the Mac Steam build.
+  - [ ] The transfer in the game's history. When the game makes a transfer it writes events (date, fee,
+    player, clubs) into a stream that nothing points at one by one: see the
+    [transfer notes](recon/fm27-transfers.md).
+  - [ ] Transfers agreed for a later date.
 - Wave 2, new memory research:
   - [ ] Traits (preferred moves).
   - [ ] Move a member of staff to another club, keeping the job and the contract, and change a job.

@@ -430,6 +430,8 @@ export interface LoggedChange {
     to: string;
     /** For a swap of two players, logged as one change, the player who went the other way. */
     with?: string;
+    /** The fee the buying club paid the selling one, in pounds, if any. */
+    fee?: number;
   };
   /**
    * Set for a captaincy (`set_captain`), which is logged as a change of the club's field `captain` or
@@ -512,6 +514,32 @@ export interface MoveTerms {
 export interface MovePreview {
   from: { uid: number; name: string };
   to: { uid: number; name: string };
+  /** What the fee does to the two clubs' money, when one is to be paid. */
+  fee?: FeePlan;
+}
+
+/** An amount of money before and after a fee is paid, in pounds. */
+export interface Amounts {
+  before: number;
+  after: number;
+}
+
+/** What a fee does to one club's money. */
+export interface ClubMoney {
+  club: number;
+  balance: Amounts;
+  /** The buying club's transfer budget, which the fee comes out of too, down to nothing; null when none is set. */
+  transferBudget: Amounts | null;
+}
+
+/**
+ * What paying a transfer fee does: the buying club pays it out of its balance and transfer budget, and the selling
+ * club's balance takes it. A club the game keeps no full finances for is null: its money stays as it is.
+ */
+export interface FeePlan {
+  fee: number;
+  buyer: ClubMoney | null;
+  seller: ClubMoney | null;
 }
 
 /** An edit `apply_edits` refused; it changed nothing. */

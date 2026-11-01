@@ -35,8 +35,9 @@ How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 >   list selects, and the lists filter by any attribute (finishing 15 or more, say)
 >   and by the transfer and loan lists. It is previewed before it is applied and
 >   undone as one batch.
-> - **Moving players:** a player can move to another club's senior team, on his
->   contract or new terms, or swap clubs with another player. Free agents, loans
+> - **Transfers:** a player can move to another club's senior team, on his contract
+>   or new terms, for a fee that the buying club pays the selling one, or swap clubs
+>   with another player. Free agents, loans
 >   and players at your own club are refused for now, and so is a club whose squad
 >   list has no room left (see
 >   [the notes](docs/recon/fm27-gamepass-0.9.2355.md#squad-lists-and-moving-players-between-clubs)).

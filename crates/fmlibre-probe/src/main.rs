@@ -171,6 +171,10 @@ enum Command {
         /// A new contract end as YYYY-MM-DD; the contract's otherwise.
         #[arg(long)]
         expires: Option<String>,
+        /// A transfer fee in pounds, which the club he joins pays his old one: out of its balance and transfer budget,
+        /// into the other's balance.
+        #[arg(long)]
+        fee: Option<i64>,
         /// Move him back afterwards and check it: tests a move without changing the save.
         #[arg(long)]
         restore: bool,
@@ -539,10 +543,11 @@ fn run(cli: Cli) -> Result<()> {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             set(&session, entity.into(), uid, &field, &value, shown, restore.then_some(hold))
         }
-        Command::Move { uid, club, wage, expires, restore, hold } => {
+        Command::Move { uid, club, wage, expires, fee, restore, hold } => {
             let expires = expires.as_deref().map(parse_iso_date).transpose()?.map(FmDate::to_number);
             let terms = MoveTerms { wage, expires };
-            move_player(&Session::connect(process, ArraySource::ProfileFirst)?, uid, club, terms, restore, hold)
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            move_player(&session, uid, club, terms, fee, restore, hold)
         }
         Command::Heal { uid, heal, restore, hold } => {
             let restore_after = restore.then_some(hold);
@@ -1916,17 +1921,51 @@ fn set(
     Ok(())
 }
 
-fn move_player(session: &Session, uid: u32, club: u32, terms: MoveTerms, restore: bool, hold: u64) -> Result<()> {
+fn move_player(
+    session: &Session,
+    uid: u32,
+    club: u32,
+    terms: MoveTerms,
+    fee: Option<i64>,
+    restore: bool,
+    hold: u64,
+) -> Result<()> {
     let players = PlayerIndex::new(session.players()?);
     let clubs = ClubIndex::new(session.clubs()?);
     let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
     let to = clubs.get(club).with_context(|| format!("no club with UID {club}"))?;
     let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
     let plan = session.plan_club_move(player, to, terms, &human)?;
-    let from = clubs.get(plan.from_club).map_or("?", |c| c.name.as_str());
+    let from_club = clubs.get(plan.from_club).context("his club is not in the list")?;
+    let from = from_club.name.as_str();
     println!("{} (UID {uid}): {from} -> {}, {} writes", player.name, to.name, plan.writes());
+    let fee_plan = fee.filter(|&fee| fee > 0).map(|fee| session.plan_fee(to, from_club, fee)).transpose()?;
+    if let Some(fee_plan) = fee_plan {
+        let money = |money: Option<fmlibre_core::ClubMoney>, name: &str| match money {
+            Some(money) => {
+                let budget = money
+                    .transfer_budget
+                    .map_or(String::new(), |b| format!(", transfer budget £{} -> £{}", b.before, b.after));
+                println!("  {name}: balance £{} -> £{}{budget}", money.balance.before, money.balance.after);
+            }
+            None => println!("  {name}: no finances in memory, left alone"),
+        };
+        println!("  fee £{}", fee_plan.fee);
+        money(fee_plan.buyer, &to.name);
+        money(fee_plan.seller, from);
+    }
 
     let done = session.apply_club_move(&plan)?;
+    let paid = match fee_plan {
+        Some(fee_plan) => match session.pay_fee(&fee_plan, to, from_club) {
+            Ok(paid) => paid,
+            Err(err) => {
+                session.undo_club_move(&done)?;
+                return Err(err.into());
+            }
+        },
+        None => Vec::new(),
+    };
     // Read him again as the lists would, from the team he now plays for.
     let club_now = |label: &str| -> Result<Option<u32>> {
         let now = session.players()?.into_iter().find(|p| p.uid == uid).context("the player is gone")?;
@@ -1939,8 +1978,12 @@ fn move_player(session: &Session, uid: u32, club: u32, terms: MoveTerms, restore
             println!("  moving him back in {hold} s");
             std::thread::sleep(std::time::Duration::from_secs(hold));
         }
+        session.refund_fee(&paid)?;
         session.undo_club_move(&done)?;
         ensure!(club_now("moved back to")? == Some(plan.from_club), "the player is not back at {from}");
+        if !paid.is_empty() {
+            println!("  fee taken back");
+        }
     }
     Ok(())
 }
