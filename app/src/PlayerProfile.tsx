@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from "react";
+import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { call } from "./api";
@@ -26,7 +27,7 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { ApplyReport, Clause, Concern, Contract, FmDate, PlayerDetails, PlayerSummary } from "./types";
+import type { ApplyReport, Concern, Contract, FmDate, PlayerDetails, PlayerSummary } from "./types";
 import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
@@ -139,7 +140,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
 
       <TraitsGroup traits={details.traits} />
 
-      {details.contract && <ContractGroup uid={details.uid} contract={details.contract} />}
+      {details.contract && <ContractGroup details={details} contract={details.contract} />}
       <CareerGroup details={details} />
       <TiesGroup details={details} />
     </>
@@ -156,7 +157,8 @@ function attributeRows(details: PlayerDetails, keys: readonly AttributeKey[]): R
  * The wage, squad status and number, the dates and the lists the player is on. While he is edited the figures are
  * inputs, and both lists show as checkboxes: a tag shows only for a list he is on.
  */
-function ContractGroup({ uid, contract }: { uid: number; contract: Contract }) {
+function ContractGroup({ details, contract }: { details: PlayerDetails; contract: Contract }) {
+  const uid = details.uid;
   const editingListing = useEditableField("contract.transfer_listed");
   return (
     <section className="profile-group">
@@ -188,7 +190,7 @@ function ContractGroup({ uid, contract }: { uid: number; contract: Contract }) {
         </div>
         <ContractDates contract={contract} />
       </div>
-      <ClauseList clauses={contract.clauses} />
+      <ClauseList uid={uid} name={details.name} clauses={contract.clauses} room={details.clauseRoom} />
       <ConcernList uid={uid} concerns={contract.concerns} />
       {editingListing ? (
         <div className="tags">
@@ -274,31 +276,6 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
         </dl>
       )}
       {error && <p className="banner">{error}</p>}
-    </div>
-  );
-}
-
-/** The contract's clauses and bonuses, by name, with what each depends on and its amount. */
-function ClauseList({ clauses }: { clauses: Clause[] }) {
-  return (
-    <div className="clauses">
-      <h4>{profileText.clauses}</h4>
-      {clauses.length === 0 ? (
-        <p className="note">{profileText.noClauses}</p>
-      ) : (
-        <dl className="stats">
-          {clauses.map((clause) => (
-            <Fact key={clause.index} label={profileText.clauseName(clause.kind)}>
-              {[
-                clause.condition === null ? null : profileText.clauseCondition(clause.kind, clause.condition),
-                clause.amount === null ? null : formatPounds(clause.amount),
-              ]
-                .filter((part) => part !== null)
-                .join(" · ") || "✓"}
-            </Fact>
-          ))}
-        </dl>
-      )}
     </div>
   );
 }

@@ -224,6 +224,7 @@ impl Session {
         details.bans = self.bans(player).unwrap_or_default();
         details.ties = self.relations(player).unwrap_or_default();
         details.tie_room = self.relation_room(player).unwrap_or(0);
+        details.clause_room = self.clause_room(player).unwrap_or(0);
         if let Ok(date) = self.planned_retirement(player) {
             (details.retirement_known, details.retires) = (true, date);
         }

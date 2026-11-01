@@ -6,6 +6,7 @@
 #[cfg(target_os = "macos")]
 pub mod bridge_setup;
 mod calibrate;
+mod clauses;
 mod clubs;
 mod coded;
 mod date;
@@ -30,13 +31,14 @@ mod text;
 mod transfer;
 
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
+pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
 pub use clubs::{
     ClubDetails, ClubIndex, ClubSummary, Finances, SUPPORTER_MIX, SUPPORTER_TRAITS, read_club_details, read_clubs,
 };
 pub use coded::Coded;
 pub use date::FmDate;
 pub use details::{
-    ATTRIBUTE_GROUPS, Attribute, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
+    ATTRIBUTE_GROUPS, Attribute, Clause, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
     read_player_details,
 };
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};

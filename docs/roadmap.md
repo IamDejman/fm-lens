@@ -189,7 +189,8 @@ changes many at once, and undo.
   - [x] Release a player on a free: he leaves his club's lists, and his team and contract pointers are
     cleared, as the game's own free agents have them. A captaincy he held is left empty; so is one a player
     gives up by moving. Checked on the Mac Steam build and both Windows builds, restored.
-  - [ ] Contract bonuses and release clauses.
+  - [x] Contract bonuses and release clauses: read, edited and removed, and a release clause added where the list
+    has room (see the contract extras below).
   - [x] Suspensions: lift a player's bans, or all of a squad's. A player's bans are listed in the record his
     injuries hang off, with his other absences; lifting takes them out of that list and keeps the others, as
     healing does with injuries. Checked on the Mac Steam build and both Windows builds, restored: see the
@@ -218,7 +219,12 @@ changes many at once, and undo.
     Inspire set the count to none, which an undo puts back. Three motives are named so far.
   - [x] Contract extras: the loyalty bonus (`+0x38`), happiness and playing time happiness, editable, and the list of
     clauses and bonuses (`+0x68`: amount, condition and kind), shown by name. Kinds named against FMRTE's contract
-    page for Kane, Haaland, Alex Scott, Courtois and Olise; editing the clauses comes next.
-  - [ ] Keep a player from retiring.
+    page for Kane, Haaland, Alex Scott, Courtois and Olise.
+  - [x] Edit the clauses and bonuses: an entry's amount or condition (a condition only for the kinds whose meaning is
+    known: goals, assists, international matches, years, a percentage), take an entry out, and add a release clause
+    to a contract without one. The editor allocates nothing, so a release clause goes only where the list's capacity
+    has room: 384 of 53,356 contracts on the Game Pass save. Checked there with Kane, Mbappé and Bisseck, restored.
+    The competition bonuses (`+0x80`) are not named or edited yet.
+  - [x] Keep a player from retiring (see Wave 2 above).
   - [ ] Team cohesion and tactical familiarity (see Phase 6).
   - [ ] Epic.

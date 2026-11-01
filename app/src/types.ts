@@ -394,6 +394,11 @@ export interface PlayerDetails extends PlayerSummary {
   retirementKnown: boolean;
   /** The date the game plans him to retire on; null when it has planned none (or `retirementKnown` is false). */
   retires: FmDate | null;
+  /**
+   * How many more clauses the list of his contract has room for: the game sizes it to what it holds, and the editor
+   * allocates nothing, so a release clause can be added to few contracts.
+   */
+  clauseRoom: number;
 }
 
 /** What ties a player to a nation or club: a secondary nationality, or a nation or club he was trained in. */
@@ -526,6 +531,15 @@ export interface LoggedChange {
   tie?: {
     from: { name: string; rule: number | null } | null;
     to: { name: string; rule: number | null } | null;
+  };
+  /**
+   * Set for a change to a player's contract clauses (`change_clause`, `remove_clause`, `add_release_clause`), which is
+   * logged as a change of his field `clause` from one amount to the other (0 for none): the clause before and after,
+   * null before for one added and after for one taken out.
+   */
+  clause?: {
+    from: Clause | null;
+    to: Clause | null;
   };
   /**
    * Set for a captaincy (`set_captain`), which is logged as a change of the club's field `captain` or

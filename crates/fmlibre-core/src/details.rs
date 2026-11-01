@@ -126,6 +126,8 @@ pub struct PlayerDetails {
     /// [`crate::Session::planned_retirement`]), and the date he retires on when the game has planned it.
     pub retirement_known: bool,
     pub retires: Option<FmDate>,
+    /// How many more clauses the list of his contract has room for (see [`crate::Session::clause_room`]).
+    pub clause_room: usize,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -326,6 +328,7 @@ pub fn read_player_details(
         tie_room: 0,
         retirement_known: false,
         retires: None,
+        clause_room: 0,
     }))
 }
 

@@ -26,6 +26,7 @@ import type {
   Ban,
   Injury,
   Tie,
+  Clause,
   TieKind,
   PlayerDetails,
   PlayerFilter,
@@ -218,13 +219,13 @@ function details(player: PlayerSummary): PlayerDetails {
           loyaltyBonus: Math.round(next() * 30000),
           happiness: Math.round(-20 + next() * 100),
           playingTimeHappiness: Math.round(next() * 40),
-          clauses: [
+          clauses: clausesOf(player.uid, [
             { index: 0, kind: 32, amount: Math.round(10000 + next() * 60000), condition: null },
             { index: 1, kind: 33, amount: Math.round(5000 + next() * 40000), condition: null },
             { index: 2, kind: 38, amount: Math.round(2000 + next() * 15000), condition: null },
             ...(next() < 0.5 ? [{ index: 3, kind: 0, amount: Math.round(50 + next() * 500) * 1_000_000, condition: null }] : []),
             ...(next() < 0.5 ? [{ index: 4, kind: 22, amount: null, condition: 1 }] : []),
-          ],
+          ]),
           // A few players have reasons to be unhappy: one over, and one or two that last.
           concerns:
             next() < 0.3
@@ -253,6 +254,7 @@ function details(player: PlayerSummary): PlayerDetails {
     bans: bansOf(player.uid),
     ties: tiesOf(player),
     tieRoom: tieRoomOf(player),
+    clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     retirementKnown: true,
     retires: retiresOf(player.uid),
     // Drawn last, so that the values above come out as before.
@@ -422,6 +424,104 @@ function bansOf(uid: number): Ban[] {
     return [];
   }
   return [{ started: addDays(GAME_DATE, -3), matches: 1 + (uid % 3) }];
+}
+
+/** The fixture players' contract clauses as changed through the editor, by UID, and as they were before each change. */
+const clausesSet = new Map<number, Clause[]>();
+const clauseUndo = new Map<number, Clause[]>();
+/** How many clauses each fixture contract's list holds: every third one has room for one more. */
+const clauseCapacity = new Map<number, number>();
+
+/** The clauses of a fixture contract: as changed through the editor, or as `generated`, numbered in order. */
+function clausesOf(uid: number, generated: Clause[]): Clause[] {
+  const listed = generated.map((clause, index) => ({ ...clause, index }));
+  if (!clauseCapacity.has(uid)) {
+    clauseCapacity.set(uid, listed.length + (uid % 3 === 0 ? 1 : 0));
+  }
+  return clausesSet.get(uid) ?? listed;
+}
+
+/** How many more clauses the fixture contract of `uid` has room for. */
+function clauseRoomOf(uid: number): number {
+  const capacity = clauseCapacity.get(uid) ?? 0;
+  const listed = clausesSet.get(uid)?.length ?? capacity - (uid % 3 === 0 ? 1 : 0);
+  return capacity - listed;
+}
+
+/** The fixture player `uid` and his contract's clauses, or the real commands' failures. */
+function clausesAt(uid: number): [PlayerSummary, Clause[]] {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const clauses = details(player).contract?.clauses;
+  if (!clauses) {
+    throw failure("clause.noContract", "the player has no contract");
+  }
+  return [player, clauses];
+}
+
+/** Logs a change to a fixture contract's clauses, which then are `clauses`. */
+function logClause(player: PlayerSummary, before: Clause | null, after: Clause | null, clauses: Clause[]): LoggedChange {
+  const id = changes.length + 1;
+  clauseUndo.set(id, clausesAt(player.uid)[1]);
+  clausesSet.set(player.uid, clauses.map((clause, index) => ({ ...clause, index })));
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid: player.uid,
+    field: "clause",
+    old: before?.amount ?? 0,
+    new: after?.amount ?? 0,
+    undoneAt: null,
+    batch: null,
+    clause: { from: before, to: after },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** `change_clause`: a new amount or condition for one of a fixture contract's clauses. */
+function changeClause(uid: number, index: number, amount?: number, condition?: number): LoggedChange {
+  const [player, clauses] = clausesAt(uid);
+  const clause = clauses[index];
+  if (!clause) {
+    throw failure("clause.missing", `the contract has no clause number ${index}`, { index });
+  }
+  if ((amount !== undefined && clause.amount === null) || (condition !== undefined && clause.condition === null)) {
+    const field = amount !== undefined && clause.amount === null ? "clause.amount" : "clause.condition";
+    throw failure("clause.notInClause", "this clause has nothing of that kind to change", { field });
+  }
+  const after: Clause = { ...clause, ...(amount !== undefined && { amount }), ...(condition !== undefined && { condition }) };
+  if (after.amount === clause.amount && after.condition === clause.condition) {
+    throw failure("clause.same", "the contract has that already");
+  }
+  return logClause(player, clause, after, clauses.map((c) => (c.index === index ? after : c)));
+}
+
+/** `remove_clause`: takes one of a fixture contract's clauses out. */
+function removeClause(uid: number, index: number): LoggedChange {
+  const [player, clauses] = clausesAt(uid);
+  const clause = clauses[index];
+  if (!clause) {
+    throw failure("clause.missing", `the contract has no clause number ${index}`, { index });
+  }
+  return logClause(player, clause, null, clauses.filter((c) => c.index !== index));
+}
+
+/** `add_release_clause`: gives a fixture contract without one a release clause, where its list has room. */
+function addReleaseClause(uid: number, amount: number): LoggedChange {
+  const [player, clauses] = clausesAt(uid);
+  if (clauses.some((c) => c.kind === 0)) {
+    throw failure("clause.same", "the contract has that already");
+  }
+  if (clauseRoomOf(uid) === 0) {
+    throw failure("clause.noRoom", "the contract's list of clauses has no room for another, and the editor cannot make it bigger");
+  }
+  const after: Clause = { index: clauses.length, kind: 0, amount, condition: null };
+  return logClause(player, null, after, [...clauses, after]);
 }
 
 /** The fixture players kept from retiring through the editor, by UID, while it is not undone. */
@@ -1063,6 +1163,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.field === "retirement") {
     keptPlayers.delete(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.clause) {
+    clausesSet.set(entry.uid, clauseUndo.get(entry.id)!);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -2111,6 +2216,17 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return healPlayer(Number(args?.uid)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
+    case "change_clause":
+      return changeClause(
+        Number(args?.uid),
+        Number(args?.index),
+        args?.amount as number | undefined,
+        args?.condition as number | undefined,
+      ) as T;
+    case "remove_clause":
+      return removeClause(Number(args?.uid), Number(args?.index)) as T;
+    case "add_release_clause":
+      return addReleaseClause(Number(args?.uid), Number(args?.amount)) as T;
     case "keep_playing":
       return keepPlaying(Number(args?.uid)) as T;
     case "change_tie":

@@ -397,6 +397,10 @@ export const en = {
     bans: "Bans",
     // Keeping a player from retiring, which the change log keeps as a change of the date he was to retire on.
     retirement: "Retirement",
+    // A change to a player's contract clauses, which the change log keeps as a change of the clause's amount.
+    clause: "Contract clause",
+    "clause.amount": "Clause amount",
+    "clause.condition": "Clause condition",
     // Making a player the captain or vice-captain of one of a club's teams, which the change log keeps as a change of
     // the club's captain or vice-captain.
     captain: "Captain",
@@ -1396,6 +1400,32 @@ export const en = {
     add: "Add",
     /** Under the clubs: what the dialog cannot do with them. */
     clubNote: "A club can be given another rule or removed; the game itself adds clubs.",
+    working: "Writing to the game…",
+    close: "Close",
+  },
+
+  /** Changing a contract's bonuses and clauses: the button under them in the profile, and the dialog it opens. */
+  clauses: {
+    change: "Change",
+    changeTitle: "Change this player's bonuses and clauses in the game",
+    title: "Bonuses and clauses",
+    hint: "Each change is written to the game at once, and listed under Changes, where it can be undone.",
+    /** When the contract has no release clause and its list has no room for one. */
+    full:
+      "The game made this contract's list just big enough for what it holds: a bonus or clause can be changed or " +
+      "removed, but a release clause cannot be added.",
+    /** The inputs of a row, for assistive technology: `name` is the clause's. */
+    amountOf: (name: string) => `Amount of ${name}, in pounds`,
+    conditionOf: (name: string) => `Condition of ${name}`,
+    save: "Save",
+    remove: "Remove",
+    removeTitle: (name: string) => `Remove ${name}`,
+    /** The row that adds a release clause, where the list has room and the contract has none. */
+    addRelease: "Add a release clause",
+    releaseAmount: "Amount of the new release clause, in pounds",
+    add: "Add",
+    /** When an amount or condition typed is not a whole number in range: `max` is the most it may be. */
+    outOfRange: (max: number) => `Enter a whole number from 0 to ${format(max)}.`,
     working: "Writing to the game…",
     close: "Close",
   },

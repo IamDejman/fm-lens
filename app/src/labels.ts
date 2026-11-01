@@ -146,6 +146,9 @@ export const releaseText = strings.release;
 /** A player's secondary nationalities and homegrown status: the group in his profile and its dialog. */
 export const tieText = strings.ties;
 
+/** A contract's bonuses and clauses: the button under them in the profile and its dialog. */
+export const clauseText = strings.clauses;
+
 /** A club's squad: the tab of its profile with its teams' players, the actions on a team and the captains. */
 export const squadText = strings.squad;
 

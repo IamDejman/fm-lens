@@ -576,6 +576,39 @@ enum Command {
         /// A player's UID.
         uid: Option<u32>,
     },
+    /// Give one of a player's contract clauses another amount or condition.
+    ClauseSet {
+        /// The player's UID.
+        uid: u32,
+        /// The clause's number, from `clauses`.
+        index: usize,
+        /// The new amount, in pounds.
+        #[arg(long)]
+        amount: Option<u32>,
+        /// The new condition.
+        #[arg(long)]
+        condition: Option<u16>,
+        #[command(flatten)]
+        restore: RestoreArgs,
+    },
+    /// Take one of a player's contract clauses out of his contract.
+    ClauseRemove {
+        /// The player's UID.
+        uid: u32,
+        /// The clause's number, from `clauses`.
+        index: usize,
+        #[command(flatten)]
+        restore: RestoreArgs,
+    },
+    /// Give a player's contract a release clause, where its list has room.
+    ClauseAdd {
+        /// The player's UID.
+        uid: u32,
+        /// The release clause's amount, in pounds.
+        amount: u32,
+        #[command(flatten)]
+        restore: RestoreArgs,
+    },
     /// Show the record a contract's +0x30 points at, which seems to hold the player's unhappiness: with a UID, his
     /// entries; without, how many players have how many, and a few of them.
     Concerns {
@@ -715,6 +748,9 @@ fn run(cli: Cli) -> Result<()> {
                 | Command::Heal { heal: true, .. }
                 | Command::Bans { lift: true, .. }
                 | Command::Retirements { keep: true, .. }
+                | Command::ClauseSet { .. }
+                | Command::ClauseRemove { .. }
+                | Command::ClauseAdd { .. }
                 | Command::TieSet { .. }
                 | Command::TieRemove { .. }
                 | Command::TieAdd { .. }
@@ -882,6 +918,18 @@ fn run(cli: Cli) -> Result<()> {
             instances(&process, &modules, &class, max, holds.as_deref(), parse_hex(&span)?)
         }
         Command::Clauses { uid } => clauses(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::ClauseSet { uid, index, amount, condition, restore } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            clause_change(&session, uid, ClauseAction::Set { index, amount, condition }, restore)
+        }
+        Command::ClauseRemove { uid, index, restore } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            clause_change(&session, uid, ClauseAction::Remove { index }, restore)
+        }
+        Command::ClauseAdd { uid, amount, restore } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            clause_change(&session, uid, ClauseAction::Add { amount }, restore)
+        }
         Command::Concerns { uid } => concerns(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Region { addr } => {
             let modules = list_modules(&process).context("listing modules")?;
@@ -1802,10 +1850,22 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
     }
     // Every kind: how many contracts, the amounts, and the best players who have one.
     let mut kinds: BTreeMap<u16, KindSeen> = BTreeMap::new();
-    let mut bonuses = 0;
+    let (mut bonuses, mut contracts, mut roomy) = (0, 0, 0);
+    let mut release_room: Vec<(u16, String, u32)> = Vec::new();
     for player in &players {
         let Some(contract) = contract_of(player) else { continue };
-        for e in list_entries(process, contract + c.clauses, 8) {
+        let entries = list_entries(process, contract + c.clauses, 8);
+        // Room for another: the list's capacity past its end, which a release clause can be added to.
+        let (end, capacity) =
+            (process.read_u64(contract + c.clauses + 8)?, process.read_u64(contract + c.clauses + 16)?);
+        contracts += 1;
+        if capacity > end {
+            roomy += 1;
+            if !entries.iter().any(|e| clause(e).2 == 0) {
+                release_room.push((player.current_ability, player.name.clone(), player.uid));
+            }
+        }
+        for e in entries {
             let (amount, _, kind) = clause(&e);
             let seen = kinds.entry(kind).or_insert(KindSeen { contracts: 0, low: u32::MAX, high: 0, who: Vec::new() });
             seen.contracts += 1;
@@ -1821,6 +1881,66 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
         println!("  kind {kind:>3} ({kind:#04x}): {count:>6} contracts, {low}..{high}; {}", best.join(", "));
     }
     println!("{bonuses} contracts have competition bonuses");
+    release_room.sort_by_key(|&(ability, _, _)| std::cmp::Reverse(ability));
+    let best: Vec<String> = release_room.iter().take(5).map(|(_, name, uid)| format!("{name} ({uid})")).collect();
+    println!(
+        "{roomy} of {contracts} contracts have room for another clause; {} of them have no release clause: {}",
+        release_room.len(),
+        best.join(", ")
+    );
+    Ok(())
+}
+
+/// What `clause_change` does to a player's contract clauses.
+enum ClauseAction {
+    Set { index: usize, amount: Option<u32>, condition: Option<u16> },
+    Remove { index: usize },
+    Add { amount: u32 },
+}
+
+/// Lists a player's contract clauses, after changing them as `action` says (and putting them back with --restore).
+fn clause_change(session: &Session, uid: u32, action: ClauseAction, restore: RestoreArgs) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let show = |label: &str| -> Result<Vec<String>> {
+        let details = session.player_details(player)?.context("the player has moved in memory")?;
+        let clauses: Vec<String> = details
+            .contract
+            .map(|contract| contract.clauses)
+            .unwrap_or_default()
+            .iter()
+            .map(|c| {
+                let part = |v: Option<String>| v.unwrap_or_else(|| "-".to_owned());
+                format!(
+                    "{}: {} {}",
+                    c.kind,
+                    part(c.amount.map(|a| a.to_string())),
+                    part(c.condition.map(|c| c.to_string()))
+                )
+            })
+            .collect();
+        println!("{} (UID {uid}) {label}: room for {} more; {}", player.name, details.clause_room, clauses.join(", "));
+        Ok(clauses)
+    };
+    let before = show("now")?;
+    let plan = match action {
+        ClauseAction::Set { index, amount, condition } => {
+            session.plan_clause_change(player, index, amount, condition)?
+        }
+        ClauseAction::Remove { index } => session.plan_clause_removal(player, index)?,
+        ClauseAction::Add { amount } => session.plan_release_clause(player, amount)?,
+    };
+    let done = session.apply_clause(&plan)?;
+    show("changed")?;
+    if restore.restore {
+        if restore.hold > 0 {
+            println!("  putting it back in {} s", restore.hold);
+            std::thread::sleep(std::time::Duration::from_secs(restore.hold));
+        }
+        session.undo_clause(&done)?;
+        ensure!(show("restored")? == before, "his clauses are not as they were");
+        println!("  restored");
+    }
     Ok(())
 }
 
