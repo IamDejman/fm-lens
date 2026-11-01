@@ -1095,6 +1095,7 @@ export const en = {
       "Comes off the transfer and loan lists",
       "Wage and contract end change only if you set new ones",
       "The fee comes out of the buying club's balance and transfer budget, and goes into the selling club's balance",
+      "Any captaincy at the old club is left empty",
       "The game's transfer history does not list it yet",
       "Listed under Changes, where one undo takes back the transfer and the fee",
     ],
@@ -1140,6 +1141,7 @@ export const en = {
       "Each joins the senior team of the other's club",
       "Contracts dated from the game's date; squad numbers cleared",
       "Both come off the transfer and loan lists",
+      "Any captaincy at their old clubs is left empty",
       "No fees are paid; career history is not updated",
       "Listed under Changes as one change, which undoes both moves",
     ],
@@ -1153,6 +1155,37 @@ export const en = {
     swapHint: "Nothing changes in the game until you press Swap.",
     swap: "Swap",
     swapping: "Swapping…",
+  },
+
+  /** Releasing a player from their club, which leaves them a free agent: the button beside Transfer and its dialog. */
+  release: {
+    /** The button in the header of a player's profile, beside Transfer. */
+    button: "Release",
+    buttonTitle: "Release this player from their club in the game: they become a free agent",
+
+    // The dialog
+    title: "Release",
+    /** The club the player leaves. */
+    from: "Leaves",
+    checking: "Checking the release…",
+    /** The player can be released; `club` is the name of their club. */
+    ready: (club: string) => `${club} → free agent`,
+    doesHeading: "What the release does",
+    /** What the game does to the player, one line each. */
+    does: [
+      "Leaves every team of the club, and the contract ends: a free agent any club can sign",
+      "No one is paid anything",
+      "Any captaincy at the club is left empty",
+      "The game's transfer history does not list it",
+      "Listed under Changes, where one undo brings the player back on the same contract",
+    ],
+
+    // The foot
+    /** Nothing changes in the game until Release. */
+    hint: "Nothing changes in the game until you press Release.",
+    release: "Release",
+    releasing: "Releasing…",
+    cancel: "Cancel",
   },
 
   /**

@@ -7,6 +7,7 @@ import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { PositionPitch } from "./PositionPitch";
+import { ReleaseButton } from "./ReleaseDialog";
 import {
   attributeRow,
   bornText,
@@ -79,14 +80,17 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
       editing={editing}
       actions={
         <>
-          {/* Only while the profile is read, not edited, and for a player who has a club to leave. The dialog starts
-              from his contract, so the button waits for the details. */}
+          {/* Only while the profile is read, not edited, and for a player who has a club to leave. The Transfer dialog
+              starts from his contract, so its button waits for the details. */}
           {editing.editable && editing.stage === "view" && info.club !== null && (
-            <MoveButton
-              player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
-              contract={details?.contract ?? null}
-              ready={details !== undefined}
-            />
+            <div className="move-actions">
+              <MoveButton
+                player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
+                contract={details?.contract ?? null}
+                ready={details !== undefined}
+              />
+              <ReleaseButton player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }} />
+            </div>
           )}
           <CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />
         </>

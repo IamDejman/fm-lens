@@ -145,6 +145,18 @@ export const undoBatch = (batch: number) => call<BatchUndo>("undo_batch", { batc
 export const planClubMove = (uid: number, club: number, terms: MoveTerms, fee?: number) =>
   call<MovePreview>("plan_club_move", { uid, club, terms, fee });
 
+/**
+ * Checks that the player `uid` can be released from his club, and names it. Nothing is written; when he cannot be
+ * released, the error says why (a loan, a club a human manager runs, ...).
+ */
+export const planRelease = (uid: number) => call<MovePreview["from"]>("plan_release", { uid });
+
+/**
+ * Releases the player from his club, which leaves him a free agent: logged as a change of his `club` to 0, and undone
+ * like a move.
+ */
+export const releasePlayer = (uid: number) => call<LoggedChange>("release_player", { uid });
+
 /** Checks that the member of staff can move to the club, and names the clubs; the error says why he cannot. */
 export const planStaffMove = (uid: number, club: number) => call<MovePreview>("plan_staff_move", { uid, club });
 

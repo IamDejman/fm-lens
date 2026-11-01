@@ -969,6 +969,52 @@ function movePlayer(uid: number, clubUid: number, terms: MoveTerms, fee?: number
   return { ...logged };
 }
 
+/** `plan_release`: the checks of the real command that the fixtures can have, with its messages; names his club. */
+function planRelease(uid: number): MovePreview["from"] {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  if (player.clubUid === null) {
+    throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
+  }
+  if (staff.some((s) => s.isHuman && s.clubUid === player.clubUid)) {
+    throw failure(
+      "move.humanClub",
+      "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
+    );
+  }
+  const from = clubs.find((c) => c.uid === player.clubUid)!;
+  return { uid: from.uid, name: from.name };
+}
+
+/** `release_player`: the fixture player leaves his club as a free agent, logged as a change of his `club` to 0. */
+function releasePlayer(uid: number): LoggedChange {
+  const from = planRelease(uid);
+  const player = players.find((p) => p.uid === uid)!;
+  const id = changes.length + 1;
+  moveUndo.set(id, {
+    row: { club: player.club, clubUid: player.clubUid, contractExpires: player.contractExpires },
+    written: written.get(`player:${uid}`),
+  });
+  Object.assign(player, { club: null, clubUid: null, contractExpires: null });
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "club",
+    old: from.uid,
+    new: 0,
+    undoneAt: null,
+    batch: null,
+    moved: { from: from.name },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
 /** `plan_club_swap`: the checks of the real command that the fixtures can have, with its messages. */
 function planSwap(uid: number, otherUid: number): MovePreview {
   const player = players.find((p) => p.uid === uid);
@@ -1038,12 +1084,15 @@ function unmoved(uid: number): void {
   }
 }
 
-/** Puts back what the move (or swap) logged as `entry` changed, unless a player has moved again since. */
+/**
+ * Puts back what the move (or swap, or release) logged as `entry` changed, unless a player has moved again since. A
+ * release logged 0 as his new club: he has none.
+ */
 function undoMove(entry: LoggedChange): void {
   const player = players.find((p) => p.uid === entry.uid);
   const before = moveUndo.get(entry.id);
   const other = before?.other && players.find((p) => p.uid === before.other!.uid);
-  if (!player || !before || player.clubUid !== entry.new || (before.other && other?.clubUid !== entry.old)) {
+  if (!player || !before || (player.clubUid ?? 0) !== entry.new || (before.other && other?.clubUid !== entry.old)) {
     throw failure("move.changed", "the game has changed the player's club since; reload and try again");
   }
   if (before.other && other) {
@@ -1747,6 +1796,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return changeStaffJob(Number(args?.uid), Number(args?.job)) as T;
     case "plan_club_swap":
       return planSwap(Number(args?.uid), Number(args?.other)) as T;
+    case "plan_release":
+      return planRelease(Number(args?.uid)) as T;
+    case "release_player":
+      return releasePlayer(Number(args?.uid)) as T;
     case "heal_player":
       return healPlayer(Number(args?.uid)) as T;
     case "club_squads":

@@ -423,11 +423,13 @@ export interface LoggedChange {
   // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0.
   /**
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
-   * values are the clubs' UIDs: the clubs' names.
+   * values are the clubs' UIDs: the clubs' names. A release (`release_player`) is logged the same way, with 0 for
+   * its new value.
    */
   moved?: {
     from: string;
-    to: string;
+    /** Absent for a release, after which the player has no club. */
+    to?: string;
     /** For a swap of two players, logged as one change, the player who went the other way. */
     with?: string;
     /** The fee the buying club paid the selling one, in pounds, if any. */

@@ -237,7 +237,7 @@ function termNote(verdict: Verdict, invalid: string, was: string | null): { mess
 }
 
 /** A club as one line: its logo, its name (cut short where it does not fit), and a tag if it is a women's club. */
-function ClubLine({ uid, name, women = false }: { uid: number | null; name: string; women?: boolean }) {
+export function ClubLine({ uid, name, women = false }: { uid: number | null; name: string; women?: boolean }) {
   return (
     <WithPicture picture={<ClubLogo uid={uid} name={name} size={PICTURE_SIZE.clubRowLogo} />}>
       <span className="move-club-text">

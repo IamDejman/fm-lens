@@ -2057,6 +2057,7 @@ input::placeholder {
 .edit-toggle,
 .compare-toggle,
 .move-toggle,
+.release-toggle,
 .heal-toggle,
 .squad-action {
   padding: 4px 12px;
@@ -3236,9 +3237,10 @@ button.danger:hover:not(:disabled) {
 /* Transferring a player */
 
 /*
- * A player's header has Compare, Edit and Close, and Transfer: in one row they would squeeze the name in a narrow
- * window. So they are a grid, with Transfer across the top and the others under it (as wide as they were). Without
- * Transfer (the profile cannot be edited, or is being edited) the row is as it was.
+ * A player's header has Compare, Edit and Close, and Transfer and Release: in one row they would squeeze the name in a
+ * narrow window. So they are a grid, with Transfer and Release across the top and the others under it (as wide as they
+ * were); a member of staff has Transfer alone up there. Without them (the profile cannot be edited, or is being
+ * edited) the row is as it was.
  */
 .profile-actions:has(.move-toggle) {
   display: grid;
@@ -3246,8 +3248,19 @@ button.danger:hover:not(:disabled) {
   justify-content: end;
 }
 
-.move-toggle {
+.move-toggle,
+.move-actions {
   grid-column: 1 / -1;
+}
+
+/* Transfer takes the room Release leaves: leaving to a club is the usual way out. */
+.move-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.move-actions .move-toggle {
+  flex: 1;
 }
 
 /* Narrower than the dialogs that hold tables: a club, a few inputs and a short list. */

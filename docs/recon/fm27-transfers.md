@@ -81,6 +81,40 @@ one. Three were new:
   game's write position and the room after it have to be found first. This is the riskiest
   kind of write: a mistake would break the save's history.
 
+## Free agents, and releasing a player
+
+The game's own free agents have a null team (`+0x128` on macOS) and a null contract pointer
+(`+0x2F0`). Nothing else ties them to a club: no game-wide list of free agents was found.
+
+The player object keeps the club he left last at `+0x350`, and the day he left it at `+0x364`
+(the `u16` day of the year, then the `u16` year):
+
+| Player | `+0x350` | `+0x364` | `+0x368` |
+| --- | --- | --- | --- |
+| Viktor Gyökeres, at Arsenal | Sporting CP | 26 July 2025 | 24 July 2026 |
+| Yassine Bounou, free agent | his last club | 19 July 2026 | 19 July 2026 |
+| Riyad Mahrez, free agent | his last club | 30 June 2026 | 30 June 2026 |
+| Francesco Acerbi, free agent | his last club | 1 June 2026 | his birth date |
+
+What else points at a player was read for Maximilian Arnold, Wolfsburg's captain (`refs` over
+his object):
+- his team's list of players, and the team's captain pointer (`team+0x88`);
+- his contract (`contract+0x08`, the owner);
+- lists of identity blocks that hold players of many clubs, and free agents too: not the
+  club's;
+- small records with his identity and Wolfsburg's senior team, likely his history there, and
+  records of other clubs' interest in him.
+
+The editor's release (`plan_release`) takes him out of every list of his club's teams that
+holds him and empties a captaincy he holds, then clears his team and contract pointers, in that
+order: nothing reaches him through his club once the pointers are cleared. The contract is
+left as it was, since only the player points at it. A move also empties the captaincies the
+player leaves. The release does not set `+0x350` or the dates, so the game still names the
+club before as his last one; that belongs with the transfer history.
+
+Checked on the Mac Steam build with `release --restore`: while released, Wolfsburg had no
+captain and one player fewer, and both came back.
+
 ## Still to find
 
 - Where the game keeps the fee it shows in a player's transfer history. The surest way: watch
