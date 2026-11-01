@@ -241,6 +241,10 @@ pub struct ContractLayout {
     /// The employer's senior team: the same as `team` but for player-coaches.
     pub senior_team: u64,
     pub job: u64,
+    /// The list `(begin, end, capacity)` of the contract's clauses and bonuses: 8-byte entries, an amount and a kind.
+    pub clauses: u64,
+    /// The list of its bonuses for winning competitions: 32-byte entries.
+    pub competition_bonuses: u64,
 }
 
 impl ContractLayout {

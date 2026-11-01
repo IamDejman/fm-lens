@@ -132,6 +132,10 @@ squad_number = 0x5D       # u8; 255 = none
 team = 0x10               # team pointer (the employer, for staff); its club is at team+0x30
 senior_team = 0x18        # the employer's senior team; the same as `team` except for player-coaches
 job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant coach, ...)
+# Lists (begin, end, capacity) of a contract's extras. Read on the Windows Game Pass build with Kylian Mbappé,
+# whose clauses list holds his release clause (859,031,872 pounds, a billion euros) and three bonuses.
+clauses = 0x68            # 8-byte entries: u32 amount, u16 (0xFFFF so far), u16 kind
+competition_bonuses = 0x80 # 32-byte entries: the competition's UID at +0x14, the amount at +0x18
 
 # Static data in game_plugin.dll next to the entity arrays. Offsets are relative to
 # the players (begin, end) pair: the cluster moves as one block between builds.
