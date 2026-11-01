@@ -176,7 +176,8 @@ changes many at once, and undo.
 - Wave 2, new memory research:
   - [x] Traits (preferred moves): a `u64` bitmask at player `+0x348`, bit n the n-th of FMRTE's list read row by
     row; checked against Messi, Olise, Gvardiol, Kane and Güler. The profile lists them and edits each as a checkbox;
-    the mass edit has them as a group. 62 are named; bits 62 and 63 by number.
+    the mass edit has them as a group. 62 are named; bits 62 and 63 by number. On the Mac at `+0x308`, where Messi
+    reads the same bits.
   - [x] Prevent retirement. The game's retirement manager (`RETIREMENT_MANAGER`, from a static next to the entity
     arrays) lists the retirements it has planned twice: pointers to 24-byte entries (the person's id, which a player
     keeps at `+0x290`, and the date he retires at `+0x0C`) and an index of them by person id. The profile shows the
@@ -188,7 +189,9 @@ changes many at once, and undo.
     still played and was not planned again; Cristian Tello and Adel Taarabt, planned for 7 and 8 September, retired
     and left both lists. As the game shifts the lists that way, an undo after a Continue puts the entry back in date
     order, and into the index by id, instead of writing back the bytes it found. Clause edits (#57) held over the
-    same days, as FMRTE showed them.
+    same days, as FMRTE showed them. On the Mac the manager is laid out alike, but its static is a variable of its
+    own, which the build profiles place: read on the arm64 half (Ronaldo, Wass, Aspas kept and restored), found in
+    the file for the Intel half (see the [macOS notes](recon/fm27-steam-macos.md)).
   - [x] Move a member of staff to another club, keeping the job and the contract, and change a job. A club
     keeps its staff in three department lists (medical, coaching, scouting); a move takes them out of the
     old club's and into the new club's, and a new job moves them between departments. Staff whom the club or
@@ -212,19 +215,20 @@ changes many at once, and undo.
     (`MATCH_PERSON_APPEARANCE_INPUT`: skin tone, hair and eye colours, face shape); set aside.
   - [x] Stadium capacity: a club's senior team points at its stadium (`db::STADIUM`, team `+0x78`), whose capacity,
     seats, capacity in use and expansion ceiling the club profile shows and edits. Checked on the Windows Game Pass
-    build (Old Trafford 74,879; the Emirates 60,704); not in the macOS layout yet.
+    build (Old Trafford 74,879; the Emirates 60,704) and on the Mac Steam build, where stadiums are laid out alike.
   - [ ] Sponsors, ticket prices and league prize money (`sicomps::PRIZE_MONEY_PROVIDER`).
   - [x] Jadedness: how worn out a player is by playing, which rest takes away (an `i16` at player `+0x25A`,
     -500 when rested). Found from the numbers FMRTE shows for three players, read without editing in FMRTE;
     shown in the profile and the squad tab, editable, and a team's Refresh rests it to -500. Checked on the
-    Windows Game Pass build; derived for the Mac, not yet checked there.
+    Windows Game Pass build, and on the Mac Steam build at `+0x252` (all players from -500 to 643).
 - Wave 3, what the others find hard:
   - [x] Clear a player's unhappiness, not only his morale. His happiness and his happiness with his playing time,
     as FMRTE shows them, are signed bytes of his contract (`+0x5A`, `+0x5C`): the app edits them (below). An earlier
     search missed them because the probe took the eight bytes around them for a pointer; it now checks that a
     pointer points into readable memory. His reasons to be unhappy (FMRTE's "Unhappiness") are a record his contract
     points at (`+0x30`: a count, then pointers to 28-byte entries); "Remove all" in his profile and the squad tab's
-    Inspire set the count to none, which an undo puts back. Three motives are named so far.
+    Inspire set the count to none, which an undo puts back. Three motives are named so far. The contract is laid out
+    alike on the Mac, where these and the extras below were read and written too.
   - [x] Contract extras: the loyalty bonus (`+0x38`), happiness and playing time happiness, editable, and the list of
     clauses and bonuses (`+0x68`: amount, condition and kind), shown by name. Kinds named against FMRTE's contract
     page for Kane, Haaland, Alex Scott, Courtois and Olise.

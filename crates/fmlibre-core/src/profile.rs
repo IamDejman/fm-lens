@@ -34,13 +34,16 @@ pub struct Layout {
 }
 
 /// The retirements the game has planned, which its retirement manager keeps (`RETIREMENT_MANAGER`, one object a
-/// static next to the entity arrays points at). It lists them twice: as pointers to the entries, and as an index of
-/// 16-byte entries (the person id, 4 spare bytes, the pointer) sorted by person id.
+/// static points at). It lists them twice: as pointers to the entries, and as an index of 16-byte entries (the person
+/// id, 4 spare bytes, the pointer) sorted by person id.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RetirementLayout {
-    /// Where the static pointer to the manager is, from the players `(begin, end)` pair.
-    pub manager: i64,
+    /// Where the static pointer to the manager is, from the players `(begin, end)` pair, where it sits next to the
+    /// entity arrays (Windows). On macOS it is a variable of its own, which the build profiles place
+    /// ([`BuildProfile::retirement_manager`]).
+    #[serde(default)]
+    pub manager: Option<i64>,
     /// In the manager: the `(begin, end, capacity)` list of pointers to the entries.
     pub planned: u64,
     /// In the manager: the `(begin, end, capacity)` index of the entries by person id.
@@ -552,6 +555,9 @@ pub struct BuildProfile {
     /// RVA in the game plugin of the in-game date, where it is not next to the arrays at
     /// [`ClusterLayout::current_date`]: on macOS it is a variable of its own.
     pub current_date: Option<u64>,
+    /// RVA in the game plugin of the static pointer to the retirement manager, where it is not next to the arrays at
+    /// [`RetirementLayout::manager`]: on macOS it is a variable of its own too.
+    pub retirement_manager: Option<u64>,
 }
 
 /// Identifies a build of the game plugin from its headers as mapped in memory.
@@ -679,10 +685,11 @@ mod tests {
             assert_eq!(mac.player.attributes[key], offset - 8, "{key}");
         }
         assert_eq!(
-            (mac.player.positions, mac.player.morale),
-            (windows.player.positions - 8, windows.player.morale - 8)
+            (mac.player.positions, mac.player.morale, mac.player.jadedness),
+            (windows.player.positions - 8, windows.player.morale - 8, windows.player.jadedness - 8)
         );
         assert_eq!(mac.player.date_of_birth, windows.player.date_of_birth - 0x40);
+        assert_eq!(mac.player.traits, windows.player.traits - 0x40);
         assert_eq!(mac.player.relations, windows.player.relations - 0x40);
         assert_eq!(mac.player.international_caps, windows.player.international_caps - 0x40);
         assert_eq!(mac.player.identity(), windows.player.identity() + 0x100);
@@ -710,6 +717,19 @@ mod tests {
             (r.target, r.target_kind, r.relation, r.value, r.size)
         };
         assert_eq!(relation(&mac), relation(&windows));
+        let stadium = |l: &Layout| {
+            let s = l.stadium.as_ref().expect("stadiums");
+            (s.team_pointer, s.name, s.capacity, s.seating, s.used, s.expansion, s.owner)
+        };
+        assert_eq!(stadium(&mac), stadium(&windows));
+        // The retirement manager's lists and entries too; a player keeps the game's id 8 bytes into his identity
+        // block. Only the static pointer to the manager is placed apart.
+        let retirement = |l: &Layout| {
+            let r = l.retirement.as_ref().expect("planned retirements");
+            (r.planned, r.by_person, r.person, r.date, r.player_person - l.player.identity())
+        };
+        assert_eq!(retirement(&mac), retirement(&windows));
+        assert_eq!(mac.retirement.as_ref().and_then(|r| r.manager), None);
         // The game's own allocator, with the same size classes on both systems.
         assert_eq!(mac.heap.block_sizes, windows.heap.block_sizes);
     }
@@ -748,9 +768,9 @@ mod tests {
         assert_eq!(profile.arrays.players, 0x568_1DC0);
         assert_eq!(profile.edition, layout.edition);
         // The static pointer to the retirement manager, found at game_plugin.dll+0x5673060 on this build.
-        let retirement = layout.retirement.as_ref().expect("planned retirements");
-        assert_eq!(profile.arrays.players.checked_add_signed(retirement.manager), Some(0x567_3060));
-        assert!(parse::<Layout>(MACOS).retirement.is_none());
+        let manager = layout.retirement.as_ref().and_then(|r| r.manager).expect("planned retirements");
+        assert_eq!(profile.arrays.players.checked_add_signed(manager), Some(0x567_3060));
+        assert_eq!(profile.retirement_manager, None);
 
         // The same version on Steam, packaged differently: another fingerprint and other RVAs.
         let fingerprint = PluginFingerprint::Pe { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
@@ -765,12 +785,14 @@ mod tests {
         assert_eq!(profile.storefront, Storefront::Steam);
         assert_eq!(profile.arrays.players, 0x5C8_91C8);
         assert_eq!((profile.arrays.staff, profile.arrays.clubs), (0x5C8_9210, 0x5C8_9380));
+        assert_eq!(profile.retirement_manager, Some(0x5C5_FEF0));
 
         // Its arm64 half, which Apple silicon runs natively: other RVAs, and the date apart.
         let uuid = [0x9E, 0x8E, 0x47, 0xDE, 0xF7, 0x04, 0x31, 0x4C, 0x91, 0x7D, 0xC3, 0x2D, 0x12, 0x63, 0x76, 0x78];
         let profile = profile_for(PluginFingerprint::MachO { uuid }).expect("the arm64 half's profile");
         assert_eq!(profile.arrays.players, 0x56D_2E18);
         assert_eq!(profile.current_date, Some(0x56B_1DB8));
+        assert_eq!(profile.retirement_manager, Some(0x56A_82A8));
         // On Windows the date sits with the arrays.
         let fingerprint = PluginFingerprint::Pe { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
         assert_eq!(profile_for(fingerprint).and_then(|profile| profile.current_date), None);

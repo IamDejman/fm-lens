@@ -223,3 +223,51 @@ right away:
   refused.
 
 These sizes were measured on the arm64 half only. The Intel half, which Intel Macs and Rosetta run, was not measured.
+
+## The features first mapped on Windows
+
+Jadedness, traits, the contract's extras, the reasons to be unhappy, stadiums and planned retirements were first
+mapped on the Windows Game Pass build. On 2026-11-01 they were read on the Mac, natively, on the maintainer's save
+(Arsenal, autumn 2026). Each write below was restored right away.
+
+| Feature | Where on the Mac | Read and written |
+|---|---|---|
+| Jadedness | player `+0x252`, 8 bytes before Windows' `+0x25A` | all 37,980 players from -500 to 643, 1,835 at -500; Arsenal's regular starters 255 to 391, its injured -500. Alex Scott 258 → -500 → 258. |
+| Traits | player `+0x308`, 0x40 before Windows' `+0x348` | Messi's bits 7 10 16 17 19 20 49 51, as FMRTE shows them. Harry Kane's bit 49 set and cleared. |
+| Loyalty bonus, happiness | the contract, as on Windows | Kylian Mbappé's loyalty bonus 50,098 a week and Erling Haaland's 43,634, as on Windows. Mbappé's happiness 60 → 100 → 60, his loyalty bonus 50,098 → 60,000 → 50,098. |
+| Clauses and bonuses | the contract's `+0x68`, as on Windows | Mbappé's release clause (859,031,872 pounds) and three bonuses. Kane's goal bonus changed; Mbappé's first and last entries removed; his list then read as before. |
+| Reasons to be unhappy | the contract's `+0x30`, as on Windows | 1,998 players have a record, of 1 to 6 entries. Mbappé's count 1 → 0 → 1. |
+| Stadium | the senior team's `+0x78`, and `db::STADIUM`, as on Windows | Old Trafford 74,879 (74,310 in use, up to 95,285), the Emirates 60,704, the Tottenham Hotspur Stadium 62,850, the Amex 31,876. Across all 24,471 stadiums, no seats above the capacity and 28 ceilings below it (31 on Windows). Old Trafford 74,879 → 80,000 → 74,879. |
+| Planned retirements | below | |
+
+No contract on this save has room in its list of clauses: 0 of 33,770, where the Game Pass save had 384 of 53,356. A
+release clause can therefore not be added here, and the editor refuses it, as it does for a full list on Windows.
+
+### The retirement manager
+
+The probe's `types` and `instances` now read Itanium type info on the Mac (`fmlibre_core::rtti`). `RETIREMENT_MANAGER`
+(`18RETIREMENT_MANAGER`) has one vtable, `game_plugin+0x55F7DA0`, and one object. It is laid out as on Windows:
+
+- the planned retirements at `+0x30`: 13 pointers to 24-byte entries;
+- their index by person id at `+0x90`;
+- a second list at `+0x18`, of 6, with its own index at `+0x78`.
+
+The entries match those on Windows: Cristiano Ronaldo on 30 June 2027, Daniel Wass on 1 July 2027, Iago Aspas, and
+Hugo Broos (staff). A player keeps the game's id of the person 8 bytes into his identity block, at `+0x390`.
+
+One pointer leads to the manager: `game_plugin+0x56A82A8`, in `__DATA`. That is 0x2AB70 before the players pair,
+where Windows keeps it 0xED60 before. Like the date, it is a variable of its own, so the arm64 build profile names it
+(`retirement_manager`). Ronaldo, Wass and Aspas were each kept from retiring and restored, and the list then read as
+before.
+
+The Intel half was not running, so its static was found in the file:
+
+1. Both halves keep their functions in the same order. Strings that each half references once gave 19,461 matching
+   addresses to map one half's code onto the other's.
+2. The arm64 half loads `0x56A82A8` at 48 places. Mapped over, 46 of them sit next to a load of `0x5C5FEF0`. That
+   global is loaded only 60 times in the whole Intel half.
+3. The calls that follow those loads go to the same methods in both halves, a few hundred bytes from where the
+   mapping puts them.
+
+The x86_64 build profile takes `0x5C5FEF0`; it was not read in a running game. The editor checks the manager's class
+before it uses it, so a wrong static would only hide the feature.
