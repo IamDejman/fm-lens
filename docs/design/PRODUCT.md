@@ -56,7 +56,7 @@ without turning System Integrity Protection off.
 
 ## Brand Commitments
 
-- Name: FMLibreEditor. Pre-alpha. Plain, short-sentence voice in English and Turkish.
+- Name: FMLibreEditor. Beta. Plain, short-sentence voice in English and Turkish.
 - FM's attribute colours (by value band) and the pitch position map stay: players read
   attributes and positions the way FM shows them. Their exact tones may change to sit in
   the app's palette.

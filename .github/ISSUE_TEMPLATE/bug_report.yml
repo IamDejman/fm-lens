@@ -1,0 +1,38 @@
+name: Bug report
+description: Something in FMLibreEditor does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. First check [INSTALL.md](https://github.com/tozmoz/FMLibreEditor/blob/main/docs/INSTALL.md), which covers the most common problems.
+  - type: input
+    id: version
+    attributes:
+      label: FMLibreEditor version
+      description: Shown at the foot of the app's window.
+      placeholder: "0.3.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Where you run Football Manager 27
+      options:
+        - Windows, Xbox / Game Pass
+        - Windows, Steam
+        - macOS, Steam
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead. Paste any error the app showed.
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, the player, staff member or club involved, or whether it happens every time.

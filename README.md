@@ -5,6 +5,12 @@ while the game runs.
 
 Works on **Windows** (Xbox / Game Pass and Steam) and **macOS** (Steam).
 
+[![Latest release](https://img.shields.io/github/v/release/tozmoz/FMLibreEditor?label=release)](https://github.com/tozmoz/FMLibreEditor/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/tozmoz/FMLibreEditor/total)](https://github.com/tozmoz/FMLibreEditor/releases)
+[![License: GPL-3.0](https://img.shields.io/github/license/tozmoz/FMLibreEditor)](LICENSE)
+
+![The player list and a player's profile](docs/images/players.png)
+
 ## Download
 
 - **Windows 10 or 11:**
@@ -26,7 +32,9 @@ How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 
 The game shows a change once you press **Continue** in FM.
 
-> **Status: pre-alpha.** Use it with offline, single-player saves, and back up your save
+![Editing a player: a change waits, highlighted, until you apply it](docs/images/edit.png)
+
+> **Status: beta.** Use it with offline, single-player saves, and back up your save
 > before editing.
 
 ## For developers

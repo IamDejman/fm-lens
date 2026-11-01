@@ -1,0 +1,16 @@
+name: Feature request
+description: Something you would like FMLibreEditor to edit or do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you would like
+      description: What you want to change in the game, and where FM shows it.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it helps
+      description: What you are trying to do in your save.

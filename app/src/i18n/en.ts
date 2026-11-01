@@ -667,7 +667,7 @@ export const en = {
   /** The app around the lists: the sidebar, the status line and the connect panel. */
   app: {
     /** The small line under the name in the sidebar. */
-    stage: "pre-alpha",
+    stage: "beta",
     /** The name of the language switch for assistive technology. */
     languageLabel: "Language",
 
