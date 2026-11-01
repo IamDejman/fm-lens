@@ -24,8 +24,10 @@ How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 ## What it does
 
 - Browse, search and filter every player, member of staff and club.
-- Edit attributes, abilities, positions, personality, contracts, reputation, finances and more.
-- Heal injuries, lift bans, raise morale and fitness, set captains, for one player or a whole team.
+- Edit attributes, abilities, positions, personality, traits, contracts with their bonuses and
+  clauses, reputation, finances, stadiums and more.
+- Heal injuries, lift bans, remove unhappiness, prevent retirement, raise morale and fitness,
+  set captains, for one player or a whole team.
 - Transfer, swap or release players, and move staff between clubs.
 - Mass edit many at once, with a preview; undo any change.
 - English, Turkish and Spanish; logos, flags and faces from your graphics packs.
