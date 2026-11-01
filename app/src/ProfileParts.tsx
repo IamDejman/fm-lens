@@ -2,7 +2,8 @@ import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } fro
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
-import { formatDate, formatNumber, formatPounds } from "./format";
+import { converts } from "./currency";
+import { formatDate, formatMoney, formatNumber } from "./format";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import { PanelResizer, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
@@ -304,10 +305,10 @@ export function WageFact({ wage }: { wage: number }) {
     <>
       <dl className="stats">
         <Fact label={profileText.wage}>
-          <EditableValue field="contract.wage">{formatPounds(wage)}</EditableValue>
+          <EditableValue field="contract.wage">{formatMoney(wage)}</EditableValue>
         </Fact>
       </dl>
-      <p className="note">{profileText.wageNote}</p>
+      <p className="note">{profileText.wageNote(converts)}</p>
     </>
   );
 }

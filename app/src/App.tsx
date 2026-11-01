@@ -6,7 +6,7 @@ import { ClubBrowser } from "./ClubBrowser";
 import { forgetFieldTables } from "./fieldTables";
 import { describeError, describeGame, formatDate } from "./format";
 import { GraphicsStatus } from "./GraphicsStatus";
-import { LanguageSwitch } from "./LanguageSwitch";
+import { SettingsMenu } from "./SettingsMenu";
 import { appText, changesText, clubListText, playerListText, staffListText } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
@@ -183,7 +183,7 @@ function App() {
               {appText.refresh}
             </button>
           )}
-          <LanguageSwitch busy={busy !== null} />
+          <SettingsMenu busy={busy !== null} />
         </div>
       </header>
 

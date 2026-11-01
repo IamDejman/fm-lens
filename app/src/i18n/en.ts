@@ -1,6 +1,6 @@
 // The English text of the UI, and the shape every language has: `tr.ts` and `es.ts` are typed `Strings`, which is
 // `typeof en`, so a key that one dictionary has and another lacks fails the build. A new language is a new file like
-// them, which `index.ts` then offers and `LanguageSwitch.tsx` gives a flag.
+// them, which `index.ts` then offers and `SettingsMenu.tsx` gives a flag.
 //
 // Keys of the game data map to the names FM uses; every other string of the panels is in `profile` (those only the
 // club panel has, in `clubProfile`), and those of the player, staff and club lists in `playerList`, `staffList` and
@@ -471,7 +471,11 @@ export const en = {
     // Contract
     contract: "Contract",
     wage: "Wage per week",
-    wageNote: "stored in pounds; FM shows your chosen currency",
+    /** Under the wage: the game keeps money in pounds; `converted` when the app shows another currency. */
+    wageNote: (converted: boolean): string =>
+      converted
+        ? "the game keeps pounds; shown at FM's own exchange rate"
+        : "the game keeps pounds; another currency can be chosen in the settings",
     signed: "Signed",
     expires: "Expires",
     joined: "Joined",
@@ -839,8 +843,10 @@ export const en = {
   app: {
     /** The small line under the name in the sidebar. */
     stage: "beta",
-    /** The name of the language switch for assistive technology. */
+    /** The settings menu at the right of the masthead: its name, and the headings of its two lists. */
+    settingsLabel: "Settings",
     languageLabel: "Language",
+    currencyLabel: "Currency",
 
     // The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`).
     /** Connected, and the game was opened for writing. */
@@ -952,12 +958,13 @@ export const en = {
     invalid: (min: number, max: number) => `Enter a whole number from ${min} to ${max}`,
     /** The same for a date input; `from` and `to` are the earliest and the latest date it takes, as dates are shown. */
     invalidDate: (from: string, to: string) => `Enter a date from ${from} to ${to}`,
-    /** The same for an amount of money, in whole pounds; `from` and `to` are the least and the most it takes. */
-    invalidMoney: (from: string, to: string) => `Enter a whole number of pounds from ${from} to ${to}`,
+    /**
+     * The same for an amount of money, in whole units of the chosen currency; `from` and `to` are the least and the
+     * most it takes, as amounts are shown.
+     */
+    invalidMoney: (from: string, to: string) => `Enter a whole amount from ${from} to ${to}`,
     /** The same for a percentage, in whole percent; `from` and `to` are the least and the most it takes, as shown. */
     invalidPercentage: (from: string, to: string) => `Enter a whole percentage from ${from} to ${to}`,
-    /** Before the input of an amount of money: the game stores pounds. */
-    pounds: "£",
     /** After the input of a percentage: the game shows energy and match sharpness as 0–100%. */
     percent: "%",
     /** The two values of a yes-or-no field, as the lists of changes and the hover text of its checkbox say them. */
@@ -1270,7 +1277,8 @@ export const en = {
     fee: "Transfer fee",
     /** Under the fee input while it can be sent, and while it cannot. */
     feeHint: "Leave it empty for a free transfer",
-    feeInvalid: "Enter a whole number of pounds, from 0 to 2 billion",
+    /** `max` is the most a fee can be, as amounts are shown. */
+    feeInvalid: (max: string) => `Enter a whole amount, from 0 to ${max}`,
     /**
      * What the fee does to the clubs' money, a line each in the plan. `fee` is the amount, `balance` and `budget` a
      * change written out ("£9,492,232 → £10,726,799"); `budget` is null when the club has no transfer budget set.
@@ -1283,7 +1291,7 @@ export const en = {
 
     // The contract
     /** Under an input that cannot be sent. */
-    wageInvalid: "Enter a whole number of pounds, 0 or more",
+    wageInvalid: "Enter a whole amount, 0 or more",
     expiresInvalid: "Enter a date",
 
     // What the dialog says about the move itself
@@ -1418,17 +1426,18 @@ export const en = {
       "The game made this contract's list just big enough for what it holds: a bonus or clause can be changed or " +
       "removed, but a release clause cannot be added.",
     /** The inputs of a row, for assistive technology: `name` is the clause's. */
-    amountOf: (name: string) => `Amount of ${name}, in pounds`,
+    amountOf: (name: string) => `Amount of ${name}`,
     conditionOf: (name: string) => `Condition of ${name}`,
     save: "Save",
     remove: "Remove",
     removeTitle: (name: string) => `Remove ${name}`,
     /** The row that adds a release clause, where the list has room and the contract has none. */
     addRelease: "Add a release clause",
-    releaseAmount: "Amount of the new release clause, in pounds",
+    releaseAmount: "Amount of the new release clause",
     add: "Add",
     /** When an amount or condition typed is not a whole number in range: `max` is the most it may be. */
-    outOfRange: (max: number) => `Enter a whole number from 0 to ${format(max)}.`,
+    /** `max` is written out already: an amount as amounts are shown, or a number. */
+    outOfRange: (max: string) => `Enter a whole number from 0 to ${max}.`,
     working: "Writing to the game…",
     close: "Close",
   },

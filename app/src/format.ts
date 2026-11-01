@@ -1,3 +1,4 @@
+import { type Currency, currency, inCurrency, toShown } from "./currency";
 import { intlLocale, strings } from "./i18n";
 import type { Failure, FmDate, GameInfo, Storefront } from "./types";
 
@@ -121,9 +122,52 @@ function readableParams(params: Record<string, string>): Record<string, string> 
   return readable;
 }
 
-/** "£1,234,567", grouped the way the language does it; "-£1,234" when negative, like a club's overdraft. */
-export function formatPounds(amount: number): string {
-  return `${amount < 0 ? "-" : ""}£${formatNumber(Math.abs(amount))}`;
+/**
+ * An amount in the chosen currency (see `currency.ts`) the way the language writes it: "£1,234,567" in English,
+ * "1.234.567 €" in Spanish, "-£1,234" for a club's overdraft. Whole units, unless `options` ask for decimals.
+ */
+export function formatAmount(shown: number, options?: Intl.NumberFormatOptions): string {
+  return moneyFormat(options).format(shown);
+}
+
+function moneyFormat(options?: Intl.NumberFormatOptions): Intl.NumberFormat {
+  return new Intl.NumberFormat(intlLocale, {
+    style: "currency",
+    currency,
+    currencyDisplay: "narrowSymbol",
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    ...options,
+  });
+}
+
+/**
+ * An amount the game keeps, in pounds, as the app shows it: in the chosen currency (see `formatAmount`), rounded as
+ * money inputs round it, or with the decimals `options` ask for, such as a ticket price's.
+ */
+export function formatMoney(pounds: number, options?: Intl.NumberFormatOptions): string {
+  return formatAmount(options ? inCurrency(pounds) : toShown(pounds), options);
+}
+
+/** The sign of a currency as the language writes it: "£", "€", "$", "₺". */
+export function currencySymbolOf(code: Currency): string {
+  return (
+    new Intl.NumberFormat(intlLocale, { style: "currency", currency: code, currencyDisplay: "narrowSymbol" })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? code
+  );
+}
+
+/** The sign of the chosen currency, which money inputs carry. */
+export const currencySymbol: string = currencySymbolOf(currency);
+
+/** The name of the chosen currency, or of `code`, in the language in use: "Euro", "Türk Lirası". */
+export function currencyName(code: Currency = currency): string {
+  try {
+    return new Intl.DisplayNames(intlLocale, { type: "currency" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 /** Lower-cases and strips accents, matching the Rust side's `fold`. */

@@ -5,16 +5,21 @@
 
 import { useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { toPounds, toShown } from "./currency";
 import { addReleaseClause, changeClause, removeClause } from "./editing";
-import { describeError, formatPounds } from "./format";
+import { describeError, formatAmount, formatMoney, formatNumber } from "./format";
 import { appText, clauseText as text, profileText } from "./labels";
 import { Fact } from "./ProfileParts";
 import type { Clause } from "./types";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
 
-/** The most an amount may be, in pounds, and a condition: as the editor checks them (see `clauses.rs`). */
+/**
+ * The most an amount may be, in pounds, and a condition: as the editor checks them (see `clauses.rs`). The amount
+ * inputs hold the chosen currency, so they take up to `MOST_AMOUNT_SHOWN`.
+ */
 const MOST_AMOUNT = 2_000_000_000;
+const MOST_AMOUNT_SHOWN = toShown(MOST_AMOUNT);
 const MOST_CONDITION = 1_000;
 
 /** The kind of a release clause, the one the dialog adds. */
@@ -28,7 +33,7 @@ export function clauseDetail(clause: Clause): string {
   return (
     [
       clause.condition === null ? null : profileText.clauseCondition(clause.kind, clause.condition),
-      clause.amount === null ? null : formatPounds(clause.amount),
+      clause.amount === null ? null : formatMoney(clause.amount),
     ]
       .filter((part) => part !== null)
       .join(" · ") || "✓"
@@ -178,13 +183,14 @@ function ClauseDialog({ uid, name, clauses, room, onClose }: ClauseDialogProps) 
   const row = (clause: Clause) => {
     const label = profileText.clauseName(clause.kind);
     const conditionChanges = clause.condition !== null && KNOWN_CONDITIONS.has(clause.kind);
-    const typedAmount = amounts[clause.index] ?? (clause.amount === null ? "" : String(clause.amount));
+    const shownAmount = clause.amount === null ? null : toShown(clause.amount);
+    const typedAmount = amounts[clause.index] ?? (shownAmount === null ? "" : String(shownAmount));
     const typedCondition = conditions[clause.index] ?? (clause.condition === null ? "" : String(clause.condition));
-    const amount = clause.amount === null ? null : wholeNumber(typedAmount, MOST_AMOUNT);
+    const amount = clause.amount === null ? null : wholeNumber(typedAmount, MOST_AMOUNT_SHOWN);
     const condition = conditionChanges ? wholeNumber(typedCondition, MOST_CONDITION) : null;
     const invalid = (clause.amount !== null && amount === null) || (conditionChanges && condition === null);
     const change = {
-      ...(amount !== null && amount !== clause.amount && { amount }),
+      ...(amount !== null && amount !== shownAmount && { amount: toPounds(amount) }),
       ...(condition !== null && condition !== clause.condition && { condition }),
     };
     const changed = Object.keys(change).length > 0;
@@ -230,7 +236,13 @@ function ClauseDialog({ uid, name, clauses, room, onClose }: ClauseDialogProps) 
           <button
             type="button"
             disabled={busy || invalid || !changed}
-            title={invalid ? text.outOfRange(amount === null && clause.amount !== null ? MOST_AMOUNT : MOST_CONDITION) : undefined}
+            title={
+              invalid
+                ? amount === null && clause.amount !== null
+                  ? text.outOfRange(formatAmount(MOST_AMOUNT_SHOWN))
+                  : text.outOfRange(formatNumber(MOST_CONDITION))
+                : undefined
+            }
             onClick={() => void write(() => changeClause(uid, clause.index, change))}
           >
             {text.save}
@@ -250,7 +262,7 @@ function ClauseDialog({ uid, name, clauses, room, onClose }: ClauseDialogProps) 
 
   const hasRelease = clauses.some((clause) => clause.kind === RELEASE_CLAUSE);
   const canAdd = !hasRelease && room > 0;
-  const releaseAmount = wholeNumber(newAmount, MOST_AMOUNT);
+  const releaseAmount = wholeNumber(newAmount, MOST_AMOUNT_SHOWN);
 
   return createPortal(
     // A click beside the dialog does nothing, and keeps focus where it is.
@@ -300,8 +312,8 @@ function ClauseDialog({ uid, name, clauses, room, onClose }: ClauseDialogProps) 
                 <button
                   type="button"
                   disabled={busy || releaseAmount === null}
-                  title={newAmount !== "" && releaseAmount === null ? text.outOfRange(MOST_AMOUNT) : undefined}
-                  onClick={() => releaseAmount !== null && void write(() => addReleaseClause(uid, releaseAmount))}
+                  title={newAmount !== "" && releaseAmount === null ? text.outOfRange(formatAmount(MOST_AMOUNT_SHOWN)) : undefined}
+                  onClick={() => releaseAmount !== null && void write(() => addReleaseClause(uid, toPounds(releaseAmount)))}
                 >
                   {text.add}
                 </button>

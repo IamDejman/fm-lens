@@ -404,17 +404,27 @@ dd,
   outline-color: #8fb1ff;
 }
 
-/* The language: a button with the flag of the language in use and a chevron, outlined like the masthead's other
-   buttons. The menu of the languages hangs from it over the window, as the captain menu does from a squad row (see
-   Club squad). */
-.language-toggle {
+/* The settings: a button with a gear and a chevron, outlined like the masthead's other buttons. The menu of the
+   languages and currencies hangs from it over the window, as the captain menu does from a squad row (see Club
+   squad). */
+.settings-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 8px 5px 10px;
 }
 
-.language-chevron {
+.settings-gear {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.settings-chevron {
   width: 12px;
   height: 12px;
   fill: none;
@@ -424,7 +434,7 @@ dd,
   stroke-linejoin: round;
 }
 
-.language-toggle[aria-expanded="true"] .language-chevron {
+.settings-toggle[aria-expanded="true"] .settings-chevron {
   transform: rotate(180deg);
 }
 
@@ -4110,9 +4120,9 @@ button.danger:hover:not(:disabled) {
   cursor: default;
 }
 
-/* A menu over the window: the captain menu of a squad row, and the language menu under the masthead's flag. */
+/* A menu over the window: the captain menu of a squad row, and the settings menu under the masthead's gear. */
 .squad-menu,
-.language-menu {
+.settings-menu {
   position: fixed;
   z-index: 50;
   display: flex;
@@ -4126,7 +4136,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .squad-menu button,
-.language-menu button {
+.settings-menu button {
   padding: 6px 10px;
   border: 0;
   border-radius: 3px;
@@ -4136,29 +4146,54 @@ button.danger:hover:not(:disabled) {
 
 .squad-menu button:hover,
 .squad-menu button:focus-visible,
-.language-menu button:hover,
-.language-menu button:focus-visible {
+.settings-menu button:hover,
+.settings-menu button:focus-visible {
   background: var(--hover);
 }
 
 .squad-menu button:focus-visible,
-.language-menu button:focus-visible {
+.settings-menu button:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
 
-/* A language of the menu: its flag, its own name, and a check after the one in use. */
-.language-menu {
-  min-width: 10rem;
+/* The settings menu: a heading over each list; a language with its flag and its own name, a currency with its sign
+   and its name, and a check after the one in use. */
+.settings-menu {
+  min-width: 13rem;
 }
 
-.language-menu button {
+.settings-menu [role="group"] + [role="group"] {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.settings-heading {
+  padding: 6px 10px 4px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-menu button {
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
 }
 
-.language-check {
+/* A currency's sign, in a box as wide as a flag so that the names line up. */
+.currency-sign {
+  flex: none;
+  width: 21px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-check {
   width: 14px;
   height: 14px;
   margin-left: auto;

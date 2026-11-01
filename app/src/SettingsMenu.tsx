@@ -1,9 +1,12 @@
-// The language menu at the right of the masthead: a button with the flag of the language in use, which opens a menu of
-// the languages, each with its flag and its own name. The menu is drawn over the window under its button, as the
-// captain menu of a squad row is (see CaptainMenu.tsx), so that the masthead's styles stay off it.
+// The settings menu at the right of the masthead: a button with a gear, which opens a menu of the languages, each with
+// its flag and its own name, and of the currencies the app can show money in, each with its sign and its name. The
+// menu is drawn over the window under its button, as the captain menu of a squad row is (see CaptainMenu.tsx), so that
+// the masthead's styles stay off it.
 
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { CURRENCIES, currency, setCurrency, type Currency } from "./currency";
+import { currencyName, currencySymbolOf } from "./format";
 import { locale, setLocale, type Locale } from "./i18n";
 import { appText } from "./labels";
 import { askToLeave } from "./useProfileEditing";
@@ -47,14 +50,14 @@ const FLAGS: Record<Locale, ReactNode> = {
 };
 
 /** The languages on offer, in the order of the menu, each with its own name. */
-const OPTIONS: readonly { id: Locale; name: string }[] = [
+const LANGUAGES: readonly { id: Locale; name: string }[] = [
   { id: "en", name: "English" },
   { id: "tr", name: "Türkçe" },
   { id: "es", name: "Español" },
 ];
 
-/** The name and hover text of the button: "Language: English". */
-const BUTTON_LABEL = `${appText.languageLabel}: ${OPTIONS.find(({ id }) => id === locale)?.name ?? locale}`;
+/** The name and hover text of the button: "Settings: English, Euro". */
+const BUTTON_LABEL = `${appText.settingsLabel}: ${LANGUAGES.find(({ id }) => id === locale)?.name ?? locale}, ${currencyName()}`;
 
 /** Where the open menu hangs: the window's coordinates of its button, from the right edge and the top. */
 interface Anchor {
@@ -62,15 +65,22 @@ interface Anchor {
   bottom: number;
 }
 
+const CHECK = (
+  <svg className="settings-check" viewBox="0 0 20 20" aria-hidden="true">
+    <path d="m4.5 10.5 3.5 3.5 7.5-8" />
+  </svg>
+);
+
 /**
- * The button and, once it is pressed, its menu. Choosing another language reloads the window (see `setLocale`), which
- * the app survives connected (see `current_connection`), so edits pending in an open profile are asked about first.
- * While the app is `busy` the button waits.
+ * The button and, once it is pressed, its menu. Choosing another language or currency reloads the window (see
+ * `setLocale` and `setCurrency`), which the app survives connected (see `current_connection`), so edits pending in an
+ * open profile are asked about first. While the app is `busy` the button waits.
  */
-export function LanguageSwitch({ busy }: { busy: boolean }) {
+export function SettingsMenu({ busy }: { busy: boolean }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
+  const id = useId();
   const open = anchor !== null;
 
   const show = () => {
@@ -113,13 +123,21 @@ export function LanguageSwitch({ busy }: { busy: boolean }) {
     };
   }, [open]);
 
-  const choose = (next: Locale) => {
+  const chooseLanguage = (next: Locale) => {
     close();
     if (!busy && next !== locale) {
       askToLeave(() => setLocale(next));
     }
   };
 
+  const chooseCurrency = (next: Currency) => {
+    close();
+    if (!busy && next !== currency) {
+      askToLeave(() => setCurrency(next));
+    }
+  };
+
+  // The arrow keys go through both lists, as one.
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
     const at = items.findIndex((item) => item === document.activeElement);
@@ -159,7 +177,7 @@ export function LanguageSwitch({ busy }: { busy: boolean }) {
       <button
         ref={button}
         type="button"
-        className="language-toggle"
+        className="settings-toggle"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={BUTTON_LABEL}
@@ -173,8 +191,11 @@ export function LanguageSwitch({ busy }: { busy: boolean }) {
           }
         }}
       >
-        {FLAGS[locale]}
-        <svg className="language-chevron" viewBox="0 0 20 20" aria-hidden="true">
+        <svg className="settings-gear" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+        <svg className="settings-chevron" viewBox="0 0 20 20" aria-hidden="true">
           <path d="m5 8 5 5 5-5" />
         </svg>
       </button>
@@ -182,31 +203,53 @@ export function LanguageSwitch({ busy }: { busy: boolean }) {
         createPortal(
           <div
             ref={menu}
-            className="language-menu"
+            className="settings-menu"
             role="menu"
-            aria-label={appText.languageLabel}
+            aria-label={appText.settingsLabel}
             style={{ top: anchor.bottom + GAP, right: anchor.right }}
             onKeyDown={keyDown}
           >
-            {OPTIONS.map(({ id, name }) => (
-              <button
-                key={id}
-                type="button"
-                role="menuitemradio"
-                aria-checked={id === locale}
-                lang={id}
-                tabIndex={-1}
-                onClick={() => choose(id)}
-              >
-                {FLAGS[id]}
-                {name}
-                {id === locale && (
-                  <svg className="language-check" viewBox="0 0 20 20" aria-hidden="true">
-                    <path d="m4.5 10.5 3.5 3.5 7.5-8" />
-                  </svg>
-                )}
-              </button>
-            ))}
+            <div role="group" aria-labelledby={`${id}-language`}>
+              <div id={`${id}-language`} className="settings-heading">
+                {appText.languageLabel}
+              </div>
+              {LANGUAGES.map(({ id: language, name }) => (
+                <button
+                  key={language}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={language === locale}
+                  lang={language}
+                  tabIndex={-1}
+                  onClick={() => chooseLanguage(language)}
+                >
+                  {FLAGS[language]}
+                  {name}
+                  {language === locale && CHECK}
+                </button>
+              ))}
+            </div>
+            <div role="group" aria-labelledby={`${id}-currency`}>
+              <div id={`${id}-currency`} className="settings-heading">
+                {appText.currencyLabel}
+              </div>
+              {CURRENCIES.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={code === currency}
+                  tabIndex={-1}
+                  onClick={() => chooseCurrency(code)}
+                >
+                  <span className="currency-sign" aria-hidden="true">
+                    {currencySymbolOf(code)}
+                  </span>
+                  {currencyName(code)}
+                  {code === currency && CHECK}
+                </button>
+              ))}
+            </div>
           </div>,
           document.body,
         )}

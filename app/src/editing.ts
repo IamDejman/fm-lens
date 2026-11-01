@@ -1,6 +1,7 @@
 // Editing: the Rust commands that change the game, and how stored values are shown.
 
 import { call } from "./api";
+import { converts, toPounds, toShown } from "./currency";
 import type {
   ApplyReport,
   BatchUndo,
@@ -53,9 +54,13 @@ export const wholePercent = (stored: number): number => Math.floor((stored + 50)
 
 /**
  * The value the game shows for a stored one: attributes are stored 0–100 and shown 1–20, percentages are stored
- * 0–10000 and shown 0–100.
+ * 0–10000 and shown 0–100, and money is stored in pounds and shown in the chosen currency (see `currency.ts`). A
+ * blank, such as an asking price that is not set, is shown as it is stored.
  */
 export function shownValue(field: EditField, stored: number): number {
+  if (field.kind === "i32") {
+    return stored === field.blank ? stored : toShown(stored);
+  }
   switch (field.scale) {
     case "attribute":
       return Math.min(20, Math.max(1, Math.floor((stored + 2) / 5)));
@@ -67,13 +72,21 @@ export function shownValue(field: EditField, stored: number): number {
 }
 
 /**
- * Whether `field` is stored on a finer scale than it is shown, as attributes and percentages are: what is shown is
- * rounded, so a list of changes has the values as stored in a hover text. False for a field the table lacks.
+ * Whether `field` is stored otherwise than it is shown, as attributes, percentages and money in another currency than
+ * pounds are: what is shown is rounded or converted, so a list of changes has the values as stored in a hover text.
+ * False for a field the table lacks.
  */
-export const isStoredFiner = (field: EditField | undefined): boolean => field !== undefined && field.scale !== "plain";
+export const isStoredFiner = (field: EditField | undefined): boolean =>
+  field !== undefined && (field.scale !== "plain" || (field.kind === "i32" && converts));
 
-/** The stored value to write for a value typed as shown: the middle of the stored values the game shows as it. */
+/**
+ * The stored value to write for a value typed as shown: the middle of the stored values the game shows as it; for
+ * money, the nearest whole pound.
+ */
 export function storedValue(field: EditField, shown: number): number {
+  if (field.kind === "i32") {
+    return shown === field.blank ? shown : toPounds(shown);
+  }
   switch (field.scale) {
     case "attribute":
       return shown * 5;

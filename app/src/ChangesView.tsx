@@ -7,7 +7,7 @@ import { clauseLine } from "./ClauseList";
 import { valueText } from "./editDraft";
 import { changeLog, dateFromNumber, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
-import { describeError, formatDate, formatDateTime, formatPounds, formatTime } from "./format";
+import { describeError, formatDate, formatDateTime, formatMoney, formatTime } from "./format";
 import {
   changesText as text,
   fieldLabel,
@@ -541,7 +541,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       <td className="change-value" title={storedNote}>
         {value}
         {change.moved?.with !== undefined && <div className="sub">{text.swappedWith(change.moved.with)}</div>}
-        {change.moved?.fee !== undefined && <div className="sub">{text.fee(formatPounds(change.moved.fee))}</div>}
+        {change.moved?.fee !== undefined && <div className="sub">{text.fee(formatMoney(change.moved.fee))}</div>}
         {captaincyNotes(change).map((note) => (
           <div key={note} className="sub">
             {note}

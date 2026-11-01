@@ -1,8 +1,8 @@
-// What the window held before the language was switched, brought back after the reload. Switching reloads the window
-// (see `setLocale`) and the app comes back connected without reading the game again, but every view would start from
-// its beginning. Just before the reload `saveSnapshot` writes what the parts that registered with `useSnapshot` hold
-// to `sessionStorage`; the next start reads it once and removes it, so it lasts for that reload only, never for a
-// restart or for another reload. Nothing here may get in the way of the reload: every access to the storage is
+// What the window held before the language (or the currency) was switched, brought back after the reload. Switching
+// reloads the window (see `setLocale` and `setCurrency`) and the app comes back connected without reading the game
+// again, but every view would start from its beginning. Just before the reload `saveSnapshot` writes what the parts
+// that registered with `useSnapshot` hold to `sessionStorage`; the next start reads it once and removes it, so it
+// lasts for that reload only, never for a restart or for another reload. Nothing here may get in the way of the reload: every access to the storage is
 // guarded, and what is missing or wrong is the part's own start.
 
 import { useEffect, useRef } from "react";

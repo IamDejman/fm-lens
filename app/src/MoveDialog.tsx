@@ -21,7 +21,8 @@ import {
   planStaffMove,
   swapPlayers,
 } from "./editing";
-import { describeError, formatDate, formatPounds } from "./format";
+import { toPounds, toShown } from "./currency";
+import { currencySymbol, describeError, formatAmount, formatDate, formatMoney } from "./format";
 import { clubListText, editText, fieldLabel, moveText as text, positionLabel, profileText } from "./labels";
 import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
@@ -177,16 +178,20 @@ function judgeWage(text: string, was: number | null): Verdict {
   return value === was ? SAME : { status: "changed", value };
 }
 
-/** The most a fee can be, in pounds: what the game's money fields hold. */
+/** The most a fee can be, in pounds: what the game's money fields hold; and as typed, in the chosen currency. */
 const MAX_FEE = 2_000_000_000;
+const MAX_FEE_SHOWN = toShown(MAX_FEE);
 
-/** The fee input: no fee while it is empty or 0, a whole number of pounds up to `MAX_FEE`, or unusable. */
+/**
+ * The fee input: no fee while it is empty or 0, a whole amount of the chosen currency up to `MAX_FEE_SHOWN`, or
+ * unusable. The value is as typed; the pounds to send are worked out from it.
+ */
 function judgeFee(text: string): Verdict {
   if (text.trim() === "") {
     return SAME;
   }
   const value = wholeNumber(text);
-  if (value === null || value < 0 || value > MAX_FEE) {
+  if (value === null || value < 0 || value > MAX_FEE_SHOWN) {
     return INVALID;
   }
   return value === 0 ? SAME : { status: "changed", value };
@@ -216,7 +221,7 @@ function moneyLine(money: ClubMoney | null, club: string, fee: string, paying: b
     return text.noFinances(club);
   }
   const change = ({ before, after }: { before: number; after: number }) =>
-    `${formatPounds(before)} → ${formatPounds(after)}`;
+    `${formatMoney(before)} → ${formatMoney(after)}`;
   return paying
     ? text.pays(club, fee, change(money.balance), money.transferBudget && change(money.transferBudget))
     : text.receives(club, fee, change(money.balance));
@@ -503,7 +508,9 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   // Set when a key moved the highlight, so that the row it reached scrolls into view; the mouse is not followed.
   const keyboardMoved = useRef(false);
 
+  // The wage as the contract has it, in pounds; the input holds it in the chosen currency.
   const wasWage = contract?.wage ?? null;
+  const wasWageShown = wasWage === null ? null : toShown(wasWage);
   const wasExpires = contract?.expires ? numberFromDate(contract.expires) : null;
 
   const [mode, setMode] = useState<Mode>("move");
@@ -514,7 +521,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   const [club, setClub] = useState<ClubSummary | null>(null);
   // The player a swap sends to the player's club: one of the club's players, once picked. A move has none.
   const [partner, setPartner] = useState<PlayerSummary | null>(null);
-  const [wageText, setWageText] = useState(wasWage === null ? "" : String(wasWage));
+  const [wageText, setWageText] = useState(wasWageShown === null ? "" : String(wasWageShown));
   const [expiresText, setExpiresText] = useState(wasExpires === null ? "" : isoFromNumber(wasExpires));
   const [feeText, setFeeText] = useState("");
   const [planned, setPlanned] = useState<Planned | null>(null);
@@ -526,15 +533,15 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   useModal(dialog, !moving, onClose);
 
   // The inputs, and the terms they stand for.
-  const wageVerdict = judgeWage(wageText, wasWage);
+  const wageVerdict = judgeWage(wageText, wasWageShown);
   const expiresVerdict = judgeExpires(expiresText, wasExpires);
   const feeVerdict = judgeFee(feeText);
   const valid =
     staff ||
     (wageVerdict.status !== "invalid" && expiresVerdict.status !== "invalid" && feeVerdict.status !== "invalid");
-  const wage = !staff && wageVerdict.status === "changed" ? wageVerdict.value : undefined;
+  const wage = !staff && wageVerdict.status === "changed" ? toPounds(wageVerdict.value) : undefined;
   const expires = !staff && expiresVerdict.status === "changed" ? expiresVerdict.value : undefined;
-  const fee = !staff && feeVerdict.status === "changed" ? feeVerdict.value : undefined;
+  const fee = !staff && feeVerdict.status === "changed" ? toPounds(feeVerdict.value) : undefined;
   const terms = termsOf(wage, expires);
 
   const swap = mode === "swap";
@@ -752,14 +759,15 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
               : "";
   const noteIsError = found !== null && settled && "error" in found;
 
-  const wageNote = termNote(wageVerdict, text.wageInvalid, wasWage === null ? null : formatPounds(wasWage));
+  const wageNote = termNote(wageVerdict, text.wageInvalid, wasWage === null ? null : formatMoney(wasWage));
   const expiresNote = termNote(
     expiresVerdict,
     text.expiresInvalid,
     contract?.expires ? formatDate(contract.expires) : null,
   );
 
-  const feeNote = feeVerdict.status === "invalid" ? { message: text.feeInvalid, invalid: true } : null;
+  const feeNote =
+    feeVerdict.status === "invalid" ? { message: text.feeInvalid(formatAmount(MAX_FEE_SHOWN)), invalid: true } : null;
 
   // Where the clubs of a move that can be made lead, and what its fee does to their money; for a swap, who goes where.
   const route = (made: MovePreview) => {
@@ -768,7 +776,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
     }
     const lines = [text.route(made.from.name, made.to.name)];
     if (made.fee) {
-      const amount = formatPounds(made.fee.fee);
+      const amount = formatMoney(made.fee.fee);
       lines.push(moneyLine(made.fee.buyer, made.to.name, amount, true));
       lines.push(moneyLine(made.fee.seller, made.from.name, amount, false));
     }
@@ -937,14 +945,14 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
                   <label htmlFor={id("fee")}>{text.fee}</label>
                   <span className="move-money">
                     <span className="move-unit" aria-hidden="true">
-                      {editText.pounds}
+                      {currencySymbol}
                     </span>
                     <input
                       id={id("fee")}
                       className={inputClass(feeVerdict)}
                       type="number"
                       min={0}
-                      max={MAX_FEE}
+                      max={MAX_FEE_SHOWN}
                       step={1}
                       placeholder="0"
                       value={feeText}
@@ -973,7 +981,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
                   <label htmlFor={id("wage")}>{fieldLabel("player", "contract.wage")}</label>
                   <span className="move-money">
                     <span className="move-unit" aria-hidden="true">
-                      {editText.pounds}
+                      {currencySymbol}
                     </span>
                     <input
                       id={id("wage")}

@@ -1,7 +1,8 @@
 import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { EditableValue } from "./EditControls";
 import { freezeMoney, frozenClubs } from "./editing";
-import { describeError, formatNumber, formatPounds } from "./format";
+import { converts, inCurrency } from "./currency";
+import { describeError, formatMoney, formatNumber } from "./format";
 import {
   CLUB_FACILITY_LABELS,
   clubProfileText,
@@ -288,25 +289,25 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
           <dl className="stats">
             <Fact label={text.balance}>
               <EditableValue field="finance.balance">
-                <span className={finances.balance < 0 ? "negative" : undefined}>{formatPounds(finances.balance)}</span>
+                <span className={finances.balance < 0 ? "negative" : undefined}>{formatMoney(finances.balance)}</span>
               </EditableValue>
             </Fact>
             <Fact label={text.transferBudget}>
               <EditableValue field="finance.transfer_budget">
                 {/* FM stores -1 when the board has not set a transfer budget. */}
-                {finances.transferBudget < 0 ? profileText.notSet : formatPounds(finances.transferBudget)}
+                {finances.transferBudget < 0 ? profileText.notSet : formatMoney(finances.transferBudget)}
               </EditableValue>
             </Fact>
             <Fact label={perWeek(text.wageBudget)}>
-              <EditableValue field="finance.wage_budget">{formatPounds(finances.wageBudget)}</EditableValue>
+              <EditableValue field="finance.wage_budget">{formatMoney(finances.wageBudget)}</EditableValue>
             </Fact>
             <Fact label={perWeek(text.totalWageBudget)}>
-              <EditableValue field="finance.total_wage_budget">{formatPounds(finances.totalWageBudget)}</EditableValue>
+              <EditableValue field="finance.total_wage_budget">{formatMoney(finances.totalWageBudget)}</EditableValue>
             </Fact>
             <Fact label={text.ticketPrice}>{formatTicketPrice(finances.ticketPrice)}</Fact>
           </dl>
           <FreezeMoney club={club} />
-          <p className="note">{profileText.wageNote}</p>
+          <p className="note">{profileText.wageNote(converts)}</p>
         </>
       ) : (
         <p className="note">{text.noFinances}</p>
@@ -399,11 +400,11 @@ function perWeek(label: string): ReactNode {
   );
 }
 
-/** A ticket price: whole pounds as they are, pence as two decimals ("£41.80"). */
+/** A ticket price: a whole amount as it is, anything else with two decimals ("£41.80"). */
 function formatTicketPrice(price: number): string {
-  return Number.isInteger(price)
-    ? formatPounds(price)
-    : `£${formatNumber(price, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return Number.isInteger(inCurrency(price))
+    ? formatMoney(price)
+    : formatMoney(price, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function ClubInfo({ details }: { details: ClubDetails }) {

@@ -1,7 +1,7 @@
 // What the inputs of an edit session hold and what Apply would write. No React here: the components only draw it.
 
 import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
-import { formatDate, formatNumber, formatPercent, formatPounds } from "./format";
+import { formatAmount, formatDate, formatNumber, formatPercent } from "./format";
 import { choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
 
@@ -46,9 +46,9 @@ function inputText(field: EditField, shown: number): string {
 }
 
 /**
- * A value of `field`, as shown, written out: a date as the app shows dates, an amount of money in pounds, a percentage
- * with its percent sign, a flag as Yes or No, a code from a list by its name, the blank as "none", anything else as a
- * number. A field the table lacks (`undefined`) is a number.
+ * A value of `field`, as shown, written out: a date as the app shows dates, an amount of money in the chosen currency,
+ * a percentage with its percent sign, a flag as Yes or No, a code from a list by its name, the blank as "none",
+ * anything else as a number. A field the table lacks (`undefined`) is a number.
  */
 export function valueText(field: EditField | undefined, shown: number): string {
   if (field !== undefined && shown === field.blank) {
@@ -64,7 +64,7 @@ export function valueText(field: EditField | undefined, shown: number): string {
       return shown === 0 ? editText.no : editText.yes;
     case "i32":
       // FM stores a negative transfer budget when the board has not set one.
-      return field.key === "finance.transfer_budget" && shown < 0 ? profileText.notSet : formatPounds(shown);
+      return field.key === "finance.transfer_budget" && shown < 0 ? profileText.notSet : formatAmount(shown);
     default:
       return field?.choices ? choiceLabel(field.key, shown) : formatNumber(shown);
   }
