@@ -399,6 +399,12 @@ enum Command {
         /// Stop after this many hits.
         #[arg(long, default_value_t = 20)]
         max: usize,
+        /// Only report hits with these hex bytes within --within bytes of them, e.g. a person's UID beside a date.
+        #[arg(long)]
+        near: Option<String>,
+        /// How far from a hit --near may be, in bytes, before or after it.
+        #[arg(long, default_value = "0x40")]
+        within: String,
     },
     /// Find the pointers to ADDR in the game's memory, e.g. everything that refers to a player.
     Refs {
@@ -524,6 +530,30 @@ enum Command {
         /// Show at most this many values, the most frequent first.
         #[arg(long, default_value_t = 30)]
         top: usize,
+    },
+    /// List the C++ classes game_plugin.dll names whose names hold TEXT (case ignored), e.g. UNHAPP or PROMISE:
+    /// the type names the compiler keeps for each class with virtual functions.
+    Types {
+        /// Text the class name must hold, e.g. HAPPINESS.
+        text: String,
+        /// Print at most this many names.
+        #[arg(long, default_value_t = 200)]
+        max: usize,
+    },
+    /// Find the objects of one C++ class in the game's memory: its vtables, from its type name, and every object
+    /// that starts with one of them.
+    Instances {
+        /// The class, as `types` prints it, e.g. db::ACTUAL_PLAYER.
+        class: String,
+        /// Print at most this many objects.
+        #[arg(long, default_value_t = 20)]
+        max: usize,
+        /// Only objects whose first --span bytes hold these hex bytes, e.g. a player's UID or an address.
+        #[arg(long)]
+        holds: Option<String>,
+        /// How many bytes of each object --holds looks at, and `instances` prints.
+        #[arg(long, default_value = "0x80")]
+        span: String,
     },
     /// Show the memory region that holds ADDR and the start of its allocation.
     Region {
@@ -771,9 +801,11 @@ fn run(cli: Cli) -> Result<()> {
             let modules = list_modules(&process).context("listing modules")?;
             column(&process, &modules, resolve(&pair, &modules)?, parse_hex(&offset)?, kind, first, find)
         }
-        Command::Find { pattern, kind, module, max } => {
+        Command::Find { pattern, kind, module, max, near, within } => {
             let modules = list_modules(&process).context("listing modules")?;
-            find(&process, &modules, &pattern, kind, module.as_deref(), max)
+            let near =
+                near.map(|near| Ok::<_, anyhow::Error>((parse_bytes(&near)?, parse_hex(&within)?))).transpose()?;
+            find(&process, &modules, &pattern, kind, module.as_deref(), max, near)
         }
         Command::Refs { addr, span, max } => {
             let modules = list_modules(&process).context("listing modules")?;
@@ -807,6 +839,15 @@ fn run(cli: Cli) -> Result<()> {
         Command::Histogram { offset, kind, contract, club, top } => {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             histogram(&session, parse_hex(&offset)?, kind, contract, club.as_deref(), top)
+        }
+        Command::Types { text, max } => {
+            let modules = list_modules(&process).context("listing modules")?;
+            types(&process, &modules, &text, max)
+        }
+        Command::Instances { class, max, holds, span } => {
+            let modules = list_modules(&process).context("listing modules")?;
+            let holds = holds.map(|bytes| parse_bytes(&bytes)).transpose()?;
+            instances(&process, &modules, &class, max, holds.as_deref(), parse_hex(&span)?)
         }
         Command::Region { addr } => {
             let modules = list_modules(&process).context("listing modules")?;
@@ -1452,6 +1493,7 @@ fn find(
     kind: PatternKind,
     module: Option<&str>,
     max: usize,
+    near: Option<(Vec<u8>, u64)>,
 ) -> Result<()> {
     let needles: Vec<(&str, Vec<u8>)> = match kind {
         PatternKind::Text => vec![
@@ -1472,7 +1514,10 @@ fn find(
     };
 
     const CHUNK: u64 = 8 << 20;
-    let overlap = needles.iter().map(|(_, needle)| needle.len() as u64).max().unwrap_or(1) - 1;
+    // With --near, each chunk also reads far enough on for the bytes after a hit at its end.
+    let reach = near.as_ref().map_or(0, |(bytes, within)| within + bytes.len() as u64);
+    let overlap = needles.iter().map(|(_, needle)| needle.len() as u64).max().unwrap_or(1) - 1 + reach;
+    let near = near.map(|(bytes, within)| (memchr::memmem::Finder::new(&bytes).into_owned(), within as usize));
     let finders: Vec<(&str, memchr::memmem::Finder)> =
         needles.iter().map(|(label, needle)| (*label, memchr::memmem::Finder::new(needle))).collect();
     let started = Instant::now();
@@ -1491,7 +1536,17 @@ fn find(
                             continue;
                         }
                         let addr = base + pos as u64;
-                        let context = if *label == "utf-16" { utf16_context(process, addr) } else { String::new() };
+                        // Where the other bytes are, from the hit; a hit without them is not reported. A hit
+                        // in a chunk's first --within bytes is not looked at before itself.
+                        let mut context = if *label == "utf-16" { utf16_context(process, addr) } else { String::new() };
+                        if let Some((other, within)) = &near {
+                            let from = pos.saturating_sub(*within);
+                            let to = (pos + *within + other.needle().len()).min(chunk.len());
+                            match other.find_iter(&chunk[from..to]).next() {
+                                Some(at) => context = format!("near at {:+#x}", (from + at) as i64 - pos as i64),
+                                None => continue,
+                            }
+                        }
                         println!("{addr:#014x}  {label:<6} {:<34} {context}", describe_address(addr, modules));
                         hits += 1;
                         if hits >= max {
@@ -1510,6 +1565,152 @@ fn find(
         scanned as f64 / 1_048_576.0,
         started.elapsed().as_secs_f64()
     );
+    Ok(())
+}
+
+/// A class's name as the compiler keeps it (`.?AVACTUAL_PLAYER@db@@`), written as in C++ (`db::ACTUAL_PLAYER`).
+/// Template names are left as they are.
+fn demangle(name: &str) -> String {
+    let inner = name.trim_start_matches(".?AV").trim_start_matches(".?AU").trim_end_matches("@@");
+    if inner.starts_with("?$") {
+        return inner.to_owned();
+    }
+    let mut parts: Vec<&str> = inner.split('@').filter(|part| !part.is_empty()).collect();
+    parts.reverse();
+    parts.join("::")
+}
+
+/// The type descriptors game_plugin.dll holds, by the address of each, with its class name as in C++. A descriptor
+/// is a vtable pointer, a spare word and the mangled name (MSVC's `.?AV…@@`).
+fn type_descriptors(process: &Process, plugin: &Module) -> Vec<(u64, String)> {
+    const CHUNK: u64 = 16 << 20;
+    const LONGEST: usize = 512;
+    let finder = memchr::memmem::Finder::new(b".?A");
+    let mut found = Vec::new();
+    for region in regions(process, plugin.base, plugin.end()).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            let len = (region.size - offset).min(CHUNK + LONGEST as u64);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                for pos in finder.find_iter(&chunk).filter(|&pos| (pos as u64) < CHUNK && pos % 8 == 0) {
+                    let rest = &chunk[pos..chunk.len().min(pos + LONGEST)];
+                    let Some(end) = rest.iter().position(|&b| b == 0) else { continue };
+                    let Ok(name) = std::str::from_utf8(&rest[..end]) else { continue };
+                    if (name.starts_with(".?AV") || name.starts_with(".?AU")) && name.ends_with("@@") {
+                        found.push((base + pos as u64 - 0x10, demangle(name)));
+                    }
+                }
+            }
+            offset += CHUNK;
+        }
+    }
+    found
+}
+
+fn types(process: &Process, modules: &[Module], text: &str, max: usize) -> Result<()> {
+    let plugin = find_module(modules, GAME_PLUGIN).with_context(|| format!("{GAME_PLUGIN} is not loaded"))?;
+    let all = type_descriptors(process, plugin);
+    let wanted = text.to_lowercase();
+    let mut names: Vec<&String> =
+        all.iter().map(|(_, name)| name).filter(|name| name.to_lowercase().contains(&wanted)).collect();
+    names.sort();
+    names.dedup();
+    for name in names.iter().take(max) {
+        println!("  {name}");
+    }
+    println!("{} of {} class names hold {text:?}", names.len(), all.len());
+    Ok(())
+}
+
+/// Every 8-byte word in `[start, end)` that equals one of `values`, by address.
+fn words_equal_to(process: &Process, start: u64, end: u64, values: &std::collections::HashSet<u64>) -> Vec<(u64, u64)> {
+    const CHUNK: u64 = 8 << 20;
+    let mut found = Vec::new();
+    for region in regions(process, start, end).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            let len = (region.size - offset).min(CHUNK);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                for (i, word) in chunk.as_chunks::<8>().0.iter().enumerate() {
+                    let value = u64::from_le_bytes(*word);
+                    if values.contains(&value) {
+                        found.push((base + (i * 8) as u64, value));
+                    }
+                }
+            }
+            offset += CHUNK;
+        }
+    }
+    found
+}
+
+fn instances(
+    process: &Process,
+    modules: &[Module],
+    class: &str,
+    max: usize,
+    holds: Option<&[u8]>,
+    span: u64,
+) -> Result<()> {
+    let plugin = find_module(modules, GAME_PLUGIN).with_context(|| format!("{GAME_PLUGIN} is not loaded"))?;
+    let descriptors: Vec<u64> =
+        type_descriptors(process, plugin).into_iter().filter(|(_, name)| name == class).map(|(at, _)| at).collect();
+    ensure!(!descriptors.is_empty(), "no class named {class} (see `types`)");
+
+    // The complete object locators that name it (MSVC x64): signature 1, then at +12 the descriptor's RVA and at
+    // +20 the locator's own. Each vtable is preceded by a pointer to one.
+    let rvas: std::collections::HashSet<u32> = descriptors.iter().map(|&at| (at - plugin.base) as u32).collect();
+    let mut locators = std::collections::HashSet::new();
+    for region in regions(process, plugin.base, plugin.end()).into_iter().filter(|r| r.is_readable()) {
+        let Ok(bytes) = process.read_bytes(region.base, region.size as usize) else { continue };
+        for (i, entry) in bytes.as_chunks::<4>().0.iter().enumerate().skip(3) {
+            if !rvas.contains(&u32::from_le_bytes(*entry)) {
+                continue;
+            }
+            let at = (i - 3) * 4;
+            let word =
+                |k: usize| bytes.get(at + k..at + k + 4).map(|b| u32::from_le_bytes(b.try_into().expect("4 bytes")));
+            let locator = region.base + at as u64;
+            if word(0) == Some(1) && word(20) == Some((locator - plugin.base) as u32) {
+                locators.insert(locator);
+            }
+        }
+    }
+    let vtables: std::collections::HashSet<u64> =
+        words_equal_to(process, plugin.base, plugin.end(), &locators).into_iter().map(|(at, _)| at + 8).collect();
+    println!(
+        "{class}: {} type descriptor(s), {} locator(s), vtable(s) {}",
+        descriptors.len(),
+        locators.len(),
+        vtables.iter().map(|v| format!("{GAME_PLUGIN}+{:#x}", v - plugin.base)).collect::<Vec<_>>().join(", ")
+    );
+
+    // The objects: words on the heap that are one of the vtables. A vtable pointer inside the module itself is not an
+    // object of the game's data.
+    let started = Instant::now();
+    let mut objects: Vec<u64> = words_equal_to(process, 0x1_0000, 0x7FFF_FFFF_0000, &vtables)
+        .into_iter()
+        .map(|(at, _)| at)
+        .filter(|&at| !(plugin.base..plugin.end()).contains(&at))
+        .collect();
+    let total = objects.len();
+    if let Some(needle) = holds {
+        let finder = memchr::memmem::Finder::new(needle);
+        objects.retain(|&at| process.read_bytes(at, span as usize).is_ok_and(|bytes| finder.find(&bytes).is_some()));
+    }
+    println!(
+        "{total} object(s) in {:.1} s{}",
+        started.elapsed().as_secs_f64(),
+        if holds.is_some() { format!(", {} holding the bytes", objects.len()) } else { String::new() }
+    );
+    for &at in objects.iter().take(max) {
+        let Ok(bytes) = process.read_bytes(at, span as usize) else { continue };
+        let words: Vec<String> =
+            bytes.as_chunks::<8>().0.iter().map(|w| format!("{:x}", u64::from_le_bytes(*w))).collect();
+        println!("  {at:#014x}  {}", words.join(" "));
+    }
     Ok(())
 }
 
