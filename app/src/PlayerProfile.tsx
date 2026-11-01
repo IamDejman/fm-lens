@@ -112,26 +112,28 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
     <>
       <AbilityEditGroup entity="player" />
 
-      <div className="profile-columns">
-        {goalkeeper ? (
-          <RatingGroup title={profileText.goalkeeping} rows={attributeRows(details, GOALKEEPING)} />
-        ) : (
-          <RatingGroup title={profileText.technical} rows={attributeRows(details, TECHNICAL)} />
-        )}
-        <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
-        <RatingGroup title={profileText.physical} rows={attributeRows(details, PHYSICAL)} />
-      </div>
-
-      <div className="profile-columns">
-        <div className="profile-stack">
-          <RatingGroup title={profileText.hidden} rows={attributeRows(details, HIDDEN)} />
-          <RatingGroup title={profileText.feet} rows={attributeRows(details, FEET)} />
+      <div className="profile-pair">
+        <div className="profile-columns">
+          {goalkeeper ? (
+            <RatingGroup title={profileText.goalkeeping} rows={attributeRows(details, GOALKEEPING)} />
+          ) : (
+            <RatingGroup title={profileText.technical} rows={attributeRows(details, TECHNICAL)} />
+          )}
+          <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
+          <RatingGroup title={profileText.physical} rows={attributeRows(details, PHYSICAL)} />
         </div>
-        <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
-        <section className="profile-group">
-          <h3>{profileText.positions}</h3>
-          <PositionPitch ratings={details.positionRatings} />
-        </section>
+
+        <div className="profile-columns">
+          <div className="profile-stack">
+            <RatingGroup title={profileText.hidden} rows={attributeRows(details, HIDDEN)} />
+            <RatingGroup title={profileText.feet} rows={attributeRows(details, FEET)} />
+          </div>
+          <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
+          <section className="profile-group">
+            <h3>{profileText.positions}</h3>
+            <PositionPitch ratings={details.positionRatings} />
+          </section>
+        </div>
       </div>
 
       <PositionEditGroup />
