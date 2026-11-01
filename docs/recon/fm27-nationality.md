@@ -68,13 +68,12 @@ showed each at once:
 - Türkiye added to Musiala's, as a third secondary nationality;
 - Hakimi's training changed from Spain, 15-21 to England, 0-21.
 
-On the Windows Steam build the record is at `+0x300` in the player, 0x40 further than on macOS
+On the Windows Steam and Game Pass builds the record is at `+0x300` in the player, 0x40 further than on macOS
 like the rest of the person, and the entries are laid out alike: Yıldız, Musiala and Hakimi read
 exactly as above. A changed, an added and a removed entry were each restored with the probe and
-undone in the app.
+undone in the app, on both builds.
 
-Not yet checked: what a competition's homegrown rules make of a changed entry over a game day,
-and the Game Pass build.
+Not yet checked: what a competition's homegrown rules make of a changed entry over a game day.
 
 ## Also seen
 

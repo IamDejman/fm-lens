@@ -59,9 +59,10 @@ Elliot Watt (two bans) and Gustavo Gómez: his World Cup entry stayed listed.
 On the Windows Steam build (26227640, a save of 13 July 2026), the same offsets read 17 banned
 players, Elliot Watt's two bans among them; his lift was restored with the probe and undone
 in the app, and so was a team's (Fulham's). The injury record is laid out alike on both
-systems.
+systems. The Game Pass build (0.9.2355.0, a save of 27 July 2026) reads 48 banned players with
+the same offsets, Watt among them, and the same lifts were restored and undone.
 
-Not yet checked: a game day passing after a ban is lifted, and the Game Pass build.
+Not yet checked: a game day passing after a ban is lifted.
 
 ## Also seen
 
