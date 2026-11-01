@@ -441,6 +441,10 @@ enum Command {
         /// How far a value may be from the one seen, in the units seen (percentages are often rounded).
         #[arg(long, default_value_t = 1.0)]
         tolerance: f64,
+        /// Accept a field on any scale: the values seen must lie on one line (seen = a * stored + b) with the
+        /// stored ones, within --tolerance. Give four or more, as any two points make a line.
+        #[arg(long)]
+        linear: bool,
     },
     /// Find a player field whose average over a club's senior team is a value seen for the club:
     /// for each offset of the player object, the mean over the players who play for the team.
@@ -452,13 +456,17 @@ enum Command {
         #[arg(long, default_value_t = 0.6)]
         tolerance: f64,
     },
-    /// Find where clubs keep a value in records that point back at them: every pointer to each
-    /// club's senior team (or club, with --to-club) is found in memory, and the bytes around it are
-    /// compared, at the same distance from the pointer, with the value seen for that club.
+    /// Find where clubs or players keep a value in records that point back at them: every pointer to
+    /// each club's senior team (or club, with --to-club), or to each player's object or person block,
+    /// is found in memory, and the bytes around it are compared, at the same distance from the
+    /// pointer, with the value seen for that club or player.
     Nearby {
         /// A club UID and the value seen for it, e.g. 680=48; give several clubs.
-        #[arg(long = "club", value_parser = parse_club_value, required = true)]
+        #[arg(long = "club", value_parser = parse_club_value, required_unless_present = "players", conflicts_with = "players")]
         clubs: Vec<(u32, f64)>,
+        /// A player UID and the value seen for him, e.g. 85139014=63; give several players.
+        #[arg(long = "player", value_parser = parse_club_value)]
+        players: Vec<(u32, f64)>,
         /// Look around pointers to the club object instead of its senior team.
         #[arg(long)]
         to_club: bool,
@@ -468,6 +476,16 @@ enum Command {
         /// How far a value may be from the one seen, in the units seen.
         #[arg(long, default_value_t = 0.6)]
         tolerance: f64,
+        /// Compare kinds of record that each one given has up to this many of (a team has a few of its own; a
+        /// player is pointed at by many more records).
+        #[arg(long, default_value_t = 4)]
+        per_kind: usize,
+        /// Also compare the bytes around pointers in records without a vtable before them, such as list entries.
+        #[arg(long)]
+        bare: bool,
+        /// Players: look for records that name each one by his UID (a u32) instead of pointing at him.
+        #[arg(long, requires = "players")]
+        by_uid: bool,
     },
     /// Print the current injuries of the players of one club.
     Injuries {
@@ -762,17 +780,25 @@ fn run(cli: Cli) -> Result<()> {
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
         }
         Command::Squads => squads(&Session::connect(process, ArraySource::ProfileFirst)?),
-        Command::Related { clubs, players, depth, span, tolerance } => {
+        Command::Related { clubs, players, depth, span, tolerance, linear } => {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             let roots = related_roots(&session, &clubs, &players)?;
-            related(&session, &roots, depth, parse_hex(&span)?, tolerance)
+            related(&session, &roots, depth, parse_hex(&span)?, tolerance, linear)
         }
         Command::TeamAverage { clubs, tolerance } => {
             team_average(&Session::connect(process, ArraySource::ProfileFirst)?, &clubs, tolerance)
         }
-        Command::Nearby { clubs, to_club, window, tolerance } => {
+        Command::Nearby { clubs, players, to_club, window, tolerance, per_kind, bare, by_uid } => {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
-            nearby(&session, &clubs, to_club, parse_hex(&window)?, tolerance)
+            let of_players = !players.is_empty();
+            let seen = if of_players { players } else { clubs };
+            let targets = if by_uid {
+                seen.iter().enumerate().map(|(i, &(uid, _))| (u64::from(uid), i)).collect()
+            } else {
+                nearby_targets(&session, &seen, of_players, to_club)?
+            };
+            let options = NearbyOptions { by_uid, window: parse_hex(&window)?, tolerance, per_kind, bare };
+            nearby(&session, &seen, &targets, &options)
         }
         Command::Injuries { club } => injuries(&Session::connect(process, ArraySource::ProfileFirst)?, club),
         Command::Stats { min, max, club, player } => {
@@ -3061,15 +3087,29 @@ fn team_average(session: &Session, clubs: &[(u32, f64)], tolerance: f64) -> Resu
     Ok(())
 }
 
-fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, tolerance: f64) -> Result<()> {
-    const CHUNK: u64 = 8 << 20;
-    ensure!(clubs.len() >= 2, "give at least two clubs, so that a match means something");
-    let window = window / 8 * 8;
-    let index = ClubIndex::new(session.clubs()?);
+/// The addresses whose pointers `nearby` looks for, each with the index of the club or player it
+/// stands for: a club's senior team (or the club itself, with `to_club`), or a player's object and
+/// the block of his that contracts and other records point at.
+fn nearby_targets(
+    session: &Session,
+    seen: &[(u32, f64)],
+    of_players: bool,
+    to_club: bool,
+) -> Result<std::collections::HashMap<u64, usize>> {
     let process = &session.process;
     let mut targets = std::collections::HashMap::new();
-    for (i, &(uid, _)) in clubs.iter().enumerate() {
-        let club = index.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+    if of_players {
+        let players = PlayerIndex::new(session.players()?);
+        for (i, &(uid, _)) in seen.iter().enumerate() {
+            let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+            targets.insert(player.address, i);
+            targets.insert(player.address + session.layout.player.identity() + player.shift, i);
+        }
+        return Ok(targets);
+    }
+    let clubs = ClubIndex::new(session.clubs()?);
+    for (i, &(uid, _)) in seen.iter().enumerate() {
+        let club = clubs.get(uid).with_context(|| format!("no club with UID {uid}"))?;
         let target = if to_club {
             club.address
         } else {
@@ -3077,6 +3117,29 @@ fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, t
         };
         targets.insert(target, i);
     }
+    Ok(targets)
+}
+
+/// How `nearby` looks: see the command's options.
+struct NearbyOptions {
+    by_uid: bool,
+    window: u64,
+    tolerance: f64,
+    per_kind: usize,
+    bare: bool,
+}
+
+fn nearby(
+    session: &Session,
+    clubs: &[(u32, f64)],
+    targets: &std::collections::HashMap<u64, usize>,
+    options: &NearbyOptions,
+) -> Result<()> {
+    let &NearbyOptions { by_uid, window, tolerance, per_kind, bare } = options;
+    const CHUNK: u64 = 8 << 20;
+    ensure!(clubs.len() >= 2, "give at least two, so that a match means something");
+    let window = window / 8 * 8;
+    let process = &session.process;
 
     // Every pointer to a target, by club.
     let started = Instant::now();
@@ -3087,9 +3150,18 @@ fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, t
             let base = region.base + offset;
             let len = (region.size - offset).min(CHUNK);
             if let Ok(chunk) = process.read_bytes(base, len as usize) {
-                for (i, word) in chunk.as_chunks::<8>().0.iter().enumerate() {
-                    if let Some(&club) = targets.get(&u64::from_le_bytes(*word)) {
-                        refs[club].push(base + (i * 8) as u64);
+                if by_uid {
+                    // A UID is a u32 on a 4-byte boundary.
+                    for (i, word) in chunk.as_chunks::<4>().0.iter().enumerate() {
+                        if let Some(&club) = targets.get(&u64::from(u32::from_le_bytes(*word))) {
+                            refs[club].push(base + (i * 4) as u64);
+                        }
+                    }
+                } else {
+                    for (i, word) in chunk.as_chunks::<8>().0.iter().enumerate() {
+                        if let Some(&club) = targets.get(&u64::from_le_bytes(*word)) {
+                            refs[club].push(base + (i * 8) as u64);
+                        }
                     }
                 }
             }
@@ -3114,13 +3186,18 @@ fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, t
             let Ok(bytes) = process.read_bytes(at - window, (2 * window) as usize) else {
                 continue;
             };
-            let words = bytes.as_chunks::<8>().0;
-            let here = (window / 8) as usize;
+            // The words of the record on their 8-byte boundaries: a UID may sit 4 bytes off one.
+            let skew = ((8 - (at - window) % 8) % 8) as usize;
+            let words = bytes[skew..].as_chunks::<8>().0;
+            let here = (window as usize - skew) / 8;
             let vtable = (0..=here).rev().find(|&i| in_plugin(u64::from_le_bytes(words[i])));
-            if let Some(i) = vtable {
-                let kind = (u64::from_le_bytes(words[i]) - plugin.base, ((here - i) * 8) as u64);
-                kinds[club].entry(kind).or_default().push(bytes);
-            }
+            // Records without a vtable are one kind, compared at the same distance from the pointer.
+            let kind = match vtable {
+                Some(i) => (u64::from_le_bytes(words[i]) - plugin.base, (window as usize - skew - i * 8) as u64),
+                None if bare => (0, 0),
+                None => continue,
+            };
+            kinds[club].entry(kind).or_default().push(bytes);
         }
     }
 
@@ -3128,7 +3205,7 @@ fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, t
     for (kind, first) in &kinds[0] {
         // A team's own record is one per club: kinds that every club has a few of at most.
         let all: Vec<&Vec<Vec<u8>>> = kinds.iter().filter_map(|k| k.get(kind)).collect();
-        if all.len() != clubs.len() || all.iter().any(|records| records.len() > 4) || first.is_empty() {
+        if all.len() != clubs.len() || all.iter().any(|records| records.len() > per_kind) || first.is_empty() {
             continue;
         }
         for &(name, size, decode) in &ENCODINGS {
@@ -3148,15 +3225,23 @@ fn nearby(session: &Session, clubs: &[(u32, f64)], to_club: bool, window: u64, t
                     }
                 }
                 if seen.len() == clubs.len() {
-                    // Where the value sits in its record, counted from the record's vtable.
+                    // Where the value sits in its record, counted from the record's vtable, or from the
+                    // pointer in a record without one.
                     let field = (offset as i64 - window as i64) + kind.1 as i64;
                     let shown: Vec<String> = seen.iter().map(|v| format!("{v:.2}")).collect();
-                    println!(
-                        "  record with vtable game_plugin.dll+{:#x}, team pointer at +{:#x}: value at {field:+#x} {name}: {}",
-                        kind.0,
-                        kind.1,
-                        shown.join(" ")
-                    );
+                    if kind.0 == 0 {
+                        println!(
+                            "  record without a vtable: value at {field:+#x} from the pointer {name}: {}",
+                            shown.join(" ")
+                        );
+                    } else {
+                        println!(
+                            "  record with vtable game_plugin.dll+{:#x}, pointer at +{:#x}: value at {field:+#x} {name}: {}",
+                            kind.0,
+                            kind.1,
+                            shown.join(" ")
+                        );
+                    }
                     hits += 1;
                 }
             }
@@ -3233,9 +3318,43 @@ fn related_roots(session: &Session, clubs: &[(u32, f64)], players: &[(u32, f64)]
     Ok(RelatedRoots { names: &["club", "team"], roots, seen: clubs.to_vec() })
 }
 
-fn related(session: &Session, roots: &RelatedRoots, depth: usize, span: u64, tolerance: f64) -> Result<()> {
+/// The values as stored, for --linear: the scale is what is looked for.
+const RAW_ENCODINGS: [Encoding; 6] = [
+    ("u8", 1, |b| f64::from(b[0])),
+    ("i8", 1, |b| f64::from(b[0] as i8)),
+    ("u16", 2, |b| f64::from(u16::from_le_bytes([b[0], b[1]]))),
+    ("i16", 2, |b| f64::from(i16::from_le_bytes([b[0], b[1]]))),
+    ("i32", 4, |b| f64::from(i32::from_le_bytes([b[0], b[1], b[2], b[3]]))),
+    ("f32", 4, |b| f64::from(f32::from_le_bytes([b[0], b[1], b[2], b[3]]))),
+];
+
+/// The line `seen = a * stored + b` through the pairs, by least squares, when every pair lies within
+/// `tolerance` of it and the stored values are not all the same.
+fn line_through(stored: &[f64], seen: &[f64], tolerance: f64) -> Option<(f64, f64)> {
+    let n = stored.len() as f64;
+    let (mean_x, mean_y) = (stored.iter().sum::<f64>() / n, seen.iter().sum::<f64>() / n);
+    let sxx: f64 = stored.iter().map(|x| (x - mean_x).powi(2)).sum();
+    if !sxx.is_finite() || sxx == 0.0 {
+        return None;
+    }
+    let a = stored.iter().zip(seen).map(|(x, y)| (x - mean_x) * (y - mean_y)).sum::<f64>() / sxx;
+    let b = mean_y - a * mean_x;
+    (a != 0.0 && stored.iter().zip(seen).all(|(x, y)| (a * x + b - y).abs() <= tolerance)).then_some((a, b))
+}
+
+fn related(
+    session: &Session,
+    roots: &RelatedRoots,
+    depth: usize,
+    span: u64,
+    tolerance: f64,
+    linear: bool,
+) -> Result<()> {
     let RelatedRoots { names, roots, seen: clubs } = roots;
     ensure!(clubs.len() >= 2, "give at least two, so that a match means something");
+    ensure!(!linear || clubs.len() >= 4, "give at least four with --linear, as any two values make a line");
+    let wants: Vec<f64> = clubs.iter().map(|&(_, want)| want).collect();
+    let encodings: &[Encoding] = if linear { &RAW_ENCODINGS } else { &ENCODINGS };
     // The objects of the first ones are read whole and compared; the places that match there are
     // then followed, one by one, in the others, which keeps memory in bounds.
     const COMPARED: usize = 3;
@@ -3255,14 +3374,16 @@ fn related(session: &Session, roots: &RelatedRoots, depth: usize, span: u64, tol
             continue;
         }
         let len = all.iter().map(|bytes| bytes.len()).min().unwrap_or(0).min(first.len());
-        for &(name, size, decode) in &ENCODINGS {
+        for &(name, size, decode) in encodings {
             for offset in (0..len.saturating_sub(size - 1)).step_by(size) {
                 if all.iter().any(|bytes| in_address(bytes, offset)) {
                     continue;
                 }
                 let mut values: Vec<f64> = all.iter().map(|bytes| decode(&bytes[offset..offset + size])).collect();
-                let close = |v: f64, want: f64| v.is_finite() && (v - want).abs() <= tolerance;
-                if !values.iter().zip(clubs).all(|(&v, &(_, want))| close(v, want)) {
+                let close = |v: f64, want: f64| v.is_finite() && (linear || (v - want).abs() <= tolerance);
+                if !values.iter().zip(clubs).all(|(&v, &(_, want))| close(v, want))
+                    || (linear && line_through(&values, &wants[..values.len()], tolerance).is_none())
+                {
                     continue;
                 }
                 // The other clubs: follow the same path in each and read the same bytes.
@@ -3283,11 +3404,13 @@ fn related(session: &Session, roots: &RelatedRoots, depth: usize, span: u64, tol
                         }
                     }
                 }
-                if agrees {
+                let line = if linear { line_through(&values, &wants, tolerance) } else { None };
+                if agrees && (!linear || line.is_some()) {
                     let steps: Vec<String> = path[1..].iter().map(|o| format!("+{o:#x}")).collect();
                     let root = names[path[0] as usize];
                     let shown: Vec<String> = values.iter().map(|v| format!("{v:.2}")).collect();
-                    println!("  {root}{} -> +{offset:#x} {name}: {}", steps.join(" -> "), shown.join(" "));
+                    let scale = line.map(|(a, b)| format!("  (seen = {a:.4} * stored {b:+.2})")).unwrap_or_default();
+                    println!("  {root}{} -> +{offset:#x} {name}: {}{scale}", steps.join(" -> "), shown.join(" "));
                     hits += 1;
                 }
             }

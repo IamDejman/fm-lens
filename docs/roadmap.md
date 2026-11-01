@@ -197,7 +197,12 @@ changes many at once, and undo.
     shown in the profile and the squad tab, editable, and a team's Refresh rests it to -500. Checked on the
     Windows Game Pass build; derived for the Mac, not yet checked there.
 - Wave 3, what the others find hard:
-  - [ ] Clear a player's unhappiness, not only his morale.
+  - [ ] Clear a player's unhappiness, not only his morale. FMRTE shows a "happiness" (0–100) and a
+    "playing time happiness" per player. Its readings for six players (Mbappé 63, Güler 40, Gyökeres 60,
+    Justin Che 40, Robert Voloder 20, David Ayala 60, on the Game Pass save) matched no stored value: not
+    within three pointer hops of the player, nor in the records that point at him or name his UID, on any
+    linear scale (`related --linear`, `nearby --player`, `nearby --by-uid`). It looks computed from
+    several factors, as the game's happiness page lists them; the next try would start from those factors.
   - [ ] Keep a player from retiring.
   - [ ] Team cohesion and tactical familiarity (see Phase 6).
   - [ ] Epic.
