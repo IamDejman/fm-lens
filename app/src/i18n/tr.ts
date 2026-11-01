@@ -733,6 +733,17 @@ export const tr: Strings = {
     noneHint: "Logo ve yüz paketleri FM27'nin graphics klasörüne kurulur.",
   },
 
+  update: {
+    available: (version) => `FMLibreEditor ${version} yayımlandı`,
+    youHave: (version) => `Sizdeki sürüm: ${version}.`,
+    download: "İndir",
+    later: "Sonra",
+    check: "Güncellemeleri denetle",
+    checking: "Güncellemeler denetleniyor…",
+    upToDate: "En son sürümü kullanıyorsunuz.",
+    failed: "Güncellemeler denetlenemedi.",
+  },
+
   edit: {
     unknownNation: "Bilinmeyen ülke",
     edit: "Düzenle",

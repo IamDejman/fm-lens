@@ -5,8 +5,8 @@
 // player, staff and club lists in `playerListText`, `staffListText` and `clubListText`. Editing has `editText` (and
 // `fieldLabel` for the names of the fields), the Changes view `changesText`, mass editing `massEditText`, comparing
 // players `comparisonText`, moving a player to another club (or swapping him with one) `moveText`, releasing him
-// `releaseText`, his nationalities and homegrown status `tieText`, a club's squad `squadText`, the sidebar and the connect panel `appText`, and the status of the
-// graphics packs `graphicsText`.
+// `releaseText`, his nationalities and homegrown status `tieText`, a club's squad `squadText`, the sidebar and the connect panel `appText`, the status of the
+// graphics packs `graphicsText`, and new versions of the app `updateText`.
 // A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts).
 
 import { formatNumber } from "./format";
@@ -121,6 +121,9 @@ export const appText = strings.app;
 
 /** The graphics packs the pictures come from: their status at the foot of the sidebar. */
 export const graphicsText = strings.graphics;
+
+/** New versions: the notice under the masthead and Check for updates at the foot of the window. */
+export const updateText = strings.update;
 
 /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
 export const editText = strings.edit;

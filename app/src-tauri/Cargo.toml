@@ -21,3 +21,4 @@ fmlibre-core.workspace = true
 fmlibre-mem.workspace = true
 serde.workspace = true
 tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"

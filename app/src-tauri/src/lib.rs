@@ -1786,6 +1786,8 @@ fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, Failu
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Opens the page of a new release in the browser (see app/src/update.ts).
+        .plugin(tauri_plugin_opener::init())
         .manage(AppState::default())
         .manage(Graphics::default())
         .setup(|app| {

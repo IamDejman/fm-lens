@@ -596,6 +596,55 @@ dd,
   color: var(--danger);
 }
 
+/* A newer version is out: the notice under the masthead, its two buttons at the right. */
+.update-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 12px 18px 0;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--accent-text);
+  border-radius: var(--radius);
+  background: var(--accent-faint);
+}
+
+.update-current {
+  margin-left: 8px;
+  color: var(--muted);
+}
+
+.update-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Check for updates in the colophon: a link in the small print, and what it found beside it. */
+.update-check {
+  display: inline-flex;
+  flex: none;
+  gap: 8px;
+}
+
+.colophon button.update-link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.colophon button.update-link:hover:not(:disabled) {
+  background: none;
+  color: var(--text);
+}
+
 /* Connect */
 
 .connect {

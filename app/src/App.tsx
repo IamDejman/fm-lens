@@ -12,6 +12,8 @@ import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
 import type { BridgeInfo, ConnectionInfo, Detection, ReloadInfo } from "./types";
+import { useUpdateCheck } from "./update";
+import { UpdateCheck, UpdateNotice } from "./UpdateNotice";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
@@ -57,6 +59,9 @@ function App() {
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog, clear: clearLog } = useChangeLog();
+  const update = useUpdateCheck();
+  // Whether Check for updates was pressed: only then does the foot of the window say what was found.
+  const [askedUpdate, setAskedUpdate] = useState(false);
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
     setBusy(label);
@@ -183,6 +188,7 @@ function App() {
       </header>
 
       <div className="main">
+        {update.notice && <UpdateNotice release={update.notice} current={update.current} onLater={update.later} />}
         {error && <div className="banner">{error}</div>}
 
         {connection ? (
@@ -210,8 +216,18 @@ function App() {
       <footer className="colophon">
         <div className="colophon-main">
           <span className="colophon-name">
-            FMLibreEditor · {appText.stage}
+            FMLibreEditor{update.current && ` ${update.current}`} · {appText.stage}
           </span>
+          {update.current && (
+            <UpdateCheck
+              state={update.state}
+              asked={askedUpdate}
+              onCheck={() => {
+                setAskedUpdate(true);
+                update.check();
+              }}
+            />
+          )}
           <span className={`status ${connection ? "on" : ""}`}>
             <span className="dot" />
             <span className="status-text">
