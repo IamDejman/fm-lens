@@ -215,6 +215,16 @@ function details(player: PlayerSummary): PlayerDetails {
           squadNumber: 1 + Math.floor(next() * 40),
           transferListed: next() < 0.1,
           loanListed: false,
+          loyaltyBonus: Math.round(next() * 30000),
+          happiness: Math.round(-20 + next() * 100),
+          playingTimeHappiness: Math.round(next() * 40),
+          clauses: [
+            { index: 0, kind: 32, amount: Math.round(10000 + next() * 60000), condition: null },
+            { index: 1, kind: 33, amount: Math.round(5000 + next() * 40000), condition: null },
+            { index: 2, kind: 38, amount: Math.round(2000 + next() * 15000), condition: null },
+            ...(next() < 0.5 ? [{ index: 3, kind: 0, amount: Math.round(50 + next() * 500) * 1_000_000, condition: null }] : []),
+            ...(next() < 0.5 ? [{ index: 4, kind: 22, amount: null, condition: 1 }] : []),
+          ],
           // A player moved to another club signed today, without a squad number, off the transfer list.
           ...(movedPlayers.has(player.uid) && {
             signed: GAME_DATE,
@@ -497,6 +507,9 @@ function fieldTable(entity: Entity): EditField[] {
     { ...field("contract.squad_status", "u8", 1, 40), choices: [1, 2, 3, 4, 5], mass: false },
     { ...field("contract.transfer_listed", "flag", 0, 1), mass: false },
     { ...field("contract.loan_listed", "flag", 0, 1), mass: false },
+    field("contract.loyalty_bonus", "i32", 0, 10_000_000),
+    field("contract.happiness", "i8", -100, 100),
+    field("contract.playing_time_happiness", "i8", -100, 100),
   ];
   const common = [
     field("current_ability", "u16", 1, 200),
@@ -627,6 +640,12 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
             contract.transferListed = value === 1;
           } else if (name === "loan_listed") {
             contract.loanListed = value === 1;
+          } else if (name === "loyalty_bonus") {
+            contract.loyaltyBonus = value;
+          } else if (name === "happiness") {
+            contract.happiness = value;
+          } else if (name === "playing_time_happiness") {
+            contract.playingTimeHappiness = value;
           }
         }
         break;
@@ -733,6 +752,12 @@ function currentValues(entity: Entity, uid: number): FieldValues {
             return contract && Number(contract.transferListed);
           case "loan_listed":
             return contract && Number(contract.loanListed);
+          case "loyalty_bonus":
+            return contract?.loyaltyBonus;
+          case "happiness":
+            return contract?.happiness;
+          case "playing_time_happiness":
+            return contract?.playingTimeHappiness;
         }
         return undefined;
       }

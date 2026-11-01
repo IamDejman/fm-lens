@@ -152,6 +152,23 @@ const errors: ErrorTexts = {
   "mass.outOfDate": () => "Bu önizleme eskidi. Toplu düzenlemeyi yeniden önizleyin.",
 };
 
+const CLAUSE_NAMES_TR: Partial<Record<number, string>> = {
+  0: "Serbest kalma maddesi",
+  1: "Küme düşmede serbest kalma maddesi",
+  3: "Yıllık maaş artışı",
+  10: "Sezonluk gol hedefi primi",
+  15: "Üst ligden düşmede maaş indirimi",
+  19: "Milli maç sayısına ulaşınca maaş",
+  22: "Kulübün tek taraflı uzatma opsiyonu",
+  27: "Serbest kalma maddesi (Şampiyonlar Kupası'ndaki kulüpler)",
+  32: "Maç başına ücret",
+  33: "Gol primi",
+  34: "Gol yememe primi",
+  38: "Oynamayan yedek ücreti",
+  39: "Asist primi",
+  40: "Sezonluk asist hedefi primi",
+};
+
 export const tr: Strings = {
   attributes: {
     // Teknik
@@ -343,6 +360,9 @@ export const tr: Strings = {
     jadedness: "Yorgunluk",
     morale: "Moral",
     "contract.wage": "Haftalık maaş",
+    "contract.loyalty_bonus": "Haftalık sadakat primi",
+    "contract.happiness": "Mutluluk",
+    "contract.playing_time_happiness": "Forma süresi mutluluğu",
     "contract.expires": "Sözleşme bitişi",
     "contract.squad_number": "Forma numarası",
     "contract.squad_status": "Forma süresi",
@@ -441,6 +461,30 @@ export const tr: Strings = {
 
     // Medical
     morale: (value) => `${value} / 20`,
+    clauses: "Primler ve maddeler",
+    noClauses: "Prim ya da madde yok",
+    loyaltyBonus: "Sadakat primi",
+    happiness: "Mutluluk",
+    playingTimeHappiness: "Forma süresi mutluluğu",
+    moodTitle: "FMRTE'nin gösterdiği gibi, -100 ile 100 arasında; oyun bunu kelimelerle gösterir",
+    clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? `Madde ${kind}`,
+    clauseCondition: (kind, value) => {
+      switch (kind) {
+        case 10:
+          return `${value} gol`;
+        case 40:
+          return `${value} asist`;
+        case 19:
+          return `${value} milli maç`;
+        case 22:
+          return `${value} yıl`;
+        case 3:
+        case 15:
+          return `%${value}`;
+        default:
+          return String(value);
+      }
+    },
     moraleTitle: "Oyun morali Genel Mutluluk olarak gösterir: 10'da Memnun, 11'de Biraz Mutlu, 15 ve 20'de Aşırı Mutlu",
     jadednessTitle: "Oyuncunun maç oynamaktan ne kadar yıprandığı, dinlenince azalır: -500 tamamen dinlenmiş demektir, değer yükseldikçe dinlenmeye daha çok ihtiyaç duyar",
     noInjuries: "Sakatlığı yok",

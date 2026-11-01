@@ -151,7 +151,7 @@ impl Attribute {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Contract {
     /// Pounds per week.
@@ -163,6 +163,59 @@ pub struct Contract {
     pub squad_number: Option<u8>,
     pub transfer_listed: bool,
     pub loan_listed: bool,
+    /// Pounds per week.
+    pub loyalty_bonus: i32,
+    /// How happy he is, and how happy with his playing time, as FMRTE shows them.
+    pub happiness: i8,
+    pub playing_time_happiness: i8,
+    /// His clauses and bonuses, in the contract's order.
+    pub clauses: Vec<Clause>,
+}
+
+/// One of a contract's clauses or bonuses: a release clause, an appearance fee, a yearly wage rise...
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Clause {
+    /// Its place in the contract's list.
+    pub index: usize,
+    /// The game's code for what it is (see the names in the app's dictionaries).
+    pub kind: u16,
+    /// Pounds; none for a clause without an amount, such as a yearly wage rise.
+    pub amount: Option<u32>,
+    /// What it depends on: goals, assists, matches, years or a percentage, by kind; none for most.
+    pub condition: Option<u16>,
+}
+
+/// The clauses of the contract at `contract`, from its list of 8-byte entries; none when the list does not look
+/// like one.
+pub(crate) fn read_clauses(process: &Process, layout: &Layout, contract: u64) -> Vec<Clause> {
+    const MOST: u64 = 64;
+    let at = contract + layout.contract.clauses;
+    let (Ok(begin), Ok(end)) = (process.read_u64(at), process.read_u64(at + 8)) else {
+        return Vec::new();
+    };
+    if !is_user_pointer(begin) || end < begin || end - begin > 8 * MOST || (end - begin) % 8 != 0 {
+        return Vec::new();
+    }
+    let Ok(bytes) = process.read_bytes(begin, (end - begin) as usize) else {
+        return Vec::new();
+    };
+    bytes
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .enumerate()
+        .map(|(index, e)| {
+            let amount = u32::from_le_bytes([e[0], e[1], e[2], e[3]]);
+            let condition = u16::from_le_bytes([e[4], e[5]]);
+            Clause {
+                index,
+                kind: u16::from_le_bytes([e[6], e[7]]),
+                amount: (amount != u32::MAX).then_some(amount),
+                condition: (condition != u16::MAX).then_some(condition),
+            }
+        })
+        .collect()
 }
 
 /// Reads the full profile of `player`. Returns `None` when the object at the player's
@@ -241,6 +294,12 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
         squad_number: (squad_number != 255).then_some(squad_number),
         transfer_listed: listing & 1 != 0,
         loan_listed: listing & 2 != 0,
+        loyalty_bonus: i32::from_le_bytes(
+            buf[c.loyalty_bonus as usize..c.loyalty_bonus as usize + 4].try_into().expect("4 bytes"),
+        ),
+        happiness: buf[c.happiness as usize] as i8,
+        playing_time_happiness: buf[c.playing_time_happiness as usize] as i8,
+        clauses: read_clauses(process, layout, address),
     })
 }
 

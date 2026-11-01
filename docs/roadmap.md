@@ -200,12 +200,13 @@ changes many at once, and undo.
     shown in the profile and the squad tab, editable, and a team's Refresh rests it to -500. Checked on the
     Windows Game Pass build; derived for the Mac, not yet checked there.
 - Wave 3, what the others find hard:
-  - [ ] Clear a player's unhappiness, not only his morale. FMRTE shows a "happiness" (0–100) and a
-    "playing time happiness" per player. Its readings for six players (Mbappé 63, Güler 40, Gyökeres 60,
-    Justin Che 40, Robert Voloder 20, David Ayala 60, on the Game Pass save) matched no stored value: not
-    within three pointer hops of the player, nor in the records that point at him or name his UID, on any
-    linear scale (`related --linear`, `nearby --player`, `nearby --by-uid`). It looks computed from
-    several factors, as the game's happiness page lists them; the next try would start from those factors.
+  - [ ] Clear a player's unhappiness, not only his morale. His happiness and his happiness with his playing time,
+    as FMRTE shows them, are signed bytes of his contract (`+0x5A`, `+0x5C`): the app edits them (below). An earlier
+    search missed them because the probe took the eight bytes around them for a pointer; it now checks that a
+    pointer points into readable memory. Still to find: the list of his unhappiness reasons (FMRTE's "Unhappiness").
+  - [x] Contract extras: the loyalty bonus (`+0x38`), happiness and playing time happiness, editable, and the list of
+    clauses and bonuses (`+0x68`: amount, condition and kind), shown by name. Kinds named against FMRTE's contract
+    page for Kane, Haaland, Alex Scott, Courtois and Olise; editing the clauses comes next.
   - [ ] Keep a player from retiring.
   - [ ] Team cohesion and tactical familiarity (see Phase 6).
   - [ ] Epic.

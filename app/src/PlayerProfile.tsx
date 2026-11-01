@@ -1,6 +1,6 @@
 import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
-import { formatPounds } from "./format";
+import { formatNumber, formatPounds } from "./format";
 import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroup } from "./MedicalGroup";
 import { MoveButton } from "./MoveDialog";
@@ -23,7 +23,7 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { Contract, PlayerDetails, PlayerSummary } from "./types";
+import type { Clause, Contract, PlayerDetails, PlayerSummary } from "./types";
 import type { Comparison } from "./useComparison";
 import { useEditableField, useProfileEditing } from "./useProfileEditing";
 
@@ -168,10 +168,22 @@ function ContractGroup({ contract }: { contract: Contract }) {
             <Fact label={profileText.squadNumber}>
               <EditableValue field="contract.squad_number">{contract.squadNumber ?? profileText.none}</EditableValue>
             </Fact>
+            <Fact label={profileText.loyaltyBonus}>
+              <EditableValue field="contract.loyalty_bonus">{formatPounds(contract.loyaltyBonus)}</EditableValue>
+            </Fact>
+            <Fact label={profileText.happiness} title={profileText.moodTitle}>
+              <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
+            </Fact>
+            <Fact label={profileText.playingTimeHappiness} title={profileText.moodTitle}>
+              <EditableValue field="contract.playing_time_happiness">
+                {formatNumber(contract.playingTimeHappiness)}
+              </EditableValue>
+            </Fact>
           </dl>
         </div>
         <ContractDates contract={contract} />
       </div>
+      <ClauseList clauses={contract.clauses} />
       {editingListing ? (
         <div className="tags">
           <EditInput field="contract.transfer_listed" />
@@ -186,6 +198,31 @@ function ContractGroup({ contract }: { contract: Contract }) {
         )
       )}
     </section>
+  );
+}
+
+/** The contract's clauses and bonuses, by name, with what each depends on and its amount. */
+function ClauseList({ clauses }: { clauses: Clause[] }) {
+  return (
+    <div className="clauses">
+      <h4>{profileText.clauses}</h4>
+      {clauses.length === 0 ? (
+        <p className="note">{profileText.noClauses}</p>
+      ) : (
+        <dl className="stats">
+          {clauses.map((clause) => (
+            <Fact key={clause.index} label={profileText.clauseName(clause.kind)}>
+              {[
+                clause.condition === null ? null : profileText.clauseCondition(clause.kind, clause.condition),
+                clause.amount === null ? null : formatPounds(clause.amount),
+              ]
+                .filter((part) => part !== null)
+                .join(" · ") || "✓"}
+            </Fact>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }
 

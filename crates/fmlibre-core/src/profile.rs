@@ -245,6 +245,11 @@ pub struct ContractLayout {
     pub clauses: u64,
     /// The list of its bonuses for winning competitions: 32-byte entries.
     pub competition_bonuses: u64,
+    /// `i32`, pounds per week.
+    pub loyalty_bonus: u64,
+    /// `i8` each: how happy the player is, and how happy with his playing time, as FMRTE shows them.
+    pub happiness: u64,
+    pub playing_time_happiness: u64,
 }
 
 impl ContractLayout {
@@ -262,6 +267,9 @@ impl ContractLayout {
             self.team + 8,
             self.senior_team + 8,
             self.job + 1,
+            self.loyalty_bonus + 4,
+            self.happiness + 1,
+            self.playing_time_happiness + 1,
         ]
         .into_iter()
         .max()

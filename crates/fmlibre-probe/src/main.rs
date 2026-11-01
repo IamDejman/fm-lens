@@ -1,4 +1,4 @@
-﻿//! `fmlibre-probe`: a look inside a running Football Manager process.
+//! `fmlibre-probe`: a look inside a running Football Manager process.
 //!
 //! Use it to check that FMLibreEditor can attach to a given build (Steam, Epic, Game
 //! Pass) and to map where the game keeps its data. Only `set` writes to the game, one
@@ -1729,7 +1729,18 @@ fn list_entries(process: &Process, at: u64, size: usize) -> Vec<Vec<u8>> {
     if !is_user_pointer(begin) || end < begin || end - begin > 64 * size as u64 || (end - begin) % size as u64 != 0 {
         return Vec::new();
     }
-    process.read_bytes(begin, (end - begin) as usize).map(|bytes| bytes.chunks(size).map(<[u8]>::to_vec).collect()).unwrap_or_default()
+    process
+        .read_bytes(begin, (end - begin) as usize)
+        .map(|bytes| bytes.chunks(size).map(<[u8]>::to_vec).collect())
+        .unwrap_or_default()
+}
+
+/// What `clauses` saw of one kind: how many contracts, the lowest and highest amounts, and who (ability, name, amount).
+struct KindSeen {
+    contracts: usize,
+    low: u32,
+    high: u32,
+    who: Vec<(u16, String, u32)>,
 }
 
 fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
@@ -1740,7 +1751,11 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
         process.read_u64(player.address + pl.at(pl.contract, player.shift)).ok().filter(|&p| is_user_pointer(p))
     };
     let clause = |e: &[u8]| {
-        (u32::from_le_bytes(e[0..4].try_into().expect("4")), u16::from_le_bytes([e[4], e[5]]), u16::from_le_bytes([e[6], e[7]]))
+        (
+            u32::from_le_bytes(e[0..4].try_into().expect("4")),
+            u16::from_le_bytes([e[4], e[5]]),
+            u16::from_le_bytes([e[6], e[7]]),
+        )
     };
     if let Some(uid) = uid {
         let index = PlayerIndex::new(players);
@@ -1752,28 +1767,29 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
             println!("  clause kind {kind:>3} ({kind:#04x})  amount {amount:>12}  condition {condition:#06x}");
         }
         for e in list_entries(process, contract + c.competition_bonuses, 32) {
-            let words: Vec<String> = e.chunks(4).map(|w| format!("{:x}", u32::from_le_bytes(w.try_into().expect("4")))).collect();
+            let words: Vec<String> =
+                e.chunks(4).map(|w| format!("{:x}", u32::from_le_bytes(w.try_into().expect("4")))).collect();
             println!("  competition bonus  {}", words.join(" "));
         }
         return Ok(());
     }
     // Every kind: how many contracts, the amounts, and the best players who have one.
-    let mut kinds: BTreeMap<u16, (usize, u32, u32, Vec<(u16, String, u32)>)> = BTreeMap::new();
+    let mut kinds: BTreeMap<u16, KindSeen> = BTreeMap::new();
     let mut bonuses = 0;
     for player in &players {
         let Some(contract) = contract_of(player) else { continue };
         for e in list_entries(process, contract + c.clauses, 8) {
             let (amount, _, kind) = clause(&e);
-            let entry = kinds.entry(kind).or_insert((0, u32::MAX, 0, Vec::new()));
-            entry.0 += 1;
-            entry.1 = entry.1.min(amount);
-            entry.2 = entry.2.max(amount);
-            entry.3.push((player.current_ability, player.name.clone(), amount));
+            let seen = kinds.entry(kind).or_insert(KindSeen { contracts: 0, low: u32::MAX, high: 0, who: Vec::new() });
+            seen.contracts += 1;
+            seen.low = seen.low.min(amount);
+            seen.high = seen.high.max(amount);
+            seen.who.push((player.current_ability, player.name.clone(), amount));
         }
         bonuses += usize::from(!list_entries(process, contract + c.competition_bonuses, 32).is_empty());
     }
-    for (kind, (count, low, high, mut who)) in kinds {
-        who.sort_by(|a, b| b.0.cmp(&a.0));
+    for (kind, KindSeen { contracts: count, low, high, mut who }) in kinds {
+        who.sort_by_key(|&(ability, _, _)| std::cmp::Reverse(ability));
         let best: Vec<String> = who.iter().take(3).map(|(_, name, amount)| format!("{name} {amount}")).collect();
         println!("  kind {kind:>3} ({kind:#04x}): {count:>6} contracts, {low}..{high}; {}", best.join(", "));
     }
@@ -3303,8 +3319,9 @@ fn resolve(expr: &str, modules: &[Module]) -> Result<u64> {
 /// Each encoding turns the bytes at an offset into a number in the units a tool shows, if they fit.
 type Encoding = (&'static str, usize, fn(&[u8]) -> f64);
 
-const ENCODINGS: [Encoding; 10] = [
+const ENCODINGS: [Encoding; 11] = [
     ("u8", 1, |b| f64::from(b[0])),
+    ("i8", 1, |b| f64::from(b[0] as i8)),
     ("i16", 2, |b| f64::from(i16::from_le_bytes([b[0], b[1]]))),
     ("i32", 4, |b| f64::from(i32::from_le_bytes([b[0], b[1], b[2], b[3]]))),
     ("u8 of 255", 1, |b| f64::from(b[0]) * 100.0 / 255.0),
@@ -3320,9 +3337,31 @@ const ENCODINGS: [Encoding; 10] = [
 /// address: a byte of a pointer matches a value by chance far too often.
 fn in_address(bytes: &[u8], offset: usize) -> bool {
     let word = offset / 8 * 8;
-    word + 8 <= bytes.len()
-        && (0x1_0000_0000..0x8000_0000_0000)
-            .contains(&u64::from_le_bytes(bytes[word..word + 8].try_into().expect("8 bytes")))
+    if word + 8 > bytes.len() {
+        return false;
+    }
+    let value = u64::from_le_bytes(bytes[word..word + 8].try_into().expect("8 bytes"));
+    // A value in the address range is a pointer only if it points into mapped memory: a contract keeps its happiness
+    // in bytes that, read as one word, look like an address.
+    (0x1_0000_0000..0x8000_0000_0000).contains(&value)
+        && MAPPED.get().is_none_or(|mapped| {
+            let after = mapped.partition_point(|&(start, _)| start <= value);
+            after > 0 && value < mapped[after - 1].1
+        })
+}
+
+/// The game's mapped regions, `(start, end)` in order, once a search has noted them (see `in_address`).
+static MAPPED: std::sync::OnceLock<Vec<(u64, u64)>> = std::sync::OnceLock::new();
+
+/// Notes the game's mapped regions for `in_address`.
+fn note_mapped(process: &Process) {
+    let mut mapped: Vec<(u64, u64)> = regions(process, 0x1_0000, 0x7FFF_FFFF_0000)
+        .into_iter()
+        .filter(|r| r.is_readable())
+        .map(|r| (r.base, r.base + r.size))
+        .collect();
+    mapped.sort_unstable();
+    let _ = MAPPED.set(mapped);
 }
 
 fn team_average(session: &Session, clubs: &[(u32, f64)], tolerance: f64) -> Result<()> {
@@ -3415,6 +3454,7 @@ fn nearby(
     options: &NearbyOptions,
 ) -> Result<()> {
     let &NearbyOptions { by_uid, window, tolerance, per_kind, bare } = options;
+    note_mapped(&session.process);
     const CHUNK: u64 = 8 << 20;
     ensure!(clubs.len() >= 2, "give at least two, so that a match means something");
     let window = window / 8 * 8;
@@ -3630,6 +3670,7 @@ fn related(
     linear: bool,
 ) -> Result<()> {
     let RelatedRoots { names, roots, seen: clubs } = roots;
+    note_mapped(&session.process);
     ensure!(clubs.len() >= 2, "give at least two, so that a match means something");
     ensure!(!linear || clubs.len() >= 4, "give at least four with --linear, as any two values make a line");
     let wants: Vec<f64> = clubs.iter().map(|&(_, want)| want).collect();
