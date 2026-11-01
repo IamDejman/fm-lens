@@ -159,12 +159,12 @@ changes many at once, and undo.
     people in its lists.
   - [x] One click in a club's squad tab to max out its players' attributes.
   - [x] Freeze a club's money: while the app runs, its balance does not go down.
-  - Checked on the Mac Steam build and on the Windows Steam build: the filters on a real save, and each new
-    field written, read back and restored. Next: the same on Game Pass, and freezing money through a game day.
+  - Checked on the Mac Steam build and on the Windows Steam and Game Pass builds: the filters on a real save,
+    and each new field written, read back and restored. Next: freezing money through a game day.
 - Transfers, which users asked for next:
   - [x] A move with a fee: the buying club pays it out of its balance and transfer budget, the selling
     club's balance takes it, and one undo takes back the move and the fee (the money by what it changed, as
-    the game moves money on every day). Checked on the Mac and Windows Steam builds.
+    the game moves money on every day). Checked on the Mac Steam build and both Windows builds.
   - [ ] The transfer in the game's history. When the game makes a transfer it writes events (date, fee,
     player, clubs) into a stream that nothing points at one by one: see the
     [transfer notes](recon/fm27-transfers.md).
@@ -175,19 +175,19 @@ changes many at once, and undo.
     keeps its staff in three department lists (medical, coaching, scouting); a move takes them out of the
     old club's and into the new club's, and a new job moves them between departments. Staff whom the club or
     a team points at directly, such as a team's manager, are left to the game, and a full list is refused.
-    Checked on the Mac and Windows Steam builds, each change restored.
+    Checked on the Mac Steam build and both Windows builds, each change restored.
   - [x] Release a player on a free: he leaves his club's lists, and his team and contract pointers are
     cleared, as the game's own free agents have them. A captaincy he held is left empty; so is one a player
-    gives up by moving. Checked on the Mac and Windows Steam builds, restored.
+    gives up by moving. Checked on the Mac Steam build and both Windows builds, restored.
   - [ ] Contract bonuses and release clauses.
   - [x] Suspensions: lift a player's bans, or all of a squad's. A player's bans are listed in the record his
     injuries hang off, with his other absences; lifting takes them out of that list and keeps the others, as
-    healing does with injuries. Checked on the Mac and Windows Steam builds, restored; Game Pass unverified:
-    see the [ban notes](recon/fm27-bans.md).
+    healing does with injuries. Checked on the Mac Steam build and both Windows builds, restored: see the
+    [ban notes](recon/fm27-bans.md).
   - [x] Secondary nationalities and homegrown status: the nations and clubs a player was trained in, under the
     rule each meets (15-21, 0-21, ...). They are entries of the person's list of relations; the editor changes,
     removes and, where the list has room, adds them. Checked on the Mac Steam build against the game's eligibility
-    page, and on the Windows Steam build; Game Pass unverified: see the [nationality notes](recon/fm27-nationality.md).
+    page, and on both Windows builds: see the [nationality notes](recon/fm27-nationality.md).
   - [ ] Place of birth: a pointer to a city record (`+0x2C8` on macOS), whose nation the game shows.
   - [ ] Appearance. FM27 keeps a person's looks as dozens of 3D face values for the match engine
     (`MATCH_PERSON_APPEARANCE_INPUT`: skin tone, hair and eye colours, face shape); set aside.
