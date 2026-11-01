@@ -11,7 +11,7 @@
 import { formatNumber } from "./format";
 import { intlLocale, strings } from "./i18n";
 import type { Strings } from "./i18n/en";
-import type { CaptainRole, Entity } from "./types";
+import type { CaptainRole, Entity, Nation } from "./types";
 
 export const ATTRIBUTE_LABELS = strings.attributes;
 
@@ -65,9 +65,20 @@ export function jobLabel(code: number | null): string {
   return coach !== undefined ? profileText.playerCoach(coach) : profileText.unknownJob(code);
 }
 
+/** The names of the nations a nation field can be set to, by address, once they have been read (see `fieldTable`). */
+const NATION_NAMES = new Map<number, string>();
+
+/** Keeps the names of `nations`, for the nation field's select and for the change log. */
+export function nameNations(nations: readonly Nation[]): void {
+  for (const nation of nations) {
+    NATION_NAMES.set(nation.address, nation.name);
+  }
+}
+
 /** How the codes of a field that holds codes from a list (see `EditField.choices`) are named, by the field's key. */
 const CHOICE_NAMES = new Map<string, (code: number) => string>([
   ["contract.squad_status", profileText.squadStatusName],
+  ["nation", (address) => NATION_NAMES.get(address) ?? editText.unknownNation],
 ]);
 
 /**

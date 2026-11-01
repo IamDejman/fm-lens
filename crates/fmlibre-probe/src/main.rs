@@ -12,10 +12,10 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
-    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, CaptainRole, ClubIndex, Entity, Field, FmDate, GAME_EXE,
-    GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms, PERSONALITY, POSITIONS, Picture, PlayerFilter,
-    PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions,
-    Session, SessionError, StaffIndex, Target, find_game, job_name, scan_object_arrays, sort_players,
+    ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, AttributeBound, CaptainRole, ClubIndex, Entity, Field, FmDate,
+    GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms, PERSONALITY, POSITIONS, Picture,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale,
+    ScanOptions, Session, SessionError, StaffIndex, Target, find_game, job_name, scan_object_arrays, sort_players,
 };
 #[cfg(target_os = "macos")]
 use fmlibre_mem::MachImage;
@@ -1452,11 +1452,40 @@ struct PlayerFilterArgs {
     /// Only contracts ending on or before this date (YYYY-MM-DD).
     #[arg(long)]
     expires_by: Option<String>,
+    /// Only players on the transfer list.
+    #[arg(long)]
+    transfer_listed: bool,
+    /// Only players on the loan list.
+    #[arg(long)]
+    loan_listed: bool,
+    /// A bound on an attribute as FM shows it (1-20): finishing=15.., pace=15..18 or injury_proneness=..5.
+    /// Repeat it for more.
+    #[arg(long = "attribute", value_name = "KEY=MIN..MAX")]
+    attributes: Vec<String>,
     /// Sort by ca, pa, age, name, nation, club or expires (highest first unless --ascending).
     #[arg(long)]
     sort: Option<String>,
     #[arg(long)]
     ascending: bool,
+}
+
+/// A `KEY=MIN..MAX` attribute bound, either end of which may be left out.
+fn parse_attribute_bound(text: &str) -> Result<AttributeBound> {
+    let (key, range) = text.split_once('=').ok_or_else(|| anyhow!("{text}: expected KEY=MIN..MAX"))?;
+    ensure!(
+        ATTRIBUTE_GROUPS.iter().any(|(_, keys)| keys.contains(&key)),
+        "unknown attribute {key}; see `fields player` for the keys"
+    );
+    let (min, max) = range.split_once("..").ok_or_else(|| anyhow!("{text}: expected KEY=MIN..MAX"))?;
+    let end = |part: &str| -> Result<Option<u8>> {
+        if part.is_empty() {
+            return Ok(None);
+        }
+        let value: u8 = part.parse().with_context(|| format!("{text}: {part} is not a number"))?;
+        ensure!((1..=20).contains(&value), "{text}: attributes run from 1 to 20");
+        Ok(Some(value))
+    };
+    Ok(AttributeBound { key: key.to_owned(), min: end(min)?, max: end(max)? })
 }
 
 impl PlayerFilterArgs {
@@ -1469,6 +1498,7 @@ impl PlayerFilterArgs {
             );
         }
         let contract_expires_by = self.expires_by.as_deref().map(parse_iso_date).transpose()?;
+        let attributes = self.attributes.iter().map(|text| parse_attribute_bound(text)).collect::<Result<_>>()?;
         let filter = PlayerFilter {
             position: self.position.clone(),
             min_age: self.min_age,
@@ -1480,6 +1510,9 @@ impl PlayerFilterArgs {
             club_uid: None,
             free_agents: self.free_agents,
             contract_expires_by,
+            transfer_listed: self.transfer_listed,
+            loan_listed: self.loan_listed,
+            attributes,
         };
         let by = match self.sort.as_deref() {
             None => return Ok((filter, None)),

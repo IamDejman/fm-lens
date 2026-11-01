@@ -5,6 +5,8 @@ import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
 import type {
   ApplyReport,
+  AttributeBound,
+  Nation,
   BridgeInfo,
   CaptainRole,
   ClubTeam,
@@ -49,6 +51,10 @@ import type {
 
 const GAME_DATE: FmDate = { year: 2026, month: 7, day: 18 };
 
+/** The age on `today` of someone born on `born`. */
+const ageOn = (born: FmDate, today: FmDate) =>
+  today.year - born.year - (today.month * 100 + today.day < born.month * 100 + born.day ? 1 : 0);
+
 const game: GameInfo = {
   pid: 4242,
   exePath: "D:\\Games\\Football Manager 27\\Content\\fm.exe",
@@ -63,6 +69,12 @@ const FIRST = ["Arda", "Mateo", "Lukas", "Kerem", "Jonas", "Rafael", "Emre", "No
 const LAST = ["Yılmaz", "Fernández", "Hoffmann", "Aydın", "Lindqvist", "Moreau", "Çelik", "Kowalski", "Silva", "Novák"];
 const NATIONS = ["Türkiye", "Spain", "Germany", "Brazil", "Denmark", "France", "Poland", "Portugal", "Czechia"];
 const CLUBS = ["Northbridge FC", "Atlético Riverside", "Sporting Harbour", "FC Lindenau", "Kuzey Spor", "Old Mill United"];
+
+/** Where the game would keep each fixture nation: what a nation field holds. */
+const nationAddress = (nation: string) => 0x7f00_0000 + NATIONS.indexOf(nation) * 0x400;
+
+/** The fixture nation a nation field's value stands for. */
+const nationAt = (address: number) => NATIONS.find((nation) => nationAddress(nation) === address);
 
 /** A fixture person's nation and club with their UIDs, as the real rows have them; the clubs are the men's ones below. */
 function withUids(nation: string, club: string | null) {
@@ -137,7 +149,7 @@ const { players, ratings } = (() => {
       name,
       fullName,
       dateOfBirth: born,
-      age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
+      age: ageOn(born, GAME_DATE),
       ...withUids(nation, club),
       positions: playablePositions(ratings[uid]),
       contractExpires: club === null ? null : contractEnd(own),
@@ -262,7 +274,7 @@ const staff: StaffSummary[] = (() => {
       name: `${pick(FIRST)} ${pick(LAST)}`,
       fullName: null,
       dateOfBirth: born,
-      age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
+      age: ageOn(born, GAME_DATE),
       ...withUids(pick(NATIONS), employed ? pick(CLUBS) : null),
       job: i === 0 ? 16 : employed ? pick(JOBS) : null,
       currentAbility: ca,
@@ -358,6 +370,9 @@ function fieldTable(entity: Entity): EditField[] {
     return [
       ...common,
       field("height", "u16", 140, 220),
+      { ...field("nation", "pointer", 0x1_0000, 0x7fff_ffff_ffff), mass: false },
+      field("date_of_birth", "date", 19400101, 20201231),
+      { ...field("asking_price", "i32", 0, 2_000_000_000), blank: -1 },
       ...reputation,
       field("international.caps", "u16", 0, 1000),
       field("international.goals", "u16", 0, 1000),
@@ -377,6 +392,7 @@ function fieldTable(entity: Entity): EditField[] {
   return [
     ...common,
     ...reputation,
+    { ...field("nation", "pointer", 0x1_0000, 0x7fff_ffff_ffff), mass: false },
     ...STAFF_ATTRIBUTE_ORDER.map((key) =>
       STAFF_RATINGS.includes(key)
         ? field(`attribute.${key}`, "u8", 1, 20)
@@ -425,6 +441,9 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "height":
         (d as PlayerDetails).heightCm = value;
+        break;
+      case "asking_price":
+        (d as PlayerDetails).askingPrice = value === -1 ? null : value;
         break;
       case "condition":
         (d as PlayerDetails).condition = value;
@@ -518,6 +537,12 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.potentialAbility;
       case "height":
         return person.heightCm;
+      case "date_of_birth":
+        return person.dateOfBirth && numberFromDate(person.dateOfBirth);
+      case "nation":
+        return person.nation === null ? undefined : nationAddress(person.nation);
+      case "asking_price":
+        return (person as PlayerDetails).askingPrice ?? -1;
       case "condition":
         return person.condition;
       case "match_sharpness":
@@ -590,6 +615,19 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
     if (entity === "player" && group === "position") {
       ratings[uid][name] = value;
       (row as PlayerSummary).positions = playablePositions(ratings[uid]);
+      return;
+    }
+    const nation = key === "nation" ? nationAt(value) : undefined;
+    if (row && nation !== undefined) {
+      // The list row has the nation, and the profile is built from the row.
+      Object.assign(row, { nation, nationUid: 1000 + NATIONS.indexOf(nation) });
+      return;
+    }
+    if (entity === "player" && key === "date_of_birth") {
+      // The list row has the birth date and the age, and the profile is built from the row.
+      const player = row as PlayerSummary;
+      player.dateOfBirth = dateFromNumber(value);
+      player.age = player.dateOfBirth && ageOn(player.dateOfBirth, GAME_DATE);
       return;
     }
     if (entity === "player" && key === "contract.expires") {
@@ -1047,8 +1085,17 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     }
     return report;
   }
+  // Max attributes: 20 for each, stored as 100, and 1 (stored as 5) where lower is better, as the real command does.
+  const best = (key: string): [string, number] => [
+    `attribute.${key}`,
+    key === "injury_proneness" || key === "dirtiness" ? 5 : 100,
+  ];
   const values: [string, number][] =
-    action === "inspire" ? [["morale", 20]] : [["condition", 10_000], ["match_sharpness", 10_000]];
+    action === "inspire"
+      ? [["morale", 20]]
+      : action === "refresh"
+        ? [["condition", 10_000], ["match_sharpness", 10_000]]
+        : ATTRIBUTES.map(best);
   for (const player of team.players) {
     const now = currentValues("player", player.uid);
     for (const [field, value] of values) {
@@ -1261,8 +1308,24 @@ function contains(text: string | null, needle: string | undefined): boolean {
   return wanted === "" || (text !== null && fold(text).includes(wanted));
 }
 
+/**
+ * Whether an attribute as FM shows it keeps to `bound`; as in the real filter, one the person does not have keeps to
+ * none.
+ */
+function holds(bound: AttributeBound, value: number | undefined): boolean {
+  return (
+    value !== undefined &&
+    value > 0 &&
+    (bound.min === undefined || value >= bound.min) &&
+    (bound.max === undefined || value <= bound.max)
+  );
+}
+
 /** The player filter of the real command: fields that are not set match everyone. */
 function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
+  // The listings and the attributes are in the profile, made only when a filter asks for them.
+  const needsDetails = f.transferListed || f.loanListed || (f.attributes?.length ?? 0) > 0;
+  const d = needsDetails ? details(p) : null;
   return (
     (f.position === undefined || p.positions.includes(f.position)) &&
     (f.minAge === undefined || (p.age !== null && p.age >= f.minAge)) &&
@@ -1274,7 +1337,10 @@ function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
     (f.clubUid === undefined || p.clubUid === f.clubUid) &&
     (!f.freeAgents || p.club === null) &&
     (f.contractExpiresBy === undefined ||
-      (p.contractExpires !== null && dayNumber(p.contractExpires) <= dayNumber(f.contractExpiresBy)))
+      (p.contractExpires !== null && dayNumber(p.contractExpires) <= dayNumber(f.contractExpiresBy))) &&
+    (!f.transferListed || d?.contract?.transferListed === true) &&
+    (!f.loanListed || d?.contract?.loanListed === true) &&
+    (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
   );
 }
 
@@ -1320,11 +1386,16 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
 
 /** The staff filter of the real command: a player-coach has the code of the coaching job plus one, and matches it too. */
 function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
+  const d = (f.attributes?.length ?? 0) > 0 ? staffDetails(s) : null;
   return (
     (f.job === undefined || (s.job !== null && (s.job === f.job || s.job === f.job + 1))) &&
-    (!f.unemployed || s.job === null)
+    (!f.unemployed || s.job === null) &&
+    (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
   );
 }
+
+/** The clubs whose money is frozen in this page; the fixtures have no game days for it to hold through. */
+const frozenMoney = new Set<number>();
 
 /** The fixture connection, once `connect` has been called in this page. */
 let mockConnection: ConnectionInfo | null = null;
@@ -1476,6 +1547,21 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "edit_fields":
       return fieldTable(args?.entity as Entity) as T;
+    case "freeze_money": {
+      const club = Number(args?.club);
+      if (args?.frozen) {
+        frozenMoney.add(club);
+      } else {
+        frozenMoney.delete(club);
+      }
+      return [...frozenMoney] as T;
+    }
+    case "frozen_clubs":
+      return [...frozenMoney] as T;
+    case "list_nations": {
+      const nations: Nation[] = NATIONS.map((name) => ({ address: nationAddress(name), uid: 1000 + NATIONS.indexOf(name), name }));
+      return nations.sort((a, b) => a.name.localeCompare(b.name)) as T;
+    }
     case "read_values":
       return currentValues(args?.entity as Entity, Number(args?.uid)) as T;
     case "apply_edits":

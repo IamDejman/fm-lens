@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from "react";
-import { AbilityEditGroup } from "./EditControls";
-import { jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
+import { AbilityEditGroup, EditInput } from "./EditControls";
+import { fieldLabel, jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
   attributeRow,
@@ -16,7 +16,7 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type { StaffContract, StaffDetails, StaffSummary } from "./types";
-import { useProfileEditing } from "./useProfileEditing";
+import { useEditableField, useProfileEditing } from "./useProfileEditing";
 
 // Attributes in the order FM lists them, by group.
 const COACHING: StaffAttributeKey[] = [
@@ -136,6 +136,7 @@ function StaffBody({ details }: { details: StaffDetails }) {
       <div className="profile-split">
         <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
         <div className="profile-stack">
+          <NationEditGroup />
           {details.contract && <ContractGroup contract={details.contract} />}
           <section className="profile-group">
             <h3>{profileText.reputation}</h3>
@@ -152,6 +153,19 @@ function attributeRows(details: StaffDetails, keys: StaffAttributeKey[]): Rating
     attributeRow(key, STAFF_ATTRIBUTE_LABELS[key], details.attributes[key], {
       scale: STORED_AS_SHOWN.has(key) ? 20 : 100,
     }),
+  );
+}
+
+/** While the member of staff is edited: the nationality, which the header shows. */
+function NationEditGroup() {
+  if (!useEditableField("nation")) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{fieldLabel("staff", "nation")}</h3>
+      <EditInput field="nation" />
+    </section>
   );
 }
 

@@ -144,3 +144,33 @@ before trusting them.
   Tactics"). Set aside: no single stored value matched ten clubs' readings, so they
   look derived (see the Steam notes). The probe's `related`, `nearby` and
   `team-average` searches are there for another try.
+
+## Phase 7: what FMRTE, FM Live Editor and FM27€0 users reach for (in progress)
+
+FMRTE 27, FM Live Editor 27 and FM27€0 (a free editor on sortitoutsi) set what players expect from a live
+editor, and FM27€0's comments ask for more. Each item lands with the same guarded writes, a preview where it
+changes many at once, and undo.
+
+- Wave 1, what is already mapped or needs no new memory research:
+  - [x] Filter the player and staff lists by any attribute (at least, at most) and the player list by the
+    transfer and loan lists. The mass edit follows the same filters, as FMRTE's does.
+  - [x] Date of birth (age), asking price and nationality, editable. Nationality is a pointer to a nation
+    object: only another object of the same class takes its place, and the app offers the nations of the
+    people in its lists.
+  - [x] One click in a club's squad tab to max out its players' attributes.
+  - [x] Freeze a club's money: while the app runs, its balance does not go down.
+  - Checked on the Mac Steam build: the filters on a real save, and each new field written, read back and
+    restored. Next: the same on Game Pass and Steam for Windows, and freezing money through a game day.
+- Wave 2, new memory research:
+  - [ ] Traits (preferred moves).
+  - [ ] Move a member of staff to another club, keeping the job and the contract, and change a job.
+  - [ ] Release a player on a free.
+  - [ ] Contract bonuses and release clauses.
+  - [ ] Suspensions: lift a ban, or all of a squad's.
+  - [ ] Second nationalities, place of birth, appearance.
+  - [ ] Stadium capacity, ticket prices and league prize money.
+- Wave 3, what the others find hard:
+  - [ ] Clear a player's unhappiness, not only his morale.
+  - [ ] Keep a player from retiring.
+  - [ ] Team cohesion and tactical familiarity (see Phase 6).
+  - [ ] Epic.

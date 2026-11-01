@@ -306,6 +306,9 @@ export const tr: Strings = {
     current_ability: "Mevcut yetenek",
     potential_ability: "Potansiyel yetenek",
     height: "Boy (cm)",
+    date_of_birth: "Doğum tarihi",
+    asking_price: "İstenen bedel",
+    nation: "Uyruk",
     "reputation.home": "Yerel itibar",
     "reputation.current": "Güncel itibar",
     "reputation.world": "Dünya itibarı",
@@ -491,6 +494,17 @@ export const tr: Strings = {
       club: "Kulüp",
       freeAgentsOnly: "Yalnızca serbest oyuncular",
       contractEndsBy: "Sözleşme bitişi (en geç)",
+      transferListedOnly: "Yalnızca transfer listesindekiler",
+      loanListedOnly: "Yalnızca kiralık listesindekiler",
+      attributes: {
+        heading: "Özellikler",
+        attribute: "Özellik",
+        pick: "Özellik seçin",
+        min: (name) => (name ? `En az ${name}` : "En az"),
+        max: (name) => (name ? `En çok ${name}` : "En çok"),
+        add: "Özellik ekle",
+        remove: (name) => (name ? `${name} satırını kaldır` : "Bu satırı kaldır"),
+      },
       saved: {
         save: "Kaydet",
         saveTitle: "Geçerli filtreleri ve sıralamayı bir adla kaydet",
@@ -574,6 +588,8 @@ export const tr: Strings = {
     ticketPrice: "Ortalama bilet fiyatı",
     perWeek: "haftalık",
     noFinances: "FM, finansı yalnızca oynanan liglerdeki kulüpler için tutar.",
+    freeze: "Parayı dondur",
+    freezeNote: "Uygulama açık ve oyuna bağlıyken bakiye düşmez: oyunun düştüğü para geri konur, gelirler yine eklenir.",
 
     // Club info
     info: "Kulüp bilgisi",
@@ -681,6 +697,7 @@ export const tr: Strings = {
   },
 
   edit: {
+    unknownNation: "Bilinmeyen ülke",
     edit: "Düzenle",
     editTitle: "Bu profilin değerlerini oyunda değiştir",
     startFailed: (reason) => `Düzenleme başlatılamadı: ${reason}`,
@@ -1008,6 +1025,9 @@ export const tr: Strings = {
     inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla",
     refreshAll: "Hepsini dinlendir",
     refreshAllTitle: "Bu takımdaki her oyuncunun enerjisini ve maç kondisyonunu %100'e ayarla",
+    maxAll: "Özellikleri tamamla",
+    maxAllTitle:
+      "Bu takımdaki her oyuncunun bütün özelliklerini en iyiye çıkar: 20; sakatlık eğilimi ve sertlik için 1",
     hint:
       "İşlemler listedeki her oyuncuyu kapsar, kiralık gönderilenler de dahil. " +
       "Geri alma işlemi Değişiklikler bölümünde de yapılabilir.",

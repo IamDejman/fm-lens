@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Ability } from "./Ability";
+import { AttributeFilters, readAttributeRows, STAFF_ATTRIBUTES, toAttributeBounds } from "./AttributeFilters";
 import { formatDate } from "./format";
 import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
@@ -22,12 +23,17 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
   // The job as the select holds it: a job code, or "" for any.
   const [job, setJob] = useState(() => restored("staffJob", readJob));
   const [unemployed, setUnemployed] = useState(() => restored("staffUnemployed", (value) => value === true));
+  const [attributes, setAttributes] = useState(() =>
+    restored("staffAttributes", (value) => readAttributeRows(value, STAFF_ATTRIBUTES)),
+  );
   useSnapshot("staffJob", () => job);
   useSnapshot("staffUnemployed", () => unemployed);
+  useSnapshot("staffAttributes", () => attributes);
+  const bounds = toAttributeBounds(attributes);
   const filter: StaffFilter | undefined =
-    job === "" && !unemployed
+    job === "" && !unemployed && bounds === undefined
       ? undefined
-      : { job: job === "" ? undefined : Number(job), unemployed: unemployed || undefined };
+      : { job: job === "" ? undefined : Number(job), unemployed: unemployed || undefined, attributes: bounds };
 
   return (
     <ListBrowser<StaffSummary>
@@ -57,6 +63,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
               <input type="checkbox" checked={unemployed} onChange={(e) => setUnemployed(e.currentTarget.checked)} />
               <span>{filters.unemployedOnly}</span>
             </label>
+            <AttributeFilters rows={attributes} choices={STAFF_ATTRIBUTES} onChange={setAttributes} />
           </div>
         </div>
       }

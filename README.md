@@ -21,16 +21,20 @@ How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 >
 > Players, staff and clubs can be edited, from an Edit mode in their profiles:
 > - **Players and staff:** abilities, attributes, positions, personality,
->   reputation, caps, and their contract's wage and end date.
-> - **Players only:** squad number, squad status, transfer and loan listing,
->   energy, match sharpness and morale. Injuries can be healed.
-> - **Clubs:** reputation, facilities and finances. The club's squad tab lists each
->   team's players with their fitness and morale. It sets the captain and
->   vice-captain, and heals, inspires or refreshes a whole team at once.
+>   reputation, caps, nationality, and their contract's wage and end date.
+> - **Players only:** date of birth, asking price, squad number, squad status,
+>   transfer and loan listing, energy, match sharpness and morale. Injuries can be
+>   healed.
+> - **Clubs:** reputation, facilities and finances, and a club's money can be
+>   frozen while the app runs. The club's squad tab lists each team's players with
+>   their fitness and morale. It sets the captain and vice-captain, and heals,
+>   inspires or refreshes a whole team, or maxes out its attributes, at once.
 > - **How:** changes are reviewed before they are applied, and a Changes view
 >   undoes them.
 > - **Many at once:** a mass edit changes every player, member of staff or club the
->   list selects. It is previewed before it is applied and undone as one batch.
+>   list selects, and the lists filter by any attribute (finishing 15 or more, say)
+>   and by the transfer and loan lists. It is previewed before it is applied and
+>   undone as one batch.
 > - **Moving players:** a player can move to another club's senior team, on his
 >   contract or new terms, or swap clubs with another player. Free agents, loans
 >   and players at your own club are refused for now, and so is a club whose squad

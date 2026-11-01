@@ -208,6 +208,22 @@ export interface PlayerPage {
   rows: PlayerSummary[];
 }
 
+/** A nation the nation field of a player or member of staff can be set to. */
+export interface Nation {
+  /** Where the game keeps it: the value of a nation field. */
+  address: number;
+  uid: number | null;
+  name: string;
+}
+
+/** A bound on one attribute as FM shows it (1–20); either end may be left open. */
+export interface AttributeBound {
+  /** An attribute key of the list's entity: "finishing" for players, "tactical" for staff. */
+  key: string;
+  min?: number;
+  max?: number;
+}
+
 /** Filters for `search_players`; omitted fields match everyone. */
 export interface PlayerFilter {
   /** A position key (gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr); rated 15+ there. */
@@ -226,6 +242,11 @@ export interface PlayerFilter {
   freeAgents?: boolean;
   /** Only contracts ending on or before this date. */
   contractExpiresBy?: FmDate;
+  /** Only players their club has put on the transfer list, and on the loan list. */
+  transferListed?: boolean;
+  loanListed?: boolean;
+  /** Bounds on attributes, every one of which must hold. */
+  attributes?: AttributeBound[];
 }
 
 export type PlayerSort =
@@ -249,6 +270,8 @@ export interface StaffFilter {
   job?: number;
   /** Only staff without a contract. */
   unemployed?: boolean;
+  /** Bounds on attributes, every one of which must hold. */
+  attributes?: AttributeBound[];
 }
 
 /** Filters for `search_clubs`. */
@@ -342,9 +365,10 @@ export interface EditField {
   entity: Entity;
   /**
    * "date": values are numbers like 20290630 (see `dateFromNumber` in editing.ts); "i32": money in pounds; "flag":
-   * 0 or 1, a yes-or-no such as being on the transfer list.
+   * 0 or 1, a yes-or-no such as being on the transfer list; "pointer": the address of another of the game's objects,
+   * such as a person's nation, picked from the ones the game has (see `Nation`).
    */
-  kind: "u8" | "u16" | "i16" | "i32" | "date" | "flag";
+  kind: "u8" | "u16" | "i16" | "i32" | "date" | "flag" | "pointer";
   /**
    * "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "percent": stored 0–10000, shown as a
    * percentage 0–100; "plain": shown as stored.
@@ -463,7 +487,7 @@ export type CaptainRole = "captain" | "viceCaptain";
  * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
  * "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
  */
-export type TeamAction = "heal" | "inspire" | "refresh";
+export type TeamAction = "heal" | "inspire" | "refresh" | "maxAttributes";
 
 /** The columns that sort a squad table. */
 export type SquadSort =

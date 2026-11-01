@@ -267,6 +267,9 @@ export const en = {
     current_ability: "Current ability",
     potential_ability: "Potential ability",
     height: "Height (cm)",
+    date_of_birth: "Date of birth",
+    asking_price: "Asking price",
+    nation: "Nationality",
     "reputation.home": "Home reputation",
     "reputation.current": "Current reputation",
     "reputation.world": "World reputation",
@@ -480,6 +483,21 @@ export const en = {
       club: "Club",
       freeAgentsOnly: "Free agents only",
       contractEndsBy: "Contract ends by",
+      transferListedOnly: "Transfer listed only",
+      loanListedOnly: "Loan listed only",
+      /** Bounds on attributes, a row each, under the other filters; the staff list has them too. */
+      attributes: {
+        heading: "Attributes",
+        /** The select of a row, for assistive technology, and its entry before an attribute is picked. */
+        attribute: "Attribute",
+        pick: "Pick an attribute",
+        /** The two inputs of a row, for assistive technology; `name` is the attribute, "" before one is picked. */
+        min: (name: string) => (name ? `Least ${name}` : "Least"),
+        max: (name: string) => (name ? `Most ${name}` : "Most"),
+        add: "Add attribute",
+        /** The button that takes a row away, for assistive technology and as its hover text. */
+        remove: (name: string) => (name ? `Remove ${name}` : "Remove this row"),
+      },
       /** Saving the filters in effect, and the sort, under a name of the user's own; the names stay as typed. */
       saved: {
         /** The button that starts saving, and its hover text. */
@@ -579,6 +597,10 @@ export const en = {
     perWeek: "per week",
     /** Clubs outside the leagues being played have no finance record in memory. */
     noFinances: "FM keeps finances only for clubs in the leagues being played.",
+    /** Freezing the club's money, while the game can be written to, and what that does. */
+    freeze: "Freeze money",
+    freezeNote:
+      "While the app is open and connected, the balance does not go down: what the game takes is put back, and income still counts.",
 
     // Club info
     info: "Club info",
@@ -704,6 +726,8 @@ export const en = {
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
   edit: {
+    /** A nation field's value whose name the app has not read: one no one in the lists belongs to. */
+    unknownNation: "Unknown nation",
     /** The button in the header of a profile that can be edited. */
     edit: "Edit",
     editTitle: "Change this profile's values in the game",
@@ -1138,6 +1162,9 @@ export const en = {
     inspireAllTitle: "Set the morale of every player in this team to 20, the highest",
     refreshAll: "Refresh all",
     refreshAllTitle: "Set the energy and match sharpness of every player in this team to 100%",
+    maxAll: "Max attributes",
+    maxAllTitle:
+      "Set every attribute of every player in this team to its best: 20, and 1 for injury proneness and dirtiness",
     /** Beside the buttons: whom they cover, and where undoing is. */
     hint: "The actions cover every player in the list, those out on loan too. Undo is in the Changes view as well.",
 

@@ -38,6 +38,11 @@ impl<T: Listed> SearchIndex<T> {
         self.items.is_empty()
     }
 
+    /// Every item, in the order they were read.
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.items.iter()
+    }
+
     pub fn get(&self, uid: u32) -> Option<&T> {
         self.by_uid.get(&uid).map(|&i| &self.items[i])
     }
