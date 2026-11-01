@@ -1,6 +1,6 @@
 //! Errors the app can say in the user's language. Each has a stable code, such as
 //! `edit.outOfRange`, and names the values its message mentions, so the window can put
-//! the message together in Turkish as well as show the English one.
+//! the message together in Turkish or Spanish as well as show the English one.
 
 use fmlibre_mem::Error as MemoryError;
 

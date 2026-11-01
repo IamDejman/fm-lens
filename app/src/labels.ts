@@ -1,5 +1,5 @@
-// Text of the player, staff and club profiles and lists, as the components import it. The wording is in i18n/en.ts
-// and i18n/tr.ts (one shape, one file per language); this file hands out the language chosen at startup (see
+// Text of the player, staff and club profiles and lists, as the components import it. The wording is in i18n/en.ts,
+// i18n/tr.ts and i18n/es.ts (one shape, one file per language); this file hands out the language chosen at startup (see
 // i18n/index.ts) under the names the components use. Keys of the game data map to the names FM uses; every other
 // string of the panels is in `profileText` (those only the club panel has, in `clubProfileText`), and those of the
 // player, staff and club lists in `playerListText`, `staffListText` and `clubListText`. Editing has `editText` (and
@@ -7,7 +7,8 @@
 // players `comparisonText`, moving a player to another club (or swapping him with one) `moveText`, releasing him
 // `releaseText`, his nationalities and homegrown status `tieText`, a club's squad `squadText`, the sidebar and the connect panel `appText`, the status of the
 // graphics packs `graphicsText`, and new versions of the app `updateText`.
-// A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts).
+// A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts, with a flag in
+// LanguageSwitch.tsx).
 
 import { formatNumber } from "./format";
 import { intlLocale, strings } from "./i18n";

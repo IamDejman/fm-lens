@@ -404,9 +404,43 @@ dd,
   outline-color: #8fb1ff;
 }
 
-/* "EN | TR": two buttons in one frame; the pressed one is the language in use. The mode switch of the move dialog (see
-   Moving a player) is made the same way, and so is the switch between the teams of a squad (see Club squad). */
-.language-switch,
+/* The language: a button with the flag of the language in use and a chevron, outlined like the masthead's other
+   buttons. The menu of the languages hangs from it over the window, as the captain menu does from a squad row (see
+   Club squad). */
+.language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px 5px 10px;
+}
+
+.language-chevron {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.language-toggle[aria-expanded="true"] .language-chevron {
+  transform: rotate(180deg);
+}
+
+/* A flag, 3:2. A hairline of ink holds its edge where it is white (the Union Jack's) on a light page. */
+.language-flag {
+  display: block;
+  flex: none;
+  width: 21px;
+  height: 14px;
+  border-radius: 1px;
+  outline: 1px solid rgb(22 24 29 / 0.22);
+  outline-offset: -1px;
+}
+
+/* A segmented switch: two or three buttons in one frame; the pressed one is the choice in effect. The mode switch of
+   the move dialog (see Moving a player) is one, and so is the switch between the teams of a squad (see Club squad). */
 .move-mode,
 .squad-teams {
   display: inline-flex;
@@ -416,7 +450,6 @@ dd,
   border-radius: var(--radius);
 }
 
-.language-switch button,
 .move-mode button,
 .squad-teams button {
   min-width: 40px;
@@ -431,54 +464,26 @@ dd,
   letter-spacing: 0.3px;
 }
 
-.language-switch button + button,
 .move-mode button + button,
 .squad-teams button + button {
   border-left: 1px solid var(--border-strong);
 }
 
-.language-switch button:hover:not(:disabled, [aria-pressed="true"]),
 .move-mode button:hover:not(:disabled, [aria-pressed="true"]),
 .squad-teams button:hover:not(:disabled, [aria-pressed="true"]) {
   background: var(--hover);
   color: var(--text);
 }
 
-.language-switch button[aria-pressed="true"],
 .move-mode button[aria-pressed="true"],
 .squad-teams button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--on-accent);
 }
 
-.language-switch button:focus-visible,
 .move-mode button:focus-visible,
 .squad-teams button:focus-visible {
   outline-offset: -2px;
-}
-
-/* On the masthead the language switch is drawn in the masthead's paper. */
-.masthead .language-switch {
-  align-self: center;
-  border-color: rgb(246 247 249 / 0.4);
-}
-
-.masthead .language-switch button {
-  color: rgb(246 247 249 / 0.7);
-}
-
-.masthead .language-switch button + button {
-  border-left-color: rgb(246 247 249 / 0.4);
-}
-
-.masthead .language-switch button:hover:not(:disabled, [aria-pressed="true"]) {
-  background: rgb(246 247 249 / 0.1);
-  color: var(--on-strip);
-}
-
-.masthead .language-switch button[aria-pressed="true"] {
-  background: var(--on-strip);
-  color: var(--strip);
 }
 
 /* The page under the masthead: whatever the open tab holds. */
@@ -4021,7 +4026,9 @@ button.danger:hover:not(:disabled) {
   cursor: default;
 }
 
-.squad-menu {
+/* A menu over the window: the captain menu of a squad row, and the language menu under the masthead's flag. */
+.squad-menu,
+.language-menu {
   position: fixed;
   z-index: 50;
   display: flex;
@@ -4034,7 +4041,8 @@ button.danger:hover:not(:disabled) {
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
 }
 
-.squad-menu button {
+.squad-menu button,
+.language-menu button {
   padding: 6px 10px;
   border: 0;
   border-radius: 3px;
@@ -4043,11 +4051,36 @@ button.danger:hover:not(:disabled) {
 }
 
 .squad-menu button:hover,
-.squad-menu button:focus-visible {
+.squad-menu button:focus-visible,
+.language-menu button:hover,
+.language-menu button:focus-visible {
   background: var(--hover);
 }
 
-.squad-menu button:focus-visible {
+.squad-menu button:focus-visible,
+.language-menu button:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
+}
+
+/* A language of the menu: its flag, its own name, and a check after the one in use. */
+.language-menu {
+  min-width: 10rem;
+}
+
+.language-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.language-check {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }

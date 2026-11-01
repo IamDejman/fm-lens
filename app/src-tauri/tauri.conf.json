@@ -34,7 +34,7 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["English", "Turkish"],
+        "languages": ["English", "Turkish", "Spanish"],
         "displayLanguageSelector": true
       }
     },

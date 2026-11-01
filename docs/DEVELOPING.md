@@ -130,7 +130,7 @@ to that graphics folder before starting the app.
 2. **Tag it and push the tag:** `git tag v0.1.0` and `git push origin v0.1.0`.
 3. **The `Release` workflow** (`.github/workflows/release.yml`) runs the checks and builds,
    on GitHub's Windows and macOS machines:
-   - `FMLibreEditor-Setup.exe`, a per-user NSIS installer in English and Turkish;
+   - `FMLibreEditor-Setup.exe`, a per-user NSIS installer in English, Turkish and Spanish;
    - `FMLibreEditor-portable.zip`;
    - `FMLibreEditor-macOS.zip`, the universal app with the bridge and its launcher.
 
