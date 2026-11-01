@@ -35,10 +35,8 @@ How it works, building, releasing and the command-line probe:
 [docs/DEVELOPING.md](docs/DEVELOPING.md).
 
 FMLibreEditor is not affiliated with or endorsed by Sports Interactive or SEGA. Memory-layout
-leads come from two GPL-3.0 projects:
-[fm-editor](https://github.com/barak14/fm-editor) by barak14 and
-[FM27€0](https://sortitoutsi.net/content/78059/fm27eur0-v100-live-editor-for-fm27)
-by Anze Alexander.
+leads come from GPL-3.0 project:
+[fm-editor](https://github.com/barak14/fm-editor) by barak14
 
 ## License
 
