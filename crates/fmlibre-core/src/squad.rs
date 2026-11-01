@@ -53,6 +53,8 @@ pub struct SquadMember {
     pub morale: u8,
     /// How many current injuries he has.
     pub injuries: usize,
+    /// How many current bans he has.
+    pub bans: usize,
 }
 
 /// Which way a player in a team's list is on loan.
@@ -295,6 +297,7 @@ impl Session {
             match_sharpness: u16_at(p.match_sharpness),
             morale: buf[at(p.morale)],
             injuries: self.injury_count(player),
+            bans: self.ban_count(player),
         })
     }
 }

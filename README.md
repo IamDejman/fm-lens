@@ -24,11 +24,12 @@ How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 >   reputation, caps, nationality, and their contract's wage and end date.
 > - **Players only:** date of birth, asking price, squad number, squad status,
 >   transfer and loan listing, energy, match sharpness and morale. Injuries can be
->   healed.
+>   healed and bans lifted.
 > - **Clubs:** reputation, facilities and finances, and a club's money can be
 >   frozen while the app runs. The club's squad tab lists each team's players with
 >   their fitness and morale. It sets the captain and vice-captain, and heals,
->   inspires or refreshes a whole team, or maxes out its attributes, at once.
+>   lifts the bans of, inspires or refreshes a whole team, or maxes out its
+>   attributes, at once.
 > - **How:** changes are reviewed before they are applied, and a Changes view
 >   undoes them.
 > - **Many at once:** a mass edit changes every player, member of staff or club the
@@ -213,6 +214,8 @@ fmlibre-probe staff-move 4000571 1139 --restore      # move a member of staff to
 fmlibre-probe staff-job 4000571 14 --restore         # give a member of staff another job and back: this writes too
 fmlibre-probe injuries 728                           # the current injuries of a club's players
 fmlibre-probe heal 37055843 --heal --restore         # heal a player and list his injuries again: this writes too
+fmlibre-probe bans                                   # every player with a ban; bans <uid> for one player's
+fmlibre-probe bans 29120248 --lift --restore         # lift a player's bans and list them again: this writes too
 fmlibre-probe teams 680                              # a club's teams: kinds, captains, players' fitness and morale
 fmlibre-probe captain 680 43425040 --restore         # make a player captain (--vice: vice-captain) and back
 fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
@@ -228,14 +231,15 @@ Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `sc
 to save the results. `calibrate --scan` ignores the build profile and finds the
 arrays the way it would on an unknown build.
 
-Only `set`, `move`, `swap`, `release`, `staff-move`, `staff-job`, `heal --heal` and
-`captain` write to the game.
+Only `set`, `move`, `swap`, `release`, `staff-move`, `staff-job`, `heal --heal`,
+`bans --lift` and `captain` write to the game.
 - `set` changes one field after the checks above. Values are as stored:
   attributes run 0–100, or 1–20 with `--shown`.
 - `move` moves a player to a club's senior team; `release` leaves him a free agent.
 - With `--restore`, each one puts the old values back straight away, to test
-  without changing the save. `set`, `move`, `release`, `heal` and `captain` also
-  take `--hold <seconds>` to wait first, so the change can be looked at in the game.
+  without changing the save. `set`, `move`, `release`, `heal`, `bans` and `captain`
+  also take `--hold <seconds>` to wait first, so the change can be looked at in the
+  game.
 
 If Windows denies access, run the probe from an administrator terminal.
 

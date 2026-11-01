@@ -23,6 +23,7 @@ import type {
   Failure,
   FmDate,
   GameInfo,
+  Ban,
   Injury,
   PlayerDetails,
   PlayerFilter,
@@ -225,6 +226,7 @@ function details(player: PlayerSummary): PlayerDetails {
     condition: Math.round(7000 + next() * 3000),
     matchSharpness: Math.round(3500 + next() * 6500),
     injuries: injuriesOf(player.uid),
+    bans: bansOf(player.uid),
     // Drawn last, so that the values above come out as before.
     morale: Math.round(7 + next() * 10),
   });
@@ -253,6 +255,17 @@ function injuriesOf(uid: number): Injury[] {
     injuries.push(injury("Twisted ankle", 1, 7, 12));
   }
   return injuries;
+}
+
+/** The fixture players whose bans were lifted through the editor, by UID, while the lifting is not undone. */
+const liftedPlayers = new Set<number>();
+
+/** The current bans of a fixture player: every eleventh one is banned, for one to three matches, until lifted. */
+function bansOf(uid: number): Ban[] {
+  if (uid % 11 !== 5 || liftedPlayers.has(uid)) {
+    return [];
+  }
+  return [{ started: addDays(GAME_DATE, -3), matches: 1 + (uid % 3) }];
 }
 
 /** Job codes as stored in contracts (see labels.ts). */
@@ -807,6 +820,11 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
+  if (entry.field === "bans") {
+    liftedPlayers.delete(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   if (entry.captaincy) {
     undoCaptain(entry);
     entry.undoneAt = Date.now();
@@ -1149,6 +1167,33 @@ function unhealed(uid: number): void {
   healedPlayers.delete(uid);
 }
 
+/** `lift_bans`: the fixture player's bans are lifted, logged as a change of his `bans` to none. */
+function liftBans(uid: number, batch: number | null = null): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const bans = bansOf(uid).length;
+  if (bans === 0) {
+    throw failure("ban.notBanned", "the player has no ban to lift");
+  }
+  liftedPlayers.add(uid);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "bans",
+    old: bans,
+    new: 0,
+    undoneAt: null,
+    batch,
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
 // Squads and captains -----------------------------------------------------------------------------------------------
 
 /** The captains changed through the editor, by `club:team`. */
@@ -1207,6 +1252,7 @@ function clubSquads(clubUid: number): ClubTeam[] {
         matchSharpness: d.matchSharpness,
         morale: d.morale,
         injuries: d.injuries.length,
+        bans: d.bans.length,
       };
     }),
   }));
@@ -1282,6 +1328,13 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
   if (action === "heal") {
     for (const player of team.players.filter((p) => p.injuries > 0)) {
       healPlayer(player.uid, batch);
+      report.applied++;
+    }
+    return report;
+  }
+  if (action === "liftBans") {
+    for (const player of team.players.filter((p) => p.bans > 0)) {
+      liftBans(player.uid, batch);
       report.applied++;
     }
     return report;
@@ -1802,6 +1855,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return releasePlayer(Number(args?.uid)) as T;
     case "heal_player":
       return healPlayer(Number(args?.uid)) as T;
+    case "lift_bans":
+      return liftBans(Number(args?.uid)) as T;
     case "club_squads":
       return clubSquads(Number(args?.uid)) as T;
     case "set_captain":

@@ -4,7 +4,7 @@ use fmlibre_mem::{Process, is_user_pointer};
 use serde::Serialize;
 
 use crate::date::FmDate;
-use crate::medical::Injury;
+use crate::medical::{Ban, Injury};
 use crate::players::PlayerSummary;
 use crate::profile::Layout;
 
@@ -112,6 +112,8 @@ pub struct PlayerDetails {
     pub morale: u8,
     /// Current injuries (see [`crate::Session::injuries`]).
     pub injuries: Vec<Injury>,
+    /// Current bans (see [`crate::Session::bans`]).
+    pub bans: Vec<Ban>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -207,6 +209,7 @@ pub fn read_player_details(
         morale: u8_at(p.morale),
         // The session reads them, as they hang off a record of their own.
         injuries: Vec::new(),
+        bans: Vec::new(),
     }))
 }
 

@@ -488,16 +488,19 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   const className = [change.undoneAt !== null && "undone", inBatch && "in-batch"].filter(Boolean).join(" ");
   // A move to another club is logged with the clubs' UIDs as its values: their names say more (a release has no new
   // club: he became a free agent), and so do the players' for a captaincy. A heal is logged as a change of his
-  // injuries from how many he had to none: "Healed 2 injuries" says it better than "2 → 0".
+  // injuries from how many he had to none, and lifting his bans as one of his bans: "Healed 2 injuries" says it better
+  // than "2 → 0".
   const value = change.moved
     ? valueChange(change.moved.from, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
       ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
       : change.field === "injuries"
         ? text.healed(change.old)
-        : change.field === "contract.job"
-          ? valueChange(jobLabel(change.old), jobLabel(change.new))
-          : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
+        : change.field === "bans"
+          ? text.lifted(change.old)
+          : change.field === "contract.job"
+            ? valueChange(jobLabel(change.old), jobLabel(change.new))
+            : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
 
   return (
     <tr className={className || undefined}>

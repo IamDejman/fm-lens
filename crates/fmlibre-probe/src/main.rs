@@ -228,6 +228,21 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
+    /// Show a player's current bans, and with --lift lift them in the running game; with no UID, list every player
+    /// who has one.
+    Bans {
+        /// The player's UID.
+        uid: Option<u32>,
+        /// Lift them: take them out of his list of absences.
+        #[arg(long, requires = "uid")]
+        lift: bool,
+        /// With --lift, list them again afterwards and check it.
+        #[arg(long)]
+        restore: bool,
+        /// With --restore, how many seconds to wait before listing them again, to look at the game.
+        #[arg(long, default_value_t = 0)]
+        hold: u64,
+    },
     /// Swap two players between their clubs in the running game.
     Swap {
         /// The UID of one player.
@@ -541,6 +556,7 @@ fn run(cli: Cli) -> Result<()> {
                 | Command::StaffJob { .. }
                 | Command::Swap { .. }
                 | Command::Heal { heal: true, .. }
+                | Command::Bans { lift: true, .. }
                 | Command::Captain { .. }
         )
     );
@@ -596,6 +612,10 @@ fn run(cli: Cli) -> Result<()> {
         Command::Heal { uid, heal, restore, hold } => {
             let restore_after = restore.then_some(hold);
             heal_player(&Session::connect(process, ArraySource::ProfileFirst)?, uid, heal, restore_after)
+        }
+        Command::Bans { uid, lift, restore, hold } => {
+            let restore_after = restore.then_some(hold);
+            ban_list(&Session::connect(process, ArraySource::ProfileFirst)?, uid, lift, restore_after)
         }
         Command::Swap { uid, other, restore } => {
             swap_players(&Session::connect(process, ArraySource::ProfileFirst)?, uid, other, restore)
@@ -2137,6 +2157,53 @@ fn heal_player(session: &Session, uid: u32, heal: bool, restore_after: Option<u6
         }
         session.undo_heal(&done)?;
         ensure!(show("restored")? == before, "his injuries are not all back");
+    }
+    Ok(())
+}
+
+fn ban_list(session: &Session, uid: Option<u32>, lift: bool, restore_after: Option<u64>) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let Some(uid) = uid else {
+        let mut banned = 0;
+        for player in players.iter() {
+            let bans = session.bans(player).unwrap_or_default();
+            if !bans.is_empty() {
+                banned += 1;
+                let matches: Vec<String> = bans.iter().map(|ban| ban.matches.to_string()).collect();
+                println!(
+                    "{:>10}  {:<26}  {:<26}  matches {}",
+                    player.uid,
+                    clip(&player.name, 26),
+                    clip(player.club.as_deref().unwrap_or("-"), 26),
+                    matches.join(" + ")
+                );
+            }
+        }
+        println!("{banned} player(s) with a ban.");
+        return Ok(());
+    };
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let show = |label: &str| -> Result<usize> {
+        let bans = session.bans(player)?;
+        println!("{} (UID {uid}) {label}: {} current ban(s)", player.name, bans.len());
+        for ban in &bans {
+            println!("  {} match(es), from {}", ban.matches, iso_date(ban.started));
+        }
+        Ok(bans.len())
+    };
+    let before = show("now")?;
+    if !lift {
+        return Ok(());
+    }
+    let done = session.apply_lift_bans(&session.plan_lift_bans(player)?)?;
+    ensure!(show("lifted")? == 0, "he still has bans");
+    if let Some(hold) = restore_after {
+        if hold > 0 {
+            println!("  listing them again in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
+        session.undo_lift_bans(&done)?;
+        ensure!(show("restored")? == before, "his bans are not all back");
     }
     Ok(())
 }

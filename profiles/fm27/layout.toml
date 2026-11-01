@@ -193,6 +193,16 @@ longest = 0x28            # u16 days from `started` until he is back at the late
 shortest = 0x2A           # u16 days until he is back at the soonest
 kind_name = 0x18
 
+# A player's current bans sit in the same record as his injuries: after the list of his
+# current injuries, a list of his absences, 32-byte entries. Other absences, such as a
+# call-up, are listed with them; a ban has 0xFFFF at `marker`, they have 0. Read on the
+# Mac Steam build, whose records are laid out as here; not yet checked on Windows.
+[ban]
+list = 0x18               # in the record: the list (begin, end, capacity) of absences
+started = 0x10            # date the ban began
+marker = 0x16             # u16, 0xFFFF for a ban
+matches = 0x1C            # u8, matches left to miss
+
 [team]
 club = 0x30               # club pointer
 # u8, the kind of team: on the test save 0 for the first team, 10 for the under-21s and

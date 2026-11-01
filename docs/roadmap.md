@@ -180,7 +180,10 @@ changes many at once, and undo.
     cleared, as the game's own free agents have them. A captaincy he held is left empty; so is one a player
     gives up by moving. Checked on the Mac Steam build, restored.
   - [ ] Contract bonuses and release clauses.
-  - [ ] Suspensions: lift a ban, or all of a squad's.
+  - [x] Suspensions: lift a player's bans, or all of a squad's. A player's bans are listed in the record his
+    injuries hang off, with his other absences; lifting takes them out of that list and keeps the others, as
+    healing does with injuries. Checked on the Mac Steam build, restored; Windows unverified: see the
+    [ban notes](recon/fm27-bans.md).
   - [ ] Second nationalities, place of birth, appearance.
   - [ ] Stadium capacity, ticket prices and league prize money.
 - Wave 3, what the others find hard:
