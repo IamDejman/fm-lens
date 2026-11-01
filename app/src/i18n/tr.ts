@@ -52,6 +52,8 @@ const recordNoun = (entity: string | undefined) =>
 const UNSUPPORTED: Partial<Record<string, string>> = {
   "a date can only be set": "bir tarih yalnızca doğrudan ayarlanabilir",
   "it is changed one person at a time": "bu alan kişi kişi değiştirilir",
+  "the new value is not one of the game's own records of that kind":
+    "yeni değer, oyunun bu türdeki kendi kayıtlarından biri değil",
 };
 
 const reload = "verileri yeniden okuyup tekrar deneyin";

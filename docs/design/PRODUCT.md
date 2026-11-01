@@ -36,7 +36,8 @@ without turning System Integrity Protection off.
 - The game's screens show a change after the player presses Continue in FM.
 - Offline: no network. Club logos, flags and faces come from the graphics packs in the user's
   FM graphics folder; many users have none, and initials stand in.
-- The interface is in English and Turkish; Turkish strings are often longer.
+- The interface is in English, Turkish and Spanish; Turkish and Spanish strings are often
+  longer.
 - `npm run dev` in `app/` serves the interface in a plain browser with sample data; `?macos`
   previews the macOS bridge panel.
 
@@ -56,7 +57,7 @@ without turning System Integrity Protection off.
 
 ## Brand Commitments
 
-- Name: FMLibreEditor. Beta. Plain, short-sentence voice in English and Turkish.
+- Name: FMLibreEditor. Beta. Plain, short-sentence voice in English, Turkish and Spanish.
 - FM's attribute colours (by value band) and the pitch position map stay: players read
   attributes and positions the way FM shows them. Their exact tones may change to sit in
   the app's palette.

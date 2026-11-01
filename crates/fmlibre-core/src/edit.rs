@@ -101,7 +101,7 @@ impl Kind {
 /// The addresses a pointer field may hold: the user half of a 64-bit address space, past the first page.
 const POINTERS: RangeInclusive<i64> = 0x1_0000..=0x7FFF_FFFF_FFFF;
 
-/// Why a pointer field refuses a new value; the app has the words in Turkish too.
+/// Why a pointer field refuses a new value; the app has the words in Turkish and Spanish too.
 const OTHER_CLASS: &str = "the new value is not one of the game's own records of that kind";
 
 /// How the game shows a stored value.

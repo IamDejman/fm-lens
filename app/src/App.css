@@ -404,8 +404,9 @@ dd,
   outline-color: #8fb1ff;
 }
 
-/* "EN | TR": two buttons in one frame; the pressed one is the language in use. The mode switch of the move dialog (see
-   Moving a player) is made the same way, and so is the switch between the teams of a squad (see Club squad). */
+/* The language switch: a button with a flag for each language, in one frame; the pressed one is the language in use.
+   The mode switch of the move dialog (see Moving a player) is made the same way, and so is the switch between the teams
+   of a squad (see Club squad). */
 .language-switch,
 .move-mode,
 .squad-teams {
@@ -479,6 +480,30 @@ dd,
 .masthead .language-switch button[aria-pressed="true"] {
   background: var(--on-strip);
   color: var(--strip);
+}
+
+/* A flag in place of the language's code, 3:2. A hairline of ink holds its edge where it is white (the Union Jack's)
+   on the pressed button's paper. The languages not in use are dimmed, as the masthead's other text is, until
+   hovered. */
+.language-switch button {
+  display: grid;
+  place-items: center;
+}
+
+.language-switch .flag {
+  display: block;
+  width: 21px;
+  height: 14px;
+  border-radius: 1px;
+  outline: 1px solid rgb(22 24 29 / 0.22);
+  outline-offset: -1px;
+  opacity: 0.7;
+  transition: opacity 120ms ease-out;
+}
+
+.language-switch button:hover:not(:disabled) .flag,
+.language-switch button[aria-pressed="true"] .flag {
+  opacity: 1;
 }
 
 /* The page under the masthead: whatever the open tab holds. */

@@ -426,9 +426,9 @@ Icons are inline SVG line drawings at 10 to 16px, stroke 1.6 to 1.8, round caps,
 
 ### Masthead and Tabs
 The almanac's head: an ink band in both editions.
-- **Structure:** the FML mark at the left, the section tabs (Players, Staff, Clubs, Changes), and at the right the busy message, the in-game date set as a dateline, Reload and the EN | TR switch.
+- **Structure:** the FML mark at the left, the section tabs (Players, Staff, Clubs, Changes), and at the right the busy message, the in-game date set as a dateline, Reload and the language switch, a flag for each language (English, Turkish, Spanish).
 - **Tabs:** transparent on ink, paper text at 66%; hover lifts to an 8% paper wash and full paper text; the open tab takes the page colour and ink text and touches the page below. The Changes tab carries a count chip (paper at 16% on ink; ink on the open tab).
-- **Controls on ink:** outlined in paper at 40%, hover 10% wash, pressed language in solid paper with ink text. Focus here is always focus-blue-on-ink.
+- **Controls on ink:** outlined in paper at 40%, hover 10% wash, pressed language in solid paper. The flags (21×14, 3:2, a hairline of ink at the edge) of the languages not in use sit at 70% until hovered. Focus here is always focus-blue-on-ink.
 
 ### The Almanac Table
 The signature: a tight yearbook table.

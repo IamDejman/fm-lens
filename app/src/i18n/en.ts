@@ -1,6 +1,6 @@
-// The English text of the UI, and the shape every language has: `tr.ts` is typed `Strings`, which is `typeof en`,
-// so a key that one dictionary has and the other lacks fails the build. A new language is a new file like `tr.ts`,
-// which `index.ts` then offers.
+// The English text of the UI, and the shape every language has: `tr.ts` and `es.ts` are typed `Strings`, which is
+// `typeof en`, so a key that one dictionary has and another lacks fails the build. A new language is a new file like
+// them, which `index.ts` then offers and `LanguageSwitch.tsx` gives a flag.
 //
 // Keys of the game data map to the names FM uses; every other string of the panels is in `profile` (those only the
 // club panel has, in `clubProfile`), and those of the player, staff and club lists in `playerList`, `staffList` and
