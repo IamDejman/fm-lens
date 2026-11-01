@@ -24,8 +24,7 @@ extract it and run **FMLibreEditor.exe**.
 1. Download
    [FMLibreEditor-macOS.zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-macOS.zip),
    open it and move **FMLibreEditor** to **Applications**.
-2. Open it. If macOS says it could not verify the app, open **System Settings › Privacy &
-   Security** and click **Open Anyway**. The app is not notarized yet.
+2. Open it. The app is signed and notarized by Apple, so macOS opens it without a warning.
 3. Quit Steam (**Steam › Quit Steam**), then click **Set up the bridge** in FMLibreEditor.
    This lets FM27 share its memory with the app when Steam starts it. System Integrity
    Protection stays on.
@@ -59,5 +58,3 @@ check, the app asks GitHub for the latest release; it sends nothing else.
 - **Your antivirus flags it:** tools that read another program's memory are sometimes
   flagged by mistake. FMLibreEditor is open source; you can allow it in your antivirus.
 - **macOS: it cannot get into the game:** quit FM27 and start it again from Steam.
-- **macOS says the app is damaged:** in Terminal, run
-  `xattr -dr com.apple.quarantine /Applications/FMLibreEditor.app`.

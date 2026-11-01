@@ -8,8 +8,8 @@ Windows 10 or 11 with Football Manager 27 from Xbox / Game Pass or Steam; macOS 
 from Steam.
 
 How to install: [INSTALL.md](https://github.com/tozmoz/FMLibreEditor/blob/main/docs/INSTALL.md).
-Windows may say "Windows protected your PC" and macOS may say it could not verify the app:
-both are covered there.
+Windows may say "Windows protected your PC": that is covered there. The macOS app is signed
+and notarized by Apple, so it opens without a warning.
 
 ## What's new
 
