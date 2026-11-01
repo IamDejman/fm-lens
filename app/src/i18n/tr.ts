@@ -989,6 +989,7 @@ export const tr: Strings = {
       "Transfer ve kiralık listelerinden çıkar",
       "Maaş ve sözleşme bitişi, siz yeni değer girmedikçe aynı kalır",
       "Bedel, alan kulübün bakiyesinden ve transfer bütçesinden düşer, satan kulübün bakiyesine eklenir",
+      "Eski kulübündeki kaptanlığı boş kalır",
       "Oyunun transfer geçmişinde henüz görünmez",
       "Değişiklikler bölümünde listelenir; tek geri alma transferi ve bedeli birlikte geri alır",
     ],
@@ -1025,6 +1026,7 @@ export const tr: Strings = {
       "İkisi de diğerinin kulübünün A takımına katılır",
       "Sözleşmeler oyundaki tarihle başlar; forma numaraları silinir",
       "İkisi de transfer ve kiralık listelerinden çıkar",
+      "Eski kulüplerindeki kaptanlıkları boş kalır",
       "Bedel ödenmez; kariyer geçmişi güncellenmez",
       "Değişiklikler bölümünde tek değişiklik olarak listelenir; geri alınırsa ikisi de eski kulübüne döner",
     ],
@@ -1037,6 +1039,31 @@ export const tr: Strings = {
     swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
     swap: "Takas et",
     swapping: "Takas ediliyor…",
+  },
+
+  release: {
+    button: "Serbest bırak",
+    buttonTitle: "Bu oyuncuyu oyunda kulübünden serbest bırak: serbest oyuncu olur",
+
+    // The dialog
+    title: "Serbest bırak",
+    from: "Ayrıldığı kulüp",
+    checking: "Serbest bırakma kontrol ediliyor…",
+    ready: (club) => `${club} → serbest oyuncu`,
+    doesHeading: "Serbest bırakma ne yapar",
+    does: [
+      "Kulübün bütün takımlarından çıkar ve sözleşmesi sona erer: her kulübün alabileceği serbest oyuncu olur",
+      "Kimseye ödeme yapılmaz",
+      "Kulüpteki kaptanlığı boş kalır",
+      "Oyunun transfer geçmişinde görünmez",
+      "Değişiklikler bölümünde listelenir; tek geri alma oyuncuyu aynı sözleşmeyle geri getirir",
+    ],
+
+    // The foot
+    hint: "Siz serbest bırakmadan oyunda hiçbir şey değişmez.",
+    release: "Serbest bırak",
+    releasing: "Serbest bırakılıyor…",
+    cancel: "İptal",
   },
 
   squad: {

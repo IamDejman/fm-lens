@@ -486,11 +486,11 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // An attribute or a percentage is stored on a finer scale than it is shown: its hover text has the values as stored.
   const storedNote = isStoredFiner(field) ? text.stored(valueChange(change.old, change.new)) : undefined;
   const className = [change.undoneAt !== null && "undone", inBatch && "in-batch"].filter(Boolean).join(" ");
-  // A move to another club is logged with the clubs' UIDs as its values: their names say more, and so do the players'
-  // for a captaincy. A heal is logged as a change of his injuries from how many he had to none: "Healed 2 injuries"
-  // says it better than "2 → 0".
+  // A move to another club is logged with the clubs' UIDs as its values: their names say more (a release has no new
+  // club: he became a free agent), and so do the players' for a captaincy. A heal is logged as a change of his
+  // injuries from how many he had to none: "Healed 2 injuries" says it better than "2 → 0".
   const value = change.moved
-    ? valueChange(change.moved.from, change.moved.to)
+    ? valueChange(change.moved.from, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
       ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
       : change.field === "injuries"

@@ -247,7 +247,7 @@ impl Connection {
             change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
             undone_at: None,
             batch: None,
-            moved: moved.then_some(MovedClubs { from, to, with: None, fee: None }),
+            moved: moved.then_some(MovedClubs { from, to: Some(to), with: None, fee: None }),
             captaincy: None,
             undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, job })),
         };
@@ -271,6 +271,12 @@ impl Connection {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
         let to = self.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
         Ok(self.session.plan_club_move(player, to, terms, &self.human_clubs)?)
+    }
+
+    /// Works out releasing the player `uid` from his club.
+    fn plan_release(&self, uid: u32) -> Result<MovePlan, Failure> {
+        let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+        Ok(self.session.plan_release(player, &self.human_clubs)?)
     }
 
     /// Works out the players `uid` and `other` swapping clubs.
@@ -347,9 +353,41 @@ impl Connection {
             change,
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from, to, with, fee }),
+            moved: Some(MovedClubs { from, to: Some(to), with, fee }),
             captaincy: None,
             undo: Some(Undo::Move(before)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a release just written, as a change of the player's `club` from his club's UID
+    /// to 0, and brings his list row up to date: no club and no contract. It is undone like a
+    /// move.
+    fn log_release(&mut self, done: ClubMove) -> LoggedChange {
+        let rows = vec![self.row_before(done.player)];
+        self.players.update(done.player, |player| {
+            player.club = None;
+            player.club_uid = None;
+            player.contract_expires = None;
+        });
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "club".to_owned(),
+            old: i64::from(done.from_club),
+            new: 0,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch: None,
+            moved: Some(MovedClubs { from: self.club_name(done.from_club), to: None, with: None, fee: None }),
+            captaincy: None,
+            undo: Some(Undo::Move(LoggedMove { done, rows, paid: Vec::new() })),
         };
         self.log.push(logged.clone());
         logged
@@ -581,7 +619,9 @@ enum TeamAction {
 #[derive(Clone, Serialize)]
 struct MovedClubs {
     from: String,
-    to: String,
+    /// None for a release, after which he has no club.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    to: Option<String>,
     /// In a swap, the player who went the other way.
     #[serde(skip_serializing_if = "Option::is_none")]
     with: Option<String>,
@@ -1229,6 +1269,27 @@ fn move_player(
     Ok(connection.log_move(done, terms, paid, fee_plan.map(|plan| plan.fee)))
 }
 
+/// Checks that the player `uid` can be released from his club, and names it; the error says why he cannot. Nothing is
+/// written.
+#[tauri::command]
+fn plan_release(state: State<'_, AppState>, uid: u32) -> Result<ClubName, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let plan = connection.plan_release(uid)?;
+    Ok(ClubName { uid: plan.from_club, name: connection.club_name(plan.from_club) })
+}
+
+/// Releases the player `uid` from his club, worked out again from the game as it is now, and logs it: he becomes a
+/// free agent.
+#[tauri::command]
+fn release_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let plan = connection.plan_release(uid)?;
+    let done = connection.session.apply_club_move(&plan)?;
+    Ok(connection.log_release(done))
+}
+
 /// Checks that the member of staff `uid` can move to the club `club`, and names the clubs; the error says why he
 /// cannot. Nothing is written.
 #[tauri::command]
@@ -1582,6 +1643,8 @@ pub fn run() {
             undo_batch,
             plan_club_move,
             move_player,
+            plan_release,
+            release_player,
             plan_club_swap,
             swap_players,
             plan_staff_move,

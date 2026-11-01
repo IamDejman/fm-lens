@@ -12,6 +12,13 @@
 //! they play for (no loans), not player-coaches, and not at a club a human manager runs,
 //! whose tactics, training and the like point at its players too.
 //!
+//! A player who leaves a club gives up the captaincies he holds in its teams: they are left
+//! empty, as a youth team's often are, for the club to fill.
+//!
+//! A release takes him out of his club's lists and leaves him with no team and no contract,
+//! as the game's own free agents have. His contract is left as it was: nothing else in the
+//! game points at it.
+//!
 //! Every write is a [`Patch`] holding the bytes it expects and the bytes it leaves, so a
 //! move only lands on the memory it was planned from, and is only undone while the game
 //! still holds what it wrote.
@@ -59,11 +66,12 @@ pub struct MoveTerms {
 }
 
 /// A move worked out from the game as it is now, ready to be written: one player to
-/// another club, or two players swapping clubs.
+/// another club, two players swapping clubs, or a player released from his club.
 #[derive(Debug, Clone)]
 pub struct MovePlan {
     pub player: u32,
     pub from_club: u32,
+    /// The club he joins; 0 for a release, after which he has none.
     pub to_club: u32,
     /// In a swap, the player who goes the other way.
     pub other: Option<u32>,
@@ -83,6 +91,7 @@ impl MovePlan {
 pub struct ClubMove {
     pub player: u32,
     pub from_club: u32,
+    /// 0 for a release.
     pub to_club: u32,
     /// In a swap, the player who went the other way.
     pub other: Option<u32>,
@@ -101,6 +110,8 @@ struct Departure {
     record: Vec<u8>,
     club: u64,
     club_uid: u32,
+    /// The club's teams.
+    teams: Vec<u64>,
     /// Each list of the club that holds him: the team, the list, where in it he is, and what it holds.
     leaving: Vec<(u64, PointerList, usize, Vec<u64>)>,
 }
@@ -397,6 +408,7 @@ impl Session {
         let mut patches = Patches::default();
         self.append_patches(&joining.list, leaving.object, &mut patches)?;
         self.contract_patches(&leaving, joining.senior, terms, &mut patches);
+        self.captaincy_patches(&leaving, &mut patches)?;
         for (_, list, index, elements) in &leaving.leaving {
             removal_patches(list, *index, elements, &mut patches);
         }
@@ -407,6 +419,23 @@ impl Session {
             other: None,
             patches: patches.0,
         })
+    }
+
+    /// Works out releasing `player` from his club, which leaves him a free agent. He gives
+    /// up its captaincies, leaves its lists, and then has no team and no contract. Nothing is
+    /// written.
+    pub fn plan_release(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<MovePlan, MoveError> {
+        let leaving = self.departure(player, human_clubs)?;
+        let p = &self.layout.player;
+        let mut patches = Patches::default();
+        self.captaincy_patches(&leaving, &mut patches)?;
+        for (_, list, index, elements) in &leaving.leaving {
+            removal_patches(list, *index, elements, &mut patches);
+        }
+        // Only once no list holds him: the game may follow a listed player to his contract.
+        patches.push(leaving.object + p.team, leaving.team.to_le_bytes(), 0u64.to_le_bytes());
+        patches.push(leaving.object + p.contract, leaving.contract.to_le_bytes(), 0u64.to_le_bytes());
+        Ok(MovePlan { player: leaving.uid, from_club: leaving.club_uid, to_club: 0, other: None, patches: patches.0 })
     }
 
     /// Works out `player` and `other` swapping clubs, each joining the other's senior team
@@ -444,6 +473,7 @@ impl Session {
         self.contract_patches(&first, into_second.senior, MoveTerms::default(), &mut patches);
         self.contract_patches(&second, into_first.senior, MoveTerms::default(), &mut patches);
         for leaver in [&first, &second] {
+            self.captaincy_patches(leaver, &mut patches)?;
             for (_, list, index, elements) in &leaver.leaving {
                 if !kept.contains(&list.header) {
                     removal_patches(list, *index, elements, &mut patches);
@@ -527,7 +557,32 @@ impl Session {
         if !leaving.iter().any(|&(from, ..)| from == team) {
             return Err(MoveError::NotListed);
         }
-        Ok(Departure { uid: player.uid, object, team, contract, employer, record, club: old_club, club_uid, leaving })
+        Ok(Departure {
+            uid: player.uid,
+            object,
+            team,
+            contract,
+            employer,
+            record,
+            club: old_club,
+            club_uid,
+            teams: old_teams,
+            leaving,
+        })
+    }
+
+    /// Each captaincy the player `leaving` describes holds in his club's teams is left empty.
+    fn captaincy_patches(&self, leaving: &Departure, patches: &mut Patches) -> Result<(), MoveError> {
+        let t = &self.layout.team;
+        let block = leaving.object + self.layout.player.identity();
+        for &team in &leaving.teams {
+            for offset in [t.captain, t.vice_captain] {
+                if self.process.read_u64(team + offset)? == block {
+                    patches.push(team + offset, block.to_le_bytes(), 0u64.to_le_bytes());
+                }
+            }
+        }
+        Ok(())
     }
 
     /// Checks the senior team of the club at `club` for the player `leaving` describes, and

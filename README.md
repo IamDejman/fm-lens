@@ -39,7 +39,8 @@ How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 >   work in, or take another job at their club; a team's manager is left to the game.
 > - **Transfers:** a player can move to another club's senior team, on his contract
 >   or new terms, for a fee that the buying club pays the selling one, or swap clubs
->   with another player. Free agents, loans
+>   with another player. He can also be released, which leaves him a free agent.
+>   Free agents, loans
 >   and players at your own club are refused for now, and so is a club whose squad
 >   list has no room left (see
 >   [the notes](docs/recon/fm27-gamepass-0.9.2355.md#squad-lists-and-moving-players-between-clubs)).
@@ -207,6 +208,9 @@ fmlibre-probe get player 7458500                     # those fields' values for 
 fmlibre-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
 fmlibre-probe move 13200568 1139 --restore           # move a player to a club and back: this writes too
 fmlibre-probe swap 13200568 72048035 --restore       # two players swap clubs and back: this writes too
+fmlibre-probe release 91100466 --restore             # release a player from his club and back: this writes too
+fmlibre-probe staff-move 4000571 1139 --restore      # move a member of staff to a club and back: this writes too
+fmlibre-probe staff-job 4000571 14 --restore         # give a member of staff another job and back: this writes too
 fmlibre-probe injuries 728                           # the current injuries of a club's players
 fmlibre-probe heal 37055843 --heal --restore         # heal a player and list his injuries again: this writes too
 fmlibre-probe teams 680                              # a club's teams: kinds, captains, players' fitness and morale
@@ -224,13 +228,14 @@ Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `sc
 to save the results. `calibrate --scan` ignores the build profile and finds the
 arrays the way it would on an unknown build.
 
-Only `set`, `move`, `swap`, `heal --heal` and `captain` write to the game.
+Only `set`, `move`, `swap`, `release`, `staff-move`, `staff-job`, `heal --heal` and
+`captain` write to the game.
 - `set` changes one field after the checks above. Values are as stored:
   attributes run 0–100, or 1–20 with `--shown`.
-- `move` moves a player to a club's senior team.
+- `move` moves a player to a club's senior team; `release` leaves him a free agent.
 - With `--restore`, each one puts the old values back straight away, to test
-  without changing the save. `set`, `heal` and `captain` also take
-  `--hold <seconds>` to wait first, so the change can be looked at in the game.
+  without changing the save. `set`, `move`, `release`, `heal` and `captain` also
+  take `--hold <seconds>` to wait first, so the change can be looked at in the game.
 
 If Windows denies access, run the probe from an administrator terminal.
 

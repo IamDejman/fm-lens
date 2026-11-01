@@ -182,6 +182,17 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
+    /// Release a player from his club in the running game: he becomes a free agent.
+    Release {
+        /// The player's UID.
+        uid: u32,
+        /// Bring him back afterwards and check it: tests a release without changing the save.
+        #[arg(long)]
+        restore: bool,
+        /// With --restore, how many seconds to wait before bringing him back, to look at the game meanwhile.
+        #[arg(long, default_value_t = 0)]
+        hold: u64,
+    },
     /// Move a member of staff to another club in the running game, in the departments he works in.
     StaffMove {
         /// The member of staff's id.
@@ -525,6 +536,7 @@ fn run(cli: Cli) -> Result<()> {
         Some(
             Command::Set { .. }
                 | Command::Move { .. }
+                | Command::Release { .. }
                 | Command::StaffMove { .. }
                 | Command::StaffJob { .. }
                 | Command::Swap { .. }
@@ -571,6 +583,9 @@ fn run(cli: Cli) -> Result<()> {
             let terms = MoveTerms { wage, expires };
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             move_player(&session, uid, club, terms, fee, restore, hold)
+        }
+        Command::Release { uid, restore, hold } => {
+            release_player(&Session::connect(process, ArraySource::ProfileFirst)?, uid, restore, hold)
         }
         Command::StaffMove { id, club, restore } => {
             staff_change(&Session::connect(process, ArraySource::ProfileFirst)?, id, StaffAction::Move(club), restore)
@@ -2013,6 +2028,35 @@ fn move_player(
         if !paid.is_empty() {
             println!("  fee taken back");
         }
+    }
+    Ok(())
+}
+
+fn release_player(session: &Session, uid: u32, restore: bool, hold: u64) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
+    let plan = session.plan_release(player, &human)?;
+    let from = clubs.get(plan.from_club).map_or("?", |c| c.name.as_str());
+    println!("{} (UID {uid}): released by {from}, {} writes", player.name, plan.writes());
+
+    // A release is written and undone like a move: as the patches it was planned as.
+    let done = session.apply_club_move(&plan)?;
+    // Read him again as the lists would.
+    let club_now = |label: &str| -> Result<Option<u32>> {
+        let now = session.players()?.into_iter().find(|p| p.uid == uid).context("the player is gone")?;
+        println!("  {label} {}", now.club.as_deref().unwrap_or("no club"));
+        Ok(now.club_uid)
+    };
+    ensure!(club_now("now at")?.is_none(), "the player still reads as being at a club");
+    if restore {
+        if hold > 0 {
+            println!("  bringing him back in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
+        session.undo_club_move(&done)?;
+        ensure!(club_now("back at")? == Some(plan.from_club), "the player is not back at {from}");
     }
     Ok(())
 }

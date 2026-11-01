@@ -176,7 +176,9 @@ changes many at once, and undo.
     old club's and into the new club's, and a new job moves them between departments. Staff whom the club or
     a team points at directly, such as a team's manager, are left to the game, and a full list is refused.
     Checked on the Mac Steam build, each change restored.
-  - [ ] Release a player on a free.
+  - [x] Release a player on a free: he leaves his club's lists, and his team and contract pointers are
+    cleared, as the game's own free agents have them. A captaincy he held is left empty; so is one a player
+    gives up by moving. Checked on the Mac Steam build, restored.
   - [ ] Contract bonuses and release clauses.
   - [ ] Suspensions: lift a ban, or all of a squad's.
   - [ ] Second nationalities, place of birth, appearance.
