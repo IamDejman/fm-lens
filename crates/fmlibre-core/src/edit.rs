@@ -154,6 +154,8 @@ enum Place {
     SeniorTeam,
     /// The stadium the club's senior team plays at, written only when it is of the stadium class.
     Stadium,
+    /// The record of a player's reasons to be unhappy, which his contract points at.
+    Concerns,
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -343,7 +345,7 @@ fn player_contract_fields(layout: &Layout) -> [Field; 4] {
 
 /// The loyalty bonus, and how happy the player is and how happy with his playing time, as FMRTE shows them (the
 /// game shows them in words). Happiness ran from -40 to 97 on the test save.
-fn player_mood_fields(layout: &Layout) -> [Field; 3] {
+fn player_mood_fields(layout: &Layout) -> [Field; 4] {
     let c = &layout.contract;
     let mood = |key: &str, offset: u64| {
         Field::new(Entity::Player, key, offset, Kind::I8, -100..=100).plausible(-128..=127).in_record(Place::Contract)
@@ -354,6 +356,11 @@ fn player_mood_fields(layout: &Layout) -> [Field; 3] {
             .in_record(Place::Contract),
         mood("contract.happiness", c.happiness),
         mood("contract.playing_time_happiness", c.playing_time_happiness),
+        // How many reasons to be unhappy his record lists: only ever set to none, as FMRTE's "Remove all" does. The
+        // entries stay where they are, so an undo lists them again.
+        Field::new(Entity::Player, "contract.unhappiness", 0, Kind::I32, 0..=0)
+            .plausible(0..=crate::details::MOST_CONCERNS as i64)
+            .in_record(Place::Concerns),
     ]
 }
 
@@ -988,6 +995,13 @@ impl Session {
                     is_user_pointer(team) && self.process.read_u64(team + self.layout.team.club)? == target.address;
                 belongs.then_some(team)
             }
+            (Place::Concerns, Entity::Player) => {
+                let Some(contract) = self.record(target, Place::Contract)? else {
+                    return Ok(None);
+                };
+                let record = self.process.read_u64(contract + self.layout.contract.unhappiness)?;
+                is_user_pointer(record).then_some(record)
+            }
             (Place::Stadium, Entity::Club) => {
                 let Some((stadium, bytes)) = crate::clubs::club_stadium(&self.process, &self.layout, target.address)
                 else {
@@ -1071,6 +1085,9 @@ mod tests {
         assert!(price.takes(-1) && price.takes(0) && price.takes(25_000_000) && !price.takes(-2));
         let born = field("date_of_birth");
         assert!(born.takes(19960912) && !born.takes(18991231) && !born.takes(20300101));
+        // Reasons to be unhappy are only ever removed, all at once.
+        let unhappiness = field("contract.unhappiness");
+        assert!(unhappiness.takes(0) && !unhappiness.takes(1));
         // Happiness is a signed byte: Olivier Boscagli's read -4.
         let happiness = field("contract.happiness");
         assert!(happiness.kind == Kind::I8 && happiness.takes(-4) && happiness.takes(100) && !happiness.takes(101));
@@ -1089,7 +1106,7 @@ mod tests {
         // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale).
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 3
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 4
         );
         assert_eq!(key(&players, "nation").kind, Kind::Pointer);
         assert!(!key(&players, "nation").mass);

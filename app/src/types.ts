@@ -329,6 +329,19 @@ export interface Contract {
   playingTimeHappiness: number;
   /** His clauses and bonuses, in the contract's order. */
   clauses: Clause[];
+  /** His reasons to be unhappy, over ones too (`ended` set), in the order the game keeps them. */
+  concerns: Concern[];
+}
+
+/** One of a player's reasons to be unhappy. */
+export interface Concern {
+  started: FmDate | null;
+  /** When it was over; null while it lasts. */
+  ended: FmDate | null;
+  /** The game's code for what it is about; `concernMotive` names the known ones. */
+  motive: number;
+  /** 1 concerned, 2 internal. */
+  kind: number;
 }
 
 /** One of a contract's clauses or bonuses: a release clause, an appearance fee, a yearly wage rise... */

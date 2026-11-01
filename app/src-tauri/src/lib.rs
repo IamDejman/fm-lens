@@ -1669,7 +1669,8 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
             }
             return Ok(report);
         }
-        TeamAction::Inspire => &[("morale", 20)],
+        // Morale at its best, and the reasons to be unhappy gone, as FMRTE's Inspire does.
+        TeamAction::Inspire => &[("morale", 20), ("contract.unhappiness", 0)],
         // Rested as the game rests a player: full energy and sharpness, and jadedness at its least.
         TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)],
         TeamAction::MaxAttributes => &[],

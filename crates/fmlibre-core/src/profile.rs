@@ -250,6 +250,8 @@ pub struct ContractLayout {
     /// `i8` each: how happy the player is, and how happy with his playing time, as FMRTE shows them.
     pub happiness: u64,
     pub playing_time_happiness: u64,
+    /// Pointer to the record of his reasons to be unhappy: a `u64` count, then that many pointers to 28-byte entries.
+    pub unhappiness: u64,
 }
 
 impl ContractLayout {
@@ -270,6 +272,7 @@ impl ContractLayout {
             self.loyalty_bonus + 4,
             self.happiness + 1,
             self.playing_time_happiness + 1,
+            self.unhappiness + 8,
         ]
         .into_iter()
         .max()

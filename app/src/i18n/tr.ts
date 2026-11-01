@@ -152,6 +152,12 @@ const errors: ErrorTexts = {
   "mass.outOfDate": () => "Bu önizleme eskidi. Toplu düzenlemeyi yeniden önizleyin.",
 };
 
+const CONCERN_MOTIVES_TR: Partial<Record<number, string>> = {
+  596: "Bir turnuvanın kadrosuna alınmadı",
+  808: "Bir takım arkadaşına haksızlık yapıldığını düşünüyor",
+  926: "Bir takım arkadaşının istediği forma süresini hak etmediğini düşünüyor",
+};
+
 const CLAUSE_NAMES_TR: Partial<Record<number, string>> = {
   0: "Serbest kalma maddesi",
   1: "Küme düşmede serbest kalma maddesi",
@@ -363,6 +369,7 @@ export const tr: Strings = {
     "contract.loyalty_bonus": "Haftalık sadakat primi",
     "contract.happiness": "Mutluluk",
     "contract.playing_time_happiness": "Forma süresi mutluluğu",
+    "contract.unhappiness": "Mutsuzluk nedenleri",
     "contract.expires": "Sözleşme bitişi",
     "contract.squad_number": "Forma numarası",
     "contract.squad_status": "Forma süresi",
@@ -461,6 +468,14 @@ export const tr: Strings = {
 
     // Medical
     morale: (value) => `${value} / 20`,
+    unhappiness: "Mutsuzluk",
+    noUnhappiness: "Onu mutsuz eden bir şey yok",
+    removeUnhappiness: "Hepsini kaldır",
+    removingUnhappiness: "Kaldırılıyor…",
+    removeUnhappinessTitle: "FMRTE'nin Remove all düğmesi gibi, mutsuzluk nedenlerinin hepsini listesinden kaldırır; Değişiklikler'den geri alınabilir",
+    concernSince: (date) => `${date} tarihinden beri`,
+    concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : `Tür ${kind}`),
+    concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? `Neden ${motive}`,
     clauses: "Primler ve maddeler",
     noClauses: "Prim ya da madde yok",
     loyaltyBonus: "Sadakat primi",
@@ -1216,7 +1231,7 @@ export const tr: Strings = {
     liftAllTitle: "Bu takımdaki her oyuncunun tüm cezalarını kaldır",
     liftNone: "Bu takımda cezalı oyuncu yok",
     inspireAll: "Hepsine moral ver",
-    inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla",
+    inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla; mutsuzluk nedenlerini de kaldır",
     refreshAll: "Hepsini dinlendir",
     refreshAllTitle: "Bu takımdaki her oyuncunun enerjisini ve maç kondisyonunu %100'e ayarla, onları tamamen dinlendir (yorgunluk -500)",
     maxAll: "Özellikleri tamamla",

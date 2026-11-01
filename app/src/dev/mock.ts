@@ -225,6 +225,15 @@ function details(player: PlayerSummary): PlayerDetails {
             ...(next() < 0.5 ? [{ index: 3, kind: 0, amount: Math.round(50 + next() * 500) * 1_000_000, condition: null }] : []),
             ...(next() < 0.5 ? [{ index: 4, kind: 22, amount: null, condition: 1 }] : []),
           ],
+          // A few players have reasons to be unhappy: one over, and one or two that last.
+          concerns:
+            next() < 0.3
+              ? [
+                  { started: { year: 2026, month: 7, day: 2 }, ended: { year: 2026, month: 7, day: 9 }, motive: 1202, kind: 1 },
+                  { started: { year: 2026, month: 7, day: 12 }, ended: null, motive: 926, kind: 1 },
+                  ...(next() < 0.5 ? [{ started: { year: 2026, month: 7, day: 15 }, ended: null, motive: 596, kind: 2 }] : []),
+                ]
+              : [],
           // A player moved to another club signed today, without a squad number, off the transfer list.
           ...(movedPlayers.has(player.uid) && {
             signed: GAME_DATE,
@@ -510,6 +519,7 @@ function fieldTable(entity: Entity): EditField[] {
     field("contract.loyalty_bonus", "i32", 0, 10_000_000),
     field("contract.happiness", "i8", -100, 100),
     field("contract.playing_time_happiness", "i8", -100, 100),
+    field("contract.unhappiness", "i32", 0, 0),
   ];
   const common = [
     field("current_ability", "u16", 1, 200),
@@ -646,6 +656,9 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
             contract.happiness = value;
           } else if (name === "playing_time_happiness") {
             contract.playingTimeHappiness = value;
+          } else if (name === "unhappiness") {
+            // Only ever set to none; an undo puts the count back, which the made-up list cannot follow.
+            contract.concerns = value === 0 ? [] : contract.concerns;
           }
         }
         break;
@@ -758,6 +771,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
             return contract?.happiness;
           case "playing_time_happiness":
             return contract?.playingTimeHappiness;
+          case "unhappiness":
+            return contract && contract.concerns.length > 0 ? contract.concerns.length : undefined;
         }
         return undefined;
       }
