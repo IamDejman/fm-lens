@@ -1,0 +1,81 @@
+# FM27: secondary nationalities and homegrown status
+
+Notes behind editing a player's secondary nationalities and homegrown status. They were read
+from the Mac Steam build, on the July 2026 save, against the game's own eligibility page
+(**Personal › Nationality Information** and **Nation / Club Eligibility**), which the
+maintainer shared for Kenan Yıldız, Jamal Musiala and Achraf Hakimi.
+
+## The list of relations
+
+A player's first nationality is his `nation` pointer. Everything else lives in one list: the
+person's relations. The pointer at `+0x2C0` in the player object (macOS; in the person block,
+`+0x300` on Windows by the usual 0x40) leads to a record that starts with a list
+`(begin, end, capacity)` of 16-byte entries:
+
+| Offset | Field |
+| --- | --- |
+| `+0x00` | pointer to the target: a nation, club, person or competition |
+| `+0x08` | `u16`, a count some relations use |
+| `+0x0A` | `u8`, the kind of target: 1 a club, 3 a person, 7 a competition, 8 a nation |
+| `+0x0B` | `u8`, the kind of relation |
+| `+0x0C` | `u8`, a value: a strength, or a homegrown rule |
+| `+0x0D` | `u8`, a second level |
+| `+0x0F` | always `0xFF` |
+
+The relations that matter here:
+
+| Relation | Target | Value | The game shows |
+| --- | --- | --- | --- |
+| 9 | nation | 100, then 80 | a secondary nationality |
+| 70 | nation | the rule | Nation Eligibility: trained in the nation |
+| 72 | club | the rule | Club Eligibility: trained at the club |
+
+The others include favoured clubs (3), disliked clubs (4), people (1, 2) and time spent in a
+nation (124).
+
+Homegrown rules, by the game's code, as the eligibility page names them:
+
+| Code | Rule |
+| --- | --- |
+| 1 | Homegrown 15-21 |
+| 2 | Homegrown 0-21 |
+| 5 | Homegrown 15-21 (excluding loans) |
+| 10 | Homegrown 0-19 (1 year) |
+
+Codes 3, 6, 7, 8, 11 and 12 occur too; their names are not known yet. The page's
+**Nationality Eligibility** (for example "Italy, 4 Years In Nation") is not stored: the game
+works it out.
+
+Checked against the page:
+- Yıldız: Germany (9), Germany and Italy (70, rule 1), FC Bayern and Juventus (72, rule 1),
+  Juventus again with rule 5.
+- Musiala: England and Nigeria (9), Germany (70, rule 1), England (70, rule 2), Chelsea (72,
+  rules 2 and 10), FC Bayern (72, rule 1).
+- Hakimi: Spain (9 and 70), Real Madrid (72).
+
+## Room
+
+Out of a sample of 3,636 lists, 94% were exactly as long as their capacity, and most held
+1 to 8 entries. Their blocks are too small for the allocator's known size classes, so an entry
+can seldom be added without allocating, which the editor never does. Changing or removing an
+entry always works.
+
+## Checked in the game
+
+With the probe holding the changes (`tie-set` and `tie-add` with `--hold`), the game's page
+showed each at once:
+- Yıldız's secondary nationality changed from Germany to England;
+- Türkiye added to Musiala's, as a third secondary nationality;
+- Hakimi's training changed from Spain, 15-21 to England, 0-21.
+
+Not yet checked: what a competition's homegrown rules make of a changed entry over a game day,
+and Windows.
+
+## Also seen
+
+- `+0x2C8` points at the player's city of birth, whose nation is at `+0x20` (Regensburg,
+  Germany for Yıldız).
+- The international data at `+0x118` (`INTERNATIONAL_PLAYER_DATA`) lists the other national
+  teams a player has played for: Victor Moses, England; Mateo Retegui, Argentina.
+- FM27 keeps a person's appearance as the match engine's 3D face values
+  (`MATCH_PERSON_APPEARANCE_INPUT`), not as a few fields.

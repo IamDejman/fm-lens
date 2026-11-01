@@ -23,7 +23,25 @@ pub struct Layout {
     pub nation: NationLayout,
     pub injury: InjuryLayout,
     pub ban: BanLayout,
+    pub relation: RelationLayout,
     pub heap: HeapLayout,
+}
+
+/// One of a person's relations: a 16-byte entry of the list that starts the record his `relations` pointer leads to.
+/// It points at its target, a nation, club, person or competition, and then says how he is tied to it.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RelationLayout {
+    /// Pointer to the target.
+    pub target: u64,
+    /// `u8`: 1 for a club, 3 for a person, 8 for a nation.
+    pub target_kind: u64,
+    /// `u8`: 9 for a nationality, 70 for a nation he was trained in, 72 for a club he was trained at.
+    pub relation: u64,
+    /// `u8`: for a training, the homegrown rule it meets.
+    pub value: u64,
+    /// Bytes per entry.
+    pub size: u64,
 }
 
 /// One current injury of a player. A player's `injuries` pointer leads to a record whose
@@ -90,6 +108,8 @@ pub struct PlayerLayout {
     pub current_ability: u64,
     pub potential_ability: u64,
     pub nation: u64,
+    /// Pointer to the record whose first field is the list of his relations; see [`RelationLayout`].
+    pub relations: u64,
     pub team: u64,
     /// Start of the person block; fields from here on move with the person-block shift.
     pub person_block: u64,
@@ -589,6 +609,7 @@ mod tests {
             (windows.player.positions - 8, windows.player.morale - 8)
         );
         assert_eq!(mac.player.date_of_birth, windows.player.date_of_birth - 0x40);
+        assert_eq!(mac.player.relations, windows.player.relations - 0x40);
         assert_eq!(mac.player.international_caps, windows.player.international_caps - 0x40);
         assert_eq!(mac.player.identity(), windows.player.identity() + 0x100);
         assert_eq!(mac.player.uid - mac.player.identity(), windows.player.uid - windows.player.identity());
@@ -610,6 +631,11 @@ mod tests {
             (mac.ban.list, mac.ban.started, mac.ban.marker, mac.ban.matches),
             (windows.ban.list, windows.ban.started, windows.ban.marker, windows.ban.matches)
         );
+        let relation = |l: &Layout| {
+            let r = &l.relation;
+            (r.target, r.target_kind, r.relation, r.value, r.size)
+        };
+        assert_eq!(relation(&mac), relation(&windows));
         // The game's own allocator, with the same size classes on both systems.
         assert_eq!(mac.heap.block_sizes, windows.heap.block_sizes);
     }

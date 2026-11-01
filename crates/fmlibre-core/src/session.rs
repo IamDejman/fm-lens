@@ -199,6 +199,8 @@ impl Session {
         // A list the editor does not make sense of leaves the profile without injuries.
         details.injuries = self.injuries(player).unwrap_or_default();
         details.bans = self.bans(player).unwrap_or_default();
+        details.ties = self.relations(player).unwrap_or_default();
+        details.tie_room = self.relation_room(player).unwrap_or(0);
         Ok(Some(details))
     }
 }

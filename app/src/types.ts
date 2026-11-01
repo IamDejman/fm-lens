@@ -337,6 +337,25 @@ export interface PlayerDetails extends PlayerSummary {
   injuries: Injury[];
   /** His current bans; empty when he has none. */
   bans: Ban[];
+  /** His secondary nationalities, and the nations and clubs he was trained in (his homegrown status). */
+  ties: Tie[];
+  /** How many more ties his list has room for: the game sizes it to what it holds, and the editor allocates nothing. */
+  tieRoom: number;
+}
+
+/** What ties a player to a nation or club: a secondary nationality, or a nation or club he was trained in. */
+export type TieKind = "nationality" | "trainedInNation" | "trainedAtClub";
+
+/** One of a player's ties. */
+export interface Tie {
+  /** Where it is in his list: what changing or removing it names. */
+  index: number;
+  tie: TieKind;
+  /** The UID of the nation or club, for its flag or logo. */
+  targetUid: number;
+  name: string | null;
+  /** For a training, the homegrown rule it meets, by the game's code (see `homegrownRules`). */
+  rule: number | null;
 }
 
 /** One current injury of a player. */
@@ -444,6 +463,15 @@ export interface LoggedChange {
     with?: string;
     /** The fee the buying club paid the selling one, in pounds, if any. */
     fee?: number;
+  };
+  /**
+   * Set for a change to a player's ties, which is logged as a change of his field `tie.nationality`,
+   * `tie.trainedInNation` or `tie.trainedAtClub` from one nation's or club's UID to the other's (0 for none): the
+   * names and homegrown rules on either side.
+   */
+  tie?: {
+    from: { name: string; rule: number | null } | null;
+    to: { name: string; rule: number | null } | null;
   };
   /**
    * Set for a captaincy (`set_captain`), which is logged as a change of the club's field `captain` or

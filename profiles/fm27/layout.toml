@@ -17,6 +17,7 @@ date_of_birth = 0x310     # u16 day of year (low 9 bits) + u16 year
 current_ability = 0x264   # u16, 1..200
 potential_ability = 0x266 # i16, 1..200; negative values are ranges
 nation = 0x2F0            # nation pointer
+relations = 0x300         # pointer to the record of his relations; as on macOS, 0x40 further: not yet checked
 team = 0x130              # team pointer; the club hangs off the team
 
 # The person block starts here in plain players. Player-coaches carry an extra
@@ -192,6 +193,16 @@ started = 0x20            # date
 longest = 0x28            # u16 days from `started` until he is back at the latest
 shortest = 0x2A           # u16 days until he is back at the soonest
 kind_name = 0x18
+
+# A person's relations: the list of 16-byte entries the record of his `relations` starts with. Each points at a
+# nation, club, person or competition and says how he is tied to it. Read on the Mac Steam build; not yet checked
+# on Windows.
+[relation]
+target = 0x00             # pointer to the nation, club, person or competition
+target_kind = 0x0A        # u8: 1 a club, 3 a person, 7 a competition, 8 a nation
+relation = 0x0B           # u8: 9 a nationality, 70 trained in a nation, 72 trained at a club
+value = 0x0C              # u8: of a training, the homegrown rule it meets
+size = 0x10
 
 # A player's current bans sit in the same record as his injuries: after the list of his
 # current injuries, a list of his absences, 32-byte entries. Other absences, such as a

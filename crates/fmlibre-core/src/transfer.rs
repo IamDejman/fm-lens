@@ -158,6 +158,20 @@ pub enum MoveError {
     NotInjured,
     /// Lifting bans asked for a player who has none.
     NotBanned,
+    /// The player has no tie at this place in his list of relations, or it is not one the editor changes.
+    NoRelation {
+        index: usize,
+    },
+    /// The player's list of relations has no room for another.
+    RelationsFull,
+    /// The new nation or club is not one of the game's own, or not of the kind the tie takes.
+    WrongTarget,
+    /// The player has that tie already.
+    SameRelation,
+    /// A homegrown rule the editor does not write.
+    UnknownRule {
+        rule: u8,
+    },
     /// The club has no team at this place in its list of teams, or it does not check out.
     NoTeam {
         index: usize,
@@ -224,6 +238,18 @@ impl fmt::Display for MoveError {
             ),
             MoveError::NotInjured => f.write_str("the player has no injury to heal"),
             MoveError::NotBanned => f.write_str("the player has no ban to lift"),
+            MoveError::NoRelation { index } => {
+                write!(f, "the player has no nationality or homegrown tie number {index}")
+            }
+            MoveError::RelationsFull => f.write_str(
+                "the player's list of nationalities and ties has no room for another, and the editor cannot make it \
+                 bigger; change one of them instead",
+            ),
+            MoveError::WrongTarget => {
+                f.write_str("that is not a nation or club of the game, of the kind this tie takes")
+            }
+            MoveError::SameRelation => f.write_str("the player has that already"),
+            MoveError::UnknownRule { rule } => write!(f, "homegrown rule {rule} is not one the editor writes"),
             MoveError::NoTeam { index } => write!(f, "the club has no team number {index} that checks out"),
             MoveError::NotInTeam => f.write_str("the player does not play for this team"),
             MoveError::OutOfRange { field, value, min, max } => {
@@ -269,6 +295,11 @@ impl Coded for MoveError {
             MoveError::NoRoom { .. } => "move.noRoom",
             MoveError::NotInjured => "heal.notInjured",
             MoveError::NotBanned => "ban.notBanned",
+            MoveError::NoRelation { .. } => "relation.missing",
+            MoveError::RelationsFull => "relation.noRoom",
+            MoveError::WrongTarget => "relation.target",
+            MoveError::SameRelation => "relation.same",
+            MoveError::UnknownRule { .. } => "relation.rule",
             MoveError::NoTeam { .. } => "squad.noTeam",
             MoveError::NotInTeam => "captain.notInTeam",
             MoveError::OutOfRange { .. } => "move.outOfRange",
@@ -302,6 +333,8 @@ impl Coded for MoveError {
                 vec![("department", (*department).to_owned()), ("staff", staff.to_string())]
             }
             MoveError::UnusualJob { job } => vec![("job", job.to_string())],
+            MoveError::NoRelation { index } => vec![("index", index.to_string())],
+            MoveError::UnknownRule { rule } => vec![("rule", rule.to_string())],
             MoveError::Memory(err) => err.params(),
             _ => Vec::new(),
         }

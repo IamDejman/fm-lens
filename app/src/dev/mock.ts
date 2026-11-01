@@ -25,6 +25,8 @@ import type {
   GameInfo,
   Ban,
   Injury,
+  Tie,
+  TieKind,
   PlayerDetails,
   PlayerFilter,
   PlayerOrder,
@@ -227,6 +229,8 @@ function details(player: PlayerSummary): PlayerDetails {
     matchSharpness: Math.round(3500 + next() * 6500),
     injuries: injuriesOf(player.uid),
     bans: bansOf(player.uid),
+    ties: tiesOf(player),
+    tieRoom: tieRoomOf(player),
     // Drawn last, so that the values above come out as before.
     morale: Math.round(7 + next() * 10),
   });
@@ -255,6 +259,134 @@ function injuriesOf(uid: number): Injury[] {
     injuries.push(injury("Twisted ankle", 1, 7, 12));
   }
   return injuries;
+}
+
+// Ties: secondary nationalities and homegrown status --------------------------------------------------------------
+
+/** The homegrown rules the real `change_tie` and `add_tie` write. */
+const HOMEGROWN_RULES = [1, 2, 5, 10];
+
+/** The ties of the fixture players changed through the editor, by UID; the others have the ones `fixtureTies` gives. */
+const tiesSet = new Map<number, Tie[]>();
+
+/** What each change to a player's ties (by the id of its logged change) found, for its undo. */
+const tieUndo = new Map<number, Tie[]>();
+
+/**
+ * A fixture player's ties as the game would hold them: every fifth player has a secondary nationality, and each was
+ * trained in his nation and at his club under the 15–21 rule.
+ */
+function fixtureTies(player: PlayerSummary): Tie[] {
+  const ties: Tie[] = [];
+  if (player.uid % 5 === 0) {
+    const other = NATIONS[(NATIONS.indexOf(player.nation ?? NATIONS[0]) + 1) % NATIONS.length];
+    ties.push({ index: 0, tie: "nationality", targetUid: 1000 + NATIONS.indexOf(other), name: other, rule: null });
+  }
+  if (player.nation) {
+    ties.push({ index: 0, tie: "trainedInNation", targetUid: player.nationUid ?? 0, name: player.nation, rule: 1 });
+  }
+  if (player.club && player.clubUid !== null) {
+    ties.push({ index: 0, tie: "trainedAtClub", targetUid: player.clubUid, name: player.club, rule: 1 });
+  }
+  // A list holds other relations too: the ties are spread through it.
+  return ties.map((tie, i) => ({ ...tie, index: i * 2 + 1 }));
+}
+
+const tiesOf = (player: PlayerSummary) => tiesSet.get(player.uid) ?? fixtureTies(player);
+
+/** Room for one or two more ties in every third list, less what was added to it. */
+const tieRoomOf = (player: PlayerSummary) =>
+  Math.max(0, (player.uid % 3) - (tiesOf(player).length - fixtureTies(player).length));
+
+/** The fixture nation with the UID `uid`, or the real commands' failure. */
+function mockNation(uid: number): string {
+  const name = NATIONS[uid - 1000];
+  if (name === undefined) {
+    throw failure("app.notFound", `No nation with UID ${uid}`, { uid });
+  }
+  return name;
+}
+
+/** Logs a change to a player's ties as the real commands do, keeping his ties as they were for undoing it. */
+function logTie(player: PlayerSummary, before: Tie | null, after: Tie | null, ties: Tie[]): LoggedChange {
+  const id = changes.length + 1;
+  tieUndo.set(id, tiesOf(player));
+  tiesSet.set(player.uid, ties);
+  const kind = (before ?? after)!.tie;
+  const end = (tie: Tie | null) => tie && { name: tie.name ?? String(tie.targetUid), rule: tie.rule };
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid: player.uid,
+    field: `tie.${kind}`,
+    old: before?.targetUid ?? 0,
+    new: after?.targetUid ?? 0,
+    undoneAt: null,
+    batch: null,
+    tie: { from: end(before), to: end(after) },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** The fixture player `uid`, and his tie at `index`, or the real commands' failures. */
+function tieAt(uid: number, index: number): [PlayerSummary, Tie] {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const tie = tiesOf(player).find((t) => t.index === index);
+  if (!tie) {
+    throw failure("relation.missing", `the player has no nationality or homegrown tie number ${index}`, { index });
+  }
+  return [player, tie];
+}
+
+/** `change_tie`: points a fixture player's tie at another nation, or gives a training another rule. */
+function changeTie(uid: number, index: number, nation?: number, rule?: number): LoggedChange {
+  const [player, tie] = tieAt(uid, index);
+  if (rule !== undefined && (tie.rule === null || !HOMEGROWN_RULES.includes(rule))) {
+    throw failure("relation.rule", `homegrown rule ${rule} is not one the editor writes`, { rule });
+  }
+  const after: Tie = {
+    ...tie,
+    ...(nation !== undefined && { targetUid: nation, name: mockNation(nation) }),
+    ...(rule !== undefined && { rule }),
+  };
+  const ties = tiesOf(player);
+  if (ties.some((t) => t.tie === after.tie && t.targetUid === after.targetUid && t.rule === after.rule)) {
+    throw failure("relation.same", "the player has that already");
+  }
+  return logTie(player, tie, after, ties.map((t) => (t.index === index ? after : t)));
+}
+
+/** `remove_tie`: takes a fixture player's tie out of his list. */
+function removeTie(uid: number, index: number): LoggedChange {
+  const [player, tie] = tieAt(uid, index);
+  return logTie(player, tie, null, tiesOf(player).filter((t) => t.index !== index));
+}
+
+/** `add_tie`: gives a fixture player a nationality or a nation he was trained in, where his list has room. */
+function addTie(uid: number, kind: TieKind, target: number, rule?: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  if (tieRoomOf(player) === 0) {
+    throw failure(
+      "relation.noRoom",
+      "the player's list of nationalities and ties has no room for another, and the editor cannot make it bigger; change one of them instead",
+    );
+  }
+  const ties = tiesOf(player);
+  const index = Math.max(0, ...ties.map((t) => t.index)) + 1;
+  const after: Tie = { index, tie: kind, targetUid: target, name: mockNation(target), rule: rule ?? null };
+  if (ties.some((t) => t.tie === kind && t.targetUid === target && t.rule === after.rule)) {
+    throw failure("relation.same", "the player has that already");
+  }
+  return logTie(player, null, after, [...ties, after]);
 }
 
 /** The fixture players whose bans were lifted through the editor, by UID, while the lifting is not undone. */
@@ -822,6 +954,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.field === "bans") {
     liftedPlayers.delete(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.tie) {
+    tiesSet.set(entry.uid, tieUndo.get(entry.id)!);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -1857,6 +1994,19 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return healPlayer(Number(args?.uid)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
+    case "change_tie":
+      return changeTie(
+        Number(args?.uid),
+        Number(args?.index),
+        args?.nation as number | undefined,
+        args?.rule as number | undefined,
+      ) as T;
+    case "remove_tie":
+      return removeTie(Number(args?.uid), Number(args?.index)) as T;
+    case "add_tie":
+      return addTie(Number(args?.uid), args?.tie as TieKind, Number(args?.target), args?.rule as number | undefined) as T;
+    case "homegrown_rules":
+      return [...HOMEGROWN_RULES] as T;
     case "club_squads":
       return clubSquads(Number(args?.uid)) as T;
     case "set_captain":

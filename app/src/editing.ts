@@ -20,6 +20,7 @@ import type {
   MoveTerms,
   Nation,
   TeamAction,
+  TieKind,
 } from "./types";
 
 /** The fields of players or of staff the editor can change, in display order. */
@@ -156,6 +157,26 @@ export const planRelease = (uid: number) => call<MovePreview["from"]>("plan_rele
  * like a move.
  */
 export const releasePlayer = (uid: number) => call<LoggedChange>("release_player", { uid });
+
+/**
+ * Points the player's tie `index` at another nation or club (by UID), and gives a training another homegrown rule;
+ * what is left out stays. Logged and undone like any change.
+ */
+export const changeTie = (uid: number, index: number, change: { nation?: number; club?: number; rule?: number }) =>
+  call<LoggedChange>("change_tie", { uid, index, ...change });
+
+/** Takes the player's tie `index` out of his list. Logged and undone like any change. */
+export const removeTie = (uid: number, index: number) => call<LoggedChange>("remove_tie", { uid, index });
+
+/**
+ * Gives the player a tie to the nation or club with the UID `target`, under the homegrown rule `rule` for a training,
+ * where his list has room (see `PlayerDetails.tieRoom`). Logged and undone like any change.
+ */
+export const addTie = (uid: number, tie: TieKind, target: number, rule?: number) =>
+  call<LoggedChange>("add_tie", { uid, tie, target, rule });
+
+/** The homegrown rules `changeTie` and `addTie` write, by the game's code. */
+export const homegrownRules = () => call<number[]>("homegrown_rules");
 
 /** Checks that the member of staff can move to the club, and names the clubs; the error says why he cannot. */
 export const planStaffMove = (uid: number, club: number) => call<MovePreview>("plan_staff_move", { uid, club });
