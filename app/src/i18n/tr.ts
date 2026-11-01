@@ -95,6 +95,7 @@ const errors: ErrorTexts = {
   "move.changed": () => `Oyun bu belleği o zamandan beri değiştirmiş; ${reload}.`,
   "move.notApplied": () => "Belleğe yazıldı ama geri okunan farklı çıktı.",
   "heal.notInjured": () => "Oyuncunun iyileştirilecek bir sakatlığı yok.",
+  "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
   "staff.you": () => "Bu sizsiniz, yönettiğiniz teknik direktör.",
   "staff.unemployed": () => "Bu personelin bir kulübü yok.",
   "staff.role": () =>
@@ -343,6 +344,7 @@ export const tr: Strings = {
     "contract.job": "Görev",
     club: "Kulüp",
     injuries: "Sakatlıklar",
+    bans: "Cezalar",
     captain: "Kaptan",
     vice_captain: "Yardımcı kaptan",
     reputation: "İtibar",
@@ -432,6 +434,11 @@ export const tr: Strings = {
     injuryBack: (dates) => `Beklenen dönüş: ${dates}`,
     heal: "İyileştir",
     healTitle: "Bu oyuncunun tüm sakatlıklarını oyunda iyileştir",
+    noBans: "Cezası yok",
+    banMatches: (matches) => `${format(matches)} maç`,
+    banStarted: (date) => `Başlangıç: ${date}`,
+    liftBans: "Kaldır",
+    liftBansTitle: "Bu oyuncunun tüm cezalarını oyunda kaldır",
 
     // Staff
     you: "Siz",
@@ -766,6 +773,7 @@ export const tr: Strings = {
     swappedWith: (name) => `Takas: ${name}`,
     fee: (amount) => `Bedel ${amount}`,
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
+    lifted: (count) => `${format(count)} ceza kaldırıldı`,
     count: (total, undone) => {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} geri alındı`;
@@ -1090,6 +1098,9 @@ export const tr: Strings = {
     healAll: (injured) => (injured === 0 ? "Hepsini iyileştir" : `Hepsini iyileştir (${format(injured)} sakat)`),
     healAllTitle: "Bu takımdaki her oyuncunun tüm sakatlıklarını iyileştir",
     healNone: "Bu takımda sakat oyuncu yok",
+    liftAll: (banned) => (banned === 0 ? "Cezaları kaldır" : `Cezaları kaldır (${format(banned)} cezalı)`),
+    liftAllTitle: "Bu takımdaki her oyuncunun tüm cezalarını kaldır",
+    liftNone: "Bu takımda cezalı oyuncu yok",
     inspireAll: "Hepsine moral ver",
     inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla",
     refreshAll: "Hepsini dinlendir",
@@ -1148,6 +1159,8 @@ export const tr: Strings = {
     // The tags after a name
     injured: "Sakat",
     injuredTitle: (count) => `${format(count)} sakatlık`,
+    banned: "Cezalı",
+    bannedTitle: (count) => `${format(count)} ceza`,
     onLoan: "Kirada",
     onLoanTitle: "Başka bir kulübe kiralık gönderildi",
     loanee: "Kiralık",

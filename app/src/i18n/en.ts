@@ -293,6 +293,8 @@ export const en = {
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
+    // Lifting a player's bans, which the change log keeps as a change of his bans.
+    bans: "Bans",
     // Making a player the captain or vice-captain of one of a club's teams, which the change log keeps as a change of
     // the club's captain or vice-captain.
     captain: "Captain",
@@ -393,6 +395,13 @@ export const en = {
     /** Heals every injury of the player at once. */
     heal: "Heal",
     healTitle: "Heal every injury of this player in the game",
+    noBans: "No bans",
+    /** A ban: how many matches the player still has to miss, and under it when it began. */
+    banMatches: (matches: number) => (matches === 1 ? "1 match" : `${format(matches)} matches`),
+    banStarted: (date: string) => `From ${date}`,
+    /** Lifts every ban of the player at once. */
+    liftBans: "Lift",
+    liftBansTitle: "Lift every ban of this player in the game",
 
     // Staff
     /** Badge on the manager the user controls. */
@@ -814,6 +823,8 @@ export const en = {
     fee: (amount: string) => `Fee ${amount}`,
     /** What a heal changed, in the place of its values: `count` is how many injuries the player had. */
     healed: (count: number) => (count === 1 ? "Healed 1 injury" : `Healed ${format(count)} injuries`),
+    /** The same for lifting bans: `count` is how many bans the player had. */
+    lifted: (count: number) => (count === 1 ? "Lifted 1 ban" : `Lifted ${format(count)} bans`),
     /** The line beside the title; `undone` of the `total` changes were undone. */
     count: (total: number, undone: number) => {
       const count = changeCount(total);
@@ -1228,6 +1239,11 @@ export const en = {
     healAllTitle: "Heal every injury of every player in this team",
     /** Hover text of Heal all while nobody in the team is injured. */
     healNone: "Nobody in this team is injured",
+    /** `banned` is how many of the team's players have a ban. */
+    liftAll: (banned: number) => (banned === 0 ? "Lift bans" : `Lift bans (${format(banned)} banned)`),
+    liftAllTitle: "Lift every ban of every player in this team",
+    /** Hover text of Lift bans while nobody in the team is banned. */
+    liftNone: "Nobody in this team is banned",
     inspireAll: "Inspire all",
     inspireAllTitle: "Set the morale of every player in this team to 20, the highest",
     refreshAll: "Refresh all",
@@ -1295,6 +1311,9 @@ export const en = {
     injured: "Injured",
     /** `count` is how many injuries he has. */
     injuredTitle: (count: number) => (count === 1 ? "1 injury" : `${format(count)} injuries`),
+    banned: "Banned",
+    /** `count` is how many bans he has. */
+    bannedTitle: (count: number) => (count === 1 ? "1 ban" : `${format(count)} bans`),
     onLoan: "On loan",
     onLoanTitle: "Out on loan to another club",
     loanee: "Loanee",

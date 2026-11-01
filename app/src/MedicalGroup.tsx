@@ -1,13 +1,13 @@
 // The Medical group of a player's profile: his energy, match sharpness and morale, his current injuries, and
-// the button that heals them.
+// the button that heals them; then his bans, and the button that lifts them.
 
 import { useContext, useEffect, useRef, useState } from "react";
 import { EditableValue } from "./EditControls";
-import { healPlayer, wholePercent } from "./editing";
+import { healPlayer, liftBans, wholePercent } from "./editing";
 import { describeError, formatDate, formatDateRange, formatPercent } from "./format";
 import { appText, fieldLabel, profileText } from "./labels";
 import { Fact } from "./ProfileParts";
-import type { Injury, PlayerDetails } from "./types";
+import type { Ban, Injury, PlayerDetails } from "./types";
 import { EditorContext } from "./useProfileEditing";
 
 /** A stored percentage (0–10000) as the profile shows it: "87%". The squad table of a club shows them the same way. */
@@ -15,21 +15,31 @@ export const percentText = (stored: number) => formatPercent(wholePercent(stored
 
 /**
  * Energy and match sharpness as whole percentages, morale out of 20, which are inputs while the player
- * is edited, and under them his injuries.
+ * is edited, and under them his injuries and his bans.
  */
 export function MedicalGroup({ details }: { details: PlayerDetails }) {
   const injured = details.injuries.length > 0;
+  const banned = details.bans.length > 0;
   const noInjuries = useRef<HTMLParagraphElement>(null);
+  const noBans = useRef<HTMLParagraphElement>(null);
   const wasInjured = useRef(injured);
+  const wasBanned = useRef(banned);
 
   // A heal takes the Heal button, which had focus, away with the list it healed: focus goes to the line that takes
-  // their place, so that someone using the keyboard stays in the group.
+  // their place, so that someone using the keyboard stays in the group. Lifting bans does the same with Lift.
   useEffect(() => {
     if (wasInjured.current && !injured && document.activeElement === document.body) {
       noInjuries.current?.focus();
     }
     wasInjured.current = injured;
   }, [injured]);
+
+  useEffect(() => {
+    if (wasBanned.current && !banned && document.activeElement === document.body) {
+      noBans.current?.focus();
+    }
+    wasBanned.current = banned;
+  }, [banned]);
 
   return (
     <section className="profile-group">
@@ -52,7 +62,88 @@ export function MedicalGroup({ details }: { details: PlayerDetails }) {
           {profileText.noInjuries}
         </p>
       )}
+      {banned ? (
+        <BanList uid={details.uid} bans={details.bans} />
+      ) : (
+        <p ref={noBans} tabIndex={-1} className="injuries-none">
+          {profileText.noBans}
+        </p>
+      )}
     </section>
+  );
+}
+
+/**
+ * The bans a player has, each with how many matches he still misses and when it began, and the Lift button for all of
+ * them. Like healing, lifting asks no question: it is logged like any change, and undone from the Changes view.
+ */
+function BanList({ uid, bans }: { uid: number; bans: Ban[] }) {
+  const { editable, onEdited } = useContext(EditorContext);
+  const [lifting, setLifting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const alive = useRef(true);
+
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  // After lifting the button stays busy until the profile has read the game again, which gives a new list.
+  useEffect(() => {
+    setLifting(false);
+  }, [bans]);
+
+  const lift = async () => {
+    // While lifting is under way the button is only dimmed (aria-disabled), not disabled: a disabled button loses focus.
+    if (lifting) {
+      return;
+    }
+    setLifting(true);
+    setError(null);
+    try {
+      await liftBans(uid);
+      // The game has changed: the lists, the profile and the change log read it again.
+      onEdited();
+    } catch (e) {
+      if (alive.current) {
+        setError(describeError(e));
+        setLifting(false);
+      }
+    }
+  };
+
+  return (
+    <div className="injuries">
+      <div className="injuries-head">
+        <h4>{fieldLabel("player", "bans")}</h4>
+        <button
+          type="button"
+          className="heal-toggle"
+          disabled={!editable}
+          aria-disabled={lifting || undefined}
+          aria-busy={lifting || undefined}
+          title={editable ? profileText.liftBansTitle : appText.noteReadOnly}
+          onClick={() => void lift()}
+        >
+          {profileText.liftBans}
+        </button>
+      </div>
+      {error !== null && (
+        <p className="heal-error" role="alert">
+          {error}
+        </p>
+      )}
+      <ul className="injury-list">
+        {bans.map((ban, index) => (
+          <li key={index}>
+            <span className="injury-name">{profileText.banMatches(ban.matches)}</span>
+            {ban.started && <span className="injury-dates">{profileText.banStarted(formatDate(ban.started))}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

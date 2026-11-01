@@ -1,5 +1,5 @@
 // The Squad tab of a club's profile: the players of each of its teams with the values a squad screen shows, the actions
-// on a whole team (heal everyone, give everyone the best morale, rest everyone) and the captains. What it writes is
+// on a whole team (heal everyone, lift every ban, give everyone the best morale, rest everyone) and the captains. What it writes is
 // logged like any change, and undone from the Changes view, or at once from the line under the buttons.
 
 import { useContext, useEffect, useMemo, useRef, useState, type Ref } from "react";
@@ -412,11 +412,13 @@ interface TeamActionsProps {
 }
 
 /**
- * Heal all, Inspire all, Refresh all and Max attributes for the shown team. Heal all says how many players are injured
- * and waits until somebody is; every one waits while the game cannot be written to, and says why.
+ * Heal all, Lift bans, Inspire all, Refresh all and Max attributes for the shown team. Heal all and Lift bans say how
+ * many players are injured or banned and wait until somebody is; every one waits while the game cannot be written to,
+ * and says why.
  */
 function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
   const injured = team.players.filter((player) => player.injuries > 0).length;
+  const banned = team.players.filter((player) => player.bans > 0).length;
   const empty = team.players.length === 0;
   // What a button's hover text says: why it waits, or else what it does.
   const hover = (does: string, waiting: string | null) => (!editable ? appText.noteReadOnly : (waiting ?? does));
@@ -429,6 +431,13 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
         waiting={!editable || injured === 0}
         busy={busy}
         onPress={() => onAction("heal")}
+      />
+      <ActionButton
+        label={text.liftAll(banned)}
+        title={hover(text.liftAllTitle, banned === 0 ? text.liftNone : null)}
+        waiting={!editable || banned === 0}
+        busy={busy}
+        onPress={() => onAction("liftBans")}
       />
       <ActionButton
         label={text.inspireAll}
@@ -605,13 +614,18 @@ function SquadRow({ player, role, editable, busy, onCaptain }: SquadRowProps) {
   );
 }
 
-/** What is out of the ordinary about a player: his injuries, a loan, or playing for another team of the club. */
+/** What is out of the ordinary about a player: his injuries, bans, a loan, or playing for another team of the club. */
 function Tags({ player }: { player: SquadPlayer }) {
   return (
     <>
       {player.injuries > 0 && (
         <span className="tag injured" title={text.injuredTitle(player.injuries)}>
           {text.injured}
+        </span>
+      )}
+      {player.bans > 0 && (
+        <span className="tag injured" title={text.bannedTitle(player.bans)}>
+          {text.banned}
         </span>
       )}
       {player.loan === "out" ? (

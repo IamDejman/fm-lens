@@ -8,7 +8,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
     Entity, EntityArrays, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex,
-    Healed, Kind, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid, Picture, Planned,
+    Healed, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid, Picture, Planned,
     PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, STAFF_JOBS, SearchIndex, Session,
     SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, find_game, nations,
     sort_players,
@@ -202,6 +202,30 @@ impl Connection {
             moved: None,
             captaincy: None,
             undo: Some(Undo::Heal(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs lifting just written, as a change of the player's `bans` from how many he had to none.
+    fn log_lift(&mut self, done: Lifted, batch: Option<u32>) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "bans".to_owned(),
+            old: done.bans as i64,
+            new: 0,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch,
+            moved: None,
+            captaincy: None,
+            undo: Some(Undo::Lift(done)),
         };
         self.log.push(logged.clone());
         logged
@@ -422,6 +446,7 @@ impl Connection {
                 }
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
+            Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
             Some(Undo::Staff(logged)) => {
                 self.session.undo_staff_change(&logged.done)?;
                 self.staff.update(logged.done.member, |member| {
@@ -537,7 +562,7 @@ struct LoggedChange {
     /// player's UID to the other's: the team and the players' names.
     #[serde(skip_serializing_if = "Option::is_none")]
     captaincy: Option<Captaincy>,
-    /// For a move, healing or a captaincy: what undoing it takes. Other changes write back `old`.
+    /// For a move, healing, lifting bans or a captaincy: what undoing it takes. Other changes write back `old`.
     #[serde(skip)]
     undo: Option<Undo>,
 }
@@ -547,6 +572,7 @@ struct LoggedChange {
 enum Undo {
     Move(LoggedMove),
     Heal(Healed),
+    Lift(Lifted),
     Captain(CaptainSet),
     Staff(LoggedStaff),
 }
@@ -600,6 +626,7 @@ struct SquadRow {
     match_sharpness: u16,
     morale: u8,
     injuries: usize,
+    bans: usize,
 }
 
 /// What a team-wide action does to every player of the team.
@@ -608,6 +635,8 @@ struct SquadRow {
 enum TeamAction {
     /// Heals every current injury.
     Heal,
+    /// Lifts every current ban.
+    LiftBans,
     /// Morale to the top.
     Inspire,
     /// Energy and match sharpness to 100%.
@@ -1362,6 +1391,18 @@ fn heal_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Fai
     Ok(connection.log_heal(done, None))
 }
 
+/// Lifts every current ban of the player `uid`, as the game does once he has served them, and
+/// logs it as one change of his `bans` to none.
+#[tauri::command]
+fn lift_bans(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_lift_bans(player)?;
+    let done = connection.session.apply_lift_bans(&plan)?;
+    Ok(connection.log_lift(done, None))
+}
+
 /// The teams of the club `uid`, the senior team first, with their players: each one's list
 /// row and the live values a squad screen shows, read now.
 #[tauri::command]
@@ -1391,6 +1432,7 @@ fn club_squads(state: State<'_, AppState>, uid: u32) -> Result<Vec<TeamView>, Fa
                         match_sharpness: member.match_sharpness,
                         morale: member.morale,
                         injuries: member.injuries,
+                        bans: member.bans,
                     })
                 })
                 .collect(),
@@ -1453,6 +1495,32 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
                         uid: member.uid,
                         name,
                         field: "injuries".to_owned(),
+                        error: err.into(),
+                    }),
+                }
+            }
+            return Ok(report);
+        }
+        TeamAction::LiftBans => {
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            for member in members.iter().filter(|member| member.bans > 0) {
+                let Some(player) = connection.players.get(member.uid) else {
+                    continue;
+                };
+                let name = player.name.clone();
+                let lifted = connection
+                    .session
+                    .plan_lift_bans(player)
+                    .and_then(|plan| connection.session.apply_lift_bans(&plan));
+                match lifted {
+                    Ok(done) => {
+                        connection.log_lift(done, Some(batch));
+                        report.applied += 1;
+                    }
+                    Err(err) => report.failed.push(MassFailure {
+                        uid: member.uid,
+                        name,
+                        field: "bans".to_owned(),
                         error: err.into(),
                     }),
                 }
@@ -1652,6 +1720,7 @@ pub fn run() {
             change_staff_job,
             staff_jobs,
             heal_player,
+            lift_bans,
             club_squads,
             set_captain,
             team_action,

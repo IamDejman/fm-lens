@@ -156,6 +156,8 @@ pub enum MoveError {
     },
     /// Healing asked for a player who has no current injury.
     NotInjured,
+    /// Lifting bans asked for a player who has none.
+    NotBanned,
     /// The club has no team at this place in its list of teams, or it does not check out.
     NoTeam {
         index: usize,
@@ -221,6 +223,7 @@ impl fmt::Display for MoveError {
                  make it bigger"
             ),
             MoveError::NotInjured => f.write_str("the player has no injury to heal"),
+            MoveError::NotBanned => f.write_str("the player has no ban to lift"),
             MoveError::NoTeam { index } => write!(f, "the club has no team number {index} that checks out"),
             MoveError::NotInTeam => f.write_str("the player does not play for this team"),
             MoveError::OutOfRange { field, value, min, max } => {
@@ -265,6 +268,7 @@ impl Coded for MoveError {
             MoveError::NotListed => "move.notListed",
             MoveError::NoRoom { .. } => "move.noRoom",
             MoveError::NotInjured => "heal.notInjured",
+            MoveError::NotBanned => "ban.notBanned",
             MoveError::NoTeam { .. } => "squad.noTeam",
             MoveError::NotInTeam => "captain.notInTeam",
             MoveError::OutOfRange { .. } => "move.outOfRange",

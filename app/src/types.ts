@@ -335,6 +335,8 @@ export interface PlayerDetails extends PlayerSummary {
   morale: number;
   /** His current injuries; empty when he has none. */
   injuries: Injury[];
+  /** His current bans; empty when he has none. */
+  bans: Ban[];
 }
 
 /** One current injury of a player. */
@@ -345,6 +347,13 @@ export interface Injury {
   /** When he is expected back, at the soonest and at the latest. */
   backSoonest: FmDate | null;
   backLatest: FmDate | null;
+}
+
+/** One current ban of a player. */
+export interface Ban {
+  started: FmDate | null;
+  /** How many matches he still has to miss. */
+  matches: number;
 }
 
 /** What an edit is for. */
@@ -420,7 +429,8 @@ export interface LoggedChange {
   undoneAt: number | null;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
-  // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0.
+  // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0, and
+  // lifting his bans (`lift_bans`) as a change of his field "bans".
   /**
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
    * values are the clubs' UIDs: the clubs' names. A release (`release_player`) is logged the same way, with 0 for
@@ -482,6 +492,8 @@ export interface SquadPlayer extends PlayerSummary {
   morale: number;
   /** How many current injuries he has. */
   injuries: number;
+  /** How many current bans he has. */
+  bans: number;
 }
 
 /** A team's two captaincies. */
@@ -489,9 +501,9 @@ export type CaptainRole = "captain" | "viceCaptain";
 
 /**
  * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
- * "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
+ * "liftBans" lifts every ban, "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
  */
-export type TeamAction = "heal" | "inspire" | "refresh" | "maxAttributes";
+export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes";
 
 /** The columns that sort a squad table. */
 export type SquadSort =

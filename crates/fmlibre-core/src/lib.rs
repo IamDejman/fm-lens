@@ -43,7 +43,7 @@ pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use index::{Listed, SearchIndex};
 pub use mass::{Operation, Plan, Planned, Skipped};
-pub use medical::{HealPlan, Healed, Injury};
+pub use medical::{Ban, HealPlan, Healed, Injury, LiftPlan, Lifted};
 pub use players::{Nation, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nations, read_players};
 pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,

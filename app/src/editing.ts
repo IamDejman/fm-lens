@@ -188,6 +188,12 @@ export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("s
  */
 export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { uid });
 
+/**
+ * Lifts every current ban of the player, as the game does once he has served them; his other absences stay. Logged
+ * as one change of his field `bans` from how many he had to 0, and undone as one; fails when he has none.
+ */
+export const liftBans = (uid: number) => call<LoggedChange>("lift_bans", { uid });
+
 /** The teams of a club, the senior team first, with their players and the live values a squad screen shows. */
 export const clubSquads = (uid: number) => call<ClubTeam[]>("club_squads", { uid });
 

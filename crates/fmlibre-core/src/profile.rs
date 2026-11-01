@@ -22,6 +22,7 @@ pub struct Layout {
     pub club_finance: ClubFinanceLayout,
     pub nation: NationLayout,
     pub injury: InjuryLayout,
+    pub ban: BanLayout,
     pub heap: HeapLayout,
 }
 
@@ -50,6 +51,30 @@ impl InjuryLayout {
             .into_iter()
             .max()
             .unwrap_or(0)
+    }
+}
+
+/// One current ban of a player. The record a player's `injuries` pointer leads to holds,
+/// after his list of current injuries, the list `(begin, end, capacity)` of his current
+/// absences: his bans, and others such as a call-up. Each is a 32-byte entry, and a ban
+/// carries `0xFFFF` at `marker`, where the others hold 0.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BanLayout {
+    /// Where the list of absences is in the record.
+    pub list: u64,
+    /// The date the ban began.
+    pub started: u64,
+    /// `u16`, `0xFFFF` for a ban.
+    pub marker: u64,
+    /// `u8`: how many matches he still has to miss.
+    pub matches: u64,
+}
+
+impl BanLayout {
+    /// One past the last byte of every field of an entry.
+    pub fn end(&self) -> u64 {
+        [self.started + 4, self.marker + 2, self.matches + 1].into_iter().max().unwrap_or(0)
     }
 }
 
@@ -581,6 +606,10 @@ mod tests {
         assert_eq!(mac.contract.end(), windows.contract.end());
         assert_eq!(mac.team.end(), windows.team.end());
         assert_eq!(mac.club_finance.end(), windows.club_finance.end());
+        assert_eq!(
+            (mac.ban.list, mac.ban.started, mac.ban.marker, mac.ban.matches),
+            (windows.ban.list, windows.ban.started, windows.ban.marker, windows.ban.matches)
+        );
         // The game's own allocator, with the same size classes on both systems.
         assert_eq!(mac.heap.block_sizes, windows.heap.block_sizes);
     }
