@@ -4,6 +4,10 @@ edition = 27
 storefront = "gamePass"
 package_version = "0.9.2355.0"
 
+# The static pointer to the retirement manager (RETIREMENT_MANAGER): the only pointer to the one object of that
+# class, 0xED60 before the players pair; on a save in September 2026 whose manager listed 27 planned retirements.
+retirement_manager = 0x5673060
+
 # game_plugin.dll as mapped in memory; these two values identify the build.
 [plugin]
 size_of_image = 0x19436000

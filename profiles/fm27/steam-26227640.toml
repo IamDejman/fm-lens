@@ -5,6 +5,10 @@ name = "FM27 Steam build 26227640 (Launch Preview)"
 edition = 27
 storefront = "steam"
 
+# The static pointer to the retirement manager (RETIREMENT_MANAGER): the only pointer to the one object of that
+# class, on a save in November 2026. It sits 0xDAC0 before the players pair, not 0xED60 as on Game Pass.
+retirement_manager = 0x56F5D10
+
 # game_plugin.dll as mapped in memory; these two values identify the build.
 [plugin]
 size_of_image = 0x19E69000

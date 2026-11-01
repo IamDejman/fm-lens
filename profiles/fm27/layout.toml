@@ -245,9 +245,10 @@ matches = 0x1C            # u8, matches left to miss
 # keeps. Read on the Game Pass save (6 September 2026), where the manager listed 27, among them Cristiano Ronaldo on
 # 30 June 2027 and Daniel Wass on 1 July 2027 as FMRTE shows; nothing but the manager's two lists points at an entry.
 # An entry is 24 bytes: the person's id, a club's (-1 for a free agent), two dates, the date he retires and flags.
+# The static pointer to the manager is not at the same distance from the arrays on Game Pass and Steam: the build
+# profiles place it.
 [retirement]
-manager = -60768          # -0xED60: the static pointer to the manager, from the players (begin, end) pair
-planned = 0x30            # in the manager: (begin, end, capacity) of pointers to the entries
+planned = 0x30           # in the manager: (begin, end, capacity) of pointers to the entries
 by_person = 0x90          # in the manager: (begin, end, capacity) of 16-byte entries: u32 person id, 4 spare bytes, pointer; sorted by id
 person = 0x00             # in an entry: u32 person id
 date = 0x0C               # in an entry: the date he retires
