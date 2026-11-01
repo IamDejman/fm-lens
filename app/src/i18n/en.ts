@@ -315,6 +315,10 @@ export const en = {
     "finance.transfer_budget": "Transfer budget",
     "finance.wage_budget": "Wage budget",
     "finance.total_wage_budget": "Total wage budget",
+    "stadium.capacity": "Stadium capacity",
+    "stadium.seating": "Seated capacity",
+    "stadium.used": "Capacity in use",
+    "stadium.expansion": "Expansion capacity",
   },
 
   profile: {
@@ -625,6 +629,18 @@ export const en = {
     freeze: "Freeze money",
     freezeNote:
       "While the app is open and connected, the balance does not go down: what the game takes is put back, and income still counts.",
+
+    // Stadium
+    stadium: "Stadium",
+    capacity: "Capacity",
+    seating: "Seated",
+    used: "In use",
+    /** The capacity in use when the game does not limit it (stored as 0). */
+    usedAll: "All of it",
+    usedTitle: "The part of the capacity the game lets in, when it limits it (for example while seats are closed); 0 means all of it",
+    expansion: "Can grow to",
+    /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
+    noStadium: "The stadium could not be read for this club.",
 
     // Club info
     info: "Club info",
@@ -941,6 +957,7 @@ export const en = {
       contract: "Contract",
       facilities: "Facilities",
       finances: "Finances",
+      stadium: "Stadium",
       /** A player's energy, match sharpness and morale: the Medical group of his profile. */
       health: "Medical",
       /** Whatever the other groups do not have, e.g. a player's height. */

@@ -22,7 +22,7 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import { SquadTab } from "./SquadTab";
-import type { ClubDetails, ClubSummary, Finances } from "./types";
+import type { ClubDetails, ClubSummary, Finances, Stadium } from "./types";
 import { EditorContext, useProfileEditing } from "./useProfileEditing";
 
 const text = clubProfileText;
@@ -170,6 +170,7 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
       <div className="profile-stack">
         <Facilities facilities={details.facilities} />
         <FinancesGroup club={details.uid} finances={details.finances} />
+        <StadiumGroup stadium={details.stadium} />
       </div>
       <div className="profile-stack">
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
@@ -309,6 +310,33 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
         </>
       ) : (
         <p className="note">{text.noFinances}</p>
+      )}
+    </section>
+  );
+}
+
+/** The stadium the senior team plays at: its name, and its capacities, inputs while the club is edited. */
+function StadiumGroup({ stadium }: { stadium: Stadium | null }) {
+  return (
+    <section className="profile-group">
+      <h3>{stadium?.name ? `${text.stadium} · ${stadium.name}` : text.stadium}</h3>
+      {stadium ? (
+        <dl className="stats">
+          <Fact label={text.capacity}>
+            <EditableValue field="stadium.capacity">{formatNumber(stadium.capacity)}</EditableValue>
+          </Fact>
+          <Fact label={text.seating}>
+            <EditableValue field="stadium.seating">{formatNumber(stadium.seating)}</EditableValue>
+          </Fact>
+          <Fact label={text.used} title={text.usedTitle}>
+            <EditableValue field="stadium.used">{stadium.used === 0 ? text.usedAll : formatNumber(stadium.used)}</EditableValue>
+          </Fact>
+          <Fact label={text.expansion}>
+            <EditableValue field="stadium.expansion">{formatNumber(stadium.expansion)}</EditableValue>
+          </Fact>
+        </dl>
+      ) : (
+        <p className="note">{text.noStadium}</p>
       )}
     </section>
   );

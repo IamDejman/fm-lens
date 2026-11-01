@@ -367,6 +367,10 @@ export const tr: Strings = {
     "finance.transfer_budget": "Transfer bütçesi",
     "finance.wage_budget": "Maaş bütçesi",
     "finance.total_wage_budget": "Toplam maaş bütçesi",
+    "stadium.capacity": "Stadyum kapasitesi",
+    "stadium.seating": "Oturma kapasitesi",
+    "stadium.used": "Kullanılan kapasite",
+    "stadium.expansion": "Genişleme kapasitesi",
   },
 
   profile: {
@@ -631,6 +635,14 @@ export const tr: Strings = {
     freezeNote: "Uygulama açık ve oyuna bağlıyken bakiye düşmez: oyunun düştüğü para geri konur, gelirler yine eklenir.",
 
     // Club info
+    stadium: "Stadyum",
+    capacity: "Kapasite",
+    seating: "Oturma",
+    used: "Kullanılan",
+    usedAll: "Tamamı",
+    usedTitle: "Oyunun kapasitenin ne kadarını kullandığı, bir sınır koyduğunda (örneğin bazı tribünler kapalıyken); 0 tamamı demektir",
+    expansion: "Genişleyebileceği",
+    noStadium: "Bu kulübün stadyumu okunamadı.",
     info: "Kulüp bilgisi",
     seasonTickets: "Sezonluk biletler",
     socialMedia: "Sosyal medya takipçileri",
@@ -873,6 +885,7 @@ export const tr: Strings = {
       contract: "Sözleşme",
       facilities: "Tesisler",
       finances: "Finans",
+      stadium: "Stadyum",
       health: "Sağlık",
       other: "Diğer",
     },

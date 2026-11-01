@@ -4,7 +4,7 @@ use std::sync::OnceLock;
 use fmlibre_mem::{Module, Process, find_processes, list_modules};
 
 use crate::calibrate::{EntityArrays, calibrate};
-use crate::clubs::{ClubDetails, ClubSummary, full_finance_class, read_club_details, read_clubs};
+use crate::clubs::{ClubDetails, ClubSummary, full_finance_class, read_club_details, read_clubs, stadium_class};
 use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::details::{PlayerDetails, read_player_details};
@@ -117,6 +117,8 @@ pub struct Session {
     pub arrays: EntityArrays,
     /// The class of the full club finance record, found the first time it is needed.
     finance_class: OnceLock<Option<u64>>,
+    /// The class of stadiums, found the first time it is needed.
+    stadium_class: OnceLock<Option<u64>>,
 }
 
 impl Session {
@@ -136,7 +138,25 @@ impl Session {
         if arrays.players.is_none() {
             return Err(SessionError::PlayersNotFound);
         }
-        Ok(Self { process, game, plugin, fingerprint, profile, layout, arrays, finance_class: OnceLock::new() })
+        Ok(Self {
+            process,
+            game,
+            plugin,
+            fingerprint,
+            profile,
+            layout,
+            arrays,
+            finance_class: OnceLock::new(),
+            stadium_class: OnceLock::new(),
+        })
+    }
+
+    /// The class (vtable) of stadiums, the only objects a stadium field is written to; `None` when it cannot be told.
+    pub fn stadium_class(&self) -> Option<u64> {
+        *self.stadium_class.get_or_init(|| {
+            let array = self.arrays.clubs.as_ref()?;
+            stadium_class(&self.process, &self.plugin, array, &self.layout)
+        })
     }
 
     /// The class (vtable) of the full club finance record, the only one the budgets can be

@@ -134,7 +134,7 @@ const GROUP_ORDER: Record<Entity, readonly FieldGroupId[]> = {
     "reputation", "international", "contract", "health", "other",
   ],
   staff: ["ability", "coaching", "mental", "knowledge", "medical", "personality", "reputation", "contract", "other"],
-  club: ["reputation", "facilities", "finances", "other"],
+  club: ["reputation", "facilities", "finances", "stadium", "other"],
 };
 
 /**
@@ -202,6 +202,9 @@ function groupOf(entity: Entity, key: string): FieldGroupId {
       break;
     case "finance":
       id = "finances";
+      break;
+    case "stadium":
+      id = "stadium";
       break;
     // What a player's Medical group in his profile has: his energy, match sharpness, jadedness and morale.
     case "condition":

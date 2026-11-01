@@ -191,7 +191,10 @@ changes many at once, and undo.
   - [ ] Place of birth: a pointer to a city record (`+0x2C8` on macOS), whose nation the game shows.
   - [ ] Appearance. FM27 keeps a person's looks as dozens of 3D face values for the match engine
     (`MATCH_PERSON_APPEARANCE_INPUT`: skin tone, hair and eye colours, face shape); set aside.
-  - [ ] Stadium capacity, ticket prices and league prize money.
+  - [x] Stadium capacity: a club's senior team points at its stadium (`db::STADIUM`, team `+0x78`), whose capacity,
+    seats, capacity in use and expansion ceiling the club profile shows and edits. Checked on the Windows Game Pass
+    build (Old Trafford 74,879; the Emirates 60,704); not in the macOS layout yet.
+  - [ ] Sponsors, ticket prices and league prize money (`sicomps::PRIZE_MONEY_PROVIDER`).
   - [x] Jadedness: how worn out a player is by playing, which rest takes away (an `i16` at player `+0x25A`,
     -500 when rested). Found from the numbers FMRTE shows for three players, read without editing in FMRTE;
     shown in the profile and the squad tab, editable, and a team's Refresh rests it to -500. Checked on the

@@ -25,6 +25,37 @@ pub struct Layout {
     pub ban: BanLayout,
     pub relation: RelationLayout,
     pub heap: HeapLayout,
+    /// A club's stadium; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub stadium: Option<StadiumLayout>,
+}
+
+/// A stadium, which a club's senior team points at.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StadiumLayout {
+    /// In the senior team: the pointer to the stadium.
+    pub team_pointer: u64,
+    /// FM string pointer.
+    pub name: u64,
+    /// `u32` capacities: the whole, the seats, the part in use when it is limited (0 when not) and the most it can
+    /// be expanded to.
+    pub capacity: u64,
+    pub seating: u64,
+    pub used: u64,
+    pub expansion: u64,
+    /// Pointer to the club that owns it.
+    pub owner: u64,
+}
+
+impl StadiumLayout {
+    /// One past the last byte of every stadium field.
+    pub fn end(&self) -> u64 {
+        [self.name + 8, self.capacity + 4, self.seating + 4, self.used + 4, self.expansion + 4, self.owner + 8]
+            .into_iter()
+            .max()
+            .unwrap_or(0)
+    }
 }
 
 /// One of a person's relations: a 16-byte entry of the list that starts the record his `relations` pointer leads to.
