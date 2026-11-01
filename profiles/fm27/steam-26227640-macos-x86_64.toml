@@ -9,6 +9,11 @@ storefront = "steam"
 # 14 July 2026 on the test save, as the date did.
 current_date = 0x5C69700
 
+# The static pointer to the retirement manager, found in the file, not yet read in a running game: of the globals the
+# Intel half loads, this one is loaded beside 46 of the 48 places where the arm64 half loads its own (0x56A82A8), and
+# the calls that follow go to the same methods. The manager's class is checked before it is used.
+retirement_manager = 0x5C5FEF0
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "22CFE5C3-B5CF-3C00-8043-1EA190A69B89"

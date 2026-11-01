@@ -37,9 +37,12 @@ person_block_shifts = [0x0, 0xF8]
 height = 0x226            # u16, centimetres
 match_sharpness = 0x250   # u16, 0..10000
 condition = 0x254         # u16, the energy the game shows
-jadedness = 0x252         # i16, -500 when rested; between the two as on Windows, not yet checked on a Mac
+# i16, -500 when rested; between the two as on Windows. On the Mac save all 37,980 players read from -500 to 643,
+# 1,835 of them at -500; Arsenal's regular starters read 255 to 391, its injured -500.
+jadedness = 0x252
 morale = 0x264            # u8, 1..20
-traits = 0x308            # u64; in the person, 0x40 earlier as on Windows; not yet checked on a Mac
+# u64, in the person, 0x40 earlier as on Windows: Messi reads bits 7 10 16 17 19 20 49 51, as FMRTE shows them.
+traits = 0x308
 injuries = 0xF0           # pointer to the injury record; null for a player who was never injured
 asking_price = 0x230      # i32, pounds; -1 when not set
 home_reputation = 0x256   # u16
@@ -127,7 +130,9 @@ squad_number = 0x5D
 team = 0x10
 senior_team = 0x18
 job = 0x26
-# As on Windows, where the rest of the contract is laid out alike; not yet read on a Mac.
+# As on Windows, where the rest of the contract is laid out alike. Kylian Mbappé's list holds his release clause
+# (859,031,872 pounds) and three bonuses, and his loyalty bonus reads 50,098 a week, Erling Haaland's 43,634, as
+# FMRTE shows them on Windows. 1,998 players have a record of reasons to be unhappy, holding 1 to 6 entries.
 clauses = 0x68
 competition_bonuses = 0x80
 loyalty_bonus = 0x38
@@ -222,6 +227,15 @@ relation = 0x0B           # u8: 9 a nationality, 70 trained in a nation, 72 trai
 value = 0x0C              # u8: of a training, the homegrown rule it meets
 size = 0x10
 
+# The retirements the game has planned, as on Windows: the manager's two lists and its 24-byte entries are laid out
+# alike. The static pointer to the manager is a variable of its own, which the build profiles place.
+[retirement]
+planned = 0x30
+by_person = 0x90
+person = 0x00
+date = 0x0C
+player_person = 0x390     # in the identity block, 8 bytes in, as on Windows
+
 [team]
 club = 0x30
 kind = 0x28
@@ -252,6 +266,17 @@ finance = 0x150
 medical_staff = 0x60
 coaching_staff = 0x78
 scouting_staff = 0x90
+
+# Stadiums are laid out as on Windows: Old Trafford reads 74,879, 74,310 in use, room to grow to 95,285; the
+# Emirates 60,704, the Tottenham Hotspur Stadium 62,850, the Amex 31,876.
+[stadium]
+team_pointer = 0x78
+name = 0x40
+capacity = 0x7C
+seating = 0x80
+used = 0x84
+expansion = 0x8C
+owner = 0x90
 
 [club_info]
 season_tickets = 0xC0

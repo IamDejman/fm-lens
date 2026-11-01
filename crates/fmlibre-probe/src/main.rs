@@ -546,8 +546,9 @@ enum Command {
         #[arg(long, default_value_t = 30)]
         top: usize,
     },
-    /// List the C++ classes game_plugin.dll names whose names hold TEXT (case ignored), e.g. UNHAPP or PROMISE:
-    /// the type names the compiler keeps for each class with virtual functions.
+    /// List the C++ classes game_plugin names whose names hold TEXT (case ignored), e.g. UNHAPP or PROMISE:
+    /// the type names the compiler keeps for each class with virtual functions (MSVC's on Windows, the Itanium
+    /// C++ ABI's on macOS, where templates are left out).
     Types {
         /// Text the class name must hold, e.g. HAPPINESS.
         text: String,
@@ -1650,8 +1651,9 @@ fn find(
     Ok(())
 }
 
-/// A class's name as the compiler keeps it (`.?AVACTUAL_PLAYER@db@@`), written as in C++ (`db::ACTUAL_PLAYER`).
+/// A class's name as MSVC keeps it (`.?AVACTUAL_PLAYER@db@@`), written as in C++ (`db::ACTUAL_PLAYER`).
 /// Template names are left as they are.
+#[cfg(windows)]
 fn demangle(name: &str) -> String {
     let inner = name.trim_start_matches(".?AV").trim_start_matches(".?AU").trim_end_matches("@@");
     if inner.starts_with("?$") {
@@ -1664,6 +1666,7 @@ fn demangle(name: &str) -> String {
 
 /// The type descriptors game_plugin.dll holds, by the address of each, with its class name as in C++. A descriptor
 /// is a vtable pointer, a spare word and the mangled name (MSVC's `.?AV…@@`).
+#[cfg(windows)]
 fn type_descriptors(process: &Process, plugin: &Module) -> Vec<(u64, String)> {
     const CHUNK: u64 = 16 << 20;
     const LONGEST: usize = 512;
@@ -1690,9 +1693,80 @@ fn type_descriptors(process: &Process, plugin: &Module) -> Vec<(u64, String)> {
     found
 }
 
+/// The C++ name of the class whose Itanium mangled name starts `bytes` and a NUL ends: `18RETIREMENT_MANAGER` is
+/// `RETIREMENT_MANAGER`, `N2db7STADIUME` is `db::STADIUM`. Templates and local classes give `None`.
+#[cfg(target_os = "macos")]
+fn demangle(bytes: &[u8]) -> Option<String> {
+    let nested = bytes.first() == Some(&b'N');
+    let mut rest = if nested { &bytes[1..] } else { bytes };
+    let mut parts = Vec::new();
+    loop {
+        let digits = rest.iter().take_while(|b| b.is_ascii_digit()).count();
+        let len: usize = std::str::from_utf8(&rest[..digits]).ok()?.parse().ok()?;
+        let name = rest.get(digits..digits + len).filter(|name| name.first().is_some_and(|&b| !b.is_ascii_digit()))?;
+        if !name.iter().all(|&b| b.is_ascii_alphanumeric() || b == b'_') {
+            return None;
+        }
+        parts.push(std::str::from_utf8(name).ok()?);
+        rest = &rest[digits + len..];
+        if !nested || !rest.first().is_some_and(u8::is_ascii_digit) {
+            break;
+        }
+    }
+    let rest = if nested && parts.len() > 1 { rest.strip_prefix(b"E")? } else { rest };
+    (rest.first() == Some(&0) && nested == (parts.len() > 1)).then(|| parts.join("::"))
+}
+
+/// The class names game_plugin's type infos hold, by the address of each name, written as in C++. The Mac build
+/// follows the Itanium C++ ABI: a type info is a pointer to the C++ runtime's own vtable, then a pointer to the
+/// mangled name, whose top bit an Apple silicon build may set (see `fmlibre_core::rtti`).
+#[cfg(target_os = "macos")]
+fn type_infos(process: &Process, plugin: &Module) -> Vec<(u64, String)> {
+    const CHUNK: u64 = 16 << 20;
+    const LONGEST: usize = 512;
+    const NON_UNIQUE: u64 = 1 << 63;
+    let chunks = |visit: &mut dyn FnMut(u64, &[u8], usize)| {
+        for region in regions(process, plugin.base, plugin.end()).into_iter().filter(|r| r.is_readable()) {
+            let mut offset = 0;
+            while offset < region.size {
+                let base = region.base + offset;
+                let len = (region.size - offset).min(CHUNK + LONGEST as u64);
+                if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                    visit(base, &chunk, (region.size - offset).min(CHUNK) as usize);
+                }
+                offset += CHUNK;
+            }
+        }
+    };
+    // Strings that read as a class's name, each after the NUL that ends the string before it.
+    let mut names: std::collections::HashMap<u64, String> = std::collections::HashMap::new();
+    chunks(&mut |base, chunk, limit| {
+        for nul in memchr::memchr_iter(0, &chunk[..limit]) {
+            if let Some(name) = chunk.get(nul + 1..).and_then(demangle) {
+                names.insert(base + nul as u64 + 1, name);
+            }
+        }
+    });
+    // Those a type info points at: the word before is a pointer out of the plugin, into the runtime.
+    let mut found = Vec::new();
+    chunks(&mut |base, chunk, limit| {
+        let words: Vec<u64> = chunk[..limit].as_chunks::<8>().0.iter().map(|w| u64::from_le_bytes(*w)).collect();
+        for (i, pair) in words.windows(2).enumerate() {
+            let name = pair[1] & !NON_UNIQUE;
+            if is_user_pointer(pair[0]) && !plugin.contains(pair[0]) && names.contains_key(&name) {
+                found.push((base + (i * 8) as u64, names[&name].clone()));
+            }
+        }
+    });
+    found
+}
+
 fn types(process: &Process, modules: &[Module], text: &str, max: usize) -> Result<()> {
     let plugin = find_module(modules, GAME_PLUGIN).with_context(|| format!("{GAME_PLUGIN} is not loaded"))?;
+    #[cfg(windows)]
     let all = type_descriptors(process, plugin);
+    #[cfg(target_os = "macos")]
+    let all = type_infos(process, plugin);
     let wanted = text.to_lowercase();
     let mut names: Vec<&String> =
         all.iter().map(|(_, name)| name).filter(|name| name.to_lowercase().contains(&wanted)).collect();
@@ -1737,6 +1811,52 @@ fn instances(
     span: u64,
 ) -> Result<()> {
     let plugin = find_module(modules, GAME_PLUGIN).with_context(|| format!("{GAME_PLUGIN} is not loaded"))?;
+    let vtables = class_vtables(process, plugin, class)?;
+
+    // The objects: words on the heap that are one of the vtables. A vtable pointer inside the module itself is not an
+    // object of the game's data.
+    let started = Instant::now();
+    let mut objects: Vec<u64> = words_equal_to(process, 0x1_0000, 0x7FFF_FFFF_0000, &vtables)
+        .into_iter()
+        .map(|(at, _)| at)
+        .filter(|&at| !(plugin.base..plugin.end()).contains(&at))
+        .collect();
+    let total = objects.len();
+    if let Some(needle) = holds {
+        let finder = memchr::memmem::Finder::new(needle);
+        objects.retain(|&at| process.read_bytes(at, span as usize).is_ok_and(|bytes| finder.find(&bytes).is_some()));
+    }
+    println!(
+        "{total} object(s) in {:.1} s{}",
+        started.elapsed().as_secs_f64(),
+        if holds.is_some() { format!(", {} holding the bytes", objects.len()) } else { String::new() }
+    );
+    for &at in objects.iter().take(max) {
+        let Ok(bytes) = process.read_bytes(at, span as usize) else { continue };
+        let words: Vec<String> =
+            bytes.as_chunks::<8>().0.iter().map(|w| format!("{:x}", u64::from_le_bytes(*w))).collect();
+        println!("  {at:#014x}  {}", words.join(" "));
+    }
+    Ok(())
+}
+
+/// The vtables of the class `class` (as `types` prints it), from the type info that names it: on macOS, as the
+/// Itanium C++ ABI lays them out (see `fmlibre_core::rtti`), only those of whole objects.
+#[cfg(target_os = "macos")]
+fn class_vtables(process: &Process, plugin: &Module, class: &str) -> Result<std::collections::HashSet<u64>> {
+    let vtables = fmlibre_core::rtti::vtables(process, plugin, class);
+    ensure!(!vtables.is_empty(), "no class named {class} (see `types`)");
+    println!(
+        "{class} ({}): vtable(s) {}",
+        fmlibre_core::rtti::mangled(class),
+        vtables.iter().map(|v| format!("{GAME_PLUGIN}+{:#x}", v - plugin.base)).collect::<Vec<_>>().join(", ")
+    );
+    Ok(vtables.into_iter().collect())
+}
+
+/// The vtables of the class `class` (as `types` prints it), from its type descriptor.
+#[cfg(windows)]
+fn class_vtables(process: &Process, plugin: &Module, class: &str) -> Result<std::collections::HashSet<u64>> {
     let descriptors: Vec<u64> =
         type_descriptors(process, plugin).into_iter().filter(|(_, name)| name == class).map(|(at, _)| at).collect();
     ensure!(!descriptors.is_empty(), "no class named {class} (see `types`)");
@@ -1768,32 +1888,7 @@ fn instances(
         locators.len(),
         vtables.iter().map(|v| format!("{GAME_PLUGIN}+{:#x}", v - plugin.base)).collect::<Vec<_>>().join(", ")
     );
-
-    // The objects: words on the heap that are one of the vtables. A vtable pointer inside the module itself is not an
-    // object of the game's data.
-    let started = Instant::now();
-    let mut objects: Vec<u64> = words_equal_to(process, 0x1_0000, 0x7FFF_FFFF_0000, &vtables)
-        .into_iter()
-        .map(|(at, _)| at)
-        .filter(|&at| !(plugin.base..plugin.end()).contains(&at))
-        .collect();
-    let total = objects.len();
-    if let Some(needle) = holds {
-        let finder = memchr::memmem::Finder::new(needle);
-        objects.retain(|&at| process.read_bytes(at, span as usize).is_ok_and(|bytes| finder.find(&bytes).is_some()));
-    }
-    println!(
-        "{total} object(s) in {:.1} s{}",
-        started.elapsed().as_secs_f64(),
-        if holds.is_some() { format!(", {} holding the bytes", objects.len()) } else { String::new() }
-    );
-    for &at in objects.iter().take(max) {
-        let Ok(bytes) = process.read_bytes(at, span as usize) else { continue };
-        let words: Vec<String> =
-            bytes.as_chunks::<8>().0.iter().map(|w| format!("{:x}", u64::from_le_bytes(*w))).collect();
-        println!("  {at:#014x}  {}", words.join(" "));
-    }
-    Ok(())
+    Ok(vtables)
 }
 
 /// The entries of the list `(begin, end)` at `at`, `size` bytes each; none when it does not look like a list.
@@ -2842,7 +2937,7 @@ fn retirements(session: &Session, uid: Option<u32>, keep: bool, restore_after: O
     let Some(uid) = uid else {
         let planned = session.planned_retirements()?.context("the planned retirements are not found in this build")?;
         // Who each one is, by the id the game gives him: a member of staff keeps it where a player does, in the
-        // person block.
+        // identity block.
         let (p, s) = (&session.layout.player, &session.layout.staff);
         let r = session.layout.retirement.as_ref().context("the layout does not place the planned retirements")?;
         let mut names: std::collections::HashMap<u32, String> = std::collections::HashMap::new();
@@ -2852,7 +2947,7 @@ fn retirements(session: &Session, uid: Option<u32>, keep: bool, restore_after: O
                 names.insert(id, format!("{} (UID {}, {club})", player.name, player.uid));
             }
         }
-        let staff_person = s.person_block + (r.player_person - p.person_block);
+        let staff_person = s.identity() + (r.player_person - p.identity());
         for member in session.staff()? {
             if let Ok(id) = session.process.read_u32(member.address + s.at(staff_person, member.shift)) {
                 let club = member.club.as_deref().unwrap_or("no club");
@@ -4023,4 +4118,20 @@ fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
     println!();
     println!("JSON report written to {}", path.display());
     Ok(())
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn itanium_class_names_are_read_as_in_cpp() {
+        assert_eq!(demangle(b"18RETIREMENT_MANAGER\0").as_deref(), Some("RETIREMENT_MANAGER"));
+        assert_eq!(demangle(b"N2db7STADIUME\0").as_deref(), Some("db::STADIUM"));
+        assert_eq!(demangle(b"N7sicomps20FRIENDLY_ACTUAL_COMPE\0").as_deref(), Some("sicomps::FRIENDLY_ACTUAL_COMP"));
+        // Not a class's name: a pointer's, a template's, one cut short, one too long, text.
+        for bytes in [&b"P15GAME_COMP_STATS\0"[..], b"N2db4LISTIiEE\0", b"N2dbE\0", b"5ABC\0", b"2AB3CD\0", b"name\0"] {
+            assert_eq!(demangle(bytes), None, "{}", String::from_utf8_lossy(bytes));
+        }
+    }
 }

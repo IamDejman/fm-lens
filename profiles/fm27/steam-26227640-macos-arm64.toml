@@ -8,6 +8,10 @@ storefront = "steam"
 # The in-game date, a variable of its own: 14 July 2026 right after loading the test save.
 current_date = 0x56B1DB8
 
+# The static pointer to the retirement manager (RETIREMENT_MANAGER), also a variable of its own: the only pointer to
+# the one object of that class, on a save in autumn 2026 whose manager listed 13 planned retirements.
+retirement_manager = 0x56A82A8
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "9E8E47DE-F704-314C-917D-C32D12637678"

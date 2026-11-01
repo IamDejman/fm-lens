@@ -1,9 +1,10 @@
 //! The retirements the game has planned, and keeping a player from retiring.
 //!
 //! The game decides ahead of time who retires and when, and keeps those plans in its retirement manager, one object
-//! a static next to the entity arrays points at (see [`RetirementLayout`]). The manager lists them twice: as pointers
-//! to the 24-byte entries, and as an index of the same entries sorted by person id. An entry names the person by the
-//! id the game gives him (player `player_person`), not by a pointer, and holds the date he retires.
+//! a static points at: next to the entity arrays on Windows (see [`RetirementLayout`]), a variable the build profile
+//! places on macOS. The manager lists them twice: as pointers to the 24-byte entries, and as an index of the same
+//! entries sorted by person id. An entry names the person by the id the game gives him (player `player_person`), not
+//! by a pointer, and holds the date he retires.
 //!
 //! Keeping a player from retiring takes his entry out of both lists, the way the game drops one, and gives him the
 //! trait "Will play football as long as possible" in place of "Will retire at top". The entry itself stays where it
@@ -11,16 +12,24 @@
 //!
 //! [`RetirementLayout`]: crate::profile::RetirementLayout
 
-use fmlibre_mem::{Module, Process, is_user_pointer};
+use fmlibre_mem::is_user_pointer;
+#[cfg(windows)]
+use fmlibre_mem::{Module, Process};
 use serde::Serialize;
 
 use crate::date::FmDate;
 use crate::players::PlayerSummary;
+#[cfg(target_os = "macos")]
+use crate::rtti::class_of;
 use crate::session::Session;
 use crate::transfer::{MoveError, Patch, Patches, PointerList, removal_patches};
 
-/// The name the compiler keeps for the class of the retirement manager.
+/// The name the compiler keeps for the class of the retirement manager: MSVC's on Windows, the Itanium C++ ABI's on
+/// macOS.
+#[cfg(windows)]
 const MANAGER_CLASS: &str = ".?AVRETIREMENT_MANAGER@@";
+#[cfg(target_os = "macos")]
+const MANAGER_CLASS: &str = "18RETIREMENT_MANAGER";
 
 /// The traits (bits of player `traits`) "Will retire at top" and "Will play football as long as possible".
 const RETIRE_AT_TOP: u32 = 48;
@@ -245,15 +254,18 @@ impl Session {
         self.apply_patches(&patches.0)
     }
 
-    /// The retirement manager, found from its static and checked by its class; `None` when this build's layout does
-    /// not place it or it does not check out.
+    /// The retirement manager, found from its static and checked by its class; `None` when this build's profile and
+    /// layout do not place it or it does not check out.
     fn retirement_manager(&self) -> Option<u64> {
         let r = self.layout.retirement.as_ref()?;
-        let rva = self.arrays.players.as_ref()?.pair_rva.checked_add_signed(r.manager)?;
+        let rva = match self.profile.as_ref().and_then(|profile| profile.retirement_manager) {
+            Some(rva) => rva,
+            None => self.arrays.players.as_ref()?.pair_rva.checked_add_signed(r.manager?)?,
+        };
         let manager = self.process.read_u64(self.plugin.base + rva).ok().filter(|&at| is_user_pointer(at))?;
         let vtable = self.process.read_u64(manager).ok()?;
         if self.retirement_class.get() != Some(&vtable) {
-            if class_name(&self.process, &self.plugin, vtable)? != MANAGER_CLASS {
+            if class_of(&self.process, &self.plugin, manager)? != MANAGER_CLASS {
                 return None;
             }
             let _ = self.retirement_class.set(vtable);
@@ -326,12 +338,14 @@ impl Session {
     }
 }
 
-/// The name the compiler keeps for the class whose vtable is at `vtable`, e.g. `.?AVRETIREMENT_MANAGER@@`, when it is
-/// one of the plugin's. As MSVC lays them out on x64, a vtable is preceded by a pointer to its complete object
-/// locator: signature 1, the type descriptor's RVA at +12 and the locator's own at +20; the descriptor holds the name
-/// after a vtable pointer and a spare word.
-fn class_name(process: &Process, plugin: &Module, vtable: u64) -> Option<String> {
+/// The name the compiler keeps for the class of the object at `object`, e.g. `.?AVRETIREMENT_MANAGER@@`, when its
+/// vtable is one of the plugin's. As MSVC lays them out on x64, a vtable is preceded by a pointer to its complete
+/// object locator: signature 1, the type descriptor's RVA at +12 and the locator's own at +20; the descriptor holds
+/// the name after a vtable pointer and a spare word. (macOS: [`crate::rtti::class_of`].)
+#[cfg(windows)]
+fn class_of(process: &Process, plugin: &Module, object: u64) -> Option<String> {
     let inside = |at: u64| (plugin.base..plugin.end()).contains(&at);
+    let vtable = process.read_u64(object).ok()?;
     if !inside(vtable) {
         return None;
     }

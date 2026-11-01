@@ -22,6 +22,7 @@ mod players;
 mod profile;
 mod relations;
 mod retirement;
+pub mod rtti;
 mod scan;
 mod session;
 mod squad;
