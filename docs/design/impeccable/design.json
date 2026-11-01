@@ -1381,7 +1381,7 @@
       "kind": "custom",
       "refersTo": "colophon",
       "description": "Small print along the foot: the game on the first line, the notes beside it or on a second line of their own.",
-      "html": "<footer class=\"ds-colophon\"><div class=\"ds-col-main\"><span class=\"ds-col-name\">FMLibreEditor · pre-alpha</span><span class=\"ds-col-status\"><i></i>FM27 · 400 players · 120 staff · 12 clubs</span></div><div class=\"ds-col-notes\"><span>Edits reach the game only when you apply them. Back up your save first.</span><span>No graphics packs found</span></div></footer>",
+      "html": "<footer class=\"ds-colophon\"><div class=\"ds-col-main\"><span class=\"ds-col-name\">FMLibreEditor · beta</span><span class=\"ds-col-status\"><i></i>FM27 · 400 players · 120 staff · 12 clubs</span></div><div class=\"ds-col-notes\"><span>Edits reach the game only when you apply them. Back up your save first.</span><span>No graphics packs found</span></div></footer>",
       "css": ".ds-colophon { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 32px; width: 640px; padding: 0 18px; border-top: 1px solid var(--border, #d6d9df); color: var(--muted, #5b6069); font-size: 12px; line-height: 27px; white-space: nowrap; } .ds-col-main, .ds-col-notes { display: flex; align-items: center; gap: 16px; min-width: 0; } .ds-col-notes { flex-wrap: wrap; height: 27px; overflow: hidden; } .ds-col-name { color: var(--text, #16181d); font-stretch: 88%; font-weight: 750; } .ds-col-status { display: inline-flex; align-items: center; gap: 7px; } .ds-col-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #1f7547); }"
     }
   ],

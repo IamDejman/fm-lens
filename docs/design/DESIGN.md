@@ -460,7 +460,7 @@ Every change waits in highlighter until it is applied.
 
 ### Colophon
 Small print along the foot, over a hairline.
-- **Line one:** "FMLibreEditor · pre-alpha" in ink at width 88% and weight 750, the connection status with its dot (frame grey, ok-green when connected) and the game, counts of players, staff and clubs; in the browser preview a framed tag.
+- **Line one:** "FMLibreEditor · beta" in ink at width 88% and weight 750, the connection status with its dot (frame grey, ok-green when connected) and the game, counts of players, staff and clubs; in the browser preview a framed tag.
 - **The two-line adaptation:** where the game and the notes fit, they share one line and the notes sit to the right. Where they do not (Turkish strings run long, and the minimum window is 960 wide), the notes wrap to a second line of their own. The note on applying edits and backing up is never cut except, with an ellipsis, in a window too narrow for it even alone; the graphics packs' note shows whole or wraps out of sight. Each line is 27px.
 
 ### Buttons

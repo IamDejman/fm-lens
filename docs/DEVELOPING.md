@@ -78,7 +78,8 @@ behind the launcher; another tool's launcher among them is started in turn.
 | `crates/fmlibre-probe` | Command-line probe |
 | `profiles/` | Object layouts per edition and addresses per game build |
 | `app/` | Tauri 2 desktop app (React + TypeScript) |
-| `docs/` | Roadmap and reverse-engineering notes |
+| `docs/` | Install guide, roadmap and reverse-engineering notes (`recon/`) |
+| `docs/design/` | The interface's design system (`DESIGN.md`) and product notes (`PRODUCT.md`) |
 
 ## Building
 

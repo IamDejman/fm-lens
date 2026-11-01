@@ -666,7 +666,7 @@ export const tr: Strings = {
   },
 
   app: {
-    stage: "alfa öncesi",
+    stage: "beta",
     languageLabel: "Dil",
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
