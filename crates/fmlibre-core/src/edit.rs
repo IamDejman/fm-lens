@@ -149,6 +149,8 @@ enum Place {
     ClubFinance,
     /// The club's senior team, which points back at the club.
     SeniorTeam,
+    /// The stadium the club's senior team plays at, written only when it is of the stadium class.
+    Stadium,
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -428,7 +430,7 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
     let money = |key: &str, offset: u64, range: RangeInclusive<i64>| {
         field(key, offset, Kind::I32, range, Place::ClubFinance).plausible(i64::from(i32::MIN)..=i64::from(i32::MAX))
     };
-    vec![
+    let mut fields = vec![
         field("reputation", layout.team.reputation, Kind::U16, 0..=10_000, Place::SeniorTeam),
         facility("facilities.training", i.training, Place::ClubInfo),
         facility("facilities.youth_facilities", i.youth_facilities, Place::ClubInfo),
@@ -439,7 +441,20 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
         money("finance.transfer_budget", f.transfer_budget, 0..=2_000_000_000),
         money("finance.wage_budget", f.wage_budget, 0..=100_000_000),
         money("finance.total_wage_budget", f.total_wage_budget, 0..=100_000_000),
-    ]
+    ];
+    // Capacities, as stored. The biggest stadium of the test save held 115,109.
+    if let Some(s) = &layout.stadium {
+        let seats = |key: &str, offset: u64| {
+            field(key, offset, Kind::I32, 0..=250_000, Place::Stadium).plausible(0..=i64::from(i32::MAX))
+        };
+        fields.extend([
+            seats("stadium.capacity", s.capacity),
+            seats("stadium.seating", s.seating),
+            seats("stadium.used", s.used),
+            seats("stadium.expansion", s.expansion),
+        ]);
+    }
+    fields
 }
 
 /// The object an edit lands in, as found when the lists were read.
@@ -953,6 +968,14 @@ impl Session {
                     is_user_pointer(team) && self.process.read_u64(team + self.layout.team.club)? == target.address;
                 belongs.then_some(team)
             }
+            (Place::Stadium, Entity::Club) => {
+                let Some((stadium, bytes)) = crate::clubs::club_stadium(&self.process, &self.layout, target.address)
+                else {
+                    return Ok(None);
+                };
+                let class = u64::from_le_bytes(bytes[..8].try_into().expect("8 bytes"));
+                (self.stadium_class() == Some(class)).then_some(stadium)
+            }
             _ => None,
         })
     }
@@ -1054,7 +1077,12 @@ mod tests {
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
         assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2);
         let clubs = fields(&layout, Entity::Club);
-        assert_eq!(clubs.len(), 10);
+        // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
+        // knows it (Windows so far).
+        assert_eq!(clubs.len(), 10 + if layout.stadium.is_some() { 4 } else { 0 });
+        if layout.stadium.is_some() {
+            assert_eq!(key(&clubs, "stadium.capacity").place, Place::Stadium);
+        }
 
         // Before the person block: never shifted. In it: shifted. Other records: never.
         assert!(!key(&players, "attribute.finishing").shifted);

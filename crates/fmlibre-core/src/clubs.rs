@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::calibrate::ArrayRef;
 use crate::index::{Listed, SearchIndex};
-use crate::profile::{ClubFinanceLayout, Layout};
+use crate::profile::{ClubFinanceLayout, Layout, StadiumLayout};
 use crate::text::read_fm_string;
 
 /// Supporter-mix percentages in the order FM stores them.
@@ -126,6 +126,65 @@ pub struct ClubDetails {
     pub facilities: BTreeMap<&'static str, u8>,
     /// Only clubs with the full finance record have these.
     pub finances: Option<Finances>,
+    /// The stadium the senior team plays at, when the layout knows where it is and it looks real.
+    pub stadium: Option<Stadium>,
+}
+
+/// A stadium's name and capacities, as stored.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Stadium {
+    pub name: Option<String>,
+    pub capacity: u32,
+    pub seating: u32,
+    /// The capacity in use when it is limited; 0 when it is not.
+    pub used: u32,
+    /// The most it can be expanded to.
+    pub expansion: u32,
+}
+
+/// The largest capacity a stadium's fields are believed to hold; the biggest of the test save held 115,109.
+const MOST_SEATS: u32 = 300_000;
+
+/// Whether a stadium's bytes (from its start to [`StadiumLayout::end`]) look like a stadium's: capacities in range,
+/// with no more seats than room.
+pub(crate) fn stadium_looks_real(bytes: &[u8], s: &StadiumLayout) -> bool {
+    let u32_at =
+        |offset: u64| u32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"));
+    let (capacity, seating) = (u32_at(s.capacity), u32_at(s.seating));
+    capacity <= MOST_SEATS && seating <= capacity && u32_at(s.used) <= MOST_SEATS && u32_at(s.expansion) <= MOST_SEATS
+}
+
+/// The stadium the senior team of the club at `club` plays at, with its address, when the layout knows where it is
+/// and it looks real.
+pub(crate) fn club_stadium(process: &Process, layout: &Layout, club: u64) -> Option<(u64, Vec<u8>)> {
+    let s = layout.stadium.as_ref()?;
+    let teams = process.read_u64(club + layout.club.teams).ok().filter(|&p| is_user_pointer(p))?;
+    let team = process.read_u64(teams).ok().filter(|&p| is_user_pointer(p))?;
+    if process.read_u64(team + layout.team.club).ok()? != club {
+        return None;
+    }
+    let stadium = process.read_u64(team + s.team_pointer).ok().filter(|&p| is_user_pointer(p))?;
+    let bytes = process.read_bytes(stadium, s.end() as usize).ok()?;
+    stadium_looks_real(&bytes, s).then_some((stadium, bytes))
+}
+
+/// The class (vtable) of stadiums: the one the clubs' stadiums share, when nearly all of them share one. Only objects
+/// of this class are written to.
+pub(crate) fn stadium_class(process: &Process, module: &Module, array: &ArrayRef, layout: &Layout) -> Option<u64> {
+    let (begin, count) = array.locate(process, module).ok()?;
+    let pointers = process.read_bytes(begin, (count * 8) as usize).ok()?;
+    let mut classes: BTreeMap<u64, usize> = BTreeMap::new();
+    let mut found = 0;
+    for chunk in pointers.as_chunks::<8>().0 {
+        let club = u64::from_le_bytes(*chunk);
+        if let Some((_, bytes)) = is_user_pointer(club).then(|| club_stadium(process, layout, club)).flatten() {
+            found += 1;
+            *classes.entry(u64::from_le_bytes(bytes[..8].try_into().expect("8 bytes"))).or_default() += 1;
+        }
+    }
+    let (&class, &count) = classes.iter().max_by_key(|&(_, &count)| count)?;
+    (count >= 10 && count * 100 >= found * 99).then_some(class)
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -166,7 +225,20 @@ pub fn read_club_details(
         supporter_traits: BTreeMap::new(),
         facilities: BTreeMap::new(),
         finances: None,
+        stadium: None,
     };
+    if let (Some(s), Some((_, bytes))) = (layout.stadium.as_ref(), club_stadium(process, layout, club.address)) {
+        let u32_at =
+            |offset: u64| u32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"));
+        let name = u64::from_le_bytes(bytes[s.name as usize..s.name as usize + 8].try_into().expect("8 bytes"));
+        details.stadium = Some(Stadium {
+            name: read_fm_string(process, name),
+            capacity: u32_at(s.capacity),
+            seating: u32_at(s.seating),
+            used: u32_at(s.used),
+            expansion: u32_at(s.expansion),
+        });
+    }
 
     let i = &layout.club_info;
     let info = u64_at(c.info);

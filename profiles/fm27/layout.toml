@@ -264,6 +264,19 @@ medical_staff = 0x60      # physios, sports scientists, the head of sports scien
 coaching_staff = 0x78     # coaches, assistants, goalkeeping and fitness coaches, analysts, youth managers
 scouting_staff = 0x90     # scouts, the chief scout, recruitment analysts
 
+# A club's stadium (db::STADIUM, 0xC0 bytes), which its senior team points at. Read on the Game Pass build with
+# Manchester United's Old Trafford: capacity 74,879, all of it seated, 74,310 in use, room to grow to 95,285; and
+# checked against all 30,536 stadiums of that save, whose seats never outnumber their capacity and whose expansion
+# ceiling is nearly always at or above it.
+[stadium]
+team_pointer = 0x78       # in the senior team: pointer to the stadium it plays at
+name = 0x40               # FM string pointer
+capacity = 0x7C           # u32
+seating = 0x80            # u32, seats; never above the capacity
+used = 0x84               # u32, the capacity in use when it is limited (Old Trafford 74,310); 0 when it is not
+expansion = 0x8C          # u32, the most it can be expanded to
+owner = 0x90              # pointer to the club that owns it
+
 [club_info]
 season_tickets = 0xC0     # u32
 founded = 0xD8            # u16 year

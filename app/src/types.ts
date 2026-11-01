@@ -125,6 +125,19 @@ export interface ClubDetails extends ClubSummary {
   facilities: Record<string, number>;
   /** Only clubs in the leagues being played have finances. */
   finances: Finances | null;
+  /** The stadium the senior team plays at; null when it could not be read. */
+  stadium: Stadium | null;
+}
+
+/** A stadium's name and capacities, as stored. */
+export interface Stadium {
+  name: string | null;
+  capacity: number;
+  seating: number;
+  /** The capacity in use when the game limits it; 0 when it does not. */
+  used: number;
+  /** The most it can be expanded to. */
+  expansion: number;
 }
 
 /** A manager, coach, scout, director or other non-playing person. */

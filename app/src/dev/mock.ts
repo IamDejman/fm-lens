@@ -513,6 +513,7 @@ function fieldTable(entity: Entity): EditField[] {
       field("finance.transfer_budget", "i32", 0, 2_000_000_000),
       field("finance.wage_budget", "i32", 0, 100_000_000),
       field("finance.total_wage_budget", "i32", 0, 100_000_000),
+      ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "i32", 0, 250_000)),
     ];
   }
   if (entity === "player") {
@@ -642,6 +643,8 @@ function withWrittenClub(d: ClubDetails): ClubDetails {
       d.facilities[name] = value;
     } else if (group === "finance" && d.finances) {
       d.finances[FINANCE[name as keyof typeof FINANCE]] = value;
+    } else if (group === "stadium" && d.stadium) {
+      d.stadium[name as "capacity" | "seating" | "used" | "expansion"] = value;
     }
   }
   return d;
@@ -737,6 +740,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return club.facilities[name];
       case "finance":
         return club.finances?.[FINANCE[name as keyof typeof FINANCE]];
+      case "stadium":
+        return club.stadium?.[name as "capacity" | "seating" | "used" | "expansion"];
     }
     throw new Error(`No fixture value for ${key}`);
   };
@@ -1696,7 +1701,14 @@ function clubDetails(club: ClubSummary): ClubDetails {
           totalWageBudget: Math.round(1_200_000 + next() * 3_200_000),
           ticketPrice: Math.round(20 + next() * 60),
         },
+    stadium: stadiumOf(club, next),
   });
+}
+
+/** A made-up stadium for `club`: all seated, as in the top leagues, with room to grow. */
+function stadiumOf(club: ClubSummary, next: () => number): ClubDetails["stadium"] {
+  const capacity = Math.round(8000 + next() * 60000);
+  return { name: `${club.shortName} Park`, capacity, seating: capacity, used: 0, expansion: Math.round(capacity * 1.25) };
 }
 
 /** A date as a number that orders like the date. */

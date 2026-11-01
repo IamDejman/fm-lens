@@ -2795,6 +2795,17 @@ fn club(session: &Session, uid: u32) -> Result<()> {
         ),
         None => println!("  finances       not kept for this club"),
     }
+    match &d.stadium {
+        Some(s) => println!(
+            "  stadium        {}: capacity {}, seated {}, in use {}, can grow to {}",
+            s.name.as_deref().unwrap_or("(no name)"),
+            s.capacity,
+            s.seating,
+            if s.used == 0 { "all".to_owned() } else { s.used.to_string() },
+            s.expansion
+        ),
+        None => println!("  stadium        not found"),
+    }
     Ok(())
 }
 
