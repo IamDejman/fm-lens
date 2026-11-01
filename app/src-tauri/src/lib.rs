@@ -700,6 +700,7 @@ struct SquadRow {
     loan: Option<Loan>,
     condition: u16,
     match_sharpness: u16,
+    jadedness: i16,
     morale: u8,
     injuries: usize,
     bans: usize,
@@ -1570,6 +1571,7 @@ fn club_squads(state: State<'_, AppState>, uid: u32) -> Result<Vec<TeamView>, Fa
                         loan: member.loan,
                         condition: member.condition,
                         match_sharpness: member.match_sharpness,
+                        jadedness: member.jadedness,
                         morale: member.morale,
                         injuries: member.injuries,
                         bans: member.bans,
@@ -1668,7 +1670,8 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
             return Ok(report);
         }
         TeamAction::Inspire => &[("morale", 20)],
-        TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000)],
+        // Rested as the game rests a player: full energy and sharpness, and jadedness at its least.
+        TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)],
         TeamAction::MaxAttributes => &[],
     };
     let targets: Vec<(Target, String)> = members

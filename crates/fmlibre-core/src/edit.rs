@@ -363,11 +363,14 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         field("international.goals", p.international_goals, Kind::U16, 0..=1_000),
         field("international.u21_caps", p.u21_caps, Kind::U8, 0..=255),
         field("international.u21_goals", p.u21_goals, Kind::U8, 0..=255),
-        // What the game changes every day: energy, match fitness and morale. No player on the test
-        // save had less than 35% match sharpness, so the editor does not write less either; morale
-        // ran from 1 to 20.
+        // What the game changes every day: energy, match fitness, jadedness and morale. No player on
+        // the test save had less than 35% match sharpness, so the editor does not write less either;
+        // morale ran from 1 to 20. Jadedness is -500 for a rested player, the least the game keeps;
+        // the most seen was 252, early in a season, so the editor writes up to 1000 and accepts any
+        // value of a worn-out player as it is.
         field("condition", p.condition, Kind::U16, 0..=10_000).percent(),
         field("match_sharpness", p.match_sharpness, Kind::U16, 3_500..=10_000).percent(),
+        field("jadedness", p.jadedness, Kind::I16, -500..=1_000).plausible(-500..=i64::from(i16::MAX)),
         field("morale", p.morale, Kind::U8, 1..=20),
     ];
     out.extend(crate::ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter()).filter_map(|key| {
@@ -1025,6 +1028,9 @@ mod tests {
         assert!(price.takes(-1) && price.takes(0) && price.takes(25_000_000) && !price.takes(-2));
         let born = field("date_of_birth");
         assert!(born.takes(19960912) && !born.takes(18991231) && !born.takes(20300101));
+        // Rested is -500, the least the game keeps.
+        let jaded = field("jadedness");
+        assert!(jaded.takes(-500) && jaded.takes(252) && !jaded.takes(-501) && jaded.kind == Kind::I16);
     }
 
     #[test]
@@ -1034,10 +1040,10 @@ mod tests {
         let players = fields(&layout, Entity::Player);
         // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
         // transfer and loan listing, which only players have.
-        // The 13 basic fields and the 3 live ones (condition, match sharpness, morale).
+        // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale).
         assert_eq!(
             players.len(),
-            13 + 3 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
         );
         assert_eq!(key(&players, "nation").kind, Kind::Pointer);
         assert!(!key(&players, "nation").mass);

@@ -37,6 +37,7 @@ person_block_shifts = [0x0, 0xF8]
 height = 0x226            # u16, centimetres
 match_sharpness = 0x250   # u16, 0..10000
 condition = 0x254         # u16, the energy the game shows
+jadedness = 0x252         # i16, -500 when rested; between the two as on Windows, not yet checked on a Mac
 morale = 0x264            # u8, 1..20
 injuries = 0xF0           # pointer to the injury record; null for a player who was never injured
 asking_price = 0x230      # i32, pounds; -1 when not set

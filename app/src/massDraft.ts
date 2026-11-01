@@ -203,9 +203,10 @@ function groupOf(entity: Entity, key: string): FieldGroupId {
     case "finance":
       id = "finances";
       break;
-    // What a player's Medical group in his profile has: his energy, match sharpness and morale.
+    // What a player's Medical group in his profile has: his energy, match sharpness, jadedness and morale.
     case "condition":
     case "match_sharpness":
+    case "jadedness":
     case "morale":
       id = "health";
       break;

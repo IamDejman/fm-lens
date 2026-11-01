@@ -192,6 +192,10 @@ changes many at once, and undo.
   - [ ] Appearance. FM27 keeps a person's looks as dozens of 3D face values for the match engine
     (`MATCH_PERSON_APPEARANCE_INPUT`: skin tone, hair and eye colours, face shape); set aside.
   - [ ] Stadium capacity, ticket prices and league prize money.
+  - [x] Jadedness: how worn out a player is by playing, which rest takes away (an `i16` at player `+0x25A`,
+    -500 when rested). Found from the numbers FMRTE shows for three players, read without editing in FMRTE;
+    shown in the profile and the squad tab, editable, and a team's Refresh rests it to -500. Checked on the
+    Windows Game Pass build; derived for the Mac, not yet checked there.
 - Wave 3, what the others find hard:
   - [ ] Clear a player's unhappiness, not only his morale.
   - [ ] Keep a player from retiring.

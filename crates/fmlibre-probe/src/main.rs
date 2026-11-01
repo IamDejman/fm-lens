@@ -422,13 +422,16 @@ enum Command {
     },
     /// Read every team's player list and show how the game's allocator spaces their buffers.
     Squads,
-    /// Find where clubs keep a value seen in another tool: from each club and its senior team,
-    /// follow pointers up to --depth hops and print the places where every club given holds its
-    /// own value, under several encodings.
+    /// Find where clubs or players keep a value seen in another tool: from each club and its senior
+    /// team, or from each player, follow pointers up to --depth hops and print the places where every
+    /// one given holds its own value, under several encodings.
     Related {
         /// A club UID and the value seen for it, e.g. 602=42; give several clubs.
-        #[arg(long = "club", value_parser = parse_club_value, required = true)]
+        #[arg(long = "club", value_parser = parse_club_value, required_unless_present = "players", conflicts_with = "players")]
         clubs: Vec<(u32, f64)>,
+        /// A player UID and the value seen for him, e.g. 85139014=-500; give several players.
+        #[arg(long = "player", value_parser = parse_club_value)]
+        players: Vec<(u32, f64)>,
         /// How many pointers to follow from the club and its senior team.
         #[arg(long, default_value_t = 2)]
         depth: usize,
@@ -759,8 +762,10 @@ fn run(cli: Cli) -> Result<()> {
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
         }
         Command::Squads => squads(&Session::connect(process, ArraySource::ProfileFirst)?),
-        Command::Related { clubs, depth, span, tolerance } => {
-            related(&Session::connect(process, ArraySource::ProfileFirst)?, &clubs, depth, parse_hex(&span)?, tolerance)
+        Command::Related { clubs, players, depth, span, tolerance } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            let roots = related_roots(&session, &clubs, &players)?;
+            related(&session, &roots, depth, parse_hex(&span)?, tolerance)
         }
         Command::TeamAverage { clubs, tolerance } => {
             team_average(&Session::connect(process, ArraySource::ProfileFirst)?, &clubs, tolerance)
@@ -2446,11 +2451,12 @@ fn teams(session: &Session, uid: u32) -> Result<()> {
             ];
             let tags: Vec<&str> = tags.into_iter().flatten().collect();
             println!(
-                "  {:>10}  {:<28}  energy {:>5}  sharpness {:>5}  morale {:>2}  {}",
+                "  {:>10}  {:<28}  energy {:>5}  sharpness {:>5}  jadedness {:>4}  morale {:>2}  {}",
                 member.uid,
                 clip(name(Some(member.uid)), 28),
                 member.condition,
                 member.match_sharpness,
+                member.jadedness,
                 member.morale,
                 tags.join(", ")
             );
@@ -2992,8 +2998,10 @@ fn resolve(expr: &str, modules: &[Module]) -> Result<u64> {
 /// Each encoding turns the bytes at an offset into a number in the units a tool shows, if they fit.
 type Encoding = (&'static str, usize, fn(&[u8]) -> f64);
 
-const ENCODINGS: [Encoding; 8] = [
+const ENCODINGS: [Encoding; 10] = [
     ("u8", 1, |b| f64::from(b[0])),
+    ("i16", 2, |b| f64::from(i16::from_le_bytes([b[0], b[1]]))),
+    ("i32", 4, |b| f64::from(i32::from_le_bytes([b[0], b[1], b[2], b[3]]))),
     ("u8 of 255", 1, |b| f64::from(b[0]) * 100.0 / 255.0),
     ("u16/100", 2, |b| f64::from(u16::from_le_bytes([b[0], b[1]])) / 100.0),
     ("u16/10", 2, |b| f64::from(u16::from_le_bytes([b[0], b[1]])) / 10.0),
@@ -3164,8 +3172,8 @@ fn parse_club_value(text: &str) -> Result<(u32, f64)> {
     Ok((uid.trim().parse().context("not a club UID")?, value.trim().parse().context("not a number")?))
 }
 
-/// Where a value sits: a root (0 the club, 1 its senior team), then the offsets of the pointers
-/// followed from it.
+/// Where a value sits: a root (0 the club and 1 its senior team, or 0 the player), then the offsets
+/// of the pointers followed from it.
 type HopPath = Vec<u64>;
 
 /// Reads the objects reachable from `roots` within `depth` pointer hops, `span` bytes of each,
@@ -3197,24 +3205,46 @@ fn reachable(process: &Process, roots: &[u64], depth: usize, span: u64) -> BTree
     found
 }
 
-fn related(session: &Session, clubs: &[(u32, f64)], depth: usize, span: u64, tolerance: f64) -> Result<()> {
-    ensure!(clubs.len() >= 2, "give at least two clubs, so that a match means something");
-    // The objects of the first clubs are read whole and compared; the places that match there are
-    // then followed, one by one, in the other clubs, which keeps memory in bounds.
-    const COMPARED: usize = 3;
-    let index = ClubIndex::new(session.clubs()?);
+/// The objects `related` starts from, with the value seen for each: a club and its senior team, or a
+/// player. The names are those of the roots, in order.
+struct RelatedRoots {
+    names: &'static [&'static str],
+    roots: Vec<Vec<u64>>,
+    seen: Vec<(u32, f64)>,
+}
+
+fn related_roots(session: &Session, clubs: &[(u32, f64)], players: &[(u32, f64)]) -> Result<RelatedRoots> {
     let process = &session.process;
+    if !players.is_empty() {
+        let index = PlayerIndex::new(session.players()?);
+        let roots = players
+            .iter()
+            .map(|&(uid, _)| Ok(vec![index.get(uid).with_context(|| format!("no player with UID {uid}"))?.address]))
+            .collect::<Result<_>>()?;
+        return Ok(RelatedRoots { names: &["player"], roots, seen: players.to_vec() });
+    }
+    let index = ClubIndex::new(session.clubs()?);
     let mut roots = Vec::new();
     for &(uid, _) in clubs {
         let club = index.get(uid).with_context(|| format!("no club with UID {uid}"))?;
         let teams = process.read_u64(club.address + session.layout.club.teams)?;
-        roots.push([club.address, process.read_u64(teams)?]);
+        roots.push(vec![club.address, process.read_u64(teams)?]);
     }
+    Ok(RelatedRoots { names: &["club", "team"], roots, seen: clubs.to_vec() })
+}
+
+fn related(session: &Session, roots: &RelatedRoots, depth: usize, span: u64, tolerance: f64) -> Result<()> {
+    let RelatedRoots { names, roots, seen: clubs } = roots;
+    ensure!(clubs.len() >= 2, "give at least two, so that a match means something");
+    // The objects of the first ones are read whole and compared; the places that match there are
+    // then followed, one by one, in the others, which keeps memory in bounds.
+    const COMPARED: usize = 3;
+    let process = &session.process;
     let (compared, followed) = clubs.split_at(clubs.len().min(COMPARED));
     let objects: Vec<_> = roots[..compared.len()].iter().map(|r| reachable(process, r, depth, span)).collect();
     let clubs = compared;
     println!(
-        "Read {} objects for the first club; looking for {}.",
+        "Read {} objects for the first; looking for {}.",
         objects[0].len(),
         clubs.iter().map(|(uid, value)| format!("{uid}={value}")).collect::<Vec<_>>().join(", ")
     );
@@ -3255,7 +3285,7 @@ fn related(session: &Session, clubs: &[(u32, f64)], depth: usize, span: u64, tol
                 }
                 if agrees {
                     let steps: Vec<String> = path[1..].iter().map(|o| format!("+{o:#x}")).collect();
-                    let root = if path[0] == 0 { "club" } else { "team" };
+                    let root = names[path[0] as usize];
                     let shown: Vec<String> = values.iter().map(|v| format!("{v:.2}")).collect();
                     println!("  {root}{} -> +{offset:#x} {name}: {}", steps.join(" -> "), shown.join(" "));
                     hits += 1;

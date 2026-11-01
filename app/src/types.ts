@@ -328,6 +328,8 @@ export interface PlayerDetails extends PlayerSummary {
   /** Energy ("condition") and match sharpness, 0–10000 for 0–100%: what the game changes every day. */
   condition: number;
   matchSharpness: number;
+  /** How worn out he is by playing, as stored: -500 when fully rested, higher the more he needs a rest. */
+  jadedness: number;
   /**
    * 1–20: his morale, which the game shows as his overall happiness ("Memnun" at 10, "Biraz Mutlu" at 11, "Aşırı
    * Mutlu" at 15 and 20 in the Turkish game) and FM Live Editor as morale ("Okay" at 10, "Very Good" at 15).
@@ -514,9 +516,10 @@ export interface SquadPlayer extends PlayerSummary {
   playsHere: boolean;
   /** "in": here on loan from another club; "out": on loan to another club; null when he is not on loan. */
   loan: "in" | "out" | null;
-  /** As stored, like `PlayerDetails`: energy and match sharpness 0–10000, morale 1–20. */
+  /** As stored, like `PlayerDetails`: energy and match sharpness 0–10000, jadedness from -500, morale 1–20. */
   condition: number;
   matchSharpness: number;
+  jadedness: number;
   morale: number;
   /** How many current injuries he has. */
   injuries: number;
@@ -542,6 +545,7 @@ export type SquadSort =
   | "potentialAbility"
   | "condition"
   | "matchSharpness"
+  | "jadedness"
   | "morale";
 
 /** The contract a move to another club gives the player, as stored; what is left out stays as it is. */
