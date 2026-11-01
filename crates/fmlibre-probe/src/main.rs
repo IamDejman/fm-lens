@@ -797,7 +797,8 @@ fn run(cli: Cli) -> Result<()> {
             } else {
                 nearby_targets(&session, &seen, of_players, to_club)?
             };
-            nearby(&session, &seen, &targets, by_uid, parse_hex(&window)?, tolerance, per_kind, bare)
+            let options = NearbyOptions { by_uid, window: parse_hex(&window)?, tolerance, per_kind, bare };
+            nearby(&session, &seen, &targets, &options)
         }
         Command::Injuries { club } => injuries(&Session::connect(process, ArraySource::ProfileFirst)?, club),
         Command::Stats { min, max, club, player } => {
@@ -3119,16 +3120,22 @@ fn nearby_targets(
     Ok(targets)
 }
 
-fn nearby(
-    session: &Session,
-    clubs: &[(u32, f64)],
-    targets: &std::collections::HashMap<u64, usize>,
+/// How `nearby` looks: see the command's options.
+struct NearbyOptions {
     by_uid: bool,
     window: u64,
     tolerance: f64,
     per_kind: usize,
     bare: bool,
+}
+
+fn nearby(
+    session: &Session,
+    clubs: &[(u32, f64)],
+    targets: &std::collections::HashMap<u64, usize>,
+    options: &NearbyOptions,
 ) -> Result<()> {
+    let &NearbyOptions { by_uid, window, tolerance, per_kind, bare } = options;
     const CHUNK: u64 = 8 << 20;
     ensure!(clubs.len() >= 2, "give at least two, so that a match means something");
     let window = window / 8 * 8;
@@ -3223,7 +3230,10 @@ fn nearby(
                     let field = (offset as i64 - window as i64) + kind.1 as i64;
                     let shown: Vec<String> = seen.iter().map(|v| format!("{v:.2}")).collect();
                     if kind.0 == 0 {
-                        println!("  record without a vtable: value at {field:+#x} from the pointer {name}: {}", shown.join(" "));
+                        println!(
+                            "  record without a vtable: value at {field:+#x} from the pointer {name}: {}",
+                            shown.join(" ")
+                        );
                     } else {
                         println!(
                             "  record with vtable game_plugin.dll+{:#x}, pointer at +{:#x}: value at {field:+#x} {name}: {}",
@@ -3332,7 +3342,14 @@ fn line_through(stored: &[f64], seen: &[f64], tolerance: f64) -> Option<(f64, f6
     (a != 0.0 && stored.iter().zip(seen).all(|(x, y)| (a * x + b - y).abs() <= tolerance)).then_some((a, b))
 }
 
-fn related(session: &Session, roots: &RelatedRoots, depth: usize, span: u64, tolerance: f64, linear: bool) -> Result<()> {
+fn related(
+    session: &Session,
+    roots: &RelatedRoots,
+    depth: usize,
+    span: u64,
+    tolerance: f64,
+    linear: bool,
+) -> Result<()> {
     let RelatedRoots { names, roots, seen: clubs } = roots;
     ensure!(clubs.len() >= 2, "give at least two, so that a match means something");
     ensure!(!linear || clubs.len() >= 4, "give at least four with --linear, as any two values make a line");
