@@ -2,8 +2,9 @@ import { useContext, useEffect, useState } from "react";
 import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { call } from "./api";
+import { keepPlaying } from "./editing";
 import { describeError, formatDate, formatNumber, formatPounds } from "./format";
-import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
+import { appText, ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroup } from "./MedicalGroup";
 import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -25,7 +26,7 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { ApplyReport, Clause, Concern, Contract, PlayerDetails, PlayerSummary } from "./types";
+import type { ApplyReport, Clause, Concern, Contract, FmDate, PlayerDetails, PlayerSummary } from "./types";
 import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
@@ -386,6 +387,66 @@ function CareerGroup({ details }: { details: PlayerDetails }) {
           <ReputationBars reputation={reputation} />
         </div>
       </div>
+      {details.retirementKnown && <RetirementPlan uid={details.uid} retires={details.retires} />}
     </section>
+  );
+}
+
+/**
+ * The date the game plans the player to retire on, with the button that keeps him playing: his plan comes out of the
+ * game's, and he gets the trait to play on as long as possible. Like healing, it asks no question; Changes undoes it.
+ */
+function RetirementPlan({ uid, retires }: { uid: number; retires: FmDate | null }) {
+  const { editable, onEdited } = useContext(EditorContext);
+  const [keeping, setKeeping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The button stays busy until the profile has read the game again.
+  useEffect(() => {
+    setKeeping(false);
+  }, [retires]);
+
+  const keep = async () => {
+    if (keeping) {
+      return;
+    }
+    setKeeping(true);
+    setError(null);
+    try {
+      await keepPlaying(uid);
+      onEdited();
+    } catch (e) {
+      setError(describeError(e));
+      setKeeping(false);
+    }
+  };
+
+  return (
+    <div className="clauses">
+      <div className="injuries-head">
+        <h4>{profileText.retirement}</h4>
+        {retires !== null && (
+          <button
+            type="button"
+            className="heal-toggle"
+            disabled={!editable}
+            aria-disabled={keeping || undefined}
+            aria-busy={keeping || undefined}
+            title={editable ? profileText.keepPlayingTitle : appText.noteReadOnly}
+            onClick={() => void keep()}
+          >
+            {keeping ? profileText.keepingPlaying : profileText.keepPlaying}
+          </button>
+        )}
+      </div>
+      {retires === null ? (
+        <p className="note">{profileText.noRetirement}</p>
+      ) : (
+        <dl className="stats">
+          <Fact label={profileText.retires}>{formatDate(retires)}</Fact>
+        </dl>
+      )}
+      {error && <p className="banner">{error}</p>}
+    </div>
   );
 }

@@ -244,6 +244,21 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
+    /// List the retirements the game has planned; with a UID, show the player's, and with --keep keep him from
+    /// retiring in the running game: his plan taken out, and the trait to play on as long as possible.
+    Retirements {
+        /// The player's UID.
+        uid: Option<u32>,
+        /// Keep him from retiring.
+        #[arg(long, requires = "uid")]
+        keep: bool,
+        /// With --keep, put it all back afterwards and check it.
+        #[arg(long)]
+        restore: bool,
+        /// With --restore, how many seconds to wait before putting it back, to look at the game.
+        #[arg(long, default_value_t = 0)]
+        hold: u64,
+    },
     /// Show a player's ties: his secondary nationalities, and the nations and clubs he was trained in.
     Ties {
         /// The player's UID.
@@ -699,6 +714,7 @@ fn run(cli: Cli) -> Result<()> {
                 | Command::Swap { .. }
                 | Command::Heal { heal: true, .. }
                 | Command::Bans { lift: true, .. }
+                | Command::Retirements { keep: true, .. }
                 | Command::TieSet { .. }
                 | Command::TieRemove { .. }
                 | Command::TieAdd { .. }
@@ -761,6 +777,10 @@ fn run(cli: Cli) -> Result<()> {
         Command::Bans { uid, lift, restore, hold } => {
             let restore_after = restore.then_some(hold);
             ban_list(&Session::connect(process, ArraySource::ProfileFirst)?, uid, lift, restore_after)
+        }
+        Command::Retirements { uid, keep, restore, hold } => {
+            let restore_after = restore.then_some(hold);
+            retirements(&Session::connect(process, ArraySource::ProfileFirst)?, uid, keep, restore_after)
         }
         Command::Ties { uid } => {
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
@@ -2693,6 +2713,67 @@ fn ban_list(session: &Session, uid: Option<u32>, lift: bool, restore_after: Opti
         }
         session.undo_lift_bans(&done)?;
         ensure!(show("restored")? == before, "his bans are not all back");
+    }
+    Ok(())
+}
+
+fn retirements(session: &Session, uid: Option<u32>, keep: bool, restore_after: Option<u64>) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let Some(uid) = uid else {
+        let planned = session.planned_retirements()?.context("the planned retirements are not found in this build")?;
+        // Who each one is, by the id the game gives him: a member of staff keeps it where a player does, in the
+        // person block.
+        let (p, s) = (&session.layout.player, &session.layout.staff);
+        let r = session.layout.retirement.as_ref().context("the layout does not place the planned retirements")?;
+        let mut names: std::collections::HashMap<u32, String> = std::collections::HashMap::new();
+        for player in players.iter() {
+            if let Ok(id) = session.process.read_u32(player.address + p.at(r.player_person, player.shift)) {
+                let club = player.club.as_deref().unwrap_or("no club");
+                names.insert(id, format!("{} (UID {}, {club})", player.name, player.uid));
+            }
+        }
+        let staff_person = s.person_block + (r.player_person - p.person_block);
+        for member in session.staff()? {
+            if let Ok(id) = session.process.read_u32(member.address + s.at(staff_person, member.shift)) {
+                let club = member.club.as_deref().unwrap_or("no club");
+                names.entry(id).or_insert_with(|| format!("{} (staff {}, {club})", member.name, member.uid));
+            }
+        }
+        for retirement in &planned {
+            let name = names.get(&retirement.person).map_or("?", String::as_str);
+            println!("  {}  {:#07x}  {name}", iso_date(retirement.date), retirement.person);
+        }
+        println!("{} planned retirement(s).", planned.len());
+        return Ok(());
+    };
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let show = |label: &str| -> Result<(Option<FmDate>, Vec<u8>)> {
+        let date = session.planned_retirement(player)?;
+        let details = session.player_details(player)?.context("the player has moved in memory")?;
+        let traits: Vec<u8> = details.traits.into_iter().filter(|&bit| bit == 48 || bit == 49).collect();
+        println!(
+            "{} (UID {uid}) {label}: retires {}; traits 48 (retire at top) {}, 49 (play on) {}",
+            player.name,
+            date.map_or_else(|| "not planned".to_owned(), |date| iso_date(Some(date))),
+            if traits.contains(&48) { "yes" } else { "no" },
+            if traits.contains(&49) { "yes" } else { "no" },
+        );
+        Ok((date, traits))
+    };
+    let before = show("now")?;
+    if !keep {
+        return Ok(());
+    }
+    let done = session.apply_retirement(&session.plan_keep_playing(player)?)?;
+    ensure!(show("kept")? == (None, vec![49]), "he still retires, or his traits are not the ones written");
+    if let Some(hold) = restore_after {
+        if hold > 0 {
+            println!("  putting it back in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
+        session.undo_retirement(&done)?;
+        ensure!(show("restored")? == before, "his plan or traits are not as they were");
+        println!("  restored");
     }
     Ok(())
 }

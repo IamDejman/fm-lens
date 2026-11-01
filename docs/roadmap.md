@@ -173,6 +173,14 @@ changes many at once, and undo.
   - [x] Traits (preferred moves): a `u64` bitmask at player `+0x348`, bit n the n-th of FMRTE's list read row by
     row; checked against Messi, Olise, Gvardiol, Kane and Güler. The profile lists them and edits each as a checkbox;
     the mass edit has them as a group. 62 are named; bits 62 and 63 by number.
+  - [x] Prevent retirement. The game's retirement manager (`RETIREMENT_MANAGER`, from a static next to the entity
+    arrays) lists the retirements it has planned twice: pointers to 24-byte entries (the person's id, which a player
+    keeps at `+0x290`, and the date he retires at `+0x0C`) and an index of them by person id. The profile shows the
+    date; "Prevent retirement" takes his entry out of both and gives him the trait "Will play football as long as
+    possible" in place of "Will retire at top", one change Changes undoes. Matched against FMRTE's list (Ronaldo,
+    Wass, Aspas, Kobayashi, Billy Sharp, Hugo Broos) on the Game Pass build; the Steam build is expected at the same
+    place, unchecked. A second list of the manager (5 entries, flag 4, short windows) looks like international
+    retirements and is left alone. What the game does after a Continue is not checked yet.
   - [x] Move a member of staff to another club, keeping the job and the contract, and change a job. A club
     keeps its staff in three department lists (medical, coaching, scouting); a move takes them out of the
     old club's and into the new club's, and a new job moves them between departments. Staff whom the club or

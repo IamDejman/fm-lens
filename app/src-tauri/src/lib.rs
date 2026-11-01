@@ -9,9 +9,9 @@ use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
     Entity, EntityArrays, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex,
     HOMEGROWN_RULES, Healed, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid,
-    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, RelationSet, STAFF_JOBS,
-    SearchIndex, Session, SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target,
-    Tie, TieTarget, find_game, nations, sort_players,
+    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, RelationSet, RetirementSet,
+    STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex,
+    StaffPlan, Target, Tie, TieTarget, find_game, nations, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -230,6 +230,32 @@ impl Connection {
             captaincy: None,
             tie: None,
             undo: Some(Undo::Lift(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs keeping a player from retiring just written, as a change of his `retirement` from the date he was to retire
+    /// on (0 when the game had planned none) to 0.
+    fn log_retirement(&mut self, done: RetirementSet) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "retirement".to_owned(),
+            old: done.date.map_or(0, FmDate::to_number),
+            new: 0,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            undo: Some(Undo::Retirement(done)),
         };
         self.log.push(logged.clone());
         logged
@@ -501,6 +527,7 @@ impl Connection {
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
+            Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
             Some(Undo::Staff(logged)) => {
                 self.session.undo_staff_change(&logged.done)?;
@@ -632,6 +659,7 @@ enum Undo {
     Move(LoggedMove),
     Heal(Healed),
     Lift(Lifted),
+    Retirement(RetirementSet),
     Tie(RelationSet),
     Captain(CaptainSet),
     Staff(LoggedStaff),
@@ -1480,6 +1508,19 @@ fn lift_bans(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failu
     Ok(connection.log_lift(done, None))
 }
 
+/// Keeps the player `uid` from retiring: the retirement the game has planned for him is taken out of its plans, and he
+/// gets the trait "Will play football as long as possible" in place of "Will retire at top". Logged as one change of
+/// his `retirement` to none, and undone as one.
+#[tauri::command]
+fn keep_playing(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_keep_playing(player)?;
+    let done = connection.session.apply_retirement(&plan)?;
+    Ok(connection.log_retirement(done))
+}
+
 /// Points the tie `index` of the player `uid` at the nation `nation` or the club `club` (by UID), and gives a
 /// training the homegrown rule `rule`; what is left out stays. Logged and undone like any change.
 #[tauri::command]
@@ -1867,6 +1908,7 @@ pub fn run() {
             staff_jobs,
             heal_player,
             lift_bans,
+            keep_playing,
             change_tie,
             remove_tie,
             add_tie,

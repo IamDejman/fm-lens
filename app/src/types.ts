@@ -390,6 +390,10 @@ export interface PlayerDetails extends PlayerSummary {
   ties: Tie[];
   /** How many more ties his list has room for: the game sizes it to what it holds, and the editor allocates nothing. */
   tieRoom: number;
+  /** Whether the editor can read the retirements the game has planned in this version of the game. */
+  retirementKnown: boolean;
+  /** The date the game plans him to retire on; null when it has planned none (or `retirementKnown` is false). */
+  retires: FmDate | null;
 }
 
 /** What ties a player to a nation or club: a secondary nationality, or a nation or club he was trained in. */
@@ -498,7 +502,8 @@ export interface LoggedChange {
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
   // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0, and
-  // lifting his bans (`lift_bans`) as a change of his field "bans".
+  // lifting his bans (`lift_bans`) as a change of his field "bans", and keeping him from retiring (`keep_playing`) as
+  // a change of his field "retirement" from the date he was to retire on (a number like 20270630; 0 for none) to 0.
   /**
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
    * values are the clubs' UIDs: the clubs' names. A release (`release_player`) is logged the same way, with 0 for

@@ -119,6 +119,8 @@ pub struct Session {
     finance_class: OnceLock<Option<u64>>,
     /// The class of stadiums, found the first time it is needed.
     stadium_class: OnceLock<Option<u64>>,
+    /// The vtable of the retirement manager, once its class name has been checked.
+    pub(crate) retirement_class: OnceLock<u64>,
 }
 
 impl Session {
@@ -148,6 +150,7 @@ impl Session {
             arrays,
             finance_class: OnceLock::new(),
             stadium_class: OnceLock::new(),
+            retirement_class: OnceLock::new(),
         })
     }
 
@@ -221,6 +224,9 @@ impl Session {
         details.bans = self.bans(player).unwrap_or_default();
         details.ties = self.relations(player).unwrap_or_default();
         details.tie_room = self.relation_room(player).unwrap_or(0);
+        if let Ok(date) = self.planned_retirement(player) {
+            (details.retirement_known, details.retires) = (true, date);
+        }
         Ok(Some(details))
     }
 }

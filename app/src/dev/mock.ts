@@ -253,6 +253,8 @@ function details(player: PlayerSummary): PlayerDetails {
     bans: bansOf(player.uid),
     ties: tiesOf(player),
     tieRoom: tieRoomOf(player),
+    retirementKnown: true,
+    retires: retiresOf(player.uid),
     // Drawn last, so that the values above come out as before.
     morale: Math.round(7 + next() * 10),
   });
@@ -420,6 +422,44 @@ function bansOf(uid: number): Ban[] {
     return [];
   }
   return [{ started: addDays(GAME_DATE, -3), matches: 1 + (uid % 3) }];
+}
+
+/** The fixture players kept from retiring through the editor, by UID, while it is not undone. */
+const keptPlayers = new Set<number>();
+
+/** The retirement the game plans for a fixture player: every seventh one retires on 30 June next year, until kept. */
+function retiresOf(uid: number): FmDate | null {
+  if (uid % 7 !== 3 || keptPlayers.has(uid)) {
+    return null;
+  }
+  return { year: GAME_DATE.year + 1, month: 6, day: 30 };
+}
+
+/** `keep_playing`: the fixture player's retirement is taken out of the plans, logged as a change of his `retirement`. */
+function keepPlaying(uid: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const retires = retiresOf(uid);
+  if (retires === null) {
+    throw failure("retirement.none", "the game has not planned the player's retirement, and he already means to play on");
+  }
+  keptPlayers.add(uid);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "retirement",
+    old: retires.year * 10000 + retires.month * 100 + retires.day,
+    new: 0,
+    undoneAt: null,
+    batch: null,
+  };
+  changes.push(logged);
+  return { ...logged };
 }
 
 /** Job codes as stored in contracts (see labels.ts). */
@@ -1018,6 +1058,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.field === "bans") {
     liftedPlayers.delete(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field === "retirement") {
+    keptPlayers.delete(entry.uid);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -2066,6 +2111,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return healPlayer(Number(args?.uid)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
+    case "keep_playing":
+      return keepPlaying(Number(args?.uid)) as T;
     case "change_tie":
       return changeTie(
         Number(args?.uid),

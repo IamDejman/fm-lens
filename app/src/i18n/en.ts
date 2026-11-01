@@ -395,6 +395,8 @@ export const en = {
     injuries: "Injuries",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
     bans: "Bans",
+    // Keeping a player from retiring, which the change log keeps as a change of the date he was to retire on.
+    retirement: "Retirement",
     // Making a player the captain or vice-captain of one of a club's teams, which the change log keeps as a change of
     // the club's captain or vice-captain.
     captain: "Captain",
@@ -484,6 +486,14 @@ export const en = {
     reputationHome: "Home",
     reputationCurrent: "Current",
     reputationWorld: "World",
+    /** The retirement the game has planned for a player, and the button that keeps him playing. */
+    retirement: "Retirement",
+    retires: "Plans to retire",
+    noRetirement: "The game has not planned his retirement",
+    keepPlaying: "Prevent retirement",
+    keepingPlaying: "Preventing…",
+    keepPlayingTitle:
+      "Take his retirement out of the game's plans and give him the trait “Will play football as long as possible” in place of “Will retire at top”; Changes can undo it",
 
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
     /** A player's morale, 1–20. */
@@ -998,6 +1008,8 @@ export const en = {
     healed: (count: number) => (count === 1 ? "Healed 1 injury" : `Healed ${format(count)} injuries`),
     /** The same for lifting bans: `count` is how many bans the player had. */
     lifted: (count: number) => (count === 1 ? "Lifted 1 ban" : `Lifted ${format(count)} bans`),
+    /** What keeping a player from retiring changed: the date he was to retire on, or none when only his traits changed. */
+    keptPlaying: (date: string | null) => (date === null ? "Will play on" : `Retirement on ${date} prevented`),
     /** The line beside the title; `undone` of the `total` changes were undone. */
     count: (total: number, undone: number) => {
       const count = changeCount(total);
