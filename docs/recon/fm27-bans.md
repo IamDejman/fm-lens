@@ -56,9 +56,12 @@ move to the front, and the list ends after them. The entries stay in their block
 and an undo lists them again. Checked with `bans <uid> --lift --restore` on Charles-Cook,
 Elliot Watt (two bans) and Gustavo Gómez: his World Cup entry stayed listed.
 
-Not yet checked: a game day passing after a ban is lifted, and the Windows builds. The
-injury record is laid out alike on both systems, so the Windows layout takes the same
-offsets.
+On the Windows Steam build (26227640, a save of 13 July 2026), the same offsets read 17 banned
+players, Elliot Watt's two bans among them; his lift was restored with the probe and undone
+in the app, and so was a team's (Fulham's). The injury record is laid out alike on both
+systems.
+
+Not yet checked: a game day passing after a ban is lifted, and the Game Pass build.
 
 ## Also seen
 

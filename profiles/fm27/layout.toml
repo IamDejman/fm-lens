@@ -17,7 +17,7 @@ date_of_birth = 0x310     # u16 day of year (low 9 bits) + u16 year
 current_ability = 0x264   # u16, 1..200
 potential_ability = 0x266 # i16, 1..200; negative values are ranges
 nation = 0x2F0            # nation pointer
-relations = 0x300         # pointer to the record of his relations; as on macOS, 0x40 further: not yet checked
+relations = 0x300         # pointer to the record of his relations; as on macOS, 0x40 further (checked on Steam)
 team = 0x130              # team pointer; the club hangs off the team
 
 # The person block starts here in plain players. Player-coaches carry an extra
@@ -195,8 +195,8 @@ shortest = 0x2A           # u16 days until he is back at the soonest
 kind_name = 0x18
 
 # A person's relations: the list of 16-byte entries the record of his `relations` starts with. Each points at a
-# nation, club, person or competition and says how he is tied to it. Read on the Mac Steam build; not yet checked
-# on Windows.
+# nation, club, person or competition and says how he is tied to it. Read on the Mac Steam build; on the Windows
+# Steam build Kenan Yıldız, Jamal Musiala and Achraf Hakimi read the same entries as on the Mac.
 [relation]
 target = 0x00             # pointer to the nation, club, person or competition
 target_kind = 0x0A        # u8: 1 a club, 3 a person, 7 a competition, 8 a nation
@@ -207,7 +207,8 @@ size = 0x10
 # A player's current bans sit in the same record as his injuries: after the list of his
 # current injuries, a list of his absences, 32-byte entries. Other absences, such as a
 # call-up, are listed with them; a ban has 0xFFFF at `marker`, they have 0. Read on the
-# Mac Steam build, whose records are laid out as here; not yet checked on Windows.
+# Mac Steam build, whose records are laid out as here; on the Windows Steam build Elliot Watt
+# reads his two bans (1 and 4 matches, from 13 July 2026) and 17 players are banned.
 [ban]
 list = 0x18               # in the record: the list (begin, end, capacity) of absences
 started = 0x10            # date the ban began
@@ -251,7 +252,8 @@ teams = 0x18              # pointer to the club's team pointers; the first is th
 info = 0x100              # info record pointer
 finance = 0x150           # finance record pointer
 # The club's staff by department, each a (begin, end, capacity) list of pointers. Read on macOS, whose
-# club layout is the same; a move checks the lists hold the member of staff before it writes.
+# club layout is the same, and checked on the Windows Steam build with Coventry City's coach Chris Jones;
+# a move checks the lists hold the member of staff before it writes.
 medical_staff = 0x60      # physios, sports scientists, the head of sports science, some fitness coaches
 coaching_staff = 0x78     # coaches, assistants, goalkeeping and fitness coaches, analysts, youth managers
 scouting_staff = 0x90     # scouts, the chief scout, recruitment analysts

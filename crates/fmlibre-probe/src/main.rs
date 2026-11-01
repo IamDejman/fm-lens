@@ -597,10 +597,20 @@ impl FieldType {
 }
 
 fn main() -> ExitCode {
-    match run(Cli::parse()) {
+    // Unoptimized, parsing this many commands and running them takes more stack than the 1 MB Windows gives the
+    // main thread (macOS gives it 8 MB), so the probe runs on a thread of its own with more.
+    let probe = std::thread::Builder::new().stack_size(16 << 20).spawn(|| match run(Cli::parse()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
             eprintln!("error: {err:#}");
+            ExitCode::FAILURE
+        }
+    });
+    // A panic has already printed its message.
+    match probe {
+        Ok(probe) => probe.join().unwrap_or(ExitCode::FAILURE),
+        Err(err) => {
+            eprintln!("error: could not start the probe: {err}");
             ExitCode::FAILURE
         }
     }
