@@ -208,6 +208,14 @@ export interface PlayerPage {
   rows: PlayerSummary[];
 }
 
+/** A nation the nation field of a player or member of staff can be set to. */
+export interface Nation {
+  /** Where the game keeps it: the value of a nation field. */
+  address: number;
+  uid: number | null;
+  name: string;
+}
+
 /** A bound on one attribute as FM shows it (1–20); either end may be left open. */
 export interface AttributeBound {
   /** An attribute key of the list's entity: "finishing" for players, "tactical" for staff. */
@@ -357,9 +365,10 @@ export interface EditField {
   entity: Entity;
   /**
    * "date": values are numbers like 20290630 (see `dateFromNumber` in editing.ts); "i32": money in pounds; "flag":
-   * 0 or 1, a yes-or-no such as being on the transfer list.
+   * 0 or 1, a yes-or-no such as being on the transfer list; "pointer": the address of another of the game's objects,
+   * such as a person's nation, picked from the ones the game has (see `Nation`).
    */
-  kind: "u8" | "u16" | "i16" | "i32" | "date" | "flag";
+  kind: "u8" | "u16" | "i16" | "i32" | "date" | "flag" | "pointer";
   /**
    * "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "percent": stored 0–10000, shown as a
    * percentage 0–100; "plain": shown as stored.

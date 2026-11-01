@@ -51,6 +51,9 @@ pub enum Kind {
     Date,
     /// One bit of a byte, 0 or 1; the field says which bit. The rest of the byte is left as it is.
     Flag,
+    /// A pointer to another of the game's objects, such as a person's nation. Only an object of the same class as
+    /// the one it points at now may take its place.
+    Pointer,
 }
 
 impl Kind {
@@ -59,6 +62,7 @@ impl Kind {
             Kind::U8 | Kind::Flag => 1,
             Kind::U16 | Kind::I16 => 2,
             Kind::I32 | Kind::Date => 4,
+            Kind::Pointer => 8,
         }
     }
 
@@ -71,6 +75,7 @@ impl Kind {
             Kind::I16 => i64::from(u16_at(0) as i16),
             Kind::I32 => i64::from(i32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
             Kind::Date => FmDate::from_raw(u16_at(0), u16_at(2)).map_or(0, FmDate::to_number),
+            Kind::Pointer => i64::from_le_bytes(bytes[..8].try_into().expect("8 bytes")),
         }
     }
 
@@ -88,9 +93,16 @@ impl Kind {
                 let flags = u16::from_le_bytes([old[0], old[1]]) & !0x1FF;
                 [(flags | date.day_of_year()).to_le_bytes(), date.year.to_le_bytes()].concat()
             }
+            Kind::Pointer => value.to_le_bytes().to_vec(),
         }
     }
 }
+
+/// The addresses a pointer field may hold: the user half of a 64-bit address space, past the first page.
+const POINTERS: RangeInclusive<i64> = 0x1_0000..=0x7FFF_FFFF_FFFF;
+
+/// Why a pointer field refuses a new value; the app has the words in Turkish too.
+const OTHER_CLASS: &str = "the new value is not one of the game's own records of that kind";
 
 /// How the game shows a stored value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -337,6 +349,7 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         // Database ranges are negative; the game settles them when a save starts.
         field("potential_ability", p.potential_ability, Kind::I16, 1..=200).plausible(-200..=200),
         field("height", p.height, Kind::U16, 140..=220).plausible(100..=250),
+        field("nation", p.nation, Kind::Pointer, POINTERS).single(),
         // Any birth date from 1940 to 2020; the game works out the age from it.
         field("date_of_birth", p.date_of_birth, Kind::Date, 19400101..=20201231).plausible(19000101..=21001231),
         // Pounds; -1 is none set.
@@ -386,6 +399,7 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         field("reputation.home", s.home_reputation, Kind::U16, 0..=10_000),
         field("reputation.current", s.current_reputation, Kind::U16, 0..=10_000),
         field("reputation.world", s.world_reputation, Kind::U16, 0..=10_000),
+        field("nation", s.nation, Kind::Pointer, POINTERS).single(),
     ];
     out.extend(crate::STAFF_ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter()).filter_map(|key| {
         if let Some(&offset) = s.attributes.get(*key) {
@@ -455,6 +469,8 @@ impl PlayerSummary {
             "contract.expires" => self.contract_expires = FmDate::from_number(value),
             // The age follows from the game's date, which the caller has (see `note_birth`).
             "date_of_birth" => self.date_of_birth = FmDate::from_number(value),
+            // The nation's name and UID follow from the app's list of nations (see `crate::nations`).
+            "nation" => self.nation_address = value as u64,
             "contract.transfer_listed" => self.transfer_listed = value != 0,
             "contract.loan_listed" => self.loan_listed = value != 0,
             _ => {
@@ -492,6 +508,7 @@ impl StaffSummary {
         match field {
             "current_ability" => self.current_ability = value as u16,
             "potential_ability" => self.potential_ability = value as i16,
+            "nation" => self.nation_address = value as u64,
             _ => {}
         }
     }
@@ -801,6 +818,9 @@ impl Session {
         if old == value {
             return Ok(change);
         }
+        if field.kind == Kind::Pointer && !self.same_class(old, value)? {
+            return Err(EditError::Unsupported { field: field.key.clone(), reason: OTHER_CLASS });
+        }
         // Two players of a team on the pitch with one number would confuse the game; the players it has lent out
         // keep theirs, so they do not count.
         if field.key == "contract.squad_number"
@@ -818,6 +838,14 @@ impl Session {
             return Err(EditError::NotApplied { field: field.key.clone(), wrote: value, read });
         }
         Ok(change)
+    }
+
+    /// Whether the objects at `a` and `b` are of one class: their first word, the class's table, is the same.
+    fn same_class(&self, a: i64, b: i64) -> Result<bool, EditError> {
+        if !is_user_pointer(b as u64) {
+            return Ok(false);
+        }
+        Ok(self.process.read_u64(a as u64)? == self.process.read_u64(b as u64)?)
     }
 
     /// The UID of another player of the team the player `target` plays for who wears the
@@ -1006,17 +1034,19 @@ mod tests {
         let players = fields(&layout, Entity::Player);
         // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
         // transfer and loan listing, which only players have.
-        // The 12 basic fields and the 3 live ones (condition, match sharpness, morale).
+        // The 13 basic fields and the 3 live ones (condition, match sharpness, morale).
         assert_eq!(
             players.len(),
-            12 + 3 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
+            13 + 3 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
         );
+        assert_eq!(key(&players, "nation").kind, Kind::Pointer);
+        assert!(!key(&players, "nation").mass);
         assert!(!key(&players, "contract.squad_number").mass);
         assert!(key(&players, "contract.wage").mass);
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        assert_eq!(staff.len(), 5 + staff_attributes + PERSONALITY.len() + 2);
+        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2);
         let clubs = fields(&layout, Entity::Club);
         assert_eq!(clubs.len(), 10);
 
@@ -1069,6 +1099,7 @@ mod tests {
             current_ability: 120,
             potential_ability: 150,
             position_ratings,
+            nation_address: 0,
             attributes: vec![10; crate::ATTRIBUTE_GROUPS.iter().map(|(_, keys)| keys.len()).sum()],
             transfer_listed: false,
             loan_listed: false,

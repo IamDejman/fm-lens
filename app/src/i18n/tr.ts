@@ -308,6 +308,7 @@ export const tr: Strings = {
     height: "Boy (cm)",
     date_of_birth: "Doğum tarihi",
     asking_price: "İstenen bedel",
+    nation: "Uyruk",
     "reputation.home": "Yerel itibar",
     "reputation.current": "Güncel itibar",
     "reputation.world": "Dünya itibarı",
@@ -694,6 +695,7 @@ export const tr: Strings = {
   },
 
   edit: {
+    unknownNation: "Bilinmeyen ülke",
     edit: "Düzenle",
     editTitle: "Bu profilin değerlerini oyunda değiştir",
     startFailed: (reason) => `Düzenleme başlatılamadı: ${reason}`,

@@ -248,6 +248,7 @@ mod tests {
             current_ability: ca,
             potential_ability: ca as i16 + 10,
             position_ratings,
+            nation_address: 0,
             attributes: vec![10; PLAYER_ATTRIBUTES.len()],
             transfer_listed: false,
             loan_listed: false,

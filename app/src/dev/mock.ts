@@ -6,6 +6,7 @@ import { fold } from "../format";
 import type {
   ApplyReport,
   AttributeBound,
+  Nation,
   BridgeInfo,
   CaptainRole,
   ClubTeam,
@@ -68,6 +69,12 @@ const FIRST = ["Arda", "Mateo", "Lukas", "Kerem", "Jonas", "Rafael", "Emre", "No
 const LAST = ["Yılmaz", "Fernández", "Hoffmann", "Aydın", "Lindqvist", "Moreau", "Çelik", "Kowalski", "Silva", "Novák"];
 const NATIONS = ["Türkiye", "Spain", "Germany", "Brazil", "Denmark", "France", "Poland", "Portugal", "Czechia"];
 const CLUBS = ["Northbridge FC", "Atlético Riverside", "Sporting Harbour", "FC Lindenau", "Kuzey Spor", "Old Mill United"];
+
+/** Where the game would keep each fixture nation: what a nation field holds. */
+const nationAddress = (nation: string) => 0x7f00_0000 + NATIONS.indexOf(nation) * 0x400;
+
+/** The fixture nation a nation field's value stands for. */
+const nationAt = (address: number) => NATIONS.find((nation) => nationAddress(nation) === address);
 
 /** A fixture person's nation and club with their UIDs, as the real rows have them; the clubs are the men's ones below. */
 function withUids(nation: string, club: string | null) {
@@ -363,6 +370,7 @@ function fieldTable(entity: Entity): EditField[] {
     return [
       ...common,
       field("height", "u16", 140, 220),
+      { ...field("nation", "pointer", 0x1_0000, 0x7fff_ffff_ffff), mass: false },
       field("date_of_birth", "date", 19400101, 20201231),
       { ...field("asking_price", "i32", 0, 2_000_000_000), blank: -1 },
       ...reputation,
@@ -384,6 +392,7 @@ function fieldTable(entity: Entity): EditField[] {
   return [
     ...common,
     ...reputation,
+    { ...field("nation", "pointer", 0x1_0000, 0x7fff_ffff_ffff), mass: false },
     ...STAFF_ATTRIBUTE_ORDER.map((key) =>
       STAFF_RATINGS.includes(key)
         ? field(`attribute.${key}`, "u8", 1, 20)
@@ -530,6 +539,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.heightCm;
       case "date_of_birth":
         return person.dateOfBirth && numberFromDate(person.dateOfBirth);
+      case "nation":
+        return person.nation === null ? undefined : nationAddress(person.nation);
       case "asking_price":
         return (person as PlayerDetails).askingPrice ?? -1;
       case "condition":
@@ -604,6 +615,12 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
     if (entity === "player" && group === "position") {
       ratings[uid][name] = value;
       (row as PlayerSummary).positions = playablePositions(ratings[uid]);
+      return;
+    }
+    const nation = key === "nation" ? nationAt(value) : undefined;
+    if (row && nation !== undefined) {
+      // The list row has the nation, and the profile is built from the row.
+      Object.assign(row, { nation, nationUid: 1000 + NATIONS.indexOf(nation) });
       return;
     }
     if (entity === "player" && key === "date_of_birth") {
@@ -1518,6 +1535,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "edit_fields":
       return fieldTable(args?.entity as Entity) as T;
+    case "list_nations": {
+      const nations: Nation[] = NATIONS.map((name) => ({ address: nationAddress(name), uid: 1000 + NATIONS.indexOf(name), name }));
+      return nations.sort((a, b) => a.name.localeCompare(b.name)) as T;
+    }
     case "read_values":
       return currentValues(args?.entity as Entity, Number(args?.uid)) as T;
     case "apply_edits":

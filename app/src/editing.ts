@@ -18,11 +18,15 @@ import type {
   MassReport,
   MovePreview,
   MoveTerms,
+  Nation,
   TeamAction,
 } from "./types";
 
 /** The fields of players or of staff the editor can change, in display order. */
 export const editFields = (entity: Entity) => call<EditField[]>("edit_fields", { entity });
+
+/** The nations of the people in the lists, by name: what a nation field can be set to. */
+export const listNations = () => call<Nation[]>("list_nations");
 
 /** Every editable field of one player or member of staff, as stored, read from the game now. */
 export const readValues = (entity: Entity, uid: number) => call<FieldValues>("read_values", { entity, uid });

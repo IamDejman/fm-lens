@@ -26,6 +26,9 @@ pub struct PlayerSummary {
     pub nation: Option<String>,
     /// The nation's UID, e.g. for its flag.
     pub nation_uid: Option<u32>,
+    /// Address of the nation object, which the nation field points at.
+    #[serde(skip)]
+    pub nation_address: u64,
     pub club: Option<String>,
     /// The club's UID, e.g. for its logo.
     pub club_uid: Option<u32>,
@@ -165,6 +168,7 @@ pub fn read_players(
             age: date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today)),
             nation_uid: nation.as_ref().and(nation_uid),
             nation,
+            nation_address: nation_ptr,
             club_uid: club.as_ref().and(club_uid),
             club,
             positions: natural_positions(&position_ratings),
@@ -180,6 +184,31 @@ pub fn read_players(
         });
     }
     Ok(players)
+}
+
+/// A nation as the editor offers it for a person's nation field.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Nation {
+    /// Address of the nation object: what a nation field holds.
+    pub address: u64,
+    /// For its flag.
+    pub uid: Option<u32>,
+    pub name: String,
+}
+
+/// The nations `people` belong to, given as (nation address, name, UID): each once, by name, accents and case
+/// ignored. A nation without a name is left out; the game names every nation that has people.
+pub fn nations<'a>(people: impl IntoIterator<Item = (u64, Option<&'a str>, Option<u32>)>) -> Vec<Nation> {
+    let mut seen: HashMap<u64, Nation> = HashMap::new();
+    for (address, name, uid) in people {
+        if let Some(name) = name.filter(|_| is_user_pointer(address)) {
+            seen.entry(address).or_insert_with(|| Nation { address, uid, name: name.to_owned() });
+        }
+    }
+    let mut out: Vec<Nation> = seen.into_values().collect();
+    out.sort_by_cached_key(|nation| (crate::text::fold(&nation.name), nation.address));
+    out
 }
 
 /// Rating from which FM calls a position one the player can play ("accomplished").
@@ -242,4 +271,23 @@ pub(crate) fn name_score(process: &Process, p: &PlayerLayout, object: u64, shift
     named(read_fm_string(process, pointer_at(p.full_name)))
         + named(read_name_entry(process, pointer_at(p.first_name)))
         + named(read_name_entry(process, pointer_at(p.last_name)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nations_are_listed_once_by_name() {
+        let people = [
+            (0x2_0000, Some("Türkiye"), Some(1)),
+            (0x3_0000, Some("Brazil"), Some(2)),
+            (0x2_0000, Some("Türkiye"), Some(1)),
+            (0x4_0000, None, Some(3)),
+            (0, Some("Nowhere"), None),
+            (0x5_0000, Some("Österreich"), Some(4)),
+        ];
+        let names: Vec<String> = nations(people).into_iter().map(|n| n.name).collect();
+        assert_eq!(names, ["Brazil", "Österreich", "Türkiye"]);
+    }
 }

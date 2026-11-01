@@ -269,6 +269,7 @@ export const en = {
     height: "Height (cm)",
     date_of_birth: "Date of birth",
     asking_price: "Asking price",
+    nation: "Nationality",
     "reputation.home": "Home reputation",
     "reputation.current": "Current reputation",
     "reputation.world": "World reputation",
@@ -721,6 +722,8 @@ export const en = {
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
   edit: {
+    /** A nation field's value whose name the app has not read: one no one in the lists belongs to. */
+    unknownNation: "Unknown nation",
     /** The button in the header of a profile that can be edited. */
     edit: "Edit",
     editTitle: "Change this profile's values in the game",

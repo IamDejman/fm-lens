@@ -8,9 +8,9 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
     Entity, EntityArrays, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Healed, Kind,
-    Listed, Loan, MoveError, MovePlan, MoveTerms, Operation, Picture, Planned, PlayerDetails, PlayerFilter,
+    Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Picture, Planned, PlayerDetails, PlayerFilter,
     PlayerIndex, PlayerOrder, PlayerSummary, SearchIndex, Session, SessionError, Skipped, StaffDetails, StaffFilter,
-    StaffIndex, Target, find_game, sort_players,
+    StaffIndex, Target, find_game, nations, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -335,8 +335,19 @@ impl Connection {
         .ok_or_else(|| not_found(entity, uid))
     }
 
+    /// The nations of the players and staff in the lists.
+    fn nations(&self) -> Vec<Nation> {
+        let players = self.players.iter().map(|p| (p.nation_address, p.nation.as_deref(), p.nation_uid));
+        let staff = self.staff.iter().map(|s| (s.nation_address, s.nation.as_deref(), s.nation_uid));
+        nations(players.chain(staff))
+    }
+
     /// Keeps the list rows in step with `value`, just written to the field `change` names.
     fn note_change(&mut self, change: &Change, value: i64) {
+        // A new nation: its name and flag, as the rows of its other people have them.
+        let nation = (change.field == "nation")
+            .then(|| self.nations().into_iter().find(|n| n.address == value as u64))
+            .flatten();
         // The rows keep attributes as FM shows them (1–20), for the lists' filters.
         let value = if change.field.starts_with("attribute.") {
             self.session.field(change.entity, &change.field).map_or(value, |field| field.scale.shown(value))
@@ -350,8 +361,16 @@ impl Connection {
                 if change.field == "date_of_birth" {
                     p.note_birth(today);
                 }
+                if let Some(nation) = nation {
+                    (p.nation, p.nation_uid) = (Some(nation.name), nation.uid);
+                }
             }),
-            Entity::Staff => self.staff.update(change.uid, |s| s.note_change(&change.field, value)),
+            Entity::Staff => self.staff.update(change.uid, |s| {
+                s.note_change(&change.field, value);
+                if let Some(nation) = nation {
+                    (s.nation, s.nation_uid) = (Some(nation.name), nation.uid);
+                }
+            }),
             Entity::Club => self.clubs.update(change.uid, |c| c.note_change(&change.field, value)),
         };
     }
@@ -931,6 +950,14 @@ fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, F
     connection.session.staff_details(member)?.ok_or_else(data_changed)
 }
 
+/// The nations of the players and staff in the lists, by name: what a nation field can be set to.
+#[tauri::command]
+fn list_nations(state: State<'_, AppState>) -> Result<Vec<Nation>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    Ok(connection.nations())
+}
+
 /// The fields of players or of staff that the editor can change.
 #[tauri::command]
 fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>, Failure> {
@@ -1300,6 +1327,7 @@ pub fn run() {
             player_details,
             staff_details,
             club_details,
+            list_nations,
             edit_fields,
             read_values,
             apply_edits,

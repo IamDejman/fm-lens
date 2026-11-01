@@ -86,6 +86,9 @@ pub struct StaffSummary {
     pub nation: Option<String>,
     /// The nation's UID, e.g. for its flag.
     pub nation_uid: Option<u32>,
+    /// Address of the nation object, which the nation field points at.
+    #[serde(skip)]
+    pub nation_address: u64,
     /// The employer, from the contract.
     pub club: Option<String>,
     /// The employer's UID, e.g. for its logo.
@@ -218,6 +221,7 @@ pub fn read_staff(
             age: date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today)),
             nation_uid: nation.as_ref().and(nation_uid),
             nation,
+            nation_address: nation_ptr,
             club,
             club_uid,
             job,
