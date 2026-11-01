@@ -154,9 +154,13 @@ changes many at once, and undo.
 - Wave 1, what is already mapped or needs no new memory research:
   - [x] Filter the player and staff lists by any attribute (at least, at most) and the player list by the
     transfer and loan lists. The mass edit follows the same filters, as FMRTE's does.
-  - [ ] Date of birth (age), asking price and nationality, editable.
-  - [ ] One click in a club's squad tab to max out its players' attributes.
-  - [ ] Freeze a club's money: while the app runs, its balance does not go down.
+  - [x] Date of birth (age), asking price and nationality, editable. Nationality is a pointer to a nation
+    object: only another object of the same class takes its place, and the app offers the nations of the
+    people in its lists.
+  - [x] One click in a club's squad tab to max out its players' attributes.
+  - [x] Freeze a club's money: while the app runs, its balance does not go down.
+  - Checked on the Mac Steam build: the filters on a real save, and each new field written, read back and
+    restored. Next: the same on Game Pass and Steam for Windows, and freezing money through a game day.
 - Wave 2, new memory research:
   - [ ] Traits (preferred moves).
   - [ ] Move a member of staff to another club, keeping the job and the contract, and change a job.
