@@ -958,6 +958,31 @@ input::placeholder {
   min-width: 0;
 }
 
+/* Bounds on attributes, across the whole panel: a row each (the attribute, least – most, and a button that takes the
+   row away), then a button for one more row. */
+.filter-attributes {
+  display: grid;
+  grid-column: 1 / -1;
+  justify-items: start;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.attribute-bound {
+  display: grid;
+  grid-template-columns: minmax(11rem, 15rem) 4.5rem auto 4.5rem 30px;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+}
+
+.bound-remove {
+  width: 30px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .filter-fields input[type="checkbox"] {
   margin: 0;
   accent-color: var(--accent);

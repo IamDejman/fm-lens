@@ -434,12 +434,21 @@ impl PlayerSummary {
         Target { entity: Entity::Player, uid: self.uid, address: self.address, shift: self.shift }
     }
 
-    /// Brings the fields a list row shows up to date after `field` was set to `value`.
+    /// Brings the fields a list row shows, and is filtered by, up to date after `field` was set to `value`; an
+    /// attribute's value as FM shows it (1–20).
     pub fn note_change(&mut self, field: &str, value: i64) {
+        if let Some(key) = field.strip_prefix("attribute.") {
+            if let Some(slot) = crate::filter::player_attribute(key).and_then(|i| self.attributes.get_mut(i)) {
+                *slot = value as u8;
+            }
+            return;
+        }
         match field {
             "current_ability" => self.current_ability = value as u16,
             "potential_ability" => self.potential_ability = value as i16,
             "contract.expires" => self.contract_expires = FmDate::from_number(value),
+            "contract.transfer_listed" => self.transfer_listed = value != 0,
+            "contract.loan_listed" => self.loan_listed = value != 0,
             _ => {
                 let position = field.strip_prefix("position.").and_then(|key| POSITIONS.iter().position(|&k| k == key));
                 if let Some(i) = position {
@@ -456,8 +465,15 @@ impl StaffSummary {
         Target { entity: Entity::Staff, uid: self.uid, address: self.address, shift: self.shift }
     }
 
-    /// Brings the fields a list row shows up to date after `field` was set to `value`.
+    /// Brings the fields a list row shows, and is filtered by, up to date after `field` was set to `value`; an
+    /// attribute's value as FM shows it (1–20).
     pub fn note_change(&mut self, field: &str, value: i64) {
+        if let Some(key) = field.strip_prefix("attribute.") {
+            if let Some(slot) = crate::filter::staff_attribute(key).and_then(|i| self.attributes.get_mut(i)) {
+                *slot = value as u8;
+            }
+            return;
+        }
         match field {
             "current_ability" => self.current_ability = value as u16,
             "potential_ability" => self.potential_ability = value as i16,
@@ -1034,14 +1050,20 @@ mod tests {
             current_ability: 120,
             potential_ability: 150,
             position_ratings,
+            attributes: vec![10; crate::ATTRIBUTE_GROUPS.iter().map(|(_, keys)| keys.len()).sum()],
+            transfer_listed: false,
+            loan_listed: false,
             address: 0,
             shift: 0,
         };
         player.note_change("current_ability", 130);
         player.note_change("potential_ability", 160);
         player.note_change("position.dc", 19);
-        player.note_change("attribute.finishing", 90); // not on the row
+        player.note_change("attribute.finishing", 18);
+        player.note_change("contract.transfer_listed", 1);
         player.note_change("contract.expires", 20290630);
+        assert_eq!(player.attributes[crate::filter::player_attribute("finishing").unwrap()], 18);
+        assert!(player.transfer_listed && !player.loan_listed);
         assert_eq!((player.current_ability, player.potential_ability), (130, 160));
         assert_eq!(player.positions, ["dc", "st"]);
         assert_eq!(player.contract_expires, Some(FmDate { year: 2029, month: 6, day: 30 }));

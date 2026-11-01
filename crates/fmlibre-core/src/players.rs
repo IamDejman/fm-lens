@@ -5,7 +5,8 @@ use serde::Serialize;
 
 use crate::calibrate::ArrayRef;
 use crate::date::FmDate;
-use crate::details::POSITIONS;
+use crate::details::{ATTRIBUTE_GROUPS, Attribute, POSITIONS};
+use crate::filter::attribute_keys;
 use crate::index::{Listed, SearchIndex};
 use crate::profile::{Layout, PlayerLayout};
 use crate::text::{Memo, display_name, is_name_like, read_fm_string, read_name_entry};
@@ -36,6 +37,15 @@ pub struct PlayerSummary {
     /// All 15 position ratings, in [`crate::POSITIONS`] order.
     #[serde(skip)]
     pub position_ratings: [u8; 15],
+    /// The attributes as FM shows them (1–20), in [`crate::ATTRIBUTE_GROUPS`] order, for the list's filters; 0 for
+    /// one the layout does not place.
+    #[serde(skip)]
+    pub attributes: Vec<u8>,
+    /// Whether his club has put him on the transfer list, and on the loan list.
+    #[serde(skip)]
+    pub transfer_listed: bool,
+    #[serde(skip)]
+    pub loan_listed: bool,
     /// Address of the player object in the game process.
     #[serde(skip)]
     pub address: u64,
@@ -77,10 +87,14 @@ pub fn read_players(
     today: Option<FmDate>,
 ) -> fmlibre_mem::Result<Vec<PlayerSummary>> {
     let p = &layout.player;
+    let c = &layout.contract;
     let (begin, count) = array.locate(process, module)?;
     let pointers = process.read_bytes(begin, (count * 8) as usize)?;
     let plain_len = p.end() as usize;
     let mut buf = Vec::with_capacity(plain_len + p.max_shift() as usize);
+    let mut contract_buf = vec![0u8; c.end() as usize];
+    let attribute_offsets: Vec<Option<u64>> =
+        attribute_keys(ATTRIBUTE_GROUPS).map(|key| p.attributes.get(key).copied()).collect();
 
     // The person-block shift is a property of the object's class, so decide it once per vtable.
     let mut shifts: HashMap<u64, u64> = HashMap::new();
@@ -131,11 +145,18 @@ pub fn read_players(
         let date_of_birth = FmDate::from_raw(u16_at(p.date_of_birth), u16_at(p.date_of_birth + 2));
         let mut position_ratings = [0u8; POSITIONS.len()];
         position_ratings.copy_from_slice(&buf[at(p.positions)..at(p.positions) + POSITIONS.len()]);
+        let attributes = attribute_offsets
+            .iter()
+            .map(|offset| offset.map_or(0, |offset| Attribute::from_raw(buf[at(offset)]).value))
+            .collect();
+        // The contract in one read: its end date, and the listings.
         let contract = u64_at(p.contract);
-        let contract_expires = is_user_pointer(contract)
-            .then(|| process.read_u32(contract + layout.contract.expires).ok())
-            .flatten()
-            .and_then(|raw| FmDate::from_raw(raw as u16, (raw >> 16) as u16));
+        let has_contract = is_user_pointer(contract) && process.read_into(contract, &mut contract_buf).is_ok();
+        let contract_u16 =
+            |offset: u64| u16::from_le_bytes([contract_buf[offset as usize], contract_buf[offset as usize + 1]]);
+        let contract_expires =
+            has_contract.then(|| FmDate::from_raw(contract_u16(c.expires), contract_u16(c.expires + 2))).flatten();
+        let listing = if has_contract { contract_buf[c.listing as usize] } else { 0 };
         players.push(PlayerSummary {
             uid,
             name,
@@ -151,6 +172,9 @@ pub fn read_players(
             current_ability: u16_at(p.current_ability),
             potential_ability: u16_at(p.potential_ability) as i16,
             position_ratings,
+            attributes,
+            transfer_listed: listing & 1 != 0,
+            loan_listed: listing & 2 != 0,
             address: object,
             shift,
         });

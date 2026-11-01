@@ -208,6 +208,14 @@ export interface PlayerPage {
   rows: PlayerSummary[];
 }
 
+/** A bound on one attribute as FM shows it (1–20); either end may be left open. */
+export interface AttributeBound {
+  /** An attribute key of the list's entity: "finishing" for players, "tactical" for staff. */
+  key: string;
+  min?: number;
+  max?: number;
+}
+
 /** Filters for `search_players`; omitted fields match everyone. */
 export interface PlayerFilter {
   /** A position key (gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr); rated 15+ there. */
@@ -226,6 +234,11 @@ export interface PlayerFilter {
   freeAgents?: boolean;
   /** Only contracts ending on or before this date. */
   contractExpiresBy?: FmDate;
+  /** Only players their club has put on the transfer list, and on the loan list. */
+  transferListed?: boolean;
+  loanListed?: boolean;
+  /** Bounds on attributes, every one of which must hold. */
+  attributes?: AttributeBound[];
 }
 
 export type PlayerSort =
@@ -249,6 +262,8 @@ export interface StaffFilter {
   job?: number;
   /** Only staff without a contract. */
   unemployed?: boolean;
+  /** Bounds on attributes, every one of which must hold. */
+  attributes?: AttributeBound[];
 }
 
 /** Filters for `search_clubs`. */

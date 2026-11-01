@@ -1,14 +1,61 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::sync::LazyLock;
 
 use serde::Deserialize;
 
 use crate::clubs::ClubSummary;
 use crate::date::FmDate;
-use crate::details::POSITIONS;
+use crate::details::{ATTRIBUTE_GROUPS, POSITIONS};
 use crate::players::{PLAYABLE_RATING, PlayerSummary};
-use crate::staff::StaffSummary;
+use crate::staff::{STAFF_ATTRIBUTE_GROUPS, StaffSummary};
 use crate::text::fold;
+
+/// The attribute keys of `groups`, group after group: the order of the summaries' `attributes`.
+pub(crate) fn attribute_keys(
+    groups: &'static [(&'static str, &'static [&'static str])],
+) -> impl Iterator<Item = &'static str> {
+    groups.iter().flat_map(|(_, keys)| keys.iter().copied())
+}
+
+/// Where each attribute sits in [`PlayerSummary::attributes`] and in [`StaffSummary::attributes`].
+static PLAYER_ATTRIBUTES: LazyLock<HashMap<&'static str, usize>> =
+    LazyLock::new(|| attribute_keys(ATTRIBUTE_GROUPS).enumerate().map(|(i, key)| (key, i)).collect());
+static STAFF_ATTRIBUTES: LazyLock<HashMap<&'static str, usize>> =
+    LazyLock::new(|| attribute_keys(STAFF_ATTRIBUTE_GROUPS).enumerate().map(|(i, key)| (key, i)).collect());
+
+/// Where the attribute `key` sits in [`PlayerSummary::attributes`].
+pub(crate) fn player_attribute(key: &str) -> Option<usize> {
+    PLAYER_ATTRIBUTES.get(key).copied()
+}
+
+/// Where the attribute `key` sits in [`StaffSummary::attributes`].
+pub(crate) fn staff_attribute(key: &str) -> Option<usize> {
+    STAFF_ATTRIBUTES.get(key).copied()
+}
+
+/// A bound on one attribute as FM shows it (1–20): at least `min` and at most `max`, either of which may be unset.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AttributeBound {
+    /// An attribute key of the list's entity, e.g. "finishing" for players or "tactical" for staff.
+    pub key: String,
+    pub min: Option<u8>,
+    pub max: Option<u8>,
+}
+
+impl AttributeBound {
+    /// Whether `values`, a summary's attributes, keep to the bound. An attribute the entity does not have, or one the
+    /// game's layout does not place (0), keeps to no bound: a mass edit must never widen to everyone over it.
+    fn holds(&self, index: &HashMap<&'static str, usize>, values: &[u8]) -> bool {
+        match index.get(self.key.as_str()).and_then(|&i| values.get(i)) {
+            Some(&value) if value > 0 => {
+                self.min.is_none_or(|min| value >= min) && self.max.is_none_or(|max| value <= max)
+            }
+            _ => false,
+        }
+    }
+}
 
 /// Filters the player list applies on top of a name search. Unset fields match everyone.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -30,6 +77,11 @@ pub struct PlayerFilter {
     pub free_agents: bool,
     /// Only players whose contract ends on or before this date.
     pub contract_expires_by: Option<FmDate>,
+    /// Only players their club has put on the transfer list, and on the loan list.
+    pub transfer_listed: bool,
+    pub loan_listed: bool,
+    /// Bounds on attributes, every one of which must hold.
+    pub attributes: Vec<AttributeBound>,
 }
 
 impl PlayerFilter {
@@ -50,6 +102,9 @@ impl PlayerFilter {
             && self.club_uid.is_none_or(|uid| p.club_uid == Some(uid))
             && (!self.free_agents || p.club.is_none())
             && self.contract_expires_by.is_none_or(|by| p.contract_expires.is_some_and(|end| end <= by))
+            && (!self.transfer_listed || p.transfer_listed)
+            && (!self.loan_listed || p.loan_listed)
+            && self.attributes.iter().all(|bound| bound.holds(&PLAYER_ATTRIBUTES, &p.attributes))
     }
 }
 
@@ -145,12 +200,15 @@ pub struct StaffFilter {
     pub job: Option<u8>,
     /// Only staff without a contract.
     pub unemployed: bool,
+    /// Bounds on attributes, every one of which must hold.
+    pub attributes: Vec<AttributeBound>,
 }
 
 impl StaffFilter {
     pub fn matches(&self, s: &StaffSummary) -> bool {
         self.job.is_none_or(|job| s.job.is_some_and(|code| code == job || code == job + 1))
             && (!self.unemployed || s.job.is_none())
+            && self.attributes.iter().all(|bound| bound.holds(&STAFF_ATTRIBUTES, &s.attributes))
     }
 }
 
@@ -190,9 +248,39 @@ mod tests {
             current_ability: ca,
             potential_ability: ca as i16 + 10,
             position_ratings,
+            attributes: vec![10; PLAYER_ATTRIBUTES.len()],
+            transfer_listed: false,
+            loan_listed: false,
             address: 0,
             shift: 0,
         }
+    }
+
+    fn bound(key: &str, min: Option<u8>, max: Option<u8>) -> AttributeBound {
+        AttributeBound { key: key.to_owned(), min, max }
+    }
+
+    #[test]
+    fn attribute_bounds_and_listings() {
+        let mut striker = player("Arda", Some(19), 140, Some("Fenerbahçe"), 18);
+        striker.attributes[PLAYER_ATTRIBUTES["finishing"]] = 17;
+        striker.attributes[PLAYER_ATTRIBUTES["injury_proneness"]] = 4;
+        let with = |attributes| PlayerFilter { attributes, ..PlayerFilter::default() };
+        assert!(with(vec![bound("finishing", Some(15), None)]).matches(&striker));
+        assert!(
+            with(vec![bound("finishing", Some(15), None), bound("injury_proneness", None, Some(5))]).matches(&striker)
+        );
+        assert!(!with(vec![bound("finishing", Some(18), None)]).matches(&striker));
+        assert!(!with(vec![bound("injury_proneness", None, Some(3))]).matches(&striker));
+        // A key players do not have, or an attribute the layout does not place, matches no one.
+        assert!(!with(vec![bound("tactical", None, None)]).matches(&striker));
+        striker.attributes[PLAYER_ATTRIBUTES["flair"]] = 0;
+        assert!(!with(vec![bound("flair", None, Some(20))]).matches(&striker));
+
+        assert!(!PlayerFilter { transfer_listed: true, ..PlayerFilter::default() }.matches(&striker));
+        striker.transfer_listed = true;
+        assert!(PlayerFilter { transfer_listed: true, ..PlayerFilter::default() }.matches(&striker));
+        assert!(!PlayerFilter { loan_listed: true, ..PlayerFilter::default() }.matches(&striker));
     }
 
     #[test]

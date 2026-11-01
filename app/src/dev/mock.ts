@@ -5,6 +5,7 @@ import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
 import type {
   ApplyReport,
+  AttributeBound,
   BridgeInfo,
   CaptainRole,
   ClubTeam,
@@ -1261,8 +1262,24 @@ function contains(text: string | null, needle: string | undefined): boolean {
   return wanted === "" || (text !== null && fold(text).includes(wanted));
 }
 
+/**
+ * Whether an attribute as FM shows it keeps to `bound`; as in the real filter, one the person does not have keeps to
+ * none.
+ */
+function holds(bound: AttributeBound, value: number | undefined): boolean {
+  return (
+    value !== undefined &&
+    value > 0 &&
+    (bound.min === undefined || value >= bound.min) &&
+    (bound.max === undefined || value <= bound.max)
+  );
+}
+
 /** The player filter of the real command: fields that are not set match everyone. */
 function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
+  // The listings and the attributes are in the profile, made only when a filter asks for them.
+  const needsDetails = f.transferListed || f.loanListed || (f.attributes?.length ?? 0) > 0;
+  const d = needsDetails ? details(p) : null;
   return (
     (f.position === undefined || p.positions.includes(f.position)) &&
     (f.minAge === undefined || (p.age !== null && p.age >= f.minAge)) &&
@@ -1274,7 +1291,10 @@ function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
     (f.clubUid === undefined || p.clubUid === f.clubUid) &&
     (!f.freeAgents || p.club === null) &&
     (f.contractExpiresBy === undefined ||
-      (p.contractExpires !== null && dayNumber(p.contractExpires) <= dayNumber(f.contractExpiresBy)))
+      (p.contractExpires !== null && dayNumber(p.contractExpires) <= dayNumber(f.contractExpiresBy))) &&
+    (!f.transferListed || d?.contract?.transferListed === true) &&
+    (!f.loanListed || d?.contract?.loanListed === true) &&
+    (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
   );
 }
 
@@ -1320,9 +1340,11 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
 
 /** The staff filter of the real command: a player-coach has the code of the coaching job plus one, and matches it too. */
 function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
+  const d = (f.attributes?.length ?? 0) > 0 ? staffDetails(s) : null;
   return (
     (f.job === undefined || (s.job !== null && (s.job === f.job || s.job === f.job + 1))) &&
-    (!f.unemployed || s.job === null)
+    (!f.unemployed || s.job === null) &&
+    (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
   );
 }
 

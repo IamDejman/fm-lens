@@ -6,6 +6,7 @@ use serde::Serialize;
 use crate::calibrate::ArrayRef;
 use crate::date::FmDate;
 use crate::details::{Attribute, PERSONALITY, Reputation};
+use crate::filter::attribute_keys;
 use crate::index::{Listed, SearchIndex};
 use crate::players::{club_of_team, club_uid_of_team, nation_name, nation_uid};
 use crate::profile::{Layout, StaffLayout};
@@ -95,6 +96,10 @@ pub struct StaffSummary {
     pub potential_ability: i16,
     /// The manager the player controls in this save.
     pub is_human: bool,
+    /// The attributes as FM shows them (1–20), in [`STAFF_ATTRIBUTE_GROUPS`] order, for the list's filters; 0 for one
+    /// the layout does not place.
+    #[serde(skip)]
+    pub attributes: Vec<u8>,
     #[serde(skip)]
     pub address: u64,
     /// How far this object's identity block is shifted (see [`StaffLayout::identity_shifts`]).
@@ -141,6 +146,12 @@ pub fn read_staff(
     let plain_len = s.end() as usize;
     let mut buf = Vec::with_capacity(plain_len + s.max_shift() as usize);
     let mut contract = vec![0u8; c.end() as usize];
+    // Each attribute's offset, and whether it is stored as FM shows it (a rating) rather than 0–100.
+    let attribute_offsets: Vec<Option<(u64, bool)>> = attribute_keys(STAFF_ATTRIBUTE_GROUPS)
+        .map(|key| {
+            s.attributes.get(key).map(|&offset| (offset, false)).or(s.ratings.get(key).map(|&offset| (offset, true)))
+        })
+        .collect();
 
     let mut shifts: HashMap<u64, u64> = HashMap::new();
     let mut names = Memo::default();
@@ -213,6 +224,14 @@ pub fn read_staff(
             current_ability: u16_at(at(s.current_ability)),
             potential_ability: u16_at(at(s.potential_ability)) as i16,
             is_human: shift != 0,
+            attributes: attribute_offsets
+                .iter()
+                .map(|place| match *place {
+                    Some((offset, true)) => buf[at(offset)],
+                    Some((offset, false)) => Attribute::from_raw(buf[at(offset)]).value,
+                    None => 0,
+                })
+                .collect(),
             address: object,
             shift,
         });

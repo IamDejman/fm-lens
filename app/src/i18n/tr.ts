@@ -491,6 +491,17 @@ export const tr: Strings = {
       club: "Kulüp",
       freeAgentsOnly: "Yalnızca serbest oyuncular",
       contractEndsBy: "Sözleşme bitişi (en geç)",
+      transferListedOnly: "Yalnızca transfer listesindekiler",
+      loanListedOnly: "Yalnızca kiralık listesindekiler",
+      attributes: {
+        heading: "Özellikler",
+        attribute: "Özellik",
+        pick: "Özellik seçin",
+        min: (name) => (name ? `En az ${name}` : "En az"),
+        max: (name) => (name ? `En çok ${name}` : "En çok"),
+        add: "Özellik ekle",
+        remove: (name) => (name ? `${name} satırını kaldır` : "Bu satırı kaldır"),
+      },
       saved: {
         save: "Kaydet",
         saveTitle: "Geçerli filtreleri ve sıralamayı bir adla kaydet",

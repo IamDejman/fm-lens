@@ -1,4 +1,5 @@
 import { useId, useRef, useState, type ReactNode } from "react";
+import { AttributeFilters, PLAYER_ATTRIBUTES, toAttributeBounds, type AttributeRow } from "./AttributeFilters";
 import { playerListText, POSITION_LABELS, type PositionKey } from "./labels";
 import type { FmDate, PlayerFilter } from "./types";
 
@@ -26,6 +27,9 @@ export interface PlayerFilterFields {
   freeAgents: boolean;
   /** `YYYY-MM-DD`, as a date input holds it. */
   contractExpiresBy: string;
+  transferListed: boolean;
+  loanListed: boolean;
+  attributes: AttributeRow[];
 }
 
 export const NO_PLAYER_FILTERS: PlayerFilterFields = {
@@ -38,6 +42,9 @@ export const NO_PLAYER_FILTERS: PlayerFilterFields = {
   club: "",
   freeAgents: false,
   contractExpiresBy: "",
+  transferListed: false,
+  loanListed: false,
+  attributes: [],
 };
 
 /** A whole number within `range`; nothing for an empty or unreadable input. */
@@ -67,16 +74,19 @@ export function toPlayerFilter(fields: PlayerFilterFields): PlayerFilter | undef
     club: fields.club.trim() || undefined,
     freeAgents: fields.freeAgents || undefined,
     contractExpiresBy: toFmDate(fields.contractExpiresBy),
+    transferListed: fields.transferListed || undefined,
+    loanListed: fields.loanListed || undefined,
+    attributes: toAttributeBounds(fields.attributes),
   };
   return countFilters(filter) > 0 ? filter : undefined;
 }
 
-/** How many filters are in effect; the two ends of the age range count as one. */
+/** How many filters are in effect; the two ends of the age range count as one, and each attribute bound as one. */
 export function countFilters(filter: PlayerFilter | undefined): number {
   if (!filter) {
     return 0;
   }
-  return [
+  const single = [
     filter.position,
     filter.minAge ?? filter.maxAge,
     filter.minCurrentAbility,
@@ -85,7 +95,10 @@ export function countFilters(filter: PlayerFilter | undefined): number {
     filter.club,
     filter.freeAgents,
     filter.contractExpiresBy,
+    filter.transferListed,
+    filter.loanListed,
   ].filter((value) => value !== undefined).length;
+  return single + (filter.attributes?.length ?? 0);
 }
 
 interface PlayerFilterBarProps {
@@ -243,6 +256,30 @@ export function PlayerFilterBar({ fields, onChange, active, actions }: PlayerFil
               onChange={(e) => set("contractExpiresBy", e.currentTarget.value)}
             />
           </label>
+
+          <label className="filter-field">
+            <input
+              type="checkbox"
+              checked={fields.transferListed}
+              onChange={(e) => set("transferListed", e.currentTarget.checked)}
+            />
+            <span>{text.transferListedOnly}</span>
+          </label>
+
+          <label className="filter-field">
+            <input
+              type="checkbox"
+              checked={fields.loanListed}
+              onChange={(e) => set("loanListed", e.currentTarget.checked)}
+            />
+            <span>{text.loanListedOnly}</span>
+          </label>
+
+          <AttributeFilters
+            rows={fields.attributes}
+            choices={PLAYER_ATTRIBUTES}
+            onChange={(rows) => set("attributes", rows)}
+          />
         </div>
       )}
     </div>

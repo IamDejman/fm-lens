@@ -3,6 +3,7 @@
 // data): every access is guarded, and every entry is checked field by field, with a default for what is wrong.
 
 import { useState } from "react";
+import { PLAYER_ATTRIBUTES, readAttributeRows } from "./AttributeFilters";
 import { intlLocale } from "./i18n";
 import { NO_PLAYER_FILTERS, POSITION_ORDER, type PlayerFilterFields } from "./PlayerFilters";
 import { isRecord } from "./restore";
@@ -72,6 +73,9 @@ export function readFields(value: unknown): PlayerFilterFields {
       none.contractExpiresBy,
       (text) => text === "" || DATE_TEXT.test(text),
     ),
+    transferListed: typeof given.transferListed === "boolean" ? given.transferListed : none.transferListed,
+    loanListed: typeof given.loanListed === "boolean" ? given.loanListed : none.loanListed,
+    attributes: readAttributeRows(given.attributes, PLAYER_ATTRIBUTES),
   };
 }
 

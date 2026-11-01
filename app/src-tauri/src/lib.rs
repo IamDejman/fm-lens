@@ -337,6 +337,12 @@ impl Connection {
 
     /// Keeps the list rows in step with `value`, just written to the field `change` names.
     fn note_change(&mut self, change: &Change, value: i64) {
+        // The rows keep attributes as FM shows them (1–20), for the lists' filters.
+        let value = if change.field.starts_with("attribute.") {
+            self.session.field(change.entity, &change.field).map_or(value, |field| field.scale.shown(value))
+        } else {
+            value
+        };
         match change.entity {
             Entity::Player => self.players.update(change.uid, |p| p.note_change(&change.field, value)),
             Entity::Staff => self.staff.update(change.uid, |s| s.note_change(&change.field, value)),

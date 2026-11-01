@@ -480,6 +480,21 @@ export const en = {
       club: "Club",
       freeAgentsOnly: "Free agents only",
       contractEndsBy: "Contract ends by",
+      transferListedOnly: "Transfer listed only",
+      loanListedOnly: "Loan listed only",
+      /** Bounds on attributes, a row each, under the other filters; the staff list has them too. */
+      attributes: {
+        heading: "Attributes",
+        /** The select of a row, for assistive technology, and its entry before an attribute is picked. */
+        attribute: "Attribute",
+        pick: "Pick an attribute",
+        /** The two inputs of a row, for assistive technology; `name` is the attribute, "" before one is picked. */
+        min: (name: string) => (name ? `Least ${name}` : "Least"),
+        max: (name: string) => (name ? `Most ${name}` : "Most"),
+        add: "Add attribute",
+        /** The button that takes a row away, for assistive technology and as its hover text. */
+        remove: (name: string) => (name ? `Remove ${name}` : "Remove this row"),
+      },
       /** Saving the filters in effect, and the sort, under a name of the user's own; the names stay as typed. */
       saved: {
         /** The button that starts saving, and its hover text. */
