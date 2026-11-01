@@ -482,6 +482,8 @@ export const tr: Strings = {
   profile: {
     close: "Profili kapat",
     loading: "Profil yükleniyor…",
+    resize: "Profil panelini boyutlandır",
+    resizeHint: "Paneli genişletmek ya da daraltmak için sürükleyin; eski genişliğine döndürmek için çift tıklayın",
     none: "—",
 
     // Header

@@ -141,26 +141,28 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
     <>
       <AbilityEditGroup entity="staff" />
 
-      <div className="profile-columns">
-        <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />
-        <div className="profile-stack">
-          <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
-          <RatingGroup title={profileText.medical} rows={attributeRows(details, MEDICAL)} />
+      <div className="profile-pair">
+        <div className="profile-columns">
+          <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />
+          <div className="profile-stack">
+            <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
+            <RatingGroup title={profileText.medical} rows={attributeRows(details, MEDICAL)} />
+          </div>
+          <RatingGroup title={profileText.knowledge} rows={attributeRows(details, KNOWLEDGE)} />
         </div>
-        <RatingGroup title={profileText.knowledge} rows={attributeRows(details, KNOWLEDGE)} />
-      </div>
 
-      <div className="profile-split">
-        <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
-        <div className="profile-stack">
-          <NationEditGroup />
-          {details.contract && (
-            <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />
-          )}
-          <section className="profile-group">
-            <h3>{profileText.reputation}</h3>
-            <ReputationBars reputation={details.reputation} />
-          </section>
+        <div className="profile-split">
+          <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
+          <div className="profile-stack">
+            <NationEditGroup />
+            {details.contract && (
+              <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />
+            )}
+            <section className="profile-group">
+              <h3>{profileText.reputation}</h3>
+              <ReputationBars reputation={details.reputation} />
+            </section>
+          </div>
         </div>
       </div>
     </>
