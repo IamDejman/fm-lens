@@ -1,16 +1,15 @@
 //! The retirements the game has planned, and keeping a player from retiring.
 //!
 //! The game decides ahead of time who retires and when, and keeps those plans in its retirement manager, one object
-//! a static points at: next to the entity arrays on Windows (see [`RetirementLayout`]), a variable the build profile
-//! places on macOS. The manager lists them twice: as pointers to the 24-byte entries, and as an index of the same
-//! entries sorted by person id. An entry names the person by the id the game gives him (player `player_person`), not
-//! by a pointer, and holds the date he retires.
+//! a static points at, which the build profile places ([`BuildProfile::retirement_manager`]). The manager lists them
+//! twice: as pointers to the 24-byte entries, and as an index of the same entries sorted by person id. An entry names
+//! the person by the id the game gives him (player `player_person`), not by a pointer, and holds the date he retires.
 //!
 //! Keeping a player from retiring takes his entry out of both lists, the way the game drops one, and gives him the
 //! trait "Will play football as long as possible" in place of "Will retire at top". The entry itself stays where it
 //! is, unlisted, and comes back with an undo.
 //!
-//! [`RetirementLayout`]: crate::profile::RetirementLayout
+//! [`BuildProfile::retirement_manager`]: crate::profile::BuildProfile::retirement_manager
 
 use fmlibre_mem::is_user_pointer;
 #[cfg(windows)]
@@ -257,11 +256,8 @@ impl Session {
     /// The retirement manager, found from its static and checked by its class; `None` when this build's profile and
     /// layout do not place it or it does not check out.
     fn retirement_manager(&self) -> Option<u64> {
-        let r = self.layout.retirement.as_ref()?;
-        let rva = match self.profile.as_ref().and_then(|profile| profile.retirement_manager) {
-            Some(rva) => rva,
-            None => self.arrays.players.as_ref()?.pair_rva.checked_add_signed(r.manager?)?,
-        };
+        self.layout.retirement.as_ref()?;
+        let rva = self.profile.as_ref()?.retirement_manager?;
         let manager = self.process.read_u64(self.plugin.base + rva).ok().filter(|&at| is_user_pointer(at))?;
         let vtable = self.process.read_u64(manager).ok()?;
         if self.retirement_class.get() != Some(&vtable) {

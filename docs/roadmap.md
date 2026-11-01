@@ -181,13 +181,13 @@ changes many at once, and undo.
     row; checked against Messi, Olise, Gvardiol, Kane and Güler. The profile lists them and edits each as a checkbox;
     the mass edit has them as a group. 62 are named; bits 62 and 63 by number. On the Mac at `+0x308`, where Messi
     reads the same bits.
-  - [x] Prevent retirement. The game's retirement manager (`RETIREMENT_MANAGER`, from a static next to the entity
-    arrays) lists the retirements it has planned twice: pointers to 24-byte entries (the person's id, which a player
+  - [x] Prevent retirement. The game's retirement manager (`RETIREMENT_MANAGER`, from a static each build profile
+    places) lists the retirements it has planned twice: pointers to 24-byte entries (the person's id, which a player
     keeps at `+0x290`, and the date he retires at `+0x0C`) and an index of them by person id. The profile shows the
     date; "Prevent retirement" takes his entry out of both and gives him the trait "Will play football as long as
     possible" in place of "Will retire at top", one change Changes undoes. Matched against FMRTE's list (Ronaldo,
-    Wass, Aspas, Kobayashi, Billy Sharp, Hugo Broos) on the Game Pass build; the Steam build is expected at the same
-    place, unchecked. A second list of the manager (5 entries, flag 4, short windows) looks like international
+    Wass, Aspas, Kobayashi, Billy Sharp, Hugo Broos) on the Game Pass build. On Steam the static is 0xDAC0 before
+    the players pair, not 0xED60 as on Game Pass, so each Windows build profile places it too. A second list of the manager (5 entries, flag 4, short windows) looks like international
     retirements and is left alone. Checked in the game over three days (6 to 9 September): Meshal Al-Ajmi, kept,
     still played and was not planned again; Cristian Tello and Adel Taarabt, planned for 7 and 8 September, retired
     and left both lists. As the game shifts the lists that way, an undo after a Continue puts the entry back in date

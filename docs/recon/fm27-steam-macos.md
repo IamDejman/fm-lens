@@ -256,9 +256,9 @@ The entries match those on Windows: Cristiano Ronaldo on 30 June 2027, Daniel Wa
 Hugo Broos (staff). A player keeps the game's id of the person 8 bytes into his identity block, at `+0x390`.
 
 One pointer leads to the manager: `game_plugin+0x56A82A8`, in `__DATA`. That is 0x2AB70 before the players pair,
-where Windows keeps it 0xED60 before. Like the date, it is a variable of its own, so the arm64 build profile names it
-(`retirement_manager`). Ronaldo, Wass and Aspas were each kept from retiring and restored, and the list then read as
-before.
+where Windows keeps it 0xED60 (Game Pass) or 0xDAC0 (Steam) before. Like the date, it is a variable of its own, so
+the arm64 build profile names it (`retirement_manager`), as the Windows ones now do. Ronaldo, Wass and Aspas were each
+kept from retiring and restored, and the list then read as before.
 
 The Intel half was not running, so its static was found in the file:
 
