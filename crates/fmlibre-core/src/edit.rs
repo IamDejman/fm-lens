@@ -43,6 +43,7 @@ impl fmt::Display for Entity {
 #[serde(rename_all = "camelCase")]
 pub enum Kind {
     U8,
+    I8,
     U16,
     I16,
     I32,
@@ -59,7 +60,7 @@ pub enum Kind {
 impl Kind {
     pub fn size(self) -> usize {
         match self {
-            Kind::U8 | Kind::Flag => 1,
+            Kind::U8 | Kind::I8 | Kind::Flag => 1,
             Kind::U16 | Kind::I16 => 2,
             Kind::I32 | Kind::Date => 4,
             Kind::Pointer => 8,
@@ -71,6 +72,7 @@ impl Kind {
         let u16_at = |i: usize| u16::from_le_bytes([bytes[i], bytes[i + 1]]);
         match self {
             Kind::U8 | Kind::Flag => i64::from(bytes[0]),
+            Kind::I8 => i64::from(bytes[0] as i8),
             Kind::U16 => i64::from(u16_at(0)),
             Kind::I16 => i64::from(u16_at(0) as i16),
             Kind::I32 => i64::from(i32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
@@ -85,6 +87,7 @@ impl Kind {
         const FITS: &str = "checked against the field's range";
         match self {
             Kind::U8 | Kind::Flag => vec![u8::try_from(value).expect(FITS)],
+            Kind::I8 => i8::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::U16 => u16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I16 => i16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I32 => i32::try_from(value).expect(FITS).to_le_bytes().to_vec(),
@@ -338,6 +341,22 @@ fn player_contract_fields(layout: &Layout) -> [Field; 4] {
     ]
 }
 
+/// The loyalty bonus, and how happy the player is and how happy with his playing time, as FMRTE shows them (the
+/// game shows them in words). Happiness ran from -40 to 97 on the test save.
+fn player_mood_fields(layout: &Layout) -> [Field; 3] {
+    let c = &layout.contract;
+    let mood = |key: &str, offset: u64| {
+        Field::new(Entity::Player, key, offset, Kind::I8, -100..=100).plausible(-128..=127).in_record(Place::Contract)
+    };
+    [
+        Field::new(Entity::Player, "contract.loyalty_bonus", c.loyalty_bonus, Kind::I32, 0..=10_000_000)
+            .plausible(0..=i64::from(i32::MAX))
+            .in_record(Place::Contract),
+        mood("contract.happiness", c.happiness),
+        mood("contract.playing_time_happiness", c.playing_time_happiness),
+    ]
+}
+
 /// The squad number of a player without one.
 pub(crate) const NO_SQUAD_NUMBER: i64 = 255;
 
@@ -390,6 +409,7 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
     }));
     out.extend(contract_fields(layout, Entity::Player));
     out.extend(player_contract_fields(layout));
+    out.extend(player_mood_fields(layout));
     out.into_iter().map(|f| f.in_person_block(p.person_block)).collect()
 }
 
@@ -1051,6 +1071,9 @@ mod tests {
         assert!(price.takes(-1) && price.takes(0) && price.takes(25_000_000) && !price.takes(-2));
         let born = field("date_of_birth");
         assert!(born.takes(19960912) && !born.takes(18991231) && !born.takes(20300101));
+        // Happiness is a signed byte: Olivier Boscagli's read -4.
+        let happiness = field("contract.happiness");
+        assert!(happiness.kind == Kind::I8 && happiness.takes(-4) && happiness.takes(100) && !happiness.takes(101));
         // Rested is -500, the least the game keeps.
         let jaded = field("jadedness");
         assert!(jaded.takes(-500) && jaded.takes(252) && !jaded.takes(-501) && jaded.kind == Kind::I16);
@@ -1066,7 +1089,7 @@ mod tests {
         // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale).
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 3
         );
         assert_eq!(key(&players, "nation").kind, Kind::Pointer);
         assert!(!key(&players, "nation").mass);

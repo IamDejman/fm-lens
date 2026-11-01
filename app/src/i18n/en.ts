@@ -87,6 +87,24 @@ const errors: ErrorTexts = {
     "try again, or enter the launch option in Steam yourself.",
 };
 
+/** The kinds of contract clauses and bonuses, by the codes contracts hold them as; named as FMRTE names them. */
+const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
+  0: "Minimum fee release clause",
+  1: "Relegation release clause",
+  3: "Yearly wage rise",
+  10: "Seasonal landmark goal bonus",
+  15: "Top division relegation wage drop",
+  19: "Wage after reaching international matches",
+  22: "Optional contract extension by club",
+  27: "Minimum fee release clause (clubs in the Champions Cup)",
+  32: "Appearance fee",
+  33: "Goal bonus",
+  34: "Clean sheet bonus",
+  38: "Unused substitute fee",
+  39: "Assist bonus",
+  40: "Seasonal landmark assist bonus",
+};
+
 export const en = {
   attributes: {
     // Technical
@@ -283,6 +301,9 @@ export const en = {
     jadedness: "Jadedness",
     morale: "Morale",
     "contract.wage": "Wage per week",
+    "contract.loyalty_bonus": "Loyalty bonus per week",
+    "contract.happiness": "Happiness",
+    "contract.playing_time_happiness": "Playing time happiness",
     "contract.expires": "Contract end",
     "contract.squad_number": "Squad number",
     "contract.squad_status": "Squad status",
@@ -394,6 +415,33 @@ export const en = {
     /** A player's morale, 1–20. */
     morale: (value: number) => `${value} / 20`,
     /** Hover text of his morale: the game shows it as his overall happiness. */
+    /** A contract's clauses and bonuses: the heading, and what each kind the game has is called. */
+    clauses: "Bonuses and clauses",
+    noClauses: "No bonuses or clauses",
+    loyaltyBonus: "Loyalty bonus",
+    happiness: "Happiness",
+    playingTimeHappiness: "Playing time happiness",
+    moodTitle: "As FMRTE shows it, from -100 to 100; the game shows it in words",
+    /** The name of a clause or bonus by its kind; a kind the app does not know yet by its number. */
+    clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? `Clause ${kind}`,
+    /** What a clause depends on, by kind: goals, assists, matches, years or a percentage. */
+    clauseCondition: (kind: number, value: number) => {
+      switch (kind) {
+        case 10:
+          return `${value} goals`;
+        case 40:
+          return `${value} assists`;
+        case 19:
+          return `${value} international matches`;
+        case 22:
+          return value === 1 ? "1 year" : `${value} years`;
+        case 3:
+        case 15:
+          return `${value}%`;
+        default:
+          return String(value);
+      }
+    },
     moraleTitle: "The game shows morale as the player's overall happiness: content at 10, slightly happy at 11, extremely happy at 15 and 20",
     /** Hover text of jadedness, which the profile shows as stored. */
     jadednessTitle: "How worn out the player is by playing, which rest takes away: -500 is fully rested, and the higher it is, the more he needs a rest",

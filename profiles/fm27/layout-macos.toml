@@ -126,6 +126,12 @@ squad_number = 0x5D
 team = 0x10
 senior_team = 0x18
 job = 0x26
+# As on Windows, where the rest of the contract is laid out alike; not yet read on a Mac.
+clauses = 0x68
+competition_bonuses = 0x80
+loyalty_bonus = 0x38
+happiness = 0x5A
+playing_time_happiness = 0x5C
 
 # Relative to the players (begin, end) pair, as on Windows; the static data between them is
 # laid out differently, so this sits 0xC0 further. It read the date in a new game, but an

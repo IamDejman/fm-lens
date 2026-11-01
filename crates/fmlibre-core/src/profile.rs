@@ -241,6 +241,15 @@ pub struct ContractLayout {
     /// The employer's senior team: the same as `team` but for player-coaches.
     pub senior_team: u64,
     pub job: u64,
+    /// The list `(begin, end, capacity)` of the contract's clauses and bonuses: 8-byte entries, an amount and a kind.
+    pub clauses: u64,
+    /// The list of its bonuses for winning competitions: 32-byte entries.
+    pub competition_bonuses: u64,
+    /// `i32`, pounds per week.
+    pub loyalty_bonus: u64,
+    /// `i8` each: how happy the player is, and how happy with his playing time, as FMRTE shows them.
+    pub happiness: u64,
+    pub playing_time_happiness: u64,
 }
 
 impl ContractLayout {
@@ -258,6 +267,9 @@ impl ContractLayout {
             self.team + 8,
             self.senior_team + 8,
             self.job + 1,
+            self.loyalty_bonus + 4,
+            self.happiness + 1,
+            self.playing_time_happiness + 1,
         ]
         .into_iter()
         .max()

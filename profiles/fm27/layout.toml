@@ -132,6 +132,16 @@ squad_number = 0x5D       # u8; 255 = none
 team = 0x10               # team pointer (the employer, for staff); its club is at team+0x30
 senior_team = 0x18        # the employer's senior team; the same as `team` except for player-coaches
 job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant coach, ...)
+# Lists (begin, end, capacity) of a contract's extras. Read on the Windows Game Pass build with Kylian Mbappé,
+# whose clauses list holds his release clause (859,031,872 pounds, a billion euros) and three bonuses.
+clauses = 0x68            # 8-byte entries: u32 amount (0xFFFFFFFF: none), u16 condition (0xFFFF: none), u16 kind
+competition_bonuses = 0x80 # 32-byte entries: the competition's UID at +0x14, the amount at +0x18
+# Checked against FMRTE's contract page for Kane, Haaland, Alex Scott, Olise and Mbappé (Game Pass, 6 Sep 2026):
+# loyalty bonus 33,401 / 43,634 / 20,882 / 37,798 / 50,098, happiness 71 / 60 / 60 / 60 / 80 and playing time
+# happiness 4 / 16 / 27 / 8 / 30. Olivier Boscagli's happiness reads -4.
+loyalty_bonus = 0x38      # i32, pounds per week
+happiness = 0x5A          # i8
+playing_time_happiness = 0x5C # i8
 
 # Static data in game_plugin.dll next to the entity arrays. Offsets are relative to
 # the players (begin, end) pair: the cluster moves as one block between builds.

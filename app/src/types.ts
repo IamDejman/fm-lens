@@ -322,6 +322,25 @@ export interface Contract {
   squadNumber: number | null;
   transferListed: boolean;
   loanListed: boolean;
+  /** Pounds per week. */
+  loyaltyBonus: number;
+  /** How happy he is, and how happy with his playing time, as FMRTE shows them (-100..100). */
+  happiness: number;
+  playingTimeHappiness: number;
+  /** His clauses and bonuses, in the contract's order. */
+  clauses: Clause[];
+}
+
+/** One of a contract's clauses or bonuses: a release clause, an appearance fee, a yearly wage rise... */
+export interface Clause {
+  /** Its place in the contract's list. */
+  index: number;
+  /** The game's code for what it is; `clauseText` names the known ones. */
+  kind: number;
+  /** Pounds; null for a clause without an amount. */
+  amount: number | null;
+  /** Goals, assists, matches, years or a percentage, by kind; null for most. */
+  condition: number | null;
 }
 
 /** A row of the list and more. */
@@ -411,7 +430,7 @@ export interface EditField {
    * 0 or 1, a yes-or-no such as being on the transfer list; "pointer": the address of another of the game's objects,
    * such as a person's nation, picked from the ones the game has (see `Nation`).
    */
-  kind: "u8" | "u16" | "i16" | "i32" | "date" | "flag" | "pointer";
+  kind: "u8" | "i8" | "u16" | "i16" | "i32" | "date" | "flag" | "pointer";
   /**
    * "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "percent": stored 0–10000, shown as a
    * percentage 0–100; "plain": shown as stored.
