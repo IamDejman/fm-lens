@@ -304,6 +304,11 @@ pub struct ClubLayout {
     pub teams: u64,
     pub info: u64,
     pub finance: u64,
+    /// The club's staff by department, each a list of pointers as `(begin, end, capacity)`: the medical team, the
+    /// coaches and the scouts.
+    pub medical_staff: u64,
+    pub coaching_staff: u64,
+    pub scouting_staff: u64,
 }
 
 impl ClubLayout {
@@ -316,6 +321,9 @@ impl ClubLayout {
             self.teams + 8,
             self.info + 8,
             self.finance + 8,
+            self.medical_staff + 24,
+            self.coaching_staff + 24,
+            self.scouting_staff + 24,
         ]
         .into_iter()
         .max()

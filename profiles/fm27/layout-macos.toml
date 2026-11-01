@@ -218,6 +218,9 @@ women = 0xB9
 teams = 0x18
 info = 0x100
 finance = 0x150
+medical_staff = 0x60
+coaching_staff = 0x78
+scouting_staff = 0x90
 
 [club_info]
 season_tickets = 0xC0

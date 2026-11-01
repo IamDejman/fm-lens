@@ -145,6 +145,18 @@ export const undoBatch = (batch: number) => call<BatchUndo>("undo_batch", { batc
 export const planClubMove = (uid: number, club: number, terms: MoveTerms, fee?: number) =>
   call<MovePreview>("plan_club_move", { uid, club, terms, fee });
 
+/** Checks that the member of staff can move to the club, and names the clubs; the error says why he cannot. */
+export const planStaffMove = (uid: number, club: number) => call<MovePreview>("plan_staff_move", { uid, club });
+
+/** Moves the member of staff to the club, in the departments he works in; logged and undone like any change. */
+export const moveStaff = (uid: number, club: number) => call<LoggedChange>("move_staff", { uid, club });
+
+/** Gives the member of staff another job at his club (a contract code); logged and undone like any change. */
+export const changeStaffJob = (uid: number, job: number) => call<LoggedChange>("change_staff_job", { uid, job });
+
+/** The jobs `changeStaffJob` gives, by contract code. */
+export const staffJobs = () => call<number[]>("staff_jobs");
+
 /** Moves the player to the senior team of the club on `terms`; the move is logged and undone like any change. */
 export const movePlayer = (uid: number, club: number, terms: MoveTerms, fee?: number) =>
   call<LoggedChange>("move_player", { uid, club, terms, fee });

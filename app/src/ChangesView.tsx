@@ -10,6 +10,7 @@ import { describeError, formatDateTime, formatPounds, formatTime } from "./forma
 import {
   changesText as text,
   fieldLabel,
+  jobLabel,
   massEditText,
   profileText,
   swapNote,
@@ -494,7 +495,9 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
       : change.field === "injuries"
         ? text.healed(change.old)
-        : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
+        : change.field === "contract.job"
+          ? valueChange(jobLabel(change.old), jobLabel(change.new))
+          : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
 
   return (
     <tr className={className || undefined}>
