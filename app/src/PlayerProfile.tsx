@@ -136,6 +136,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
 
       <MedicalGroup details={details} />
 
+      <TraitsGroup traits={details.traits} />
+
       {details.contract && <ContractGroup uid={details.uid} contract={details.contract} />}
       <CareerGroup details={details} />
       <TiesGroup details={details} />
@@ -297,6 +299,38 @@ function ClauseList({ clauses }: { clauses: Clause[] }) {
         </dl>
       )}
     </div>
+  );
+}
+
+/** The bits a player's traits are kept in: `trait.0` to `trait.63`. FMRTE's list names the first 62. */
+const TRAIT_BITS = Array.from({ length: 64 }, (_, bit) => bit);
+
+/**
+ * His traits (preferred moves) by name; while he is edited, a checkbox for each, which writes its bit of the mask.
+ */
+function TraitsGroup({ traits }: { traits: number[] }) {
+  const editing = useEditableField("trait.0");
+  return (
+    <section className="profile-group">
+      <h3>{profileText.traits}</h3>
+      {editing ? (
+        <div className="tags traits-edit">
+          {TRAIT_BITS.map((bit) => (
+            <EditInput key={bit} field={`trait.${bit}`} />
+          ))}
+        </div>
+      ) : traits.length === 0 ? (
+        <p className="note">{profileText.noTraits}</p>
+      ) : (
+        <div className="tags">
+          {traits.map((bit) => (
+            <span key={bit} className="tag">
+              {profileText.traitName(bit)}
+            </span>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

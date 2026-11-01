@@ -170,7 +170,9 @@ changes many at once, and undo.
     [transfer notes](recon/fm27-transfers.md).
   - [ ] Transfers agreed for a later date.
 - Wave 2, new memory research:
-  - [ ] Traits (preferred moves).
+  - [x] Traits (preferred moves): a `u64` bitmask at player `+0x348`, bit n the n-th of FMRTE's list read row by
+    row; checked against Messi, Olise, Gvardiol, Kane and Güler. The profile lists them and edits each as a checkbox;
+    the mass edit has them as a group. 62 are named; bits 62 and 63 by number.
   - [x] Move a member of staff to another club, keeping the job and the contract, and change a job. A club
     keeps its staff in three department lists (medical, coaching, scouting); a move takes them out of the
     old club's and into the new club's, and a new job moves them between departments. Staff whom the club or

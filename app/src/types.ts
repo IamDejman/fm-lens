@@ -375,6 +375,8 @@ export interface PlayerDetails extends PlayerSummary {
   matchSharpness: number;
   /** How worn out he is by playing, as stored: -500 when fully rested, higher the more he needs a rest. */
   jadedness: number;
+  /** His traits (preferred moves), by their bit: `trait.n` edits bit n; `traitName` names them. */
+  traits: number[];
   /**
    * 1–20: his morale, which the game shows as his overall happiness ("Memnun" at 10, "Biraz Mutlu" at 11, "Aşırı
    * Mutlu" at 15 and 20 in the Turkish game) and FM Live Editor as morale ("Okay" at 10, "Very Good" at 15).
