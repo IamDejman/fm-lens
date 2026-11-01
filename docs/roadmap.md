@@ -180,7 +180,11 @@ changes many at once, and undo.
     possible" in place of "Will retire at top", one change Changes undoes. Matched against FMRTE's list (Ronaldo,
     Wass, Aspas, Kobayashi, Billy Sharp, Hugo Broos) on the Game Pass build; the Steam build is expected at the same
     place, unchecked. A second list of the manager (5 entries, flag 4, short windows) looks like international
-    retirements and is left alone. What the game does after a Continue is not checked yet.
+    retirements and is left alone. Checked in the game over three days (6 to 9 September): Meshal Al-Ajmi, kept,
+    still played and was not planned again; Cristian Tello and Adel Taarabt, planned for 7 and 8 September, retired
+    and left both lists. As the game shifts the lists that way, an undo after a Continue puts the entry back in date
+    order, and into the index by id, instead of writing back the bytes it found. Clause edits (#57) held over the
+    same days, as FMRTE showed them.
   - [x] Move a member of staff to another club, keeping the job and the contract, and change a job. A club
     keeps its staff in three department lists (medical, coaching, scouting); a move takes them out of the
     old club's and into the new club's, and a new job moves them between departments. Staff whom the club or

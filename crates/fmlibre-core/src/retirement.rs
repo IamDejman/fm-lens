@@ -47,6 +47,7 @@ pub struct RetirementPlan {
     pub player: u32,
     /// The date he was to retire on; none when the game had not planned it yet.
     pub date: Option<FmDate>,
+    taken: Taken,
     patches: Vec<Patch>,
 }
 
@@ -55,7 +56,20 @@ pub struct RetirementPlan {
 pub struct RetirementSet {
     pub player: u32,
     pub date: Option<FmDate>,
+    taken: Taken,
     patches: Vec<Patch>,
+}
+
+/// What keeping a player from retiring took out, to put it back once the game has changed the lists, as it does
+/// each time someone retires.
+#[derive(Debug, Clone, Copy)]
+struct Taken {
+    person: u32,
+    /// His entry, none when the game had planned nothing; and the entry after his in the list, none when he was last.
+    entry: Option<u64>,
+    next: Option<u64>,
+    /// The byte of the mask that holds the two traits: where it is, and what it held before and after.
+    traits: (u64, u8, u8),
 }
 
 /// The manager's two lists, as read.
@@ -63,10 +77,15 @@ struct Planned {
     /// The list of pointers; `None` when it is empty and has no block.
     list: Option<PointerList>,
     entries: Vec<u64>,
-    /// The index by person id: where its header is, where it begins and ends, and its entries.
+    /// Where the list's header is, and its end and capacity.
+    list_header: u64,
+    list_end: u64,
+    list_capacity: u64,
+    /// The index by person id: where its header is, where it begins and ends, its capacity and its entries.
     index_header: u64,
     index_begin: u64,
     index_end: u64,
+    index_capacity: u64,
     index: Vec<[u8; INDEX_ENTRY]>,
 }
 
@@ -108,10 +127,12 @@ impl Session {
         let person = self.person_id(player)?;
         let mut patches = Patches::default();
         let mut date = None;
+        let mut taken = Taken { person, entry: None, next: None, traits: (0, 0, 0) };
         if let Some((at, entry)) = planned.find(person) {
             let list = planned.list.as_ref().ok_or(MoveError::NoRetirements)?;
             let index = planned.entries.iter().position(|&listed| listed == entry).ok_or(MoveError::NoRetirements)?;
             date = self.read_retirement(entry)?.date;
+            (taken.entry, taken.next) = (Some(entry), planned.entries.get(index + 1).copied());
             // The index first, as the game finds a person's entry by it; each list repeats its last entry for a
             // moment, then ends one earlier and clears the slot it gave up.
             let last = planned.index.len() - 1;
@@ -132,22 +153,96 @@ impl Session {
         let old = self.process.read_bytes(byte, 1)?[0];
         let new = (old & !(1 << (RETIRE_AT_TOP % 8))) | (1 << (PLAY_ON % 8));
         patches.push(byte, [old], [new]);
+        taken.traits = (byte, old, new);
         if patches.0.is_empty() {
             return Err(MoveError::NotRetiring);
         }
-        Ok(RetirementPlan { player: player.uid, date, patches: patches.0 })
+        Ok(RetirementPlan { player: player.uid, date, taken, patches: patches.0 })
     }
 
     /// Writes planned changes to a player's retirement, each write over the bytes it expects, after checking them
     /// all.
     pub fn apply_retirement(&self, plan: &RetirementPlan) -> Result<RetirementSet, MoveError> {
         self.apply_patches(&plan.patches)?;
-        Ok(RetirementSet { player: plan.player, date: plan.date, patches: plan.patches.clone() })
+        let RetirementPlan { player, date, taken, ref patches } = *plan;
+        Ok(RetirementSet { player, date, taken, patches: patches.clone() })
     }
 
-    /// Puts his planned retirement and traits back as they were, provided the game still holds what the change wrote.
+    /// Puts his planned retirement and traits back: as they were, when the game still holds what the change wrote;
+    /// otherwise, as the game changes the lists each time someone retires, his entry goes back into both (see
+    /// [`Session::replan`]).
     pub fn undo_retirement(&self, done: &RetirementSet) -> Result<(), MoveError> {
-        self.undo_patches(&done.patches)
+        match self.undo_patches(&done.patches) {
+            Err(MoveError::Changed { .. }) => self.replan(&done.taken),
+            done => done,
+        }
+    }
+
+    /// Puts back what keeping a player from retiring took out, into the manager's lists as they are now: his entry,
+    /// which nothing else points at and the game has left alone, goes back into the list before the entry that
+    /// followed it (by date when that one has gone) and into the index by person id, where both have room. When the
+    /// game has planned his retirement again meanwhile, its plan stays. His traits come back if they hold what was
+    /// written.
+    fn replan(&self, taken: &Taken) -> Result<(), MoveError> {
+        let mut patches = Patches::default();
+        let (byte, old, new) = taken.traits;
+        if old != new {
+            if self.process.read_bytes(byte, 1)?[0] != new {
+                return Err(MoveError::Changed { address: byte });
+            }
+            patches.push(byte, [new], [old]);
+        }
+        let planned = self.planned()?.ok_or(MoveError::NoRetirements)?;
+        if let Some(entry) = taken.entry.filter(|_| planned.find(taken.person).is_none()) {
+            let retirement = self.read_retirement(entry)?;
+            if retirement.person != taken.person || planned.entries.contains(&entry) {
+                return Err(MoveError::Changed { address: entry });
+            }
+            let (pointer, index) = (8, INDEX_ENTRY as u64);
+            let begin = planned.list.as_ref().map(|list| list.begin_address()).ok_or(MoveError::NoRetirements)?;
+            if planned.list_capacity - planned.list_end < pointer || planned.index_capacity - planned.index_end < index
+            {
+                return Err(MoveError::Changed { address: planned.list_header });
+            }
+            // The list runs in date order: before the entry that followed his if it still fits there, otherwise after
+            // the last that retires on his date or earlier.
+            let dates = planned.entries.iter().map(|&e| self.read_retirement(e).map(|r| r.date));
+            let dates: Vec<Option<FmDate>> = dates.collect::<Result<_, _>>()?;
+            let date = retirement.date;
+            let by_date = dates.iter().position(|&listed| listed > date).unwrap_or(dates.len());
+            let at = match taken.next.and_then(|next| planned.entries.iter().position(|&listed| listed == next)) {
+                Some(at) if (at == 0 || dates[at - 1] <= date) && dates[at] >= date => at,
+                _ => by_date,
+            };
+            // The list first, then the index the game finds a person's entry by: each moves the entries from his
+            // place on one slot down, into room it has, then ends one later.
+            let words = |entries: &[u64]| entries.iter().flat_map(|e| e.to_le_bytes()).collect::<Vec<u8>>();
+            let moved = words(&planned.entries[at..]);
+            let spare = self.process.read_bytes(planned.list_end, pointer as usize)?;
+            patches.push(
+                begin + at as u64 * pointer,
+                [moved.clone(), spare].concat(),
+                [&entry.to_le_bytes()[..], &moved[..]].concat(),
+            );
+            let end = planned.list_end;
+            patches.push(planned.list_header + 8, end.to_le_bytes(), (end + pointer).to_le_bytes());
+
+            let id = |e: &[u8; INDEX_ENTRY]| u32::from_le_bytes(e[..4].try_into().expect("4 bytes"));
+            let slot = planned.index.iter().position(|e| id(e) > taken.person).unwrap_or(planned.index.len());
+            let mut added = [0; INDEX_ENTRY];
+            added[..4].copy_from_slice(&taken.person.to_le_bytes());
+            added[8..].copy_from_slice(&entry.to_le_bytes());
+            let moved = planned.index[slot..].concat();
+            let spare = self.process.read_bytes(planned.index_end, INDEX_ENTRY)?;
+            patches.push(
+                planned.index_begin + slot as u64 * index,
+                [moved.clone(), spare].concat(),
+                [&added[..], &moved[..]].concat(),
+            );
+            let end = planned.index_end;
+            patches.push(planned.index_header + 8, end.to_le_bytes(), (end + index).to_le_bytes());
+        }
+        self.apply_patches(&patches.0)
     }
 
     /// The retirement manager, found from its static and checked by its class; `None` when this build's layout does
@@ -178,9 +273,11 @@ impl Session {
             Ok([0, 1, 2].map(|i| u64::from_le_bytes(words[i * 8..i * 8 + 8].try_into().expect("8 bytes"))))
         };
         // A list the game has not needed yet has no block.
-        let list = match header(manager + r.planned)? {
+        let list_header = manager + r.planned;
+        let [_, list_end, list_capacity] = header(list_header)?;
+        let list = match header(list_header)? {
             [0, 0, 0] => None,
-            _ => Some(PointerList::read(&self.process, manager + r.planned)?.ok_or(MoveError::NoRetirements)?),
+            _ => Some(PointerList::read(&self.process, list_header)?.ok_or(MoveError::NoRetirements)?),
         };
         let entries = list.as_ref().map(|list| list.elements(&self.process)).transpose()?.unwrap_or_default();
         let index_header = manager + r.by_person;
@@ -197,7 +294,18 @@ impl Session {
         }
         let bytes = if end > begin { self.process.read_bytes(begin, (end - begin) as usize)? } else { Vec::new() };
         let index = bytes.as_chunks::<INDEX_ENTRY>().0.to_vec();
-        Ok(Some(Planned { list, entries, index_header, index_begin: begin, index_end: end, index }))
+        Ok(Some(Planned {
+            list,
+            entries,
+            list_header,
+            list_end,
+            list_capacity,
+            index_header,
+            index_begin: begin,
+            index_end: end,
+            index_capacity: capacity,
+            index,
+        }))
     }
 
     /// The entry at `entry`.
