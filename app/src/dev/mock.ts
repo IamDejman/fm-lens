@@ -6,6 +6,8 @@ import { fold } from "../format";
 import type {
   ApplyReport,
   AttributeBound,
+  ClubMoney,
+  FeePlan,
   Nation,
   BridgeInfo,
   CaptainRole,
@@ -739,13 +741,49 @@ type ClubRow = Pick<PlayerSummary, "club" | "clubUid" | "contractExpires">;
  * What each move (by the id of its logged change) found in the list row and on top of the profile, for its undo; a
  * swap also keeps the row of the player who went the other way.
  */
-const moveUndo = new Map<number, { row: ClubRow; written?: FieldValues; other?: { uid: number; row: ClubRow } }>();
+const moveUndo = new Map<
+  number,
+  { row: ClubRow; written?: FieldValues; other?: { uid: number; row: ClubRow }; paid?: [number, string, number][] }
+>();
+
+/** The most a transfer fee can be, as in the real commands. */
+const MAX_FEE = 2_000_000_000;
+
+/**
+ * What paying `fee` does to the money of the clubs `to` (which pays it out of its balance and transfer budget) and
+ * `from` (whose balance takes it), as the real command works it out; a club without finances is left alone.
+ */
+function feePlan(from: number, to: number, fee: number): FeePlan {
+  if (!Number.isInteger(fee) || fee < 0 || fee > MAX_FEE) {
+    throw failure("edit.outOfRange", `${fee} is not a valid fee; it takes 0 to ${MAX_FEE}`, {
+      field: "fee",
+      value: fee,
+      min: 0,
+      max: MAX_FEE,
+    });
+  }
+  const money = (club: number, buying: boolean): ClubMoney | null => {
+    const now = currentValues("club", club);
+    const balance = now["finance.balance"];
+    if (balance === undefined) {
+      return null;
+    }
+    const budget = now["finance.transfer_budget"];
+    return {
+      club,
+      balance: { before: balance, after: buying ? balance - fee : balance + fee },
+      transferBudget:
+        buying && budget !== undefined && budget >= 0 ? { before: budget, after: Math.max(0, budget - fee) } : null,
+    };
+  };
+  return { fee, buyer: money(to, true), seller: money(from, false) };
+}
 
 /** The men's fixture club whose squad list is full, so that the move dialog's refusal can be seen. */
 const FULL_CLUB = 500 + (CLUBS.length - 1) * 7;
 
 /** `plan_club_move`: the checks of the real command that the fixtures can have, with its messages. */
-function planMove(uid: number, clubUid: number, terms: MoveTerms): MovePreview {
+function planMove(uid: number, clubUid: number, terms: MoveTerms, fee?: number): MovePreview {
   const player = players.find((p) => p.uid === uid);
   const to = clubs.find((c) => c.uid === clubUid);
   if (!player) {
@@ -783,17 +821,34 @@ function planMove(uid: number, clubUid: number, terms: MoveTerms): MovePreview {
     throw failure("move.noRoom", message, { players: 36 });
   }
   const from = clubs.find((c) => c.uid === player.clubUid)!;
-  return { from: { uid: from.uid, name: from.name }, to: { uid: to.uid, name: to.name } };
+  return {
+    from: { uid: from.uid, name: from.name },
+    to: { uid: to.uid, name: to.name },
+    ...(fee !== undefined && fee > 0 && { fee: feePlan(from.uid, to.uid, fee) }),
+  };
 }
 
 /** `move_player`: moves the fixture player and logs it as a change of his `club`. */
-function movePlayer(uid: number, clubUid: number, terms: MoveTerms): LoggedChange {
-  const preview = planMove(uid, clubUid, terms);
+function movePlayer(uid: number, clubUid: number, terms: MoveTerms, fee?: number): LoggedChange {
+  const preview = planMove(uid, clubUid, terms, fee);
   const player = players.find((p) => p.uid === uid)!;
   const id = changes.length + 1;
+  // The fee, as the real command pays it: each amount by what it changes, so that undoing takes back just that.
+  const paid: [number, string, number][] = [];
+  for (const money of [preview.fee?.buyer, preview.fee?.seller]) {
+    if (money) {
+      paid.push([money.club, "finance.balance", money.balance.after - money.balance.before]);
+      writeValue("club", money.club, "finance.balance", money.balance.after);
+      if (money.transferBudget) {
+        paid.push([money.club, "finance.transfer_budget", money.transferBudget.after - money.transferBudget.before]);
+        writeValue("club", money.club, "finance.transfer_budget", money.transferBudget.after);
+      }
+    }
+  }
   moveUndo.set(id, {
     row: { club: player.club, clubUid: player.clubUid, contractExpires: player.contractExpires },
     written: written.get(`player:${uid}`),
+    paid,
   });
   player.club = preview.to.name;
   player.clubUid = preview.to.uid;
@@ -815,7 +870,7 @@ function movePlayer(uid: number, clubUid: number, terms: MoveTerms): LoggedChang
     new: preview.to.uid,
     undoneAt: null,
     batch: null,
-    moved: { from: preview.from.name, to: preview.to.name },
+    moved: { from: preview.from.name, to: preview.to.name, ...(preview.fee && { fee: preview.fee.fee }) },
   };
   changes.push(logged);
   return { ...logged };
@@ -901,6 +956,10 @@ function undoMove(entry: LoggedChange): void {
   if (before.other && other) {
     Object.assign(other, before.other.row);
     unmoved(other.uid);
+  }
+  // The fee goes back by what it changed.
+  for (const [club, key, change] of before.paid ?? []) {
+    writeValue("club", club, key, currentValues("club", club)[key]! - change);
   }
   Object.assign(player, before.row);
   if (before.written) {
@@ -1582,9 +1641,9 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "undo_batch":
       return undoMassBatch(Number(args?.batch)) as T;
     case "plan_club_move":
-      return planMove(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
+      return planMove(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms, args?.fee as number) as T;
     case "move_player":
-      return movePlayer(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
+      return movePlayer(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms, args?.fee as number) as T;
     case "plan_club_swap":
       return planSwap(Number(args?.uid), Number(args?.other)) as T;
     case "heal_player":

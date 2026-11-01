@@ -743,6 +743,7 @@ export const tr: Strings = {
     hint: "En yeniler üstte. Bir değişiklik yalnızca oyun yazdığı değeri hâlâ tutuyorsa geri alınabilir.",
     continueHint: "Oyun değişiklikleri bir kez ilerleyince gösterir: oyunda Devam'a basın.",
     swappedWith: (name) => `Takas: ${name}`,
+    fee: (amount) => `Bedel ${amount}`,
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
     count: (total, undone) => {
       const count = changeCount(total);
@@ -920,44 +921,55 @@ export const tr: Strings = {
   },
 
   move: {
-    button: "Başka kulübe taşı",
-    buttonTitle: "Bu oyuncuyu oyunda başka bir kulübe taşı",
+    button: "Transfer",
+    buttonTitle: "Bu oyuncuyu oyunda başka bir kulübe transfer et; istersen bir bedelle",
 
     // The dialog
-    title: "Başka kulübe taşı",
+    title: "Transfer",
     from: "Mevcut kulüp",
     to: "Yeni kulüp",
 
     // The switch at the top of the dialog
-    modeLabel: "Taşı veya takas et",
-    modeMove: "Kulübe taşı",
+    modeLabel: "Transfer veya takas",
+    modeMove: "Kulübe transfer et",
     modeSwap: "Oyuncuyla takas et",
 
     // Choosing the club
-    searchLabel: "Taşınacağı kulübü ara",
+    searchLabel: "Transfer edileceği kulübü ara",
     resultsLabel: "Bulunan kulüpler",
     searching: "Kulüpler aranıyor…",
     searchFailed: (reason) => `Kulüpler aranamadı: ${reason}`,
     more: (count) => `ve ${format(count)} tane daha; aramayı daraltmak için yazın`,
     change: "Başka kulüp seç",
 
+    // The fee
+    feeHeading: "Bedel",
+    fee: "Bonservis bedeli",
+    feeHint: "Bedelsiz transfer için boş bırakın",
+    feeInvalid: "0 ile 2 milyar arasında, tam sayı bir sterlin tutarı girin",
+    pays: (club, fee, balance, budget) =>
+      `${club} öder: ${fee}. Bakiye ${balance}${budget === null ? "" : `, transfer bütçesi ${budget}`}`,
+    receives: (club, fee, balance) => `${club} alır: ${fee}. Bakiye ${balance}`,
+    noFinances: (club) => `${club} için oyunda finans kaydı yok: parası değişmez`,
+
     // The contract
     wageInvalid: "0 veya daha büyük, tam sayı bir sterlin tutarı girin",
     expiresInvalid: "Bir tarih girin",
 
     // What the dialog says about the move itself
-    chooseClub: "Oyuncunun taşınacağı kulübü seçin.",
-    fixTerms: "Önce sözleşme değerlerini düzeltin.",
-    checking: "Taşıma kontrol ediliyor…",
+    chooseClub: "Oyuncunun transfer edileceği kulübü seçin.",
+    fixTerms: "Önce bedeli ya da sözleşme değerlerini düzeltin.",
+    checking: "Transfer kontrol ediliyor…",
     route: (from, to) => `${from} → ${to}`,
-    doesHeading: "Taşıma işlemi ne yapar",
+    doesHeading: "Transfer ne yapar",
     does: [
       "Yeni kulübün A takımına katılır",
       "Sözleşme oyundaki tarihle başlar; forma numarası silinir",
       "Transfer ve kiralık listelerinden çıkar",
       "Maaş ve sözleşme bitişi, siz yeni değer girmedikçe aynı kalır",
-      "Bedel ödenmez; kariyer geçmişi güncellenmez",
-      "Değişiklikler bölümünde listelenir ve oradan geri alınabilir",
+      "Bedel, alan kulübün bakiyesinden ve transfer bütçesinden düşer, satan kulübün bakiyesine eklenir",
+      "Oyunun transfer geçmişinde henüz görünmez",
+      "Değişiklikler bölümünde listelenir; tek geri alma transferi ve bedeli birlikte geri alır",
     ],
 
     // Swapping with a player of the club instead
@@ -988,9 +1000,9 @@ export const tr: Strings = {
     ],
 
     // The foot
-    hint: "Siz taşımadan oyunda hiçbir şey değişmez.",
-    move: "Taşı",
-    moving: "Taşınıyor…",
+    hint: "Siz transfer etmeden oyunda hiçbir şey değişmez.",
+    move: "Transfer et",
+    moving: "Transfer ediliyor…",
     cancel: "İptal",
     swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
     swap: "Takas et",

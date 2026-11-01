@@ -7,10 +7,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
-    Entity, EntityArrays, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, Healed, Kind,
-    Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Picture, Planned, PlayerDetails, PlayerFilter,
-    PlayerIndex, PlayerOrder, PlayerSummary, SearchIndex, Session, SessionError, Skipped, StaffDetails, StaffFilter,
-    StaffIndex, Target, find_game, nations, sort_players,
+    Entity, EntityArrays, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex,
+    Healed, Kind, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid, Picture, Planned,
+    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, SearchIndex, Session, SessionError, Skipped,
+    StaffDetails, StaffFilter, StaffIndex, Target, find_game, nations, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -206,6 +206,17 @@ impl Connection {
         logged
     }
 
+    /// Works out what the fee `fee` of moving the player from the club `from` to the club `to` does to their money:
+    /// none for no fee.
+    fn plan_fee(&self, from: u32, to: u32, fee: Option<i64>) -> Result<Option<FeePlan>, Failure> {
+        let Some(fee) = fee.filter(|&fee| fee > 0) else {
+            return Ok(None);
+        };
+        let buyer = self.clubs.get(to).ok_or_else(|| not_found(Entity::Club, to))?;
+        let seller = self.clubs.get(from).ok_or_else(|| not_found(Entity::Club, from))?;
+        Ok(Some(self.session.plan_fee(buyer, seller, fee)?))
+    }
+
     /// Works out moving the player `uid` to the club `club` on the contract `terms`.
     fn plan_move(&self, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePlan, Failure> {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
@@ -253,7 +264,7 @@ impl Connection {
 
     /// Logs a move just written, as a change of the player's `club` from one club UID to the
     /// other; a swap is one change too, which names the player who went the other way.
-    fn log_move(&mut self, done: ClubMove, terms: MoveTerms) -> LoggedChange {
+    fn log_move(&mut self, done: ClubMove, terms: MoveTerms, paid: Vec<Paid>, fee: Option<i64>) -> LoggedChange {
         let (from, to) = (self.club_name(done.from_club), self.club_name(done.to_club));
         let name = self.player_name(done.player);
         let mut rows = vec![self.row_before(done.player)];
@@ -272,7 +283,7 @@ impl Connection {
             });
             self.player_name(other)
         });
-        let before = LoggedMove { done: done.clone(), rows };
+        let before = LoggedMove { done: done.clone(), rows, paid };
         let change = Change {
             entity: Entity::Player,
             uid: done.player,
@@ -287,7 +298,7 @@ impl Connection {
             change,
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from, to, with }),
+            moved: Some(MovedClubs { from, to, with, fee }),
             captaincy: None,
             undo: Some(Undo::Move(before)),
         };
@@ -309,7 +320,12 @@ impl Connection {
         }
         match entry.undo {
             Some(Undo::Move(moved)) => {
-                self.session.undo_club_move(&moved.done)?;
+                // The fee goes back first, by what it changed; if the player cannot go back, it is paid again.
+                self.session.refund_fee(&moved.paid)?;
+                if let Err(err) = self.session.undo_club_move(&moved.done) {
+                    let _ = self.session.repay_fee(&moved.paid);
+                    return Err(err.into());
+                }
                 for row in moved.rows {
                     self.players.update(row.uid, |player| {
                         player.club = row.club;
@@ -502,6 +518,9 @@ struct MovedClubs {
     /// In a swap, the player who went the other way.
     #[serde(skip_serializing_if = "Option::is_none")]
     with: Option<String>,
+    /// The fee the buying club paid the selling one, in pounds, if any.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fee: Option<i64>,
 }
 
 /// A move as the log keeps it: the writes to undo, and what the list rows of the players it
@@ -510,6 +529,8 @@ struct MovedClubs {
 struct LoggedMove {
     done: ClubMove,
     rows: Vec<RowBefore>,
+    /// What the fee changed, if one was paid.
+    paid: Vec<Paid>,
 }
 
 /// What a player's list row said about his club and contract end.
@@ -527,6 +548,9 @@ struct RowBefore {
 struct MovePreview {
     from: ClubName,
     to: ClubName,
+    /// What the fee does to the two clubs' money, when one is to be paid.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fee: Option<FeePlan>,
 }
 
 #[derive(Serialize)]
@@ -1092,23 +1116,50 @@ fn undo_change(state: State<'_, AppState>, id: usize) -> Result<LoggedChange, Fa
 /// Checks that the player `uid` can move to the club `club` on the contract `terms`, and
 /// names the clubs; the error says why he cannot. Nothing is written.
 #[tauri::command]
-fn plan_club_move(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePreview, Failure> {
+fn plan_club_move(
+    state: State<'_, AppState>,
+    uid: u32,
+    club: u32,
+    terms: MoveTerms,
+    fee: Option<i64>,
+) -> Result<MovePreview, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let plan = connection.plan_move(uid, club, terms)?;
+    let fee = connection.plan_fee(plan.from_club, plan.to_club, fee)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
-    Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club) })
+    Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club), fee })
 }
 
-/// Moves the player `uid` to the senior team of the club `club` on the contract `terms`,
-/// worked out again from the game as it is now, and logs the move.
+/// Moves the player `uid` to the senior team of the club `club` on the contract `terms`, the club paying his old
+/// one `fee` pounds if given, worked out again from the game as it is now, and logs the move. When the fee cannot be
+/// paid, the player is moved back.
 #[tauri::command]
-fn move_player(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<LoggedChange, Failure> {
+fn move_player(
+    state: State<'_, AppState>,
+    uid: u32,
+    club: u32,
+    terms: MoveTerms,
+    fee: Option<i64>,
+) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let plan = connection.plan_move(uid, club, terms)?;
+    let fee_plan = connection.plan_fee(plan.from_club, plan.to_club, fee)?;
+    let club = |uid: u32| connection.clubs.get(uid).cloned().ok_or_else(|| not_found(Entity::Club, uid));
+    let (buyer, seller) = (club(plan.to_club)?, club(plan.from_club)?);
     let done = connection.session.apply_club_move(&plan)?;
-    Ok(connection.log_move(done, terms))
+    let paid = match fee_plan {
+        Some(fee_plan) => match connection.session.pay_fee(&fee_plan, &buyer, &seller) {
+            Ok(paid) => paid,
+            Err(err) => {
+                let _ = connection.session.undo_club_move(&done);
+                return Err(err.into());
+            }
+        },
+        None => Vec::new(),
+    };
+    Ok(connection.log_move(done, terms, paid, fee_plan.map(|plan| plan.fee)))
 }
 
 /// Checks that the players `uid` and `other` can swap clubs, and names the clubs (`from` is
@@ -1119,7 +1170,7 @@ fn plan_club_swap(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Mo
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let plan = connection.plan_swap(uid, other)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
-    Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club) })
+    Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club), fee: None })
 }
 
 /// Swaps the clubs of the players `uid` and `other`, worked out again from the game as it is
@@ -1130,7 +1181,7 @@ fn swap_players(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Logg
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let plan = connection.plan_swap(uid, other)?;
     let done = connection.session.apply_club_move(&plan)?;
-    Ok(connection.log_move(done, MoveTerms::default()))
+    Ok(connection.log_move(done, MoveTerms::default(), Vec::new(), None))
 }
 
 /// Heals every current injury of the player `uid`, as the game does when he gets over them,

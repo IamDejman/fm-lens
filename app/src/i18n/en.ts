@@ -802,6 +802,8 @@ export const en = {
     continueHint: "The game shows a change once it moves on: press Continue in the game.",
     /** Under a move to another club that was a swap: the player who went the other way. */
     swappedWith: (name: string) => `Swapped with ${name}`,
+    /** Under a transfer that had a fee: the amount, written out. */
+    fee: (amount: string) => `Fee ${amount}`,
     /** What a heal changed, in the place of its values: `count` is how many injuries the player had. */
     healed: (count: number) => (count === 1 ? "Healed 1 injury" : `Healed ${format(count)} injuries`),
     /** The line beside the title; `undone` of the `total` changes were undone. */
@@ -1024,24 +1026,24 @@ export const en = {
    */
   move: {
     /** The button in the header of a player's profile. */
-    button: "Move to another club",
-    buttonTitle: "Move this player to another club in the game",
+    button: "Transfer",
+    buttonTitle: "Transfer this player to another club in the game, for a fee if you like",
 
     // The dialog
-    title: "Move to another club",
+    title: "Transfer",
     /** The club the player is at, and the club he moves to (or, in a swap, goes to). */
     from: "From",
     to: "To",
 
     // The switch at the top of the dialog: a move to a club, or a swap with one of its players.
     /** Its name for assistive technology. */
-    modeLabel: "Move or swap",
-    modeMove: "Move to a club",
+    modeLabel: "Transfer or swap",
+    modeMove: "Transfer to a club",
     modeSwap: "Swap with a player",
 
     // Choosing the club
     /** The name of the search box, and of the list of clubs under it, for assistive technology. */
-    searchLabel: "Search for the club to move to",
+    searchLabel: "Search for the club to transfer to",
     resultsLabel: "Clubs found",
     searching: "Searching clubs…",
     searchFailed: (reason: string) => `Could not search the clubs: ${reason}`,
@@ -1050,26 +1052,43 @@ export const en = {
     /** Takes the place of the search once a club is picked: the button that brings it back. */
     change: "Choose another club",
 
+    // The fee
+    feeHeading: "Fee",
+    fee: "Transfer fee",
+    /** Under the fee input while it can be sent, and while it cannot. */
+    feeHint: "Leave it empty for a free transfer",
+    feeInvalid: "Enter a whole number of pounds, from 0 to 2 billion",
+    /**
+     * What the fee does to the clubs' money, a line each in the plan. `fee` is the amount, `balance` and `budget` a
+     * change written out ("£9,492,232 → £10,726,799"); `budget` is null when the club has no transfer budget set.
+     */
+    pays: (club: string, fee: string, balance: string, budget: string | null) =>
+      `${club} pays ${fee}: balance ${balance}${budget === null ? "" : `, transfer budget ${budget}`}`,
+    receives: (club: string, fee: string, balance: string) => `${club} receives ${fee}: balance ${balance}`,
+    /** For a club outside the leagues being played, which the game keeps no finances for. */
+    noFinances: (club: string) => `${club} has no finances in the game: its money stays as it is`,
+
     // The contract
     /** Under an input that cannot be sent. */
     wageInvalid: "Enter a whole number of pounds, 0 or more",
     expiresInvalid: "Enter a date",
 
     // What the dialog says about the move itself
-    chooseClub: "Choose the club to move the player to.",
-    fixTerms: "Fix the contract values first.",
-    checking: "Checking the move…",
+    chooseClub: "Choose the club to transfer the player to.",
+    fixTerms: "Fix the fee or the contract values first.",
+    checking: "Checking the transfer…",
     /** The move can be made; `from` and `to` are the names of the clubs. */
     route: (from: string, to: string) => `${from} → ${to}`,
-    doesHeading: "What the move does",
+    doesHeading: "What the transfer does",
     /** What the game does to the player, one line each. */
     does: [
       "Joins the senior team of the new club",
       "Contract dated from the game's date; squad number cleared",
       "Comes off the transfer and loan lists",
       "Wage and contract end change only if you set new ones",
-      "No fee is paid; career history is not updated",
-      "Listed under Changes, where it can be undone",
+      "The fee comes out of the buying club's balance and transfer budget, and goes into the selling club's balance",
+      "The game's transfer history does not list it yet",
+      "Listed under Changes, where one undo takes back the transfer and the fee",
     ],
 
     // Swapping with a player of the club instead: the title, and the section that picks the player (the club is
@@ -1108,10 +1127,10 @@ export const en = {
     ],
 
     // The foot
-    /** Nothing changes in the game until Move, or Swap. */
-    hint: "Nothing changes in the game until you press Move.",
-    move: "Move",
-    moving: "Moving…",
+    /** Nothing changes in the game until Transfer, or Swap. */
+    hint: "Nothing changes in the game until you press Transfer.",
+    move: "Transfer",
+    moving: "Transferring…",
     cancel: "Cancel",
     swapHint: "Nothing changes in the game until you press Swap.",
     swap: "Swap",

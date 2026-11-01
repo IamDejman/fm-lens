@@ -1,6 +1,7 @@
-// Moving a player to another club: the button in the header of his profile, and the dialog it opens. The dialog picks
-// the club (and, if wanted, a new wage and contract end), asks the game whether the move can be made before it offers
-// it, and makes it. The move is logged like any change, and can be undone from the Changes view.
+// Transferring a player to another club: the button in the header of his profile, and the dialog it opens. The dialog
+// picks the club (and, if wanted, a fee and a new wage and contract end), asks the game whether the move can be made
+// before it offers it, and makes it: the buying club pays the fee to the selling one. The transfer is logged like any
+// change, and one undo from the Changes view takes back the move and the fee.
 //
 // A switch at the top of the dialog makes it a swap instead: after the club it picks one of the club's players, who
 // goes the other way, and each keeps his own contract.
@@ -22,7 +23,16 @@ import { describeError, formatDate, formatPounds } from "./format";
 import { clubListText, editText, fieldLabel, moveText as text, positionLabel, profileText } from "./labels";
 import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
-import type { ClubPage, ClubSummary, Contract, MovePreview, MoveTerms, PlayerPage, PlayerSummary } from "./types";
+import type {
+  ClubMoney,
+  ClubPage,
+  ClubSummary,
+  Contract,
+  MovePreview,
+  MoveTerms,
+  PlayerPage,
+  PlayerSummary,
+} from "./types";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
 
@@ -50,7 +60,7 @@ interface Opened {
 }
 
 /**
- * The Move to another club button of a player's profile, and the dialog it opens. The profile decides when the button
+ * The Transfer button of a player's profile, and the dialog it opens. The profile decides when the button
  * is there (see `PlayerProfile`).
  */
 export function MoveButton({ player, contract, ready }: MoveButtonProps) {
@@ -159,6 +169,21 @@ function judgeWage(text: string, was: number | null): Verdict {
   return value === was ? SAME : { status: "changed", value };
 }
 
+/** The most a fee can be, in pounds: what the game's money fields hold. */
+const MAX_FEE = 2_000_000_000;
+
+/** The fee input: no fee while it is empty or 0, a whole number of pounds up to `MAX_FEE`, or unusable. */
+function judgeFee(text: string): Verdict {
+  if (text.trim() === "") {
+    return SAME;
+  }
+  const value = wholeNumber(text);
+  if (value === null || value < 0 || value > MAX_FEE) {
+    return INVALID;
+  }
+  return value === 0 ? SAME : { status: "changed", value };
+}
+
 /** The same for the contract end, which a date input holds as `YYYY-MM-DD`: unusable until it is a whole, real date. */
 function judgeExpires(text: string, was: number | null): Verdict {
   if (text === (was === null ? "" : isoFromNumber(was))) {
@@ -173,8 +198,21 @@ function termsOf(wage: number | undefined, expires: number | undefined): MoveTer
   return { ...(wage !== undefined && { wage }), ...(expires !== undefined && { expires }) };
 }
 
-/** What a plan is for. A plan is the dialog's only while the club and the terms are the ones it was asked about. */
-const planKey = (club: number, terms: MoveTerms) => `${club}:${terms.wage ?? ""}:${terms.expires ?? ""}`;
+/** What a plan is for. A plan is the dialog's only while the club, the terms and the fee are those it was asked about. */
+const planKey = (club: number, terms: MoveTerms, fee: number | undefined) =>
+  `${club}:${terms.wage ?? ""}:${terms.expires ?? ""}:${fee ?? ""}`;
+
+/** What a fee does to one club's money, a line for the plan: what it pays or gets, and its money before and after. */
+function moneyLine(money: ClubMoney | null, club: string, fee: string, paying: boolean): string {
+  if (money === null) {
+    return text.noFinances(club);
+  }
+  const change = ({ before, after }: { before: number; after: number }) =>
+    `${formatPounds(before)} → ${formatPounds(after)}`;
+  return paying
+    ? text.pays(club, fee, change(money.balance), money.transferBudget && change(money.transferBudget))
+    : text.receives(club, fee, change(money.balance));
+}
 
 /** The same for a swap, which depends on the player picked alone (his club is the club picked). */
 const swapKey = (partner: number) => `swap:${partner}`;
@@ -466,6 +504,7 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   const [partner, setPartner] = useState<PlayerSummary | null>(null);
   const [wageText, setWageText] = useState(wasWage === null ? "" : String(wasWage));
   const [expiresText, setExpiresText] = useState(wasExpires === null ? "" : isoFromNumber(wasExpires));
+  const [feeText, setFeeText] = useState("");
   const [planned, setPlanned] = useState<Planned | null>(null);
   // How often the plan was asked again with nothing changed: after a move the game refused.
   const [replans, setReplans] = useState(0);
@@ -477,9 +516,12 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   // The inputs, and the terms they stand for.
   const wageVerdict = judgeWage(wageText, wasWage);
   const expiresVerdict = judgeExpires(expiresText, wasExpires);
-  const valid = wageVerdict.status !== "invalid" && expiresVerdict.status !== "invalid";
+  const feeVerdict = judgeFee(feeText);
+  const valid =
+    wageVerdict.status !== "invalid" && expiresVerdict.status !== "invalid" && feeVerdict.status !== "invalid";
   const wage = wageVerdict.status === "changed" ? wageVerdict.value : undefined;
   const expires = expiresVerdict.status === "changed" ? expiresVerdict.value : undefined;
+  const fee = feeVerdict.status === "changed" ? feeVerdict.value : undefined;
   const terms = termsOf(wage, expires);
 
   const swap = mode === "swap";
@@ -492,7 +534,7 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
       ? swapKey(partner.uid)
       : null
     : club !== null && valid
-      ? planKey(club.uid, terms)
+      ? planKey(club.uid, terms, fee)
       : null;
   const outcome = key !== null && planned?.key === key ? planned.outcome : null;
   const preview = outcome !== null && "preview" in outcome ? outcome.preview : null;
@@ -501,7 +543,7 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
   // What the button makes, for the plan it is offered for: the swap with the player picked, or the move to the club.
   const make = swap
     ? partner && (() => swapPlayers(player.uid, partner.uid))
-    : club && (() => movePlayer(player.uid, club.uid, terms));
+    : club && (() => movePlayer(player.uid, club.uid, terms, fee));
 
   // The clubs on show. Until the search has answered for what is typed they are the last ones: Enter leaves them alone.
   const rows = found !== null && "page" in found ? found.page.rows : [];
@@ -555,11 +597,11 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
     const asked = termsOf(wage, expires);
     const answer = (result: Planned["outcome"]) => {
       if (!cancelled) {
-        setPlanned({ key: planKey(club.uid, asked), outcome: result });
+        setPlanned({ key: planKey(club.uid, asked, fee), outcome: result });
       }
     };
     const timer = setTimeout(() => {
-      planClubMove(player.uid, club.uid, asked).then(
+      planClubMove(player.uid, club.uid, asked, fee).then(
         (made) => answer({ preview: made }),
         (e) => answer({ error: describeError(e) }),
       );
@@ -568,7 +610,7 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [swap, player.uid, club, valid, wage, expires, replans]);
+  }, [swap, player.uid, club, valid, wage, expires, fee, replans]);
 
   // The same for a swap, a moment after the player to swap with is picked.
   useEffect(() => {
@@ -704,11 +746,21 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
     contract?.expires ? formatDate(contract.expires) : null,
   );
 
-  // Where the clubs of a move that can be made lead; for a swap, who goes where.
-  const route = (made: MovePreview) =>
-    swap && partner !== null
-      ? text.swapRoute(player.name, made.from.name, made.to.name, partner.name)
-      : text.route(made.from.name, made.to.name);
+  const feeNote = feeVerdict.status === "invalid" ? { message: text.feeInvalid, invalid: true } : null;
+
+  // Where the clubs of a move that can be made lead, and what its fee does to their money; for a swap, who goes where.
+  const route = (made: MovePreview) => {
+    if (swap && partner !== null) {
+      return text.swapRoute(player.name, made.from.name, made.to.name, partner.name);
+    }
+    const lines = [text.route(made.from.name, made.to.name)];
+    if (made.fee) {
+      const amount = formatPounds(made.fee.fee);
+      lines.push(moneyLine(made.fee.buyer, made.to.name, amount, true));
+      lines.push(moneyLine(made.fee.seller, made.from.name, amount, false));
+    }
+    return lines.join("\n");
+  };
 
   // What the move or the swap comes to, or why it cannot be made. The plan line is a live region that is always there.
   const plan: { tone: "pending" | "ok" | "refused"; message: string } =
@@ -859,6 +911,40 @@ function MoveDialog({ player, contract, onMoved, onClose }: MoveDialogProps) {
                 onPick={setPartner}
                 onChange={() => setPartner(null)}
               />
+            </section>
+          )}
+
+          {!swap && (
+            <section className="move-section" aria-labelledby={id("fee-heading")}>
+              <h3 id={id("fee-heading")}>{text.feeHeading}</h3>
+              <div className="move-terms">
+                <div className="move-term">
+                  <label htmlFor={id("fee")}>{text.fee}</label>
+                  <span className="move-money">
+                    <span className="move-unit" aria-hidden="true">
+                      {editText.pounds}
+                    </span>
+                    <input
+                      id={id("fee")}
+                      className={inputClass(feeVerdict)}
+                      type="number"
+                      min={0}
+                      max={MAX_FEE}
+                      step={1}
+                      placeholder="0"
+                      value={feeText}
+                      readOnly={moving}
+                      aria-invalid={feeVerdict.status === "invalid" || undefined}
+                      aria-describedby={id("fee-note")}
+                      onChange={(e) => setFeeText(e.currentTarget.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                    />
+                  </span>
+                  <p id={id("fee-note")} className={feeNote ? "move-note invalid" : "move-note"}>
+                    {feeNote ? feeNote.message : text.feeHint}
+                  </p>
+                </div>
+              </div>
             </section>
           )}
 

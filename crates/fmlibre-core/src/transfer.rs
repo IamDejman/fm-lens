@@ -19,12 +19,12 @@
 use std::fmt;
 
 use fmlibre_mem::{Process, is_user_pointer};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::clubs::ClubSummary;
 use crate::coded::Coded;
 use crate::date::FmDate;
-use crate::edit::{Entity, Kind};
+use crate::edit::{EditError, Entity, Field, Kind, Target};
 use crate::players::PlayerSummary;
 use crate::profile::HeapLayout;
 use crate::session::Session;
@@ -641,6 +641,144 @@ impl Session {
             return Err(MoveError::Changed { address });
         }
         Ok(())
+    }
+}
+
+/// The most a transfer fee can be, in pounds: what the game's money fields hold.
+pub const MAX_FEE: i64 = 2_000_000_000;
+
+/// An amount of money before and after a fee is paid, in pounds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Amounts {
+    pub before: i64,
+    pub after: i64,
+}
+
+/// What a fee does to one club's money.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClubMoney {
+    pub club: u32,
+    pub balance: Amounts,
+    /// The buying club's transfer budget, which the fee comes out of too, down to nothing; none when the board has
+    /// set none.
+    pub transfer_budget: Option<Amounts>,
+}
+
+/// What paying a transfer fee does, worked out from the game as it is now: the buying club pays it out of its balance
+/// and its transfer budget, and the selling club's balance takes it. A club the game keeps no full finances for has
+/// none here, and its money stays as it is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FeePlan {
+    pub fee: i64,
+    pub buyer: Option<ClubMoney>,
+    pub seller: Option<ClubMoney>,
+}
+
+/// An amount a fee changed, and by how much: undoing the fee takes that back from what the game holds then, as
+/// the game will have moved the money on in the meantime.
+#[derive(Debug, Clone)]
+pub struct Paid {
+    target: Target,
+    field: Field,
+    change: i64,
+}
+
+impl Session {
+    /// Works out what paying `fee` does to the money of `buyer` and `seller`. Nothing is written.
+    pub fn plan_fee(&self, buyer: &ClubSummary, seller: &ClubSummary, fee: i64) -> Result<FeePlan, EditError> {
+        if !(0..=MAX_FEE).contains(&fee) {
+            return Err(EditError::OutOfRange { field: "fee".to_owned(), value: fee, min: 0, max: MAX_FEE });
+        }
+        let balance = self.field(Entity::Club, "finance.balance")?;
+        let budget = self.field(Entity::Club, "finance.transfer_budget")?;
+        // A club outside the leagues being played has no finance record: its money is left alone.
+        let read = |club: &ClubSummary, field: &Field| match self.read_field(&club.target(), field) {
+            Ok(value) => Ok(Some(value)),
+            Err(EditError::NoRecord { .. }) => Ok(None),
+            Err(err) => Err(err),
+        };
+        let buyer_money = match read(buyer, &balance)? {
+            Some(before) => {
+                // FM keeps -1 when the board has set no transfer budget.
+                let transfer_budget = read(buyer, &budget)?
+                    .filter(|&left| left >= 0)
+                    .map(|before| Amounts { before, after: (before - fee).max(0) });
+                Some(ClubMoney { club: buyer.uid, balance: Amounts { before, after: before - fee }, transfer_budget })
+            }
+            None => None,
+        };
+        let seller_money = read(seller, &balance)?.map(|before| ClubMoney {
+            club: seller.uid,
+            balance: Amounts { before, after: before + fee },
+            transfer_budget: None,
+        });
+        for money in [buyer_money, seller_money].into_iter().flatten() {
+            if !balance.takes(money.balance.after) {
+                let (min, max) = (balance.min, balance.max);
+                return Err(EditError::OutOfRange { field: balance.key.clone(), value: money.balance.after, min, max });
+            }
+        }
+        Ok(FeePlan { fee, buyer: buyer_money, seller: seller_money })
+    }
+
+    /// Pays `plan`, each amount only while the game still holds what it was worked out from. When one cannot be
+    /// written, those already written are taken back.
+    pub fn pay_fee(&self, plan: &FeePlan, buyer: &ClubSummary, seller: &ClubSummary) -> Result<Vec<Paid>, EditError> {
+        let balance = self.field(Entity::Club, "finance.balance")?;
+        let budget = self.field(Entity::Club, "finance.transfer_budget")?;
+        let mut steps: Vec<(Target, &Field, Amounts)> = Vec::new();
+        if let Some(money) = plan.buyer {
+            steps.push((buyer.target(), &balance, money.balance));
+            if let Some(left) = money.transfer_budget {
+                steps.push((buyer.target(), &budget, left));
+            }
+        }
+        if let Some(money) = plan.seller {
+            steps.push((seller.target(), &balance, money.balance));
+        }
+        let mut paid = Vec::new();
+        for (target, field, amounts) in steps {
+            if amounts.before == amounts.after {
+                continue;
+            }
+            if let Err(err) = self.write_field_if(&target, field, amounts.before, amounts.after) {
+                let _ = self.refund_fee(&paid);
+                return Err(err);
+            }
+            paid.push(Paid { target, field: field.clone(), change: amounts.after - amounts.before });
+        }
+        Ok(paid)
+    }
+
+    /// Takes back what a fee changed, each amount by its change from what the game holds now, kept within what the
+    /// field holds. When one cannot be taken back, those already taken back are paid again.
+    pub fn refund_fee(&self, paid: &[Paid]) -> Result<(), EditError> {
+        for (i, step) in paid.iter().enumerate().rev() {
+            if let Err(err) = self.shift_by(step, -step.change) {
+                for done in &paid[i + 1..] {
+                    let _ = self.shift_by(done, done.change);
+                }
+                return Err(err);
+            }
+        }
+        Ok(())
+    }
+
+    /// Pays a fee taken back again, after an undo that could not finish.
+    pub fn repay_fee(&self, paid: &[Paid]) -> Result<(), EditError> {
+        for step in paid {
+            self.shift_by(step, step.change)?;
+        }
+        Ok(())
+    }
+
+    /// Adds `by` to the amount `step` changed, as the game holds it now, kept within what its field holds.
+    fn shift_by(&self, step: &Paid, by: i64) -> Result<(), EditError> {
+        let now = self.read_field(&step.target, &step.field)?;
+        let next = (now + by).clamp(step.field.min, step.field.max);
+        self.write_field_if(&step.target, &step.field, now, next).map(|_| ())
     }
 }
 

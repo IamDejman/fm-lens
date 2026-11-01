@@ -142,12 +142,12 @@ export const undoBatch = (batch: number) => call<BatchUndo>("undo_batch", { batc
  * Checks that the player `uid` can move to the club `club` on `terms`, and names both clubs. Nothing is written;
  * when he cannot move, the error says why (a loan, a club a human manager runs, a squad list with no room, ...).
  */
-export const planClubMove = (uid: number, club: number, terms: MoveTerms) =>
-  call<MovePreview>("plan_club_move", { uid, club, terms });
+export const planClubMove = (uid: number, club: number, terms: MoveTerms, fee?: number) =>
+  call<MovePreview>("plan_club_move", { uid, club, terms, fee });
 
 /** Moves the player to the senior team of the club on `terms`; the move is logged and undone like any change. */
-export const movePlayer = (uid: number, club: number, terms: MoveTerms) =>
-  call<LoggedChange>("move_player", { uid, club, terms });
+export const movePlayer = (uid: number, club: number, terms: MoveTerms, fee?: number) =>
+  call<LoggedChange>("move_player", { uid, club, terms, fee });
 
 /**
  * Checks that the players `uid` and `other` can swap clubs, each joining the other's senior team on his own contract,

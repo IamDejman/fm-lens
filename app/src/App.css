@@ -3197,12 +3197,12 @@ button.danger:hover:not(:disabled) {
   }
 }
 
-/* Moving a player */
+/* Transferring a player */
 
 /*
- * A player's header has Compare, Edit and Close, and Move to another club, which is wider than all of them: in one row
- * they would squeeze the name to a sliver. So they are a grid, with Move across the top and the others under it (as
- * wide as they were). Without Move (the profile cannot be edited, or is being edited) the row is as it was.
+ * A player's header has Compare, Edit and Close, and Transfer: in one row they would squeeze the name in a narrow
+ * window. So they are a grid, with Transfer across the top and the others under it (as wide as they were). Without
+ * Transfer (the profile cannot be edited, or is being edited) the row is as it was.
  */
 .profile-actions:has(.move-toggle) {
   display: grid;
