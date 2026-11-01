@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from "react";
+import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { EditableValue } from "./EditControls";
-import { formatNumber, formatPounds } from "./format";
+import { freezeMoney, frozenClubs } from "./editing";
+import { describeError, formatNumber, formatPounds } from "./format";
 import {
   CLUB_FACILITY_LABELS,
   clubProfileText,
@@ -22,7 +23,7 @@ import {
 } from "./ProfileParts";
 import { SquadTab } from "./SquadTab";
 import type { ClubDetails, ClubSummary, Finances } from "./types";
-import { useProfileEditing } from "./useProfileEditing";
+import { EditorContext, useProfileEditing } from "./useProfileEditing";
 
 const text = clubProfileText;
 
@@ -168,7 +169,7 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
     <div className="profile-split" role="tabpanel" id={panel.id} aria-labelledby={panel.labelledBy}>
       <div className="profile-stack">
         <Facilities facilities={details.facilities} />
-        <FinancesGroup finances={details.finances} />
+        <FinancesGroup club={details.uid} finances={details.finances} />
       </div>
       <div className="profile-stack">
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
@@ -273,8 +274,11 @@ function SupporterMix({ segments }: { segments: MixSegment[] }) {
   );
 }
 
-/** The club's money; the four amounts the editor can change are inputs while the club is edited. */
-function FinancesGroup({ finances }: { finances: Finances | null }) {
+/**
+ * The club's money; the four amounts the editor can change are inputs while the club is edited, and the money can be
+ * frozen.
+ */
+function FinancesGroup({ club, finances }: { club: number; finances: Finances | null }) {
   return (
     <section className="profile-group">
       <h3>{text.finances}</h3>
@@ -300,12 +304,60 @@ function FinancesGroup({ finances }: { finances: Finances | null }) {
             </Fact>
             <Fact label={text.ticketPrice}>{formatTicketPrice(finances.ticketPrice)}</Fact>
           </dl>
+          <FreezeMoney club={club} />
           <p className="note">{profileText.wageNote}</p>
         </>
       ) : (
         <p className="note">{text.noFinances}</p>
       )}
     </section>
+  );
+}
+
+/**
+ * Freezing the club's money: while the app is open and connected, its balance does not go down. Offered while the game
+ * can be written to; once frozen, a note says what it does.
+ */
+function FreezeMoney({ club }: { club: number }) {
+  const { editable } = useContext(EditorContext);
+  // Whether the club's money is frozen; null until the app has said.
+  const [frozen, setFrozen] = useState<boolean | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    frozenClubs()
+      .then((clubs) => alive && setFrozen(clubs.includes(club)))
+      .catch(() => alive && setFrozen(false));
+    return () => {
+      alive = false;
+    };
+  }, [club]);
+
+  if (!editable || frozen === null) {
+    return null;
+  }
+  const toggle = async (on: boolean) => {
+    setError(null);
+    try {
+      setFrozen((await freezeMoney(club, on)).includes(club));
+    } catch (e) {
+      setError(describeError(e));
+    }
+  };
+  return (
+    <>
+      <label className="freeze-toggle" title={text.freezeNote}>
+        <input type="checkbox" checked={frozen} onChange={(e) => void toggle(e.currentTarget.checked)} />
+        <span>{text.freeze}</span>
+      </label>
+      {frozen && <p className="note">{text.freezeNote}</p>}
+      {error && (
+        <p className="note error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 

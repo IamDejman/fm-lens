@@ -597,6 +597,10 @@ export const en = {
     perWeek: "per week",
     /** Clubs outside the leagues being played have no finance record in memory. */
     noFinances: "FM keeps finances only for clubs in the leagues being played.",
+    /** Freezing the club's money, while the game can be written to, and what that does. */
+    freeze: "Freeze money",
+    freezeNote:
+      "While the app is open and connected, the balance does not go down: what the game takes is put back, and income still counts.",
 
     // Club info
     info: "Club info",

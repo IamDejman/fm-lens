@@ -958,6 +958,25 @@ input::placeholder {
   min-width: 0;
 }
 
+/* Freezing a club's money: the box and its words, under the amounts. */
+.freeze-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 6px 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.freeze-toggle input {
+  margin: 0;
+}
+
+.note.error {
+  color: var(--danger);
+}
+
 /* Bounds on attributes, across the whole panel: a row each (the attribute, least – most, and a button that takes the
    row away), then a button for one more row. */
 .filter-attributes {

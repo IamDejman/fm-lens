@@ -588,6 +588,8 @@ export const tr: Strings = {
     ticketPrice: "Ortalama bilet fiyatı",
     perWeek: "haftalık",
     noFinances: "FM, finansı yalnızca oynanan liglerdeki kulüpler için tutar.",
+    freeze: "Parayı dondur",
+    freezeNote: "Uygulama açık ve oyuna bağlıyken bakiye düşmez: oyunun düştüğü para geri konur, gelirler yine eklenir.",
 
     // Club info
     info: "Kulüp bilgisi",

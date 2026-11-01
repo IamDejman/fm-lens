@@ -1394,6 +1394,9 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
   );
 }
 
+/** The clubs whose money is frozen in this page; the fixtures have no game days for it to hold through. */
+const frozenMoney = new Set<number>();
+
 /** The fixture connection, once `connect` has been called in this page. */
 let mockConnection: ConnectionInfo | null = null;
 
@@ -1544,6 +1547,17 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "edit_fields":
       return fieldTable(args?.entity as Entity) as T;
+    case "freeze_money": {
+      const club = Number(args?.club);
+      if (args?.frozen) {
+        frozenMoney.add(club);
+      } else {
+        frozenMoney.delete(club);
+      }
+      return [...frozenMoney] as T;
+    }
+    case "frozen_clubs":
+      return [...frozenMoney] as T;
     case "list_nations": {
       const nations: Nation[] = NATIONS.map((name) => ({ address: nationAddress(name), uid: 1000 + NATIONS.indexOf(name), name }));
       return nations.sort((a, b) => a.name.localeCompare(b.name)) as T;

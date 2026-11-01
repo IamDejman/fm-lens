@@ -3,7 +3,7 @@ mod bridge;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
@@ -34,7 +34,13 @@ struct Connection {
     mass: Option<PendingMass>,
     /// The next id for a mass-edit preview or batch.
     next_id: u32,
+    /// The clubs whose money is frozen, with the least their balance may be: what it was when it was frozen, or more
+    /// once the club earned more (see `hold_frozen`).
+    frozen: BTreeMap<u32, i64>,
 }
+
+/// How often the balances of frozen clubs are looked at.
+const FREEZE_EVERY: Duration = Duration::from_secs(2);
 
 /// A mass edit that was worked out and shown, waiting to be applied as it was shown.
 struct PendingMass {
@@ -46,14 +52,14 @@ struct PendingMass {
 impl Connection {
     /// Reads every list. A reload keeps the change log; a mass edit previewed before is dropped,
     /// since its people may have moved.
-    fn load(session: Session, log: Vec<LoggedChange>) -> Result<Self, Failure> {
+    fn load(session: Session, log: Vec<LoggedChange>, frozen: BTreeMap<u32, i64>) -> Result<Self, Failure> {
         let players = PlayerIndex::new(session.players()?);
         let staff = session.staff()?;
         let human_clubs = staff.iter().filter(|member| member.is_human).filter_map(|member| member.club_uid).collect();
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
         let next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
-        Ok(Self { session, players, staff, clubs, human_clubs, log, mass: None, next_id })
+        Ok(Self { session, players, staff, clubs, human_clubs, log, mass: None, next_id, frozen })
     }
 
     /// What the window shows about the connection; `load_ms` is how long reading took.
@@ -333,6 +339,27 @@ impl Connection {
             Entity::Club => self.clubs.get(uid).map(|c| (c.target(), c.name.clone())),
         }
         .ok_or_else(|| not_found(entity, uid))
+    }
+
+    /// Keeps the balance of every frozen club from going down: what the game took is put back, and what it earned
+    /// raises the least it may be. These writes are not logged; unfreezing ends them.
+    fn hold_frozen(&mut self) {
+        let Ok(field) = self.session.field(Entity::Club, "finance.balance") else {
+            return;
+        };
+        for (&uid, floor) in self.frozen.iter_mut() {
+            let Some(target) = self.clubs.get(uid).map(|club| club.target()) else {
+                continue;
+            };
+            match self.session.read_field(&target, &field) {
+                Ok(now) if now < *floor => {
+                    // Only while the game still holds what was read: a day it is working out is left to it.
+                    let _ = self.session.write_field_if(&target, &field, now, *floor);
+                }
+                Ok(now) => *floor = now,
+                Err(_) => {}
+            }
+        }
     }
 
     /// The nations of the players and staff in the lists.
@@ -838,7 +865,7 @@ async fn connect(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> 
     let connection = tauri::async_runtime::spawn_blocking(|| -> Result<Connection, Failure> {
         let pid = find_game(None)?;
         let process = Process::open_read_write(pid).or_else(|_| Process::open_read(pid))?;
-        Connection::load(Session::connect(process, ArraySource::ProfileFirst)?, Vec::new())
+        Connection::load(Session::connect(process, ArraySource::ProfileFirst)?, Vec::new(), BTreeMap::new())
     })
     .await??;
 
@@ -860,8 +887,10 @@ fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInf
 #[tauri::command]
 async fn reload(state: State<'_, AppState>) -> Result<ReloadInfo, Failure> {
     let connection = state.0.lock()?.take().ok_or_else(not_connected)?;
-    let connection =
-        tauri::async_runtime::spawn_blocking(move || Connection::load(connection.session, connection.log)).await??;
+    let connection = tauri::async_runtime::spawn_blocking(move || {
+        Connection::load(connection.session, connection.log, connection.frozen)
+    })
+    .await??;
     let info = ReloadInfo {
         players: connection.players.len(),
         staff: connection.staff.len(),
@@ -958,6 +987,30 @@ fn list_nations(state: State<'_, AppState>) -> Result<Vec<Nation>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     Ok(connection.nations())
+}
+
+/// Freezes the money of the club `club`, or unfreezes it: while the app is connected, a frozen club's balance does not
+/// go down. Returns the clubs frozen now.
+#[tauri::command]
+fn freeze_money(state: State<'_, AppState>, club: u32, frozen: bool) -> Result<Vec<u32>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    if frozen {
+        let target = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?.target();
+        let field = connection.session.field(Entity::Club, "finance.balance")?;
+        let balance = connection.session.read_field(&target, &field)?;
+        connection.frozen.insert(club, balance);
+    } else {
+        connection.frozen.remove(&club);
+    }
+    Ok(connection.frozen.keys().copied().collect())
+}
+
+/// The clubs whose money is frozen.
+#[tauri::command]
+fn frozen_clubs(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
+    let guard = state.0.lock()?;
+    Ok(guard.as_ref().map(|connection| connection.frozen.keys().copied().collect()).unwrap_or_default())
 }
 
 /// The fields of players or of staff that the editor can change.
@@ -1322,6 +1375,20 @@ pub fn run() {
                 Some(folder) => Some(PathBuf::from(folder)),
                 None => user_data.ok().map(|folder| GraphicsIndex::default_root(&folder, 27)),
             };
+            // Frozen money: every little while, what the game took from a frozen club's balance is put back.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(FREEZE_EVERY);
+                    let state = handle.state::<AppState>();
+                    if let Ok(mut guard) = state.0.lock()
+                        && let Some(connection) = guard.as_mut()
+                        && !connection.frozen.is_empty()
+                    {
+                        connection.hold_frozen();
+                    }
+                }
+            });
             let graphics = app.state::<Graphics>().0.clone();
             std::thread::spawn(move || {
                 let index = root.map_or_else(GraphicsIndex::default, |root| GraphicsIndex::scan(&root));
@@ -1347,6 +1414,8 @@ pub fn run() {
             staff_details,
             club_details,
             list_nations,
+            freeze_money,
+            frozen_clubs,
             edit_fields,
             read_values,
             apply_edits,

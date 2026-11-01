@@ -25,6 +25,12 @@ import type {
 /** The fields of players or of staff the editor can change, in display order. */
 export const editFields = (entity: Entity) => call<EditField[]>("edit_fields", { entity });
 
+/** Freezes the money of the club `club`, or unfreezes it; the clubs whose money is frozen now. */
+export const freezeMoney = (club: number, frozen: boolean) => call<number[]>("freeze_money", { club, frozen });
+
+/** The clubs whose money is frozen: while the app is connected, their balance does not go down. */
+export const frozenClubs = () => call<number[]>("frozen_clubs");
+
 /** The nations of the people in the lists, by name: what a nation field can be set to. */
 export const listNations = () => call<Nation[]>("list_nations");
 
