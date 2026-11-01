@@ -123,6 +123,17 @@ game with `posix_spawn`, `POSIX_SPAWN_SETEXEC` and the Mac's own architecture fi
 as Intel code itself, it brought a stand-in for the game up natively, with the bridge and the
 other inserted library.
 
+The release build signs the launcher with the hardened runtime, which notarization requires.
+dyld then takes every `DYLD_*` variable out of the launcher's environment before it runs: a
+launcher signed that way (ad hoc, with `--options runtime`) passed only the bridge on, and a
+stand-in for the game lost the library a stand-in for Steam had named. The kernel's copy of
+the environment the program was started with (`sysctl` `KERN_PROCARGS2`) still holds them, so
+the launcher reads back the `DYLD_*` variables missing from its own and passes them on. It
+loads none of them itself. The entitlement that lets dyld keep them
+(`com.apple.security.cs.allow-dyld-environment-variables`) would also have the launcher load
+Steam's libraries, which another team signs, so library validation would have to be turned
+off as well.
+
 Each Steam account keeps them in
 `~/Library/Application Support/Steam/userdata/<account>/config/localconfig.vdf`, under
 `UserLocalConfigStore/Software/Valve/Steam/apps/4530370/LaunchOptions`. Steam reads the file
