@@ -84,7 +84,7 @@ before trusting them.
   - dates and numbers follow the language;
   - the connection and the change log survive the switch.
 - [x] Spanish, and flags for the languages:
-  - the switch in the masthead shows each language's flag;
+  - a menu in the masthead, under the flag of the language in use, lists each language with its flag;
   - the system's language is the default where the app has it, English otherwise;
   - the Windows installer offers Spanish too.
 - [x] Pitch position map.

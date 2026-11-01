@@ -403,7 +403,7 @@ The almanac is flat paper. Depth comes from rules and from ink, not shadows: a 2
 
 ### Shadow Vocabulary
 - **Dialog** (`box-shadow: 0 18px 48px rgb(0 0 0 / 0.3)`): a modal over the scrim.
-- **Menu** (`box-shadow: 0 10px 28px rgb(0 0 0 / 0.25)`): the captain menu that hangs from a squad row.
+- **Menu** (`box-shadow: 0 10px 28px rgb(0 0 0 / 0.25)`): the captain menu that hangs from a squad row, and the language menu under the masthead's flag.
 - **Ink ring** (`box-shadow: 0 0 0 1px` ink, or `inset 0 0 0 1px`): not depth but a doubled line: the focused search box, the pressed Edit toggle, an invalid input in brick, the highlighter swatch's edge.
 
 ### Rule Weights
@@ -426,9 +426,9 @@ Icons are inline SVG line drawings at 10 to 16px, stroke 1.6 to 1.8, round caps,
 
 ### Masthead and Tabs
 The almanac's head: an ink band in both editions.
-- **Structure:** the FML mark at the left, the section tabs (Players, Staff, Clubs, Changes), and at the right the busy message, the in-game date set as a dateline, Reload and the language switch, a flag for each language (English, Turkish, Spanish).
+- **Structure:** the FML mark at the left, the section tabs (Players, Staff, Clubs, Changes), and at the right the busy message, the in-game date set as a dateline, Reload and the language: a button with the flag of the language in use, which opens a menu of the languages (English, Turkish, Spanish), each with its flag and its own name and a check after the one in use.
 - **Tabs:** transparent on ink, paper text at 66%; hover lifts to an 8% paper wash and full paper text; the open tab takes the page colour and ink text and touches the page below. The Changes tab carries a count chip (paper at 16% on ink; ink on the open tab).
-- **Controls on ink:** outlined in paper at 40%, hover 10% wash, pressed language in solid paper. The flags (21×14, 3:2, a hairline of ink at the edge) of the languages not in use sit at 70% until hovered. Focus here is always focus-blue-on-ink.
+- **Controls on ink:** outlined in paper at 40%, hover 10% wash. The flags are 21×14 (3:2), with a hairline of ink at the edge. Focus here is always focus-blue-on-ink.
 
 ### The Almanac Table
 The signature: a tight yearbook table.
@@ -470,7 +470,7 @@ Small print along the foot, over a hairline.
 - **Danger:** brick outline and text on transparent; hover brick-soft.
 - **Text action:** underlined ink text with no frame (Clear filters).
 - **Icon button:** 30px square, transparent, muted icon; hover tone on hover.
-- **Segmented switch** (language, move or swap, team): two or three buttons in one frame with frame dividers; the pressed one is ink-filled.
+- **Segmented switch** (move or swap, team): two or three buttons in one frame with frame dividers; the pressed one is ink-filled.
 - **Disabled:** 45% opacity. Controls that must stay Tab stops use `aria-disabled` at 55%.
 - **Focus:** `outline: 2px solid` focus blue, offset 2px (inset where the control sits flush). Fields in the filter bar take a 1px ink outline instead.
 
