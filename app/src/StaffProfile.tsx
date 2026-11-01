@@ -1,6 +1,9 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useContext, useEffect, useId, useState, type ReactNode } from "react";
 import { AbilityEditGroup, EditInput } from "./EditControls";
+import { changeStaffJob, staffJobs } from "./editing";
+import { describeError } from "./format";
 import { fieldLabel, jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
+import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
   attributeRow,
@@ -16,7 +19,7 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type { StaffContract, StaffDetails, StaffSummary } from "./types";
-import { useEditableField, useProfileEditing } from "./useProfileEditing";
+import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
 // Attributes in the order FM lists them, by group.
 const COACHING: StaffAttributeKey[] = [
@@ -113,13 +116,27 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
       loaded={loaded}
       onClose={onClose}
       editing={editing}
+      actions={
+        // Only while the profile is read, not edited, and for someone with a club to leave who is not you.
+        editing.editable &&
+        editing.stage === "view" &&
+        info.club !== null &&
+        !info.isHuman && (
+          <MoveButton
+            kind="staff"
+            player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
+            contract={null}
+            ready={details !== undefined}
+          />
+        )
+      }
     >
-      {details && <StaffBody details={details} />}
+      {details && <StaffBody details={details} canChangeJob={editing.stage === "view" && !info.isHuman} />}
     </ProfileFrame>
   );
 }
 
-function StaffBody({ details }: { details: StaffDetails }) {
+function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChangeJob: boolean }) {
   return (
     <>
       <AbilityEditGroup entity="staff" />
@@ -137,7 +154,9 @@ function StaffBody({ details }: { details: StaffDetails }) {
         <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
         <div className="profile-stack">
           <NationEditGroup />
-          {details.contract && <ContractGroup contract={details.contract} />}
+          {details.contract && (
+            <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />
+          )}
           <section className="profile-group">
             <h3>{profileText.reputation}</h3>
             <ReputationBars reputation={details.reputation} />
@@ -169,15 +188,114 @@ function NationEditGroup() {
   );
 }
 
-function ContractGroup({ contract }: { contract: StaffContract }) {
+interface ContractGroupProps {
+  uid: number;
+  contract: StaffContract;
+  /** Whether the job may be changed now: the profile is read, not edited, and it is not yours. */
+  canChangeJob: boolean;
+}
+
+function ContractGroup({ uid, contract, canChangeJob }: ContractGroupProps) {
   return (
     <section className="profile-group">
       <h3>{profileText.contract}</h3>
       <dl className="stats">
         <Fact label={profileText.job}>{jobLabel(contract.job)}</Fact>
       </dl>
+      {canChangeJob && <JobChange uid={uid} job={contract.job} />}
       <WageFact wage={contract.wage} />
       <ContractDates contract={contract} />
     </section>
+  );
+}
+
+/** The jobs the editor gives, once the app has said which; they do not change during a connection. */
+let offeredJobs: Promise<number[]> | null = null;
+
+/**
+ * Giving the member of staff another job at their club: a button, then a select of the jobs the editor gives and
+ * Apply. Offered while the game can be written to, for a job the editor can take away; the game moves them between
+ * the club's departments as the job needs, and the change log can undo it.
+ */
+function JobChange({ uid, job }: { uid: number; job: number }) {
+  const { editable, onEdited } = useContext(EditorContext);
+  const selectId = useId();
+  const [jobs, setJobs] = useState<number[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState(job);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    offeredJobs ??= staffJobs().catch((e: unknown) => {
+      offeredJobs = null;
+      throw e;
+    });
+    offeredJobs.then(
+      (codes) => alive && setJobs(codes),
+      () => alive && setJobs([]),
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (!editable || jobs === null || !jobs.includes(job)) {
+    return null;
+  }
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="job-change"
+        title={profileText.changeJobTitle}
+        onClick={() => {
+          setPicked(job);
+          setError(null);
+          setOpen(true);
+        }}
+      >
+        {profileText.changeJob}
+      </button>
+    );
+  }
+  const byName = [...jobs].sort((a, b) => jobLabel(a).localeCompare(jobLabel(b)));
+  const apply = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await changeStaffJob(uid, picked);
+      setOpen(false);
+      // The game has changed: the lists, the profile and the change log read it again.
+      onEdited();
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="job-change-form">
+      <label htmlFor={selectId}>{profileText.newJob}</label>
+      <select id={selectId} value={picked} disabled={busy} onChange={(e) => setPicked(Number(e.currentTarget.value))}>
+        {byName.map((code) => (
+          <option key={code} value={code}>
+            {jobLabel(code)}
+          </option>
+        ))}
+      </select>
+      <button type="button" className="primary" disabled={busy || picked === job} onClick={() => void apply()}>
+        {profileText.applyJob}
+      </button>
+      <button type="button" disabled={busy} onClick={() => setOpen(false)}>
+        {profileText.cancelJob}
+      </button>
+      {error && (
+        <p className="note error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

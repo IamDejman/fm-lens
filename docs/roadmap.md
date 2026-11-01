@@ -171,7 +171,11 @@ changes many at once, and undo.
   - [ ] Transfers agreed for a later date.
 - Wave 2, new memory research:
   - [ ] Traits (preferred moves).
-  - [ ] Move a member of staff to another club, keeping the job and the contract, and change a job.
+  - [x] Move a member of staff to another club, keeping the job and the contract, and change a job. A club
+    keeps its staff in three department lists (medical, coaching, scouting); a move takes them out of the
+    old club's and into the new club's, and a new job moves them between departments. Staff whom the club or
+    a team points at directly, such as a team's manager, are left to the game, and a full list is refused.
+    Checked on the Mac Steam build, each change restored.
   - [ ] Release a player on a free.
   - [ ] Contract bonuses and release clauses.
   - [ ] Suspensions: lift a ban, or all of a squad's.

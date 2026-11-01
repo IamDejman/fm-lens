@@ -287,6 +287,8 @@ export const en = {
     "contract.squad_status": "Squad status",
     "contract.transfer_listed": "Transfer listed",
     "contract.loan_listed": "Loan listed",
+    // A member of staff's job, which the change log keeps as a change of its code.
+    "contract.job": "Job",
     // A move to another club, which the change log keeps as a change of the player's club.
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
@@ -398,6 +400,12 @@ export const en = {
     youTitle: "The manager you control in this save",
     id: "ID",
     job: "Job",
+    /** Giving a member of staff another job at their club, under the job in the contract. */
+    changeJob: "Change job",
+    changeJobTitle: "Give this member of staff another job at their club in the game",
+    newJob: "New job",
+    applyJob: "Apply",
+    cancelJob: "Cancel",
     unemployed: "Unemployed",
     coaching: "Coaching",
     knowledge: "Knowledge",
@@ -1111,6 +1119,16 @@ export const en = {
     // What the dialog says about the swap
     /** A swap has no contract terms to set. */
     swapContract: "Each player keeps their own contract; wages and contract ends do not change.",
+    // Moving a member of staff, who has neither a fee nor terms to set, and no swap.
+    staffButtonTitle: "Move this member of staff to another club in the game",
+    staffChooseClub: "Choose the club to move this member of staff to.",
+    staffContract: "Keeps the job, the wage and the contract end; the contract is dated from the game's date.",
+    staffDoes: [
+      "Joins the new club in the departments they work in (medical, coaching, scouting)",
+      "Same job, wage and contract end; the contract is dated from the game's date",
+      "A team's manager, whom the team itself points at, is left to the game",
+      "Listed under Changes, where it can be undone",
+    ],
     swapChooseClub: "Choose the club of the player to swap with.",
     swapChoosePlayer: "Choose the player to swap with.",
     swapChecking: "Checking the swap…",

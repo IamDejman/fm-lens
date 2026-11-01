@@ -166,6 +166,23 @@ pub enum MoveError {
     NotApplied {
         address: u64,
     },
+    /// The member of staff is the human manager.
+    You,
+    /// The member of staff has no contract.
+    Unemployed,
+    /// The club or one of its teams points at the member of staff directly, as a team does at its manager.
+    StaffRole,
+    /// None of the club's department lists holds the member of staff, or the new club's holds him already.
+    NotInDepartment,
+    /// The club's list of a department has no room for one more.
+    DepartmentFull {
+        department: &'static str,
+        staff: u64,
+    },
+    /// A job the editor does not give or take away (a manager's, the board's, one it cannot name).
+    UnusualJob {
+        job: u8,
+    },
     Memory(fmlibre_mem::Error),
 }
 
@@ -202,6 +219,19 @@ impl fmt::Display for MoveError {
                 write!(f, "the game has changed the memory at {address:#x} since; reload and try again")
             }
             MoveError::NotApplied { address } => write!(f, "wrote to {address:#x} but read back something else"),
+            MoveError::You => f.write_str("this is you, the human manager"),
+            MoveError::Unemployed => f.write_str("the member of staff has no club"),
+            MoveError::StaffRole => f.write_str(
+                "the club or one of its teams points at this member of staff directly, as a team does at its \
+                 manager; the game moves him itself",
+            ),
+            MoveError::NotInDepartment => f.write_str("the club's staff lists do not hold him where they should"),
+            MoveError::DepartmentFull { department, staff } => write!(
+                f,
+                "the club's {department} staff list has no room for another ({staff} now), and the editor cannot \
+                 make it bigger"
+            ),
+            MoveError::UnusualJob { job } => write!(f, "job {job} is not one the editor gives or takes away"),
             MoveError::Memory(err) => write!(f, "{err}"),
         }
     }
@@ -229,6 +259,12 @@ impl Coded for MoveError {
             MoveError::OutOfRange { .. } => "move.outOfRange",
             MoveError::Changed { .. } => "move.changed",
             MoveError::NotApplied { .. } => "move.notApplied",
+            MoveError::You => "staff.you",
+            MoveError::Unemployed => "staff.unemployed",
+            MoveError::StaffRole => "staff.role",
+            MoveError::NotInDepartment => "staff.notListed",
+            MoveError::DepartmentFull { .. } => "staff.noRoom",
+            MoveError::UnusualJob { .. } => "staff.job",
             MoveError::Memory(err) => err.code(),
         }
     }
@@ -247,6 +283,10 @@ impl Coded for MoveError {
             MoveError::Changed { address } | MoveError::NotApplied { address } => {
                 vec![("address", format!("{address:#x}"))]
             }
+            MoveError::DepartmentFull { department, staff } => {
+                vec![("department", (*department).to_owned()), ("staff", staff.to_string())]
+            }
+            MoveError::UnusualJob { job } => vec![("job", job.to_string())],
             MoveError::Memory(err) => err.params(),
             _ => Vec::new(),
         }
@@ -287,6 +327,11 @@ impl PointerList {
         (self.end - self.begin) / 8
     }
 
+    /// Where its first pointer is.
+    pub(crate) fn begin_address(&self) -> u64 {
+        self.begin
+    }
+
     pub(crate) fn elements(&self, process: &Process) -> Result<Vec<u64>, MoveError> {
         let bytes = process.read_bytes(self.begin, (self.end - self.begin) as usize)?;
         Ok(bytes.as_chunks::<8>().0.iter().map(|word| u64::from_le_bytes(*word)).collect())
@@ -294,7 +339,7 @@ impl PointerList {
 
     /// How many pointers its block holds: the capacity, or the whole block of the
     /// allocator when its size is known and nothing has been written past the capacity.
-    fn room(&self, process: &Process, heap: &HeapLayout) -> Result<u64, MoveError> {
+    pub(crate) fn room(&self, process: &Process, heap: &HeapLayout) -> Result<u64, MoveError> {
         let capacity = (self.capacity - self.begin) / 8;
         let Some(block) = heap.block_size(self.capacity - self.begin) else {
             return Ok(capacity);
@@ -307,7 +352,7 @@ impl PointerList {
 /// Out of `list`, where the player is at `index`: the players after him move up one, the
 /// list ends one earlier, and the slot it gave up is cleared. On the way the list repeats its
 /// last player for a moment; it never holds an empty slot.
-fn removal_patches(list: &PointerList, index: usize, elements: &[u64], patches: &mut Patches) {
+pub(crate) fn removal_patches(list: &PointerList, index: usize, elements: &[u64], patches: &mut Patches) {
     let last = elements.len() - 1;
     let bytes = |range: &[u64]| range.iter().flat_map(|e| e.to_le_bytes()).collect::<Vec<u8>>();
     patches.push(list.begin + index as u64 * 8, bytes(&elements[index..last]), bytes(&elements[index + 1..]));
@@ -515,7 +560,12 @@ impl Session {
     }
 
     /// The player `object` goes into the first free slot of `list`, then the list takes it in.
-    fn append_patches(&self, list: &PointerList, object: u64, patches: &mut Patches) -> Result<(), MoveError> {
+    pub(crate) fn append_patches(
+        &self,
+        list: &PointerList,
+        object: u64,
+        patches: &mut Patches,
+    ) -> Result<(), MoveError> {
         let slot = self.process.read_bytes(list.end, 8)?;
         patches.push(list.end, slot, object.to_le_bytes());
         let end = list.end + 8;

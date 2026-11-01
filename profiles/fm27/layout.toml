@@ -229,6 +229,11 @@ women = 0xB9              # u8: 0 men's club, 1 women's club
 teams = 0x18              # pointer to the club's team pointers; the first is the senior team
 info = 0x100              # info record pointer
 finance = 0x150           # finance record pointer
+# The club's staff by department, each a (begin, end, capacity) list of pointers. Read on macOS, whose
+# club layout is the same; a move checks the lists hold the member of staff before it writes.
+medical_staff = 0x60      # physios, sports scientists, the head of sports science, some fitness coaches
+coaching_staff = 0x78     # coaches, assistants, goalkeeping and fitness coaches, analysts, youth managers
+scouting_staff = 0x90     # scouts, the chief scout, recruitment analysts
 
 [club_info]
 season_tickets = 0xC0     # u32

@@ -696,6 +696,93 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
 }
 
 /** `undo_change`: writes the old value back unless the value has changed since. */
+// Staff: moves and jobs ---------------------------------------------------------------------------------------------
+
+/** The jobs the real `change_staff_job` gives, by contract code. */
+const STAFF_JOBS = [2, 20, 22, 26, 34, 60, 64, 12, 40, 48, 50, 14, 44, 58];
+
+/** What a member of staff's move or new job changed, by the change's id: his list row as it was. */
+const staffUndo = new Map<number, Pick<StaffSummary, "club" | "clubUid" | "job">>();
+
+/** The member of staff `uid`, checked as the real commands check him before a move or a new job. */
+function movableStaff(uid: number): StaffSummary {
+  const member = staff.find((s) => s.uid === uid);
+  if (!member) {
+    throw notFound("staff", uid);
+  }
+  if (member.isHuman) {
+    throw failure("staff.you", "this is you, the human manager");
+  }
+  if (member.clubUid === null) {
+    throw failure("staff.unemployed", "the member of staff has no club");
+  }
+  if (member.job === 16) {
+    const message =
+      "the club or one of its teams points at this member of staff directly, as a team does at its manager; the game moves him itself";
+    throw failure("staff.role", message);
+  }
+  return member;
+}
+
+/** `plan_staff_move`: the checks of the real command that the fixtures can have, with its messages. */
+function planStaffMove(uid: number, clubUid: number): MovePreview {
+  const member = movableStaff(uid);
+  const to = clubs.find((c) => c.uid === clubUid);
+  if (!to) {
+    throw notFound("club", clubUid);
+  }
+  if (member.clubUid === clubUid) {
+    throw failure("move.sameClub", "the player is at this club already");
+  }
+  if (to.women) {
+    throw failure("move.menAndWomen", "one club is a men's club and the other a women's club");
+  }
+  const from = clubs.find((c) => c.uid === member.clubUid)!;
+  return { from: { uid: from.uid, name: from.name }, to: { uid: to.uid, name: to.name } };
+}
+
+/** Logs a member of staff's move or new job, as the real commands do, keeping his row as it was for undoing it. */
+function logStaff(member: StaffSummary, field: string, old: number, value: number, moved?: LoggedChange["moved"]) {
+  const id = changes.length + 1;
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: member.name,
+    entity: "staff",
+    uid: member.uid,
+    field,
+    old,
+    new: value,
+    undoneAt: null,
+    batch: null,
+    ...(moved && { moved }),
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+function moveStaff(uid: number, clubUid: number): LoggedChange {
+  const preview = planStaffMove(uid, clubUid);
+  const member = staff.find((s) => s.uid === uid)!;
+  staffUndo.set(changes.length + 1, { club: member.club, clubUid: member.clubUid, job: member.job });
+  member.club = preview.to.name;
+  member.clubUid = preview.to.uid;
+  return logStaff(member, "club", preview.from.uid, preview.to.uid, { from: preview.from.name, to: preview.to.name });
+}
+
+function changeStaffJob(uid: number, job: number): LoggedChange {
+  const member = movableStaff(uid);
+  for (const code of [member.job, job]) {
+    if (code === null || !STAFF_JOBS.includes(code)) {
+      throw failure("staff.job", `job ${code} is not one the editor gives or takes away`, { job: code ?? 0 });
+    }
+  }
+  staffUndo.set(changes.length + 1, { club: member.club, clubUid: member.clubUid, job: member.job });
+  const old = member.job!;
+  member.job = job;
+  return logStaff(member, "contract.job", old, job);
+}
+
 function undoChange(id: number): LoggedChange {
   const entry = changes.find((c) => c.id === id);
   if (!entry) {
@@ -703,6 +790,12 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.undoneAt !== null) {
     throw failure("app.alreadyUndone", "This change has already been undone.");
+  }
+  const staffRow = entry.entity === "staff" ? staffUndo.get(entry.id) : undefined;
+  if (staffRow) {
+    Object.assign(staff.find((s) => s.uid === entry.uid)!, staffRow);
+    entry.undoneAt = Date.now();
+    return { ...entry };
   }
   if (entry.moved) {
     undoMove(entry);
@@ -1644,6 +1737,14 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return planMove(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms, args?.fee as number) as T;
     case "move_player":
       return movePlayer(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms, args?.fee as number) as T;
+    case "staff_jobs":
+      return [...STAFF_JOBS] as T;
+    case "plan_staff_move":
+      return planStaffMove(Number(args?.uid), Number(args?.club)) as T;
+    case "move_staff":
+      return moveStaff(Number(args?.uid), Number(args?.club)) as T;
+    case "change_staff_job":
+      return changeStaffJob(Number(args?.uid), Number(args?.job)) as T;
     case "plan_club_swap":
       return planSwap(Number(args?.uid), Number(args?.other)) as T;
     case "heal_player":

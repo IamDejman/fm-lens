@@ -182,6 +182,27 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
+    /// Move a member of staff to another club in the running game, in the departments he works in.
+    StaffMove {
+        /// The member of staff's id.
+        id: u32,
+        /// The UID of the club he joins.
+        club: u32,
+        /// Move him back afterwards and check it: tests a move without changing the save.
+        #[arg(long)]
+        restore: bool,
+    },
+    /// Give a member of staff another job at his club in the running game (a job code, see `staff`).
+    StaffJob {
+        /// The member of staff's id.
+        id: u32,
+        /// The new job's code: 2 coach, 12 physio, 14 scout, 20 assistant coach, 26 fitness coach, 34 goalkeeping coach,
+        /// 60 performance analyst, ...
+        job: u8,
+        /// Give him his old job back afterwards and check it.
+        #[arg(long)]
+        restore: bool,
+    },
     /// Show a player's current injuries, and with --heal heal them in the running game.
     Heal {
         /// The player's UID.
@@ -504,6 +525,8 @@ fn run(cli: Cli) -> Result<()> {
         Some(
             Command::Set { .. }
                 | Command::Move { .. }
+                | Command::StaffMove { .. }
+                | Command::StaffJob { .. }
                 | Command::Swap { .. }
                 | Command::Heal { heal: true, .. }
                 | Command::Captain { .. }
@@ -548,6 +571,12 @@ fn run(cli: Cli) -> Result<()> {
             let terms = MoveTerms { wage, expires };
             let session = Session::connect(process, ArraySource::ProfileFirst)?;
             move_player(&session, uid, club, terms, fee, restore, hold)
+        }
+        Command::StaffMove { id, club, restore } => {
+            staff_change(&Session::connect(process, ArraySource::ProfileFirst)?, id, StaffAction::Move(club), restore)
+        }
+        Command::StaffJob { id, job, restore } => {
+            staff_change(&Session::connect(process, ArraySource::ProfileFirst)?, id, StaffAction::Job(job), restore)
         }
         Command::Heal { uid, heal, restore, hold } => {
             let restore_after = restore.then_some(hold);
@@ -1984,6 +2013,47 @@ fn move_player(
         if !paid.is_empty() {
             println!("  fee taken back");
         }
+    }
+    Ok(())
+}
+
+/// What `staff_change` does: a move to the club with this UID, or a new job by its code.
+enum StaffAction {
+    Move(u32),
+    Job(u8),
+}
+
+fn staff_change(session: &Session, id: u32, action: StaffAction, restore: bool) -> Result<()> {
+    let staff = StaffIndex::new(session.staff()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let member = staff.get(id).with_context(|| format!("no member of staff with id {id}"))?;
+    let job = |code: u8| job_name(code).map_or_else(|| format!("job {code}"), str::to_owned);
+    let plan = match action {
+        StaffAction::Move(club) => {
+            let to = clubs.get(club).with_context(|| format!("no club with UID {club}"))?;
+            session.plan_staff_move(member, to)?
+        }
+        StaffAction::Job(code) => session.plan_staff_job(member, code)?,
+    };
+    let name = |uid: u32| clubs.get(uid).map_or("?", |c| c.name.as_str());
+    println!(
+        "{} (id {id}): {} -> {}, {} -> {}",
+        member.name,
+        name(plan.from_club),
+        name(plan.to_club),
+        job(plan.job.0),
+        job(plan.job.1)
+    );
+    let done = session.apply_staff_plan(&plan)?;
+    let now = |label: &str| -> Result<()> {
+        let read = session.staff()?.into_iter().find(|s| s.uid == id).context("the member of staff is gone")?;
+        println!("  {label} {} as {}", read.club.as_deref().unwrap_or("-"), read.job.map_or("-".to_owned(), job));
+        Ok(())
+    };
+    now("now at")?;
+    if restore {
+        session.undo_staff_change(&done)?;
+        now("back at")?;
     }
     Ok(())
 }

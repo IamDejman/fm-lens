@@ -56,6 +56,13 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
 
 const reload = "verileri yeniden okuyup tekrar deneyin";
 
+/** The departments of a club's staff, as `staff.noRoom` names them. */
+const STAFF_DEPARTMENTS: Partial<Record<string, string>> = {
+  medical: "sağlık ekibi",
+  coaching: "antrenör",
+  scouting: "gözlemci",
+};
+
 const errors: ErrorTexts = {
   "edit.unknownField": (p) => `Burada “${p.field}” adında düzenlenebilir bir alan yok.`,
   "edit.outOfRange": (p) => `${field(p.field)} için ${p.value} geçersiz: ${p.min} ile ${p.max} arasında olmalı.`,
@@ -88,6 +95,14 @@ const errors: ErrorTexts = {
   "move.changed": () => `Oyun bu belleği o zamandan beri değiştirmiş; ${reload}.`,
   "move.notApplied": () => "Belleğe yazıldı ama geri okunan farklı çıktı.",
   "heal.notInjured": () => "Oyuncunun iyileştirilecek bir sakatlığı yok.",
+  "staff.you": () => "Bu sizsiniz, yönettiğiniz teknik direktör.",
+  "staff.unemployed": () => "Bu personelin bir kulübü yok.",
+  "staff.role": () =>
+    "Kulüp ya da takımlarından biri bu personele doğrudan işaret ediyor (bir takımın teknik direktörü gibi); onu oyun kendisi taşır.",
+  "staff.notListed": () => "Kulübün personel listeleri onu olması gereken yerde tutmuyor.",
+  "staff.noRoom": (p) =>
+    `Kulübün ${STAFF_DEPARTMENTS[p.department] ?? p.department} listesinde bir kişiye daha yer yok (şu an ${p.staff}) ve düzenleyici listeyi büyütemez.`,
+  "staff.job": (p) => `Görev ${p.job}, düzenleyicinin verip aldığı görevlerden değil.`,
   "squad.noTeam": () => `Kulübün böyle bir takımı yok ya da takım doğrulanamadı; ${reload}.`,
   "captain.notInTeam": () => "Oyuncu bu takımda oynamıyor; kaptan ancak takımın kendi oyuncularından seçilebilir.",
   "captain.unchanged": () => "Oyuncu bu görevi zaten üstleniyor.",
@@ -325,6 +340,7 @@ export const tr: Strings = {
     "contract.squad_status": "Forma süresi",
     "contract.transfer_listed": "Transfer listesinde",
     "contract.loan_listed": "Kiralık listesinde",
+    "contract.job": "Görev",
     club: "Kulüp",
     injuries: "Sakatlıklar",
     captain: "Kaptan",
@@ -422,6 +438,11 @@ export const tr: Strings = {
     youTitle: "Bu kayıtta yönettiğiniz teknik direktör",
     id: "ID",
     job: "Görev",
+    changeJob: "Görevi değiştir",
+    changeJobTitle: "Bu personele oyunda kulübünde başka bir görev ver",
+    newJob: "Yeni görev",
+    applyJob: "Uygula",
+    cancelJob: "Vazgeç",
     unemployed: "İşsiz",
     coaching: "Antrenörlük",
     knowledge: "Bilgi",
@@ -986,6 +1007,15 @@ export const tr: Strings = {
 
     // What the dialog says about the swap
     swapContract: "Her oyuncu kendi sözleşmesini korur; maaşlar ve sözleşme bitişleri değişmez.",
+    staffButtonTitle: "Bu personeli oyunda başka bir kulübe taşı",
+    staffChooseClub: "Personelin taşınacağı kulübü seçin.",
+    staffContract: "Görevi, maaşı ve sözleşme bitişi aynı kalır; sözleşme oyundaki tarihle başlar.",
+    staffDoes: [
+      "Yeni kulübe, çalıştığı bölümlerde (sağlık, antrenörlük, gözlem) katılır",
+      "Görevi, maaşı ve sözleşme bitişi aynı kalır; sözleşme oyundaki tarihle başlar",
+      "Takımın kendisinin işaret ettiği teknik direktör gibi roller oyuna bırakılır",
+      "Değişiklikler bölümünde listelenir ve oradan geri alınabilir",
+    ],
     swapChooseClub: "Takas edilecek oyuncunun kulübünü seçin.",
     swapChoosePlayer: "Takas edilecek oyuncuyu seçin.",
     swapChecking: "Takas kontrol ediliyor…",

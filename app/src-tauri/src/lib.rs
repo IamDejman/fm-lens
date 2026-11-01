@@ -9,8 +9,9 @@ use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
     Entity, EntityArrays, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex,
     Healed, Kind, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid, Picture, Planned,
-    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, SearchIndex, Session, SessionError, Skipped,
-    StaffDetails, StaffFilter, StaffIndex, Target, find_game, nations, sort_players,
+    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, STAFF_JOBS, SearchIndex, Session,
+    SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, find_game, nations,
+    sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -206,6 +207,54 @@ impl Connection {
         logged
     }
 
+    /// Works out moving the member of staff `uid` to the club `club`.
+    fn plan_staff_move(&self, uid: u32, club: u32) -> Result<StaffPlan, Failure> {
+        let member = self.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
+        let to = self.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+        Ok(self.session.plan_staff_move(member, to)?)
+    }
+
+    /// Works out giving the member of staff `uid` the job `job` at his club.
+    fn plan_staff_job(&self, uid: u32, job: u8) -> Result<StaffPlan, Failure> {
+        let member = self.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
+        Ok(self.session.plan_staff_job(member, job)?)
+    }
+
+    /// Logs a member of staff's move, as a change of his `club`, or his new job, as a change of `contract.job`, and
+    /// brings his list row up to date.
+    fn log_staff(&mut self, done: StaffChange) -> LoggedChange {
+        let row = self.staff.get(done.member);
+        let (club, club_uid, job) = row.map_or((None, None, None), |s| (s.club.clone(), s.club_uid, s.job));
+        let name = row.map_or_else(String::new, |s| s.name.clone());
+        let moved = done.from_club != done.to_club;
+        let (from, to) = (self.club_name(done.from_club), self.club_name(done.to_club));
+        self.staff.update(done.member, |member| {
+            if moved {
+                member.club = Some(to.clone());
+                member.club_uid = Some(done.to_club);
+            }
+            member.job = Some(done.job.1);
+        });
+        let (field, old, new) = if moved {
+            ("club", i64::from(done.from_club), i64::from(done.to_club))
+        } else {
+            ("contract.job", i64::from(done.job.0), i64::from(done.job.1))
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
+            undone_at: None,
+            batch: None,
+            moved: moved.then_some(MovedClubs { from, to, with: None, fee: None }),
+            captaincy: None,
+            undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, job })),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Works out what the fee `fee` of moving the player from the club `from` to the club `to` does to their money:
     /// none for no fee.
     fn plan_fee(&self, from: u32, to: u32, fee: Option<i64>) -> Result<Option<FeePlan>, Failure> {
@@ -335,6 +384,14 @@ impl Connection {
                 }
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
+            Some(Undo::Staff(logged)) => {
+                self.session.undo_staff_change(&logged.done)?;
+                self.staff.update(logged.done.member, |member| {
+                    member.club = logged.club;
+                    member.club_uid = logged.club_uid;
+                    member.job = logged.job;
+                });
+            }
             Some(Undo::Captain(captaincy)) => self.session.undo_captain(&captaincy)?,
             None => {
                 let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
@@ -453,6 +510,16 @@ enum Undo {
     Move(LoggedMove),
     Heal(Healed),
     Captain(CaptainSet),
+    Staff(LoggedStaff),
+}
+
+/// A member of staff's move or new job as the log keeps it: the writes to undo, and what his list row said before.
+#[derive(Clone)]
+struct LoggedStaff {
+    done: StaffChange,
+    club: Option<String>,
+    club_uid: Option<u32>,
+    job: Option<u8>,
 }
 
 #[derive(Clone, Serialize)]
@@ -1162,6 +1229,44 @@ fn move_player(
     Ok(connection.log_move(done, terms, paid, fee_plan.map(|plan| plan.fee)))
 }
 
+/// Checks that the member of staff `uid` can move to the club `club`, and names the clubs; the error says why he
+/// cannot. Nothing is written.
+#[tauri::command]
+fn plan_staff_move(state: State<'_, AppState>, uid: u32, club: u32) -> Result<MovePreview, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let plan = connection.plan_staff_move(uid, club)?;
+    let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
+    Ok(MovePreview { from: name(plan.from_club), to: name(plan.to_club), fee: None })
+}
+
+/// Moves the member of staff `uid` to the club `club`, in the departments he works in, worked out again from the game
+/// as it is now, and logs the move.
+#[tauri::command]
+fn move_staff(state: State<'_, AppState>, uid: u32, club: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let plan = connection.plan_staff_move(uid, club)?;
+    let done = connection.session.apply_staff_plan(&plan)?;
+    Ok(connection.log_staff(done))
+}
+
+/// Gives the member of staff `uid` the job `job` (a contract code) at his club, and logs it.
+#[tauri::command]
+fn change_staff_job(state: State<'_, AppState>, uid: u32, job: u8) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let plan = connection.plan_staff_job(uid, job)?;
+    let done = connection.session.apply_staff_plan(&plan)?;
+    Ok(connection.log_staff(done))
+}
+
+/// The jobs `change_staff_job` gives, by contract code.
+#[tauri::command]
+fn staff_jobs() -> Vec<u8> {
+    STAFF_JOBS.iter().map(|&(code, _)| code).collect()
+}
+
 /// Checks that the players `uid` and `other` can swap clubs, and names the clubs (`from` is
 /// the club of `uid`); the error says why they cannot. Nothing is written.
 #[tauri::command]
@@ -1479,6 +1584,10 @@ pub fn run() {
             move_player,
             plan_club_swap,
             swap_players,
+            plan_staff_move,
+            move_staff,
+            change_staff_job,
+            staff_jobs,
             heal_player,
             club_squads,
             set_captain,

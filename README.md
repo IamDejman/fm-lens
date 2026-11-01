@@ -35,6 +35,8 @@ How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
 >   list selects, and the lists filter by any attribute (finishing 15 or more, say)
 >   and by the transfer and loan lists. It is previewed before it is applied and
 >   undone as one batch.
+> - **Staff:** a member of staff can move to another club, in the departments they
+>   work in, or take another job at their club; a team's manager is left to the game.
 > - **Transfers:** a player can move to another club's senior team, on his contract
 >   or new terms, for a fee that the buying club pays the selling one, or swap clubs
 >   with another player. Free agents, loans
