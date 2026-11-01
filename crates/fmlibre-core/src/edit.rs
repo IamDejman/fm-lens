@@ -46,7 +46,10 @@ pub enum Kind {
     I8,
     U16,
     I16,
+    /// An amount of money, in pounds.
     I32,
+    /// A count, such as a stadium's capacity.
+    U32,
     /// A `u16` day of the year (flags above bit 8) and a `u16` year. Values are numbers
     /// like 20290630; 0 is a date the game has not set.
     Date,
@@ -62,7 +65,7 @@ impl Kind {
         match self {
             Kind::U8 | Kind::I8 | Kind::Flag => 1,
             Kind::U16 | Kind::I16 => 2,
-            Kind::I32 | Kind::Date => 4,
+            Kind::I32 | Kind::U32 | Kind::Date => 4,
             Kind::Pointer => 8,
         }
     }
@@ -76,6 +79,7 @@ impl Kind {
             Kind::U16 => i64::from(u16_at(0)),
             Kind::I16 => i64::from(u16_at(0) as i16),
             Kind::I32 => i64::from(i32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
+            Kind::U32 => i64::from(u32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
             Kind::Date => FmDate::from_raw(u16_at(0), u16_at(2)).map_or(0, FmDate::to_number),
             Kind::Pointer => i64::from_le_bytes(bytes[..8].try_into().expect("8 bytes")),
         }
@@ -91,6 +95,7 @@ impl Kind {
             Kind::U16 => u16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I16 => i16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I32 => i32::try_from(value).expect(FITS).to_le_bytes().to_vec(),
+            Kind::U32 => u32::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::Date => {
                 let date = FmDate::from_number(value).expect(FITS);
                 let flags = u16::from_le_bytes([old[0], old[1]]) & !0x1FF;
@@ -358,7 +363,7 @@ fn player_mood_fields(layout: &Layout) -> [Field; 4] {
         mood("contract.playing_time_happiness", c.playing_time_happiness),
         // How many reasons to be unhappy his record lists: only ever set to none, as FMRTE's "Remove all" does. The
         // entries stay where they are, so an undo lists them again.
-        Field::new(Entity::Player, "contract.unhappiness", 0, Kind::I32, 0..=0)
+        Field::new(Entity::Player, "contract.unhappiness", 0, Kind::U32, 0..=0)
             .plausible(0..=crate::details::MOST_CONCERNS as i64)
             .in_record(Place::Concerns),
     ]
@@ -474,7 +479,7 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
     // Capacities, as stored. The biggest stadium of the test save held 115,109.
     if let Some(s) = &layout.stadium {
         let seats = |key: &str, offset: u64| {
-            field(key, offset, Kind::I32, 0..=250_000, Place::Stadium).plausible(0..=i64::from(i32::MAX))
+            field(key, offset, Kind::U32, 0..=250_000, Place::Stadium).plausible(0..=i64::from(i32::MAX))
         };
         fields.extend([
             seats("stadium.capacity", s.capacity),
@@ -1024,9 +1029,14 @@ mod tests {
     #[test]
     fn kinds_round_trip() {
         let old = [0u8; 4];
-        for (kind, value) in
-            [(Kind::U8, 200), (Kind::U16, 10_000), (Kind::I16, -95), (Kind::I16, 200), (Kind::I32, -1_500_000)]
-        {
+        for (kind, value) in [
+            (Kind::U8, 200),
+            (Kind::U16, 10_000),
+            (Kind::I16, -95),
+            (Kind::I16, 200),
+            (Kind::I32, -1_500_000),
+            (Kind::U32, 250_000),
+        ] {
             assert_eq!(kind.decode(&kind.encode(value, &old)), value);
             assert_eq!(kind.encode(value, &old).len(), kind.size());
         }
@@ -1124,6 +1134,8 @@ mod tests {
         assert_eq!(clubs.len(), 10 + if layout.stadium.is_some() { 4 } else { 0 });
         if layout.stadium.is_some() {
             assert_eq!(key(&clubs, "stadium.capacity").place, Place::Stadium);
+            // A count of seats, not money, which the app shows with a pound sign.
+            assert_eq!(key(&clubs, "stadium.capacity").kind, Kind::U32);
         }
 
         // Before the person block: never shifted. In it: shifted. Other records: never.

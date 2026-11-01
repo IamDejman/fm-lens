@@ -660,7 +660,7 @@ function fieldTable(entity: Entity): EditField[] {
     field("contract.loyalty_bonus", "i32", 0, 10_000_000),
     field("contract.happiness", "i8", -100, 100),
     field("contract.playing_time_happiness", "i8", -100, 100),
-    field("contract.unhappiness", "i32", 0, 0),
+    field("contract.unhappiness", "u32", 0, 0),
     ...Array.from({ length: 64 }, (_, bit) => field(`trait.${bit}`, "flag", 0, 1)),
   ];
   const common = [
@@ -678,7 +678,7 @@ function fieldTable(entity: Entity): EditField[] {
       field("finance.transfer_budget", "i32", 0, 2_000_000_000),
       field("finance.wage_budget", "i32", 0, 100_000_000),
       field("finance.total_wage_budget", "i32", 0, 100_000_000),
-      ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "i32", 0, 250_000)),
+      ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "u32", 0, 250_000)),
     ];
   }
   if (entity === "player") {
