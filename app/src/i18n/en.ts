@@ -745,6 +745,21 @@ export const en = {
     noneHint: "Logo and face packs go in the FM27 graphics folder.",
   },
 
+  /** New versions: the notice under the masthead, and the version and Check for updates at the foot of the window. */
+  update: {
+    /** The notice's headline, and what a check by hand found. */
+    available: (version: string) => `FMLibreEditor ${version} is available`,
+    youHave: (version: string) => `You have ${version}.`,
+    /** Opens the release's page in the browser. */
+    download: "Download",
+    /** Hides the notice until the app starts again. */
+    later: "Later",
+    check: "Check for updates",
+    checking: "Checking for updates…",
+    upToDate: "You have the latest version.",
+    failed: "Could not check for updates.",
+  },
+
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
   edit: {
     /** A nation field's value whose name the app has not read: one no one in the lists belongs to. */
