@@ -100,6 +100,8 @@ function sortValue(player: SquadPlayer, by: SquadSort): string | number | null {
       return player.condition;
     case "matchSharpness":
       return player.matchSharpness;
+    case "jadedness":
+      return player.jadedness;
     case "morale":
       return player.morale;
   }
@@ -333,6 +335,7 @@ export function SquadTab({ clubUid, version, panel }: SquadTabProps) {
                   <SortHeader by="potentialAbility" order={order} onSort={sortBy} className="num" />
                   <SortHeader by="condition" order={order} onSort={sortBy} className="num" />
                   <SortHeader by="matchSharpness" order={order} onSort={sortBy} className="num" />
+                  <SortHeader by="jadedness" order={order} onSort={sortBy} className="num" />
                   <SortHeader by="morale" order={order} onSort={sortBy} className="num" />
                   <th className="col-actions">
                     <span className="sr-only">{text.columns.actions}</span>
@@ -604,6 +607,7 @@ function SquadRow({ player, role, editable, busy, onCaptain }: SquadRowProps) {
       </td>
       <td className="num">{percentText(player.condition)}</td>
       <td className="num">{percentText(player.matchSharpness)}</td>
+      <td className="num">{formatNumber(player.jadedness)}</td>
       <td className="num">{profileText.morale(player.morale)}</td>
       <td className="col-actions">
         {player.playsHere && (

@@ -4,7 +4,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { EditableValue } from "./EditControls";
 import { healPlayer, liftBans, wholePercent } from "./editing";
-import { describeError, formatDate, formatDateRange, formatPercent } from "./format";
+import { describeError, formatDate, formatDateRange, formatNumber, formatPercent } from "./format";
 import { appText, fieldLabel, profileText } from "./labels";
 import { Fact } from "./ProfileParts";
 import type { Ban, Injury, PlayerDetails } from "./types";
@@ -50,6 +50,9 @@ export function MedicalGroup({ details }: { details: PlayerDetails }) {
         </Fact>
         <Fact label={fieldLabel("player", "match_sharpness")}>
           <EditableValue field="match_sharpness">{percentText(details.matchSharpness)}</EditableValue>
+        </Fact>
+        <Fact label={fieldLabel("player", "jadedness")} title={profileText.jadednessTitle}>
+          <EditableValue field="jadedness">{formatNumber(details.jadedness)}</EditableValue>
         </Fact>
         <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
           <EditableValue field="morale">{profileText.morale(details.morale)}</EditableValue>

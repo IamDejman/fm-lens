@@ -31,6 +31,11 @@ height = 0x22E            # u16, centimetres
 # ("gaining match fitness"); both "fresh" at 8980 and 10000 condition.
 match_sharpness = 0x258   # u16; the game keeps it at 3500 or above
 condition = 0x25C         # u16, the energy the game shows
+# i16, how worn out he is by playing, which rest takes away; FMRTE calls it jadedness. Found from
+# FMRTE's readings on the Game Pass save (27 July 2026): Kylian Mbappé -500, Arda Güler -274,
+# Amad -315. The game keeps it at -500 or above: 1,587 players, rested over the summer, sit at
+# -500; the most on that save, early in the season, was 252.
+jadedness = 0x25A
 # u8, 1..20: morale, which the game shows as overall happiness ("Genel Mutluluk"). Arda Güler
 # read "Memnun" (content) at 10, "Biraz Mutlu" (slightly happy) at 11 and "Aşırı Mutlu"
 # (extremely happy) at 20; FM Live Editor 27's morale words for 15 Manchester United players

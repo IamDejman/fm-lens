@@ -224,9 +224,11 @@ function details(player: PlayerSummary): PlayerDetails {
           }),
         }
       : null,
-    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more).
+    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more), and jadedness
+    // from -500, fully rested, to a little above 0 early in a season.
     condition: Math.round(7000 + next() * 3000),
     matchSharpness: Math.round(3500 + next() * 6500),
+    jadedness: Math.round(-500 + next() * 600),
     injuries: injuriesOf(player.uid),
     bans: bansOf(player.uid),
     ties: tiesOf(player),
@@ -527,6 +529,7 @@ function fieldTable(entity: Entity): EditField[] {
       field("international.u21_goals", "u8", 0, 255),
       field("condition", "u16", 0, 10_000, "percent"),
       field("match_sharpness", "u16", 3_500, 10_000, "percent"),
+      field("jadedness", "i16", -500, 1000),
       field("morale", "u8", 1, 20),
       ...ATTRIBUTES.map((key) => field(`attribute.${key}`, "u8", 1, 100, "attribute")),
       // The game no longer plays a sweeper, so the real table leaves it out.
@@ -597,6 +600,9 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "match_sharpness":
         (d as PlayerDetails).matchSharpness = value;
+        break;
+      case "jadedness":
+        (d as PlayerDetails).jadedness = value;
         break;
       case "morale":
         (d as PlayerDetails).morale = value;
@@ -694,6 +700,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.condition;
       case "match_sharpness":
         return person.matchSharpness;
+      case "jadedness":
+        return (person as PlayerDetails).jadedness;
       case "morale":
         return person.morale;
       case "reputation":
@@ -1387,6 +1395,7 @@ function clubSquads(clubUid: number): ClubTeam[] {
         loan: uid === team.out ? "out" : null,
         condition: d.condition,
         matchSharpness: d.matchSharpness,
+        jadedness: d.jadedness,
         morale: d.morale,
         injuries: d.injuries.length,
         bans: d.bans.length,
@@ -1485,7 +1494,7 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     action === "inspire"
       ? [["morale", 20]]
       : action === "refresh"
-        ? [["condition", 10_000], ["match_sharpness", 10_000]]
+        ? [["condition", 10_000], ["match_sharpness", 10_000], ["jadedness", -500]]
         : ATTRIBUTES.map(best);
   for (const player of team.players) {
     const now = currentValues("player", player.uid);

@@ -47,9 +47,10 @@ pub struct SquadMember {
     /// team of the club, or for another club on loan.
     pub plays_here: bool,
     pub loan: Option<Loan>,
-    /// As stored: energy and match sharpness 0–10000, morale 1–20.
+    /// As stored: energy and match sharpness 0–10000, jadedness from -500 (rested), morale 1–20.
     pub condition: u16,
     pub match_sharpness: u16,
+    pub jadedness: i16,
     pub morale: u8,
     /// How many current injuries he has.
     pub injuries: usize,
@@ -295,6 +296,7 @@ impl Session {
             loan,
             condition: u16_at(p.condition),
             match_sharpness: u16_at(p.match_sharpness),
+            jadedness: u16_at(p.jadedness) as i16,
             morale: buf[at(p.morale)],
             injuries: self.injury_count(player),
             bans: self.ban_count(player),

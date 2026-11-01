@@ -340,6 +340,7 @@ export const tr: Strings = {
     "international.u21_goals": "U21 gol",
     condition: "Enerji",
     match_sharpness: "Maç kondisyonu",
+    jadedness: "Yorgunluk",
     morale: "Moral",
     "contract.wage": "Haftalık maaş",
     "contract.expires": "Sözleşme bitişi",
@@ -437,6 +438,7 @@ export const tr: Strings = {
     // Medical
     morale: (value) => `${value} / 20`,
     moraleTitle: "Oyun morali Genel Mutluluk olarak gösterir: 10'da Memnun, 11'de Biraz Mutlu, 15 ve 20'de Aşırı Mutlu",
+    jadednessTitle: "Oyuncunun maç oynamaktan ne kadar yıprandığı, dinlenince azalır: -500 tamamen dinlenmiş demektir, değer yükseldikçe dinlenmeye daha çok ihtiyaç duyar",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
@@ -1159,7 +1161,7 @@ export const tr: Strings = {
     inspireAll: "Hepsine moral ver",
     inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla",
     refreshAll: "Hepsini dinlendir",
-    refreshAllTitle: "Bu takımdaki her oyuncunun enerjisini ve maç kondisyonunu %100'e ayarla",
+    refreshAllTitle: "Bu takımdaki her oyuncunun enerjisini ve maç kondisyonunu %100'e ayarla, onları tamamen dinlendir (yorgunluk -500)",
     maxAll: "Özellikleri tamamla",
     maxAllTitle:
       "Bu takımdaki her oyuncunun bütün özelliklerini en iyiye çıkar: 20; sakatlık eğilimi ve sertlik için 1",
@@ -1195,6 +1197,7 @@ export const tr: Strings = {
       potentialAbility: "PY",
       condition: "Enerji",
       matchSharpness: "Maç kond.",
+      jadedness: "Yorgunluk",
       morale: "Moral",
       actions: "Kaptanlık",
     } satisfies Record<SquadSort | "actions", string>,
@@ -1208,6 +1211,7 @@ export const tr: Strings = {
       potentialAbility: "potansiyel yetenek",
       condition: "enerji",
       matchSharpness: "maç kondisyonu",
+      jadedness: "yorgunluk",
       morale: "moral",
     } satisfies Record<SquadSort, string>,
 

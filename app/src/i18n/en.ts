@@ -280,6 +280,7 @@ export const en = {
     // What the game changes every day.
     condition: "Energy",
     match_sharpness: "Match sharpness",
+    jadedness: "Jadedness",
     morale: "Morale",
     "contract.wage": "Wage per week",
     "contract.expires": "Contract end",
@@ -390,6 +391,8 @@ export const en = {
     morale: (value: number) => `${value} / 20`,
     /** Hover text of his morale: the game shows it as his overall happiness. */
     moraleTitle: "The game shows morale as the player's overall happiness: content at 10, slightly happy at 11, extremely happy at 15 and 20",
+    /** Hover text of jadedness, which the profile shows as stored. */
+    jadednessTitle: "How worn out the player is by playing, which rest takes away: -500 is fully rested, and the higher it is, the more he needs a rest",
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
@@ -1311,7 +1314,7 @@ export const en = {
     inspireAll: "Inspire all",
     inspireAllTitle: "Set the morale of every player in this team to 20, the highest",
     refreshAll: "Refresh all",
-    refreshAllTitle: "Set the energy and match sharpness of every player in this team to 100%",
+    refreshAllTitle: "Set the energy and match sharpness of every player in this team to 100%, and rest them fully (jadedness -500)",
     maxAll: "Max attributes",
     maxAllTitle:
       "Set every attribute of every player in this team to its best: 20, and 1 for injury proneness and dirtiness",
@@ -1354,6 +1357,7 @@ export const en = {
       potentialAbility: "PA",
       condition: "Energy",
       matchSharpness: "Sharpness",
+      jadedness: "Jaded.",
       morale: "Morale",
       /** The last column has no heading but this one, for assistive technology: it holds the captaincy menus. */
       actions: "Captaincy",
@@ -1368,6 +1372,7 @@ export const en = {
       potentialAbility: "potential ability",
       condition: "energy",
       matchSharpness: "match sharpness",
+      jadedness: "jadedness",
       morale: "morale",
     } satisfies Record<SquadSort, string>,
 
