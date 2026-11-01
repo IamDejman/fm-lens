@@ -4,6 +4,7 @@ import { call } from "./api";
 import { EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
 import { formatDate, formatNumber, formatPounds } from "./format";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
+import { PanelResizer, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
 import { SessionContext, useEditableField, type ProfileEditing } from "./useProfileEditing";
 
@@ -92,6 +93,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
   const { side, actions, tabs, wide, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
+  const panelWidth = usePanelWidth(wide ? "wide" : "profile");
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -111,7 +113,9 @@ export function ProfileFrame(props: ProfileFrameProps) {
         role="dialog"
         aria-label={name}
         aria-busy={!loaded}
+        style={panelWidth.style}
       >
+        <PanelResizer panelWidth={panelWidth} />
         <header className="profile-head">
           {picture}
           <div className="profile-id">

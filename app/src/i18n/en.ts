@@ -425,6 +425,9 @@ export const en = {
   profile: {
     close: "Close profile",
     loading: "Loading profile…",
+    /** The handle on the left edge of the panel. */
+    resize: "Resize the profile panel",
+    resizeHint: "Drag to make the panel wider or narrower; double-click to reset it",
     /** Shown where a value is missing. */
     none: "—",
 

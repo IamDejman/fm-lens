@@ -1585,6 +1585,7 @@ input::placeholder {
 }
 
 .profile {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 0 1 560px;
@@ -1599,6 +1600,73 @@ input::placeholder {
    more than its minimum. Where the window is narrower the table scrolls in its box. */
 .profile.wide {
   flex-basis: 880px;
+}
+
+/* The left edge of a profile is a handle (see PanelResizer): drag it to make the panel wider, the list narrower. A
+   short grip marks it at mid-height; under the pointer, while dragged and when focused, the whole edge takes the
+   link colour. The handle is wider than the rule, so it is easy to catch. */
+.panel-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  z-index: 2;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.panel-resizer::before,
+.panel-resizer::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  width: 1px;
+}
+
+/* The edge itself, drawn over the panel's own border while it is lit. */
+.panel-resizer::after {
+  top: 0;
+  bottom: 0;
+  transition: background-color 120ms, box-shadow 120ms;
+}
+
+.panel-resizer::before {
+  top: 50%;
+  left: 1px;
+  width: 5px;
+  height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background: var(--panel);
+  transform: translateY(-50%);
+  transition: border-color 120ms, background-color 120ms;
+}
+
+.panel-resizer:hover::after,
+.panel-resizer.dragging::after,
+.panel-resizer:focus-visible::after {
+  background: var(--accent-text);
+  box-shadow: 0 0 0 1px var(--accent-text);
+}
+
+.panel-resizer:hover::before,
+.panel-resizer.dragging::before,
+.panel-resizer:focus-visible::before {
+  z-index: 1;
+  border-color: var(--accent-text);
+  background: var(--accent-text);
+}
+
+.panel-resizer:focus-visible {
+  outline: none;
+}
+
+/* While the edge is dragged the pointer keeps its shape over the list and the panel, and no text is selected. */
+:root:has(.panel-resizer.dragging),
+:root:has(.panel-resizer.dragging) * {
+  cursor: col-resize !important;
+  user-select: none;
 }
 
 /* The head of a profile, as FM's: the name large, what he is under it, his abilities and the actions at the right. */
@@ -1720,10 +1788,12 @@ input::placeholder {
   font-size: 24px;
 }
 
+/* The body is the container the layout of a profile follows as the panel is made wider (see `.profile-pair`). */
 .profile-body {
   flex: 1;
   min-height: 0;
   padding: 16px;
+  container: profile / inline-size;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -1773,6 +1843,20 @@ input::placeholder {
 .profile-stack {
   display: grid;
   gap: 16px;
+}
+
+/* Two blocks of a profile, such as the attributes and the ratings under them, that stand one over the other and side by
+   side once the panel is made wide enough for both (see PanelResizer). */
+.profile-pair {
+  display: grid;
+  gap: 22px 28px;
+  align-items: start;
+}
+
+@container profile (min-width: 1080px) {
+  .profile-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* A group's name heads it as FM heads a panel: a ruled strip of small capitals over the rows. */

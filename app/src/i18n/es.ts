@@ -72,6 +72,97 @@ const STAFF_DEPARTMENTS: Partial<Record<string, string>> = {
   scouting: "de ojeadores",
 };
 
+/** The kinds of contract clauses and bonuses, by the codes contracts hold them as (see `en.ts`). */
+const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
+  0: "Cláusula de rescisión por traspaso mínimo",
+  1: "Cláusula de rescisión por descenso",
+  3: "Aumento salarial anual",
+  10: "Prima por objetivo de goles en la temporada",
+  15: "Rebaja salarial por descenso de primera división",
+  19: "Salario tras alcanzar partidos internacionales",
+  22: "Ampliación opcional del contrato por parte del club",
+  27: "Cláusula de rescisión por traspaso mínimo (clubes en la Copa de Campeones)",
+  32: "Prima por partido jugado",
+  33: "Prima por gol",
+  34: "Prima por portería a cero",
+  38: "Prima por suplente no utilizado",
+  39: "Prima por asistencia",
+  40: "Prima por objetivo de asistencias en la temporada",
+};
+
+/** Reasons to be unhappy, by the codes the game keeps them as (see `en.ts`). */
+const CONCERN_MOTIVES_ES: Partial<Record<number, string>> = {
+  596: "Excluido de la lista de una competición",
+  808: "Cree que un compañero ha recibido un trato injusto",
+  926: "No cree que un compañero merezca los minutos que quiere",
+};
+
+/** Players' traits (preferred moves), by their bit in the game's mask (see `en.ts`). */
+const TRAIT_NAMES_ES: readonly string[] = [
+  "Conduce el balón por la izquierda",
+  "Conduce el balón por la derecha",
+  "Conduce el balón por el centro",
+  "Se mete en el área rival",
+  "Se desmarca a los espacios",
+  "Sube al ataque siempre que puede",
+  "Juega pases cortos y sencillos",
+  "Intenta pases definitivos a menudo",
+  "Dispara desde lejos",
+  "Dispara con potencia",
+  "Coloca los disparos",
+  "Golpea con efecto",
+  "Le gusta regatear al portero",
+  "Le gusta romper el fuera de juego",
+  "Usa el exterior del pie",
+  "Marca de cerca al rival",
+  "Provoca a los rivales",
+  "Protesta a los árbitros",
+  "Juega de espaldas a la portería",
+  "Baja a recibir el balón",
+  "Hace paredes",
+  "Le gusta hacer vaselinas al portero",
+  "Marca el ritmo del juego",
+  "Intenta chilenas",
+  "Busca el pase antes que el disparo",
+  "No juega balones al hueco",
+  "Detiene el juego",
+  "Se pasa el balón por delante del rival",
+  "Se pasa el balón a la derecha antes de regatear",
+  "Se pasa el balón a la izquierda antes de regatear",
+  "Se recrea con el balón",
+  "Llega tarde al área rival",
+  "Intenta salir jugando de los apuros",
+  "Se queda siempre atrás",
+  "Evita usar la pierna mala",
+  "Intenta jugadas de fantasía",
+  "Intenta faltas lejanas",
+  "Se lanza al suelo en las entradas",
+  "No se lanza al suelo en las entradas",
+  "Recorta hacia dentro",
+  "Se pega a la banda",
+  "Anima al público",
+  "Intenta disparos al primer toque",
+  "Intenta pases largos",
+  "Le gusta recibir al pie",
+  "Lanza las faltas con potencia",
+  "Le gusta regatear una y otra vez",
+  "Le gusta cambiar el juego a la otra banda",
+  "Se retirará en lo más alto",
+  "Jugará al fútbol tanto tiempo como pueda",
+  "Tiene un saque de banda largo y tenso",
+  "Conduce el balón a menudo",
+  "Conduce el balón pocas veces",
+  "Intenta mejorar la pierna mala",
+  "Delantero de referencia estático",
+  "Usa el saque de banda largo para iniciar contraataques",
+  "Evita los disparos lejanos",
+  "Recorta hacia dentro desde la banda izquierda",
+  "Recorta hacia dentro desde la banda derecha",
+  "Centra pronto",
+  "Saca el balón jugado desde la defensa",
+  "Juega el balón con los pies",
+];
+
 const errors: ErrorTexts = {
   "edit.unknownField": (p) => `Aquí no hay ningún campo editable llamado «${p.field}».`,
   "edit.outOfRange": (p) => `${p.value} no es un valor válido para ${field(p.field)}: admite de ${p.min} a ${p.max}.`,
@@ -107,15 +198,6 @@ const errors: ErrorTexts = {
   "move.notApplied": () => "Se escribió en la memoria, pero al releerla dio otra cosa.",
   "heal.notInjured": () => "El jugador no tiene ninguna lesión que curar.",
   "ban.notBanned": () => "El jugador no tiene ninguna sanción que levantar.",
-  "retirement.unknown": () => "El editor no encuentra las retiradas planeadas en esta versión del juego.",
-  "retirement.none": () => "El juego no ha planeado la retirada de este jugador y él ya quiere seguir jugando.",
-  "clause.noContract": () => "El jugador no tiene contrato.",
-  "clause.missing": () => `Esa cláusula ya no está en el contrato; ${reload}.`,
-  "clause.notInClause": (p) =>
-    `Esta cláusula no tiene ${p.field === "clause.amount" ? "importe" : "condición"} que cambiar.`,
-  "clause.same": () => "El contrato ya tiene eso.",
-  "clause.noRoom": () =>
-    "La lista de cláusulas del contrato no tiene sitio y el editor no puede ampliarla; cambia una cláusula en su lugar.",
   "relation.missing": () => `Esa nacionalidad o formación ya no está en la lista del jugador; ${reload}.`,
   "relation.noRoom": () =>
     "La lista del jugador no tiene sitio y el editor no puede ampliarla; cambia una de sus entradas en su lugar.",
@@ -180,97 +262,6 @@ const errors: ErrorTexts = {
     `Hay ${p.count} resultados. Para una edición masiva, acota la búsqueda o los filtros a ${p.limit} como máximo.`,
   "mass.outOfDate": () => "Esta vista previa está desfasada. Vuelve a generar la vista previa de la edición masiva.",
 };
-
-/** The kinds of contract clauses and bonuses, by the codes contracts hold them as. */
-const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
-  0: "Cláusula de rescisión",
-  1: "Cláusula de rescisión por descenso",
-  3: "Aumento salarial anual",
-  10: "Prima por objetivo de goles en la temporada",
-  15: "Rebaja salarial por descenso de Primera",
-  19: "Aumento salarial al alcanzar partidos internacionales",
-  22: "Ampliación opcional del contrato por el club",
-  27: "Cláusula de rescisión (clubes en la Copa de Campeones)",
-  32: "Prima por partido jugado",
-  33: "Prima por gol",
-  34: "Prima por portería a cero",
-  38: "Prima por suplente no utilizado",
-  39: "Prima por asistencia",
-  40: "Prima por objetivo de asistencias en la temporada",
-};
-
-/** Reasons to be unhappy, by the codes the game keeps them as. */
-const CONCERN_MOTIVES_ES: Partial<Record<number, string>> = {
-  596: "Fuera de la lista de una competición",
-  808: "Cree que un compañero ha recibido un trato injusto",
-  926: "No cree que un compañero merezca los minutos que quiere",
-};
-
-/** Players' traits (preferred moves), by their bit in the game's mask. */
-const TRAIT_NAMES_ES: readonly string[] = [
-  "Avanza con el balón por la izquierda",
-  "Avanza con el balón por la derecha",
-  "Avanza con el balón por el centro",
-  "Se mete en el área rival",
-  "Se desmarca hacia los pasillos",
-  "Se incorpora al ataque siempre que puede",
-  "Da pases cortos y sencillos",
-  "Intenta a menudo pases decisivos",
-  "Dispara de lejos",
-  "Dispara con potencia",
-  "Coloca los disparos",
-  "Golpea con rosca",
-  "Le gusta regatear al portero",
-  "Le gusta intentar romper el fuera de juego",
-  "Usa el exterior del pie",
-  "Marca al rival de cerca",
-  "Provoca a los rivales",
-  "Discute con los árbitros",
-  "Juega de espaldas a la portería",
-  "Baja a recibir el balón",
-  "Hace paredes",
-  "Le gusta vaselinear al portero",
-  "Marca el ritmo",
-  "Intenta chilenas",
-  "Busca el pase en vez de intentar marcar",
-  "No da pases al hueco",
-  "Detiene el juego",
-  "Se adelanta el balón para superar al rival",
-  "Se pasa el balón a la derecha antes de regatear",
-  "Se pasa el balón a la izquierda antes de regatear",
-  "Retiene el balón",
-  "Llega tarde al área rival",
-  "Intenta salir jugando de los apuros",
-  "Se queda siempre atrás",
-  "Evita usar su pie malo",
-  "Intenta filigranas",
-  "Intenta faltas lejanas",
-  "Se lanza a las entradas",
-  "No se lanza a las entradas",
-  "Se va hacia dentro",
-  "Se pega a la banda",
-  "Enardece al público",
-  "Dispara de primeras",
-  "Intenta pases largos",
-  "Le gusta recibir al pie",
-  "Lanza las faltas con potencia",
-  "Le gusta regatear una y otra vez",
-  "Le gusta cambiar el juego de banda",
-  "Se retirará en lo más alto",
-  "Jugará al fútbol tanto como pueda",
-  "Tiene un saque de banda largo y tenso",
-  "Conduce el balón a menudo",
-  "Rara vez conduce el balón",
-  "Intenta mejorar su pie malo",
-  "Delantero de referencia estático",
-  "Saca en largo para iniciar contraataques",
-  "Evita los disparos lejanos",
-  "Se va hacia dentro desde la banda izquierda",
-  "Se va hacia dentro desde la banda derecha",
-  "Centra pronto",
-  "Saca el balón desde la defensa",
-  "Juega el balón con los pies",
-];
 
 export const es: Strings = {
   attributes: {
@@ -464,7 +455,7 @@ export const es: Strings = {
     "contract.wage": "Salario semanal",
     "contract.loyalty_bonus": "Prima de fidelidad semanal",
     "contract.happiness": "Felicidad",
-    "contract.playing_time_happiness": "Felicidad con sus minutos",
+    "contract.playing_time_happiness": "Felicidad con los minutos",
     "contract.unhappiness": "Motivos de descontento",
     "contract.expires": "Fin de contrato",
     "contract.squad_number": "Dorsal",
@@ -503,6 +494,8 @@ export const es: Strings = {
   profile: {
     close: "Cerrar perfil",
     loading: "Cargando perfil…",
+    resize: "Cambiar el ancho del panel del perfil",
+    resizeHint: "Arrastra para ensanchar o estrechar el panel; haz doble clic para devolverle su ancho",
     none: "—",
 
     // Cabecera
@@ -566,31 +559,25 @@ export const es: Strings = {
     reputationCurrent: "Actual",
     reputationWorld: "Mundial",
     retirement: "Retirada",
-    retires: "Planea retirarse",
-    noRetirement: "El juego no ha planeado su retirada",
-    keepPlaying: "Impedir la retirada",
-    keepingPlaying: "Impidiendo…",
+    retires: "Prevé retirarse",
+    noRetirement: "El juego no ha previsto su retirada",
+    keepPlaying: "Evitar la retirada",
+    keepingPlaying: "Evitando…",
     keepPlayingTitle:
-      "Quitar su retirada de los planes del juego y darle el rasgo «Jugará al fútbol tanto como pueda» en lugar de " +
-      "«Se retirará en lo más alto»; se puede deshacer en Cambios",
+      "Quita su retirada de los planes del juego y le da la característica «Jugará al fútbol tanto tiempo como " +
+      "pueda» en lugar de «Se retirará en lo más alto»; se puede deshacer en Cambios",
 
     // Médico
     morale: (value) => `${value} / 20`,
-    moraleTitle:
-      "El juego muestra la moral como la felicidad general del jugador: satisfecho con 10, algo feliz con 11, " +
-      "extremadamente feliz con 15 y 20",
-    jadednessTitle:
-      "Cuánto desgaste acumula el jugador por jugar, que el descanso reduce: -500 es estar totalmente descansado y, " +
-      "cuanto más alto, más necesita un descanso",
-    traits: "Rasgos",
-    noTraits: "Sin rasgos",
-    traitName: (bit) => TRAIT_NAMES_ES[bit] ?? `Rasgo ${bit}`,
+    traits: "Características",
+    noTraits: "Sin características",
+    traitName: (bit) => TRAIT_NAMES_ES[bit] ?? `Característica ${bit}`,
     unhappiness: "Descontento",
-    noUnhappiness: "No tiene motivos de descontento",
-    removeUnhappiness: "Quitar todos",
+    noUnhappiness: "Nada le hace estar descontento",
+    removeUnhappiness: "Quitar todo",
     removingUnhappiness: "Quitando…",
     removeUnhappinessTitle:
-      "Quitar todos los motivos de descontento de su lista, como hace «Remove all» de FMRTE; se puede deshacer en Cambios",
+      "Quita de su lista todos los motivos de descontento, como hace Quitar todo en FMRTE; se puede deshacer en Cambios",
     concernSince: (date) => `desde el ${date}`,
     concernKind: (kind) => (kind === 1 ? "Preocupado" : kind === 2 ? "Interno" : `Tipo ${kind}`),
     concernMotive: (motive) => CONCERN_MOTIVES_ES[motive] ?? `Motivo ${motive}`,
@@ -598,7 +585,7 @@ export const es: Strings = {
     noClauses: "Sin primas ni cláusulas",
     loyaltyBonus: "Prima de fidelidad",
     happiness: "Felicidad",
-    playingTimeHappiness: "Felicidad con sus minutos",
+    playingTimeHappiness: "Felicidad con los minutos",
     moodTitle: "Como lo muestra FMRTE, de -100 a 100; el juego lo muestra con palabras",
     clauseName: (kind) => CLAUSE_NAMES_ES[kind] ?? `Cláusula ${kind}`,
     clauseCondition: (kind, value) => {
@@ -618,6 +605,12 @@ export const es: Strings = {
           return String(value);
       }
     },
+    moraleTitle:
+      "El juego muestra la moral como la felicidad general del jugador: satisfecho con 10, algo feliz con 11, " +
+      "extremadamente feliz con 15 y 20",
+    jadednessTitle:
+      "Cuánto desgaste acumula el jugador por jugar, que el descanso reduce: -500 es estar totalmente descansado y, " +
+      "cuanto más alto, más necesita un descanso",
     noInjuries: "Sin lesiones",
     unknownInjury: "Lesión desconocida",
     injuryStarted: (date) => `Desde el ${date}`,
@@ -997,7 +990,7 @@ export const es: Strings = {
     fee: (amount) => `Traspaso: ${amount}`,
     healed: (count) => (count === 1 ? "1 lesión curada" : `${format(count)} lesiones curadas`),
     lifted: (count) => (count === 1 ? "1 sanción levantada" : `${format(count)} sanciones levantadas`),
-    keptPlaying: (date) => (date === null ? "Seguirá jugando" : `Impedida la retirada del ${date}`),
+    keptPlaying: (date) => (date === null ? "Seguirá jugando" : `Retirada del ${date} evitada`),
     count: (total, undone) => {
       const count = changeCount(total);
       if (undone === 0) {
@@ -1081,7 +1074,7 @@ export const es: Strings = {
       facilities: "Instalaciones",
       finances: "Finanzas",
       stadium: "Estadio",
-      traits: "Rasgos",
+      traits: "Características",
       health: "Médico",
       other: "Otros",
     },
@@ -1318,12 +1311,12 @@ export const es: Strings = {
 
   clauses: {
     change: "Cambiar",
-    changeTitle: "Cambiar las primas y cláusulas de este jugador en el juego",
+    changeTitle: "Cambia en el juego las primas y cláusulas de este jugador",
     title: "Primas y cláusulas",
     hint: "Cada cambio se escribe en el juego al momento y aparece en Cambios, donde se puede deshacer.",
     full:
       "El juego hizo la lista de este contrato justo del tamaño de lo que contiene: se puede cambiar o quitar una " +
-      "prima o una cláusula, pero no añadir una cláusula de rescisión.",
+      "prima o cláusula, pero no añadir una cláusula de rescisión.",
     amountOf: (name) => `Importe de ${name}, en libras`,
     conditionOf: (name) => `Condición de ${name}`,
     save: "Guardar",
@@ -1394,8 +1387,7 @@ export const es: Strings = {
     liftAllTitle: "Levantar todas las sanciones de todos los jugadores de este equipo",
     liftNone: "Nadie en este equipo está sancionado",
     inspireAll: "Motivar a todos",
-    inspireAllTitle:
-      "Poner la moral de todos los jugadores de este equipo en 20, la más alta, y quitarles los motivos de descontento",
+    inspireAllTitle: "Poner la moral de todos los jugadores de este equipo en 20, la más alta",
     refreshAll: "Recuperar a todos",
     refreshAllTitle:
       "Poner la energía y el ritmo de competición de todos los jugadores de este equipo al 100 % y dejarlos " +
