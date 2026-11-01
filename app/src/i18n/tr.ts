@@ -1023,6 +1023,9 @@ export const tr: Strings = {
     inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla",
     refreshAll: "Hepsini dinlendir",
     refreshAllTitle: "Bu takımdaki her oyuncunun enerjisini ve maç kondisyonunu %100'e ayarla",
+    maxAll: "Özellikleri tamamla",
+    maxAllTitle:
+      "Bu takımdaki her oyuncunun bütün özelliklerini en iyiye çıkar: 20; sakatlık eğilimi ve sertlik için 1",
     hint:
       "İşlemler listedeki her oyuncuyu kapsar, kiralık gönderilenler de dahil. " +
       "Geri alma işlemi Değişiklikler bölümünde de yapılabilir.",

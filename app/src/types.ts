@@ -487,7 +487,7 @@ export type CaptainRole = "captain" | "viceCaptain";
  * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
  * "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
  */
-export type TeamAction = "heal" | "inspire" | "refresh";
+export type TeamAction = "heal" | "inspire" | "refresh" | "maxAttributes";
 
 /** The columns that sort a squad table. */
 export type SquadSort =

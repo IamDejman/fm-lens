@@ -1158,6 +1158,9 @@ export const en = {
     inspireAllTitle: "Set the morale of every player in this team to 20, the highest",
     refreshAll: "Refresh all",
     refreshAllTitle: "Set the energy and match sharpness of every player in this team to 100%",
+    maxAll: "Max attributes",
+    maxAllTitle:
+      "Set every attribute of every player in this team to its best: 20, and 1 for injury proneness and dirtiness",
     /** Beside the buttons: whom they cover, and where undoing is. */
     hint: "The actions cover every player in the list, those out on loan too. Undo is in the Changes view as well.",
 

@@ -412,8 +412,8 @@ interface TeamActionsProps {
 }
 
 /**
- * Heal all, Inspire all and Refresh all for the shown team. Heal all says how many players are injured and waits until
- * somebody is; every one waits while the game cannot be written to, and says why.
+ * Heal all, Inspire all, Refresh all and Max attributes for the shown team. Heal all says how many players are injured
+ * and waits until somebody is; every one waits while the game cannot be written to, and says why.
  */
 function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
   const injured = team.players.filter((player) => player.injuries > 0).length;
@@ -443,6 +443,13 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
         waiting={!editable || empty}
         busy={busy}
         onPress={() => onAction("refresh")}
+      />
+      <ActionButton
+        label={text.maxAll}
+        title={hover(text.maxAllTitle, empty ? text.empty : null)}
+        waiting={!editable || empty}
+        busy={busy}
+        onPress={() => onAction("maxAttributes")}
       />
     </div>
   );

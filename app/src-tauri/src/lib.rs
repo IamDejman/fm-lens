@@ -455,7 +455,7 @@ struct SquadRow {
 }
 
 /// What a team-wide action does to every player of the team.
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum TeamAction {
     /// Heals every current injury.
@@ -464,6 +464,8 @@ enum TeamAction {
     Inspire,
     /// Energy and match sharpness to 100%.
     Refresh,
+    /// Every attribute to its best: 20, or 1 where lower is better.
+    MaxAttributes,
 }
 
 #[derive(Clone, Serialize)]
@@ -1189,16 +1191,33 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
         }
         TeamAction::Inspire => &[("morale", 20)],
         TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000)],
+        TeamAction::MaxAttributes => &[],
     };
     let targets: Vec<(Target, String)> = members
         .iter()
         .filter_map(|member| connection.players.get(member.uid))
         .map(|player| (player.target(), player.name.clone()))
         .collect();
-    let operations = values
-        .iter()
-        .map(|&(key, value)| Ok((connection.session.field(Entity::Player, key)?, Operation::Set { value })))
-        .collect::<Result<Vec<_>, EditError>>()?;
+    let operations = if action == TeamAction::MaxAttributes {
+        // Injury proneness and dirtiness are at their best at 1.
+        const LOWER_IS_BETTER: [&str; 2] = ["attribute.injury_proneness", "attribute.dirtiness"];
+        connection
+            .session
+            .fields(Entity::Player)
+            .into_iter()
+            .filter(|field| field.key.starts_with("attribute."))
+            .map(|field| {
+                let best = if LOWER_IS_BETTER.contains(&field.key.as_str()) { 1 } else { 20 };
+                let value = field.scale.stored(best);
+                (field, Operation::Set { value })
+            })
+            .collect()
+    } else {
+        values
+            .iter()
+            .map(|&(key, value)| Ok((connection.session.field(Entity::Player, key)?, Operation::Set { value })))
+            .collect::<Result<Vec<_>, EditError>>()?
+    };
     let plan = connection.session.plan_mass_edit(&targets, &operations)?;
     Ok(connection.write_planned(Entity::Player, plan.planned, batch))
 }

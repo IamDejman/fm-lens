@@ -1085,8 +1085,17 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     }
     return report;
   }
+  // Max attributes: 20 for each, stored as 100, and 1 (stored as 5) where lower is better, as the real command does.
+  const best = (key: string): [string, number] => [
+    `attribute.${key}`,
+    key === "injury_proneness" || key === "dirtiness" ? 5 : 100,
+  ];
   const values: [string, number][] =
-    action === "inspire" ? [["morale", 20]] : [["condition", 10_000], ["match_sharpness", 10_000]];
+    action === "inspire"
+      ? [["morale", 20]]
+      : action === "refresh"
+        ? [["condition", 10_000], ["match_sharpness", 10_000]]
+        : ATTRIBUTES.map(best);
   for (const player of team.players) {
     const now = currentValues("player", player.uid);
     for (const [field, value] of values) {
