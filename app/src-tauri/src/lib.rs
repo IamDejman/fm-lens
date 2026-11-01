@@ -6,12 +6,12 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
-    Entity, EntityArrays, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex,
-    HOMEGROWN_RULES, Healed, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid,
-    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, RelationSet, RetirementSet,
-    STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex,
-    StaffPlan, Target, Tie, TieTarget, find_game, nations, sort_players,
+    ArraySource, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove,
+    Coded, EditError, Entity, EntityArrays, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts,
+    GraphicsIndex, HOMEGROWN_RULES, Healed, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation,
+    Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary,
+    RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StaffChange, StaffDetails,
+    StaffFilter, StaffIndex, StaffPlan, Target, Tie, TieTarget, find_game, nations, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -117,6 +117,7 @@ impl Connection {
             moved: None,
             captaincy: None,
             tie: None,
+            clause: None,
             undo: None,
         };
         self.log.push(logged.clone());
@@ -179,6 +180,7 @@ impl Connection {
             moved: None,
             captaincy: Some(captaincy),
             tie: None,
+            clause: None,
             undo: Some(Undo::Captain(done)),
         };
         self.log.push(logged.clone());
@@ -204,6 +206,7 @@ impl Connection {
             moved: None,
             captaincy: None,
             tie: None,
+            clause: None,
             undo: Some(Undo::Heal(done)),
         };
         self.log.push(logged.clone());
@@ -229,6 +232,7 @@ impl Connection {
             moved: None,
             captaincy: None,
             tie: None,
+            clause: None,
             undo: Some(Undo::Lift(done)),
         };
         self.log.push(logged.clone());
@@ -255,6 +259,7 @@ impl Connection {
             moved: None,
             captaincy: None,
             tie: None,
+            clause: None,
             undo: Some(Undo::Retirement(done)),
         };
         self.log.push(logged.clone());
@@ -294,7 +299,36 @@ impl Connection {
             moved: None,
             captaincy: None,
             tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
+            clause: None,
             undo: Some(Undo::Tie(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a change to a player's contract clauses just written, as a change of his field `clause` from one amount to
+    /// the other (0 for none, or for a clause added or taken out), with the clause before and after.
+    fn log_clause(&mut self, done: ClauseSet) -> LoggedChange {
+        let amount = |clause: &Option<Clause>| clause.as_ref().and_then(|c| c.amount).map_or(0, i64::from);
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "clause".to_owned(),
+            old: amount(&done.before),
+            new: amount(&done.after),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: Some(ClauseChange { from: done.before.clone(), to: done.after.clone() }),
+            undo: Some(Undo::Clause(done)),
         };
         self.log.push(logged.clone());
         logged
@@ -351,6 +385,7 @@ impl Connection {
             moved: moved.then_some(MovedClubs { from, to: Some(to), with: None, fee: None }),
             captaincy: None,
             tie: None,
+            clause: None,
             undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, job })),
         };
         self.log.push(logged.clone());
@@ -458,6 +493,7 @@ impl Connection {
             moved: Some(MovedClubs { from, to: Some(to), with, fee }),
             captaincy: None,
             tie: None,
+            clause: None,
             undo: Some(Undo::Move(before)),
         };
         self.log.push(logged.clone());
@@ -491,6 +527,7 @@ impl Connection {
             moved: Some(MovedClubs { from: self.club_name(done.from_club), to: None, with: None, fee: None }),
             captaincy: None,
             tie: None,
+            clause: None,
             undo: Some(Undo::Move(LoggedMove { done, rows, paid: Vec::new() })),
         };
         self.log.push(logged.clone());
@@ -529,6 +566,7 @@ impl Connection {
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
+            Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
             Some(Undo::Staff(logged)) => {
                 self.session.undo_staff_change(&logged.done)?;
                 self.staff.update(logged.done.member, |member| {
@@ -647,8 +685,11 @@ struct LoggedChange {
     /// For a change to a player's ties: the nations or clubs, and their homegrown rules.
     #[serde(skip_serializing_if = "Option::is_none")]
     tie: Option<TieChange>,
-    /// For a move, healing, lifting bans, a captaincy or a tie: what undoing it takes. Other changes write back
-    /// `old`.
+    /// For a change to a player's contract clauses: the clause before and after.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    clause: Option<ClauseChange>,
+    /// For a move, healing, lifting bans, a captaincy, a tie or a clause: what undoing it takes. Other changes write
+    /// back `old`.
     #[serde(skip)]
     undo: Option<Undo>,
 }
@@ -661,6 +702,7 @@ enum Undo {
     Lift(Lifted),
     Retirement(RetirementSet),
     Tie(RelationSet),
+    Clause(ClauseSet),
     Captain(CaptainSet),
     Staff(LoggedStaff),
 }
@@ -688,6 +730,14 @@ struct TieChange {
 struct TieEnd {
     name: String,
     rule: Option<u8>,
+}
+
+/// A contract clause before and after a change: none before for one added, none after for one taken out.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ClauseChange {
+    from: Option<Clause>,
+    to: Option<Clause>,
 }
 
 #[derive(Clone, Serialize)]
@@ -1579,6 +1629,47 @@ fn add_tie(
     Ok(connection.log_tie(done))
 }
 
+/// Gives the clause `index` of the contract of the player `uid` the amount `amount` and the condition `condition`;
+/// what is left out stays, and only what the clause has can be changed. Logged and undone like any change.
+#[tauri::command]
+fn change_clause(
+    state: State<'_, AppState>,
+    uid: u32,
+    index: usize,
+    amount: Option<u32>,
+    condition: Option<u16>,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_clause_change(player, index, amount, condition)?;
+    let done = connection.session.apply_clause(&plan)?;
+    Ok(connection.log_clause(done))
+}
+
+/// Takes the clause `index` out of the contract of the player `uid`. Logged and undone like any change.
+#[tauri::command]
+fn remove_clause(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_clause_removal(player, index)?;
+    let done = connection.session.apply_clause(&plan)?;
+    Ok(connection.log_clause(done))
+}
+
+/// Gives the contract of the player `uid`, which has none, a release clause of `amount` pounds, where its list has
+/// room. Logged and undone like any change.
+#[tauri::command]
+fn add_release_clause(state: State<'_, AppState>, uid: u32, amount: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_release_clause(player, amount)?;
+    let done = connection.session.apply_clause(&plan)?;
+    Ok(connection.log_clause(done))
+}
+
 /// The homegrown rules `change_tie` and `add_tie` write, by the game's code.
 #[tauri::command]
 fn homegrown_rules() -> Vec<u8> {
@@ -1912,6 +2003,9 @@ pub fn run() {
             change_tie,
             remove_tie,
             add_tie,
+            change_clause,
+            remove_clause,
+            add_release_clause,
             homegrown_rules,
             club_squads,
             set_captain,

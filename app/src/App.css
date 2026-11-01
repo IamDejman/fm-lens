@@ -3740,6 +3740,21 @@ button.danger:hover:not(:disabled) {
   min-width: 0;
 }
 
+/* A clause's amount, up to ten digits of pounds, and its condition, a few digits. */
+.clause-row .clause-amount {
+  width: 9em;
+  text-align: right;
+}
+
+.clause-row .clause-condition {
+  width: 4.5em;
+  text-align: right;
+}
+
+.clause-row input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
 .tie-none {
   margin: 0;
   font-size: 13px;

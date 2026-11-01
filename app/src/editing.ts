@@ -165,6 +165,23 @@ export const releasePlayer = (uid: number) => call<LoggedChange>("release_player
 export const changeTie = (uid: number, index: number, change: { nation?: number; club?: number; rule?: number }) =>
   call<LoggedChange>("change_tie", { uid, index, ...change });
 
+/**
+ * Gives the clause `index` of the player's contract another amount (pounds) or condition; what is left out stays, and
+ * only what the clause has can be changed. Logged and undone like any change.
+ */
+export const changeClause = (uid: number, index: number, change: { amount?: number; condition?: number }) =>
+  call<LoggedChange>("change_clause", { uid, index, ...change });
+
+/** Takes the clause `index` out of the player's contract. Logged and undone like any change. */
+export const removeClause = (uid: number, index: number) => call<LoggedChange>("remove_clause", { uid, index });
+
+/**
+ * Gives the player's contract, which has none, a release clause of `amount` pounds, where its list has room (see
+ * `PlayerDetails.clauseRoom`). Logged and undone like any change.
+ */
+export const addReleaseClause = (uid: number, amount: number) =>
+  call<LoggedChange>("add_release_clause", { uid, amount });
+
 /** Takes the player's tie `index` out of his list. Logged and undone like any change. */
 export const removeTie = (uid: number, index: number) => call<LoggedChange>("remove_tie", { uid, index });
 

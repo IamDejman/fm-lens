@@ -214,6 +214,20 @@ pub enum MoveError {
     NoRetirements,
     /// Keeping a player from retiring asked for one the game has not planned to retire who already has the traits.
     NotRetiring,
+    /// The player has no contract.
+    NoContract,
+    /// The contract has no clause at this place in its list.
+    NoClause {
+        index: usize,
+    },
+    /// The clause has no amount or condition to change (`clause.amount` or `clause.condition`).
+    NotInClause {
+        field: &'static str,
+    },
+    /// The clause would be as it is, or the contract has a release clause already.
+    SameClause,
+    /// The contract's list of clauses has no room for another.
+    ClausesFull,
     Memory(fmlibre_mem::Error),
 }
 
@@ -282,6 +296,17 @@ impl fmt::Display for MoveError {
             MoveError::NotRetiring => {
                 f.write_str("the game has not planned the player's retirement, and he already means to play on")
             }
+            MoveError::NoContract => f.write_str("the player has no contract"),
+            MoveError::NoClause { index } => write!(f, "the contract has no clause number {index}"),
+            MoveError::NotInClause { field } => write!(
+                f,
+                "this clause has no {} to change",
+                if *field == "clause.amount" { "amount" } else { "condition" }
+            ),
+            MoveError::SameClause => f.write_str("the contract has that already"),
+            MoveError::ClausesFull => f.write_str(
+                "the contract's list of clauses has no room for another, and the editor cannot make it bigger",
+            ),
             MoveError::Memory(err) => write!(f, "{err}"),
         }
     }
@@ -323,6 +348,11 @@ impl Coded for MoveError {
             MoveError::UnusualJob { .. } => "staff.job",
             MoveError::NoRetirements => "retirement.unknown",
             MoveError::NotRetiring => "retirement.none",
+            MoveError::NoContract => "clause.noContract",
+            MoveError::NoClause { .. } => "clause.missing",
+            MoveError::NotInClause { .. } => "clause.notInClause",
+            MoveError::SameClause => "clause.same",
+            MoveError::ClausesFull => "clause.noRoom",
             MoveError::Memory(err) => err.code(),
         }
     }
@@ -345,7 +375,8 @@ impl Coded for MoveError {
                 vec![("department", (*department).to_owned()), ("staff", staff.to_string())]
             }
             MoveError::UnusualJob { job } => vec![("job", job.to_string())],
-            MoveError::NoRelation { index } => vec![("index", index.to_string())],
+            MoveError::NoRelation { index } | MoveError::NoClause { index } => vec![("index", index.to_string())],
+            MoveError::NotInClause { field } => vec![("field", (*field).to_owned())],
             MoveError::UnknownRule { rule } => vec![("rule", rule.to_string())],
             MoveError::Memory(err) => err.params(),
             _ => Vec::new(),

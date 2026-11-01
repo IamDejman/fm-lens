@@ -3,6 +3,7 @@
 // thousands of changes, so the list, and the changes of a mass edit that is open, are shown a page at a time.
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { clauseLine } from "./ClauseList";
 import { valueText } from "./editDraft";
 import { changeLog, dateFromNumber, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
@@ -19,7 +20,7 @@ import {
 } from "./labels";
 import { undoFailureLines } from "./massDraft";
 import { ruleLabel } from "./TiesGroup";
-import type { EditField, Entity, LoggedChange } from "./types";
+import type { Clause, EditField, Entity, LoggedChange } from "./types";
 
 /**
  * This session's change log. `reload` reads it again; when several reads overlap, the answer to the last one asked
@@ -489,6 +490,11 @@ function tieEnd(end: { name: string; rule: number | null } | null): string {
   return end.rule === null ? end.name : `${end.name} · ${ruleLabel(end.rule)}`;
 }
 
+/** One side of a change to a contract clause: its name, what it depends on and its amount; "None" for no clause. */
+function clauseEnd(clause: Clause | null): string {
+  return clause === null ? profileText.none : clauseLine(clause);
+}
+
 function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);
   const shown = (stored: number) => (field ? shownValue(field, stored) : stored);
@@ -505,6 +511,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
       : change.tie
         ? valueChange(tieEnd(change.tie.from), tieEnd(change.tie.to))
+      : change.clause
+        ? valueChange(clauseEnd(change.clause.from), clauseEnd(change.clause.to))
       : change.field === "injuries"
         ? text.healed(change.old)
         : change.field === "bans"
