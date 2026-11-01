@@ -337,6 +337,12 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         // Database ranges are negative; the game settles them when a save starts.
         field("potential_ability", p.potential_ability, Kind::I16, 1..=200).plausible(-200..=200),
         field("height", p.height, Kind::U16, 140..=220).plausible(100..=250),
+        // Any birth date from 1940 to 2020; the game works out the age from it.
+        field("date_of_birth", p.date_of_birth, Kind::Date, 19400101..=20201231).plausible(19000101..=21001231),
+        // Pounds; -1 is none set.
+        field("asking_price", p.asking_price, Kind::I32, 0..=2_000_000_000)
+            .plausible(-1..=i64::from(i32::MAX))
+            .blank(-1),
         field("reputation.home", p.home_reputation, Kind::U16, 0..=10_000),
         field("reputation.current", p.current_reputation, Kind::U16, 0..=10_000),
         field("reputation.world", p.world_reputation, Kind::U16, 0..=10_000),
@@ -447,6 +453,8 @@ impl PlayerSummary {
             "current_ability" => self.current_ability = value as u16,
             "potential_ability" => self.potential_ability = value as i16,
             "contract.expires" => self.contract_expires = FmDate::from_number(value),
+            // The age follows from the game's date, which the caller has (see `note_birth`).
+            "date_of_birth" => self.date_of_birth = FmDate::from_number(value),
             "contract.transfer_listed" => self.transfer_listed = value != 0,
             "contract.loan_listed" => self.loan_listed = value != 0,
             _ => {
@@ -457,6 +465,13 @@ impl PlayerSummary {
                 }
             }
         }
+    }
+}
+
+impl PlayerSummary {
+    /// Works the age out again on `today`, the game's date, after the birth date changed.
+    pub fn note_birth(&mut self, today: Option<FmDate>) {
+        self.age = self.date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today));
     }
 }
 
@@ -978,6 +993,10 @@ mod tests {
         assert!(!number.takes(0) && !number.takes(100));
         let status = field("contract.squad_status");
         assert!(status.takes(1) && !status.takes(6) && !status.takes(0));
+        let price = field("asking_price");
+        assert!(price.takes(-1) && price.takes(0) && price.takes(25_000_000) && !price.takes(-2));
+        let born = field("date_of_birth");
+        assert!(born.takes(19960912) && !born.takes(18991231) && !born.takes(20300101));
     }
 
     #[test]
@@ -987,10 +1006,10 @@ mod tests {
         let players = fields(&layout, Entity::Player);
         // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
         // transfer and loan listing, which only players have.
-        // The 10 basic fields and the 3 live ones (condition, match sharpness, morale).
+        // The 12 basic fields and the 3 live ones (condition, match sharpness, morale).
         assert_eq!(
             players.len(),
-            10 + 3 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
+            12 + 3 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4
         );
         assert!(!key(&players, "contract.squad_number").mass);
         assert!(key(&players, "contract.wage").mass);

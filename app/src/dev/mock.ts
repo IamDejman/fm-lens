@@ -50,6 +50,10 @@ import type {
 
 const GAME_DATE: FmDate = { year: 2026, month: 7, day: 18 };
 
+/** The age on `today` of someone born on `born`. */
+const ageOn = (born: FmDate, today: FmDate) =>
+  today.year - born.year - (today.month * 100 + today.day < born.month * 100 + born.day ? 1 : 0);
+
 const game: GameInfo = {
   pid: 4242,
   exePath: "D:\\Games\\Football Manager 27\\Content\\fm.exe",
@@ -138,7 +142,7 @@ const { players, ratings } = (() => {
       name,
       fullName,
       dateOfBirth: born,
-      age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
+      age: ageOn(born, GAME_DATE),
       ...withUids(nation, club),
       positions: playablePositions(ratings[uid]),
       contractExpires: club === null ? null : contractEnd(own),
@@ -263,7 +267,7 @@ const staff: StaffSummary[] = (() => {
       name: `${pick(FIRST)} ${pick(LAST)}`,
       fullName: null,
       dateOfBirth: born,
-      age: GAME_DATE.year - born.year - (GAME_DATE.month * 100 + GAME_DATE.day < born.month * 100 + born.day ? 1 : 0),
+      age: ageOn(born, GAME_DATE),
       ...withUids(pick(NATIONS), employed ? pick(CLUBS) : null),
       job: i === 0 ? 16 : employed ? pick(JOBS) : null,
       currentAbility: ca,
@@ -359,6 +363,8 @@ function fieldTable(entity: Entity): EditField[] {
     return [
       ...common,
       field("height", "u16", 140, 220),
+      field("date_of_birth", "date", 19400101, 20201231),
+      { ...field("asking_price", "i32", 0, 2_000_000_000), blank: -1 },
       ...reputation,
       field("international.caps", "u16", 0, 1000),
       field("international.goals", "u16", 0, 1000),
@@ -426,6 +432,9 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "height":
         (d as PlayerDetails).heightCm = value;
+        break;
+      case "asking_price":
+        (d as PlayerDetails).askingPrice = value === -1 ? null : value;
         break;
       case "condition":
         (d as PlayerDetails).condition = value;
@@ -519,6 +528,10 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.potentialAbility;
       case "height":
         return person.heightCm;
+      case "date_of_birth":
+        return person.dateOfBirth && numberFromDate(person.dateOfBirth);
+      case "asking_price":
+        return (person as PlayerDetails).askingPrice ?? -1;
       case "condition":
         return person.condition;
       case "match_sharpness":
@@ -591,6 +604,13 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
     if (entity === "player" && group === "position") {
       ratings[uid][name] = value;
       (row as PlayerSummary).positions = playablePositions(ratings[uid]);
+      return;
+    }
+    if (entity === "player" && key === "date_of_birth") {
+      // The list row has the birth date and the age, and the profile is built from the row.
+      const player = row as PlayerSummary;
+      player.dateOfBirth = dateFromNumber(value);
+      player.age = player.dateOfBirth && ageOn(player.dateOfBirth, GAME_DATE);
       return;
     }
     if (entity === "player" && key === "contract.expires") {

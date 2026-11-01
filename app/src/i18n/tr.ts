@@ -306,6 +306,8 @@ export const tr: Strings = {
     current_ability: "Mevcut yetenek",
     potential_ability: "Potansiyel yetenek",
     height: "Boy (cm)",
+    date_of_birth: "Doğum tarihi",
+    asking_price: "İstenen bedel",
     "reputation.home": "Yerel itibar",
     "reputation.current": "Güncel itibar",
     "reputation.world": "Dünya itibarı",

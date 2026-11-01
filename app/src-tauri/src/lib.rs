@@ -343,8 +343,14 @@ impl Connection {
         } else {
             value
         };
+        let today = self.session.game_date();
         match change.entity {
-            Entity::Player => self.players.update(change.uid, |p| p.note_change(&change.field, value)),
+            Entity::Player => self.players.update(change.uid, |p| {
+                p.note_change(&change.field, value);
+                if change.field == "date_of_birth" {
+                    p.note_birth(today);
+                }
+            }),
             Entity::Staff => self.staff.update(change.uid, |s| s.note_change(&change.field, value)),
             Entity::Club => self.clubs.update(change.uid, |c| c.note_change(&change.field, value)),
         };

@@ -267,6 +267,8 @@ export const en = {
     current_ability: "Current ability",
     potential_ability: "Potential ability",
     height: "Height (cm)",
+    date_of_birth: "Date of birth",
+    asking_price: "Asking price",
     "reputation.home": "Home reputation",
     "reputation.current": "Current reputation",
     "reputation.world": "World reputation",

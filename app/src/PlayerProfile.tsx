@@ -183,15 +183,24 @@ function ContractGroup({ contract }: { contract: Contract }) {
   );
 }
 
-/** International record, reputation and asking price; while the player is edited, the height is here too. */
+/**
+ * International record, reputation and asking price; while the player is edited, the birth date and the height, which
+ * the header shows, are here too.
+ */
 function CareerGroup({ details }: { details: PlayerDetails }) {
   const { international, reputation, askingPrice } = details;
+  const editingBirth = useEditableField("date_of_birth");
   const editingHeight = useEditableField("height");
   return (
     <section className="profile-group">
       <h3>{profileText.career}</h3>
       <div className="profile-split">
         <dl className="stats">
+          {editingBirth && (
+            <Fact label={fieldLabel("player", "date_of_birth")}>
+              <EditInput field="date_of_birth" />
+            </Fact>
+          )}
           {editingHeight && (
             <Fact label={fieldLabel("player", "height")}>
               <EditInput field="height" />
@@ -210,7 +219,9 @@ function CareerGroup({ details }: { details: PlayerDetails }) {
             <EditableValue field="international.u21_goals">{international.u21Goals}</EditableValue>
           </Fact>
           <Fact label={profileText.askingPrice}>
-            {askingPrice === null ? profileText.notSet : formatPounds(askingPrice)}
+            <EditableValue field="asking_price">
+              {askingPrice === null ? profileText.notSet : formatPounds(askingPrice)}
+            </EditableValue>
           </Fact>
         </dl>
         <div>
