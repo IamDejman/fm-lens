@@ -8,6 +8,7 @@ import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./P
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { PositionPitch } from "./PositionPitch";
 import { ReleaseButton } from "./ReleaseDialog";
+import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
   bornText,
@@ -135,6 +136,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
 
       {details.contract && <ContractGroup contract={details.contract} />}
       <CareerGroup details={details} />
+      <TiesGroup details={details} />
     </>
   );
 }

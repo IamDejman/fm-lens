@@ -96,6 +96,12 @@ const errors: ErrorTexts = {
   "move.notApplied": () => "Belleğe yazıldı ama geri okunan farklı çıktı.",
   "heal.notInjured": () => "Oyuncunun iyileştirilecek bir sakatlığı yok.",
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
+  "relation.missing": () => `Oyuncunun listesinde bu uyruk ya da yetiştiği yer artık yok; ${reload}.`,
+  "relation.noRoom": () =>
+    "Oyuncunun listesinde yer yok ve düzenleyici listeyi büyütemiyor; bunun yerine kayıtlardan birini değiştirin.",
+  "relation.target": () => "Bu, bu kaydın alabileceği türde oyundaki bir ülke ya da kulüp değil.",
+  "relation.same": () => "Oyuncuda bu zaten var.",
+  "relation.rule": (p) => `${p.rule} numaralı yerli kuralı, düzenleyicinin yazdığı kurallardan değil.`,
   "staff.you": () => "Bu sizsiniz, yönettiğiniz teknik direktör.",
   "staff.unemployed": () => "Bu personelin bir kulübü yok.",
   "staff.role": () =>
@@ -342,6 +348,9 @@ export const tr: Strings = {
     "contract.transfer_listed": "Transfer listesinde",
     "contract.loan_listed": "Kiralık listesinde",
     "contract.job": "Görev",
+    "tie.nationality": "İkinci uyruk",
+    "tie.trainedInNation": "Yetiştiği ülke",
+    "tie.trainedAtClub": "Yetiştiği kulüp",
     club: "Kulüp",
     injuries: "Sakatlıklar",
     bans: "Cezalar",
@@ -1047,6 +1056,41 @@ export const tr: Strings = {
     swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
     swap: "Takas et",
     swapping: "Takas ediliyor…",
+  },
+
+  ties: {
+    heading: "Uyruk ve yetiştiği yer",
+    nationalities: "İkinci uyruklar",
+    trainedInNation: "Yetiştiği ülke",
+    trainedAtClub: "Yetiştiği kulüp",
+    none: "Yok",
+    rules: {
+      1: "Yerli 15-21",
+      2: "Yerli 0-21",
+      5: "Yerli 15-21 (kiralıklar hariç)",
+      10: "Yerli 0-19 (1 yıl)",
+    },
+    rule: (code) => `Yerli kuralı ${format(code)}`,
+
+    // The button under the group, and the dialog it opens
+    change: "Değiştir",
+    changeTitle: "Bu oyuncunun ikinci uyruklarını ve yerli statüsünü oyunda değiştir",
+    title: "Uyruk ve yetiştiği yer",
+    hint: "Her değişiklik oyuna hemen yazılır ve Değişiklikler bölümünde listelenir; oradan geri alınabilir.",
+    full:
+      "Oyun bu oyuncunun listesini, tuttuğu kayıtlar kadar ayırmış: bir uyruk ya da yetiştiği yer değiştirilebilir " +
+      "veya kaldırılabilir, ama yenisi eklenemez.",
+    nationOf: (name) => `${name} yerine ülke`,
+    ruleOf: (name) => `${name} için yerli kuralı`,
+    remove: "Kaldır",
+    removeTitle: (name) => `${name} kaydını kaldır`,
+    addNationality: "Uyruk ekle…",
+    addNation: "Ülke ekle…",
+    newRule: "Yeni ülkenin yerli kuralı",
+    add: "Ekle",
+    clubNote: "Bir kulübün kuralı değiştirilebilir ya da kulüp kaldırılabilir; kulüpleri oyun kendisi ekler.",
+    working: "Oyuna yazılıyor…",
+    close: "Kapat",
   },
 
   release: {

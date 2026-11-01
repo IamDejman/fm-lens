@@ -8,10 +8,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, EditError,
     Entity, EntityArrays, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex,
-    Healed, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid, Picture, Planned,
-    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, STAFF_JOBS, SearchIndex, Session,
-    SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, find_game, nations,
-    sort_players,
+    HOMEGROWN_RULES, Healed, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, Operation, Paid,
+    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, RelationSet, STAFF_JOBS,
+    SearchIndex, Session, SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target,
+    Tie, TieTarget, find_game, nations, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -116,6 +116,7 @@ impl Connection {
             batch,
             moved: None,
             captaincy: None,
+            tie: None,
             undo: None,
         };
         self.log.push(logged.clone());
@@ -177,6 +178,7 @@ impl Connection {
             batch: None,
             moved: None,
             captaincy: Some(captaincy),
+            tie: None,
             undo: Some(Undo::Captain(done)),
         };
         self.log.push(logged.clone());
@@ -201,6 +203,7 @@ impl Connection {
             batch,
             moved: None,
             captaincy: None,
+            tie: None,
             undo: Some(Undo::Heal(done)),
         };
         self.log.push(logged.clone());
@@ -225,10 +228,58 @@ impl Connection {
             batch,
             moved: None,
             captaincy: None,
+            tie: None,
             undo: Some(Undo::Lift(done)),
         };
         self.log.push(logged.clone());
         logged
+    }
+
+    /// Logs a change to a player's ties just written, as a change of his field `tie.nationality`,
+    /// `tie.trainedInNation` or `tie.trainedAtClub` from one nation's or club's UID to the other's (0 for none).
+    fn log_tie(&mut self, done: RelationSet) -> LoggedChange {
+        let tie = done.before.as_ref().or(done.after.as_ref()).map_or(Tie::Nationality, |relation| relation.tie);
+        let field = match tie {
+            Tie::Nationality => "tie.nationality",
+            Tie::TrainedInNation => "tie.trainedInNation",
+            Tie::TrainedAtClub => "tie.trainedAtClub",
+        };
+        let end = |relation: &Option<fmlibre_core::Relation>| {
+            relation.as_ref().map(|relation| TieEnd {
+                name: relation.name.clone().unwrap_or_else(|| relation.target_uid.to_string()),
+                rule: relation.rule,
+            })
+        };
+        let uid = |relation: &Option<fmlibre_core::Relation>| relation.as_ref().map_or(0, |r| i64::from(r.target_uid));
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: field.to_owned(),
+            old: uid(&done.before),
+            new: uid(&done.after),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
+            undo: Some(Undo::Tie(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// The nation with the UID `uid`, among the nations of the people in the lists.
+    fn nation(&self, uid: u32) -> Result<Nation, Failure> {
+        self.nations()
+            .into_iter()
+            .find(|nation| nation.uid == Some(uid))
+            .ok_or_else(|| Failure::new("app.notFound", format!("No nation with UID {uid}")).with("uid", uid))
     }
 
     /// Works out moving the member of staff `uid` to the club `club`.
@@ -273,6 +324,7 @@ impl Connection {
             batch: None,
             moved: moved.then_some(MovedClubs { from, to: Some(to), with: None, fee: None }),
             captaincy: None,
+            tie: None,
             undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, job })),
         };
         self.log.push(logged.clone());
@@ -379,6 +431,7 @@ impl Connection {
             batch: None,
             moved: Some(MovedClubs { from, to: Some(to), with, fee }),
             captaincy: None,
+            tie: None,
             undo: Some(Undo::Move(before)),
         };
         self.log.push(logged.clone());
@@ -411,6 +464,7 @@ impl Connection {
             batch: None,
             moved: Some(MovedClubs { from: self.club_name(done.from_club), to: None, with: None, fee: None }),
             captaincy: None,
+            tie: None,
             undo: Some(Undo::Move(LoggedMove { done, rows, paid: Vec::new() })),
         };
         self.log.push(logged.clone());
@@ -447,6 +501,7 @@ impl Connection {
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
+            Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
             Some(Undo::Staff(logged)) => {
                 self.session.undo_staff_change(&logged.done)?;
                 self.staff.update(logged.done.member, |member| {
@@ -562,7 +617,11 @@ struct LoggedChange {
     /// player's UID to the other's: the team and the players' names.
     #[serde(skip_serializing_if = "Option::is_none")]
     captaincy: Option<Captaincy>,
-    /// For a move, healing, lifting bans or a captaincy: what undoing it takes. Other changes write back `old`.
+    /// For a change to a player's ties: the nations or clubs, and their homegrown rules.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tie: Option<TieChange>,
+    /// For a move, healing, lifting bans, a captaincy or a tie: what undoing it takes. Other changes write back
+    /// `old`.
     #[serde(skip)]
     undo: Option<Undo>,
 }
@@ -573,6 +632,7 @@ enum Undo {
     Move(LoggedMove),
     Heal(Healed),
     Lift(Lifted),
+    Tie(RelationSet),
     Captain(CaptainSet),
     Staff(LoggedStaff),
 }
@@ -584,6 +644,22 @@ struct LoggedStaff {
     club: Option<String>,
     club_uid: Option<u32>,
     job: Option<u8>,
+}
+
+/// A tie before and after a change: none before for one added, none after for one taken out.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TieChange {
+    from: Option<TieEnd>,
+    to: Option<TieEnd>,
+}
+
+/// The nation or club of a tie, and its homegrown rule for a training.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TieEnd {
+    name: String,
+    rule: Option<u8>,
 }
 
 #[derive(Clone, Serialize)]
@@ -1403,6 +1479,70 @@ fn lift_bans(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failu
     Ok(connection.log_lift(done, None))
 }
 
+/// Points the tie `index` of the player `uid` at the nation `nation` or the club `club` (by UID), and gives a
+/// training the homegrown rule `rule`; what is left out stays. Logged and undone like any change.
+#[tauri::command]
+fn change_tie(
+    state: State<'_, AppState>,
+    uid: u32,
+    index: usize,
+    nation: Option<u32>,
+    club: Option<u32>,
+    rule: Option<u8>,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let nation = nation.map(|nation| connection.nation(nation)).transpose()?;
+    let club = club.map(|club| connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))).transpose()?;
+    let target = nation.as_ref().map(TieTarget::Nation).or(club.map(TieTarget::Club));
+    let plan = connection.session.plan_relation_change(player, index, target, rule)?;
+    let done = connection.session.apply_relation(&plan)?;
+    Ok(connection.log_tie(done))
+}
+
+/// Takes the tie `index` of the player `uid` out of his list. Logged and undone like any change.
+#[tauri::command]
+fn remove_tie(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_relation_removal(player, index)?;
+    let done = connection.session.apply_relation(&plan)?;
+    Ok(connection.log_tie(done))
+}
+
+/// Gives the player `uid` a tie of `tie` to the nation or club with the UID `target`, under the homegrown rule
+/// `rule` for a training, where his list has room. Logged and undone like any change.
+#[tauri::command]
+fn add_tie(
+    state: State<'_, AppState>,
+    uid: u32,
+    tie: Tie,
+    target: u32,
+    rule: Option<u8>,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let nation;
+    let target = if tie == Tie::TrainedAtClub {
+        TieTarget::Club(connection.clubs.get(target).ok_or_else(|| not_found(Entity::Club, target))?)
+    } else {
+        nation = connection.nation(target)?;
+        TieTarget::Nation(&nation)
+    };
+    let plan = connection.session.plan_relation_add(player, tie, target, rule)?;
+    let done = connection.session.apply_relation(&plan)?;
+    Ok(connection.log_tie(done))
+}
+
+/// The homegrown rules `change_tie` and `add_tie` write, by the game's code.
+#[tauri::command]
+fn homegrown_rules() -> Vec<u8> {
+    HOMEGROWN_RULES.to_vec()
+}
+
 /// The teams of the club `uid`, the senior team first, with their players: each one's list
 /// row and the live values a squad screen shows, read now.
 #[tauri::command]
@@ -1721,6 +1861,10 @@ pub fn run() {
             staff_jobs,
             heal_player,
             lift_bans,
+            change_tie,
+            remove_tie,
+            add_tie,
+            homegrown_rules,
             club_squads,
             set_captain,
             team_action,

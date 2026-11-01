@@ -18,6 +18,7 @@ import {
   valueChange,
 } from "./labels";
 import { undoFailureLines } from "./massDraft";
+import { ruleLabel } from "./TiesGroup";
 import type { EditField, Entity, LoggedChange } from "./types";
 
 /**
@@ -480,6 +481,14 @@ function captaincyNotes({ captaincy, field }: LoggedChange): string[] {
   return notes;
 }
 
+/** One side of a change to a player's tie: the nation or club, and a training's rule; "None" for no tie. */
+function tieEnd(end: { name: string; rule: number | null } | null): string {
+  if (end === null) {
+    return profileText.none;
+  }
+  return end.rule === null ? end.name : `${end.name} · ${ruleLabel(end.rule)}`;
+}
+
 function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);
   const shown = (stored: number) => (field ? shownValue(field, stored) : stored);
@@ -494,6 +503,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
     ? valueChange(change.moved.from, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
       ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
+      : change.tie
+        ? valueChange(tieEnd(change.tie.from), tieEnd(change.tie.to))
       : change.field === "injuries"
         ? text.healed(change.old)
         : change.field === "bans"

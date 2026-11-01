@@ -184,7 +184,13 @@ changes many at once, and undo.
     injuries hang off, with his other absences; lifting takes them out of that list and keeps the others, as
     healing does with injuries. Checked on the Mac Steam build, restored; Windows unverified: see the
     [ban notes](recon/fm27-bans.md).
-  - [ ] Second nationalities, place of birth, appearance.
+  - [x] Secondary nationalities and homegrown status: the nations and clubs a player was trained in, under the
+    rule each meets (15-21, 0-21, ...). They are entries of the person's list of relations; the editor changes,
+    removes and, where the list has room, adds them. Checked on the Mac Steam build against the game's eligibility
+    page; Windows unverified: see the [nationality notes](recon/fm27-nationality.md).
+  - [ ] Place of birth: a pointer to a city record (`+0x2C8` on macOS), whose nation the game shows.
+  - [ ] Appearance. FM27 keeps a person's looks as dozens of 3D face values for the match engine
+    (`MATCH_PERSON_APPEARANCE_INPUT`: skin tone, hair and eye colours, face shape); set aside.
   - [ ] Stadium capacity, ticket prices and league prize money.
 - Wave 3, what the others find hard:
   - [ ] Clear a player's unhappiness, not only his morale.

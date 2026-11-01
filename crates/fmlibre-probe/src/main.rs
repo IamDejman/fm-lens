@@ -10,12 +10,13 @@ use std::process::ExitCode;
 use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail, ensure};
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, AttributeBound, CaptainRole, ClubIndex, Entity, Field, FmDate,
     GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms, PERSONALITY, POSITIONS, Picture,
     PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale,
-    ScanOptions, Session, SessionError, StaffIndex, Target, find_game, job_name, scan_object_arrays, sort_players,
+    ScanOptions, Session, SessionError, StaffIndex, Target, Tie, TieTarget, find_game, job_name, nations,
+    scan_object_arrays, sort_players,
 };
 #[cfg(target_os = "macos")]
 use fmlibre_mem::MachImage;
@@ -242,6 +243,52 @@ enum Command {
         /// With --restore, how many seconds to wait before listing them again, to look at the game.
         #[arg(long, default_value_t = 0)]
         hold: u64,
+    },
+    /// Show a player's ties: his secondary nationalities, and the nations and clubs he was trained in.
+    Ties {
+        /// The player's UID.
+        uid: u32,
+    },
+    /// Point one of a player's ties at another nation or club, or give a training another homegrown rule.
+    TieSet {
+        /// The player's UID.
+        uid: u32,
+        /// The tie's number, from `ties`.
+        index: usize,
+        /// The UID of the nation it points at instead.
+        #[arg(long, conflicts_with = "club")]
+        nation: Option<u32>,
+        /// The UID of the club it points at instead.
+        #[arg(long)]
+        club: Option<u32>,
+        /// The homegrown rule of a training: 1 for 15-21, 2 for 0-21, 5 for 15-21 excluding loans, 10 for 0-19.
+        #[arg(long)]
+        rule: Option<u8>,
+        #[command(flatten)]
+        restore: RestoreArgs,
+    },
+    /// Take one of a player's ties out of his list.
+    TieRemove {
+        /// The player's UID.
+        uid: u32,
+        /// The tie's number, from `ties`.
+        index: usize,
+        #[command(flatten)]
+        restore: RestoreArgs,
+    },
+    /// Give a player another tie, where his list has room.
+    TieAdd {
+        /// The player's UID.
+        uid: u32,
+        #[arg(value_enum)]
+        tie: TieArg,
+        /// The UID of the nation, or of the club for a club he was trained at.
+        target: u32,
+        /// The homegrown rule of a training: 1 for 15-21, 2 for 0-21, 5 for 15-21 excluding loans, 10 for 0-19.
+        #[arg(long)]
+        rule: Option<u8>,
+        #[command(flatten)]
+        restore: RestoreArgs,
     },
     /// Swap two players between their clubs in the running game.
     Swap {
@@ -473,6 +520,28 @@ enum Command {
     },
 }
 
+/// Putting a change back afterwards, to test it without changing the save.
+#[derive(Args, Clone, Copy)]
+struct RestoreArgs {
+    /// Put it back afterwards and check it.
+    #[arg(long)]
+    restore: bool,
+    /// With --restore, how many seconds to wait first, to look at the game meanwhile.
+    #[arg(long, default_value_t = 0)]
+    hold: u64,
+}
+
+/// A tie of a player to a nation or club.
+#[derive(Clone, Copy, ValueEnum)]
+enum TieArg {
+    /// A secondary nationality.
+    Nationality,
+    /// A nation he was trained in.
+    Nation,
+    /// A club he was trained at.
+    Club,
+}
+
 #[derive(Clone, Copy, ValueEnum)]
 enum EntityArg {
     Player,
@@ -557,6 +626,9 @@ fn run(cli: Cli) -> Result<()> {
                 | Command::Swap { .. }
                 | Command::Heal { heal: true, .. }
                 | Command::Bans { lift: true, .. }
+                | Command::TieSet { .. }
+                | Command::TieRemove { .. }
+                | Command::TieAdd { .. }
                 | Command::Captain { .. }
         )
     );
@@ -616,6 +688,28 @@ fn run(cli: Cli) -> Result<()> {
         Command::Bans { uid, lift, restore, hold } => {
             let restore_after = restore.then_some(hold);
             ban_list(&Session::connect(process, ArraySource::ProfileFirst)?, uid, lift, restore_after)
+        }
+        Command::Ties { uid } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
+        }
+        Command::TieSet { uid, index, nation, club, rule, restore } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            let target = nation.map(TieUid::Nation).or(club.map(TieUid::Club));
+            tie_change(&session, uid, Some(TieAction::Set { index, target, rule }), restore)
+        }
+        Command::TieRemove { uid, index, restore } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            tie_change(&session, uid, Some(TieAction::Remove { index }), restore)
+        }
+        Command::TieAdd { uid, tie, target, rule, restore } => {
+            let session = Session::connect(process, ArraySource::ProfileFirst)?;
+            let (tie, target) = match tie {
+                TieArg::Nationality => (Tie::Nationality, TieUid::Nation(target)),
+                TieArg::Nation => (Tie::TrainedInNation, TieUid::Nation(target)),
+                TieArg::Club => (Tie::TrainedAtClub, TieUid::Club(target)),
+            };
+            tie_change(&session, uid, Some(TieAction::Add { tie, target, rule }), restore)
         }
         Command::Swap { uid, other, restore } => {
             swap_players(&Session::connect(process, ArraySource::ProfileFirst)?, uid, other, restore)
@@ -2204,6 +2298,76 @@ fn ban_list(session: &Session, uid: Option<u32>, lift: bool, restore_after: Opti
         }
         session.undo_lift_bans(&done)?;
         ensure!(show("restored")? == before, "his bans are not all back");
+    }
+    Ok(())
+}
+
+/// A nation or club by UID, for a tie.
+#[derive(Clone, Copy)]
+enum TieUid {
+    Nation(u32),
+    Club(u32),
+}
+
+/// What `tie_change` does to a player's ties.
+enum TieAction {
+    Set { index: usize, target: Option<TieUid>, rule: Option<u8> },
+    Remove { index: usize },
+    Add { tie: Tie, target: TieUid, rule: Option<u8> },
+}
+
+/// Lists a player's ties, after changing them as `action` says (and putting them back with --restore).
+fn tie_change(session: &Session, uid: u32, action: Option<TieAction>, restore: RestoreArgs) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let known = nations(players.iter().map(|p| (p.nation_address, p.nation.as_deref(), p.nation_uid)));
+    let show = |label: &str| -> Result<()> {
+        let ties = session.relations(player)?;
+        let room = session.relation_room(player)?;
+        println!("{} (UID {uid}) {label}: {} tie(s), room for {room} more", player.name, ties.len());
+        for tie in ties {
+            let (kind, name) = match tie.tie {
+                Tie::Nationality | Tie::TrainedInNation => {
+                    let nation = known.iter().find(|n| n.address == tie.target).map(|n| n.name.as_str());
+                    let kind = if tie.tie == Tie::Nationality { "nationality" } else { "trained in nation" };
+                    (kind, nation.unwrap_or("?"))
+                }
+                Tie::TrainedAtClub => ("trained at club", clubs.get(tie.target_uid).map_or("?", |c| c.name.as_str())),
+            };
+            let rule = tie.rule.map_or(String::new(), |rule| format!(", homegrown rule {rule}"));
+            println!("  #{:<3} {kind:<18} {name} (UID {}){rule}", tie.index, tie.target_uid);
+        }
+        Ok(())
+    };
+    show("now")?;
+    let Some(action) = action else {
+        return Ok(());
+    };
+    let target = |by: TieUid| -> Result<TieTarget> {
+        Ok(match by {
+            TieUid::Nation(uid) => TieTarget::Nation(
+                known.iter().find(|n| n.uid == Some(uid)).with_context(|| format!("no nation with UID {uid}"))?,
+            ),
+            TieUid::Club(uid) => TieTarget::Club(clubs.get(uid).with_context(|| format!("no club with UID {uid}"))?),
+        })
+    };
+    let plan = match action {
+        TieAction::Set { index, target: by, rule } => {
+            session.plan_relation_change(player, index, by.map(target).transpose()?, rule)?
+        }
+        TieAction::Remove { index } => session.plan_relation_removal(player, index)?,
+        TieAction::Add { tie, target: by, rule } => session.plan_relation_add(player, tie, target(by)?, rule)?,
+    };
+    let done = session.apply_relation(&plan)?;
+    show("changed")?;
+    if restore.restore {
+        if restore.hold > 0 {
+            println!("  putting it back in {} s", restore.hold);
+            std::thread::sleep(std::time::Duration::from_secs(restore.hold));
+        }
+        session.undo_relation(&done)?;
+        show("restored")?;
     }
     Ok(())
 }

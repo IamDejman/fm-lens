@@ -289,6 +289,10 @@ export const en = {
     "contract.loan_listed": "Loan listed",
     // A member of staff's job, which the change log keeps as a change of its code.
     "contract.job": "Job",
+    // A player's ties, which the change log keeps as changes of the nation or club (see `ties`).
+    "tie.nationality": "Secondary nationality",
+    "tie.trainedInNation": "Trained in nation",
+    "tie.trainedAtClub": "Trained at club",
     // A move to another club, which the change log keeps as a change of the player's club.
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
@@ -1166,6 +1170,51 @@ export const en = {
     swapHint: "Nothing changes in the game until you press Swap.",
     swap: "Swap",
     swapping: "Swapping…",
+  },
+
+  /**
+   * A player's ties to nations and clubs: their secondary nationalities, and the nations and clubs they were trained
+   * in, which decide whether they count as homegrown under a competition's rules. The group in the profile and its
+   * dialog.
+   */
+  ties: {
+    heading: "Nationality and homegrown",
+    nationalities: "Secondary nationalities",
+    trainedInNation: "Trained in nation",
+    trainedAtClub: "Trained at club",
+    none: "None",
+    /** The game's names of its homegrown rules, by code; `rule` names one it has no name for here. */
+    rules: {
+      1: "Homegrown 15-21",
+      2: "Homegrown 0-21",
+      5: "Homegrown 15-21 (excluding loans)",
+      10: "Homegrown 0-19 (1 year)",
+    } as Readonly<Record<number, string>>,
+    rule: (code: number) => `Homegrown rule ${format(code)}`,
+
+    // The button under the group, and the dialog it opens
+    change: "Change",
+    changeTitle: "Change this player's secondary nationalities and homegrown status in the game",
+    title: "Nationality and homegrown",
+    hint: "Each change is written to the game at once, and listed under Changes, where it can be undone.",
+    /** When the player's list has no room for another tie. */
+    full:
+      "The game made this player's list just big enough for what it holds: a nationality or a training can be " +
+      "changed or removed, but not added.",
+    /** The control of a row, for assistive technology: `name` is the nation's or club's. */
+    nationOf: (name: string) => `Nation instead of ${name}`,
+    ruleOf: (name: string) => `Homegrown rule for ${name}`,
+    remove: "Remove",
+    removeTitle: (name: string) => `Remove ${name}`,
+    /** The rows that add a tie, where the list has room. */
+    addNationality: "Add a nationality…",
+    addNation: "Add a nation…",
+    newRule: "Homegrown rule of the new nation",
+    add: "Add",
+    /** Under the clubs: what the dialog cannot do with them. */
+    clubNote: "A club can be given another rule or removed; the game itself adds clubs.",
+    working: "Writing to the game…",
+    close: "Close",
   },
 
   /** Releasing a player from their club, which leaves them a free agent: the button beside Transfer and its dialog. */

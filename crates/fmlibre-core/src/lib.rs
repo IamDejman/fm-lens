@@ -19,6 +19,7 @@ mod mass;
 mod medical;
 mod players;
 mod profile;
+mod relations;
 mod scan;
 mod session;
 mod squad;
@@ -49,6 +50,7 @@ pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,
     profile_for,
 };
+pub use relations::{HOMEGROWN_RULES, Relation, RelationPlan, RelationSet, Tie, TieTarget};
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};
 pub use session::{ArraySource, Session, SessionError, find_game};
 pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember};

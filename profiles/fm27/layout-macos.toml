@@ -25,6 +25,7 @@ date_of_birth = 0x2D0     # u16 day of year (low 9 bits) + u16 year
 current_ability = 0x25C   # u16, 1..200
 potential_ability = 0x25E # i16, 1..200; negative values are ranges
 nation = 0x2B0            # nation pointer
+relations = 0x2C0         # pointer to the record of his relations: secondary nationalities, homegrown status
 team = 0x128              # team pointer; the club hangs off the team
 
 # The person starts here, and the identity block follows it. Player-coaches carry an extra
@@ -200,6 +201,17 @@ list = 0x18               # in the record: the list (begin, end, capacity) of ab
 started = 0x10            # date the ban began
 marker = 0x16             # u16, 0xFFFF for a ban
 matches = 0x1C            # u8, matches left to miss
+
+# A person's relations: the list of 16-byte entries the record of his `relations` starts with. Each points at a
+# nation, club, person or competition and says how he is tied to it. Kenan Yıldız (Juventus): Germany, his
+# secondary nationality (9); Germany and Italy, trained in (70, Homegrown 15-21); FC Bayern and Juventus, trained
+# at (72), as the game's eligibility page shows them.
+[relation]
+target = 0x00             # pointer to the nation, club, person or competition
+target_kind = 0x0A        # u8: 1 a club, 3 a person, 7 a competition, 8 a nation
+relation = 0x0B           # u8: 9 a nationality, 70 trained in a nation, 72 trained at a club
+value = 0x0C              # u8: of a training, the homegrown rule it meets
+size = 0x10
 
 [team]
 club = 0x30

@@ -3642,6 +3642,70 @@ button.danger:hover:not(:disabled) {
   font-size: 12px;
 }
 
+/* Nationality and homegrown: each kind of tie a row of the group, its ties one under another, and the button that
+   opens the dialog at the group's foot. */
+.tie-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tie-rule {
+  color: var(--muted);
+}
+
+.ties-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-right: 6px;
+}
+
+/* The dialog: a row per tie, its nation and rule selects and Remove side by side, wrapping in a narrow window. */
+.tie-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tie-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tie-rows .tie-row + .tie-row,
+.tie-rows + .tie-row,
+.tie-rows + select {
+  margin-top: 6px;
+}
+
+.tie-row select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tie-target {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+
+.tie-none {
+  margin: 0;
+  font-size: 13px;
+}
+
+.ties-status:empty {
+  display: none;
+}
+
+.ties-status {
+  padding: 6px 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 /* Why Heal did not work, under the heading with the button. */
 .heal-error {
   margin: 6px 6px 0;
