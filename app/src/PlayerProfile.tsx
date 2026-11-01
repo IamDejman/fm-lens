@@ -1,6 +1,8 @@
+import { useContext, useEffect, useState } from "react";
 import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
-import { formatNumber, formatPounds } from "./format";
+import { call } from "./api";
+import { describeError, formatDate, formatNumber, formatPounds } from "./format";
 import { ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroup } from "./MedicalGroup";
 import { MoveButton } from "./MoveDialog";
@@ -23,9 +25,9 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { Clause, Contract, PlayerDetails, PlayerSummary } from "./types";
+import type { ApplyReport, Clause, Concern, Contract, PlayerDetails, PlayerSummary } from "./types";
 import type { Comparison } from "./useComparison";
-import { useEditableField, useProfileEditing } from "./useProfileEditing";
+import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
 interface PlayerProfileProps {
   /** The row that was picked; its fields fill the header while the full profile loads. */
@@ -134,7 +136,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
 
       <MedicalGroup details={details} />
 
-      {details.contract && <ContractGroup contract={details.contract} />}
+      {details.contract && <ContractGroup uid={details.uid} contract={details.contract} />}
       <CareerGroup details={details} />
       <TiesGroup details={details} />
     </>
@@ -151,7 +153,7 @@ function attributeRows(details: PlayerDetails, keys: readonly AttributeKey[]): R
  * The wage, squad status and number, the dates and the lists the player is on. While he is edited the figures are
  * inputs, and both lists show as checkboxes: a tag shows only for a list he is on.
  */
-function ContractGroup({ contract }: { contract: Contract }) {
+function ContractGroup({ uid, contract }: { uid: number; contract: Contract }) {
   const editingListing = useEditableField("contract.transfer_listed");
   return (
     <section className="profile-group">
@@ -184,6 +186,7 @@ function ContractGroup({ contract }: { contract: Contract }) {
         <ContractDates contract={contract} />
       </div>
       <ClauseList clauses={contract.clauses} />
+      <ConcernList uid={uid} concerns={contract.concerns} />
       {editingListing ? (
         <div className="tags">
           <EditInput field="contract.transfer_listed" />
@@ -198,6 +201,77 @@ function ContractGroup({ contract }: { contract: Contract }) {
         )
       )}
     </section>
+  );
+}
+
+/**
+ * The reasons to be unhappy that last, by name, with the button that removes them all (FMRTE's "Remove all"): the
+ * count of the player's list goes to none, and an undo in Changes lists them again.
+ */
+function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
+  const { editable, onEdited } = useContext(EditorContext);
+  const [removing, setRemoving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const lasting = concerns.filter((concern) => concern.ended === null);
+
+  useEffect(() => {
+    setRemoving(false);
+  }, [concerns]);
+
+  const remove = async () => {
+    if (removing) {
+      return;
+    }
+    setRemoving(true);
+    setError(null);
+    try {
+      const report = await call<ApplyReport>("apply_edits", {
+        entity: "player",
+        uid,
+        edits: [{ field: "contract.unhappiness", value: 0 }],
+      });
+      if (report.failed.length > 0) {
+        throw report.failed[0].error;
+      }
+      onEdited();
+    } catch (e) {
+      setError(describeError(e));
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <div className="clauses">
+      <div className="injuries-head">
+        <h4>{profileText.unhappiness}</h4>
+        {lasting.length > 0 && (
+          <button
+            type="button"
+            className="heal-toggle"
+            disabled={!editable}
+            aria-disabled={removing || undefined}
+            title={profileText.removeUnhappinessTitle}
+            onClick={() => void remove()}
+          >
+            {removing ? profileText.removingUnhappiness : profileText.removeUnhappiness}
+          </button>
+        )}
+      </div>
+      {lasting.length === 0 ? (
+        <p className="note">{profileText.noUnhappiness}</p>
+      ) : (
+        <dl className="stats">
+          {lasting.map((concern, i) => (
+            <Fact key={i} label={profileText.concernMotive(concern.motive)}>
+              {[profileText.concernKind(concern.kind), concern.started && profileText.concernSince(formatDate(concern.started))]
+                .filter(Boolean)
+                .join(" · ")}
+            </Fact>
+          ))}
+        </dl>
+      )}
+      {error && <p className="banner">{error}</p>}
+    </div>
   );
 }
 

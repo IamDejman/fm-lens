@@ -561,6 +561,12 @@ enum Command {
         /// A player's UID.
         uid: Option<u32>,
     },
+    /// Show the record a contract's +0x30 points at, which seems to hold the player's unhappiness: with a UID, his
+    /// entries; without, how many players have how many, and a few of them.
+    Concerns {
+        /// A player's UID.
+        uid: Option<u32>,
+    },
     /// Show the memory region that holds ADDR and the start of its allocation.
     Region {
         /// Any address in the game process.
@@ -856,6 +862,7 @@ fn run(cli: Cli) -> Result<()> {
             instances(&process, &modules, &class, max, holds.as_deref(), parse_hex(&span)?)
         }
         Command::Clauses { uid } => clauses(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::Concerns { uid } => concerns(&Session::connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Region { addr } => {
             let modules = list_modules(&process).context("listing modules")?;
             let addr = resolve(&addr, &modules)?;
@@ -1794,6 +1801,69 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
         println!("  kind {kind:>3} ({kind:#04x}): {count:>6} contracts, {low}..{high}; {}", best.join(", "));
     }
     println!("{bonuses} contracts have competition bonuses");
+    Ok(())
+}
+
+/// The record at contract +0x30 of `player`: its count, the address of its first pointer, and the 28-byte entries its
+/// pointers lead to (at most 16).
+fn concern_record(session: &Session, player: &fmlibre_core::PlayerSummary) -> Option<(u64, u64, Vec<Vec<u8>>)> {
+    let process = &session.process;
+    let pl = &session.layout.player;
+    let contract =
+        process.read_u64(player.address + pl.at(pl.contract, player.shift)).ok().filter(|&p| is_user_pointer(p))?;
+    let record = process.read_u64(contract + 0x30).ok().filter(|&p| is_user_pointer(p))?;
+    let count = process.read_u64(record).ok()?;
+    let list = (0..count.min(16))
+        .filter_map(|i| process.read_u64(record + 8 + 8 * i).ok())
+        .filter_map(|entry| process.read_bytes(entry, 28).ok())
+        .collect();
+    Some((count, record + 8, list))
+}
+
+fn concerns(session: &Session, uid: Option<u32>) -> Result<()> {
+    let players = session.players()?;
+    let entry = |e: &[u8]| {
+        let date = |at: usize| {
+            fmlibre_core::FmDate::from_raw(
+                u16::from_le_bytes([e[at], e[at + 1]]),
+                u16::from_le_bytes([e[at + 2], e[at + 3]]),
+            )
+            .map_or_else(|| "-".to_owned(), |d| format!("{}-{:02}-{:02}", d.year, d.month, d.day))
+        };
+        let words: Vec<String> =
+            e[8..].chunks(4).map(|w| format!("{:08x}", u32::from_le_bytes(w.try_into().expect("4")))).collect();
+        format!("{} .. {}  {}", date(0), date(4), words.join(" "))
+    };
+    if let Some(uid) = uid {
+        let index = PlayerIndex::new(players);
+        let player = index.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+        match concern_record(session, player) {
+            Some((count, entries, list)) => {
+                println!("{} (UID {uid}): {count} entries, pointers at {entries:#x}", player.name);
+                for e in list {
+                    println!("  {}", entry(&e));
+                }
+            }
+            None => println!("{} (UID {uid}): no record", player.name),
+        }
+        return Ok(());
+    }
+    let mut counts: BTreeMap<u64, Vec<String>> = BTreeMap::new();
+    let mut none = 0;
+    for player in &players {
+        match concern_record(session, player) {
+            Some((count, _, _)) => counts.entry(count).or_default().push(player.name.clone()),
+            None => none += 1,
+        }
+    }
+    println!("{none} players without a record");
+    for (count, names) in counts {
+        println!(
+            "  first word {count:>4}: {:>6} players, e.g. {}",
+            names.len(),
+            names.iter().take(4).cloned().collect::<Vec<_>>().join(", ")
+        );
+    }
     Ok(())
 }
 

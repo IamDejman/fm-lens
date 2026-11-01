@@ -170,6 +170,48 @@ pub struct Contract {
     pub playing_time_happiness: i8,
     /// His clauses and bonuses, in the contract's order.
     pub clauses: Vec<Clause>,
+    /// His reasons to be unhappy, over ones too, in the order the game keeps them.
+    pub concerns: Vec<Concern>,
+}
+
+/// One of a player's reasons to be unhappy, as FMRTE lists them.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Concern {
+    pub started: Option<FmDate>,
+    /// When it was over; none while it lasts.
+    pub ended: Option<FmDate>,
+    /// The game's code for what it is about (see the names in the app's dictionaries).
+    pub motive: u16,
+    /// 1 concerned, 2 internal; other codes as they are.
+    pub kind: u8,
+}
+
+/// The most entries a record of reasons to be unhappy is believed to hold; the test save's longest held 6.
+pub(crate) const MOST_CONCERNS: u64 = 64;
+
+/// The reasons to be unhappy listed in the record `record` points at; none when there is no record or it does not
+/// look like one.
+fn read_concerns(process: &Process, record: u64) -> Vec<Concern> {
+    if !is_user_pointer(record) {
+        return Vec::new();
+    }
+    let Ok(count) = process.read_u64(record) else {
+        return Vec::new();
+    };
+    if count > MOST_CONCERNS {
+        return Vec::new();
+    }
+    (0..count)
+        .filter_map(|i| process.read_u64(record + 8 + 8 * i).ok())
+        .filter_map(|entry| process.read_bytes(entry, 28).ok())
+        .map(|e| {
+            let date = |at: usize| {
+                FmDate::from_raw(u16::from_le_bytes([e[at], e[at + 1]]), u16::from_le_bytes([e[at + 2], e[at + 3]]))
+            };
+            Concern { started: date(0), ended: date(4), motive: u16::from_le_bytes([e[0x16], e[0x17]]), kind: e[0x18] }
+        })
+        .collect()
 }
 
 /// One of a contract's clauses or bonuses: a release clause, an appearance fee, a yearly wage rise...
@@ -300,6 +342,10 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
         happiness: buf[c.happiness as usize] as i8,
         playing_time_happiness: buf[c.playing_time_happiness as usize] as i8,
         clauses: read_clauses(process, layout, address),
+        concerns: read_concerns(
+            process,
+            u64::from_le_bytes(buf[c.unhappiness as usize..c.unhappiness as usize + 8].try_into().expect("8 bytes")),
+        ),
     })
 }
 

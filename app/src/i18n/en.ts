@@ -105,6 +105,13 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   40: "Seasonal landmark assist bonus",
 };
 
+/** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them. */
+const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
+  596: "Left out of a competition squad",
+  808: "Thinks a teammate has been treated unfairly",
+  926: "Doesn't believe a teammate deserves the playing time he wants",
+};
+
 export const en = {
   attributes: {
     // Technical
@@ -304,6 +311,7 @@ export const en = {
     "contract.loyalty_bonus": "Loyalty bonus per week",
     "contract.happiness": "Happiness",
     "contract.playing_time_happiness": "Playing time happiness",
+    "contract.unhappiness": "Reasons to be unhappy",
     "contract.expires": "Contract end",
     "contract.squad_number": "Squad number",
     "contract.squad_status": "Squad status",
@@ -415,6 +423,15 @@ export const en = {
     /** A player's morale, 1–20. */
     morale: (value: number) => `${value} / 20`,
     /** Hover text of his morale: the game shows it as his overall happiness. */
+    /** A player's reasons to be unhappy, as FMRTE lists them, and the button that removes them all. */
+    unhappiness: "Unhappiness",
+    noUnhappiness: "Nothing makes him unhappy",
+    removeUnhappiness: "Remove all",
+    removingUnhappiness: "Removing…",
+    removeUnhappinessTitle: "Take every reason to be unhappy off his list, as FMRTE's Remove all does; Changes can undo it",
+    concernSince: (date: string) => `since ${date}`,
+    concernKind: (kind: number) => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : `Type ${kind}`),
+    concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? `Reason ${motive}`,
     /** A contract's clauses and bonuses: the heading, and what each kind the game has is called. */
     clauses: "Bonuses and clauses",
     noClauses: "No bonuses or clauses",
@@ -1377,7 +1394,7 @@ export const en = {
     /** Hover text of Lift bans while nobody in the team is banned. */
     liftNone: "Nobody in this team is banned",
     inspireAll: "Inspire all",
-    inspireAllTitle: "Set the morale of every player in this team to 20, the highest",
+    inspireAllTitle: "Set the morale of every player in this team to 20, the highest, and remove their reasons to be unhappy",
     refreshAll: "Refresh all",
     refreshAllTitle: "Set the energy and match sharpness of every player in this team to 100%, and rest them fully (jadedness -500)",
     maxAll: "Max attributes",
