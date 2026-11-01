@@ -167,6 +167,8 @@ pub struct PlayerLayout {
     pub jadedness: u64,
     /// `u8` 1..20: his morale, which the game shows in words as his overall happiness.
     pub morale: u64,
+    /// `u64` bitmask of his traits (preferred moves), in the order of [`crate::TRAITS`].
+    pub traits: u64,
     /// Pointer to the injury record; see [`InjuryLayout`].
     pub injuries: u64,
     /// First of the 15 position ratings, in [`crate::POSITIONS`] order.
@@ -211,6 +213,7 @@ impl PlayerLayout {
             self.condition + 2,
             self.jadedness + 2,
             self.morale + 1,
+            self.traits + 8,
             self.injuries + 8,
             self.positions + crate::POSITIONS.len() as u64,
             self.personality + crate::PERSONALITY.len() as u64,

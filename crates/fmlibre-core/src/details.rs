@@ -112,6 +112,8 @@ pub struct PlayerDetails {
     pub match_sharpness: u16,
     pub jadedness: i16,
     pub morale: u8,
+    /// His traits (preferred moves), by their bit in the mask: 0 to 63.
+    pub traits: Vec<u8>,
     /// Current injuries (see [`crate::Session::injuries`]).
     pub injuries: Vec<Injury>,
     /// Current bans (see [`crate::Session::bans`]).
@@ -309,6 +311,10 @@ pub fn read_player_details(
         match_sharpness: u16_at(p.match_sharpness),
         jadedness: u16_at(p.jadedness) as i16,
         morale: u8_at(p.morale),
+        traits: {
+            let mask = u64::from_le_bytes(buf[at(p.traits)..at(p.traits) + 8].try_into().expect("8 bytes"));
+            (0..64u8).filter(|&n| mask >> n & 1 == 1).collect()
+        },
         // The session reads them, as they hang off a record of their own.
         injuries: Vec::new(),
         bans: Vec::new(),

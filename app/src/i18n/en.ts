@@ -112,6 +112,72 @@ const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
   926: "Doesn't believe a teammate deserves the playing time he wants",
 };
 
+/** Players' traits (preferred moves), by their bit in the game's mask; named as FMRTE names them. */
+const TRAIT_NAMES_EN: readonly string[] = [
+  "Runs with ball down left",
+  "Runs with ball down right",
+  "Runs with ball through centre",
+  "Gets into opposition area",
+  "Moves into channels",
+  "Gets forward whenever possible",
+  "Plays short simple passes",
+  "Tries killer balls often",
+  "Shoots from distance",
+  "Shoots with power",
+  "Places shots",
+  "Curls ball",
+  "Likes to round keeper",
+  "Likes to try to beat offside trap",
+  "Uses outside of foot",
+  "Marks opponent tightly",
+  "Winds up opponents",
+  "Argues with officials",
+  "Plays with back to goal",
+  "Comes deep to get ball",
+  "Plays one-twos",
+  "Likes to lob keeper",
+  "Dictates tempo",
+  "Attempts overhead kicks",
+  "Looks for pass rather than attempting to score",
+  "Plays no through balls",
+  "Stops play",
+  "Knocks ball past opponent",
+  "Moves ball to right foot before dribble attempt",
+  "Moves ball to left foot before dribble attempt",
+  "Dwells on ball",
+  "Arrives late in opponents' area",
+  "Tries to play way out of trouble",
+  "Stays back at all times",
+  "Avoids using weaker foot",
+  "Tries tricks",
+  "Tries long range free kicks",
+  "Dives into tackles",
+  "Does not dive into tackles",
+  "Cuts inside",
+  "Hugs line",
+  "Gets crowd going",
+  "Tries first time shots",
+  "Tries long range passes",
+  "Likes ball played into feet",
+  "Hits free kicks with power",
+  "Likes to beat man repeatedly",
+  "Likes to switch ball to other flank",
+  "Will retire at top",
+  "Will play football as long as possible",
+  "Possesses long flat throw",
+  "Runs with ball often",
+  "Runs with ball rarely",
+  "Attempts to develop weaker foot",
+  "Static target man",
+  "Uses long throw to start counter attacks",
+  "Refrains from taking long shots",
+  "Cuts inside from left wing",
+  "Cuts inside from right wing",
+  "Crosses early",
+  "Brings ball out of defence",
+  "Plays ball with feet"
+];
+
 export const en = {
   attributes: {
     // Technical
@@ -423,6 +489,10 @@ export const en = {
     /** A player's morale, 1–20. */
     morale: (value: number) => `${value} / 20`,
     /** Hover text of his morale: the game shows it as his overall happiness. */
+    /** A player's traits (preferred moves): the heading, none, and each one's name by its bit. */
+    traits: "Traits",
+    noTraits: "No traits",
+    traitName: (bit: number) => TRAIT_NAMES_EN[bit] ?? `Trait ${bit}`,
     /** A player's reasons to be unhappy, as FMRTE lists them, and the button that removes them all. */
     unhappiness: "Unhappiness",
     noUnhappiness: "Nothing makes him unhappy",
@@ -1023,6 +1093,7 @@ export const en = {
       facilities: "Facilities",
       finances: "Finances",
       stadium: "Stadium",
+      traits: "Traits",
       /** A player's energy, match sharpness and morale: the Medical group of his profile. */
       health: "Medical",
       /** Whatever the other groups do not have, e.g. a player's height. */

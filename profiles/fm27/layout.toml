@@ -43,6 +43,10 @@ jadedness = 0x25A
 # Good 15). The byte at 0x1F1 (0..20) moves with it but is not what the game shows; it is
 # left alone.
 morale = 0x26C
+# u64, his traits (preferred moves): bit n is the n-th of FMRTE's list, read row by row (left, right). Read against
+# FMRTE for Messi (bits 7 10 16 17 19 20 49 51), Olise, Gvardiol, Kane and Güler (17 19 22 31 58) on the Game Pass
+# save. Bits 62 and 63 are not in FMRTE's list as shown; Kane has bit 62.
+traits = 0x348
 # Pointer to the player's injury record, null for a player who was never injured. The record
 # starts with the list (begin, end, capacity) of his current injuries; a player who has got
 # over his injuries keeps the record with an empty list.

@@ -248,6 +248,7 @@ function details(player: PlayerSummary): PlayerDetails {
     condition: Math.round(7000 + next() * 3000),
     matchSharpness: Math.round(3500 + next() * 6500),
     jadedness: Math.round(-500 + next() * 600),
+    traits: [7, 10, 19, 20, 35, 43, 51].filter(() => next() < 0.4),
     injuries: injuriesOf(player.uid),
     bans: bansOf(player.uid),
     ties: tiesOf(player),
@@ -520,6 +521,7 @@ function fieldTable(entity: Entity): EditField[] {
     field("contract.happiness", "i8", -100, 100),
     field("contract.playing_time_happiness", "i8", -100, 100),
     field("contract.unhappiness", "i32", 0, 0),
+    ...Array.from({ length: 64 }, (_, bit) => field(`trait.${bit}`, "flag", 0, 1)),
   ];
   const common = [
     field("current_ability", "u16", 1, 200),
@@ -631,6 +633,13 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
       case "morale":
         (d as PlayerDetails).morale = value;
         break;
+      case "trait": {
+        const traits = new Set((d as PlayerDetails).traits);
+        if (value === 1) traits.add(Number(name));
+        else traits.delete(Number(name));
+        (d as PlayerDetails).traits = [...traits].sort((a, b) => a - b);
+        break;
+      }
       case "international":
         (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
         break;
@@ -739,6 +748,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return (person as PlayerDetails).jadedness;
       case "morale":
         return person.morale;
+      case "trait":
+        return Number((person as PlayerDetails).traits.includes(Number(name)));
       case "reputation":
         return entity === "club" ? club.reputation : person.reputation[name as "home" | "current" | "world"];
       case "international":

@@ -417,6 +417,8 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
     out.extend(contract_fields(layout, Entity::Player));
     out.extend(player_contract_fields(layout));
     out.extend(player_mood_fields(layout));
+    // His traits: one flag each, `trait.0` to `trait.63`, bit n of the mask.
+    out.extend((0..64u64).map(|n| Field::flag(Entity::Player, format!("trait.{n}"), p.traits + n / 8, (n % 8) as u8)));
     out.into_iter().map(|f| f.in_person_block(p.person_block)).collect()
 }
 
@@ -1106,7 +1108,7 @@ mod tests {
         // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale).
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 4
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 4 + 64
         );
         assert_eq!(key(&players, "nation").kind, Kind::Pointer);
         assert!(!key(&players, "nation").mass);

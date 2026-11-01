@@ -131,7 +131,7 @@ export type FieldGroupId = keyof typeof massEditText.groups;
 const GROUP_ORDER: Record<Entity, readonly FieldGroupId[]> = {
   player: [
     "ability", "technical", "mental", "physical", "goalkeeping", "hidden", "feet", "positions", "personality",
-    "reputation", "international", "contract", "health", "other",
+    "reputation", "international", "contract", "health", "traits", "other",
   ],
   staff: ["ability", "coaching", "mental", "knowledge", "medical", "personality", "reputation", "contract", "other"],
   club: ["reputation", "facilities", "finances", "stadium", "other"],
@@ -205,6 +205,9 @@ function groupOf(entity: Entity, key: string): FieldGroupId {
       break;
     case "stadium":
       id = "stadium";
+      break;
+    case "trait":
+      id = "traits";
       break;
     // What a player's Medical group in his profile has: his energy, match sharpness, jadedness and morale.
     case "condition":
