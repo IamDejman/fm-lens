@@ -37,8 +37,15 @@ ones from the database. Anel Ahmedhodžić's move from Sheffield United to Burnl
 
 - The amounts of neighbouring records are 107,378, 208,333, 833,333 and 2,083,333. The last
   three are 2.5, 10 and 25 million over 12, and every flags word ends in `0x0C`, which is 12.
-  The record may keep a fee as 12 monthly instalments. To be checked against the fees the game
-  shows.
+- The amount is not the fee. The game shows £54M for Gyökeres' move and £6M for Anel
+  Ahmedhodžić's (Sheffield United → Burnley, 13 July 2026, the record before his), against
+  833,333 and 107,378: no one factor turns both into their fee.
+- £54M occurs as a plain `u32` only in a library constant and in what looks like a contract's
+  clauses (next to 60M, 20M and 1.5M). Near every place 26 July 2025 occurs, no plain fee in
+  pounds or thousands shows up.
+- So these records may be something other than the history the game shows: pending add-ons
+  or instalments between clubs (payer, payee, from when, a monthly amount, the person, and a
+  count of months), say. Where the shown fee lives is still open.
 - An array of pointers to the records, one per record, sits elsewhere (`0x7629dac3e0` on this
   save): the list is reached through it.
 
@@ -47,7 +54,9 @@ The player object also holds his previous club (`+0x350`: Sporting) and dates ar
 
 ## Still to find
 
-- What the amount and the flags mean, against the fees the game shows for these transfers.
+- Where the game keeps the fee it shows in a player's transfer history. The surest way: watch
+  memory while the game makes a transfer itself, before and after the day it goes through.
+- What the amount and the flags of the 48-byte records mean.
 - Who owns the records and the pointer array, and their capacities. Adding a transfer means
   inserting a record in person order without allocating.
 - Where agreed future transfers are kept.
