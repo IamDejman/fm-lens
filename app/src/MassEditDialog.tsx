@@ -15,7 +15,7 @@ import {
   undoBatch,
 } from "./editing";
 import { fieldTable } from "./fieldTables";
-import { describeError } from "./format";
+import { currencySymbol, describeError } from "./format";
 import { changesText, editText, fieldLabel, massEditText as text, profileText, valueChange } from "./labels";
 import type { ListState } from "./ListBrowser";
 import {
@@ -620,7 +620,7 @@ function OperationRow(props: OperationRowProps) {
       <span className="mass-value-cell">
         {field.kind === "i32" && draft.kind !== "scale" && (
           <span className="mass-unit" aria-hidden="true">
-            {editText.pounds}
+            {currencySymbol}
           </span>
         )}
         <input

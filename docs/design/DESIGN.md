@@ -403,7 +403,7 @@ The almanac is flat paper. Depth comes from rules and from ink, not shadows: a 2
 
 ### Shadow Vocabulary
 - **Dialog** (`box-shadow: 0 18px 48px rgb(0 0 0 / 0.3)`): a modal over the scrim.
-- **Menu** (`box-shadow: 0 10px 28px rgb(0 0 0 / 0.25)`): the captain menu that hangs from a squad row, and the language menu under the masthead's flag.
+- **Menu** (`box-shadow: 0 10px 28px rgb(0 0 0 / 0.25)`): the captain menu that hangs from a squad row, and the settings menu under the masthead's gear.
 - **Ink ring** (`box-shadow: 0 0 0 1px` ink, or `inset 0 0 0 1px`): not depth but a doubled line: the focused search box, the pressed Edit toggle, an invalid input in brick, the highlighter swatch's edge.
 
 ### Rule Weights
@@ -426,7 +426,7 @@ Icons are inline SVG line drawings at 10 to 16px, stroke 1.6 to 1.8, round caps,
 
 ### Masthead and Tabs
 The almanac's head: an ink band in both editions.
-- **Structure:** the FML mark at the left, the section tabs (Players, Staff, Clubs, Changes), and at the right the busy message, the in-game date set as a dateline, Reload and the language: a button with the flag of the language in use, which opens a menu of the languages (English, Turkish, Spanish), each with its flag and its own name and a check after the one in use.
+- **Structure:** the FML mark at the left, the section tabs (Players, Staff, Clubs, Changes), and at the right the busy message, the in-game date set as a dateline, Reload and the settings: a button with a gear, which opens a menu of the languages (English, Turkish, Spanish), each with its flag and its own name, and of the currencies money is shown in, each with its sign and its name; a check follows the one in use in each list.
 - **Tabs:** transparent on ink, paper text at 66%; hover lifts to an 8% paper wash and full paper text; the open tab takes the page colour and ink text and touches the page below. The Changes tab carries a count chip (paper at 16% on ink; ink on the open tab).
 - **Controls on ink:** outlined in paper at 40%, hover 10% wash. The flags are 21×14 (3:2), with a hairline of ink at the edge. Focus here is always focus-blue-on-ink.
 

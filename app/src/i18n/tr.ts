@@ -522,7 +522,10 @@ export const tr: Strings = {
     // Contract
     contract: "Sözleşme",
     wage: "Haftalık maaş",
-    wageNote: "sterlin olarak saklanır; FM seçtiğiniz para birimini gösterir",
+    wageNote: (converted) =>
+      converted
+        ? "oyun sterlin tutar; FM'in kendi kuruyla gösterilir"
+        : "oyun sterlin tutar; başka bir para birimi ayarlardan seçilebilir",
     signed: "İmza tarihi",
     expires: "Bitiş tarihi",
     joined: "Katılım tarihi",
@@ -829,7 +832,9 @@ export const tr: Strings = {
 
   app: {
     stage: "beta",
+    settingsLabel: "Ayarlar",
     languageLabel: "Dil",
+    currencyLabel: "Para birimi",
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
     noteReadOnly: "Salt okunur: Windows, FMLibreEditor'ın oyuna yazmasına izin vermedi.",
@@ -917,9 +922,8 @@ export const tr: Strings = {
     was: (value) => `önceki: ${value}`,
     invalid: (min, max) => `${min} ile ${max} arasında bir tam sayı girin`,
     invalidDate: (from, to) => `${from} ile ${to} arasında bir tarih girin`,
-    invalidMoney: (from, to) => `${from} ile ${to} arasında tam sayı bir sterlin tutarı girin`,
+    invalidMoney: (from, to) => `${from} ile ${to} arasında tam bir tutar girin`,
     invalidPercentage: (from, to) => `${from} ile ${to} arasında tam sayı bir yüzde girin`,
-    pounds: "£",
     percent: "%",
     yes: "Evet",
     no: "Hayır",
@@ -1160,14 +1164,14 @@ export const tr: Strings = {
     feeHeading: "Bedel",
     fee: "Bonservis bedeli",
     feeHint: "Bedelsiz transfer için boş bırakın",
-    feeInvalid: "0 ile 2 milyar arasında, tam sayı bir sterlin tutarı girin",
+    feeInvalid: (max) => `0 ile ${max} arasında tam bir tutar girin`,
     pays: (club, fee, balance, budget) =>
       `${club} öder: ${fee}. Bakiye ${balance}${budget === null ? "" : `, transfer bütçesi ${budget}`}`,
     receives: (club, fee, balance) => `${club} alır: ${fee}. Bakiye ${balance}`,
     noFinances: (club) => `${club} için oyunda finans kaydı yok: parası değişmez`,
 
     // The contract
-    wageInvalid: "0 veya daha büyük, tam sayı bir sterlin tutarı girin",
+    wageInvalid: "0 veya daha büyük, tam bir tutar girin",
     expiresInvalid: "Bir tarih girin",
 
     // What the dialog says about the move itself
@@ -1277,15 +1281,15 @@ export const tr: Strings = {
     full:
       "Oyun bu sözleşmenin listesini, tuttuğu kayıtlar kadar ayırmış: bir prim ya da madde değiştirilebilir veya " +
       "kaldırılabilir, ama serbest kalma maddesi eklenemez.",
-    amountOf: (name) => `${name} tutarı (sterlin)`,
+    amountOf: (name) => `${name} tutarı`,
     conditionOf: (name) => `${name} koşulu`,
     save: "Kaydet",
     remove: "Kaldır",
     removeTitle: (name) => `${name} kaldır`,
     addRelease: "Serbest kalma maddesi ekle",
-    releaseAmount: "Yeni serbest kalma maddesinin tutarı (sterlin)",
+    releaseAmount: "Yeni serbest kalma maddesinin tutarı",
     add: "Ekle",
-    outOfRange: (max) => `0 ile ${format(max)} arasında bir tam sayı girin.`,
+    outOfRange: (max) => `0 ile ${max} arasında bir tam sayı girin.`,
     working: "Oyuna yazılıyor…",
     close: "Kapat",
   },

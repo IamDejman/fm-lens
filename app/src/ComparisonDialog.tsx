@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode 
 import { createPortal } from "react-dom";
 import { Ability } from "./Ability";
 import { call } from "./api";
-import { describeError, formatDate, formatPounds } from "./format";
+import { describeError, formatDate, formatMoney } from "./format";
 import {
   ATTRIBUTE_LABELS,
   comparisonText as text,
@@ -375,7 +375,7 @@ function ProfileBody({ columns }: { columns: readonly Column[] }) {
         label={fieldLabel("player", "contract.wage")}
         columns={columns}
         values={details.map((own) => own?.contract?.wage)}
-        show={(value) => <span className="compare-figure">{formatPounds(value)}</span>}
+        show={(value) => <span className="compare-figure">{formatMoney(value)}</span>}
       />
       <tr>
         <th scope="row">{fieldLabel("player", "contract.expires")}</th>

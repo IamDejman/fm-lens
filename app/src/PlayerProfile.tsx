@@ -4,7 +4,7 @@ import { CompareToggle } from "./Comparison";
 import { AbilityEditGroup, EditableValue, EditInput, PositionEditGroup } from "./EditControls";
 import { call } from "./api";
 import { keepPlaying } from "./editing";
-import { describeError, formatDate, formatNumber, formatPounds } from "./format";
+import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { appText, ATTRIBUTE_LABELS, fieldLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroup } from "./MedicalGroup";
 import { MoveButton } from "./MoveDialog";
@@ -176,7 +176,7 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
               <EditableValue field="contract.squad_number">{contract.squadNumber ?? profileText.none}</EditableValue>
             </Fact>
             <Fact label={profileText.loyaltyBonus}>
-              <EditableValue field="contract.loyalty_bonus">{formatPounds(contract.loyaltyBonus)}</EditableValue>
+              <EditableValue field="contract.loyalty_bonus">{formatMoney(contract.loyaltyBonus)}</EditableValue>
             </Fact>
             <Fact label={profileText.happiness} title={profileText.moodTitle}>
               <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
@@ -355,7 +355,7 @@ function CareerGroup({ details }: { details: PlayerDetails }) {
           </Fact>
           <Fact label={profileText.askingPrice}>
             <EditableValue field="asking_price">
-              {askingPrice === null ? profileText.notSet : formatPounds(askingPrice)}
+              {askingPrice === null ? profileText.notSet : formatMoney(askingPrice)}
             </EditableValue>
           </Fact>
         </dl>

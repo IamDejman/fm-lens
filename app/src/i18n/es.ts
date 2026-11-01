@@ -543,7 +543,10 @@ export const es: Strings = {
     // Contrato
     contract: "Contrato",
     wage: "Salario semanal",
-    wageNote: "guardado en libras; FM muestra la moneda que hayas elegido",
+    wageNote: (converted) =>
+      converted
+        ? "el juego guarda libras; se muestra al cambio del propio FM"
+        : "el juego guarda libras; puedes elegir otra moneda en los ajustes",
     signed: "Firmado",
     expires: "Vence",
     joined: "Incorporación",
@@ -860,7 +863,9 @@ export const es: Strings = {
 
   app: {
     stage: "beta",
+    settingsLabel: "Ajustes",
     languageLabel: "Idioma",
+    currencyLabel: "Moneda",
 
     noteEditable:
       "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",
@@ -952,9 +957,8 @@ export const es: Strings = {
     was: (value) => `antes: ${value}`,
     invalid: (min, max) => `Introduce un número entero de ${min} a ${max}`,
     invalidDate: (from, to) => `Introduce una fecha del ${from} al ${to}`,
-    invalidMoney: (from, to) => `Introduce un número entero de libras de ${from} a ${to}`,
+    invalidMoney: (from, to) => `Introduce un importe entero de ${from} a ${to}`,
     invalidPercentage: (from, to) => `Introduce un porcentaje entero de ${from} a ${to}`,
-    pounds: "£",
     percent: "%",
     yes: "Sí",
     no: "No",
@@ -1207,14 +1211,14 @@ export const es: Strings = {
     feeHeading: "Precio",
     fee: "Precio del traspaso",
     feeHint: "Déjalo vacío para un traspaso gratuito",
-    feeInvalid: "Introduce un número entero de libras, de 0 a 2.000 millones",
+    feeInvalid: (max) => `Introduce un importe entero, de 0 a ${max}`,
     pays: (club, fee, balance, budget) =>
       `${club} paga ${fee}: saldo ${balance}${budget === null ? "" : `, presupuesto de fichajes ${budget}`}`,
     receives: (club, fee, balance) => `${club} recibe ${fee}: saldo ${balance}`,
     noFinances: (club) => `${club} no tiene finanzas en el juego: su dinero no cambia`,
 
     // El contrato
-    wageInvalid: "Introduce un número entero de libras, 0 o más",
+    wageInvalid: "Introduce un importe entero, 0 o más",
     expiresInvalid: "Introduce una fecha",
 
     // El traspaso
@@ -1324,15 +1328,15 @@ export const es: Strings = {
     full:
       "El juego hizo la lista de este contrato justo del tamaño de lo que contiene: se puede cambiar o quitar una " +
       "prima o una cláusula, pero no añadir una cláusula de rescisión.",
-    amountOf: (name) => `Importe de ${name}, en libras`,
+    amountOf: (name) => `Importe de ${name}`,
     conditionOf: (name) => `Condición de ${name}`,
     save: "Guardar",
     remove: "Quitar",
     removeTitle: (name) => `Quitar ${name}`,
     addRelease: "Añadir una cláusula de rescisión",
-    releaseAmount: "Importe de la nueva cláusula de rescisión, en libras",
+    releaseAmount: "Importe de la nueva cláusula de rescisión",
     add: "Añadir",
-    outOfRange: (max) => `Escribe un número entero de 0 a ${format(max)}.`,
+    outOfRange: (max) => `Escribe un número entero de 0 a ${max}.`,
     working: "Escribiendo en el juego…",
     close: "Cerrar",
   },

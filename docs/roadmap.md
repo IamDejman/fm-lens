@@ -87,6 +87,9 @@ before trusting them.
   - a menu in the masthead, under the flag of the language in use, lists each language with its flag;
   - the system's language is the default where the app has it, English otherwise;
   - the Windows installer offers Spanish too.
+- [x] A settings menu under a gear in the masthead, with the language and the currency money is shown in: pounds,
+  euros, US dollars, Turkish lira, Brazilian reals, Argentine and Mexican pesos. The game keeps every amount in pounds;
+  the app converts at FM27's own rates (its 2025 ones, the last its database holds) and writes the nearest whole pound.
 - [x] Pitch position map.
 - [x] Pictures from the user's graphics packs:
   - club logos, flags and faces, in the lists and the profiles;

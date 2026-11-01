@@ -8,7 +8,7 @@
 // `releaseText`, his nationalities and homegrown status `tieText`, a club's squad `squadText`, the sidebar and the connect panel `appText`, the status of the
 // graphics packs `graphicsText`, and new versions of the app `updateText`.
 // A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts, with a flag in
-// LanguageSwitch.tsx).
+// SettingsMenu.tsx).
 
 import { formatNumber } from "./format";
 import { intlLocale, strings } from "./i18n";

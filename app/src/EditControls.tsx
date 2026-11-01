@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { valueText, type Pending } from "./editDraft";
 import { isoFromNumber, isStoredFiner } from "./editing";
+import { currencySymbol } from "./format";
 import { changesText, choiceLabel, editText, fieldLabel, POSITION_LABELS, valueChange } from "./labels";
 import { PITCH_ORDER } from "./PositionPitch";
 import type { Entity } from "./types";
@@ -10,7 +11,7 @@ import { useEditableField, useEditSession, type ProfileEditing, type Report } fr
 
 /**
  * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
- * input, with the pound sign before it for an amount of money and the percent sign after it for a percentage, or a
+ * input, with the sign of the chosen currency before it for an amount of money and the percent sign after it for a percentage, or a
  * date input (`YYYY-MM-DD`, with the calendar of the browser) for a date. A field that holds a code from a list is a
  * select of its choices, and a yes-or-no a checkbox with the name of the field. A number that may be left empty says
  * "none" while it is. A changed input is outlined in the accent colour and says what it was; one that cannot be
@@ -101,7 +102,7 @@ export function EditInput({ field }: { field: string }) {
     return (
       <span className="edit-money">
         <span className="edit-unit" aria-hidden="true">
-          {editText.pounds}
+          {currencySymbol}
         </span>
         {control}
       </span>
