@@ -10,9 +10,9 @@ use fmlibre_core::{
     Coded, EditError, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN,
     GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Kind, Lifted, Listed, Loan, MoveError,
     MovePlan, MoveTerms, Nation, Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex,
-    PlayerOrder, PlayerSummary, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped,
-    StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, Tie, TieTarget, find_game, nations,
-    sort_players,
+    PlayerOrder, PlayerSummary, PlayerTemplate, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
+    SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, TemplateGroup, Tie,
+    TieTarget, find_game, nations, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -67,11 +67,13 @@ struct Frozen {
     /// The players whose attributes are frozen, with the worst each attribute may be, as stored: what it was when it
     /// was frozen, or better once he improved. Worse is lower, or higher where lower is better.
     attributes: BTreeMap<u32, BTreeMap<String, i64>>,
+    /// Staff freezes last for this connection; stored on the staff's own attribute scales.
+    staff_attributes: BTreeMap<u32, BTreeMap<String, i64>>,
 }
 
 impl Frozen {
     fn is_empty(&self) -> bool {
-        self.money.is_empty() && self.attributes.is_empty()
+        self.money.is_empty() && self.attributes.is_empty() && self.staff_attributes.is_empty()
     }
 
     /// A value the editor just wrote to a frozen field becomes what it is held at, so it is not taken back as if the
@@ -80,6 +82,7 @@ impl Frozen {
         let held = match change.entity {
             Entity::Club if change.field == "finance.balance" => self.money.get_mut(&change.uid),
             Entity::Player => self.attributes.get_mut(&change.uid).and_then(|held| held.get_mut(&change.field)),
+            Entity::Staff => self.staff_attributes.get_mut(&change.uid).and_then(|held| held.get_mut(&change.field)),
             _ => None,
         };
         if let Some(held) = held {
@@ -825,6 +828,7 @@ impl Connection {
     fn hold_frozen(&mut self) {
         self.hold_money();
         self.hold_attributes();
+        self.hold_staff_attributes();
     }
 
     fn hold_money(&mut self) {
@@ -877,6 +881,36 @@ impl Connection {
     fn attribute_fields(&self) -> Vec<Field> {
         let fields = self.session.fields(Entity::Player).into_iter();
         fields.filter(|field| field.key.starts_with("attribute.")).collect()
+    }
+
+    fn hold_staff_attributes(&mut self) {
+        if self.frozen.staff_attributes.is_empty() {
+            return;
+        }
+        let fields: Vec<_> = self
+            .session
+            .fields(Entity::Staff)
+            .into_iter()
+            .filter(|field| field.key.starts_with("attribute."))
+            .collect();
+        for (&uid, held) in self.frozen.staff_attributes.iter_mut() {
+            let Some(target) = self.staff.get(uid).map(|staff| staff.target()) else {
+                continue;
+            };
+            let Ok(values) = self.session.read_fields(&target, &fields) else {
+                continue;
+            };
+            for (field, now) in fields.iter().zip(values) {
+                let (Some(now), Some(limit)) = (now, held.get_mut(&field.key)) else {
+                    continue;
+                };
+                if now < *limit {
+                    let _ = self.session.write_field_if(&target, field, now, *limit);
+                } else {
+                    *limit = now;
+                }
+            }
+        }
     }
 
     /// Every attribute of a player at its best: 20, or 1 where lower is better.
@@ -1201,6 +1235,7 @@ struct BatchUndoFailure {
 #[derive(Deserialize)]
 struct FieldEdit {
     field: String,
+    expected: i64,
     value: i64,
 }
 
@@ -1355,8 +1390,7 @@ struct ConnectionInfo {
     clubs: usize,
     game_date: Option<FmDate>,
     load_ms: u128,
-    /// Whether edits can be written: the system let the app open the game for writing, and the build is one the
-    /// editor knows or editing it was allowed.
+    /// Whether this is a writable, fingerprinted connection to the current career.
     editable: bool,
     /// Whether the system let the app open the game for writing.
     writable: bool,
@@ -1372,6 +1406,9 @@ struct ConnectionInfo {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ReloadInfo {
+    editable: bool,
+    writable: bool,
+    known_build: bool,
     players: usize,
     staff: usize,
     clubs: usize,
@@ -1488,15 +1525,26 @@ fn inspect(pid: u32) -> DetectedGame {
     }
 }
 
-/// Attaches read-only and reads every player, member of staff and club.
+/// Inspect with read access first. Unknown builds and read-only binaries remain usable
+/// for scouting; only a fingerprinted build can acquire a writable handle.
+fn connect_session(pid: u32) -> Result<Session, Failure> {
+    let mut session = Session::connect(Process::open_read(pid)?, ArraySource::ProfileFirst)?;
+    if session.known_build()
+        && let Ok(process) = Process::open_read_write(pid)
+    {
+        session.process = process;
+    }
+    Ok(session)
+}
+
+/// Reads every player, member of staff and club, with editing only on a known build.
 #[tauri::command]
 async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
     let (connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let pid = find_game(None)?;
-        let process = Process::open_read(pid)?;
-        let mut connection = Connection::load(Session::connect(process, ArraySource::ProfileFirst)?, Vec::new())?;
+        let mut connection = Connection::load(connect_session(pid)?, Vec::new())?;
         let refrozen = connection.restore_frozen(path.as_deref());
         Ok((connection, refrozen))
     })
@@ -1517,13 +1565,18 @@ fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInf
     Ok(guard.as_ref().map(|connection| connection.info(0)))
 }
 
-/// Lets the editor write to a build of the game it has no profile for, as far as its checks allow, for as long as
-/// the app stays connected.
+/// Kept for older clients; never allows an unknown fingerprint to bypass the guard.
 #[tauri::command]
 fn allow_editing(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> {
-    let guard = state.0.lock()?;
-    guard.as_ref().ok_or_else(not_connected)?;
-    Err(Failure::new("memory.readOnly", "This scouting build cannot write to the game."))
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    if !connection.session.process.can_write() {
+        return Err(Failure::new("memory.readOnly", "This build cannot write to the game."));
+    }
+    if !connection.session.known_build() {
+        return Err(Failure::new("memory.unknownBuild", "This game build has not been validated for editing."));
+    }
+    Ok(connection.info(0))
 }
 
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails. What is frozen
@@ -1534,16 +1587,28 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     let path = file.0.clone();
     let (connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let (save, frozen) = (old.save, old.frozen);
-        let mut connection = Connection::load(old.session, old.log)?;
-        if connection.save == save {
+        // Loading a different career replaces the arrays and cached class identities.
+        let session = connect_session(old.session.process.pid())?;
+        let mut connection = Connection::load(session, old.log)?;
+        let same_objects = old.session.current_career()
+            && old.players.iter().all(|player| {
+                connection.players.get(player.uid).is_some_and(|current| current.target() == player.target())
+            });
+        if connection.save == save && same_objects {
             connection.frozen = frozen;
             return Ok((connection, None));
         }
+        // Old addresses must never be used to undo changes in a different career.
+        connection.log.clear();
+        connection.next_id = 1;
         let refrozen = connection.restore_frozen(path.as_deref());
         Ok((connection, (!refrozen.is_empty()).then_some(refrozen)))
     })
     .await??;
     let info = ReloadInfo {
+        editable: connection.session.process.can_write() && connection.session.writes_allowed(),
+        writable: connection.session.process.can_write(),
+        known_build: connection.session.known_build(),
         players: connection.players.len(),
         staff: connection.staff.len(),
         clubs: connection.clubs.len(),
@@ -1805,6 +1870,50 @@ fn frozen_players(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
     Ok(guard.as_ref().map(|connection| connection.frozen.attributes.keys().copied().collect()).unwrap_or_default())
 }
 
+#[tauri::command]
+fn freeze_staff_attributes(state: State<'_, AppState>, uid: u32, frozen: bool) -> Result<Vec<u32>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    if frozen {
+        if !connection.session.process.can_write() {
+            return Err(Failure::new("memory.readOnly", "This connection cannot write to the game."));
+        }
+        let target = connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?.target();
+        let fields: Vec<_> = connection
+            .session
+            .fields(Entity::Staff)
+            .into_iter()
+            .filter(|field| field.key.starts_with("attribute."))
+            .collect();
+        for field in &fields {
+            if let Some(lock) = connection.session.field_lock(field) {
+                return Err(EditError::Locked { field: field.key.clone(), lock }.into());
+            }
+        }
+        let values = connection.session.read_fields(&target, &fields)?;
+        let mut held = BTreeMap::new();
+        for (field, value) in fields.into_iter().zip(values) {
+            let value = value.filter(|value| field.takes(*value)).ok_or_else(|| {
+                Failure::new("freeze.invalid", format!("Cannot freeze {}: its current value is invalid.", field.key))
+            })?;
+            held.insert(field.key, value);
+        }
+        connection.frozen.staff_attributes.insert(uid, held);
+    } else {
+        connection.frozen.staff_attributes.remove(&uid);
+    }
+    Ok(connection.frozen.staff_attributes.keys().copied().collect())
+}
+
+#[tauri::command]
+fn frozen_staff(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
+    let guard = state.0.lock()?;
+    Ok(guard
+        .as_ref()
+        .map(|connection| connection.frozen.staff_attributes.keys().copied().collect())
+        .unwrap_or_default())
+}
+
 /// The fields of players or of staff that the editor can change.
 #[tauri::command]
 fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>, Failure> {
@@ -1856,7 +1965,7 @@ fn apply_edits(
         let written = connection
             .session
             .field(entity, &edit.field)
-            .and_then(|field| connection.session.write_field(&target, &field, edit.value));
+            .and_then(|field| connection.session.write_field_if(&target, &field, edit.expected, edit.value));
         match written {
             // Already the value asked for: nothing was written.
             Ok(change) if change.old == change.new => {}
@@ -2377,6 +2486,80 @@ fn plan_mass_edit(
     Ok(preview)
 }
 
+#[tauri::command]
+fn capture_player_template(
+    state: State<'_, AppState>,
+    uid: u32,
+    name: String,
+    groups: Vec<TemplateGroup>,
+) -> Result<PlayerTemplate, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let target = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?.target();
+    connection
+        .session
+        .capture_player_template(&target, name, &groups)
+        .map_err(|err| Failure::new("template.invalid", err.to_string()))
+}
+
+#[tauri::command]
+fn validate_player_template(state: State<'_, AppState>, template: PlayerTemplate) -> Result<usize, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    template
+        .operations(&connection.session.fields(Entity::Player))
+        .map(|operations| operations.len())
+        .map_err(|err| Failure::new("template.invalid", err.to_string()))
+}
+
+/// Resolve a portable template against this build and stable player identities, then
+/// use the same conditional writes and undo history as an ordinary bulk edit.
+#[tauri::command]
+fn plan_player_template(
+    state: State<'_, AppState>,
+    template: PlayerTemplate,
+    query: String,
+    filters: Filters,
+    selected: Option<Vec<u32>>,
+) -> Result<MassPreview, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    // An invalid request must not leave an older template preview applyable.
+    connection.mass = None;
+    let fields = connection.session.fields(Entity::Player);
+    let operations = template.operations(&fields).map_err(|err| Failure::new("template.invalid", err.to_string()))?;
+    let mut targets = connection.select(Entity::Player, &query, filters);
+    if let Some(selected) = selected {
+        let selected: BTreeSet<u32> = selected.into_iter().collect();
+        targets.retain(|(target, _)| selected.contains(&target.uid));
+        if targets.len() != selected.len() {
+            return Err(Failure::new(
+                "template.selectionChanged",
+                "Some selected players no longer match. Refresh your selection.",
+            ));
+        }
+    }
+    if targets.is_empty() || targets.len() > MASS_LIMIT {
+        return Err(Failure::new(
+            "template.targetCount",
+            format!("Select 1–{MASS_LIMIT} players; {} match.", targets.len()),
+        ));
+    }
+    let plan = connection.session.plan_mass_edit(&targets, &operations)?;
+    let id = connection.fresh_id();
+    let preview = MassPreview {
+        id,
+        targets: targets.len(),
+        unchanged: plan.unchanged,
+        changes: plan.planned.len(),
+        rows: plan.planned.iter().take(PREVIEW_ROWS).cloned().collect(),
+        skipped_count: plan.skipped.len(),
+        skipped: plan.skipped.into_iter().take(PREVIEW_ROWS).collect(),
+    };
+    connection.mass = Some(PendingMass { id, entity: Entity::Player, planned: plan.planned });
+    Ok(preview)
+}
+
 /// Writes the mass edit previewed as `id`, exactly as it was shown: each change only while
 /// the game still holds the value it was planned from. The changes are logged as one batch.
 #[tauri::command]
@@ -2491,12 +2674,17 @@ pub fn run() {
             frozen_clubs,
             freeze_attributes,
             frozen_players,
+            freeze_staff_attributes,
+            frozen_staff,
             edit_fields,
             read_values,
             apply_edits,
             change_log,
             undo_change,
             plan_mass_edit,
+            capture_player_template,
+            validate_player_template,
+            plan_player_template,
             apply_mass_edit,
             undo_batch,
             plan_club_move,

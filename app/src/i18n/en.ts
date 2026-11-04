@@ -93,8 +93,8 @@ const errors: ErrorTexts = {
     "in System Settings › Privacy & Security › Files & Folders, then export again.",
   "export.openFailed": (p) => `Could not open it: ${p.reason}`,
   "guard.unknownBuild": () =>
-    "FM Lens has not been checked with this version of the game, so it does not write to it. Edit anyway, in " +
-    "the notice at the top, turns editing on.",
+    "FM Lens has not been checked with this version of the game. Editing stays disabled until this build is validated.",
+  "guard.careerChanged": () => "FM replaced its career data. Reload FM Lens before editing again.",
   "guard.failed": (p) =>
     `${checkName(p.check)} did not check out in this version of the game, so FM Lens leaves them unchanged.`,
   "memory.noBridge": () =>
@@ -880,8 +880,6 @@ export const en = {
 
   /** The app around the lists: the sidebar, the status line and the connect panel. */
   app: {
-    /** The small line under the name in the sidebar. */
-    stage: "read-only preview",
     /** The settings menu at the right of the masthead: its name, and the headings of its two lists. */
     settingsLabel: "Settings",
     languageLabel: "Language",
@@ -890,11 +888,12 @@ export const en = {
     // The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`).
     /** Connected, and the game was opened for writing. */
     noteEditable: "Edits reach the game only when you apply them. Back up your save first.",
-    /** Connected, but Windows did not allow writing. */
-    noteReadOnly: "Read-only build. Game editing is disabled.",
+    /** Connected, but the process was not opened for writing. */
+    noteReadOnly: "The game was opened for reading only, so edits stay off.",
     /** Read-only because the game is a version FM Lens was not checked with (see `compatibility`). */
     noteUnknownBuild: "Read-only: this version of the game is new to FM Lens.",
-    noteNotConnected: "Read-only build. Game editing is disabled.",
+    noteReloadRequired: "Career data changed. Reload data before editing.",
+    noteNotConnected: "Connect to edit. Back up your save first.",
 
     // The status line and the busy texts beside it
     notConnected: "Not connected",

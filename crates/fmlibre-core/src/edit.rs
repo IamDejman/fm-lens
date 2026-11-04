@@ -397,13 +397,13 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         field("international.goals", p.international_goals, Kind::U16, 0..=1_000),
         field("international.u21_caps", p.u21_caps, Kind::U8, 0..=255),
         field("international.u21_goals", p.u21_goals, Kind::U8, 0..=255),
-        // What the game changes every day: energy, match fitness, jadedness and morale. No player on
-        // the test save had less than 35% match sharpness, so the editor does not write less either;
-        // morale ran from 1 to 20. Jadedness is -500 for a rested player, the least the game keeps;
+        // What the game changes every day: energy, match fitness, jadedness and morale. A full
+        // 30,314-player Mac career includes sharpness below 35%; use the full percentage scale.
+        // Morale ran from 1 to 20. Jadedness is -500 for a rested player, the least the game keeps;
         // the most seen was 252, early in a season, so the editor writes up to 1000 and accepts any
         // value of a worn-out player as it is.
         field("condition", p.condition, Kind::U16, 0..=10_000).percent(),
-        field("match_sharpness", p.match_sharpness, Kind::U16, 3_500..=10_000).percent(),
+        field("match_sharpness", p.match_sharpness, Kind::U16, 0..=10_000).percent(),
         field("jadedness", p.jadedness, Kind::I16, -500..=1_000).plausible(-500..=i64::from(i16::MAX)),
         field("morale", p.morale, Kind::U8, 1..=20),
     ];
@@ -850,8 +850,10 @@ impl Session {
         expected: Option<i64>,
         restoring: bool,
     ) -> Result<Change, EditError> {
-        // Putting back what was there is always allowed; anything else only where the checks allow it.
-        if !restoring && let Some(lock) = self.field_lock(field) {
+        // Undo may restore the game's original range, but never bypass build or career identity.
+        if (!restoring || !self.writes_allowed())
+            && let Some(lock) = self.field_lock(field)
+        {
             return Err(EditError::Locked { field: field.key.clone(), lock });
         }
         let allowed = if restoring { field.is_plausible(value) } else { field.takes(value) };

@@ -10,7 +10,7 @@ import { describeError, describeGame, formatDate } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { GraphicsStatus } from "./GraphicsStatus";
 import { SettingsMenu } from "./SettingsMenu";
-import { appText, clubListText, playerListText, staffListText } from "./labels";
+import { appText, changesText, clubListText, playerListText, staffListText } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
@@ -25,6 +25,7 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
   { id: "staff", label: staffListText.nav },
   { id: "clubs", label: clubListText.nav },
+  { id: "changes", label: changesText.nav },
 ];
 
 /** The view the window was in before the language was switched; the first one when there was no such switch. */
@@ -98,6 +99,7 @@ function App() {
           setRefrozen(again);
         }
         setDataVersion((v) => v + 1);
+        void reloadLog();
       } catch (e) {
         // The Rust side drops the connection when reading fails (e.g. the game was closed).
         setConnection(null);
@@ -143,7 +145,7 @@ function App() {
     void reloadLog();
   }, [reloadLog]);
 
-  const editable = false;
+  const editable = connection?.editable ?? false;
   // The note on applying edits, the colophon's first: whole in its hover too, should a window ever be too narrow for it.
   // While nothing can be edited, it is also the hover of what that turns off.
   const note = !connection
@@ -151,7 +153,7 @@ function App() {
     : editable
       ? appText.noteEditable
       : connection.writable
-        ? appText.noteUnknownBuild
+        ? connection.knownBuild ? appText.noteReloadRequired : appText.noteUnknownBuild
         : appText.noteReadOnly;
   const editor = useMemo(() => ({ editable, readOnlyNote: note, onEdited: edited }), [editable, note, edited]);
 
@@ -233,7 +235,7 @@ function App() {
       <footer className="colophon">
         <div className="colophon-main">
           <span className="colophon-name">
-            FM Lens{version && ` ${version}`} · {appText.stage}
+            FM Lens{version && ` ${version}`}
           </span>
           <span className={`status ${connection ? "on" : ""}`}>
             <span className="dot" />

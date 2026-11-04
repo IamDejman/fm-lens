@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useContext, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
@@ -7,7 +7,7 @@ import { formatDate, formatMoney, formatNumber } from "./format";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import { PanelResizer, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
-import { SessionContext, useEditableField, type ProfileEditing } from "./useProfileEditing";
+import { AppliedFieldsContext, SessionContext, useEditableField, type ProfileEditing } from "./useProfileEditing";
 
 // What the player, staff and club profiles have in common: the panel frame, loading, rating rows and
 // the label/value blocks. The frame also holds what editing adds to a profile (see EditControls).
@@ -112,6 +112,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
   // The inputs reach the whole panel, so `side` can hold one too (a club's reputation is in the header).
   return (
     <SessionContext.Provider value={editing?.session ?? null}>
+      <AppliedFieldsContext.Provider value={editing?.appliedFields ?? new Set<string>()}>
       <section
         className={["profile", editing?.stage === "edit" && "editing", wide && "wide"].filter(Boolean).join(" ")}
         role="dialog"
@@ -188,6 +189,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
 
         {editing && <EditBar editing={editing} />}
       </section>
+      </AppliedFieldsContext.Provider>
     </SessionContext.Provider>
   );
 }
@@ -275,6 +277,7 @@ export function RatingList({ rows }: { rows: RatingRow[] }) {
 
 function RatingItem({ row }: { row: RatingRow }) {
   const editing = useEditableField(row.field);
+  const applied = useContext(AppliedFieldsContext).has(row.field ?? "");
   return (
     <div className="stat" title={row.title}>
       <dt>{row.label}</dt>
@@ -283,7 +286,7 @@ function RatingItem({ row }: { row: RatingRow }) {
           <EditInput field={row.field} />
         </dd>
       ) : (
-        <dd className={row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}>
+        <dd className={`${row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}${applied ? " edit-applied" : ""}`}>
           {row.value ?? profileText.none}
         </dd>
       )}

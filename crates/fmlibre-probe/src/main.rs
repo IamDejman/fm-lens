@@ -769,16 +769,7 @@ fn run(cli: Cli) -> Result<()> {
     );
     let process = attach(cli.pid, elevated, writes)?;
     let json = cli.json.as_deref();
-    // The probe is how a new build gets its profile: its write commands work on a build without one, as far as the
-    // checks allow.
-    let connect = |process: Process, source: ArraySource| -> Result<Session, SessionError> {
-        let session = Session::connect(process, source)?;
-        if writes && !session.known_build() {
-            eprintln!("note: no build profile for this build; writing where the checks pass (see `health`)");
-            session.allow_unknown_build();
-        }
-        Ok(session)
-    };
+    let connect = Session::connect;
 
     match cli.command.unwrap_or(Command::Info) {
         Command::Info => {

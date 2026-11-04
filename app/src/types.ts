@@ -89,6 +89,9 @@ export interface ConnectionInfo {
 }
 
 export interface ReloadInfo {
+  editable: boolean;
+  writable: boolean;
+  knownBuild: boolean;
   players: number;
   staff: number;
   clubs: number;
@@ -559,6 +562,7 @@ export type FieldValues = Record<string, number>;
 /** One value to write, as stored. */
 export interface FieldEdit {
   field: string;
+  expected: number;
   value: number;
 }
 

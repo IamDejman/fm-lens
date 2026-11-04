@@ -109,8 +109,8 @@ const errors: ErrorTexts = {
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
-    "FM Lens oyunun bu sürümüyle denenmedi, bu yüzden ona yazmıyor. Üstteki uyarıdaki “Yine de düzenle” " +
-    "düzenlemeyi açar.",
+    "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",
+  "guard.careerChanged": () => "FM kariyer verilerini değiştirdi. Düzenlemeden önce FM Lens'i yeniden yükleyin.",
   "guard.failed": (p) =>
     `${checkName(p.check)} oyunun bu sürümünde denetimden geçmedi, bu yüzden FM Lens onları değiştirmiyor.`,
   "retirement.none": () => "Oyun bu oyuncunun emekliliğini planlamamış ve oyuncu zaten oynamaya devam etmek istiyor.",
@@ -870,15 +870,15 @@ export const tr: Strings = {
   },
 
   app: {
-    stage: "salt okunur önizleme",
     settingsLabel: "Ayarlar",
     languageLabel: "Dil",
     currencyLabel: "Para birimi",
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
-    noteReadOnly: "Salt okunur sürüm. Oyun düzenleme kapalı.",
+    noteReadOnly: "Oyun yalnızca okunmak üzere açıldı, bu yüzden düzenleme kapalı.",
     noteUnknownBuild: "Salt okunur: oyunun bu sürümü FM Lens için yeni.",
-    noteNotConnected: "Salt okunur sürüm. Oyun düzenleme kapalı.",
+    noteReloadRequired: "Kariyer verileri değişti. Düzenlemeden önce verileri yeniden yükleyin.",
+    noteNotConnected: "Düzenlemek için bağlan. Önce kayıt dosyanızı yedekleyin.",
 
     notConnected: "Bağlı değil",
     previewTag: "tarayıcı önizlemesi · örnek veriler",

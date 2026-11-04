@@ -174,8 +174,8 @@ const jobName = (code: string | undefined) => (es.jobs as Partial<Record<number,
 
 const errors: ErrorTexts = {
   "guard.unknownBuild": () =>
-    "FM Lens no se ha probado con esta versión del juego, así que no escribe en ella. «Editar de todos modos», " +
-    "en el aviso de arriba, activa la edición.",
+    "FM Lens no se ha probado con esta versión del juego. La edición seguirá desactivada hasta que se valide.",
+  "guard.careerChanged": () => "FM ha reemplazado los datos de la partida. Recarga FM Lens antes de editar.",
   "guard.failed": (p) =>
     `${checkName(p.check)}: no han superado las comprobaciones en esta versión del juego, así que FM Lens no ` +
     "los cambia.",
@@ -899,16 +899,16 @@ export const es: Strings = {
   },
 
   app: {
-    stage: "vista previa de solo lectura",
     settingsLabel: "Ajustes",
     languageLabel: "Idioma",
     currencyLabel: "Moneda",
 
     noteEditable:
       "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",
-    noteReadOnly: "Solo lectura. La edición del juego está desactivada.",
+    noteReadOnly: "El juego se abrió solo para lectura, así que no se puede editar.",
     noteUnknownBuild: "Solo lectura: esta versión del juego es nueva para FM Lens.",
-    noteNotConnected: "Solo lectura. La edición del juego está desactivada.",
+    noteReloadRequired: "La partida ha cambiado. Recarga los datos antes de editar.",
+    noteNotConnected: "Conecta para editar. Haz antes una copia de tu partida.",
 
     notConnected: "Sin conexión",
     previewTag: "vista previa en el navegador · datos de ejemplo",

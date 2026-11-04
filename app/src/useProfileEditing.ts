@@ -46,6 +46,7 @@ export interface EditSession {
 
 /** The inputs of the profile around the reader; null while it is not being edited. */
 export const SessionContext = createContext<EditSession | null>(null);
+export const AppliedFieldsContext = createContext<ReadonlySet<string>>(new Set());
 
 export const useEditSession = () => useContext(SessionContext);
 
@@ -82,6 +83,7 @@ export interface ProfileEditing {
   confirming: boolean;
   applying: boolean;
   report: Report | null;
+  appliedFields: ReadonlySet<string>;
   /** The Edit button, so that focus can come back to it. */
   editButton: RefObject<HTMLButtonElement | null>;
   /** Reads the field table and the values, then shows the inputs. */
@@ -132,6 +134,7 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
   const [confirm, setConfirm] = useState<{ then?: () => void } | null>(null);
   const [applying, setApplying] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
+  const [appliedFields, setAppliedFields] = useState<ReadonlySet<string>>(new Set());
   const alive = useRef(true);
   const editButton = useRef<HTMLButtonElement>(null);
 
@@ -273,6 +276,7 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
       const refusedKeys = Object.keys(refusals);
       // The inputs show the game's values again; the ones the game refused keep what was typed.
       setStart((old) => values ?? withWritten(old, result.applied));
+      setAppliedFields(new Set(result.applied.filter((change) => values?.[change.field] === change.new).map((change) => change.field)));
       setTyped((old) => only(old, refusedKeys));
       setRefused(refusals);
       setReport({ applied: result.applied.length, problems });
@@ -349,6 +353,7 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
     confirming: confirm !== null,
     applying,
     report,
+    appliedFields,
     editButton,
     begin,
     apply,

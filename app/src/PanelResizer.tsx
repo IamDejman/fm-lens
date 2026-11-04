@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent, type PointerEvent } from "react";
+import { layoutPixels } from "./appearance";
 import { profileText } from "./labels";
 
 // The left edge of the profile panel can be dragged to make the panel wider or narrower. The width is kept, one for
@@ -69,7 +70,7 @@ export function usePanelWidth(kind: PanelKind) {
 
 /** The widest `panel` can be made in the space it has now: the list keeps `LIST_MIN`. */
 function widest(panel: HTMLElement): number {
-  const space = panel.parentElement?.clientWidth ?? window.innerWidth;
+  const space = panel.parentElement?.clientWidth ?? layoutPixels(window.innerWidth);
   return Math.max(PANEL_MIN, space - LIST_MIN);
 }
 
@@ -87,7 +88,7 @@ export function PanelResizer({ panelWidth }: { panelWidth: ReturnType<typeof use
   const panelOf = (handle: HTMLElement) => handle.parentElement as HTMLElement;
 
   const describe = (panel: HTMLElement) =>
-    setShown({ now: Math.round(panel.getBoundingClientRect().width), max: widest(panel) });
+    setShown({ now: Math.round(layoutPixels(panel.getBoundingClientRect().width)), max: widest(panel) });
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) {
@@ -107,7 +108,7 @@ export function PanelResizer({ panelWidth }: { panelWidth: ReturnType<typeof use
       return;
     }
     const panel = panelOf(event.currentTarget);
-    const width = clamp(panel.getBoundingClientRect().right - event.clientX, widest(panel));
+    const width = clamp(layoutPixels(panel.getBoundingClientRect().right - event.clientX), widest(panel));
     panel.style.flexBasis = `${width}px`;
   };
 
@@ -117,7 +118,7 @@ export function PanelResizer({ panelWidth }: { panelWidth: ReturnType<typeof use
     }
     setDragging(false);
     const panel = panelOf(event.currentTarget);
-    panelWidth.set(Math.round(panel.getBoundingClientRect().width));
+    panelWidth.set(Math.round(layoutPixels(panel.getBoundingClientRect().width)));
     // React sets the style from the saved width again.
     panel.style.flexBasis = "";
     describe(panel);
@@ -131,7 +132,7 @@ export function PanelResizer({ panelWidth }: { panelWidth: ReturnType<typeof use
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const panel = panelOf(event.currentTarget);
-    const now = panel.getBoundingClientRect().width;
+    const now = layoutPixels(panel.getBoundingClientRect().width);
     const max = widest(panel);
     let next: number | null = null;
     // The handle is on the left edge: left widens the panel, right narrows it.

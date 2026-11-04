@@ -1020,6 +1020,10 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
       continue;
     }
     const old: number | undefined = currentValues(entity, uid)[field.key];
+    if (old !== edit.expected) {
+      report.failed.push({ ...edit, error: failure("edit.conflict", `The value of ${field.key} has changed since it was read.`, { field: field.key, expected: edit.expected, found: old ?? "unknown" }) });
+      continue;
+    }
     if (old === undefined) {
       // No contract, no contract end, or a club without full finances.
       const message = `${field.key} cannot be changed here: its record is missing or does not check out`;
@@ -2155,7 +2159,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       if (!mockConnection) {
         throw failure("app.notConnected", "Not connected to the game");
       }
-      mockConnection = { ...mockConnection, editable: mockConnection.writable };
+      mockConnection = { ...mockConnection, editable: mockConnection.writable && mockConnection.knownBuild };
       return mockConnection as T;
     }
     case "current_connection":
@@ -2163,6 +2167,9 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return (mockConnection && { ...mockConnection, loadMs: 0 }) as T;
     case "reload": {
       const reloaded: ReloadInfo = {
+        editable: mockConnection?.editable ?? false,
+        writable: mockConnection?.writable ?? false,
+        knownBuild: mockConnection?.knownBuild ?? !unknownBuild,
         players: players.length,
         staff: staff.length,
         clubs: clubs.length,

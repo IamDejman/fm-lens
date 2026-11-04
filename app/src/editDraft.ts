@@ -84,7 +84,7 @@ export function judge(field: EditField, stored: number, text: string | undefined
   }
   if (field.blank !== null && text.trim() === "") {
     // The blank is on no scale: it is shown as it is stored (no field with one is an attribute).
-    const edit = { field: field.key, value: field.blank };
+    const edit = { field: field.key, expected: stored, value: field.blank };
     return stored === field.blank ? SAME : { status: "changed", shown: field.blank, edit };
   }
   const shown = parseInput(field, text);

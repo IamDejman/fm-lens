@@ -119,7 +119,7 @@ export function shownRange(field: EditField): { min: number; max: number } {
  * the game would show the same value as before, so an attribute's stored value is not rounded for nothing.
  */
 export function editFor(field: EditField, stored: number, shown: number): FieldEdit | null {
-  return shownValue(field, stored) === shown ? null : { field: field.key, value: storedValue(field, shown) };
+  return shownValue(field, stored) === shown ? null : { field: field.key, expected: stored, value: storedValue(field, shown) };
 }
 
 /** The date a stored date value (a number like 20290630) stands for; null for 0 or anything that is not a date. */
