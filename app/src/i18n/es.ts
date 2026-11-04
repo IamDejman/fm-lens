@@ -907,6 +907,7 @@ export const es: Strings = {
     appearanceSystem: "Sistema",
     appearanceLight: "Claro",
     appearanceDark: "Oscuro",
+    zoomLabel: "Zoom",
 
     noteEditable:
       "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",

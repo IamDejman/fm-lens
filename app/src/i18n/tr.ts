@@ -878,6 +878,7 @@ export const tr: Strings = {
     appearanceSystem: "Sistem",
     appearanceLight: "Açık",
     appearanceDark: "Koyu",
+    zoomLabel: "Yakınlaştırma",
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
     noteReadOnly: "Salt okunur sürüm. Oyun düzenleme kapalı.",
