@@ -1,4 +1,4 @@
-import { NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
+import { NationFlag, WithPicture } from "./Picture";
 import { Fact, ProfileFrame } from "./ProfileParts";
 import { ListBrowser } from "./ListBrowser";
 import { formatNumber } from "./format";
