@@ -17,7 +17,13 @@ features differ from the upstream editor.
 - Search players, staff and clubs. View player attributes, CA/PA, positions,
   traits, personality and available contract details.
 - Filter players by age, ability, position, nationality, club, attributes,
-  contract expiry and transfer/loan listing. Staff and club filters are narrower.
+  contract expiry and transfer/loan listing. Filter staff by job, unemployment,
+  attributes, age, nation, club and ability. Filter clubs by men's or women's
+  teams, reputation and founded year.
+- Browse the nations of people in the save, and each club's senior stadium.
+  Competition, award and official browsers are not mapped.
+- Choose light, dark or the system appearance, and an interface scale from 80%
+  to 150%. A short introduction to these read-only screens is shown once.
 - View mapped club finances, facilities, stadium information and squads.
 - Use currency selection, system light/dark appearance and CSV/JSON exports.
 - Memory writes are blocked in the memory layer. Editing, freezing and upstream
