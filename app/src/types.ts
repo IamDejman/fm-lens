@@ -357,6 +357,14 @@ export interface StaffFilter {
   job?: number;
   /** Only staff without a contract. */
   unemployed?: boolean;
+  minAge?: number;
+  maxAge?: number;
+  minCurrentAbility?: number;
+  minPotentialAbility?: number;
+  /** Part of the nation's name; accents and case ignored. */
+  nation?: string;
+  /** Part of the employer's name; accents and case ignored. */
+  club?: string;
   /** Bounds on attributes, every one of which must hold. */
   attributes?: AttributeBound[];
 }
@@ -365,6 +373,12 @@ export interface StaffFilter {
 export interface ClubFilter {
   /** true: women's clubs only; false: men's clubs only. */
   women?: boolean;
+  /** 0–10000. A club with no reputation keeps to no bound. */
+  minReputation?: number;
+  maxReputation?: number;
+  /** A club with no founded year keeps to no bound. */
+  foundedFrom?: number;
+  foundedTo?: number;
 }
 
 /** An attribute as stored (`raw`, 0–100) and as FM shows it (`value`, 1–20). */

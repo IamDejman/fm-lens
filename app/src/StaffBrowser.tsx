@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Ability } from "./Ability";
 import { AttributeFilters, readAttributeRows, STAFF_ATTRIBUTES, toAttributeBounds } from "./AttributeFilters";
 import { formatDate } from "./format";
@@ -9,6 +9,20 @@ import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { restored, useSnapshot } from "./restore";
 import { employerOf, HumanBadge, StaffProfile } from "./StaffProfile";
 import type { StaffFilter, StaffSummary } from "./types";
+
+const AGE_RANGE = { min: 0, max: 99 };
+const ABILITY_RANGE = { min: 1, max: 200 };
+
+/** A whole number within `range`; nothing for an empty or unreadable input. */
+function whole(input: string, range: { min: number; max: number }): number | undefined {
+  if (input.trim() === "") {
+    return undefined;
+  }
+  const value = Number(input);
+  return Number.isFinite(value) ? Math.min(range.max, Math.max(range.min, Math.round(value))) : undefined;
+}
+
+const readText = (value: unknown) => (typeof value === "string" ? value : "");
 
 const columns = staffListText.columns;
 const filters = staffListText.filters;
@@ -23,17 +37,54 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
   // The job as the select holds it: a job code, or "" for any.
   const [job, setJob] = useState(() => restored("staffJob", readJob));
   const [unemployed, setUnemployed] = useState(() => restored("staffUnemployed", (value) => value === true));
+  const [minAge, setMinAge] = useState(() => restored("staffMinAge", readText));
+  const [maxAge, setMaxAge] = useState(() => restored("staffMaxAge", readText));
+  const [minCurrentAbility, setMinCurrentAbility] = useState(() => restored("staffMinCa", readText));
+  const [minPotentialAbility, setMinPotentialAbility] = useState(() => restored("staffMinPa", readText));
+  const [nation, setNation] = useState(() => restored("staffNation", readText));
+  const [club, setClub] = useState(() => restored("staffClub", readText));
   const [attributes, setAttributes] = useState(() =>
     restored("staffAttributes", (value) => readAttributeRows(value, STAFF_ATTRIBUTES)),
   );
   useSnapshot("staffJob", () => job);
   useSnapshot("staffUnemployed", () => unemployed);
+  useSnapshot("staffMinAge", () => minAge);
+  useSnapshot("staffMaxAge", () => maxAge);
+  useSnapshot("staffMinCa", () => minCurrentAbility);
+  useSnapshot("staffMinPa", () => minPotentialAbility);
+  useSnapshot("staffNation", () => nation);
+  useSnapshot("staffClub", () => club);
   useSnapshot("staffAttributes", () => attributes);
   const bounds = toAttributeBounds(attributes);
+  const minAgeValue = whole(minAge, AGE_RANGE);
+  const maxAgeValue = whole(maxAge, AGE_RANGE);
+  const minCa = whole(minCurrentAbility, ABILITY_RANGE);
+  const minPa = whole(minPotentialAbility, ABILITY_RANGE);
+  const nationValue = nation.trim() || undefined;
+  const clubValue = club.trim() || undefined;
   const filter: StaffFilter | undefined =
-    job === "" && !unemployed && bounds === undefined
+    job === "" &&
+    !unemployed &&
+    minAgeValue === undefined &&
+    maxAgeValue === undefined &&
+    minCa === undefined &&
+    minPa === undefined &&
+    nationValue === undefined &&
+    clubValue === undefined &&
+    bounds === undefined
       ? undefined
-      : { job: job === "" ? undefined : Number(job), unemployed: unemployed || undefined, attributes: bounds };
+      : {
+          job: job === "" ? undefined : Number(job),
+          unemployed: unemployed || undefined,
+          minAge: minAgeValue,
+          maxAge: maxAgeValue,
+          minCurrentAbility: minCa,
+          minPotentialAbility: minPa,
+          nation: nationValue,
+          club: clubValue,
+          attributes: bounds,
+        };
+  const ageLabel = useId();
 
   return (
     <ListBrowser<StaffSummary>
@@ -62,6 +113,62 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
             <label className="filter-field">
               <input type="checkbox" checked={unemployed} onChange={(e) => setUnemployed(e.currentTarget.checked)} />
               <span>{filters.unemployedOnly}</span>
+            </label>
+            <div className="filter-field" role="group" aria-labelledby={ageLabel}>
+              <span id={ageLabel}>{filters.age}</span>
+              <input
+                type="number"
+                min={AGE_RANGE.min}
+                max={AGE_RANGE.max}
+                step={1}
+                placeholder={filters.minPlaceholder}
+                aria-label={filters.minAge}
+                value={minAge}
+                onChange={(e) => setMinAge(e.currentTarget.value)}
+              />
+              <span aria-hidden="true">–</span>
+              <input
+                type="number"
+                min={AGE_RANGE.min}
+                max={AGE_RANGE.max}
+                step={1}
+                placeholder={filters.maxPlaceholder}
+                aria-label={filters.maxAge}
+                value={maxAge}
+                onChange={(e) => setMaxAge(e.currentTarget.value)}
+              />
+            </div>
+            <label className="filter-field" title={filters.minCurrentAbilityTitle}>
+              <span>{filters.minCurrentAbility}</span>
+              <input
+                type="number"
+                min={ABILITY_RANGE.min}
+                max={ABILITY_RANGE.max}
+                step={1}
+                placeholder={filters.abilityPlaceholder}
+                value={minCurrentAbility}
+                onChange={(e) => setMinCurrentAbility(e.currentTarget.value)}
+              />
+            </label>
+            <label className="filter-field" title={filters.minPotentialAbilityTitle}>
+              <span>{filters.minPotentialAbility}</span>
+              <input
+                type="number"
+                min={ABILITY_RANGE.min}
+                max={ABILITY_RANGE.max}
+                step={1}
+                placeholder={filters.abilityPlaceholder}
+                value={minPotentialAbility}
+                onChange={(e) => setMinPotentialAbility(e.currentTarget.value)}
+              />
+            </label>
+            <label className="filter-field">
+              <span>{filters.nation}</span>
+              <input value={nation} onChange={(e) => setNation(e.currentTarget.value)} spellCheck={false} />
+            </label>
+            <label className="filter-field">
+              <span>{filters.club}</span>
+              <input value={club} onChange={(e) => setClub(e.currentTarget.value)} spellCheck={false} />
             </label>
             <AttributeFilters rows={attributes} choices={STAFF_ATTRIBUTES} onChange={setAttributes} />
           </div>

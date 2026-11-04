@@ -813,6 +813,18 @@ export const es: Strings = {
       job: "Puesto",
       anyJob: "Cualquiera",
       unemployedOnly: "Solo sin empleo",
+      age: "Edad",
+      minAge: "Edad mínima",
+      maxAge: "Edad máxima",
+      minPlaceholder: "Mín.",
+      maxPlaceholder: "Máx.",
+      minCurrentAbility: "HA mín.",
+      minCurrentAbilityTitle: "Habilidad actual mínima",
+      minPotentialAbility: "HP mín.",
+      minPotentialAbilityTitle: "Habilidad potencial mínima",
+      abilityPlaceholder: "1–200",
+      nation: "País",
+      club: "Club",
     },
   },
 
@@ -877,10 +889,10 @@ export const es: Strings = {
         : entityCount("club", total),
     empty: (query, filtered) => {
       if (query === "") {
-        return filtered ? "Ningún club coincide con este filtro." : "No se han encontrado clubes.";
+        return filtered ? "Ningún club coincide con estos filtros." : "No se han encontrado clubes.";
       }
       return filtered
-        ? `Ningún club coincide con «${query}» con este filtro.`
+        ? `Ningún club coincide con «${query}» con estos filtros.`
         : `Ningún club coincide con «${query}».`;
     },
     women: "Femenino",
@@ -895,6 +907,14 @@ export const es: Strings = {
       all: "Todos los clubes",
       men: "Clubes masculinos",
       women: "Clubes femeninos",
+      reputation: "Reputación",
+      minReputation: "Reputación mínima",
+      maxReputation: "Reputación máxima",
+      reputationPlaceholder: "0–10000",
+      founded: "Fundación",
+      foundedFrom: "Fundado desde",
+      foundedTo: "Fundado hasta",
+      yearPlaceholder: "Año",
     },
   },
 

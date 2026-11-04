@@ -2008,11 +2008,27 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
 }
 
 /** The staff filter of the real command: a player-coach has the code of the coaching job plus one, and matches it too. */
+function matchesClubFilter(c: ClubSummary, f: ClubFilter): boolean {
+  return (
+    (f.women === undefined || c.women === f.women) &&
+    (f.minReputation === undefined || (c.reputation !== null && c.reputation >= f.minReputation)) &&
+    (f.maxReputation === undefined || (c.reputation !== null && c.reputation <= f.maxReputation)) &&
+    (f.foundedFrom === undefined || (c.founded !== null && c.founded >= f.foundedFrom)) &&
+    (f.foundedTo === undefined || (c.founded !== null && c.founded <= f.foundedTo))
+  );
+}
+
 function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
   const d = (f.attributes?.length ?? 0) > 0 ? staffDetails(s) : null;
   return (
     (f.job === undefined || (s.job !== null && (s.job === f.job || s.job === f.job + 1))) &&
     (!f.unemployed || s.job === null) &&
+    (f.minAge === undefined || (s.age !== null && s.age >= f.minAge)) &&
+    (f.maxAge === undefined || (s.age !== null && s.age <= f.maxAge)) &&
+    (f.minCurrentAbility === undefined || s.currentAbility >= f.minCurrentAbility) &&
+    (f.minPotentialAbility === undefined || s.potentialAbility >= f.minPotentialAbility) &&
+    contains(s.nation, f.nation) &&
+    contains(s.club, f.club) &&
     (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
   );
 }
@@ -2193,7 +2209,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const words = fold(query).split(/\s+/).filter(Boolean);
       const hits = clubs
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
-        .filter((c) => filter.women === undefined || c.women === filter.women)
+        .filter((c) => matchesClubFilter(c, filter))
         .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
       const page: ClubPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;

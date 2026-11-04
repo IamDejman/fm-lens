@@ -779,6 +779,18 @@ export const en = {
       /** The entry of the job select that is no filter. */
       anyJob: "Any",
       unemployedOnly: "Unemployed only",
+      age: "Age",
+      minAge: "Minimum age",
+      maxAge: "Maximum age",
+      minPlaceholder: "Min",
+      maxPlaceholder: "Max",
+      minCurrentAbility: "Min CA",
+      minCurrentAbilityTitle: "Minimum current ability",
+      minPotentialAbility: "Min PA",
+      minPotentialAbilityTitle: "Minimum potential ability",
+      abilityPlaceholder: "1–200",
+      nation: "Nation",
+      club: "Club",
     },
   },
 
@@ -857,9 +869,9 @@ export const en = {
     /** The message under an empty table; `filtered` is whether a filter is in effect. */
     empty: (query: string, filtered: boolean) => {
       if (query === "") {
-        return filtered ? "No clubs match this filter." : "No clubs found.";
+        return filtered ? "No clubs match these filters." : "No clubs found.";
       }
-      return filtered ? `No clubs match “${query}” with this filter.` : `No clubs match “${query}”.`;
+      return filtered ? `No clubs match “${query}” with these filters.` : `No clubs match “${query}”.`;
     },
     /** The small tag on a women's club. */
     women: "Women",
@@ -875,6 +887,15 @@ export const en = {
       all: "All clubs",
       men: "Men's clubs",
       women: "Women's clubs",
+      reputation: "Reputation",
+      minReputation: "Minimum reputation",
+      maxReputation: "Maximum reputation",
+      /** The hint in an empty reputation input: the game stores it from 0 to 10000. */
+      reputationPlaceholder: "0–10000",
+      founded: "Founded",
+      foundedFrom: "Founded from",
+      foundedTo: "Founded to",
+      yearPlaceholder: "Year",
     },
   },
 
