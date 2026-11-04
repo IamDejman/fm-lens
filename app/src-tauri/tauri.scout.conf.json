@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "resources": {
+      "../../target/debug/libfmlibre_bridge.dylib": "libfmlibre_bridge.dylib",
+      "../../target/debug/fmlibre-launch": "fmlibre-launch"
+    },
+    "macOS": {
+      "signingIdentity": "-"
+    }
+  }
+}

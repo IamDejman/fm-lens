@@ -2130,8 +2130,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         clubs: clubs.length,
         gameDate: failedChecks ? null : gameDate,
         loadMs: 480,
-        editable: !unknownBuild,
-        writable: true,
+        editable: false,
+        writable: false,
         knownBuild: !unknownBuild,
         health: mockHealth(),
       };

@@ -268,10 +268,18 @@ dd,
 .brand {
   display: inline-flex;
   flex: none;
-  flex-direction: column;
+  align-items: center;
   align-self: center;
-  gap: 3px;
+  gap: 9px;
   padding: 2px 0;
+}
+
+.brand-symbol {
+  display: block;
+  width: 40px;
+  height: 40px;
+  background: #f6f7f9;
+  border-radius: 8px;
 }
 
 .brand-word {
@@ -280,29 +288,6 @@ dd,
   font-weight: 850;
   line-height: 1;
   letter-spacing: 0.5px;
-}
-
-.brand-bands {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 2px;
-  height: 3px;
-}
-
-.brand-bands span:nth-child(1) {
-  background: #c4513f;
-}
-
-.brand-bands span:nth-child(2) {
-  background: #c98a2b;
-}
-
-.brand-bands span:nth-child(3) {
-  background: #8aa33a;
-}
-
-.brand-bands span:nth-child(4) {
-  background: #2e8a5b;
 }
 
 /* The section tabs, as an almanac's thumb index: the open one is the page itself, joined to it below. */

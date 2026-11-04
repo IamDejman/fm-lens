@@ -1,5 +1,5 @@
 name: Feature request
-description: Something you would like FMLibreEditor to edit or do.
+description: Something you would like FM Lens to edit or do.
 labels: [enhancement]
 body:
   - type: textarea

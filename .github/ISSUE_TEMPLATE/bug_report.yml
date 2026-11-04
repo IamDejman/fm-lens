@@ -1,17 +1,17 @@
 name: Bug report
-description: Something in FMLibreEditor does not work as it should.
+description: Something in FM Lens does not work as it should.
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting. First check [INSTALL.md](https://github.com/tozmoz/FMLibreEditor/blob/main/docs/INSTALL.md), which covers the most common problems.
+        First check docs/PERSONAL-SCOUT.md. Do not attach game saves, memory dumps, Steam configuration or credentials by default.
   - type: input
     id: version
     attributes:
-      label: FMLibreEditor version
+      label: FM Lens version
       description: Shown at the foot of the app's window.
-      placeholder: "0.3.1"
+      placeholder: "0.4.2"
     validations:
       required: true
   - type: dropdown
@@ -19,9 +19,8 @@ body:
     attributes:
       label: Where you run Football Manager 27
       options:
-        - Windows, Xbox / Game Pass
-        - Windows, Steam
-        - macOS, Steam
+        - macOS Apple Silicon, Steam
+        - Other (describe below; not currently verified)
     validations:
       required: true
   - type: textarea

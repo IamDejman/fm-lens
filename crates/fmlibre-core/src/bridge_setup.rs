@@ -46,7 +46,7 @@ pub struct Places {
 impl Places {
     pub fn of(home: &Path) -> Self {
         let support = home.join("Library/Application Support");
-        let folder = support.join("FMLibreEditor");
+        let folder = support.join("FM27Scout");
         Self {
             bridge: folder.join(BRIDGE_FILE),
             launcher: folder.join(LAUNCHER_FILE),
@@ -553,8 +553,8 @@ fn escape(text: &str) -> String {
 mod tests {
     use super::*;
 
-    const LAUNCHER: &str = "/Users/me/Library/Application Support/FMLibreEditor/fmlibre-launch";
-    const BRIDGE: &str = "/Users/me/Library/Application Support/FMLibreEditor/libfmlibre_bridge.dylib";
+    const LAUNCHER: &str = "/Users/me/Library/Application Support/FM27Scout/fmlibre-launch";
+    const BRIDGE: &str = "/Users/me/Library/Application Support/FM27Scout/libfmlibre_bridge.dylib";
 
     fn places() -> Places {
         Places::of(Path::new("/Users/me"))

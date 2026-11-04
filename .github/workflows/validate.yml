@@ -1,0 +1,38 @@
+# Manual validation only. This fork does not publish upstream editor releases.
+name: Validate FM Lens
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos-checks:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Install frontend packages
+        working-directory: app
+        run: npm ci
+      - name: Build frontend
+        working-directory: app
+        run: npm run build
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Check Rust
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Run workspace tests
+        run: cargo test --locked --workspace
+      - name: Build diagnostics and bridge
+        run: cargo build --locked -p fmlibre-probe -p fmlibre-bridge

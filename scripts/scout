@@ -1,0 +1,23 @@
+#!/bin/zsh
+set -eu
+task_root="${0:A:h:h}"
+probe="$task_root/target/debug/fmlibre-probe"
+if [[ ! -x "$probe" ]]; then
+  print -u2 "Build the probe first: cargo build --locked -p fmlibre-probe -p fmlibre-bridge"
+  exit 1
+fi
+if (( $# == 0 )); then
+  set -- info
+fi
+case "$1" in
+  info|health|calibrate|player|players|club|clubs|staff|staff-member|fields|get|teams|--help|--version)
+    exec "$probe" "$@"
+    ;;
+  bridge)
+    if (( $# == 1 )); then
+      exec "$probe" bridge
+    fi
+    ;;
+esac
+print -u2 "This launcher supports read-only queries. Use scripts/scout --help for probe documentation."
+exit 2

@@ -174,10 +174,10 @@ const jobName = (code: string | undefined) => (es.jobs as Partial<Record<number,
 
 const errors: ErrorTexts = {
   "guard.unknownBuild": () =>
-    "FMLibreEditor no se ha probado con esta versión del juego, así que no escribe en ella. «Editar de todos modos», " +
+    "FM Lens no se ha probado con esta versión del juego, así que no escribe en ella. «Editar de todos modos», " +
     "en el aviso de arriba, activa la edición.",
   "guard.failed": (p) =>
-    `${checkName(p.check)}: no han superado las comprobaciones en esta versión del juego, así que FMLibreEditor no ` +
+    `${checkName(p.check)}: no han superado las comprobaciones en esta versión del juego, así que FM Lens no ` +
     "los cambia.",
   "edit.unknownField": (p) => `Aquí no hay ningún campo editable llamado «${p.field}».`,
   "edit.outOfRange": (p) => `${p.value} no es un valor válido para ${field(p.field)}: admite de ${p.min} a ${p.max}.`,
@@ -254,16 +254,16 @@ const errors: ErrorTexts = {
   "memory.mach": (p) => `macOS ha rechazado una operación (${p.operation}, error ${p.code}).`,
   "memory.posix": (p) => `macOS ha rechazado una operación (${p.operation}, errno ${p.code}).`,
   "memory.noBridge": () =>
-    "macOS no deja entrar a FMLibreEditor en el juego: el juego se inició sin el puente de FMLibreEditor. " +
+    "macOS no deja entrar a FM Lens en el juego: el juego se inició sin el puente de FM Lens. " +
     "Instala el puente y vuelve a iniciar el juego desde Steam.",
-  "memory.bridge": (p) => `El puente de FMLibreEditor en el juego no ha entregado la memoria (${p.reason}).`,
+  "memory.bridge": (p) => `El puente de FM Lens en el juego no ha entregado la memoria (${p.reason}).`,
   "setup.steamRunning": () =>
     "Steam está abierto, así que no se han tocado las opciones de lanzamiento de FM27; el puente en sí está " +
     "instalado. Cierra Steam y vuelve a intentarlo, o introduce tú la opción de lanzamiento en Steam.",
   "setup.noSteamAccount": () =>
     "No se ha encontrado ninguna cuenta de Steam en este Mac; abre Steam e inicia sesión una vez.",
   "setup.noLibrary": (p) => `Falta un archivo del puente en la aplicación: ${p.path}`,
-  "setup.unknownConfig": (p) => `${p.path} no tiene un formato que FMLibreEditor conozca, así que no se ha tocado.`,
+  "setup.unknownConfig": (p) => `${p.path} no tiene un formato que FM Lens conozca, así que no se ha tocado.`,
   "setup.io": (p) => `${p.path}: ${p.error}`,
   "app.internal": () => "Se ha producido un error inesperado en la aplicación.",
   "app.notConnected": () => "No hay conexión con el juego.",
@@ -274,10 +274,10 @@ const errors: ErrorTexts = {
   "app.alreadyUndone": () => "Este cambio ya se ha deshecho.",
   "export.failed": (p) => `No se ha podido escribir el archivo: ${p.reason}`,
   "export.notAllowed": (p) =>
-    `FMLibreEditor no puede escribir en ${p.folder}. Si macOS ha preguntado si puede usar tu carpeta Documentos, ` +
+    `FM Lens no puede escribir en ${p.folder}. Si macOS ha preguntado si puede usar tu carpeta Documentos, ` +
     "permítelo en Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas y vuelve a exportar.",
   "export.noFolder": () => "No hay ninguna carpeta a la que exportar.",
-  "export.notExported": () => "Ese no es un archivo que haya exportado FMLibreEditor.",
+  "export.notExported": () => "Ese no es un archivo que haya exportado FM Lens.",
   "export.openFailed": (p) => `No se ha podido abrir: ${p.reason}`,
   "mass.noOperations": () => "Elige al menos un campo que cambiar.",
   "mass.tooMany": (p) =>
@@ -899,22 +899,22 @@ export const es: Strings = {
   },
 
   app: {
-    stage: "beta",
+    stage: "vista previa de solo lectura",
     settingsLabel: "Ajustes",
     languageLabel: "Idioma",
     currencyLabel: "Moneda",
 
     noteEditable:
       "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",
-    noteReadOnly: "Solo lectura: Windows no ha permitido a FMLibreEditor escribir en el juego.",
-    noteUnknownBuild: "Solo lectura: esta versión del juego es nueva para FMLibreEditor.",
-    noteNotConnected: "Nada cambia en el juego hasta que editas y aplicas.",
+    noteReadOnly: "Solo lectura. La edición del juego está desactivada.",
+    noteUnknownBuild: "Solo lectura: esta versión del juego es nueva para FM Lens.",
+    noteNotConnected: "Solo lectura. La edición del juego está desactivada.",
 
     notConnected: "Sin conexión",
     previewTag: "vista previa en el navegador · datos de ejemplo",
     noDate: "Sin fecha del juego",
     noDateTitle:
-      "FMLibreEditor no pudo leer la fecha del juego en esta versión del juego, así que no se muestran las edades y " +
+      "FM Lens no pudo leer la fecha del juego en esta versión del juego, así que no se muestran las edades y " +
       "los filtros de edad no encuentran a nadie. Busca actualizaciones.",
     reload: "Recargar datos",
     refresh: "Actualizar",
@@ -930,14 +930,14 @@ export const es: Strings = {
       more: (count) => `y ${format(count)} más`,
       waiting: (count) =>
         `${count === 1 ? "1 sigue recordado" : `${format(count)} siguen recordados`}, pero no se congelan ahora: ` +
-        "FMLibreEditor aún no puede escribir en esta versión del juego.",
+        "FM Lens aún no puede escribir en esta versión del juego.",
       dismiss: "Cerrar",
     },
 
     connect: {
       title: "Conectar con Football Manager 27",
       intro:
-        "FMLibreEditor lee la memoria del juego mientras se ejecuta. Inicia el juego y carga una partida; después, " +
+        "FM Lens lee la memoria del juego mientras se ejecuta. Inicia el juego y carga una partida; después, " +
         "conecta.",
       notRunning: "Football Manager 27 no se está ejecutando.",
       openFailed: (error) => `No se ha podido abrir el juego: ${error}`,
@@ -953,10 +953,7 @@ export const es: Strings = {
       bridge: {
         title: "El puente (macOS)",
         intro:
-          "macOS no deja que ninguna aplicación entre en la memoria de otra, así que es FM27 quien tiene que " +
-          "entregar la suya. Lo hace en cuanto carga el puente de FMLibreEditor: una pequeña biblioteca que no " +
-          "intercepta ni cambia nada en el juego y solo le da su memoria a esta aplicación. Una opción de " +
-          "lanzamiento en Steam hace que FM27 la cargue.",
+          "FM27 debe cargar el puente al iniciarse. Guarda y cierra FM27, y después cierra Steam antes de instalarlo.",
         library: "Puente",
         installed: "Instalado",
         missing: "No instalado",
@@ -990,11 +987,10 @@ export const es: Strings = {
   },
 
   compatibility: {
-    unknownBuild: (game) => `FMLibreEditor aún no se ha probado con ${game}`,
+    unknownBuild: (game) => `FM Lens aún no se ha probado con ${game}`,
     unknownBuildText:
-      "Probablemente el juego se ha actualizado. FMLibreEditor ha encontrado los datos del juego y los ha comprobado, " +
-      "pero no escribe en una versión con la que no se ha probado hasta que tú lo permitas. Una nueva versión de " +
-      "FMLibreEditor que la conozca suele salir en pocos días.",
+      "Esta versión del juego no se ha verificado con FM Lens. Comprueba los valores con el juego. " +
+      "La edición está desactivada.",
     allowedText:
       "La edición está activada en esta sesión, en la medida en que lo permiten las comprobaciones. Guarda una copia " +
       "de tu partida.",
@@ -1006,7 +1002,7 @@ export const es: Strings = {
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`,
     allow: "Editar de todos modos",
     allowTitle:
-      "Activa la edición hasta que se cierre FMLibreEditor o se vuelva a conectar. Haz antes una copia de tu partida.",
+      "Activa la edición hasta que se cierre FM Lens o se vuelva a conectar. Haz antes una copia de tu partida.",
   },
 
   checks: {
@@ -1023,14 +1019,14 @@ export const es: Strings = {
   },
 
   update: {
-    available: (version) => `FMLibreEditor ${version} ya está disponible`,
+    available: (version) => `FM Lens ${version} ya está disponible`,
     youHave: (version) => `Tienes la versión ${version}.`,
     download: "Descargar",
     install: "Actualizar",
-    installTitle: "Descargar e instalar la nueva versión; FMLibreEditor se cierra y vuelve a abrirse con ella",
+    installTitle: "Descargar e instalar la nueva versión; FM Lens se cierra y vuelve a abrirse con ella",
     preparing: "Preparando…",
     downloading: (percent) => (percent === null ? "Descargando…" : `Descargando… ${percent} %`),
-    installing: "Instalando: FMLibreEditor se cerrará y volverá a abrirse con la nueva versión.",
+    installing: "Instalando: FM Lens se cerrará y volverá a abrirse con la nueva versión.",
     installFailed: (reason) => `No se ha podido actualizar: ${reason}. Descárgala desde su página.`,
     notInstallable: "Esta versión no se puede instalar desde aquí. Descárgala desde su página.",
     later: "Más tarde",
