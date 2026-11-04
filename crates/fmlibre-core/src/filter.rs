@@ -403,15 +403,7 @@ mod tests {
     }
 
     fn club(women: bool, reputation: Option<u16>, founded: Option<u16>) -> ClubSummary {
-        ClubSummary {
-            uid: 1,
-            name: "Northbridge".to_owned(),
-            short_name: None,
-            women,
-            reputation,
-            founded,
-            address: 0,
-        }
+        ClubSummary { uid: 1, name: "Northbridge".to_owned(), short_name: None, women, reputation, founded, address: 0 }
     }
 
     #[test]
