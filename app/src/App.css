@@ -297,6 +297,7 @@ html {
 /* The section tabs, as an almanac's thumb index: the open one is the page itself, joined to it below. */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   align-self: flex-end;
   gap: 2px;
 }
@@ -1382,8 +1383,55 @@ input::placeholder {
  * The clubs table is short: with a profile open only UID drops out (above), and Founded when the
  * list gets very narrow. A long name wraps instead of pushing the other columns out.
  */
-.nation-grid td.col-name {
-  width: 100%;
+.nation-grid td.col-name,
+.stadium-grid td.col-name,
+.stadium-grid td.col-club {
+  width: 40%;
+}
+
+.tour-ring {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 3px;
+}
+
+.tour {
+  position: fixed;
+  z-index: 70;
+  right: 16px;
+  bottom: 16px;
+  width: min(22rem, calc(100% - 32px));
+  padding: 14px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.28);
+}
+
+.tour.top {
+  top: 68px;
+  bottom: auto;
+}
+
+.tour h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.tour p {
+  margin: 0 0 12px;
+}
+
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tour-progress {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .club-grid td.col-name {
@@ -4327,7 +4375,8 @@ button.danger:hover:not(:disabled) {
    and its name, and a check after the one in use. */
 .settings-menu {
   min-width: 13rem;
-  max-height: calc(100vh - 72px);
+  /* The page scale multiplies this height, so divide it back or the last entries sit off the window. */
+  max-height: calc((100vh - 72px) / var(--ui-zoom, 1));
   overflow: auto;
 }
 

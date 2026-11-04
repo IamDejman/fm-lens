@@ -889,6 +889,40 @@ export const tr: Strings = {
     },
   },
 
+  stadiumList: {
+    nav: "Stadyumlar",
+    search: "İsim veya kulüple stadyum ara",
+    summary: (total, shown) =>
+      total > shown
+        ? `${format(total)} stadyum · kapasiteye göre ilk ${shown} gösteriliyor`
+        : `${format(total)} stadyum`,
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "Stadyum okunamadı.";
+      }
+      if (query === "") {
+        return "Bu filtrelere uyan stadyum yok.";
+      }
+      return filtered
+        ? `“${query}” aramasına ve bu filtrelere uyan stadyum yok.`
+        : `“${query}” aramasına uyan stadyum yok.`;
+    },
+    columns: {
+      name: "Stadyum",
+      club: "Kulüp",
+      capacity: "Kapasite",
+      seating: "Oturmalı",
+      expansion: "Büyüyebileceği",
+    },
+    filters: {
+      capacity: "Kapasite",
+      minCapacity: "En düşük kapasite",
+      maxCapacity: "En yüksek kapasite",
+      placeholder: "Min",
+    },
+    note: "Bu kulübün A takımının stadyumu; kulüp profilindeki alanlardan okunur.",
+  },
+
   nationList: {
     nav: "Ülkeler",
     search: "İsimle ülke ara",
@@ -911,6 +945,36 @@ export const tr: Strings = {
     appearanceLight: "Açık",
     appearanceDark: "Koyu",
     zoomLabel: "Yakınlaştırma",
+    tour: {
+      label: "Tanıtım",
+      skip: "Geç",
+      back: "Geri",
+      next: "İleri",
+      done: "Bitti",
+      progress: (step: number, total: number) => `${step} / ${total}`,
+      steps: {
+        brand: {
+          title: "FM Lens",
+          body: "Yüklü kariyerin salt okunur görünümü. Buradan oyuna bir şey yazılmaz.",
+        },
+        tabs: {
+          title: "Bölümler",
+          body: "Oyuncular, personel ve kulüpler; bu kişilerin ülkeleri ve her kulübün stadyumu.",
+        },
+        search: {
+          title: "Arama ve filtreler",
+          body: "İsim veya kimlikle arayın. Filtreler listeyi daraltır. Seçim, dil değişince durur.",
+        },
+        settings: {
+          title: "Ayarlar",
+          body: "Dil, para birimi, açık veya koyu görünüm ve arayüz boyutu. Pencerenin kendi yakınlaştırması ayrıdır.",
+        },
+        status: {
+          title: "Bu kariyer",
+          body: "Pencerenin altı oyunu ve okunan kişi sayısını yazar. Örnek veriler işaretlidir.",
+        },
+      },
+    },
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
     noteReadOnly: "Salt okunur sürüm. Oyun düzenleme kapalı.",
