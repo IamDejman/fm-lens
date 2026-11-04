@@ -1,5 +1,4 @@
-//! A player's ties to nations and clubs: his secondary nationalities, and the nations and clubs he was trained in,
-//! which make him homegrown under a competition's rules.
+//! A player's relations: his secondary nationalities, homegrown ties, and read-only preferences for people and clubs.
 //!
 //! The game keeps a person's relations as one list, the first field of the record his `relations` pointer leads to
 //! (see [`RelationLayout`]): 16-byte entries that each point at a nation, club, person or competition and say how he
@@ -29,6 +28,7 @@ const MOST_RELATIONS: u64 = 256;
 
 /// The game's codes for the kinds of target.
 const CLUB: u8 = 1;
+const PERSON: u8 = 3;
 const NATION: u8 = 8;
 
 /// The homegrown rules the editor writes, by the game's code: 15–21, 0–21, 15–21 excluding loans, and 0–19 for a
@@ -106,6 +106,50 @@ pub struct Relation {
     pub rule: Option<u8>,
 }
 
+/// The kinds of preference the editor can read from a person's relation list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PreferenceKind {
+    FavouredPerson,
+    DislikedPerson,
+    FavouredClub,
+    DislikedClub,
+}
+
+impl PreferenceKind {
+    fn from_codes(target: u8, relation: u8) -> Option<Self> {
+        match (target, relation) {
+            (PERSON, 1) => Some(Self::FavouredPerson),
+            (PERSON, 2) => Some(Self::DislikedPerson),
+            (CLUB, 3) => Some(Self::FavouredClub),
+            (CLUB, 4) => Some(Self::DislikedClub),
+            _ => None,
+        }
+    }
+
+    fn is_club(self) -> bool {
+        matches!(self, Self::FavouredClub | Self::DislikedClub)
+    }
+}
+
+/// A read-only preference for a person or club.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Preference {
+    /// Where it is in the person's complete relation list.
+    pub index: usize,
+    pub kind: PreferenceKind,
+    #[serde(skip)]
+    pub target: u64,
+    /// The database UID shared by player, staff and club records.
+    pub target_uid: u32,
+    /// Club names can be read directly. Person names are resolved by the caller's player/staff indexes.
+    pub name: Option<String>,
+    /// The preference strength stored by the game. Signed: one favoured club on the test career holds -35 beside a
+    /// dislike of the same club at 35.
+    pub strength: i8,
+}
+
 /// A change to a player's ties, worked out from the game as it is now and ready to be written.
 #[derive(Debug, Clone)]
 pub struct RelationPlan {
@@ -142,6 +186,15 @@ impl Session {
             return Ok(Vec::new());
         };
         Ok(list.entries.iter().enumerate().filter_map(|(index, entry)| self.tie_at(index, entry)).collect())
+    }
+
+    /// The player's favoured and disliked people and clubs. This is deliberately read-only until the relation codes
+    /// and game behavior have passed native write, save and reload validation.
+    pub fn preferences(&self, player: &PlayerSummary) -> Result<Vec<Preference>, MoveError> {
+        let Some(list) = self.relation_list(player)? else {
+            return Ok(Vec::new());
+        };
+        Ok(list.entries.iter().enumerate().filter_map(|(index, entry)| self.preference_at(index, entry)).collect())
     }
 
     /// How many more ties the list of `player` has room for.
@@ -317,6 +370,23 @@ impl Session {
         let target_uid = self.process.read_u32(target + target_uid).ok()?;
         let rule = tie.is_training().then_some(entry[r.value as usize]);
         Some(Relation { index, tie, target, target_uid, name, rule })
+    }
+
+    fn preference_at(&self, index: usize, entry: &[u8]) -> Option<Preference> {
+        let r = &self.layout.relation;
+        let kind = PreferenceKind::from_codes(entry[r.target_kind as usize], entry[r.relation as usize])?;
+        let target = u64::from_le_bytes(entry[r.target as usize..r.target as usize + 8].try_into().ok()?);
+        if !is_user_pointer(target) {
+            return None;
+        }
+        // All four database targets checked here use the common entity UID at +0x0c. Name lookup differs by kind.
+        let target_uid = self.process.read_u32(target + self.layout.club.uid).ok()?;
+        let name = kind
+            .is_club()
+            .then(|| self.process.read_u64(target + self.layout.club.name).ok())
+            .flatten()
+            .and_then(|text| read_fm_string(&self.process, text));
+        Some(Preference { index, kind, target, target_uid, name, strength: entry[r.value as usize] as i8 })
     }
 
     /// How many more entries the block of `list` holds: up to its capacity, or to the end of the allocator's block

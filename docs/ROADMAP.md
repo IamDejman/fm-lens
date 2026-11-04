@@ -30,7 +30,7 @@ further data-layout and game-behavior research.
 | Pending edits, applied history, conditional undo | Available; one finishing edit, history and undo exercised natively. Pending red/applied green marking, expected-value comparison and build/career guards. Native conflict scenarios remain open |
 | Human-manager special actions | Partial: the human manager can be edited where staff fields exist. Unsacking, unrestricted registration and national-team moves are not mapped |
 | Player field editing | Partial validation: finishing 15 -> 16 survived save, full quit/relaunch and reload in FM. Enabled for mapped attributes, ability, positions, traits, personality, reputation, nationality, caps, happiness and selected contract values |
-| Player registration, work permits, career plans, languages, favourite/disliked clubs and people | Missing / research: fields and dependent records need mapping |
+| Player registration, work permits, career plans, languages, favourite/disliked clubs and people | Partial: favoured/disliked people and clubs are read by the read-only probe (`scripts/scout preferences`), not yet compared with FM's own screens or shown in the app. Editing, registration, work permits, career plans and languages remain missing / research |
 | Player attribute freeze | Enabled, unverified |
 | Staff fields and roles | Partial, unverified: attributes, CA/PA, personality, reputation, contract wage and expiry, job changes and club moves. Coaching licences, preferred formations and relations are not mapped |
 | Staff freeze, coaching licences, knowledge, tendencies, preferred formations, relations | Attribute freeze implemented for the current connection; toggle exercised. Long-term holding unverified. Other requested fields remain partial / research |
