@@ -79,9 +79,8 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* The night edition: the page turns dark and what was ink is now paper. */
-@media (prefers-color-scheme: dark) {
-  :root {
+/* The night edition: the page turns dark and what was ink is now paper. `appearance.ts` adds `.night`. */
+:root.night {
     --bg: #15161a;
     --panel: #15161a;
     --raised: #1e2024;
@@ -124,7 +123,6 @@
     --scroll: #3d4047;
 
     color-scheme: dark;
-  }
 }
 
 * {
@@ -4319,6 +4317,8 @@ button.danger:hover:not(:disabled) {
    and its name, and a check after the one in use. */
 .settings-menu {
   min-width: 13rem;
+  max-height: calc(100vh - 72px);
+  overflow: auto;
 }
 
 .settings-menu [role="group"] + [role="group"] {

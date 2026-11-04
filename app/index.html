@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FM Lens</title>
+    <script>
+      // Before the stylesheet: the saved appearance (and later the zoom) is on the page at first paint.
+      try {
+        var appearance = localStorage.getItem("fmlibre.appearance");
+        if (appearance !== "light" && appearance !== "dark") appearance = "system";
+        document.documentElement.dataset.appearance = appearance;
+        var dark =
+          appearance === "dark" ||
+          (appearance === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("night", dark);
+      } catch (e) {}
+    </script>
   </head>
 
   <body>

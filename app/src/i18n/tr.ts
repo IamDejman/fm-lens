@@ -874,6 +874,10 @@ export const tr: Strings = {
     settingsLabel: "Ayarlar",
     languageLabel: "Dil",
     currencyLabel: "Para birimi",
+    appearanceLabel: "Görünüm",
+    appearanceSystem: "Sistem",
+    appearanceLight: "Açık",
+    appearanceDark: "Koyu",
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
     noteReadOnly: "Salt okunur sürüm. Oyun düzenleme kapalı.",
