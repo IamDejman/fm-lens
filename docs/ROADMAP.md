@@ -20,8 +20,8 @@ further data-layout and game-behavior research.
 | --- | --- |
 | Live player, staff and club search | Available; broaden behavioral and scale checks |
 | Advanced player search | Available: age, CA/PA, position, nationality, club, attributes, contract expiry, free agents, transfer/loan listing; extend against mapped fields |
-| Staff and club filters | Partial: staff role, unemployment and attributes; men's/women's club filtering |
-| Nations, stadiums, competitions, awards and officials search | Missing standalone browsers; some nation/stadium values appear inside profiles |
+| Staff and club filters | Available for fields already on the list rows: staff job, unemployment, attributes, age, nation, club and CA/PA; clubs by men's or women's teams, reputation and founded year |
+| Nations, stadiums, competitions, awards and officials search | Partial: a nations list (people in the save) and a stadium list (each club's senior team, same fields as the club profile). Competitions, awards and officials are still unmapped |
 | Player attributes, CA/PA, positions, traits, personality | Available to view; Saka's visible values checked against FM, hidden values not independently verified with a second editor |
 | Club finances, facilities, stadiums, relations | Partial: mapped balances, budgets, facilities and capacities; broader relations and financial/stadium records absent |
 | Contract, wage, clause and transfer-status viewing | Partial; every contract clause and bonus is not covered |
@@ -50,10 +50,10 @@ further data-layout and game-behavior research.
 | Reusable player templates | Missing: versioned, portable and validated across saves/builds |
 | Fast field interaction / dragging | Partial: read-only values exist; editing interaction needs restoration and verification |
 | Remembered navigation, searches and profile selection | Available foundation; exercise tab/reload scenarios |
-| Light/dark appearance | Available through the system theme; no dedicated selector |
+| Light/dark appearance | Available: system, light or dark, remembered on this computer |
 | Currency selector | Available; broader locale checks remain |
-| Dedicated UI zoom selector | Missing, separate from native window/menu behavior |
-| Guided first-run tour | Missing; add after connection/editing workflows stabilize |
+| Dedicated UI zoom selector | Available: 80% to 150%, separate from the window, remembered on this computer |
+| Guided first-run tour | Partial: a short introduction to the read-only screens, shown once. An editing introduction waits until one edit has been validated on a disposable career |
 
 ## Delivery order
 
