@@ -787,6 +787,18 @@ export const tr: Strings = {
       job: "Görev",
       anyJob: "Tümü",
       unemployedOnly: "Yalnızca işsizler",
+      age: "Yaş",
+      minAge: "En düşük yaş",
+      maxAge: "En yüksek yaş",
+      minPlaceholder: "Min",
+      maxPlaceholder: "Maks",
+      minCurrentAbility: "Min MY",
+      minCurrentAbilityTitle: "En düşük mevcut yetenek",
+      minPotentialAbility: "Min PY",
+      minPotentialAbilityTitle: "En düşük potansiyel yetenek",
+      abilityPlaceholder: "1–200",
+      nation: "Uyruk",
+      club: "Kulüp",
     },
   },
 
@@ -848,10 +860,10 @@ export const tr: Strings = {
         : `${format(total)} kulüp`,
     empty: (query, filtered) => {
       if (query === "") {
-        return filtered ? "Bu filtreye uyan kulüp yok." : "Kulüp bulunamadı.";
+        return filtered ? "Bu filtrelere uyan kulüp yok." : "Kulüp bulunamadı.";
       }
       return filtered
-        ? `“${query}” aramasına ve bu filtreye uyan kulüp yok.`
+        ? `“${query}” aramasına ve bu filtrelere uyan kulüp yok.`
         : `“${query}” aramasına uyan kulüp yok.`;
     },
     women: "Kadın",
@@ -866,6 +878,14 @@ export const tr: Strings = {
       all: "Tüm kulüpler",
       men: "Erkek kulüpleri",
       women: "Kadın kulüpleri",
+      reputation: "İtibar",
+      minReputation: "En düşük itibar",
+      maxReputation: "En yüksek itibar",
+      reputationPlaceholder: "0–10000",
+      founded: "Kuruluş",
+      foundedFrom: "Kuruluş (en erken)",
+      foundedTo: "Kuruluş (en geç)",
+      yearPlaceholder: "Yıl",
     },
   },
 
