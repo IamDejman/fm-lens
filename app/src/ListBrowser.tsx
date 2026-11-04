@@ -172,7 +172,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   return (
     <div className={className}>
       <section className="players">
-        <div className="toolbar">
+        <div className="toolbar" data-tour={active ? "search" : undefined}>
           <label className="search">
             <svg viewBox="0 0 20 20" aria-hidden="true">
               <circle cx="8.5" cy="8.5" r="5.5" />

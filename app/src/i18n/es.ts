@@ -918,6 +918,40 @@ export const es: Strings = {
     },
   },
 
+  stadiumList: {
+    nav: "Estadios",
+    search: "Buscar estadios por nombre o club",
+    summary: (total, shown) => {
+      const count = total === 1 ? "1 estadio" : `${format(total)} estadios`;
+      return total > shown ? `${count} · se muestran los primeros ${shown} por aforo` : count;
+    },
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "No se ha podido leer ningún estadio.";
+      }
+      if (query === "") {
+        return "Ningún estadio coincide con estos filtros.";
+      }
+      return filtered
+        ? `Ningún estadio coincide con «${query}» con estos filtros.`
+        : `Ningún estadio coincide con «${query}».`;
+    },
+    columns: {
+      name: "Estadio",
+      club: "Club",
+      capacity: "Aforo",
+      seating: "Sentados",
+      expansion: "Puede crecer hasta",
+    },
+    filters: {
+      capacity: "Aforo",
+      minCapacity: "Aforo mínimo",
+      maxCapacity: "Aforo máximo",
+      placeholder: "Mín.",
+    },
+    note: "El estadio del primer equipo de este club, leído de los mismos campos que la ficha del club.",
+  },
+
   nationList: {
     nav: "Países",
     search: "Buscar países por nombre",
@@ -942,6 +976,36 @@ export const es: Strings = {
     appearanceLight: "Claro",
     appearanceDark: "Oscuro",
     zoomLabel: "Zoom",
+    tour: {
+      label: "Introducción",
+      skip: "Omitir",
+      back: "Atrás",
+      next: "Siguiente",
+      done: "Listo",
+      progress: (step: number, total: number) => `${step} de ${total}`,
+      steps: {
+        brand: {
+          title: "FM Lens",
+          body: "Una vista de solo lectura de la partida cargada. Aquí no se escribe nada en el juego.",
+        },
+        tabs: {
+          title: "Secciones",
+          body: "Jugadores, personal y clubes, más los países de esas personas y el estadio de cada club.",
+        },
+        search: {
+          title: "Búsqueda y filtros",
+          body: "Busca por nombre o id. Los filtros reducen la lista. La elección se conserva al cambiar de idioma.",
+        },
+        settings: {
+          title: "Ajustes",
+          body: "Idioma, moneda, apariencia clara u oscura y el tamaño de la interfaz. El zoom de la ventana es aparte.",
+        },
+        status: {
+          title: "Esta partida",
+          body: "El pie de la ventana nombra el juego y cuántas personas se leyeron. Los datos de ejemplo están marcados.",
+        },
+      },
+    },
 
     noteEditable:
       "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",

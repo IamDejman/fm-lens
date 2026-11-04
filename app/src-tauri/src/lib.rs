@@ -11,8 +11,8 @@ use fmlibre_core::{
     GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Kind, Lifted, Listed, Loan, MoveError,
     MovePlan, MoveTerms, Nation, NationSummary, Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter,
     PlayerIndex, PlayerOrder, PlayerSummary, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
-    SessionError, Skipped, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, Tie, TieTarget,
-    find_game, nation_summaries, nations, sort_players,
+    SessionError, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex,
+    StaffPlan, Target, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -50,6 +50,8 @@ struct Connection {
     frozen: Frozen,
     /// Which save the game has loaded (see `save_of`); none when the lists name no human manager.
     save: Option<String>,
+    /// Senior stadiums, read once from the clubs already loaded. Cleared when the connection is loaded again.
+    stadiums: Option<SearchIndex<StadiumSummary>>,
 }
 
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
@@ -199,7 +201,7 @@ impl Connection {
         let clubs = ClubIndex::new(session.clubs()?);
         let next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
         let frozen = Frozen::default();
-        Ok(Self { session, players, staff, clubs, human_clubs, log, mass: None, next_id, frozen, save })
+        Ok(Self { session, players, staff, clubs, human_clubs, log, mass: None, next_id, frozen, save, stadiums: None })
     }
 
     /// Freezes again what was frozen in this save before, as the file at `path` remembers it: the attributes of its
@@ -889,6 +891,15 @@ impl Connection {
                 (field, Operation::Set { value })
             })
             .collect()
+    }
+
+    /// Senior stadiums of the loaded clubs, read once. Empty when this build has no stadium layout.
+    fn stadium_index(&mut self) -> &SearchIndex<StadiumSummary> {
+        if self.stadiums.is_none() {
+            let rows = read_stadiums(&self.session.process, &self.session.layout, self.clubs.iter());
+            self.stadiums = Some(SearchIndex::new(rows));
+        }
+        self.stadiums.as_ref().expect("stadium index just stored")
     }
 
     /// The nations of the players and staff in the lists.
@@ -1729,6 +1740,21 @@ fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, F
     connection.session.staff_details(member)?.ok_or_else(data_changed)
 }
 
+/// Senior stadiums matching `query` (stadium or club name), highest capacity first; at most `limit` rows.
+#[tauri::command]
+fn search_stadiums(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+    filter: Option<StadiumFilter>,
+) -> Result<Page<StadiumSummary>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let filter = filter.unwrap_or_default();
+    let index = connection.stadium_index();
+    Ok(page(index, &query, limit, |stadium| filter.matches(stadium), |_| {}))
+}
+
 /// Nations of the players and staff in the lists, matching `query` by name; at most `limit` rows.
 #[tauri::command]
 fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<NationSummary>, Failure> {
@@ -2490,6 +2516,7 @@ pub fn run() {
             search_staff,
             search_clubs,
             search_nations,
+            search_stadiums,
             export_players,
             open_export,
             show_export,

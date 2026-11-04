@@ -11,6 +11,9 @@ import type {
   Nation,
   NationPage,
   NationSummary,
+  StadiumFilter,
+  StadiumPage,
+  StadiumSummary,
   BridgeInfo,
   CaptainRole,
   ClubTeam,
@@ -2304,6 +2307,39 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "list_nations": {
       const nations: Nation[] = NATIONS.map((name) => ({ address: nationAddress(name), uid: 1000 + NATIONS.indexOf(name), name }));
       return nations.sort((a, b) => a.name.localeCompare(b.name)) as T;
+    }
+    case "search_stadiums": {
+      const raw = String(args?.query ?? "");
+      const query = fold(raw);
+      const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as StadiumFilter;
+      const rows: StadiumSummary[] = clubs.flatMap((club) => {
+        const stadium = clubDetails(club).stadium;
+        if (!stadium) {
+          return [];
+        }
+        const row: StadiumSummary = {
+          uid: club.uid,
+          clubUid: club.uid,
+          club: club.name,
+          women: club.women,
+          name: stadium.name,
+          capacity: stadium.capacity,
+          seating: stadium.seating,
+          used: stadium.used,
+          expansion: stadium.expansion,
+        };
+        const haystack = fold(`${row.name ?? ""} ${row.club}`);
+        const words = query.split(/\s+/).filter(Boolean);
+        const named = raw.trim() === String(row.uid) || words.every((word) => haystack.includes(word));
+        const capacityOk =
+          (filter.minCapacity === undefined || row.capacity >= filter.minCapacity) &&
+          (filter.maxCapacity === undefined || row.capacity <= filter.maxCapacity);
+        return named && capacityOk ? [row] : [];
+      });
+      rows.sort((a, b) => b.capacity - a.capacity || (a.name ?? a.club).localeCompare(b.name ?? b.club));
+      const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return stadiumPage as T;
     }
     case "search_nations": {
       const query = fold(String(args?.query ?? ""));

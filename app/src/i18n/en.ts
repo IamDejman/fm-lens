@@ -899,6 +899,40 @@ export const en = {
     },
   },
 
+  /** Senior stadiums, one per club, from the fields the club profile already shows. */
+  stadiumList: {
+    nav: "Stadiums",
+    search: "Search stadiums by name or club",
+    summary: (total: number, shown: number) =>
+      total > shown
+        ? `${format(total)} stadiums · showing the first ${shown} by capacity`
+        : `${format(total)} stadiums`,
+    empty: (query: string, filtered: boolean) => {
+      if (query === "" && !filtered) {
+        return "No stadiums could be read.";
+      }
+      if (query === "") {
+        return "No stadiums match these filters.";
+      }
+      return filtered ? `No stadiums match “${query}” with these filters.` : `No stadiums match “${query}”.`;
+    },
+    columns: {
+      name: "Stadium",
+      club: "Club",
+      capacity: "Capacity",
+      seating: "Seated",
+      expansion: "Can grow to",
+    },
+    filters: {
+      capacity: "Capacity",
+      minCapacity: "Minimum capacity",
+      maxCapacity: "Maximum capacity",
+      placeholder: "Min",
+    },
+    /** In the profile: where the numbers come from. */
+    note: "The stadium this club's senior team plays at, read from the same fields as the club profile.",
+  },
+
   /** Nations of the people in the save. Not a nation's ranking, rules or kit. */
   nationList: {
     nav: "Nations",
@@ -927,6 +961,37 @@ export const en = {
     appearanceDark: "Dark",
     /** The interface scale, separate from the window's own zoom. */
     zoomLabel: "Zoom",
+    /** Shown once, until it is skipped or finished. It covers the read-only screens only. */
+    tour: {
+      label: "Introduction",
+      skip: "Skip",
+      back: "Back",
+      next: "Next",
+      done: "Done",
+      progress: (step: number, total: number) => `${step} of ${total}`,
+      steps: {
+        brand: {
+          title: "FM Lens",
+          body: "A read-only view of the loaded career. Nothing here is written to the game.",
+        },
+        tabs: {
+          title: "Sections",
+          body: "Players, staff and clubs, plus the nations those people belong to and each club's stadium.",
+        },
+        search: {
+          title: "Search and filters",
+          body: "Search by name or id. Filters narrow the list. The choice is kept when the language changes.",
+        },
+        settings: {
+          title: "Settings",
+          body: "Language, currency, light or dark appearance, and the size of the interface. The window's own zoom is separate.",
+        },
+        status: {
+          title: "This career",
+          body: "The foot of the window names the game and how many people were read. Sample data is marked as such.",
+        },
+      },
+    },
 
     // The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`).
     /** Connected, and the game was opened for writing. */
