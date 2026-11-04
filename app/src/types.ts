@@ -298,6 +298,46 @@ export interface PlayerPage {
   rows: PlayerSummary[];
 }
 
+/** The stadium a club's senior team plays at, from the same fields as the club profile. */
+export interface StadiumSummary {
+  /** The club's UID. One senior stadium per club. */
+  uid: number;
+  clubUid: number;
+  club: string;
+  women: boolean;
+  name: string | null;
+  capacity: number;
+  seating: number;
+  /** The capacity in use when the game limits it; 0 when it does not. */
+  used: number;
+  expansion: number;
+}
+
+export interface StadiumPage {
+  total: number;
+  rows: StadiumSummary[];
+}
+
+/** Filters for `search_stadiums`. */
+export interface StadiumFilter {
+  minCapacity?: number;
+  maxCapacity?: number;
+}
+
+/** A nation people in the loaded save belong to. Rankings, rules and kits are not part of this row. */
+export interface NationSummary {
+  /** Row id. The nation's own UID when that was read. */
+  uid: number;
+  /** The nation's own UID, for its flag. Null when `uid` is only a row id. */
+  nationUid: number | null;
+  name: string;
+}
+
+export interface NationPage {
+  total: number;
+  rows: NationSummary[];
+}
+
 /** A nation the nation field of a player or member of staff can be set to. */
 export interface Nation {
   /** Where the game keeps it: the value of a nation field. */
@@ -360,6 +400,14 @@ export interface StaffFilter {
   job?: number;
   /** Only staff without a contract. */
   unemployed?: boolean;
+  minAge?: number;
+  maxAge?: number;
+  minCurrentAbility?: number;
+  minPotentialAbility?: number;
+  /** Part of the nation's name; accents and case ignored. */
+  nation?: string;
+  /** Part of the employer's name; accents and case ignored. */
+  club?: string;
   /** Bounds on attributes, every one of which must hold. */
   attributes?: AttributeBound[];
 }
@@ -368,6 +416,12 @@ export interface StaffFilter {
 export interface ClubFilter {
   /** true: women's clubs only; false: men's clubs only. */
   women?: boolean;
+  /** 0–10000. A club with no reputation keeps to no bound. */
+  minReputation?: number;
+  maxReputation?: number;
+  /** A club with no founded year keeps to no bound. */
+  foundedFrom?: number;
+  foundedTo?: number;
 }
 
 /** An attribute as stored (`raw`, 0–100) and as FM shows it (`value`, 1–20). */

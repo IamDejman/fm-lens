@@ -114,6 +114,9 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const pick = (row: Row) => (row.uid === selected?.uid ? setSelected(row) : askToLeave(() => setSelected(row)));
 
   useEffect(() => {
+    // Keep hidden lists mounted for navigation state, but defer their reads until opened.
+    // In particular, building the stadium index must not delay the first player search.
+    if (!active) return;
     let cancelled = false;
     const args: Record<string, unknown> = JSON.parse(argsKey);
     // Typing in the search box or a filter waits a little, so a burst of keys makes one request.
@@ -155,7 +158,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [command, query, argsKey, version]);
+  }, [command, query, argsKey, version, active]);
 
   useEffect(() => {
     if (active) {
@@ -172,7 +175,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   return (
     <div className={className}>
       <section className="players">
-        <div className="toolbar">
+        <div className="toolbar" data-tour={active ? "search" : undefined}>
           <label className="search">
             <svg viewBox="0 0 20 20" aria-hidden="true">
               <circle cx="8.5" cy="8.5" r="5.5" />

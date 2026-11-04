@@ -181,6 +181,7 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
         ref={button}
         type="button"
         className="settings-toggle"
+        data-tour="settings"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={BUTTON_LABEL}

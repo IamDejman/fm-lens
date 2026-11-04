@@ -22,8 +22,8 @@ further data-layout and game-behavior research.
 | --- | --- |
 | Live player, staff and club search | Available; broaden behavioral and scale checks |
 | Advanced player search | Available: age, CA/PA, position, nationality, club, attributes, contract expiry, free agents, transfer/loan listing; extend against mapped fields |
-| Staff and club filters | Partial: staff role, unemployment and attributes; men's/women's club filtering |
-| Nations, stadiums, competitions, awards and officials search | Missing standalone browsers; some nation/stadium values appear inside profiles |
+| Staff and club filters | Available for decoded values: staff job, unemployment, age, nation, club, CA/PA and attributes; club gender, reputation and founded year |
+| Nations, stadiums, competitions, awards and officials search | Partial: searchable nations represented by players/staff and senior stadiums per club with capacity filters. Full entity databases, competitions, awards and officials remain missing |
 | Player attributes, CA/PA, positions, traits, personality | Available to view; Saka's visible values checked against FM, hidden values not independently verified with a second editor |
 | Club finances, facilities, stadiums, relations | Partial: mapped balances, budgets, facilities and capacities; broader relations and financial/stadium records absent |
 | Contract, wage, clause and transfer-status viewing | Partial; every contract clause and bonus is not covered |
@@ -55,7 +55,7 @@ further data-layout and game-behavior research.
 | Light/dark appearance | Available: System, Light and Dark selector with local persistence; native light/dark check performed |
 | Currency selector | Available; broader locale checks remain |
 | Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent; native scaling/viewport regression checks required |
-| Guided first-run tour | Missing; add after connection/editing workflows stabilize |
+| Guided first-run tour | Partial: skippable introduction to navigation, search, settings and the editing boundary; no guided editing exercise |
 
 ## Delivery order
 

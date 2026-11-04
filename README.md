@@ -21,7 +21,11 @@ features differ from the upstream editor.
   actions that are already built: inspire, refresh fitness and sharpness, and
   max attributes.
 - Filter players by age, ability, position, nationality, club, attributes,
-  contract expiry and transfer/loan listing. Staff and club filters are narrower.
+  contract expiry and transfer/loan listing. Staff filters include age, nation,
+  club, ability, job and attributes; club filters include reputation and founded year.
+- Browse nations represented by players/staff and the senior stadium of each
+  loaded club, with stadium capacity filtering. These are partial read-only lists.
+- Follow a skippable first-run introduction to navigation, search and settings.
 - View and edit mapped club balances, budgets, facilities and stadium capacities.
 - Move, swap and release players, and change mapped staff jobs, where the editor
   already has those operations. Linked history and finances are not fully proven.

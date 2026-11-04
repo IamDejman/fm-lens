@@ -813,6 +813,18 @@ export const es: Strings = {
       job: "Puesto",
       anyJob: "Cualquiera",
       unemployedOnly: "Solo sin empleo",
+      age: "Edad",
+      minAge: "Edad mínima",
+      maxAge: "Edad máxima",
+      minPlaceholder: "Mín.",
+      maxPlaceholder: "Máx.",
+      minCurrentAbility: "HA mín.",
+      minCurrentAbilityTitle: "Habilidad actual mínima",
+      minPotentialAbility: "HP mín.",
+      minPotentialAbilityTitle: "Habilidad potencial mínima",
+      abilityPlaceholder: "1–200",
+      nation: "País",
+      club: "Club",
     },
   },
 
@@ -877,10 +889,10 @@ export const es: Strings = {
         : entityCount("club", total),
     empty: (query, filtered) => {
       if (query === "") {
-        return filtered ? "Ningún club coincide con este filtro." : "No se han encontrado clubes.";
+        return filtered ? "Ningún club coincide con estos filtros." : "No se han encontrado clubes.";
       }
       return filtered
-        ? `Ningún club coincide con «${query}» con este filtro.`
+        ? `Ningún club coincide con «${query}» con estos filtros.`
         : `Ningún club coincide con «${query}».`;
     },
     women: "Femenino",
@@ -895,13 +907,104 @@ export const es: Strings = {
       all: "Todos los clubes",
       men: "Clubes masculinos",
       women: "Clubes femeninos",
+      reputation: "Reputación",
+      minReputation: "Reputación mínima",
+      maxReputation: "Reputación máxima",
+      reputationPlaceholder: "0–10000",
+      founded: "Fundación",
+      foundedFrom: "Fundado desde",
+      foundedTo: "Fundado hasta",
+      yearPlaceholder: "Año",
     },
+  },
+
+  stadiumList: {
+    nav: "Estadios",
+    search: "Buscar estadios por nombre o club",
+    summary: (total, shown) => {
+      const count = total === 1 ? "1 estadio" : `${format(total)} estadios`;
+      return total > shown ? `${count} · se muestran los primeros ${shown} por aforo` : count;
+    },
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "No se ha podido leer ningún estadio.";
+      }
+      if (query === "") {
+        return "Ningún estadio coincide con estos filtros.";
+      }
+      return filtered
+        ? `Ningún estadio coincide con «${query}» con estos filtros.`
+        : `Ningún estadio coincide con «${query}».`;
+    },
+    columns: {
+      name: "Estadio",
+      club: "Club",
+      capacity: "Aforo",
+      seating: "Sentados",
+      expansion: "Puede crecer hasta",
+    },
+    filters: {
+      capacity: "Aforo",
+      minCapacity: "Aforo mínimo",
+      maxCapacity: "Aforo máximo",
+      placeholder: "Mín.",
+    },
+    note: "El estadio del primer equipo de este club, leído de los mismos campos que la ficha del club.",
+  },
+
+  nationList: {
+    nav: "Países",
+    search: "Buscar países por nombre",
+    summary: (total, shown) => {
+      const count = total === 1 ? "1 país" : `${format(total)} países`;
+      return total > shown ? `${count} · se muestran los primeros ${shown}` : count;
+    },
+    empty: (query) => (query === "" ? "No se han encontrado países." : `Ningún país coincide con «${query}».`),
+    columns: { name: "País", uid: "UID" },
+    note: "Países de los jugadores y el personal de esta partida. No se leen clasificaciones, normas, equipaciones ni selecciones.",
+    uid: "UID",
+    noUid: "Sin UID",
   },
 
   app: {
     settingsLabel: "Ajustes",
     languageLabel: "Idioma",
     currencyLabel: "Moneda",
+    appearanceLabel: "Apariencia",
+    appearanceSystem: "Sistema",
+    appearanceLight: "Claro",
+    appearanceDark: "Oscuro",
+    zoomLabel: "Zoom",
+    tour: {
+      label: "Introducción",
+      skip: "Omitir",
+      back: "Atrás",
+      next: "Siguiente",
+      done: "Listo",
+      progress: (step: number, total: number) => `${step} de ${total}`,
+      steps: {
+        brand: {
+          title: "FM Lens",
+          body: "Explora tu partida. En versiones compatibles, los cambios llegan a FM al aplicarlos. Prueba en una copia de la partida.",
+        },
+        tabs: {
+          title: "Secciones",
+          body: "Jugadores, personal y clubes, más los países de esas personas y el estadio de cada club.",
+        },
+        search: {
+          title: "Búsqueda y filtros",
+          body: "Busca por nombre o id. Los filtros reducen la lista. La elección se conserva al cambiar de idioma.",
+        },
+        settings: {
+          title: "Ajustes",
+          body: "Idioma, moneda, apariencia clara u oscura y el tamaño de la interfaz. El zoom de la ventana es aparte.",
+        },
+        status: {
+          title: "Esta partida",
+          body: "El pie de la ventana nombra el juego y cuántas personas se leyeron. Los datos de ejemplo están marcados.",
+        },
+      },
+    },
 
     noteEditable:
       "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",

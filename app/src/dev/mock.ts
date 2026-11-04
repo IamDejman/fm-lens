@@ -9,6 +9,11 @@ import type {
   ClubMoney,
   FeePlan,
   Nation,
+  NationPage,
+  NationSummary,
+  StadiumFilter,
+  StadiumPage,
+  StadiumSummary,
   BridgeInfo,
   CaptainRole,
   ClubTeam,
@@ -2012,11 +2017,27 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
 }
 
 /** The staff filter of the real command: a player-coach has the code of the coaching job plus one, and matches it too. */
+function matchesClubFilter(c: ClubSummary, f: ClubFilter): boolean {
+  return (
+    (f.women === undefined || c.women === f.women) &&
+    (f.minReputation === undefined || (c.reputation !== null && c.reputation >= f.minReputation)) &&
+    (f.maxReputation === undefined || (c.reputation !== null && c.reputation <= f.maxReputation)) &&
+    (f.foundedFrom === undefined || (c.founded !== null && c.founded >= f.foundedFrom)) &&
+    (f.foundedTo === undefined || (c.founded !== null && c.founded <= f.foundedTo))
+  );
+}
+
 function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
   const d = (f.attributes?.length ?? 0) > 0 ? staffDetails(s) : null;
   return (
     (f.job === undefined || (s.job !== null && (s.job === f.job || s.job === f.job + 1))) &&
     (!f.unemployed || s.job === null) &&
+    (f.minAge === undefined || (s.age !== null && s.age >= f.minAge)) &&
+    (f.maxAge === undefined || (s.age !== null && s.age <= f.maxAge)) &&
+    (f.minCurrentAbility === undefined || s.currentAbility >= f.minCurrentAbility) &&
+    (f.minPotentialAbility === undefined || s.potentialAbility >= f.minPotentialAbility) &&
+    contains(s.nation, f.nation) &&
+    contains(s.club, f.club) &&
     (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
   );
 }
@@ -2200,7 +2221,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const words = fold(query).split(/\s+/).filter(Boolean);
       const hits = clubs
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
-        .filter((c) => filter.women === undefined || c.women === filter.women)
+        .filter((c) => matchesClubFilter(c, filter))
         .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
       const page: ClubPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;
@@ -2293,6 +2314,51 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "list_nations": {
       const nations: Nation[] = NATIONS.map((name) => ({ address: nationAddress(name), uid: 1000 + NATIONS.indexOf(name), name }));
       return nations.sort((a, b) => a.name.localeCompare(b.name)) as T;
+    }
+    case "search_stadiums": {
+      const raw = String(args?.query ?? "");
+      const query = fold(raw);
+      const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as StadiumFilter;
+      const rows: StadiumSummary[] = clubs.flatMap((club) => {
+        const stadium = clubDetails(club).stadium;
+        if (!stadium) {
+          return [];
+        }
+        const row: StadiumSummary = {
+          uid: club.uid,
+          clubUid: club.uid,
+          club: club.name,
+          women: club.women,
+          name: stadium.name,
+          capacity: stadium.capacity,
+          seating: stadium.seating,
+          used: stadium.used,
+          expansion: stadium.expansion,
+        };
+        const haystack = fold(`${row.name ?? ""} ${row.club}`);
+        const words = query.split(/\s+/).filter(Boolean);
+        const named = raw.trim() === String(row.uid) || words.every((word) => haystack.includes(word));
+        const capacityOk =
+          (filter.minCapacity === undefined || row.capacity >= filter.minCapacity) &&
+          (filter.maxCapacity === undefined || row.capacity <= filter.maxCapacity);
+        return named && capacityOk ? [row] : [];
+      });
+      rows.sort((a, b) => b.capacity - a.capacity || (a.name ?? a.club).localeCompare(b.name ?? b.club));
+      const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return stadiumPage as T;
+    }
+    case "search_nations": {
+      const query = fold(String(args?.query ?? ""));
+      const limit = Number(args?.limit ?? 200);
+      const rows: NationSummary[] = NATIONS.map((name, index) => ({
+        uid: 1000 + index,
+        nationUid: 1000 + index,
+        name,
+      })).filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim());
+      rows.sort((a, b) => a.name.localeCompare(b.name));
+      const page: NationPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return page as T;
     }
     case "read_values":
       return currentValues(args?.entity as Entity, Number(args?.uid)) as T;
