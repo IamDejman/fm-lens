@@ -1,8 +1,8 @@
 //! `fmlibre-probe`: a look inside a running Football Manager process.
 //!
 //! Use it to check that FMLibreEditor can attach to a given build (Steam, Epic, Game
-//! Pass) and to map where the game keeps its data. Only `set` writes to the game, one
-//! field at a time, through the same checks as the app.
+//! Pass) and to map where the game keeps its data. This build refuses every write to the
+//! game's memory: the inherited mutation subcommands are present but not enabled.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -40,7 +40,8 @@ const ELEVATED: &str = "Running as root";
 #[command(
     name = "fmlibre-probe",
     version,
-    about = "Probe for a running Football Manager 27 process. Only `set` writes to the game.",
+    about = "Probe for a running Football Manager 27 process. This build refuses writes to the game's memory; the \
+             inherited mutation subcommands are not enabled.",
     after_help = "Addresses and lengths are hexadecimal; ADDR is 0x... or module+0x..., e.g. game_plugin.dll+0x10 \
                   (game_plugin+0x10 on macOS); INDEX is decimal."
 )]
@@ -2530,6 +2531,14 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
     );
     if member.shift != 0 {
         println!("  layout         person block shifted by {:#x}", member.shift);
+    }
+    if s.is_human {
+        let unsackable = match d.unsackable {
+            Some(true) => "yes",
+            Some(false) => "no",
+            None => "unsupported on this build or object",
+        };
+        println!("  unsackable     {unsackable}");
     }
     println!();
     for (group, keys) in STAFF_ATTRIBUTE_GROUPS {

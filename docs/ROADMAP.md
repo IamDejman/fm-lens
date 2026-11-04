@@ -22,13 +22,13 @@ further data-layout and game-behavior research.
 | --- | --- |
 | Live player, staff and club search | Available; broaden behavioral and scale checks |
 | Advanced player search | Available: age, CA/PA, position, nationality, club, attributes, contract expiry, free agents, transfer/loan listing; extend against mapped fields |
-| Staff and club filters | Available for decoded values: staff job, unemployment, age, nation, club, CA/PA and attributes; club gender, reputation and founded year |
+| Staff and club filters | Available for decoded values: staff job, unemployment, human managers only, age, nation, club, CA/PA and attributes; club gender, reputation and founded year |
 | Nations, stadiums, competitions, awards and officials search | Partial: searchable nations represented by players/staff and senior stadiums per club with capacity filters. Full entity databases, competitions, awards and officials remain missing |
 | Player attributes, CA/PA, positions, traits, personality | Available to view; Saka's visible values checked against FM, hidden values not independently verified with a second editor |
 | Club finances, facilities, stadiums, relations | Partial: mapped balances, budgets, facilities and capacities; broader relations and financial/stadium records absent |
 | Contract, wage, clause and transfer-status viewing | Partial; every contract clause and bonus is not covered |
 | Pending edits, applied history, conditional undo | Available; one finishing edit, history and undo exercised natively. Pending red/applied green marking, expected-value comparison and build/career guards. Native conflict scenarios remain open |
-| Human-manager special actions | Partial: the human manager can be edited where staff fields exist. Unsacking, unrestricted registration and national-team moves are not mapped |
+| Human-manager special actions | Partial: the human manager can be edited where staff fields exist. Unsackable (bit 1 of the manager's flags) is implemented, experimental; apply/undo, stale-value refusal and save/reload persistence tested, on FM27 Steam build 26340721 ARM64 only (see recon/fm27-human-manager.md). Unrestricted registration and club/national-team moves are not mapped |
 | Player field editing | Partial validation: finishing 15 -> 16 survived save, full quit/relaunch and reload in FM. Enabled for mapped attributes, ability, positions, traits, personality, reputation, nationality, caps, happiness and selected contract values |
 | Player registration, work permits, career plans, languages, favourite/disliked clubs and people | Partial: favoured/disliked people and clubs are read by the read-only probe (`scripts/scout preferences`), not yet compared with FM's own screens or shown in the app. Editing, registration, work permits, career plans and languages remain missing / research |
 | Player attribute freeze | Enabled, unverified |
@@ -50,9 +50,9 @@ further data-layout and game-behavior research.
 | Bulk edit preview/apply/undo | Available; template path exercised with one target/one change and undo. Multi-target persistence still unverified |
 | Clone a player profile onto other players | Implemented with selectable groups, filtered targets, optional UID restriction and preview. Live capture of 142 fields exercised; multi-target clone persistence unverified |
 | Reusable player templates | Available: versioned JSON, local library, import/export, destination validation, preview/apply/undo. One-field native batch and invalid-field rejection exercised; cross-save/build testing open |
-| Fast field interaction / dragging | Enabled, unverified for mapped fields |
+| Fast field interaction / dragging | Enabled, unverified for mapped fields. A displayed mapped value opens its focused input on click or Enter/Space, then uses the usual review/apply/undo path; mouse/keyboard activation, focus, pending guard, apply and undo exercised natively |
 | Remembered navigation, searches and profile selection | Available foundation; exercise tab/reload scenarios |
-| Light/dark appearance | Available: System, Light and Dark selector with local persistence; native light/dark check performed |
+| Light/dark appearance | Available: System, Light and Dark selector with local persistence; native light/dark check performed. FM-inspired refinement (see FM-LENS-INTERFACE.md) has native light/dark checks at 125/150% zoom, including native confirmation of the filter overflow fix |
 | Currency selector | Available; broader locale checks remain |
 | Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent; native scaling/viewport regression checks required |
 | Guided first-run tour | Partial: skippable introduction to navigation, search, settings and the editing boundary; no guided editing exercise |

@@ -50,6 +50,20 @@ export const AppliedFieldsContext = createContext<ReadonlySet<string>>(new Set()
 
 export const useEditSession = () => useContext(SessionContext);
 
+/** Starting the edit of one field from its displayed value, while the profile is read. */
+export interface EditActivation {
+  entity: Entity;
+  /** Whether the value of `key` may open its input: a mapped, non-pointer field the game has a value for. */
+  canActivate: (key: string) => boolean;
+  /** Begins editing, then focuses the input of `key`. */
+  activate: (key: string) => void;
+  /** True while editing is starting: the values wait. */
+  busy: boolean;
+}
+
+/** The activation of the profile around the reader; null where values cannot open their inputs. */
+export const EditActivationContext = createContext<EditActivation | null>(null);
+
 /** Whether the field `field`, if there is one, is an input at the moment. */
 export function useEditableField(field: string | undefined): boolean {
   const session = useEditSession();
@@ -86,8 +100,10 @@ export interface ProfileEditing {
   appliedFields: ReadonlySet<string>;
   /** The Edit button, so that focus can come back to it. */
   editButton: RefObject<HTMLButtonElement | null>;
-  /** Reads the field table and the values, then shows the inputs. */
-  begin: () => void;
+  /** Clicking a displayed value to edit it; null while that is not offered. */
+  activation: EditActivation | null;
+  /** Reads the field table and the values, then shows the inputs; with `field`, focuses that field's input. */
+  begin: (field?: string) => void;
   apply: () => void;
   /** Puts every input back to the value the game has. */
   discard: () => void;
@@ -137,6 +153,12 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
   const [appliedFields, setAppliedFields] = useState<ReadonlySet<string>>(new Set());
   const alive = useRef(true);
   const editButton = useRef<HTMLButtonElement>(null);
+  // The fields whose values may open their inputs, from a read made only to know which; never the edit's baseline.
+  const [activatable, setActivatable] = useState<ReadonlySet<string>>(new Set());
+  // Set while `begin` reads, so a second click cannot start another read.
+  const starting = useRef(false);
+  // The field whose input takes focus once editing has begun.
+  const focusField = useRef<string | null>(null);
 
   useEffect(() => {
     alive.current = true;
@@ -144,6 +166,31 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
       alive.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    setActivatable(new Set());
+    if (!editable) {
+      focusField.current = null;
+      return;
+    }
+    let current = true;
+    const read = async () => {
+      try {
+        const [table, values] = await Promise.all([fieldTable(entity), readValues(entity, uid)]);
+        if (current) {
+          setActivatable(
+            new Set(table.filter((field) => field.kind !== "pointer" && values[field.key] !== undefined).map((field) => field.key)),
+          );
+        }
+      } catch {
+        // Values stay plain text; Edit still reads them itself and says what went wrong.
+      }
+    };
+    void read();
+    return () => {
+      current = false;
+    };
+  }, [editable, entity, uid]);
 
   const editing = stage === "edit";
   const byKey = useMemo(() => new Map(fields.map((field) => [field.key, field] as const)), [fields]);
@@ -197,6 +244,7 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
     setRefused({});
     setReviewing(false);
     setConfirm(null);
+    focusField.current = null;
     if (!keepReport) {
       setReport(null);
     }
@@ -205,16 +253,32 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
     }
   };
 
-  const begin = async () => {
-    if (!editable || stage !== "view") {
+  // Whether the app may still write: an answer that arrives after that changed is dropped.
+  const editableNow = useRef(editable);
+  editableNow.current = editable;
+
+  const begin = async (field?: string) => {
+    if (!editable || stage !== "view" || starting.current) {
       return;
     }
+    starting.current = true;
+    focusField.current = typeof field === "string" ? field : null;
     setStage("loading");
     setReport(null);
     try {
+      // Always read afresh: these values, not the ones read for activation, are what the changes are checked against.
       const [table, values] = await Promise.all([fieldTable(entity), readValues(entity, uid)]);
       if (!alive.current) {
         return;
+      }
+      if (!editableNow.current) {
+        focusField.current = null;
+        setStage("view");
+        return;
+      }
+      const requested = focusField.current;
+      if (requested !== null && !table.some((spec) => spec.key === requested && spec.kind !== "pointer" && values[requested] !== undefined)) {
+        focusField.current = null;
       }
       setFields(table);
       setStart(values);
@@ -225,11 +289,54 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
       setStage("edit");
     } catch (e) {
       if (alive.current) {
+        focusField.current = null;
         setStage("view");
         setReport({ applied: 0, problems: [editText.startFailed(describeError(e))] });
       }
+    } finally {
+      starting.current = false;
     }
   };
+
+  // Once the inputs are drawn, the input of the clicked value takes focus, its text selected to be typed over.
+  useEffect(() => {
+    const key = focusField.current;
+    if (stage !== "edit" || key === null) {
+      return;
+    }
+    focusField.current = null;
+    if (session === null || !session.has(key)) {
+      return;
+    }
+    const profile = editButton.current?.closest(".profile");
+    const input = profile?.querySelector<HTMLElement>(`[data-field="${CSS.escape(key)}"]`);
+    input?.focus();
+    if (input instanceof HTMLInputElement && (input.type === "number" || input.type === "text")) {
+      input.select();
+    }
+  }, [stage, session]);
+
+  useEffect(
+    () => () => {
+      focusField.current = null;
+    },
+    [],
+  );
+
+  const latestBegin = useRef(begin);
+  latestBegin.current = begin;
+
+  const activation = useMemo<EditActivation | null>(() => {
+    if (!editable || stage === "edit" || activatable.size === 0) {
+      return null;
+    }
+    return {
+      entity,
+      busy: stage === "loading",
+      canActivate: (key) => activatable.has(key),
+      activate: (key) => void latestBegin.current(key),
+    };
+  }, [editable, stage, activatable, entity]);
 
   // Where keyboard focus goes when an Apply that left the inputs open is over: the buttons are disabled while it
   // runs, and focus on one of them would be lost.
@@ -355,6 +462,7 @@ export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
     report,
     appliedFields,
     editButton,
+    activation,
     begin,
     apply,
     discard,

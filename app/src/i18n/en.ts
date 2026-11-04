@@ -403,6 +403,7 @@ export const en = {
     "contract.loan_listed": "Loan listed",
     // A member of staff's job, which the change log keeps as a change of its code.
     "contract.job": "Job",
+    "manager.unsackable": "Unsackable (experimental)",
     // A player's ties, which the change log keeps as changes of the nation or club (see `ties`).
     "tie.nationality": "Secondary nationality",
     "tie.trainedInNation": "Trained in nation",
@@ -779,6 +780,7 @@ export const en = {
       /** The entry of the job select that is no filter. */
       anyJob: "Any",
       unemployedOnly: "Unemployed only",
+      humanOnly: "Human managers only",
       age: "Age",
       minAge: "Minimum age",
       maxAge: "Maximum age",

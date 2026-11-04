@@ -37,6 +37,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
   // The job as the select holds it: a job code, or "" for any.
   const [job, setJob] = useState(() => restored("staffJob", readJob));
   const [unemployed, setUnemployed] = useState(() => restored("staffUnemployed", (value) => value === true));
+  const [humanOnly, setHumanOnly] = useState(() => restored("staffHumanOnly", (value) => value === true));
   const [minAge, setMinAge] = useState(() => restored("staffMinAge", readText));
   const [maxAge, setMaxAge] = useState(() => restored("staffMaxAge", readText));
   const [minCurrentAbility, setMinCurrentAbility] = useState(() => restored("staffMinCa", readText));
@@ -48,6 +49,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
   );
   useSnapshot("staffJob", () => job);
   useSnapshot("staffUnemployed", () => unemployed);
+  useSnapshot("staffHumanOnly", () => humanOnly);
   useSnapshot("staffMinAge", () => minAge);
   useSnapshot("staffMaxAge", () => maxAge);
   useSnapshot("staffMinCa", () => minCurrentAbility);
@@ -65,6 +67,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
   const filter: StaffFilter | undefined =
     job === "" &&
     !unemployed &&
+    !humanOnly &&
     minAgeValue === undefined &&
     maxAgeValue === undefined &&
     minCa === undefined &&
@@ -76,6 +79,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
       : {
           job: job === "" ? undefined : Number(job),
           unemployed: unemployed || undefined,
+          humanOnly: humanOnly || undefined,
           minAge: minAgeValue,
           maxAge: maxAgeValue,
           minCurrentAbility: minCa,
@@ -113,6 +117,10 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
             <label className="filter-field">
               <input type="checkbox" checked={unemployed} onChange={(e) => setUnemployed(e.currentTarget.checked)} />
               <span>{filters.unemployedOnly}</span>
+            </label>
+            <label className="filter-field">
+              <input type="checkbox" checked={humanOnly} onChange={(e) => setHumanOnly(e.currentTarget.checked)} />
+              <span>{filters.humanOnly}</span>
             </label>
             <div className="filter-field" role="group" aria-labelledby={ageLabel}>
               <span id={ageLabel}>{filters.age}</span>

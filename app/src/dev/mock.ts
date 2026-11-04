@@ -632,6 +632,8 @@ function staffDetails(member: StaffSummary): StaffDetails {
             joined: { year: 2021 + Math.floor(next() * 5), month: 7, day: 1 },
             job: member.job,
           },
+    // Only the human manager's flags are read; everyone else's stay unknown, as in the app.
+    unsackable: member.isHuman ? false : null,
   });
 }
 
@@ -725,6 +727,7 @@ function fieldTable(entity: Entity): EditField[] {
     ),
     ...personality,
     ...contract,
+    { ...field("manager.unsackable", "flag", 0, 1), mass: false },
   ];
 }
 
@@ -791,6 +794,11 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
       }
       case "international":
         (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
+        break;
+      case "manager":
+        if (entity === "staff" && (d as StaffDetails).unsackable !== null) {
+          (d as StaffDetails).unsackable = value === 1;
+        }
         break;
       case "contract":
         if (d.contract && name === "wage") {
@@ -936,6 +944,9 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         }
         return undefined;
       }
+      case "manager":
+        // Missing for everyone but the human manager, so an edit or undo of anyone else finds no record.
+        return person.unsackable === null || person.unsackable === undefined ? undefined : Number(person.unsackable);
       case "facilities":
         return club.facilities[name];
       case "finance":
@@ -2032,6 +2043,7 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
   return (
     (f.job === undefined || (s.job !== null && (s.job === f.job || s.job === f.job + 1))) &&
     (!f.unemployed || s.job === null) &&
+    (!f.humanOnly || s.isHuman) &&
     (f.minAge === undefined || (s.age !== null && s.age >= f.minAge)) &&
     (f.maxAge === undefined || (s.age !== null && s.age <= f.maxAge)) &&
     (f.minCurrentAbility === undefined || s.currentAbility >= f.minCurrentAbility) &&
