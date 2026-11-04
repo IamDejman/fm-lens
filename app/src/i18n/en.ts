@@ -890,6 +890,8 @@ export const en = {
     appearanceSystem: "System",
     appearanceLight: "Light",
     appearanceDark: "Dark",
+    /** The interface scale, separate from the window's own zoom. */
+    zoomLabel: "Zoom",
 
     // The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`).
     /** Connected, and the game was opened for writing. */

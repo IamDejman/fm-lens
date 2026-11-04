@@ -245,10 +245,16 @@ dd,
 
 /* Shell: the masthead with the section tabs, the page, and the colophon at the foot. */
 
+html {
+  /* The interface scale from Settings (see zoom.ts). It is not the window's own zoom. */
+  zoom: var(--ui-zoom, 1);
+}
+
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* `zoom` on the page scales a plain `100vh` past the window. Divide it back. */
+  height: calc(100vh / var(--ui-zoom, 1));
 }
 
 .masthead {

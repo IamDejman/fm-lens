@@ -1,6 +1,6 @@
 // The settings menu at the right of the masthead: a button with a gear, which opens a menu of the languages, each with
 // its flag and its own name, of the currencies the app can show money in, each with its sign and its name, and of the
-// light, dark or system appearance. The menu is drawn over the window under its button, as the captain menu of a squad
+// light, dark or system appearance, and of the interface scale. The menu is drawn over the window under its button, as the captain menu of a squad
 // row is (see CaptainMenu.tsx), so that the masthead's styles stay off it.
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
@@ -11,6 +11,7 @@ import { currencyName, currencySymbolOf } from "./format";
 import { locale, setLocale, type Locale } from "./i18n";
 import { appText } from "./labels";
 import { askToLeave } from "./useProfileEditing";
+import { ZOOMS, setZoom, zoom, zoomLabel, type Zoom } from "./zoom";
 
 /** The room the menu keeps between itself and its button. */
 const GAP = 4;
@@ -63,10 +64,10 @@ const APPEARANCE_LABEL: Record<Appearance, string> = {
   dark: appText.appearanceDark,
 };
 
-/** The name and hover text of the button: "Settings: English, Euro, System". */
+/** The name and hover text of the button: "Settings: English, Euro, System, 100%". */
 function buttonLabel(): string {
   const language = LANGUAGES.find(({ id }) => id === locale)?.name ?? locale;
-  return `${appText.settingsLabel}: ${language}, ${currencyName()}, ${APPEARANCE_LABEL[appearance()]}`;
+  return `${appText.settingsLabel}: ${language}, ${currencyName()}, ${APPEARANCE_LABEL[appearance()]}, ${zoomLabel(zoom())}`;
 }
 
 /** Where the open menu hangs: the window's coordinates of its button, from the right edge and the top. */
@@ -84,11 +85,12 @@ const CHECK = (
 /**
  * The button and, once it is pressed, its menu. Choosing another language or currency reloads the window (see
  * `setLocale` and `setCurrency`), which the app survives connected (see `current_connection`), so edits pending in an
- * open profile are asked about first. Appearance turns the page at once. While the app is `busy` the button waits.
+ * open profile are asked about first. Appearance and zoom turn the page at once. While the app is `busy` the button waits.
  */
 export function SettingsMenu({ busy }: { busy: boolean }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [chosenAppearance, setChosenAppearance] = useState(appearance());
+  const [chosenZoom, setChosenZoom] = useState(zoom());
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -153,6 +155,14 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
     if (!busy && next !== chosenAppearance) {
       setAppearance(next);
       setChosenAppearance(next);
+    }
+  };
+
+  const chooseZoom = (next: Zoom) => {
+    close();
+    if (!busy && next !== chosenZoom) {
+      setZoom(next);
+      setChosenZoom(next);
     }
   };
 
@@ -284,6 +294,24 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
                 >
                   {APPEARANCE_LABEL[mode]}
                   {mode === chosenAppearance && CHECK}
+                </button>
+              ))}
+            </div>
+            <div role="group" aria-labelledby={`${id}-zoom`}>
+              <div id={`${id}-zoom`} className="settings-heading">
+                {appText.zoomLabel}
+              </div>
+              {ZOOMS.map((scale) => (
+                <button
+                  key={scale}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={scale === chosenZoom}
+                  tabIndex={-1}
+                  onClick={() => chooseZoom(scale)}
+                >
+                  {zoomLabel(scale)}
+                  {scale === chosenZoom && CHECK}
                 </button>
               ))}
             </div>
