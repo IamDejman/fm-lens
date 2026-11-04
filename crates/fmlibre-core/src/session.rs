@@ -8,7 +8,7 @@ use crate::clubs::{ClubDetails, ClubSummary, full_finance_class, read_club_detai
 use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::details::{PlayerDetails, read_player_details};
-use crate::edit::Field;
+use crate::edit::{Entity, Field};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
 use crate::health::{Check, Health, Lock, STRUCTURE};
 use crate::players::{PlayerSummary, read_players};
@@ -284,7 +284,17 @@ impl Session {
 
     /// Reads the full profile of `member`; `None` when its object has changed. Only reads memory.
     pub fn staff_details(&self, member: &StaffSummary) -> Result<Option<StaffDetails>, SessionError> {
-        Ok(read_staff_details(&self.process, &self.layout, member)?)
+        let Some(mut details) = read_staff_details(&self.process, &self.layout, member)? else {
+            return Ok(None);
+        };
+        // Through the editor's own guarded read: a manager whose flags cannot be located stays unknown.
+        if member.is_human
+            && let Ok(field) = self.field(Entity::Staff, "manager.unsackable")
+            && let Ok(values) = self.read_fields(&member.target(), std::slice::from_ref(&field))
+        {
+            details.unsackable = values.first().copied().flatten().map(|value| value != 0);
+        }
+        Ok(Some(details))
     }
 
     /// Reads the full profile of `player`; `None` when its object has changed since the

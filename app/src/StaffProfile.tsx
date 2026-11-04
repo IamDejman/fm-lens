@@ -3,7 +3,7 @@ import { EditableValue } from "./EditControls";
 import { call } from "./api";
 import { changeStaffJob, staffJobs } from "./editing";
 import { describeError } from "./format";
-import { jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
+import { editText, fieldLabel, jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
 import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
@@ -157,6 +157,7 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
         <div className="profile-split">
           <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
           <div className="profile-stack">
+            {details.isHuman && details.unsackable !== null && <ManagerGroup unsackable={details.unsackable} />}
             {details.contract && (
               <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />
             )}
@@ -209,6 +210,25 @@ interface ContractGroupProps {
   contract: StaffContract;
   /** Whether the job may be changed now: the profile is read, not edited, and it is not yours. */
   canChangeJob: boolean;
+}
+
+/** The job code of a manager, whose label heads what only the user's own manager has. */
+const MANAGER_JOB = 16;
+
+/** What only the manager the user controls has, with or without a club: protection from the sack. */
+function ManagerGroup({ unsackable }: { unsackable: boolean }) {
+  return (
+    <section className="profile-group">
+      <h3>{jobLabel(MANAGER_JOB)}</h3>
+      <dl className="stats">
+        <Fact label={fieldLabel("staff", "manager.unsackable")}>
+          <EditableValue field="manager.unsackable" inFact>
+            {unsackable ? editText.yes : editText.no}
+          </EditableValue>
+        </Fact>
+      </dl>
+    </section>
+  );
 }
 
 function ContractGroup({ uid, contract, canChangeJob }: ContractGroupProps) {

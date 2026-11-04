@@ -265,6 +265,8 @@ export interface StaffDetails extends StaffSummary {
    */
   attributes: Record<string, Attribute>;
   contract: StaffContract | null;
+  /** Whether a human manager is protected from the sack; null where the build or the object does not tell. */
+  unsackable: boolean | null;
 }
 
 export interface FmDate {
@@ -400,6 +402,8 @@ export interface StaffFilter {
   job?: number;
   /** Only staff without a contract. */
   unemployed?: boolean;
+  /** Only the career's human managers. */
+  humanOnly?: boolean;
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;

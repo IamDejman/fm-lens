@@ -3,8 +3,12 @@
 This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
-The current FM27 Apple Silicon layout defines 167 player fields, 37 staff fields
-and 14 club fields. A missing record, unsupported build, changed career storage,
+The current FM27 Apple Silicon layout defines 167 player fields, 38 staff fields
+and 14 club fields. One staff field, `manager.unsackable`, is manager-only: bit 1
+of the human manager's flags word, located only on FM27 Steam build 26340721
+(ARM64) for an object of class `db::HUMAN_NON_PLAYER`; every other build and
+member of staff reads it as missing. It is experimental: bounded apply/undo and save/reload persistence passed on a
+copied career, but dismissal protection remains unverified (see EDITING-VALIDATION.md). A missing record, unsupported build, changed career storage,
 failed layout check, stale value or invalid current/new value prevents a write.
 Fields use stored scales; the interface converts attributes and percentages.
 
@@ -225,6 +229,7 @@ records cannot be imported through a template.
 | `personality.controversy` | u8 | plain | 1–20 |
 | `contract.wage` | i32 | plain | 0–10000000 |
 | `contract.expires` | date | plain | 2000-01-01–2100-12-31 |
+| `manager.unsackable` | flag (bit 1) | plain | 0–1 |
 
 ## Clubs
 

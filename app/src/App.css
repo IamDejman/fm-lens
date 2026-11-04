@@ -1,37 +1,37 @@
 /*
- * FMLibreEditor reads as a football season almanac, the yearbook that prints every squad as a table: a cool white page,
- * near-black ink, hairline rules between rows and a thick rule over every heading. One typeface, Archivo: condensed and
- * bold for names, headings and figures, regular width for text. Colour appears only where it means something: FM's four
- * bands rate a 1–20 value, a highlighter marks an edit not yet applied, brick red is danger, and blue is the keyboard's
- * focus. What is picked is printed in reverse, white on ink. At night the page turns: the night edition.
+ * FM Lens follows the operational look of Football Manager so it is quick to recognise: a dark plum masthead with
+ * underlined section tabs, compact striped tables, grouped label/value rows and violet primary actions. One typeface,
+ * Archivo: condensed and bold for names, headings and figures, regular width for text. Other colour means something:
+ * FM's four bands rate a 1–20 value, amber marks an edit not yet applied, green one applied, red is danger, and blue
+ * is the keyboard's focus. Light and dark are the same layout in two lightings.
  */
 :root {
-  /* The page, one sheet; what sits a step off it (a header, a pressed control); the hover; an input. */
-  --bg: #f6f7f9;
-  --panel: #f6f7f9;
-  --raised: #eceef1;
-  --hover: #e7e9ed;
+  /* The window; a panel on it; what sits a step off a panel (a header, a pressed control); the hover; an input. */
+  --bg: #eef0f5;
+  --panel: #ffffff;
+  --raised: #f4f5f9;
+  --hover: #e4e7f0;
   --field: #ffffff;
-  /* No striped rows: hairlines part them, as in print. */
-  --zebra: transparent;
-  --border: #d6d9df;
-  --border-strong: #a6abb4;
-  --text: #16181d;
-  --muted: #5b6069;
+  /* Alternate rows of a table or a group, faintly. */
+  --zebra: rgb(88 97 116 / 0.055);
+  --border: #d5d9e4;
+  --border-strong: #a3aabb;
+  --text: #191b28;
+  --muted: #586174;
 
-  /* Ink: the main action, and what is picked, in reverse print. */
-  --accent: #16181d;
-  --accent-hover: #30343c;
-  --accent-soft: rgb(22 24 29 / 0.08);
-  --accent-faint: rgb(22 24 29 / 0.05);
-  --on-accent: #f6f7f9;
-  /* The masthead is ink in both editions. */
-  --strip: #16181d;
-  --on-strip: #f6f7f9;
+  /* Violet: the main action, and what is picked. */
+  --accent: #8338c4;
+  --accent-hover: #6f25b0;
+  --accent-soft: rgb(131 56 196 / 0.1);
+  --accent-faint: rgb(131 56 196 / 0.06);
+  --on-accent: #ffffff;
+  /* The masthead is dark plum in both lightings. */
+  --strip: #251b37;
+  --on-strip: #ffffff;
   /* Blue is for the keyboard's focus only. */
   --accent-text: #2457c5;
 
-  /* The highlighter: an edit not yet applied. --pending is its edge and its words on the page. */
+  /* An edit not yet applied. --pending is its edge and its words on the page. */
   --pending: #8a6a00;
   --pending-soft: #ffe27a;
   --on-pending: #16181d;
@@ -40,9 +40,9 @@
   --danger-soft: rgb(178 58 43 / 0.09);
   --ok: #1f7547;
   /* What dims the app behind a dialog. */
-  --scrim: rgb(22 24 29 / 0.42);
+  --scrim: rgb(17 19 31 / 0.45);
 
-  /* FM's bands, 1–5, 6–10, 11–15, 16–20, as earthy inks that sit on the page; --on-tier is the text on a band's fill. */
+  /* FM's bands, 1–5, 6–10, 11–15, 16–20; --on-tier is the text on a band's fill. */
   --tier-1: #b3402f;
   --tier-2: #8f5d0e;
   --tier-3: #5a761b;
@@ -59,13 +59,13 @@
 
   /*
    * The badge that stands in for a club's logo has the hue of the club's name (see `Picture.tsx`) at this saturation
-   * and lightness: muted, so it sits in the almanac's ink, and dark enough for its white initials to keep 4.5:1.
+   * and lightness: muted, so it sits with the panels, and dark enough for its white initials to keep 4.5:1.
    */
   --badge-saturation: 28%;
   --badge-lightness: 32%;
 
-  --radius: 3px;
-  --scroll: #b8bcc4;
+  --radius: 4px;
+  --scroll: #b5bbca;
   --display: "Archivo Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
 
   color-scheme: light;
@@ -79,24 +79,26 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* The night edition: the page turns dark and what was ink is now paper. */
+/* Dark: deep navy, charcoal panels, the violet brighter. */
 :root[data-appearance="dark"] {
-    --bg: #15161a;
-    --panel: #15161a;
-    --raised: #1e2024;
-    --hover: #24262b;
-    --field: #0f1013;
-    --border: #2c2f35;
-    --border-strong: #4b4f58;
-    --text: #ecede8;
-    --muted: #a3a7af;
+    --bg: #11131f;
+    --panel: #1c1f2b;
+    --raised: #262a39;
+    --hover: #2c3142;
+    --field: #141722;
+    --zebra: rgb(244 245 250 / 0.035);
+    --border: #34394c;
+    --border-strong: #565d74;
+    --text: #f4f5fa;
+    --muted: #afb6c7;
 
-    --accent: #ecede8;
-    --accent-hover: #ffffff;
-    --accent-soft: rgb(236 237 232 / 0.1);
-    --accent-faint: rgb(236 237 232 / 0.06);
-    --on-accent: #15161a;
-    --strip: #0a0b0d;
+    /* White on violet keeps 4.5:1: the hover darkens rather than brightens. */
+    --accent: #b442d1;
+    --accent-hover: #a232c0;
+    --accent-soft: rgb(180 66 209 / 0.18);
+    --accent-faint: rgb(180 66 209 / 0.1);
+    --on-accent: #ffffff;
+    --strip: #251b37;
     --accent-text: #8fb1ff;
 
     --pending: #e8c547;
@@ -111,7 +113,7 @@
     --tier-2: #dca244;
     --tier-3: #a8c45e;
     --tier-4: #57b784;
-    --on-tier: #15161a;
+    --on-tier: #11131f;
 
     --mix-1: #d4765f;
     --mix-2: #d6a24a;
@@ -120,7 +122,7 @@
     --mix-5: #8d9aab;
     --mix-6: #b87fa8;
 
-    --scroll: #3d4047;
+    --scroll: #474d63;
 
     color-scheme: dark;
 }
@@ -133,7 +135,7 @@ body {
   margin: 0;
 }
 
-/* Selected text is printed in reverse, as the picked row is: the highlighter stays for values not yet applied. */
+/* Selected text is violet, as the picked row is: amber stays for values not yet applied. */
 ::selection {
   background: var(--accent);
   color: var(--on-accent);
@@ -167,7 +169,7 @@ body {
   background: transparent;
 }
 
-/* One button: an outline on the page by default, filled with ink for the main action, red for what removes. */
+/* One button: an outline on the page by default, filled with violet for the main action, red for what removes. */
 button {
   min-height: 30px;
   padding: 5px 12px;
@@ -253,6 +255,7 @@ dd,
 
 .masthead {
   display: flex;
+  flex-wrap: wrap;
   flex: none;
   align-items: flex-end;
   gap: 18px;
@@ -288,7 +291,7 @@ dd,
   letter-spacing: 0.5px;
 }
 
-/* The section tabs, as an almanac's thumb index: the open one is the page itself, joined to it below. */
+/* The section tabs, as FM's top navigation: the open one in white with a violet line under it. */
 .tabs {
   display: flex;
   flex-wrap: wrap;
@@ -301,11 +304,11 @@ dd,
   align-items: center;
   gap: 8px;
   min-height: 38px;
-  padding: 0 16px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 4px 4px 0 0;
+  border-radius: 0;
   background: transparent;
-  color: rgb(246 247 249 / 0.66);
+  color: rgb(255 255 255 / 0.7);
   font-size: 14.5px;
   font-stretch: 88%;
   font-weight: 750;
@@ -313,13 +316,14 @@ dd,
 
 .tab:hover:not(:disabled, .active) {
   border-color: transparent;
-  background: rgb(246 247 249 / 0.08);
+  background: rgb(255 255 255 / 0.06);
+  box-shadow: inset 0 -3px 0 rgb(255 255 255 / 0.3);
   color: var(--on-strip);
 }
 
 .tab.active {
-  background: var(--bg);
-  color: var(--text);
+  box-shadow: inset 0 -3px 0 #c86ee6;
+  color: var(--on-strip);
 }
 
 .tab:focus-visible {
@@ -331,8 +335,8 @@ dd,
 .tab small {
   min-width: 20px;
   padding: 0 6px;
-  border-radius: 2px;
-  background: rgb(246 247 249 / 0.16);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.16);
   font-size: 11.5px;
   font-stretch: 90%;
   font-weight: 800;
@@ -341,8 +345,8 @@ dd,
 }
 
 .tab.active small {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: #8338c4;
+  color: #ffffff;
 }
 
 /* The right of the masthead: what the app is doing, the game's date, Reload and the language. */
@@ -360,7 +364,7 @@ dd,
   font-size: 13px;
 }
 
-/* The game's date, as the almanac's dateline. */
+/* The game's date. */
 .game-date {
   flex: none;
   font-size: 15px;
@@ -726,7 +730,7 @@ dd,
   font-size: 14px;
 }
 
-/* Label and value rows, one to a hairline, as an almanac lists facts. */
+/* Label and value rows, one to a hairline. */
 .facts {
   display: grid;
   grid-template-columns: 120px 1fr;
@@ -857,6 +861,16 @@ dd,
   min-width: 240px;
   min-height: 0;
   padding: 14px 18px 0;
+  overflow: auto;
+}
+
+/* Long filter forms stay inside the list pane at large UI scales. */
+.players > :is(.toolbar, .filter-bar, .filter-fields) {
+  flex-shrink: 0;
+}
+
+.players > .table-wrap {
+  min-height: 160px;
 }
 
 .toolbar {
@@ -1160,9 +1174,10 @@ input::placeholder {
   min-height: 0;
   container-type: inline-size;
   overflow: auto;
+  background: var(--panel);
 }
 
-/* The almanac table: an ink rule under the head row, then dense rows on hairlines. */
+/* A list as FM's tables: a raised head row, then dense striped rows on hairlines. */
 .grid {
   width: 100%;
   border-collapse: collapse;
@@ -1174,8 +1189,8 @@ input::placeholder {
   z-index: 1;
   height: 32px;
   padding: 0 12px;
-  border-bottom: 2px solid var(--text);
-  background: var(--bg);
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--raised);
   color: var(--muted);
   font-size: 11px;
   font-stretch: 88%;
@@ -1270,14 +1285,14 @@ input::placeholder {
   background: var(--hover);
 }
 
-/* The row whose profile is open is printed in reverse: paper letters on ink. */
+/* The row whose profile is open is violet, with white letters. */
 .grid tbody tr.selected td {
   border-bottom-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
 }
 
-/* The picked row is printed in reverse: its small print keeps the reverse, dimmed. */
+/* The picked row's small print stays white, dimmed. */
 .grid tbody tr.selected :is(.sub, .date, .uid, .muted, .ability.range, .col-positions) {
   color: color-mix(in srgb, var(--on-accent) 72%, transparent);
 }
@@ -1784,7 +1799,8 @@ input::placeholder {
   align-items: flex-start;
   gap: 16px;
   padding: 14px 16px 12px;
-  border-bottom: 2px solid var(--text);
+  border-bottom: 1px solid var(--border);
+  background: var(--raised);
 }
 
 .profile-id {
@@ -1968,13 +1984,13 @@ input::placeholder {
   }
 }
 
-/* A group's name heads it as FM heads a panel: a ruled strip of small capitals over the rows. */
+/* A group's name heads it as FM heads a panel: small capitals over a thin divider. */
 .profile-group h3,
 .profile-group h4 {
   margin: 0 0 2px;
-  padding: 5px 0 4px;
-  border-top: 3px solid var(--text);
-  color: var(--text);
+  padding: 5px 2px 5px;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--muted);
   font-size: 12.5px;
   font-stretch: 85%;
   font-weight: 850;
@@ -1995,8 +2011,8 @@ input::placeholder {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 27px;
-  padding: 2px 2px;
+  min-height: 29px;
+  padding: 2px 6px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -2312,8 +2328,8 @@ input::placeholder {
   padding: 4px 12px;
 }
 
-/* Edit is a profile's main action: filled with ink until it is on, then pressed in; the highlighter is left to the
-   values it leaves to apply. */
+/* Edit is a profile's main action: filled with violet until it is on, then pressed in; amber is left to the values it
+   leaves to apply. */
 .edit-toggle {
   border-color: var(--accent);
   background: var(--accent);
@@ -2406,6 +2422,48 @@ input::placeholder {
 
 .edit-input.applied, .edit-flag.applied { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
 .edit-applied { outline: 2px solid var(--ok); outline-offset: 2px; }
+
+/* A mapped value that opens its input when clicked: it keeps the value's look, and shows a tinted frame on hover and
+   on focus. */
+.editable-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 28px;
+  min-height: 28px;
+  margin: -4px -6px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+.editable-value:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-faint);
+}
+
+.editable-value:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 0;
+  background: var(--accent-faint);
+}
+
+.editable-value:disabled {
+  opacity: 1;
+  cursor: progress;
+}
+
+.edit-applied > .editable-value {
+  margin-block: -2px;
+}
 
 /* A value that cannot be applied: empty, out of range or not whole, or one the game refused. */
 .edit-input.invalid,

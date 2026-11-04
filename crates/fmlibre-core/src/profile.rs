@@ -557,6 +557,23 @@ pub struct BuildProfile {
     /// the same distance from the arrays in every build: 0xED60 before the players pair on Game Pass, 0xDAC0 on
     /// Steam.
     pub retirement_manager: Option<u64>,
+    /// Where the human manager's own flags sit, on the one build where that has been traced. Absent elsewhere,
+    /// which leaves the manager-only fields unavailable.
+    #[serde(default)]
+    pub human_manager: Option<HumanManagerLayout>,
+}
+
+/// The human manager's flags word, traced statically on the arm64 half of Steam build 26340721: the
+/// `become_unsackable` action toggles bit 1 of the u32 at `flags` from the start of a `db::HUMAN_NON_PLAYER`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HumanManagerLayout {
+    /// Offset of the flags word from the start of the object, not shifted with the person block.
+    pub flags: u64,
+    /// The shift of the person block of a human manager on this build: the only one the flags were traced at.
+    pub person_shift: u64,
+    /// The mangled class name a human manager's vtable resolves to.
+    pub class: String,
 }
 
 /// Identifies a build of the game plugin from its headers as mapped in memory.
@@ -832,5 +849,21 @@ mod tests {
         // On Windows the Launch Preview's date sits with the arrays.
         let fingerprint = PluginFingerprint::Pe { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
         assert_eq!(profile_for(fingerprint).and_then(|profile| profile.current_date), None);
+    }
+
+    #[test]
+    fn only_the_traced_build_knows_the_human_manager() {
+        let traced = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let profile = profile_for(PluginFingerprint::MachO { uuid: traced }).expect("27.0.0's arm64 half");
+        assert_eq!(
+            profile.human_manager,
+            Some(HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".to_owned() })
+        );
+        for text in BUILDS {
+            let profile: BuildProfile = parse(text);
+            if profile.plugin != (PluginFingerprint::MachO { uuid: traced }) {
+                assert!(profile.human_manager.is_none(), "{}", profile.name);
+            }
+        }
     }
 }

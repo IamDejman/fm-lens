@@ -273,6 +273,9 @@ pub struct StaffDetails {
     /// Attributes by key. Ratings FM stores as shown have `raw` equal to `value`.
     pub attributes: BTreeMap<String, Attribute>,
     pub contract: Option<StaffContract>,
+    /// Whether a human manager is protected from the sack, where the build and the object make that readable;
+    /// `None` for everyone else, never a guess.
+    pub unsackable: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -326,6 +329,7 @@ pub fn read_staff_details(
         personality,
         attributes,
         contract: read_staff_contract(process, layout, u64_at(s.contract)),
+        unsackable: None,
     }))
 }
 

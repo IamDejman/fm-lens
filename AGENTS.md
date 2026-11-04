@@ -122,7 +122,7 @@ validated fields and the guarded memory layer for domain operations.
 ## Current editor boundaries
 
 - Mapped player/staff/club fields are enabled on the known Mac build. The field
-  catalog lists 167 player, 37 staff and 14 club definitions. This does not mean
+  catalog lists 167 player, 38 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
@@ -140,8 +140,10 @@ validated fields and the guarded memory layer for domain operations.
   under more than one club. Neither is a complete database scan or an entity
   editor. Nation row IDs may be synthetic; never use them as mutation UIDs.
 - Nation editing, competitions, awards, officials, promises, youth-intake lifecycle,
-  complete contracts/loans, unsackable managers, unrestricted registration,
-  cohesion and tactical familiarity still need mapping or implementation.
+  complete contracts/loans, unrestricted registration, cohesion and tactical
+  familiarity still need mapping or implementation. Unsackable is a traced,
+  experimental implementation for one build (FM27 Steam 26340721 ARM64); its
+  in-game effect on dismissal is unverified.
   Windows offsets cannot be copied into the native ARM64 Mac layout.
 - Transfers and other structural actions require linked-record validation,
   including history, finances, registration and simulation boundaries. A changed

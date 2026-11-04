@@ -22,3 +22,11 @@ uuid = "F4540355-2186-39CB-9119-C706A6A35346"
 players = 0x56D2E18
 staff = 0x56D2E60
 clubs = 0x56D2FD0
+
+# The human manager's flags word, traced statically in this arm64 slice: the become_unsackable action resolves the
+# selected human manager (db::HUMAN_NON_PLAYER) and toggles bit 1 of the u32 at +0x3FC, keeping the other bits. Read on
+# a manager whose person block is shifted 0x340; the offset is not shifted again. Only this build has it.
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = "N2db16HUMAN_NON_PLAYERE"

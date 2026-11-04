@@ -200,6 +200,8 @@ pub struct StaffFilter {
     pub job: Option<u8>,
     /// Only staff without a contract.
     pub unemployed: bool,
+    /// Only the career's human managers.
+    pub human_only: bool,
     pub min_age: Option<u16>,
     pub max_age: Option<u16>,
     pub min_current_ability: Option<u16>,
@@ -216,6 +218,7 @@ impl StaffFilter {
     pub fn matches(&self, s: &StaffSummary) -> bool {
         self.job.is_none_or(|job| s.job.is_some_and(|code| code == job || code == job + 1))
             && (!self.unemployed || s.job.is_none())
+            && (!self.human_only || s.is_human)
             && self.min_age.is_none_or(|min| s.age.is_some_and(|age| age >= min))
             && self.max_age.is_none_or(|max| s.age.is_some_and(|age| age <= max))
             && self.min_current_ability.is_none_or(|min| s.current_ability >= min)
@@ -400,6 +403,29 @@ mod tests {
         assert!(!StaffFilter { min_age: Some(20), ..StaffFilter::default() }.matches(&unknown));
         assert!(StaffFilter { unemployed: true, ..StaffFilter::default() }.matches(&unknown));
         assert!(!StaffFilter { nation: Some("spain".to_owned()), ..StaffFilter::default() }.matches(&unknown));
+    }
+
+    #[test]
+    fn human_only_keeps_the_career_s_managers() {
+        let human = StaffSummary { is_human: true, ..staff(Some(40), 48, Some("England"), Some("Arsenal"), Some(16)) };
+        // The manager of another club has the same job code, but is not the human.
+        let ai = staff(Some(55), 150, Some("Spain"), Some("Real Madrid"), Some(16));
+        let humans = StaffFilter { human_only: true, ..StaffFilter::default() };
+        assert!(humans.matches(&human) && !humans.matches(&ai));
+        // No filter by default.
+        assert!(!StaffFilter::default().human_only);
+        assert!(StaffFilter::default().matches(&human) && StaffFilter::default().matches(&ai));
+        // A human between jobs.
+        let unemployed = StaffSummary { is_human: true, ..staff(Some(40), 48, None, None, None) };
+        assert!(StaffFilter { unemployed: true, ..humans.clone() }.matches(&unemployed));
+        assert!(!StaffFilter { unemployed: true, ..humans.clone() }.matches(&human));
+        // Alongside the other filters.
+        let at = |club: &str| StaffFilter { club: Some(club.to_owned()), ..humans.clone() };
+        assert!(at("arsenal").matches(&human) && !at("real").matches(&ai) && !at("real").matches(&human));
+        assert!(!StaffFilter { min_current_ability: Some(100), ..humans.clone() }.matches(&human));
+        assert!(StaffFilter { job: Some(16), ..humans.clone() }.matches(&human));
+        let wire: StaffFilter = serde_json::from_str(r#"{"humanOnly":true}"#).expect("wire filter");
+        assert!(wire.human_only);
     }
 
     fn club(women: bool, reputation: Option<u16>, founded: Option<u16>) -> ClubSummary {

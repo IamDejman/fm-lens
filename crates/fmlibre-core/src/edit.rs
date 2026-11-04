@@ -16,7 +16,7 @@ use crate::date::FmDate;
 use crate::details::{PERSONALITY, POSITIONS};
 use crate::health::Lock;
 use crate::players::PlayerSummary;
-use crate::profile::Layout;
+use crate::profile::{HumanManagerLayout, Layout};
 use crate::session::Session;
 use crate::staff::StaffSummary;
 
@@ -162,6 +162,8 @@ enum Place {
     Stadium,
     /// The record of a player's reasons to be unhappy, which his contract points at.
     Concerns,
+    /// The flags word of a human manager, on the build that traced it, for a member of staff of its class.
+    HumanManagerFlags,
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -453,6 +455,9 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         field(&format!("personality.{key}"), s.personality + i as u64, Kind::U8, 1..=20).plausible(0..=20)
     }));
     out.extend(contract_fields(layout, Entity::Staff));
+    // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
+    // located on the build and class it was traced on, so it reads as missing for everyone else.
+    out.push(Field::flag(Entity::Staff, "manager.unsackable", 0, 1).in_record(Place::HumanManagerFlags).single());
     out.into_iter().map(|f| f.in_person_block(s.person_block)).collect()
 }
 
@@ -490,6 +495,18 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
         ]);
     }
     fields
+}
+
+/// The offset of the human manager's flags in `target`, when the build has traced them (`layout`) and the target is
+/// a member of staff at the person-block shift and of the class (`class`, as [`crate::rtti::class_of`] names it) they
+/// were traced at.
+fn human_manager_flags(layout: Option<&HumanManagerLayout>, target: &Target, class: Option<&str>) -> Option<u64> {
+    let layout = layout?;
+    let fits = target.entity == Entity::Staff
+        && target.shift != 0
+        && target.shift == layout.person_shift
+        && class == Some(layout.class.as_str());
+    fits.then_some(layout.flags)
 }
 
 /// The object an edit lands in, as found when the lists were read.
@@ -1032,6 +1049,17 @@ impl Session {
                 let class = u64::from_le_bytes(bytes[..8].try_into().expect("8 bytes"));
                 (self.stadium_class() == Some(class)).then_some(stadium)
             }
+            (Place::HumanManagerFlags, Entity::Staff) => {
+                let Some(layout) = self.profile.as_ref().and_then(|profile| profile.human_manager.as_ref()) else {
+                    return Ok(None);
+                };
+                if !self.current_career() {
+                    return Ok(None);
+                }
+                // The object's own class, not the list's guess that a shifted person is the human.
+                let class = crate::rtti::class_of(&self.process, &self.plugin, target.address);
+                human_manager_flags(Some(layout), target, class.as_deref()).map(|flags| target.address + flags)
+            }
             _ => None,
         })
     }
@@ -1142,7 +1170,7 @@ mod tests {
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2);
+        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + 1);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).
@@ -1171,6 +1199,49 @@ mod tests {
         let adaptability = key(&players, "personality.adaptability");
         assert_eq!(adaptability.address(target.address, &target), 0x1000 + layout.player.personality + 0xF8);
         assert_eq!(key(&players, "contract.wage").address(0x9000, &target), 0x9000 + layout.contract.wage);
+    }
+
+    #[test]
+    fn the_unsackable_flag_is_one_manager_s_bit() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let staff = fields(&layout, Entity::Staff);
+        let field = staff.iter().find(|f| f.key == "manager.unsackable").cloned().expect("field");
+        assert_eq!((field.kind, field.min, field.max, field.bit), (Kind::Flag, 0, 1, 1));
+        assert_eq!(field.place, Place::HumanManagerFlags);
+        assert!(!field.shifted && !field.mass);
+        assert!(field.takes(0) && field.takes(1) && !field.takes(2));
+        assert_eq!(crate::health::Check::of_field(&field), crate::health::Check::Staff);
+        // At the start of the flags word, whatever the person block's shift.
+        let target = Target { entity: Entity::Staff, uid: 1, address: 0x1000, shift: 0x340 };
+        assert_eq!(field.address(0x13FC, &target), 0x13FC);
+
+        // Setting and clearing bit 1 keeps the seven others, whichever they are.
+        for others in [0b0000_0000u8, 0b1111_1101, 0b1010_0101, 0b0101_1000] {
+            let off = [others & !0b10];
+            let on = [others | 0b10];
+            assert_eq!((field.decode(&off), field.decode(&on)), (0, 1));
+            assert_eq!(field.encode(1, &off), on);
+            assert_eq!(field.encode(0, &on), off);
+            assert_eq!(field.encode(1, &on), on);
+            assert_eq!(field.encode(0, &off), off);
+        }
+    }
+
+    #[test]
+    fn only_a_traced_human_manager_has_the_flags() {
+        let traced = HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".into() };
+        let class = Some("N2db16HUMAN_NON_PLAYERE");
+        let manager = Target { entity: Entity::Staff, uid: 7, address: 0x1000, shift: 0x340 };
+        assert_eq!(human_manager_flags(Some(&traced), &manager, class), Some(0x3FC));
+        // A build without the trace, another class, an unshifted or differently shifted person, or a player.
+        assert_eq!(human_manager_flags(None, &manager, class), None);
+        assert_eq!(human_manager_flags(Some(&traced), &manager, Some("N2db9NON_PLAYERE")), None);
+        assert_eq!(human_manager_flags(Some(&traced), &manager, None), None);
+        assert_eq!(human_manager_flags(Some(&traced), &Target { shift: 0, ..manager }, class), None);
+        assert_eq!(human_manager_flags(Some(&traced), &Target { shift: 0xF8, ..manager }, class), None);
+        assert_eq!(human_manager_flags(Some(&traced), &Target { entity: Entity::Player, ..manager }, class), None);
+        let unshifted = HumanManagerLayout { person_shift: 0, ..traced };
+        assert_eq!(human_manager_flags(Some(&unshifted), &Target { shift: 0, ..manager }, class), None);
     }
 
     #[test]

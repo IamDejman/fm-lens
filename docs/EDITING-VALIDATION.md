@@ -142,3 +142,95 @@ Examples matched real-world ties (Jere Uronen favours Hrádecký and Pukki; Dieg
 Reyes favours Raúl Jiménez), but no player's lists were compared with FM's own
 screens. Do that before showing them in the app, and establish what the
 negative strength and byte `0x08` mean before any editing.
+
+## Human manager: unsackable flag (experimental, persistence tested)
+
+Implemented `manager.unsackable` from a static trace of the ARM64 plugin of FM27
+Steam build 26340721 (see recon/fm27-human-manager.md): bit 1 of the `u32` at
+`+0x3FC` in a `db::HUMAN_NON_PLAYER` whose person block is shifted `0x340`. The
+record resolves only with that exact build profile, the attached career's
+storage, that shift and the object's live RTTI class; the usual UID, health,
+expected-value, readback and conditional-undo checks apply. It is a single-person
+field, excluded from mass edits and templates. The human manager's profile shows
+it as "Unsackable (experimental)" in its own Manager group, with or without a
+club contract, and the staff list has a
+"Human managers only" filter (also passed to mass edits).
+
+Builder checks only: unit tests cover bit encode/decode preserving the other
+seven bits, the unshifted record placement, single-only and health-check
+mapping, eligibility against a missing capability, wrong class, wrong or zero
+shift and a non-staff target, the profile capability on this fingerprint only,
+and the human-only filter against an AI manager (job 16), an unemployed human and
+other filters. The frontend build, Rust format/Clippy/tests, the writable-memory
+tests, the probe/bridge build and the Tauri debug app build ran; see the change's
+report for their output.
+
+Judge native verification on 4 November 2026 used the explicitly selected
+`FM Lens PBJ Manager 2026-11-04.fm` disposable career, human manager UID
+2002071958. The main career SHA-256 was recorded before testing and remained
+unchanged. The running module UUID was rechecked after restart against the known
+ARM64 fingerprint.
+
+- Baseline flag 0; pending flag change left memory at 0. Apply changed it to 1.
+  A surrounding-byte comparison showed only bit 1 at +0x3FC changed; conditional
+  undo restored the original bytes exactly.
+- After a later flag change, undo of an older entry refused the stale value.
+  Undo of the latest change succeeded. This was an intervening editor change,
+  not an independently triggered game change.
+- Manager Determination changed from displayed 5 (stored 25) to 20 (stored 100).
+  After Continue, FM displayed Elite rather than Reasonable. The copy advanced
+  from 8 December 2027 21:45 to 23:45, then was saved through FM's menu.
+- FM fully exited (the original process was confirmed absent), restarted, and
+  the named copy was explicitly selected in Load Game. A fresh probe read
+  flag 1 and Determination stored 100/displayed 20; FM's My Profile again
+  displayed Elite and personality Determined.
+
+This establishes bounded apply/undo and save/reload persistence on this copy.
+Protection from dismissal remains unverified: no dismissal scenario was run.
+Unrestricted registration, manager relations editing and club/national-team
+moves remain research work. No freeze was enabled in this test.
+
+## FM-inspired interface and direct value editing
+
+The desktop UI was refined toward FM27's familiar layout (see
+FM-LENS-INTERFACE.md): dark plum masthead with underlined tabs, violet primary
+actions, striped tables and stat rows, raised profile header and thin group
+dividers, in both light and dark. Values, ranges and storage are unchanged.
+
+A mapped, non-pointer scalar that the game has a value for can be clicked (or
+focused and activated with Enter/Space) from its displayed value while a profile
+is read. That runs the same Edit start as the Edit button, which always reads the
+field table and values afresh; the values read beforehand to decide which values
+are clickable are never the expected-value baseline. Once the inputs show, the
+clicked field's input takes focus inside that profile, with number/text contents
+selected. Nothing is written on click, Enter, blur or typing: the existing
+review, Apply, readback and conditional undo path is unchanged. The human
+manager's unsackable flag now shows in its own group without needing a contract.
+
+Builder checks: frontend build (tsc and Vite), `cargo fmt --all --check`,
+`cargo clippy --locked -p fmlibre-app --all-targets -- -D warnings`, the Tauri
+debug app build, the Impeccable detector over the changed UI files and
+`git diff --check`. Pending native checks: direct activation by mouse and
+keyboard, focus and selection, pending/apply/undo after activation, switching
+profiles with unsaved edits, the human manager's group with and without a
+contract, light/dark and 125/150% zoom.
+
+Judge verification independently reran the frontend build, Rust format,
+workspace Clippy and tests, writable-memory tests, app-only Clippy, probe/bridge
+build, and separate Tauri debug app build. All passed. The UI detector reported
+three pre-existing CSS border warnings outside the changed rules.
+
+Native checks on the rebuilt desktop app passed mouse activation of Determination,
+focus and text selection, replacing the selected text, pending navigation refusal,
+Keep editing, Review, Apply (20 -> 19), and history Undo (back to 20). A separate
+read-only probe confirmed the pending value had not reached game memory. Tab to
+Current ability followed by Return opened its input with 48 selected. The Manager
+group showed the experimental flag independently of Contract; an unemployed human
+was covered by filtering unit tests, not by a native career test.
+
+Light appearance at 125% and dark at 150% were inspected. The first 150% pass
+found staff filters overflowing the footer; the judge added list-pane scrolling,
+a minimum table viewport and masthead wrapping. After rebuilding, the native 150% dark check confirmed the masthead wrapped
+within the window, filters stayed above the footer, and scrolling the left pane
+reached Nation, Club, Add attribute and the staff table. Reports and diagnostics remain local under ignored
+`reports/pbj-human-manager/`; no careers or raw dumps are tracked.

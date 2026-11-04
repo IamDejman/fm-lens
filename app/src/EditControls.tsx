@@ -6,7 +6,14 @@ import { valueText, type Pending } from "./editDraft";
 import { isoFromNumber, isStoredFiner } from "./editing";
 import { currencySymbol } from "./format";
 import { changesText, choiceLabel, editText, fieldLabel, valueChange } from "./labels";
-import { AppliedFieldsContext, useEditableField, useEditSession, type ProfileEditing, type Report } from "./useProfileEditing";
+import {
+  AppliedFieldsContext,
+  EditActivationContext,
+  useEditableField,
+  useEditSession,
+  type ProfileEditing,
+  type Report,
+} from "./useProfileEditing";
 
 /**
  * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
@@ -125,12 +132,39 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
 
 /**
  * `children` while the profile is read, the input of `field` in their place while it is edited. `inFact`: the value of
- * a fact, whose label names the field (see `EditInput`).
+ * a fact, whose label names the field (see `EditInput`). While the profile is read, a value that can be edited is a
+ * button that begins editing with its input focused.
  */
 export function EditableValue({ field, inFact, children }: { field: string; inFact?: boolean; children: ReactNode }) {
   const editing = useEditableField(field);
   const applied = useContext(AppliedFieldsContext).has(field);
-  return editing ? <EditInput field={field} inFact={inFact} /> : applied ? <span className="edit-applied" title="Applied and read back">{children}</span> : children;
+  if (editing) {
+    return <EditInput field={field} inFact={inFact} />;
+  }
+  const value = <ActivatableValue field={field}>{children}</ActivatableValue>;
+  return applied ? <span className="edit-applied" title="Applied and read back">{value}</span> : value;
+}
+
+/** `children` as a button that begins editing at `field`, where that is offered; else `children` as they are. */
+export function ActivatableValue({ field, children }: { field: string; children: ReactNode }) {
+  const activation = useContext(EditActivationContext);
+  if (activation === null || !activation.canActivate(field)) {
+    return children;
+  }
+  const label = `${editText.edit} ${fieldLabel(activation.entity, field)}`;
+  return (
+    <button
+      type="button"
+      className="editable-value"
+      data-edit-field={field}
+      aria-label={label}
+      title={label}
+      disabled={activation.busy}
+      onClick={() => activation.activate(field)}
+    >
+      {children}
+    </button>
+  );
 }
 
 /** The Edit button in the header of a profile. It stays while editing, pressed, and then ends the editing like Done. */
@@ -148,7 +182,7 @@ export function EditButton({ editing, ready }: { editing: ProfileEditing; ready:
       aria-busy={editing.stage === "loading" || undefined}
       disabled={!ready}
       title={editText.editTitle}
-      onClick={active ? editing.done : editing.begin}
+      onClick={active ? editing.done : () => editing.begin()}
     >
       {editText.edit}
     </button>
