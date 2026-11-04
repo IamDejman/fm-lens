@@ -211,6 +211,52 @@ pub fn nations<'a>(people: impl IntoIterator<Item = (u64, Option<&'a str>, Optio
     out
 }
 
+/// A nation row in the nations list: the nations people in the save belong to, not a nation's rules or ranking.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NationSummary {
+    /// Row id. The nation's own UID when that was read and is unique; otherwise a stand-in that does not collide.
+    pub uid: u32,
+    /// The nation's own UID, for its flag. None when `uid` is only a row id.
+    pub nation_uid: Option<u32>,
+    pub name: String,
+}
+
+impl crate::index::Listed for NationSummary {
+    fn uid(&self) -> u32 {
+        self.uid
+    }
+
+    fn names(&self) -> String {
+        self.name.clone()
+    }
+
+    fn display_name(&self) -> &str {
+        &self.name
+    }
+
+    fn rank(&self) -> i32 {
+        0
+    }
+}
+
+/// One row per nation, with a unique row id.
+pub fn nation_summaries(nations: impl IntoIterator<Item = Nation>) -> Vec<NationSummary> {
+    let mut used = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for nation in nations {
+        let mut uid = nation.uid.unwrap_or(0);
+        if nation.uid.is_none() || !used.insert(uid) {
+            uid = nation.address as u32;
+            while !used.insert(uid) {
+                uid = uid.wrapping_add(1);
+            }
+        }
+        out.push(NationSummary { uid, nation_uid: nation.uid, name: nation.name });
+    }
+    out
+}
+
 /// Rating from which FM calls a position one the player can play ("accomplished").
 pub const PLAYABLE_RATING: u8 = 15;
 
@@ -289,5 +335,20 @@ mod tests {
         ];
         let names: Vec<String> = nations(people).into_iter().map(|n| n.name).collect();
         assert_eq!(names, ["Brazil", "Österreich", "Türkiye"]);
+    }
+
+    #[test]
+    fn nation_rows_keep_a_unique_id() {
+        let rows = nation_summaries([
+            Nation { address: 0x2_0000, uid: Some(7), name: "Brazil".to_owned() },
+            Nation { address: 0x3_0000, uid: Some(7), name: "Brasil".to_owned() },
+            Nation { address: 0x4_0000, uid: None, name: "Nowhere".to_owned() },
+        ]);
+        let ids: Vec<u32> = rows.iter().map(|row| row.uid).collect();
+        assert_eq!(ids.len(), 3);
+        assert_eq!(ids.iter().collect::<std::collections::HashSet<_>>().len(), 3);
+        assert_eq!(rows[0].nation_uid, Some(7));
+        assert_eq!(rows[2].nation_uid, None);
+        assert_eq!(rows[2].name, "Nowhere");
     }
 }

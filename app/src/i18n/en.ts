@@ -899,6 +899,20 @@ export const en = {
     },
   },
 
+  /** Nations of the people in the save. Not a nation's ranking, rules or kit. */
+  nationList: {
+    nav: "Nations",
+    search: "Search nations by name",
+    summary: (total: number, shown: number) =>
+      total > shown ? `${format(total)} nations · showing the first ${shown}` : `${format(total)} nations`,
+    empty: (query: string) => (query === "" ? "No nations found." : `No nations match “${query}”.`),
+    columns: { name: "Nation", uid: "UID" },
+    /** In the profile: what this list is, and what it does not read. */
+    note: "Nations of the players and staff in this save. Rankings, rules, kits and squads are not read.",
+    uid: "UID",
+    noUid: "No UID",
+  },
+
   /** The app around the lists: the sidebar, the status line and the connect panel. */
   app: {
     /** The small line under the name in the sidebar. */

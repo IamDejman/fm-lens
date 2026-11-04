@@ -114,6 +114,9 @@ export const clubProfileText = strings.clubProfile;
 /** The club list, with the sidebar entry and the status-line count that go with it. */
 export const clubListText = strings.clubList;
 
+/** Nations of the people in the save. */
+export const nationListText = strings.nationList;
+
 /**
  * The app around the lists: the sidebar (and the note at its foot, which depends on the connection, see
  * `ConnectionInfo.editable`), the status line and the connect panel.

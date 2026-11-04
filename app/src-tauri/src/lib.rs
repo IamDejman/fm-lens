@@ -9,10 +9,11 @@ use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove,
     Coded, EditError, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN,
     GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Kind, Lifted, Listed, Loan, MoveError,
-    MovePlan, MoveTerms, Nation, Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex,
+    MovePlan, MoveTerms, Nation, NationSummary, Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter,
+    PlayerIndex,
     PlayerOrder, PlayerSummary, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped,
-    StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, Tie, TieTarget, find_game, nations,
-    sort_players,
+    StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, Tie, TieTarget, find_game, nation_summaries,
+    nations, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -1729,6 +1730,15 @@ fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, F
     connection.session.staff_details(member)?.ok_or_else(data_changed)
 }
 
+/// Nations of the players and staff in the lists, matching `query` by name; at most `limit` rows.
+#[tauri::command]
+fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<NationSummary>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let index = SearchIndex::new(nation_summaries(connection.nations()));
+    Ok(page(&index, &query, limit, |_| true, |_| {}))
+}
+
 /// The nations of the players and staff in the lists, by name: what a nation field can be set to.
 #[tauri::command]
 fn list_nations(state: State<'_, AppState>) -> Result<Vec<Nation>, Failure> {
@@ -2480,6 +2490,7 @@ pub fn run() {
             search_players,
             search_staff,
             search_clubs,
+            search_nations,
             export_players,
             open_export,
             show_export,

@@ -10,7 +10,8 @@ import { describeError, describeGame, formatDate } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { GraphicsStatus } from "./GraphicsStatus";
 import { SettingsMenu } from "./SettingsMenu";
-import { appText, clubListText, playerListText, staffListText } from "./labels";
+import { appText, clubListText, nationListText, playerListText, staffListText } from "./labels";
+import { NationBrowser } from "./NationBrowser";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
@@ -19,12 +20,13 @@ import lensSymbol from "./assets/brand/fm-lens-symbol.png";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
-type View = "players" | "staff" | "clubs" | "changes";
+type View = "players" | "staff" | "clubs" | "nations" | "changes";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
   { id: "staff", label: staffListText.nav },
   { id: "clubs", label: clubListText.nav },
+  { id: "nations", label: nationListText.nav },
 ];
 
 /** The view the window was in before the language was switched; the first one when there was no such switch. */
@@ -215,6 +217,7 @@ function App() {
               <PlayerBrowser version={dataVersion} active={view === "players"} />
               <StaffBrowser version={dataVersion} active={view === "staff"} />
               <ClubBrowser version={dataVersion} active={view === "clubs"} />
+              <NationBrowser version={dataVersion} active={view === "nations"} />
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
           </EditorContext.Provider>

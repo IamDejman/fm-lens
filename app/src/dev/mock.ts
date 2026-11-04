@@ -9,6 +9,8 @@ import type {
   ClubMoney,
   FeePlan,
   Nation,
+  NationPage,
+  NationSummary,
   BridgeInfo,
   CaptainRole,
   ClubTeam,
@@ -2302,6 +2304,18 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "list_nations": {
       const nations: Nation[] = NATIONS.map((name) => ({ address: nationAddress(name), uid: 1000 + NATIONS.indexOf(name), name }));
       return nations.sort((a, b) => a.name.localeCompare(b.name)) as T;
+    }
+    case "search_nations": {
+      const query = fold(String(args?.query ?? ""));
+      const limit = Number(args?.limit ?? 200);
+      const rows: NationSummary[] = NATIONS.map((name, index) => ({
+        uid: 1000 + index,
+        nationUid: 1000 + index,
+        name,
+      })).filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim());
+      rows.sort((a, b) => a.name.localeCompare(b.name));
+      const page: NationPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return page as T;
     }
     case "read_values":
       return currentValues(args?.entity as Entity, Number(args?.uid)) as T;
