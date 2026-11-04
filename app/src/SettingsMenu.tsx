@@ -1,10 +1,11 @@
 // The settings menu at the right of the masthead: a button with a gear, which opens a menu of the languages, each with
-// its flag and its own name, and of the currencies the app can show money in, each with its sign and its name. The
-// menu is drawn over the window under its button, as the captain menu of a squad row is (see CaptainMenu.tsx), so that
-// the masthead's styles stay off it.
+// its flag and its own name, of the currencies the app can show money in, each with its sign and its name, and of the
+// light, dark or system appearance. The menu is drawn over the window under its button, as the captain menu of a squad
+// row is (see CaptainMenu.tsx), so that the masthead's styles stay off it.
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { APPEARANCES, appearance, setAppearance, type Appearance } from "./appearance";
 import { CURRENCIES, currency, setCurrency, type Currency } from "./currency";
 import { currencyName, currencySymbolOf } from "./format";
 import { locale, setLocale, type Locale } from "./i18n";
@@ -56,8 +57,17 @@ const LANGUAGES: readonly { id: Locale; name: string }[] = [
   { id: "es", name: "Español" },
 ];
 
-/** The name and hover text of the button: "Settings: English, Euro". */
-const BUTTON_LABEL = `${appText.settingsLabel}: ${LANGUAGES.find(({ id }) => id === locale)?.name ?? locale}, ${currencyName()}`;
+const APPEARANCE_LABEL: Record<Appearance, string> = {
+  system: appText.appearanceSystem,
+  light: appText.appearanceLight,
+  dark: appText.appearanceDark,
+};
+
+/** The name and hover text of the button: "Settings: English, Euro, System". */
+function buttonLabel(): string {
+  const language = LANGUAGES.find(({ id }) => id === locale)?.name ?? locale;
+  return `${appText.settingsLabel}: ${language}, ${currencyName()}, ${APPEARANCE_LABEL[appearance()]}`;
+}
 
 /** Where the open menu hangs: the window's coordinates of its button, from the right edge and the top. */
 interface Anchor {
@@ -74,10 +84,11 @@ const CHECK = (
 /**
  * The button and, once it is pressed, its menu. Choosing another language or currency reloads the window (see
  * `setLocale` and `setCurrency`), which the app survives connected (see `current_connection`), so edits pending in an
- * open profile are asked about first. While the app is `busy` the button waits.
+ * open profile are asked about first. Appearance turns the page at once. While the app is `busy` the button waits.
  */
 export function SettingsMenu({ busy }: { busy: boolean }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const [chosenAppearance, setChosenAppearance] = useState(appearance());
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -137,6 +148,14 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
     }
   };
 
+  const chooseAppearance = (next: Appearance) => {
+    close();
+    if (!busy && next !== chosenAppearance) {
+      setAppearance(next);
+      setChosenAppearance(next);
+    }
+  };
+
   // The arrow keys go through both lists, as one.
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
@@ -180,8 +199,8 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
         className="settings-toggle"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={BUTTON_LABEL}
-        title={BUTTON_LABEL}
+        aria-label={buttonLabel()}
+        title={buttonLabel()}
         disabled={busy}
         onClick={() => (open ? setAnchor(null) : show())}
         onKeyDown={(event) => {
@@ -247,6 +266,24 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
                   </span>
                   {currencyName(code)}
                   {code === currency && CHECK}
+                </button>
+              ))}
+            </div>
+            <div role="group" aria-labelledby={`${id}-appearance`}>
+              <div id={`${id}-appearance`} className="settings-heading">
+                {appText.appearanceLabel}
+              </div>
+              {APPEARANCES.map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={mode === chosenAppearance}
+                  tabIndex={-1}
+                  onClick={() => chooseAppearance(mode)}
+                >
+                  {APPEARANCE_LABEL[mode]}
+                  {mode === chosenAppearance && CHECK}
                 </button>
               ))}
             </div>

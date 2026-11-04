@@ -882,10 +882,14 @@ export const en = {
   app: {
     /** The small line under the name in the sidebar. */
     stage: "read-only preview",
-    /** The settings menu at the right of the masthead: its name, and the headings of its two lists. */
+    /** The settings menu at the right of the masthead: its name, and the headings of its lists. */
     settingsLabel: "Settings",
     languageLabel: "Language",
     currencyLabel: "Currency",
+    appearanceLabel: "Appearance",
+    appearanceSystem: "System",
+    appearanceLight: "Light",
+    appearanceDark: "Dark",
 
     // The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`).
     /** Connected, and the game was opened for writing. */

@@ -903,6 +903,10 @@ export const es: Strings = {
     settingsLabel: "Ajustes",
     languageLabel: "Idioma",
     currencyLabel: "Moneda",
+    appearanceLabel: "Apariencia",
+    appearanceSystem: "Sistema",
+    appearanceLight: "Claro",
+    appearanceDark: "Oscuro",
 
     noteEditable:
       "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",
