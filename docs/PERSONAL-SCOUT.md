@@ -13,6 +13,11 @@ read-only. The probe is compiled with the memory crate's `read-only` feature, so
 that feature. There is no separate switch that turns editing on: connecting to
 a known build enables the mapped fields.
 
+Nations represented by loaded players/staff and senior stadiums per club have
+separate read-only lists. These do not establish complete nation/stadium database
+coverage or expose nation rules. Staff and club filters cover additional decoded
+values; a skippable first-run introduction covers navigation and settings.
+
 Upstream update installation is disabled so it cannot replace this build.
 
 The bridge still supplies a full task port to same-user clients. The probe

@@ -99,3 +99,29 @@ test freezes and exports separate from ordinary app state.
 Next validation priorities: stale-draft/undo conflict in the native app, career
 switch while connected, multi-target templates, staff/club/contract persistence,
 structural operations, and a fresh Steam Offline Mode launch.
+
+## Integrated roadmap PR
+
+Integrated the work from repository PR #1, preserving its commits. Kept the
+validated appearance/zoom implementation, corrected the tour's obsolete
+read-only claim, restored the missing Rust SearchIndex import, and deferred
+hidden-list reads so stadium indexing does not delay the first player search.
+
+Native checks on the same validation career demonstrated:
+
+- First-run introduction displayed the editing boundary; Next and Skip worked.
+- Nations: 227 represented nations; searching England returned UID 765 and its
+  read-only profile. This is not nation-rule or national-team editing.
+- Stadiums: 19,234 entries per club. Arsenal search returned 12 entries; a
+  60,000 minimum-capacity filter reduced it to the two Emirates Stadium entries,
+  each showing 60,704 capacity. Shared stadiums are repeated by club.
+- Staff: employer Arsenal returned 90 staff; combining it with minimum CA 160
+  reduced the result to 3. Club reputation/founded filters compiled and have
+  core coverage, but were not separately exercised in the native UI.
+
+The integrated code passed the frontend production build, formatting, strict
+workspace/app Clippy checks, all workspace tests (61 core tests), separate
+writable-memory tests, the diagnostic/bridge build and the Tauri app build.
+Small copy issues remain in new list summaries (for example “1 nations”); broad
+translation and zoom checks across all new screens remain open. The underlying
+editing/save/reload evidence above remains narrower than complete field coverage.

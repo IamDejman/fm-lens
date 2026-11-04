@@ -135,7 +135,11 @@ validated fields and the guarded memory layer for domain operations.
 - Staff attribute freeze lasts for the connection. Its toggle has been exercised;
   long-term simulation behavior remains unverified. Do not describe it as a
   persistent cross-restart setting.
-- Nations, competitions, awards, officials, promises, youth-intake lifecycle,
+- The read-only nation browser lists nations represented by loaded players/staff.
+  The stadium browser lists senior stadiums per club; shared stadiums can appear
+  under more than one club. Neither is a complete database scan or an entity
+  editor. Nation row IDs may be synthetic; never use them as mutation UIDs.
+- Nation editing, competitions, awards, officials, promises, youth-intake lifecycle,
   complete contracts/loans, unsackable managers, unrestricted registration,
   cohesion and tactical familiarity still need mapping or implementation.
   Windows offsets cannot be copied into the native ARM64 Mac layout.

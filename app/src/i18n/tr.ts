@@ -787,6 +787,18 @@ export const tr: Strings = {
       job: "Görev",
       anyJob: "Tümü",
       unemployedOnly: "Yalnızca işsizler",
+      age: "Yaş",
+      minAge: "En düşük yaş",
+      maxAge: "En yüksek yaş",
+      minPlaceholder: "Min",
+      maxPlaceholder: "Maks",
+      minCurrentAbility: "Min MY",
+      minCurrentAbilityTitle: "En düşük mevcut yetenek",
+      minPotentialAbility: "Min PY",
+      minPotentialAbilityTitle: "En düşük potansiyel yetenek",
+      abilityPlaceholder: "1–200",
+      nation: "Uyruk",
+      club: "Kulüp",
     },
   },
 
@@ -848,10 +860,10 @@ export const tr: Strings = {
         : `${format(total)} kulüp`,
     empty: (query, filtered) => {
       if (query === "") {
-        return filtered ? "Bu filtreye uyan kulüp yok." : "Kulüp bulunamadı.";
+        return filtered ? "Bu filtrelere uyan kulüp yok." : "Kulüp bulunamadı.";
       }
       return filtered
-        ? `“${query}” aramasına ve bu filtreye uyan kulüp yok.`
+        ? `“${query}” aramasına ve bu filtrelere uyan kulüp yok.`
         : `“${query}” aramasına uyan kulüp yok.`;
     },
     women: "Kadın",
@@ -866,13 +878,102 @@ export const tr: Strings = {
       all: "Tüm kulüpler",
       men: "Erkek kulüpleri",
       women: "Kadın kulüpleri",
+      reputation: "İtibar",
+      minReputation: "En düşük itibar",
+      maxReputation: "En yüksek itibar",
+      reputationPlaceholder: "0–10000",
+      founded: "Kuruluş",
+      foundedFrom: "Kuruluş (en erken)",
+      foundedTo: "Kuruluş (en geç)",
+      yearPlaceholder: "Yıl",
     },
+  },
+
+  stadiumList: {
+    nav: "Stadyumlar",
+    search: "İsim veya kulüple stadyum ara",
+    summary: (total, shown) =>
+      total > shown
+        ? `${format(total)} stadyum · kapasiteye göre ilk ${shown} gösteriliyor`
+        : `${format(total)} stadyum`,
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "Stadyum okunamadı.";
+      }
+      if (query === "") {
+        return "Bu filtrelere uyan stadyum yok.";
+      }
+      return filtered
+        ? `“${query}” aramasına ve bu filtrelere uyan stadyum yok.`
+        : `“${query}” aramasına uyan stadyum yok.`;
+    },
+    columns: {
+      name: "Stadyum",
+      club: "Kulüp",
+      capacity: "Kapasite",
+      seating: "Oturmalı",
+      expansion: "Büyüyebileceği",
+    },
+    filters: {
+      capacity: "Kapasite",
+      minCapacity: "En düşük kapasite",
+      maxCapacity: "En yüksek kapasite",
+      placeholder: "Min",
+    },
+    note: "Bu kulübün A takımının stadyumu; kulüp profilindeki alanlardan okunur.",
+  },
+
+  nationList: {
+    nav: "Ülkeler",
+    search: "İsimle ülke ara",
+    summary: (total, shown) =>
+      total > shown ? `${format(total)} ülke · ilk ${shown} gösteriliyor` : `${format(total)} ülke`,
+    empty: (query) => (query === "" ? "Ülke bulunamadı." : `“${query}” aramasına uyan ülke yok.`),
+    columns: { name: "Ülke", uid: "UID" },
+    note: "Bu kayıtta oyuncu ve personelin ülkeleri. Sıralama, kurallar, formalar ve kadrolar okunmuyor.",
+    uid: "UID",
+    noUid: "UID yok",
   },
 
   app: {
     settingsLabel: "Ayarlar",
     languageLabel: "Dil",
     currencyLabel: "Para birimi",
+    appearanceLabel: "Görünüm",
+    appearanceSystem: "Sistem",
+    appearanceLight: "Açık",
+    appearanceDark: "Koyu",
+    zoomLabel: "Yakınlaştırma",
+    tour: {
+      label: "Tanıtım",
+      skip: "Geç",
+      back: "Geri",
+      next: "İleri",
+      done: "Bitti",
+      progress: (step: number, total: number) => `${step} / ${total}`,
+      steps: {
+        brand: {
+          title: "FM Lens",
+          body: "Kariyerinizi inceleyin. Desteklenen sürümlerde düzenlemeler uygulandığında FM'ye yazılır. Kariyerin bir kopyasında test edin.",
+        },
+        tabs: {
+          title: "Bölümler",
+          body: "Oyuncular, personel ve kulüpler; bu kişilerin ülkeleri ve her kulübün stadyumu.",
+        },
+        search: {
+          title: "Arama ve filtreler",
+          body: "İsim veya kimlikle arayın. Filtreler listeyi daraltır. Seçim, dil değişince durur.",
+        },
+        settings: {
+          title: "Ayarlar",
+          body: "Dil, para birimi, açık veya koyu görünüm ve arayüz boyutu. Pencerenin kendi yakınlaştırması ayrıdır.",
+        },
+        status: {
+          title: "Bu kariyer",
+          body: "Pencerenin altı oyunu ve okunan kişi sayısını yazar. Örnek veriler işaretlidir.",
+        },
+      },
+    },
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
     noteReadOnly: "Oyun yalnızca okunmak üzere açıldı, bu yüzden düzenleme kapalı.",

@@ -9,8 +9,11 @@ import { forgetFieldTables } from "./fieldTables";
 import { describeError, describeGame, formatDate } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { GraphicsStatus } from "./GraphicsStatus";
+import { GuidedTour } from "./GuidedTour";
 import { SettingsMenu } from "./SettingsMenu";
-import { appText, changesText, clubListText, playerListText, staffListText } from "./labels";
+import { appText, changesText, clubListText, nationListText, playerListText, stadiumListText, staffListText } from "./labels";
+import { NationBrowser } from "./NationBrowser";
+import { StadiumBrowser } from "./StadiumBrowser";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
@@ -19,12 +22,14 @@ import lensSymbol from "./assets/brand/fm-lens-symbol.png";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
-type View = "players" | "staff" | "clubs" | "changes";
+type View = "players" | "staff" | "clubs" | "nations" | "stadiums" | "changes";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
   { id: "staff", label: staffListText.nav },
   { id: "clubs", label: clubListText.nav },
+  { id: "nations", label: nationListText.nav },
+  { id: "stadiums", label: stadiumListText.nav },
   { id: "changes", label: changesText.nav },
 ];
 
@@ -34,7 +39,7 @@ const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?
 /** The app's own football-lens symbol and wordmark. */
 function BrandMark() {
   return (
-    <span className="brand" title="FM Lens">
+    <span className="brand" data-tour="brand" title="FM Lens">
       <img className="brand-symbol" src={lensSymbol} alt="" width="40" height="40" />
       <span className="brand-word">FM Lens</span>
     </span>
@@ -168,7 +173,7 @@ function App() {
     <div className="app">
       <header className="masthead">
         <BrandMark />
-        <nav className="tabs">
+        <nav className="tabs" data-tour="tabs">
           {VIEWS.map(({ id, label }) => (
             <button
               key={id}
@@ -201,7 +206,9 @@ function App() {
               {appText.refresh}
             </button>
           )}
-          <SettingsMenu busy={busy !== null} />
+          <span data-tour="settings">
+            <SettingsMenu busy={busy !== null} />
+          </span>
         </div>
       </header>
 
@@ -217,6 +224,8 @@ function App() {
               <PlayerBrowser version={dataVersion} active={view === "players"} />
               <StaffBrowser version={dataVersion} active={view === "staff"} />
               <ClubBrowser version={dataVersion} active={view === "clubs"} />
+              <NationBrowser version={dataVersion} active={view === "nations"} />
+              <StadiumBrowser version={dataVersion} active={view === "stadiums"} />
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
           </EditorContext.Provider>
@@ -237,7 +246,7 @@ function App() {
           <span className="colophon-name">
             FM Lens{version && ` ${version}`}
           </span>
-          <span className={`status ${connection ? "on" : ""}`}>
+          <span className={`status ${connection ? "on" : ""}`} data-tour="status">
             <span className="dot" />
             <span className="status-text">
               {connection
@@ -259,6 +268,7 @@ function App() {
           <GraphicsStatus />
         </div>
       </footer>
+      <GuidedTour ready={checked} connected={connection !== null} />
     </div>
   );
 }

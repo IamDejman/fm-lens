@@ -200,6 +200,14 @@ pub struct StaffFilter {
     pub job: Option<u8>,
     /// Only staff without a contract.
     pub unemployed: bool,
+    pub min_age: Option<u16>,
+    pub max_age: Option<u16>,
+    pub min_current_ability: Option<u16>,
+    pub min_potential_ability: Option<i16>,
+    /// Part of the nation's name, accents and case ignored.
+    pub nation: Option<String>,
+    /// Part of the employer's name, accents and case ignored.
+    pub club: Option<String>,
     /// Bounds on attributes, every one of which must hold.
     pub attributes: Vec<AttributeBound>,
 }
@@ -208,6 +216,12 @@ impl StaffFilter {
     pub fn matches(&self, s: &StaffSummary) -> bool {
         self.job.is_none_or(|job| s.job.is_some_and(|code| code == job || code == job + 1))
             && (!self.unemployed || s.job.is_none())
+            && self.min_age.is_none_or(|min| s.age.is_some_and(|age| age >= min))
+            && self.max_age.is_none_or(|max| s.age.is_some_and(|age| age <= max))
+            && self.min_current_ability.is_none_or(|min| s.current_ability >= min)
+            && self.min_potential_ability.is_none_or(|min| s.potential_ability >= min)
+            && contains(s.nation.as_deref(), self.nation.as_deref())
+            && contains(s.club.as_deref(), self.club.as_deref())
             && self.attributes.iter().all(|bound| bound.holds(&STAFF_ATTRIBUTES, &s.attributes))
     }
 }
@@ -218,11 +232,21 @@ impl StaffFilter {
 pub struct ClubFilter {
     /// `Some(true)` for women's clubs only, `Some(false)` for men's clubs only.
     pub women: Option<bool>,
+    /// 0–10000, from the senior team. A club with no reputation keeps to no bound.
+    pub min_reputation: Option<u16>,
+    pub max_reputation: Option<u16>,
+    /// A club with no founded year keeps to no bound.
+    pub founded_from: Option<u16>,
+    pub founded_to: Option<u16>,
 }
 
 impl ClubFilter {
     pub fn matches(&self, c: &ClubSummary) -> bool {
         self.women.is_none_or(|women| c.women == women)
+            && self.min_reputation.is_none_or(|min| c.reputation.is_some_and(|reputation| reputation >= min))
+            && self.max_reputation.is_none_or(|max| c.reputation.is_some_and(|reputation| reputation <= max))
+            && self.founded_from.is_none_or(|from| c.founded.is_some_and(|year| year >= from))
+            && self.founded_to.is_none_or(|to| c.founded.is_some_and(|year| year <= to))
     }
 }
 
@@ -332,5 +356,72 @@ mod tests {
         // Same age: the incoming order (here by club) decides.
         sort_players(&mut list, PlayerOrder { by: PlayerSort::Age, ascending: true });
         assert_eq!(list.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Özil", "Zico", "pelé"]);
+    }
+
+    fn staff(age: Option<u16>, ca: u16, nation: Option<&str>, club: Option<&str>, job: Option<u8>) -> StaffSummary {
+        StaffSummary {
+            uid: 1,
+            name: "Ada".to_owned(),
+            full_name: None,
+            date_of_birth: None,
+            age,
+            nation: nation.map(str::to_owned),
+            nation_uid: None,
+            nation_address: 0,
+            club: club.map(str::to_owned),
+            club_uid: None,
+            job,
+            current_ability: ca,
+            potential_ability: ca as i16 + 10,
+            is_human: false,
+            attributes: Vec::new(),
+            address: 0,
+            shift: 0,
+        }
+    }
+
+    #[test]
+    fn staff_filters_use_decoded_list_fields() {
+        let coach = staff(Some(42), 140, Some("Türkiye"), Some("Fenerbahçe"), Some(2));
+        let filter = StaffFilter {
+            min_age: Some(40),
+            max_age: Some(45),
+            min_current_ability: Some(120),
+            min_potential_ability: Some(145),
+            nation: Some("turkiye".to_owned()),
+            club: Some("fenerbahce".to_owned()),
+            job: Some(2),
+            ..StaffFilter::default()
+        };
+        assert!(filter.matches(&coach));
+        assert!(!StaffFilter { max_age: Some(30), ..StaffFilter::default() }.matches(&coach));
+        assert!(!StaffFilter { unemployed: true, ..StaffFilter::default() }.matches(&coach));
+        let unknown = staff(None, 100, None, None, None);
+        assert!(!StaffFilter { min_age: Some(20), ..StaffFilter::default() }.matches(&unknown));
+        assert!(StaffFilter { unemployed: true, ..StaffFilter::default() }.matches(&unknown));
+        assert!(!StaffFilter { nation: Some("spain".to_owned()), ..StaffFilter::default() }.matches(&unknown));
+    }
+
+    fn club(women: bool, reputation: Option<u16>, founded: Option<u16>) -> ClubSummary {
+        ClubSummary { uid: 1, name: "Northbridge".to_owned(), short_name: None, women, reputation, founded, address: 0 }
+    }
+
+    #[test]
+    fn club_filters_use_decoded_list_fields() {
+        let mens = club(false, Some(8000), Some(1886));
+        let filter = ClubFilter {
+            women: Some(false),
+            min_reputation: Some(7000),
+            max_reputation: Some(9000),
+            founded_from: Some(1880),
+            founded_to: Some(1900),
+        };
+        assert!(filter.matches(&mens));
+        assert!(!ClubFilter { women: Some(true), ..ClubFilter::default() }.matches(&mens));
+        assert!(!ClubFilter { max_reputation: Some(1000), ..ClubFilter::default() }.matches(&mens));
+        let unknown = club(true, None, None);
+        assert!(!ClubFilter { min_reputation: Some(1), ..ClubFilter::default() }.matches(&unknown));
+        assert!(!ClubFilter { founded_from: Some(1900), ..ClubFilter::default() }.matches(&unknown));
+        assert!(ClubFilter { women: Some(true), ..ClubFilter::default() }.matches(&unknown));
     }
 }
