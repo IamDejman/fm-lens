@@ -295,6 +295,20 @@ export interface PlayerPage {
   rows: PlayerSummary[];
 }
 
+/** A nation people in the loaded save belong to. Rankings, rules and kits are not part of this row. */
+export interface NationSummary {
+  /** Row id. The nation's own UID when that was read. */
+  uid: number;
+  /** The nation's own UID, for its flag. Null when `uid` is only a row id. */
+  nationUid: number | null;
+  name: string;
+}
+
+export interface NationPage {
+  total: number;
+  rows: NationSummary[];
+}
+
 /** A nation the nation field of a player or member of staff can be set to. */
 export interface Nation {
   /** Where the game keeps it: the value of a nation field. */

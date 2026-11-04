@@ -1382,6 +1382,10 @@ input::placeholder {
  * The clubs table is short: with a profile open only UID drops out (above), and Founded when the
  * list gets very narrow. A long name wraps instead of pushing the other columns out.
  */
+.nation-grid td.col-name {
+  width: 100%;
+}
+
 .club-grid td.col-name {
   width: 100%;
   max-width: 0;

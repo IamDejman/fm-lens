@@ -889,6 +889,18 @@ export const tr: Strings = {
     },
   },
 
+  nationList: {
+    nav: "Ülkeler",
+    search: "İsimle ülke ara",
+    summary: (total, shown) =>
+      total > shown ? `${format(total)} ülke · ilk ${shown} gösteriliyor` : `${format(total)} ülke`,
+    empty: (query) => (query === "" ? "Ülke bulunamadı." : `“${query}” aramasına uyan ülke yok.`),
+    columns: { name: "Ülke", uid: "UID" },
+    note: "Bu kayıtta oyuncu ve personelin ülkeleri. Sıralama, kurallar, formalar ve kadrolar okunmuyor.",
+    uid: "UID",
+    noUid: "UID yok",
+  },
+
   app: {
     stage: "salt okunur önizleme",
     settingsLabel: "Ayarlar",

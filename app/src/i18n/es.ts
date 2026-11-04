@@ -918,6 +918,20 @@ export const es: Strings = {
     },
   },
 
+  nationList: {
+    nav: "Países",
+    search: "Buscar países por nombre",
+    summary: (total, shown) => {
+      const count = total === 1 ? "1 país" : `${format(total)} países`;
+      return total > shown ? `${count} · se muestran los primeros ${shown}` : count;
+    },
+    empty: (query) => (query === "" ? "No se han encontrado países." : `Ningún país coincide con «${query}».`),
+    columns: { name: "País", uid: "UID" },
+    note: "Países de los jugadores y el personal de esta partida. No se leen clasificaciones, normas, equipaciones ni selecciones.",
+    uid: "UID",
+    noUid: "Sin UID",
+  },
+
   app: {
     stage: "vista previa de solo lectura",
     settingsLabel: "Ajustes",
