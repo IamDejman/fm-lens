@@ -3397,7 +3397,7 @@ struct SectionReport {
 }
 
 fn info(process: &Process, game: &GameInfo, modules: &[Module], elevated: bool, json: Option<&Path>) -> Result<()> {
-    println!("FMLibreEditor probe {} (read-only)", env!("CARGO_PKG_VERSION"));
+    println!("FM Lens probe {} (read-only)", env!("CARGO_PKG_VERSION"));
     println!("{ELEVATED}: {}", if elevated { "yes" } else { "no" });
     println!();
     println!("Game process");

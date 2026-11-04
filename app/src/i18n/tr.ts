@@ -109,10 +109,10 @@ const errors: ErrorTexts = {
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
-    "FMLibreEditor oyunun bu sürümüyle denenmedi, bu yüzden ona yazmıyor. Üstteki uyarıdaki “Yine de düzenle” " +
+    "FM Lens oyunun bu sürümüyle denenmedi, bu yüzden ona yazmıyor. Üstteki uyarıdaki “Yine de düzenle” " +
     "düzenlemeyi açar.",
   "guard.failed": (p) =>
-    `${checkName(p.check)} oyunun bu sürümünde denetimden geçmedi, bu yüzden FMLibreEditor onları değiştirmiyor.`,
+    `${checkName(p.check)} oyunun bu sürümünde denetimden geçmedi, bu yüzden FM Lens onları değiştirmiyor.`,
   "retirement.none": () => "Oyun bu oyuncunun emekliliğini planlamamış ve oyuncu zaten oynamaya devam etmek istiyor.",
   "clause.noContract": () => "Oyuncunun sözleşmesi yok.",
   "clause.missing": () => `Sözleşmede bu madde artık yok; ${reload}.`,
@@ -154,15 +154,15 @@ const errors: ErrorTexts = {
   "memory.mach": (p) => `macOS bir işlemi reddetti (${p.operation}, hata ${p.code}).`,
   "memory.posix": (p) => `macOS bir işlemi reddetti (${p.operation}, errno ${p.code}).`,
   "memory.noBridge": () =>
-    "macOS, FMLibreEditor'ın oyuna girmesine izin vermiyor: oyun, FMLibreEditor köprüsü olmadan başlatılmış. " +
+    "macOS, FM Lens'ın oyuna girmesine izin vermiyor: oyun, FM Lens köprüsü olmadan başlatılmış. " +
     "Köprüyü kurun, ardından oyunu Steam'den yeniden başlatın.",
-  "memory.bridge": (p) => `Oyundaki FMLibreEditor köprüsü belleği vermedi (${p.reason}).`,
+  "memory.bridge": (p) => `Oyundaki FM Lens köprüsü belleği vermedi (${p.reason}).`,
   "setup.steamRunning": () =>
     "Steam açık olduğu için FM27'nin başlatma seçeneklerine dokunulmadı; köprünün kendisi kuruldu. Steam'den çıkıp " +
     "yeniden deneyin ya da başlatma seçeneğini Steam'de kendiniz girin.",
   "setup.noSteamAccount": () => "Bu Mac'te bir Steam hesabı bulunamadı; Steam'i bir kez açıp giriş yapın.",
   "setup.noLibrary": (p) => `Köprü kütüphanesi uygulamada eksik: ${p.path}`,
-  "setup.unknownConfig": (p) => `${p.path} FMLibreEditor'ın tanıdığı biçimde değil, bu yüzden dokunulmadı.`,
+  "setup.unknownConfig": (p) => `${p.path} FM Lens'ın tanıdığı biçimde değil, bu yüzden dokunulmadı.`,
   "setup.io": (p) => `${p.path}: ${p.error}`,
   "app.internal": () => "Uygulamada beklenmeyen bir hata oluştu.",
   "app.notConnected": () => "Oyuna bağlı değil.",
@@ -172,10 +172,10 @@ const errors: ErrorTexts = {
   "app.alreadyUndone": () => "Bu değişiklik zaten geri alındı.",
   "export.failed": (p) => `Dosya yazılamadı: ${p.reason}`,
   "export.notAllowed": (p) =>
-    `FMLibreEditor ${p.folder} klasörüne yazamıyor. macOS, Belgeler klasörünü kullanıp kullanamayacağını sorduysa ` +
+    `FM Lens ${p.folder} klasörüne yazamıyor. macOS, Belgeler klasörünü kullanıp kullanamayacağını sorduysa ` +
     "Sistem Ayarları › Gizlilik ve Güvenlik › Dosyalar ve Klasörler'den izin verin, sonra yeniden dışa aktarın.",
   "export.noFolder": () => "Dışa aktarılacak bir klasör yok.",
-  "export.notExported": () => "Bu, FMLibreEditor'ün dışa aktardığı bir dosya değil.",
+  "export.notExported": () => "Bu, FM Lens'ün dışa aktardığı bir dosya değil.",
   "export.openFailed": (p) => `Açılamadı: ${p.reason}`,
   "mass.noOperations": () => "Değiştirilecek en az bir alan seçin.",
   "mass.tooMany": (p) =>
@@ -870,21 +870,21 @@ export const tr: Strings = {
   },
 
   app: {
-    stage: "beta",
+    stage: "salt okunur önizleme",
     settingsLabel: "Ayarlar",
     languageLabel: "Dil",
     currencyLabel: "Para birimi",
 
     noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
-    noteReadOnly: "Salt okunur: Windows, FMLibreEditor'ın oyuna yazmasına izin vermedi.",
-    noteUnknownBuild: "Salt okunur: oyunun bu sürümü FMLibreEditor için yeni.",
-    noteNotConnected: "Siz düzenleyip uygulamadan oyunda hiçbir şey değişmez.",
+    noteReadOnly: "Salt okunur sürüm. Oyun düzenleme kapalı.",
+    noteUnknownBuild: "Salt okunur: oyunun bu sürümü FM Lens için yeni.",
+    noteNotConnected: "Salt okunur sürüm. Oyun düzenleme kapalı.",
 
     notConnected: "Bağlı değil",
     previewTag: "tarayıcı önizlemesi · örnek veriler",
     noDate: "Oyun içi tarih yok",
     noDateTitle:
-      "FMLibreEditor oyunun bu sürümünde oyun içi tarihi okuyamadı; bu yüzden yaşlar gösterilmiyor ve yaş " +
+      "FM Lens oyunun bu sürümünde oyun içi tarihi okuyamadı; bu yüzden yaşlar gösterilmiyor ve yaş " +
       "filtreleri kimseyi bulmuyor. Güncellemeleri kontrol edin.",
     reload: "Verileri yeniden oku",
     refresh: "Yenile",
@@ -899,14 +899,14 @@ export const tr: Strings = {
       clubs: (names) => `Para: ${names}`,
       more: (count) => `ve ${format(count)} tane daha`,
       waiting: (count) =>
-        `${format(count)} tanesi hatırlanıyor ama şu an dondurulmadı: FMLibreEditor oyunun bu sürümüne henüz yazamıyor.`,
+        `${format(count)} tanesi hatırlanıyor ama şu an dondurulmadı: FM Lens oyunun bu sürümüne henüz yazamıyor.`,
       dismiss: "Kapat",
     },
 
     connect: {
       title: "Football Manager 27'ye bağlan",
       intro:
-        "FMLibreEditor, oyun çalışırken oyunun belleğini okur. " +
+        "FM Lens, oyun çalışırken oyunun belleğini okur. " +
         "Oyunu başlatıp bir kayıt yükleyin, ardından bağlanın.",
       notRunning: "Football Manager 27 çalışmıyor.",
       openFailed: (error) => `Oyun açılamadı: ${error}`,
@@ -922,10 +922,7 @@ export const tr: Strings = {
       bridge: {
         title: "Köprü (macOS)",
         intro:
-          "macOS, hiçbir uygulamayı başka bir uygulamanın belleğine sokmaz; bu yüzden FM27 belleğini kendisi açmalı. " +
-          "Bunu FMLibreEditor'ın köprüsünü yüklediğinde yapar: köprü, oyunda hiçbir şeye kanca atmayan ve hiçbir " +
-          "şeyi değiştirmeyen, oyunun belleğini yalnızca bu uygulamaya veren küçük bir kütüphanedir. FM27'nin onu " +
-          "yüklemesi için Steam'de bir başlatma seçeneği gerekir.",
+          "FM27 köprüyü başlangıçta yüklemeli. Kurulumdan önce oyunu kaydedip FM27'yi, ardından Steam'i kapatın.",
         library: "Köprü",
         installed: "Kurulu",
         missing: "Kurulu değil",
@@ -956,10 +953,9 @@ export const tr: Strings = {
   },
 
   compatibility: {
-    unknownBuild: (game) => `FMLibreEditor henüz ${game} ile denenmedi`,
+    unknownBuild: (game) => `FM Lens henüz ${game} ile denenmedi`,
     unknownBuildText:
-      "Oyun büyük ihtimalle güncellendi. FMLibreEditor oyunun verilerini buldu ve denetledi, ama denenmediği bir sürüme " +
-      "siz izin vermeden yazmaz. Bu sürümü tanıyan yeni bir FMLibreEditor genellikle birkaç gün içinde çıkar.",
+      "Bu oyun sürümü FM Lens ile doğrulanmadı. Değerleri oyunla karşılaştırın. Düzenleme kapalı.",
     allowedText: "Düzenleme bu oturum için açık, denetimlerin izin verdiği kadarıyla. Kayıt dosyanızın yedeğini saklayın.",
     failedTitle: "Oyunun verilerinin bir kısmı denetimden geçmedi",
     reloadHint: "Kayıt hâlâ yükleniyorduysa “Verileri yeniden oku” yeniden denetler.",
@@ -968,7 +964,7 @@ export const tr: Strings = {
     join: (names) =>
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ve ${names[names.length - 1]}`,
     allow: "Yine de düzenle",
-    allowTitle: "Düzenlemeyi FMLibreEditor kapanana ya da yeniden bağlanana kadar açar. Önce kayıt dosyanızı yedekleyin.",
+    allowTitle: "Düzenlemeyi FM Lens kapanana ya da yeniden bağlanana kadar açar. Önce kayıt dosyanızı yedekleyin.",
   },
 
   checks: {
@@ -985,14 +981,14 @@ export const tr: Strings = {
   },
 
   update: {
-    available: (version) => `FMLibreEditor ${version} yayımlandı`,
+    available: (version) => `FM Lens ${version} yayımlandı`,
     youHave: (version) => `Sizdeki sürüm: ${version}.`,
     download: "İndir",
     install: "Güncelle",
-    installTitle: "Yeni sürümü indir ve kur; FMLibreEditor kapanıp yeni sürümle yeniden açılır",
+    installTitle: "Yeni sürümü indir ve kur; FM Lens kapanıp yeni sürümle yeniden açılır",
     preparing: "Hazırlanıyor…",
     downloading: (percent) => (percent === null ? "İndiriliyor…" : `İndiriliyor… %${percent}`),
-    installing: "Kuruluyor: FMLibreEditor kapanıp yeni sürümle yeniden açılacak.",
+    installing: "Kuruluyor: FM Lens kapanıp yeni sürümle yeniden açılacak.",
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
     notInstallable: "Bu sürüm buradan kurulamıyor. Bunun yerine sayfasından indirin.",
     later: "Sonra",

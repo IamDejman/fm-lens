@@ -2,7 +2,7 @@
 // makes before writing did not pass: what that leaves out, and the way to edit anyway or to look for a newer version.
 
 import { describeGame } from "./format";
-import { CHECK_NAMES, compatibilityText, updateText } from "./labels";
+import { CHECK_NAMES, compatibilityText } from "./labels";
 import type { ConnectionInfo } from "./types";
 
 const text = compatibilityText;
@@ -14,11 +14,8 @@ const text = compatibilityText;
  */
 export function CompatibilityNotice(props: {
   connection: ConnectionInfo;
-  busy: boolean;
-  onAllow: () => void;
-  onCheckUpdates: () => void;
 }) {
-  const { connection, busy, onAllow, onCheckUpdates } = props;
+  const { connection } = props;
   const failed = connection.health.results.filter((result) => !result.passed).map((result) => result.check);
   const unknown = !connection.knownBuild;
   if (!unknown && failed.length === 0) {
@@ -35,18 +32,6 @@ export function CompatibilityNotice(props: {
         {locked.length > 0 && <p>{text.failed(text.join(locked))}</p>}
         {!unknown && <p>{text.reloadHint}</p>}
       </div>
-      {unknown && (
-        <span className="update-actions">
-          {connection.writable && !connection.editable && (
-            <button type="button" className="primary" title={text.allowTitle} disabled={busy} onClick={onAllow}>
-              {text.allow}
-            </button>
-          )}
-          <button type="button" onClick={onCheckUpdates}>
-            {updateText.check}
-          </button>
-        </span>
-      )}
     </div>
   );
 }

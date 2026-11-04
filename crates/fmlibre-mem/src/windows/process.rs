@@ -82,6 +82,9 @@ impl Process {
 
     /// Opens `pid` for reading and also for writing its memory with [`Process::write_bytes`].
     pub fn open_read_write(pid: u32) -> Result<Self> {
+        if cfg!(feature = "read-only") {
+            return Err(Error::ReadOnly);
+        }
         let access = PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION;
         Self::open(pid, access, true)
     }
@@ -173,7 +176,7 @@ impl Process {
     /// a module's code or data, is refused before Windows is asked, because
     /// `WriteProcessMemory` would otherwise lift a page's protection to write it.
     pub fn write_bytes(&self, addr: u64, data: &[u8]) -> Result<()> {
-        if !self.writable {
+        if cfg!(feature = "read-only") || !self.writable {
             return Err(Error::ReadOnly);
         }
         if data.is_empty() {
@@ -200,11 +203,14 @@ impl Process {
 mod tests {
     use super::*;
 
+    #[cfg(not(feature = "read-only"))]
     static IN_THE_IMAGE: [u8; 8] = [0; 8];
     // Writable, but part of the module's image all the same.
+    #[cfg(not(feature = "read-only"))]
     static WRITABLE_IN_THE_IMAGE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
     #[test]
+    #[cfg(not(feature = "read-only"))]
     fn writes_heap_data_only() {
         let process = Process::open_read_write(std::process::id()).expect("open this process");
         let heap = vec![0u8; 64].into_boxed_slice();

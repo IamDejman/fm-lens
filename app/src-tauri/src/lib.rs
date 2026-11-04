@@ -1265,16 +1265,8 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
 /// Translocation). A portable copy and a development build open the release's page instead.
 #[tauri::command]
 fn can_self_update() -> bool {
-    let Ok(exe) = std::env::current_exe() else {
-        return false;
-    };
-    if cfg!(windows) {
-        exe.parent().is_some_and(|folder| folder.join("uninstall.exe").is_file())
-    } else if cfg!(target_os = "macos") {
-        app_bundle(&exe).is_some_and(|bundle| !bundle.to_string_lossy().contains("/AppTranslocation/"))
-    } else {
-        false
-    }
+    // An upstream editor update must never replace this read-only fork.
+    false
 }
 
 /// The macOS app bundle the executable `exe` is in (`FMLibreEditor.app/Contents/MacOS/FMLibreEditor`); none for a
@@ -1496,17 +1488,14 @@ fn inspect(pid: u32) -> DetectedGame {
     }
 }
 
-/// Attaches to the running game, locates its data and reads every player, member of
-/// staff and club. Only reads memory; the game is opened for writing too when the system
-/// allows it, so that edits can be applied later, and so that what was frozen in this
-/// save before can be held again (see `Connection::restore_frozen`).
+/// Attaches read-only and reads every player, member of staff and club.
 #[tauri::command]
 async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
     let (connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let pid = find_game(None)?;
-        let process = Process::open_read_write(pid).or_else(|_| Process::open_read(pid))?;
+        let process = Process::open_read(pid)?;
         let mut connection = Connection::load(Session::connect(process, ArraySource::ProfileFirst)?, Vec::new())?;
         let refrozen = connection.restore_frozen(path.as_deref());
         Ok((connection, refrozen))
@@ -1533,9 +1522,8 @@ fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInf
 #[tauri::command]
 fn allow_editing(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> {
     let guard = state.0.lock()?;
-    let connection = guard.as_ref().ok_or_else(not_connected)?;
-    connection.session.allow_unknown_build();
-    Ok(connection.info(0))
+    guard.as_ref().ok_or_else(not_connected)?;
+    Err(Failure::new("memory.readOnly", "This scouting build cannot write to the game."))
 }
 
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails. What is frozen
@@ -1638,7 +1626,7 @@ async fn export_players(
         // such, with where to change it.
         let failed = |err: std::io::Error| {
             if cfg!(target_os = "macos") && err.kind() == std::io::ErrorKind::PermissionDenied {
-                Failure::new("export.notAllowed", format!("FMLibreEditor may not write to {}: {err}", folder.display()))
+                Failure::new("export.notAllowed", format!("FM Lens may not write to {}: {err}", folder.display()))
                     .with("folder", folder.display())
             } else {
                 Failure::new("export.failed", err.to_string()).with("reason", err)
@@ -1654,7 +1642,7 @@ async fn export_players(
             sort_players(&mut hits, order);
         }
         let header = ExportHeader {
-            writer: format!("FMLibreEditor {}", app.package_info().version),
+            writer: format!("FM Lens {}", app.package_info().version),
             game: connection.session.game.name(),
             game_date: connection.session.game_date(),
         };
@@ -1694,7 +1682,7 @@ fn exported_file(folder: &ExportsFolder, path: &Path) -> Result<PathBuf, Failure
     if inside && path.is_file() {
         Ok(path.to_owned())
     } else {
-        Err(Failure::new("export.notExported", "That is not a file FMLibreEditor exported."))
+        Err(Failure::new("export.notExported", "That is not a file FM Lens exported."))
     }
 }
 
@@ -2434,9 +2422,6 @@ pub fn run() {
     tauri::Builder::default()
         // Opens the page of a new release in the browser (see app/src/update.ts).
         .plugin(tauri_plugin_opener::init())
-        // Downloads a new version, checks its signature against the key in tauri.conf.json and installs it: the
-        // installer on Windows, the app in place of this one on macOS.
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
         .manage(Graphics::default())
         .setup(|app| {
@@ -2455,7 +2440,7 @@ pub fn run() {
             app.manage(FrozenFile(data.map(|folder| folder.join(FROZEN_FILE))));
             let exports = std::env::var_os(EXPORTS_FOLDER)
                 .map(PathBuf::from)
-                .or_else(|| app.path().document_dir().ok().map(|folder| folder.join("FMLibreEditor").join("Exports")));
+                .or_else(|| app.path().document_dir().ok().map(|folder| folder.join("FM Lens").join("Exports")));
             app.manage(ExportsFolder(exports));
             // macOS: after an update, the game is to load the bridge that came with this version.
             bridge::refresh(app.handle());

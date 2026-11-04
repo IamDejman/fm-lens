@@ -1,62 +1,77 @@
-# FMLibreEditor
+# FM Lens
 
-A free, open-source live editor for **Football Manager 27**. Edit players, staff and clubs
-while the game runs.
+![FM Lens logo](app/src/assets/brand/fm-lens-logo.png)
 
-Works on **Windows** (Xbox / Game Pass and Steam) and **macOS** (Steam).
+A personal Football Manager scouting companion, currently delivered as a
+**read-only macOS app for FM27 Steam on Apple Silicon**.
 
-[![Latest release](https://img.shields.io/github/v/release/tozmoz/FMLibreEditor?label=release)](https://github.com/tozmoz/FMLibreEditor/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/tozmoz/FMLibreEditor/total)](https://github.com/tozmoz/FMLibreEditor/releases)
-[![License: GPL-3.0](https://img.shields.io/github/license/tozmoz/FMLibreEditor)](LICENSE)
+FM Lens derives from [FMLibreEditor](https://github.com/tozmoz/FMLibreEditor),
+starting at commit `5fdb1e3e03a32b9855913f8c5ce7a885003e9c13`. Its Git history,
+copyright notices and GPL-3.0-or-later license are retained. This fork's delivered
+features differ from the upstream editor.
 
-![The player list and a player's profile](docs/images/players.png)
+## Current build
 
-## Download
+- Connect to a loaded FM27 Steam career through a local macOS bridge, with System
+  Integrity Protection enabled.
+- Search players, staff and clubs. View player attributes, CA/PA, positions,
+  traits, personality and available contract details.
+- Filter players by age, ability, position, nationality, club, attributes,
+  contract expiry and transfer/loan listing. Staff and club filters are narrower.
+- View mapped club finances, facilities, stadium information and squads.
+- Use currency selection, system light/dark appearance and CSV/JSON exports.
+- Memory writes are blocked in the memory layer. Editing, freezing and upstream
+  automatic updates are disabled in this build.
 
-- **Windows 10 or 11:**
-  [FMLibreEditor-Setup.exe](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-Setup.exe)
-  or the [portable zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-portable.zip)
-- **macOS:**
-  [FMLibreEditor-macOS.zip](https://github.com/tozmoz/FMLibreEditor/releases/latest/download/FMLibreEditor-macOS.zip)
+On 4 November 2026, live checks covered native ARM64 FM27 Steam build 26340721,
+a 30,314-player career, Arsenal's 29-player senior squad, all ten data-health
+checks and visible player values compared against FM. These do not establish
+complete feature coverage or support for other game builds.
 
-How to install and use it: [docs/INSTALL.md](docs/INSTALL.md).
+FM Lens connected, searched and displayed profiles with its network access
+blocked. A fresh Steam Offline Mode launch has not yet been tested.
 
-## What it does
+## Build and use
 
-- Browse, search and filter every player, member of staff and club.
-- Edit attributes, abilities, positions, personality, traits, contracts with their bonuses and
-  clauses, reputation, finances, stadiums and more.
-- Heal injuries, lift bans, remove unhappiness, prevent retirement, raise morale and fitness,
-  max out attributes, set captains, for one player or a whole team.
-- Freeze a player's attributes or a club's money: while the app runs, they do not go down,
-  and the app freezes them again when you connect to that save another time.
-- Transfer, swap or release players, and move staff between clubs.
-- Mass edit many at once, with a preview; undo any change.
-- Export the player list, with its search and filters, to CSV or JSON for a spreadsheet or
-  your own tools: attributes, positions, personality, contract and more, with the in-game date.
-- Checks how it reads the game before it writes, and stays read-only on a version of FM27 it
-  has not been checked with yet.
-- English, Turkish and Spanish; logos, flags and faces from your graphics packs.
-- Updates itself on Windows and macOS: one click downloads and installs a new version.
+Requirements: Xcode command-line tools, Rust stable, Node.js and npm.
 
-The game shows a change once you press **Continue** in FM.
+```sh
+export PATH="$HOME/.cargo/bin:$PATH"
+cargo build --locked -p fmlibre-probe -p fmlibre-bridge
+cd app
+npm ci
+npm run tauri -- build --debug --bundles app --config src-tauri/tauri.scout.conf.json
+```
 
-![Editing a player: a change waits, highlighted, until you apply it](docs/images/edit.png)
+The local Apple Silicon bundle is `target/debug/bundle/macos/FM Lens.app`.
+It is signed ad hoc; no notarized FM Lens release is published.
 
-> **Status: beta.** Use it with offline, single-player saves, and back up your save
-> before editing.
+See [setup, removal and validation notes](docs/PERSONAL-SCOUT.md) before setting
+up the bridge. Save and quit FM, then quit Steam before setup. The launcher must
+remain installed while Steam's launch option references it.
 
-## For developers
+## Documentation
 
-How it works, building, releasing and the command-line probe:
-[docs/DEVELOPING.md](docs/DEVELOPING.md).
+- [Agent instructions](AGENTS.md)
+- [Feature status and roadmap](docs/ROADMAP.md)
+- [Current build and live verification](docs/PERSONAL-SCOUT.md)
+- [Brand assets and generation prompts](docs/brand/FM-LENS.md)
+- [Contributing and checks](CONTRIBUTING.md)
 
-FMLibreEditor is not affiliated with or endorsed by Sports Interactive or SEGA. Memory-layout
-leads come from GPL-3.0 project:
-[fm-editor](https://github.com/barak14/fm-editor) by barak14
+Other inherited documents and screenshots may describe upstream behavior,
+including editing features this fork does not enable. The GitHub validation
+workflow is manual and does not publish releases.
 
-## License
+## Attribution and license
 
-GPL-3.0-or-later. See [LICENSE](LICENSE). The app's typeface,
-[Archivo](https://github.com/Omnibus-Type/Archivo) by Omnibus-Type, is bundled under the SIL
-Open Font License 1.1 ([app/licenses/Archivo-OFL.txt](app/licenses/Archivo-OFL.txt)).
+GPL-3.0-or-later. See [LICENSE](LICENSE).
+
+Original implementation: [FMLibreEditor](https://github.com/tozmoz/FMLibreEditor)
+and its contributors. Upstream credits memory-layout leads to
+[fm-editor](https://github.com/barak14/fm-editor) by barak14.
+
+The bundled [Archivo](https://github.com/Omnibus-Type/Archivo) typeface by
+Omnibus-Type uses the SIL Open Font License 1.1; see
+[app/licenses/Archivo-OFL.txt](app/licenses/Archivo-OFL.txt).
+
+FM Lens is not affiliated with or endorsed by Sports Interactive or SEGA.

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import { call, inTauri } from "./api";
 import { BridgeSetup } from "./BridgeSetup";
 import { ChangesView, useChangeLog } from "./ChangesView";
@@ -9,13 +10,12 @@ import { describeError, describeGame, formatDate } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { GraphicsStatus } from "./GraphicsStatus";
 import { SettingsMenu } from "./SettingsMenu";
-import { appText, changesText, clubListText, playerListText, staffListText } from "./labels";
+import { appText, clubListText, playerListText, staffListText } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
 import type { BridgeInfo, ConnectionInfo, Detection, Refrozen, ReloadInfo } from "./types";
-import { useUpdateCheck } from "./update";
-import { UpdateCheck, UpdateNotice } from "./UpdateNotice";
+import lensSymbol from "./assets/brand/fm-lens-symbol.png";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
@@ -25,26 +25,17 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
   { id: "staff", label: staffListText.nav },
   { id: "clubs", label: clubListText.nav },
-  { id: "changes", label: changesText.nav },
 ];
 
 /** The view the window was in before the language was switched; the first one when there was no such switch. */
 const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
 
-/** The app's mark, as on its icon: FML over FM's four bands. */
+/** The app's own football-lens symbol and wordmark. */
 function BrandMark() {
   return (
-    <span className="brand" title="FMLibreEditor">
-      <span className="brand-word" aria-hidden="true">
-        FML
-      </span>
-      <span className="brand-bands" aria-hidden="true">
-        <span />
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="sr-only">FMLibreEditor</span>
+    <span className="brand" title="FM Lens">
+      <img className="brand-symbol" src={lensSymbol} alt="" width="40" height="40" />
+      <span className="brand-word">FM Lens</span>
     </span>
   );
 }
@@ -63,9 +54,12 @@ function App() {
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog, clear: clearLog } = useChangeLog();
-  const update = useUpdateCheck();
-  // Whether Check for updates was pressed: only then does the foot of the window say what was found.
-  const [askedUpdate, setAskedUpdate] = useState(false);
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    if (inTauri) {
+      void getVersion().then(setVersion).catch(() => {});
+    }
+  }, []);
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
     setBusy(label);
@@ -149,17 +143,7 @@ function App() {
     void reloadLog();
   }, [reloadLog]);
 
-  // A version of the game the editor has no profile for is read-only until editing it is allowed.
-  const allowEditing = async () => {
-    setError(null);
-    try {
-      setConnection(await call<ConnectionInfo>("allow_editing"));
-    } catch (e) {
-      setError(describeError(e));
-    }
-  };
-
-  const editable = connection?.editable ?? false;
+  const editable = false;
   // The note on applying edits, the colophon's first: whole in its hover too, should a window ever be too narrow for it.
   // While nothing can be edited, it is also the hover of what that turns off.
   const note = !connection
@@ -220,25 +204,7 @@ function App() {
       </header>
 
       <div className="main">
-        {update.notice && (
-          <UpdateNotice
-            release={update.notice}
-            current={update.current}
-            selfUpdate={update.selfUpdate}
-            onLater={update.later}
-          />
-        )}
-        {connection && (
-          <CompatibilityNotice
-            connection={connection}
-            busy={busy !== null}
-            onAllow={allowEditing}
-            onCheckUpdates={() => {
-              setAskedUpdate(true);
-              update.check();
-            }}
-          />
-        )}
+        {connection && <CompatibilityNotice connection={connection} />}
         {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
         {error && <div className="banner">{error}</div>}
 
@@ -267,18 +233,8 @@ function App() {
       <footer className="colophon">
         <div className="colophon-main">
           <span className="colophon-name">
-            FMLibreEditor{update.current && ` ${update.current}`} · {appText.stage}
+            FM Lens{version && ` ${version}`} · {appText.stage}
           </span>
-          {update.current && (
-            <UpdateCheck
-              state={update.state}
-              asked={askedUpdate}
-              onCheck={() => {
-                setAskedUpdate(true);
-                update.check();
-              }}
-            />
-          )}
           <span className={`status ${connection ? "on" : ""}`}>
             <span className="dot" />
             <span className="status-text">

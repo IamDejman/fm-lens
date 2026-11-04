@@ -89,16 +89,16 @@ const errors: ErrorTexts = {
   "move.outOfRange": (p) => `${p.value} is not a valid ${field(p.field)}: it takes ${p.min} to ${p.max}.`,
   "export.failed": (p) => `Could not write the file: ${p.reason}`,
   "export.notAllowed": (p) =>
-    `FMLibreEditor may not write to ${p.folder}. If macOS asked whether it may use your Documents folder, allow it ` +
+    `FM Lens may not write to ${p.folder}. If macOS asked whether it may use your Documents folder, allow it ` +
     "in System Settings › Privacy & Security › Files & Folders, then export again.",
   "export.openFailed": (p) => `Could not open it: ${p.reason}`,
   "guard.unknownBuild": () =>
-    "FMLibreEditor has not been checked with this version of the game, so it does not write to it. Edit anyway, in " +
+    "FM Lens has not been checked with this version of the game, so it does not write to it. Edit anyway, in " +
     "the notice at the top, turns editing on.",
   "guard.failed": (p) =>
-    `${checkName(p.check)} did not check out in this version of the game, so FMLibreEditor leaves them unchanged.`,
+    `${checkName(p.check)} did not check out in this version of the game, so FM Lens leaves them unchanged.`,
   "memory.noBridge": () =>
-    "macOS does not let FMLibreEditor into the game: the game was started without the FMLibreEditor bridge. Set " +
+    "macOS does not let FM Lens into the game: the game was started without the FM Lens bridge. Set " +
     "the bridge up, then start the game again from Steam.",
   "setup.steamRunning": () =>
     "Steam is running, so FM27's launch options were left alone; the bridge itself is installed. Quit Steam and " +
@@ -634,14 +634,14 @@ export const en = {
     /** The entry in the sidebar. */
     nav: "Players",
     /** In the status line, once connected. */
-    count: (total: number) => `${format(total)} players`,
+    count: (total: number) => `${format(total)} ${total === 1 ? "player" : "players"}`,
     search: "Search players by name or UID",
     /**
      * The line beside the search box. `sorted` is the order a column header was clicked for, or null while the
      * list is in its default order (best current ability first); its `by` is a name from `sortNames`.
      */
     summary: (total: number, shown: number, sorted: { by: string; ascending: boolean } | null) => {
-      const count = `${format(total)} players`;
+      const count = `${format(total)} ${total === 1 ? "player" : "players"}`;
       if (total <= shown) {
         return count;
       }
@@ -881,7 +881,7 @@ export const en = {
   /** The app around the lists: the sidebar, the status line and the connect panel. */
   app: {
     /** The small line under the name in the sidebar. */
-    stage: "beta",
+    stage: "read-only preview",
     /** The settings menu at the right of the masthead: its name, and the headings of its two lists. */
     settingsLabel: "Settings",
     languageLabel: "Language",
@@ -891,10 +891,10 @@ export const en = {
     /** Connected, and the game was opened for writing. */
     noteEditable: "Edits reach the game only when you apply them. Back up your save first.",
     /** Connected, but Windows did not allow writing. */
-    noteReadOnly: "Read-only: Windows did not let FMLibreEditor write to the game.",
-    /** Read-only because the game is a version FMLibreEditor was not checked with (see `compatibility`). */
-    noteUnknownBuild: "Read-only: this version of the game is new to FMLibreEditor.",
-    noteNotConnected: "Nothing in the game changes until you edit and apply.",
+    noteReadOnly: "Read-only build. Game editing is disabled.",
+    /** Read-only because the game is a version FM Lens was not checked with (see `compatibility`). */
+    noteUnknownBuild: "Read-only: this version of the game is new to FM Lens.",
+    noteNotConnected: "Read-only build. Game editing is disabled.",
 
     // The status line and the busy texts beside it
     notConnected: "Not connected",
@@ -903,7 +903,7 @@ export const en = {
     /** In place of the game's date when it could not be read, and the note it shows on hover. */
     noDate: "No in-game date",
     noDateTitle:
-      "FMLibreEditor could not read the in-game date in this version of the game, so ages are not shown and age " +
+      "FM Lens could not read the in-game date in this version of the game, so ages are not shown and age " +
       "filters find no one. Check for updates.",
     /** The button that reads the game again, once connected. */
     reload: "Reload data",
@@ -925,7 +925,7 @@ export const en = {
       more: (count: number) => `and ${format(count)} more`,
       /** What was left for later: an update of the game, say. */
       waiting: (count: number) =>
-        `${count === 1 ? "1 is" : `${format(count)} are`} remembered but not frozen now: FMLibreEditor cannot write ` +
+        `${count === 1 ? "1 is" : `${format(count)} are`} remembered but not frozen now: FM Lens cannot write ` +
         "to this version of the game yet.",
       dismiss: "Dismiss",
     },
@@ -933,7 +933,7 @@ export const en = {
     /** The panel shown while not connected. */
     connect: {
       title: "Connect to Football Manager 27",
-      intro: "FMLibreEditor reads the game's memory while it runs. Start the game and load a save, then connect.",
+      intro: "Load a save in Football Manager, then connect to browse players, staff and clubs.",
       notRunning: "Football Manager 27 is not running.",
       /** `error` is the answer of the Rust side, which stays in English. */
       openFailed: (error: string) => `Could not open the game: ${error}`,
@@ -950,9 +950,7 @@ export const en = {
       bridge: {
         title: "The bridge (macOS)",
         intro:
-          "macOS lets no app into another app's memory, so FM27 has to hand its memory over itself. It does once it " +
-          "loads FMLibreEditor's bridge: a small library that hooks and changes nothing in the game and gives its " +
-          "memory to this app only. A launch option in Steam has FM27 load it.",
+          "FM27 needs to load the bridge at startup. Save and quit FM27, then quit Steam before setup.",
         library: "Bridge",
         installed: "Installed",
         missing: "Not installed",
@@ -986,15 +984,15 @@ export const en = {
   },
 
   /**
-   * The notice under the masthead when the game is a version FMLibreEditor has no profile for, or some of the checks
+   * The notice under the masthead when the game is a version FM Lens has no profile for, or some of the checks
    * it makes before writing did not pass (`CompatibilityNotice`).
    */
   compatibility: {
     /** The headline for a version without a profile; `game` as the status line names it. */
-    unknownBuild: (game: string) => `FMLibreEditor has not been checked with ${game} yet`,
+    unknownBuild: (game: string) => `FM Lens has not been checked with ${game} yet`,
     unknownBuildText:
-      "The game has probably been updated. FMLibreEditor found the game's data and checked it, but it does not " +
-      "write to a version it was not tested with until you allow it. A new FMLibreEditor usually follows within days.",
+      "This game build has not been verified with FM Lens. Treat decoded values as unverified until checked " +
+      "against the game. Editing is disabled.",
     /** Once Edit anyway was pressed. */
     allowedText: "Editing is on for this session, as far as the checks allow. Keep a backup of your save.",
     /** The headline when checks did not pass on a version the editor knows, and what may help. */
@@ -1008,7 +1006,7 @@ export const en = {
     join: (names: string[]) =>
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`,
     allow: "Edit anyway",
-    allowTitle: "Turn editing on until FMLibreEditor is closed or connects again. Back up your save first.",
+    allowTitle: "Turn editing on until FM Lens is closed or connects again. Back up your save first.",
   },
 
   /** What each check is about (`CheckKey`), as the notice lists the ones that did not pass and the errors name them. */
@@ -1028,17 +1026,17 @@ export const en = {
   /** New versions: the notice under the masthead, and the version and Check for updates at the foot of the window. */
   update: {
     /** The notice's headline, and what a check by hand found. */
-    available: (version: string) => `FMLibreEditor ${version} is available`,
+    available: (version: string) => `FM Lens ${version} is available`,
     youHave: (version: string) => `You have ${version}.`,
     /** Opens the release's page in the browser. */
     download: "Download",
     /** Downloads the new version's installer and runs it, where the app can update itself (see `can_self_update`). */
     install: "Update",
-    installTitle: "Download and install the new version; FMLibreEditor closes and opens again with it",
+    installTitle: "Download and install the new version; FM Lens closes and opens again with it",
     preparing: "Preparing…",
     /** `percent` is null while the size of the download is not known. */
     downloading: (percent: number | null) => (percent === null ? "Downloading…" : `Downloading… ${percent}%`),
-    installing: "Installing: FMLibreEditor closes and opens again with the new version.",
+    installing: "Installing: FM Lens closes and opens again with the new version.",
     installFailed: (reason: string) => `Could not update: ${reason}. Download it from its page instead.`,
     notInstallable: "This version cannot be installed from here. Download it from its page instead.",
     /** Hides the notice until the app starts again. */

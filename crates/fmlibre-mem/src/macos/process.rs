@@ -91,6 +91,9 @@ impl Process {
 
     /// Opens `pid` for reading and also for writing its memory with [`Process::write_bytes`].
     pub fn open_read_write(pid: u32) -> Result<Self> {
+        if cfg!(feature = "read-only") {
+            return Err(Error::ReadOnly);
+        }
         Self::open(pid, true)
     }
 
@@ -168,7 +171,7 @@ impl Process {
     /// module. Anything else, such as a module's code or data, is refused before the
     /// kernel is asked.
     pub fn write_bytes(&self, addr: u64, data: &[u8]) -> Result<()> {
-        if !self.writable {
+        if cfg!(feature = "read-only") || !self.writable {
             return Err(Error::ReadOnly);
         }
         if data.is_empty() {
@@ -232,11 +235,14 @@ fn task_port(pid: u32) -> Result<mach_port_t> {
 mod tests {
     use super::*;
 
+    #[cfg(not(feature = "read-only"))]
     static IN_THE_IMAGE: [u8; 8] = [0; 8];
     // Writable, but part of the module's image all the same.
+    #[cfg(not(feature = "read-only"))]
     static WRITABLE_IN_THE_IMAGE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
     #[test]
+    #[cfg(not(feature = "read-only"))]
     fn writes_heap_data_only() {
         let process = Process::open_read_write(std::process::id()).expect("open this process");
         let heap = vec![0u8; 64].into_boxed_slice();
@@ -258,6 +264,22 @@ mod tests {
         let read_only = Process::open_read(std::process::id()).expect("open this process");
         assert!(matches!(read_only.write_bytes(addr, &[1]), Err(Error::ReadOnly)));
         drop(heap);
+    }
+
+    #[test]
+    #[cfg(feature = "read-only")]
+    fn scouting_build_refuses_writes_even_with_a_writable_process_flag() {
+        assert!(matches!(Process::open_read_write(std::process::id()), Err(Error::ReadOnly)));
+        let mut process = Process::open_read(std::process::id()).expect("open this process");
+        let heap = vec![7u8; 64].into_boxed_slice();
+        let addr = heap.as_ptr() as u64;
+        assert!(!process.can_write());
+        assert_eq!(process.read_bytes(addr, 3).expect("read heap"), [7, 7, 7]);
+        // The compile-time guard must survive a higher layer accidentally marking the handle writable.
+        process.writable = true;
+        assert!(matches!(process.write_bytes(addr, &[1, 2, 3]), Err(Error::ReadOnly)));
+        assert!(matches!(process.write_bytes(addr, &[]), Err(Error::ReadOnly)));
+        assert_eq!(&heap[..3], &[7, 7, 7]);
     }
 
     #[test]
