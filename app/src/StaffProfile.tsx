@@ -1,5 +1,6 @@
 import { Fragment, useContext, useEffect, useId, useState, type ReactNode } from "react";
 import { EditableValue } from "./EditControls";
+import { call } from "./api";
 import { changeStaffJob, staffJobs } from "./editing";
 import { describeError } from "./format";
 import { jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
@@ -142,6 +143,7 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
 function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChangeJob: boolean }) {
   return (
     <>
+      <StaffFreeze uid={details.uid} />
       <div className="profile-pair">
         <div className="profile-columns">
           <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />
@@ -167,6 +169,31 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
       </div>
     </>
   );
+}
+
+function StaffFreeze({ uid }: { uid: number }) {
+  const { editable } = useContext(EditorContext);
+  const [frozen, setFrozen] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    call<number[]>("frozen_staff").then((staff) => { if (active) setFrozen(staff.includes(uid)); })
+      .catch((err) => { if (active) setError(describeError(err)); });
+    return () => { active = false; };
+  }, [uid]);
+  if (!editable) return null;
+  return <div className="attribute-actions">
+    <label><input type="checkbox" checked={frozen ?? false} disabled={busy || frozen === null}
+      onChange={(e) => {
+        const next = e.target.checked;
+        setBusy(true); setError(null);
+        void call<number[]>("freeze_staff_attributes", { uid, frozen: next })
+          .then((staff) => setFrozen(staff.includes(uid)))
+          .catch((err) => setError(describeError(err))).finally(() => setBusy(false));
+      }} /> Freeze attributes</label>
+    {error && <span role="alert">{error}</span>}
+  </div>;
 }
 
 function attributeRows(details: StaffDetails, keys: StaffAttributeKey[]): RatingRow[] {

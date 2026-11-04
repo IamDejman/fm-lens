@@ -1,12 +1,12 @@
 // What editing draws: the inputs, which take the place of the values they change, the Edit button, and the bar under a
 // profile.
 
-import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
+import { useContext, useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { valueText, type Pending } from "./editDraft";
 import { isoFromNumber, isStoredFiner } from "./editing";
 import { currencySymbol } from "./format";
 import { changesText, choiceLabel, editText, fieldLabel, valueChange } from "./labels";
-import { useEditableField, useEditSession, type ProfileEditing, type Report } from "./useProfileEditing";
+import { AppliedFieldsContext, useEditableField, useEditSession, type ProfileEditing, type Report } from "./useProfileEditing";
 
 /**
  * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
@@ -19,6 +19,7 @@ import { useEditableField, useEditSession, type ProfileEditing, type Report } fr
  */
 export function EditInput({ field, inFact = false }: { field: string; inFact?: boolean }) {
   const session = useEditSession();
+  const applied = useContext(AppliedFieldsContext).has(field);
   const input = session?.input(field);
   if (!session || !input) {
     return null;
@@ -26,7 +27,7 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
   const { field: spec, text, range, status, was, message } = input;
   const label = fieldLabel(session.entity, field);
   const title = [message, status !== "same" && editText.was(valueText(spec, was))].filter(Boolean).join(" · ");
-  const outline = status === "same" ? "" : ` ${status}`;
+  const outline = status === "same" ? applied ? " applied" : "" : ` ${status}`;
   // What every kind of input carries: whether it holds something that cannot be applied, and its field, which focus
   // goes back to when an Apply refused its value.
   const common = { "aria-invalid": status === "invalid" || undefined, "data-field": field };
@@ -128,7 +129,8 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
  */
 export function EditableValue({ field, inFact, children }: { field: string; inFact?: boolean; children: ReactNode }) {
   const editing = useEditableField(field);
-  return editing ? <EditInput field={field} inFact={inFact} /> : children;
+  const applied = useContext(AppliedFieldsContext).has(field);
+  return editing ? <EditInput field={field} inFact={inFact} /> : applied ? <span className="edit-applied" title="Applied and read back">{children}</span> : children;
 }
 
 /** The Edit button in the header of a profile. It stays while editing, pressed, and then ends the editing like Done. */

@@ -2,8 +2,9 @@
 
 ![FM Lens logo](app/src/assets/brand/fm-lens-logo.png)
 
-A personal Football Manager scouting companion, currently delivered as a
-**read-only macOS app for FM27 Steam on Apple Silicon**.
+A personal Football Manager companion for FM27 Steam on Apple Silicon. It reads
+a running career and can edit the player, staff and club fields that are already
+mapped. Features that still need a memory layout stay off.
 
 FM Lens derives from [FMLibreEditor](https://github.com/tozmoz/FMLibreEditor),
 starting at commit `5fdb1e3e03a32b9855913f8c5ce7a885003e9c13`. Its Git history,
@@ -14,19 +15,31 @@ features differ from the upstream editor.
 
 - Connect to a loaded FM27 Steam career through a local macOS bridge, with System
   Integrity Protection enabled.
-- Search players, staff and clubs. View player attributes, CA/PA, positions,
-  traits, personality and available contract details.
+- Search players, staff and clubs. View and edit mapped player attributes, CA/PA,
+  positions, traits, personality, reputation, happiness, caps and contract fields.
+- Freeze a player's attributes, heal injuries, lift bans, and run the squad
+  actions that are already built: inspire, refresh fitness and sharpness, and
+  max attributes.
 - Filter players by age, ability, position, nationality, club, attributes,
   contract expiry and transfer/loan listing. Staff and club filters are narrower.
-- View mapped club finances, facilities, stadium information and squads.
-- Use currency selection, system light/dark appearance and CSV/JSON exports.
-- Memory writes are blocked in the memory layer. Editing, freezing and upstream
-  automatic updates are disabled in this build.
+- View and edit mapped club balances, budgets, facilities and stadium capacities.
+- Move, swap and release players, and change mapped staff jobs, where the editor
+  already has those operations. Linked history and finances are not fully proven.
+- Capture player profiles, save portable templates, import/export template JSON,
+  and preview/apply/undo template batches against filtered players or selected UIDs.
+- Freeze mapped staff attributes for the current connection.
+- Use currency selection, System/Light/Dark appearance, 80–150% UI zoom, CSV/JSON
+  exports, and the Changes view for conditional undo.
+- The probe and `scripts/scout` stay read-only. Unknown game builds stay
+  read-only. A copied-career finishing edit passed save, full quit/relaunch and
+  reload inspection in FM. Other mapped fields are not all persistence-tested.
 
 On 4 November 2026, live checks covered native ARM64 FM27 Steam build 26340721,
 a 30,314-player career, Arsenal's 29-player senior squad, all ten data-health
 checks and visible player values compared against FM. These do not establish
-complete feature coverage or support for other game builds.
+complete feature coverage or support for other game builds. See the
+[editing validation record](docs/EDITING-VALIDATION.md) and
+[mapped field catalog](docs/EDITOR-FIELDS.md).
 
 FM Lens connected, searched and displayed profiles with its network access
 blocked. A fresh Steam Offline Mode launch has not yet been tested.
@@ -55,6 +68,8 @@ remain installed while Steam's launch option references it.
 - [Agent instructions](AGENTS.md)
 - [Feature status and roadmap](docs/ROADMAP.md)
 - [Current build and live verification](docs/PERSONAL-SCOUT.md)
+- [Editing tests and remaining validation](docs/EDITING-VALIDATION.md)
+- [Mapped editing fields](docs/EDITOR-FIELDS.md)
 - [Brand assets and generation prompts](docs/brand/FM-LENS.md)
 - [Contributing and checks](CONTRIBUTING.md)
 

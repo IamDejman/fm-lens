@@ -10,7 +10,9 @@ license = "GPL-3.0-or-later"
 authors = ["FMLibreEditor contributors"]
 
 [workspace.dependencies]
-fmlibre-mem = { path = "crates/fmlibre-mem" }
+# The app's dependency graph allows writes; the probe explicitly enables `read-only`.
+# Cargo unifies that feature during workspace checks. Build the desktop package separately.
+fmlibre-mem = { path = "crates/fmlibre-mem", default-features = false }
 fmlibre-core = { path = "crates/fmlibre-core" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }

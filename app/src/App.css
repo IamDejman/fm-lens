@@ -80,8 +80,7 @@
 }
 
 /* The night edition: the page turns dark and what was ink is now paper. */
-@media (prefers-color-scheme: dark) {
-  :root {
+:root[data-appearance="dark"] {
     --bg: #15161a;
     --panel: #15161a;
     --raised: #1e2024;
@@ -124,7 +123,6 @@
     --scroll: #3d4047;
 
     color-scheme: dark;
-  }
 }
 
 * {
@@ -250,7 +248,7 @@ dd,
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: calc(100vh / var(--ui-scale, 1));
 }
 
 .masthead {
@@ -2348,11 +2346,14 @@ input::placeholder {
 /* A value other than the game's is marked with the highlighter, inside an ink frame, until it is applied. */
 .edit-input.changed,
 .edit-flag.changed {
-  border-color: var(--text);
+  border-color: var(--danger);
   background: var(--pending-soft);
   color: var(--on-pending);
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px var(--danger);
 }
+
+.edit-input.applied, .edit-flag.applied { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
+.edit-applied { outline: 2px solid var(--ok); outline-offset: 2px; }
 
 /* A value that cannot be applied: empty, out of range or not whole, or one the game refused. */
 .edit-input.invalid,
@@ -2842,6 +2843,26 @@ button.danger:hover:not(:disabled) {
 .mass-scope {
   margin: 0;
 }
+
+.template-controls { border: 0; padding: 0; min-width: 0; }
+.template-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.template-dialog h3 { margin: 0 0 12px; font-size: 16px; }
+.template-dialog label:not(.template-groups label) { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.template-dialog input:not([type="checkbox"]), .template-dialog select, .template-dialog textarea { width: 100%; min-width: 0; }
+.template-dialog textarea { font: 12px/1.5 monospace; resize: vertical; }
+.template-groups { display: grid; gap: 7px; margin: 14px 0; }
+.template-groups label { display: flex; align-items: center; gap: 8px; }
+.template-hits { display: flex; flex-direction: column; max-height: 180px; overflow-y: auto; border-block: 1px solid var(--border); }
+.template-hits button { display: flex; justify-content: space-between; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid var(--border); }
+.template-hits button span:last-child { color: var(--muted); font-size: 12px; }
+.template-hits button[aria-pressed="true"] { background: var(--text); color: var(--panel); }
+.template-hits button[aria-pressed="true"] span { color: inherit; }
+.template-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: start; margin: 10px 0; }
+.template-file { max-width: 190px; }
+.template-targets { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; }
+.template-dialog details { margin-block: 12px; }
+.template-dialog summary { cursor: pointer; margin-bottom: 10px; }
+@media (max-width: 650px) { .template-columns { grid-template-columns: 1fr; } }
 
 .mass-scope.warn {
   color: var(--danger);
@@ -4286,6 +4307,8 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   min-width: 12rem;
+  max-height: calc(100vh / var(--ui-scale, 1) - 80px);
+  overflow-y: auto;
   padding: 4px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);

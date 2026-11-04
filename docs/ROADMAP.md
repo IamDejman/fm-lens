@@ -6,8 +6,10 @@ further data-layout and game-behavior research.
 
 ## Status meanings
 
-- **Available**: present in the read-only app; live verification is narrower than
-  complete coverage. See PERSONAL-SCOUT.md.
+- **Available**: present for use. Live verification is narrower than complete
+  coverage. See PERSONAL-SCOUT.md and EDITING-VALIDATION.md.
+- **Enabled, unverified**: the control is on for a known build. That particular feature has not passed in-game
+  write, save, quit and reload checks on a disposable career.
 - **Partial**: only some requested fields, entities or interactions are supported.
 - **Foundation only**: inherited code exists, but writes are disabled and editing
   has not been verified on this user's career.
@@ -25,44 +27,44 @@ further data-layout and game-behavior research.
 | Player attributes, CA/PA, positions, traits, personality | Available to view; Saka's visible values checked against FM, hidden values not independently verified with a second editor |
 | Club finances, facilities, stadiums, relations | Partial: mapped balances, budgets, facilities and capacities; broader relations and financial/stadium records absent |
 | Contract, wage, clause and transfer-status viewing | Partial; every contract clause and bonus is not covered |
-| Pending edits, applied history, conditional undo | Foundation only; restore workflow and validate conflicts, partial failure and save/reload persistence |
-| Human-manager special actions | Missing / research: unsackable status, unrestricted registration, relations, club/national-team moves |
-| Player field editing | Foundation only: mapped attributes, ability, positions, traits, personality, reputation, nationality, caps and selected contract/live values |
+| Pending edits, applied history, conditional undo | Available; one finishing edit, history and undo exercised natively. Pending red/applied green marking, expected-value comparison and build/career guards. Native conflict scenarios remain open |
+| Human-manager special actions | Partial: the human manager can be edited where staff fields exist. Unsacking, unrestricted registration and national-team moves are not mapped |
+| Player field editing | Partial validation: finishing 15 -> 16 survived save, full quit/relaunch and reload in FM. Enabled for mapped attributes, ability, positions, traits, personality, reputation, nationality, caps, happiness and selected contract values |
 | Player registration, work permits, career plans, languages, favourite/disliked clubs and people | Missing / research: fields and dependent records need mapping |
-| Player attribute freeze | Foundation only; repeated writes, session lifecycle, save identity and patch behavior need validation |
-| Staff fields and roles | Foundation only: selected attributes, CA/PA, personality, reputation, contracts, job changes and moves |
-| Staff freeze, coaching licences, knowledge, tendencies, preferred formations, relations | Missing / research |
-| Club budgets, facilities and stadium capacity editing | Foundation only; selected fields need persistence testing |
+| Player attribute freeze | Enabled, unverified |
+| Staff fields and roles | Partial, unverified: attributes, CA/PA, personality, reputation, contract wage and expiry, job changes and club moves. Coaching licences, preferred formations and relations are not mapped |
+| Staff freeze, coaching licences, knowledge, tendencies, preferred formations, relations | Attribute freeze implemented for the current connection; toggle exercised. Long-term holding unverified. Other requested fields remain partial / research |
+| Club budgets, facilities and stadium capacity editing | Enabled, unverified for mapped balances, budgets, facilities and capacities |
 | Club income, kits, relations, affiliations, ownership, benefactor, staff allowances, vision, supporters, tactical values | Partial / research: some supporter values can be read; full requested editing coverage absent |
 | Youth-intake preview and editing | Missing / research: pre-intake visibility, CA/PA, height, feet and record lifecycle |
 | Player promises | Missing / research: viewing, deadlines and removal with related-state checks |
-| Injuries and bans | Foundation only for healing/removal; adding and modifying records needs more work |
+| Injuries and bans | Heal and lift bans are enabled, unverified. Adding and modifying records is not mapped |
 | Nations and national teams | Missing / research: nationality rules, dual nationality, reputation, ranking, FA settings, youth rating, attendance, languages, rivalries, kits, tactics, transfer preferences, squad actions and caps consistency, including men's/women's teams |
 | Competitions | Missing / research: rules, level, substitutes, VAR, goal-line technology and season-instantiated/cached behavior |
 | Awards and officials | Missing / research: award rules, eligibility and referee details |
-| Complete contracts | Missing / research beyond partial support: release, landmark, award, wage-rise, sell-on, loyalty, seasonal and loan clauses/bonuses |
-| Player transfers, swaps, releases and staff moves | Foundation only, restricted; no proof of complete history, career, registration, training, finance or contract consistency |
+| Complete contracts | Partial, unverified: wage, dates, squad number, loyalty bonus, listing flags, and release-clause amount changes that the editor already supports. Landmark, award, wage-rise, sell-on, seasonal and loan clauses are not fully mapped |
+| Player transfers, swaps, releases and staff moves | Enabled in the editor, restricted and unverified. No proof of complete history, career, registration, training, finance or contract consistency |
 | Loans, free-agent signing, future-transfer cancellation, instalments and buy-backs | Missing / research |
-| Instant squad actions | Foundation only: heal, lift bans, inspire/morale, fitness/sharpness refresh and max attributes |
+| Instant squad actions | Heal, lift bans, inspire, fitness/sharpness refresh and max attributes are enabled, unverified |
 | Cohesion and tactical familiarity | Missing / research |
-| Bulk edit preview/apply/undo | Foundation only; verify bounded batches, skipped fields, conflicts, interruption and save identity |
-| Clone a player profile onto other players | Missing: attributes, CA/PA, personality, hidden attributes, positions and traits with explicit selection and preview |
-| Reusable player templates | Missing: versioned, portable and validated across saves/builds |
-| Fast field interaction / dragging | Partial: read-only values exist; editing interaction needs restoration and verification |
+| Bulk edit preview/apply/undo | Available; template path exercised with one target/one change and undo. Multi-target persistence still unverified |
+| Clone a player profile onto other players | Implemented with selectable groups, filtered targets, optional UID restriction and preview. Live capture of 142 fields exercised; multi-target clone persistence unverified |
+| Reusable player templates | Available: versioned JSON, local library, import/export, destination validation, preview/apply/undo. One-field native batch and invalid-field rejection exercised; cross-save/build testing open |
+| Fast field interaction / dragging | Enabled, unverified for mapped fields |
 | Remembered navigation, searches and profile selection | Available foundation; exercise tab/reload scenarios |
-| Light/dark appearance | Available through the system theme; no dedicated selector |
+| Light/dark appearance | Available: System, Light and Dark selector with local persistence; native light/dark check performed |
 | Currency selector | Available; broader locale checks remain |
-| Dedicated UI zoom selector | Missing, separate from native window/menu behavior |
+| Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent; native scaling/viewport regression checks required |
 | Guided first-run tour | Missing; add after connection/editing workflows stabilize |
 
 ## Delivery order
 
-1. **Read-only foundation**: delivered locally. Retain write refusal and exact
-   build evidence. Remaining checks include advancement, switching saves,
+1. **Read-only foundation**: the read path is delivered. The probe remains
+   read-only. Remaining read checks include advancement, switching saves,
    disconnect recovery and bridge removal.
-2. **One validated edit**: use a separate career copy, whitelist one field, show
-   before/after, check current state, apply, read back, conditional undo, inspect
-   in FM, then save/quit/reload and inspect again.
+2. **One validated edit**: finishing passed the copied-career write/readback,
+   undo, save, full quit/relaunch and FM reload-inspection sequence. Extend to
+   staff, club, contracts and relevant simulation boundaries; see EDITING-VALIDATION.md.
 3. **Selected field editor and history**: expand player, staff, club and contract
    fields as their checks pass. Keep unsupported builds disabled.
 4. **Bulk workflows**: preview/apply/undo, freezing, cloning, portable templates

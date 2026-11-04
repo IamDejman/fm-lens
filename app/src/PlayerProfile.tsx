@@ -250,7 +250,7 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
       const report = await call<ApplyReport>("apply_edits", {
         entity: "player",
         uid,
-        edits: [{ field: "contract.unhappiness", value: 0 }],
+        edits: [{ field: "contract.unhappiness", expected: concerns.length, value: 0 }],
       });
       if (report.failed.length > 0) {
         throw report.failed[0].error;
