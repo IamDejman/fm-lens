@@ -125,3 +125,20 @@ writable-memory tests, the diagnostic/bridge build and the Tauri app build.
 Small copy issues remain in new list summaries (for example “1 nations”); broad
 translation and zoom checks across all new screens remain open. The underlying
 editing/save/reload evidence above remains narrower than complete field coverage.
+
+## Favoured and disliked people and clubs (read-only)
+
+`scripts/scout preferences [UID]` reads these from the same relation list as
+secondary nationalities and homegrown ties: to a person, relation 1 is favoured
+and 2 disliked; to a club, 3 is favoured and 4 disliked. Byte `0x0C` holds a
+signed strength. Nothing is written and the app does not show them yet.
+
+On the validation career (known Mac build) a scan of every loaded player found
+20,805 favoured and 5,298 disliked people, 13,574 favoured and 1,454 disliked
+clubs. Every target resolved to a loaded player, staff member or club. Strengths
+ran 1 to 100 except one entry: Diego Valoyes (UID 76042820) favours Talleres at
+-35 and dislikes it at 35; only that favoured entry has `0x02` in byte `0x08`.
+Examples matched real-world ties (Jere Uronen favours Hrádecký and Pukki; Diego
+Reyes favours Raúl Jiménez), but no player's lists were compared with FM's own
+screens. Do that before showing them in the app, and establish what the
+negative strength and byte `0x08` mean before any editing.

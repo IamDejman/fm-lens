@@ -14,9 +14,9 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use fmlibre_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, AttributeBound, CaptainRole, ClubIndex, Entity, ExportFormat,
     ExportHeader, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms, PERSONALITY,
-    POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX,
-    SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, Tie, TieTarget, find_game,
-    job_name, nations, scan_object_arrays, sort_players,
+    POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, PreferenceKind, STAFF_ATTRIBUTE_GROUPS,
+    SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, Tie, TieTarget,
+    find_game, job_name, nations, scan_object_arrays, sort_players,
 };
 #[cfg(target_os = "macos")]
 use fmlibre_mem::MachImage;
@@ -272,6 +272,14 @@ enum Command {
     Ties {
         /// The player's UID.
         uid: u32,
+    },
+    /// Show read-only favoured and disliked people and clubs; without a UID, count them and print examples.
+    Preferences {
+        /// The player's UID. Without one, scan every player.
+        uid: Option<u32>,
+        /// Examples per preference kind when scanning every player.
+        #[arg(long, default_value_t = 10)]
+        max: usize,
     },
     /// Point one of a player's ties at another nation or club, or give a training another homegrown rule.
     TieSet {
@@ -841,6 +849,7 @@ fn run(cli: Cli) -> Result<()> {
             let session = connect(process, ArraySource::ProfileFirst)?;
             tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
         }
+        Command::Preferences { uid, max } => preferences(&connect(process, ArraySource::ProfileFirst)?, uid, max),
         Command::TieSet { uid, index, nation, club, rule, restore } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             let target = nation.map(TieUid::Nation).or(club.map(TieUid::Club));
@@ -3054,6 +3063,101 @@ fn retirements(session: &Session, uid: Option<u32>, keep: bool, restore_after: O
         session.undo_retirement(&done)?;
         ensure!(show("restored")? == before, "his plan or traits are not as they were");
         println!("  restored");
+    }
+    Ok(())
+}
+
+fn preference_label(kind: PreferenceKind) -> &'static str {
+    match kind {
+        PreferenceKind::FavouredPerson => "favoured person",
+        PreferenceKind::DislikedPerson => "disliked person",
+        PreferenceKind::FavouredClub => "favoured club",
+        PreferenceKind::DislikedClub => "disliked club",
+    }
+}
+
+fn preference_target_name(
+    kind: PreferenceKind,
+    uid: u32,
+    stored: Option<&str>,
+    players: &PlayerIndex,
+    staff: &StaffIndex,
+    clubs: &ClubIndex,
+) -> String {
+    stored
+        .map(str::to_owned)
+        .or_else(|| match kind {
+            PreferenceKind::FavouredPerson | PreferenceKind::DislikedPerson => players
+                .get(uid)
+                .map(|player| player.name.clone())
+                .or_else(|| staff.get(uid).map(|member| member.name.clone())),
+            PreferenceKind::FavouredClub | PreferenceKind::DislikedClub => clubs.get(uid).map(|club| club.name.clone()),
+        })
+        .unwrap_or_else(|| "?".to_owned())
+}
+
+/// Prints preferences from the same relation list as nationalities and homegrown ties. This command never writes.
+fn preferences(session: &Session, uid: Option<u32>, max: usize) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let staff = StaffIndex::new(session.staff()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+
+    if let Some(uid) = uid {
+        let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+        let preferences = session.preferences(player)?;
+        println!("{} (UID {uid}): {} preference(s)", player.name, preferences.len());
+        for preference in preferences {
+            let label = preference_label(preference.kind);
+            let name = preference_target_name(
+                preference.kind,
+                preference.target_uid,
+                preference.name.as_deref(),
+                &players,
+                &staff,
+                &clubs,
+            );
+            println!(
+                "  #{:<3} {label:<17} {name} (UID {}), strength {}",
+                preference.index, preference.target_uid, preference.strength
+            );
+        }
+        return Ok(());
+    }
+
+    let mut groups: BTreeMap<&'static str, (usize, Vec<String>)> = [
+        ("favoured person", (0, Vec::new())),
+        ("disliked person", (0, Vec::new())),
+        ("favoured club", (0, Vec::new())),
+        ("disliked club", (0, Vec::new())),
+    ]
+    .into_iter()
+    .collect();
+    for player in players.iter() {
+        for preference in session.preferences(player)? {
+            let label = preference_label(preference.kind);
+            let group = groups.get_mut(label).expect("all preference labels are initialized");
+            group.0 += 1;
+            if group.1.len() < max {
+                let name = preference_target_name(
+                    preference.kind,
+                    preference.target_uid,
+                    preference.name.as_deref(),
+                    &players,
+                    &staff,
+                    &clubs,
+                );
+                group.1.push(format!(
+                    "{} (UID {}) -> {name} (UID {}), strength {}",
+                    player.name, player.uid, preference.target_uid, preference.strength
+                ));
+            }
+        }
+    }
+    for (label, (count, examples)) in groups {
+        println!("{label}: {count}");
+        for example in examples {
+            println!("  {example}");
+        }
     }
     Ok(())
 }

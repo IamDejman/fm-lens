@@ -88,9 +88,10 @@ pub struct RelationLayout {
     pub target: u64,
     /// `u8`: 1 for a club, 3 for a person, 8 for a nation.
     pub target_kind: u64,
-    /// `u8`: 9 for a nationality, 70 for a nation he was trained in, 72 for a club he was trained at.
+    /// `u8`: 9 for a nationality, 70 for a nation he was trained in, 72 for a club he was trained at; 1 and 2 for a
+    /// favoured and disliked person, 3 and 4 for a favoured and disliked club.
     pub relation: u64,
-    /// `u8`: for a training, the homegrown rule it meets.
+    /// `u8`: for a training, the homegrown rule it meets; `i8` for a preference, its strength.
     pub value: u64,
     /// Bytes per entry.
     pub size: u64,
