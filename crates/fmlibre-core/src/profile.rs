@@ -992,18 +992,31 @@ mod tests {
     }
 
     #[test]
-    fn only_the_traced_build_knows_the_human_manager() {
-        let traced = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
-        let profile = profile_for(PluginFingerprint::MachO { uuid: traced }).expect("27.0.0's arm64 half");
-        assert_eq!(
-            profile.human_manager,
-            Some(HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".to_owned() })
-        );
+    fn only_the_traced_builds_know_the_human_manager() {
+        let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let traced = [arm64, intel].map(|uuid| PluginFingerprint::MachO { uuid });
+        for plugin in &traced {
+            let profile = profile_for(*plugin).expect("27.0.0 on macOS");
+            assert_eq!(
+                profile.human_manager,
+                Some(HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".to_owned() })
+            );
+        }
         for text in BUILDS {
             let profile: BuildProfile = parse(text);
-            if profile.plugin != (PluginFingerprint::MachO { uuid: traced }) {
+            if !traced.contains(&profile.plugin) {
                 assert!(profile.human_manager.is_none(), "{}", profile.name);
             }
         }
+    }
+
+    #[test]
+    fn both_halves_of_27_0_0_on_macos_find_the_officials() {
+        let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let officials = |uuid| profile_for(PluginFingerprint::MachO { uuid }).and_then(|profile| profile.officials);
+        assert_eq!(officials(arm64), Some(0x56D_2E90));
+        assert_eq!(officials(intel), Some(0x5C8_9240));
     }
 }
