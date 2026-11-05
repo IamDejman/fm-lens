@@ -525,8 +525,8 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
         // Tuvalu has 9,646 people, Nigeria 232,679,478.
         field("population", n.population, Kind::U32, 1..=2_000_000_000).plausible(0..=i64::from(u32::MAX)),
         field("dual_nationality", n.dual_nationality, Kind::U8, 0..=2).choices(&DUAL_NATIONALITY),
-        // The most seen was 30 years (San Marino).
-        field("naturalisation", n.naturalisation, Kind::U8, 0..=50)
+        // 99 years for Madagascar, Liberia and Palestine. The game takes 0 for never too, so never is the blank.
+        field("naturalisation", n.naturalisation, Kind::U8, 1..=99)
             .plausible(0..=255)
             .blank(i64::from(crate::national::NEVER)),
     ]
@@ -1275,10 +1275,10 @@ mod tests {
         assert_eq!((dual.offset, dual.kind), (n.dual_nationality, Kind::U8));
         assert!(dual.takes(0) && dual.takes(2) && !dual.takes(1) && !dual.takes(3));
 
-        // Years of residence, 0 for none needed, or never (255).
+        // Years of residence, or never (255); the game takes 0 for never too, so it is not offered as a number.
         let years = key("naturalisation");
         assert_eq!((years.offset, years.kind, years.blank), (n.naturalisation, Kind::U8, Some(255)));
-        assert!(years.takes(0) && years.takes(30) && years.takes(255) && !years.takes(51) && !years.takes(254));
+        assert!(years.takes(1) && years.takes(99) && years.takes(255) && !years.takes(0) && !years.takes(100));
         assert!(years.is_plausible(255) && years.is_plausible(2));
 
         // A nation is checked by its own UID, like a club's; no person-block shift.

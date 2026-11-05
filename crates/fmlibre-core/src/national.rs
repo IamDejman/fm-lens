@@ -27,8 +27,14 @@ const MOST_TEAMS: u64 = 16;
 const MOST_LANGUAGES: u64 = 32;
 const MOST_PLAYERS: u64 = 64;
 
-/// What a nation's `naturalisation` byte holds when no number of years gains its nationality.
+/// What a nation's `naturalisation` byte holds when no number of years gains its nationality. The game reads the byte
+/// as signed and treats any number of years below 1 as never (0x13B7E94 in 27.0.0's arm64 half), 0 included.
 pub(crate) const NEVER: u8 = 255;
+
+/// Whether the game takes `years`, a nation's `naturalisation` byte, for "never".
+pub(crate) fn never(years: u8) -> bool {
+    (years as i8) < 1
+}
 
 /// The kind of a senior national team.
 const SENIOR: u32 = 0;
@@ -160,8 +166,8 @@ impl Session {
                 2 => Some(false),
                 _ => None,
             },
-            naturalisation_years: (years != NEVER).then_some(years),
-            naturalisation_never: years == NEVER,
+            naturalisation_years: (!never(years)).then_some(years),
+            naturalisation_never: never(years),
             languages: self.nation_languages(address + n.languages).unwrap_or_default(),
             ranking: None,
             points: None,
@@ -346,5 +352,17 @@ impl Session {
 
     fn national(&self) -> Result<&crate::profile::NationalLayout, MoveError> {
         self.layout.national.as_ref().ok_or(MoveError::NotListed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn years_below_one_are_never() {
+        // As the game reads the byte: signed, and never below 1.
+        assert!(never(NEVER) && never(0) && never(128));
+        assert!(!never(1) && !never(7) && !never(99) && !never(127));
     }
 }
