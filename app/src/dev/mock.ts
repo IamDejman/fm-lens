@@ -693,6 +693,7 @@ function staffDetails(member: StaffSummary): StaffDetails {
     registrationAnytime: member.isHuman ? false : null,
     languages: languagesOf(member.uid),
     preferences: [],
+    coachingLicence: member.uid % 9,
   });
 }
 
@@ -795,6 +796,7 @@ function fieldTable(entity: Entity): EditField[] {
     ),
     ...personality,
     ...contract,
+    { ...field("coaching_licence", "i8", 0, 8), choices: [0, 1, 2, 3, 4, 5, 6, 7, 8] },
     { ...field("manager.unsackable", "flag", 0, 1), mass: false },
     { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];
@@ -835,6 +837,9 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "reputation":
         d.reputation[name as "home" | "current" | "world"] = value;
+        break;
+      case "coaching_licence":
+        (d as StaffDetails).coachingLicence = value;
         break;
       case "height":
         (d as PlayerDetails).heightCm = value;
@@ -992,6 +997,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.positionRatings[name];
       case "personality":
         return person.personality[name];
+      case "coaching_licence":
+        return (person as StaffDetails).coachingLicence;
       case "contract": {
         const contract = (person as PlayerDetails).contract;
         switch (name) {
