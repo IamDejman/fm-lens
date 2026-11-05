@@ -33,9 +33,10 @@ import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
 import type { Reveal } from "./ListBrowser";
-import type { BridgeInfo, Career, ConnectionInfo, Detection, Refrozen, ReloadInfo } from "./types";
+import { injuryKinds } from "./editing";
+import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol.png";
-import { askToLeave, EditorContext } from "./useProfileEditing";
+import { askToLeave, EditorContext, NO_GAME_ACTIONS } from "./useProfileEditing";
 import "./App.css";
 
 type View =
@@ -231,7 +232,26 @@ function App() {
       : connection.writable
         ? connection.knownBuild ? appText.noteReloadRequired : appText.noteUnknownBuild
         : appText.noteReadOnly;
-  const editor = useMemo(() => ({ editable, readOnlyNote: note, onEdited: edited }), [editable, note, edited]);
+  const gameActions = connection?.gameActions ?? NO_GAME_ACTIONS;
+  // The kinds of injury are read once per connection (a reload keeps its actions, and with them the kinds), and read
+  // again after a failure.
+  const loadInjuryKinds = useMemo(() => {
+    let kinds: Promise<InjuryKind[]> | null = null;
+    return (): Promise<InjuryKind[]> => {
+      kinds ??= injuryKinds().then(
+        (list) => [...list].sort((a, b) => a.name.localeCompare(b.name)),
+        (e: unknown) => {
+          kinds = null;
+          throw e;
+        },
+      );
+      return kinds;
+    };
+  }, [gameActions]);
+  const editor = useMemo(
+    () => ({ editable, readOnlyNote: note, onEdited: edited, gameActions, injuryKinds: loadInjuryKinds }),
+    [editable, note, edited, gameActions, loadInjuryKinds],
+  );
 
   // With edits pending in the open profile, leaving for another view asks first.
   const show = (id: View) => {
