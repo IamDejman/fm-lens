@@ -99,8 +99,8 @@ and `FMLIBRE_EXPORTS` pointing to local directories under `reports/`. This keeps
 test freezes and exports separate from ordinary app state.
 
 Next validation priorities: stale-draft/undo conflict in the native app, career
-switch while connected, multi-target templates, where FM keeps a player's shown
-wage, structural operations, and a fresh Steam Offline Mode launch.
+switch while connected, multi-target templates, payroll after a player wage edit,
+structural operations, and a fresh Steam Offline Mode launch.
 
 ## Integrated roadmap PR
 
@@ -384,14 +384,42 @@ The reload was a full Quit Game and Exit, FM's process gone, a Steam relaunch
 (same build fingerprint) and that copy loaded. The probe's readings at save time
 and after the reload matched line for line.
 
-The player wage did not reach FM's screen. A day later (11 Dec 2027, after the
-pre-match press conference went to the assistant) the probe still read 310000
-and FM still showed £300K p/w. The contract the probe edits (player +0x2f0,
-wage at +0x20) is the only place holding the new value, and read-only searches
-for another copy of 300000 near Saka (`related` at depths 2 and 3 with other
-players' wages as anchors, `nearby --bare`) found nothing. Where FM keeps the
-wage it shows, and whether it pays the new one, is not established. Treat the
-player wage edit as not working.
+The initial conclusion that the player wage edit was not working was incorrect.
+A read-only investigation on the same build traced the Contract page's weekly
+wage property (`Pcww`) to the same contract +0x20 field used by FM Lens. FM then
+rounds that value for display. With GBP weekly formatting, £310,000 rounds to
+£300,000 in £25,000 steps. This explains the unchanged £300K label after reload
+and advancement; searching memory for a second stored £300,000 was unnecessary.
+The saved contract value is £310,000. Payroll deductions have not been tested.
+
+### Wage display investigation (5 November 2026)
+
+Rechecked the running process with the read-only probe: module UUID
+`F4540355-2186-39CB-9119-C706A6A35346`, Saka UID 28122642, wage 310000,
+expiry 2032-06-30. Inspected FM on 11 Dec 2027: header £300K p/w.
+Preferences showed GBP and Weekly. No game-memory writes or career saves were
+made during this investigation.
+
+Reproduction from the matching ARM64 game_plugin slice (addresses are RVAs):
+
+- Contract UI handler `0x188040` calls wage helper `0x1886e8`.
+  At `0x188744`, it dispatches contract vtable +0x48. The loaded contract's
+  getter is `0xd8c3c0`: `ldr w0, [x0, #0x20]; ret`.
+- Wage wrapper `0xffba88` feeds the typed wage formatter. Formatter `0x18a9f54`
+  uses cash-format flag 8 for ordinary weekly wages.
+- Cash formatter `0x42c9e10` calls rounding-step selector `0x42ca868`.
+  Its flag-8 branch at `0x42cab74` selects step 25000 for GBP amounts above
+  250000 through 1000000 (`0x42caaac` / `0x42cad44`).
+- Positive amounts round as `((amount + step / 2) / step) * step`, using integer
+  division (`0x42c9f54`). Thus 300000 and 310000 both display as 300000;
+  325000 displays as 325000. These are formatter calculations, not additional
+  live wage-edit tests.
+
+Bounded disassembly and read-only diagnostics are local under
+`reports/wage-fix/`. No offset or memory-write change is justified by this
+finding. A rounded FM label alone must not be used to reject an edit; check the
+exact contract value as well. Payroll and all other contract fields retain their
+existing validation limits.
 
 Not established: other staff attributes, CA/PA, reputation, job and club moves,
 other club balances, facilities and capacities, squad number, loyalty bonus,
