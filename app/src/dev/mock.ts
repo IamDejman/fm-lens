@@ -290,6 +290,10 @@ function details(player: PlayerSummary): PlayerDetails {
 
 /** Every eleventh player at a club is there on loan from another club, which pays half his wage. */
 function loanOf(player: PlayerSummary): LoanTerms | null {
+  const started = startedLoans.get(player.uid);
+  if (started) {
+    return { parent: started.parent, parentUid: started.parentUid, wage: 0, starts: GAME_DATE, ends: started.ends };
+  }
   if (!player.club || player.uid % 11 !== 0) {
     return null;
   }
@@ -301,6 +305,59 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
     starts: { year: 2026, month: 8, day: 10 },
     ends: { year: 2027, month: 6, day: 29 },
   };
+}
+
+/** The loans the editor had the game start, by UID: the club he is loaned from, until when. */
+const startedLoans = new Map<number, { parent: string; parentUid: number; ends: FmDate }>();
+
+/** `start_loan`: the game loans the fixture player to `clubUid` from today until `ends`. */
+function startLoan(uid: number, clubUid: number, ends: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const to = clubs.find((c) => c.uid === clubUid);
+  if (!to) {
+    throw notFound("club", clubUid);
+  }
+  if (!player.club || player.clubUid === null) {
+    throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
+  }
+  if (loanOf(player)) {
+    throw failure("move.onLoan", "the player is on loan, to his club or from it");
+  }
+  if (player.clubUid === clubUid) {
+    throw failure("move.sameClub", "the player is at that club already");
+  }
+  const endsOn = dateFromNumber(ends);
+  if (!endsOn || ends <= numberFromDate(GAME_DATE)) {
+    throw failure("move.outOfRange", "loan.ends is out of range", {
+      field: "loan.ends",
+      value: ends,
+      min: numberFromDate(addDays(GAME_DATE, 1)),
+      max: 21001231,
+    });
+  }
+  const from = { name: player.club, uid: player.clubUid };
+  startedLoans.set(uid, { parent: from.name, parentUid: from.uid, ends: endsOn });
+  // A loaned player plays for the club he is loaned to; his parent club is in the loan.
+  player.club = to.name;
+  player.clubUid = to.uid;
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "loan",
+    old: from.uid,
+    new: clubUid,
+    undoneAt: null,
+    batch: null,
+    moved: { from: from.name, to: to.name },
+  };
+  changes.push(logged);
+  return { ...logged };
 }
 
 /** Every seventh player abroad has an English work permit record; most of those were granted one. */
@@ -1397,6 +1454,18 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
+  // A loan is ended at once here; the game ends it on its next day.
+  if (entry.field === "loan") {
+    const player = players.find((p) => p.uid === entry.uid);
+    const started = startedLoans.get(entry.uid);
+    if (player && started) {
+      player.club = started.parent;
+      player.clubUid = started.parentUid;
+    }
+    startedLoans.delete(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   if (entry.moved) {
     undoMove(entry);
     entry.undoneAt = Date.now();
@@ -2468,7 +2537,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true },
       };
       mockConnection = info;
       if (!refrozen) {
@@ -2752,6 +2821,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return addInjury(Number(args?.uid), Number(args?.kind)) as T;
     case "set_work_permit":
       return setWorkPermit(Number(args?.uid), Boolean(args?.granted)) as T;
+    case "start_loan":
+      return startLoan(Number(args?.uid), Number(args?.club), Number(args?.ends)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
     case "change_clause":

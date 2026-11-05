@@ -9,6 +9,7 @@ use fmlibre_mem::is_user_pointer;
 use serde::Serialize;
 
 use crate::date::FmDate;
+use crate::edit::{Change, EditError, Entity};
 use crate::players::{PlayerSummary, club_of_team, club_uid_of_team};
 use crate::session::Session;
 
@@ -59,5 +60,15 @@ impl Session {
             starts: date(c.joined),
             ends: date(c.expires),
         })
+    }
+
+    /// Has `player`'s loan end on the game's date today, which the game then ends on its next day: what undoes a loan
+    /// it started, as no function of the game's that ends one at once is known. Written as an edit of `loan.ends`.
+    pub fn end_loan_today(&self, player: &PlayerSummary) -> Result<Change, EditError> {
+        let field = self.field(Entity::Player, "loan.ends")?;
+        let Some(today) = self.game_date() else {
+            return Err(EditError::Unsupported { field: field.key, reason: "the game's date could not be read" });
+        };
+        self.write_field(&player.target(), &field, today.to_number())
     }
 }
