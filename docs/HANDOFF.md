@@ -52,8 +52,8 @@ Built on top of it (core and Tauri only, no UI yet):
   training does. Undo empties the list (as Heal does). Tauri: `injury_kinds`, `add_injury`, `Undo::Injured`.
 - `Session::set_work_permit(player, grant)`: `0x2D85294(TRANSFER_MANAGER, P + vbase (0x388), [P+0x128], 1, grant)`.
   Verified by reading the permits back. Tauri: `set_work_permit`, `Undo::Permit`.
-- `ConnectionInfo.gameActions { addInjury, workPermit, startLoan, signFreeAgent, endLoan }` says which of these this
-  build supports.
+- `ConnectionInfo.gameActions { addInjury, workPermit, startLoan, signFreeAgent, endLoan, futureTransfer }` says which
+  of these this build supports.
 
 ## 3. What is left, in order
 
@@ -88,9 +88,13 @@ Built on top of it (core and Tauri only, no UI yet):
      loan that is the parent club, for his own contract his own club, so he would stay there with no contract. The
      editor follows it with 0x2d4f79c and the mover 0x2d49334 (kind 9) in a branch not yet settled (fm27-call-shapes.md
      section 4).
-   - **Future transfers**: the signing call with a 'TrDt' date after today (0x2d91328 stores it): a date step for
-     the Sign dialog. Cancel (0x2d180b4) needs the offer pointer in scratch with a reference taken, which the bridge
-     cannot do yet, so there is no undo: build it after a way to cancel exists.
+   - **Future transfers**: done on `feat/future-transfer-cancel` (a Joins date in the Sign dialog, gated by
+     `gameActions.futureTransfer`). A day after today adds the 'TrDt' term to the signing's map (`date_type`,
+     `date_value`, `map_insert`, `value_drop` in the build profile), so FM agrees the signing now and makes it on that
+     day, on its own terms (no wage or end). `Session::sign_free_agent_later` reads back one new dated record and his
+     pending offer (`[future_transfer]` in `layout-macos.toml`). Undo cancels it as the game's editor does:
+     `cancel_offer` (0x2D180B4) on the offer with a reference held (`ref_copy`, `ref_drop`), then
+     `drop_dated_transfer` (0x1827808). Unproven in the game (section 4).
 5. Other batch items not built: officials editing; staff formations and tendencies (labels need the screen);
    tactical familiarity; human manager relations and moves; club kits, ownership, vision, allowances, income;
    nation FA settings, attendance, kits; promises, youth intake, bans add (low confidence, see
@@ -112,6 +116,9 @@ before and after. Never use probe write commands; live writes go through FM Lens
   and check the loan is back until its old end. Also undo a loan FM Lens started and check he is back at once.
 - Free-agent signing: sign one free agent to an AI club, once without terms and once with a wage and end; check
   FM's contract screen and the club's squad; undo, and check he is a free agent again with no contract.
+- Future transfer: sign one free agent to an AI club joining in a week; check FM shows the agreed transfer and he is
+  still a free agent; undo, and check FM no longer has it. Sign another for two days ahead, press Continue past the
+  day, and check he joined with FM's contract.
 - Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
 - Competitions and awards (#21): Premier League overview; World Golden Ball periods 5/6/9; PL awards.
 - Earlier items: staff licence labels 1-8 (#17), England FA and women's pages (#16), clause screens (#18), language
