@@ -267,6 +267,10 @@ export const setWorkPermit = (uid: number, granted: boolean) =>
 export const startLoan = (uid: number, club: number, ends: number) =>
   call<LoggedChange>("start_loan", { uid, club, ends });
 
+/** Has the game sign the free agent for the senior team of `club` on its own terms; `terms` then replace them. */
+export const signFreeAgent = (uid: number, club: number, terms: MoveTerms) =>
+  call<LoggedChange>("sign_free_agent", { uid, club, terms });
+
 /**
  * Lifts every current ban of the player, as the game does once he has served them; his other absences stay. Logged
  * as one change of his field `bans` from how many he had to 0, and undone as one; fails when he has none.

@@ -52,7 +52,8 @@ Built on top of it (core and Tauri only, no UI yet):
   training does. Undo empties the list (as Heal does). Tauri: `injury_kinds`, `add_injury`, `Undo::Injured`.
 - `Session::set_work_permit(player, grant)`: `0x2D85294(TRANSFER_MANAGER, P + vbase (0x388), [P+0x128], 1, grant)`.
   Verified by reading the permits back. Tauri: `set_work_permit`, `Undo::Permit`.
-- `ConnectionInfo.gameActions { addInjury, workPermit }` says which of these this build supports.
+- `ConnectionInfo.gameActions { addInjury, workPermit, startLoan, signFreeAgent }` says which of these this build
+  supports.
 
 ## 3. What is left, in order
 
@@ -65,9 +66,16 @@ Built on top of it (core and Tauri only, no UI yet):
    0x388), not the object, since `0x2E0A324` reads the UID at `[O+0x18]+0xC` and calls the identity vtable's slot
    0x6E0. Undo sets `loan.ends` to today's game date; no recall function is known, so FM should end the loan on its
    next day. Both unproven in the game (section 4).
-3. **Free-agent signing**: `0x2DFEDAC(TM, identity block, destination team, &terms map, &out[24], 0)` with an empty
-   map built by `0x43F6B78` and destroyed after (see the call-shapes doc for the map and Value helpers).
-   Medium-low confidence: test on one free agent only.
+3. **Free-agent signing**: done on `feat/free-agent-signing` (Sign on a free agent's profile, gated by
+   `gameActions.signFreeAgent`; the Transfer dialog in a sign mode: club, optional wage and contract end).
+   `Session::sign_free_agent` calls `0x2DFEDAC(TRANSFER_MANAGER, P + 0x278, senior team, &map, &refs, 0)` in one
+   bridge program: `map_new` (`0x43F6B78`) builds the empty terms map in scratch, and the cleanup steps `refs_drop`
+   (`0x43FE910`, takes `&vec`) and `map_drop` (`0x43F6C38`) run even if the signing stops. Settled by disassembly:
+   x1 is the person block (P + 0x278), not the identity block, and the editor's IGE helpers can be skipped. Success
+   is the true return plus his team now pointing at that club; FM's own contract is then overwritten with any wage or
+   end given. Undo is a release (`plan_release`), so it refuses a human-managed club. Also fixed here: `log_loan`
+   now updates the players list, so a loaned player shows his new club without a reload. Unproven in the game
+   (section 4); test on one free agent only.
 4. **Loan recall / early end, releases, future transfers**: not found. Research first (fm27-transfer-actions.md).
 5. Other batch items not built: officials editing; staff formations and tendencies (labels need the screen);
    tactical familiarity; human manager relations and moves; club kits, ownership, vision, allowances, income;
@@ -86,6 +94,8 @@ before and after. Never use probe write commands; live writes go through FM Lens
 - Loans (#19): loan wage and end for White, Merino, Mosquera, Harriman-Annous against FM's loan screens.
 - Loan start: loan one first-team player to another club until 30 June, check FM's loan screen (club, dates, the
   wage FM set) and both squads; undo, press Continue once, and check FM ended the loan and he is back.
+- Free-agent signing: sign one free agent to an AI club, once without terms and once with a wage and end; check
+  FM's contract screen and the club's squad; undo, and check he is a free agent again with no contract.
 - Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
 - Competitions and awards (#21): Premier League overview; World Golden Ball periods 5/6/9; PL awards.
 - Earlier items: staff licence labels 1-8 (#17), England FA and women's pages (#16), clause screens (#18), language

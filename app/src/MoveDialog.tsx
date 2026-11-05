@@ -6,6 +6,9 @@
 // A switch at the top of the dialog makes it a swap instead: after the club it picks one of the club's players, who
 // goes the other way, and each keeps his own contract. Where the game starts loans itself on this version, the switch
 // also makes it a loan: after the club, the day the loan ends, and the game makes the loan.
+//
+// For a free agent, where the game signs players itself on this version, the dialog signs him instead: the club, and
+// the wage and contract end to replace the game's, if any.
 
 import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
@@ -20,6 +23,7 @@ import {
   planClubMove,
   planClubSwap,
   planStaffMove,
+  signFreeAgent,
   startLoan,
   swapPlayers,
 } from "./editing";
@@ -46,7 +50,8 @@ import { EditorContext } from "./useProfileEditing";
 interface MovingPlayer {
   uid: number;
   name: string;
-  club: string;
+  /** Null for a free agent, whom the dialog signs. */
+  club: string | null;
   /** The club's UID, for its logo. */
   clubUid: number | null;
 }
@@ -97,10 +102,10 @@ export function MoveButton({ player, kind = "player", contract, ready }: MoveBut
         className="move-toggle"
         aria-haspopup="dialog"
         disabled={!ready}
-        title={kind === "staff" ? text.staffButtonTitle : text.buttonTitle}
+        title={kind === "staff" ? text.staffButtonTitle : player.club === null ? text.signButtonTitle : text.buttonTitle}
         onClick={() => setOpened({ player, contract })}
       >
-        {text.button}
+        {player.club === null ? text.signButton : text.button}
       </button>
       {opened && (
         <MoveDialog
@@ -564,8 +569,10 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   const fee = !staff && feeVerdict.status === "changed" ? toPounds(feeVerdict.value) : undefined;
   const terms = termsOf(wage, expires);
 
-  const swap = mode === "swap";
-  const loan = mode === "loan";
+  // A free agent is signed: there is no club to leave, no fee and nothing to swap.
+  const sign = player.club === null;
+  const swap = !sign && mode === "swap";
+  const loan = !sign && mode === "loan";
   // The day the loan ends, once it is a real date after today.
   const loanEndsValue = numberFromIso(loanEndsText);
   const loanEnds =
@@ -574,30 +581,36 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   // What the plan is for: for a move, null while there is no club, or an input cannot be sent; for a swap, null while
   // no player is picked. Move or Swap is offered only for a plan the game made for what is picked now, so a change
   // takes it back at once, before the new plan is asked.
-  // A loan is not planned: the game checks it as it makes it, and says why it cannot.
-  const key = loan
-    ? club !== null && loanEnds !== null
-      ? `loan:${club.uid}:${loanEnds}`
+  // A signing or a loan is not planned: the game checks it as it makes it, and says why it cannot.
+  const key = sign
+    ? club !== null && valid
+      ? `sign:${planKey(club.uid, terms, undefined)}`
       : null
-    : swap
-      ? partner !== null
-        ? swapKey(partner.uid)
+    : loan
+      ? club !== null && loanEnds !== null
+        ? `loan:${club.uid}:${loanEnds}`
         : null
-      : club !== null && valid
-        ? planKey(club.uid, terms, fee)
-        : null;
+      : swap
+        ? partner !== null
+          ? swapKey(partner.uid)
+          : null
+        : club !== null && valid
+          ? planKey(club.uid, terms, fee)
+          : null;
   const outcome = key !== null && planned?.key === key ? planned.outcome : null;
   const preview = outcome !== null && "preview" in outcome ? outcome.preview : null;
-  const canMove = (loan ? key !== null : preview !== null) && !moving;
+  const canMove = (sign || loan ? key !== null : preview !== null) && !moving;
 
-  // What the button makes, for the plan it is offered for: the loan or the swap, or the move to the club.
-  const make = loan
-    ? club !== null && loanEnds !== null
-      ? () => startLoan(player.uid, club.uid, loanEnds)
-      : null
-    : swap
-      ? partner && (() => swapPlayers(player.uid, partner.uid))
-      : club && (() => (staff ? moveStaff(player.uid, club.uid) : movePlayer(player.uid, club.uid, terms, fee)));
+  // What the button makes, for the plan it is offered for: the signing, the loan or the swap, or the move to the club.
+  const make = sign
+    ? club && (() => signFreeAgent(player.uid, club.uid, terms))
+    : loan
+      ? club !== null && loanEnds !== null
+        ? () => startLoan(player.uid, club.uid, loanEnds)
+        : null
+      : swap
+        ? partner && (() => swapPlayers(player.uid, partner.uid))
+        : club && (() => (staff ? moveStaff(player.uid, club.uid) : movePlayer(player.uid, club.uid, terms, fee)));
 
   // The clubs on show. Until the search has answered for what is typed they are the last ones: Enter leaves them alone.
   const rows = found !== null && "page" in found ? found.page.rows : [];
@@ -644,7 +657,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   // The game works out the move a moment after the club and the terms stop changing. An answer that comes after they
   // changed again is dropped: the cleanup says so.
   useEffect(() => {
-    if (swap || loan || club === null || !valid) {
+    if (sign || swap || loan || club === null || !valid) {
       return;
     }
     let cancelled = false;
@@ -664,7 +677,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [swap, loan, staff, player.uid, club, valid, wage, expires, fee, replans]);
+  }, [sign, swap, loan, staff, player.uid, club, valid, wage, expires, fee, replans]);
 
   // The same for a swap, a moment after the player to swap with is picked.
   useEffect(() => {
@@ -817,32 +830,66 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
     return lines.join("\n");
   };
 
+  // The dialog's words for what it makes: the title, the prompt for a club, the list of what happens, the note beside
+  // the button, and the button as it is and while it works.
+  const words = sign
+    ? {
+        title: text.signTitle,
+        choose: text.signChooseClub,
+        does: text.signDoes,
+        hint: text.signHint,
+        button: text.sign,
+        busy: text.signing,
+      }
+    : loan
+      ? {
+          title: text.loanTitle,
+          choose: text.loanChooseClub,
+          does: text.loanDoes,
+          hint: text.loanHint,
+          button: text.loan,
+          busy: text.loaning,
+        }
+      : swap
+        ? {
+            title: text.swapTitle,
+            choose: text.swapChooseClub,
+            does: text.swapDoes,
+            hint: text.swapHint,
+            button: text.swap,
+            busy: text.swapping,
+          }
+        : {
+            title: text.title,
+            choose: staff ? text.staffChooseClub : text.chooseClub,
+            does: staff ? text.staffDoes : text.does,
+            hint: text.hint,
+            button: text.move,
+            busy: text.moving,
+          };
+  const from = player.club ?? profileText.freeAgent;
+
   // What the move or the swap comes to, or why it cannot be made. The plan line is a live region that is always there.
   const plan: { tone: "pending" | "ok" | "refused"; message: string } =
     club === null
-      ? {
-          tone: "pending",
-          message: loan
-            ? text.loanChooseClub
-            : swap
-              ? text.swapChooseClub
-              : staff
-                ? text.staffChooseClub
-                : text.chooseClub,
-        }
-      : loan
-        ? loanEnds === null
-          ? { tone: "pending", message: loanEndsValue === null ? text.expiresInvalid : text.loanEndsAfterToday }
-          : { tone: "ok", message: text.route(player.club, club.name) }
-        : swap && partner === null
-        ? { tone: "pending", message: text.swapChoosePlayer }
-        : !swap && !valid
-          ? { tone: "pending", message: text.fixTerms }
-          : outcome === null
-            ? { tone: "pending", message: swap ? text.swapChecking : text.checking }
-            : "error" in outcome
-              ? { tone: "refused", message: outcome.error }
-              : { tone: "ok", message: route(outcome.preview) };
+      ? { tone: "pending", message: words.choose }
+      : sign
+        ? valid
+          ? { tone: "ok", message: text.route(from, club.name) }
+          : { tone: "pending", message: text.fixTerms }
+        : loan
+          ? loanEnds === null
+            ? { tone: "pending", message: loanEndsValue === null ? text.expiresInvalid : text.loanEndsAfterToday }
+            : { tone: "ok", message: text.route(from, club.name) }
+          : swap && partner === null
+            ? { tone: "pending", message: text.swapChoosePlayer }
+            : !swap && !valid
+              ? { tone: "pending", message: text.fixTerms }
+              : outcome === null
+                ? { tone: "pending", message: swap ? text.swapChecking : text.checking }
+                : "error" in outcome
+                  ? { tone: "refused", message: outcome.error }
+                  : { tone: "ok", message: route(outcome.preview) };
   // A failed move is told for the club and terms it was tried with only (a swap: for the player picked).
   const failure = moveError !== null && moveError.key === key ? moveError.message : null;
 
@@ -867,14 +914,14 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
         tabIndex={-1}
       >
         <header className="modal-head">
-          <h2 id={id("title")}>{loan ? text.loanTitle : swap ? text.swapTitle : text.title}</h2>
+          <h2 id={id("title")}>{words.title}</h2>
           <p id={id("player")} className="move-player">
             {player.name}
           </p>
         </header>
 
         <div className="modal-body">
-          {!staff && (
+          {!staff && !sign && (
             <div className="move-mode" role="group" aria-label={text.modeLabel}>
               {(gameActions.startLoan ? MODES_WITH_LOAN : MODES).map(({ id: kindOfMove, label }) => (
                 <button
@@ -893,7 +940,11 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
           <section className="move-section" aria-labelledby={id("from")}>
             <h3 id={id("from")}>{text.from}</h3>
             <div className="move-club">
-              <ClubLine uid={player.clubUid} name={player.club} />
+              {player.club === null ? (
+                <span className="move-club-text">{profileText.freeAgent}</span>
+              ) : (
+                <ClubLine uid={player.clubUid} name={player.club} />
+              )}
             </div>
           </section>
 
@@ -984,7 +1035,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
             </section>
           )}
 
-          {!swap && !loan && !staff && (
+          {!sign && !swap && !loan && !staff && (
             <section className="move-section" aria-labelledby={id("fee-heading")}>
               <h3 id={id("fee-heading")}>{text.feeHeading}</h3>
               <div className="move-terms">
@@ -1102,7 +1153,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
           <section className="move-section" aria-labelledby={id("does")}>
             <h3 id={id("does")}>{swap ? text.swapDoesHeading : text.doesHeading}</h3>
             <ul className="move-facts">
-              {(loan ? text.loanDoes : swap ? text.swapDoes : staff ? text.staffDoes : text.does).map((line) => (
+              {words.does.map((line) => (
                 <li key={line}>{line}</li>
               ))}
             </ul>
@@ -1116,19 +1167,9 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
         )}
 
         <footer className="modal-foot">
-          <span className="move-foot-note">{loan ? text.loanHint : swap ? text.swapHint : text.hint}</span>
+          <span className="move-foot-note">{words.hint}</span>
           <button ref={moveButton} type="button" className="primary" disabled={!canMove} onClick={() => void move()}>
-            {moving
-              ? loan
-                ? text.loaning
-                : swap
-                  ? text.swapping
-                  : text.moving
-              : loan
-                ? text.loan
-                : swap
-                  ? text.swap
-                  : text.move}
+            {moving ? words.busy : words.button}
           </button>
           <button ref={cancelButton} type="button" disabled={moving} onClick={onClose}>
             {text.cancel}
