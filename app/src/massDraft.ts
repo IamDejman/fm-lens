@@ -10,7 +10,7 @@ import {
   type AttributeKey,
   type StaffAttributeKey,
 } from "./labels";
-import type { BatchUndo, EditField, Entity, LoggedChange, MassOperation, MassOperationKind } from "./types";
+import type { BatchUndo, EditField, LoggedChange, MassEntity, MassOperation, MassOperationKind } from "./types";
 
 /** Most fields one mass edit changes at once. */
 export const MAX_OPERATIONS = 5;
@@ -128,7 +128,7 @@ export function judgeRow(field: EditField, kind: OperationKind, text: string): R
 export type FieldGroupId = keyof typeof massEditText.groups;
 
 /** The groups of each list's field select, in order. A field that belongs to none of them is in "other". */
-const GROUP_ORDER: Record<Entity, readonly FieldGroupId[]> = {
+const GROUP_ORDER: Record<MassEntity, readonly FieldGroupId[]> = {
   player: [
     "ability", "technical", "mental", "physical", "goalkeeping", "hidden", "feet", "positions", "personality",
     "reputation", "international", "contract", "health", "traits", "other",
@@ -173,13 +173,13 @@ const STAFF_ATTRIBUTE_GROUPS: Partial<Record<FieldGroupId, readonly StaffAttribu
 };
 
 /** The group of the attribute `name` of players or of staff; none for a name no group has. */
-function attributeGroup(entity: Entity, name: string): FieldGroupId | undefined {
+function attributeGroup(entity: MassEntity, name: string): FieldGroupId | undefined {
   const groups = entity === "staff" ? STAFF_ATTRIBUTE_GROUPS : PLAYER_ATTRIBUTE_GROUPS;
   return (Object.keys(groups) as FieldGroupId[]).find((id) => (groups[id] as readonly string[]).includes(name));
 }
 
 /** The group of the field `key` in the select of `entity`; "other" for one the groups do not know. */
-function groupOf(entity: Entity, key: string): FieldGroupId {
+function groupOf(entity: MassEntity, key: string): FieldGroupId {
   const [prefix, name = ""] = key.split(".");
   let id: FieldGroupId | undefined;
   switch (prefix) {
@@ -227,7 +227,7 @@ export interface FieldGroup {
 }
 
 /** `fields` sorted into the groups of the select of `entity`, in their order; a group without fields is left out. */
-export function groupFields(entity: Entity, fields: readonly EditField[]): FieldGroup[] {
+export function groupFields(entity: MassEntity, fields: readonly EditField[]): FieldGroup[] {
   const byGroup = new Map<FieldGroupId, EditField[]>();
   for (const field of fields) {
     const id = groupOf(entity, field.key);

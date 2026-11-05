@@ -276,6 +276,7 @@ ranking = 0x570
 founded = 0x870
 joined_fifa = 0x86C
 team_manager = 0x80
+team_id = 0x0C            # the senior team's is the nation's UID (251 of 251)
 
 # A player's familiarity with his clubs and nations (team cohesion): the second list of his relations record, of
 # 8-byte entries. Checked on Steam 26340721 arm64: every Arsenal player has a club entry with Arsenal's internal id

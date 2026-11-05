@@ -6,7 +6,7 @@
 // its noun ("1 cambio aplicado", "3 cambios aplicados"), so the sentences with a count are written out for one and for
 // many.
 
-import type { Entity } from "../types";
+import type { MassEntity } from "../types";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
 
@@ -30,14 +30,14 @@ const valuesLeftAlone = (count: number) =>
   count === 1 ? "1 valor sin tocar" : `${format(count)} valores sin tocar`;
 
 /** What each list holds, for one and for many. Every one of them is masculine, so the words around them are too. */
-const nouns: Record<Entity, { one: string; many: string }> = {
+const nouns: Record<MassEntity, { one: string; many: string }> = {
   player: { one: "jugador", many: "jugadores" },
   staff: { one: "empleado", many: "empleados" },
   club: { one: "club", many: "clubes" },
 };
 
 /** "237 jugadores", "1 empleado", "12 clubes". */
-const entityCount = (entity: Entity, count: number) =>
+const entityCount = (entity: MassEntity, count: number) =>
   `${format(count)} ${count === 1 ? nouns[entity].one : nouns[entity].many}`;
 
 const SQUAD_STATUSES: Partial<Record<number, string>> = {
@@ -518,6 +518,9 @@ export const es: Strings = {
     "stadium.seating": "Aforo con asientos",
     "stadium.used": "Aforo en uso",
     "stadium.expansion": "Aforo ampliable",
+    population: "Población",
+    dual_nationality: "Doble nacionalidad",
+    naturalisation: "Años para nacionalizarse",
   },
 
   profile: {
@@ -1148,6 +1151,7 @@ export const es: Strings = {
     teams: "los equipos",
     staff: "el personal",
     clubs: "los clubes",
+    nations: "los países",
   },
 
   update: {
@@ -1239,7 +1243,7 @@ export const es: Strings = {
       change: "Cambio",
       status: "Estado",
     },
-    kinds: { player: "Jugador", staff: "Personal", club: "Club" },
+    kinds: { player: "Jugador", staff: "Personal", club: "Club", nation: "País" },
     stored: (change) => `valor interno ${change}`,
     undone: (time) => `Deshecho a las ${time}`,
     undo: "Deshacer",

@@ -4,7 +4,7 @@
 // Turkish has no plural after a number ("3 değişiklik"), and its case endings follow the word they end, not a
 // number, so the sentences are built to put an ending on a noun ("oyuncunun"), never on a figure.
 
-import type { Entity, MassOperationKind, MassPreview, PlayerSort, SquadSort, Storefront } from "../types";
+import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerSort, SquadSort, Storefront } from "../types";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
 
@@ -24,14 +24,14 @@ const changeCount = (count: number) => (count === 0 ? "Değişiklik yok" : chang
 const valuesLeftAlone = (count: number) => `${format(count)} değere dokunulmadı`;
 
 /** What each list holds, as the sentences need it: the noun itself, "of the" (genitive) and "in" (locative). */
-const nouns: Record<Entity, { plain: string; of: string; in: string }> = {
+const nouns: Record<MassEntity, { plain: string; of: string; in: string }> = {
   player: { plain: "oyuncu", of: "oyuncunun", in: "oyuncuda" },
   staff: { plain: "personel", of: "personelin", in: "personelde" },
   club: { plain: "kulüp", of: "kulübün", in: "kulüpte" },
 };
 
 /** "237 oyuncu", "1 personel", "12 kulüp". */
-const entityCount = (entity: Entity, count: number) => `${format(count)} ${nouns[entity].plain}`;
+const entityCount = (entity: MassEntity, count: number) => `${format(count)} ${nouns[entity].plain}`;
 
 const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Yıldız oyuncu",
@@ -506,6 +506,9 @@ export const tr: Strings = {
     "stadium.seating": "Oturma kapasitesi",
     "stadium.used": "Kullanılan kapasite",
     "stadium.expansion": "Genişleme kapasitesi",
+    population: "Nüfus",
+    dual_nationality: "Çifte vatandaşlık",
+    naturalisation: "Vatandaşlık için yıl",
   },
 
   profile: {
@@ -1118,6 +1121,7 @@ export const tr: Strings = {
     teams: "takımlar",
     staff: "personel",
     clubs: "kulüpler",
+    nations: "ülkeler",
   },
 
   update: {
@@ -1201,7 +1205,7 @@ export const tr: Strings = {
       change: "Değişiklik",
       status: "Durum",
     },
-    kinds: { player: "Oyuncu", staff: "Personel", club: "Kulüp" } satisfies Record<Entity, string>,
+    kinds: { player: "Oyuncu", staff: "Personel", club: "Kulüp", nation: "Ülke" } satisfies Record<Entity, string>,
     stored: (change) => `saklanan ${change}`,
     undone: (time) => `Geri alındı: ${time}`,
     undo: "Geri al",
@@ -1265,7 +1269,7 @@ export const tr: Strings = {
       player: "Oyuncuları toplu düzenle",
       staff: "Personeli toplu düzenle",
       club: "Kulüpleri toplu düzenle",
-    } satisfies Record<Entity, string>,
+    } satisfies Record<MassEntity, string>,
 
     // What it applies to
     scope: (entity, total) => `Listenin şu an gösterdiği ${entityCount(entity, total)} (arama ve filtreler)`,
@@ -1332,7 +1336,7 @@ export const tr: Strings = {
     previewBlocked: "Önizlemek için her alanı geçerli bir değerle doldurun",
     // "237 oyuncunun 140 tanesi için 312 değişiklik · 97 oyuncuda bu değerler zaten var · 12 değere dokunulmadı";
     // with every target changed: "237 oyuncu için 312 değişiklik".
-    summary: (entity: Entity, preview: MassPreview) => {
+    summary: (entity: MassEntity, preview: MassPreview) => {
       const noun = nouns[entity];
       const affected = preview.targets - preview.unchanged;
       return [

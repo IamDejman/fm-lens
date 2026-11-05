@@ -5,7 +5,7 @@ import { useContext, useEffect, useId, useRef, type CSSProperties, type ReactNod
 import { valueText, type Pending } from "./editDraft";
 import { isoFromNumber, isStoredFiner } from "./editing";
 import { currencySymbol } from "./format";
-import { changesText, choiceLabel, editText, fieldLabel, valueChange } from "./labels";
+import { blankLabel, changesText, choiceLabel, editText, fieldLabel, valueChange } from "./labels";
 import {
   AppliedFieldsContext,
   EditActivationContext,
@@ -84,8 +84,9 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
   // A number that may be left empty is a text input: a number input reads what is no number (a lone minus sign) as
   // empty, which here would stand for "none".
   const clearable = spec.blank !== null;
+  const blank = clearable ? blankLabel(spec.key) : undefined;
   // As wide as the longest value it takes, a minus sign included; an input that may be empty has room for its hint.
-  const digits = Math.max(String(range.min).length, String(range.max).length, clearable ? editText.none.length : 0);
+  const digits = Math.max(String(range.min).length, String(range.max).length, blank?.length ?? 0);
   const control = (
     <input
       type={date ? "date" : clearable ? "text" : "number"}
@@ -96,7 +97,7 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
       min={date ? isoFromNumber(range.min) : range.min}
       max={date ? isoFromNumber(range.max) : range.max}
       step={date ? undefined : 1}
-      placeholder={clearable ? editText.none : undefined}
+      placeholder={blank}
       value={text}
       readOnly={session.busy}
       aria-label={label}
