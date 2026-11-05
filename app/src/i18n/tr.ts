@@ -557,10 +557,7 @@ export const tr: Strings = {
     // Contract
     contract: "Sözleşme",
     wage: "Haftalık maaş",
-    wageNote: (converted) =>
-      converted
-        ? "FM'in kuruyla"
-        : "Sterlin. Para birimini Ayarlar'dan değiştirin",
+    converted: "FM'in kuruyla",
     signed: "İmza tarihi",
     expires: "Bitiş tarihi",
     joined: "Katılım tarihi",

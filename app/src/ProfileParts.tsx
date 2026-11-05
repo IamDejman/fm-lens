@@ -77,7 +77,9 @@ interface ProfileFrameProps {
   potentialAbility?: number;
   /** Under the close button instead of the abilities, e.g. the reputation of a club. */
   side?: ReactNode;
-  /** Buttons before Edit in the header, e.g. the player's Compare button. */
+  /** Buttons before Edit in the header: a player's Compare button. */
+  headActions?: ReactNode;
+  /** Buttons in a row under the header, which is there only while it holds one: a player's Transfer and Release. */
   actions?: ReactNode;
   /** Between the header and the body, so that it stays in view while the body scrolls: the tabs of a club. */
   tabs?: ReactNode;
@@ -101,7 +103,7 @@ interface ProfileFrameProps {
  */
 export function ProfileFrame(props: ProfileFrameProps) {
   const { picture, name, fullName, badge, meta, vitals, currentAbility, potentialAbility } = props;
-  const { side, actions, tabs, wide, loaded, onClose, editing, children } = props;
+  const { side, headActions, actions, tabs, wide, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
   const panelWidth = usePanelWidth(wide ? "wide" : "profile");
@@ -159,6 +161,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
           </div>
           <div className="profile-side">
             <div className="profile-actions">
+              {headActions}
               {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
               <button
                 className="icon-button"
@@ -186,8 +189,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
               ))}
           </div>
         </header>
-        {/* What else can be done with this person (compare, transfer, release): a row of its own under the header, so
-            the header keeps its one action, Edit, beside the name. */}
+        {/* What can be done to this person's career (transfer, release): a row of its own under the header. */}
         {actions && <div className="profile-toolbar">{actions}</div>}
 
         {tabs}
@@ -392,17 +394,14 @@ export function Fact({ label, title, children }: { label: ReactNode; title?: str
   );
 }
 
-/** The weekly wage, with the note that the game stores it in pounds; an input while the wage can be edited. */
+/** The weekly wage, an input while it can be edited; in another currency than pounds, its hover text says so. */
 export function WageFact({ wage }: { wage: number }) {
   return (
-    <>
-      <dl className="stats">
-        <Fact label={profileText.wage}>
-          <EditableValue field="contract.wage">{formatMoney(wage)}</EditableValue>
-        </Fact>
-      </dl>
-      <p className="note">{profileText.wageNote(converts)}</p>
-    </>
+    <dl className="stats">
+      <Fact label={profileText.wage} title={converts ? profileText.converted : undefined}>
+        <EditableValue field="contract.wage">{formatMoney(wage)}</EditableValue>
+      </Fact>
+    </dl>
   );
 }
 
