@@ -4,6 +4,7 @@ import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, show
 import { formatAmount, formatDate, formatNumber, formatPercent } from "./format";
 import { choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
+import { wageFmShows } from "./wage";
 
 /**
  * The text of each input that was typed into, by field key; the others still show the value the game had. A number
@@ -91,13 +92,20 @@ export function judge(field: EditField, stored: number, text: string | undefined
   if (shown === null) {
     return INVALID;
   }
-  if (shown === shownValue(field, stored)) {
+  const was = shownValue(field, stored);
+  if (shown === was) {
     return SAME;
   }
   const { min, max } = shownRange(field);
   const offered = field.choices === null || field.choices.includes(shown);
-  const edit = shown < min || shown > max || !offered ? null : editFor(field, stored, shown);
-  return edit === null ? INVALID : { status: "changed", shown, edit };
+  if (shown < min || shown > max || !offered) {
+    return INVALID;
+  }
+  // FM rounds the wage it shows, so a wage is written as one it shows as it is (see wage.ts), if that is in range.
+  const fitted = field.key === "contract.wage" ? wageFmShows(was, shown) : shown;
+  const now = fitted >= min && fitted <= max ? fitted : shown;
+  const edit = editFor(field, stored, now);
+  return edit === null ? INVALID : { status: "changed", shown: now, edit };
 }
 
 /** How one input stands. */
@@ -117,6 +125,8 @@ export interface InputState {
   was: number;
   /** Why it is invalid. */
   message: string | null;
+  /** What the input should hold once left, where Apply would write another value than typed (a wage: see wage.ts). */
+  settled: string | null;
 }
 
 /** What to tell about an input that cannot be applied, by what it takes; nothing for a flag or a choice. */
@@ -149,6 +159,7 @@ export function inputState(
   refusal: string | undefined,
 ): InputState {
   const verdict = judge(field, stored, text);
+  const typedValue = text === undefined ? null : parseInput(field, text);
   const range = shownRange(field);
   const was = shownValue(field, stored);
   return {
@@ -158,6 +169,9 @@ export function inputState(
     status: verdict.status === "invalid" || refusal !== undefined ? "invalid" : verdict.status,
     was,
     message: verdict.status === "invalid" ? invalidMessage(field, range) : (refusal ?? null),
+    settled: verdict.status === "changed" && typedValue !== null && typedValue !== verdict.shown
+      ? inputText(field, verdict.shown)
+      : null,
   };
 }
 
