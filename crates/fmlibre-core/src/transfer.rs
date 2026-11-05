@@ -236,6 +236,16 @@ pub enum MoveError {
     FamiliarityChanged {
         found: u8,
     },
+    /// This build of the game, or this system, has no traced function of the game's for the change.
+    CallUnavailable,
+    /// The game ran its function and did not make the change.
+    CallDeclined,
+    /// Adding an injury asked for a player who has one already.
+    AlreadyInjured,
+    /// No kind of injury has this UID.
+    NoInjuryKind {
+        uid: u32,
+    },
     /// The editor does not make this change to this game: see [`Lock`].
     Locked(Lock),
     Memory(fmlibre_mem::Error),
@@ -327,6 +337,10 @@ impl fmt::Display for MoveError {
                 f,
                 "the game has since changed the player's familiarity with this club to {found}, so it was left alone"
             ),
+            MoveError::CallUnavailable => f.write_str("the game cannot make this change from FM Lens on this build"),
+            MoveError::CallDeclined => f.write_str("the game did not make the change"),
+            MoveError::AlreadyInjured => f.write_str("the player is injured already"),
+            MoveError::NoInjuryKind { uid } => write!(f, "the game has no kind of injury with UID {uid}"),
             MoveError::Locked(lock) => write!(f, "nothing was changed: {lock}"),
             MoveError::Memory(err) => write!(f, "{err}"),
         }
@@ -376,6 +390,10 @@ impl Coded for MoveError {
             MoveError::ClausesFull => "clause.noRoom",
             MoveError::NoFamiliarity => "cohesion.none",
             MoveError::FamiliarityChanged { .. } => "cohesion.changed",
+            MoveError::CallUnavailable => "call.unavailable",
+            MoveError::CallDeclined => "call.declined",
+            MoveError::AlreadyInjured => "injury.already",
+            MoveError::NoInjuryKind { .. } => "injury.noKind",
             MoveError::Locked(lock) => lock.code(),
             MoveError::Memory(err) => err.code(),
         }
@@ -383,7 +401,9 @@ impl Coded for MoveError {
 
     fn params(&self) -> Vec<(&'static str, String)> {
         match self {
-            MoveError::Moved { uid } | MoveError::NotAClub { uid } => vec![("uid", uid.to_string())],
+            MoveError::Moved { uid } | MoveError::NotAClub { uid } | MoveError::NoInjuryKind { uid } => {
+                vec![("uid", uid.to_string())]
+            }
             MoveError::NoRoom { players } => vec![("players", players.to_string())],
             MoveError::NoTeam { index } => vec![("index", index.to_string())],
             MoveError::OutOfRange { field, value, min, max } => vec![

@@ -13,6 +13,7 @@
 
 #![cfg(any(windows, target_os = "macos"))]
 
+pub mod call;
 mod error;
 mod module;
 
