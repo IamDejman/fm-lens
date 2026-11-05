@@ -196,13 +196,19 @@ impl Session {
         fresh
     }
 
-    /// Why `field` may not be written now, if it may not: an unknown build not allowed, or its check failed.
-    pub fn field_lock(&self, field: &Field) -> Option<Lock> {
+    /// Why nothing may be written now, if it may not: a build the editor has no profile for, or another career loaded
+    /// since the session attached, whose objects old addresses no longer belong to.
+    pub(crate) fn session_lock(&self) -> Option<Lock> {
         if !self.known_build() {
             return Some(Lock::UnknownBuild);
         }
-        if !self.current_career() {
-            return Some(Lock::CareerChanged);
+        (!self.current_career()).then_some(Lock::CareerChanged)
+    }
+
+    /// Why `field` may not be written now, if it may not: an unknown build not allowed, or its check failed.
+    pub fn field_lock(&self, field: &Field) -> Option<Lock> {
+        if let Some(lock) = self.session_lock() {
+            return Some(lock);
         }
         let check = Check::of_field(field);
         (!self.health().passed(check)).then_some(Lock::Failed(check))
@@ -211,11 +217,8 @@ impl Session {
     /// Why a change to the game's lists and records (a move, a heal, a captaincy, ...) may not be written now, if it
     /// may not.
     pub fn structure_lock(&self) -> Option<Lock> {
-        if !self.known_build() {
-            return Some(Lock::UnknownBuild);
-        }
-        if !self.current_career() {
-            return Some(Lock::CareerChanged);
+        if let Some(lock) = self.session_lock() {
+            return Some(lock);
         }
         let health = self.health();
         STRUCTURE.into_iter().find(|&check| !health.passed(check)).map(Lock::Failed)
