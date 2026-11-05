@@ -1032,6 +1032,13 @@ export const tr: Strings = {
           body: "Alttaki çubuk FM'ye bağlı olup olmadığınızı gösterir.",
         },
       },
+      exercise: {
+        list: { title: "Bir düzenleme deneyin", body: "Listeden birini açın." },
+        edit: { title: "Düzenle", body: "Düzenle'ye basın ya da bir değere tıklayın." },
+        profile: { title: "Bir değeri değiştirin", body: "Yeni bir değer yazın. FM'ye henüz hiçbir şey gitmez." },
+        apply: { title: "Uygula", body: "Uygula değişikliği FM'ye gönderir. Vazgeç onu bırakır." },
+        changes: { title: "Değişiklikler", body: "Uygulanan her değişiklik burada listelenir ve geri alınabilir." },
+      },
     },
 
     noteEditable: "Düzenleme açık",

@@ -255,6 +255,7 @@ function App() {
                 aria-current={id === view ? "page" : undefined}
                 title={shortcutLabel(String(index + 1))}
                 aria-keyshortcuts={shortcutAria(String(index + 1))}
+                data-tour={id === "changes" ? "changes" : undefined}
                 onClick={() => show(id)}
               >
                 {label}
@@ -351,7 +352,7 @@ function App() {
           </div>
         )}
       </footer>
-      <GuidedTour ready={checked} connected={connection !== null} />
+      <GuidedTour ready={checked} connected={connection !== null} editable={editable} />
     </div>
   );
 }

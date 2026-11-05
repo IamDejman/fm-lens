@@ -245,7 +245,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
         {filterBar}
         {error && <div className="banner" role="alert">{error}</div>}
 
-        <div className="table-wrap" ref={tableWrap}>
+        <div className="table-wrap" ref={tableWrap} data-tour={active ? "list" : undefined}>
           <table className={tableClass ? `grid ${tableClass}` : "grid"}>
             <thead>
               <tr>{header}</tr>
