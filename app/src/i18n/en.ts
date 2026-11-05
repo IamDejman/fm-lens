@@ -97,6 +97,7 @@ const errors: ErrorTexts = {
   "session.playersNotFound": () => "No save is loaded in FM. Load one, then connect.",
   "attributes.level": () => "Choose a value from 1 to 20.",
   "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
+  "cohesion.changed": (p) => `FM has since changed his familiarity with the club to ${p.found}, so it was left alone.`,
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM reloaded the save. Press Reload before you edit again.",

@@ -214,6 +214,8 @@ const errors: ErrorTexts = {
   "heal.notInjured": () => "El jugador no tiene ninguna lesión que curar.",
   "ban.notBanned": () => "El jugador no tiene ninguna sanción que levantar.",
   "cohesion.none": () => "FM aún no le ha dado familiaridad con este club, así que no hay nada que subir.",
+  "cohesion.changed": (p) =>
+    `Su familiaridad con el club vale ahora ${p.found}: el juego la ha cambiado desde entonces, así que no se ha tocado.`,
   "relation.missing": () => `Esa nacionalidad o formación ya no está en la lista del jugador; ${reload}.`,
   "relation.noRoom": () =>
     "La lista del jugador no tiene sitio y el editor no puede ampliarla; cambia una de sus entradas en su lugar.",
