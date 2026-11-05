@@ -152,6 +152,20 @@ class = "N2db13LOAN_CONTRACTE"
 # laid out differently, so this sits 0xC0 further. It read the date in a new game, but an
 # unset date (1 January 1900) right after loading a save: the build profiles name the date
 # itself, a variable of its own away from the arrays.
+[work_permit]
+# TRANSFER_MANAGER keeps a record per player and nation that needs a permit, 0x18 bytes each: the nation's
+# pointer, the player's id (+0x08), the year the record was made (+0x10), the date it was granted (+0x12, unset
+# 1 Jan 1900) and flags (+0x16, bit 0 granted). Read on 11 Dec 2027: 1,045 records, all for England, 25 granted,
+# which is also the length of the manager's list of granted ones at +0x780.
+manager = 0x56A49F8      # slot in game_plugin that points at the manager
+class = "16TRANSFER_MANAGER"
+records = 0x720          # (begin, end) of pointers to the records, sorted by player id
+person = 0x390           # u32 player id, in the identity block (identity + 8)
+record_size = 0x18
+record_person = 0x08
+record_granted_on = 0x12
+record_flags = 0x16
+
 [cluster]
 current_date = 0x908
 
