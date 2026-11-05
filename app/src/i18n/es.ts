@@ -521,6 +521,9 @@ export const es: Strings = {
     population: "Población",
     dual_nationality: "Doble nacionalidad",
     naturalisation: "Años para nacionalizarse",
+    youth_rating: "Valoración de cantera",
+    "women.reputation": "Reputación femenina",
+    "women.youth_rating": "Valoración de cantera femenina",
   },
 
   profile: {
@@ -1012,7 +1015,11 @@ export const es: Strings = {
     points: "Puntos",
     founded: "Federación fundada",
     joinedFifa: "Ingreso en la FIFA",
+    joinedContinental: "Ingreso en la confederación",
+    youthRating: "Valoración de cantera",
+    women: "Fútbol femenino",
     teamName: (ageLimit) => (ageLimit === null ? "Selección absoluta" : `Sub-${ageLimit}`),
+    womenTeamName: (ageLimit) => (ageLimit === null ? "Selección femenina absoluta" : `Femenina sub-${ageLimit}`),
     manager: "Seleccionador",
     captain: "Capitán",
     viceCaptain: "Segundo capitán",

@@ -452,6 +452,9 @@ export const en = {
     population: "Population",
     dual_nationality: "Dual nationality",
     naturalisation: "Years to naturalise",
+    youth_rating: "Youth rating",
+    "women.reputation": "Women's reputation",
+    "women.youth_rating": "Women's youth rating",
   },
 
   profile: {
@@ -1006,7 +1009,12 @@ export const en = {
     points: "Points",
     founded: "Association founded",
     joinedFifa: "Joined FIFA",
+    joinedContinental: "Joined confederation",
+    youthRating: "Youth rating",
+    women: "Women's football",
     teamName: (ageLimit: number | null) => (ageLimit === null ? "Senior team" : `Under-${ageLimit}s`),
+    womenTeamName: (ageLimit: number | null) =>
+      ageLimit === null ? "Women's senior team" : `Women's under-${ageLimit}s`,
     manager: "Manager",
     captain: "Captain",
     viceCaptain: "Vice-captain",
