@@ -46,6 +46,9 @@ pub struct Layout {
     /// A loaned player's loan contract; only in the layouts it has been checked in.
     #[serde(default)]
     pub loan: Option<LoanLayout>,
+    /// The game's list of work permits; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub work_permit: Option<WorkPermitLayout>,
 }
 
 /// A loaned player's loan: in the player's person block, a pointer to a slot that points at a contract of the class
@@ -55,6 +58,21 @@ pub struct Layout {
 pub struct LoanLayout {
     pub slot: u64,
     pub class: String,
+}
+
+/// Work permits: the transfer manager the game keeps them in ([`BuildProfile::transfer_manager`]), of class `class`; at
+/// `records` its (begin, end) pair of pointers to the records, sorted by the u32 at `record_person`, which is the u32
+/// at `person` of a player (from his person block, shifted with it).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorkPermitLayout {
+    pub class: String,
+    pub records: u64,
+    pub person: u64,
+    pub record_size: u64,
+    pub record_person: u64,
+    pub record_granted_on: u64,
+    pub record_flags: u64,
 }
 
 /// A match official: an object of `size` bytes in the officials array ([`BuildProfile::officials`]).
@@ -731,6 +749,10 @@ pub struct BuildProfile {
     /// one build where it has been read.
     #[serde(default)]
     pub officials: Option<u64>,
+    /// RVA in the game plugin of the static pointer to the transfer manager, which keeps the work permits
+    /// ([`WorkPermitLayout`]), on the one build where it has been read.
+    #[serde(default)]
+    pub transfer_manager: Option<u64>,
 }
 
 /// The human manager's flags word, traced statically on the arm64 half of Steam build 26340721: the

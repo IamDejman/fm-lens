@@ -556,6 +556,10 @@ export const en = {
     loanWage: "Borrower pays per week",
     loanStarts: "Loan began",
     loanEnds: "Loan ends",
+    /** A player's work permits, one per nation the game keeps a record of him for: granted on a date, or not. */
+    workPermit: "Work permit",
+    permitGranted: (date: string) => `Granted ${date}`,
+    permitNotGranted: "Not granted",
     joined: "Joined",
     squadStatus: "Squad status",
     squadStatusName: (status: number) => SQUAD_STATUSES[status] ?? `Status ${status}`,

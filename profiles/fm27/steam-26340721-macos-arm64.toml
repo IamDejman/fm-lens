@@ -17,6 +17,10 @@ retirement_manager = 0x56A82A8
 # (UID 103994) among them. The Intel half has it too, found statically.
 officials = 0x56D2E90
 
+# The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: 1,045 records on a save at
+# 11 December 2027, Collins Sichenje's and Mees Rijks' granted. Only this build has it.
+transfer_manager = 0x56A49F8
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "F4540355-2186-39CB-9119-C706A6A35346"
