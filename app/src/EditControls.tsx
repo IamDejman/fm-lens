@@ -31,7 +31,7 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
   if (!session || !input) {
     return null;
   }
-  const { field: spec, text, range, status, was, message } = input;
+  const { field: spec, text, range, status, was, message, settled } = input;
   const label = fieldLabel(session.entity, field);
   const title = [message, status !== "same" && editText.was(valueText(spec, was))].filter(Boolean).join(" · ");
   const outline = status === "same" ? applied ? " applied" : "" : ` ${status}`;
@@ -103,6 +103,8 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
       title={title || undefined}
       {...common}
       onChange={(e) => session.type(field, e.currentTarget.value)}
+      // Left, it shows the value Apply would write, where that is not the one typed.
+      onBlur={settled === null ? undefined : () => session.type(field, settled)}
       // A wheel turned over the focused input would change its value: let go of it, so the profile scrolls instead.
       onWheel={(e) => e.currentTarget.blur()}
     />
