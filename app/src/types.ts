@@ -100,10 +100,11 @@ export interface ConnectionInfo {
   refrozen?: Refrozen;
 }
 
-/** Which edits the game can make itself on this connection (see `add_injury` and `set_work_permit`). */
+/** Which edits the game can make itself on this connection (see `add_injury`, `set_work_permit` and `start_loan`). */
 export interface GameActions {
   addInjury: boolean;
   workPermit: boolean;
+  startLoan: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */

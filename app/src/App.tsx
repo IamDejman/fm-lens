@@ -248,9 +248,10 @@ function App() {
       return kinds;
     };
   }, [gameActions]);
+  const gameDate = connection?.gameDate ?? null;
   const editor = useMemo(
-    () => ({ editable, readOnlyNote: note, onEdited: edited, gameActions, injuryKinds: loadInjuryKinds }),
-    [editable, note, edited, gameActions, loadInjuryKinds],
+    () => ({ editable, readOnlyNote: note, onEdited: edited, gameActions, injuryKinds: loadInjuryKinds, gameDate }),
+    [editable, note, edited, gameActions, loadInjuryKinds, gameDate],
   );
 
   // With edits pending in the open profile, leaving for another view asks first.

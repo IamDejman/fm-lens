@@ -1,7 +1,8 @@
 //! Edits the game makes itself.
 //!
-//! An injury is an object from the game's own pool, and a work permit a record the transfer
-//! manager keeps and files: more than values the editor can write. For those FM Lens has the game
+//! An injury is an object from the game's own pool, a work permit a record the transfer manager
+//! keeps and files, and a loan a contract, an offer and a move: more than values the editor can
+//! write. For those FM Lens has the game
 //! run its own functions, on its main thread, through the bridge ([`fmlibre_mem::call`]). Only on
 //! macOS, and only on a build whose profile lists the functions ([`CallRvas`]).
 
@@ -9,13 +10,15 @@ use fmlibre_mem::call::{Arg, Outcome, Program, Step};
 use fmlibre_mem::is_user_pointer;
 use serde::Serialize;
 
+use crate::clubs::ClubSummary;
+use crate::date::FmDate;
 use crate::medical::HealPlan;
 use crate::players::PlayerSummary;
 use crate::profile::CallRvas;
 use crate::rtti::class_of;
 use crate::session::Session;
 use crate::text::read_fm_string;
-use crate::transfer::MoveError;
+use crate::transfer::{MoveError, PointerList};
 
 /// The cause the game's own training injuries give `add_injury`.
 const TRAINING_CAUSE: u64 = 3;
@@ -35,7 +38,16 @@ pub struct InjuryKind {
 pub struct GameActions {
     pub add_injury: bool,
     pub work_permit: bool,
+    pub start_loan: bool,
 }
+
+/// An FM date as the game's functions take it: the day of the year, then the year.
+fn packed_date(date: FmDate) -> u32 {
+    u32::from(date.day_of_year()) | u32::from(date.year) << 16
+}
+
+/// A date FM keeps for "not set": 1 January 1900.
+const UNSET_DATE: u32 = 0x076C_0001;
 
 /// An injury the game gave a player, with what takes it away again.
 #[derive(Debug, Clone)]
@@ -43,6 +55,15 @@ pub struct AddedInjury {
     pub player: u32,
     pub kind: String,
     pub undo: HealPlan,
+}
+
+/// A loan the game started: the player went from his club to another until `ends`.
+#[derive(Debug, Clone, Copy)]
+pub struct StartedLoan {
+    pub player: u32,
+    pub from_club: u32,
+    pub to_club: u32,
+    pub ends: FmDate,
 }
 
 /// A work permit the game granted or took away.
@@ -71,6 +92,12 @@ impl Session {
             work_permit: calls.set_work_permit.is_some()
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
+            start_loan: calls.start_loan.is_some()
+                && profile.transfer_manager.is_some()
+                && profile.starting_loan.is_some()
+                && self.layout.work_permit.is_some()
+                && self.layout.starting_loan.is_some()
+                && self.layout.loan.is_some(),
         }
     }
 
@@ -217,5 +244,92 @@ impl Session {
             return Err(MoveError::CallDeclined);
         }
         Ok(PermitChange { player: player.uid, granted, was_granted })
+    }
+
+    /// Has the game loan `player` to the senior team of `club` from today until `ends`, as its own editor does: it
+    /// makes the loan contract and moves him. Not for a player on loan already, a free agent, or a move between a men's
+    /// and a women's club. The game says nothing back, so the loan is read back to tell.
+    pub fn start_loan(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        ends: FmDate,
+    ) -> Result<StartedLoan, MoveError> {
+        let function = self.game_function(|calls| calls.start_loan)?;
+        let (Some(rvas), Some(o)) =
+            (self.profile.as_ref().and_then(|p| p.starting_loan.as_ref()), self.layout.starting_loan.as_ref())
+        else {
+            return Err(MoveError::CallUnavailable);
+        };
+        let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
+        let manager = self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)?;
+        let object = self.player_object(player)?;
+        if self.loan(player).is_some() {
+            return Err(MoveError::OnLoan);
+        }
+        let (process, layout) = (&self.process, &self.layout);
+        let team = process.read_u64(object + layout.player.team)?;
+        if !is_user_pointer(team) {
+            return Err(MoveError::FreeAgent);
+        }
+        let own_club = process.read_u64(team + layout.team.club)?;
+        if process.read_u32(club.address + layout.club.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        if club.address == own_club {
+            return Err(MoveError::SameClub);
+        }
+        let women = |address: u64| process.read_bytes(address + layout.club.women, 1).map(|b| b[0]);
+        if !is_user_pointer(own_club) || women(own_club)? != women(club.address)? {
+            return Err(MoveError::MenAndWomen);
+        }
+        // The senior team must point back at its club.
+        let senior = match PointerList::read(process, club.address + layout.club.teams)? {
+            Some(teams) => teams.elements(process)?.first().copied().unwrap_or(0),
+            None => 0,
+        };
+        if !is_user_pointer(senior) || process.read_u64(senior + layout.team.club)? != club.address {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        let today = self.game_date().ok_or(MoveError::CallUnavailable)?;
+        if ends <= today {
+            let max = self.field(crate::edit::Entity::Player, "loan.ends").map_or(i64::MAX, |field| field.max);
+            return Err(MoveError::OutOfRange {
+                field: "loan.ends",
+                value: ends.to_number(),
+                min: today.plus_days(1).to_number(),
+                max,
+            });
+        }
+        let from_club = process.read_u32(own_club + layout.club.uid)?;
+
+        // The object as the game's editor builds it, then the player, the club and the dates.
+        let mut loan = vec![0u8; o.size as usize];
+        let mut put = |at: u64, bytes: &[u8]| loan[at as usize..at as usize + bytes.len()].copy_from_slice(bytes);
+        put(0, &(self.plugin.base + rvas.vtable).to_le_bytes());
+        put(0x08, &[0xFF; 8]);
+        put(0x30, &[UNSET_DATE.to_le_bytes(), UNSET_DATE.to_le_bytes(), UNSET_DATE.to_le_bytes()].concat());
+        put(0x3C, &[0xFF; 0x0D]);
+        put(o.defaults, &process.read_bytes(self.plugin.base + rvas.defaults, 16)?);
+        put(0x6F, &[0xFF]);
+        put(o.player, &self.identity_block(object)?.to_le_bytes());
+        put(o.club, &senior.to_le_bytes());
+        put(o.starts, &packed_date(today).to_le_bytes());
+        put(o.ends, &packed_date(ends).to_le_bytes());
+
+        let mut program = Program::new();
+        program.write(0, &loan);
+        program.push(Step::new(function, &[Arg::value(manager), Arg::scratch(0), Arg::value(1)]));
+        self.call_game(&program)?;
+        if self.loan(player).is_none() {
+            return Err(MoveError::CallDeclined);
+        }
+        Ok(StartedLoan { player: player.uid, from_club, to_club: club.uid, ends })
+    }
+
+    /// The player object's identity block: where its vtable says its virtual base starts.
+    fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
+        let vtable = self.process.read_u64(object)?;
+        Ok(object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64))
     }
 }
