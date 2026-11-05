@@ -140,6 +140,14 @@ happiness = 0x5A
 playing_time_happiness = 0x5C
 unhappiness = 0x30
 
+# A loaned player's loan, a contract of its own (db::LOAN_CONTRACT) laid out as [contract]: its owner is the player, its
+# team the borrower's, its wage what the borrower pays, its expiry when the loan ends. The player keeps his contract
+# with his parent club. Read on Steam 26340721 arm64: 735 loan contracts; Ben White (Arsenal, at West Ham United),
+# 55,000 of his 110,000 a week, loan from 10 Aug 2027 to the end of June 2028. Not yet compared with FM's screens.
+[loan]
+slot = 0x2F8
+class = "N2db13LOAN_CONTRACTE"
+
 # Relative to the players (begin, end) pair, as on Windows; the static data between them is
 # laid out differently, so this sits 0xC0 further. It read the date in a new game, but an
 # unset date (1 January 1900) right after loading a save: the build profiles name the date

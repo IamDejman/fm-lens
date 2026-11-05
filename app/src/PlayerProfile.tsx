@@ -29,7 +29,7 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { ApplyReport, Concern, Contract, FmDate, PlayerDetails, PlayerSummary } from "./types";
+import type { ApplyReport, Concern, Contract, FmDate, LoanTerms, PlayerDetails, PlayerSummary } from "./types";
 import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
@@ -149,6 +149,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
       <TraitsGroup traits={details.traits} />
 
       {details.contract && <ContractGroup details={details} contract={details.contract} />}
+      {details.loan && <LoanGroup loan={details.loan} />}
       <CareerGroup details={details} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} />
@@ -225,6 +226,26 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
       </div>
       <ClauseList uid={uid} name={details.name} clauses={contract.clauses} room={details.clauseRoom} />
       <ConcernList uid={uid} concerns={contract.concerns} />
+    </section>
+  );
+}
+
+/** The loan he is on: the club he is on loan from, what the borrowing club pays and when the loan ends. */
+function LoanGroup({ loan }: { loan: LoanTerms }) {
+  const date = (value: FmDate | null) => formatDate(value) || profileText.none;
+  return (
+    <section className="profile-group">
+      <h3>{profileText.loan}</h3>
+      <dl className="stats">
+        <Fact label={profileText.loanFrom}>{loan.parent ?? profileText.none}</Fact>
+        <Fact label={profileText.loanWage}>
+          <EditableValue field="loan.wage">{formatMoney(loan.wage)}</EditableValue>
+        </Fact>
+        <Fact label={profileText.loanStarts}>{date(loan.starts)}</Fact>
+        <Fact label={profileText.loanEnds}>
+          <EditableValue field="loan.ends">{date(loan.ends)}</EditableValue>
+        </Fact>
+      </dl>
     </section>
   );
 }
