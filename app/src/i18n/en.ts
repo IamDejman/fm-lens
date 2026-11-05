@@ -98,6 +98,10 @@ const errors: ErrorTexts = {
   "session.noCareer": () => "No save is loaded in FM. Load one, then connect.",
   "session.playersNotFound": () => "No save is loaded in FM. Load one, then connect.",
   "attributes.level": () => "Choose a value from 1 to 20.",
+  "call.unavailable": () => "FM can't make this change on this version.",
+  "call.declined": () => "FM didn't make the change.",
+  "injury.already": () => "He's injured already. Heal him first.",
+  "injury.noKind": () => "FM has no such injury.",
   "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
   "cohesion.changed": (p) => `FM has since changed his familiarity with the club to ${p.found}, so it was left alone.`,
   "guard.unknownBuild": () =>
@@ -452,6 +456,8 @@ export const en = {
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
+    // A work permit FM granted or took away, which the change log keeps as 0 (not granted) or 1 (granted).
+    work_permit: "Work permit",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
     bans: "Bans",
     // Max cohesion, which the change log keeps as a change of the player's familiarity with his club (0 to 100).
@@ -560,6 +566,10 @@ export const en = {
     workPermit: "Work permit",
     permitGranted: (date: string) => `Granted ${date}`,
     permitNotGranted: "Not granted",
+    permitGrantedPlain: "Granted",
+    /** Has FM grant him a work permit for his club's country, or take it away. */
+    grantPermit: "Grant",
+    revokePermit: "Revoke",
     joined: "Joined",
     squadStatus: "Squad status",
     squadStatusName: (status: number) => SQUAD_STATUSES[status] ?? `Status ${status}`,
@@ -671,6 +681,9 @@ export const en = {
     /** Heals every injury of the player at once. */
     heal: "Heal",
     healTitle: "Heal all his injuries",
+    /** Has FM give him the injury chosen in the select next to it; the select's label is `injuryKind`. */
+    addInjury: "Add injury",
+    injuryKind: "Injury",
     noBans: "No bans",
     /** A ban: how many matches the player still has to miss, and under it when it began. */
     banMatches: (matches: number) => (matches === 1 ? "1 match" : `${format(matches)} matches`),
@@ -1396,6 +1409,8 @@ export const en = {
     fee: (amount: string) => `Fee ${amount}`,
     /** What a heal changed, in the place of its values: `count` is how many injuries the player had. */
     healed: (count: number) => (count === 1 ? "Healed 1 injury" : `Healed ${format(count)} injuries`),
+    /** What adding an injury changed, in the place of its values. */
+    injuryAdded: "Added an injury",
     /** The same for lifting bans: `count` is how many bans the player had. */
     lifted: (count: number) => (count === 1 ? "Lifted 1 ban" : `Lifted ${format(count)} bans`),
     /** What keeping a player from retiring changed: the date he was to retire on, or none when only his traits changed. */

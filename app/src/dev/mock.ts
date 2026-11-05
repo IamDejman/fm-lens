@@ -305,11 +305,48 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
 
 /** Every seventh player abroad has an English work permit record; most of those were granted one. */
 function workPermitsOf(player: PlayerSummary): WorkPermit[] {
+  const set = permitsSet.get(player.uid);
+  if (set !== undefined) {
+    return set === null ? [] : [{ nation: "England", nationUid: 765, granted: set, grantedOn: set ? GAME_DATE : null }];
+  }
   if (!player.club || player.uid % 7 !== 0) {
     return [];
   }
   const granted = player.uid % 3 !== 0;
   return [{ nation: "England", nationUid: 765, granted, grantedOn: granted ? { year: 2026, month: 2, day: 3 } : null }];
+}
+
+/** The work permits granted (true) or taken away (false) through the editor, by UID; null for no record again. */
+const permitsSet = new Map<number, boolean | null>();
+/** What each permit change replaced, by change ID: undefined when the player had the fixture's permits. */
+const permitUndo = new Map<number, boolean | null | undefined>();
+
+/** `set_work_permit`: the fixture player is granted an English work permit, or has his taken away. */
+function setWorkPermit(uid: number, granted: boolean): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  if (!player.club) {
+    throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
+  }
+  const was = workPermitsOf(player).some((permit) => permit.granted);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "work_permit",
+    old: was ? 1 : 0,
+    new: granted ? 1 : 0,
+    undoneAt: null,
+    batch: null,
+  };
+  permitUndo.set(logged.id, permitsSet.get(uid));
+  permitsSet.set(uid, granted);
+  changes.push(logged);
+  return { ...logged };
 }
 
 /** The fixture players healed through the editor, by UID, while the healing is not undone. */
@@ -321,8 +358,57 @@ function addDays(date: FmDate, days: number): FmDate {
   return { year: moved.getUTCFullYear(), month: moved.getUTCMonth() + 1, day: moved.getUTCDate() };
 }
 
+/** The injuries the editor had the game give fixture players, by UID: the kind's name. */
+const addedInjuries = new Map<number, string>();
+
+/** The kinds of injury `injury_kinds` gives, in the game's order. */
+const INJURY_KINDS = [
+  { uid: 104, name: "Twisted ankle" },
+  { uid: 110, name: "Tight hamstring" },
+  { uid: 23, name: "Broken leg" },
+  { uid: 57, name: "Groin strain" },
+  { uid: 61, name: "Bruised ribs" },
+  { uid: 88, name: "Knee ligament damage" },
+  { uid: 12, name: "Calf strain" },
+  { uid: 140, name: "Concussion" },
+];
+
+/** `add_injury`: the game gives the fixture player an injury of the kind `kind`, if he has none. */
+function addInjury(uid: number, kindUid: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const kind = INJURY_KINDS.find((k) => k.uid === kindUid);
+  if (!kind) {
+    throw failure("injury.noKind", `the game has no kind of injury with UID ${kindUid}`, { uid: kindUid });
+  }
+  if (injuriesOf(uid).length > 0) {
+    throw failure("injury.already", "the player is injured already");
+  }
+  addedInjuries.set(uid, kind.name);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "injuries",
+    old: 0,
+    new: 1,
+    undoneAt: null,
+    batch: null,
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
 /** The current injuries of a fixture player: every seventh one is injured, some of them twice over, until healed. */
 function injuriesOf(uid: number): Injury[] {
+  const added = addedInjuries.get(uid);
+  if (added !== undefined) {
+    return [{ name: added, started: GAME_DATE, backSoonest: addDays(GAME_DATE, 10), backLatest: addDays(GAME_DATE, 18) }];
+  }
   if (uid % 7 !== 3 || healedPlayers.has(uid)) {
     return [];
   }
@@ -1317,7 +1403,21 @@ function undoChange(id: number): LoggedChange {
     return { ...entry };
   }
   if (entry.field === "injuries") {
-    unhealed(entry.uid);
+    if (entry.new > entry.old) {
+      addedInjuries.delete(entry.uid);
+    } else {
+      unhealed(entry.uid);
+    }
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field === "work_permit") {
+    const before = permitUndo.get(entry.id);
+    if (before === undefined) {
+      permitsSet.delete(entry.uid);
+    } else {
+      permitsSet.set(entry.uid, before);
+    }
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -1667,6 +1767,7 @@ function healPlayer(uid: number, batch: number | null = null): LoggedChange {
     throw failure("heal.notInjured", "the player has no injury to heal");
   }
   healedPlayers.add(uid);
+  addedInjuries.delete(uid);
   const logged: LoggedChange = {
     id: changes.length + 1,
     at: Date.now(),
@@ -2367,6 +2468,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
+        gameActions: { addInjury: true, workPermit: true },
       };
       mockConnection = info;
       if (!refrozen) {
@@ -2644,6 +2746,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return releasePlayer(Number(args?.uid)) as T;
     case "heal_player":
       return healPlayer(Number(args?.uid)) as T;
+    case "injury_kinds":
+      return INJURY_KINDS.map((k) => ({ ...k })) as T;
+    case "add_injury":
+      return addInjury(Number(args?.uid), Number(args?.kind)) as T;
+    case "set_work_permit":
+      return setWorkPermit(Number(args?.uid), Boolean(args?.granted)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
     case "change_clause":

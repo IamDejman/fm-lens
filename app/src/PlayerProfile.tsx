@@ -4,7 +4,7 @@ import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput } from "./EditControls";
 import { call } from "./api";
-import { keepPlaying } from "./editing";
+import { keepPlaying, setWorkPermit } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { ATTRIBUTE_LABELS, editText, profileText, type AttributeKey } from "./labels";
 import { MedicalGroup } from "./MedicalGroup";
@@ -150,7 +150,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
 
       {details.contract && <ContractGroup details={details} contract={details.contract} />}
       {details.loan && <LoanGroup loan={details.loan} />}
-      {details.workPermits.length > 0 && <WorkPermitGroup permits={details.workPermits} />}
+      <WorkPermitGroup details={details} />
       <CareerGroup details={details} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} />
@@ -251,21 +251,88 @@ function LoanGroup({ loan }: { loan: LoanTerms }) {
   );
 }
 
-/** His work permits: for each nation, whether one was granted and when. */
-function WorkPermitGroup({ permits }: { permits: readonly WorkPermit[] }) {
+/**
+ * His work permits: for each nation, whether one was granted and when. Where the game grants them itself on this
+ * build, a player at a club has the button that has it grant him one for his club's country, or take it away; then the
+ * group is there even before the game keeps a record of him.
+ */
+function WorkPermitGroup({ details }: { details: PlayerDetails }) {
+  const { gameActions } = useContext(EditorContext);
+  const permits = details.workPermits;
+  const changeable = gameActions.workPermit && details.club !== null;
+  if (permits.length === 0 && !changeable) {
+    return null;
+  }
   return (
     <section className="profile-group">
       <h3>{profileText.workPermit}</h3>
-      <dl className="stats">
-        {permits.map((permit, index) => (
-          <Fact key={permit.nationUid ?? index} label={permit.nation ?? profileText.none}>
-            {permit.granted
-              ? profileText.permitGranted(formatDate(permit.grantedOn) || profileText.none)
-              : profileText.permitNotGranted}
-          </Fact>
-        ))}
-      </dl>
+      {permits.length > 0 ? (
+        <dl className="stats">
+          {permits.map((permit, index) => (
+            <Fact key={permit.nationUid ?? index} label={permit.nation ?? profileText.none}>
+              {permit.granted
+                ? profileText.permitGranted(formatDate(permit.grantedOn) || profileText.none)
+                : profileText.permitNotGranted}
+            </Fact>
+          ))}
+        </dl>
+      ) : (
+        <p className="injuries-none">{profileText.permitNotGranted}</p>
+      )}
+      {changeable && <PermitToggle uid={details.uid} permits={permits} />}
     </section>
+  );
+}
+
+/** Grant while he has no granted permit, Revoke while he has one; logged like any change, and undone from Changes. */
+function PermitToggle({ uid, permits }: { uid: number; permits: readonly WorkPermit[] }) {
+  const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
+  const granted = permits.some((permit) => permit.granted);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The button stays busy until the profile has read the game again, which gives new permits.
+  useEffect(() => {
+    setBusy(false);
+  }, [permits]);
+
+  const toggle = async () => {
+    // While it is under way the button is only dimmed (aria-disabled), not disabled: a disabled button loses focus.
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await setWorkPermit(uid, !granted);
+      onEdited();
+    } catch (e) {
+      setError(describeError(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="permit-action">
+        <button
+          type="button"
+          className="heal-toggle"
+          disabled={!editable}
+          aria-disabled={busy || undefined}
+          aria-busy={busy || undefined}
+          title={editable ? undefined : readOnlyNote}
+          onClick={() => void toggle()}
+        >
+          {granted ? profileText.revokePermit : profileText.grantPermit}
+        </button>
+      </div>
+      {error !== null && (
+        <p className="heal-error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
   );
 }
 
