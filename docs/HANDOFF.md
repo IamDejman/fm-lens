@@ -76,7 +76,15 @@ Built on top of it (core and Tauri only, no UI yet):
    end given. Undo is a release (`plan_release`), so it refuses a human-managed club. Also fixed here: `log_loan`
    now updates the players list, so a loaned player shows his new club without a reload. Unproven in the game
    (section 4); test on one free agent only.
-4. **Loan recall / early end, releases, future transfers**: not found. Research first (fm27-transfer-actions.md).
+4. **Loan recall, releases, future transfers**: researched (fm27-call-shapes.md sections 4 and 5), not built.
+   - One game function ends any contract: `0x2d4b9dc(TM, P, contract, kind, 0, 1, 0, 0, stack 0, 0)`. The daily
+     loan expiry calls it on the loan contract (P+0x2F8 slot), so calling it early is a recall; undo restarts the
+     loan. The editor's terminate-contract handler calls it on the player's own contract, so it is the game-side
+     release; undo signs him back with his old wage and end written over. Next: build "End loan" first (one call, the
+     loan contract FM Lens already reads), then move Release onto it.
+   - A future transfer is the signing call with a 'TrDt' date after today (0x2d91328 stores it): a date step for
+     the Sign dialog. Cancel (0x2d180b4) needs the offer pointer in scratch with a reference taken, which the bridge
+     cannot do yet, so there is no undo: build it after a way to cancel exists.
 5. Other batch items not built: officials editing; staff formations and tendencies (labels need the screen);
    tactical familiarity; human manager relations and moves; club kits, ownership, vision, allowances, income;
    nation FA settings, attendance, kits; promises, youth intake, bans add (low confidence, see
@@ -94,6 +102,8 @@ before and after. Never use probe write commands; live writes go through FM Lens
 - Loans (#19): loan wage and end for White, Merino, Mosquera, Harriman-Annous against FM's loan screens.
 - Loan start: loan one first-team player to another club until 30 June, check FM's loan screen (club, dates, the
   wage FM set) and both squads; undo, press Continue once, and check FM ended the loan and he is back.
+- Contract end (once built): end one loan early and check the player is back at his parent club in FM; release one
+  AI club's player and check his contract, the club's squad and that FM lists him as a free agent.
 - Free-agent signing: sign one free agent to an AI club, once without terms and once with a wage and end; check
   FM's contract screen and the club's squad; undo, and check he is a free agent again with no contract.
 - Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
