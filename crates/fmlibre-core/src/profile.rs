@@ -86,17 +86,22 @@ pub struct NationalLayout {
     pub population: u64,
     pub dual_nationality: u64,
     pub naturalisation: u64,
-    /// In a nation: pointer to the men's container. In the container: pointer back to the nation.
+    /// In a nation: pointers to the men's and the women's containers, laid out alike. In a container: pointer back
+    /// to the nation.
     pub container: u64,
+    pub women_container: u64,
     pub container_nation: u64,
     /// In a container: the list of its national teams, its relations (rivals), the `f32` FIFA points, the `u16`
-    /// ranking (0 unranked), and the `u16` years its association was founded and joined FIFA.
+    /// ranking (0 unranked), the `u16` years its association was founded and joined FIFA and its continental body,
+    /// and its `i16` youth rating.
     pub teams: u64,
     pub rivals: u64,
     pub points: u64,
     pub ranking: u64,
     pub founded: u64,
     pub joined_fifa: u64,
+    pub joined_continental: u64,
+    pub youth_rating: u64,
     /// In a national team: pointer to the manager.
     pub team_manager: u64,
     /// In a national team: `u32` id. The senior team's is the nation's UID.
@@ -106,7 +111,7 @@ pub struct NationalLayout {
 impl NationalLayout {
     /// One past the last byte the editor reads of a nation.
     pub fn nation_end(&self) -> u64 {
-        [self.code, self.capital, self.continent, self.languages + 16, self.container, self.population + 4]
+        [self.code, self.capital, self.continent, self.languages + 16, self.women_container, self.population + 4]
             .into_iter()
             .chain([self.dual_nationality, self.naturalisation])
             .max()
@@ -116,7 +121,11 @@ impl NationalLayout {
 
     /// One past the last byte the editor reads of a container.
     pub fn container_end(&self) -> u64 {
-        [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2].into_iter().max().unwrap_or(0)
+        [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2, self.joined_continental + 2]
+            .into_iter()
+            .chain([self.youth_rating + 2])
+            .max()
+            .unwrap_or(0)
     }
 }
 

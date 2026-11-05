@@ -61,7 +61,7 @@ pub use index::{Listed, SearchIndex};
 pub use languages::Language;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, LiftPlan, Lifted};
-pub use national::{NationDetails, NationLanguage, NationalTeam, Person};
+pub use national::{NationDetails, NationLanguage, NationalTeam, Person, WomenFootball};
 pub use officials::OfficialSummary;
 pub use players::{
     Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations, read_players,

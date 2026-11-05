@@ -509,6 +509,9 @@ export const tr: Strings = {
     population: "Nüfus",
     dual_nationality: "Çifte vatandaşlık",
     naturalisation: "Vatandaşlık için yıl",
+    youth_rating: "Altyapı puanı",
+    "women.reputation": "Kadın takımı itibarı",
+    "women.youth_rating": "Kadın altyapı puanı",
   },
 
   profile: {
@@ -984,7 +987,11 @@ export const tr: Strings = {
     points: "Puan",
     founded: "Federasyon kuruluşu",
     joinedFifa: "FIFA üyeliği",
+    joinedContinental: "Konfederasyon üyeliği",
+    youthRating: "Altyapı puanı",
+    women: "Kadın futbolu",
     teamName: (ageLimit) => (ageLimit === null ? "A Milli Takım" : `U${ageLimit}`),
+    womenTeamName: (ageLimit) => (ageLimit === null ? "Kadın A Milli Takımı" : `Kadınlar U${ageLimit}`),
     manager: "Teknik direktör",
     captain: "Kaptan",
     viceCaptain: "İkinci kaptan",

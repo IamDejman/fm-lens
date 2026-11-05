@@ -61,13 +61,40 @@ pub struct NationDetails {
     /// Its place in the FIFA ranking; `None` when unranked.
     pub ranking: Option<u16>,
     pub points: Option<f32>,
-    /// The year its football association was founded, and the year it joined FIFA.
+    /// The year its football association was founded, and the years it joined FIFA and its continental body.
     pub founded: Option<u16>,
     pub joined_fifa: Option<u16>,
+    pub joined_continental: Option<u16>,
+    /// How good the young players it brings through are, 0 to 165.
+    pub youth_rating: Option<u16>,
     /// Its rivals, strongest first.
     pub rivals: Vec<Related>,
-    /// Its national teams with a squad or a manager, the senior team first.
+    /// Its national teams with a squad or a manager, and its senior team; the senior team first.
     pub teams: Vec<NationalTeam>,
+    /// Its women's football, where the nation has a women's container.
+    pub women: Option<WomenFootball>,
+}
+
+/// A nation's women's football: the years its women's teams joined FIFA and the continental body, their youth
+/// rating, and the teams.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WomenFootball {
+    pub joined_fifa: Option<u16>,
+    pub joined_continental: Option<u16>,
+    pub youth_rating: Option<u16>,
+    /// The senior team first.
+    pub teams: Vec<NationalTeam>,
+}
+
+/// What a container holds by value.
+struct Association {
+    ranking: Option<u16>,
+    points: Option<f32>,
+    founded: Option<u16>,
+    joined_fifa: Option<u16>,
+    joined_continental: Option<u16>,
+    youth_rating: Option<u16>,
 }
 
 /// A language spoken in a nation, and by what share of its people.
@@ -104,21 +131,39 @@ pub struct Person {
     pub name: String,
 }
 
-/// The senior men's national team of the nation at `nation`, whose UID is `uid`, where every pointer on the way
-/// checks out: the nation's container points back at it, and the team belongs to the container, is of the senior
-/// kind and carries the nation's UID as its id. Only reads memory.
-pub(crate) fn senior_team(process: &Process, layout: &Layout, nation: u64, uid: u32) -> Option<u64> {
+/// Which of a nation's two containers: the men's national teams or the women's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Side {
+    Men,
+    Women,
+}
+
+/// The highest youth rating the editor writes: the most a container holds in 27.0.0 is 165.
+pub const MOST_YOUTH_RATING: i64 = 165;
+
+/// The `side` container of the nation at `nation`, where it points back at the nation. Only reads memory.
+pub(crate) fn container(process: &Process, layout: &Layout, nation: u64, side: Side) -> Option<u64> {
+    let n = layout.national.as_ref()?;
+    let offset = match side {
+        Side::Men => n.container,
+        Side::Women => n.women_container,
+    };
+    let container = process.read_u64(nation + offset).ok().filter(|&p| is_user_pointer(p))?;
+    (process.read_u64(container + n.container_nation).ok()? == nation).then_some(container)
+}
+
+/// The `side` senior national team of the nation at `nation`, whose UID is `uid`, where every pointer on the way
+/// checks out: the container points back at the nation, and the team belongs to the container and is of the senior
+/// kind. The men's carries the nation's UID as its id; the women's has an id of its own. Only reads memory.
+pub(crate) fn senior_team(process: &Process, layout: &Layout, nation: u64, uid: u32, side: Side) -> Option<u64> {
     let (n, t) = (layout.national.as_ref()?, &layout.team);
-    let container = process.read_u64(nation + n.container).ok().filter(|&p| is_user_pointer(p))?;
-    if process.read_u64(container + n.container_nation).ok()? != nation {
-        return None;
-    }
+    let container = container(process, layout, nation, side)?;
     let list = PointerList::read_up_to(process, container + n.teams, MOST_TEAMS).ok()??;
     list.elements(process).ok()?.into_iter().find(|&team| {
         is_user_pointer(team)
             && process.read_u64(team + t.club).ok() == Some(container)
             && process.read_u32(team + t.kind).ok() == Some(SENIOR)
-            && process.read_u32(team + n.team_id).ok() == Some(uid)
+            && (side == Side::Women || process.read_u32(team + n.team_id).ok() == Some(uid))
     })
 }
 
@@ -173,27 +218,55 @@ impl Session {
             points: None,
             founded: None,
             joined_fifa: None,
+            joined_continental: None,
+            youth_rating: None,
             rivals: Vec::new(),
             teams: Vec::new(),
+            women: None,
         };
 
-        // The container must point back at the nation: otherwise the nation's own facts are all the profile has.
-        let container = u64_at(n.container);
-        if !is_user_pointer(container) || self.process.read_u64(container + n.container_nation)? != address {
-            return Ok(Some(details));
+        if let Some(container) = container(&self.process, &self.layout, address, Side::Women) {
+            let facts = self.association(container)?;
+            details.women = Some(WomenFootball {
+                joined_fifa: facts.joined_fifa,
+                joined_continental: facts.joined_continental,
+                youth_rating: facts.youth_rating,
+                teams: self.national_teams(container, players, staff).unwrap_or_default(),
+            });
         }
+        // Without the men's container, the nation's own facts are all the rest of the profile has.
+        let Some(container) = container(&self.process, &self.layout, address, Side::Men) else {
+            return Ok(Some(details));
+        };
+        let facts = self.association(container)?;
+        details.ranking = facts.ranking;
+        details.points = facts.points;
+        details.founded = facts.founded;
+        details.joined_fifa = facts.joined_fifa;
+        details.joined_continental = facts.joined_continental;
+        details.youth_rating = facts.youth_rating;
+        details.rivals = self.nation_rivals(container + n.rivals, nation.uid).unwrap_or_default();
+        details.teams = self.national_teams(container, players, staff).unwrap_or_default();
+        Ok(Some(details))
+    }
+
+    /// The facts a container holds by value: the FIFA standing, the association's years and the youth rating.
+    fn association(&self, container: u64) -> Result<Association, MoveError> {
+        let n = self.national()?;
         let c = self.process.read_bytes(container, n.container_end() as usize)?;
         let u16_at = |offset: u64| u16::from_le_bytes([c[offset as usize], c[offset as usize + 1]]);
         let ranking = u16_at(n.ranking);
         let points = f32::from_le_bytes(c[n.points as usize..n.points as usize + 4].try_into().expect("4"));
-        details.ranking = (ranking > 0).then_some(ranking);
-        details.points = (ranking > 0 && points.is_finite() && points > 0.0).then_some(points);
         let year = |offset: u64| Some(u16_at(offset)).filter(|year| (1850..=2100).contains(year));
-        details.founded = year(n.founded);
-        details.joined_fifa = year(n.joined_fifa);
-        details.rivals = self.nation_rivals(container + n.rivals, nation.uid).unwrap_or_default();
-        details.teams = self.national_teams(container, players, staff).unwrap_or_default();
-        Ok(Some(details))
+        let youth = i16::from_le_bytes([c[n.youth_rating as usize], c[n.youth_rating as usize + 1]]);
+        Ok(Association {
+            ranking: (ranking > 0).then_some(ranking),
+            points: (ranking > 0 && points.is_finite() && points > 0.0).then_some(points),
+            founded: year(n.founded),
+            joined_fifa: year(n.joined_fifa),
+            joined_continental: year(n.joined_continental),
+            youth_rating: u16::try_from(youth).ok().filter(|&youth| i64::from(youth) <= MOST_YOUTH_RATING),
+        })
     }
 
     /// The languages of the list at `header`: 16-byte entries of a language and the share of people who speak it.
@@ -244,7 +317,7 @@ impl Session {
         Ok(rivals)
     }
 
-    /// The national teams of `container` that have a squad or a manager, the senior team first.
+    /// The national teams of `container` that have a squad or a manager, and the senior team; the senior team first.
     fn national_teams(
         &self,
         container: u64,
@@ -272,7 +345,7 @@ impl Session {
                 None => Vec::new(),
             };
             let manager = self.staff_at(u64_at(n.team_manager), staff);
-            if squad.is_empty() && manager.is_none() {
+            if squad.is_empty() && manager.is_none() && kind != SENIOR {
                 continue;
             }
             let reputation = u16::from_le_bytes([bytes[t.reputation as usize], bytes[t.reputation as usize + 1]]);
