@@ -122,7 +122,7 @@ validated fields and the guarded memory layer for domain operations.
 ## Current editor boundaries
 
 - Mapped player/staff/club fields are enabled on the known Mac build. The field
-  catalog lists 167 player, 38 staff and 14 club definitions. This does not mean
+  catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
@@ -139,11 +139,16 @@ validated fields and the guarded memory layer for domain operations.
   The stadium browser lists senior stadiums per club; shared stadiums can appear
   under more than one club. Neither is a complete database scan or an entity
   editor. Nation row IDs may be synthetic; never use them as mutation UIDs.
-- Nation editing, competitions, awards, officials, promises, youth-intake lifecycle,
-  complete contracts/loans, unrestricted registration, cohesion and tactical
-  familiarity still need mapping or implementation. Unsackable is a traced,
-  experimental implementation for one build (FM27 Steam 26340721 ARM64); its
-  in-game effect on dismissal is unverified.
+- Nation profiles and officials are read-only. Max cohesion is experimental: it
+  raises existing club familiarity entries only.
+- Nation editing, competitions, awards, official editing, promises, youth-intake
+  lifecycle, complete contracts/loans and tactical familiarity still need mapping
+  or implementation. Unsackable and squad registration at any time are traced,
+  experimental bits of the manager's flags word for one build (FM27 Steam
+  26340721 ARM64). Registration changes outside the window were observed in
+  FM and kept through save/reload; dismissal protection is unverified. Club and national-team
+  moves go through the game's own action handlers; do not emulate them with raw
+  writes (see docs/recon/fm27-human-manager.md).
   Windows offsets cannot be copied into the native ARM64 Mac layout.
 - Transfers and other structural actions require linked-record validation,
   including history, finances, registration and simulation boundaries. A changed

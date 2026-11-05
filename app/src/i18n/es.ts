@@ -213,6 +213,7 @@ const errors: ErrorTexts = {
   "move.notApplied": () => "Se escribió en la memoria, pero al releerla dio otra cosa.",
   "heal.notInjured": () => "El jugador no tiene ninguna lesión que curar.",
   "ban.notBanned": () => "El jugador no tiene ninguna sanción que levantar.",
+  "cohesion.none": () => "FM aún no le ha dado familiaridad con este club, así que no hay nada que subir.",
   "relation.missing": () => `Esa nacionalidad o formación ya no está en la lista del jugador; ${reload}.`,
   "relation.noRoom": () =>
     "La lista del jugador no tiene sitio y el editor no puede ampliarla; cambia una de sus entradas en su lugar.",
@@ -235,14 +236,15 @@ const errors: ErrorTexts = {
   "captain.unchanged": () => "El jugador ya tiene ese papel.",
   "session.notRunning": () =>
     "Football Manager 27 no se está ejecutando. Inicia el juego, carga una partida y vuelve a intentarlo.",
-  "session.noSuchProcess": (p) => `No hay ningún ${p.exe ?? "fm.exe"} con el PID ${p.pid}.`,
+  "session.noSuchProcess": () => "FM27 se ha cerrado o reiniciado. Carga una partida y vuelve a conectar.",
+  "session.noCareer": () => "No hay ninguna partida cargada en FM27. Carga una partida y conecta.",
+  "attributes.level": () => "Elige un valor del 1 al 20.",
+  "session.playersNotFound": () => "No hay ninguna partida cargada en FM27. Carga una partida y conecta.",
   "session.severalRunning": (p) => `Hay ${p.count} copias de ${p.exe ?? "fm.exe"} en ejecución (${p.pids}); elige una.`,
   "session.pluginNotLoaded": () =>
     "Los datos del juego aún no se han cargado; espera al menú principal y vuelve a intentarlo.",
   "session.unsupportedEdition": (p) => `FM${p.edition} aún no es compatible.`,
   "session.unknownEdition": () => "No se ha podido saber qué Football Manager es este.",
-  "session.playersNotFound": () =>
-    "No se ha encontrado la lista de jugadores; carga una partida (el menú principal no basta) y vuelve a intentarlo.",
   "memory.win32": (p) => `Windows ha rechazado una operación (${p.operation}, error ${p.code}).`,
   "memory.read": (p) => `No se ha podido leer la memoria del juego (error del sistema ${p.code}).`,
   "memory.write": (p) => `No se ha podido escribir en la memoria del juego (error del sistema ${p.code}).`,
@@ -254,12 +256,12 @@ const errors: ErrorTexts = {
   "memory.mach": (p) => `macOS ha rechazado una operación (${p.operation}, error ${p.code}).`,
   "memory.posix": (p) => `macOS ha rechazado una operación (${p.operation}, errno ${p.code}).`,
   "memory.noBridge": () =>
-    "macOS no deja entrar a FM Lens en el juego: el juego se inició sin el puente de FM Lens. " +
-    "Instala el puente y vuelve a iniciar el juego desde Steam.",
+    "FM27 se inició sin el ayudante de FM Lens. Cuando termines la configuración, cierra FM27 y vuelve a " +
+    "iniciarlo desde Steam.",
   "memory.bridge": (p) => `El puente de FM Lens en el juego no ha entregado la memoria (${p.reason}).`,
   "setup.steamRunning": () =>
-    "Steam está abierto, así que no se han tocado las opciones de lanzamiento de FM27; el puente en sí está " +
-    "instalado. Cierra Steam y vuelve a intentarlo, o introduce tú la opción de lanzamiento en Steam.",
+    "El ayudante está instalado, pero Steam está abierto y no se ha configurado la opción de lanzamiento. Cierra " +
+    "Steam y vuelve a pulsar Configurar, o introduce tú la opción de lanzamiento.",
   "setup.noSteamAccount": () =>
     "No se ha encontrado ninguna cuenta de Steam en este Mac; abre Steam e inicia sesión una vez.",
   "setup.noLibrary": (p) => `Falta un archivo del puente en la aplicación: ${p.path}`,
@@ -486,12 +488,14 @@ export const es: Strings = {
     "contract.loan_listed": "Cedible",
     "contract.job": "Puesto",
     "manager.unsackable": "Indespedible (experimental)",
+    "manager.registration_anytime": "Inscribir plantilla en cualquier momento (experimental)",
     "tie.nationality": "Nacionalidad secundaria",
     "tie.trainedInNation": "Formado en el país",
     "tie.trainedAtClub": "Formado en el club",
     club: "Club",
     injuries: "Lesiones",
     bans: "Sanciones",
+    cohesion: "Familiaridad con el club",
     retirement: "Retirada",
     clause: "Cláusula del contrato",
     "clause.amount": "Importe de la cláusula",
@@ -516,10 +520,12 @@ export const es: Strings = {
 
   profile: {
     close: "Cerrar perfil",
+    sections: "Secciones",
+    top: "Arriba",
     loading: "Cargando perfil…",
     resize: "Cambiar el ancho del panel del perfil",
-    resizeHint: "Arrastra para ensanchar o estrechar el panel; haz doble clic para devolverle su ancho",
-    none: "—",
+    resizeHint: "Arrastra para cambiar el ancho. Doble clic para restablecerlo.",
+    none: "-",
 
     // Cabecera
     freeAgent: "Agente libre",
@@ -563,8 +569,8 @@ export const es: Strings = {
     wage: "Salario semanal",
     wageNote: (converted) =>
       converted
-        ? "el juego guarda libras; se muestra al cambio del propio FM"
-        : "el juego guarda libras; puedes elegir otra moneda en los ajustes",
+        ? "Al cambio de FM"
+        : "En libras. Cambia la moneda en Ajustes",
     signed: "Firmado",
     expires: "Vence",
     joined: "Incorporación",
@@ -588,12 +594,23 @@ export const es: Strings = {
     reputationWorld: "Mundial",
     retirement: "Retirada",
     retires: "Prevé retirarse",
+    preferences: "Afinidades",
+    languages: "Idiomas",
+    languageLevel: (level: number) => `${level}/10`,
+    rivals: "Rivales",
+    linkedClubs: "Clubes afiliados",
+    preferenceKinds: {
+      favouredClub: "Clubes favoritos",
+      dislikedClub: "Clubes que no soporta",
+      favouredPerson: "Personas favoritas",
+      dislikedPerson: "Personas que no soporta",
+    },
     noRetirement: "El juego no ha previsto su retirada",
     keepPlaying: "Evitar la retirada",
     keepingPlaying: "Evitando…",
     keepPlayingTitle:
-      "Quita su retirada de los planes del juego y le da la característica «Jugará al fútbol tanto tiempo como " +
-      "pueda» en lugar de «Se retirará en lo más alto»; se puede deshacer en Cambios",
+      "Cancela su retirada y cambia «Se retirará en lo más alto» por «Jugará al fútbol tanto tiempo como pueda». " +
+      "Puedes deshacerlo en Cambios.",
 
     // Médico
     morale: (value) => `${value} / 20`,
@@ -605,7 +622,7 @@ export const es: Strings = {
     removeUnhappiness: "Quitar todo",
     removingUnhappiness: "Quitando…",
     removeUnhappinessTitle:
-      "Quita de su lista todos los motivos de descontento, como hace Quitar todo en FMRTE; se puede deshacer en Cambios",
+      "Quita todos sus motivos de descontento. Puedes deshacerlo en Cambios.",
     concernSince: (date) => `desde el ${date}`,
     concernKind: (kind) => (kind === 1 ? "Preocupado" : kind === 2 ? "Interno" : `Tipo ${kind}`),
     concernMotive: (motive) => CONCERN_MOTIVES_ES[motive] ?? `Motivo ${motive}`,
@@ -634,11 +651,9 @@ export const es: Strings = {
       }
     },
     moraleTitle:
-      "El juego muestra la moral como la felicidad general del jugador: satisfecho con 10, algo feliz con 11, " +
-      "extremadamente feliz con 15 y 20",
+      "En FM: 10 es satisfecho, 11 algo feliz, 15 y 20 extremadamente feliz.",
     jadednessTitle:
-      "Cuánto desgaste acumula el jugador por jugar, que el descanso reduce: -500 es estar totalmente descansado y, " +
-      "cuanto más alto, más necesita un descanso",
+      "Lo cansado que está de jugar. -500 es totalmente descansado. Cuanto más alto, más necesita descansar.",
     noInjuries: "Sin lesiones",
     unknownInjury: "Lesión desconocida",
     injuryStarted: (date) => `Desde el ${date}`,
@@ -652,24 +667,21 @@ export const es: Strings = {
     liftBansTitle: "Levantar todas las sanciones de este jugador en el juego",
 
     // Sobre los atributos, mientras se lee el perfil
-    maxAttributes: "Atributos al máximo",
-    maxAttributesTitle:
-      "Poner cada atributo de este jugador en su mejor valor: 20, y 1 para la propensión a lesiones y el juego sucio",
-    maxAttributesDone: (count) =>
+    setAttributes: "Poner todos los atributos en",
+    setAttributesButton: "Aplicar",
+    setAttributesDone: (count, level) =>
       count === 0
-        ? "Todos sus atributos ya están en su mejor valor"
-        : count === 1
-          ? "1 cambio escrito"
-          : `${format(count)} cambios escritos`,
-    maxAttributesUndone: (count) =>
+        ? "Todos sus atributos ya tienen ese valor"
+        : `${count === 1 ? "1 cambio escrito" : `${format(count)} cambios escritos`}. La propensión a lesiones y el ` +
+          `juego sucio quedan en ${21 - level}, porque para ellos menos es mejor.`,
+    setAttributesUndone: (count) =>
       count === 0 ? "No se ha deshecho nada" : count === 1 ? "1 cambio deshecho" : `${format(count)} cambios deshechos`,
-    undoMax: "Deshacer",
-    undoMaxTitle: "Volver a escribir en el juego sus atributos anteriores",
+    undoSetAttributes: "Deshacer",
+    undoSetAttributesTitle: "Recuperar sus atributos anteriores",
     freezeAttributes: "Congelar los atributos",
     freezeAttributesNote:
-      "Mientras la aplicación esté abierta y conectada, sus atributos no empeoran: lo que el juego quita se devuelve, " +
-      "y las mejoras siguen contando. La aplicación lo recuerda para esta partida y vuelve a congelarlos al " +
-      "conectarse a ella.",
+      "Mientras FM Lens esté abierto y conectado, sus atributos no pueden bajar. Las mejoras sí cuentan. " +
+      "FM Lens lo recuerda para esta partida.",
 
     // Personal
     you: "Tú",
@@ -857,11 +869,11 @@ export const es: Strings = {
     totalWageBudget: "Presupuesto salarial total",
     ticketPrice: "Precio medio de la entrada",
     perWeek: "por semana",
-    noFinances: "FM solo guarda las finanzas de los clubes de las ligas en juego.",
+    noFinances: "FM solo lleva las finanzas de los clubes de ligas jugables.",
     freeze: "Congelar el dinero",
     freezeNote:
-      "Mientras la aplicación esté abierta y conectada, el saldo no baja: lo que el juego quita se devuelve, y los " +
-      "ingresos siguen contando. La aplicación lo recuerda para esta partida y vuelve a congelarlo al conectarse a ella.",
+      "Mientras FM Lens esté abierto y conectado, el saldo no puede bajar. Los ingresos sí cuentan. " +
+      "FM Lens lo recuerda para esta partida.",
 
     // Estadio
     stadium: "Estadio",
@@ -912,12 +924,27 @@ export const es: Strings = {
       reputation: "Reputación",
       minReputation: "Reputación mínima",
       maxReputation: "Reputación máxima",
-      reputationPlaceholder: "0–10000",
+      minPlaceholder: "Mín.",
+      maxPlaceholder: "Máx.",
       founded: "Fundación",
       foundedFrom: "Fundado desde",
       foundedTo: "Fundado hasta",
       yearPlaceholder: "Año",
     },
+  },
+
+  officialList: {
+    nav: "Árbitros",
+    search: "Buscar árbitros por nombre o UID",
+    summary: (total, shown) => {
+      const count = total === 1 ? "1 árbitro" : `${format(total)} árbitros`;
+      return total > shown ? `${count} · los ${shown} de más calidad` : count;
+    },
+    empty: (query) =>
+      query === "" ? "No se han podido leer los árbitros en esta versión de FM." : `Ningún árbitro coincide con «${query}».`,
+    columns: { name: "Nombre", nation: "País", age: "Edad", ca: "HA", pa: "HP", reputation: "Reputación", uid: "UID" },
+    born: "Nacimiento",
+    reputation: "Reputación",
   },
 
   stadiumList: {
@@ -963,9 +990,29 @@ export const es: Strings = {
     },
     empty: (query) => (query === "" ? "No se han encontrado países." : `Ningún país coincide con «${query}».`),
     columns: { name: "País", uid: "UID" },
-    note: "Países de los jugadores y el personal de esta partida. No se leen clasificaciones, normas, equipaciones ni selecciones.",
+    note: "Solo los países de los jugadores y el personal de esta partida.",
     uid: "UID",
     noUid: "Sin UID",
+    nation: "País",
+    capital: "Capital",
+    population: "Población",
+    languages: "Idiomas",
+    dualNationality: "Doble nacionalidad",
+    allowed: "Permitida",
+    notAllowed: "No permitida",
+    naturalisation: "Años para nacionalizarse",
+    never: "Nunca",
+    fifa: "FIFA",
+    ranking: "Ranking mundial",
+    points: "Puntos",
+    founded: "Federación fundada",
+    joinedFifa: "Ingreso en la FIFA",
+    teamName: (ageLimit) => (ageLimit === null ? "Selección absoluta" : `Sub-${ageLimit}`),
+    manager: "Seleccionador",
+    captain: "Capitán",
+    viceCaptain: "Segundo capitán",
+    reputation: "Reputación",
+    squad: (count) => `Convocatoria (${count})`,
   },
 
   app: {
@@ -977,6 +1024,8 @@ export const es: Strings = {
     appearanceLight: "Claro",
     appearanceDark: "Oscuro",
     zoomLabel: "Zoom",
+    appearance: "Apariencia",
+    themes: { system: "Sistema", light: "Claro", dark: "Oscuro" },
     tour: {
       label: "Introducción",
       skip: "Omitir",
@@ -987,45 +1036,45 @@ export const es: Strings = {
       steps: {
         brand: {
           title: "FM Lens",
-          body: "Explora tu partida. En versiones compatibles, los cambios llegan a FM al aplicarlos. Prueba en una copia de la partida.",
+          body: "Mira todo lo de tu partida y cámbialo. Los cambios llegan a FM al pulsar Aplicar. Pruébalos antes en una copia.",
         },
         tabs: {
           title: "Secciones",
-          body: "Jugadores, personal y clubes, más los países de esas personas y el estadio de cada club.",
+          body: "Jugadores, personal, clubes, países y estadios.",
         },
         search: {
           title: "Búsqueda y filtros",
-          body: "Busca por nombre o id. Los filtros reducen la lista. La elección se conserva al cambiar de idioma.",
+          body: "Escribe un nombre o ID. Usa Filtros para acotar.",
         },
         settings: {
           title: "Ajustes",
-          body: "Idioma, moneda, apariencia clara u oscura y el tamaño de la interfaz. El zoom de la ventana es aparte.",
+          body: "Idioma, moneda, modo claro u oscuro y zoom.",
         },
         status: {
-          title: "Esta partida",
-          body: "El pie de la ventana nombra el juego y cuántas personas se leyeron. Los datos de ejemplo están marcados.",
+          title: "Conexión",
+          body: "La barra de abajo muestra si estás conectado a FM.",
         },
       },
     },
 
-    noteEditable:
-      "Los cambios solo llegan al juego cuando los aplicas. Haz antes una copia de seguridad de tu partida.",
-    noteReadOnly: "El juego se abrió solo para lectura, así que no se puede editar.",
-    noteUnknownBuild: "Solo lectura: esta versión del juego es nueva para FM Lens.",
-    noteReloadRequired: "La partida ha cambiado. Recarga los datos antes de editar.",
-    noteNotConnected: "Conecta para editar. Haz antes una copia de tu partida.",
+    noteEditable: "Edición activada",
+    noteReadOnly: "Solo lectura",
+    noteUnknownBuild: "Solo lectura: esta versión de FM aún no es compatible",
+    noteReloadRequired: "La partida ha cambiado. Pulsa Recargar para editar.",
 
     notConnected: "Sin conexión",
+    connected: "Conectado",
+    detailsLabel: "Detalles de la app",
+    more: "Más",
     previewTag: "vista previa en el navegador · datos de ejemplo",
     noDate: "Sin fecha del juego",
     noDateTitle:
-      "FM Lens no pudo leer la fecha del juego en esta versión del juego, así que no se muestran las edades y " +
-      "los filtros de edad no encuentran a nadie. Busca actualizaciones.",
+      "No se pudo leer la fecha del juego, así que no hay edades y los filtros de edad no encuentran a nadie. " +
+      "Busca actualizaciones.",
     reload: "Recargar datos",
-    refresh: "Actualizar",
     detecting: "Buscando Football Manager…",
-    connecting: "Leyendo jugadores, personal y clubes…",
-    reloading: "Recargando jugadores, personal y clubes…",
+    connecting: "Cargando partida…",
+    reloading: "Cargando partida…",
 
     refrozen: {
       title: "Congelado de nuevo desde la última vez",
@@ -1041,38 +1090,27 @@ export const es: Strings = {
 
     connect: {
       title: "Conectar con Football Manager 27",
-      intro:
-        "FM Lens lee la memoria del juego mientras se ejecuta. Inicia el juego y carga una partida; después, " +
-        "conecta.",
+      intro: "Carga una partida en FM y conecta.",
       notRunning: "Football Manager 27 no se está ejecutando.",
-      openFailed: (error) => `No se ha podido abrir el juego: ${error}`,
-      game: "Juego",
-      gameData: "Datos del juego",
-      loaded: "Cargados",
-      stillLoading: "Aún cargando; espera al menú principal",
-      process: "Proceso",
-      pid: (pid) => `pid ${pid}`,
-      several: "Hay varias copias del juego en ejecución; se usa la primera.",
-      button: "Conectar y leer jugadores, personal y clubes",
+      openFailed: (error) => `No se pudo abrir FM: ${error}`,
+      stillLoading: "FM aún se está iniciando. Espera al menú principal.",
+      several: "Hay más de una copia de FM abierta. Se usa la primera.",
+      button: "Conectar",
 
       bridge: {
-        title: "El puente (macOS)",
+        title: "Configuración inicial",
         intro:
-          "FM27 debe cargar el puente al iniciarse. Guarda y cierra FM27, y después cierra Steam antes de instalarlo.",
-        library: "Puente",
+          "FM Lens necesita un pequeño ayudante que FM carga al iniciarse. Guarda y cierra FM, y luego Steam, " +
+          "antes de configurarlo.",
+        library: "Ayudante",
         installed: "Instalado",
         missing: "No instalado",
-        launchOption: "Opción de lanzamiento",
-        set: "Configurada en Steam",
+        launchOption: "Opción de lanzamiento de Steam",
+        set: "Configurada",
         notSet: "Sin configurar",
-        ready:
-          "Listo. Inicia FM27 desde Steam (ciérralo y vuelve a iniciarlo si está abierto), carga una partida y " +
-          "conecta.",
-        steamRunning:
-          "Steam está abierto y, mientras lo está, conserva las opciones de lanzamiento. Cierra Steam para que la " +
-          "opción de lanzamiento se configure por ti, o introdúcela tú en Steam.",
-        setUp: "Instalar el puente",
-        remove: "Quitar el puente",
+        steamRunning: "Steam está abierto. Ciérralo antes, o añade tú la opción de lanzamiento.",
+        setUp: "Configurar",
+        remove: "Quitar el ayudante",
         manual:
           "O, en Steam, haz clic derecho en Football Manager 27 › Propiedades › General › Opciones de lanzamiento, " +
           "e introduce:",
@@ -1082,24 +1120,14 @@ export const es: Strings = {
     },
   },
 
-  graphics: {
-    reading: "Leyendo los paquetes gráficos…",
-    summary: ({ clubLogos, flags, faces }) =>
-      `Gráficos: ${format(clubLogos)} ${clubLogos === 1 ? "escudo" : "escudos"} · ` +
-      `${format(flags)} ${flags === 1 ? "bandera" : "banderas"} · ${format(faces)} ${faces === 1 ? "cara" : "caras"}`,
-    none: "No se han encontrado paquetes gráficos",
-    noneHint: "Los paquetes de escudos y caras van en la carpeta de gráficos de FM27.",
-  },
-
   compatibility: {
     unknownBuild: (game) => `FM Lens aún no se ha probado con ${game}`,
     unknownBuildText:
-      "Esta versión del juego no se ha verificado con FM Lens. Comprueba los valores con el juego. " +
-      "La edición está desactivada.",
+      "FM Lens no se ha probado con esta versión de FM. Los valores pueden estar mal, así que la edición está " +
+      "desactivada.",
     allowedText:
-      "La edición está activada en esta sesión, en la medida en que lo permiten las comprobaciones. Guarda una copia " +
-      "de tu partida.",
-    failedTitle: "Algunos datos del juego no han superado las comprobaciones",
+      "La edición está activada donde pasaron las comprobaciones. Haz una copia de tu partida.",
+    failedTitle: "Algunos datos parecen incorrectos",
     reloadHint: "Si una partida aún se estaba cargando, «Recargar datos» vuelve a comprobarlo.",
     noDate: "La fecha del juego no ha superado las comprobaciones, así que no se muestran las edades.",
     failed: (names) => `Quedan en solo lectura: ${names}.`,
@@ -1142,6 +1170,7 @@ export const es: Strings = {
   },
 
   edit: {
+    appliedTitle: "Aplicado",
     unknownNation: "País desconocido",
     edit: "Editar",
     editTitle: "Cambiar los valores de este perfil en el juego",
@@ -1176,9 +1205,9 @@ export const es: Strings = {
       count === 0
         ? "No se ha aplicado ningún cambio"
         : count === 1
-          ? "1 cambio aplicado"
-          : `${format(count)} cambios aplicados`,
-    nothingToChange: "Nada que cambiar: el juego ya tiene estos valores.",
+          ? "1 cambio aplicado. Se verá en FM cuando pulses Continuar."
+          : `${format(count)} cambios aplicados. Se verán en FM cuando pulses Continuar.`,
+    nothingToChange: "Nada que cambiar. FM ya tiene estos valores.",
     refused: (label, reason) => `${label}: ${reason}`,
     rereadFailed: (reason) => `No se han podido volver a leer los valores: ${reason}`,
     dismiss: "Cerrar",
@@ -1187,9 +1216,8 @@ export const es: Strings = {
   changes: {
     nav: "Cambios",
     title: "Cambios de esta sesión",
-    hint:
-      "Los más recientes primero. Un cambio solo se puede deshacer mientras el juego conserve el valor que escribió.",
-    continueHint: "El juego muestra un cambio cuando avanza: pulsa Continuar en el juego.",
+    hint: "Los más recientes primero. Puedes deshacer un cambio mientras FM no cambie ese valor.",
+    continueHint: "Los cambios se ven en FM cuando pulsas Continuar.",
     swappedWith: (name) => `Intercambiado por ${name}`,
     fee: (amount) => `Traspaso: ${amount}`,
     healed: (count) => (count === 1 ? "1 lesión curada" : `${format(count)} lesiones curadas`),
@@ -1257,9 +1285,8 @@ export const es: Strings = {
       json: "Para scripts: las posiciones, los atributos y la personalidad como objetos propios",
     },
     contents:
-      "De cada jugador: habilidades, posiciones y valoraciones por posición, atributos en la escala de 1 a 20 " +
-      "(también los ocultos), personalidad, reputación, partidos internacionales, y contrato con sus cláusulas, con " +
-      "la fecha del juego. El dinero va en libras, como lo guarda el juego. No cambia nada en el juego.",
+      "Habilidades, posiciones, atributos (también los ocultos), personalidad, reputación, partidos " +
+      "internacionales y contratos. El dinero va en libras.",
     export: "Exportar",
     exporting: "Exportando…",
     done: (count, file) =>
@@ -1373,7 +1400,7 @@ export const es: Strings = {
     applyTitle: (count) => `Escribir ${changes(count)} en el juego`,
     applyFirst: "Genera antes la vista previa de la edición masiva",
     applyNothing: "La vista previa no tiene cambios que escribir",
-    hint: "Nada cambia en el juego hasta que aplicas.",
+    hint: "Nada cambia en FM hasta que pulsas Aplicar.",
     applied: (count) =>
       count === 0
         ? "No se ha escrito ningún cambio"
@@ -1409,7 +1436,7 @@ export const es: Strings = {
 
     // El diálogo
     title: "Comparación",
-    hint: "Se resalta el mejor valor de cada fila: el más alto o, donde más bajo es mejor, el más bajo.",
+    hint: "Se resalta el mejor valor de cada fila.",
     tooFew: "Añade al menos dos jugadores para compararlos.",
     loading: "Cargando los jugadores…",
     tableLabel: "Valores de los jugadores comparados",
@@ -1448,7 +1475,7 @@ export const es: Strings = {
     pays: (club, fee, balance, budget) =>
       `${club} paga ${fee}: saldo ${balance}${budget === null ? "" : `, presupuesto de fichajes ${budget}`}`,
     receives: (club, fee, balance) => `${club} recibe ${fee}: saldo ${balance}`,
-    noFinances: (club) => `${club} no tiene finanzas en el juego: su dinero no cambia`,
+    noFinances: (club) => `${club} no tiene finanzas en FM, así que su dinero no cambia`,
 
     // El contrato
     wageInvalid: "Introduce un importe entero, 0 o más",
@@ -1509,7 +1536,7 @@ export const es: Strings = {
     ],
 
     // El pie
-    hint: "Nada cambia en el juego hasta que pulsas Traspasar.",
+    hint: "Nada cambia en FM hasta que pulsas Traspasar.",
     move: "Traspasar",
     moving: "Traspasando…",
     cancel: "Cancelar",
@@ -1536,7 +1563,7 @@ export const es: Strings = {
     change: "Cambiar",
     changeTitle: "Cambiar las nacionalidades secundarias y la formación local de este jugador en el juego",
     title: "Nacionalidad y formación local",
-    hint: "Cada cambio se escribe en el juego al momento y aparece en Cambios, donde se puede deshacer.",
+    hint: "Cada cambio llega a FM al momento. Puedes deshacerlo en Cambios.",
     full:
       "El juego hizo la lista de este jugador justo del tamaño de lo que contiene: se puede cambiar o quitar una " +
       "nacionalidad o una formación, pero no añadir.",
@@ -1557,7 +1584,7 @@ export const es: Strings = {
     change: "Cambiar",
     changeTitle: "Cambia en el juego las primas y cláusulas de este jugador",
     title: "Primas y cláusulas",
-    hint: "Cada cambio se escribe en el juego al momento y aparece en Cambios, donde se puede deshacer.",
+    hint: "Cada cambio llega a FM al momento. Puedes deshacerlo en Cambios.",
     full:
       "El juego hizo la lista de este contrato justo del tamaño de lo que contiene: se puede cambiar o quitar una " +
       "prima o cláusula, pero no añadir una cláusula de rescisión.",
@@ -1572,6 +1599,63 @@ export const es: Strings = {
     outOfRange: (max) => `Escribe un número entero de 0 a ${max}.`,
     working: "Escribiendo en el juego…",
     close: "Cerrar",
+  },
+
+  templates: {
+    button: "Clonar y plantillas",
+    title: "Clonar y plantillas",
+    groups: {
+      ability: "CA / PA",
+      attributes: "Atributos (también los ocultos)",
+      personality: "Personalidad",
+      positions: "Posiciones",
+      traits: "Características",
+    },
+    copyHeading: "Copiar de un jugador",
+    findPlayer: "Buscar jugador",
+    found: "Jugadores encontrados",
+    freeAgent: "Libre",
+    capture: (name) => (name ? `Copiar a ${name}` : "Copiar jugador"),
+    libraryHeading: "Plantillas guardadas",
+    library: "Plantilla",
+    choose: "Elige una plantilla",
+    noneSaved: "No hay plantillas guardadas",
+    name: "Nombre",
+    save: "Guardar",
+    remove: "Eliminar",
+    fieldCount: (count) => (count === 1 ? "1 campo" : `${format(count)} campos`),
+    jsonHeading: "Importar o exportar JSON",
+    json: "JSON de la plantilla",
+    loadJson: "Cargar JSON",
+    showJson: "Ver JSON",
+    importFile: "Importar archivo",
+    applyHeading: (total, query) =>
+      `Aplicar a ${total === 1 ? "1 jugador" : `${format(total)} jugadores`}${query ? ` que coinciden con «${query}»` : ""}`,
+    limit: "Solo estos ID de jugador",
+    limitPlaceholder: "Todos",
+    preview: "Vista previa",
+    previewLabel: "Vista previa de la plantilla",
+    summary: (targets, changes, skipped, unchanged) =>
+      `${targets === 1 ? "1 jugador" : `${format(targets)} jugadores`} · ${changeCount(changes)} · ` +
+      `${format(skipped)} omitidos · ${format(unchanged)} ya puestos`,
+    tableLabel: "Cambios que se aplicarán",
+    columns: { player: "Jugador", uid: "ID", field: "Campo", change: "Cambio" },
+    firstRows: (count) => `Se muestran los primeros ${format(count)} cambios.`,
+    skipped: "Omitidos",
+    apply: (count) => (count === 0 ? "Aplicar" : `Aplicar ${changes(count)}`),
+    applied: (count) => (count === 0 ? "No ha cambiado nada." : `${changes(count)} aplicados.`),
+    undo: "Deshacer",
+    undone: (count) => (count === 0 ? "No se ha deshecho nada." : `${changes(count)} deshechos.`),
+    working: "Trabajando…",
+    close: "Cerrar",
+    savedNotice: "Plantilla guardada.",
+    loadedNotice: "Plantilla cargada. Guárdala para conservarla.",
+    removedNotice: "Plantilla eliminada.",
+    nameTaken: "Ya hay una plantilla con ese nombre. Elige otro.",
+    libraryFull: (max) => `Puedes guardar hasta ${max} plantillas. Elimina una antes.`,
+    tooBig: "Los archivos de plantilla deben ocupar menos de 128 KB.",
+    invalid: "No es una plantilla de jugador de FM Lens.",
+    badIds: "Escribe los ID de jugador separados por comas o espacios.",
   },
 
   release: {
@@ -1593,7 +1677,7 @@ export const es: Strings = {
     ],
 
     // El pie
-    hint: "Nada cambia en el juego hasta que pulsas Rescindir.",
+    hint: "Nada cambia en FM hasta que pulsas Rescindir.",
     release: "Rescindir",
     releasing: "Rescindiendo…",
     cancel: "Cancelar",
@@ -1622,27 +1706,26 @@ export const es: Strings = {
       injured === 0
         ? "Curar a todos"
         : `Curar a todos (${injured === 1 ? "1 lesionado" : `${format(injured)} lesionados`})`,
-    healAllTitle: "Curar todas las lesiones de todos los jugadores de este equipo",
+    healAllTitle: "Curar a todo el equipo",
     healNone: "Nadie en este equipo está lesionado",
     liftAll: (banned) =>
       banned === 0
         ? "Levantar sanciones"
         : `Levantar sanciones (${banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`})`,
-    liftAllTitle: "Levantar todas las sanciones de todos los jugadores de este equipo",
+    liftAllTitle: "Levantar todas las sanciones del equipo",
     liftNone: "Nadie en este equipo está sancionado",
     inspireAll: "Motivar a todos",
-    inspireAllTitle: "Poner la moral de todos los jugadores de este equipo en 20, la más alta",
+    inspireAllTitle: "Moral al máximo para todos",
     refreshAll: "Recuperar a todos",
     refreshAllTitle:
-      "Poner la energía y el ritmo de competición de todos los jugadores de este equipo al 100 % y dejarlos " +
-      "totalmente descansados (fatiga -500)",
+      "Energía y ritmo de competición al máximo, y todos totalmente descansados",
+    maxCohesion: "Cohesión al máximo",
+    maxCohesionTitle: "Todos los jugadores totalmente familiarizados con el club (experimental)",
     maxAll: "Atributos al máximo",
     maxAllTitle:
-      "Poner cada atributo de cada jugador de este equipo en su mejor valor: 20, y 1 para la propensión a lesiones y " +
-      "el juego sucio",
+      "Todos los atributos a 20 para todos (propensión a lesiones y juego sucio a 1)",
     hint:
-      "Las acciones abarcan a todos los jugadores de la lista, también a los cedidos. Se pueden deshacer también " +
-      "en Cambios.",
+      "Incluye a los cedidos. Puedes deshacerlo en Cambios.",
 
     // Lo que hizo una acción
     written: (count) =>

@@ -104,6 +104,25 @@ enum Command {
         #[arg(long, default_value_t = 25)]
         limit: usize,
     },
+    /// Show each player's familiarity with the club with this UID (team cohesion), as Max cohesion would find it.
+    /// Only reads.
+    Cohesion {
+        /// The club's unique ID.
+        uid: u32,
+    },
+    /// List the match officials, by current ability; with a name, only those whose name holds it.
+    Officials {
+        /// Part of a name to look for.
+        name: Option<String>,
+        /// How many to print.
+        #[arg(long, default_value_t = 15)]
+        limit: usize,
+    },
+    /// Show what FMLibreEditor reads for the nation with this UID: its rules, FIFA ranking, rivals and teams.
+    Nation {
+        /// The nation's unique ID.
+        uid: u32,
+    },
     /// Show everything FMLibreEditor reads for the club with this UID.
     Club {
         /// The club's unique ID.
@@ -795,6 +814,9 @@ fn run(cli: Cli) -> Result<()> {
         Command::StaffMember { uid } => staff_member(&connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Clubs { text, limit } => clubs(&connect(process, ArraySource::ProfileFirst)?, text.as_deref(), limit),
         Command::Club { uid } => club(&connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::Nation { uid } => nation(&connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::Cohesion { uid } => cohesion(&connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::Officials { name, limit } => officials(&connect(process, ArraySource::ProfileFirst)?, name, limit),
         Command::Players { text, limit, filter, export, semicolon } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             let format = export.as_deref().map(|path| {
@@ -2419,6 +2441,9 @@ fn player(session: &Session, uid: u32) -> Result<()> {
     };
 
     println!("{} (UID {})", d.summary.name, d.summary.uid);
+    let languages: Vec<String> =
+        d.languages.iter().map(|l| format!("{} {}", l.name.as_deref().unwrap_or("?"), l.level)).collect();
+    println!("  languages      {}", if languages.is_empty() { "-".to_owned() } else { languages.join(", ") });
     if let Some(full) = &d.summary.full_name {
         println!("  full name      {full}");
     }
@@ -2517,6 +2542,10 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
     let d = session.staff_details(member)?.context("the staff member's data changed while reading; try again")?;
     let s = &d.summary;
     println!("{} (id {}){}", s.name, s.uid, if s.is_human { ", the human manager" } else { "" });
+    let languages: Vec<String> =
+        d.languages.iter().map(|l| format!("{} {}", l.name.as_deref().unwrap_or("?"), l.level)).collect();
+    println!("  languages      {}", if languages.is_empty() { "-".to_owned() } else { languages.join(", ") });
+    println!("  preferences    {}", d.preferences.len());
     if let Some(full) = &s.full_name {
         println!("  full name      {full}");
     }
@@ -2533,12 +2562,13 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
         println!("  layout         person block shifted by {:#x}", member.shift);
     }
     if s.is_human {
-        let unsackable = match d.unsackable {
+        let flag = |value: Option<bool>| match value {
             Some(true) => "yes",
             Some(false) => "no",
             None => "unsupported on this build or object",
         };
-        println!("  unsackable     {unsackable}");
+        println!("  unsackable     {}", flag(d.unsackable));
+        println!("  registration   {} (any time)", flag(d.registration_anytime));
     }
     println!();
     for (group, keys) in STAFF_ATTRIBUTE_GROUPS {
@@ -3394,6 +3424,124 @@ fn clubs(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
     Ok(())
 }
 
+fn cohesion(session: &Session, uid: u32) -> Result<()> {
+    let clubs = ClubIndex::new(session.clubs()?);
+    let club = clubs.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+    let players = session.players()?;
+    let squad: Vec<_> = players.iter().filter(|p| p.club_uid == Some(uid)).collect();
+    println!("{} (UID {uid}): {} players", club.name, squad.len());
+    let (mut full, mut raised, mut missing) = (0, 0, 0);
+    for player in squad {
+        let shown = match session.plan_cohesion(player, club) {
+            Ok(None) => {
+                full += 1;
+                "100".to_owned()
+            }
+            Ok(Some(plan)) => {
+                raised += 1;
+                format!("{} -> 100", plan.before)
+            }
+            Err(err) => {
+                missing += 1;
+                format!("not changed: {err}")
+            }
+        };
+        println!("  {:<28} {shown}", player.name);
+    }
+    println!("Max cohesion would raise {raised}, leave {full} at 100 and skip {missing}");
+    Ok(())
+}
+
+fn officials(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
+    let mut all = session.officials()?;
+    println!("{} officials", all.len());
+    if let Some(name) = name {
+        let name = name.to_lowercase();
+        all.retain(|o| o.name.to_lowercase().contains(&name));
+    }
+    all.sort_by(|a, b| b.current_ability.cmp(&a.current_ability).then(b.reputation.cmp(&a.reputation)));
+    for o in all.iter().take(limit) {
+        let born = iso_date(o.date_of_birth);
+        println!(
+            "  {:<28} {:<10} {:<16} born {born} age {:>3}  CA/PA {:>3}/{:<3} rep {:>5}",
+            o.name,
+            o.uid,
+            o.nation.as_deref().unwrap_or("-"),
+            o.age.map_or_else(|| "-".to_owned(), |a| a.to_string()),
+            o.current_ability,
+            o.potential_ability,
+            o.reputation
+        );
+    }
+    Ok(())
+}
+
+fn nation(session: &Session, uid: u32) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let staff = StaffIndex::new(session.staff()?);
+    let people = players.iter().map(|p| (p.nation_address, p.nation.as_deref(), p.nation_uid));
+    let all = fmlibre_core::nations(
+        people.chain(staff.iter().map(|s| (s.nation_address, s.nation.as_deref(), s.nation_uid))),
+    );
+    let nation = all.iter().find(|n| n.uid == Some(uid)).with_context(|| format!("no nation with UID {uid}"))?;
+    let d = session.nation_details(nation, &players, &staff)?.context("this build's layout does not place nations")?;
+    let or_dash = |value: Option<String>| value.unwrap_or_else(|| "-".to_owned());
+    println!("{} (UID {uid}) at {:#x}", nation.name, nation.address);
+    println!("  code           {}", or_dash(d.code));
+    println!("  continent      {}", or_dash(d.continent));
+    println!("  capital        {}", or_dash(d.capital));
+    println!("  population     {}", or_dash(d.population.map(|n| n.to_string())));
+    println!(
+        "  dual national  {}",
+        or_dash(d.dual_nationality.map(|yes| if yes { "allowed" } else { "not allowed" }.to_owned()))
+    );
+    let years = if d.naturalisation_never {
+        "never".to_owned()
+    } else {
+        or_dash(d.naturalisation_years.map(|y| y.to_string()))
+    };
+    println!("  naturalisation {years}");
+    let languages: Vec<String> =
+        d.languages.iter().map(|l| format!("{} {}%", l.name.as_deref().unwrap_or("?"), l.percent)).collect();
+    println!("  languages      {}", languages.join(", "));
+    println!(
+        "  FIFA ranking   {} ({} points)",
+        or_dash(d.ranking.map(|r| r.to_string())),
+        or_dash(d.points.map(|p| format!("{p:.2}")))
+    );
+    println!(
+        "  founded        {}, joined FIFA {}",
+        or_dash(d.founded.map(|y| y.to_string())),
+        or_dash(d.joined_fifa.map(|y| y.to_string()))
+    );
+    let rivals: Vec<String> = d
+        .rivals
+        .iter()
+        .map(|r| {
+            format!(
+                "{} {}",
+                r.name.as_deref().unwrap_or("?"),
+                r.strength.map_or_else(|| "-".to_owned(), |s| s.to_string())
+            )
+        })
+        .collect();
+    println!("  rivals         {}", rivals.join(", "));
+    for team in &d.teams {
+        let age = team.age_limit.map_or_else(|| "senior".to_owned(), |age| format!("U{age}"));
+        let name = |person: &Option<fmlibre_core::Person>| person.as_ref().map_or("-", |p| p.name.as_str()).to_owned();
+        println!(
+            "  team {age:<9} kind {:<4} reputation {:<5} manager {}, captain {}, vice {}, squad {}",
+            team.kind,
+            team.reputation,
+            name(&team.manager),
+            name(&team.captain),
+            name(&team.vice_captain),
+            team.squad.len()
+        );
+    }
+    Ok(())
+}
+
 fn club(session: &Session, uid: u32) -> Result<()> {
     let index = ClubIndex::new(session.clubs()?);
     let summary = index.get(uid).with_context(|| format!("no club with UID {uid}"))?;
@@ -3433,6 +3581,18 @@ fn club(session: &Session, uid: u32) -> Result<()> {
         ),
         None => println!("  stadium        not found"),
     }
+    let ties = |ties: &[fmlibre_core::Related]| {
+        let named: Vec<String> = ties
+            .iter()
+            .map(|tie| {
+                let name = tie.name.as_deref().unwrap_or("?");
+                tie.strength.map_or_else(|| format!("{name} ({})", tie.uid), |s| format!("{name} ({}) {s}", tie.uid))
+            })
+            .collect();
+        if named.is_empty() { "-".to_owned() } else { named.join(", ") }
+    };
+    println!("  rivals         {}", ties(&d.rivals));
+    println!("  links          {}", ties(&d.links));
     Ok(())
 }
 

@@ -414,7 +414,7 @@ interface TeamActionsProps {
 }
 
 /**
- * Heal all, Lift bans, Inspire all, Refresh all and Max attributes for the shown team. Heal all and Lift bans say how
+ * Heal all, Lift bans, Inspire all, Refresh all, Max cohesion and Max attributes for the shown team. Heal all and Lift bans say how
  * many players are injured or banned and wait until somebody is; every one waits while the game cannot be written to,
  * and says why.
  */
@@ -455,6 +455,13 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
         waiting={!editable || empty}
         busy={busy}
         onPress={() => onAction("refresh")}
+      />
+      <ActionButton
+        label={text.maxCohesion}
+        title={hover(text.maxCohesionTitle, empty ? text.empty : null)}
+        waiting={!editable || empty}
+        busy={busy}
+        onPress={() => onAction("maxCohesion")}
       />
       <ActionButton
         label={text.maxAll}

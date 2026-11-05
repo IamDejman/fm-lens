@@ -92,7 +92,7 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
                 min={REPUTATION_RANGE.min}
                 max={REPUTATION_RANGE.max}
                 step={1}
-                placeholder={filters.reputationPlaceholder}
+                placeholder={filters.minPlaceholder}
                 aria-label={filters.minReputation}
                 value={minReputation}
                 onChange={(e) => setMinReputation(e.currentTarget.value)}
@@ -103,7 +103,7 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
                 min={REPUTATION_RANGE.min}
                 max={REPUTATION_RANGE.max}
                 step={1}
-                placeholder={filters.reputationPlaceholder}
+                placeholder={filters.maxPlaceholder}
                 aria-label={filters.maxReputation}
                 value={maxReputation}
                 onChange={(e) => setMaxReputation(e.currentTarget.value)}

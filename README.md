@@ -17,9 +17,9 @@ features differ from the upstream editor.
   Integrity Protection enabled.
 - Search players, staff and clubs. View and edit mapped player attributes, CA/PA,
   positions, traits, personality, reputation, happiness, caps and contract fields.
-- Freeze a player's attributes, heal injuries, lift bans, and run the squad
-  actions that are already built: inspire, refresh fitness and sharpness, and
-  max attributes.
+- Freeze a player's attributes, set them all to one value from 1 to 20, heal
+  injuries, lift bans, and run the squad actions that are already built:
+  inspire, refresh fitness and sharpness, and max attributes.
 - Filter players by age, ability, position, nationality, club, attributes,
   contract expiry and transfer/loan listing. Staff filters include age, nation,
   club, ability, job and attributes; club filters include reputation and founded year.

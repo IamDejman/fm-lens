@@ -43,7 +43,8 @@ export const frozenPlayers = () => call<number[]>("frozen_players");
  * Sets every attribute of the player `uid` to its best: 20, and 1 for injury proneness and dirtiness. The changes are
  * logged as one batch, undone with `undoBatch`; `applied` counts them.
  */
-export const maxAttributes = (uid: number) => call<MassReport>("max_attributes", { uid });
+/** Sets every attribute of the player to `level` (1 to 20); injury proneness and dirtiness, lower being better, to 21 - `level`. */
+export const setAttributes = (uid: number, level: number) => call<MassReport>("set_attributes", { uid, level });
 
 /** The nations of the people in the lists, by name: what a nation field can be set to. */
 export const listNations = () => call<Nation[]>("list_nations");

@@ -13,6 +13,7 @@ import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./P
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { PositionPitch, PositionRatings } from "./PositionPitch";
 import { ReleaseButton } from "./ReleaseDialog";
+import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
@@ -150,6 +151,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
       {details.contract && <ContractGroup details={details} contract={details.contract} />}
       <CareerGroup details={details} />
       <TiesGroup details={details} />
+      <LanguagesGroup languages={details.languages} />
+      <PreferencesGroup preferences={details.preferences} />
     </>
   );
 }
@@ -292,7 +295,7 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
           ))}
         </dl>
       )}
-      {error && <p className="banner">{error}</p>}
+      {error && <p className="banner" role="alert">{error}</p>}
     </div>
   );
 }
@@ -419,7 +422,7 @@ function RetirementPlan({ uid, retires }: { uid: number; retires: FmDate | null 
           <Fact label={profileText.retires}>{formatDate(retires)}</Fact>
         </dl>
       )}
-      {error && <p className="banner">{error}</p>}
+      {error && <p className="banner" role="alert">{error}</p>}
     </div>
   );
 }

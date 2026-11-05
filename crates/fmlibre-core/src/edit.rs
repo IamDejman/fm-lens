@@ -458,6 +458,11 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
     // located on the build and class it was traced on, so it reads as missing for everyone else.
     out.push(Field::flag(Entity::Staff, "manager.unsackable", 0, 1).in_record(Place::HumanManagerFlags).single());
+    // Squad registration at any time: bit 8 of the same word (bit 0 of its second byte), as the game's own
+    // `squad_registration_anytime` action toggles it.
+    out.push(
+        Field::flag(Entity::Staff, "manager.registration_anytime", 1, 0).in_record(Place::HumanManagerFlags).single(),
+    );
     out.into_iter().map(|f| f.in_person_block(s.person_block)).collect()
 }
 
@@ -1170,7 +1175,8 @@ mod tests {
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + 1);
+        // The 2 contract fields and the human manager's 2 flags.
+        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + 2);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).
@@ -1224,6 +1230,25 @@ mod tests {
             assert_eq!(field.encode(0, &on), off);
             assert_eq!(field.encode(1, &on), on);
             assert_eq!(field.encode(0, &off), off);
+        }
+    }
+
+    #[test]
+    fn registration_anytime_is_bit_8_of_the_manager_s_flags() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let staff = fields(&layout, Entity::Staff);
+        let field = staff.iter().find(|f| f.key == "manager.registration_anytime").cloned().expect("field");
+        assert_eq!((field.kind, field.min, field.max, field.bit), (Kind::Flag, 0, 1, 0));
+        assert_eq!(field.place, Place::HumanManagerFlags);
+        assert!(!field.shifted && !field.mass);
+        // The second byte of the flags word, whatever the person block's shift.
+        let target = Target { entity: Entity::Staff, uid: 1, address: 0x1000, shift: 0x340 };
+        assert_eq!(field.address(0x13FC, &target), 0x13FD);
+        for others in [0b0000_0000u8, 0b1111_1110, 0b1010_0100, 0b0000_0010] {
+            let (off, on) = ([others & !1], [others | 1]);
+            assert_eq!((field.decode(&off), field.decode(&on)), (0, 1));
+            assert_eq!(field.encode(1, &off), on);
+            assert_eq!(field.encode(0, &on), off);
         }
     }
 

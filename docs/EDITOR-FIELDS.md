@@ -3,12 +3,16 @@
 This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
-The current FM27 Apple Silicon layout defines 167 player fields, 38 staff fields
-and 14 club fields. One staff field, `manager.unsackable`, is manager-only: bit 1
-of the human manager's flags word, located only on FM27 Steam build 26340721
-(ARM64) for an object of class `db::HUMAN_NON_PLAYER`; every other build and
-member of staff reads it as missing. It is experimental: bounded apply/undo and save/reload persistence passed on a
-copied career, but dismissal protection remains unverified (see EDITING-VALIDATION.md). A missing record, unsupported build, changed career storage,
+The current FM27 Apple Silicon layout defines 167 player fields, 39 staff fields
+and 14 club fields. Two staff fields are manager-only bits of the human manager's
+flags word, located only on FM27 Steam build 26340721 (ARM64) for an object of
+class `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
+missing. `manager.unsackable` (bit 1) passed bounded apply/undo and save/reload
+persistence on a copied career, but dismissal protection remains unverified.
+`manager.registration_anytime` (bit 8) passed the same apply/undo and
+save/reload checks; FM changed registration outside the window and kept the
+change through save/quit/reload.
+Both are experimental (see EDITING-VALIDATION.md). A missing record, unsupported build, changed career storage,
 failed layout check, stale value or invalid current/new value prevents a write.
 Fields use stored scales; the interface converts attributes and percentages.
 
@@ -230,6 +234,7 @@ records cannot be imported through a template.
 | `contract.wage` | i32 | plain | 0–10000000 |
 | `contract.expires` | date | plain | 2000-01-01–2100-12-31 |
 | `manager.unsackable` | flag (bit 1) | plain | 0–1 |
+| `manager.registration_anytime` | flag (bit 8) | plain | 0–1 |
 
 ## Clubs
 
@@ -254,6 +259,6 @@ records cannot be imported through a template.
 
 Nations, competitions, awards, officials, promises and youth-intake records do
 not yet have validated editing layouts in this fork. Complete loans/transfers,
-manager protections, work permits, languages, ownership, kits and competition
+manager relations and moves, work permits, languages, ownership, kits and competition
 rule behavior also remain research work. These cannot be enabled by adding
 inputs or reusing a Windows offset on macOS.

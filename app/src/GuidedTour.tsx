@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { appText } from "./labels";
 
 const STORAGE_KEY = "fmlibre.tour";
@@ -51,6 +51,14 @@ export function GuidedTour({ ready, connected }: { ready: boolean; connected: bo
     return () => target?.classList.remove("tour-ring");
   }, [id]);
 
+  // Each step takes keyboard focus, on its main button, so that Enter goes on and Escape ends the tour.
+  const primary = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (id) {
+      primary.current?.focus({ preventScroll: true });
+    }
+  }, [id]);
+
   if (!ready || at === null || !step) {
     return null;
   }
@@ -59,11 +67,19 @@ export function GuidedTour({ ready, connected }: { ready: boolean; connected: bo
   const close = () => {
     finish();
     setAt(null);
+    // Focus goes where the tour began: the search box of the list, when there is one.
+    document.querySelector<HTMLInputElement>('[data-tour="search"] input')?.focus();
   };
   const last = index >= ids.length - 1;
 
   return (
-    <div className={step.id === "status" ? "tour top" : "tour"} role="dialog" aria-labelledby="tour-title">
+    <div className={step.id === "status" ? "tour top" : "tour"} role="dialog" aria-labelledby="tour-title"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          close();
+        }
+      }}>
       <h2 id="tour-title">{step.title}</h2>
       <p>{step.body}</p>
       <div className="tour-actions">
@@ -76,7 +92,7 @@ export function GuidedTour({ ready, connected }: { ready: boolean; connected: bo
             {text.back}
           </button>
         )}
-        <button type="button" className="primary" onClick={() => (last ? close() : setAt(index + 1))}>
+        <button ref={primary} type="button" className="primary" onClick={() => (last ? close() : setAt(index + 1))}>
           {last ? text.done : text.next}
         </button>
       </div>

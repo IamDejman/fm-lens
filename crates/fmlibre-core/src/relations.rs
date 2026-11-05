@@ -20,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use crate::clubs::ClubSummary;
 use crate::players::{Nation, PlayerSummary, nation_name};
 use crate::session::Session;
+use crate::staff::StaffSummary;
 use crate::text::read_fm_string;
 use crate::transfer::{MoveError, Patch, Patches};
 
@@ -30,6 +31,9 @@ const MOST_RELATIONS: u64 = 256;
 const CLUB: u8 = 1;
 const PERSON: u8 = 3;
 const NATION: u8 = 8;
+
+/// The game's code for a club's rivalry with another club.
+const RIVAL: u8 = 5;
 
 /// The homegrown rules the editor writes, by the game's code: 15–21, 0–21, 15–21 excluding loans, and 0–19 for a
 /// year. The game has others, which the editor shows but does not write.
@@ -150,6 +154,17 @@ pub struct Preference {
     pub strength: i8,
 }
 
+/// A club or nation another is related to: a rival, with how strong the rivalry is, or a club it has a link
+/// with. Read-only.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Related {
+    pub uid: u32,
+    pub name: Option<String>,
+    /// How strong a rivalry is, 0 to 100; `None` for a link.
+    pub strength: Option<u8>,
+}
+
 /// A change to a player's ties, worked out from the game as it is now and ready to be written.
 #[derive(Debug, Clone)]
 pub struct RelationPlan {
@@ -195,6 +210,108 @@ impl Session {
             return Ok(Vec::new());
         };
         Ok(list.entries.iter().enumerate().filter_map(|(index, entry)| self.preference_at(index, entry)).collect())
+    }
+
+    /// The favoured and disliked people and clubs of the member of staff `member`, read-only like a player's. Empty
+    /// where the layout does not place his relations.
+    pub fn staff_preferences(&self, member: &StaffSummary) -> Result<Vec<Preference>, MoveError> {
+        let st = &self.layout.staff;
+        let Some(relations) = st.relations else {
+            return Ok(Vec::new());
+        };
+        if self.process.read_u32(member.address + st.at(st.uid, member.shift))? != member.uid {
+            return Err(MoveError::Moved { uid: member.uid });
+        }
+        let header = self.process.read_u64(member.address + st.at(relations, member.shift))?;
+        if !is_user_pointer(header) {
+            return Ok(Vec::new());
+        }
+        let list = self.relation_list_at(header)?;
+        Ok(list.entries.iter().enumerate().filter_map(|(index, entry)| self.preference_at(index, entry)).collect())
+    }
+
+    /// The clubs `club` is a rival of, strongest first, with how strong each rivalry is (0 to 100). Empty where the
+    /// layout does not place a club's relations.
+    pub fn club_rivals(&self, club: &ClubSummary) -> Result<Vec<Related>, MoveError> {
+        let c = &self.layout.club;
+        let Some(relations) = c.relations else {
+            return Ok(Vec::new());
+        };
+        if self.process.read_u32(club.address + c.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        let r = &self.layout.relation;
+        let list = self.relation_list_at(club.address + relations)?;
+        let mut rivals: Vec<Related> = list
+            .entries
+            .iter()
+            .filter(|entry| entry[r.target_kind as usize] == CLUB && entry[r.relation as usize] == RIVAL)
+            .filter_map(|entry| {
+                let target = u64::from_le_bytes(entry[r.target as usize..r.target as usize + 8].try_into().ok()?);
+                let mut tie = self.club_tie(target)?;
+                tie.strength = Some(entry[r.value as usize]);
+                Some(tie)
+            })
+            .filter(|tie| tie.uid != club.uid)
+            .collect();
+        rivals.sort_by_key(|rival| std::cmp::Reverse(rival.strength));
+        Ok(rivals)
+    }
+
+    /// The clubs `club` has links with (affiliations), in the game's order. Empty where the layout does not place
+    /// them.
+    pub fn club_links(&self, club: &ClubSummary) -> Result<Vec<Related>, MoveError> {
+        let c = &self.layout.club;
+        let (Some(links), Some(link_club)) = (c.links, c.link_club) else {
+            return Ok(Vec::new());
+        };
+        if self.process.read_u32(club.address + c.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        let words = self.process.read_bytes(club.address + links, 24)?;
+        let word = |i: usize| u64::from_le_bytes(words[i * 8..i * 8 + 8].try_into().expect("8 bytes"));
+        let (begin, end, capacity) = (word(0), word(1), word(2));
+        if begin == end {
+            return Ok(Vec::new());
+        }
+        let sane = is_user_pointer(begin)
+            && begin < end
+            && end <= capacity
+            && (end - begin).is_multiple_of(8)
+            && end - begin <= 8 * MOST_RELATIONS;
+        if !sane {
+            return Err(MoveError::NotListed);
+        }
+        let bytes = self.process.read_bytes(begin, (end - begin) as usize)?;
+        let mut seen = Vec::new();
+        let mut ties = Vec::new();
+        for word in bytes.chunks(8) {
+            let link = u64::from_le_bytes(word.try_into().expect("8 bytes"));
+            if !is_user_pointer(link) {
+                continue;
+            }
+            let Ok(other) = self.process.read_u64(link + link_club) else {
+                continue;
+            };
+            // The game also links a club with its own men's or women's side, which carries its name: not an affiliate.
+            let own_side = |tie: &Related| tie.uid == club.uid || tie.name.as_deref() == Some(club.name.as_str());
+            if let Some(tie) = self.club_tie(other).filter(|tie| !own_side(tie) && !seen.contains(&tie.uid)) {
+                seen.push(tie.uid);
+                ties.push(tie);
+            }
+        }
+        Ok(ties)
+    }
+
+    /// The club at `address`, when it looks like one: its UID and name.
+    fn club_tie(&self, address: u64) -> Option<Related> {
+        if !is_user_pointer(address) {
+            return None;
+        }
+        let c = &self.layout.club;
+        let uid = self.process.read_u32(address + c.uid).ok()?;
+        let name = self.process.read_u64(address + c.name).ok().and_then(|text| read_fm_string(&self.process, text));
+        name.is_some().then_some(Related { uid, name, strength: None })
     }
 
     /// How many more ties the list of `player` has room for.
@@ -324,7 +441,7 @@ impl Session {
 
     /// The list of relations of `player`, or `None` for a player without a record of them.
     fn relation_list(&self, player: &PlayerSummary) -> Result<Option<RelationList>, MoveError> {
-        let (p, size) = (&self.layout.player, self.layout.relation.size);
+        let p = &self.layout.player;
         if self.process.read_u32(player.address + p.at(p.uid, player.shift))? != player.uid {
             return Err(MoveError::Moved { uid: player.uid });
         }
@@ -332,11 +449,17 @@ impl Session {
         if !is_user_pointer(header) {
             return Ok(None);
         }
+        self.relation_list_at(header).map(Some)
+    }
+
+    /// The list of relations whose `(begin, end, capacity)` header is at `header`.
+    fn relation_list_at(&self, header: u64) -> Result<RelationList, MoveError> {
+        let size = self.layout.relation.size;
         let words = self.process.read_bytes(header, 24)?;
         let word = |i: usize| u64::from_le_bytes(words[i * 8..i * 8 + 8].try_into().expect("8 bytes"));
         let (begin, end, capacity) = (word(0), word(1), word(2));
         if begin == 0 && end == 0 && capacity == 0 {
-            return Ok(Some(RelationList { header, begin, end, capacity, entries: Vec::new() }));
+            return Ok(RelationList { header, begin, end, capacity, entries: Vec::new() });
         }
         let sane = is_user_pointer(begin)
             && begin <= end
@@ -349,7 +472,7 @@ impl Session {
         }
         let bytes = self.process.read_bytes(begin, (end - begin) as usize)?;
         let entries = bytes.chunks(size as usize).map(<[u8]>::to_vec).collect();
-        Ok(Some(RelationList { header, begin, end, capacity, entries }))
+        Ok(RelationList { header, begin, end, capacity, entries })
     }
 
     /// The tie `entry` at `index` is, or `None` for a relation of another kind.

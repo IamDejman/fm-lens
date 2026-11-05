@@ -7,13 +7,13 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     ArraySource, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove,
-    Coded, EditError, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN,
-    GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Kind, Lifted, Listed, Loan, MoveError,
-    MovePlan, MoveTerms, Nation, NationSummary, Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter,
-    PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex,
-    Session, SessionError, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex,
-    StaffPlan, Target, TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums,
-    sort_players,
+    Coded, Cohered, EditError, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE,
+    GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Kind, Lifted, Listed, Loan,
+    MoveError, MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, Picture,
+    Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
+    PreferenceKind, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StadiumFilter,
+    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, TemplateGroup, Tie,
+    TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -51,8 +51,12 @@ struct Connection {
     frozen: Frozen,
     /// Which save the game has loaded (see `save_of`); none when the lists name no human manager.
     save: Option<String>,
+    /// Who the user is in that save, to show which career is connected; none when no career is loaded.
+    career: Option<Career>,
     /// Senior stadiums, read once from the clubs already loaded. Cleared when the connection is loaded again.
     stadiums: Option<SearchIndex<StadiumSummary>>,
+    /// Match officials, read once. Cleared when the connection is loaded again.
+    officials: Option<SearchIndex<OfficialSummary>>,
 }
 
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
@@ -201,11 +205,30 @@ impl Connection {
         let mut humans: Vec<u32> = staff.iter().filter(|member| member.is_human).map(|member| member.uid).collect();
         humans.sort_unstable();
         let save = save_of(&session, &humans);
+        let career = staff
+            .iter()
+            .filter(|member| member.is_human)
+            .min_by_key(|member| member.uid)
+            .map(|member| Career { uid: member.uid, manager: member.name.clone(), club: member.club.clone() });
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
         let next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
         let frozen = Frozen::default();
-        Ok(Self { session, players, staff, clubs, human_clubs, log, mass: None, next_id, frozen, save, stadiums: None })
+        Ok(Self {
+            session,
+            players,
+            staff,
+            clubs,
+            human_clubs,
+            log,
+            mass: None,
+            next_id,
+            frozen,
+            save,
+            career,
+            stadiums: None,
+            officials: None,
+        })
     }
 
     /// Freezes again what was frozen in this save before, as the file at `path` remembers it: the attributes of its
@@ -302,6 +325,7 @@ impl Connection {
             writable: self.session.process.can_write(),
             known_build: self.session.known_build(),
             health: Health::clone(&self.session.health()),
+            career: self.career.clone(),
             refrozen: None,
         }
     }
@@ -462,6 +486,50 @@ impl Connection {
             tie: None,
             clause: None,
             undo: Some(Undo::Lift(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Names the people and clubs of `preferences` the game's records leave unnamed, from the lists read at connect.
+    fn name_preferences(&self, preferences: &mut [Preference]) {
+        for preference in preferences.iter_mut().filter(|preference| preference.name.is_none()) {
+            let uid = preference.target_uid;
+            preference.name = match preference.kind {
+                PreferenceKind::FavouredPerson | PreferenceKind::DislikedPerson => self
+                    .players
+                    .get(uid)
+                    .map(|player| player.name.clone())
+                    .or_else(|| self.staff.get(uid).map(|member| member.name.clone())),
+                PreferenceKind::FavouredClub | PreferenceKind::DislikedClub => {
+                    self.clubs.get(uid).map(|club| club.name.clone())
+                }
+            };
+        }
+    }
+
+    /// Logs raising a player's familiarity with his club just written, as a change of his `cohesion` from what it was
+    /// to the most.
+    fn log_cohesion(&mut self, done: Cohered, batch: Option<u32>) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "cohesion".to_owned(),
+            old: i64::from(done.before),
+            new: i64::from(fmlibre_core::MOST_FAMILIARITY),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Cohesion(done)),
         };
         self.log.push(logged.clone());
         logged
@@ -792,6 +860,7 @@ impl Connection {
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
+            Some(Undo::Cohesion(cohered)) => self.session.undo_cohesion(&cohered)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
@@ -917,12 +986,14 @@ impl Connection {
     }
 
     /// Every attribute of a player at its best: 20, or 1 where lower is better.
-    fn best_attributes(&self) -> Vec<(Field, Operation)> {
+    /// Every attribute at `level` (1 to 20); where lower is better (injury proneness, dirtiness) at the same quality the
+    /// other way round, 21 - `level`. At 20 this is every attribute at its best.
+    fn attributes_at(&self, level: i64) -> Vec<(Field, Operation)> {
         self.attribute_fields()
             .into_iter()
             .map(|field| {
-                let best = if LOWER_IS_BETTER.contains(&field.key.as_str()) { 1 } else { 20 };
-                let value = field.scale.stored(best);
+                let shown = if LOWER_IS_BETTER.contains(&field.key.as_str()) { 21 - level } else { level };
+                let value = field.scale.stored(shown);
                 (field, Operation::Set { value })
             })
             .collect()
@@ -935,6 +1006,14 @@ impl Connection {
             self.stadiums = Some(SearchIndex::new(rows));
         }
         self.stadiums.as_ref().expect("stadium index just stored")
+    }
+
+    /// The match officials, read once. Empty when this build's profile does not place them.
+    fn official_index(&mut self) -> Result<&SearchIndex<OfficialSummary>, Failure> {
+        if self.officials.is_none() {
+            self.officials = Some(SearchIndex::new(self.session.officials()?));
+        }
+        Ok(self.officials.as_ref().expect("official index just stored"))
     }
 
     /// The nations of the players and staff in the lists.
@@ -1020,6 +1099,7 @@ enum Undo {
     Move(LoggedMove),
     Heal(Healed),
     Lift(Lifted),
+    Cohesion(Cohered),
     Retirement(RetirementSet),
     Tie(RelationSet),
     Clause(ClauseSet),
@@ -1118,6 +1198,9 @@ enum TeamAction {
     Refresh,
     /// Every attribute to its best: 20, or 1 where lower is better.
     MaxAttributes,
+    /// Every player fully familiar with the club, as the game's Max cohesion does; experimental. Only players the game
+    /// has given a familiarity with the club already are raised.
+    MaxCohesion,
 }
 
 #[derive(Clone, Serialize)]
@@ -1391,6 +1474,15 @@ struct DetectedGame {
     error: Option<Failure>,
 }
 
+/// Who the user manages in the loaded career: what FM names a save after by default.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Career {
+    uid: u32,
+    manager: String,
+    club: Option<String>,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ConnectionInfo {
@@ -1410,6 +1502,8 @@ struct ConnectionInfo {
     known_build: bool,
     /// What the checks the editor makes before it writes found on this game.
     health: Health,
+    /// The human manager and club of the loaded career.
+    career: Option<Career>,
     /// Only from `connect`: what it froze again of what was frozen in this save before, when there was any.
     #[serde(skip_serializing_if = "Option::is_none")]
     refrozen: Option<Refrozen>,
@@ -1427,6 +1521,8 @@ struct ReloadInfo {
     game_date: Option<FmDate>,
     /// The checks, run again with the game as it is now.
     health: Health,
+    /// The human manager and club of the career loaded now.
+    career: Option<Career>,
     /// Only when the game has loaded another save since: what was frozen in that one before and is frozen again,
     /// when there was any. What was frozen in the save before is not held in this one.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1507,6 +1603,11 @@ fn not_connected() -> Failure {
     Failure::new("app.notConnected", "Not connected to the game")
 }
 
+/// The game is running but no career is loaded in it (FM's main menu, say): nothing to read or edit yet.
+fn no_career() -> Failure {
+    Failure::new("session.noCareer", "No career is loaded in FM27. Load a save, then connect.")
+}
+
 /// No player, member of staff or club with `uid` in the lists read from the game.
 fn not_found(entity: Entity, uid: u32) -> Failure {
     Failure::new("app.notFound", format!("No {entity} with id {uid}")).with("entity", entity).with("uid", uid)
@@ -1557,6 +1658,10 @@ async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Res
     let (connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let pid = find_game(None)?;
         let mut connection = Connection::load(connect_session(pid)?, Vec::new())?;
+        // Without a human manager the lists are not a career the user can recognise or should edit.
+        if connection.career.is_none() {
+            return Err(no_career());
+        }
         let refrozen = connection.restore_frozen(path.as_deref());
         Ok((connection, refrozen))
     })
@@ -1570,10 +1675,17 @@ async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Res
 
 /// The connection made before, if the app is still attached, without reading the game
 /// again: lets the window pick it up after a reload (e.g. to change the language) with
-/// the lists and the change log as they were.
+/// the lists and the change log as they were. Once the game it was made to has quit (e.g.
+/// FM was restarted), drops it and says so.
 #[tauri::command]
 fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInfo>, Failure> {
-    let guard = state.0.lock()?;
+    let mut guard = state.0.lock()?;
+    if let Some(connection) = guard.as_ref()
+        && let Err(quit @ SessionError::NoSuchProcess(_)) = find_game(Some(connection.session.process.pid()))
+    {
+        *guard = None;
+        return Err(quit.into());
+    }
     Ok(guard.as_ref().map(|connection| connection.info(0)))
 }
 
@@ -1599,9 +1711,14 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     let path = file.0.clone();
     let (connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let (save, frozen) = (old.save, old.frozen);
+        // A game that has quit says so plainly, rather than as whatever opening its process gives.
+        let pid = find_game(Some(old.session.process.pid()))?;
         // Loading a different career replaces the arrays and cached class identities.
-        let session = connect_session(old.session.process.pid())?;
+        let session = connect_session(pid)?;
         let mut connection = Connection::load(session, old.log)?;
+        if connection.career.is_none() {
+            return Err(no_career());
+        }
         let same_objects = old.session.current_career()
             && old.players.iter().all(|player| {
                 connection.players.get(player.uid).is_some_and(|current| current.target() == player.target())
@@ -1626,6 +1743,7 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
         clubs: connection.clubs.len(),
         game_date: connection.session.game_date(),
         health: Health::clone(&connection.session.health()),
+        career: connection.career.clone(),
         refrozen,
     };
     *state.0.lock()? = Some(connection);
@@ -1794,7 +1912,10 @@ fn player_details(state: State<'_, AppState>, uid: u32) -> Result<PlayerDetails,
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
-    connection.session.player_details(player)?.ok_or_else(data_changed)
+    let mut details = connection.session.player_details(player)?.ok_or_else(data_changed)?;
+    // The game keeps a club's name with the club; a person's comes from the lists.
+    connection.name_preferences(&mut details.preferences);
+    Ok(details)
 }
 
 /// The full profile of the member of staff with `uid`. Only reads memory.
@@ -1803,7 +1924,9 @@ fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, F
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let member = connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
-    connection.session.staff_details(member)?.ok_or_else(data_changed)
+    let mut details = connection.session.staff_details(member)?.ok_or_else(data_changed)?;
+    connection.name_preferences(&mut details.preferences);
+    Ok(details)
 }
 
 /// Senior stadiums matching `query` (stadium or club name), highest capacity first; at most `limit` rows.
@@ -1821,6 +1944,16 @@ fn search_stadiums(
     Ok(page(index, &query, limit, |stadium| filter.matches(stadium), |_| {}))
 }
 
+/// Match officials matching `query` by name or UID, best current ability first; at most `limit` rows. Only reads
+/// memory.
+#[tauri::command]
+fn search_officials(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<OfficialSummary>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let index = connection.official_index()?;
+    Ok(page(index, &query, limit, |_| true, |_| {}))
+}
+
 /// Nations of the players and staff in the lists, matching `query` by name; at most `limit` rows.
 #[tauri::command]
 fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<NationSummary>, Failure> {
@@ -1828,6 +1961,23 @@ fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Re
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let index = SearchIndex::new(nation_summaries(connection.nations()));
     Ok(page(&index, &query, limit, |_| true, |_| {}))
+}
+
+/// The profile of the nation in the nations list with the row id `uid`; `None` where this build's layout does not place
+/// nations' details. Only reads memory.
+#[tauri::command]
+fn nation_details(state: State<'_, AppState>, uid: u32) -> Result<Option<NationDetails>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let nations = connection.nations();
+    // The list's row ids stand in for the nations whose own UID is missing or shared, so match by row.
+    let rows = nation_summaries(nations.clone());
+    let nation = rows
+        .iter()
+        .zip(&nations)
+        .find_map(|(row, nation)| (row.uid == uid).then_some(nation))
+        .ok_or_else(|| Failure::new("app.notFound", format!("No nation with UID {uid}")).with("uid", uid))?;
+    Ok(connection.session.nation_details(nation, &connection.players, &connection.staff)?)
 }
 
 /// The nations of the players and staff in the lists, by name: what a nation field can be set to.
@@ -2370,10 +2520,10 @@ fn set_captain(
 fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamAction) -> Result<MassReport, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?.clone();
     let members = connection
         .session
-        .club_teams(summary, &connection.players)?
+        .club_teams(&summary, &connection.players)?
         .into_iter()
         .find(|found| found.index == team)
         .ok_or(MoveError::NoTeam { index: team })?
@@ -2435,6 +2585,33 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
             }
             return Ok(report);
         }
+        TeamAction::MaxCohesion => {
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            for member in &members {
+                let Some(player) = connection.players.get(member.uid) else {
+                    continue;
+                };
+                let name = player.name.clone();
+                let raised = connection
+                    .session
+                    .plan_cohesion(player, &summary)
+                    .and_then(|plan| plan.map(|plan| connection.session.apply_cohesion(&plan)).transpose());
+                match raised {
+                    Ok(Some(done)) => {
+                        connection.log_cohesion(done, Some(batch));
+                        report.applied += 1;
+                    }
+                    Ok(None) => {}
+                    Err(err) => report.failed.push(MassFailure {
+                        uid: member.uid,
+                        name,
+                        field: "cohesion".to_owned(),
+                        error: err.into(),
+                    }),
+                }
+            }
+            return Ok(report);
+        }
         // Morale at its best, and the reasons to be unhappy gone, as FMRTE's Inspire does.
         TeamAction::Inspire => &[("morale", 20), ("contract.unhappiness", 0)],
         // Rested as the game rests a player: full energy and sharpness, and jadedness at its least.
@@ -2447,7 +2624,7 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
         .map(|player| (player.target(), player.name.clone()))
         .collect();
     let operations = if action == TeamAction::MaxAttributes {
-        connection.best_attributes()
+        connection.attributes_at(20)
     } else {
         values
             .iter()
@@ -2458,15 +2635,19 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
     Ok(connection.write_planned(Entity::Player, plan.planned, batch))
 }
 
-/// Sets every attribute of the player `uid` to its best, as Max attributes does for a team: 20, and 1 for injury
-/// proneness and dirtiness. The changes are logged as one batch, which `undo_batch` undoes.
+/// Sets every attribute of the player `uid` to `level` (1 to 20), and injury proneness and dirtiness, where lower is
+/// better, to 21 - `level`: at 20, what Max attributes does for a team. The changes are logged as one batch, which
+/// `undo_batch` undoes.
 #[tauri::command]
-fn max_attributes(state: State<'_, AppState>, uid: u32) -> Result<MassReport, Failure> {
+fn set_attributes(state: State<'_, AppState>, uid: u32, level: i64) -> Result<MassReport, Failure> {
+    if !(1..=20).contains(&level) {
+        return Err(Failure::new("attributes.level", "Choose a value from 1 to 20."));
+    }
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
     let targets = [(player.target(), player.name.clone())];
-    let plan = connection.session.plan_mass_edit(&targets, &connection.best_attributes())?;
+    let plan = connection.session.plan_mass_edit(&targets, &connection.attributes_at(level))?;
     let batch = connection.fresh_id();
     let mut report = connection.write_planned(Entity::Player, plan.planned, batch);
     // An attribute that could not be read is said, not passed over: it is one player, not a team.
@@ -2701,12 +2882,14 @@ pub fn run() {
             search_clubs,
             search_nations,
             search_stadiums,
+            search_officials,
             export_players,
             open_export,
             show_export,
             player_details,
             staff_details,
             club_details,
+            nation_details,
             list_nations,
             freeze_money,
             frozen_clubs,
@@ -2748,7 +2931,7 @@ pub fn run() {
             club_squads,
             set_captain,
             team_action,
-            max_attributes,
+            set_attributes,
             graphics_info,
             can_self_update,
             restart_app,

@@ -6,23 +6,26 @@ import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
 import { CompatibilityNotice } from "./CompatibilityNotice";
 import { forgetFieldTables } from "./fieldTables";
-import { describeError, describeGame, formatDate } from "./format";
+import { describeBuild, describeError, formatDate } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
-import { GraphicsStatus } from "./GraphicsStatus";
+import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
+import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
 import { SettingsMenu } from "./SettingsMenu";
-import { appText, changesText, clubListText, nationListText, playerListText, stadiumListText, staffListText } from "./labels";
+import { appText, changesText, clubListText, nationListText, officialListText, playerListText, stadiumListText, staffListText } from "./labels";
 import { NationBrowser } from "./NationBrowser";
+import { OfficialBrowser } from "./OfficialBrowser";
 import { StadiumBrowser } from "./StadiumBrowser";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
-import type { BridgeInfo, ConnectionInfo, Detection, Refrozen, ReloadInfo } from "./types";
+import type { Reveal } from "./ListBrowser";
+import type { BridgeInfo, Career, ConnectionInfo, Detection, Refrozen, ReloadInfo } from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol.png";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
-type View = "players" | "staff" | "clubs" | "nations" | "stadiums" | "changes";
+type View = "players" | "staff" | "clubs" | "nations" | "stadiums" | "officials" | "changes";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
@@ -30,6 +33,7 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "clubs", label: clubListText.nav },
   { id: "nations", label: nationListText.nav },
   { id: "stadiums", label: stadiumListText.nav },
+  { id: "officials", label: officialListText.nav },
   { id: "changes", label: changesText.nav },
 ];
 
@@ -47,6 +51,8 @@ function BrandMark() {
 }
 
 function App() {
+  // Asks about the graphics packs, and has pictures asked for too early asked again once they are read.
+  useGraphics();
   const [detection, setDetection] = useState<Detection | null>(null);
   const [connection, setConnection] = useState<ConnectionInfo | null>(null);
   // False until the app has asked whether it is connected already (see the effect below): the connect panel would
@@ -73,7 +79,7 @@ function App() {
     try {
       await task();
     } catch (e) {
-      setError(String(e));
+      setError(describeError(e));
     } finally {
       setBusy(null);
     }
@@ -143,6 +149,47 @@ function App() {
     };
   }, [detect, reloadLog]);
 
+  // FM may have been closed or restarted while the app was in the background. On coming back, the app checks, and
+  // says so and offers to connect again rather than showing a game that has gone.
+  const attached = connection !== null;
+  useEffect(() => {
+    if (!attached) {
+      return;
+    }
+    const check = () => {
+      call<ConnectionInfo | null>("current_connection").catch((e: unknown) => {
+        setConnection(null);
+        // Looking for the game clears the message as it starts, so the message is set after.
+        void detect();
+        setError(describeError(e));
+      });
+    };
+    window.addEventListener("focus", check);
+    return () => window.removeEventListener("focus", check);
+  }, [attached, detect]);
+
+  // Until connected, the app keeps looking for the game, so starting FM27 or loading a save shows up on its own.
+  useEffect(() => {
+    if (attached || !checked) {
+      return;
+    }
+    let current = true;
+    const look = () => {
+      call<Detection>("detect_game")
+        .then((found) => current && setDetection(found))
+        .catch(() => {
+          // The next look tries again; a failure that lasts is shown when Connect is clicked.
+        });
+    };
+    const timer = window.setInterval(look, 3000);
+    window.addEventListener("focus", look);
+    return () => {
+      current = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", look);
+    };
+  }, [attached, checked]);
+
   // Changes were written or undone: the lists and the open profile read the game again, and so does the log.
   // The lists keep their search, filters, sort and selection when they do.
   const edited = useCallback(() => {
@@ -151,11 +198,11 @@ function App() {
   }, [reloadLog]);
 
   const editable = connection?.editable ?? false;
-  // The note on applying edits, the colophon's first: whole in its hover too, should a window ever be too narrow for it.
-  // While nothing can be edited, it is also the hover of what that turns off.
-  const note = !connection
-    ? appText.noteNotConnected
-    : editable
+  // Why nothing can be edited: shown in the colophon (whole in its hover too, should a window be too narrow for it) and
+  // as the hover of what that turns off. While editable or not connected (the connect panel says what to do), the
+  // colophon shows no note.
+  const note =
+    !connection || editable
       ? appText.noteEditable
       : connection.writable
         ? connection.knownBuild ? appText.noteReloadRequired : appText.noteUnknownBuild
@@ -169,26 +216,61 @@ function App() {
     }
   };
 
+  // ⌘1 to ⌘7 open the sections, in the order of the tabs.
+  useEffect(() => {
+    if (!connection) {
+      return;
+    }
+    const openSection = (event: KeyboardEvent) => {
+      const index = VIEWS.findIndex((_, i) => isShortcut(event, String(i + 1)));
+      if (index >= 0) {
+        event.preventDefault();
+        show(VIEWS[index].id);
+      }
+    };
+    window.addEventListener("keydown", openSection);
+    return () => window.removeEventListener("keydown", openSection);
+  }, [connection, view]);
+
+  // The user's own manager, whose profile holds what only he has (unsackable, registration at any time).
+  const [revealStaff, setRevealStaff] = useState<Reveal | null>(null);
+  const openManager = (career: Career) =>
+    askToLeave(() => {
+      setView("staff");
+      setRevealStaff({ uid: career.uid, query: career.manager });
+    });
+
   return (
     <div className="app">
       <header className="masthead">
         <BrandMark />
-        <nav className="tabs" data-tour="tabs">
-          {VIEWS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              className={id === view ? "tab active" : "tab"}
-              aria-current={id === view ? "page" : undefined}
-              onClick={() => show(id)}
-            >
-              {label}
-              {id === "changes" && log.length > 0 && <small>{log.length}</small>}
-            </button>
-          ))}
-        </nav>
+        {/* The sections only have something to show once connected. */}
+        {connection && (
+          <nav className="tabs" data-tour="tabs">
+            {VIEWS.map(({ id, label }, index) => (
+              <button
+                key={id}
+                type="button"
+                className={id === view ? "tab active" : "tab"}
+                aria-current={id === view ? "page" : undefined}
+                title={shortcutLabel(String(index + 1))}
+                aria-keyshortcuts={shortcutAria(String(index + 1))}
+                onClick={() => show(id)}
+              >
+                {label}
+                {id === "changes" && log.length > 0 && <small>{log.length}</small>}
+              </button>
+            ))}
+          </nav>
+        )}
         <div className="masthead-side">
           {busy && <span className="busy">{busy}</span>}
+          {/* Which career is connected, as FM names a save by default: the manager and his club. */}
+          {connection?.career && (
+            <button type="button" className="career" onClick={() => connection.career && openManager(connection.career)}>
+              {[connection.career.manager, connection.career.club].filter(Boolean).join(" · ")}
+            </button>
+          )}
           {connection &&
             (connection.gameDate ? (
               <span className="game-date">{formatDate(connection.gameDate)}</span>
@@ -197,17 +279,25 @@ function App() {
                 {appText.noDate}
               </span>
             ))}
-          {connection ? (
+          {connection && (
             <button onClick={reload} disabled={busy !== null}>
               {appText.reload}
             </button>
-          ) : (
-            <button onClick={detect} disabled={busy !== null}>
-              {appText.refresh}
-            </button>
           )}
           <span data-tour="settings">
-            <SettingsMenu busy={busy !== null} />
+            <SettingsMenu
+              busy={busy !== null}
+              details={[
+                `FM Lens${version ? ` ${version}` : ""}`,
+                connection
+                  ? describeBuild(connection.game)
+                  : detection?.games[0]?.info && describeBuild(detection.games[0].info),
+              ]
+                .filter(Boolean)
+                .map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+            />
           </span>
         </div>
       </header>
@@ -215,17 +305,18 @@ function App() {
       <div className="main">
         {connection && <CompatibilityNotice connection={connection} />}
         {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
-        {error && <div className="banner">{error}</div>}
+        {error && <div className="banner" role="alert">{error}</div>}
 
         {connection ? (
           // All the lists stay mounted, so each keeps its search and selection while another is shown.
           <EditorContext.Provider value={editor}>
             <div className="views">
               <PlayerBrowser version={dataVersion} active={view === "players"} />
-              <StaffBrowser version={dataVersion} active={view === "staff"} />
+              <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
               <ClubBrowser version={dataVersion} active={view === "clubs"} />
               <NationBrowser version={dataVersion} active={view === "nations"} />
               <StadiumBrowser version={dataVersion} active={view === "stadiums"} />
+              <OfficialBrowser version={dataVersion} active={view === "officials"} />
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
           </EditorContext.Provider>
@@ -243,30 +334,22 @@ function App() {
 
       <footer className="colophon">
         <div className="colophon-main">
-          <span className="colophon-name">
-            FM Lens{version && ` ${version}`}
-          </span>
+          <span className="colophon-name">FM Lens</span>
           <span className={`status ${connection ? "on" : ""}`} data-tour="status">
             <span className="dot" />
             <span className="status-text">
-              {connection
-                ? [
-                    describeGame(connection.game),
-                    playerListText.count(connection.players),
-                    staffListText.count(connection.staff),
-                    clubListText.count(connection.clubs),
-                  ].join(" · ")
-                : appText.notConnected}
+              {connection ? appText.connected : appText.notConnected}
             </span>
           </span>
           {!inTauri && <span className="tag">{appText.previewTag}</span>}
         </div>
-        <div className="colophon-notes">
-          <p className="sidebar-note" title={note}>
-            {note}
-          </p>
-          <GraphicsStatus />
-        </div>
+        {connection && !editable && (
+          <div className="colophon-notes">
+            <p className="sidebar-note" title={note}>
+              {note}
+            </p>
+          </div>
+        )}
       </footer>
       <GuidedTour ready={checked} connected={connection !== null} />
     </div>
@@ -296,16 +379,8 @@ function ConnectPanel(props: {
 
         {detection && detection.games.length === 0 && <p className="hint">{text.notRunning}</p>}
         {game && !game.info && <p className="hint error">{text.openFailed(describeError(game.error))}</p>}
-        {game?.info && (
-          <dl className="facts">
-            <dt>{text.game}</dt>
-            <dd>{describeGame(game.info)}</dd>
-            <dt>{text.gameData}</dt>
-            <dd>{game.pluginLoaded ? text.loaded : text.stillLoading}</dd>
-            <dt>{text.process}</dt>
-            <dd>{text.pid(game.info.pid)}</dd>
-          </dl>
-        )}
+        {/* Once the game is ready, the enabled Connect button says so; its version is under App details in Settings. */}
+        {game?.info && !game.pluginLoaded && <p className="hint">{text.stillLoading}</p>}
         {detection && detection.games.length > 1 && <p className="hint">{text.several}</p>}
 
         <button className="primary" onClick={onConnect} disabled={busy || !ready}>

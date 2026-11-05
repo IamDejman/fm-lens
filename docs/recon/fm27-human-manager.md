@@ -97,3 +97,63 @@ remain unverified:
 
 Registration and club or national-team moves for the human manager need their
 own linked-record mappings; this flag does not cover them.
+
+## The game's own manager actions
+
+The plugin keeps FM's own in-game editor actions as a table of names next to
+`become_unsackable` (`0x5155B12`): `allow_licenced_kits`, `squad_numbers_anytime`,
+`squad_registration_anytime`, `cancel_future_transfer`, `add_work_permit`,
+`remove_work_permit`, `loan_to_my_team`, `loan_to_other_team`,
+`staff_to_my_national_team`, `staff_to_other_national_team`, `staff_to_my_team`,
+`staff_to_other_team`, `player_to_my_team`, `player_to_other_team`,
+`freeze_attributes`, `remove_ban`, `remove_injuries`, `remove_unhappiness`,
+`terminate_contract`, `change_morale`, `maximise_team_cohesion` and
+`maximise_tactical_understanding`. Finding an address that loads one of them
+(an `adrp`/`add` pair) leads to its handler.
+
+### Squad registration at any time: bit 8
+
+- `squad_registration_anytime` (`0x5155B4E`) is loaded at `0x238A8DC`/`0x238A8E0`.
+  `0x238A8F8` sets `w1 = 0x100` and `0x238A8FC` calls the same `0x238A1FC` as
+  `become_unsackable`, which sets or clears that mask in `[manager, #0x3fc]`.
+- `squad_numbers_anytime` (`0x5155B38`) does the same with `0x200` (bit 9) at
+  `0x238A860`. The editor does not expose it.
+- The menu state reads byte `+0x3FD` at `0x194A45C` and takes bit 0
+  (`0x194A468`); squad numbers takes bit 9 at `0x194A538`.
+- Other reads of byte `+0x3FD` bit 0 are at `0x1F8AD4C`, `0x22B4B2C` and
+  `0x22BA0E8`, the last next to `SQUAD_SELECTION_PLAYER_VALUES`. Which
+  registration checks they gate has not been traced.
+
+The editor field `manager.registration_anytime` is bit 0 of the byte at `+0x3FD`,
+with the same guards as `manager.unsackable`. On the validation career the live
+word read `0x2`: unsackable set, registration clear. Setting it through FM Lens changed the
+word to `0x102`, and FM then allowed registration changes while its screen still
+said the window was closed (see EDITING-VALIDATION.md).
+
+Other bits written to the word, for reference only: 0, 3, 4, 11, 12 and 13.
+
+### Club and national-team moves: not raw writes
+
+The handler around `0x238DDBC`–`0x238DF40` picks `staff_to_my_team` or
+`staff_to_other_team`, `player_to_my_team` or `player_to_other_team`,
+`loan_to_my_team` or `loan_to_other_team`, and `staff_to_my_national_team` or
+`staff_to_other_national_team`, by comparing the target team with the user's.
+It then builds a named request and passes it to the game's action system. The
+move itself (contracts, job, the club's or nation's staff list, history) is
+done by FM's own processing, not by a field. FM Lens only reads and writes
+memory and never runs game code, so it cannot trigger these safely. Rebuilding
+their effects with raw writes would risk an inconsistent career.
+
+A game-native route for a national job is to raise the manager's reputation
+(already editable) and apply or wait for an offer in FM.
+
+### Manager relations
+
+A person's relations pointer is `+0x48` into the person block for players
+(`0x2C0 - 0x278`) and for staff (`0xF8 + 0x48 = 0x140`, plus the `0x340` shift
+for the human manager). A raw read of the human manager on the validation career
+found one 16-byte entry in the player format: target Arsenal (UID 602), target
+kind 1, relation 3 (favoured club), strength 100, byte `+0x08` = 1. The list was
+full (`end == capacity`). Changing an existing entry in place would work like
+the player tie edits; adding one needs room in the allocator block, which this
+list lacks. What FM does with byte `+0x08` and byte `+0x0D` has not been traced.

@@ -153,6 +153,7 @@ current_date = 0x908
 # further, as on Windows (checked on the test save's own manager).
 [staff]
 uid = 0x214               # u32 staff id, in the identity block
+relations = 0x140         # pointer to the record of his relations, laid out as a player's
 full_name = 0x108         # FM string pointer; often null
 first_name = 0x118        # name-table entry pointer
 last_name = 0x120         # name-table entry pointer
@@ -228,6 +229,66 @@ relation = 0x0B           # u8: 9 a nationality, 70 trained in a nation, 72 trai
 value = 0x0C              # u8: of a training, the homegrown rule it meets; i8: of a preference, its strength
 size = 0x10
 
+# Languages spoken besides, usually, the native one. Read on Steam 26340721 arm64 from a sample of players
+# and staff (Odegaard: English 10, Spanish 5, Swedish 10, Danish 10, Dutch 4); not yet compared with FM's screens.
+[language]
+player = 0x338
+staff = 0x1B8
+language = 0x00
+level = 0x08
+name = 0x18
+
+# A match official, in the array the build profile places. Michael Oliver (UID 103994): England, born 20 February
+# 1985, CA/PA 180/180, reputation 8388. Not yet compared with FM's screens.
+[official]
+size = 0x148
+first_name = 0x20
+last_name = 0x28
+common_name = 0x30
+nation = 0x38
+date_of_birth = 0x58
+current_ability = 0x114
+potential_ability = 0x116
+reputation = 0x118
+uid = 0x134
+
+# A nation's facts and its men's national team container. Read on Steam 26340721 arm64 for all 251 nations: England
+# is ranked 4th on 1922.83 points, its association was founded in 1863 and joined FIFA in 1905; its rivals are
+# Scotland 100, Germany 100, Argentina 90. Argentina takes 2 years of residence, Spain 10; China, Japan and India do
+# not allow dual nationality. National teams are laid out as a club's ([team]). Not yet compared with FM's screens.
+[national]
+code = 0x28
+capital = 0xF0
+continent = 0xF8
+place_name = 0x18
+languages = 0x48
+entry_size = 0x10
+language_percent = 0x08
+population = 0x1EC
+dual_nationality = 0x1F1
+naturalisation = 0x1F5
+container = 0x110
+container_nation = 0x170
+teams = 0x18
+rivals = 0x48
+points = 0x378
+ranking = 0x570
+founded = 0x870
+joined_fifa = 0x86C
+team_manager = 0x80
+
+# A player's familiarity with his clubs and nations (team cohesion): the second list of his relations record, of
+# 8-byte entries. Checked on Steam 26340721 arm64: every Arsenal player has a club entry with Arsenal's internal id
+# 331 (UID 602), Rice 100, Konsa 48, Pacho 50. Not checked on Windows.
+[cohesion]
+list = 0x18
+id = 0x00
+kind = 0x04
+value = 0x05
+flag = 0x06
+size = 0x08
+club_id = 0x08
+
 # The retirements the game has planned, as on Windows: the manager's two lists and its 24-byte entries are laid out
 # alike. The static pointer to the manager is a variable of its own, which the build profiles place.
 [retirement]
@@ -258,6 +319,9 @@ block_sizes = [144, 160, 192, 224, 256, 288, 320, 384, 448, 512]
 # 18/14/7/14/7/14, £65 tickets, corporate facilities 20.
 [club]
 uid = 0x0C
+relations = 0x48          # the club's relations, laid out as a person's: code 5 to a club is a rivalry, 0-100
+links = 0x118             # list of pointers to its links with other clubs (affiliations)
+link_club = 0x08          # in a link: the other club
 name = 0xC0
 short_name = 0xC8
 women = 0xB9

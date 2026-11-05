@@ -3,7 +3,7 @@ import { Ability } from "./Ability";
 import { AttributeFilters, readAttributeRows, STAFF_ATTRIBUTES, toAttributeBounds } from "./AttributeFilters";
 import { formatDate } from "./format";
 import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
-import { ListBrowser } from "./ListBrowser";
+import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { restored, useSnapshot } from "./restore";
@@ -32,7 +32,7 @@ const readJob = (value: unknown) =>
   typeof value === "string" && JOB_FILTER_OPTIONS.some(({ code }) => String(code) === value) ? value : "";
 
 /** The staff table with the profile of the selected member of staff beside it. */
-export function StaffBrowser({ version, active }: { version: number; active: boolean }) {
+export function StaffBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
   // The filters start as they were before the language was switched, if it was (see `restore.ts`).
   // The job as the select holds it: a job code, or "" for any.
   const [job, setJob] = useState(() => restored("staffJob", readJob));
@@ -93,6 +93,7 @@ export function StaffBrowser({ version, active }: { version: number; active: boo
   return (
     <ListBrowser<StaffSummary>
       name="staff"
+      reveal={reveal}
       command="search_staff"
       requestArgs={{ filter }}
       version={version}

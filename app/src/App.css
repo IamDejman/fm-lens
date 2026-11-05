@@ -15,7 +15,7 @@
   /* Alternate rows of a table or a group, faintly. */
   --zebra: rgb(88 97 116 / 0.055);
   --border: #d5d9e4;
-  --border-strong: #a3aabb;
+  --border-strong: #858da1;
   --text: #191b28;
   --muted: #586174;
 
@@ -64,6 +64,16 @@
   --badge-saturation: 28%;
   --badge-lightness: 32%;
 
+  /* The type scale: every font size in the app is one of these. 11px is the floor. */
+  --type-xs: 11px;
+  --type-sm: 12px;
+  --type-base: 13px;
+  --type-md: 14px;
+  --type-lg: 16px;
+  --type-xl: 20px;
+  --type-2xl: 24px;
+  --type-3xl: 28px;
+
   --radius: 4px;
   --scroll: #b5bbca;
   --display: "Archivo Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -88,7 +98,7 @@
     --field: #141722;
     --zebra: rgb(244 245 250 / 0.035);
     --border: #34394c;
-    --border-strong: #565d74;
+    --border-strong: #6b7390;
     --text: #f4f5fa;
     --muted: #afb6c7;
 
@@ -178,7 +188,7 @@ button {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--type-base);
   font-stretch: 94%;
   font-weight: 650;
   line-height: 1.3;
@@ -263,6 +273,7 @@ dd,
   padding: 0 14px 0 18px;
   background: var(--strip);
   color: var(--on-strip);
+  container: masthead / inline-size;
 }
 
 /* The mark: FML set condensed and bold over FM's four bands, as on the app's icon. */
@@ -284,7 +295,7 @@ dd,
 }
 
 .brand-word {
-  font-size: 20px;
+  font-size: var(--type-xl);
   font-stretch: 72%;
   font-weight: 850;
   line-height: 1;
@@ -309,7 +320,7 @@ dd,
   border-radius: 0;
   background: transparent;
   color: rgb(255 255 255 / 0.7);
-  font-size: 14.5px;
+  font-size: var(--type-md);
   font-stretch: 88%;
   font-weight: 750;
 }
@@ -337,7 +348,7 @@ dd,
   padding: 0 6px;
   border-radius: 9px;
   background: rgb(255 255 255 / 0.16);
-  font-size: 11.5px;
+  font-size: var(--type-sm);
   font-stretch: 90%;
   font-weight: 800;
   line-height: 18px;
@@ -361,13 +372,36 @@ dd,
 
 .busy {
   color: rgb(246 247 249 / 0.8);
-  font-size: 13px;
+  font-size: var(--type-base);
+}
+
+/* The connected career, before its date: it gives way first when the masthead is short of room. */
+/* The connected career, which opens the user's own manager: quiet until pointed at. */
+.masthead .career {
+  flex: 0 1 auto;
+  display: block;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 8px;
+  overflow: hidden;
+  border-color: transparent;
+  color: rgb(246 247 249 / 0.8);
+  font-size: var(--type-base);
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.masthead .career:hover:not(:disabled) {
+  border-color: rgb(246 247 249 / 0.35);
+  background: rgb(246 247 249 / 0.08);
+  color: rgb(246 247 249);
 }
 
 /* The game's date. */
 .game-date {
   flex: none;
-  font-size: 15px;
+  font-size: var(--type-lg);
   font-stretch: 85%;
   font-weight: 800;
   white-space: nowrap;
@@ -375,7 +409,7 @@ dd,
 
 /* When the date could not be read: a quieter line, with the reason on hover. */
 .game-date.missing {
-  font-size: 13px;
+  font-size: var(--type-base);
   font-weight: 600;
   opacity: 0.7;
   cursor: help;
@@ -398,6 +432,41 @@ dd,
 
 .masthead :focus-visible {
   outline-color: #8fb1ff;
+}
+
+/* A narrow window or a large UI scale: the mark without its word, closer tabs and a shorter career keep one row. */
+@container masthead (width < 1100px) {
+  .brand-word {
+    display: none;
+  }
+
+  .tab {
+    padding: 0 10px;
+  }
+
+  .masthead .career {
+    max-width: 9rem;
+  }
+}
+
+/* Narrower still: the tabs take a row of their own under the mark and the career. */
+@container masthead (width < 900px) {
+  .masthead {
+    row-gap: 0;
+  }
+
+  .masthead-side {
+    min-height: 48px;
+  }
+
+  .masthead .career {
+    max-width: none;
+  }
+
+  .tabs {
+    order: 1;
+    width: 100%;
+  }
 }
 
 /* The settings: a button with a gear and a chevron, outlined like the masthead's other buttons. The menu of the
@@ -465,7 +534,7 @@ dd,
   border-radius: 0;
   background: transparent;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
   font-weight: 750;
   letter-spacing: 0.3px;
 }
@@ -513,7 +582,7 @@ dd,
   padding: 0 18px;
   border-top: 1px solid var(--border);
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
   line-height: 27px;
   white-space: nowrap;
 }
@@ -589,8 +658,7 @@ dd,
   border: 1px solid var(--border-strong);
   border-radius: 2px;
   color: var(--muted);
-  font-size: 10.5px;
-  font-stretch: 90%;
+  font-size: var(--type-xs);
   font-weight: 750;
   letter-spacing: 0.3px;
   line-height: 16px;
@@ -714,7 +782,7 @@ dd,
 
 .card h2 {
   margin: 0 0 6px;
-  font-size: 26px;
+  font-size: var(--type-3xl);
   font-stretch: 78%;
   font-weight: 850;
   line-height: 1.1;
@@ -727,7 +795,7 @@ dd,
 .card > button.primary {
   min-height: 36px;
   padding-inline: 16px;
-  font-size: 14px;
+  font-size: var(--type-md);
 }
 
 /* Label and value rows, one to a hairline. */
@@ -780,9 +848,31 @@ dd,
   margin: 20px 0 0;
 }
 
+/* Once the bridge is set up, removing it is all that is left: a quiet link under Connect. */
+.bridge-undo {
+  margin-top: 16px;
+}
+
+.bridge-undo button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--type-base);
+  font-weight: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bridge-undo button:hover:not(:disabled) {
+  background: none;
+  color: var(--text);
+}
+
 .bridge h3 {
   margin: 0 0 6px;
-  font-size: 15px;
+  font-size: var(--type-lg);
 }
 
 .bridge .muted {
@@ -790,7 +880,7 @@ dd,
 }
 
 .bridge .facts {
-  grid-template-columns: 140px 1fr;
+  grid-template-columns: 180px 1fr;
   margin-bottom: 14px;
 }
 
@@ -822,7 +912,7 @@ dd,
   border-radius: var(--radius);
   background: var(--field);
   font-family: "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--type-sm);
   overflow-wrap: anywhere;
   user-select: all;
 }
@@ -840,10 +930,12 @@ dd,
 
 /* A list and the profile beside it while a row is picked. */
 .workspace {
+  position: relative;
   display: flex;
   flex: 1;
   min-width: 0;
   min-height: 0;
+  container: workspace / inline-size;
 }
 
 /* The list that is not shown: out of the way, but laid out, so its scroll position survives. Hidden for focus and assistive technology too. */
@@ -851,6 +943,26 @@ dd,
   position: absolute;
   inset: 0;
   visibility: hidden;
+}
+
+/* Too narrow for the list's minimum beside the profile's (LIST_MIN and PANEL_MIN in PanelResizer.tsx): the profile
+   takes the list's place, and closing it shows the list where it was. */
+@container workspace (width < 800px) {
+  .with-profile > .players {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+  }
+
+  .with-profile > .profile {
+    flex-grow: 1;
+    min-width: 0;
+    border-left: 0;
+  }
+
+  .with-profile > .profile > .panel-resizer {
+    display: none;
+  }
 }
 
 /* The table section of a workspace. */
@@ -886,7 +998,9 @@ dd,
   display: flex;
   align-items: center;
   gap: 8px;
-  width: min(440px, 100%);
+  flex: 1 1 240px;
+  min-width: 200px;
+  max-width: 440px;
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid var(--border-strong);
@@ -933,7 +1047,17 @@ input::placeholder {
 
 .count {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
+}
+
+/* Beside an open profile the list is narrow: the count gives way, so the search and its buttons keep to one row. */
+.with-profile .toolbar .count {
+  display: none;
+}
+
+.with-profile .toolbar .search {
+  flex-basis: 120px;
+  min-width: 0;
 }
 
 /* Filters */
@@ -982,7 +1106,7 @@ input::placeholder {
   border-radius: 2px;
   background: var(--accent);
   color: var(--on-accent);
-  font-size: 11px;
+  font-size: var(--type-xs);
   font-weight: 800;
   line-height: 18px;
   text-align: center;
@@ -1009,7 +1133,7 @@ input::placeholder {
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
   align-items: end;
   gap: 10px 14px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* A label over its input. */
@@ -1074,7 +1198,7 @@ input::placeholder {
   gap: 8px;
   margin: 4px 6px 6px;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--type-base);
   font-weight: 650;
 }
 
@@ -1095,6 +1219,37 @@ input::placeholder {
   margin: 0;
 }
 
+/* Set all attributes: the words and the value, then Apply. */
+.set-attributes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--type-base);
+}
+
+.set-attributes label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.set-attributes select {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-attributes select:focus-visible {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: 0;
+}
+
 .attribute-actions > :not(:first-child):not(:empty) {
   margin: 8px 0 0;
 }
@@ -1108,7 +1263,7 @@ input::placeholder {
   margin: 0 6px 8px;
   min-height: 26px;
   padding: 2px 10px;
-  font-size: 12.5px;
+  font-size: var(--type-sm);
 }
 
 .job-change-form {
@@ -1117,7 +1272,7 @@ input::placeholder {
   align-items: center;
   gap: 6px 8px;
   margin: 0 6px 8px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .job-change-form label {
@@ -1160,7 +1315,7 @@ input::placeholder {
 .bound-remove {
   width: 30px;
   padding: 0;
-  font-size: 16px;
+  font-size: var(--type-lg);
   line-height: 1;
 }
 
@@ -1192,7 +1347,7 @@ input::placeholder {
   border-bottom: 1px solid var(--border-strong);
   background: var(--raised);
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--type-xs);
   font-stretch: 88%;
   font-weight: 800;
   text-align: left;
@@ -1285,16 +1440,13 @@ input::placeholder {
   background: var(--hover);
 }
 
-/* The row whose profile is open is violet, with white letters. */
+/* The row whose profile is open: a violet tint and a bar on its left edge, so the profile beside it keeps the eye. */
 .grid tbody tr.selected td {
-  border-bottom-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel));
 }
 
-/* The picked row's small print stays white, dimmed. */
-.grid tbody tr.selected :is(.sub, .date, .uid, .muted, .ability.range, .col-positions) {
-  color: color-mix(in srgb, var(--on-accent) 72%, transparent);
+.grid tbody tr.selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .grid tbody tr:focus-visible {
@@ -1393,9 +1545,17 @@ input::placeholder {
  * list gets very narrow. A long name wraps instead of pushing the other columns out.
  */
 .nation-grid td.col-name,
+.official-grid td.col-name,
 .stadium-grid td.col-name,
 .stadium-grid td.col-club {
   width: 40%;
+}
+
+/* The officials list beside a profile in a small window: name, CA and PA. */
+@container (max-width: 480px) {
+  .with-profile .official-grid :is(.col-age, .col-rep) {
+    display: none;
+  }
 }
 
 .tour-ring {
@@ -1424,7 +1584,7 @@ input::placeholder {
 
 .tour h2 {
   margin: 0 0 6px;
-  font-size: 16px;
+  font-size: var(--type-lg);
 }
 
 .tour p {
@@ -1440,7 +1600,7 @@ input::placeholder {
 .tour-progress {
   margin-right: auto;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .club-grid td.col-name {
@@ -1550,14 +1710,14 @@ input::placeholder {
 }
 
 .grid .name {
-  font-size: 14.5px;
+  font-size: var(--type-md);
   font-stretch: 86%;
   font-weight: 750;
 }
 
 .grid .sub {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
   line-height: 1.3;
 }
 
@@ -1567,7 +1727,7 @@ input::placeholder {
 
 .grid .uid {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--type-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1575,7 +1735,7 @@ input::placeholder {
 .ability {
   display: inline-block;
   min-width: 46px;
-  font-size: 15px;
+  font-size: var(--type-lg);
   font-stretch: 82%;
   font-variant-numeric: tabular-nums;
   font-weight: 850;
@@ -1810,7 +1970,7 @@ input::placeholder {
 
 .profile-id h2 {
   margin: 0;
-  font-size: 28px;
+  font-size: var(--type-3xl);
   font-stretch: 75%;
   font-weight: 850;
   line-height: 1.05;
@@ -1831,7 +1991,7 @@ input::placeholder {
 }
 
 .profile-vitals {
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .profile-vitals .vital {
@@ -1841,6 +2001,26 @@ input::placeholder {
 /* A profile with no line of its own under the names (a club) still wants air above its small print. */
 .profile-id :is(h2, .profile-fullname) + .profile-vitals {
   margin-top: 6px;
+}
+
+/* Under a profile's header: Compare, Transfer and Release, in one row that wraps when the panel is narrow. */
+.profile-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--raised);
+}
+
+.profile-toolbar:empty {
+  display: none;
+}
+
+/* Moves on the left, Compare apart on the right. */
+.profile-toolbar > .compare-toggle {
+  margin-left: auto;
 }
 
 .profile-side {
@@ -1891,7 +2071,7 @@ input::placeholder {
 .compare-abilities abbr,
 .move-abilities abbr {
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: var(--type-sm);
   font-weight: 700;
   letter-spacing: 0.5px;
   text-decoration: none;
@@ -1902,7 +2082,7 @@ input::placeholder {
 .profile-abilities .ability {
   display: block;
   min-width: 0;
-  font-size: 30px;
+  font-size: var(--type-3xl);
   font-stretch: 76%;
   font-weight: 850;
   line-height: 1;
@@ -1910,7 +2090,7 @@ input::placeholder {
 }
 
 .profile-abilities .ability.range {
-  font-size: 24px;
+  font-size: var(--type-2xl);
 }
 
 /* The body is the container the layout of a profile follows as the panel is made wider (see `.profile-pair`). */
@@ -1948,6 +2128,13 @@ input::placeholder {
   .profile-status,
   .profile {
     animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -1991,7 +2178,7 @@ input::placeholder {
   padding: 5px 2px 5px;
   border-bottom: 1px solid var(--border-strong);
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--type-sm);
   font-stretch: 85%;
   font-weight: 850;
   letter-spacing: 0.5px;
@@ -2002,7 +2189,7 @@ input::placeholder {
 
 .stats {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-base);
   line-height: 1.3;
 }
 
@@ -2049,7 +2236,7 @@ input::placeholder {
 /* The unit of an amount, in small print under its label. */
 .stat dt .unit {
   display: block;
-  font-size: 11.5px;
+  font-size: var(--type-sm);
 }
 
 /* A 1–20 rating as FM shows it: the number itself in its band's colour, bold, the digits in line. */
@@ -2058,7 +2245,7 @@ input::placeholder {
   flex: none;
   min-width: 24px;
   color: var(--muted);
-  font-size: 15px;
+  font-size: var(--type-lg);
   font-stretch: 85%;
   font-weight: 800;
   text-align: right;
@@ -2083,7 +2270,7 @@ input::placeholder {
 .note {
   margin: 0 6px 6px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
   line-height: 1.35;
 }
 
@@ -2227,7 +2414,7 @@ input::placeholder {
   margin: 10px 0 0;
   padding: 0 6px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
   list-style: none;
 }
 
@@ -2339,6 +2526,11 @@ input::placeholder {
 .edit-toggle:hover:not(:disabled) {
   border-color: var(--accent-hover);
   background: var(--accent-hover);
+}
+
+/* Reading the fields to edit takes a moment. */
+.edit-toggle[aria-busy="true"] {
+  cursor: progress;
 }
 
 .edit-toggle[aria-pressed="true"],
@@ -2506,7 +2698,7 @@ select.edit-input {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
-  font-size: 13px;
+  font-size: var(--type-base);
   cursor: pointer;
 }
 
@@ -2580,7 +2772,7 @@ select.edit-input {
 /* In the header, the inputs take the place of the values they change: the abilities stay big, and the nationality,
    the birth date and the height sit in their lines. */
 .profile-abilities .edit-input {
-  font-size: 22px;
+  font-size: var(--type-2xl);
   font-stretch: 82%;
   font-weight: 850;
   line-height: 1.1;
@@ -2589,7 +2781,7 @@ select.edit-input {
 .profile-meta .edit-input,
 .profile-vitals .edit-input {
   padding-block: 1px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* The list of nations is as wide as its longest name; in the header it keeps to the line it is on. */
@@ -2617,7 +2809,7 @@ select.edit-input {
 
 /* A live region that is always there, so that it is read out when it fills; it takes no room while it is empty. */
 .edit-report {
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .edit-report:not(:empty) {
@@ -2659,7 +2851,7 @@ select.edit-input {
   border-top: 1px solid var(--border);
   background: var(--pending-soft);
   color: var(--on-pending);
-  font-size: 13px;
+  font-size: var(--type-base);
   list-style: none;
 }
 
@@ -2707,7 +2899,7 @@ select.edit-input {
   margin-right: 8px;
   border-radius: 2px;
   background: var(--pending-soft);
-  box-shadow: inset 0 0 0 1px var(--pending);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pending-soft), black 35%);
   vertical-align: -1px;
 }
 
@@ -2730,7 +2922,7 @@ button.danger:hover:not(:disabled) {
 
 .view-title {
   margin: 0;
-  font-size: 24px;
+  font-size: var(--type-2xl);
   font-stretch: 78%;
   font-weight: 850;
 }
@@ -2742,7 +2934,7 @@ button.danger:hover:not(:disabled) {
 .view-note {
   margin: 0 0 12px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* Notes one under the other are one block of text: the air goes under the last of them. */
@@ -2786,7 +2978,7 @@ button.danger:hover:not(:disabled) {
   max-width: 24rem;
   margin-top: 4px;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--type-sm);
 }
 
 /* A change that was undone is history: dimmed. */
@@ -2809,6 +3001,49 @@ button.danger:hover:not(:disabled) {
 /* Export comes first in the player list's toolbar; Mass edit stays beside it. */
 .toolbar .export-toggle + .mass-edit-toggle {
   margin-left: 0;
+}
+
+/* The player list's actions: in the toolbar as they are, or, beside an open profile, behind More (see MoreMenu). */
+.more-menu,
+.more-panel {
+  display: contents;
+}
+
+.more-panel[hidden] {
+  display: none;
+}
+
+.more-menu[data-folded] {
+  position: relative;
+  display: block;
+  margin-left: auto;
+}
+
+.more-menu[data-folded] .more-panel:not([hidden]) {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
+}
+
+.more-menu[data-folded] .more-panel button {
+  margin: 0;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 3px;
+  text-align: left;
+}
+
+.more-menu[data-folded] .more-panel button:hover:not(:disabled) {
+  background: var(--hover);
 }
 
 /* The export dialog is narrower than a mass edit's: a choice of three formats, and what a file holds. */
@@ -2851,7 +3086,7 @@ button.danger:hover:not(:disabled) {
 .export-contents,
 .mass-result .export-folder {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
   font-weight: 400;
 }
 
@@ -2917,7 +3152,7 @@ button.danger:hover:not(:disabled) {
 
 .modal-head h2 {
   margin: 0 0 4px;
-  font-size: 22px;
+  font-size: var(--type-2xl);
   font-stretch: 78%;
   font-weight: 850;
 }
@@ -2956,7 +3191,7 @@ button.danger:hover:not(:disabled) {
 
 .template-controls { border: 0; padding: 0; min-width: 0; }
 .template-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.template-dialog h3 { margin: 0 0 12px; font-size: 16px; }
+.template-dialog h3 { margin: 0 0 12px; font-size: var(--type-lg); }
 .template-dialog label:not(.template-groups label) { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
 .template-dialog input:not([type="checkbox"]), .template-dialog select, .template-dialog textarea { width: 100%; min-width: 0; }
 .template-dialog textarea { font: 12px/1.5 monospace; resize: vertical; }
@@ -2964,7 +3199,7 @@ button.danger:hover:not(:disabled) {
 .template-groups label { display: flex; align-items: center; gap: 8px; }
 .template-hits { display: flex; flex-direction: column; max-height: 180px; overflow-y: auto; border-block: 1px solid var(--border); }
 .template-hits button { display: flex; justify-content: space-between; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid var(--border); }
-.template-hits button span:last-child { color: var(--muted); font-size: 12px; }
+.template-hits button span:last-child { color: var(--muted); font-size: var(--type-sm); }
 .template-hits button[aria-pressed="true"] { background: var(--text); color: var(--panel); }
 .template-hits button[aria-pressed="true"] span { color: inherit; }
 .template-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: start; margin: 10px 0; }
@@ -2981,7 +3216,7 @@ button.danger:hover:not(:disabled) {
 .mass-scope-note {
   margin: 2px 0 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* The fields to change: a fieldset only to switch all its controls off together while a call runs. */
@@ -3081,7 +3316,7 @@ button.danger:hover:not(:disabled) {
   grid-column: 1 / -1;
   margin: 0;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--type-sm);
 }
 
 .mass-form-foot {
@@ -3097,7 +3332,7 @@ button.danger:hover:not(:disabled) {
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .mass-add svg {
@@ -3114,7 +3349,7 @@ button.danger:hover:not(:disabled) {
   flex: 1;
   min-width: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
   text-align: right;
 }
 
@@ -3177,7 +3412,7 @@ button.danger:hover:not(:disabled) {
 .mass-more {
   margin: 4px 2px 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .mass-skipped summary {
@@ -3199,7 +3434,7 @@ button.danger:hover:not(:disabled) {
 
 /* What the last Apply or Undo did, between the body and the foot: always in view. */
 .mass-result {
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .mass-result:not(:empty) {
@@ -3231,14 +3466,14 @@ button.danger:hover:not(:disabled) {
   padding: 10px 20px;
   border-width: 1px 0 0;
   border-radius: 0;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .mass-foot-note {
   flex: 1;
   min-width: 8rem;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 @media (max-width: 720px) {
@@ -3277,7 +3512,7 @@ button.danger:hover:not(:disabled) {
 /* What undoing a whole mass edit did, under its buttons. */
 .changes-grid .row-note {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--type-sm);
 }
 
 .changes-grid .row-note p {
@@ -3318,12 +3553,12 @@ button.danger:hover:not(:disabled) {
 
 .pager button {
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .pager-range {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
   font-variant-numeric: tabular-nums;
 }
 
@@ -3349,7 +3584,7 @@ button.danger:hover:not(:disabled) {
 .saved-form button,
 .saved-ask button {
   padding: 4px 10px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .saved-form,
@@ -3358,18 +3593,18 @@ button.danger:hover:not(:disabled) {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .saved-form input {
   width: 12rem;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* Why the name cannot be kept. */
 .saved-note {
   color: var(--danger);
-  font-size: 12.5px;
+  font-size: var(--type-sm);
 }
 
 /* The select of the saved filters, and Delete for the one that is in effect, at the far end of the head. */
@@ -3382,7 +3617,7 @@ button.danger:hover:not(:disabled) {
 
 .saved-select {
   max-width: 16rem;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .saved-delete {
@@ -3390,7 +3625,7 @@ button.danger:hover:not(:disabled) {
   border-color: transparent;
   background: transparent;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .saved-delete:hover:not(:disabled) {
@@ -3433,7 +3668,7 @@ button.danger:hover:not(:disabled) {
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--panel);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .compare-chip-name {
@@ -3445,8 +3680,8 @@ button.danger:hover:not(:disabled) {
 }
 
 .compare-chip .icon-button {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 3px;
 }
 
@@ -3458,7 +3693,7 @@ button.danger:hover:not(:disabled) {
 .compare-clear,
 .compare-open {
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .compare-clear {
@@ -3479,7 +3714,7 @@ button.danger:hover:not(:disabled) {
 .compare-hint {
   margin: 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .compare-status {
@@ -3554,7 +3789,7 @@ button.danger:hover:not(:disabled) {
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--type-sm);
   font-stretch: 85%;
   font-weight: 850;
   letter-spacing: 0.5px;
@@ -3577,7 +3812,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .compare-name {
-  font-size: 14px;
+  font-size: var(--type-md);
   font-weight: 600;
   line-height: 1.25;
   overflow-wrap: anywhere;
@@ -3586,7 +3821,7 @@ button.danger:hover:not(:disabled) {
 .compare-club,
 .compare-age {
   color: var(--muted);
-  font-size: 12.5px;
+  font-size: var(--type-sm);
 }
 
 .compare-abilities {
@@ -3601,7 +3836,7 @@ button.danger:hover:not(:disabled) {
 /* A player whose profile could not be read: the reason, in the place of the club and abilities. */
 .compare-error {
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--type-sm);
   overflow-wrap: anywhere;
 }
 
@@ -3655,7 +3890,7 @@ button.danger:hover:not(:disabled) {
   border: 1px solid var(--pos);
   border-radius: 3px;
   color: var(--pos);
-  font-size: 12px;
+  font-size: var(--type-sm);
   font-weight: 700;
 }
 
@@ -3672,23 +3907,6 @@ button.danger:hover:not(:disabled) {
 }
 
 /* Transferring a player */
-
-/*
- * A player's header has Compare, Edit and Close, and Transfer and Release: in one row they would squeeze the name in a
- * narrow window. So they are a grid, with Transfer and Release across the top and the others under it (as wide as they
- * were); a member of staff has Transfer alone up there. Without them (the profile cannot be edited, or is being
- * edited) the row is as it was.
- */
-.profile-actions:has(.move-toggle) {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  justify-content: end;
-}
-
-.move-toggle,
-.move-actions {
-  grid-column: 1 / -1;
-}
 
 /* Transfer takes the room Release leaves: leaving to a club is the usual way out. */
 .move-actions {
@@ -3717,7 +3935,7 @@ button.danger:hover:not(:disabled) {
   padding: 5px 2px 0;
   border-top: 3px solid var(--text);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: var(--type-sm);
   font-stretch: 85%;
   font-weight: 850;
   letter-spacing: 0.5px;
@@ -3762,7 +3980,7 @@ button.danger:hover:not(:disabled) {
 .move-change {
   flex: none;
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* The switch between a move and a swap, at the top of the dialog: the frame and the buttons are the language switch's
@@ -3774,7 +3992,7 @@ button.danger:hover:not(:disabled) {
 .move-mode button {
   flex: 1;
   padding: 5px 14px;
-  font-size: 13px;
+  font-size: var(--type-base);
   letter-spacing: 0;
 }
 
@@ -3789,7 +4007,7 @@ button.danger:hover:not(:disabled) {
 .move-player-detail {
   overflow: hidden;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3859,7 +4077,7 @@ button.danger:hover:not(:disabled) {
 .move-results-note {
   margin: 4px 4px 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .move-results-note:empty {
@@ -3889,7 +4107,7 @@ button.danger:hover:not(:disabled) {
 
 .move-term label {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* The pound sign before the wage: the game stores pounds. */
@@ -3964,7 +4182,7 @@ button.danger:hover:not(:disabled) {
 .move-note {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
 }
 
 .move-note.invalid {
@@ -4004,7 +4222,7 @@ button.danger:hover:not(:disabled) {
   margin: 0;
   padding-left: 20px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .move-facts li + li {
@@ -4015,7 +4233,7 @@ button.danger:hover:not(:disabled) {
   flex: 1;
   min-width: 8rem;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* A move that failed: a bar across the foot of the dialog. */
@@ -4025,7 +4243,7 @@ button.danger:hover:not(:disabled) {
   padding: 10px 20px;
   border-width: 1px 0 0;
   border-radius: 0;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* Medical */
@@ -4036,7 +4254,7 @@ button.danger:hover:not(:disabled) {
   width: fit-content;
   margin: 8px 6px 0;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .injuries-none:focus-visible {
@@ -4076,7 +4294,7 @@ button.danger:hover:not(:disabled) {
 .injury-dates {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--type-sm);
 }
 
 /* Nationality and homegrown: each kind of tie a row of the group, its ties one under another, and the button that
@@ -4145,7 +4363,7 @@ button.danger:hover:not(:disabled) {
 
 .tie-none {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .ties-status:empty {
@@ -4155,14 +4373,14 @@ button.danger:hover:not(:disabled) {
 .ties-status {
   padding: 6px 20px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* Why Heal did not work, under the heading with the button. */
 .heal-error {
   margin: 6px 6px 0;
   color: var(--danger);
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 /* Club squad */
@@ -4185,7 +4403,7 @@ button.danger:hover:not(:disabled) {
   border-radius: 0;
   background: transparent;
   color: var(--muted);
-  font-size: 14px;
+  font-size: var(--type-md);
   font-stretch: 88%;
   font-weight: 750;
 }
@@ -4233,7 +4451,7 @@ button.danger:hover:not(:disabled) {
 
 .squad-summary p {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .squad-count {
@@ -4253,7 +4471,7 @@ button.danger:hover:not(:disabled) {
 
 .squad-teams button {
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: var(--type-base);
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -4282,7 +4500,7 @@ button.danger:hover:not(:disabled) {
    when the button that had it is gone. */
 .squad-result {
   flex: none;
-  font-size: 13px;
+  font-size: var(--type-base);
 }
 
 .squad-result:not(:empty) {
@@ -4359,7 +4577,7 @@ button.danger:hover:not(:disabled) {
 
 .squad-name .tag {
   padding: 0 7px;
-  font-size: 11px;
+  font-size: var(--type-xs);
   line-height: 1.6;
   white-space: nowrap;
 }
@@ -4380,7 +4598,7 @@ button.danger:hover:not(:disabled) {
   border: 1px solid var(--text);
   border-radius: 2px;
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--type-xs);
   font-weight: 800;
   line-height: 1.6;
   text-decoration: none;
@@ -4463,7 +4681,7 @@ button.danger:hover:not(:disabled) {
 .settings-heading {
   padding: 6px 10px 4px;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--type-sm);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -4484,6 +4702,19 @@ button.danger:hover:not(:disabled) {
   font-variant-numeric: tabular-nums;
 }
 
+/* App details at the foot of the settings menu: passive, muted small print. */
+.settings-details {
+  padding: 2px 10px 6px;
+  color: var(--muted);
+  font-size: var(--type-sm);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.settings-details p {
+  margin: 2px 0;
+}
+
 .settings-check {
   width: 14px;
   height: 14px;
@@ -4493,4 +4724,76 @@ button.danger:hover:not(:disabled) {
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* A player's favoured or disliked clubs and people: one per line, at the end of the row. */
+.preference-list {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* A club's affiliates: one per line, with its logo. */
+.club-ties {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--type-base);
+}
+
+.national-squad {
+  margin-top: 8px;
+  font-size: var(--type-base);
+}
+
+.national-squad summary {
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.national-squad summary:hover {
+  color: var(--text);
+}
+
+.national-squad[open] summary {
+  margin-bottom: 8px;
+}
+
+/* The links to the sections of a long profile: a row that stays at the top of the profile while it scrolls. */
+.section-jump {
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: -16px -16px 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.section-jump button {
+  flex: none;
+  min-height: 26px;
+  padding: 2px 10px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--type-sm);
+  font-weight: 650;
+}
+
+.section-jump button:hover:not(:disabled) {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+/* A section scrolled to by the bar lands under it, not behind it. */
+.profile-body > section.profile-group {
+  scroll-margin-top: 84px;
 }

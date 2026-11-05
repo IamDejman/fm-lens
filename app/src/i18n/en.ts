@@ -7,7 +7,7 @@
 // `clubList` (the saved player filters are in `playerList.filters.saved`). Editing has `edit` (and `fields` for the
 // names of the fields), the Changes view `changes`, mass editing `massEdit`, comparing players `comparison`, moving a
 // player to another club or swapping him with one `move`, a club's squad `squad`, the sidebar and the connect panel
-// `app`, and the graphics packs the pictures come from `graphics`. The components read them through `labels.ts`.
+// `app`. The components read them through `labels.ts`.
 //
 // The text functions (counts, summaries, "was …") are written per language: plurals and word order differ, so a
 // language builds its sentences itself.
@@ -16,7 +16,6 @@ import type {
   CheckKey,
   Entity,
   ExportFormat,
-  GraphicsCounts,
   MassOperationKind,
   MassPreview,
   PlayerSort,
@@ -75,34 +74,39 @@ const checkName = (key: string | undefined) => {
 
 /** The commands' own English is kept where it names no field. */
 const errors: ErrorTexts = {
-  "edit.unknownField": (p) => `There is no editable field “${p.field}” here.`,
-  "edit.outOfRange": (p) => `${p.value} is not a valid ${field(p.field)}: it takes ${p.min} to ${p.max}.`,
-  "edit.notADate": (p) => `${p.value} is not a date for ${field(p.field)}.`,
-  "edit.notAChoice": (p) => `${p.value} is not one of the values ${field(p.field)} takes.`,
-  "edit.taken": (p) => `Squad number ${p.value} is taken: ${p.name ?? `the player with UID ${p.uid}`} wears it.`,
-  "edit.unsupported": (p) => `${field(p.field)} cannot be changed that way: ${p.reason}.`,
-  "edit.noRecord": (p) => `${field(p.field)} cannot be changed here: its record is missing or does not check out.`,
-  "edit.unset": (p) => `${field(p.field)} is not set in the game, so it was left alone.`,
-  "edit.implausible": (p) => `${field(p.field)} reads ${p.value}, which it cannot hold; it was left alone to be safe.`,
-  "edit.notApplied": (p) => `${field(p.field)}: wrote ${p.wrote} but read back ${p.read}.`,
-  "edit.conflict": (p) => `${field(p.field)} is now ${p.found}, not ${p.expected}: the game has changed it since.`,
-  "move.outOfRange": (p) => `${p.value} is not a valid ${field(p.field)}: it takes ${p.min} to ${p.max}.`,
-  "export.failed": (p) => `Could not write the file: ${p.reason}`,
+  "edit.unknownField": (p) => `“${p.field}” can't be edited here.`,
+  "edit.outOfRange": (p) => `${field(p.field)} must be from ${p.min} to ${p.max}. You entered ${p.value}.`,
+  "edit.notADate": (p) => `${field(p.field)}: ${p.value} isn't a valid date.`,
+  "edit.notAChoice": (p) => `${field(p.field)} can't be ${p.value}.`,
+  "edit.taken": (p) => `${p.name ?? `The player with ID ${p.uid}`} already wears number ${p.value}.`,
+  "edit.unsupported": (p) => `Can't change ${field(p.field)} that way: ${p.reason}.`,
+  "edit.noRecord": (p) => `Can't change ${field(p.field)}: FM's record for it is missing or looks wrong.`,
+  "edit.unset": (p) => `${field(p.field)} isn't set in FM, so it wasn't changed.`,
+  "edit.implausible": (p) => `${field(p.field)} reads ${p.value}, which can't be right, so it wasn't changed.`,
+  "edit.notApplied": (p) => `${field(p.field)} didn't stick: FM Lens wrote ${p.wrote}, FM has ${p.read}.`,
+  "edit.conflict": (p) => `FM has since changed ${field(p.field)} to ${p.found}, so it was left alone.`,
+  "move.outOfRange": (p) => `${field(p.field)} must be from ${p.min} to ${p.max}. You entered ${p.value}.`,
+  "export.failed": (p) => `Couldn't save the file: ${p.reason}`,
   "export.notAllowed": (p) =>
-    `FM Lens may not write to ${p.folder}. If macOS asked whether it may use your Documents folder, allow it ` +
-    "in System Settings › Privacy & Security › Files & Folders, then export again.",
-  "export.openFailed": (p) => `Could not open it: ${p.reason}`,
+    `FM Lens can't save to ${p.folder}. Allow it in System Settings › Privacy & Security › Files & Folders, ` +
+    "then export again.",
+  "export.openFailed": (p) => `Couldn't open it: ${p.reason}`,
+  "session.noSuchProcess": () => "FM closed or restarted. Load a save and connect again.",
+  // FM's main menu: no career to read yet.
+  "session.noCareer": () => "No save is loaded in FM. Load one, then connect.",
+  "session.playersNotFound": () => "No save is loaded in FM. Load one, then connect.",
+  "attributes.level": () => "Choose a value from 1 to 20.",
+  "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
   "guard.unknownBuild": () =>
-    "FM Lens has not been checked with this version of the game. Editing stays disabled until this build is validated.",
-  "guard.careerChanged": () => "FM replaced its career data. Reload FM Lens before editing again.",
+    "FM Lens hasn't been tested with this FM version yet, so editing is off.",
+  "guard.careerChanged": () => "FM reloaded the save. Press Reload before you edit again.",
   "guard.failed": (p) =>
-    `${checkName(p.check)} did not check out in this version of the game, so FM Lens leaves them unchanged.`,
+    `${checkName(p.check)} look wrong in this FM version, so FM Lens won't change them.`,
   "memory.noBridge": () =>
-    "macOS does not let FM Lens into the game: the game was started without the FM Lens bridge. Set " +
-    "the bridge up, then start the game again from Steam.",
+    "FM was started without the FM Lens helper. Quit FM and start it again from Steam.",
   "setup.steamRunning": () =>
-    "Steam is running, so FM27's launch options were left alone; the bridge itself is installed. Quit Steam and " +
-    "try again, or enter the launch option in Steam yourself.",
+    "The helper is installed, but Steam is open, so the launch option wasn't set. Quit Steam and press Set up " +
+    "again, or add the launch option yourself.",
 };
 
 /** The kinds of contract clauses and bonuses, by the codes contracts hold them as; named as FMRTE names them. */
@@ -404,6 +408,7 @@ export const en = {
     // A member of staff's job, which the change log keeps as a change of its code.
     "contract.job": "Job",
     "manager.unsackable": "Unsackable (experimental)",
+    "manager.registration_anytime": "Register squad any time (experimental)",
     // A player's ties, which the change log keeps as changes of the nation or club (see `ties`).
     "tie.nationality": "Secondary nationality",
     "tie.trainedInNation": "Trained in nation",
@@ -414,6 +419,8 @@ export const en = {
     injuries: "Injuries",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
     bans: "Bans",
+    // Max cohesion, which the change log keeps as a change of the player's familiarity with his club (0 to 100).
+    cohesion: "Club familiarity",
     // Keeping a player from retiring, which the change log keeps as a change of the date he was to retire on.
     retirement: "Retirement",
     // A change to a player's contract clauses, which the change log keeps as a change of the clause's amount.
@@ -443,12 +450,15 @@ export const en = {
 
   profile: {
     close: "Close profile",
+    /** The bar of links to the sections of a long profile; its first link goes back to the top. */
+    sections: "Sections",
+    top: "Top",
     loading: "Loading profile…",
     /** The handle on the left edge of the panel. */
     resize: "Resize the profile panel",
-    resizeHint: "Drag to make the panel wider or narrower; double-click to reset it",
+    resizeHint: "Drag to resize. Double-click to reset.",
     /** Shown where a value is missing. */
-    none: "—",
+    none: "-",
 
     // Header
     freeAgent: "Free agent",
@@ -456,7 +466,7 @@ export const en = {
     height: (cm: number) => `${cm} cm`,
     /** After the input of the height, while the player is edited. */
     heightUnit: "cm",
-    uid: "UID",
+    uid: "ID",
     currentAbility: "Current ability",
     currentAbilityShort: "CA",
     potentialAbility: "Potential ability",
@@ -497,8 +507,8 @@ export const en = {
     /** Under the wage: the game keeps money in pounds; `converted` when the app shows another currency. */
     wageNote: (converted: boolean): string =>
       converted
-        ? "the game keeps pounds; shown at FM's own exchange rate"
-        : "the game keeps pounds; another currency can be chosen in the settings",
+        ? "Converted at FM's exchange rate"
+        : "In pounds. Change the currency in Settings",
     signed: "Signed",
     expires: "Expires",
     joined: "Joined",
@@ -523,11 +533,23 @@ export const en = {
     /** The retirement the game has planned for a player, and the button that keeps him playing. */
     retirement: "Retirement",
     retires: "Plans to retire",
-    noRetirement: "The game has not planned his retirement",
+    preferences: "Likes and dislikes",
+    languages: "Languages",
+    /** How well a language is spoken: FM's 0 to 10. */
+    languageLevel: (level: number) => `${level}/10`,
+    rivals: "Rivals",
+    linkedClubs: "Affiliated clubs",
+    preferenceKinds: {
+      favouredClub: "Favoured clubs",
+      dislikedClub: "Disliked clubs",
+      favouredPerson: "Favoured people",
+      dislikedPerson: "Disliked people",
+    },
+    noRetirement: "No retirement planned",
     keepPlaying: "Prevent retirement",
     keepingPlaying: "Preventing…",
     keepPlayingTitle:
-      "Take his retirement out of the game's plans and give him the trait “Will play football as long as possible” in place of “Will retire at top”; Changes can undo it",
+      "Cancels his retirement and swaps “Will retire at top” for “Will play football as long as possible”. You can undo it in Changes.",
 
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
     /** A player's morale, 1–20. */
@@ -542,7 +564,7 @@ export const en = {
     noUnhappiness: "Nothing makes him unhappy",
     removeUnhappiness: "Remove all",
     removingUnhappiness: "Removing…",
-    removeUnhappinessTitle: "Take every reason to be unhappy off his list, as FMRTE's Remove all does; Changes can undo it",
+    removeUnhappinessTitle: "Clears every reason he's unhappy. You can undo it in Changes.",
     concernSince: (date: string) => `since ${date}`,
     concernKind: (kind: number) => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : `Type ${kind}`),
     concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? `Reason ${motive}`,
@@ -552,7 +574,7 @@ export const en = {
     loyaltyBonus: "Loyalty bonus",
     happiness: "Happiness",
     playingTimeHappiness: "Playing time happiness",
-    moodTitle: "As FMRTE shows it, from -100 to 100; the game shows it in words",
+    moodTitle: "From -100 to 100. FM shows it in words.",
     /** The name of a clause or bonus by its kind; a kind the app does not know yet by its number. */
     clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? `Clause ${kind}`,
     /** What a clause depends on, by kind: goals, assists, matches, years or a percentage. */
@@ -573,9 +595,9 @@ export const en = {
           return String(value);
       }
     },
-    moraleTitle: "The game shows morale as the player's overall happiness: content at 10, slightly happy at 11, extremely happy at 15 and 20",
+    moraleTitle: "In FM: 10 is content, 11 slightly happy, 15 and 20 extremely happy.",
     /** Hover text of jadedness, which the profile shows as stored. */
-    jadednessTitle: "How worn out the player is by playing, which rest takes away: -500 is fully rested, and the higher it is, the more he needs a rest",
+    jadednessTitle: "How tired he is from playing. -500 is fully rested. The higher it is, the more he needs a rest.",
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
@@ -584,40 +606,42 @@ export const en = {
     injuryBack: (dates: string) => `Expected back ${dates}`,
     /** Heals every injury of the player at once. */
     heal: "Heal",
-    healTitle: "Heal every injury of this player in the game",
+    healTitle: "Heal all his injuries",
     noBans: "No bans",
     /** A ban: how many matches the player still has to miss, and under it when it began. */
     banMatches: (matches: number) => (matches === 1 ? "1 match" : `${format(matches)} matches`),
     banStarted: (date: string) => `From ${date}`,
     /** Lifts every ban of the player at once. */
     liftBans: "Lift",
-    liftBansTitle: "Lift every ban of this player in the game",
+    liftBansTitle: "Lift all his bans",
 
     // Above the attributes, while the profile is read
-    /** Sets every attribute of the player to its best at once. */
-    maxAttributes: "Max attributes",
-    maxAttributesTitle: "Set every attribute of this player to its best: 20, and 1 for injury proneness and dirtiness",
-    /** What Max attributes wrote, beside the button that takes it back; then what that undid. */
-    maxAttributesDone: (count: number) =>
-      count === 0 ? "Every attribute is at its best already" : `${changeCount(count)} written`,
-    maxAttributesUndone: (count: number) => (count === 0 ? "Nothing was undone" : `Undid ${changeCount(count)}`),
-    undoMax: "Undo",
-    undoMaxTitle: "Write his old attributes back to the game",
+    /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
+    setAttributes: "Set all attributes to",
+    setAttributesButton: "Apply",
+    /** What Set all attributes wrote, beside the button that takes it back; then what that undid. */
+    setAttributesDone: (count: number, level: number) =>
+      count === 0
+        ? "Every attribute has that value already"
+        : `${changeCount(count)} made. Injury proneness and dirtiness set to ${21 - level}, since lower is better.`,
+    setAttributesUndone: (count: number) => (count === 0 ? "Nothing was undone" : `Undid ${changeCount(count)}`),
+    undoSetAttributes: "Undo",
+    undoSetAttributesTitle: "Put his old attributes back",
     /** Freezing his attributes, while the game can be written to, and what that does. */
     freezeAttributes: "Freeze attributes",
     freezeAttributesNote:
-      "While the app is open and connected, his attributes do not get worse: what the game takes is put back, and " +
-      "improvements still count. The app remembers this for this save, and freezes them again when it connects to it.",
+      "While FM Lens is open and connected, his attributes can't drop. Gains still count. " +
+      "FM Lens remembers this for this save.",
 
     // Staff
     /** Badge on the manager the user controls. */
     you: "You",
-    youTitle: "The manager you control in this save",
+    youTitle: "The manager you control",
     id: "ID",
     job: "Job",
     /** Giving a member of staff another job at their club, under the job in the contract. */
     changeJob: "Change job",
-    changeJobTitle: "Give this member of staff another job at their club in the game",
+    changeJobTitle: "Give them a different job at their club",
     newJob: "New job",
     applyJob: "Apply",
     cancelJob: "Cancel",
@@ -636,7 +660,7 @@ export const en = {
     nav: "Players",
     /** In the status line, once connected. */
     count: (total: number) => `${format(total)} ${total === 1 ? "player" : "players"}`,
-    search: "Search players by name or UID",
+    search: "Search players by name or ID",
     /**
      * The line beside the search box. `sorted` is the order a column header was clicked for, or null while the
      * list is in its default order (best current ability first); its `by` is a name from `sortNames`.
@@ -647,8 +671,8 @@ export const en = {
         return count;
       }
       return sorted === null
-        ? `${count} · showing the top ${shown} by current ability`
-        : `${count} · showing the first ${shown} by ${sorted.by}, ${sorted.ascending ? "ascending" : "descending"}`;
+        ? `${count} · Top ${shown} by ability`
+        : `${count} · ${shown} shown · ${sorted.by} ${sorted.ascending ? "↑" : "↓"}`;
     },
     /** The message under an empty table; `filtered` is whether any filter is in effect. */
     empty: (query: string, filtered: boolean) => {
@@ -667,7 +691,7 @@ export const en = {
       born: "Born",
       currentAbility: "CA",
       potentialAbility: "PA",
-      uid: "UID",
+      uid: "ID",
     } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
     /** Hover text of a column header that sorts the list; `by` is a name from `sortNames`. */
     sortBy: (by: string) => `Sort by ${by}`,
@@ -715,8 +739,8 @@ export const en = {
         attribute: "Attribute",
         pick: "Pick an attribute",
         /** The two inputs of a row, for assistive technology; `name` is the attribute, "" before one is picked. */
-        min: (name: string) => (name ? `Least ${name}` : "Least"),
-        max: (name: string) => (name ? `Most ${name}` : "Most"),
+        min: (name: string) => (name ? `Min ${name}` : "Min"),
+        max: (name: string) => (name ? `Max ${name}` : "Max"),
         add: "Add attribute",
         /** The button that takes a row away, for assistive technology and as its hover text. */
         remove: (name: string) => (name ? `Remove ${name}` : "Remove this row"),
@@ -725,7 +749,7 @@ export const en = {
       saved: {
         /** The button that starts saving, and its hover text. */
         save: "Save",
-        saveTitle: "Save the filters and the sort in effect under a name",
+        saveTitle: "Save these filters and sort",
         /** The name input, for assistive technology, and the hint in it while it is empty. */
         name: "Name of the saved filter",
         namePlaceholder: "Filter name",
@@ -735,13 +759,13 @@ export const en = {
         select: "Saved filters",
         delete: "Delete",
         /** The name and hover text of Delete; `name` is the saved filter's. */
-        deleteTitle: (name: string) => `Delete the saved filter: ${name}`,
+        deleteTitle: (name: string) => `Delete ${name}`,
         /** The question when the name is taken; `name` is the one typed. */
-        replaceQuestion: (name: string) => `A saved filter named “${name}” already exists. Replace it?`,
+        replaceQuestion: (name: string) => `“${name}” already exists. Replace it?`,
         replace: "Replace",
         /** When the name is a new one and `max` filters are saved already. */
         full: (max: number) =>
-          `Up to ${max} filters can be saved. Delete one first, or use the name of a saved filter to replace it.`,
+          `You can save up to ${max} filters. Delete one, or reuse a name to replace it.`,
       },
     },
   },
@@ -755,7 +779,7 @@ export const en = {
     search: "Search staff by name or ID",
     summary: (total: number, shown: number) =>
       total > shown
-        ? `${format(total)} staff · showing the top ${shown} by current ability`
+        ? `${format(total)} staff · Top ${shown} by ability`
         : `${format(total)} staff`,
     /** The message under an empty table; `filtered` is whether any filter is in effect. */
     empty: (query: string, filtered: boolean) => {
@@ -832,12 +856,12 @@ export const en = {
     /** Under the labels of the two wage budgets, which are amounts per week. */
     perWeek: "per week",
     /** Clubs outside the leagues being played have no finance record in memory. */
-    noFinances: "FM keeps finances only for clubs in the leagues being played.",
+    noFinances: "FM only tracks money for clubs in playable leagues.",
     /** Freezing the club's money, while the game can be written to, and what that does. */
     freeze: "Freeze money",
     freezeNote:
-      "While the app is open and connected, the balance does not go down: what the game takes is put back, and " +
-      "income still counts. The app remembers this for this save, and freezes it again when it connects to it.",
+      "While FM Lens is open and connected, the balance can't go down. Income still counts. " +
+      "FM Lens remembers this for this save.",
 
     // Stadium
     stadium: "Stadium",
@@ -846,10 +870,10 @@ export const en = {
     used: "In use",
     /** The capacity in use when the game does not limit it (stored as 0). */
     usedAll: "All of it",
-    usedTitle: "The part of the capacity the game lets in, when it limits it (for example while seats are closed); 0 means all of it",
+    usedTitle: "How much of the capacity FM lets in, for example while seats are closed. 0 means all of it.",
     expansion: "Can grow to",
     /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
-    noStadium: "The stadium could not be read for this club.",
+    noStadium: "Couldn't read this club's stadium.",
 
     // Club info
     info: "Club info",
@@ -863,10 +887,10 @@ export const en = {
     nav: "Clubs",
     /** In the status line, once connected. */
     count: (total: number) => `${format(total)} clubs`,
-    search: "Search clubs by name or UID",
+    search: "Search clubs by name or ID",
     summary: (total: number, shown: number) =>
       total > shown
-        ? `${format(total)} clubs · showing the top ${shown} by reputation`
+        ? `${format(total)} clubs · Top ${shown} by reputation`
         : `${format(total)} clubs`,
     /** The message under an empty table; `filtered` is whether a filter is in effect. */
     empty: (query: string, filtered: boolean) => {
@@ -881,7 +905,7 @@ export const en = {
       name: "Name",
       reputation: "Reputation",
       founded: "Founded",
-      uid: "UID",
+      uid: "ID",
     },
     filters: {
       /** The name of the select, which has no label of its own. */
@@ -892,8 +916,8 @@ export const en = {
       reputation: "Reputation",
       minReputation: "Minimum reputation",
       maxReputation: "Maximum reputation",
-      /** The hint in an empty reputation input: the game stores it from 0 to 10000. */
-      reputationPlaceholder: "0–10000",
+      minPlaceholder: "Min",
+      maxPlaceholder: "Max",
       founded: "Founded",
       foundedFrom: "Founded from",
       foundedTo: "Founded to",
@@ -902,16 +926,29 @@ export const en = {
   },
 
   /** Senior stadiums, one per club, from the fields the club profile already shows. */
+  officialList: {
+    nav: "Officials",
+    search: "Search officials by name or ID",
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 official" : `${format(total)} officials`;
+      return total > shown ? `${count} · Top ${shown} by ability` : count;
+    },
+    empty: (query: string) => (query === "" ? "Couldn't read any officials on this version of FM." : `No officials match “${query}”.`),
+    columns: { name: "Name", nation: "Nation", age: "Age", ca: "CA", pa: "PA", reputation: "Reputation", uid: "ID" },
+    born: "Born",
+    reputation: "Reputation",
+  },
+
   stadiumList: {
     nav: "Stadiums",
     search: "Search stadiums by name or club",
     summary: (total: number, shown: number) =>
       total > shown
-        ? `${format(total)} stadiums · showing the first ${shown} by capacity`
+        ? `${format(total)} stadiums · Top ${shown} by capacity`
         : `${format(total)} stadiums`,
     empty: (query: string, filtered: boolean) => {
       if (query === "" && !filtered) {
-        return "No stadiums could be read.";
+        return "Couldn't read any stadiums.";
       }
       if (query === "") {
         return "No stadiums match these filters.";
@@ -932,21 +969,43 @@ export const en = {
       placeholder: "Min",
     },
     /** In the profile: where the numbers come from. */
-    note: "The stadium this club's senior team plays at, read from the same fields as the club profile.",
+    note: "Where the club's first team plays.",
   },
 
   /** Nations of the people in the save. Not a nation's ranking, rules or kit. */
   nationList: {
     nav: "Nations",
     search: "Search nations by name",
-    summary: (total: number, shown: number) =>
-      total > shown ? `${format(total)} nations · showing the first ${shown}` : `${format(total)} nations`,
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 nation" : `${format(total)} nations`;
+      return total > shown ? `${count} · ${shown} shown` : count;
+    },
     empty: (query: string) => (query === "" ? "No nations found." : `No nations match “${query}”.`),
-    columns: { name: "Nation", uid: "UID" },
+    columns: { name: "Nation", uid: "ID" },
     /** In the profile: what this list is, and what it does not read. */
-    note: "Nations of the players and staff in this save. Rankings, rules, kits and squads are not read.",
-    uid: "UID",
-    noUid: "No UID",
+    note: "Only nations that players or staff in this save come from.",
+    uid: "ID",
+    noUid: "No ID",
+    nation: "Nation",
+    capital: "Capital",
+    population: "Population",
+    languages: "Languages",
+    dualNationality: "Dual nationality",
+    allowed: "Allowed",
+    notAllowed: "Not allowed",
+    naturalisation: "Years to naturalise",
+    never: "Never",
+    fifa: "FIFA",
+    ranking: "World ranking",
+    points: "Points",
+    founded: "Association founded",
+    joinedFifa: "Joined FIFA",
+    teamName: (ageLimit: number | null) => (ageLimit === null ? "Senior team" : `Under-${ageLimit}s`),
+    manager: "Manager",
+    captain: "Captain",
+    viceCaptain: "Vice-captain",
+    reputation: "Reputation",
+    squad: (count: number) => `Squad (${count})`,
   },
 
   /** The app around the lists: the sidebar, the status line and the connect panel. */
@@ -961,6 +1020,8 @@ export const en = {
     appearanceDark: "Dark",
     /** The interface scale, separate from the window's own zoom. */
     zoomLabel: "Zoom",
+    appearance: "Appearance",
+    themes: { system: "System", light: "Light", dark: "Dark" },
     /** Shown once, until it is skipped or finished. It introduces browsing, settings and the editing boundary. */
     tour: {
       label: "Introduction",
@@ -972,59 +1033,61 @@ export const en = {
       steps: {
         brand: {
           title: "FM Lens",
-          body: "Browse your career. On supported builds, edits reach FM when you apply them. Test on a career copy.",
+          body: "See everything in your save and change it. Edits go into FM when you press Apply. Try them on a copy of your save first.",
         },
         tabs: {
           title: "Sections",
-          body: "Players, staff and clubs, plus the nations those people belong to and each club's stadium.",
+          body: "Players, staff, clubs, nations and stadiums.",
         },
         search: {
           title: "Search and filters",
-          body: "Search by name or id. Filters narrow the list. The choice is kept when the language changes.",
+          body: "Type a name or ID. Use Filters to narrow it down.",
         },
         settings: {
           title: "Settings",
-          body: "Language, currency, light or dark appearance, and the size of the interface. The window's own zoom is separate.",
+          body: "Language, currency, light or dark mode, and zoom.",
         },
         status: {
-          title: "This career",
-          body: "The foot of the window names the game and how many people were read. Sample data is marked as such.",
+          title: "Connection",
+          body: "The bar at the bottom shows whether you're connected to FM.",
         },
       },
     },
 
     // The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`).
     /** Connected, and the game was opened for writing. */
-    noteEditable: "Edits reach the game only when you apply them. Back up your save first.",
+    noteEditable: "Editing on",
     /** Connected, but the process was not opened for writing. */
-    noteReadOnly: "The game was opened for reading only, so edits stay off.",
+    noteReadOnly: "Read-only",
     /** Read-only because the game is a version FM Lens was not checked with (see `compatibility`). */
-    noteUnknownBuild: "Read-only: this version of the game is new to FM Lens.",
-    noteReloadRequired: "Career data changed. Reload data before editing.",
-    noteNotConnected: "Connect to edit. Back up your save first.",
+    noteUnknownBuild: "Read-only: this FM version isn't supported yet",
+    noteReloadRequired: "Save changed. Press Reload to edit again.",
 
     // The status line and the busy texts beside it
     notConnected: "Not connected",
+    /** The status line once connected; the app version and game build are at the foot of Settings. */
+    connected: "Connected",
+    /** The name, for screen readers, of the app version and game build at the foot of the settings menu. */
+    detailsLabel: "App details",
+    /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */
+    more: "More",
     /** Beside the status line in a plain browser, where fixtures stand in for the game. */
     previewTag: "browser preview · sample data",
     /** In place of the game's date when it could not be read, and the note it shows on hover. */
     noDate: "No in-game date",
     noDateTitle:
-      "FM Lens could not read the in-game date in this version of the game, so ages are not shown and age " +
-      "filters find no one. Check for updates.",
+      "Couldn't read the in-game date, so ages are hidden and age filters find no one. Check for updates.",
     /** The button that reads the game again, once connected. */
-    reload: "Reload data",
-    /** The button that looks for the game again, while not connected. */
-    refresh: "Refresh",
+    reload: "Reload",
     detecting: "Looking for Football Manager…",
-    connecting: "Reading players, staff and clubs…",
-    reloading: "Reloading players, staff and clubs…",
+    connecting: "Loading save…",
+    reloading: "Loading save…",
 
     /** The notice after connecting to a save in which something was frozen before (`FrozenNotice`). */
     refrozen: {
-      title: "Frozen again from last time",
+      title: "Freezes from last time are back on",
       /** When nothing could be frozen again. */
-      waitingTitle: "What was frozen waits for now",
+      waitingTitle: "Freezes on hold",
       /** `names` are the players' names, set apart by commas. */
       players: (names: string) => `Attributes: ${names}`,
       clubs: (names: string) => `Money: ${names}`,
@@ -1032,62 +1095,42 @@ export const en = {
       more: (count: number) => `and ${format(count)} more`,
       /** What was left for later: an update of the game, say. */
       waiting: (count: number) =>
-        `${count === 1 ? "1 is" : `${format(count)} are`} remembered but not frozen now: FM Lens cannot write ` +
-        "to this version of the game yet.",
+        `${count === 1 ? "1 freeze is" : `${format(count)} freezes are`} saved but off: FM Lens can't edit ` +
+        "this FM version yet.",
       dismiss: "Dismiss",
     },
 
     /** The panel shown while not connected. */
     connect: {
       title: "Connect to Football Manager 27",
-      intro: "Load a save in Football Manager, then connect to browse players, staff and clubs.",
-      notRunning: "Football Manager 27 is not running.",
+      intro: "Load a save in FM, then connect.",
+      notRunning: "Football Manager 27 isn't running.",
       /** `error` is the answer of the Rust side, which stays in English. */
-      openFailed: (error: string) => `Could not open the game: ${error}`,
-      game: "Game",
-      gameData: "Game data",
-      loaded: "Loaded",
-      stillLoading: "Still loading; wait for the main menu",
-      process: "Process",
-      pid: (pid: number) => `pid ${pid}`,
-      several: "Several copies of the game are running; the first one is used.",
-      button: "Connect and read players, staff and clubs",
+      openFailed: (error: string) => `Couldn't open FM: ${error}`,
+      /** FM27 is open but has not reached its main menu yet. */
+      stillLoading: "FM is still starting. Wait for the main menu.",
+      several: "More than one copy of FM is running. Using the first one.",
+      button: "Connect",
 
       /** macOS: the bridge FM27 has to load before the app can reach it, and setting it up. */
       bridge: {
-        title: "The bridge (macOS)",
+        title: "One-time setup",
         intro:
-          "FM27 needs to load the bridge at startup. Save and quit FM27, then quit Steam before setup.",
-        library: "Bridge",
+          "FM Lens needs a small helper that FM loads at startup. Save and quit FM, then quit Steam, before you set it up.",
+        library: "Helper",
         installed: "Installed",
         missing: "Not installed",
-        launchOption: "Launch option",
-        set: "Set in Steam",
+        launchOption: "Steam launch option",
+        set: "Set",
         notSet: "Not set",
-        ready: "Set up. Start FM27 from Steam (quit it and start it again if it is running), load a save, then connect.",
-        steamRunning:
-          "Steam is running, and keeps the launch options while it does. Quit Steam to have the launch option set " +
-          "for you, or enter it in Steam yourself.",
-        setUp: "Set up the bridge",
-        remove: "Remove the bridge",
-        manual: "Or, in Steam, right-click Football Manager 27 › Properties › General › Launch Options, and enter:",
+        steamRunning: "Steam is open. Quit it first, or add the launch option yourself.",
+        setUp: "Set up",
+        remove: "Remove the helper",
+        manual: "Or in Steam, right-click Football Manager 27 › Properties › General › Launch Options and paste:",
         copy: "Copy",
         copied: "Copied",
       },
     },
-  },
-
-  /** The graphics packs the pictures (club logos, faces, flags) come from: their status at the foot of the sidebar. */
-  graphics: {
-    /** While the app is still reading the packs, which takes a moment after it starts. */
-    reading: "Reading graphics packs…",
-    /** What the packs hold: "Graphics: 68,131 club logos · 250 flags · 0 faces". */
-    summary: ({ clubLogos, flags, faces }: Pick<GraphicsCounts, "clubLogos" | "flags" | "faces">) =>
-      `Graphics: ${format(clubLogos)} club ${clubLogos === 1 ? "logo" : "logos"} · ` +
-      `${format(flags)} ${flags === 1 ? "flag" : "flags"} · ${format(faces)} ${faces === 1 ? "face" : "faces"}`,
-    /** When the app found no pack, and under it where packs go. The folder itself is the hover text of both lines. */
-    none: "No graphics packs found",
-    noneHint: "Logo and face packs go in the FM27 graphics folder.",
   },
 
   /**
@@ -1096,24 +1139,23 @@ export const en = {
    */
   compatibility: {
     /** The headline for a version without a profile; `game` as the status line names it. */
-    unknownBuild: (game: string) => `FM Lens has not been checked with ${game} yet`,
+    unknownBuild: (game: string) => `${game} is not supported yet`,
     unknownBuildText:
-      "This game build has not been verified with FM Lens. Treat decoded values as unverified until checked " +
-      "against the game. Editing is disabled.",
+      "FM Lens hasn't been tested with this FM version. Values may be wrong, so editing is off.",
     /** Once Edit anyway was pressed. */
-    allowedText: "Editing is on for this session, as far as the checks allow. Keep a backup of your save.",
+    allowedText: "Editing is on where checks passed. Back up your save.",
     /** The headline when checks did not pass on a version the editor knows, and what may help. */
-    failedTitle: "Some of the game's data did not check out",
-    reloadHint: "If a save was still loading, Reload data checks again.",
+    failedTitle: "Some data looks wrong",
+    reloadHint: "If a save was still loading, press Reload.",
     /** The in-game date did not check out: shown apart, as it leaves nothing read-only. */
-    noDate: "The in-game date did not check out, so no ages are shown.",
+    noDate: "Couldn't read the in-game date, so ages are hidden.",
     /** The other checks that did not pass, their names joined (see `checks`). */
-    failed: (names: string) => `Left read-only: ${names}.`,
+    failed: (names: string) => `Read-only: ${names}.`,
     /** Joins the names of the checks that did not pass. */
     join: (names: string[]) =>
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`,
     allow: "Edit anyway",
-    allowTitle: "Turn editing on until FM Lens is closed or connects again. Back up your save first.",
+    allowTitle: "Turns editing on until you close FM Lens or reconnect. Back up your save first.",
   },
 
   /** What each check is about (`CheckKey`), as the notice lists the ones that did not pass and the errors name them. */
@@ -1139,30 +1181,32 @@ export const en = {
     download: "Download",
     /** Downloads the new version's installer and runs it, where the app can update itself (see `can_self_update`). */
     install: "Update",
-    installTitle: "Download and install the new version; FM Lens closes and opens again with it",
+    installTitle: "Download and install it. FM Lens restarts.",
     preparing: "Preparing…",
     /** `percent` is null while the size of the download is not known. */
     downloading: (percent: number | null) => (percent === null ? "Downloading…" : `Downloading… ${percent}%`),
-    installing: "Installing: FM Lens closes and opens again with the new version.",
-    installFailed: (reason: string) => `Could not update: ${reason}. Download it from its page instead.`,
-    notInstallable: "This version cannot be installed from here. Download it from its page instead.",
+    installing: "Installing. FM Lens will restart.",
+    installFailed: (reason: string) => `Couldn't update: ${reason}. Download it instead.`,
+    notInstallable: "Can't install this version from here. Download it instead.",
     /** Hides the notice until the app starts again. */
     later: "Later",
     check: "Check for updates",
     checking: "Checking for updates…",
     upToDate: "You have the latest version.",
-    failed: "Could not check for updates.",
+    failed: "Couldn't check for updates.",
   },
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
   edit: {
+    /** The tooltip on a value FM Lens wrote and read back. */
+    appliedTitle: "Applied",
     /** A nation field's value whose name the app has not read: one no one in the lists belongs to. */
     unknownNation: "Unknown nation",
     /** The button in the header of a profile that can be edited. */
     edit: "Edit",
-    editTitle: "Change this profile's values in the game",
+    editTitle: "Edit this profile",
     /** Why editing did not start: the field table or the values could not be read. */
-    startFailed: (reason: string) => `Could not start editing: ${reason}`,
+    startFailed: (reason: string) => `Couldn't start editing: ${reason}`,
     /** The name of a position's field, e.g. "ST rating"; `position` is its entry in `positions`. */
     positionRating: (position: string) => `${position} rating`,
     /** Hover text of a changed input: the value it started from, as shown. */
@@ -1210,12 +1254,14 @@ export const en = {
     keepEditing: "Keep editing",
 
     // After Apply
-    applied: (count: number) => `Applied ${changeCount(count)}`,
+    /** FM shows written values once it moves on, so the message says how to see them. */
+    applied: (count: number) =>
+      `${changeCount(count)} applied. ${count === 1 ? "It shows" : "They show"} in FM after you press Continue.`,
     /** Every value asked for was the game's already. */
-    nothingToChange: "Nothing to change: the game already has these values.",
+    nothingToChange: "Nothing to change. FM already has these values.",
     /** A change the game refused; `label` is the field's name (see `fieldLabel`) and `reason` the game's answer. */
     refused: (label: string, reason: string) => `${label}: ${reason}`,
-    rereadFailed: (reason: string) => `Could not read the values back: ${reason}`,
+    rereadFailed: (reason: string) => `Couldn't check the new values: ${reason}`,
     dismiss: "Dismiss",
   },
 
@@ -1224,9 +1270,9 @@ export const en = {
     /** The entry in the sidebar. */
     nav: "Changes",
     title: "Changes this session",
-    hint: "Newest first. A change can be undone only while the game still holds the value it wrote.",
+    hint: "Newest first. You can undo a change until FM changes that value itself.",
     /** Under the hint: a change shows in the game only after it has moved on once. */
-    continueHint: "The game shows a change once it moves on: press Continue in the game.",
+    continueHint: "Changes show in FM after you press Continue.",
     /** Under a move to another club that was a swap: the player who went the other way. */
     swappedWith: (name: string) => `Swapped with ${name}`,
     /** Under a transfer that had a fee: the amount, written out. */
@@ -1242,7 +1288,7 @@ export const en = {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} undone`;
     },
-    empty: "No changes yet. Open a player, a member of staff or a club and choose Edit, or use Mass edit in a list.",
+    empty: "No changes yet. Open a player, staff member or club and press Edit.",
     columns: {
       time: "Time",
       /** The player, member of staff or club the change was made to. */
@@ -1258,7 +1304,7 @@ export const en = {
     undone: (time: string) => `Undone at ${time}`,
     undo: "Undo",
     /** Hover text of Undo; `label` is the field's name. */
-    undoTitle: (label: string) => `Write the old value of ${label} back to the game`,
+    undoTitle: (label: string) => `Put ${label} back to its old value`,
     /** The small tag after the fields a mass edit changed: a mass edit is one row of the list. */
     batch: "Mass edit",
     /** Under those fields: how many changes the mass edit made, and how many of them are not undone. */
@@ -1273,7 +1319,7 @@ export const en = {
     undoBatch: "Undo mass edit",
     /** Hover text of Undo mass edit; `remaining` is how many of its changes are not undone yet. */
     undoBatchTitle: (remaining: number) =>
-      `Write the old values of this mass edit back to the game (${format(remaining)} still in place)`,
+      `Put back the old values (${format(remaining)} still changed)`,
 
     // Pages: the list, and the changes of a mass edit that is open, are shown a page at a time.
     /** The names of the two groups of buttons for assistive technology. */
@@ -1288,13 +1334,13 @@ export const en = {
   /** Exporting players to a file: the button in the toolbar of the player list and the dialog it opens. */
   export: {
     button: "Export",
-    buttonTitle: "Write the players the list shows to a CSV or JSON file, for a spreadsheet or a script",
+    buttonTitle: "Save the players in this list to a CSV or JSON file",
     title: "Export players",
     /** What the export covers: everything the list's search and filters select, in its order. */
     scope: (count: number) =>
       count === 0
-        ? "No player matches the search and the filters."
-        : `${entityCount.player(count)}: what the list's search and filters select, in its order.`,
+        ? "No players match your search and filters."
+        : `${entityCount.player(count)}, in list order.`,
     formatLabel: "Format",
     formats: {
       csv: "CSV, comma-separated",
@@ -1303,23 +1349,21 @@ export const en = {
     } satisfies Record<ExportFormat, string>,
     formatHints: {
       csv: "For most spreadsheets and scripts",
-      csvSemicolon: "For Excel where decimals are written with a comma: in Turkish, Spanish or German, say",
-      json: "For scripts: the positions, attributes and personality as objects of their own",
+      csvSemicolon: "For Excel in languages that use a decimal comma",
+      json: "For scripts",
     } satisfies Record<ExportFormat, string>,
     contents:
-      "Each player's abilities, positions and position ratings, attributes on the 1–20 scale (the hidden ones too), " +
-      "personality, reputation, caps, and contract with its clauses, with the in-game date. Money is in pounds, as " +
-      "the game keeps it. Nothing in the game changes.",
+      "Abilities, positions, attributes (hidden ones too), personality, reputation, caps and contracts. " +
+      "Money is in pounds.",
     export: "Export",
     exporting: "Exporting…",
     /** After the export: what was written, and where. */
     done: (count: number, file: string) => `Exported ${entityCount.player(count)} to ${file}`,
     folder: (folder: string) => `in ${folder}`,
     skipped: (count: number) =>
-      `${entityCount.player(count)} changed in the game while ${count === 1 ? "he was" : "they were"} read, and ` +
-      `${count === 1 ? "was" : "were"} left out.`,
+      `${entityCount.player(count)} changed in FM during the export and ${count === 1 ? "was" : "were"} left out.`,
     open: "Open",
-    openTitle: "Open the file in the app your system opens it with",
+    openTitle: "Open the file",
     show: "Show in folder",
     showTitle: "Show the file in its folder",
     close: "Close",
@@ -1329,7 +1373,7 @@ export const en = {
   massEdit: {
     /** The button in the toolbar of the player, staff and club lists. */
     button: "Mass edit",
-    buttonTitle: "Change values of everything the list shows, with a preview first",
+    buttonTitle: "Change everyone in the list at once. You see a preview first.",
     title: {
       player: "Mass edit players",
       staff: "Mass edit staff",
@@ -1339,17 +1383,17 @@ export const en = {
     // What it applies to
     /** `total` is the list's: the search and the filters of the list select them. */
     scope: (entity: Entity, total: number) =>
-      `The ${entityCount[entity](total)} the list shows now (search and filters)`,
+      `All ${entityCount[entity](total)} in the list`,
     /** After the scope, when the list shows only the first `shown` rows of its `total`. */
-    scopeAll: (shown: number) => `That is every match, not only the first ${format(shown)} rows on screen.`,
+    scopeAll: (shown: number) => `Every match, not just the ${format(shown)} on screen.`,
     scopeNone: (entity: Entity) =>
-      `No ${entityNouns[entity]} match the search and filters, so there is nothing to change.`,
+      `No ${entityNouns[entity]} match your search and filters.`,
     /** `limit` is the most one mass edit takes. */
     scopeTooMany: (entity: Entity, total: number, limit: number) =>
-      `The ${entityCount[entity](total)} the list shows are more than one mass edit takes (${format(limit)}). ` +
-      "Narrow the search or the filters first.",
-    loadingFields: "Reading the fields…",
-    fieldsFailed: (reason: string) => `Could not read the fields: ${reason}`,
+      `That's ${entityCount[entity](total)}, but one mass edit takes up to ${format(limit)}. ` +
+      "Narrow your search or filters.",
+    loadingFields: "Loading fields…",
+    fieldsFailed: (reason: string) => `Couldn't load the fields: ${reason}`,
 
     // The fields to change
     /** The groups of the field select, in the order the dialog lists them. */
@@ -1387,16 +1431,16 @@ export const en = {
     /** The name of the value input, by operation. */
     values: { set: "Value", add: "Amount", scale: "Percent" } satisfies Record<MassOperationKind["op"], string>,
     /** Hover text of the amount of an Add. */
-    addTitle: "Added to every value as shown; a negative number takes away",
+    addTitle: "Added to each value. Use a negative number to subtract.",
     /** The same for a percentage: the amount is in percentage points, not a percent of the value (that is Scale). */
-    addPointsTitle: "Percentage points added to every value (70% plus 10 is 80%); a negative number takes away",
+    addPointsTitle: "Percentage points added to each value (70% + 10 = 80%). Use a negative number to subtract.",
     /** The hint in an empty value input: what it takes. */
     rangeHint: (min: number, max: number) => `${format(min)}–${format(max)}`,
     /** The same for an amount, which may be negative: up to `max` either way. */
     amountHint: (max: number) => `±${format(max)}`,
     /** After the input of a Scale: the number is a percent of the value the game has now. */
     ofCurrent: "% of current",
-    percentTitle: "A percent of the current value: 100 keeps it, 110 raises it by a tenth, 50 halves it",
+    percentTitle: "Percent of the current value: 100 keeps it, 110 adds a tenth, 50 halves it",
     /** Hover text of an amount that cannot be applied; `min` and `max` are what it takes. */
     invalidAdd: (min: number, max: number) => `Enter a whole number from ${format(min)} to ${format(max)}`,
     invalidPercent: (min: number, max: number) => `Enter a whole percent from ${min} to ${max}`,
@@ -1413,7 +1457,7 @@ export const en = {
     preview: "Preview",
     previewing: "Previewing…",
     /** Beside Preview while it cannot be pressed. */
-    previewBlocked: "Fill in every field with a valid value to preview",
+    previewBlocked: "Fill in every field to preview",
     /** "312 changes for 140 of 237 players · 97 already have these values · 12 values left alone". */
     summary: (entity: Entity, preview: MassPreview) =>
       [
@@ -1441,17 +1485,17 @@ export const en = {
     apply: "Apply",
     applying: "Applying…",
     /** Hover text of Apply; `changes` is how many values it writes. */
-    applyTitle: (changes: number) => `Write ${changeCount(changes)} to the game`,
+    applyTitle: (changes: number) => `Apply ${changeCount(changes).toLowerCase()}`,
     applyFirst: "Preview the mass edit first",
-    applyNothing: "The preview has no changes to write",
+    applyNothing: "Nothing to apply",
     /** Nothing changes in the game until Apply. */
-    hint: "Nothing changes in the game until you apply.",
-    applied: (count: number) => (count === 0 ? "No changes were written" : `Applied ${changeCount(count)}`),
+    hint: "Nothing changes in FM until you press Apply.",
+    applied: (count: number) => (count === 0 ? "Nothing changed" : `${changeCount(count)} applied`),
     /** A change the game refused: who, which field (see `fieldLabel`) and the game's answer. */
     failure: (name: string, label: string, reason: string) => `${name} · ${label}: ${reason}`,
     undo: "Undo this mass edit",
     undoing: "Undoing…",
-    undoTitle: "Write the old values of this mass edit back to the game",
+    undoTitle: "Put back the old values",
     undone: (count: number) => (count === 0 ? "Nothing was undone" : `Undid ${changeCount(count)}`),
     /** A change an undo could not take back: `who` names the person and the field, or the change by its number. */
     undoFailure: (who: string, reason: string) => `${who}: ${reason}`,
@@ -1467,7 +1511,7 @@ export const en = {
     add: "Add to comparison",
     remove: "Remove from comparison",
     /** Hover text of the button while the comparison is full and cannot take this player; `max` is its size. */
-    full: (max: number) => `A comparison holds up to ${max} players. Remove one to add this player.`,
+    full: (max: number) => `You can compare up to ${max} players. Remove one first.`,
 
     // The tray under the player list
     trayLabel: "Players to compare",
@@ -1480,10 +1524,10 @@ export const en = {
     // The dialog
     title: "Comparison",
     /** Under the title: what the highlight in the table means. */
-    hint: "The best value in each row is highlighted: the highest, or the lowest where lower is better.",
+    hint: "The best value in each row is highlighted.",
     /** What the dialog says when fewer than two players are picked. */
     tooFew: "Add at least two players to compare them.",
-    loading: "Loading the players…",
+    loading: "Loading players…",
     tableLabel: "Values of the compared players",
     /** Said after the highlighted value of a row, for assistive technology. */
     highest: "highest",
@@ -1500,7 +1544,7 @@ export const en = {
   move: {
     /** The button in the header of a player's profile. */
     button: "Transfer",
-    buttonTitle: "Transfer this player to another club in the game, for a fee if you like",
+    buttonTitle: "Move him to another club, with or without a fee",
 
     // The dialog
     title: "Transfer",
@@ -1519,9 +1563,9 @@ export const en = {
     searchLabel: "Search for the club to transfer to",
     resultsLabel: "Clubs found",
     searching: "Searching clubs…",
-    searchFailed: (reason: string) => `Could not search the clubs: ${reason}`,
+    searchFailed: (reason: string) => `Couldn't search clubs: ${reason}`,
     /** Under the list when the search found more clubs than it lists; `count` is how many more. */
-    more: (count: number) => `and ${format(count)} more; type to narrow the search`,
+    more: (count: number) => `and ${format(count)} more. Keep typing to narrow it down.`,
     /** Takes the place of the search once a club is picked: the button that brings it back. */
     change: "Choose another club",
 
@@ -1531,7 +1575,7 @@ export const en = {
     /** Under the fee input while it can be sent, and while it cannot. */
     feeHint: "Leave it empty for a free transfer",
     /** `max` is the most a fee can be, as amounts are shown. */
-    feeInvalid: (max: string) => `Enter a whole amount, from 0 to ${max}`,
+    feeInvalid: (max: string) => `Enter a whole amount from 0 to ${max}`,
     /**
      * What the fee does to the clubs' money, a line each in the plan. `fee` is the amount, `balance` and `budget` a
      * change written out ("£9,492,232 → £10,726,799"); `budget` is null when the club has no transfer budget set.
@@ -1540,7 +1584,7 @@ export const en = {
       `${club} pays ${fee}: balance ${balance}${budget === null ? "" : `, transfer budget ${budget}`}`,
     receives: (club: string, fee: string, balance: string) => `${club} receives ${fee}: balance ${balance}`,
     /** For a club outside the leagues being played, which the game keeps no finances for. */
-    noFinances: (club: string) => `${club} has no finances in the game: its money stays as it is`,
+    noFinances: (club: string) => `${club} has no finances in FM, so its money won't change`,
 
     // The contract
     /** Under an input that cannot be sent. */
@@ -1548,22 +1592,22 @@ export const en = {
     expiresInvalid: "Enter a date",
 
     // What the dialog says about the move itself
-    chooseClub: "Choose the club to transfer the player to.",
+    chooseClub: "Pick a club.",
     fixTerms: "Fix the fee or the contract values first.",
     checking: "Checking the transfer…",
     /** The move can be made; `from` and `to` are the names of the clubs. */
     route: (from: string, to: string) => `${from} → ${to}`,
-    doesHeading: "What the transfer does",
+    doesHeading: "What happens",
     /** What the game does to the player, one line each. */
     does: [
-      "Joins the senior team of the new club",
-      "Contract dated from the game's date; squad number cleared",
-      "Comes off the transfer and loan lists",
-      "Wage and contract end change only if you set new ones",
-      "The fee comes out of the buying club's balance and transfer budget, and goes into the selling club's balance",
-      "Any captaincy at the old club is left empty",
-      "The game's transfer history does not list it yet",
-      "Listed under Changes, where one undo takes back the transfer and the fee",
+      "He joins the new club's first team",
+      "His contract starts today and his squad number is cleared",
+      "He comes off the transfer and loan lists",
+      "Wage and contract end stay the same unless you change them",
+      "The buying club pays the fee from its balance and transfer budget. The selling club gets it.",
+      "If he was captain at his old club, that spot is left empty",
+      "It won't show in FM's transfer history",
+      "One Undo in Changes reverses the transfer and the fee",
     ],
 
     // Swapping with a player of the club instead: the title, and the section that picks the player (the club is
@@ -1576,49 +1620,49 @@ export const en = {
     playerSearch: "Search this club's players by name",
     playersLabel: "Players found",
     playersSearching: "Searching players…",
-    playersSearchFailed: (reason: string) => `Could not search the players: ${reason}`,
+    playersSearchFailed: (reason: string) => `Couldn't search players: ${reason}`,
     /** Under the list when it is empty: `query` is what was typed. */
     playersEmpty: (query: string) =>
-      query === "" ? "This club has no players." : `No player of this club matches “${query}”.`,
+      query === "" ? "This club has no players." : `No players here match “${query}”.`,
     /** Takes the place of the list once a player is picked: the button that brings it back. */
     changePlayer: "Choose another player",
 
     // What the dialog says about the swap
     /** A swap has no contract terms to set. */
-    swapContract: "Each player keeps their own contract; wages and contract ends do not change.",
+    swapContract: "Both keep their own contracts. Wages and contract ends don't change.",
     // Moving a member of staff, who has neither a fee nor terms to set, and no swap.
-    staffButtonTitle: "Move this member of staff to another club in the game",
-    staffChooseClub: "Choose the club to move this member of staff to.",
-    staffContract: "Keeps the job, the wage and the contract end; the contract is dated from the game's date.",
+    staffButtonTitle: "Move them to another club",
+    staffChooseClub: "Pick a club.",
+    staffContract: "Same job, wage and contract end. The contract starts today.",
     staffDoes: [
-      "Joins the new club in the departments they work in (medical, coaching, scouting)",
-      "Same job, wage and contract end; the contract is dated from the game's date",
-      "A team's manager, whom the team itself points at, is left to the game",
-      "Listed under Changes, where it can be undone",
+      "They join the new club in the same departments (medical, coaching, scouting)",
+      "Same job, wage and contract end. The contract starts today",
+      "A team's manager isn't moved by this",
+      "You can undo it in Changes",
     ],
-    swapChooseClub: "Choose the club of the player to swap with.",
-    swapChoosePlayer: "Choose the player to swap with.",
+    swapChooseClub: "Pick the other player's club.",
+    swapChoosePlayer: "Pick the player to swap with.",
     swapChecking: "Checking the swap…",
     /** The swap can be made: who goes where, a line each. `from` is the club of the player, `to` that of the other. */
     swapRoute: (player: string, from: string, to: string, other: string) =>
       `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
-    swapDoesHeading: "What the swap does",
+    swapDoesHeading: "What happens",
     swapDoes: [
-      "Each joins the senior team of the other's club",
-      "Contracts dated from the game's date; squad numbers cleared",
+      "Each joins the other club's first team",
+      "Both contracts start today and squad numbers are cleared",
       "Both come off the transfer and loan lists",
-      "Any captaincy at their old clubs is left empty",
-      "No fees are paid; career history is not updated",
-      "Listed under Changes as one change, which undoes both moves",
+      "Captain spots they held at their old clubs are left empty",
+      "No fees are paid and career history doesn't change",
+      "One Undo in Changes reverses both moves",
     ],
 
     // The foot
     /** Nothing changes in the game until Transfer, or Swap. */
-    hint: "Nothing changes in the game until you press Transfer.",
+    hint: "Nothing changes in FM until you press Transfer.",
     move: "Transfer",
     moving: "Transferring…",
     cancel: "Cancel",
-    swapHint: "Nothing changes in the game until you press Swap.",
+    swapHint: "Nothing changes in FM until you press Swap.",
     swap: "Swap",
     swapping: "Swapping…",
   },
@@ -1645,13 +1689,12 @@ export const en = {
 
     // The button under the group, and the dialog it opens
     change: "Change",
-    changeTitle: "Change this player's secondary nationalities and homegrown status in the game",
+    changeTitle: "Change his other nationalities and homegrown status",
     title: "Nationality and homegrown",
-    hint: "Each change is written to the game at once, and listed under Changes, where it can be undone.",
+    hint: "Each change goes into FM straight away. You can undo it in Changes.",
     /** When the player's list has no room for another tie. */
     full:
-      "The game made this player's list just big enough for what it holds: a nationality or a training can be " +
-      "changed or removed, but not added.",
+      "FM left no room in his list, so you can change or remove entries but not add new ones.",
     /** The control of a row, for assistive technology: `name` is the nation's or club's. */
     nationOf: (name: string) => `Nation instead of ${name}`,
     ruleOf: (name: string) => `Homegrown rule for ${name}`,
@@ -1663,21 +1706,20 @@ export const en = {
     newRule: "Homegrown rule of the new nation",
     add: "Add",
     /** Under the clubs: what the dialog cannot do with them. */
-    clubNote: "A club can be given another rule or removed; the game itself adds clubs.",
-    working: "Writing to the game…",
+    clubNote: "You can change a club's rule or remove it. Only FM adds clubs.",
+    working: "Saving…",
     close: "Close",
   },
 
   /** Changing a contract's bonuses and clauses: the button under them in the profile, and the dialog it opens. */
   clauses: {
     change: "Change",
-    changeTitle: "Change this player's bonuses and clauses in the game",
+    changeTitle: "Change his bonuses and clauses",
     title: "Bonuses and clauses",
-    hint: "Each change is written to the game at once, and listed under Changes, where it can be undone.",
+    hint: "Each change goes into FM straight away. You can undo it in Changes.",
     /** When the contract has no release clause and its list has no room for one. */
     full:
-      "The game made this contract's list just big enough for what it holds: a bonus or clause can be changed or " +
-      "removed, but a release clause cannot be added.",
+      "FM left no room in this contract, so you can change or remove clauses but not add a release clause.",
     /** The inputs of a row, for assistive technology: `name` is the clause's. */
     amountOf: (name: string) => `Amount of ${name}`,
     conditionOf: (name: string) => `Condition of ${name}`,
@@ -1691,15 +1733,73 @@ export const en = {
     /** When an amount or condition typed is not a whole number in range: `max` is the most it may be. */
     /** `max` is written out already: an amount as amounts are shown, or a number. */
     outOfRange: (max: string) => `Enter a whole number from 0 to ${max}.`,
-    working: "Writing to the game…",
+    working: "Saving…",
     close: "Close",
+  },
+
+  /** Copying a player onto others, and saved player templates: the button in the player list and its dialog. */
+  templates: {
+    button: "Clone & templates",
+    title: "Clone & templates",
+    groups: {
+      ability: "CA / PA",
+      attributes: "Attributes (hidden ones too)",
+      personality: "Personality",
+      positions: "Positions",
+      traits: "Traits",
+    },
+    copyHeading: "Copy from a player",
+    findPlayer: "Find player",
+    found: "Players found",
+    freeAgent: "Free agent",
+    capture: (name: string | null) => (name ? `Copy ${name}` : "Copy player"),
+    libraryHeading: "Saved templates",
+    library: "Template",
+    choose: "Choose a template",
+    noneSaved: "No saved templates",
+    name: "Name",
+    save: "Save",
+    remove: "Delete",
+    fieldCount: (count: number) => (count === 1 ? "1 field" : `${format(count)} fields`),
+    jsonHeading: "Import or export JSON",
+    json: "Template JSON",
+    loadJson: "Load JSON",
+    showJson: "Show JSON",
+    importFile: "Import file",
+    applyHeading: (total: number, query: string) =>
+      `Apply to ${entityCount.player(total)}${query ? ` matching “${query}”` : ""}`,
+    limit: "Only these player IDs",
+    limitPlaceholder: "All of them",
+    preview: "Preview",
+    previewLabel: "Template preview",
+    summary: (targets: number, changes: number, skipped: number, unchanged: number) =>
+      `${entityCount.player(targets)} · ${changeCount(changes)} · ${format(skipped)} skipped · ` +
+      `${format(unchanged)} already set`,
+    tableLabel: "Changes to apply",
+    columns: { player: "Player", uid: "ID", field: "Field", change: "Change" },
+    firstRows: (count: number) => `Showing the first ${format(count)} changes.`,
+    skipped: "Skipped",
+    apply: (count: number) => (count === 0 ? "Apply" : `Apply ${changeCount(count).toLowerCase()}`),
+    applied: (count: number) => (count === 0 ? "Nothing changed." : `${changeCount(count)} applied.`),
+    undo: "Undo",
+    undone: (count: number) => (count === 0 ? "Nothing was undone." : `Undid ${changeCount(count).toLowerCase()}.`),
+    working: "Working…",
+    close: "Close",
+    savedNotice: "Template saved.",
+    loadedNotice: "Template loaded. Save it to keep it.",
+    removedNotice: "Template deleted.",
+    nameTaken: "A template with this name already exists. Pick another name.",
+    libraryFull: (max: number) => `You can keep up to ${max} templates. Delete one first.`,
+    tooBig: "Template files must be under 128 KB.",
+    invalid: "That isn't an FM Lens player template.",
+    badIds: "Enter player IDs separated by commas or spaces.",
   },
 
   /** Releasing a player from their club, which leaves them a free agent: the button beside Transfer and its dialog. */
   release: {
     /** The button in the header of a player's profile, beside Transfer. */
     button: "Release",
-    buttonTitle: "Release this player from their club in the game: they become a free agent",
+    buttonTitle: "Release him. He becomes a free agent.",
 
     // The dialog
     title: "Release",
@@ -1708,19 +1808,19 @@ export const en = {
     checking: "Checking the release…",
     /** The player can be released; `club` is the name of their club. */
     ready: (club: string) => `${club} → free agent`,
-    doesHeading: "What the release does",
+    doesHeading: "What happens",
     /** What the game does to the player, one line each. */
     does: [
-      "Leaves every team of the club, and the contract ends: a free agent any club can sign",
-      "No one is paid anything",
-      "Any captaincy at the club is left empty",
-      "The game's transfer history does not list it",
-      "Listed under Changes, where one undo brings the player back on the same contract",
+      "His contract ends and any club can sign him",
+      "No one gets paid",
+      "If he was captain, that spot is left empty",
+      "It won't show in FM's transfer history",
+      "One Undo in Changes brings him back on the same contract",
     ],
 
     // The foot
     /** Nothing changes in the game until Release. */
-    hint: "Nothing changes in the game until you press Release.",
+    hint: "Nothing changes in FM until you press Release.",
     release: "Release",
     releasing: "Releasing…",
     cancel: "Cancel",
@@ -1747,7 +1847,7 @@ export const en = {
     },
     /** When the game lists no team for the club. */
     noTeams: "This club has no teams.",
-    loading: "Reading the squad…",
+    loading: "Loading squad…",
     /** The message under an empty table. */
     empty: "No players in this team.",
 
@@ -1763,32 +1863,34 @@ export const en = {
     actionsLabel: "Actions on the whole team",
     /** `injured` is how many of the team's players have an injury. */
     healAll: (injured: number) => (injured === 0 ? "Heal all" : `Heal all (${format(injured)} injured)`),
-    healAllTitle: "Heal every injury of every player in this team",
+    healAllTitle: "Heal everyone in this team",
     /** Hover text of Heal all while nobody in the team is injured. */
     healNone: "Nobody in this team is injured",
     /** `banned` is how many of the team's players have a ban. */
     liftAll: (banned: number) => (banned === 0 ? "Lift bans" : `Lift bans (${format(banned)} banned)`),
-    liftAllTitle: "Lift every ban of every player in this team",
+    liftAllTitle: "Lift every ban in this team",
     /** Hover text of Lift bans while nobody in the team is banned. */
     liftNone: "Nobody in this team is banned",
     inspireAll: "Inspire all",
-    inspireAllTitle: "Set the morale of every player in this team to 20, the highest, and remove their reasons to be unhappy",
+    inspireAllTitle: "Max everyone's morale and clear their reasons to be unhappy",
     refreshAll: "Refresh all",
-    refreshAllTitle: "Set the energy and match sharpness of every player in this team to 100%, and rest them fully (jadedness -500)",
+    refreshAllTitle: "Full energy, full match sharpness and fully rested for everyone",
+    maxCohesion: "Max cohesion",
+    maxCohesionTitle: "Every player fully familiar with the club (experimental)",
     maxAll: "Max attributes",
     maxAllTitle:
-      "Set every attribute of every player in this team to its best: 20, and 1 for injury proneness and dirtiness",
+      "Every attribute to 20 for everyone (injury proneness and dirtiness to 1)",
     /** Beside the buttons: whom they cover, and where undoing is. */
-    hint: "The actions cover every player in the list, those out on loan too. Undo is in the Changes view as well.",
+    hint: "Includes players out on loan. You can undo in Changes.",
 
     // What an action did, under the buttons
     /** `count` is how many values were written. */
-    written: (count: number) => `${changeCount(count)} written`,
+    written: (count: number) => `${changeCount(count)} made`,
     /** A change the game refused: `name` is the player's, `reason` the game's answer (it names the value). */
     refused: (name: string, reason: string) => `${name}: ${reason}`,
     /** Takes back what the line beside it says was written. */
     undo: "Undo",
-    undoTitle: "Write the old values of these changes back to the game",
+    undoTitle: "Put back the old values",
 
     // Captains
     /** The badges after the name of the captain and of the vice-captain; their hover texts are the roles' names. */
