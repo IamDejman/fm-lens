@@ -99,8 +99,8 @@ and `FMLIBRE_EXPORTS` pointing to local directories under `reports/`. This keeps
 test freezes and exports separate from ordinary app state.
 
 Next validation priorities: stale-draft/undo conflict in the native app, career
-switch while connected, multi-target templates, staff/club/contract persistence,
-structural operations, and a fresh Steam Offline Mode launch.
+switch while connected, multi-target templates, where FM keeps a player's shown
+wage, structural operations, and a fresh Steam Offline Mode launch.
 
 ## Integrated roadmap PR
 
@@ -364,3 +364,35 @@ team, U21 and U18 were raised again, and the probe read all 48 club entries at
 The main career's hash matched its baseline afterwards. Not established: the
 `cohesion.changed` message on screen (the stale undo above ran on the build
 before it).
+
+## Staff, club and contract persistence (5 November 2026)
+
+On a disposable copy (the cohesion copy above, game date 10 Dec 2027), edited in
+FM Lens and saved as `FM Lens Staff Club Contract 2026-11-05.fm`. The main
+career's hash was checked before and after.
+
+| Edit | FM after Continue | After save, quit and reload |
+|---|---|---|
+| Nicolas Jover (staff 48030808) wage £15,000 -> £16,000 | Profile header and club staff list show £16K p/w | Probe 16000 |
+| Jover Tactical 7 -> 8 | "Competent" band, which does not show the step | Probe 40 (8) |
+| Arsenal (club 602) transfer budget £1,048,517 -> £11,048,517 | Portal "£11.04M", Club overview "£11M" | Probe 11048517 |
+| Arsenal youth recruitment 15 -> 16 | "Good" band, which does not show the step | Probe 16 |
+| Bukayo Saka (player 28122642) expiry 30/6/2031 -> 30/6/2032 | Header "30/6/2032", Contract page "4 years, 203 days" | Probe 2032-06-30 |
+| Saka wage £300,000 -> £310,000 | Still "£300K p/w" on the header and Contract page | Probe 310000, FM still £300K |
+
+The reload was a full Quit Game and Exit, FM's process gone, a Steam relaunch
+(same build fingerprint) and that copy loaded. The probe's readings at save time
+and after the reload matched line for line.
+
+The player wage did not reach FM's screen. A day later (11 Dec 2027, after the
+pre-match press conference went to the assistant) the probe still read 310000
+and FM still showed £300K p/w. The contract the probe edits (player +0x2f0,
+wage at +0x20) is the only place holding the new value, and read-only searches
+for another copy of 300000 near Saka (`related` at depths 2 and 3 with other
+players' wages as anchors, `nearby --bare`) found nothing. Where FM keeps the
+wage it shows, and whether it pays the new one, is not established. Treat the
+player wage edit as not working.
+
+Not established: other staff attributes, CA/PA, reputation, job and club moves,
+other club balances, facilities and capacities, squad number, loyalty bonus,
+listing flags and release-clause amounts.
