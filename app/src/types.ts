@@ -428,6 +428,7 @@ export interface AwardSummary {
   period: number;
   /** FM's code for who gets it (see `awardListText.recipientName`). */
   recipients: number;
+  women: boolean;
   goalkeepersOnly: boolean;
   /** The oldest a winner may be; null when any age may win. */
   maxAge: number | null;

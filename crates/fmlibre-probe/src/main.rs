@@ -3585,7 +3585,7 @@ fn awards(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
     all.sort_by_key(|a| std::cmp::Reverse(a.prestige));
     for a in all.iter().take(limit) {
         println!(
-            "  {:<52} {:<8} {:<28} {:<12} prestige {:>2} period {} to {}{}{}",
+            "  {:<52} {:<8} {:<28} {:<12} prestige {:>2} period {} to {}{}{}{}",
             a.name,
             a.uid,
             a.competition.as_deref().unwrap_or("-"),
@@ -3594,6 +3594,7 @@ fn awards(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
             a.period,
             a.recipients,
             if a.goalkeepers_only { " goalkeepers" } else { "" },
+            if a.women { " women" } else { "" },
             a.max_age.map_or_else(String::new, |age| format!(" max age {age}"))
         );
     }
