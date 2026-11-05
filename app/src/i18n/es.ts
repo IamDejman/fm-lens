@@ -1004,6 +1004,44 @@ export const es: Strings = {
     reputation: "Reputación",
   },
 
+  competitionList: {
+    nav: "Competiciones",
+    search: "Buscar competiciones por nombre o UID",
+    summary: (total, shown) => {
+      const count = total === 1 ? "1 competición" : `${format(total)} competiciones`;
+      return total > shown ? `${count} · las ${shown} de más reputación` : count;
+    },
+    empty: (query) =>
+      query === ""
+        ? "No se han podido leer las competiciones en esta versión de FM."
+        : `Ninguna competición coincide con «${query}».`,
+    columns: { name: "Nombre", nation: "País", continent: "Continente", reputation: "Reputación", uid: "UID" },
+    shortName: "Nombre corto",
+    reputation: "Reputación",
+    women: "Femenino",
+  },
+
+  awardList: {
+    nav: "Premios",
+    search: "Buscar premios por nombre, competición o UID",
+    summary: (total, shown) => {
+      const count = total === 1 ? "1 premio" : `${format(total)} premios`;
+      return total > shown ? `${count} · los ${shown} de más prestigio` : count;
+    },
+    empty: (query) =>
+      query === "" ? "No se han podido leer los premios en esta versión de FM." : `Ningún premio coincide con «${query}».`,
+    columns: { name: "Nombre", competition: "Competición", nation: "País", prestige: "Prestigio", uid: "UID" },
+    competition: "Competición",
+    prestige: "Prestigio",
+    period: "Se entrega",
+    periodName: (code) => ({ 1: "Cada semana", 2: "Cada mes", 3: "Cada temporada" })[code] ?? null,
+    recipients: "Para",
+    recipientName: (code) => ({ 1: "Un jugador", 2: "Un entrenador", 7: "Un equipo de jugadores" })[code] ?? null,
+    goalkeepersOnly: "Solo porteros",
+    ageLimit: "Límite de edad",
+    ageLimitValue: (age) => `${age} años o menos`,
+  },
+
   stadiumList: {
     nav: "Estadios",
     search: "Buscar estadios por nombre o club",
