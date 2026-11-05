@@ -359,8 +359,18 @@ fn squad_status_name(code: u8) -> Option<&'static str> {
         1 => "Star player",
         2 => "Important player",
         3 => "Regular starter",
-        4 => "Rotation player",
+        4 => "Squad player",
         5 => "Impact sub",
+        7 => "Fringe player",
+        9 | 21 => "Emergency backup",
+        10 => "Breakthrough prospect",
+        11 => "Future prospect",
+        13 => "Youngster",
+        15 => "First-choice goalkeeper",
+        16 => "Cup goalkeeper",
+        17 => "Domestic cup goalkeeper",
+        20 => "Backup",
+        22 => "Surplus to requirements",
         _ => return None,
     })
 }
@@ -542,6 +552,17 @@ mod tests {
         assert_eq!(cell("release_clause_gbp"), "150000000");
         assert_eq!(cell("asking_price_gbp"), "");
         assert_eq!(cell("clauses"), "Minimum fee release clause: 150000000 GBP; Yearly wage rise: 10%");
+    }
+
+    #[test]
+    fn squad_statuses_carry_fm_names() {
+        // As FM's contract screen named them for Zaïre-Emery, Nwaneri, Quintero, Kepa and Gyökeres.
+        assert_eq!(squad_status_name(4), Some("Squad player"));
+        assert_eq!(squad_status_name(10), Some("Breakthrough prospect"));
+        assert_eq!(squad_status_name(11), Some("Future prospect"));
+        assert_eq!(squad_status_name(17), Some("Domestic cup goalkeeper"));
+        assert_eq!(squad_status_name(22), Some("Surplus to requirements"));
+        assert_eq!(squad_status_name(14), None);
     }
 
     #[test]
