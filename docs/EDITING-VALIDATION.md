@@ -457,5 +457,10 @@ Undo in Changes reported "Undone" with the probe's reading back to the reload
 reading line for line.
 
 Not established: FM acting on the dual nationality and naturalisation rules
-(eligibility, nationality gained), stale-value refusal for a nation, and which
-nations miss the nations check (141 of 143 after the reload).
+(eligibility, nationality gained) and stale-value refusal for a nation.
+
+The two nations that missed the nations check were Madagascar (UID 29) and
+Liberia (UID 27), which ask for 99 years (so does Palestine, UID 1662). The
+check now takes up to 99 years and passes 143 of 143 on the same copy. FM's own
+calculator (`0x13B7E94`) reads the byte as signed and takes any value below 1
+as never, so the editor now takes 1 to 99 years, or never.

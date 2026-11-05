@@ -88,7 +88,7 @@ Vtable `game_plugin+0x55B5C40`. Objects are 0x208 bytes apart in the pool. Strin
 | `+0x130` | list of nation pointers | unknown meaning | England 12 European nations, most others 1 or 2 (Italy or England). Not the rivals, see the container |
 | `+0x1EC` | `u32` population | high | Brazil 211,998,573; Nigeria 232,679,478; England 57,690,300; Tuvalu 9,646 |
 | `+0x1F1` | `u8` dual nationality: 0 allowed, 2 not allowed | medium-high | the 12 with 2: China, India, Indonesia, Japan, Kazakhstan, Ukraine, Latvia, Malawi, Cuba, Haiti, Suriname, Micronesia. Real law fits for most |
-| `+0x1F5` | `u8` years of residence to gain nationality (255: none; 0: none needed) | high | Argentina 2, Brazil 4, England 5, Germany 5, Spain 10, Italy 10, Switzerland 10, Nigeria 15, San Marino 30. 113 nations read 5, 16 read 0, 12 read 255 |
+| `+0x1F5` | `u8` years of residence to gain nationality; FM reads it signed and takes below 1 (0, 255) as never (`0x13B7E94`) | high | Argentina 2, Brazil 4, England 5, Germany 5, Spain 10, Italy 10, Switzerland 10, Nigeria 15, San Marino 30. 113 nations read 5, 16 read 0, 12 read 255 |
 | `+0x1F2` `+0x1F3` `+0x1F4` | `u8` categories | unknown | `+0x1F2` is 1 for 59 nations (England, Germany, Spain, Brazil... not Nigeria). `+0x1F3` is 2 for 123 nations, most of Africa and Asia. `+0x1F4` is 1 to 3, high in Africa. Could be professionalism or development tiers |
 | `+0x1F8..+0x203` | 12 x `u8`, mostly percentages | unknown | looks like a population mix by group |
 | `+0x1C8..+0x1DC` | `f32`, geographic box | guess | England 49.2..55.8 lat, -5.5..1.75 lon |
