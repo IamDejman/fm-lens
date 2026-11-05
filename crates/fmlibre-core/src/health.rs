@@ -696,8 +696,9 @@ fn check_clubs(session: &Session) -> CheckResult {
     tally.result(Check::Clubs, 0.95, String::new())
 }
 
-/// The most years of residence a nation asks for, among the values the game uses; 30 was the most seen.
-const MOST_NATURALISATION_YEARS: u8 = 60;
+/// The most years of residence a nation asks for, among the values the game uses: Madagascar, Liberia and Palestine
+/// ask for 99.
+const MOST_NATURALISATION_YEARS: u8 = 99;
 
 /// The nations of the sampled players whose container points back at them, whose senior team carries their UID with
 /// a reputation in range, and whose rules hold values the game uses: dual nationality allowed (0) or not (2), and a
