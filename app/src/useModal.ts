@@ -1,6 +1,7 @@
 // What makes a dialog modal: Tab and focus stay inside it, and Escape closes it without anything behind it hearing it.
 
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import { isAppShortcut } from "./keys";
 
 /** The elements of `box` that Tab stops at, in order. */
 function tabbable(box: HTMLElement): HTMLElement[] {
@@ -60,6 +61,10 @@ export function useModal(box: RefObject<HTMLElement | null>, canClose: boolean, 
         }
       } else if (event.key === "Tab") {
         keepTabInside(event, dialog);
+      } else if (isAppShortcut(event)) {
+        // The app's shortcuts act on what is behind the dialog: not while it is up.
+        event.stopPropagation();
+        event.preventDefault();
       }
     };
     const onFocusIn = (event: FocusEvent) => {

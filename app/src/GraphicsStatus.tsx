@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
-import { graphicsText } from "./labels";
 import { retryMissingPictures } from "./Picture";
 import { graphicsInfo } from "./pictures";
-import type { GraphicsCounts, GraphicsInfo } from "./types";
-
-const text = graphicsText;
+import type { GraphicsInfo } from "./types";
 
 /** How often the app is asked while it is still reading the packs, and for how long at most. */
 const POLL_MS = 1000;
@@ -18,7 +15,7 @@ type Graphics = { phase: "asking" } | { phase: "reading" } | { phase: "known"; i
  * so while it says it is not ready the question is repeated every second, for twenty at most. Pictures asked for in
  * the meantime were answered 404, so they are told to ask again once the packs are ready.
  */
-function useGraphics(): Graphics {
+export function useGraphics(): Graphics {
   const [graphics, setGraphics] = useState<Graphics>({ phase: "asking" });
 
   useEffect(() => {
@@ -58,35 +55,4 @@ function useGraphics(): Graphics {
   }, []);
 
   return graphics;
-}
-
-/** Whether the packs hold any picture at all. */
-const hasPictures = (counts: GraphicsCounts): boolean =>
-  counts.clubLogos + counts.faces + counts.flags + counts.competitionLogos > 0;
-
-/**
- * What the graphics packs hold, for the colophon at the foot of the window: how many club logos, flags and faces, or
- * that there are no packs. Where packs go, and the folder they are read from, are in the hover text.
- */
-export function GraphicsStatus() {
-  const graphics = useGraphics();
-  if (graphics.phase === "asking") {
-    return null;
-  }
-  if (graphics.phase === "reading") {
-    return <p className="sidebar-note">{text.reading}</p>;
-  }
-  const { info } = graphics;
-  if (info !== null && hasPictures(info.counts)) {
-    return (
-      <p className="sidebar-note" title={info.root ?? undefined}>
-        {text.summary(info.counts)}
-      </p>
-    );
-  }
-  return (
-    <p className="sidebar-note" title={[text.noneHint, info?.root].filter(Boolean).join("\n")}>
-      {text.none}
-    </p>
-  );
 }

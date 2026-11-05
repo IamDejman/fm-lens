@@ -9,12 +9,23 @@ import type {
   ClubMoney,
   FeePlan,
   Nation,
+  NamedPerson,
+  NationDetails,
+  NationalTeam,
+  NationPage,
+  NationSummary,
+  OfficialPage,
+  OfficialSummary,
+  StadiumFilter,
+  StadiumPage,
+  StadiumSummary,
   BridgeInfo,
   CaptainRole,
   ClubTeam,
   SquadPlayer,
   TeamAction,
   ClubDetails,
+  Language,
   ClubFilter,
   ClubPage,
   ClubSummary,
@@ -27,6 +38,7 @@ import type {
   Health,
   Ban,
   Injury,
+  Preference,
   Tie,
   Clause,
   TieKind,
@@ -258,6 +270,8 @@ function details(player: PlayerSummary): PlayerDetails {
     bans: bansOf(player.uid),
     ties: tiesOf(player),
     tieRoom: tieRoomOf(player),
+    preferences: preferencesOf(player),
+    languages: languagesOf(player.uid),
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     retirementKnown: true,
     retires: retiresOf(player.uid),
@@ -323,6 +337,53 @@ function fixtureTies(player: PlayerSummary): Tie[] {
 }
 
 const tiesOf = (player: PlayerSummary) => tiesSet.get(player.uid) ?? fixtureTies(player);
+
+/**
+ * A fixture player's favoured and disliked clubs and people: every other player favours one club and dislikes
+ * another, every third favours a member of staff. They sit between the ties in his list.
+ */
+function preferencesOf(player: PlayerSummary): Preference[] {
+  const preferences: Preference[] = [];
+  if (player.uid % 2 === 0) {
+    const liked = player.uid % CLUBS.length;
+    const disliked = (liked + 3) % CLUBS.length;
+    preferences.push(
+      { index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 35 },
+      { index: 2, kind: "dislikedClub", targetUid: 500 + disliked * 7, name: CLUBS[disliked], strength: 30 },
+    );
+  }
+  if (player.uid % 3 === 0) {
+    const member = staff[player.uid % staff.length];
+    preferences.push({ index: 4, kind: "favouredPerson", targetUid: member.uid, name: member.name, strength: 25 });
+  }
+  return preferences;
+}
+
+/** A fixture person's other languages: none for every third, one or two for the rest. */
+function languagesOf(uid: number): Language[] {
+  const pool: Language[] = [
+    { name: "English", level: 10 },
+    { name: "Spanish", level: 5 },
+    { name: "German", level: 2 },
+  ];
+  return uid % 3 === 0 ? [] : pool.slice(uid % 2, (uid % 2) + 1 + (uid % 5 === 0 ? 1 : 0));
+}
+
+/** A fixture club's rivals, strongest first, and an affiliate for the men's clubs. */
+function clubTiesOf(club: ClubSummary): Pick<ClubDetails, "rivals" | "links"> {
+  const i = CLUBS.indexOf(club.name);
+  const other = (step: number) => {
+    const n = (i + step) % CLUBS.length;
+    return { uid: (club.women ? 2_000_100_000 + n : 500 + n * 7), name: CLUBS[n] };
+  };
+  return {
+    rivals: [
+      { ...other(1), strength: 100 },
+      { ...other(2), strength: 60 },
+    ],
+    links: club.women ? [] : [{ ...other(4), strength: null }],
+  };
+}
 
 /** Room for one or two more ties in every third list, less what was added to it. */
 const tieRoomOf = (player: PlayerSummary) =>
@@ -627,6 +688,11 @@ function staffDetails(member: StaffSummary): StaffDetails {
             joined: { year: 2021 + Math.floor(next() * 5), month: 7, day: 1 },
             job: member.job,
           },
+    // Only the human manager's flags are read; everyone else's stay unknown, as in the app.
+    unsackable: member.isHuman ? false : null,
+    registrationAnytime: member.isHuman ? false : null,
+    languages: languagesOf(member.uid),
+    preferences: [],
   });
 }
 
@@ -720,6 +786,8 @@ function fieldTable(entity: Entity): EditField[] {
     ),
     ...personality,
     ...contract,
+    { ...field("manager.unsackable", "flag", 0, 1), mass: false },
+    { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];
 }
 
@@ -786,6 +854,14 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
       }
       case "international":
         (d as PlayerDetails).international[INTERNATIONAL[name as keyof typeof INTERNATIONAL]] = value;
+        break;
+      case "manager":
+        if (entity === "staff" && name === "unsackable" && (d as StaffDetails).unsackable !== null) {
+          (d as StaffDetails).unsackable = value === 1;
+        }
+        if (entity === "staff" && name === "registration_anytime" && (d as StaffDetails).registrationAnytime !== null) {
+          (d as StaffDetails).registrationAnytime = value === 1;
+        }
         break;
       case "contract":
         if (d.contract && name === "wage") {
@@ -931,6 +1007,12 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         }
         return undefined;
       }
+      case "manager":
+        // Missing for everyone but the human manager, so an edit or undo of anyone else finds no record.
+        {
+          const flag = name === "registration_anytime" ? person.registrationAnytime : person.unsackable;
+          return flag === null || flag === undefined ? undefined : Number(flag);
+        }
       case "facilities":
         return club.facilities[name];
       case "finance":
@@ -1020,6 +1102,10 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
       continue;
     }
     const old: number | undefined = currentValues(entity, uid)[field.key];
+    if (old !== edit.expected) {
+      report.failed.push({ ...edit, error: failure("edit.conflict", `The value of ${field.key} has changed since it was read.`, { field: field.key, expected: edit.expected, found: old ?? "unknown" }) });
+      continue;
+    }
     if (old === undefined) {
       // No contract, no contract end, or a club without full finances.
       const message = `${field.key} cannot be changed here: its record is missing or does not check out`;
@@ -1157,6 +1243,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.field === "injuries") {
     unhealed(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field === "cohesion") {
+    familiarity.set(entry.uid, entry.old ?? 0);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -1695,6 +1786,12 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     }
     return report;
   }
+  if (action === "maxCohesion") {
+    for (const player of team.players) {
+      raiseFamiliarity(player, report);
+    }
+    return report;
+  }
   const values: [string, number][] =
     action === "inspire"
       ? [["morale", 20]]
@@ -1707,11 +1804,44 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
   return report;
 }
 
+/** Fixture familiarity with the club, by UID, once Max cohesion changed it. */
+const familiarity = new Map<number, number>();
+
+/** Max cohesion for one fixture player: every seventh has no familiarity with the club yet, the rest 40 to 99, or 100. */
+function raiseFamiliarity(player: { uid: number; name: string }, report: MassReport): void {
+  if (player.uid % 7 === 0) {
+    const message = "the game has not started the player's familiarity with this club yet, and the editor cannot add it";
+    report.failed.push({ uid: player.uid, name: player.name, field: "cohesion", error: failure("cohesion.none", message) });
+    return;
+  }
+  const before = familiarity.get(player.uid) ?? Math.min(100, 40 + (player.uid % 70));
+  if (before >= 100) {
+    return;
+  }
+  familiarity.set(player.uid, 100);
+  changes.push({
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid: player.uid,
+    field: "cohesion",
+    old: before,
+    new: 100,
+    undoneAt: null,
+    batch: report.batch,
+  });
+  report.applied++;
+}
+
 /** An attribute at its best, as Max attributes writes it: 20, stored as 100, and 1 (stored as 5) where lower is better. */
-const bestAttribute = (key: string): [string, number] => [
+/** `key` at `level` as stored (shown × 5); lower is better for injury proneness and dirtiness, so they get 21 − level. */
+const attributeAt = (key: string, level: number): [string, number] => [
   `attribute.${key}`,
-  key === "injury_proneness" || key === "dirtiness" ? 5 : 100,
+  (key === "injury_proneness" || key === "dirtiness" ? 21 - level : level) * 5,
 ];
+
+const bestAttribute = (key: string): [string, number] => attributeAt(key, 20);
 
 /** Writes `values` (field, value as stored) to the player, each logged in the batch of `report`, which counts them. */
 function setValues(player: { uid: number; name: string }, values: [string, number][], report: MassReport): void {
@@ -1913,6 +2043,7 @@ function clubDetails(club: ClubSummary): ClubDetails {
           ticketPrice: Math.round(20 + next() * 60),
         },
     stadium: stadiumOf(club, next),
+    ...clubTiesOf(club),
   });
 }
 
@@ -2008,11 +2139,28 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
 }
 
 /** The staff filter of the real command: a player-coach has the code of the coaching job plus one, and matches it too. */
+function matchesClubFilter(c: ClubSummary, f: ClubFilter): boolean {
+  return (
+    (f.women === undefined || c.women === f.women) &&
+    (f.minReputation === undefined || (c.reputation !== null && c.reputation >= f.minReputation)) &&
+    (f.maxReputation === undefined || (c.reputation !== null && c.reputation <= f.maxReputation)) &&
+    (f.foundedFrom === undefined || (c.founded !== null && c.founded >= f.foundedFrom)) &&
+    (f.foundedTo === undefined || (c.founded !== null && c.founded <= f.foundedTo))
+  );
+}
+
 function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
   const d = (f.attributes?.length ?? 0) > 0 ? staffDetails(s) : null;
   return (
     (f.job === undefined || (s.job !== null && (s.job === f.job || s.job === f.job + 1))) &&
     (!f.unemployed || s.job === null) &&
+    (!f.humanOnly || s.isHuman) &&
+    (f.minAge === undefined || (s.age !== null && s.age >= f.minAge)) &&
+    (f.maxAge === undefined || (s.age !== null && s.age <= f.maxAge)) &&
+    (f.minCurrentAbility === undefined || s.currentAbility >= f.minCurrentAbility) &&
+    (f.minPotentialAbility === undefined || s.potentialAbility >= f.minPotentialAbility) &&
+    contains(s.nation, f.nation) &&
+    contains(s.club, f.club) &&
     (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
   );
 }
@@ -2032,6 +2180,8 @@ let mockConnection: ConnectionInfo | null = null;
  */
 const unknownBuild = new URLSearchParams(window.location.search).has("unknownbuild");
 const failedChecks = new URLSearchParams(window.location.search).has("failedchecks");
+/** `?writable` previews a game the app may write to, so Edit, Apply and Undo can be tried on the sample data. */
+const writable = new URLSearchParams(window.location.search).has("writable");
 /** `?refrozen` previews connecting to a save in which players and a club were frozen the last time. */
 const refrozen = new URLSearchParams(window.location.search).has("refrozen");
 const CHECKS: CheckKey[] = [
@@ -2052,6 +2202,12 @@ const FAILING: CheckKey[] = ["gameDate", "attributes", "contracts"];
  * What the checks find in the fixtures: every one passes, but for the failing ones of `?failedchecks`, and the in-game
  * date under `?nodate`, as a date that cannot be read never passes.
  */
+/** The sample career: its human manager (the first member of staff) and his club. */
+function mockCareer() {
+  const manager = staff.find((member) => member.isHuman);
+  return manager ? { uid: manager.uid, manager: manager.name, club: manager.club } : null;
+}
+
 function mockHealth(): Health {
   return {
     results: CHECKS.map((check) => {
@@ -2130,10 +2286,11 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         clubs: clubs.length,
         gameDate: failedChecks ? null : gameDate,
         loadMs: 480,
-        editable: false,
-        writable: false,
+        editable: writable && !unknownBuild,
+        writable,
         knownBuild: !unknownBuild,
         health: mockHealth(),
+        career: mockCareer(),
       };
       mockConnection = info;
       if (!refrozen) {
@@ -2155,7 +2312,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       if (!mockConnection) {
         throw failure("app.notConnected", "Not connected to the game");
       }
-      mockConnection = { ...mockConnection, editable: mockConnection.writable };
+      mockConnection = { ...mockConnection, editable: mockConnection.writable && mockConnection.knownBuild };
       return mockConnection as T;
     }
     case "current_connection":
@@ -2163,11 +2320,15 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return (mockConnection && { ...mockConnection, loadMs: 0 }) as T;
     case "reload": {
       const reloaded: ReloadInfo = {
+        editable: mockConnection?.editable ?? false,
+        writable: mockConnection?.writable ?? false,
+        knownBuild: mockConnection?.knownBuild ?? !unknownBuild,
         players: players.length,
         staff: staff.length,
         clubs: clubs.length,
         gameDate: failedChecks ? null : gameDate,
         health: mockHealth(),
+        career: mockCareer(),
       };
       return reloaded as T;
     }
@@ -2193,7 +2354,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const words = fold(query).split(/\s+/).filter(Boolean);
       const hits = clubs
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
-        .filter((c) => filter.women === undefined || c.women === filter.women)
+        .filter((c) => matchesClubFilter(c, filter))
         .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
       const page: ClubPage = { total: hits.length, rows: hits.slice(0, limit) };
       return page as T;
@@ -2273,19 +2434,78 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "open_export":
     case "show_export":
       return null as T;
-    case "max_attributes": {
+    case "set_attributes": {
       const uid = Number(args?.uid);
+      const level = Number(args?.level);
       const player = players.find((p) => p.uid === uid);
       if (!player) {
         throw notFound("player", uid);
       }
       const report: MassReport = { batch: nextMassId++, applied: 0, failed: [] };
-      setValues(player, ATTRIBUTES.map(bestAttribute), report);
+      setValues(player, ATTRIBUTES.map((key) => attributeAt(key, level)), report);
       return report as T;
     }
     case "list_nations": {
       const nations: Nation[] = NATIONS.map((name) => ({ address: nationAddress(name), uid: 1000 + NATIONS.indexOf(name), name }));
       return nations.sort((a, b) => a.name.localeCompare(b.name)) as T;
+    }
+    case "search_stadiums": {
+      const raw = String(args?.query ?? "");
+      const query = fold(raw);
+      const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as StadiumFilter;
+      const rows: StadiumSummary[] = clubs.flatMap((club) => {
+        const stadium = clubDetails(club).stadium;
+        if (!stadium) {
+          return [];
+        }
+        const row: StadiumSummary = {
+          uid: club.uid,
+          clubUid: club.uid,
+          club: club.name,
+          women: club.women,
+          name: stadium.name,
+          capacity: stadium.capacity,
+          seating: stadium.seating,
+          used: stadium.used,
+          expansion: stadium.expansion,
+        };
+        const haystack = fold(`${row.name ?? ""} ${row.club}`);
+        const words = query.split(/\s+/).filter(Boolean);
+        const named = raw.trim() === String(row.uid) || words.every((word) => haystack.includes(word));
+        const capacityOk =
+          (filter.minCapacity === undefined || row.capacity >= filter.minCapacity) &&
+          (filter.maxCapacity === undefined || row.capacity <= filter.maxCapacity);
+        return named && capacityOk ? [row] : [];
+      });
+      rows.sort((a, b) => b.capacity - a.capacity || (a.name ?? a.club).localeCompare(b.name ?? b.club));
+      const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return stadiumPage as T;
+    }
+    case "search_officials": {
+      const query = fold(String(args?.query ?? ""));
+      const limit = Number(args?.limit ?? 200);
+      const rows = OFFICIALS.filter(
+        (official) => query === "" || fold(official.name).includes(query) || String(official.uid) === String(args?.query ?? "").trim(),
+      ).sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
+      const officialPage: OfficialPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return officialPage as T;
+    }
+    case "nation_details": {
+      const index = Number(args?.uid) - 1000;
+      return (index >= 0 && index < NATIONS.length ? nationDetails(index) : null) as T;
+    }
+    case "search_nations": {
+      const query = fold(String(args?.query ?? ""));
+      const limit = Number(args?.limit ?? 200);
+      const rows: NationSummary[] = NATIONS.map((name, index) => ({
+        uid: 1000 + index,
+        nationUid: 1000 + index,
+        name,
+      })).filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim());
+      rows.sort((a, b) => a.name.localeCompare(b.name));
+      const page: NationPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return page as T;
     }
     case "read_values":
       return currentValues(args?.entity as Entity, Number(args?.uid)) as T;
@@ -2365,4 +2585,63 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     default:
       throw new Error(`No fixture for command "${command}"`);
   }
+}
+
+/** Made-up match officials: a few established referees and some young ones still rising. */
+const OFFICIALS: OfficialSummary[] = Array.from({ length: 40 }, (_, i): OfficialSummary => {
+  const first = ["Mark", "Tomás", "Jan", "Emre", "Lukas", "Pierre", "Rui", "Piotr"][i % 8];
+  const last = ["Hale", "Ortega", "Novák", "Demir", "Brandt", "Morel", "Costa", "Wójcik"][(i * 3) % 8];
+  const nation = NATIONS[i % NATIONS.length];
+  const year = 1975 + ((i * 7) % 25);
+  const currentAbility = 190 - ((i * 13) % 110);
+  return {
+    uid: 5_000 + i * 37,
+    name: `${first} ${last}`,
+    nation,
+    nationUid: 1000 + NATIONS.indexOf(nation),
+    dateOfBirth: { year, month: 1 + (i % 12), day: 1 + ((i * 5) % 28) },
+    age: 2026 - year,
+    currentAbility,
+    potentialAbility: Math.min(200, currentAbility + (year > 1992 ? 25 : 0)),
+    reputation: 9_500 - i * 211,
+  };
+});
+
+/** A nation's profile: made-up figures in the shape the game gives; the last nation in the list has none. */
+function nationDetails(index: number): NationDetails | null {
+  if (index === NATIONS.length - 1) {
+    return null;
+  }
+  const name = NATIONS[index];
+  const members = players.filter((p) => p.nation === name);
+  const person = (p: PlayerSummary | undefined): NamedPerson | null => (p ? { uid: p.uid, name: p.name } : null);
+  const team = (ageLimit: number | null, kind: number, reputation: number, from: PlayerSummary[]): NationalTeam => ({
+    kind,
+    ageLimit,
+    reputation,
+    manager: { uid: 90_000 + kind, name: `${name} coach ${kind}` },
+    captain: person(from[0]),
+    viceCaptain: person(from[1]),
+    squad: from.slice(0, 23).map((p) => ({ uid: p.uid, name: p.name })),
+  });
+  const older = members.filter((p) => (p.age ?? 30) > 21);
+  const younger = members.filter((p) => (p.age ?? 30) <= 21);
+  return {
+    code: name.slice(0, 3).toUpperCase(),
+    continent: name === "Brazil" ? "South America" : "Europe",
+    capital: null,
+    population: 10_000_000 + index * 7_654_321,
+    dualNationality: index % 4 !== 3,
+    naturalisationYears: index % 5 === 4 ? null : 2 + (index % 4) * 3,
+    naturalisationNever: index % 5 === 4,
+    languages: [{ name: `${name} language`, percent: 100 - index }],
+    ranking: index === 2 ? null : 3 + index * 4,
+    points: index === 2 ? null : 1900 - index * 41.37,
+    founded: 1880 + index * 7,
+    joinedFifa: 1904 + index * 5,
+    rivals: NATIONS.filter((_, i) => i !== index)
+      .slice(0, 3)
+      .map((rival, i) => ({ uid: 1000 + NATIONS.indexOf(rival), name: rival, strength: 100 - i * 15 })),
+    teams: [team(null, 0, 8_500 - index * 300, older), team(21, 266, 6_000 - index * 200, younger)],
+  };
 }

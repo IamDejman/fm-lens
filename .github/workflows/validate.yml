@@ -34,5 +34,9 @@ jobs:
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Run workspace tests
         run: cargo test --locked --workspace
+      - name: Test the writable memory guard separately
+        run: cargo test --locked -p fmlibre-mem --no-default-features
+      - name: Check the writable desktop dependency graph
+        run: cargo clippy --locked -p fmlibre-app --all-targets -- -D warnings
       - name: Build diagnostics and bridge
         run: cargo build --locked -p fmlibre-probe -p fmlibre-bridge

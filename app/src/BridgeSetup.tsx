@@ -7,8 +7,8 @@ import type { BridgeInfo } from "./types";
 type Command = "set_up_bridge" | "remove_bridge";
 
 /**
- * macOS: the bridge FM27 has to load before the app can reach it. Shows how far it is set up, sets it up or removes
- * it, and gives the launch option to enter in Steam by hand while Steam runs.
+ * macOS: the bridge FM27 has to load before the app can reach it. Until it is set up, shows how far it is, sets it up,
+ * and gives the launch option to enter in Steam by hand while Steam runs. Once it is, only offers to remove it.
  */
 export function BridgeSetup(props: { bridge: BridgeInfo; busy: boolean; onChange: (bridge: BridgeInfo) => void }) {
   const { bridge, busy, onChange } = props;
@@ -44,6 +44,21 @@ export function BridgeSetup(props: { bridge: BridgeInfo; busy: boolean; onChange
     }
   };
 
+  const remove = (
+    <button onClick={() => void change("remove_bridge")} disabled={busy || working}>
+      {text.remove}
+    </button>
+  );
+
+  if (bridge.ready) {
+    return (
+      <div className="bridge-undo">
+        {remove}
+        {error && <p className="hint error">{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="bridge">
       <h3>{text.title}</h3>
@@ -55,35 +70,23 @@ export function BridgeSetup(props: { bridge: BridgeInfo; busy: boolean; onChange
         <dd>{launchOptionSet ? text.set : text.notSet}</dd>
       </dl>
 
-      {bridge.ready ? (
-        <p className="hint">{text.ready}</p>
-      ) : (
-        bridge.steamRunning && !error && <p className="hint">{text.steamRunning}</p>
-      )}
+      {bridge.steamRunning && !error && <p className="hint">{text.steamRunning}</p>}
       {error && <p className="hint error">{error}</p>}
 
       <div className="bridge-actions">
-        {!bridge.ready && (
-          <button className="primary" onClick={() => void change("set_up_bridge")} disabled={busy || working}>
-            {text.setUp}
-          </button>
-        )}
-        {(bridge.installed || launchOptionSet) && (
-          <button onClick={() => void change("remove_bridge")} disabled={busy || working}>
-            {text.remove}
-          </button>
-        )}
+        <button className="primary" onClick={() => void change("set_up_bridge")} disabled={busy || working}>
+          {text.setUp}
+        </button>
+        {(bridge.installed || launchOptionSet) && remove}
       </div>
 
-      {!bridge.ready && (
-        <div className="bridge-manual">
-          <p className="muted">{text.manual}</p>
-          <div className="launch-option">
-            <code>{bridge.launchOption}</code>
-            <button onClick={() => void copy()}>{copied ? text.copied : text.copy}</button>
-          </div>
+      <div className="bridge-manual">
+        <p className="muted">{text.manual}</p>
+        <div className="launch-option">
+          <code>{bridge.launchOption}</code>
+          <button onClick={() => void copy()}>{copied ? text.copied : text.copy}</button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

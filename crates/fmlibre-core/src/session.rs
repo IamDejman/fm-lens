@@ -1,5 +1,4 @@
 use std::fmt;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use fmlibre_mem::{Module, Process, find_processes, list_modules};
@@ -9,7 +8,7 @@ use crate::clubs::{ClubDetails, ClubSummary, full_finance_class, read_club_detai
 use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::details::{PlayerDetails, read_player_details};
-use crate::edit::Field;
+use crate::edit::{Entity, Field};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
 use crate::health::{Check, Health, Lock, STRUCTURE};
 use crate::players::{PlayerSummary, read_players};
@@ -118,6 +117,9 @@ pub struct Session {
     pub profile: Option<BuildProfile>,
     pub layout: Layout,
     pub arrays: EntityArrays,
+    /// Array storage when this session was attached. A career reload invalidates
+    /// cached targets, undo records and freezes even when it reuses the same UIDs.
+    array_storage: [Option<u64>; 3],
     /// The class of the full club finance record, found the first time it is needed.
     finance_class: OnceLock<Option<u64>>,
     /// The class of stadiums, found the first time it is needed.
@@ -126,8 +128,6 @@ pub struct Session {
     pub(crate) retirement_class: OnceLock<u64>,
     /// What the checks found: worked out the first time it is needed, and again by [`Session::recheck`].
     health: Mutex<Option<Arc<Health>>>,
-    /// Whether editing a build without a profile was allowed.
-    unknown_build_allowed: AtomicBool,
 }
 
 impl Session {
@@ -147,6 +147,8 @@ impl Session {
         if arrays.players.is_none() {
             return Err(SessionError::PlayersNotFound);
         }
+        let array_storage = [&arrays.players, &arrays.staff, &arrays.clubs]
+            .map(|array| array.as_ref().and_then(|array| array.locate(&process, &plugin).ok()).map(|(begin, _)| begin));
         Ok(Self {
             process,
             game,
@@ -155,11 +157,11 @@ impl Session {
             profile,
             layout,
             arrays,
+            array_storage,
             finance_class: OnceLock::new(),
             stadium_class: OnceLock::new(),
             retirement_class: OnceLock::new(),
             health: Mutex::new(None),
-            unknown_build_allowed: AtomicBool::new(false),
         })
     }
 
@@ -168,14 +170,17 @@ impl Session {
         self.profile.is_some()
     }
 
-    /// Lets the editor write to a build it has no profile for, as far as the checks allow.
-    pub fn allow_unknown_build(&self) {
-        self.unknown_build_allowed.store(true, Ordering::Relaxed);
+    /// Only fingerprinted builds may be edited. Layout health alone cannot validate a new build.
+    pub fn writes_allowed(&self) -> bool {
+        self.known_build() && self.current_career()
     }
 
-    /// Whether the editor writes to this game at all: a known build, or an unknown one it was allowed to edit.
-    pub fn writes_allowed(&self) -> bool {
-        self.known_build() || self.unknown_build_allowed.load(Ordering::Relaxed)
+    /// Fails closed if FM has replaced its entity storage or can no longer be read.
+    pub fn current_career(&self) -> bool {
+        let current = [&self.arrays.players, &self.arrays.staff, &self.arrays.clubs].map(|array| {
+            array.as_ref().and_then(|array| array.locate(&self.process, &self.plugin).ok()).map(|(begin, _)| begin)
+        });
+        current == self.array_storage
     }
 
     /// What the checks found on this game, worked out the first time it is asked for.
@@ -193,8 +198,11 @@ impl Session {
 
     /// Why `field` may not be written now, if it may not: an unknown build not allowed, or its check failed.
     pub fn field_lock(&self, field: &Field) -> Option<Lock> {
-        if !self.writes_allowed() {
+        if !self.known_build() {
             return Some(Lock::UnknownBuild);
+        }
+        if !self.current_career() {
+            return Some(Lock::CareerChanged);
         }
         let check = Check::of_field(field);
         (!self.health().passed(check)).then_some(Lock::Failed(check))
@@ -203,8 +211,11 @@ impl Session {
     /// Why a change to the game's lists and records (a move, a heal, a captaincy, ...) may not be written now, if it
     /// may not.
     pub fn structure_lock(&self) -> Option<Lock> {
-        if !self.writes_allowed() {
+        if !self.known_build() {
             return Some(Lock::UnknownBuild);
+        }
+        if !self.current_career() {
+            return Some(Lock::CareerChanged);
         }
         let health = self.health();
         STRUCTURE.into_iter().find(|&check| !health.passed(check)).map(Lock::Failed)
@@ -260,7 +271,12 @@ impl Session {
 
     /// Reads the full profile of `club`; `None` when its object has changed. Only reads memory.
     pub fn club_details(&self, club: &ClubSummary) -> Result<Option<ClubDetails>, SessionError> {
-        Ok(read_club_details(&self.process, &self.layout, club)?)
+        let Some(mut details) = read_club_details(&self.process, &self.layout, club)? else {
+            return Ok(None);
+        };
+        details.rivals = self.club_rivals(club).unwrap_or_default();
+        details.links = self.club_links(club).unwrap_or_default();
+        Ok(Some(details))
     }
 
     /// Reads every member of staff, with ages on the current in-game date. Only reads memory.
@@ -273,7 +289,22 @@ impl Session {
 
     /// Reads the full profile of `member`; `None` when its object has changed. Only reads memory.
     pub fn staff_details(&self, member: &StaffSummary) -> Result<Option<StaffDetails>, SessionError> {
-        Ok(read_staff_details(&self.process, &self.layout, member)?)
+        let Some(mut details) = read_staff_details(&self.process, &self.layout, member)? else {
+            return Ok(None);
+        };
+        details.languages = self.staff_languages(member).unwrap_or_default();
+        details.preferences = self.staff_preferences(member).unwrap_or_default();
+        // Through the editor's own guarded read: a manager whose flags cannot be located stays unknown.
+        if member.is_human
+            && let Ok(unsackable) = self.field(Entity::Staff, "manager.unsackable")
+            && let Ok(registration) = self.field(Entity::Staff, "manager.registration_anytime")
+            && let Ok(values) = self.read_fields(&member.target(), &[unsackable, registration])
+        {
+            let flag = |i: usize| values.get(i).copied().flatten().map(|value| value != 0);
+            details.unsackable = flag(0);
+            details.registration_anytime = flag(1);
+        }
+        Ok(Some(details))
     }
 
     /// Reads the full profile of `player`; `None` when its object has changed since the
@@ -287,6 +318,8 @@ impl Session {
         details.bans = self.bans(player).unwrap_or_default();
         details.ties = self.relations(player).unwrap_or_default();
         details.tie_room = self.relation_room(player).unwrap_or(0);
+        details.preferences = self.preferences(player).unwrap_or_default();
+        details.languages = self.player_languages(player).unwrap_or_default();
         details.clause_room = self.clause_room(player).unwrap_or(0);
         if let Ok(date) = self.planned_retirement(player) {
             (details.retirement_known, details.retires) = (true, date);

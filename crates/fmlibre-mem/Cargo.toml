@@ -8,7 +8,8 @@ license.workspace = true
 authors.workspace = true
 
 [features]
-# The personal scouting milestone cannot write to a game, including through the probe.
+# Compiles out every game-memory write, including a handle marked writable by mistake.
+# The probe enables this. The desktop app does not.
 default = ["read-only"]
 read-only = []
 

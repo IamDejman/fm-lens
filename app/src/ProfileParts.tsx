@@ -1,13 +1,20 @@
-import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
-import { EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
+import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
 import { converts } from "./currency";
-import { formatDate, formatMoney, formatNumber } from "./format";
+import { describeError, formatDate, formatMoney, formatNumber } from "./format";
+import { isShortcut } from "./keys";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import { PanelResizer, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
-import { SessionContext, useEditableField, type ProfileEditing } from "./useProfileEditing";
+import {
+  AppliedFieldsContext,
+  EditActivationContext,
+  SessionContext,
+  useEditableField,
+  type ProfileEditing,
+} from "./useProfileEditing";
 
 // What the player, staff and club profiles have in common: the panel frame, loading, rating rows and
 // the label/value blocks. The frame also holds what editing adds to a profile (see EditControls).
@@ -37,7 +44,7 @@ export function useProfileDetails<T>(command: string, uid: number, version: numb
         }
       } catch (e) {
         if (!cancelled) {
-          setLoaded({ error: String(e) });
+          setLoaded({ error: describeError(e) });
         }
       }
     };
@@ -98,23 +105,34 @@ export function ProfileFrame(props: ProfileFrameProps) {
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
   const panelWidth = usePanelWidth(wide ? "wide" : "profile");
+  const body = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
       if (event.key === "Escape" && !event.isComposing) {
         onEscape();
+      } else if (isShortcut(event, "s") && editing?.stage === "edit") {
+        // ⌘S applies the edits, as the Apply button does.
+        event.preventDefault();
+        editing.apply();
       }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onEscape]);
+  }, [onEscape, editing]);
 
-  // The inputs reach the whole panel, so `side` can hold one too (a club's reputation is in the header).
+  // The inputs reach the whole panel, so `side` can hold one too (a club's reputation is in the header). So does the
+  // activation of a value, once the profile has loaded.
   return (
     <SessionContext.Provider value={editing?.session ?? null}>
+      <AppliedFieldsContext.Provider value={editing?.appliedFields ?? new Set<string>()}>
+      <EditActivationContext.Provider value={loaded?.details !== undefined ? (editing?.activation ?? null) : null}>
       <section
         className={["profile", editing?.stage === "edit" && "editing", wide && "wide"].filter(Boolean).join(" ")}
-        role="dialog"
+        role="complementary"
         aria-label={name}
         aria-busy={!loaded}
         style={panelWidth.style}
@@ -141,7 +159,6 @@ export function ProfileFrame(props: ProfileFrameProps) {
           </div>
           <div className="profile-side">
             <div className="profile-actions">
-              {actions}
               {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
               <button
                 className="icon-button"
@@ -169,10 +186,14 @@ export function ProfileFrame(props: ProfileFrameProps) {
               ))}
           </div>
         </header>
+        {/* What else can be done with this person (compare, transfer, release): a row of its own under the header, so
+            the header keeps its one action, Edit, beside the name. */}
+        {actions && <div className="profile-toolbar">{actions}</div>}
 
         {tabs}
 
-        <div className="profile-body">
+        <div className="profile-body" ref={body}>
+          <SectionJump body={body} />
           {!loaded && (
             <p className="profile-status" role="status">
               {profileText.loading}
@@ -188,7 +209,64 @@ export function ProfileFrame(props: ProfileFrameProps) {
 
         {editing && <EditBar editing={editing} />}
       </section>
+      </EditActivationContext.Provider>
+      </AppliedFieldsContext.Provider>
     </SessionContext.Provider>
+  );
+}
+
+/** The fewest sections a profile has before it gets the bar of links to them. */
+const JUMP_MIN = 4;
+
+/**
+ * A bar at the top of a long profile with a link to each of its sections (the groups with a heading straight in the
+ * body), and one back to the top. It stays in view while the profile scrolls. Read from the page, so a section any
+ * profile adds is listed without more code.
+ */
+function SectionJump({ body }: { body: RefObject<HTMLDivElement | null> }) {
+  const [sections, setSections] = useState<{ heading: HTMLElement; label: string }[]>([]);
+
+  useEffect(() => {
+    const element = body.current;
+    if (!element) {
+      return;
+    }
+    const read = () => {
+      const found = Array.from(element.querySelectorAll<HTMLElement>(":scope > section.profile-group > h3"));
+      setSections((old) =>
+        old.length === found.length && old.every((entry, i) => entry.heading === found[i])
+          ? old
+          : found.map((heading) => ({ heading, label: heading.textContent ?? "" })),
+      );
+    };
+    read();
+    const observer = new MutationObserver(read);
+    observer.observe(element, { childList: true });
+    return () => observer.disconnect();
+  }, [body]);
+
+  if (sections.length < JUMP_MIN) {
+    return null;
+  }
+  const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const go = (target: HTMLElement | null) => {
+    if (target) {
+      target.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+    } else {
+      body.current?.scrollTo({ top: 0, behavior: smooth ? "smooth" : "auto" });
+    }
+  };
+  return (
+    <nav className="section-jump" aria-label={profileText.sections}>
+      <button type="button" onClick={() => go(null)}>
+        {profileText.top}
+      </button>
+      {sections.map(({ heading, label }) => (
+        <button key={label} type="button" onClick={() => go(heading.parentElement)}>
+          {label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -275,6 +353,7 @@ export function RatingList({ rows }: { rows: RatingRow[] }) {
 
 function RatingItem({ row }: { row: RatingRow }) {
   const editing = useEditableField(row.field);
+  const applied = useContext(AppliedFieldsContext).has(row.field ?? "");
   return (
     <div className="stat" title={row.title}>
       <dt>{row.label}</dt>
@@ -283,8 +362,12 @@ function RatingItem({ row }: { row: RatingRow }) {
           <EditInput field={row.field} />
         </dd>
       ) : (
-        <dd className={row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}>
-          {row.value ?? profileText.none}
+        <dd className={`${row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}${applied ? " edit-applied" : ""}`}>
+          {row.value === undefined || !row.field ? (
+            row.value ?? profileText.none
+          ) : (
+            <ActivatableValue field={row.field}>{row.value}</ActivatableValue>
+          )}
         </dd>
       )}
     </div>

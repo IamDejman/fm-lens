@@ -4,6 +4,7 @@
 
 import { useContext, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { layoutPixels } from "./appearance";
 import { squadText as text } from "./labels";
 import type { CaptainRole } from "./types";
 import { EditorContext } from "./useProfileEditing";
@@ -41,7 +42,7 @@ export function CaptainMenu({ name, holds, editable, busy, onPick }: CaptainMenu
   const show = () => {
     const box = button.current?.getBoundingClientRect();
     if (box) {
-      setAnchor({ right: document.documentElement.clientWidth - box.right, top: box.top, bottom: box.bottom });
+      setAnchor({ right: layoutPixels(window.innerWidth - box.right), top: layoutPixels(box.top), bottom: layoutPixels(box.bottom) });
     }
   };
 
@@ -51,8 +52,8 @@ export function CaptainMenu({ name, holds, editable, busy, onPick }: CaptainMenu
     if (anchor === null || list === null) {
       return;
     }
-    const { height } = list.getBoundingClientRect();
-    if (anchor.bottom + GAP + height > window.innerHeight - GAP) {
+    const height = layoutPixels(list.getBoundingClientRect().height);
+    if (anchor.bottom + GAP + height > layoutPixels(window.innerHeight) - GAP) {
       list.style.top = `${Math.max(GAP, anchor.top - GAP - height)}px`;
     }
     list.querySelector<HTMLElement>('[role="menuitem"]')?.focus();

@@ -6,14 +6,23 @@ The project retains its GPL-3.0-or-later license and upstream attribution.
 
 ## Scope
 
-Browse players, staff and clubs from a running FM27 Steam career. The desktop
-opens the process read-only. The memory crate defaults to its `read-only`
-feature, rejects read/write process opens and refuses every memory write even
-if a caller marks a process writable. There is no UI option to enable editing.
-Upstream update installation is disabled so it cannot replace the scouting build.
+Browse and edit mapped player, staff and club records in a running FM27 Steam
+career. The desktop app opens a known build for writing. Unknown builds stay
+read-only. The probe is compiled with the memory crate's `read-only` feature, so
+`scripts/scout` cannot write game memory. The desktop app is compiled without
+that feature. There is no separate switch that turns editing on: connecting to
+a known build enables the mapped fields.
 
-The bridge still supplies a full task port to same-user clients. Read-only is
-enforced by this application's memory layer, not a restricted OS task port.
+Nations represented by loaded players/staff and senior stadiums per club have
+separate read-only lists. These do not establish complete nation/stadium database
+coverage or expose nation rules. Staff and club filters cover additional decoded
+values; a skippable first-run introduction covers navigation and settings.
+
+Upstream update installation is disabled so it cannot replace this build.
+
+The bridge still supplies a full task port to same-user clients. The probe
+refuses writes because it is compiled with `read-only`. The desktop app is not,
+so a known build can be edited. Neither one is an OS-enforced read-only port.
 Bridge client identity hardening remains a separate engineering task.
 
 ## Build
@@ -65,9 +74,9 @@ scripts/scout player PLAYER_UID
 scripts/scout club CLUB_UID
 ```
 
-The convenience launcher only accepts read queries. The underlying probe also
-contains upstream edit commands, but this build's memory layer rejects writes.
-Player exports and reports write local files, not game data.
+The convenience launcher only accepts read queries. The probe binary is compiled
+read-only, so its edit commands are rejected before they write. Player exports
+and reports write local files, not game data.
 
 ## Remove the bridge
 
@@ -86,7 +95,9 @@ This removes the launch option before removing files, so FM remains launchable.
   match the game, including after advancing and reloading data.
 - Unsupported builds and failed decodes are visibly reported.
 - A closed game or switched save cannot leave apparently current stale data.
-- Every game-memory write remains blocked.
+- The read-only probe refuses game-memory writes. The desktop app can write
+  mapped fields on a known build. One finishing edit passed save, full quit and
+  reload inspection on a disposable career; other fields need their own checks.
 
 Build/test results and live-game validation are recorded below. A successful
 compile alone does not establish that live data is correct.
@@ -111,8 +122,30 @@ compile alone does not establish that live data is correct.
   matched, including finishing 15, technique 18, acceleration 17, wage £300,000
   per week and expiry 30 June 2031. CA/PA and hidden fields were read but have not
   been independently cross-checked with a second editor.
-- No game-memory edits were performed. Gameplay advancement, switching saves,
-  disconnect recovery and bridge removal remain separate validation work.
+- No game-memory edits were performed during the read checks. On the same day the
+  desktop app was changed to open a known build for writing. The probe stays
+  read-only. Subsequent copied-career editing checks are documented in
+  [EDITING-VALIDATION.md](EDITING-VALIDATION.md). They establish one finishing
+  edit through full quit/reload and bounded template apply/undo, not complete
+  editing coverage. Switching saves, disconnect recovery and bridge removal
+  remain separate validation work.
+
+## Editor controls
+
+The Changes tab exposes applied history and conditional undo. Single edits carry
+the value observed when editing began; bulk edits carry their previewed values.
+Unknown fingerprints and changed career storage refuse mutations, including undo.
+Reload creates a fresh Session and discards unsafe history and previews.
+
+Clone & templates can capture selected ability, attribute, personality, position
+and trait groups. Templates use versioned JSON, a local library and destination
+field validation, then preview/apply/undo through the bulk editor. Identity and
+contract fields are excluded. Staff attribute freezes last for the connection.
+Settings provide System/Light/Dark appearance and 80–150% zoom.
+
+See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 167 player, 39 staff and 14 club
+field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
+behavioral evidence and outstanding checks.
 
 ## Offline use
 

@@ -162,8 +162,10 @@ impl Health {
 /// Why the editor will not write a change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lock {
-    /// The game is a build the editor has no profile for, and editing it was not allowed.
+    /// The game is a build the editor has no profile for.
     UnknownBuild,
+    /// The game's entity storage was replaced after this session attached.
+    CareerChanged,
     /// A check the change needs did not pass on this game.
     Failed(Check),
 }
@@ -172,13 +174,14 @@ impl Lock {
     pub(crate) fn code(self) -> &'static str {
         match self {
             Lock::UnknownBuild => "guard.unknownBuild",
+            Lock::CareerChanged => "guard.careerChanged",
             Lock::Failed(_) => "guard.failed",
         }
     }
 
     pub(crate) fn params(self) -> Vec<(&'static str, String)> {
         match self {
-            Lock::UnknownBuild => Vec::new(),
+            Lock::UnknownBuild | Lock::CareerChanged => Vec::new(),
             Lock::Failed(check) => vec![("check", check.key().to_owned())],
         }
     }
@@ -187,10 +190,10 @@ impl Lock {
 impl fmt::Display for Lock {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Lock::UnknownBuild => f.write_str(
-                "the editor has not been checked with this version of the game, so it does not write to it unless \
-                 editing is allowed",
-            ),
+            Lock::UnknownBuild => {
+                f.write_str("the editor has not been checked with this version of the game, so it cannot write to it")
+            }
+            Lock::CareerChanged => f.write_str("FM replaced its career data. Reload FM Lens before editing again."),
             Lock::Failed(check) => {
                 write!(f, "{check} did not check out in this version of the game, so the editor leaves them unchanged")
             }
