@@ -255,6 +255,27 @@ safe from outside. FM's `TEAM_MAXIMISE_TACTICAL_UNDERSTANDING_ACTION` also sets 
 `record+0xDC = 1` and bit 0x80 in the u16 at `[vbase2]+0x102` as dirty flags; set them after an
 edit. Not tested (read only).
 
+### The game's maximise action (traced 5 November 2026, Steam 26340721 arm64)
+
+- Handler: `0x2392540(args)`, `TEAM_MAXIMISE_TACTICAL_UNDERSTANDING_ACTION`. `args` is the action's map, a vector of
+  16-byte entries {u32 key, Value*}. It reads 'dref', resolves it with `0x11b8ea0` and `0x111344c` to an entity and
+  goes on only for a team (entity kind 0x18) and when the byte at `0x56d34e0` is 1 (likely the in-game editor being
+  on). The 'dref' Value is itself a struct whose own map holds 'dref' (an integer Value: the packed reference, type
+  in the top byte, id in the low 23 bits) and 'cdtn'. Building that from outside needs the struct and integer Value
+  constructors, not yet found.
+- For the team it asks `0x2ce4aec(team, 1)` (result through x8) for a vector of 58-byte slot entries, one per
+  position of the tactic. For each player of the team (list at team +0x38, each resolved through the identity
+  vtable's slot 0x6e0) it takes the record `[player+0xF8]` (or `0xd47b38(player, 0)` when `0x1780318(team)` is set),
+  fills each entry's +0x30 and +0x32 for that player (`0xd1d114(player, entry, 0)` and the same on entry +0x18 when
+  the team has no record in the tactics table at `[0x56d2d78]+0x88`; another path otherwise), then calls
+  `0x47FE7E8(record, entry, 10000)` per entry and sets `record+0xDC = 1`. With a manager's record (`0x2cabfb8`) it
+  also calls `0x48488ec` and `0x486d814` per entry.
+- So kinds 0..5 are keyed per position by the tactic's own settings and kinds 6 and 7 by per-player values the
+  handler works out; reproducing it in a bridge program (no loops, 12 steps) is not practical. Calling the handler
+  itself is, once the 'dref' Value can be built.
+- Live check (read only, 11 Dec 2027): Saka's record still has kinds 0..5 as tight vectors of 1 or 2 entries
+  (capacity equal to length) and the block at +0xC0.
+
 ## Needs the screen
 
 - Coaching licence labels per level, for Jover (level 2) and the manager.
