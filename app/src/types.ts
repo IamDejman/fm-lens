@@ -106,6 +106,7 @@ export interface GameActions {
   workPermit: boolean;
   startLoan: boolean;
   signFreeAgent: boolean;
+  endLoan: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */

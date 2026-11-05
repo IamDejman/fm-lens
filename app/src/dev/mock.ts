@@ -290,6 +290,9 @@ function details(player: PlayerSummary): PlayerDetails {
 
 /** Every eleventh player at a club is there on loan from another club, which pays half his wage. */
 function loanOf(player: PlayerSummary): LoanTerms | null {
+  if (endedLoans.has(player.uid)) {
+    return null;
+  }
   const started = startedLoans.get(player.uid);
   if (started) {
     return { parent: started.parent, parentUid: started.parentUid, wage: 0, starts: GAME_DATE, ends: started.ends };
@@ -355,6 +358,51 @@ function startLoan(uid: number, clubUid: number, ends: number): LoggedChange {
     undoneAt: null,
     batch: null,
     moved: { from: from.name, to: to.name },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** The loans the editor had the game end, by UID: the loan as it was, and the club he was loaned to. */
+const endedLoans = new Map<number, { loan: LoanTerms; borrower: { name: string; uid: number } }>();
+/** What each loan's end replaced, by change ID: the loan the editor had started, if it was one. */
+const loanEndUndo = new Map<number, { parent: string; parentUid: number; ends: FmDate } | undefined>();
+
+/** `plan_end_loan`: the clubs the fixture player's loan would end between, as the real command checks them. */
+function planEndLoan(uid: number): MovePreview {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const loan = loanOf(player);
+  if (!loan || player.club === null || player.clubUid === null || loan.parentUid === null || loan.parent === null) {
+    throw failure("move.notOnLoan", "the player is not on loan");
+  }
+  return { from: { uid: player.clubUid, name: player.club }, to: { uid: loan.parentUid, name: loan.parent } };
+}
+
+/** `end_loan`: the game ends the fixture player's loan today, and he goes back to his own club. */
+function endLoan(uid: number): LoggedChange {
+  const plan = planEndLoan(uid);
+  const player = players.find((p) => p.uid === uid)!;
+  const id = changes.length + 1;
+  endedLoans.set(uid, { loan: loanOf(player)!, borrower: { name: plan.from.name, uid: plan.from.uid } });
+  loanEndUndo.set(id, startedLoans.get(uid));
+  startedLoans.delete(uid);
+  player.club = plan.to.name;
+  player.clubUid = plan.to.uid;
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "loan",
+    old: plan.from.uid,
+    new: plan.to.uid,
+    undoneAt: null,
+    batch: null,
+    moved: { from: plan.from.name, to: plan.to.name },
   };
   changes.push(logged);
   return { ...logged };
@@ -1454,7 +1502,24 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
-  // A loan is ended at once here; the game ends it on its next day.
+  // An ended loan starts again, until the same day.
+  if (entry.field === "loan" && loanEndUndo.has(entry.id)) {
+    const player = players.find((p) => p.uid === entry.uid);
+    const ended = endedLoans.get(entry.uid);
+    if (player && ended) {
+      player.club = ended.borrower.name;
+      player.clubUid = ended.borrower.uid;
+      const started = loanEndUndo.get(entry.id);
+      if (started) {
+        startedLoans.set(entry.uid, started);
+      }
+    }
+    endedLoans.delete(entry.uid);
+    loanEndUndo.delete(entry.id);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  // A loan the editor started ends at once, as the game does here.
   if (entry.field === "loan") {
     const player = players.find((p) => p.uid === entry.uid);
     const started = startedLoans.get(entry.uid);
@@ -2589,7 +2654,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true },
       };
       mockConnection = info;
       if (!refrozen) {
@@ -2875,6 +2940,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return setWorkPermit(Number(args?.uid), Boolean(args?.granted)) as T;
     case "start_loan":
       return startLoan(Number(args?.uid), Number(args?.club), Number(args?.ends)) as T;
+    case "plan_end_loan":
+      return planEndLoan(Number(args?.uid)) as T;
+    case "end_loan":
+      return endLoan(Number(args?.uid)) as T;
     case "sign_free_agent":
       return signFreeAgent(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
     case "lift_bans":

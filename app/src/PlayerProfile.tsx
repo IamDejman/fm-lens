@@ -12,7 +12,7 @@ import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { PositionPitch, PositionRatings } from "./PositionPitch";
-import { ReleaseButton } from "./ReleaseDialog";
+import { EndLoanButton, ReleaseButton } from "./ReleaseDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { TiesGroup } from "./TiesGroup";
 import {
@@ -103,9 +103,17 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
               contract={details?.contract ?? null}
               ready={details !== undefined}
             />
-            {info.club !== null && (
-              <ReleaseButton player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }} />
-            )}
+            {/* A loaned player is not released: where the game ends loans, his loan is ended instead. Which of the
+                two he has is in the details, so the button waits for them. */}
+            {info.club !== null &&
+              details !== undefined &&
+              (details.loan ? (
+                gameActions.endLoan && (
+                  <EndLoanButton player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }} />
+                )
+              ) : (
+                <ReleaseButton player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }} />
+              ))}
           </div>
         )
       }

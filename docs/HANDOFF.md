@@ -52,8 +52,8 @@ Built on top of it (core and Tauri only, no UI yet):
   training does. Undo empties the list (as Heal does). Tauri: `injury_kinds`, `add_injury`, `Undo::Injured`.
 - `Session::set_work_permit(player, grant)`: `0x2D85294(TRANSFER_MANAGER, P + vbase (0x388), [P+0x128], 1, grant)`.
   Verified by reading the permits back. Tauri: `set_work_permit`, `Undo::Permit`.
-- `ConnectionInfo.gameActions { addInjury, workPermit, startLoan, signFreeAgent }` says which of these this build
-  supports.
+- `ConnectionInfo.gameActions { addInjury, workPermit, startLoan, signFreeAgent, endLoan }` says which of these this
+  build supports.
 
 ## 3. What is left, in order
 
@@ -76,7 +76,19 @@ Built on top of it (core and Tauri only, no UI yet):
    end given. Undo is a release (`plan_release`), so it refuses a human-managed club. Also fixed here: `log_loan`
    now updates the players list, so a loaned player shows his new club without a reload. Unproven in the game
    (section 4); test on one free agent only.
-4. **Loan recall / early end, releases, future transfers**: not found. Research first (fm27-transfer-actions.md).
+4. **Loan recall, releases, future transfers**: researched (fm27-call-shapes.md sections 4 and 5).
+   - **End loan**: done on `feat/end-loan` (End loan on a loaned player's profile, gated by `gameActions.endLoan`,
+     in the Release dialog). One game function ends any contract: `0x2D4B9DC(TM, P, contract, kind, 0, 1, 0, 0, stack
+     0, 0)` (`end_contract` in the build profile); the daily loan expiry calls it on the loan contract (the P+0x2F8
+     slot FM Lens already reads), so `Session::end_loan` does the same, with kind 2 for a parent club a human runs
+     and 3 otherwise, and reads back that the loan is gone and he plays for his own club. Undo starts the loan again
+     until its old end. Undoing a started loan now ends it at once too. Unproven in the game (section 4).
+   - **Release through the game**: next. The editor's terminate-contract handler calls the same function on the
+     player's own contract; undo would sign him back with his old wage and end written over. Today's release writes
+     memory itself and works; switch only after End loan is proven in the game.
+   - **Future transfers**: the signing call with a 'TrDt' date after today (0x2d91328 stores it): a date step for
+     the Sign dialog. Cancel (0x2d180b4) needs the offer pointer in scratch with a reference taken, which the bridge
+     cannot do yet, so there is no undo: build it after a way to cancel exists.
 5. Other batch items not built: officials editing; staff formations and tendencies (labels need the screen);
    tactical familiarity; human manager relations and moves; club kits, ownership, vision, allowances, income;
    nation FA settings, attendance, kits; promises, youth intake, bans add (low confidence, see
@@ -94,6 +106,8 @@ before and after. Never use probe write commands; live writes go through FM Lens
 - Loans (#19): loan wage and end for White, Merino, Mosquera, Harriman-Annous against FM's loan screens.
 - Loan start: loan one first-team player to another club until 30 June, check FM's loan screen (club, dates, the
   wage FM set) and both squads; undo, press Continue once, and check FM ended the loan and he is back.
+- End loan: end one loan early and check the player is back at his parent club in FM, with FM's news of it; undo
+  and check the loan is back until its old end. Also undo a loan FM Lens started and check he is back at once.
 - Free-agent signing: sign one free agent to an AI club, once without terms and once with a wage and end; check
   FM's contract screen and the club's squad; undo, and check he is a free agent again with no contract.
 - Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
