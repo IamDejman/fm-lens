@@ -58,10 +58,13 @@ Built on top of it (core and Tauri only, no UI yet):
 
 1. **UI for the two call actions**: done on `feat/call-actions-ui` (Add injury in Medical, Grant / Revoke in Work
    permit, both gated by `gameActions`, logged and undone from Changes). Preview checked; game check in section 4.
-2. **Loan start** (docs/recon/fm27-call-shapes.md section 3): fill the 0x70-byte STARTING_LOAN in scratch (vtable
-   `base+0x55BE9D8`, player at +0x18 = the player object, loan club team at +0x20, dates at +0x30/+0x34 as FmDate,
-   the rest as the table gives) and call `0x2E0A324(TRANSFER_MANAGER, &O, 1)`. Add `start_loan` to `[calls]` and
-   `CallRvas`. Medium-high confidence; the player pointer form is unproven.
+2. **Loan start**: done on `feat/loan-start` (Loan to a club in the Transfer dialog, gated by
+   `gameActions.startLoan`). `Session::start_loan` fills the 0x70-byte STARTING_LOAN as the game's editor does at
+   0x238D860 (`[starting_loan]` in the build profile and in `layout-macos.toml`) and calls
+   `0x2E0A324(TRANSFER_MANAGER, &O, 1)`. Settled by disassembly: +0x18 is the player's identity block (P + vbase,
+   0x388), not the object, since `0x2E0A324` reads the UID at `[O+0x18]+0xC` and calls the identity vtable's slot
+   0x6E0. Undo sets `loan.ends` to today's game date; no recall function is known, so FM should end the loan on its
+   next day. Both unproven in the game (section 4).
 3. **Free-agent signing**: `0x2DFEDAC(TM, identity block, destination team, &terms map, &out[24], 0)` with an empty
    map built by `0x43F6B78` and destroyed after (see the call-shapes doc for the map and Value helpers).
    Medium-low confidence: test on one free agent only.
@@ -81,6 +84,8 @@ before and after. Never use probe write commands; live writes go through FM Lens
 - Calls: add an injury to a fit player (e.g. kind 110 "tight hamstring"), check FM's medical centre and the
   player's medical tab, undo; grant a work permit to a non-English player without one, check FM's profile, revoke.
 - Loans (#19): loan wage and end for White, Merino, Mosquera, Harriman-Annous against FM's loan screens.
+- Loan start: loan one first-team player to another club until 30 June, check FM's loan screen (club, dates, the
+  wage FM set) and both squads; undo, press Continue once, and check FM ended the loan and he is back.
 - Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
 - Competitions and awards (#21): Premier League overview; World Golden Ball periods 5/6/9; PL awards.
 - Earlier items: staff licence labels 1-8 (#17), England FA and women's pages (#16), clause screens (#18), language

@@ -244,6 +244,12 @@ Recommendation for FM Lens: either replicate the map recipe and call 0x238d860 (
 the player and team pointers, which can be written straight into O+0x18 (player object, vt 0x5588ee8 per 0x11b5140;
 write the pointer the helper would store) and O+0x20 (team). Writing the player pointer directly is UNPROVEN.
 
+Settled later by disassembly (FM Lens `Session::start_loan` follows it): O+0x18 is the player's identity block
+(P+0x388), not the object start. 0x2e0a324 reads the UID at [O+0x18]+0xc and the id at +0x8, then calls vtable slot
+0x6e0 on it; the identity vtable 0x558a780 has 0xd5c610 there, which returns the player object. The editor's builder
+at 0x238d860 starts O with vtable base+0x55be9d8, 0xff at +0x08..+0x0f and +0x3c..+0x48, 0x076c0001 (unset date) at
++0x38, 16 bytes from base+0x5390410 at +0x58 and 0xff at +0x6f; the rest zero. Still unproven in the running game.
+
 ## 4. Loan recall / early end
 
 Not found. No function ending a loan before the end date was located; only UI validators (0x342150) appeared. The

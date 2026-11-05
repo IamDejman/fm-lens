@@ -42,6 +42,15 @@ add_injury = 0x27047D4
 # TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force 1, grant 1 or 0).
 # The game's editor passes force 0 and grant 0, which takes a permit away. See docs/recon/fm27-call-shapes.md.
 set_work_permit = 0x2D85294
+# TRANSFER_MANAGER::start_loan: (manager, a STARTING_LOAN, 1), as the game's editor calls it from 0x238D860. Returns
+# nothing; the editor reads the loan back. See docs/recon/fm27-call-shapes.md section 3.
+start_loan = 0x2E0A324
+
+# What a STARTING_LOAN (layout-macos.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58
+# (fees unset).
+[starting_loan]
+vtable = 0x55BE9D8
+defaults = 0x5390410
 
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]

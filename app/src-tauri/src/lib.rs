@@ -13,7 +13,7 @@ use fmlibre_core::{
     NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture, Planned, PlayerDetails,
     PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, RelationSet,
     RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StadiumFilter, StadiumSummary, StaffChange,
-    StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, TemplateGroup, Tie, TieTarget, find_game,
+    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, find_game,
     nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -494,6 +494,38 @@ impl Connection {
         logged
     }
 
+    /// Logs a loan the game started, as a change of the player's `loan` from his club's UID to the borrower's, with
+    /// the clubs' names.
+    fn log_loan(&mut self, started: StartedLoan) -> LoggedChange {
+        let (from, to) = (i64::from(started.from_club), i64::from(started.to_club));
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(started.player),
+            change: Change {
+                entity: Entity::Player,
+                uid: started.player,
+                field: "loan".to_owned(),
+                old: from,
+                new: to,
+            },
+            undone_at: None,
+            batch: None,
+            moved: Some(MovedClubs {
+                from: self.club_name(started.from_club),
+                to: Some(self.club_name(started.to_club)),
+                with: None,
+                fee: None,
+            }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Loan(started)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs lifting just written, as a change of the player's `bans` from how many he had to none.
     fn log_lift(&mut self, done: Lifted, batch: Option<u32>) -> LoggedChange {
         let change = Change {
@@ -909,6 +941,11 @@ impl Connection {
                 let player = self.players.get(change.player).ok_or_else(|| not_found(Entity::Player, change.player))?;
                 self.session.set_work_permit(player, change.was_granted)?;
             }
+            Some(Undo::Loan(started)) => {
+                let player =
+                    self.players.get(started.player).ok_or_else(|| not_found(Entity::Player, started.player))?;
+                self.session.end_loan_today(player)?;
+            }
             None => {
                 let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
                 self.session.revert(&target, &entry.change)?;
@@ -1171,6 +1208,8 @@ enum Undo {
     Injured(AddedInjury),
     /// A work permit the game granted or took away: undone by having it do the opposite.
     Permit(PermitChange),
+    /// A loan the game started: undone by having it end today, which the game does on its next day.
+    Loan(StartedLoan),
 }
 
 /// A member of staff's move or new job as the log keeps it: the writes to undo, and what his list row said before.
@@ -2446,6 +2485,24 @@ fn set_work_permit(state: State<'_, AppState>, uid: u32, granted: bool) -> Resul
     Ok(connection.log_game_change(uid, "work_permit", old, new, Undo::Permit(change)))
 }
 
+/// Has the game loan the player `uid` to the senior team of the club `club` from today until `ends` (a number like
+/// 20270630). Logged as a change of his `loan` from his club to that one, and undone by having the loan end today.
+#[tauri::command]
+fn start_loan(state: State<'_, AppState>, uid: u32, club: u32, ends: i64) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let to = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let ends = FmDate::from_number(ends).ok_or(MoveError::OutOfRange {
+        field: "loan.ends",
+        value: ends,
+        min: 20000101,
+        max: 21001231,
+    })?;
+    let started = connection.session.start_loan(player, to, ends)?;
+    Ok(connection.log_loan(started))
+}
+
 /// Lifts every current ban of the player `uid`, as the game does once he has served them, and
 /// logs it as one change of his `bans` to none.
 #[tauri::command]
@@ -3047,6 +3104,7 @@ pub fn run() {
             injury_kinds,
             add_injury,
             set_work_permit,
+            start_loan,
             keep_playing,
             change_tie,
             remove_tie,
