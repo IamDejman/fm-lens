@@ -80,9 +80,11 @@ remain unverified. Templates are revalidated against each destination layout.
   16 -> 17, one change applied, green readback border visible, Changes undo
   marked it undone, and the read-only probe confirmed finishing 16 again.
 - The main career SHA-256 matched its baseline after the tests.
-- No claim is made for complete transfers, full contract clauses, promises,
-  youth intake, nations, competitions, awards, officials or special manager
-  actions. Their Mac layouts and linked simulation behavior still need work.
+- No claim was made here for complete transfers, full contract clauses,
+  promises, youth intake, nations, competitions, awards, officials or special
+  manager actions. Later sections record read-only nation profiles and
+  officials, squad registration at any time and Max cohesion; the rest still
+  need Mac layouts and linked simulation checks.
 
 ## Reproducing checks
 
@@ -305,4 +307,20 @@ checked before and after.
   Cohesion read "Excellent" with the ring full, and the probe still read 26 at
   100.
 
-Not established: the values through save and reload, and the U21 and U18 teams.
+Not established: the values through save and reload, and the U18 team.
+
+Since this check, raising and undoing no longer write to an address saved
+earlier on its own say-so. Each finds the player's entry for the club again,
+refuses under an unknown build or another career (`Lock::CareerChanged`), and
+writes only over the byte it expects: a raise only where and what the plan
+found, an undo wherever the list keeps the entry now, provided it still holds
+100. Unit tests cover a moved list, a changed value and a missing entry.
+
+Checked live with that build on the same copy (game date 9 Dec 2027): the probe
+read 22 to raise, 26 at 100 and 6 skipped. FM Lens, Squad tab, U21, Max
+cohesion: "22 changes made", with the same 6 players reported as having no
+familiarity with the club. The probe then read all 22 at 100 (for example
+Setford 1 -> 100, Hamill 42 -> 100, Ibrahim 78 -> 100). Undo reported "Undid 22
+changes", and the probe's output matched the first reading line for line. The
+main career's hash matched its baseline afterwards. Not established: FM's own
+display of the U21 change, and stale-undo refusal in the app.

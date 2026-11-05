@@ -841,7 +841,7 @@ impl Session {
     }
 
     /// Writes `bytes` over `expected`, and reads them back; on a mismatch `expected` goes back.
-    fn write_patch(&self, address: u64, expected: &[u8], bytes: &[u8]) -> Result<(), MoveError> {
+    pub(crate) fn write_patch(&self, address: u64, expected: &[u8], bytes: &[u8]) -> Result<(), MoveError> {
         self.expect(address, expected)?;
         self.process.write_bytes(address, bytes)?;
         if self.process.read_bytes(address, bytes.len())? != bytes {

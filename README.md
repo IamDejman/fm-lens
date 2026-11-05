@@ -19,12 +19,18 @@ features differ from the upstream editor.
   positions, traits, personality, reputation, happiness, caps and contract fields.
 - Freeze a player's attributes, set them all to one value from 1 to 20, heal
   injuries, lift bans, and run the squad actions that are already built:
-  inspire, refresh fitness and sharpness, and max attributes.
+  inspire, refresh fitness and sharpness, max attributes and an experimental
+  max cohesion, which raises existing club familiarity only.
+- Experimental human manager options on this build: unsackable, and squad
+  registration at any time. Dismissal protection is unverified.
 - Filter players by age, ability, position, nationality, club, attributes,
   contract expiry and transfer/loan listing. Staff filters include age, nation,
   club, ability, job and attributes; club filters include reputation and founded year.
-- Browse nations represented by players/staff and the senior stadium of each
-  loaded club, with stadium capacity filtering. These are partial read-only lists.
+- Browse nations, match officials and the senior stadium of each loaded club,
+  with stadium capacity filtering. Nation profiles show nationality rules,
+  languages, FIFA ranking, rivals and men's national teams. These are read-only.
+- See languages, favoured and disliked people and clubs, club rivals and linked
+  clubs on profiles. These are read-only.
 - Follow a skippable first-run introduction to navigation, search and settings.
 - View and edit mapped club balances, budgets, facilities and stadium capacities.
 - Move, swap and release players, and change mapped staff jobs, where the editor
