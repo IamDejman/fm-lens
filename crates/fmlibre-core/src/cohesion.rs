@@ -164,11 +164,12 @@ fn raise_at(now: Option<(u64, u8)>, planned: u64, before: u8) -> Result<u64, Mov
 }
 
 /// Where to put the familiarity back, given the entry found now: wherever the list keeps it now (the game may have
-/// moved it), provided it still holds what the raising wrote.
+/// moved it), provided it still holds what the raising wrote. The game lowers it again as days pass, after which the
+/// value it reached is its own.
 fn undo_at(now: Option<(u64, u8)>, written: u64) -> Result<u64, MoveError> {
     match now {
         Some((address, MOST_FAMILIARITY)) => Ok(address),
-        Some((address, _)) => Err(MoveError::Changed { address }),
+        Some((_, found)) => Err(MoveError::FamiliarityChanged { found }),
         None => Err(MoveError::Changed { address: written }),
     }
 }
@@ -227,7 +228,7 @@ mod tests {
         let moved = BEGIN + 0x100 + 5;
         assert_eq!(undo_at(Some((moved, MOST_FAMILIARITY)), written).unwrap(), moved);
         // The game changed the value, or the entry is gone: the old address is never written to.
-        assert!(matches!(undo_at(Some((written, 99)), written), Err(MoveError::Changed { .. })));
+        assert!(matches!(undo_at(Some((written, 98)), written), Err(MoveError::FamiliarityChanged { found: 98 })));
         assert!(matches!(undo_at(None, written), Err(MoveError::Changed { .. })));
     }
 }

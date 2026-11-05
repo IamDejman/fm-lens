@@ -108,6 +108,8 @@ const errors: ErrorTexts = {
   "heal.notInjured": () => "Oyuncunun iyileştirilecek bir sakatlığı yok.",
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
   "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi, yükseltilecek bir şey yok.",
+  "cohesion.changed": (p) =>
+    `Kulübe alışkınlığı şu an ${p.found}: oyun o zamandan beri değiştirmiş, bu yüzden dokunulmadı.`,
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
     "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",

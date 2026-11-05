@@ -324,3 +324,43 @@ Setford 1 -> 100, Hamill 42 -> 100, Ibrahim 78 -> 100). Undo reported "Undid 22
 changes", and the probe's output matched the first reading line for line. The
 main career's hash matched its baseline afterwards. Not established: FM's own
 display of the U21 change, and stale-undo refusal in the app.
+
+### U18, a day later and stale undo (5 November 2026)
+
+Same copy and build, game date 9 Dec 2027.
+
+- U18 (one player, Angelinou Pedro, 78): Max cohesion raised him, and the probe
+  read 100. A second press reported "No changes made".
+- U21 raised again: "22 changes made". The probe then read all 48 club entries
+  at 100 (6 skipped, as before).
+- One Continue, to 10 Dec. FM itself then lowered every entry: the first team's
+  to 99 (Eze, Meslier and Kepa to 98), the U21's and U18's to 98. That included
+  players FM had at 100 before any edit. Max cohesion's 100 is a starting point
+  the game moves from, not a value it keeps.
+- Undo of the U21 batch in Changes: "Nothing was undone", every entry refused
+  because the game had changed the value. The probe's output was the same before
+  and after the undo, so nothing was written.
+
+That refusal showed a raw memory address and said to reload, which cannot help
+when the game changed the value itself. An undo refused this way now says what
+the familiarity is, in `cohesion.changed` (English, Spanish, Turkish).
+
+### Save and reload (5 November 2026)
+
+Same copy, the build with `cohesion.changed`, game date 10 Dec 2027. The first
+team, U21 and U18 were raised again, and the probe read all 48 club entries at
+100 (6 skipped).
+
+- Saved as `FM Lens Cohesion 2026-11-05.fm`, the probe's output unchanged.
+- Quit Game and Exit, FM's process gone, relaunched through Steam (same build
+  fingerprint), and that copy loaded.
+- The probe's output after the reload matched the reading at save time line for
+  line: all 48 at 100. FM's Squad > Dynamics showed Team Cohesion "Excellent",
+  ring full.
+- FM Lens reported "FM closed or restarted. Load a save and connect again."
+  After Connect, Changes listed no changes, so batches from before the restart
+  cannot be undone into the reloaded game.
+
+The main career's hash matched its baseline afterwards. Not established: the
+`cohesion.changed` message on screen (the stale undo above ran on the build
+before it).
