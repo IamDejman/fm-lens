@@ -1671,6 +1671,11 @@ export const es: Strings = {
       "Mantiene su contrato con su club",
       "Deshacer en Cambios pone el fin de la cesión en hoy. FM la termina al día siguiente",
     ],
+    loanDoesEnding: [
+      "FM inicia la cesión, desde hoy hasta el fin de la cesión",
+      "Mantiene su contrato con su club",
+      "Deshacer en Cambios termina la cesión y vuelve a su club",
+    ],
     loanHint: "Nada cambia en FM hasta que pulses Ceder.",
     loan: "Ceder",
     loaning: "Cediendo…",
@@ -1823,6 +1828,30 @@ export const es: Strings = {
     hint: "Nada cambia en FM hasta que pulsas Rescindir.",
     release: "Rescindir",
     releasing: "Rescindiendo…",
+    cancel: "Cancelar",
+  },
+
+  endLoan: {
+    button: "Terminar cesión",
+    buttonTitle: "Termina su cesión. Vuelve a su club.",
+
+    // El diálogo
+    title: "Terminar cesión",
+    from: "Cedido en",
+    checking: "Comprobando la cesión…",
+    ready: (from, to) => `${from} → ${to}`,
+    doesHeading: "Qué pasa",
+    does: [
+      "FM termina la cesión, hoy mismo",
+      "Vuelve a su club, con el contrato que tiene allí",
+      "FM publica su noticia del fin de la cesión",
+      "Deshacer en Cambios vuelve a iniciar la cesión hasta su fin anterior",
+    ],
+
+    // El pie
+    hint: "Nada cambia en FM hasta que pulsas Terminar cesión.",
+    end: "Terminar cesión",
+    ending: "Terminando…",
     cancel: "Cancelar",
   },
 
