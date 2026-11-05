@@ -172,6 +172,8 @@ enum Place {
     NationalTeam(Side),
     /// A nation's men's or women's container, which points back at it (see [`crate::national::container`]).
     NationalContainer(Side),
+    /// A loaned player's loan contract, where the layout places loans (see [`crate::Session::loan`]).
+    Loan,
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -341,6 +343,25 @@ fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 2] {
     ]
 }
 
+/// What the borrowing club pays of a loaned player's wage, and when the loan ends: one player at a time, where the
+/// layout places loans.
+fn loan_fields(layout: &Layout) -> Vec<Field> {
+    if layout.loan.is_none() {
+        return Vec::new();
+    }
+    let c = &layout.contract;
+    vec![
+        Field::new(Entity::Player, "loan.wage", c.wage, Kind::I32, 0..=10_000_000)
+            .plausible(0..=i64::from(i32::MAX))
+            .single()
+            .in_record(Place::Loan),
+        Field::new(Entity::Player, "loan.ends", c.expires, Kind::Date, 20000101..=21001231)
+            .plausible(0..=22001231)
+            .single()
+            .in_record(Place::Loan),
+    ]
+}
+
 /// The squad statuses the editor offers, by the codes contracts hold them as (see the names in the app's
 /// dictionaries). The game uses more codes than these, e.g. for goalkeepers and youngsters.
 pub const SQUAD_STATUSES: [i64; 5] = [1, 2, 3, 4, 5];
@@ -434,6 +455,7 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
     out.extend(contract_fields(layout, Entity::Player));
     out.extend(player_contract_fields(layout));
     out.extend(player_mood_fields(layout));
+    out.extend(loan_fields(layout));
     // His traits: one flag each, `trait.0` to `trait.63`, bit n of the mask.
     out.extend((0..64u64).map(|n| Field::flag(Entity::Player, format!("trait.{n}"), p.traits + n / 8, (n % 8) as u8)));
     out.into_iter().map(|f| f.in_person_block(p.person_block)).collect()
@@ -1079,6 +1101,7 @@ impl Session {
                 let owner = self.process.read_u64(record + self.layout.contract.owner)?;
                 (owner == target.address + identity + target.shift).then_some(record)
             }
+            (Place::Loan, Entity::Player) => self.loan_contract(target.address, target.shift),
             (Place::ClubInfo, Entity::Club) => pointer(club.info)?,
             (Place::ClubFinance, Entity::Club) => {
                 let Some(record) = pointer(club.finance)? else {
@@ -1228,11 +1251,21 @@ mod tests {
         let players = fields(&layout, Entity::Player);
         // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
         // transfer and loan listing, which only players have.
-        // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale).
+        // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale); and a loan's wage
+        // and end, where the layout places loans.
+        let loan = if layout.loan.is_some() { 2 } else { 0 };
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 4 + 64
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 4 + 64 + loan
         );
+        if layout.loan.is_some() {
+            for key in ["loan.wage", "loan.ends"] {
+                let field = players.iter().find(|f| f.key == key).expect(key);
+                assert_eq!(field.place, Place::Loan);
+                assert!(!field.shifted && !field.mass);
+                assert!(!field.mass);
+            }
+        }
         assert_eq!(key(&players, "nation").kind, Kind::Pointer);
         assert!(!key(&players, "nation").mass);
         assert!(!key(&players, "contract.squad_number").mass);
