@@ -1057,6 +1057,13 @@ export const es: Strings = {
           body: "La barra de abajo muestra si estás conectado a FM.",
         },
       },
+      exercise: {
+        list: { title: "Prueba una edición", body: "Abre a cualquiera de la lista." },
+        edit: { title: "Editar", body: "Pulsa Editar o haz clic en un valor." },
+        profile: { title: "Cambia un valor", body: "Escribe un valor nuevo. Aún no se envía nada a FM." },
+        apply: { title: "Aplicar", body: "Aplicar envía el cambio a FM. Descartar lo elimina." },
+        changes: { title: "Cambios", body: "Aquí aparece cada cambio aplicado, y se puede deshacer." },
+      },
     },
 
     noteEditable: "Edición activada",
