@@ -5,6 +5,7 @@
 // number, so the sentences are built to put an ending on a noun ("oyuncunun"), never on a figure.
 
 import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerSort, SquadSort, Storefront } from "../types";
+import { PERCENT_CLAUSES, RELEASE_CLAUSES } from "../clauseKinds";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
 
@@ -262,18 +263,44 @@ const CONCERN_MOTIVES_TR: Partial<Record<number, string>> = {
 const CLAUSE_NAMES_TR: Partial<Record<number, string>> = {
   0: "Serbest kalma maddesi",
   1: "Küme düşmede serbest kalma maddesi",
+  2: "Yükselemezse serbest kalma maddesi",
   3: "Yıllık maaş artışı",
+  4: "Yükselmede maaş artışı",
+  5: "Küme düşmede maaş indirimi",
+  6: "Teknik görev teklifinde serbest kalma maddesi",
+  7: "Her an serbest kalma",
+  8: "Gelecek satıştan pay",
+  9: "Gelecek satış kârından pay",
   10: "Sezonluk gol hedefi primi",
+  11: "Lig maçlarından sonra bir yıl uzatma",
+  12: "En yüksek ücretliyle eşitleme",
+  13: "Lig maçı sayısına ulaşınca maaş",
+  14: "Üst lige yükselmede maaş artışı",
   15: "Üst ligden düşmede maaş indirimi",
+  16: "Serbest kalma maddesi (yabancı kulüpler)",
+  17: "Serbest kalma maddesi (üst ligdeki kulüpler)",
+  18: "Serbest kalma maddesi (yerli kulüpler)",
   19: "Milli maç sayısına ulaşınca maaş",
+  20: "Sponsorun ödediği maaş",
+  21: "Bilet gelirinden pay",
   22: "Kulübün tek taraflı uzatma opsiyonu",
+  23: "Teknik direktörlük teklifinde tazminatsız ayrılık",
+  24: "Ayrılmak için gereken tazminat",
+  25: "Yükselirse bir yıl uzatma",
+  26: "Küme düşmezse bir yıl uzatma",
   27: "Serbest kalma maddesi (Şampiyonlar Kupası'ndaki kulüpler)",
+  28: "Garantili sözleşme",
+  29: "Yükselirse otomatik uzatma",
+  30: "Sakatlıkta serbest kalma maddesi",
+  31: "Serbest kalma maddesi (kıta kupalarındaki kulüpler)",
   32: "Maç başına ücret",
   33: "Gol primi",
   34: "Gol yememe primi",
+  37: "Milli maç primi",
   38: "Oynamayan yedek ücreti",
   39: "Asist primi",
   40: "Sezonluk asist hedefi primi",
+  41: "Sezonluk gol ve asist hedefi primi",
 };
 
 export const tr: Strings = {
@@ -632,18 +659,26 @@ export const tr: Strings = {
     moodTitle: "FMRTE'nin gösterdiği gibi, -100 ile 100 arasında; oyun bunu kelimelerle gösterir",
     clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? `Madde ${kind}`,
     clauseCondition: (kind, value) => {
+      if (RELEASE_CLAUSES.has(kind)) {
+        return null;
+      }
+      if (PERCENT_CLAUSES.has(kind)) {
+        return `%${value}`;
+      }
       switch (kind) {
         case 10:
           return `${value} gol`;
         case 40:
           return `${value} asist`;
+        case 41:
+          return `${value} gol ve asist`;
+        case 11:
+        case 13:
+          return `${value} lig maçı`;
         case 19:
           return `${value} milli maç`;
         case 22:
           return `${value} yıl`;
-        case 3:
-        case 15:
-          return `%${value}`;
         default:
           return String(value);
       }

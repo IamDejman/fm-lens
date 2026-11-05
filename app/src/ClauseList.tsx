@@ -5,6 +5,7 @@
 
 import { useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PERCENT_CLAUSES } from "./clauseKinds";
 import { toPounds, toShown } from "./currency";
 import { addReleaseClause, changeClause, removeClause } from "./editing";
 import { describeError, formatAmount, formatMoney, formatNumber } from "./format";
@@ -25,8 +26,11 @@ const MOST_CONDITION = 1_000;
 /** The kind of a release clause, the one the dialog adds. */
 const RELEASE_CLAUSE = 0;
 
-/** The kinds whose condition is known (goals, assists, international matches, years, a percentage): only those change. */
-const KNOWN_CONDITIONS = new Set([3, 10, 15, 19, 22, 40]);
+/**
+ * The kinds whose condition is known (a percentage, goals, assists, league or international matches, years): only those
+ * change.
+ */
+const KNOWN_CONDITIONS = new Set([...PERCENT_CLAUSES, 10, 11, 13, 19, 22, 40, 41]);
 
 /** What a clause depends on and its amount, as one line: "10 goals · £848,768"; ✓ for one with neither. */
 export function clauseDetail(clause: Clause): string {
@@ -183,6 +187,8 @@ function ClauseDialog({ uid, name, clauses, room, onClose }: ClauseDialogProps) 
   const row = (clause: Clause) => {
     const label = profileText.clauseName(clause.kind);
     const conditionChanges = clause.condition !== null && KNOWN_CONDITIONS.has(clause.kind);
+    const shownCondition =
+      clause.condition === null ? null : profileText.clauseCondition(clause.kind, clause.condition);
     const shownAmount = clause.amount === null ? null : toShown(clause.amount);
     const typedAmount = amounts[clause.index] ?? (shownAmount === null ? "" : String(shownAmount));
     const typedCondition = conditions[clause.index] ?? (clause.condition === null ? "" : String(clause.condition));
@@ -198,9 +204,7 @@ function ClauseDialog({ uid, name, clauses, room, onClose }: ClauseDialogProps) 
       <li key={clause.index} className="tie-row clause-row">
         <span className="tie-target">
           {label}
-          {clause.condition !== null && !conditionChanges && (
-            <span className="tie-rule">{` · ${profileText.clauseCondition(clause.kind, clause.condition)}`}</span>
-          )}
+          {shownCondition !== null && !conditionChanges && <span className="tie-rule">{` · ${shownCondition}`}</span>}
         </span>
         {clause.amount !== null && (
           <input
