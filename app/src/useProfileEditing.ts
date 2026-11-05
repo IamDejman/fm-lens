@@ -44,6 +44,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   signFreeAgent: false,
   endLoan: false,
   futureTransfer: false,
+  maxTactics: false,
 };
 
 export const EditorContext = createContext<EditorState>({

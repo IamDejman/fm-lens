@@ -471,3 +471,18 @@ corporate = 0x8A9
 [nation]
 uid = 0x0C                # Argentina: 1649
 name = 0x18
+
+# A player's familiarity with his team's tactic, traced statically in the game's editor action at 0x2392540 (Steam
+# 26340721 arm64) and read on Saka: his record at +0xF8 holds six lists of 4-byte entries 0x20 apart (the
+# familiarity in the low 14 bits, a signed key in bits 14..19), one list of 16-byte entries at +0xC0 (the familiarity
+# the u16 at +0x0E) and the byte the game sets once it changes them at +0xDC. Familiarity runs to 10000. The game only
+# changes an entry in place or adds one at the end. A team's id is the u32 at +0x08 (Arsenal's senior team: 462), its
+# entry in the teams table, whose pointer at +0x88 leads to its (begin, end) of teams.
+[tactics]
+record = 0xF8
+lists = [0x00, 0x20, 0x40, 0x60, 0x80, 0xA0]
+store = 0xC0
+store_value = 0x0E
+dirty = 0xDC
+team_id = 0x08
+teams = 0x88

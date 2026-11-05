@@ -247,6 +247,7 @@ const errors: ErrorTexts = {
   "cohesion.none": () => "FM aún no le ha dado familiaridad con este club, así que no hay nada que subir.",
   "cohesion.changed": (p) =>
     `Su familiaridad con el club vale ahora ${p.found}: el juego la ha cambiado desde entonces, así que no se ha tocado.`,
+  "tactics.changed": () => "El juego ha cambiado desde entonces su familiaridad con la táctica, así que no se ha tocado.",
   "relation.missing": () => `Esa nacionalidad o formación ya no está en la lista del jugador; ${reload}.`,
   "relation.noRoom": () =>
     "La lista del jugador no tiene sitio y el editor no puede ampliarla; cambia una de sus entradas en su lugar.",
@@ -535,6 +536,7 @@ export const es: Strings = {
     work_permit: "Permiso de trabajo",
     bans: "Sanciones",
     cohesion: "Familiaridad con el club",
+    tactics: "Familiaridad táctica",
     retirement: "Retirada",
     clause: "Cláusula del contrato",
     "clause.amount": "Importe de la cláusula",
@@ -1901,6 +1903,8 @@ export const es: Strings = {
       "Energía y ritmo de competición al máximo, y todos totalmente descansados",
     maxCohesion: "Cohesión al máximo",
     maxCohesionTitle: "Todos los jugadores totalmente familiarizados con el club (experimental)",
+    maxTactics: "Táctica al máximo",
+    maxTacticsTitle: "Todos los jugadores totalmente familiarizados con la táctica del equipo",
     maxAll: "Atributos al máximo",
     maxAllTitle:
       "Todos los atributos a 20 para todos (propensión a lesiones y juego sucio a 1)",

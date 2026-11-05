@@ -414,12 +414,12 @@ interface TeamActionsProps {
 }
 
 /**
- * Heal all, Lift bans, Inspire all, Refresh all, Max cohesion and Max attributes for the shown team. Heal all and Lift bans say how
- * many players are injured or banned and wait until somebody is; every one waits while the game cannot be written to,
- * and says why.
+ * Heal all, Lift bans, Inspire all, Refresh all, Max cohesion, Max tactics (where FM can do it itself) and Max
+ * attributes for the shown team. Heal all and Lift bans say how many players are injured or banned and wait until
+ * somebody is; every one waits while the game cannot be written to, and says why.
  */
 function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
-  const { readOnlyNote } = useContext(EditorContext);
+  const { readOnlyNote, gameActions } = useContext(EditorContext);
   const injured = team.players.filter((player) => player.injuries > 0).length;
   const banned = team.players.filter((player) => player.bans > 0).length;
   const empty = team.players.length === 0;
@@ -463,6 +463,15 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
         busy={busy}
         onPress={() => onAction("maxCohesion")}
       />
+      {gameActions.maxTactics && (
+        <ActionButton
+          label={text.maxTactics}
+          title={hover(text.maxTacticsTitle, empty ? text.empty : null)}
+          waiting={!editable || empty}
+          busy={busy}
+          onPress={() => onAction("maxTactics")}
+        />
+      )}
       <ActionButton
         label={text.maxAll}
         title={hover(text.maxAllTitle, empty ? text.empty : null)}

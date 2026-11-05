@@ -261,8 +261,11 @@ edit. Not tested (read only).
   16-byte entries {u32 key, Value*}. It reads 'dref', resolves it with `0x11b8ea0` and `0x111344c` to an entity and
   goes on only for a team (entity kind 0x18) and when the byte at `0x56d34e0` is 1 (likely the in-game editor being
   on). The 'dref' Value is itself a struct whose own map holds 'dref' (an integer Value: the packed reference, type
-  in the top byte, id in the low 23 bits) and 'cdtn'. Building that from outside needs the struct and integer Value
-  constructors, not yet found.
+  in the top byte, id in the low 23 bits) and 'cdtn'. Both can be built with the game's own functions: an integer
+  Value is {the Value type registry's entry at +0x28 (static pointer at `0x573BBA0`), the number}, `0x4404654(Value*,
+  map*)` makes a struct Value of a map (moving its entries), and `map_insert` moves a Value into a map. A team's
+  reference is `0x18 << 24 | id`, the id the u32 at team +0x08, checked against the teams table (static pointer at
+  `0x56D2DB0`, whose pointer at +0x88 leads to its (begin, end) of teams: Arsenal's senior team is entry 462).
 - For the team it asks `0x2ce4aec(team, 1)` (result through x8) for a vector of 58-byte slot entries, one per
   position of the tactic. For each player of the team (list at team +0x38, each resolved through the identity
   vtable's slot 0x6e0) it takes the record `[player+0xF8]` (or `0xd47b38(player, 0)` when `0x1780318(team)` is set),
@@ -270,6 +273,14 @@ edit. Not tested (read only).
   the team has no record in the tactics table at `[0x56d2d78]+0x88`; another path otherwise), then calls
   `0x47FE7E8(record, entry, 10000)` per entry and sets `record+0xDC = 1`. With a manager's record (`0x2cabfb8`) it
   also calls `0x48488ec` and `0x486d814` per entry.
+- `0x47FE7E8(record, entry, 10000)`: kinds 0..5 are lists at record + kind * 0x20 (begin, end, capacity) of 4-byte
+  entries, set by `0x47FD400(list, key, value)`, which changes the entry with that key in place or adds one at the
+  end (at most 20, growing the list into a new block when full); kinds 6 and 7 share the list of 16-byte entries at
+  +0xC0, set by `0x47FA060` the same way (value the u16 at +0x0E). Neither removes an entry, so a snapshot of the
+  lists is a prefix of the lists afterwards: FM Lens' undo writes it back and shortens each list.
+- With the human manager's team it also updates the manager's knowledge of each player (a find-or-insert in the map
+  at the manager record +0x78, then `0x486D814`) and, when `[0x56D4980]` is 1, sets his knowledge of them to 100.
+  The "InGameEditorUsed" block at the end runs only when `[0x56D499F]` is 1 (0 on the test career).
 - So kinds 0..5 are keyed per position by the tactic's own settings and kinds 6 and 7 by per-player values the
   handler works out; reproducing it in a bridge program (no loops, 12 steps) is not practical. Calling the handler
   itself is, once the 'dref' Value can be built.

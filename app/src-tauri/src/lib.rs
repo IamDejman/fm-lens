@@ -704,6 +704,33 @@ impl Connection {
         logged
     }
 
+    /// Logs a player the game made fully familiar with his team's tactic, as a change of his `tactics` from how
+    /// familiar he was with the parts it changed to how familiar he is now, as percentages.
+    fn log_tactics(&mut self, done: fmlibre_core::RaisedTactics, batch: Option<u32>) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "tactics".to_owned(),
+            old: i64::from(done.before),
+            new: i64::from(done.after),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            batch,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Tactics(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs keeping a player from retiring just written, as a change of his `retirement` from the date he was to retire
     /// on (0 when the game had planned none) to 0.
     fn log_retirement(&mut self, done: RetirementSet) -> LoggedChange {
@@ -1036,6 +1063,7 @@ impl Connection {
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
             Some(Undo::Cohesion(cohered)) => self.session.undo_cohesion(&cohered)?,
+            Some(Undo::Tactics(raised)) => self.session.undo_tactics(&raised)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
@@ -1377,6 +1405,8 @@ enum Undo {
     Signed(SignedPlayer),
     /// A free agent the game agreed to sign on a later day: undone by having it cancel the signing.
     SignedLater(AgreedSigning),
+    /// A player the game made fully familiar with his team's tactic: undone by putting his familiarity back.
+    Tactics(fmlibre_core::RaisedTactics),
 }
 
 /// A member of staff's move or new job as the log keeps it: the writes to undo, and what his list row said before.
@@ -1473,6 +1503,8 @@ enum TeamAction {
     /// Every player fully familiar with the club, as the game's Max cohesion does; experimental. Only players the game
     /// has given a familiarity with the club already are raised.
     MaxCohesion,
+    /// Every player fully familiar with the team's tactic, as the game's own editor does it.
+    MaxTactics,
 }
 
 #[derive(Clone, Serialize)]
@@ -3029,6 +3061,14 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
                 }
             }
             return Ok(report);
+        }
+        TeamAction::MaxTactics => {
+            let raised = connection.session.maximise_tactics(&summary, team, &connection.players)?;
+            let applied = raised.len();
+            for done in raised {
+                connection.log_tactics(done, Some(batch));
+            }
+            return Ok(MassReport { batch, applied, failed: Vec::new() });
         }
         // Morale at its best, and the reasons to be unhappy gone, as FMRTE's Inspire does.
         TeamAction::Inspire => &[("morale", 20), ("contract.unhappiness", 0)],
