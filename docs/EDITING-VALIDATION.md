@@ -510,3 +510,63 @@ and £5,000; Berg's arranged-transfer badge is gone; González joined Getafe
 with FM's contract; Oliver's official screen; Nwaneri back at Arsenal. Then
 End loan on a loan without a future fee, work permits (#20), competitions and
 awards (#21) and the earlier items in `HANDOFF.md` section 4.
+
+### Rechecks and the rest of section 4 (5 November 2026, evening)
+
+Same copy, FM Lens built from each branch with `npm run release` (the
+unbundled binary, which leaves the installed bridge alone; its hash was
+unchanged throughout). The copy was saved once (22:11), FM restarted from
+Steam and the copy reloaded, then FM went on holiday from 11 to 14 Dec 2027
+(Arsenal 2-1 Tottenham was played on the way).
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Max tactics (#32), Tottenham (AI) | "44 changes made", then Undone | Every entry for Spurs' tactic 10000; after Undo byte-identical to before | - |
+| Max tactics (#32), Arsenal (human) | "28 changes made", Undone, pressed again | Same; Undo byte-identical; after save, quit and reload still 10000 | Tactical Effectiveness: tactic 1's eight pies full only after reload; tactics 2 and 3 full at once |
+| Rice's injury, after Continue | - | No injury | Fitness Excellent, no injury |
+| Keitel's signing with terms | - | £5,000 to 2029-06-30 | Mainz 05, contract to 30/6/2029 (wage shown as a scouting range, £2.7K-£5K) |
+| Berg's cancelled future transfer | - | Free agent | Free agent, no arranged-transfer badge |
+| González's future transfer, 13 Dec | - | Getafe | Getafe, FM's contract to 30/6/2031 |
+| Nwaneri's started loan, undone | - | Arsenal, no loan | Arsenal, no loan |
+| Quintero's work permit, then Revoke | Granted -> Not granted | Not granted | After the revoke FM still showed an ESC slot until 10/12/2028; after a one-day holiday it shows "Active work permit, Until 30/6/2032". **Open**: FM keeps a permit the revoke does not clear |
+| Work permits (#20), Sichenje and Rijks | Granted 3 Feb 2027 / 28 Jan 2027 | Same | FM shows permits only for your own club's players |
+| End loan, no future fee, Harriman-Annous | Logged | Back at his parent club, no loan | Back at his parent club |
+| Undo of End loan, Rafael Pinto Pedrosa (first build) | Undone | Loan back, but from today, borrower pays £0, and loan listed true | Fixed in #33 |
+| Undo of End loan, #33 build: Yang Min-Hyeok and Pedrosa | Undone | Probe output identical to before End loan, including loan start, £17,280 / £17,242 and loan listed false | - |
+| Competitions (#21), Premier League | Overview | - | Matches |
+| Awards (#21), World Golden Ball | Two identical rows | Period 6, women flag +0x8A 1 on one | FM: "Next Award Period: 26/10/2027 - 25/10/2028"; women's awards in green. Fixed in #34 (Women tag, period names) |
+| Officials, Michael Oliver | 170 / 180, rep 8,600 | Same | Not reachable: FM's search has no officials |
+| Staff licence labels (#17) | Labels 1-8 | Byte +0x204 | FM's Coaching tab: 1 Continental Pro, 2 Continental A, 3 Continental B, 4 Continental C, 5 National A, 7 National C, 0 and 8 none; 6 (National B) by the ladder, no sample; a negative value is the level held while studying for the next. Fixed in #35 |
+| Squad status labels | 1-5 named, 4 "Rotation player" | Codes from contract +0x54 | Contract page header for a holder of each code: 4 Squad Player, 7 Fringe Player, 9 and 21 Emergency Backup, 10 Breakthrough Prospect, 11 Future Prospect, 13 Youngster, 15 First-Choice Goalkeeper, 16 Cup Goalkeeper, 17 Domestic Cup Goalkeeper, 20 Backup, 22 Surplus to Requirements; 14 needs scouting for every holder. Fixed in #36 |
+| Language levels (#15) | 10 "Native" | Gyokeres: Hungarian 5, English 10, Norwegian 8, Danish 8, Portuguese 1 | Personal > Overview: English, Norwegian, Danish Fluent, Hungarian Good, no Portuguese; 7-10 Fluent, 5 Good, 3-4 Basic, 1 left out (six players). Fixed in #37 |
+| Clause names (#18) | FMRTE's names | `clauses UID` for 16 players | Contract page: most match; FM names 8 Sell On Fee Percentage, 13 Wage After Reaching Club League Games, 41 Seasonal Landmark Combined Goal and Assist Bonus, 55 Active Relegation Release Clause; FM does not list 63. Fixed in #38 |
+| Wage budget, club finance +0x814 | Wage budget (spending) | Arsenal £5,376,891 p/w, total (+0x808) £6,503,366 | Finances > Wage Budget: "Spending Wage Budget £5,376,891 p/w", Total Wage Budget £6.5M; "Current wage total (incl. bonuses) / Budget" £5,376,891 / £6,503,366 |
+| England (#16) | Association founded 1863, joined FIFA 1905, women joined FIFA 1972 | Same; reputation 6,000 men, 9,950 women | "FA Founded 1863" on both pages; "About England" says founded in 1905 (men) and 1972 (women), the FIFA years; reputation Continental and Worldwide |
+| Tour (#12), Intel (#13) | - | - | Not run: the tour needs the desktop app's local storage cleared; Intel needs FM under Rosetta, not tried |
+
+Findings:
+
+- The Sign, Loan and Apply buttons and Go on holiday were never ignoring
+  clicks: the click helper's mouse-up was sometimes lost, leaving the button
+  held. A second release when the button still reads down fixed every case.
+- FM caches its panels: an edited contract expiry, a tactic's pies or an
+  arranged-transfer badge shows after a reload or the next day, not at once.
+  FM Lens' own header date also stays at the connect date until Reload.
+- Revoking a work permit clears FM Lens' and the probe's permit, but FM keeps
+  showing a permit (the ESC slot, then an active permit to 30/6/2032 after a
+  day). FM reads it from somewhere the revoke does not reach. Not yet fixed.
+- FM's end of a loan can put the player on his parent club's loan list (it did
+  for Pedrosa, not for Yang). #33 restores the flag with the loan.
+- Award byte +0x8A is 1 for every women's award (3,902 awards read). Period
+  codes: 4 at the end of the competition (884 awards), 5 each calendar year
+  (216), 6 each year (23, World Golden Ball: 26 Oct to 25 Oct), 7 each round
+  (31, "of the Round" awards), 9 (34: managers of the year, cup final players,
+  club policy awards; not shown in FM's search, left unnamed).
+- FM's transfer history keeps a line for each loan the game was asked to
+  start, even after Undo: Nwaneri to Brentford (11 Dec), and the loans #33's
+  Undo of End loan restarted (Pedrosa, Yang, 14 Dec).
+- Harriman-Annous is on loan at Huddersfield again from 14 Dec 2027 with the
+  borrower paying £0, the state the first build's Undo of End loan leaves
+  (fixed in #33). The copy keeps it.
+- FM shows a squad status, a contract's clauses and its bonuses only for
+  players it has scouted; your own club's are always shown.
