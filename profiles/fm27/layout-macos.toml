@@ -147,6 +147,9 @@ unhappiness = 0x30
 [loan]
 slot = 0x2F8
 class = "N2db13LOAN_CONTRACTE"
+# The loan's future fee, a u32 past the contract's fields, 0xFFFFFFFF for none: White's 58,000,000 (his option to buy),
+# none on Harriman-Annous'. Ending a loan with a mandatory future fee early completes the transfer.
+future_fee = 0xC0
 
 # Relative to the players (begin, end) pair, as on Windows; the static data between them is
 # laid out differently, so this sits 0xC0 further. It read the date in a new game, but an

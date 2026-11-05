@@ -2554,6 +2554,9 @@ fn player(session: &Session, uid: u32) -> Result<()> {
             date(loan.starts),
             date(loan.ends)
         );
+        if let Some(fee) = loan.future_fee {
+            println!("                 future fee £{fee}");
+        }
     }
     for permit in &d.work_permits {
         println!(

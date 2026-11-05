@@ -295,7 +295,14 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
   }
   const started = startedLoans.get(player.uid);
   if (started) {
-    return { parent: started.parent, parentUid: started.parentUid, wage: 0, starts: GAME_DATE, ends: started.ends };
+    return {
+      parent: started.parent,
+      parentUid: started.parentUid,
+      wage: 0,
+      starts: GAME_DATE,
+      ends: started.ends,
+      futureFee: null,
+    };
   }
   if (!player.club || player.uid % 11 !== 0) {
     return null;
@@ -307,6 +314,8 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
     wage: 5000 + (player.uid % 9) * 2500,
     starts: { year: 2026, month: 8, day: 10 },
     ends: { year: 2027, month: 6, day: 29 },
+    // Every other one has a future fee, which End loan refuses.
+    futureFee: player.uid % 2 === 0 ? 25_000_000 : null,
   };
 }
 
@@ -377,6 +386,9 @@ function planEndLoan(uid: number): MovePreview {
   const loan = loanOf(player);
   if (!loan || player.club === null || player.clubUid === null || loan.parentUid === null || loan.parent === null) {
     throw failure("move.notOnLoan", "the player is not on loan");
+  }
+  if (loan.futureFee !== null) {
+    throw failure("loan.futureFee", "the loan has a future fee; ending it early would complete the transfer");
   }
   return { from: { uid: player.clubUid, name: player.club }, to: { uid: loan.parentUid, name: loan.parent } };
 }
