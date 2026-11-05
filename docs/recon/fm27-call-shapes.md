@@ -17,7 +17,7 @@ queue (dispatch_async_f). Scratch helpers live in reports/batch/scratch/transfer
 | 3 Loan start | found | 0x2e0a324(TM, STARTING_LOAN*, w2=1) | medium-high |
 | 3 Loan builder | found | 0x238d860(IGE, personBlock, team, map*) | medium-high |
 | 4 End a contract: loan recall, release | loan: found; release: needs more | 0x2d4b9dc(TM, P, contract, w3 kind, 0, 1, 0, 0, stack u8 0, stack u64 0) | medium-high |
-| 5 Future transfer | found | 0x2dfedac with a 'TrDt' date after today -> 0x2d91328 | high (create), medium (cancel) |
+| 5 Future transfer | found | 0x2dfedac with a 'TrDt' date after today -> 0x2d91328; cancel 0x2d180b4 + 0x1827808 | high (create), medium (cancel) |
 
 Conventions: TM = [game_plugin+0x56a49f8]. P = player object start (vtable 0x5588ee8). P+0x278 = person block,
 P+0x388 = identity block (vtable 0x558a780, id u32 at +0x8, UID at +0xc, flags byte at +0x18). Team of a
@@ -313,10 +313,11 @@ team), the release-clause path 0x2b26f48 and FREE_TRANSFER_EDIT_SESSION (0x22927
 that day. There is no cap on the date.
 
 Making the date Value (as the editor does at 0x25d67c): `0x42f038c()` returns the date type T; `0x42f05b8(T, &V, &d)`
-packs the FmDate at d (u16 day-of-year word, u16 year) into the 16-byte Value V. For the bridge, which cannot seed
-scratch, `0x4403ec0(S + 0x40, raw)` stores the raw u32 FmDate at S + 0x48 (it writes w1 at +8 and a type pointer at
-+0, nothing else), so the steps are: map_new(S); 0x4403ec0(S+0x40, raw date); 0x42f038c(); 0x42f05b8(result, S+0x60,
-S+0x48); 0x43f72e4(S, 'TrDt', S+0x60); 0x2dfedac(...); then the cleanup refs_drop, 0x4403bb0(S+0x60), map_drop.
+packs the FmDate at d (u16 day-of-year word, u16 year) into the 16-byte Value V. The bridge program seeds scratch
+(`Program::write`), so FM Lens writes the raw u32 FmDate at S + 0x40 and runs: map_new(S); 0x42f038c();
+0x42f05b8(result, S+0x50, S+0x40); 0x43f72e4(S, 'TrDt', S+0x50); 0x2dfedac(...); then the cleanup refs_drop,
+0x4403bb0(S+0x50), map_drop (`Session::sign_free_agent_later`). It reads back exactly one new dated record (TM+0x50), naming a pending offer for
+him, and his team still empty.
 
 Storage (medium-high): the FULL_TRANSFER_OFFER is registered by 0x2d12154 in TM's offer vector (TM+0x20, +0x28),
 with its id at +0x5c, status byte at +0x8d (0x13 pending, set by 0x186ee30(offer, 0x13, 5)), person ref +0x38,
@@ -327,9 +328,13 @@ pending transfers read-only: walk TM+0x50..+0x58.
 Cancel (medium): the editor's "cancel_future_transfer" loop (0x238bce0) gets the player's pending offers with
 `0x2d55f1c(TM, person, &vec, 0x13, 0)` and, for each, calls `0x2d180b4(TM, &slot holding the offer (refcount
 taken), [offer+0x40] or [offer+0x50], 2 or 0, 0, 0, 0, 1)` with two zero stack qwords (0x238be90). That sets the
-offer to status 0x10, calls 0x2d25f1c and 0x2d7bc18 and raises news. Not found: what removes the TM+0x50 record, and
-the daily step that completes the move on the day (leads: 0x2d1dcbc in 0x2d1ac58, and 0x2d8f3ec). Cancel needs the
-offer pointer in a scratch slot with its refcount taken, which the bridge cannot do yet.
+offer to status 0x10, calls 0x2d25f1c and 0x2d7bc18 and raises news. Right after (0x238bea8) the editor drops the
+dated record: `0x1827808(TM + 0x18, offer, identity block)`. The offer's refcount is the u32 at +0x08; `0x7695ec(&dst,
+&src)` copies a {pointer, u32} slot taking a reference and `0x4a3a1b0(offer)` gives one back (destroying it with the
+last). `Session::cancel_signing` runs: write the offer at S+0; 0x7695ec(S+0x10, S+0); 0x2d180b4(TM, S+0x10, to team
+with kind 2, else from team with kind 0, 0, 0, 0, 1, stack 0, 0); 0x1827808(TM+0x18, offer, identity); cleanup
+0x4a3a1b0(offer). It reads back that the record and the pending offer are gone. Not found: the daily step that
+completes the move on the day (leads: 0x2d1dcbc in 0x2d1ac58, and 0x2d8f3ec).
 
 Contracted players (low): the same call reads a fee from 'TrFe' and, for a player with a club, the job from
 0xcb915c(person, 2). Whether the selling club accepts with no further keys is untested.
@@ -342,4 +347,6 @@ Contracted players (low): the same call reads a fee from 'TrFe' and, for a playe
 - Whether an empty terms map signs a free agent through 0x2dfedac (live test needed).
 - Whether an early 0x2d4b9dc call recalls a loan cleanly (live test).
 - The editor's terminate branch at 0x238eddc: what the identity slots 0x398 and 0x3a0 return, and the mover's kind 9.
+- Whether 0x2d180b4 from the bridge cancels a dated signing as in the editor, and whether the day's step completes one
+  (live test).
 - 0x2e0a324 return value and its tail (0x2e0c240 onward).

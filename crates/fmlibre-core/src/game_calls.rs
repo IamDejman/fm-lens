@@ -1,8 +1,8 @@
 //! Edits the game makes itself.
 //!
 //! An injury is an object from the game's own pool, a work permit a record the transfer manager
-//! keeps and files, and a loan, its end or a free agent's signing a contract, an offer and a move:
-//! more than values the editor can write. For those FM Lens has the game
+//! keeps and files, and a loan, its end or a free agent's signing (now or on a later day) a contract,
+//! an offer and a move: more than values the editor can write. For those FM Lens has the game
 //! run its own functions, on its main thread, through the bridge ([`fmlibre_mem::call`]). Only on
 //! macOS, and only on a build whose profile lists the functions ([`CallRvas`]).
 
@@ -14,7 +14,7 @@ use crate::clubs::ClubSummary;
 use crate::date::FmDate;
 use crate::medical::HealPlan;
 use crate::players::PlayerSummary;
-use crate::profile::CallRvas;
+use crate::profile::{CallRvas, FutureTransferLayout};
 use crate::rtti::class_of;
 use crate::session::Session;
 use crate::text::read_fm_string;
@@ -41,6 +41,8 @@ pub struct GameActions {
     pub start_loan: bool,
     pub sign_free_agent: bool,
     pub end_loan: bool,
+    /// Signing a free agent on a later day, and cancelling it.
+    pub future_transfer: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -96,6 +98,32 @@ pub struct SignedPlayer {
 const TERMS_MAP: usize = 0;
 const REFERENCES: usize = 0x20;
 
+/// A free agent the game agreed to sign for a club on a later day, `joins`; until then he stays a free agent. `offer`
+/// is the id of the game's pending transfer, which undoing cancels.
+#[derive(Debug, Clone, Copy)]
+pub struct AgreedSigning {
+    pub player: u32,
+    pub club: u32,
+    pub joins: FmDate,
+    pub offer: u32,
+}
+
+/// The key of a signing's date in its terms map: 'TrDt'.
+const TRANSFER_DATE: u64 = 0x5472_4474;
+/// Where the signing's date sits in the scratch memory, as the game's raw date, and the Value made from it.
+const RAW_DATE: usize = 0x40;
+const DATE_VALUE: usize = 0x50;
+
+/// Where cancelling puts the offer in the scratch memory: as read, and the copy that holds a reference through the call.
+/// Each slot is a pointer and a u32.
+const OFFER_READ: usize = 0;
+const OFFER_HELD: usize = 0x10;
+/// What `cancel_offer` cancels for: the team the player joins, or the one he leaves.
+const CANCEL_JOINING: u64 = 2;
+const CANCEL_LEAVING: u64 = 0;
+/// The longest list of offers the editor reads.
+const LONGEST_OFFERS: u64 = 1 << 20;
+
 /// A work permit the game granted or took away.
 #[derive(Debug, Clone, Copy)]
 pub struct PermitChange {
@@ -138,6 +166,21 @@ impl Session {
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.loan.is_some(),
+            future_transfer: calls.sign_free_agent.is_some()
+                && calls.map_new.is_some()
+                && calls.map_drop.is_some()
+                && calls.refs_drop.is_some()
+                && calls.date_type.is_some()
+                && calls.date_value.is_some()
+                && calls.map_insert.is_some()
+                && calls.value_drop.is_some()
+                && calls.cancel_offer.is_some()
+                && calls.drop_dated_transfer.is_some()
+                && calls.ref_copy.is_some()
+                && calls.ref_drop.is_some()
+                && profile.transfer_manager.is_some()
+                && self.layout.work_permit.is_some()
+                && self.layout.future_transfer.is_some(),
         }
     }
 
@@ -369,44 +412,11 @@ impl Session {
         club: &ClubSummary,
         terms: MoveTerms,
     ) -> Result<SignedPlayer, MoveError> {
-        let function = self.game_function(|calls| calls.sign_free_agent)?;
-        let map_new = self.game_function(|calls| calls.map_new)?;
-        let map_drop = self.game_function(|calls| calls.map_drop)?;
-        let refs_drop = self.game_function(|calls| calls.refs_drop)?;
-        let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
-        let manager = self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)?;
-        let object = self.player_object(player)?;
+        let (object, senior) = self.signing_target(player, club)?;
+        self.check_terms(terms, self.game_date())?;
+        let signed = self.run_signing(object, senior, None)?;
         let (process, layout) = (&self.process, &self.layout);
         let p = &layout.player;
-        if is_user_pointer(process.read_u64(object + p.team)?)
-            || is_user_pointer(process.read_u64(object + p.contract)?)
-        {
-            return Err(MoveError::HasClub);
-        }
-        if process.read_u32(club.address + layout.club.uid)? != club.uid {
-            return Err(MoveError::NotAClub { uid: club.uid });
-        }
-        let senior = self.senior_team(club)?;
-        self.check_terms(terms, self.game_date())?;
-
-        // The map and the list start empty, and are destroyed whatever the signing does.
-        let mut program = Program::new();
-        program.push(Step::new(map_new, &[Arg::scratch(TERMS_MAP)]));
-        let signing = program.push(Step::new(
-            function,
-            &[
-                Arg::value(manager),
-                Arg::value(object + p.person_block),
-                Arg::value(senior),
-                Arg::scratch(TERMS_MAP),
-                Arg::scratch(REFERENCES),
-                Arg::value(0),
-            ],
-        ));
-        program.push(Step::new(refs_drop, &[Arg::scratch(REFERENCES)]).cleanup());
-        program.push(Step::new(map_drop, &[Arg::scratch(TERMS_MAP)]).cleanup());
-        let outcome = self.call_game(&program)?;
-        let signed = outcome.results.get(signing).is_some_and(|&result| result as u8 != 0);
         let team = process.read_u64(object + p.team)?;
         if !signed || !is_user_pointer(team) || process.read_u64(team + layout.team.club)? != club.address {
             return Err(MoveError::CallDeclined);
@@ -419,6 +429,201 @@ impl Session {
             None
         };
         Ok(SignedPlayer { player: player.uid, club: club.uid, expires })
+    }
+
+    /// Has the game agree to sign the free agent `player` for the senior team of `club` on `joins`, a day after
+    /// today, as its own editor does with a date: it keeps the signing, pending, until that day, and makes the
+    /// contract then, on its own terms. He stays a free agent until then. The game's new record of it is read back.
+    pub fn sign_free_agent_later(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        joins: FmDate,
+    ) -> Result<AgreedSigning, MoveError> {
+        let f = self.layout.future_transfer.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let manager = self.transfer_manager()?;
+        let (object, senior) = self.signing_target(player, club)?;
+        let today = self.game_date().ok_or(MoveError::CallUnavailable)?;
+        if joins <= today {
+            let max = self.field(crate::edit::Entity::Player, "contract.expires").map_or(i64::MAX, |field| field.max);
+            return Err(MoveError::OutOfRange {
+                field: "transfer.joins",
+                value: joins.to_number(),
+                min: today.plus_days(1).to_number(),
+                max,
+            });
+        }
+        let before = self.dated_offers(manager, f)?;
+        let signed = self.run_signing(object, senior, Some(joins))?;
+        // One new dated record, for an offer that names him and waits for its day; and he has not joined yet.
+        let added: Vec<u32> = self.dated_offers(manager, f)?.into_iter().filter(|id| !before.contains(id)).collect();
+        let [offer] = added[..] else {
+            return Err(MoveError::CallDeclined);
+        };
+        let names_him = match self.pending_offer(manager, f, offer)? {
+            Some(found) => self.process.read_u64(found + f.offer_person)? == self.identity_block(object)?,
+            None => false,
+        };
+        if !signed || !names_him || is_user_pointer(self.process.read_u64(object + self.layout.player.team)?) {
+            return Err(MoveError::CallDeclined);
+        }
+        Ok(AgreedSigning { player: player.uid, club: club.uid, joins, offer })
+    }
+
+    /// Has the game cancel the signing of `player` it agreed for a later day, the pending transfer `offer`, as its own
+    /// editor cancels a future transfer: it cancels the offer, then drops its dated record. Read back to tell.
+    pub fn cancel_signing(&self, player: &PlayerSummary, offer: u32) -> Result<(), MoveError> {
+        let f = self.layout.future_transfer.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let cancel = self.game_function(|calls| calls.cancel_offer)?;
+        let drop_dated = self.game_function(|calls| calls.drop_dated_transfer)?;
+        let ref_copy = self.game_function(|calls| calls.ref_copy)?;
+        let ref_drop = self.game_function(|calls| calls.ref_drop)?;
+        let manager = self.transfer_manager()?;
+        let object = self.player_object(player)?;
+        let identity = self.identity_block(object)?;
+        let process = &self.process;
+        let found = self.pending_offer(manager, f, offer)?.ok_or(MoveError::NotPending)?;
+        if process.read_u64(found + f.offer_person)? != identity {
+            return Err(MoveError::NotPending);
+        }
+        let (joining, leaving) =
+            (process.read_u64(found + f.offer_to_team)?, process.read_u64(found + f.offer_from_team)?);
+        let (team, kind) = if is_user_pointer(joining) {
+            (joining, CANCEL_JOINING)
+        } else if is_user_pointer(leaving) {
+            (leaving, CANCEL_LEAVING)
+        } else {
+            return Err(MoveError::CallDeclined);
+        };
+
+        let zero = Arg::value(0);
+        let mut program = Program::new();
+        program.write_u64(OFFER_READ, found);
+        // The game's editor holds a reference to the offer while it cancels it, and gives it back after; so does this.
+        program.push(Step::new(ref_copy, &[Arg::scratch(OFFER_HELD), Arg::scratch(OFFER_READ)]));
+        program.push(Step::new(
+            cancel,
+            &[
+                Arg::value(manager),
+                Arg::scratch(OFFER_HELD),
+                Arg::value(team),
+                Arg::value(kind),
+                zero,
+                zero,
+                zero,
+                Arg::value(1),
+                // On the stack: two zeros, as the game's editor passes.
+                zero,
+                zero,
+            ],
+        ));
+        program.push(Step::new(
+            drop_dated,
+            &[Arg::value(manager + f.dated_owner), Arg::value(found), Arg::value(identity)],
+        ));
+        program.push(Step::new(ref_drop, &[Arg::value(found)]).cleanup());
+        self.call_game(&program)?;
+        if self.dated_offers(manager, f)?.contains(&offer) || self.pending_offer(manager, f, offer)?.is_some() {
+            return Err(MoveError::CallDeclined);
+        }
+        Ok(())
+    }
+
+    /// `player`'s object and the senior team of `club`, checked for a signing: he is a free agent, and the club is
+    /// still the club.
+    fn signing_target(&self, player: &PlayerSummary, club: &ClubSummary) -> Result<(u64, u64), MoveError> {
+        let object = self.player_object(player)?;
+        let (process, layout) = (&self.process, &self.layout);
+        let p = &layout.player;
+        if is_user_pointer(process.read_u64(object + p.team)?)
+            || is_user_pointer(process.read_u64(object + p.contract)?)
+        {
+            return Err(MoveError::HasClub);
+        }
+        if process.read_u32(club.address + layout.club.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        Ok((object, self.senior_team(club)?))
+    }
+
+    /// Has the game sign the player `object` for the team `senior`, on `joins` when given (the date term of the terms
+    /// map), else today. Says whether the game says he signed.
+    fn run_signing(&self, object: u64, senior: u64, joins: Option<FmDate>) -> Result<bool, MoveError> {
+        let function = self.game_function(|calls| calls.sign_free_agent)?;
+        let map_new = self.game_function(|calls| calls.map_new)?;
+        let map_drop = self.game_function(|calls| calls.map_drop)?;
+        let refs_drop = self.game_function(|calls| calls.refs_drop)?;
+        let manager = self.transfer_manager()?;
+
+        // The map and the list start empty, and are destroyed whatever the signing does.
+        let mut program = Program::new();
+        program.push(Step::new(map_new, &[Arg::scratch(TERMS_MAP)]));
+        if let Some(joins) = joins {
+            let date_type = self.game_function(|calls| calls.date_type)?;
+            let date_value = self.game_function(|calls| calls.date_value)?;
+            let map_insert = self.game_function(|calls| calls.map_insert)?;
+            let value_drop = self.game_function(|calls| calls.value_drop)?;
+            // The date, as the game's editor adds it: a date Value made from the raw date, copied into the map.
+            program.write_u32(RAW_DATE, packed_date(joins));
+            let kind = program.push(Step::new(date_type, &[]));
+            program.push(Step::new(date_value, &[Arg::result(kind), Arg::scratch(DATE_VALUE), Arg::scratch(RAW_DATE)]));
+            program.push(Step::new(
+                map_insert,
+                &[Arg::scratch(TERMS_MAP), Arg::value(TRANSFER_DATE), Arg::scratch(DATE_VALUE)],
+            ));
+            program.push(Step::new(value_drop, &[Arg::scratch(DATE_VALUE)]).cleanup());
+        }
+        let signing = program.push(Step::new(
+            function,
+            &[
+                Arg::value(manager),
+                Arg::value(object + self.layout.player.person_block),
+                Arg::value(senior),
+                Arg::scratch(TERMS_MAP),
+                Arg::scratch(REFERENCES),
+                Arg::value(0),
+            ],
+        ));
+        program.push(Step::new(refs_drop, &[Arg::scratch(REFERENCES)]).cleanup());
+        program.push(Step::new(map_drop, &[Arg::scratch(TERMS_MAP)]).cleanup());
+        let outcome = self.call_game(&program)?;
+        Ok(outcome.results.get(signing).is_some_and(|&result| result as u8 != 0))
+    }
+
+    /// The transfer manager, which the build profile points at.
+    fn transfer_manager(&self) -> Result<u64, MoveError> {
+        let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
+        self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)
+    }
+
+    /// The ids of the offers the transfer manager `manager` has dated records of: the transfers agreed for a later day.
+    fn dated_offers(&self, manager: u64, f: &FutureTransferLayout) -> Result<Vec<u32>, MoveError> {
+        let Some(records) = PointerList::read_up_to(&self.process, manager + f.dated, LONGEST_OFFERS)? else {
+            return Ok(Vec::new());
+        };
+        let mut ids = Vec::new();
+        for record in records.elements(&self.process)? {
+            if is_user_pointer(record) {
+                ids.push(self.process.read_u32(record + f.record_offer)?);
+            }
+        }
+        Ok(ids)
+    }
+
+    /// The offer `id` of the transfer manager `manager`, while it waits for its day.
+    fn pending_offer(&self, manager: u64, f: &FutureTransferLayout, id: u32) -> Result<Option<u64>, MoveError> {
+        let Some(offers) = PointerList::read_up_to(&self.process, manager + f.offers, LONGEST_OFFERS)? else {
+            return Ok(None);
+        };
+        for offer in offers.elements(&self.process)? {
+            if is_user_pointer(offer)
+                && self.process.read_u32(offer + f.offer_id)? == id
+                && self.process.read_bytes(offer + f.offer_status, 1)?[0] == f.pending
+            {
+                return Ok(Some(offer));
+            }
+        }
+        Ok(None)
     }
 
     /// The UIDs of the clubs `player`'s loan would end between: the club he is loaned to, then his own. Only reads
