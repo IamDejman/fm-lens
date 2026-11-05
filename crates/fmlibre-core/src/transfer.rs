@@ -232,6 +232,10 @@ pub enum MoveError {
     ClausesFull,
     /// The player has no familiarity entry for the club that the editor can raise, or this build has none it knows.
     NoFamiliarity,
+    /// The game has changed the familiarity an undo would put back: it holds `found` now, not what was written.
+    FamiliarityChanged {
+        found: u8,
+    },
     /// The editor does not make this change to this game: see [`Lock`].
     Locked(Lock),
     Memory(fmlibre_mem::Error),
@@ -319,6 +323,10 @@ impl fmt::Display for MoveError {
             MoveError::NoFamiliarity => f.write_str(
                 "the game has not started the player's familiarity with this club yet, and the editor cannot add it",
             ),
+            MoveError::FamiliarityChanged { found } => write!(
+                f,
+                "the game has since changed the player's familiarity with this club to {found}, so it was left alone"
+            ),
             MoveError::Locked(lock) => write!(f, "nothing was changed: {lock}"),
             MoveError::Memory(err) => write!(f, "{err}"),
         }
@@ -367,6 +375,7 @@ impl Coded for MoveError {
             MoveError::SameClause => "clause.same",
             MoveError::ClausesFull => "clause.noRoom",
             MoveError::NoFamiliarity => "cohesion.none",
+            MoveError::FamiliarityChanged { .. } => "cohesion.changed",
             MoveError::Locked(lock) => lock.code(),
             MoveError::Memory(err) => err.code(),
         }
@@ -393,6 +402,7 @@ impl Coded for MoveError {
             MoveError::NoRelation { index } | MoveError::NoClause { index } => vec![("index", index.to_string())],
             MoveError::NotInClause { field } => vec![("field", (*field).to_owned())],
             MoveError::UnknownRule { rule } => vec![("rule", rule.to_string())],
+            MoveError::FamiliarityChanged { found } => vec![("found", found.to_string())],
             MoveError::Locked(lock) => lock.params(),
             MoveError::Memory(err) => err.params(),
             _ => Vec::new(),
