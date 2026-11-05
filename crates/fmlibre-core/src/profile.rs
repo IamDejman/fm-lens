@@ -474,6 +474,10 @@ pub struct StaffLayout {
     pub identity: Option<u64>,
     /// Shifts of the person block seen across staff classes (the human manager uses 0x340).
     pub person_block_shifts: Vec<u64>,
+    /// In the person block: the `i8` coaching licence (see [`crate::staff::licence_level`]); only in the layouts it
+    /// has been traced in.
+    #[serde(default)]
+    pub coaching_licence: Option<u64>,
     /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
     pub attributes: BTreeMap<String, u64>,
     /// Ratings stored as shown (1..20) by key.
@@ -506,7 +510,12 @@ impl StaffLayout {
             self.world_reputation + 2,
             self.potential_ability + 2,
         ];
-        let single_bytes = self.attributes.values().chain(self.ratings.values()).map(|offset| offset + 1);
+        let single_bytes = self
+            .attributes
+            .values()
+            .chain(self.ratings.values())
+            .chain(self.coaching_licence.as_ref())
+            .map(|offset| offset + 1);
         fields.into_iter().chain(single_bytes).max().unwrap_or(0)
     }
 

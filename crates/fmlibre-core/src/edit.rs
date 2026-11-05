@@ -464,6 +464,11 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         field(&format!("personality.{key}"), s.personality + i as u64, Kind::U8, 1..=20).plausible(0..=20)
     }));
     out.extend(contract_fields(layout, Entity::Staff));
+    // Written in the positive form the game reads as is; it also reads -1 to -7 as levels 2 to 8.
+    if let Some(offset) = s.coaching_licence {
+        let field = field("coaching_licence", offset, Kind::I8, 0..=i64::from(crate::staff::MOST_LICENCE));
+        out.push(field.plausible(-7..=8).choices(&COACHING_LICENCES));
+    }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
     // located on the build and class it was traced on, so it reads as missing for everyone else.
     out.push(Field::flag(Entity::Staff, "manager.unsackable", 0, 1).in_record(Place::HumanManagerFlags).single());
@@ -510,6 +515,9 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
     }
     fields
 }
+
+/// The coaching licence levels a member of staff may be given: none (0), then 1 to 8.
+pub const COACHING_LICENCES: [i64; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
@@ -1232,8 +1240,9 @@ mod tests {
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        // The 2 contract fields and the human manager's 2 flags.
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + 2);
+        // The 2 contract fields, the coaching licence where the layout places it and the human manager's 2 flags.
+        let licence = usize::from(layout.staff.coaching_licence.is_some());
+        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + 2);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).
@@ -1325,6 +1334,22 @@ mod tests {
         assert_eq!((target.entity, target.uid, target.shift), (Entity::Nation, 765, 0));
         assert_eq!(population.address(target.address, &target), 0x5000 + n.population);
         assert_eq!(Nation { address: 0x5000, uid: None, name: "?".into() }.target(), None);
+    }
+
+    #[test]
+    fn a_coaching_licence_is_written_in_the_positive_form() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let staff = fields(&layout, Entity::Staff);
+        let Some(offset) = layout.staff.coaching_licence else {
+            assert!(!staff.iter().any(|f| f.key == "coaching_licence"));
+            return;
+        };
+        let field = staff.iter().find(|f| f.key == "coaching_licence").cloned().expect("field");
+        assert_eq!((field.offset, field.kind, field.min, field.max), (offset, Kind::I8, 0, 8));
+        assert!(field.shifted && field.mass);
+        assert!(field.takes(0) && field.takes(8) && !field.takes(9) && !field.takes(-1));
+        // The game's other form of levels 2 to 8 reads as plausible, and is replaced on a write.
+        assert!(field.is_plausible(-1) && field.is_plausible(-7) && !field.is_plausible(-8) && !field.is_plausible(9));
     }
 
     #[test]
