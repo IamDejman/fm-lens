@@ -16,6 +16,7 @@ use crate::date::FmDate;
 use crate::details::{PERSONALITY, POSITIONS};
 use crate::health::Lock;
 use crate::national::Side;
+use crate::officials::OfficialSummary;
 use crate::players::{Nation, PlayerSummary};
 use crate::profile::{HumanManagerLayout, Layout};
 use crate::session::Session;
@@ -29,6 +30,8 @@ pub enum Entity {
     Staff,
     Club,
     Nation,
+    /// A match official.
+    Official,
 }
 
 impl fmt::Display for Entity {
@@ -38,6 +41,7 @@ impl fmt::Display for Entity {
             Entity::Staff => "staff",
             Entity::Club => "club",
             Entity::Nation => "nation",
+            Entity::Official => "official",
         })
     }
 }
@@ -327,6 +331,7 @@ pub fn fields(layout: &Layout, entity: Entity) -> Vec<Field> {
         Entity::Staff => staff_fields(layout),
         Entity::Club => club_fields(layout),
         Entity::Nation => nation_fields(layout),
+        Entity::Official => official_fields(layout),
     }
 }
 
@@ -575,6 +580,24 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
     ]
 }
 
+/// An official's abilities, reputation and birth date, as the officials list reads them. One official at a time; none
+/// where the build's layout does not place officials.
+fn official_fields(layout: &Layout) -> Vec<Field> {
+    let Some(o) = layout.official.as_ref() else {
+        return Vec::new();
+    };
+    let field = |key: &str, offset: u64, kind: Kind, range: RangeInclusive<i64>| {
+        Field::new(Entity::Official, key, offset, kind, range).single()
+    };
+    vec![
+        // About a hundred officials read 200 for both, the rest less; young ones have more potential than ability.
+        field("current_ability", o.current_ability, Kind::U16, 1..=200).plausible(0..=200),
+        field("potential_ability", o.potential_ability, Kind::U16, 1..=200).plausible(0..=200),
+        field("reputation", o.reputation, Kind::U16, 0..=10_000),
+        field("date_of_birth", o.date_of_birth, Kind::Date, 19400101..=20201231).plausible(19000101..=21001231),
+    ]
+}
+
 /// The offset of the human manager's flags in `target`, when the build has traced them (`layout`) and the target is
 /// a member of staff at the person-block shift and of the class (`class`, as [`crate::rtti::class_of`] names it) they
 /// were traced at.
@@ -666,6 +689,27 @@ impl Nation {
     /// The nation as an edit target; `None` without a UID of its own to check it by.
     pub fn target(&self) -> Option<Target> {
         self.uid.map(|uid| Target { entity: Entity::Nation, uid, address: self.address, shift: 0 })
+    }
+}
+
+impl OfficialSummary {
+    pub fn target(&self) -> Target {
+        Target { entity: Entity::Official, uid: self.uid, address: self.address, shift: 0 }
+    }
+
+    /// Brings the fields a list row shows up to date after `field` was set to `value`; the age follows from the game's
+    /// date, `today`.
+    pub fn note_change(&mut self, field: &str, value: i64, today: Option<FmDate>) {
+        match field {
+            "current_ability" => self.current_ability = value as u16,
+            "potential_ability" => self.potential_ability = value as u16,
+            "reputation" => self.reputation = value as u16,
+            "date_of_birth" => {
+                self.date_of_birth = FmDate::from_number(value);
+                self.age = self.date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today));
+            }
+            _ => {}
+        }
     }
 }
 
@@ -1067,6 +1111,10 @@ impl Session {
             Entity::Staff => self.layout.staff.at(self.layout.staff.uid, target.shift),
             Entity::Club => self.layout.club.uid,
             Entity::Nation => self.layout.nation.uid,
+            Entity::Official => match self.layout.official.as_ref() {
+                Some(o) => o.uid,
+                None => return Err(EditError::Moved { entity: target.entity, uid: target.uid }),
+            },
         };
         if self.process.read_u32(target.address + uid_offset)? != target.uid {
             return Err(EditError::Moved { entity: target.entity, uid: target.uid });
@@ -1307,6 +1355,52 @@ mod tests {
     }
 
     #[test]
+    fn officials_take_their_own_values_one_at_a_time() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let officials = fields(&layout, Entity::Official);
+        let Some(o) = layout.official.as_ref() else {
+            assert!(officials.is_empty());
+            return;
+        };
+        let keys: Vec<&str> = officials.iter().map(|f| f.key.as_str()).collect();
+        assert_eq!(keys, ["current_ability", "potential_ability", "reputation", "date_of_birth"]);
+        assert!(officials.iter().all(|f| !f.mass && !f.shifted && f.place == Place::Object));
+        let key = |key: &str| officials.iter().find(|f| f.key == key).cloned().expect(key);
+
+        // Michael Oliver: 180/180, reputation 8388, born 20 February 1985.
+        let ca = key("current_ability");
+        assert_eq!((ca.offset, ca.kind), (o.current_ability, Kind::U16));
+        assert!(ca.takes(180) && ca.takes(200) && !ca.takes(201) && !ca.takes(0) && ca.is_plausible(0));
+        assert_eq!(key("potential_ability").kind, Kind::U16);
+        let reputation = key("reputation");
+        assert!(reputation.takes(8388) && reputation.takes(0) && !reputation.takes(10_001));
+        let born = key("date_of_birth");
+        assert_eq!((born.offset, born.kind), (o.date_of_birth, Kind::Date));
+        assert!(born.takes(19850220) && !born.takes(19300101) && !born.is_plausible(19850230));
+
+        // Checked by its own UID, with no person-block shift; the row follows an edit.
+        let mut oliver = OfficialSummary {
+            uid: 103994,
+            address: 0x7000,
+            name: "Michael Oliver".into(),
+            nation: Some("England".into()),
+            nation_uid: Some(765),
+            date_of_birth: FmDate::from_number(19850220),
+            age: Some(41),
+            current_ability: 180,
+            potential_ability: 180,
+            reputation: 8388,
+        };
+        let target = oliver.target();
+        assert_eq!((target.entity, target.uid, target.shift), (Entity::Official, 103994, 0));
+        assert_eq!(reputation.address(target.address, &target), 0x7000 + o.reputation);
+        let today = FmDate::from_number(20261116);
+        oliver.note_change("reputation", 9000, today);
+        oliver.note_change("date_of_birth", 19900101, today);
+        assert_eq!((oliver.reputation, oliver.age), (9000, Some(36)));
+    }
+
+    #[test]
     fn nations_take_their_own_rules_one_at_a_time() {
         let layout = crate::layout_for(27).expect("FM27 layout");
         let nations = fields(&layout, Entity::Nation);
@@ -1501,7 +1595,7 @@ mod tests {
     #[test]
     fn keys_are_unique() {
         let layout = crate::layout_for(27).expect("FM27 layout");
-        for entity in [Entity::Player, Entity::Staff, Entity::Club, Entity::Nation] {
+        for entity in [Entity::Player, Entity::Staff, Entity::Club, Entity::Nation, Entity::Official] {
             let mut keys: Vec<String> = fields(&layout, entity).into_iter().map(|f| f.key).collect();
             let all = keys.len();
             keys.sort();

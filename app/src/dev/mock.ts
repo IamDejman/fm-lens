@@ -945,6 +945,15 @@ function fieldTable(entity: Entity): EditField[] {
     max: number,
     scale: EditField["scale"] = "plain",
   ): EditField => ({ key, entity, kind, scale, min, max, blank: null, choices: null, mass: true });
+  // An official's abilities, reputation and birth date, one official at a time.
+  if (entity === "official") {
+    return [
+      { ...field("current_ability", "u16", 1, 200), mass: false },
+      { ...field("potential_ability", "u16", 1, 200), mass: false },
+      { ...field("reputation", "u16", 0, 10_000), mass: false },
+      { ...field("date_of_birth", "date", 19400101, 20201231), mass: false },
+    ];
+  }
   // A nation's senior team reputation and its rules, one nation at a time; 255 years is never.
   if (entity === "nation") {
     return [
@@ -1199,6 +1208,15 @@ function currentValues(entity: Entity, uid: number): FieldValues {
   if (entity === "nation") {
     return nationValues(uid);
   }
+  if (entity === "official") {
+    const official = officialOf(uid);
+    return {
+      current_ability: official.currentAbility,
+      potential_ability: official.potentialAbility,
+      reputation: official.reputation,
+      ...(official.dateOfBirth && { date_of_birth: numberFromDate(official.dateOfBirth) }),
+    };
+  }
   const d = profileOf(entity, uid);
   const person = d as PlayerDetails & StaffDetails;
   const club = d as ClubDetails;
@@ -1299,6 +1317,18 @@ function currentValues(entity: Entity, uid: number): FieldValues {
 /** Stores `value` as the game would: what the list rows show in them, the rest on top of the profiles. */
 function writeValue(entity: Entity, uid: number, key: string, value: number): void {
   const [group, name = ""] = key.split(".");
+  if (entity === "official") {
+    // The officials list is the official's profile.
+    const official = officialOf(uid);
+    if (key === "date_of_birth") {
+      official.dateOfBirth = dateFromNumber(value);
+      official.age = official.dateOfBirth && ageOn(official.dateOfBirth, GAME_DATE);
+    } else {
+      const property = { current_ability: "currentAbility", potential_ability: "potentialAbility" }[key] ?? key;
+      Object.assign(official, { [property]: value });
+    }
+    return;
+  }
   if (entity === "club") {
     const club = clubs.find((c) => c.uid === uid);
     if (club && key === "reputation") {
@@ -1345,7 +1375,8 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
 
 /** `apply_edits`: every edit is checked and written on its own, like the real command, with the same messages. */
 function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyReport {
-  const name = entity === "nation" ? nationName(uid) : profileOf(entity, uid).name;
+  const name =
+    entity === "nation" ? nationName(uid) : entity === "official" ? officialOf(uid).name : profileOf(entity, uid).name;
   const report: ApplyReport = { applied: [], failed: [] };
   for (const edit of edits) {
     const field = fieldTable(entity).find((f) => f.key === edit.field);
@@ -3120,6 +3151,15 @@ const OFFICIALS: OfficialSummary[] = Array.from({ length: 40 }, (_, i): Official
     reputation: 9_500 - i * 211,
   };
 });
+
+/** The fixture official with `uid`, as the officials list has him. */
+function officialOf(uid: number): OfficialSummary {
+  const official = OFFICIALS.find((o) => o.uid === uid);
+  if (!official) {
+    throw notFound("official", uid);
+  }
+  return official;
+}
 
 /** A nation's profile: made-up figures in the shape the game gives; the last nation in the list has none. */
 function nationDetails(index: number): NationDetails | null {

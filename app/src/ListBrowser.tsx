@@ -159,6 +159,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
             setPage(result);
             setShownFor({ query, argsKey });
             setError(null);
+            // The open profile shows its row as read now: after an edit, the values written.
+            setSelected((open) => (open === null ? null : (result.rows.find((row) => row.uid === open.uid) ?? open)));
             if (shownArgs.current !== argsKey) {
               // A new sort or filter starts at the top; reading the same list again keeps its place.
               shownArgs.current = argsKey;

@@ -165,7 +165,9 @@ Oliver also: +0x5D..+0x60 = 0,11,1,5; +0x11A..+0x120 = 15,10,15,14,16,9,5; +0x12
 
 ## Reliable enough to build now (read-only)
 
-- Official list and profile: name, nation, age (DOB), CA/PA, reputation, UID.
+- Official list and profile: name, nation, age (DOB), CA/PA, reputation, UID. CA/PA, reputation and DOB are now
+  editable in FM Lens (u16 each, the date as two u16s), checked by the UID at +0x134; whether FM keeps a written
+  value or recomputes it is a live check.
 - Competition list and profile: name, short name, abbreviation, continent, nation, UID, women's flag, reputation, league rank, season dates, colours.
 - Award list and profile: name, links (competition, nation, continent), goalkeeper flag, max age, period, recipient kind, prestige.
 
