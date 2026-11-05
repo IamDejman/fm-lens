@@ -156,8 +156,8 @@ class = "N2db13LOAN_CONTRACTE"
 # TRANSFER_MANAGER keeps a record per player and nation that needs a permit, 0x18 bytes each: the nation's
 # pointer, the player's id (+0x08), the year the record was made (+0x10), the date it was granted (+0x12, unset
 # 1 Jan 1900) and flags (+0x16, bit 0 granted). Read on 11 Dec 2027: 1,045 records, all for England, 25 granted,
-# which is also the length of the manager's list of granted ones at +0x780.
-manager = 0x56A49F8      # slot in game_plugin that points at the manager
+# which is also the length of the manager's list of granted ones at +0x780. The manager is found through the build
+# profile's transfer_manager.
 class = "16TRANSFER_MANAGER"
 records = 0x720          # (begin, end) of pointers to the records, sorted by player id
 person = 0x390           # u32 player id, in the identity block (identity + 8)
