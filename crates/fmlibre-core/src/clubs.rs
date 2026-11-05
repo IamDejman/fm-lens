@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::calibrate::ArrayRef;
 use crate::index::{Listed, SearchIndex};
 use crate::profile::{ClubFinanceLayout, Layout, StadiumLayout};
+use crate::relations::Related;
 use crate::text::read_fm_string;
 
 /// Supporter-mix percentages in the order FM stores them.
@@ -128,6 +129,10 @@ pub struct ClubDetails {
     pub finances: Option<Finances>,
     /// The stadium the senior team plays at, when the layout knows where it is and it looks real.
     pub stadium: Option<Stadium>,
+    /// Its rivals, strongest first (see [`crate::Session::club_rivals`]). Read-only.
+    pub rivals: Vec<Related>,
+    /// The clubs it has links with (see [`crate::Session::club_links`]). Read-only.
+    pub links: Vec<Related>,
 }
 
 /// A stadium's name and capacities, as stored.
@@ -310,6 +315,8 @@ pub fn read_club_details(
         facilities: BTreeMap::new(),
         finances: None,
         stadium: None,
+        rivals: Vec::new(),
+        links: Vec::new(),
     };
     if let (Some(s), Some((_, bytes))) = (layout.stadium.as_ref(), club_stadium(process, layout, club.address)) {
         let u32_at =

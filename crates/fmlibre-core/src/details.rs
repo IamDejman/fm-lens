@@ -4,10 +4,11 @@ use fmlibre_mem::{Process, is_user_pointer};
 use serde::Serialize;
 
 use crate::date::FmDate;
+use crate::languages::Language;
 use crate::medical::{Ban, Injury};
 use crate::players::PlayerSummary;
 use crate::profile::Layout;
-use crate::relations::Relation;
+use crate::relations::{Preference, Relation};
 
 /// Position ratings in the order FM stores them.
 pub const POSITIONS: [&str; 15] =
@@ -122,6 +123,10 @@ pub struct PlayerDetails {
     /// has room for.
     pub ties: Vec<Relation>,
     pub tie_room: usize,
+    /// The people and clubs he favours and dislikes (see [`crate::Session::preferences`]). Read-only.
+    pub preferences: Vec<Preference>,
+    /// The languages he speaks besides, usually, his native one (see [`crate::Session::player_languages`]). Read-only.
+    pub languages: Vec<Language>,
     /// Whether the editor can read the retirements the game has planned (see
     /// [`crate::Session::planned_retirement`]), and the date he retires on when the game has planned it.
     pub retirement_known: bool,
@@ -326,6 +331,8 @@ pub fn read_player_details(
         bans: Vec::new(),
         ties: Vec::new(),
         tie_room: 0,
+        preferences: Vec::new(),
+        languages: Vec::new(),
         retirement_known: false,
         retires: None,
         clause_room: 0,

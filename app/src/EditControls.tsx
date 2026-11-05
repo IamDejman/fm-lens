@@ -142,7 +142,7 @@ export function EditableValue({ field, inFact, children }: { field: string; inFa
     return <EditInput field={field} inFact={inFact} />;
   }
   const value = <ActivatableValue field={field}>{children}</ActivatableValue>;
-  return applied ? <span className="edit-applied" title="Applied and read back">{value}</span> : value;
+  return applied ? <span className="edit-applied" title={editText.appliedTitle}>{value}</span> : value;
 }
 
 /** `children` as a button that begins editing at `field`, where that is offered; else `children` as they are. */

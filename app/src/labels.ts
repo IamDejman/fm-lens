@@ -5,8 +5,8 @@
 // player, staff and club lists in `playerListText`, `staffListText` and `clubListText`. Editing has `editText` (and
 // `fieldLabel` for the names of the fields), the Changes view `changesText`, mass editing `massEditText`, comparing
 // players `comparisonText`, moving a player to another club (or swapping him with one) `moveText`, releasing him
-// `releaseText`, his nationalities and homegrown status `tieText`, a club's squad `squadText`, the sidebar and the connect panel `appText`, the status of the
-// graphics packs `graphicsText`, and new versions of the app `updateText`.
+// `releaseText`, his nationalities and homegrown status `tieText`, a club's squad `squadText`, the sidebar and the connect panel `appText`, and new versions of the
+// app `updateText`.
 // A new language only has to provide a dictionary of the same shape (and be added to i18n/index.ts, with a flag in
 // SettingsMenu.tsx).
 
@@ -119,15 +119,13 @@ export const nationListText = strings.nationList;
 
 /** Senior stadiums, one per club. */
 export const stadiumListText = strings.stadiumList;
+export const officialListText = strings.officialList;
 
 /**
  * The app around the lists: the sidebar (and the note at its foot, which depends on the connection, see
  * `ConnectionInfo.editable`), the status line and the connect panel.
  */
 export const appText = strings.app;
-
-/** The graphics packs the pictures come from: their status at the foot of the sidebar. */
-export const graphicsText = strings.graphics;
 
 /** New versions: the notice under the masthead and Check for updates at the foot of the window. */
 export const updateText = strings.update;
@@ -158,6 +156,9 @@ export const moveText = strings.move;
 
 /** Releasing a player from his club: the button beside Transfer in his profile and the dialog it opens. */
 export const releaseText = strings.release;
+
+/** Copying a player onto others, and saved player templates. */
+export const templatesText = strings.templates;
 
 /** A player's secondary nationalities and homegrown status: the group in his profile and its dialog. */
 export const tieText = strings.ties;

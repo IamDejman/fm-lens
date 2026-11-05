@@ -75,9 +75,10 @@ const CHECK = (
 /**
  * The button and, once it is pressed, its menu. Choosing another language or currency reloads the window (see
  * `setLocale` and `setCurrency`), which the app survives connected (see `current_connection`), so edits pending in an
- * open profile are asked about first. While the app is `busy` the button waits.
+ * open profile are asked about first. While the app is `busy` the button waits. `details` is passive information
+ * (version, game, graphics) shown at the foot of the menu.
  */
-export function SettingsMenu({ busy }: { busy: boolean }) {
+export function SettingsMenu({ busy, details }: { busy: boolean; details?: ReactNode }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [theme, updateTheme] = useState(appearance);
   const [scale, updateScale] = useState(zoom);
@@ -234,14 +235,14 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
               ))}
             </div>
             <div role="group" aria-labelledby={`${id}-appearance`}>
-              <div id={`${id}-appearance`} className="settings-heading">Appearance</div>
+              <div id={`${id}-appearance`} className="settings-heading">{appText.appearance}</div>
               {(["system", "light", "dark"] as const).map((value: Appearance) => <button key={value} type="button" role="menuitemradio"
                 aria-checked={theme === value} tabIndex={-1} onClick={() => { setAppearance(value); updateTheme(value); close(); }}>
-                {value === "system" ? "System" : value === "light" ? "Light" : "Dark"}{theme === value && CHECK}
+                {appText.themes[value]}{theme === value && CHECK}
               </button>)}
             </div>
             <div role="group" aria-labelledby={`${id}-zoom`}>
-              <div id={`${id}-zoom`} className="settings-heading">UI zoom</div>
+              <div id={`${id}-zoom`} className="settings-heading">{appText.zoomLabel}</div>
               {ZOOMS.map((value) => <button key={value} type="button" role="menuitemradio" aria-checked={scale === value}
                 tabIndex={-1} onClick={() => { setZoom(value); updateScale(value); close(); }}>
                 {value}%{scale === value && CHECK}
@@ -268,6 +269,11 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
                 </button>
               ))}
             </div>
+            {details && (
+              <div role="group" aria-label={appText.detailsLabel} className="settings-details">
+                {details}
+              </div>
+            )}
           </div>,
           document.body,
         )}

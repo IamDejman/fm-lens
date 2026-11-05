@@ -230,6 +230,8 @@ pub enum MoveError {
     SameClause,
     /// The contract's list of clauses has no room for another.
     ClausesFull,
+    /// The player has no familiarity entry for the club that the editor can raise, or this build has none it knows.
+    NoFamiliarity,
     /// The editor does not make this change to this game: see [`Lock`].
     Locked(Lock),
     Memory(fmlibre_mem::Error),
@@ -314,6 +316,9 @@ impl fmt::Display for MoveError {
             MoveError::ClausesFull => f.write_str(
                 "the contract's list of clauses has no room for another, and the editor cannot make it bigger",
             ),
+            MoveError::NoFamiliarity => f.write_str(
+                "the game has not started the player's familiarity with this club yet, and the editor cannot add it",
+            ),
             MoveError::Locked(lock) => write!(f, "nothing was changed: {lock}"),
             MoveError::Memory(err) => write!(f, "{err}"),
         }
@@ -361,6 +366,7 @@ impl Coded for MoveError {
             MoveError::NotInClause { .. } => "clause.notInClause",
             MoveError::SameClause => "clause.same",
             MoveError::ClausesFull => "clause.noRoom",
+            MoveError::NoFamiliarity => "cohesion.none",
             MoveError::Locked(lock) => lock.code(),
             MoveError::Memory(err) => err.code(),
         }

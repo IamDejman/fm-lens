@@ -5,6 +5,7 @@ import { changeStaffJob, staffJobs } from "./editing";
 import { describeError } from "./format";
 import { editText, fieldLabel, jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
 import { MoveButton } from "./MoveDialog";
+import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
   attributeRow,
@@ -144,6 +145,10 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
   return (
     <>
       <StaffFreeze uid={details.uid} />
+      {/* What only the user's own manager has comes first, where it is found. */}
+      {details.isHuman && (details.unsackable !== null || details.registrationAnytime !== null) && (
+        <ManagerGroup unsackable={details.unsackable} registrationAnytime={details.registrationAnytime} />
+      )}
       <div className="profile-pair">
         <div className="profile-columns">
           <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />
@@ -157,7 +162,6 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
         <div className="profile-split">
           <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
           <div className="profile-stack">
-            {details.isHuman && details.unsackable !== null && <ManagerGroup unsackable={details.unsackable} />}
             {details.contract && (
               <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />
             )}
@@ -168,6 +172,8 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
           </div>
         </div>
       </div>
+      <LanguagesGroup languages={details.languages} />
+      <PreferencesGroup preferences={details.preferences} />
     </>
   );
 }
@@ -185,15 +191,15 @@ function StaffFreeze({ uid }: { uid: number }) {
   }, [uid]);
   if (!editable) return null;
   return <div className="attribute-actions">
-    <label><input type="checkbox" checked={frozen ?? false} disabled={busy || frozen === null}
+    <label className="freeze-toggle" title={profileText.freezeAttributesNote}><input type="checkbox" checked={frozen ?? false} disabled={busy || frozen === null}
       onChange={(e) => {
         const next = e.target.checked;
         setBusy(true); setError(null);
         void call<number[]>("freeze_staff_attributes", { uid, frozen: next })
           .then((staff) => setFrozen(staff.includes(uid)))
           .catch((err) => setError(describeError(err))).finally(() => setBusy(false));
-      }} /> Freeze attributes</label>
-    {error && <span role="alert">{error}</span>}
+      }} /> <span>{profileText.freezeAttributes}</span></label>
+    {error && <p className="note error" role="alert">{error}</p>}
   </div>;
 }
 
@@ -215,17 +221,31 @@ interface ContractGroupProps {
 /** The job code of a manager, whose label heads what only the user's own manager has. */
 const MANAGER_JOB = 16;
 
-/** What only the manager the user controls has, with or without a club: protection from the sack. */
-function ManagerGroup({ unsackable }: { unsackable: boolean }) {
+interface ManagerGroupProps {
+  unsackable: boolean | null;
+  registrationAnytime: boolean | null;
+}
+
+/** What only the manager the user controls has, with or without a club: the game's own manager flags. */
+function ManagerGroup({ unsackable, registrationAnytime }: ManagerGroupProps) {
+  const flags: [string, boolean | null][] = [
+    ["manager.unsackable", unsackable],
+    ["manager.registration_anytime", registrationAnytime],
+  ];
   return (
     <section className="profile-group">
       <h3>{jobLabel(MANAGER_JOB)}</h3>
       <dl className="stats">
-        <Fact label={fieldLabel("staff", "manager.unsackable")}>
-          <EditableValue field="manager.unsackable" inFact>
-            {unsackable ? editText.yes : editText.no}
-          </EditableValue>
-        </Fact>
+        {flags.map(
+          ([field, value]) =>
+            value !== null && (
+              <Fact key={field} label={fieldLabel("staff", field)}>
+                <EditableValue field={field} inFact>
+                  {value ? editText.yes : editText.no}
+                </EditableValue>
+              </Fact>
+            ),
+        )}
       </dl>
     </section>
   );

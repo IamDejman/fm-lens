@@ -271,7 +271,12 @@ impl Session {
 
     /// Reads the full profile of `club`; `None` when its object has changed. Only reads memory.
     pub fn club_details(&self, club: &ClubSummary) -> Result<Option<ClubDetails>, SessionError> {
-        Ok(read_club_details(&self.process, &self.layout, club)?)
+        let Some(mut details) = read_club_details(&self.process, &self.layout, club)? else {
+            return Ok(None);
+        };
+        details.rivals = self.club_rivals(club).unwrap_or_default();
+        details.links = self.club_links(club).unwrap_or_default();
+        Ok(Some(details))
     }
 
     /// Reads every member of staff, with ages on the current in-game date. Only reads memory.
@@ -287,12 +292,17 @@ impl Session {
         let Some(mut details) = read_staff_details(&self.process, &self.layout, member)? else {
             return Ok(None);
         };
+        details.languages = self.staff_languages(member).unwrap_or_default();
+        details.preferences = self.staff_preferences(member).unwrap_or_default();
         // Through the editor's own guarded read: a manager whose flags cannot be located stays unknown.
         if member.is_human
-            && let Ok(field) = self.field(Entity::Staff, "manager.unsackable")
-            && let Ok(values) = self.read_fields(&member.target(), std::slice::from_ref(&field))
+            && let Ok(unsackable) = self.field(Entity::Staff, "manager.unsackable")
+            && let Ok(registration) = self.field(Entity::Staff, "manager.registration_anytime")
+            && let Ok(values) = self.read_fields(&member.target(), &[unsackable, registration])
         {
-            details.unsackable = values.first().copied().flatten().map(|value| value != 0);
+            let flag = |i: usize| values.get(i).copied().flatten().map(|value| value != 0);
+            details.unsackable = flag(0);
+            details.registration_anytime = flag(1);
         }
         Ok(Some(details))
     }
@@ -308,6 +318,8 @@ impl Session {
         details.bans = self.bans(player).unwrap_or_default();
         details.ties = self.relations(player).unwrap_or_default();
         details.tie_room = self.relation_room(player).unwrap_or(0);
+        details.preferences = self.preferences(player).unwrap_or_default();
+        details.languages = self.player_languages(player).unwrap_or_default();
         details.clause_room = self.clause_room(player).unwrap_or(0);
         if let Ok(date) = self.planned_retirement(player) {
             (details.retirement_known, details.retires) = (true, date);

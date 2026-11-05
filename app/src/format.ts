@@ -4,15 +4,20 @@ import type { Failure, FmDate, GameInfo, Storefront } from "./types";
 
 export const STOREFRONTS: Record<Storefront, string> = strings.game.storefronts;
 
-/** "FM27 · Game Pass 0.9.2355.0", "FM27 · Steam build 26227640" */
-export function describeGame(game: GameInfo): string {
-  const edition = game.edition ? `FM${game.edition}` : strings.game.name;
+/** "Game Pass 0.9.2355.0", "Steam build 26227640" */
+export function describeBuild(game: GameInfo): string {
   const version = game.packageVersion
     ? ` ${game.packageVersion}`
     : game.steamBuild
       ? ` ${strings.game.steamBuild(game.steamBuild)}`
       : "";
-  return `${edition} · ${STOREFRONTS[game.storefront]}${version}`;
+  return `${STOREFRONTS[game.storefront]}${version}`;
+}
+
+/** "FM27 · Game Pass 0.9.2355.0", "FM27 · Steam build 26227640" */
+export function describeGame(game: GameInfo): string {
+  const edition = game.edition ? `FM${game.edition}` : strings.game.name;
+  return `${edition} · ${describeBuild(game)}`;
 }
 
 const integers = new Intl.NumberFormat(intlLocale);

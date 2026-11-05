@@ -13,6 +13,10 @@ current_date = 0x56B1DB8
 # Benzema among the planned retirements.
 retirement_manager = 0x56A82A8
 
+# The (begin, end) pair of the match officials' array: 1166 db::OFFICIAL objects of 0x148 bytes, Michael Oliver
+# (UID 103994) among them. Only this build has it.
+officials = 0x56D2E90
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "F4540355-2186-39CB-9119-C706A6A35346"

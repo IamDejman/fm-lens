@@ -32,6 +32,15 @@ routes, features, offline use and FM Lens branding were kept.
   review list, expected-value check, build and career guards, readback and
   conditional undo are unchanged.
 
+## Plain copy
+
+- Say "ID", never "UID", in visible text.
+- Use short, direct verbs: Connect, Reload, Apply.
+- The footer shows only the brand and connection status. Version, game, counts
+  and graphics live under App details in Settings.
+- Show a footer note only when editing is off, and make it say what to do.
+  Don't repeat apply or backup guidance there while editing works.
+
 ## Native verification
 
 Mouse and keyboard direct activation, selection, pending navigation guard,

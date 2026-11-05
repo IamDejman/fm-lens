@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { call } from "./api";
+import { describeError } from "./format";
+import { isShortcut, shortcutAria } from "./keys";
 import { isRecord, restored, useSnapshot } from "./restore";
 import { askToLeave } from "./useProfileEditing";
 
@@ -20,6 +22,12 @@ interface Page<Row> {
   rows: Row[];
 }
 
+/** A row to show from elsewhere in the app: the list searches for `query` and opens the row with this UID. */
+export interface Reveal {
+  uid: number;
+  query: string;
+}
+
 /** What a list tells the actions in its toolbar about itself. */
 export interface ListState {
   /** The text in the search box. */
@@ -31,6 +39,8 @@ export interface ListState {
   total: number | null;
   /** How many of them the list has rows for: the best ones (see `summary`). */
   shown: number;
+  /** Whether a profile is open beside the list, which leaves the toolbar little room. */
+  besideProfile: boolean;
 }
 
 interface ListBrowserProps<Row extends { uid: number }> {
@@ -75,12 +85,14 @@ interface ListBrowserProps<Row extends { uid: number }> {
   cells: (row: Row) => ReactNode;
   /** The profile panel of the selected row. */
   profile: (row: Row, panel: { version: number; onClose: () => void }) => ReactNode;
+  /** A row to open, asked for elsewhere in the app; each new object is a new request. */
+  reveal?: Reveal | null;
 }
 
 /** A searchable table with the profile of the selected row beside it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
   const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
-  const { name, footer, tableClass, header, cells, profile } = props;
+  const { name, footer, tableClass, header, cells, profile, reveal } = props;
   // What the list held before the language was switched, if it was: the search text, and the UID of the row to select
   // as soon as the rows are there again.
   const [start] = useState(() => restored(name, readList));
@@ -103,12 +115,29 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const shownArgs = useRef(argsKey);
 
   const closeProfile = useCallback(() => {
-    // The panel unmounts with the focused control inside it; keep keyboard focus in the table.
-    if (document.activeElement?.closest(".profile")) {
-      selectedRow.current?.focus();
-    }
+    // The panel unmounts with the focused control inside it; keep keyboard focus in the table. In a narrow window the
+    // profile hides the list, so the row can take focus only once the profile is gone.
+    const row = document.activeElement?.closest(".profile") ? selectedRow.current : null;
     setSelected(null);
+    if (row) {
+      requestAnimationFrame(() => row.focus());
+    }
   }, []);
+
+  // A row asked for from elsewhere: opened at once if it is on show for that search, else once the search finds it.
+  useEffect(() => {
+    if (!reveal) {
+      return;
+    }
+    const row = page?.rows.find((candidate) => candidate.uid === reveal.uid);
+    if (row !== undefined && query === reveal.query) {
+      setSelected(row);
+      return;
+    }
+    wanted.current = reveal.uid;
+    setQuery(reveal.query);
+    // Only a new request counts: the rows and search it finds are read as they are then.
+  }, [reveal]);
 
   // Another row replaces the profile, and with it the edits pending in it: the profile asks first.
   const pick = (row: Row) => (row.uid === selected?.uid ? setSelected(row) : askToLeave(() => setSelected(row)));
@@ -148,7 +177,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
           }
         } catch (e) {
           if (!cancelled) {
-            setError(String(e));
+            setError(describeError(e));
           }
         }
       },
@@ -161,10 +190,24 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   }, [command, query, argsKey, version, active]);
 
   useEffect(() => {
-    if (active) {
-      searchInput.current?.focus();
+    if (!active) {
+      return;
     }
+    searchInput.current?.focus();
+    // ⌘F goes to the search box, with its text selected so that typing replaces it.
+    const find = (event: KeyboardEvent) => {
+      if (isShortcut(event, "f")) {
+        event.preventDefault();
+        searchInput.current?.focus();
+        searchInput.current?.select();
+      }
+    };
+    window.addEventListener("keydown", find);
+    return () => window.removeEventListener("keydown", find);
   }, [active]);
+
+  // The row Tab reaches in the table.
+  const tabStop = page?.rows.some((row) => row.uid === selected?.uid) ? selected?.uid : page?.rows[0]?.uid;
 
   const settled = page !== null && shownFor !== null && shownFor.query === query && shownFor.argsKey === argsKey;
 
@@ -186,14 +229,21 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               value={query}
               onChange={(e) => setQuery(e.currentTarget.value)}
               placeholder={placeholder}
+              aria-label={placeholder}
+              aria-keyshortcuts={shortcutAria("f")}
               spellCheck={false}
             />
           </label>
           <span className="count">{page ? summary(page.total, page.rows.length) : ""}</span>
-          {toolbarActions?.({ query, total: settled ? page.total : null, shown: page?.rows.length ?? 0 })}
+          {toolbarActions?.({
+            query,
+            total: settled ? page.total : null,
+            shown: page?.rows.length ?? 0,
+            besideProfile: showProfile,
+          })}
         </div>
         {filterBar}
-        {error && <div className="banner">{error}</div>}
+        {error && <div className="banner" role="alert">{error}</div>}
 
         <div className="table-wrap" ref={tableWrap}>
           <table className={tableClass ? `grid ${tableClass}` : "grid"}>
@@ -201,7 +251,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               <tr>{header}</tr>
             </thead>
             <tbody>
-              {page?.rows.map((row) => {
+              {page?.rows.map((row, index) => {
                 const isSelected = row.uid === selected?.uid;
                 return (
                   <tr
@@ -209,11 +259,26 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
                     ref={isSelected ? selectedRow : undefined}
                     className={isSelected ? "selected" : undefined}
                     aria-current={isSelected ? "true" : undefined}
-                    tabIndex={0}
+                    // One row is a Tab stop, the selected one or else the first; the arrow keys reach the others.
+                    tabIndex={row.uid === tabStop ? 0 : -1}
                     onClick={() => pick(row)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
                         pick(row);
+                        return;
+                      }
+                      const rows = e.currentTarget.parentElement?.children;
+                      const to =
+                        e.key === "ArrowDown" ? index + 1
+                        : e.key === "ArrowUp" ? index - 1
+                        : e.key === "Home" ? 0
+                        : e.key === "End" ? (rows?.length ?? 0) - 1
+                        : null;
+                      const target = to === null ? null : rows?.item(to);
+                      if (target instanceof HTMLElement) {
+                        e.preventDefault();
+                        target.focus();
                       }
                     }}
                   >

@@ -470,6 +470,8 @@ mod tests {
             bans: Vec::new(),
             ties: Vec::new(),
             tie_room: 0,
+            preferences: Vec::new(),
+            languages: Vec::new(),
             retirement_known: false,
             retires: None,
             clause_room: 0,

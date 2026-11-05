@@ -107,6 +107,7 @@ const errors: ErrorTexts = {
   "move.notApplied": () => "Belleğe yazıldı ama geri okunan farklı çıktı.",
   "heal.notInjured": () => "Oyuncunun iyileştirilecek bir sakatlığı yok.",
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
+  "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi, yükseltilecek bir şey yok.",
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
     "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",
@@ -138,12 +139,14 @@ const errors: ErrorTexts = {
   "captain.notInTeam": () => "Oyuncu bu takımda oynamıyor; kaptan ancak takımın kendi oyuncularından seçilebilir.",
   "captain.unchanged": () => "Oyuncu bu görevi zaten üstleniyor.",
   "session.notRunning": () => "Football Manager 27 çalışmıyor. Oyunu başlatıp bir kayıt yükleyin, sonra tekrar deneyin.",
-  "session.noSuchProcess": (p) => `${p.pid} işlem numaralı bir ${p.exe ?? "fm.exe"} yok.`,
+  "session.noSuchProcess": () => "FM27 kapatıldı ya da yeniden başlatıldı. Bir kayıt yükleyin, ardından yeniden bağlanın.",
+  "session.noCareer": () => "FM27'de yüklü bir kariyer yok. Bir kayıt yükleyin, ardından bağlanın.",
+  "attributes.level": () => "1 ile 20 arasında bir değer seçin.",
+  "session.playersNotFound": () => "FM27'de yüklü bir kariyer yok. Bir kayıt yükleyin, ardından bağlanın.",
   "session.severalRunning": (p) => `${p.exe ?? "fm.exe"} için ${p.count} kopya çalışıyor (${p.pids}); birini seçin.`,
   "session.pluginNotLoaded": () => "Oyunun verisi henüz yüklenmedi; ana menüyü bekleyip tekrar deneyin.",
   "session.unsupportedEdition": (p) => `FM${p.edition} henüz desteklenmiyor.`,
   "session.unknownEdition": () => "Bunun hangi Football Manager olduğu anlaşılamadı.",
-  "session.playersNotFound": () => "Oyuncu listesi bulunamadı; bir kayıt yükleyin (ana menü yetmez) ve tekrar deneyin.",
   "memory.win32": (p) => `Windows bir işlemi reddetti (${p.operation}, hata ${p.code}).`,
   "memory.read": (p) => `Oyunun belleği okunamadı (sistem hatası ${p.code}).`,
   "memory.write": (p) => `Oyunun belleğine yazılamadı (sistem hatası ${p.code}).`,
@@ -154,12 +157,12 @@ const errors: ErrorTexts = {
   "memory.mach": (p) => `macOS bir işlemi reddetti (${p.operation}, hata ${p.code}).`,
   "memory.posix": (p) => `macOS bir işlemi reddetti (${p.operation}, errno ${p.code}).`,
   "memory.noBridge": () =>
-    "macOS, FM Lens'ın oyuna girmesine izin vermiyor: oyun, FM Lens köprüsü olmadan başlatılmış. " +
-    "Köprüyü kurun, ardından oyunu Steam'den yeniden başlatın.",
+    "FM27, FM Lens yardımcısı olmadan başlatılmış. Kurulum bittiyse FM27'yi kapatıp Steam'den yeniden " +
+    "başlatın.",
   "memory.bridge": (p) => `Oyundaki FM Lens köprüsü belleği vermedi (${p.reason}).`,
   "setup.steamRunning": () =>
-    "Steam açık olduğu için FM27'nin başlatma seçeneklerine dokunulmadı; köprünün kendisi kuruldu. Steam'den çıkıp " +
-    "yeniden deneyin ya da başlatma seçeneğini Steam'de kendiniz girin.",
+    "Yardımcı kuruldu, ancak Steam açık olduğu için başlatma seçeneği ayarlanmadı. Steam'i kapatıp yeniden Kur'a " +
+    "tıklayın ya da başlatma seçeneğini kendiniz girin.",
   "setup.noSteamAccount": () => "Bu Mac'te bir Steam hesabı bulunamadı; Steam'i bir kez açıp giriş yapın.",
   "setup.noLibrary": (p) => `Köprü kütüphanesi uygulamada eksik: ${p.path}`,
   "setup.unknownConfig": (p) => `${p.path} FM Lens'ın tanıdığı biçimde değil, bu yüzden dokunulmadı.`,
@@ -473,12 +476,14 @@ export const tr: Strings = {
     "contract.loan_listed": "Kiralık listesinde",
     "contract.job": "Görev",
     "manager.unsackable": "Kovulamaz (deneysel)",
+    "manager.registration_anytime": "Kadroyu her zaman kaydet (deneysel)",
     "tie.nationality": "İkinci uyruk",
     "tie.trainedInNation": "Yetiştiği ülke",
     "tie.trainedAtClub": "Yetiştiği kulüp",
     club: "Kulüp",
     injuries: "Sakatlıklar",
     bans: "Cezalar",
+    cohesion: "Kulübe alışkınlık",
     retirement: "Emeklilik",
     clause: "Sözleşme maddesi",
     "clause.amount": "Madde tutarı",
@@ -503,10 +508,12 @@ export const tr: Strings = {
 
   profile: {
     close: "Profili kapat",
+    sections: "Bölümler",
+    top: "En üst",
     loading: "Profil yükleniyor…",
     resize: "Profil panelini boyutlandır",
-    resizeHint: "Paneli genişletmek ya da daraltmak için sürükleyin; eski genişliğine döndürmek için çift tıklayın",
-    none: "—",
+    resizeHint: "Boyutu değiştirmek için sürükleyin. Sıfırlamak için çift tıklayın.",
+    none: "-",
 
     // Header
     freeAgent: "Serbest",
@@ -550,8 +557,8 @@ export const tr: Strings = {
     wage: "Haftalık maaş",
     wageNote: (converted) =>
       converted
-        ? "oyun sterlin tutar; FM'in kendi kuruyla gösterilir"
-        : "oyun sterlin tutar; başka bir para birimi ayarlardan seçilebilir",
+        ? "FM'in kuruyla"
+        : "Sterlin. Para birimini Ayarlar'dan değiştirin",
     signed: "İmza tarihi",
     expires: "Bitiş tarihi",
     joined: "Katılım tarihi",
@@ -575,11 +582,22 @@ export const tr: Strings = {
     reputationWorld: "Dünya",
     retirement: "Emeklilik",
     retires: "Emeklilik planı",
+    preferences: "Sevdikleri ve sevmedikleri",
+    languages: "Diller",
+    languageLevel: (level: number) => `${level}/10`,
+    rivals: "Rakipler",
+    linkedClubs: "Bağlı kulüpler",
+    preferenceKinds: {
+      favouredClub: "Sevdiği kulüpler",
+      dislikedClub: "Sevmediği kulüpler",
+      favouredPerson: "Sevdiği kişiler",
+      dislikedPerson: "Sevmediği kişiler",
+    },
     noRetirement: "Oyun emekliliğini planlamamış",
     keepPlaying: "Emekli olmasını engelle",
     keepingPlaying: "Engelleniyor…",
     keepPlayingTitle:
-      "Emekliliğini oyunun planlarından çıkarır ve “Zirvedeyken emekli olur” yerine “Olabildiğince uzun futbol oynar” özelliğini verir; Değişiklikler'den geri alınabilir",
+      "Emekliliğini iptal eder ve “Zirvedeyken emekli olur” yerine “Olabildiğince uzun futbol oynar” verir. Değişiklikler'den geri alabilirsiniz.",
 
     // Medical
     morale: (value) => `${value} / 20`,
@@ -590,7 +608,7 @@ export const tr: Strings = {
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
-    removeUnhappinessTitle: "FMRTE'nin Remove all düğmesi gibi, mutsuzluk nedenlerinin hepsini listesinden kaldırır; Değişiklikler'den geri alınabilir",
+    removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır. Değişiklikler'den geri alabilirsiniz.",
     concernSince: (date) => `${date} tarihinden beri`,
     concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : `Tür ${kind}`),
     concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? `Neden ${motive}`,
@@ -618,8 +636,8 @@ export const tr: Strings = {
           return String(value);
       }
     },
-    moraleTitle: "Oyun morali Genel Mutluluk olarak gösterir: 10'da Memnun, 11'de Biraz Mutlu, 15 ve 20'de Aşırı Mutlu",
-    jadednessTitle: "Oyuncunun maç oynamaktan ne kadar yıprandığı, dinlenince azalır: -500 tamamen dinlenmiş demektir, değer yükseldikçe dinlenmeye daha çok ihtiyaç duyar",
+    moraleTitle: "FM'de: 10 Memnun, 11 Biraz Mutlu, 15 ve 20 Aşırı Mutlu.",
+    jadednessTitle: "Oynamaktan ne kadar yorulduğu. -500 tamamen dinlenmiş demek. Yükseldikçe dinlenmeye daha çok ihtiyaç duyar.",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
@@ -633,16 +651,19 @@ export const tr: Strings = {
     liftBansTitle: "Bu oyuncunun tüm cezalarını oyunda kaldır",
 
     // Above the attributes, while the profile is read
-    maxAttributes: "Özellikleri tamamla",
-    maxAttributesTitle: "Bu oyuncunun bütün özelliklerini en iyiye çıkar: 20; sakatlık eğilimi ve sertlik için 1",
-    maxAttributesDone: (count) => (count === 0 ? "Bütün özellikleri zaten en iyide" : `${changes(count)} yazıldı`),
-    maxAttributesUndone: (count) => (count === 0 ? "Hiçbir şey geri alınmadı" : `${changes(count)} geri alındı`),
-    undoMax: "Geri al",
-    undoMaxTitle: "Eski özelliklerini oyuna geri yaz",
+    setAttributes: "Bütün özellikleri şuna ayarla:",
+    setAttributesButton: "Uygula",
+    setAttributesDone: (count, level) =>
+      count === 0
+        ? "Bütün özellikleri zaten bu değerde"
+        : `${changes(count)} yazıldı. Sakatlık eğilimi ve sertlik ${21 - level} oldu, çünkü onlarda düşük olan iyidir.`,
+    setAttributesUndone: (count) => (count === 0 ? "Hiçbir şey geri alınmadı" : `${changes(count)} geri alındı`),
+    undoSetAttributes: "Geri al",
+    undoSetAttributesTitle: "Eski özelliklerini geri getir",
     freezeAttributes: "Özellikleri dondur",
     freezeAttributesNote:
-      "Uygulama açık ve oyuna bağlıyken özellikleri düşmez: oyunun düşürdüğü geri konur, gelişmeler yine sayılır. " +
-      "Uygulama bunu bu kayıt için hatırlar ve kayda yeniden bağlandığında onları yine dondurur.",
+      "FM Lens açık ve bağlıyken özellikleri düşemez. Gelişmeler yine sayılır. " +
+      "FM Lens bunu bu kayıt için hatırlar.",
 
     // Staff
     you: "Siz",
@@ -832,11 +853,11 @@ export const tr: Strings = {
     totalWageBudget: "Toplam maaş bütçesi",
     ticketPrice: "Ortalama bilet fiyatı",
     perWeek: "haftalık",
-    noFinances: "FM, finansı yalnızca oynanan liglerdeki kulüpler için tutar.",
+    noFinances: "FM, parayı yalnızca oynanabilir liglerdeki kulüpler için tutar.",
     freeze: "Parayı dondur",
     freezeNote:
-      "Uygulama açık ve oyuna bağlıyken bakiye düşmez: oyunun düştüğü para geri konur, gelirler yine eklenir. " +
-      "Uygulama bunu bu kayıt için hatırlar ve kayda yeniden bağlandığında parayı yine dondurur.",
+      "FM Lens açık ve bağlıyken bakiye düşemez. Gelirler yine eklenir. " +
+      "FM Lens bunu bu kayıt için hatırlar.",
 
     // Club info
     stadium: "Stadyum",
@@ -883,12 +904,24 @@ export const tr: Strings = {
       reputation: "İtibar",
       minReputation: "En düşük itibar",
       maxReputation: "En yüksek itibar",
-      reputationPlaceholder: "0–10000",
+      minPlaceholder: "Min",
+      maxPlaceholder: "Maks",
       founded: "Kuruluş",
       foundedFrom: "Kuruluş (en erken)",
       foundedTo: "Kuruluş (en geç)",
       yearPlaceholder: "Yıl",
     },
+  },
+
+  officialList: {
+    nav: "Hakemler",
+    search: "Hakemleri isim veya UID ile ara",
+    summary: (total, shown) =>
+      total > shown ? `${format(total)} hakem · en iyi ${shown}` : `${format(total)} hakem`,
+    empty: (query) => (query === "" ? "FM'in bu sürümünde hakemler okunamadı." : `“${query}” aramasına uyan hakem yok.`),
+    columns: { name: "İsim", nation: "Ülke", age: "Yaş", ca: "MY", pa: "PY", reputation: "İtibar", uid: "UID" },
+    born: "Doğum",
+    reputation: "İtibar",
   },
 
   stadiumList: {
@@ -932,9 +965,29 @@ export const tr: Strings = {
       total > shown ? `${format(total)} ülke · ilk ${shown} gösteriliyor` : `${format(total)} ülke`,
     empty: (query) => (query === "" ? "Ülke bulunamadı." : `“${query}” aramasına uyan ülke yok.`),
     columns: { name: "Ülke", uid: "UID" },
-    note: "Bu kayıtta oyuncu ve personelin ülkeleri. Sıralama, kurallar, formalar ve kadrolar okunmuyor.",
+    note: "Yalnızca bu kayıttaki oyuncu ve personelin ülkeleri.",
     uid: "UID",
     noUid: "UID yok",
+    nation: "Ülke",
+    capital: "Başkent",
+    population: "Nüfus",
+    languages: "Diller",
+    dualNationality: "Çifte vatandaşlık",
+    allowed: "Serbest",
+    notAllowed: "Yasak",
+    naturalisation: "Vatandaşlık için yıl",
+    never: "Hiçbir zaman",
+    fifa: "FIFA",
+    ranking: "Dünya sıralaması",
+    points: "Puan",
+    founded: "Federasyon kuruluşu",
+    joinedFifa: "FIFA üyeliği",
+    teamName: (ageLimit) => (ageLimit === null ? "A Milli Takım" : `U${ageLimit}`),
+    manager: "Teknik direktör",
+    captain: "Kaptan",
+    viceCaptain: "İkinci kaptan",
+    reputation: "İtibar",
+    squad: (count) => `Kadro (${count})`,
   },
 
   app: {
@@ -946,6 +999,8 @@ export const tr: Strings = {
     appearanceLight: "Açık",
     appearanceDark: "Koyu",
     zoomLabel: "Yakınlaştırma",
+    appearance: "Görünüm",
+    themes: { system: "Sistem", light: "Açık", dark: "Koyu" },
     tour: {
       label: "Tanıtım",
       skip: "Geç",
@@ -956,44 +1011,45 @@ export const tr: Strings = {
       steps: {
         brand: {
           title: "FM Lens",
-          body: "Kariyerinizi inceleyin. Desteklenen sürümlerde düzenlemeler uygulandığında FM'ye yazılır. Kariyerin bir kopyasında test edin.",
+          body: "Kaydınızdaki her şeyi görün ve değiştirin. Düzenlemeler Uygula'ya bastığınızda FM'ye gider. Önce bir kopyada deneyin.",
         },
         tabs: {
           title: "Bölümler",
-          body: "Oyuncular, personel ve kulüpler; bu kişilerin ülkeleri ve her kulübün stadyumu.",
+          body: "Oyuncular, personel, kulüpler, ülkeler ve stadyumlar.",
         },
         search: {
           title: "Arama ve filtreler",
-          body: "İsim veya kimlikle arayın. Filtreler listeyi daraltır. Seçim, dil değişince durur.",
+          body: "Bir isim ya da kimlik yazın. Daraltmak için Filtreler'i kullanın.",
         },
         settings: {
           title: "Ayarlar",
-          body: "Dil, para birimi, açık veya koyu görünüm ve arayüz boyutu. Pencerenin kendi yakınlaştırması ayrıdır.",
+          body: "Dil, para birimi, açık ya da koyu mod ve yakınlaştırma.",
         },
         status: {
-          title: "Bu kariyer",
-          body: "Pencerenin altı oyunu ve okunan kişi sayısını yazar. Örnek veriler işaretlidir.",
+          title: "Bağlantı",
+          body: "Alttaki çubuk FM'ye bağlı olup olmadığınızı gösterir.",
         },
       },
     },
 
-    noteEditable: "Düzenlemeler yalnızca uyguladığınızda oyuna işlenir. Önce kayıt dosyanızı yedekleyin.",
-    noteReadOnly: "Oyun yalnızca okunmak üzere açıldı, bu yüzden düzenleme kapalı.",
-    noteUnknownBuild: "Salt okunur: oyunun bu sürümü FM Lens için yeni.",
-    noteReloadRequired: "Kariyer verileri değişti. Düzenlemeden önce verileri yeniden yükleyin.",
-    noteNotConnected: "Düzenlemek için bağlan. Önce kayıt dosyanızı yedekleyin.",
+    noteEditable: "Düzenleme açık",
+    noteReadOnly: "Salt okunur",
+    noteUnknownBuild: "Salt okunur: bu FM sürümü henüz desteklenmiyor",
+    noteReloadRequired: "Kayıt değişti. Düzenlemek için yeniden okuyun.",
 
     notConnected: "Bağlı değil",
+    connected: "Bağlı",
+    detailsLabel: "Uygulama ayrıntıları",
+    more: "Daha fazla",
     previewTag: "tarayıcı önizlemesi · örnek veriler",
     noDate: "Oyun içi tarih yok",
     noDateTitle:
-      "FM Lens oyunun bu sürümünde oyun içi tarihi okuyamadı; bu yüzden yaşlar gösterilmiyor ve yaş " +
-      "filtreleri kimseyi bulmuyor. Güncellemeleri kontrol edin.",
+      "Oyun içi tarih okunamadı, bu yüzden yaşlar gizli ve yaş filtreleri kimseyi bulmuyor. " +
+      "Güncellemeleri kontrol edin.",
     reload: "Verileri yeniden oku",
-    refresh: "Yenile",
     detecting: "Football Manager aranıyor…",
-    connecting: "Oyuncular, personel ve kulüpler okunuyor…",
-    reloading: "Oyuncular, personel ve kulüpler yeniden okunuyor…",
+    connecting: "Kayıt yükleniyor…",
+    reloading: "Kayıt yükleniyor…",
 
     refrozen: {
       title: "Geçen seferden yeniden donduruldu",
@@ -1008,37 +1064,27 @@ export const tr: Strings = {
 
     connect: {
       title: "Football Manager 27'ye bağlan",
-      intro:
-        "FM Lens, oyun çalışırken oyunun belleğini okur. " +
-        "Oyunu başlatıp bir kayıt yükleyin, ardından bağlanın.",
+      intro: "FM'de bir kayıt yükleyin, ardından bağlanın.",
       notRunning: "Football Manager 27 çalışmıyor.",
-      openFailed: (error) => `Oyun açılamadı: ${error}`,
-      game: "Oyun",
-      gameData: "Oyun verisi",
-      loaded: "Yüklendi",
-      stillLoading: "Hâlâ yükleniyor; ana menüyü bekleyin",
-      process: "İşlem",
-      pid: (pid) => `pid ${pid}`,
-      several: "Oyunun birden fazla kopyası çalışıyor; ilki kullanılıyor.",
-      button: "Bağlan ve oyuncuları, personeli ve kulüpleri oku",
+      openFailed: (error) => `FM açılamadı: ${error}`,
+      stillLoading: "FM hâlâ açılıyor. Ana menüyü bekleyin.",
+      several: "Birden fazla FM açık. İlki kullanılıyor.",
+      button: "Bağlan",
 
       bridge: {
-        title: "Köprü (macOS)",
+        title: "Tek seferlik kurulum",
         intro:
-          "FM27 köprüyü başlangıçta yüklemeli. Kurulumdan önce oyunu kaydedip FM27'yi, ardından Steam'i kapatın.",
-        library: "Köprü",
+          "FM Lens'in, FM'nin açılışta yüklediği küçük bir yardımcıya ihtiyacı var. Kurmadan önce kaydedip FM'yi, " +
+          "ardından Steam'i kapatın.",
+        library: "Yardımcı",
         installed: "Kurulu",
         missing: "Kurulu değil",
-        launchOption: "Başlatma seçeneği",
-        set: "Steam'de ayarlı",
+        launchOption: "Steam başlatma seçeneği",
+        set: "Ayarlı",
         notSet: "Ayarlı değil",
-        ready:
-          "Hazır. FM27'yi Steam'den başlatın (açıksa kapatıp yeniden başlatın), bir kayıt yükleyin, ardından bağlanın.",
-        steamRunning:
-          "Steam açık ve açıkken başlatma seçeneklerini kendisi tutuyor. Seçeneğin sizin için ayarlanması için " +
-          "Steam'den çıkın ya da seçeneği Steam'de kendiniz girin.",
-        setUp: "Köprüyü kur",
-        remove: "Köprüyü kaldır",
+        steamRunning: "Steam açık. Önce Steam'i kapatın ya da başlatma seçeneğini kendiniz girin.",
+        setUp: "Kur",
+        remove: "Yardımcıyı kaldır",
         manual:
           "Ya da Steam'de Football Manager 27'ye sağ tıklayıp Özellikler › Genel › Başlatma Seçenekleri'ne şunu girin:",
         copy: "Kopyala",
@@ -1047,20 +1093,12 @@ export const tr: Strings = {
     },
   },
 
-  graphics: {
-    reading: "Grafik paketleri okunuyor…",
-    summary: ({ clubLogos, flags, faces }) =>
-      `Grafikler: ${format(clubLogos)} kulüp logosu · ${format(flags)} bayrak · ${format(faces)} yüz`,
-    none: "Grafik paketi bulunamadı",
-    noneHint: "Logo ve yüz paketleri FM27'nin graphics klasörüne kurulur.",
-  },
-
   compatibility: {
     unknownBuild: (game) => `FM Lens henüz ${game} ile denenmedi`,
     unknownBuildText:
-      "Bu oyun sürümü FM Lens ile doğrulanmadı. Değerleri oyunla karşılaştırın. Düzenleme kapalı.",
-    allowedText: "Düzenleme bu oturum için açık, denetimlerin izin verdiği kadarıyla. Kayıt dosyanızın yedeğini saklayın.",
-    failedTitle: "Oyunun verilerinin bir kısmı denetimden geçmedi",
+      "FM Lens bu FM sürümüyle denenmedi. Değerler yanlış olabilir, bu yüzden düzenleme kapalı.",
+    allowedText: "Denetimlerin geçtiği yerlerde düzenleme açık. Kaydınızı yedekleyin.",
+    failedTitle: "Bazı veriler yanlış görünüyor",
     reloadHint: "Kayıt hâlâ yükleniyorduysa “Verileri yeniden oku” yeniden denetler.",
     noDate: "Oyun içi tarih denetimden geçmedi, bu yüzden yaşlar gösterilmiyor.",
     failed: (names) => `Salt okunur bırakılanlar: ${names}.`,
@@ -1102,6 +1140,7 @@ export const tr: Strings = {
   },
 
   edit: {
+    appliedTitle: "Uygulandı",
     unknownNation: "Bilinmeyen ülke",
     edit: "Düzenle",
     editTitle: "Bu profilin değerlerini oyunda değiştir",
@@ -1132,8 +1171,8 @@ export const tr: Strings = {
     keepEditing: "Düzenlemeye devam et",
 
     // After Apply
-    applied: (count) => `${changes(count)} uygulandı`,
-    nothingToChange: "Değiştirilecek bir şey yok: oyunda bu değerler zaten var.",
+    applied: (count) => `${changes(count)} uygulandı. FM'de Devam'a bastığınızda görünür.`,
+    nothingToChange: "Değiştirilecek bir şey yok. FM'de bu değerler zaten var.",
     refused: (label, reason) => `${label}: ${reason}`,
     rereadFailed: (reason) => `Değerler geri okunamadı: ${reason}`,
     dismiss: "Kapat",
@@ -1142,8 +1181,8 @@ export const tr: Strings = {
   changes: {
     nav: "Değişiklikler",
     title: "Bu oturumdaki değişiklikler",
-    hint: "En yeniler üstte. Bir değişiklik yalnızca oyun yazdığı değeri hâlâ tutuyorsa geri alınabilir.",
-    continueHint: "Oyun değişiklikleri bir kez ilerleyince gösterir: oyunda Devam'a basın.",
+    hint: "En yeniler üstte. FM o değeri değiştirmediği sürece geri alabilirsiniz.",
+    continueHint: "Değişiklikler FM'de Devam'a bastığınızda görünür.",
     swappedWith: (name) => `Takas: ${name}`,
     fee: (amount) => `Bedel ${amount}`,
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
@@ -1202,13 +1241,12 @@ export const tr: Strings = {
     },
     formatHints: {
       csv: "Çoğu tablo programı ve betik için",
-      csvSemicolon: "Ondalıkları virgülle yazan Excel için: Türkçe, İspanyolca ya da Almanca Excel gibi",
-      json: "Betikler için: pozisyonlar, özellikler ve kişilik ayrı nesneler olarak",
+      csvSemicolon: "Ondalık virgül kullanan dillerdeki Excel için",
+      json: "Betikler için",
     },
     contents:
-      "Her oyuncunun yetenekleri, pozisyonları ve pozisyon puanları, 1–20 ölçeğinde özellikleri (gizliler dahil), " +
-      "kişiliği, itibarı, milli maçları, sözleşmesi ve maddeleri; oyun tarihiyle birlikte. Paralar oyunun tuttuğu " +
-      "gibi sterlin. Oyunda hiçbir şey değişmez.",
+      "Yetenekler, pozisyonlar, özellikler (gizliler dahil), kişilik, itibar, milli maçlar ve sözleşmeler. " +
+      "Paralar sterlin.",
     export: "Dışa aktar",
     exporting: "Dışa aktarılıyor…",
     done: (count, file) => `${format(count)} oyuncu ${file} dosyasına aktarıldı`,
@@ -1322,7 +1360,7 @@ export const tr: Strings = {
     applyTitle: (count) => `Oyuna ${changes(count)} yaz`,
     applyFirst: "Önce toplu düzenlemeyi önizleyin",
     applyNothing: "Önizlemede yazılacak değişiklik yok",
-    hint: "Siz uygulamadan oyunda hiçbir şey değişmez.",
+    hint: "Uygula'ya basana kadar FM'de hiçbir şey değişmez.",
     applied: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} uygulandı`),
     failure: (name, label, reason) => `${name} · ${label}: ${reason}`,
     undo: "Bu toplu düzenlemeyi geri al",
@@ -1391,7 +1429,7 @@ export const tr: Strings = {
     pays: (club, fee, balance, budget) =>
       `${club} öder: ${fee}. Bakiye ${balance}${budget === null ? "" : `, transfer bütçesi ${budget}`}`,
     receives: (club, fee, balance) => `${club} alır: ${fee}. Bakiye ${balance}`,
-    noFinances: (club) => `${club} için oyunda finans kaydı yok: parası değişmez`,
+    noFinances: (club) => `${club} için FM'de finans kaydı yok, parası değişmez`,
 
     // The contract
     wageInvalid: "0 veya daha büyük, tam bir tutar girin",
@@ -1452,7 +1490,7 @@ export const tr: Strings = {
     ],
 
     // The foot
-    hint: "Siz transfer etmeden oyunda hiçbir şey değişmez.",
+    hint: "Transfer et'e basana kadar FM'de hiçbir şey değişmez.",
     move: "Transfer et",
     moving: "Transfer ediliyor…",
     cancel: "İptal",
@@ -1479,7 +1517,7 @@ export const tr: Strings = {
     change: "Değiştir",
     changeTitle: "Bu oyuncunun ikinci uyruklarını ve yerli statüsünü oyunda değiştir",
     title: "Uyruk ve yetiştiği yer",
-    hint: "Her değişiklik oyuna hemen yazılır ve Değişiklikler bölümünde listelenir; oradan geri alınabilir.",
+    hint: "Her değişiklik FM'ye hemen gider. Değişiklikler'den geri alabilirsiniz.",
     full:
       "Oyun bu oyuncunun listesini, tuttuğu kayıtlar kadar ayırmış: bir uyruk ya da yetiştiği yer değiştirilebilir " +
       "veya kaldırılabilir, ama yenisi eklenemez.",
@@ -1500,7 +1538,7 @@ export const tr: Strings = {
     change: "Değiştir",
     changeTitle: "Bu oyuncunun primlerini ve sözleşme maddelerini oyunda değiştir",
     title: "Primler ve maddeler",
-    hint: "Her değişiklik oyuna hemen yazılır ve Değişiklikler bölümünde listelenir; oradan geri alınabilir.",
+    hint: "Her değişiklik FM'ye hemen gider. Değişiklikler'den geri alabilirsiniz.",
     full:
       "Oyun bu sözleşmenin listesini, tuttuğu kayıtlar kadar ayırmış: bir prim ya da madde değiştirilebilir veya " +
       "kaldırılabilir, ama serbest kalma maddesi eklenemez.",
@@ -1515,6 +1553,63 @@ export const tr: Strings = {
     outOfRange: (max) => `0 ile ${max} arasında bir tam sayı girin.`,
     working: "Oyuna yazılıyor…",
     close: "Kapat",
+  },
+
+  templates: {
+    button: "Kopyala ve şablonlar",
+    title: "Kopyala ve şablonlar",
+    groups: {
+      ability: "CA / PA",
+      attributes: "Özellikler (gizliler dahil)",
+      personality: "Kişilik",
+      positions: "Pozisyonlar",
+      traits: "Davranışlar",
+    },
+    copyHeading: "Bir oyuncudan kopyala",
+    findPlayer: "Oyuncu bul",
+    found: "Bulunan oyuncular",
+    freeAgent: "Serbest",
+    capture: (name) => (name ? `${name} oyuncusunu kopyala` : "Oyuncuyu kopyala"),
+    libraryHeading: "Kayıtlı şablonlar",
+    library: "Şablon",
+    choose: "Bir şablon seçin",
+    noneSaved: "Kayıtlı şablon yok",
+    name: "Ad",
+    save: "Kaydet",
+    remove: "Sil",
+    fieldCount: (count) => `${format(count)} alan`,
+    jsonHeading: "JSON içe veya dışa aktar",
+    json: "Şablon JSON",
+    loadJson: "JSON yükle",
+    showJson: "JSON göster",
+    importFile: "Dosya içe aktar",
+    applyHeading: (total, query) =>
+      `${query ? `“${query}” ile eşleşen ` : ""}${format(total)} oyuncuya uygula`,
+    limit: "Yalnızca bu oyuncu kimlikleri",
+    limitPlaceholder: "Hepsi",
+    preview: "Önizle",
+    previewLabel: "Şablon önizlemesi",
+    summary: (targets, changes, skipped, unchanged) =>
+      `${format(targets)} oyuncu · ${changeCount(changes)} · ${format(skipped)} atlandı · ` +
+      `${format(unchanged)} zaten aynı`,
+    tableLabel: "Uygulanacak değişiklikler",
+    columns: { player: "Oyuncu", uid: "Kimlik", field: "Alan", change: "Değişiklik" },
+    firstRows: (count) => `İlk ${format(count)} değişiklik gösteriliyor.`,
+    skipped: "Atlananlar",
+    apply: (count) => (count === 0 ? "Uygula" : `${changes(count)} uygula`),
+    applied: (count) => (count === 0 ? "Hiçbir şey değişmedi." : `${changes(count)} uygulandı.`),
+    undo: "Geri al",
+    undone: (count) => (count === 0 ? "Hiçbir şey geri alınmadı." : `${changes(count)} geri alındı.`),
+    working: "Çalışıyor…",
+    close: "Kapat",
+    savedNotice: "Şablon kaydedildi.",
+    loadedNotice: "Şablon yüklendi. Saklamak için kaydedin.",
+    removedNotice: "Şablon silindi.",
+    nameTaken: "Bu adda bir şablon zaten var. Başka bir ad seçin.",
+    libraryFull: (max) => `En fazla ${max} şablon saklayabilirsiniz. Önce birini silin.`,
+    tooBig: "Şablon dosyaları 128 KB'tan küçük olmalı.",
+    invalid: "Bu bir FM Lens oyuncu şablonu değil.",
+    badIds: "Oyuncu kimliklerini virgül veya boşlukla ayırarak yazın.",
   },
 
   release: {
@@ -1536,7 +1631,7 @@ export const tr: Strings = {
     ],
 
     // The foot
-    hint: "Siz serbest bırakmadan oyunda hiçbir şey değişmez.",
+    hint: "Serbest bırak'a basana kadar FM'de hiçbir şey değişmez.",
     release: "Serbest bırak",
     releasing: "Serbest bırakılıyor…",
     cancel: "İptal",
@@ -1564,21 +1659,22 @@ export const tr: Strings = {
     // The actions on the whole team
     actionsLabel: "Takımın tamamına yönelik işlemler",
     healAll: (injured) => (injured === 0 ? "Hepsini iyileştir" : `Hepsini iyileştir (${format(injured)} sakat)`),
-    healAllTitle: "Bu takımdaki her oyuncunun tüm sakatlıklarını iyileştir",
+    healAllTitle: "Takımdaki herkesi iyileştir",
     healNone: "Bu takımda sakat oyuncu yok",
     liftAll: (banned) => (banned === 0 ? "Cezaları kaldır" : `Cezaları kaldır (${format(banned)} cezalı)`),
-    liftAllTitle: "Bu takımdaki her oyuncunun tüm cezalarını kaldır",
+    liftAllTitle: "Takımdaki tüm cezaları kaldır",
     liftNone: "Bu takımda cezalı oyuncu yok",
     inspireAll: "Hepsine moral ver",
-    inspireAllTitle: "Bu takımdaki her oyuncunun moralini en yüksek değer olan 20'ye ayarla; mutsuzluk nedenlerini de kaldır",
+    inspireAllTitle: "Herkesin moralini en üste çıkar ve mutsuzluk nedenlerini kaldır",
     refreshAll: "Hepsini dinlendir",
-    refreshAllTitle: "Bu takımdaki her oyuncunun enerjisini ve maç kondisyonunu %100'e ayarla, onları tamamen dinlendir (yorgunluk -500)",
+    refreshAllTitle: "Herkese tam enerji, tam maç kondisyonu ve tam dinlenme",
+    maxCohesion: "Uyumu tamamla",
+    maxCohesionTitle: "Bütün oyuncular kulübe tamamen alışkın (deneysel)",
     maxAll: "Özellikleri tamamla",
     maxAllTitle:
-      "Bu takımdaki her oyuncunun bütün özelliklerini en iyiye çıkar: 20; sakatlık eğilimi ve sertlik için 1",
+      "Herkesin bütün özellikleri 20 (sakatlık eğilimi ve sertlik 1)",
     hint:
-      "İşlemler listedeki her oyuncuyu kapsar, kiralık gönderilenler de dahil. " +
-      "Geri alma işlemi Değişiklikler bölümünde de yapılabilir.",
+      "Kiralıktakiler de dahil. Değişiklikler'den geri alabilirsiniz.",
 
     // What an action did, under the buttons
     written: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} yazıldı`),

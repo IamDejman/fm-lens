@@ -234,3 +234,75 @@ a minimum table viewport and masthead wrapping. After rebuilding, the native 150
 within the window, filters stayed above the footer, and scrolling the left pane
 reached Nation, Club, Add attribute and the staff table. Reports and diagnostics remain local under ignored
 `reports/pbj-human-manager/`; no careers or raw dumps are tracked.
+
+## Human manager: squad registration at any time
+
+`manager.registration_anytime` is bit 8 of the human manager's flags word,
+traced to FM's own `squad_registration_anytime` action (see
+recon/fm27-human-manager.md). It uses the same guards as unsackable and appears
+in the manager's Manager group. Unit tests cover the byte and bit, keeping the
+other bits, single-person use and the staff field count. The frontend build,
+Rust format, strict workspace and app Clippy, workspace tests (66 core),
+writable-memory tests, probe/bridge build and Tauri debug app build passed.
+
+A read-only probe of the loaded validation career read `registration no`
+through the guarded field path; the raw flags word was `0x2`.
+
+Native verification on 4 November 2026 used the disposable
+`FM Lens PBJ Manager 2026-11-04.fm` career (named in FM's Save Game As dialog),
+human manager UID 2002071958, module UUID F4540355-2186-39CB-9119-C706A6A35346.
+The main career SHA-256 was recorded before testing and matched afterwards.
+
+- Before: FM's Premier League Squad Registration screen showed "Registration
+  Closed, Reopens in 24 days". Clicking Kepa Arrizabalaga's toggle did nothing
+  and Undo stayed disabled.
+- FM Lens showed the flag as No. Review listed one change, No -> Yes. Apply read
+  back Yes. The raw flags word went from `0x2` to `0x102`: only bit 8 changed.
+- After: on the same screen, still labelled closed, Kepa's toggle turned off,
+  the squad count went 22/25 -> 21/25 and FM's Undo became active. FM's Confirm
+  stayed disabled. Kepa was not among the matchday substitutes afterwards, but
+  FM marks him unavailable, so that is not evidence of the registration change.
+- Stale undo: a second Apply (Yes -> No) returned the word to exactly `0x2`.
+  Undoing the older No -> Yes entry was refused ("is now 0, not 1"), leaving
+  memory unchanged. Undoing the latest entry succeeded and restored `0x102`.
+- Saved through FM's menu as `FM Lens PBJ Registration 2026-11-04.fm`, quit
+  through Quit Game and Exit (process confirmed gone), relaunched through Steam
+  (same module UUID) and explicitly loaded that copy. A fresh probe read
+  registration yes and unsackable yes. Squad Registration still read closed.
+  Its "Hide players: Unavailable" filter was on, which hid Kepa; with the filter
+  off he was listed and registered, at 24/25. Illan Meslier's toggle turned off
+  and back on, so the flag still applies after reload.
+
+- Second save: on that reloaded copy, with the filter off, Kepa's toggle turned
+  off (24/25 -> 23/25). FM's Confirm stayed disabled and FM's Undo was not used.
+  Saved as `FM Lens PBJ Registration Kepa 2026-11-04.fm`, quit (process
+  confirmed gone), relaunched through Steam and loaded that copy. The probe read
+  registration yes and unsackable yes. With "Hide players: Unavailable" unticked
+  again (FM restored it on reload), Kepa was listed unregistered at 23/25.
+
+This establishes apply/readback, stale-undo refusal, FM accepting registration
+changes while the window is closed, persistence of the flag across save/reload,
+and FM keeping a registration change made outside the window through
+save/quit/reload, on this copy. Kepa's first change (before the first save) did
+not survive that reload; why is not established. Not established: the
+registration window reopening or closing with the flag set, and FM's own "squad
+numbers any time" bit.
+
+## Max cohesion (5 November 2026)
+
+On the disposable `FM Lens PBJ Registration Kepa 2026-11-04.fm` copy (FM showed
+Kepa unregistered and the probe read the PBJ manager flags, so not the main
+career), game date 8 Dec 2027, Arsenal (UID 602). The main career's hash was
+checked before and after.
+
+- Before: FM's Squad > Dynamics showed Team Cohesion "Very Good", ring about 85%
+  full. `fmlibre-probe cohesion 602`: 37 to raise, 11 at 100, 6 skipped.
+- FM Lens, Squad tab, first team, Max cohesion: "18 changes made", one mass edit
+  in Changes (for example Eze 38 -> 100, Meslier 1 -> 100, Merino 4 -> 100). The 18
+  include three players out on loan, which the probe's list leaves out.
+- Readback: the probe found 15 more of the club's players at 100 (26 in all).
+- FM's screen did not change until Continue. After one Continue (to 9 Dec), Team
+  Cohesion read "Excellent" with the ring full, and the probe still read 26 at
+  100.
+
+Not established: the values through save and reload, and the U21 and U18 teams.

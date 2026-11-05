@@ -4,7 +4,7 @@ import { call } from "./api";
 import { applyMassEdit, shownValue, undoBatch } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
-import { fieldLabel } from "./labels";
+import { fieldLabel, templatesText as text } from "./labels";
 import type { ListState } from "./ListBrowser";
 import type {
   EditField,
@@ -23,13 +23,8 @@ interface PlayerTemplate {
   name: string;
   values: Record<string, number>;
 }
-const GROUPS: { id: Group; name: string }[] = [
-  { id: "ability", name: "CA / PA" },
-  { id: "attributes", name: "Attributes & hidden attributes" },
-  { id: "personality", name: "Personality" },
-  { id: "positions", name: "Positions" },
-  { id: "traits", name: "Traits" },
-];
+const GROUPS: Group[] = ["ability", "attributes", "personality", "positions", "traits"];
+const LIBRARY_MAX = 40;
 const STORAGE = "fm-lens.player-templates.v1";
 const MAX_JSON = 128_000;
 
@@ -54,7 +49,7 @@ function loadLibrary(): PlayerTemplate[] {
     const raw = localStorage.getItem(STORAGE);
     if (!raw || raw.length > MAX_JSON * 40) return [];
     const values: unknown = JSON.parse(raw);
-    return Array.isArray(values) ? values.filter(isTemplate).slice(0, 40) : [];
+    return Array.isArray(values) ? values.filter(isTemplate).slice(0, LIBRARY_MAX) : [];
   } catch {
     return [];
   }
@@ -90,7 +85,7 @@ export function PlayerTemplatesButton({
           )
         }
       >
-        Clone & templates
+        {text.button}
       </button>
       {scope && (
         <TemplatesDialog
@@ -126,7 +121,7 @@ function TemplatesDialog({
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<PlayerSummary[]>([]);
   const [source, setSource] = useState<PlayerSummary | null>(null);
-  const [groups, setGroups] = useState<Group[]>(GROUPS.map(({ id }) => id));
+  const [groups, setGroups] = useState<Group[]>(GROUPS);
   const [json, setJson] = useState("");
   const [preview, setPreview] = useState<MassPreview | null>(null);
   const [report, setReport] = useState<MassReport | null>(null);
@@ -205,28 +200,23 @@ function TemplatesDialog({
     const value = { ...template, name: name.trim() };
     await call("validate_player_template", { template: value });
     if (library.some((entry) => entry.name === value.name))
-      throw new Error(
-        "Choose a different name; a template with this name already exists.",
-      );
-    if (library.length >= 40)
-      throw new Error(
-        "The library holds 40 templates. Remove a template before saving another.",
-      );
+      throw new Error(text.nameTaken);
+    if (library.length >= LIBRARY_MAX)
+      throw new Error(text.libraryFull(LIBRARY_MAX));
     const next = [...library, value];
     localStorage.setItem(STORAGE, JSON.stringify(next));
     setLibrary(next);
     choose(value);
-    setNotice("Template saved on this Mac.");
+    setNotice(text.savedNotice);
   };
   const importJson = async (raw: string) => {
     invalidate();
-    if (raw.length > MAX_JSON)
-      throw new Error("Template files must be smaller than 128 KB.");
+    if (raw.length > MAX_JSON) throw new Error(text.tooBig);
     const value: unknown = JSON.parse(raw);
-    if (!isTemplate(value)) throw new Error("Invalid FM Lens player template.");
+    if (!isTemplate(value)) throw new Error(text.invalid);
     await call("validate_player_template", { template: value });
     choose(value);
-    setNotice("Template loaded. Save it to keep it in your library.");
+    setNotice(text.loadedNotice);
   };
   const plan = async () => {
     if (!template) return;
@@ -243,7 +233,7 @@ function TemplatesDialog({
             Number(entry) <= 0xffffffff,
         )
       ) {
-        throw new Error("Enter player UIDs separated by commas or spaces.");
+        throw new Error(text.badIds);
       }
       selected = [...new Set(entries.map(Number))];
     }
@@ -267,7 +257,7 @@ function TemplatesDialog({
     if (!report) return;
     const next = await undoBatch(report.batch);
     if (next.undone > 0) onEdited();
-    setNotice(`Undid ${next.undone} changes.`);
+    setNotice(text.undone(next.undone));
     if (next.failed.length)
       throw new Error(
         next.failed.map((entry) => describeError(entry.error)).join("\n"),
@@ -287,15 +277,15 @@ function TemplatesDialog({
         aria-labelledby={title}
       >
         <header className="modal-head">
-          <h2 id={title}>Clone & templates</h2>
+          <h2 id={title}>{text.title}</h2>
         </header>
         <div className="modal-body">
           <fieldset className="template-controls" disabled={busy}>
             <div className="template-columns">
               <section className="template-source">
-                <h3>Copy from a player</h3>
+                <h3>{text.copyHeading}</h3>
                 <label>
-                  Find player
+                  {text.findPlayer}
                   <input
                     type="search"
                     value={query}
@@ -309,7 +299,7 @@ function TemplatesDialog({
                   <div
                     className="template-hits"
                     role="group"
-                    aria-label="Source players"
+                    aria-label={text.found}
                   >
                     {hits.map((player) => (
                       <button
@@ -323,7 +313,7 @@ function TemplatesDialog({
                       >
                         <span>{player.name}</span>
                         <span>
-                          {player.club ?? "Free agent"} · {player.uid}
+                          {player.club ?? text.freeAgent} · {player.uid}
                         </span>
                       </button>
                     ))}
@@ -331,19 +321,19 @@ function TemplatesDialog({
                 )}
                 <div className="template-groups">
                   {GROUPS.map((group) => (
-                    <label key={group.id}>
+                    <label key={group}>
                       <input
                         type="checkbox"
-                        checked={groups.includes(group.id)}
+                        checked={groups.includes(group)}
                         onChange={(e) =>
                           setGroups((old) =>
                             e.target.checked
-                              ? [...old, group.id]
-                              : old.filter((id) => id !== group.id),
+                              ? [...old, group]
+                              : old.filter((id) => id !== group),
                           )
                         }
                       />
-                      {group.name}
+                      {text.groups[group]}
                     </label>
                   ))}
                 </div>
@@ -364,13 +354,13 @@ function TemplatesDialog({
                     })
                   }
                 >
-                  Capture {source?.name ?? "player"}
+                  {text.capture(source?.name ?? null)}
                 </button>
               </section>
               <section>
-                <h3>Template library</h3>
+                <h3>{text.libraryHeading}</h3>
                 <label>
-                  Saved templates
+                  {text.library}
                   <select
                     value=""
                     onChange={(e) => {
@@ -379,9 +369,7 @@ function TemplatesDialog({
                     }}
                   >
                     <option value="" disabled>
-                      {library.length
-                        ? "Choose a template"
-                        : "No saved templates"}
+                      {library.length ? text.choose : text.noneSaved}
                     </option>
                     {library.map((entry, i) => (
                       <option key={entry.name} value={i}>
@@ -391,7 +379,7 @@ function TemplatesDialog({
                   </select>
                 </label>
                 <label>
-                  Template name
+                  {text.name}
                   <input
                     value={name}
                     maxLength={80}
@@ -404,7 +392,7 @@ function TemplatesDialog({
                     disabled={!template || !name.trim()}
                     onClick={() => void run(save)}
                   >
-                    Save template
+                    {text.save}
                   </button>
                   <button
                     type="button"
@@ -419,23 +407,23 @@ function TemplatesDialog({
                         );
                         localStorage.setItem(STORAGE, JSON.stringify(next));
                         setLibrary(next);
-                        setNotice("Removed from library.");
+                        setNotice(text.removedNotice);
                       })
                     }
                   >
-                    Remove from library
+                    {text.remove}
                   </button>
                 </div>
                 {template && (
                   <p role="status">
                     <strong>{template.name}</strong> ·{" "}
-                    {Object.keys(template.values).length} fields
+                    {text.fieldCount(Object.keys(template.values).length)}
                   </p>
                 )}
                 <details>
-                  <summary>Import / export JSON</summary>
+                  <summary>{text.jsonHeading}</summary>
                   <label>
-                    Template JSON
+                    {text.json}
                     <textarea
                       rows={6}
                       value={json}
@@ -450,17 +438,17 @@ function TemplatesDialog({
                       disabled={!json.trim()}
                       onClick={() => void run(() => importJson(json))}
                     >
-                      Load JSON
+                      {text.loadJson}
                     </button>
                     <button
                       type="button"
                       disabled={!template}
                       onClick={() => setJson(JSON.stringify(template, null, 2))}
                     >
-                      Export JSON
+                      {text.showJson}
                     </button>
                     <label className="template-file">
-                      Import file
+                      {text.importFile}
                       <input
                         type="file"
                         accept=".json,application/json"
@@ -470,9 +458,7 @@ function TemplatesDialog({
                           if (file)
                             void run(async () => {
                               if (file.size > MAX_JSON)
-                                throw new Error(
-                                  "Template files must be smaller than 128 KB.",
-                                );
+                                throw new Error(text.tooBig);
                               await importJson(await file.text());
                             });
                         }}
@@ -484,18 +470,17 @@ function TemplatesDialog({
             </div>
             <section className="template-targets">
               <h3>
-                Apply to {scope.total.toLocaleString()} matching players
-                {scope.query ? ` · “${scope.query}”` : ""}
+                {text.applyHeading(scope.total, scope.query)}
               </h3>
               <label>
-                Limit to player UIDs (optional)
+                {text.limit}
                 <input
                   value={targetUids}
                   onChange={(e) => {
                     setTargetUids(e.target.value);
                     invalidate();
                   }}
-                  placeholder="All matching players"
+                  placeholder={text.limitPlaceholder}
                 />
               </label>
               <button
@@ -505,29 +490,28 @@ function TemplatesDialog({
                 }
                 onClick={() => void run(plan)}
               >
-                Preview changes
+                {text.preview}
               </button>
             </section>
           </fieldset>
           {preview && (
-            <section aria-label="Template preview">
+            <section aria-label={text.previewLabel}>
               <p role="status">
-                {preview.targets} players · {preview.changes} changes ·{" "}
-                {preview.skippedCount} skipped · {preview.unchanged} unchanged
+                {text.summary(preview.targets, preview.changes, preview.skippedCount, preview.unchanged)}
               </p>
               <div
                 className="mass-table-wrap"
                 tabIndex={0}
                 role="region"
-                aria-label="Changes to apply"
+                aria-label={text.tableLabel}
               >
                 <table className="grid mass-grid">
                   <thead>
                     <tr>
-                      <th>Player</th>
-                      <th>UID</th>
-                      <th>Field</th>
-                      <th>Before → After</th>
+                      <th>{text.columns.player}</th>
+                      <th>{text.columns.uid}</th>
+                      <th>{text.columns.field}</th>
+                      <th>{text.columns.change}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -550,11 +534,11 @@ function TemplatesDialog({
                 </table>
               </div>
               {preview.changes > preview.rows.length && (
-                <p>Showing the first {preview.rows.length} changes.</p>
+                <p>{text.firstRows(preview.rows.length)}</p>
               )}
               {preview.skippedCount > 0 && (
                 <details>
-                  <summary>Skipped fields</summary>
+                  <summary>{text.skipped}</summary>
                   <ul>
                     {preview.skipped.map((row, i) => (
                       <li key={i}>
@@ -569,7 +553,7 @@ function TemplatesDialog({
           )}
           {report && (
             <div role="status">
-              <p>Applied {report.applied} changes.</p>
+              <p>{text.applied(report.applied)}</p>
               {report.failed.length > 0 && (
                 <ul>
                   {report.failed.slice(0, 100).map((entry, i) => (
@@ -596,7 +580,7 @@ function TemplatesDialog({
               disabled={busy || !preview.changes}
               onClick={() => void run(apply)}
             >
-              Apply {preview.changes} changes
+              {text.apply(preview.changes)}
             </button>
           )}
           {report && (
@@ -605,11 +589,11 @@ function TemplatesDialog({
               disabled={busy}
               onClick={() => void run(undo)}
             >
-              Undo batch
+              {text.undo}
             </button>
           )}
           <button type="button" disabled={busy} onClick={onClose}>
-            {busy ? "Working…" : "Close"}
+            {busy ? text.working : text.close}
           </button>
         </footer>
       </div>
