@@ -60,6 +60,29 @@ pub struct Layout {
     /// The object the game's function that starts a loan takes; only in the layouts it has been traced in.
     #[serde(default)]
     pub starting_loan: Option<StartingLoanLayout>,
+    /// The transfers the game has agreed for a later day; only in the layouts they have been traced in.
+    #[serde(default)]
+    pub future_transfer: Option<FutureTransferLayout>,
+}
+
+/// The transfers `TRANSFER_MANAGER` has agreed for a later day. From the manager: its offers at `offers` and the
+/// records of the dated ones at `dated`, each a (begin, end) of pointers, and `dated_owner`, what
+/// [`CallRvas::drop_dated_transfer`] takes. A record holds its offer's id (u32) at `record_offer`. An offer holds its
+/// id (u32) at `offer_id`, the player's identity block at `offer_person`, the team he joins and the one he leaves at
+/// `offer_to_team` and `offer_from_team`, and its status byte at `offer_status`, `pending` until its day.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FutureTransferLayout {
+    pub offers: u64,
+    pub dated: u64,
+    pub dated_owner: u64,
+    pub record_offer: u64,
+    pub offer_id: u64,
+    pub offer_person: u64,
+    pub offer_to_team: u64,
+    pub offer_from_team: u64,
+    pub offer_status: u64,
+    pub pending: u8,
 }
 
 /// A `STARTING_LOAN`, the `size`-byte object [`CallRvas::start_loan`] takes: the player's identity block at `player`,
@@ -893,8 +916,27 @@ pub struct CallRvas {
     pub refs_drop: Option<u64>,
     /// `TRANSFER_MANAGER::end_contract(manager, player object, contract, kind, team or 0, 1, 0, 0, [0, 0])`: ends the
     /// contract, as the game's daily check does once a loan runs out (the player goes back to his club) and its editor
-    /// does to release a player. The kind only picks the news. Returns nothing.
+    /// calls on a player's own contract, which leaves him at his club with none. The kind only picks the news.
+    /// Returns nothing.
     pub end_contract: Option<u64>,
+    /// The type of a date Value; takes nothing.
+    pub date_type: Option<u64>,
+    /// `(type, Value*, raw date*)`: makes the Value of the date, 16 bytes.
+    pub date_value: Option<u64>,
+    /// `(map*, key, Value*)`: puts a copy of the Value in a terms map under the four-letter key.
+    pub map_insert: Option<u64>,
+    /// Destroys a Value.
+    pub value_drop: Option<u64>,
+    /// `TRANSFER_MANAGER::cancel_offer(manager, slot*, team, 2 or 0, 0, 0, 0, 1, [0, 0])`: cancels the offer the
+    /// slot holds a reference to, for the team the player joins (2) or the one he leaves (0). Returns nothing.
+    pub cancel_offer: Option<u64>,
+    /// `(manager + dated_owner, offer, identity block)`: drops the manager's record of a transfer agreed for a later
+    /// day, as the game's editor does once it has cancelled the offer.
+    pub drop_dated_transfer: Option<u64>,
+    /// `(slot*, slot*)`: copies a {pointer, u32} slot, taking a reference to the object (count at +0x08).
+    pub ref_copy: Option<u64>,
+    /// `(object)`: gives back a reference to the object, destroying it with the last.
+    pub ref_drop: Option<u64>,
 }
 
 impl CallRvas {
@@ -909,6 +951,14 @@ impl CallRvas {
             self.map_drop,
             self.refs_drop,
             self.end_contract,
+            self.date_type,
+            self.date_value,
+            self.map_insert,
+            self.value_drop,
+            self.cancel_offer,
+            self.drop_dated_transfer,
+            self.ref_copy,
+            self.ref_drop,
         ]
         .into_iter()
         .flatten()

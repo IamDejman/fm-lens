@@ -107,6 +107,8 @@ export interface GameActions {
   startLoan: boolean;
   signFreeAgent: boolean;
   endLoan: boolean;
+  /** Signs a free agent for a later day (`sign_free_agent_later`), and cancels it on undo. */
+  futureTransfer: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
@@ -885,6 +887,8 @@ export interface LoggedChange {
     with?: string;
     /** The fee the buying club paid the selling one, in pounds, if any. */
     fee?: number;
+    /** For a signing the game makes on a later day (`sign_free_agent_later`), that day as yyyymmdd. */
+    joins?: number;
   };
   /**
    * Set for a change to a player's ties, which is logged as a change of his field `tie.nationality`,

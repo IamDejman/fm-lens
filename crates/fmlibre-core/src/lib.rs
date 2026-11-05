@@ -60,7 +60,9 @@ pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};
 pub use filter::{AttributeBound, ClubFilter, PlayerFilter, PlayerOrder, PlayerSort, StaffFilter, sort_players};
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
-pub use game_calls::{AddedInjury, EndedLoan, GameActions, InjuryKind, PermitChange, SignedPlayer, StartedLoan};
+pub use game_calls::{
+    AddedInjury, AgreedSigning, EndedLoan, GameActions, InjuryKind, PermitChange, SignedPlayer, StartedLoan,
+};
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
 pub use index::{Listed, SearchIndex};

@@ -6,15 +6,15 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    AddedInjury, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails,
-    ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, EndedLoan, Entity, EntityArrays,
-    ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GraphicsCounts,
-    GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError, MovePlan,
-    MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture, Planned,
-    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
-    RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter,
-    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup,
-    Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
+    AddedInjury, AgreedSigning, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet,
+    ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, EndedLoan, Entity,
+    EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo,
+    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError,
+    MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture,
+    Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
+    PreferenceKind, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
+    StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target,
+    TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -522,6 +522,7 @@ impl Connection {
                 to: Some(self.club_name(started.to_club)),
                 with: None,
                 fee: None,
+                joins: None,
             }),
             captaincy: None,
             tie: None,
@@ -558,6 +559,7 @@ impl Connection {
                 to: Some(self.club_name(ended.to_club)),
                 with: None,
                 fee: None,
+                joins: None,
             }),
             captaincy: None,
             tie: None,
@@ -589,11 +591,44 @@ impl Connection {
             },
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from: None, to: Some(to), with: None, fee: None }),
+            moved: Some(MovedClubs { from: None, to: Some(to), with: None, fee: None, joins: None }),
             captaincy: None,
             tie: None,
             clause: None,
             undo: Some(Undo::Signed(signed)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a free agent's signing the game agreed for a later day, as a change of his `club` from none with the day
+    /// he joins; undone by cancelling it. He stays a free agent until then, so his list row does not change.
+    fn log_signing_later(&mut self, agreed: AgreedSigning) -> LoggedChange {
+        let to = self.club_name(agreed.club);
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(agreed.player),
+            change: Change {
+                entity: Entity::Player,
+                uid: agreed.player,
+                field: "club".to_owned(),
+                old: 0,
+                new: i64::from(agreed.club),
+            },
+            undone_at: None,
+            batch: None,
+            moved: Some(MovedClubs {
+                from: None,
+                to: Some(to),
+                with: None,
+                fee: None,
+                joins: Some(agreed.joins.to_number()),
+            }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::SignedLater(agreed)),
         };
         self.log.push(logged.clone());
         logged
@@ -812,7 +847,7 @@ impl Connection {
             change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
             undone_at: None,
             batch: None,
-            moved: moved.then_some(MovedClubs { from: Some(from), to: Some(to), with: None, fee: None }),
+            moved: moved.then_some(MovedClubs { from: Some(from), to: Some(to), with: None, fee: None, joins: None }),
             captaincy: None,
             tie: None,
             clause: None,
@@ -920,7 +955,7 @@ impl Connection {
             change,
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from: Some(from), to: Some(to), with, fee }),
+            moved: Some(MovedClubs { from: Some(from), to: Some(to), with, fee, joins: None }),
             captaincy: None,
             tie: None,
             clause: None,
@@ -954,7 +989,13 @@ impl Connection {
             change,
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from: Some(self.club_name(done.from_club)), to: None, with: None, fee: None }),
+            moved: Some(MovedClubs {
+                from: Some(self.club_name(done.from_club)),
+                to: None,
+                with: None,
+                fee: None,
+                joins: None,
+            }),
             captaincy: None,
             tie: None,
             clause: None,
@@ -1039,6 +1080,10 @@ impl Connection {
                     player.club = Some(name);
                     player.club_uid = Some(ended.from_club);
                 });
+            }
+            Some(Undo::SignedLater(agreed)) => {
+                let player = self.players.get(agreed.player).ok_or_else(|| not_found(Entity::Player, agreed.player))?;
+                self.session.cancel_signing(player, agreed.offer)?;
             }
             Some(Undo::Signed(signed)) => {
                 let plan = self.plan_release(signed.player)?;
@@ -1318,6 +1363,8 @@ enum Undo {
     LoanEnded(EndedLoan),
     /// A free agent the game signed: undone by releasing him again.
     Signed(SignedPlayer),
+    /// A free agent the game agreed to sign on a later day: undone by having it cancel the signing.
+    SignedLater(AgreedSigning),
 }
 
 /// A member of staff's move or new job as the log keeps it: the writes to undo, and what his list row said before.
@@ -1430,6 +1477,9 @@ struct MovedClubs {
     /// The fee the buying club paid the selling one, in pounds, if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     fee: Option<i64>,
+    /// For a signing the game agreed for a later day, that day, as a number like 20270701.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    joins: Option<i64>,
 }
 
 /// A move as the log keeps it: the writes to undo, and what the list rows of the players it
@@ -2638,6 +2688,25 @@ fn end_loan(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failur
     Ok(connection.log_loan_end(ended))
 }
 
+/// Has the game agree to sign the free agent `uid` for the senior team of the club `club` on `joins` (a number like
+/// 20270701), a day after today: he joins then, on its own terms. Logged as a change of his `club` from none, and
+/// undone by cancelling it.
+#[tauri::command]
+fn sign_free_agent_later(state: State<'_, AppState>, uid: u32, club: u32, joins: i64) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let to = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let day = FmDate::from_number(joins).ok_or(MoveError::OutOfRange {
+        field: "transfer.joins",
+        value: joins,
+        min: 20000101,
+        max: 21001231,
+    })?;
+    let agreed = connection.session.sign_free_agent_later(player, to, day)?;
+    Ok(connection.log_signing_later(agreed))
+}
+
 /// Has the game sign the free agent `uid` for the senior team of the club `club`, on its own terms; `terms` then replace
 /// its wage and contract end where given. Logged as a change of his `club` from none, and undone by releasing him again.
 #[tauri::command]
@@ -3266,6 +3335,7 @@ pub fn run() {
             plan_end_loan,
             end_loan,
             sign_free_agent,
+            sign_free_agent_later,
             keep_playing,
             change_tie,
             remove_tie,

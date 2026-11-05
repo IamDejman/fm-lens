@@ -43,6 +43,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   startLoan: false,
   signFreeAgent: false,
   endLoan: false,
+  futureTransfer: false,
 };
 
 export const EditorContext = createContext<EditorState>({
