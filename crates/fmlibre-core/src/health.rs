@@ -56,6 +56,9 @@ pub enum Check {
     Staff,
     /// A club's senior team points back at the club.
     Clubs,
+    /// The nations people belong to have a container that points back at them and a senior team that carries their
+    /// UID, and rules of the values the game uses. Only on builds whose layout places nations.
+    Nations,
 }
 
 /// The checks a change to the game's lists and records needs (moves, swaps, healing, captains, ties, clauses,
@@ -63,7 +66,7 @@ pub enum Check {
 pub const STRUCTURE: [Check; 4] = [Check::Contracts, Check::Teams, Check::Staff, Check::Clubs];
 
 impl Check {
-    pub const ALL: [Check; 10] = [
+    pub const ALL: [Check; 11] = [
         Check::GameDate,
         Check::Players,
         Check::Positions,
@@ -74,6 +77,7 @@ impl Check {
         Check::Teams,
         Check::Staff,
         Check::Clubs,
+        Check::Nations,
     ];
 
     /// The name of the check in error codes' parameters and in the app: `gameDate`, `liveValues`, ...
@@ -89,6 +93,7 @@ impl Check {
             Check::Teams => "teams",
             Check::Staff => "staff",
             Check::Clubs => "clubs",
+            Check::Nations => "nations",
         }
     }
 
@@ -98,6 +103,7 @@ impl Check {
         match field.entity {
             Entity::Staff => Check::Staff,
             Entity::Club => Check::Clubs,
+            Entity::Nation => Check::Nations,
             Entity::Player if key.starts_with("attribute.") => Check::Attributes,
             Entity::Player if key.starts_with("position.") => Check::Positions,
             Entity::Player if key.starts_with("personality.") => Check::Personality,
@@ -123,6 +129,7 @@ impl fmt::Display for Check {
             Check::Teams => "the teams",
             Check::Staff => "the staff",
             Check::Clubs => "the clubs",
+            Check::Nations => "the nations",
         })
     }
 }
@@ -449,6 +456,7 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     let (date_holds, date_note) = date_fits(date, &signed);
     let staff = check_staff(session);
     let clubs = check_clubs(session);
+    let nations = check_nations(session, &players);
 
     let mut attributes = attributes.result(Check::Attributes, 0.99, String::new());
     attributes.passed &= signature;
@@ -490,7 +498,10 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
             teams.result(Check::Teams, 0.95, String::new()),
             staff,
             clubs,
-        ],
+        ]
+        .into_iter()
+        .chain(nations)
+        .collect(),
     }
 }
 
@@ -685,6 +696,39 @@ fn check_clubs(session: &Session) -> CheckResult {
     tally.result(Check::Clubs, 0.95, String::new())
 }
 
+/// The most years of residence a nation asks for, among the values the game uses; 30 was the most seen.
+const MOST_NATURALISATION_YEARS: u8 = 60;
+
+/// The nations of the sampled players whose container points back at them, whose senior team carries their UID with
+/// a reputation in range, and whose rules hold values the game uses: dual nationality allowed (0) or not (2), and a
+/// number of years to gain the nationality or never (255). `None` where the layout does not place nations.
+fn check_nations(session: &Session, players: &[SampledPlayer]) -> Option<CheckResult> {
+    let (process, layout) = (&session.process, &session.layout);
+    let n = layout.national.as_ref()?;
+    let nations: std::collections::BTreeSet<u64> = players
+        .iter()
+        .map(|player| player.u64(layout, layout.player.nation))
+        .filter(|&nation| is_user_pointer(nation))
+        .collect();
+    let fits = |nation: u64| -> Option<bool> {
+        let uid = process.read_u32(nation + layout.nation.uid).ok()?;
+        let rules = process.read_bytes(nation, n.nation_end() as usize).ok()?;
+        let years = rules[n.naturalisation as usize];
+        let team = crate::national::senior_team(process, layout, nation, uid)?;
+        let reputation = process.read_bytes(team + layout.team.reputation, 2).ok()?;
+        Some(
+            matches!(rules[n.dual_nationality as usize], 0 | 2)
+                && (years <= MOST_NATURALISATION_YEARS || years == crate::national::NEVER)
+                && u16::from_le_bytes([reputation[0], reputation[1]]) <= 10_000,
+        )
+    };
+    let mut tally = Tally::default();
+    for nation in nations {
+        tally.add(fits(nation).unwrap_or(false));
+    }
+    Some(tally.result(Check::Nations, 0.95, String::new()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -747,5 +791,9 @@ mod tests {
         assert_eq!(check(Entity::Player, "trait.49"), Check::Players);
         assert_eq!(check(Entity::Staff, "contract.wage"), Check::Staff);
         assert_eq!(check(Entity::Club, "finance.balance"), Check::Clubs);
+        if layout.national.is_some() {
+            assert_eq!(check(Entity::Nation, "reputation"), Check::Nations);
+            assert_eq!(check(Entity::Nation, "population"), Check::Nations);
+        }
     }
 }

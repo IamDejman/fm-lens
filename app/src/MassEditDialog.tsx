@@ -30,7 +30,7 @@ import {
   type OperationKind,
   type RowVerdict,
 } from "./massDraft";
-import type { EditField, Entity, LoggedChange, MassFilters, MassPreview, MassReport } from "./types";
+import type { EditField, LoggedChange, MassEntity, MassFilters, MassPreview, MassReport } from "./types";
 import { useModal } from "./useModal";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 
@@ -46,7 +46,7 @@ interface MassScope {
 }
 
 interface MassEditButtonProps {
-  entity: Entity;
+  entity: MassEntity;
   /** The filter of the list as it sends it to its search: `{ playerFilter }`, `{ staffFilter }` or `{ clubFilter }`. */
   filters: MassFilters;
   /** The search text and the total of the list, from its toolbar. */
@@ -122,7 +122,7 @@ interface Previewed {
 /** The operation kinds the select offers, in order; a date offers only the first. */
 const KINDS: readonly OperationKind[] = ["set", "add", "scale"];
 
-function MassEditDialog({ entity, scope, onClose }: { entity: Entity; scope: MassScope; onClose: () => void }) {
+function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope: MassScope; onClose: () => void }) {
   const { onEdited } = useContext(EditorContext);
   const titleId = useId();
   const scopeId = useId();
@@ -549,7 +549,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: Entity; scope: Mas
 }
 
 interface OperationRowProps {
-  entity: Entity;
+  entity: MassEntity;
   /** The row's place in the list, from 1. */
   position: number;
   draft: OperationDraft;
@@ -677,10 +677,10 @@ function OperationRow(props: OperationRowProps) {
 }
 
 /** "Name", "UID": the column heads of the tables of people and clubs. */
-const idHead = (entity: Entity) => (entity === "staff" ? profileText.id : profileText.uid);
+const idHead = (entity: MassEntity) => (entity === "staff" ? profileText.id : profileText.uid);
 
 interface PreviewTableProps {
-  entity: Entity;
+  entity: MassEntity;
   preview: MassPreview;
   /** The editable fields by key, to turn stored values into shown ones. */
   fields: ReadonlyMap<string, EditField>;
@@ -733,7 +733,7 @@ function PreviewTable({ entity, preview, fields }: PreviewTableProps) {
 }
 
 /** The values a preview leaves alone, with the reasons, behind a line that opens the list. */
-function SkippedList({ entity, preview }: { entity: Entity; preview: MassPreview }) {
+function SkippedList({ entity, preview }: { entity: MassEntity; preview: MassPreview }) {
   const more = preview.skippedCount - preview.skipped.length;
   return (
     <details className="mass-skipped">

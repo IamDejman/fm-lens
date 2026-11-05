@@ -696,6 +696,8 @@ enum EntityArg {
     Player,
     Staff,
     Club,
+    /// The nations of the players, by their own UID.
+    Nation,
 }
 
 impl From<EntityArg> for Entity {
@@ -704,6 +706,7 @@ impl From<EntityArg> for Entity {
             EntityArg::Player => Entity::Player,
             EntityArg::Staff => Entity::Staff,
             EntityArg::Club => Entity::Club,
+            EntityArg::Nation => Entity::Nation,
         }
     }
 }
@@ -2679,12 +2682,17 @@ fn graphics(root: Option<PathBuf>, clubs: &[u32]) -> Result<()> {
 // ---------------------------------------------------------------------------
 // fields / get / set
 
-/// Every player, member of staff or club, as edit targets with their names.
+/// Every player, member of staff, club or nation, as edit targets with their names.
 fn targets(session: &Session, entity: Entity) -> Result<Vec<(Target, String)>> {
     Ok(match entity {
         Entity::Player => session.players()?.into_iter().map(|p| (p.target(), p.name)).collect(),
         Entity::Staff => session.staff()?.into_iter().map(|s| (s.target(), s.name)).collect(),
         Entity::Club => session.clubs()?.into_iter().map(|c| (c.target(), c.name)).collect(),
+        Entity::Nation => {
+            let players = session.players()?;
+            let people = players.iter().map(|p| (p.nation_address, p.nation.as_deref(), p.nation_uid));
+            nations(people).into_iter().filter_map(|n| Some((n.target()?, n.name))).collect()
+        }
     })
 }
 

@@ -15,7 +15,7 @@ use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::details::{PERSONALITY, POSITIONS};
 use crate::health::Lock;
-use crate::players::PlayerSummary;
+use crate::players::{Nation, PlayerSummary};
 use crate::profile::{HumanManagerLayout, Layout};
 use crate::session::Session;
 use crate::staff::StaffSummary;
@@ -27,6 +27,7 @@ pub enum Entity {
     Player,
     Staff,
     Club,
+    Nation,
 }
 
 impl fmt::Display for Entity {
@@ -35,6 +36,7 @@ impl fmt::Display for Entity {
             Entity::Player => "player",
             Entity::Staff => "staff",
             Entity::Club => "club",
+            Entity::Nation => "nation",
         })
     }
 }
@@ -164,6 +166,8 @@ enum Place {
     Concerns,
     /// The flags word of a human manager, on the build that traced it, for a member of staff of its class.
     HumanManagerFlags,
+    /// A nation's senior men's national team, found through its container (see [`crate::national::senior_team`]).
+    NationalTeam,
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -316,6 +320,7 @@ pub fn fields(layout: &Layout, entity: Entity) -> Vec<Field> {
         Entity::Player => player_fields(layout),
         Entity::Staff => staff_fields(layout),
         Entity::Club => club_fields(layout),
+        Entity::Nation => nation_fields(layout),
     }
 }
 
@@ -502,6 +507,31 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
     fields
 }
 
+/// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
+pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
+
+/// The senior national team's reputation, the population, whether dual nationality is allowed, and the years of
+/// residence that gain the nationality (255: no number of years does). One nation at a time; none where the build's
+/// layout does not place nations.
+fn nation_fields(layout: &Layout) -> Vec<Field> {
+    let Some(n) = layout.national.as_ref() else {
+        return Vec::new();
+    };
+    let field = |key: &str, offset: u64, kind: Kind, range: RangeInclusive<i64>| {
+        Field::new(Entity::Nation, key, offset, kind, range).single()
+    };
+    vec![
+        field("reputation", layout.team.reputation, Kind::U16, 0..=10_000).in_record(Place::NationalTeam),
+        // Tuvalu has 9,646 people, Nigeria 232,679,478.
+        field("population", n.population, Kind::U32, 1..=2_000_000_000).plausible(0..=i64::from(u32::MAX)),
+        field("dual_nationality", n.dual_nationality, Kind::U8, 0..=2).choices(&DUAL_NATIONALITY),
+        // The most seen was 30 years (San Marino).
+        field("naturalisation", n.naturalisation, Kind::U8, 0..=50)
+            .plausible(0..=255)
+            .blank(i64::from(crate::national::NEVER)),
+    ]
+}
+
 /// The offset of the human manager's flags in `target`, when the build has traced them (`layout`) and the target is
 /// a member of staff at the person-block shift and of the class (`class`, as [`crate::rtti::class_of`] names it) they
 /// were traced at.
@@ -520,7 +550,7 @@ pub struct Target {
     pub entity: Entity,
     pub uid: u32,
     pub address: u64,
-    /// The object's person-block shift; 0 for clubs.
+    /// The object's person-block shift; 0 for clubs and nations.
     pub shift: u64,
 }
 
@@ -586,6 +616,13 @@ impl StaffSummary {
             "nation" => self.nation_address = value as u64,
             _ => {}
         }
+    }
+}
+
+impl Nation {
+    /// The nation as an edit target; `None` without a UID of its own to check it by.
+    pub fn target(&self) -> Option<Target> {
+        self.uid.map(|uid| Target { entity: Entity::Nation, uid, address: self.address, shift: 0 })
     }
 }
 
@@ -986,6 +1023,7 @@ impl Session {
             Entity::Player => self.layout.player.at(self.layout.player.uid, target.shift),
             Entity::Staff => self.layout.staff.at(self.layout.staff.uid, target.shift),
             Entity::Club => self.layout.club.uid,
+            Entity::Nation => self.layout.nation.uid,
         };
         if self.process.read_u32(target.address + uid_offset)? != target.uid {
             return Err(EditError::Moved { entity: target.entity, uid: target.uid });
@@ -1064,6 +1102,9 @@ impl Session {
                 // The object's own class, not the list's guess that a shifted person is the human.
                 let class = crate::rtti::class_of(&self.process, &self.plugin, target.address);
                 human_manager_flags(Some(layout), target, class.as_deref()).map(|flags| target.address + flags)
+            }
+            (Place::NationalTeam, Entity::Nation) => {
+                crate::national::senior_team(&self.process, &self.layout, target.address, target.uid)
             }
             _ => None,
         })
@@ -1208,6 +1249,46 @@ mod tests {
     }
 
     #[test]
+    fn nations_take_their_own_rules_one_at_a_time() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let nations = fields(&layout, Entity::Nation);
+        let Some(n) = layout.national.as_ref() else {
+            // A build whose layout does not place nations offers none of their fields.
+            assert!(nations.is_empty());
+            return;
+        };
+        let key = |key: &str| nations.iter().find(|f| f.key == key).cloned().expect(key);
+        let keys: Vec<&str> = nations.iter().map(|f| f.key.as_str()).collect();
+        assert_eq!(keys, ["reputation", "population", "dual_nationality", "naturalisation"]);
+        assert!(nations.iter().all(|f| !f.mass && !f.shifted));
+
+        // The senior team's reputation, found through the container; the rest in the nation itself.
+        let reputation = key("reputation");
+        assert_eq!((reputation.place, reputation.offset, reputation.kind), (Place::NationalTeam, 0xA8, Kind::U16));
+        assert!(reputation.takes(0) && reputation.takes(10_000) && !reputation.takes(10_001));
+        let population = key("population");
+        assert_eq!((population.place, population.offset, population.kind), (Place::Object, n.population, Kind::U32));
+        assert!(population.takes(9_646) && population.takes(232_679_478) && !population.takes(0));
+
+        // Allowed (0) or not (2); no other code.
+        let dual = key("dual_nationality");
+        assert_eq!((dual.offset, dual.kind), (n.dual_nationality, Kind::U8));
+        assert!(dual.takes(0) && dual.takes(2) && !dual.takes(1) && !dual.takes(3));
+
+        // Years of residence, 0 for none needed, or never (255).
+        let years = key("naturalisation");
+        assert_eq!((years.offset, years.kind, years.blank), (n.naturalisation, Kind::U8, Some(255)));
+        assert!(years.takes(0) && years.takes(30) && years.takes(255) && !years.takes(51) && !years.takes(254));
+        assert!(years.is_plausible(255) && years.is_plausible(2));
+
+        // A nation is checked by its own UID, like a club's; no person-block shift.
+        let target = Nation { address: 0x5000, uid: Some(765), name: "England".into() }.target().expect("UID");
+        assert_eq!((target.entity, target.uid, target.shift), (Entity::Nation, 765, 0));
+        assert_eq!(population.address(target.address, &target), 0x5000 + n.population);
+        assert_eq!(Nation { address: 0x5000, uid: None, name: "?".into() }.target(), None);
+    }
+
+    #[test]
     fn the_unsackable_flag_is_one_manager_s_bit() {
         let layout = crate::layout_for(27).expect("FM27 layout");
         let staff = fields(&layout, Entity::Staff);
@@ -1323,7 +1404,7 @@ mod tests {
     #[test]
     fn keys_are_unique() {
         let layout = crate::layout_for(27).expect("FM27 layout");
-        for entity in [Entity::Player, Entity::Staff, Entity::Club] {
+        for entity in [Entity::Player, Entity::Staff, Entity::Club, Entity::Nation] {
             let mut keys: Vec<String> = fields(&layout, entity).into_iter().map(|f| f.key).collect();
             let all = keys.len();
             keys.sort();
