@@ -7,6 +7,7 @@
 // many.
 
 import type { MassEntity } from "../types";
+import { PERCENT_CLAUSES, RELEASE_CLAUSES } from "../clauseKinds";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
 
@@ -76,18 +77,44 @@ const STAFF_DEPARTMENTS: Partial<Record<string, string>> = {
 const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
   0: "Cláusula de rescisión por traspaso mínimo",
   1: "Cláusula de rescisión por descenso",
+  2: "Cláusula de rescisión si no asciende",
   3: "Aumento salarial anual",
+  4: "Aumento salarial por ascenso",
+  5: "Rebaja salarial por descenso",
+  6: "Cláusula de rescisión por oferta de puesto técnico",
+  7: "Rescisión en cualquier momento",
+  8: "Porcentaje de futura venta",
+  9: "Porcentaje de futura venta sobre el beneficio",
   10: "Prima por objetivo de goles en la temporada",
+  11: "Ampliación de un año tras partidos de liga",
+  12: "Igualar al que más cobra",
+  13: "Salario tras alcanzar partidos de liga",
+  14: "Aumento salarial por ascenso a primera división",
   15: "Rebaja salarial por descenso de primera división",
+  16: "Cláusula de rescisión por traspaso mínimo (clubes extranjeros)",
+  17: "Cláusula de rescisión por traspaso mínimo (clubes de una división superior)",
+  18: "Cláusula de rescisión por traspaso mínimo (clubes nacionales)",
   19: "Salario tras alcanzar partidos internacionales",
+  20: "Salario pagado por un patrocinador",
+  21: "Parte de la taquilla",
   22: "Ampliación opcional del contrato por parte del club",
+  23: "Sin indemnización si le ofrecen ser entrenador",
+  24: "Indemnización necesaria para salir",
+  25: "Ampliación de un año si asciende",
+  26: "Ampliación de un año si evita el descenso",
   27: "Cláusula de rescisión por traspaso mínimo (clubes en la Copa de Campeones)",
+  28: "Contrato garantizado",
+  29: "Ampliación automática si asciende",
+  30: "Cláusula de rescisión por lesión",
+  31: "Cláusula de rescisión por traspaso mínimo (clubes en competiciones continentales)",
   32: "Prima por partido jugado",
   33: "Prima por gol",
   34: "Prima por portería a cero",
+  37: "Prima por partido internacional",
   38: "Prima por suplente no utilizado",
   39: "Prima por asistencia",
   40: "Prima por objetivo de asistencias en la temporada",
+  41: "Prima por objetivo de goles y asistencias en la temporada",
 };
 
 /** Reasons to be unhappy, by the codes the game keeps them as (see `en.ts`). */
@@ -491,6 +518,7 @@ export const es: Strings = {
     "contract.transfer_listed": "Transferible",
     "contract.loan_listed": "Cedible",
     "contract.job": "Puesto",
+    coaching_licence: "Licencia de entrenador",
     "manager.unsackable": "Indespedible (experimental)",
     "manager.registration_anytime": "Inscribir plantilla en cualquier momento (experimental)",
     "tie.nationality": "Nacionalidad secundaria",
@@ -523,6 +551,9 @@ export const es: Strings = {
     population: "Población",
     dual_nationality: "Doble nacionalidad",
     naturalisation: "Años para nacionalizarse",
+    youth_rating: "Valoración de cantera",
+    "women.reputation": "Reputación femenina",
+    "women.youth_rating": "Valoración de cantera femenina",
   },
 
   profile: {
@@ -588,6 +619,9 @@ export const es: Strings = {
     joined: "Incorporación",
     squadStatus: "Estatus en la plantilla",
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Estatus ${status}`,
+    qualifications: "Titulación",
+    coachingLicence: "Licencia de entrenador",
+    licenceName: (level: number): string => (level === 0 ? "Ninguna" : `Nivel ${level}`),
     squadNumber: "Dorsal",
     transferListed: "Transferible",
     loanListed: "Cedible",
@@ -608,7 +642,10 @@ export const es: Strings = {
     retires: "Prevé retirarse",
     preferences: "Afinidades",
     languages: "Idiomas",
-    languageLevel: (level: number) => `${level}/10`,
+    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    languageLevel: (level: number): string =>
+      level > 9 ? "Nativo" : level >= 7 ? "Fluido" : level >= 5 ? "Bueno" : level >= 2 ? "Básico" : "No lo habla",
+    languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rivales",
     linkedClubs: "Clubes afiliados",
     preferenceKinds: {
@@ -646,18 +683,26 @@ export const es: Strings = {
     moodTitle: "Como lo muestra FMRTE, de -100 a 100; el juego lo muestra con palabras",
     clauseName: (kind) => CLAUSE_NAMES_ES[kind] ?? `Cláusula ${kind}`,
     clauseCondition: (kind, value) => {
+      if (RELEASE_CLAUSES.has(kind)) {
+        return null;
+      }
+      if (PERCENT_CLAUSES.has(kind)) {
+        return `${value} %`;
+      }
       switch (kind) {
         case 10:
           return value === 1 ? "1 gol" : `${format(value)} goles`;
         case 40:
           return value === 1 ? "1 asistencia" : `${format(value)} asistencias`;
+        case 41:
+          return `${format(value)} goles y asistencias`;
+        case 11:
+        case 13:
+          return value === 1 ? "1 partido de liga" : `${format(value)} partidos de liga`;
         case 19:
           return value === 1 ? "1 partido internacional" : `${format(value)} partidos internacionales`;
         case 22:
           return value === 1 ? "1 año" : `${format(value)} años`;
-        case 3:
-        case 15:
-          return `${value} %`;
         default:
           return String(value);
       }
@@ -1057,7 +1102,11 @@ export const es: Strings = {
     points: "Puntos",
     founded: "Federación fundada",
     joinedFifa: "Ingreso en la FIFA",
+    joinedContinental: "Ingreso en la confederación",
+    youthRating: "Valoración de cantera",
+    women: "Fútbol femenino",
     teamName: (ageLimit) => (ageLimit === null ? "Selección absoluta" : `Sub-${ageLimit}`),
+    womenTeamName: (ageLimit) => (ageLimit === null ? "Selección femenina absoluta" : `Femenina sub-${ageLimit}`),
     manager: "Seleccionador",
     captain: "Capitán",
     viceCaptain: "Segundo capitán",
@@ -1104,6 +1153,13 @@ export const es: Strings = {
           title: "Conexión",
           body: "La barra de abajo muestra si estás conectado a FM.",
         },
+      },
+      exercise: {
+        list: { title: "Prueba una edición", body: "Abre a cualquiera de la lista." },
+        edit: { title: "Editar", body: "Pulsa Editar o haz clic en un valor." },
+        profile: { title: "Cambia un valor", body: "Escribe un valor nuevo. Aún no se envía nada a FM." },
+        apply: { title: "Aplicar", body: "Aplicar envía el cambio a FM. Descartar lo elimina." },
+        changes: { title: "Cambios", body: "Aquí aparece cada cambio aplicado, y se puede deshacer." },
       },
     },
 

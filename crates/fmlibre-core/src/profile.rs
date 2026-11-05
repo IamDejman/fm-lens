@@ -164,17 +164,22 @@ pub struct NationalLayout {
     pub population: u64,
     pub dual_nationality: u64,
     pub naturalisation: u64,
-    /// In a nation: pointer to the men's container. In the container: pointer back to the nation.
+    /// In a nation: pointers to the men's and the women's containers, laid out alike. In a container: pointer back
+    /// to the nation.
     pub container: u64,
+    pub women_container: u64,
     pub container_nation: u64,
     /// In a container: the list of its national teams, its relations (rivals), the `f32` FIFA points, the `u16`
-    /// ranking (0 unranked), and the `u16` years its association was founded and joined FIFA.
+    /// ranking (0 unranked), the `u16` years its association was founded and joined FIFA and its continental body,
+    /// and its `i16` youth rating.
     pub teams: u64,
     pub rivals: u64,
     pub points: u64,
     pub ranking: u64,
     pub founded: u64,
     pub joined_fifa: u64,
+    pub joined_continental: u64,
+    pub youth_rating: u64,
     /// In a national team: pointer to the manager.
     pub team_manager: u64,
     /// In a national team: `u32` id. The senior team's is the nation's UID.
@@ -184,7 +189,7 @@ pub struct NationalLayout {
 impl NationalLayout {
     /// One past the last byte the editor reads of a nation.
     pub fn nation_end(&self) -> u64 {
-        [self.code, self.capital, self.continent, self.languages + 16, self.container, self.population + 4]
+        [self.code, self.capital, self.continent, self.languages + 16, self.women_container, self.population + 4]
             .into_iter()
             .chain([self.dual_nationality, self.naturalisation])
             .max()
@@ -194,7 +199,11 @@ impl NationalLayout {
 
     /// One past the last byte the editor reads of a container.
     pub fn container_end(&self) -> u64 {
-        [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2].into_iter().max().unwrap_or(0)
+        [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2, self.joined_continental + 2]
+            .into_iter()
+            .chain([self.youth_rating + 2])
+            .max()
+            .unwrap_or(0)
     }
 }
 
@@ -543,6 +552,10 @@ pub struct StaffLayout {
     pub identity: Option<u64>,
     /// Shifts of the person block seen across staff classes (the human manager uses 0x340).
     pub person_block_shifts: Vec<u64>,
+    /// In the person block: the `i8` coaching licence (see [`crate::staff::licence_level`]); only in the layouts it
+    /// has been traced in.
+    #[serde(default)]
+    pub coaching_licence: Option<u64>,
     /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
     pub attributes: BTreeMap<String, u64>,
     /// Ratings stored as shown (1..20) by key.
@@ -575,7 +588,12 @@ impl StaffLayout {
             self.world_reputation + 2,
             self.potential_ability + 2,
         ];
-        let single_bytes = self.attributes.values().chain(self.ratings.values()).map(|offset| offset + 1);
+        let single_bytes = self
+            .attributes
+            .values()
+            .chain(self.ratings.values())
+            .chain(self.coaching_licence.as_ref())
+            .map(|offset| offset + 1);
         fields.into_iter().chain(single_bytes).max().unwrap_or(0)
     }
 
@@ -1080,18 +1098,31 @@ mod tests {
     }
 
     #[test]
-    fn only_the_traced_build_knows_the_human_manager() {
-        let traced = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
-        let profile = profile_for(PluginFingerprint::MachO { uuid: traced }).expect("27.0.0's arm64 half");
-        assert_eq!(
-            profile.human_manager,
-            Some(HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".to_owned() })
-        );
+    fn only_the_traced_builds_know_the_human_manager() {
+        let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let traced = [arm64, intel].map(|uuid| PluginFingerprint::MachO { uuid });
+        for plugin in &traced {
+            let profile = profile_for(*plugin).expect("27.0.0 on macOS");
+            assert_eq!(
+                profile.human_manager,
+                Some(HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".to_owned() })
+            );
+        }
         for text in BUILDS {
             let profile: BuildProfile = parse(text);
-            if profile.plugin != (PluginFingerprint::MachO { uuid: traced }) {
+            if !traced.contains(&profile.plugin) {
                 assert!(profile.human_manager.is_none(), "{}", profile.name);
             }
         }
+    }
+
+    #[test]
+    fn both_halves_of_27_0_0_on_macos_find_the_officials() {
+        let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let officials = |uuid| profile_for(PluginFingerprint::MachO { uuid }).and_then(|profile| profile.officials);
+        assert_eq!(officials(arm64), Some(0x56D_2E90));
+        assert_eq!(officials(intel), Some(0x5C8_9240));
     }
 }

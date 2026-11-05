@@ -15,6 +15,7 @@ use crate::coded::Coded;
 use crate::date::FmDate;
 use crate::details::{PERSONALITY, POSITIONS};
 use crate::health::Lock;
+use crate::national::Side;
 use crate::players::{Nation, PlayerSummary};
 use crate::profile::{HumanManagerLayout, Layout};
 use crate::session::Session;
@@ -166,8 +167,11 @@ enum Place {
     Concerns,
     /// The flags word of a human manager, on the build that traced it, for a member of staff of its class.
     HumanManagerFlags,
-    /// A nation's senior men's national team, found through its container (see [`crate::national::senior_team`]).
-    NationalTeam,
+    /// A nation's men's or women's senior national team, found through its container (see
+    /// [`crate::national::senior_team`]).
+    NationalTeam(Side),
+    /// A nation's men's or women's container, which points back at it (see [`crate::national::container`]).
+    NationalContainer(Side),
     /// A loaned player's loan contract, where the layout places loans (see [`crate::Session::loan`]).
     Loan,
 }
@@ -482,6 +486,11 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         field(&format!("personality.{key}"), s.personality + i as u64, Kind::U8, 1..=20).plausible(0..=20)
     }));
     out.extend(contract_fields(layout, Entity::Staff));
+    // Written in the positive form the game reads as is; it also reads -1 to -7 as levels 2 to 8.
+    if let Some(offset) = s.coaching_licence {
+        let field = field("coaching_licence", offset, Kind::I8, 0..=i64::from(crate::staff::MOST_LICENCE));
+        out.push(field.plausible(-7..=8).choices(&COACHING_LICENCES));
+    }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
     // located on the build and class it was traced on, so it reads as missing for everyone else.
     out.push(Field::flag(Entity::Staff, "manager.unsackable", 0, 1).in_record(Place::HumanManagerFlags).single());
@@ -529,12 +538,15 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
     fields
 }
 
+/// The coaching licence levels a member of staff may be given: none (0), then 1 to 8.
+pub const COACHING_LICENCES: [i64; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
 
-/// The senior national team's reputation, the population, whether dual nationality is allowed, and the years of
-/// residence that gain the nationality (255: no number of years does). One nation at a time; none where the build's
-/// layout does not place nations.
+/// The senior national teams' reputations and the containers' youth ratings, men's and women's, the population,
+/// whether dual nationality is allowed, and the years of residence that gain the nationality (255: no number of years
+/// does). One nation at a time; none where the build's layout does not place nations.
 fn nation_fields(layout: &Layout) -> Vec<Field> {
     let Some(n) = layout.national.as_ref() else {
         return Vec::new();
@@ -542,8 +554,17 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
     let field = |key: &str, offset: u64, kind: Kind, range: RangeInclusive<i64>| {
         Field::new(Entity::Nation, key, offset, kind, range).single()
     };
+    let youth = |key: &str, side: Side| {
+        field(key, n.youth_rating, Kind::I16, 0..=crate::national::MOST_YOUTH_RATING)
+            .plausible(0..=i64::from(i16::MAX))
+            .in_record(Place::NationalContainer(side))
+    };
     vec![
-        field("reputation", layout.team.reputation, Kind::U16, 0..=10_000).in_record(Place::NationalTeam),
+        field("reputation", layout.team.reputation, Kind::U16, 0..=10_000).in_record(Place::NationalTeam(Side::Men)),
+        youth("youth_rating", Side::Men),
+        field("women.reputation", layout.team.reputation, Kind::U16, 0..=10_000)
+            .in_record(Place::NationalTeam(Side::Women)),
+        youth("women.youth_rating", Side::Women),
         // Tuvalu has 9,646 people, Nigeria 232,679,478.
         field("population", n.population, Kind::U32, 1..=2_000_000_000).plausible(0..=i64::from(u32::MAX)),
         field("dual_nationality", n.dual_nationality, Kind::U8, 0..=2).choices(&DUAL_NATIONALITY),
@@ -1126,8 +1147,11 @@ impl Session {
                 let class = crate::rtti::class_of(&self.process, &self.plugin, target.address);
                 human_manager_flags(Some(layout), target, class.as_deref()).map(|flags| target.address + flags)
             }
-            (Place::NationalTeam, Entity::Nation) => {
-                crate::national::senior_team(&self.process, &self.layout, target.address, target.uid)
+            (Place::NationalTeam(side), Entity::Nation) => {
+                crate::national::senior_team(&self.process, &self.layout, target.address, target.uid, side)
+            }
+            (Place::NationalContainer(side), Entity::Nation) => {
+                crate::national::container(&self.process, &self.layout, target.address, side)
             }
             _ => None,
         })
@@ -1249,8 +1273,9 @@ mod tests {
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        // The 2 contract fields and the human manager's 2 flags.
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + 2);
+        // The 2 contract fields, the coaching licence where the layout places it and the human manager's 2 flags.
+        let licence = usize::from(layout.staff.coaching_licence.is_some());
+        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + 2);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).
@@ -1292,13 +1317,36 @@ mod tests {
         };
         let key = |key: &str| nations.iter().find(|f| f.key == key).cloned().expect(key);
         let keys: Vec<&str> = nations.iter().map(|f| f.key.as_str()).collect();
-        assert_eq!(keys, ["reputation", "population", "dual_nationality", "naturalisation"]);
+        assert_eq!(
+            keys,
+            [
+                "reputation",
+                "youth_rating",
+                "women.reputation",
+                "women.youth_rating",
+                "population",
+                "dual_nationality",
+                "naturalisation"
+            ]
+        );
         assert!(nations.iter().all(|f| !f.mass && !f.shifted));
 
-        // The senior team's reputation, found through the container; the rest in the nation itself.
-        let reputation = key("reputation");
-        assert_eq!((reputation.place, reputation.offset, reputation.kind), (Place::NationalTeam, 0xA8, Kind::U16));
-        assert!(reputation.takes(0) && reputation.takes(10_000) && !reputation.takes(10_001));
+        // The senior teams' reputations, found through the containers; the youth ratings in the containers; the rest
+        // in the nation itself.
+        for (key, side) in [("reputation", Side::Men), ("women.reputation", Side::Women)] {
+            let reputation = nations.iter().find(|f| f.key == key).expect(key);
+            assert_eq!(
+                (reputation.place, reputation.offset, reputation.kind),
+                (Place::NationalTeam(side), 0xA8, Kind::U16)
+            );
+            assert!(reputation.takes(0) && reputation.takes(10_000) && !reputation.takes(10_001));
+        }
+        for (key, side) in [("youth_rating", Side::Men), ("women.youth_rating", Side::Women)] {
+            let youth = nations.iter().find(|f| f.key == key).expect(key);
+            assert_eq!((youth.place, youth.offset, youth.kind), (Place::NationalContainer(side), 0x874, Kind::I16));
+            // England's men have 135, its women 161.
+            assert!(youth.takes(0) && youth.takes(135) && youth.takes(165) && !youth.takes(166) && !youth.takes(-1));
+        }
         let population = key("population");
         assert_eq!((population.place, population.offset, population.kind), (Place::Object, n.population, Kind::U32));
         assert!(population.takes(9_646) && population.takes(232_679_478) && !population.takes(0));
@@ -1319,6 +1367,22 @@ mod tests {
         assert_eq!((target.entity, target.uid, target.shift), (Entity::Nation, 765, 0));
         assert_eq!(population.address(target.address, &target), 0x5000 + n.population);
         assert_eq!(Nation { address: 0x5000, uid: None, name: "?".into() }.target(), None);
+    }
+
+    #[test]
+    fn a_coaching_licence_is_written_in_the_positive_form() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let staff = fields(&layout, Entity::Staff);
+        let Some(offset) = layout.staff.coaching_licence else {
+            assert!(!staff.iter().any(|f| f.key == "coaching_licence"));
+            return;
+        };
+        let field = staff.iter().find(|f| f.key == "coaching_licence").cloned().expect("field");
+        assert_eq!((field.offset, field.kind, field.min, field.max), (offset, Kind::I8, 0, 8));
+        assert!(field.shifted && field.mass);
+        assert!(field.takes(0) && field.takes(8) && !field.takes(9) && !field.takes(-1));
+        // The game's other form of levels 2 to 8 reads as plausible, and is replaced on a write.
+        assert!(field.is_plausible(-1) && field.is_plausible(-7) && !field.is_plausible(-8) && !field.is_plausible(9));
     }
 
     #[test]
