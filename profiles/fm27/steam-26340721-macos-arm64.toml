@@ -27,6 +27,22 @@ transfer_manager = 0x56A49F8
 awards = 0x56D2D18
 competitions = 0x56D2D30
 
+# The static pointers to the database table of the kinds of injury (136, in the same block as the competitions) and to
+# the injury manager (INJURY_MANAGER). Only this build has them.
+injury_kinds = 0x56D2D58
+injury_manager = 0x56A82A0
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
+# no others on this build. Traced statically; see docs/recon/fm27-player-extras.md.
+[calls]
+# INJURY_MANAGER::add_injury, as the game's training injuries call it: (manager, player, kind index, cause 3, 0, 0,
+# 0, 0, then on the stack a news byte 0, 0 and a u16 0). Returns the new injury, or null when injuries are switched
+# off or he already has one of that kind.
+add_injury = 0x27047D4
+# TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force 1, grant 1 or 0).
+# The game's editor passes force 0 and grant 0, which takes a permit away. See docs/recon/fm27-call-shapes.md.
+set_work_permit = 0x2D85294
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "F4540355-2186-39CB-9119-C706A6A35346"

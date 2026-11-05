@@ -27,7 +27,7 @@ use mach2::message::{
 use mach2::port::{MACH_PORT_NULL, MACH_PORT_RIGHT_RECEIVE, mach_port_name_t, mach_port_t};
 use mach2::traps::mach_task_self;
 
-use crate::call::{MAX_STEPS, Outcome, SCRATCH_SIZE, Status, Step, refusal};
+use crate::call::{MAX_STEPS, Outcome, Program, SCRATCH_SIZE, Status, Step, refusal};
 use crate::error::{Error, Result};
 
 /// The start of the bridge's service name; the game's pid follows it.
@@ -83,6 +83,8 @@ pub struct CallRequest {
     pub step_count: u32,
     pub reserved: u32,
     pub steps: [Step; MAX_STEPS],
+    /// The scratch memory as the first step finds it.
+    pub scratch: [u8; SCRATCH_SIZE],
 }
 
 /// The answer to a call.
@@ -296,10 +298,16 @@ pub(crate) fn request_task(pid: u32) -> Result<Option<mach_port_t>> {
     Ok(Some(task.0))
 }
 
-/// Has the bridge in the game with `pid` run `steps`, written for the game plugin with
+/// Has the bridge in the game with `pid` run `program`, written for the game plugin with
 /// `plugin_uuid`, on the game's main thread. `allowed` tells the functions the build profile
 /// names, checked here before the bridge checks them again.
-pub(crate) fn call(pid: u32, plugin_uuid: [u8; 16], steps: &[Step], allowed: impl Fn(u64) -> bool) -> Result<Outcome> {
+pub(crate) fn call(
+    pid: u32,
+    plugin_uuid: [u8; 16],
+    program: &Program,
+    allowed: impl Fn(u64) -> bool,
+) -> Result<Outcome> {
+    let steps = program.steps.as_slice();
     if let Some(reason) = refusal(steps, allowed) {
         return Err(Error::Bridge { pid, reason });
     }
@@ -325,6 +333,7 @@ pub(crate) fn call(pid: u32, plugin_uuid: [u8; 16], steps: &[Step], allowed: imp
         step_count: steps.len() as u32,
         reserved: 0,
         steps: [Step::default(); MAX_STEPS],
+        scratch: *program.scratch,
     };
     request.steps[..steps.len()].copy_from_slice(steps);
     buffer.message.request = request;
@@ -380,4 +389,42 @@ pub(crate) fn call(pid: u32, plugin_uuid: [u8; 16], steps: &[Step], allowed: imp
         results: reply.results[..steps.len()].to_vec(),
         scratch: Box::new(reply.scratch),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use mach2::message::MACH_MSG_TYPE_MAKE_SEND;
+
+    use super::*;
+
+    /// The trailer sits wherever the message ends: after a plain request it names this process as the sender.
+    #[test]
+    fn names_the_sender_of_a_request() {
+        let mut port = MACH_PORT_NULL;
+        let code = unsafe { mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &mut port) };
+        assert_eq!(code, KERN_SUCCESS);
+        let port = ReceiveRight(port);
+        let mut request = Request {
+            header: mach_msg_header_t {
+                msgh_bits: MACH_MSGH_BITS(MACH_MSG_TYPE_MAKE_SEND, 0),
+                msgh_size: size_of::<Request>() as mach_msg_size_t,
+                msgh_remote_port: port.0,
+                msgh_local_port: MACH_PORT_NULL,
+                msgh_voucher_port: MACH_PORT_NULL,
+                msgh_id: REQUEST,
+            },
+        };
+        let size = size_of::<Request>() as mach_msg_size_t;
+        let code = unsafe { mach_msg(&mut request.header, MACH_SEND_MSG, size, 0, 0, 0, MACH_PORT_NULL) };
+        assert_eq!(code, KERN_SUCCESS);
+
+        let mut received = Received::new();
+        let code = unsafe {
+            mach_msg(received.buffer(), RECEIVE_WITH_AUDIT, 0, Received::CAPACITY, port.0, 0, MACH_PORT_NULL)
+        };
+        assert_eq!(code, KERN_SUCCESS);
+        assert_eq!(received.header().msgh_id, REQUEST);
+        assert_eq!(received.sender(), Some((unsafe { libc::geteuid() }, std::process::id())));
+        assert!(received.call().is_none());
+    }
 }

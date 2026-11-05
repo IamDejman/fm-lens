@@ -6,15 +6,15 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex,
-    ClubMove, Coded, Cohered, CompetitionSummary, EditError, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
-    Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health,
-    Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary,
-    Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary,
-    PlayerTemplate, Preference, PreferenceKind, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
-    SessionError, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex,
-    StaffPlan, Target, TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums,
-    sort_players,
+    AddedInjury, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails,
+    ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, Entity, EntityArrays, ExportFormat,
+    ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GraphicsCounts, GraphicsIndex,
+    HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation,
+    NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, RelationSet,
+    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StadiumFilter, StadiumSummary, StaffChange,
+    StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, TemplateGroup, Tie, TieTarget, find_game,
+    nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -332,6 +332,7 @@ impl Connection {
             known_build: self.session.known_build(),
             health: Health::clone(&self.session.health()),
             career: self.career.clone(),
+            game_actions: self.session.game_actions(),
             refrozen: None,
         }
     }
@@ -468,6 +469,26 @@ impl Connection {
             tie: None,
             clause: None,
             undo: Some(Undo::Heal(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a change the game made itself to the player `uid`, as one of his `field` from `old` to `new`.
+    fn log_game_change(&mut self, uid: u32, field: &str, old: i64, new: i64, undo: Undo) -> LoggedChange {
+        let change = Change { entity: Entity::Player, uid, field: field.to_owned(), old, new };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(uid),
+            change,
+            undone_at: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(undo),
         };
         self.log.push(logged.clone());
         logged
@@ -881,6 +902,13 @@ impl Connection {
                 });
             }
             Some(Undo::Captain(captaincy)) => self.session.undo_captain(&captaincy)?,
+            Some(Undo::Injured(added)) => {
+                self.session.apply_heal(&added.undo)?;
+            }
+            Some(Undo::Permit(change)) => {
+                let player = self.players.get(change.player).ok_or_else(|| not_found(Entity::Player, change.player))?;
+                self.session.set_work_permit(player, change.was_granted)?;
+            }
             None => {
                 let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
                 self.session.revert(&target, &entry.change)?;
@@ -1139,6 +1167,10 @@ enum Undo {
     Clause(ClauseSet),
     Captain(CaptainSet),
     Staff(LoggedStaff),
+    /// An injury the game gave: undone by healing it.
+    Injured(AddedInjury),
+    /// A work permit the game granted or took away: undone by having it do the opposite.
+    Permit(PermitChange),
 }
 
 /// A member of staff's move or new job as the log keeps it: the writes to undo, and what his list row said before.
@@ -1538,6 +1570,8 @@ struct ConnectionInfo {
     health: Health,
     /// The human manager and club of the loaded career.
     career: Option<Career>,
+    /// The edits the game can make itself on this build, through the bridge.
+    game_actions: GameActions,
     /// Only from `connect`: what it froze again of what was frozen in this save before, when there was any.
     #[serde(skip_serializing_if = "Option::is_none")]
     refrozen: Option<Refrozen>,
@@ -2381,6 +2415,37 @@ fn heal_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Fai
     Ok(connection.log_heal(done, None))
 }
 
+/// The kinds of injury the game knows, in its order, for adding one. Only reads memory.
+#[tauri::command]
+fn injury_kinds(state: State<'_, AppState>) -> Result<Vec<InjuryKind>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    Ok(connection.session.injury_kinds()?)
+}
+
+/// Has the game give the player `uid` an injury of the kind with UID `kind`, as its training injuries do; the game
+/// picks how long it lasts. Logged as a change of his `injuries` from none to one, and undone by healing it.
+#[tauri::command]
+fn add_injury(state: State<'_, AppState>, uid: u32, kind: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let added = connection.session.add_injury(player, kind)?;
+    Ok(connection.log_game_change(uid, "injuries", 0, 1, Undo::Injured(added)))
+}
+
+/// Has the game grant the player `uid` a work permit for his club's country, or take it away. Logged as a change of
+/// his `work_permit` from 0 or 1 to the other, and undone by the opposite call.
+#[tauri::command]
+fn set_work_permit(state: State<'_, AppState>, uid: u32, granted: bool) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let change = connection.session.set_work_permit(player, granted)?;
+    let (old, new) = (i64::from(change.was_granted), i64::from(change.granted));
+    Ok(connection.log_game_change(uid, "work_permit", old, new, Undo::Permit(change)))
+}
+
 /// Lifts every current ban of the player `uid`, as the game does once he has served them, and
 /// logs it as one change of his `bans` to none.
 #[tauri::command]
@@ -2979,6 +3044,9 @@ pub fn run() {
             staff_jobs,
             heal_player,
             lift_bans,
+            injury_kinds,
+            add_injury,
+            set_work_permit,
             keep_playing,
             change_tie,
             remove_tie,

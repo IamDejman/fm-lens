@@ -114,19 +114,19 @@ impl Process {
         self.task
     }
 
-    /// Has the bridge in the game run `steps`, a program of the game plugin's own functions, on
-    /// the game's main thread ([`crate::call`]). `plugin_uuid` names the build they were written
-    /// for and `allowed` the functions its profile lists. Only on a process opened for writing.
+    /// Has the bridge in the game run `program`, steps of the game plugin's own functions, on the
+    /// game's main thread ([`crate::call`]). `plugin_uuid` names the build they were written for and
+    /// `allowed` the functions its profile lists. Only on a process opened for writing.
     pub fn call(
         &self,
         plugin_uuid: [u8; 16],
-        steps: &[crate::call::Step],
+        program: &crate::call::Program,
         allowed: impl Fn(u64) -> bool,
     ) -> Result<crate::call::Outcome> {
         if cfg!(feature = "read-only") || !self.writable {
             return Err(Error::ReadOnly);
         }
-        super::bridge::call(self.pid, plugin_uuid, steps, allowed)
+        super::bridge::call(self.pid, plugin_uuid, program, allowed)
     }
 
     /// Full path of the process executable.

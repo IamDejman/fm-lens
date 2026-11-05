@@ -11,8 +11,8 @@
 /// The most steps one call may have.
 pub const MAX_STEPS: usize = 12;
 
-/// The bytes of memory the bridge lends a call for objects it builds, such as a terms map: zeroed
-/// before the first step, and sent back with the answer.
+/// The bytes of memory the bridge lends a call for the objects its steps build or take, such as a
+/// terms map: filled with what the editor sends before the first step, and sent back with the answer.
 pub const SCRATCH_SIZE: usize = 1024;
 
 /// What a step passes in one argument register or stack slot.
@@ -46,7 +46,7 @@ impl Arg {
 }
 
 /// One call of a function of the game plugin, with the arguments of the arm64 calling convention:
-/// `x0` to `x7`, the indirect result register `x8`, and two 8-byte stack slots.
+/// `x0` to `x7`, the indirect result register `x8`, and four 8-byte stack slots.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Step {
@@ -56,7 +56,7 @@ pub struct Step {
     pub reserved: u32,
     pub registers: [Arg; 8],
     pub indirect: Arg,
-    pub stack: [Arg; 2],
+    pub stack: [Arg; 4],
 }
 
 impl Step {
@@ -65,9 +65,11 @@ impl Step {
     /// Run even after a step stopped the call, as a destructor of something built earlier must.
     pub const CLEANUP: u32 = 2;
 
-    /// A call of the function at `rva` with up to ten arguments, in registers first and then on the stack.
+    /// A call of the function at `rva` with up to twelve arguments, in registers first and then on the stack.
+    /// Each stack argument takes an 8-byte slot, as a `u64` or a pointer does; smaller ones packed
+    /// together by the caller must be packed into one value.
     pub fn new(rva: u64, args: &[Arg]) -> Self {
-        assert!(args.len() <= 10, "a step takes at most ten arguments");
+        assert!(args.len() <= 12, "a step takes at most twelve arguments");
         let mut step = Step { rva, ..Step::default() };
         for (index, arg) in args.iter().enumerate() {
             match index {
@@ -96,6 +98,44 @@ impl Step {
 
     fn args(&self) -> impl Iterator<Item = &Arg> {
         self.registers.iter().chain(std::iter::once(&self.indirect)).chain(&self.stack)
+    }
+}
+
+/// What the editor asks the bridge to run: the steps, and the scratch memory as they find it.
+#[derive(Debug, Clone)]
+pub struct Program {
+    pub steps: Vec<Step>,
+    pub scratch: Box<[u8; SCRATCH_SIZE]>,
+}
+
+impl Default for Program {
+    fn default() -> Self {
+        Program { steps: Vec::new(), scratch: Box::new([0; SCRATCH_SIZE]) }
+    }
+}
+
+impl Program {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Adds `step` and gives its number, for [`Arg::result`].
+    pub fn push(&mut self, step: Step) -> usize {
+        self.steps.push(step);
+        self.steps.len() - 1
+    }
+
+    /// Puts `bytes` in the scratch memory at `offset`.
+    pub fn write(&mut self, offset: usize, bytes: &[u8]) {
+        self.scratch[offset..offset + bytes.len()].copy_from_slice(bytes);
+    }
+
+    pub fn write_u64(&mut self, offset: usize, value: u64) {
+        self.write(offset, &value.to_le_bytes());
+    }
+
+    pub fn write_u32(&mut self, offset: usize, value: u32) {
+        self.write(offset, &value.to_le_bytes());
     }
 }
 
@@ -195,10 +235,10 @@ mod tests {
 
     #[test]
     fn places_arguments() {
-        let args: Vec<Arg> = (0..10).map(Arg::value).collect();
+        let args: Vec<Arg> = (0..12).map(Arg::value).collect();
         let step = Step::new(0x100, &args).returning_into(Arg::scratch(0)).stop_if_false();
         assert_eq!(step.registers[7], Arg::value(7));
-        assert_eq!(step.stack, [Arg::value(8), Arg::value(9)]);
+        assert_eq!(step.stack, [Arg::value(8), Arg::value(9), Arg::value(10), Arg::value(11)]);
         assert_eq!(step.indirect, Arg::scratch(0));
         assert_eq!(step.flags, Step::STOP_IF_FALSE);
     }
