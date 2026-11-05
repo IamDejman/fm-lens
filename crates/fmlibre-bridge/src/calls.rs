@@ -125,7 +125,7 @@ fn run(request: &CallRequest, reply: &mut CallReply) -> Status {
     let job = Arc::new(Job {
         base,
         steps: request.steps[..request.step_count as usize].to_vec(),
-        scratch: Mutex::new(Box::new(Scratch([0; SCRATCH_SIZE]))),
+        scratch: Mutex::new(Box::new(Scratch(request.scratch))),
         state: Mutex::new(State::Waiting),
         changed: Condvar::new(),
     });
@@ -202,22 +202,25 @@ fn execute(job: &Job, scratch: &mut Scratch) -> State {
 }
 
 /// Calls the function at `address` with `x0` to `x7` from `registers`, `x8` set to `indirect` and
-/// `stack` in the first two stack slots, and gives back `x0`.
+/// `stack` in the first four stack slots, and gives back `x0`.
 ///
 /// # Safety
 /// `address` must be a function of the game plugin that takes these arguments.
 #[cfg(target_arch = "aarch64")]
-unsafe fn invoke(address: u64, registers: &[u64; 8], indirect: u64, stack: &[u64; 2]) -> u64 {
+unsafe fn invoke(address: u64, registers: &[u64; 8], indirect: u64, stack: &[u64; 4]) -> u64 {
     let result: u64;
     unsafe {
         std::arch::asm!(
-            "sub sp, sp, #16",
+            "sub sp, sp, #32",
             "stp {first}, {second}, [sp]",
+            "stp {third}, {fourth}, [sp, #16]",
             "blr {function}",
-            "add sp, sp, #16",
+            "add sp, sp, #32",
             function = in(reg) address,
             first = in(reg) stack[0],
             second = in(reg) stack[1],
+            third = in(reg) stack[2],
+            fourth = in(reg) stack[3],
             inout("x0") registers[0] => result,
             inout("x1") registers[1] => _,
             inout("x2") registers[2] => _,
@@ -234,7 +237,7 @@ unsafe fn invoke(address: u64, registers: &[u64; 8], indirect: u64, stack: &[u64
 }
 
 #[cfg(not(target_arch = "aarch64"))]
-unsafe fn invoke(_: u64, _: &[u64; 8], _: u64, _: &[u64; 2]) -> u64 {
+unsafe fn invoke(_: u64, _: &[u64; 8], _: u64, _: &[u64; 4]) -> u64 {
     // check() refuses every call on other architectures first.
     0
 }

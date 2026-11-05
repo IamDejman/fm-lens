@@ -104,7 +104,7 @@ impl Listed for AwardSummary {
 /// The objects of the database table whose static pointer is `slot` bytes into the game plugin, each read as `size`
 /// bytes: those whose index is their place in the table, all of class `class`. Empty when the table is not there or
 /// is not of that class. Only reads memory.
-fn table_rows(
+pub(crate) fn table_rows(
     session: &Session,
     slot: u64,
     items: u64,

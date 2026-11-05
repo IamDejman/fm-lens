@@ -185,6 +185,17 @@ place_name = 0x18
 reputation = 0x188       # u16, 0..200
 women = 0xF9             # u8, nonzero for a women's competition
 
+# The kinds of injury (db::INJURY): a database table at a static of the build profile (`injury_kinds`), its vector of
+# pointers at +0x88, each kind 0x78 bytes with its place at +0x08 and its UID at +0x0C. 136 kinds on 11 Dec 2027; the
+# name is at the injury's `kind_name`.
+[injury_kind]
+class = "N2db6INJURYE"
+size = 0x78
+table_items = 0x88
+index = 0x08
+uid = 0x0C
+manager_class = "14INJURY_MANAGER"
+
 [award]
 class = "N2db5AWARDE"
 size = 0xA0

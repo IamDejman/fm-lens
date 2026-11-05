@@ -54,6 +54,9 @@ pub struct Layout {
     pub competition: Option<CompetitionLayout>,
     #[serde(default)]
     pub award: Option<AwardLayout>,
+    /// The kinds of injury; only in the layouts they have been checked in.
+    #[serde(default)]
+    pub injury_kind: Option<InjuryKindLayout>,
 }
 
 /// A competition (`db::COMP`), `size` bytes read from its start. `table_items` is where its database table points at
@@ -75,6 +78,20 @@ pub struct CompetitionLayout {
     pub place_name: u64,
     pub reputation: u64,
     pub women: u64,
+}
+
+/// A kind of injury (`db::INJURY`), read from its database table as a competition is ([`CompetitionLayout`]). Its
+/// name is at [`InjuryLayout::kind_name`].
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InjuryKindLayout {
+    pub class: String,
+    pub size: u64,
+    pub table_items: u64,
+    pub index: u64,
+    pub uid: u64,
+    /// The mangled class name of the injury manager, which gives players their injuries.
+    pub manager_class: String,
 }
 
 /// An award (`db::AWARD`), read as a competition is ([`CompetitionLayout`]); `competition`, `nation` and `continent`
@@ -789,6 +806,38 @@ pub struct BuildProfile {
     pub competitions: Option<u64>,
     #[serde(default)]
     pub awards: Option<u64>,
+    /// RVA in the game plugin of the static pointer to the database table of the kinds of injury
+    /// ([`InjuryKindLayout`]), on the one build where it has been read.
+    #[serde(default)]
+    pub injury_kinds: Option<u64>,
+    /// RVA in the game plugin of the static pointer to the injury manager (`INJURY_MANAGER`), which gives players
+    /// their injuries, on the one build where it has been read.
+    #[serde(default)]
+    pub injury_manager: Option<u64>,
+    /// The game's own functions FM Lens has the game run, through the bridge on macOS, on the one build where their
+    /// shapes have been traced.
+    #[serde(default)]
+    pub calls: Option<CallRvas>,
+}
+
+/// RVAs in the game plugin of the functions FM Lens has the game run ([`fmlibre_mem::call`]). The bridge runs these
+/// and no others for the build: fmlibre-bridge/build.rs reads them from the same table.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CallRvas {
+    /// `INJURY_MANAGER::add_injury(manager, player, kind index, cause, 0, 0, 0, 0, [news byte, 0, 0])`: gives the
+    /// player an injury of the kind and returns it, or null when it does not.
+    pub add_injury: Option<u64>,
+    /// `TRANSFER_MANAGER::set_work_permit(manager, identity block, club team, force, grant)`: grants the player a work
+    /// permit for the club's country, or takes it away. Returns nothing.
+    pub set_work_permit: Option<u64>,
+}
+
+impl CallRvas {
+    /// Every function listed.
+    pub fn all(&self) -> Vec<u64> {
+        [self.add_injury, self.set_work_permit].into_iter().flatten().collect()
+    }
 }
 
 /// The human manager's flags word, traced statically on the arm64 half of Steam build 26340721: the

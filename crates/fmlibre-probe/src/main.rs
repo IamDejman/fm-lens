@@ -134,6 +134,11 @@ enum Command {
         #[arg(long, default_value_t = 15)]
         limit: usize,
     },
+    /// List the kinds of injury the game knows, in its order; with a name, only those whose name holds it
+    InjuryKinds {
+        /// Part of a name to look for.
+        name: Option<String>,
+    },
     /// Show what FMLibreEditor reads for the nation with this UID: its rules, FIFA ranking, rivals and teams.
     Nation {
         /// The nation's unique ID.
@@ -840,6 +845,19 @@ fn run(cli: Cli) -> Result<()> {
             competitions(&connect(process, ArraySource::ProfileFirst)?, name, limit)
         }
         Command::Awards { name, limit } => awards(&connect(process, ArraySource::ProfileFirst)?, name, limit),
+        Command::InjuryKinds { name } => {
+            let session = connect(process, ArraySource::ProfileFirst)?;
+            let mut kinds = session.injury_kinds()?;
+            println!("{} kinds of injury", kinds.len());
+            if let Some(name) = name {
+                let name = name.to_lowercase();
+                kinds.retain(|kind| kind.name.to_lowercase().contains(&name));
+            }
+            for kind in kinds {
+                println!("  {:>6}  {}", kind.uid, kind.name);
+            }
+            Ok(())
+        }
         Command::Players { text, limit, filter, export, semicolon } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             let format = export.as_deref().map(|path| {
