@@ -16,8 +16,9 @@ not evidence that a manager is protected from dismissal.
 | Unsackable | bit 1 (mask `2`) of that word |
 
 The profile `profiles/fm27/steam-26340721-macos-arm64.toml` carries these as
-`[human_manager]`. No other profile has them; the Intel half of the same build,
-the Launch Preview and every Windows build leave the field unavailable.
+`[human_manager]`. The Intel half of the same build has the same values, traced
+statically ([Intel notes](fm27-steam-26340721-macos-x86_64.md)); the Launch
+Preview and every Windows build leave the field unavailable.
 
 ## Static trace (ARM64 slice of game_plugin)
 

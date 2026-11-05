@@ -24,6 +24,7 @@ import type {
   Storefront,
 } from "../types";
 import { fieldName } from "./fieldNames";
+import { PERCENT_CLAUSES, RELEASE_CLAUSES } from "../clauseKinds";
 
 const numbers = new Intl.NumberFormat("en-GB");
 const percents = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 1 });
@@ -111,22 +112,51 @@ const errors: ErrorTexts = {
     "again, or add the launch option yourself.",
 };
 
-/** The kinds of contract clauses and bonuses, by the codes contracts hold them as; named as FMRTE names them. */
+/**
+ * The kinds of contract clauses and bonuses, by the codes contracts hold them as; named as FMRTE names them, and the
+ * rest after the game's own list of kinds.
+ */
 const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   0: "Minimum fee release clause",
   1: "Relegation release clause",
+  2: "Non-promotion release clause",
   3: "Yearly wage rise",
+  4: "Promotion wage rise",
+  5: "Relegation wage drop",
+  6: "Non-playing job release clause",
+  7: "Release at any time",
+  8: "Sell-on fee",
+  9: "Sell-on fee from profit",
   10: "Seasonal landmark goal bonus",
+  11: "One-year extension after league matches",
+  12: "Match highest earner",
+  13: "Wage after reaching league matches",
+  14: "Top division promotion wage rise",
   15: "Top division relegation wage drop",
+  16: "Minimum fee release clause (foreign clubs)",
+  17: "Minimum fee release clause (clubs in a higher division)",
+  18: "Minimum fee release clause (domestic clubs)",
   19: "Wage after reaching international matches",
+  20: "Wages paid by sponsor",
+  21: "Share of gate receipts",
   22: "Optional contract extension by club",
+  23: "No compensation if offered a manager's job",
+  24: "Compensation needed to leave",
+  25: "One-year extension if promoted",
+  26: "One-year extension if relegation is avoided",
   27: "Minimum fee release clause (clubs in the Champions Cup)",
+  28: "Guaranteed contract",
+  29: "Automatic extension if promoted",
+  30: "Injury release clause",
+  31: "Minimum fee release clause (clubs in continental competitions)",
   32: "Appearance fee",
   33: "Goal bonus",
   34: "Clean sheet bonus",
+  37: "International cap bonus",
   38: "Unused substitute fee",
   39: "Assist bonus",
   40: "Seasonal landmark assist bonus",
+  41: "Seasonal landmark goals and assists bonus",
 };
 
 /** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them. */
@@ -411,6 +441,7 @@ export const en = {
     "contract.loan_listed": "Loan listed",
     // A member of staff's job, which the change log keeps as a change of its code.
     "contract.job": "Job",
+    coaching_licence: "Coaching licence",
     "manager.unsackable": "Unsackable (experimental)",
     "manager.registration_anytime": "Register squad any time (experimental)",
     // A player's ties, which the change log keeps as changes of the nation or club (see `ties`).
@@ -454,6 +485,9 @@ export const en = {
     population: "Population",
     dual_nationality: "Dual nationality",
     naturalisation: "Years to naturalise",
+    youth_rating: "Youth rating",
+    "women.reputation": "Women's reputation",
+    "women.youth_rating": "Women's youth rating",
   },
 
   profile: {
@@ -525,6 +559,10 @@ export const en = {
     joined: "Joined",
     squadStatus: "Squad status",
     squadStatusName: (status: number) => SQUAD_STATUSES[status] ?? `Status ${status}`,
+    /** A member of staff's coaching licence: 0 none, 1 to 8 FM's levels. */
+    qualifications: "Qualifications",
+    coachingLicence: "Coaching licence",
+    licenceName: (level: number): string => (level === 0 ? "None" : `Level ${level}`),
     squadNumber: "Squad number",
     transferListed: "Transfer listed",
     loanListed: "Loan listed",
@@ -547,7 +585,10 @@ export const en = {
     preferences: "Likes and dislikes",
     languages: "Languages",
     /** How well a language is spoken: FM's 0 to 10. */
-    languageLevel: (level: number) => `${level}/10`,
+    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    languageLevel: (level: number): string =>
+      level > 9 ? "Native" : level >= 7 ? "Fluent" : level >= 5 ? "Good" : level >= 2 ? "Basic" : "Does not speak",
+    languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rivals",
     linkedClubs: "Affiliated clubs",
     preferenceKinds: {
@@ -588,20 +629,28 @@ export const en = {
     moodTitle: "From -100 to 100. FM shows it in words.",
     /** The name of a clause or bonus by its kind; a kind the app does not know yet by its number. */
     clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? `Clause ${kind}`,
-    /** What a clause depends on, by kind: goals, assists, matches, years or a percentage. */
-    clauseCondition: (kind: number, value: number) => {
+    /** What a clause depends on, by kind; null where what it means is not known. */
+    clauseCondition: (kind: number, value: number): string | null => {
+      if (RELEASE_CLAUSES.has(kind)) {
+        return null;
+      }
+      if (PERCENT_CLAUSES.has(kind)) {
+        return `${value}%`;
+      }
       switch (kind) {
         case 10:
-          return `${value} goals`;
+          return value === 1 ? "1 goal" : `${value} goals`;
         case 40:
-          return `${value} assists`;
+          return value === 1 ? "1 assist" : `${value} assists`;
+        case 41:
+          return `${value} goals and assists`;
+        case 11:
+        case 13:
+          return value === 1 ? "1 league match" : `${value} league matches`;
         case 19:
-          return `${value} international matches`;
+          return value === 1 ? "1 international match" : `${value} international matches`;
         case 22:
           return value === 1 ? "1 year" : `${value} years`;
-        case 3:
-        case 15:
-          return `${value}%`;
         default:
           return String(value);
       }
@@ -1011,7 +1060,12 @@ export const en = {
     points: "Points",
     founded: "Association founded",
     joinedFifa: "Joined FIFA",
+    joinedContinental: "Joined confederation",
+    youthRating: "Youth rating",
+    women: "Women's football",
     teamName: (ageLimit: number | null) => (ageLimit === null ? "Senior team" : `Under-${ageLimit}s`),
+    womenTeamName: (ageLimit: number | null) =>
+      ageLimit === null ? "Women's senior team" : `Women's under-${ageLimit}s`,
     manager: "Manager",
     captain: "Captain",
     viceCaptain: "Vice-captain",
@@ -1062,6 +1116,13 @@ export const en = {
           title: "Connection",
           body: "The bar at the bottom shows whether you're connected to FM.",
         },
+      },
+      exercise: {
+        list: { title: "Try an edit", body: "Open anyone in the list." },
+        edit: { title: "Edit", body: "Press Edit, or click a value." },
+        profile: { title: "Change a value", body: "Type a new value. Nothing goes into FM yet." },
+        apply: { title: "Apply", body: "Apply puts the change into FM. Discard drops it." },
+        changes: { title: "Changes", body: "Every applied change is listed here, and can be undone." },
       },
     },
 
