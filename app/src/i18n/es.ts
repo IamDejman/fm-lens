@@ -569,10 +569,7 @@ export const es: Strings = {
     // Contrato
     contract: "Contrato",
     wage: "Salario semanal",
-    wageNote: (converted) =>
-      converted
-        ? "Al cambio de FM"
-        : "En libras. Cambia la moneda en Ajustes",
+    converted: "Al cambio de FM",
     signed: "Firmado",
     expires: "Vence",
     joined: "Incorporación",
