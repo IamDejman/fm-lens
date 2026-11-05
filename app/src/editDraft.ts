@@ -4,7 +4,10 @@ import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, show
 import { formatAmount, formatDate, formatNumber, formatPercent } from "./format";
 import { choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
-import { wageFmShows } from "./wage";
+import { nextFmWage, wageFmShows } from "./wage";
+
+/** The field of a player's or staff member's wage, which FM shows rounded (see wage.ts). */
+const WAGE = "contract.wage";
 
 /**
  * The text of each input that was typed into, by field key; the others still show the value the game had. A number
@@ -102,7 +105,7 @@ export function judge(field: EditField, stored: number, text: string | undefined
     return INVALID;
   }
   // FM rounds the wage it shows, so a wage is written as one it shows as it is (see wage.ts), if that is in range.
-  const fitted = field.key === "contract.wage" ? wageFmShows(was, shown) : shown;
+  const fitted = field.key === WAGE ? wageFmShows(was, shown) : shown;
   const now = fitted >= min && fitted <= max ? fitted : shown;
   const edit = editFor(field, stored, now);
   return edit === null ? INVALID : { status: "changed", shown: now, edit };
@@ -127,6 +130,8 @@ export interface InputState {
   message: string | null;
   /** What the input should hold once left, where Apply would write another value than typed (a wage: see wage.ts). */
   settled: string | null;
+  /** What ↑ and ↓ put in the input, for a wage: the next wages up and down that FM shows as they are (see wage.ts). */
+  stepped: { up: string; down: string } | null;
 }
 
 /** What to tell about an input that cannot be applied, by what it takes; nothing for a flag or a choice. */
@@ -172,7 +177,14 @@ export function inputState(
     settled: verdict.status === "changed" && typedValue !== null && typedValue !== verdict.shown
       ? inputText(field, verdict.shown)
       : null,
+    stepped: field.key === WAGE ? steppedWage(field, typedValue ?? was, range) : null,
   };
+}
+
+/** The texts of the wages ↑ and ↓ step to from `from`, kept within what the input takes. */
+function steppedWage(field: EditField, from: number, range: { min: number; max: number }): InputState["stepped"] {
+  const within = (wage: number) => inputText(field, Math.min(range.max, Math.max(range.min, wage)));
+  return { up: within(nextFmWage(from, true)), down: within(nextFmWage(from, false)) };
 }
 
 /** A change Apply would write. */

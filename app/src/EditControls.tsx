@@ -31,7 +31,7 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
   if (!session || !input) {
     return null;
   }
-  const { field: spec, text, range, status, was, message, settled } = input;
+  const { field: spec, text, range, status, was, message, settled, stepped } = input;
   const label = fieldLabel(session.entity, field);
   const title = [message, status !== "same" && editText.was(valueText(spec, was))].filter(Boolean).join(" · ");
   const outline = status === "same" ? applied ? " applied" : "" : ` ${status}`;
@@ -105,6 +105,17 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
       onChange={(e) => session.type(field, e.currentTarget.value)}
       // Left, it shows the value Apply would write, where that is not the one typed.
       onBlur={settled === null ? undefined : () => session.type(field, settled)}
+      // ↑ and ↓ step a wage to the next one FM shows as it is, rather than by £1.
+      onKeyDown={
+        stepped === null || session.busy
+          ? undefined
+          : (e) => {
+              if ((e.key === "ArrowUp" || e.key === "ArrowDown") && !e.altKey && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                session.type(field, e.key === "ArrowUp" ? stepped.up : stepped.down);
+              }
+            }
+      }
       // A wheel turned over the focused input would change its value: let go of it, so the profile scrolls instead.
       onWheel={(e) => e.currentTarget.blur()}
     />
