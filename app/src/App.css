@@ -4280,7 +4280,8 @@ button.danger:hover:not(:disabled) {
   font-size: var(--type-base);
 }
 
-.injuries-none:focus-visible {
+.injuries-none:focus-visible,
+.injuries-head h4:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
@@ -4397,6 +4398,24 @@ button.danger:hover:not(:disabled) {
   padding: 6px 20px;
   color: var(--muted);
   font-size: var(--type-base);
+}
+
+/* ...and, for a player with none, the injuries the game can give him and the button that adds the one chosen. */
+.injury-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 6px 0;
+}
+
+.injury-add select {
+  min-width: 0;
+  max-width: 260px;
+}
+
+/* Grant or Revoke under a player's work permits. */
+.permit-action {
+  margin: 8px 6px 0;
 }
 
 /* Why Heal did not work, under the heading with the button. */

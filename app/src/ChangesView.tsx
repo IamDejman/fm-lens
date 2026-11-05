@@ -495,6 +495,9 @@ function clauseEnd(clause: Clause | null): string {
   return clause === null ? profileText.none : clauseLine(clause);
 }
 
+/** A work permit as the change log keeps it: 1 granted, 0 not. */
+const permitText = (stored: number) => (stored ? profileText.permitGrantedPlain : profileText.permitNotGranted);
+
 function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);
   const shown = (stored: number) => (field ? shownValue(field, stored) : stored);
@@ -503,8 +506,9 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   const className = [change.undoneAt !== null && "undone", inBatch && "in-batch"].filter(Boolean).join(" ");
   // A move to another club is logged with the clubs' UIDs as its values: their names say more (a release has no new
   // club: he became a free agent), and so do the players' for a captaincy. A heal is logged as a change of his
-  // injuries from how many he had to none, and lifting his bans as one of his bans: "Healed 2 injuries" says it better
-  // than "2 → 0". Keeping him from retiring is logged with the date he was to retire on, which it names.
+  // injuries from how many he had to none (adding one, from none to one), and lifting his bans as one of his bans:
+  // "Healed 2 injuries" says it better than "2 → 0". A work permit is logged as 0 or 1, which it names. Keeping him from
+  // retiring is logged with the date he was to retire on, which it names.
   const value = change.moved
     ? valueChange(change.moved.from, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
@@ -514,7 +518,11 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       : change.clause
         ? valueChange(clauseEnd(change.clause.from), clauseEnd(change.clause.to))
       : change.field === "injuries"
-        ? text.healed(change.old)
+        ? change.new > change.old
+          ? text.injuryAdded
+          : text.healed(change.old)
+        : change.field === "work_permit"
+          ? valueChange(permitText(change.old), permitText(change.new))
         : change.field === "bans"
           ? text.lifted(change.old)
           : change.field === "retirement"
