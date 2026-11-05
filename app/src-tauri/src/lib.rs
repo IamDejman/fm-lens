@@ -353,6 +353,8 @@ impl Connection {
                 let hits = self.clubs.search(query).into_iter().filter(|c| filter.matches(c));
                 hits.map(|c| (c.target(), c.name.clone())).collect()
             }
+            // A nation is edited one at a time.
+            Entity::Nation => Vec::new(),
         }
     }
 
@@ -884,12 +886,20 @@ impl Connection {
         Ok(logged.clone())
     }
 
-    /// Where the player, member of staff or club with `uid` lives in the game, and its name.
+    /// Where the player, member of staff, club or nation with `uid` lives in the game, and its name. A nation is
+    /// found by its own UID, and only where no other nation has it.
     fn target(&self, entity: Entity, uid: u32) -> Result<(Target, String), Failure> {
         match entity {
             Entity::Player => self.players.get(uid).map(|p| (p.target(), p.name.clone())),
             Entity::Staff => self.staff.get(uid).map(|s| (s.target(), s.name.clone())),
             Entity::Club => self.clubs.get(uid).map(|c| (c.target(), c.name.clone())),
+            Entity::Nation => {
+                let mut found = self.nations().into_iter().filter(|nation| nation.uid == Some(uid));
+                match (found.next(), found.next()) {
+                    (Some(nation), None) => nation.target().map(|target| (target, nation.name)),
+                    _ => None,
+                }
+            }
         }
         .ok_or_else(|| not_found(entity, uid))
     }
@@ -1054,6 +1064,8 @@ impl Connection {
                 }
             }),
             Entity::Club => self.clubs.update(change.uid, |c| c.note_change(&change.field, value)),
+            // The nations list shows only names, which no edit changes.
+            Entity::Nation => false,
         };
     }
 }

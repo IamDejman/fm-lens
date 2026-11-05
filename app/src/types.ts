@@ -157,7 +157,8 @@ export type CheckKey =
   | "contracts"
   | "teams"
   | "staff"
-  | "clubs";
+  | "clubs"
+  | "nations";
 
 /** What one check found: how many of the players, staff or clubs it looked at fit. */
 export interface CheckResult {
@@ -687,9 +688,12 @@ export interface Ban {
 }
 
 /** What an edit is for. */
-export type Entity = "player" | "staff" | "club";
+export type Entity = "player" | "staff" | "club" | "nation";
 
-/** A value of a player, member of staff or club that the editor can change, from `edit_fields`. */
+/** What a mass edit is for: a nation is edited one at a time. */
+export type MassEntity = Exclude<Entity, "nation">;
+
+/** A value of a player, member of staff, club or nation that the editor can change, from `edit_fields`. */
 export interface EditField {
   /**
    * People: "current_ability", "potential_ability", "height", "reputation.home", "international.caps",
@@ -699,6 +703,7 @@ export interface EditField {
    * Clubs: "reputation", "facilities.training", "facilities.youth_facilities", "facilities.youth_coaching",
    * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
    * "finance.wage_budget", "finance.total_wage_budget".
+   * Nations: "reputation" (the senior team's), "population", "dual_nationality", "naturalisation".
    */
   key: string;
   entity: Entity;

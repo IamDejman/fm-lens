@@ -7,10 +7,11 @@
 //! [`NationalLayout`]: crate::profile::NationalLayout
 //! [`RelationLayout`]: crate::profile::RelationLayout
 
-use fmlibre_mem::is_user_pointer;
+use fmlibre_mem::{Process, is_user_pointer};
 use serde::Serialize;
 
 use crate::players::{Nation, PlayerIndex};
+use crate::profile::Layout;
 use crate::relations::Related;
 use crate::session::Session;
 use crate::staff::StaffIndex;
@@ -27,7 +28,10 @@ const MOST_LANGUAGES: u64 = 32;
 const MOST_PLAYERS: u64 = 64;
 
 /// What a nation's `naturalisation` byte holds when no number of years gains its nationality.
-const NEVER: u8 = 255;
+pub(crate) const NEVER: u8 = 255;
+
+/// The kind of a senior national team.
+const SENIOR: u32 = 0;
 
 /// The age limit byte of a team without one.
 const NO_AGE_LIMIT: u8 = 255;
@@ -92,6 +96,24 @@ pub struct NationalTeam {
 pub struct Person {
     pub uid: u32,
     pub name: String,
+}
+
+/// The senior men's national team of the nation at `nation`, whose UID is `uid`, where every pointer on the way
+/// checks out: the nation's container points back at it, and the team belongs to the container, is of the senior
+/// kind and carries the nation's UID as its id. Only reads memory.
+pub(crate) fn senior_team(process: &Process, layout: &Layout, nation: u64, uid: u32) -> Option<u64> {
+    let (n, t) = (layout.national.as_ref()?, &layout.team);
+    let container = process.read_u64(nation + n.container).ok().filter(|&p| is_user_pointer(p))?;
+    if process.read_u64(container + n.container_nation).ok()? != nation {
+        return None;
+    }
+    let list = PointerList::read_up_to(process, container + n.teams, MOST_TEAMS).ok()??;
+    list.elements(process).ok()?.into_iter().find(|&team| {
+        is_user_pointer(team)
+            && process.read_u64(team + t.club).ok() == Some(container)
+            && process.read_u32(team + t.kind).ok() == Some(SENIOR)
+            && process.read_u32(team + n.team_id).ok() == Some(uid)
+    })
 }
 
 impl Session {

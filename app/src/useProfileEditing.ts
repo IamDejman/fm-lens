@@ -1,4 +1,4 @@
-// The state of editing one profile (a player's, a member of staff's or a club's): the inputs, what Apply did,
+// The state of editing one profile (a player's, a member of staff's, a club's or a nation's): the inputs, what Apply did,
 // and the question asked before changes are lost.
 
 import {
@@ -135,9 +135,14 @@ export function askToLeave(proceed: () => void): void {
   }
 }
 
-/** The editing of the player, member of staff or club `uid`, as `entity` says. Mount it with `key={uid}`. */
-export function useProfileEditing(entity: Entity, uid: number): ProfileEditing {
-  const { editable, onEdited } = useContext(EditorContext);
+/**
+ * The editing of the player, member of staff, club or nation `uid`, as `entity` says; none where `offered` is false.
+ * Mount it with `key={uid}`.
+ */
+export function useProfileEditing(entity: Entity, uid: number, offered = true): ProfileEditing {
+  const editor = useContext(EditorContext);
+  const editable = editor.editable && offered;
+  const { onEdited } = editor;
   const [stage, setStage] = useState<Stage>("view");
   const [fields, setFields] = useState<EditField[]>([]);
   // The values the game had when editing began or when the changes were last written, as stored.
