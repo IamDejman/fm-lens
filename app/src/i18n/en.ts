@@ -54,8 +54,19 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Star player",
   2: "Important player",
   3: "Regular starter",
-  4: "Rotation player",
+  4: "Squad player",
   5: "Impact sub",
+  7: "Fringe player",
+  9: "Emergency backup",
+  10: "Breakthrough prospect",
+  11: "Future prospect",
+  13: "Youngster",
+  15: "First-choice goalkeeper",
+  16: "Cup goalkeeper",
+  17: "Domestic cup goalkeeper",
+  20: "Backup",
+  21: "Emergency backup",
+  22: "Surplus to requirements",
 };
 
 /**

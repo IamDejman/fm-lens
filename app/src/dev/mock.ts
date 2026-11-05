@@ -129,6 +129,9 @@ const POSITIONS = ["gk", "sw", "dl", "dc", "dr", "dm", "ml", "mc", "mr", "aml", 
 /** From this rating FM counts a position as one a player can play: the list's positions and its filter use it. */
 const PLAYABLE_RATING = 15;
 
+/** Squad status codes the fixtures draw from: FM's five main ones, a few others it uses, and 14, which has no name. */
+const MOCK_SQUAD_STATUSES = [1, 2, 3, 4, 5, 7, 10, 11, 14, 22];
+
 /** Every eleventh fixture player is a goalkeeper. */
 const isKeeper = (uid: number) => uid % 11 === 0;
 
@@ -234,7 +237,7 @@ function details(player: PlayerSummary): PlayerDetails {
           signed: { year: 2024, month: 7, day: 1 },
           expires: player.contractExpires,
           joined: { year: 2022, month: 8, day: 15 },
-          squadStatus: 1 + Math.floor(next() * 5),
+          squadStatus: MOCK_SQUAD_STATUSES[Math.floor(next() * MOCK_SQUAD_STATUSES.length)],
           squadNumber: 1 + Math.floor(next() * 40),
           transferListed: next() < 0.1,
           loanListed: false,

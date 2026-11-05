@@ -38,8 +38,19 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Yıldız oyuncu",
   2: "Önemli oyuncu",
   3: "Düzenli ilk 11 oyuncusu",
-  4: "Rotasyon oyuncusu",
+  4: "Kadro oyuncusu",
   5: "Etkili yedek",
+  7: "Kenarda kalan oyuncu",
+  9: "Acil durum yedeği",
+  10: "Yükselen yetenek",
+  11: "Geleceğin yeteneği",
+  13: "Genç oyuncu",
+  15: "Birinci kaleci",
+  16: "Kupa kalecisi",
+  17: "Yerel kupa kalecisi",
+  20: "Yedek",
+  21: "Acil durum yedeği",
+  22: "Gözden çıkarılmış",
 };
 
 /** The name of the field a failure names. The sentences put no ending on it: "için" and a colon need none. */
