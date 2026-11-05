@@ -247,6 +247,8 @@ function details(player: PlayerSummary): PlayerDetails {
             { index: 2, kind: 38, amount: Math.round(2000 + next() * 15000), condition: null },
             ...(next() < 0.5 ? [{ index: 3, kind: 0, amount: Math.round(50 + next() * 500) * 1_000_000, condition: null }] : []),
             ...(next() < 0.5 ? [{ index: 4, kind: 22, amount: null, condition: 1 }] : []),
+            ...(player.uid % 4 === 0 ? [{ index: 5, kind: 13, amount: 275_000, condition: 20 }] : []),
+            ...(player.uid % 6 === 0 ? [{ index: 6, kind: 55, amount: 28_000_000, condition: null }] : []),
           ]),
           // A few players have reasons to be unhappy: one over, and one or two that last.
           concerns:
