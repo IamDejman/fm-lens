@@ -2,12 +2,16 @@
 // profile, and the dialog it opens. The dialog asks the game whether he can be released before it offers to, and
 // releases him: he leaves the club's teams and his contract, and a captaincy he held there is left empty. The release
 // is logged like any change, and one undo from the Changes view brings him back on his contract.
+//
+// Ending a loan early is the same dialog: where the game ends loans itself on this version, a loaned player's profile
+// has End loan, which sends him back to his own club, and one undo starts the loan again.
 
 import { useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { planRelease, releasePlayer } from "./editing";
+import { endLoan, planEndLoan, planRelease, releasePlayer } from "./editing";
 import { describeError } from "./format";
-import { releaseText as text } from "./labels";
+import { endLoanText, releaseText } from "./labels";
+import type { LoggedChange } from "./types";
 import { ClubLine } from "./MoveDialog";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
@@ -21,8 +25,40 @@ interface ReleasingPlayer {
   clubUid: number | null;
 }
 
+/**
+ * What each way of ending a contract says, how it asks the game whether it can be made (the line it shows when it
+ * can), and what makes it.
+ */
+const ENDINGS = {
+  release: {
+    text: { ...releaseText, act: releaseText.release, busy: releaseText.releasing },
+    plan: (uid: number) => planRelease(uid).then((club) => releaseText.ready(club.name)),
+    make: releasePlayer,
+  },
+  endLoan: {
+    text: { ...endLoanText, act: endLoanText.end, busy: endLoanText.ending },
+    plan: (uid: number) => planEndLoan(uid).then(({ from, to }) => endLoanText.ready(from.name, to.name)),
+    make: endLoan,
+  },
+} satisfies Record<
+  string,
+  { text: object; plan: (uid: number) => Promise<string>; make: (uid: number) => Promise<LoggedChange> }
+>;
+
+type Ending = keyof typeof ENDINGS;
+
 /** The Release button of a player's profile, and the dialog it opens. The profile decides when the button is there. */
 export function ReleaseButton({ player }: { player: ReleasingPlayer }) {
+  return <EndingButton ending="release" player={player} />;
+}
+
+/** The End loan button of a loaned player's profile, and the dialog it opens. */
+export function EndLoanButton({ player }: { player: ReleasingPlayer }) {
+  return <EndingButton ending="endLoan" player={player} />;
+}
+
+function EndingButton({ ending, player }: { ending: Ending; player: ReleasingPlayer }) {
+  const { text } = ENDINGS[ending];
   const { onEdited } = useContext(EditorContext);
   // The player the dialog was opened for: the profile behind it cannot change while it is up.
   const [opened, setOpened] = useState<ReleasingPlayer | null>(null);
@@ -50,22 +86,26 @@ export function ReleaseButton({ player }: { player: ReleasingPlayer }) {
       >
         {text.button}
       </button>
-      {opened && <ReleaseDialog player={opened} onReleased={onEdited} onClose={() => setOpened(null)} />}
+      {opened && (
+        <ReleaseDialog ending={ending} player={opened} onReleased={onEdited} onClose={() => setOpened(null)} />
+      )}
     </>
   );
 }
 
-/** What the game said to the plan: the club he would leave, or why he cannot be released. */
-type Planned = { club: string } | { error: string };
+/** What the game said to the plan: the line that says what it comes to, or why it cannot be made. */
+type Planned = { message: string } | { error: string };
 
 interface ReleaseDialogProps {
+  ending: Ending;
   player: ReleasingPlayer;
   /** Called once the player is released: the game has changed, so the lists and the profile read it again. */
   onReleased: () => void;
   onClose: () => void;
 }
 
-function ReleaseDialog({ player, onReleased, onClose }: ReleaseDialogProps) {
+function ReleaseDialog({ ending, player, onReleased, onClose }: ReleaseDialogProps) {
+  const { text, plan: askPlan, make } = ENDINGS[ending];
   const base = useId();
   const id = (part: string) => `${base}-${part}`;
   const dialog = useRef<HTMLDivElement>(null);
@@ -103,16 +143,16 @@ function ReleaseDialog({ player, onReleased, onClose }: ReleaseDialogProps) {
   useEffect(() => {
     let cancelled = false;
     setPlanned(null);
-    planRelease(player.uid).then(
-      (club) => !cancelled && setPlanned({ club: club.name }),
+    askPlan(player.uid).then(
+      (message) => !cancelled && setPlanned({ message }),
       (e) => !cancelled && setPlanned({ error: describeError(e) }),
     );
     return () => {
       cancelled = true;
     };
-  }, [player.uid, replans]);
+  }, [askPlan, player.uid, replans]);
 
-  const canRelease = planned !== null && "club" in planned && !releasing;
+  const canRelease = planned !== null && "message" in planned && !releasing;
 
   const release = async () => {
     if (!canRelease || running.current) {
@@ -122,7 +162,7 @@ function ReleaseDialog({ player, onReleased, onClose }: ReleaseDialogProps) {
     setReleasing(true);
     setFailure(null);
     try {
-      await releasePlayer(player.uid);
+      await make(player.uid);
       // The game has changed: the lists, the profile and the change log read it again.
       onReleased();
       onClose();
@@ -147,7 +187,7 @@ function ReleaseDialog({ player, onReleased, onClose }: ReleaseDialogProps) {
       ? { tone: "pending", message: text.checking }
       : "error" in planned
         ? { tone: "refused", message: planned.error }
-        : { tone: "ok", message: text.ready(planned.club) };
+        : { tone: "ok", message: planned.message };
 
   return createPortal(
     // A click beside the dialog does nothing, and keeps focus where it is.
@@ -207,7 +247,7 @@ function ReleaseDialog({ player, onReleased, onClose }: ReleaseDialogProps) {
         <footer className="modal-foot">
           <span className="move-foot-note">{text.hint}</span>
           <button type="button" className="primary" disabled={!canRelease} onClick={() => void release()}>
-            {releasing ? text.releasing : text.release}
+            {releasing ? text.busy : text.act}
           </button>
           <button ref={cancelButton} type="button" disabled={releasing} onClick={onClose}>
             {text.cancel}

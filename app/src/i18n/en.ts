@@ -1809,6 +1809,12 @@ export const en = {
       "He keeps his contract with his own club",
       "Undo in Changes sets the loan to end today. FM ends it on its next day",
     ],
+    /** The same, where FM can end a loan at once. */
+    loanDoesEnding: [
+      "FM starts the loan itself, from today to the loan end",
+      "He keeps his contract with his own club",
+      "Undo in Changes ends the loan, and he goes back to his club",
+    ],
     loanHint: "Nothing changes in FM until you press Loan.",
     loan: "Loan",
     loaning: "Loaning…",
@@ -1983,6 +1989,33 @@ export const en = {
     hint: "Nothing changes in FM until you press Release.",
     release: "Release",
     releasing: "Releasing…",
+    cancel: "Cancel",
+  },
+
+  /** Ending a player's loan early: the button beside Transfer and Release on a loaned player's profile, and its dialog. */
+  endLoan: {
+    button: "End loan",
+    buttonTitle: "End his loan. He goes back to his club.",
+
+    // The dialog
+    title: "End loan",
+    /** The club the player is on loan at. */
+    from: "On loan at",
+    checking: "Checking the loan…",
+    /** The loan can be ended; `from` is the club he is loaned to and `to` his own. */
+    ready: (from: string, to: string) => `${from} → ${to}`,
+    doesHeading: "What happens",
+    does: [
+      "FM ends the loan itself, today",
+      "He goes back to his own club, on his contract there",
+      "FM writes its news of the loan ending",
+      "Undo in Changes starts the loan again until its old end",
+    ],
+
+    // The foot
+    hint: "Nothing changes in FM until you press End loan.",
+    end: "End loan",
+    ending: "Ending…",
     cancel: "Cancel",
   },
 

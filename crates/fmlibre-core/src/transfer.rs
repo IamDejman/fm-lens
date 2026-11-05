@@ -144,6 +144,8 @@ pub enum MoveError {
     SameClub,
     /// The player is on loan, to his club or from it.
     OnLoan,
+    /// The player is not on loan.
+    NotOnLoan,
     /// A player-coach, who works as staff too.
     PlayerCoach,
     /// The contract does not point back at the player, is not a player's, or names two teams.
@@ -264,6 +266,7 @@ impl fmt::Display for MoveError {
             MoveError::HasClub => f.write_str("the player has a club; only a free agent signs for one"),
             MoveError::SameClub => f.write_str("the player is at this club already"),
             MoveError::OnLoan => f.write_str("the player is on loan; players on loan cannot be moved yet"),
+            MoveError::NotOnLoan => f.write_str("the player is not on loan"),
             MoveError::PlayerCoach => f.write_str("player-coaches cannot be moved: they work as staff too"),
             MoveError::UnusualContract => f.write_str("the player's contract is not a plain player's contract"),
             MoveError::HumanClub => f.write_str(
@@ -361,6 +364,7 @@ impl Coded for MoveError {
             MoveError::HasClub => "move.hasClub",
             MoveError::SameClub => "move.sameClub",
             MoveError::OnLoan => "move.onLoan",
+            MoveError::NotOnLoan => "move.notOnLoan",
             MoveError::PlayerCoach => "move.playerCoach",
             MoveError::UnusualContract => "move.unusualContract",
             MoveError::HumanClub => "move.humanClub",

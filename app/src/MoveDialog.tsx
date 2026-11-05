@@ -845,7 +845,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
       ? {
           title: text.loanTitle,
           choose: text.loanChooseClub,
-          does: text.loanDoes,
+          does: gameActions.endLoan ? text.loanDoesEnding : text.loanDoes,
           hint: text.loanHint,
           button: text.loan,
           busy: text.loaning,

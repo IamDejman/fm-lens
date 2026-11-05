@@ -54,6 +54,11 @@ sign_free_agent = 0x2DFEDAC
 map_new = 0x43F6B78
 map_drop = 0x43F6C38
 refs_drop = 0x43FE910
+# TRANSFER_MANAGER::end_contract: (manager, the player object, the contract, a kind for the news, 0, 1, 0, 0, then two
+# zeros on the stack). The game's daily check calls it on a loan contract once the loan has run out, at 0x2611030, and
+# the player goes back to his club; its editor calls it on a player's own contract to release him, at 0x238ECCC. See
+# docs/recon/fm27-call-shapes.md section 4.
+end_contract = 0x2D4B9DC
 
 # What a STARTING_LOAN (layout-macos.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58
 # (fees unset).

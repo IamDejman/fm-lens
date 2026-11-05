@@ -5,6 +5,9 @@ nothing here was run in the game. Every signature below is read from disassembly
 the running game before FM Lens relies on it. Scratch helpers live in
 reports/batch/scratch/transfers/.
 
+Later findings in fm27-call-shapes.md supersede the "not found" rows below: loan recall and release go through
+0x2d4b9dc (section 4 there), future transfers through 0x2dfedac with a 'TrDt' date (section 5).
+
 ## Summary
 
 | Item | Status | Entry point |

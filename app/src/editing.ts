@@ -267,6 +267,12 @@ export const setWorkPermit = (uid: number, granted: boolean) =>
 export const startLoan = (uid: number, club: number, ends: number) =>
   call<LoggedChange>("start_loan", { uid, club, ends });
 
+/** The clubs the player's loan would end between: the one he is loaned to, then his own. Only reads. */
+export const planEndLoan = (uid: number) => call<MovePreview>("plan_end_loan", { uid });
+
+/** Has the game end the player's loan today: he goes back to his own club. */
+export const endLoan = (uid: number) => call<LoggedChange>("end_loan", { uid });
+
 /** Has the game sign the free agent for the senior team of `club` on its own terms; `terms` then replace them. */
 export const signFreeAgent = (uid: number, club: number, terms: MoveTerms) =>
   call<LoggedChange>("sign_free_agent", { uid, club, terms });

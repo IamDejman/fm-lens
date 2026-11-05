@@ -1618,6 +1618,11 @@ export const tr: Strings = {
       "Kendi kulübüyle sözleşmesi sürer",
       "Değişiklikler'deki Geri al kiralık bitişini bugüne çeker. FM ertesi gün bitirir",
     ],
+    loanDoesEnding: [
+      "FM kiralamayı kendisi başlatır, bugünden kiralık bitişine kadar",
+      "Kendi kulübüyle sözleşmesi sürer",
+      "Değişiklikler'deki Geri al kiralığı bitirir ve kulübüne döner",
+    ],
     loanHint: "Kirala'ya basana kadar FM'de hiçbir şey değişmez.",
     loan: "Kirala",
     loaning: "Kiralanıyor…",
@@ -1770,6 +1775,30 @@ export const tr: Strings = {
     hint: "Serbest bırak'a basana kadar FM'de hiçbir şey değişmez.",
     release: "Serbest bırak",
     releasing: "Serbest bırakılıyor…",
+    cancel: "İptal",
+  },
+
+  endLoan: {
+    button: "Kiralığı bitir",
+    buttonTitle: "Kiralığını bitir. Kulübüne döner.",
+
+    // The dialog
+    title: "Kiralığı bitir",
+    from: "Kiralık olduğu kulüp",
+    checking: "Kiralık kontrol ediliyor…",
+    ready: (from, to) => `${from} → ${to}`,
+    doesHeading: "Ne olur",
+    does: [
+      "FM kiralığı kendisi, bugün bitirir",
+      "Kendi kulübüne, oradaki sözleşmesiyle döner",
+      "FM kiralığın bitişiyle ilgili haberini yazar",
+      "Değişiklikler'deki Geri al kiralığı eski bitişine kadar yeniden başlatır",
+    ],
+
+    // The foot
+    hint: "Kiralığı bitir'e basana kadar FM'de hiçbir şey değişmez.",
+    end: "Kiralığı bitir",
+    ending: "Bitiriliyor…",
     cancel: "İptal",
   },
 

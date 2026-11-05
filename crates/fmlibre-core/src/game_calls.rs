@@ -1,8 +1,8 @@
 //! Edits the game makes itself.
 //!
 //! An injury is an object from the game's own pool, a work permit a record the transfer manager
-//! keeps and files, and a loan or a free agent's signing a contract, an offer and a move: more than
-//! values the editor can write. For those FM Lens has the game
+//! keeps and files, and a loan, its end or a free agent's signing a contract, an offer and a move:
+//! more than values the editor can write. For those FM Lens has the game
 //! run its own functions, on its main thread, through the bridge ([`fmlibre_mem::call`]). Only on
 //! macOS, and only on a build whose profile lists the functions ([`CallRvas`]).
 
@@ -40,6 +40,7 @@ pub struct GameActions {
     pub work_permit: bool,
     pub start_loan: bool,
     pub sign_free_agent: bool,
+    pub end_loan: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -66,6 +67,21 @@ pub struct StartedLoan {
     pub to_club: u32,
     pub ends: FmDate,
 }
+
+/// A loan the game ended: the player went back from the club he was loaned to, to his own. `ends` is when the loan
+/// was to end, for starting it again.
+#[derive(Debug, Clone, Copy)]
+pub struct EndedLoan {
+    pub player: u32,
+    pub from_club: u32,
+    pub to_club: u32,
+    pub ends: Option<FmDate>,
+}
+
+/// The kinds of contract end the game's daily check passes for a loan that ran out, which pick its news: one for a
+/// parent club a human manager runs, one for any other.
+const LOAN_ENDED_HUMAN: u64 = 2;
+const LOAN_ENDED: u64 = 3;
 
 /// A free agent the game signed for a club, and the end of the contract he has now.
 #[derive(Debug, Clone, Copy)]
@@ -118,6 +134,10 @@ impl Session {
                 && calls.refs_drop.is_some()
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
+            end_loan: calls.end_contract.is_some()
+                && profile.transfer_manager.is_some()
+                && self.layout.work_permit.is_some()
+                && self.layout.loan.is_some(),
         }
     }
 
@@ -399,6 +419,61 @@ impl Session {
             None
         };
         Ok(SignedPlayer { player: player.uid, club: club.uid, expires })
+    }
+
+    /// The UIDs of the clubs `player`'s loan would end between: the club he is loaned to, then his own. Only reads
+    /// memory.
+    pub fn plan_end_loan(&self, player: &PlayerSummary) -> Result<(u32, u32), MoveError> {
+        let object = self.player_object(player)?;
+        let terms = self.loan(player).ok_or(MoveError::NotOnLoan)?;
+        // He plays for the club he is loaned to; his own contract names his parent club.
+        let team = self.process.read_u64(object + self.layout.player.team)?;
+        match (crate::players::club_uid_of_team(&self.process, &self.layout, team), terms.parent_uid) {
+            (Some(borrower), Some(parent)) if borrower != parent => Ok((borrower, parent)),
+            _ => Err(MoveError::UnusualContract),
+        }
+    }
+
+    /// Has the game end `player`'s loan today, as its daily check does once a loan runs out: it ends the loan
+    /// contract and he goes back to his own club, with the game's news of it. `human_clubs` are the UIDs of the clubs
+    /// human managers run, for the news. The game says nothing back, so the loan is read back to tell.
+    pub fn end_loan(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<EndedLoan, MoveError> {
+        let function = self.game_function(|calls| calls.end_contract)?;
+        let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
+        let manager = self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)?;
+        let object = self.player_object(player)?;
+        let (from_club, to_club) = self.plan_end_loan(player)?;
+        let loan = self.loan_contract(object, 0).ok_or(MoveError::NotOnLoan)?;
+        let ends = self.loan(player).and_then(|terms| terms.ends);
+        let kind = if human_clubs.contains(&to_club) { LOAN_ENDED_HUMAN } else { LOAN_ENDED };
+
+        let zero = Arg::value(0);
+        let mut program = Program::new();
+        program.push(Step::new(
+            function,
+            &[
+                Arg::value(manager),
+                Arg::value(object),
+                Arg::value(loan),
+                Arg::value(kind),
+                zero,
+                Arg::value(1),
+                zero,
+                zero,
+                // On the stack: a byte 0 and a qword 0, as the game's own callers pass.
+                zero,
+                zero,
+            ],
+        ));
+        self.call_game(&program)?;
+        let (process, layout) = (&self.process, &self.layout);
+        let team = process.read_u64(object + layout.player.team)?;
+        if self.loan_contract(object, 0).is_some()
+            || crate::players::club_uid_of_team(process, layout, team) != Some(to_club)
+        {
+            return Err(MoveError::CallDeclined);
+        }
+        Ok(EndedLoan { player: player.uid, from_club, to_club, ends })
     }
 
     /// The senior team of `club`, checked to point back at it.
