@@ -439,6 +439,7 @@ export const en = {
     "contract.expires": "Contract end",
     "loan.wage": "Loan wage paid by borrower",
     "loan.ends": "Loan end",
+    "transfer.joins": "Joins",
     // A loan the game started, which the change log keeps as a change of the player's club for the loan.
     loan: "Loan",
     "contract.squad_number": "Squad number",
@@ -1409,6 +1410,8 @@ export const en = {
     swappedWith: (name: string) => `Swapped with ${name}`,
     /** Under a transfer that had a fee: the amount, written out. */
     fee: (amount: string) => `Fee ${amount}`,
+    /** Under a signing the game makes on a later day: that day. */
+    joins: (date: string) => `Joins ${date}`,
     /** What a heal changed, in the place of its values: `count` is how many injuries the player had. */
     healed: (count: number) => (count === 1 ? "Healed 1 injury" : `Healed ${format(count)} injuries`),
     /** What adding an injury changed, in the place of its values. */
@@ -1804,6 +1807,7 @@ export const en = {
     loanTitle: "Loan",
     loanChooseClub: "Pick the club to loan him to.",
     loanEndsAfterToday: "Pick a date after today",
+    joinsFromToday: "Pick today or a later date",
     loanDoes: [
       "FM starts the loan itself, from today to the loan end",
       "He keeps his contract with his own club",
@@ -1827,6 +1831,12 @@ export const en = {
       "FM signs him itself, on its own terms",
       "A wage or contract end you enter replaces FM's",
       "Undo in Changes releases him again",
+    ],
+    // The same, for a day after today: the game agrees the signing now and makes it on that day.
+    signLaterDoes: [
+      "FM agrees the signing today, and he joins on that day",
+      "FM sets his contract then, on its own terms",
+      "Undo in Changes cancels the signing",
     ],
     signHint: "Nothing changes in FM until you press Sign.",
     sign: "Sign",

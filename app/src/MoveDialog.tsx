@@ -8,7 +8,8 @@
 // also makes it a loan: after the club, the day the loan ends, and the game makes the loan.
 //
 // For a free agent, where the game signs players itself on this version, the dialog signs him instead: the club, and
-// the wage and contract end to replace the game's, if any.
+// the wage and contract end to replace the game's, if any. Where it also signs players for a later day, the day he
+// joins: after today, the game agrees the signing now and makes it on that day, on its own terms.
 
 import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { createPortal } from "react-dom";
@@ -24,6 +25,7 @@ import {
   planClubSwap,
   planStaffMove,
   signFreeAgent,
+  signFreeAgentLater,
   startLoan,
   swapPlayers,
 } from "./editing";
@@ -549,6 +551,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   const [expiresText, setExpiresText] = useState(wasExpires === null ? "" : isoFromNumber(wasExpires));
   const [feeText, setFeeText] = useState("");
   const [loanEndsText, setLoanEndsText] = useState(() => seasonEnd(gameDate));
+  const [joinsText, setJoinsText] = useState(() => (gameDate ? isoFromNumber(numberFromDate(gameDate)) : ""));
   const [planned, setPlanned] = useState<Planned | null>(null);
   // How often the plan was asked again with nothing changed: after a move the game refused.
   const [replans, setReplans] = useState(0);
@@ -577,14 +580,24 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   const loanEndsValue = numberFromIso(loanEndsText);
   const loanEnds =
     loanEndsValue !== null && (gameDate === null || loanEndsValue > numberFromDate(gameDate)) ? loanEndsValue : null;
+  // The day a free agent joins, where the game signs for a later day: today signs him now, a later day agrees it for
+  // then, on the game's own terms. Null while it is not a date from today on.
+  const today = gameDate !== null ? numberFromDate(gameDate) : null;
+  const dated = sign && gameActions.futureTransfer && today !== null;
+  const joinsValue = dated ? numberFromIso(joinsText) : null;
+  const joins = joinsValue !== null && today !== null && joinsValue >= today ? joinsValue : null;
+  const later = joins !== null && today !== null && joins > today;
+  const signable = !dated || joins !== null;
 
   // What the plan is for: for a move, null while there is no club, or an input cannot be sent; for a swap, null while
   // no player is picked. Move or Swap is offered only for a plan the game made for what is picked now, so a change
   // takes it back at once, before the new plan is asked.
   // A signing or a loan is not planned: the game checks it as it makes it, and says why it cannot.
   const key = sign
-    ? club !== null && valid
-      ? `sign:${planKey(club.uid, terms, undefined)}`
+    ? club !== null && signable && (later || valid)
+      ? later
+        ? `sign:${club.uid}:on:${joins}`
+        : `sign:${planKey(club.uid, terms, undefined)}`
       : null
     : loan
       ? club !== null && loanEnds !== null
@@ -603,7 +616,10 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
 
   // What the button makes, for the plan it is offered for: the signing, the loan or the swap, or the move to the club.
   const make = sign
-    ? club && (() => signFreeAgent(player.uid, club.uid, terms))
+    ? club &&
+      (later && joins !== null
+        ? () => signFreeAgentLater(player.uid, club.uid, joins)
+        : () => signFreeAgent(player.uid, club.uid, terms))
     : loan
       ? club !== null && loanEnds !== null
         ? () => startLoan(player.uid, club.uid, loanEnds)
@@ -836,7 +852,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
     ? {
         title: text.signTitle,
         choose: text.signChooseClub,
-        does: text.signDoes,
+        does: later ? text.signLaterDoes : text.signDoes,
         hint: text.signHint,
         button: text.sign,
         busy: text.signing,
@@ -874,9 +890,11 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
     club === null
       ? { tone: "pending", message: words.choose }
       : sign
-        ? valid
-          ? { tone: "ok", message: text.route(from, club.name) }
-          : { tone: "pending", message: text.fixTerms }
+        ? !signable
+          ? { tone: "pending", message: joinsValue === null ? text.expiresInvalid : text.joinsFromToday }
+          : later || valid
+            ? { tone: "ok", message: text.route(from, club.name) }
+            : { tone: "pending", message: text.fixTerms }
         : loan
           ? loanEnds === null
             ? { tone: "pending", message: loanEndsValue === null ? text.expiresInvalid : text.loanEndsAfterToday }
@@ -1095,52 +1113,76 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
                 <p className="move-note">{staff ? text.staffContract : text.swapContract}</p>
               ) : (
                 <div className="move-terms">
-                  <div className="move-term">
-                    <label htmlFor={id("wage")}>{fieldLabel("player", "contract.wage")}</label>
-                    <span className="move-money">
-                      <span className="move-unit" aria-hidden="true">
-                        {currencySymbol}
-                      </span>
+                  {dated && today !== null && (
+                    <div className="move-term">
+                      <label htmlFor={id("joins")}>{fieldLabel("player", "transfer.joins")}</label>
                       <input
-                        id={id("wage")}
-                        className={inputClass(wageVerdict)}
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={wageText}
+                        id={id("joins")}
+                        className={joins === null ? "move-input invalid" : "move-input"}
+                        type="date"
+                        value={joinsText}
+                        min={isoFromNumber(today)}
                         readOnly={moving}
-                        aria-invalid={wageVerdict.status === "invalid" || undefined}
-                        aria-describedby={wageNote ? id("wage-note") : undefined}
-                        onChange={(e) => setWageText(e.currentTarget.value)}
-                        // A wheel turned over the focused input would change it: let go of it, so the dialog scrolls.
-                        onWheel={(e) => e.currentTarget.blur()}
+                        aria-invalid={joins === null || undefined}
+                        onChange={(e) => setJoinsText(e.currentTarget.value)}
                       />
-                    </span>
-                    {wageNote && (
-                      <p id={id("wage-note")} className={wageNote.invalid ? "move-note invalid" : "move-note"}>
-                        {wageNote.message}
-                      </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
+                  {/* On a later day the game makes the contract on its own terms. */}
+                  {!later && (
+                    <>
+                      <div className="move-term">
+                        <label htmlFor={id("wage")}>{fieldLabel("player", "contract.wage")}</label>
+                        <span className="move-money">
+                          <span className="move-unit" aria-hidden="true">
+                            {currencySymbol}
+                          </span>
+                          <input
+                            id={id("wage")}
+                            className={inputClass(wageVerdict)}
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={wageText}
+                            readOnly={moving}
+                            aria-invalid={wageVerdict.status === "invalid" || undefined}
+                            aria-describedby={wageNote ? id("wage-note") : undefined}
+                            onChange={(e) => setWageText(e.currentTarget.value)}
+                            // A wheel turned over the focused input would change it: let go of it, so the dialog
+                            // scrolls.
+                            onWheel={(e) => e.currentTarget.blur()}
+                          />
+                        </span>
+                        {wageNote && (
+                          <p id={id("wage-note")} className={wageNote.invalid ? "move-note invalid" : "move-note"}>
+                            {wageNote.message}
+                          </p>
+                        )}
+                      </div>
 
-                  <div className="move-term">
-                    <label htmlFor={id("expires")}>{fieldLabel("player", "contract.expires")}</label>
-                    <input
-                      id={id("expires")}
-                      className={inputClass(expiresVerdict)}
-                      type="date"
-                      value={expiresText}
-                      readOnly={moving}
-                      aria-invalid={expiresVerdict.status === "invalid" || undefined}
-                      aria-describedby={expiresNote ? id("expires-note") : undefined}
-                      onChange={(e) => setExpiresText(e.currentTarget.value)}
-                    />
-                    {expiresNote && (
-                      <p id={id("expires-note")} className={expiresNote.invalid ? "move-note invalid" : "move-note"}>
-                        {expiresNote.message}
-                      </p>
-                    )}
-                  </div>
+                      <div className="move-term">
+                        <label htmlFor={id("expires")}>{fieldLabel("player", "contract.expires")}</label>
+                        <input
+                          id={id("expires")}
+                          className={inputClass(expiresVerdict)}
+                          type="date"
+                          value={expiresText}
+                          readOnly={moving}
+                          aria-invalid={expiresVerdict.status === "invalid" || undefined}
+                          aria-describedby={expiresNote ? id("expires-note") : undefined}
+                          onChange={(e) => setExpiresText(e.currentTarget.value)}
+                        />
+                        {expiresNote && (
+                          <p
+                            id={id("expires-note")}
+                            className={expiresNote.invalid ? "move-note invalid" : "move-note"}
+                          >
+                            {expiresNote.message}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </section>

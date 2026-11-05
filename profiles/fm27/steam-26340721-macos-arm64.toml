@@ -56,9 +56,26 @@ map_drop = 0x43F6C38
 refs_drop = 0x43FE910
 # TRANSFER_MANAGER::end_contract: (manager, the player object, the contract, a kind for the news, 0, 1, 0, 0, then two
 # zeros on the stack). The game's daily check calls it on a loan contract once the loan has run out, at 0x2611030, and
-# the player goes back to his club; its editor calls it on a player's own contract to release him, at 0x238ECCC. See
+# the player goes back to his club. On his own contract it leaves him at his club with none. See
 # docs/recon/fm27-call-shapes.md section 4.
 end_contract = 0x2D4B9DC
+# The date term of a signing ('TrDt'), as the game's editor puts it in the terms map at 0x25D67C: the date type
+# (no arguments), the Value of a date (type, &Value, &raw date), the map's insert (map, key, &Value) and the Value's
+# destructor. A date after today has the game agree the signing for that day. See section 5.
+date_type = 0x42F038C
+date_value = 0x42F05B8
+map_insert = 0x43F72E4
+value_drop = 0x4403BB0
+# Cancelling a transfer agreed for a later day, as the game's editor does at 0x238BE90: TRANSFER_MANAGER::cancel_offer
+# (manager, &slot holding the offer with a reference taken, its team, 2 for the team it joins or 0 for the one it
+# leaves, 0, 0, 0, 1, then two zeros on the stack); then the manager's dated transfers drop its record ((manager +
+# 0x18, offer, the player's identity block), at 0x238BEA8). The offer's reference count is the u32 at +0x08:
+# ref_copy copies a {pointer, u32} slot taking a reference, ref_drop gives one back and destroys the object with the
+# last. See section 5.
+cancel_offer = 0x2D180B4
+drop_dated_transfer = 0x1827808
+ref_copy = 0x7695EC
+ref_drop = 0x4A3A1B0
 
 # What a STARTING_LOAN (layout-macos.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58
 # (fees unset).

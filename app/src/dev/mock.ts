@@ -1531,6 +1531,11 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
+  // A signing for a later day is cancelled: he never left the free agents.
+  if (entry.moved?.joins !== undefined) {
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   if (entry.moved) {
     undoMove(entry);
     entry.undoneAt = Date.now();
@@ -1789,6 +1794,47 @@ function signFreeAgent(uid: number, clubUid: number, terms: MoveTerms): LoggedCh
     undoneAt: null,
     batch: null,
     moved: { to: to.name },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/**
+ * `sign_free_agent_later`: the game agrees the fixture free agent's signing for `clubUid` today, to join it on `joins`
+ * (yyyymmdd). He stays a free agent until then, so only the change log has it; undoing it cancels the signing.
+ */
+function signFreeAgentLater(uid: number, clubUid: number, joins: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  const to = clubs.find((c) => c.uid === clubUid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  if (!to) {
+    throw notFound("club", clubUid);
+  }
+  if (player.clubUid !== null) {
+    throw failure("move.hasClub", "the player has a club; only a free agent signs for one");
+  }
+  if (!(joins > numberFromDate(GAME_DATE) && joins <= 21001231)) {
+    throw failure("move.outOfRange", "transfer.joins is out of range", {
+      field: "transfer.joins",
+      value: joins,
+      min: numberFromDate(addDays(GAME_DATE, 1)),
+      max: 21001231,
+    });
+  }
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "club",
+    old: 0,
+    new: to.uid,
+    undoneAt: null,
+    batch: null,
+    moved: { to: to.name, joins },
   };
   changes.push(logged);
   return { ...logged };
@@ -2654,7 +2700,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true },
       };
       mockConnection = info;
       if (!refrozen) {
@@ -2946,6 +2992,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return endLoan(Number(args?.uid)) as T;
     case "sign_free_agent":
       return signFreeAgent(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
+    case "sign_free_agent_later":
+      return signFreeAgentLater(Number(args?.uid), Number(args?.club), Number(args?.joins)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
     case "change_clause":

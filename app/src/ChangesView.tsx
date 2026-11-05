@@ -550,6 +550,9 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
         {value}
         {change.moved?.with !== undefined && <div className="sub">{text.swappedWith(change.moved.with)}</div>}
         {change.moved?.fee !== undefined && <div className="sub">{text.fee(formatMoney(change.moved.fee))}</div>}
+        {change.moved?.joins !== undefined && (
+          <div className="sub">{text.joins(formatDate(dateFromNumber(change.moved.joins)))}</div>
+        )}
         {captaincyNotes(change).map((note) => (
           <div key={note} className="sub">
             {note}

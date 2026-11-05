@@ -208,6 +208,23 @@ starts = 0x30
 ends = 0x34
 defaults = 0x58
 
+# Transfers agreed for a later day, which TRANSFER_MANAGER (the build profile's transfer_manager) keeps, traced
+# statically on build 26340721 (docs/recon/fm27-call-shapes.md section 5). Its offers are a (begin, end) of pointers
+# at `offers`; a signing dated after today stays there, pending, and a record of it joins the (begin, end) of
+# pointers at `dated`, with the offer's id at `record_offer`. In an offer: its id, the player's identity block (once
+# the game has looked it up), the team he joins and the one he leaves, and its status byte (`pending` until the day).
+[future_transfer]
+offers = 0x20
+dated = 0x50
+dated_owner = 0x18       # what drop_dated_transfer takes, from the manager
+record_offer = 0x0C
+offer_id = 0x5C
+offer_person = 0x38
+offer_to_team = 0x40
+offer_from_team = 0x50
+offer_status = 0x8D
+pending = 0x13
+
 [award]
 class = "N2db5AWARDE"
 size = 0xA0
