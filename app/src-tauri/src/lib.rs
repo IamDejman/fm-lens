@@ -1073,8 +1073,23 @@ impl Connection {
             Some(Undo::LoanEnded(ended)) => {
                 let player = self.players.get(ended.player).ok_or_else(|| not_found(Entity::Player, ended.player))?;
                 let club = self.clubs.get(ended.from_club).ok_or_else(|| not_found(Entity::Club, ended.from_club))?;
-                let ends = ended.ends.ok_or(MoveError::UnusualContract)?;
-                self.session.start_loan(player, club, ends)?;
+                let wage = self.session.field(Entity::Player, "loan.wage")?;
+                let listed = match ended.loan_listed {
+                    Some(was) => Some((self.session.field(Entity::Player, "contract.loan_listed")?, was)),
+                    None => None,
+                };
+                let target = player.target();
+                self.session.restart_loan(player, club, &ended)?;
+                // The game's loan has the borrower pay nothing, and its end may have put him on his club's loan
+                // list: both go back as they were.
+                if ended.wage != 0 {
+                    let change = self.session.write_field(&target, &wage, i64::from(ended.wage))?;
+                    self.note_change(&change, change.new);
+                }
+                if let Some((field, was)) = listed {
+                    let change = self.session.write_field(&target, &field, i64::from(was))?;
+                    self.note_change(&change, change.new);
+                }
                 let name = self.club_name(ended.from_club);
                 self.players.update(ended.player, |player| {
                     player.club = Some(name);
