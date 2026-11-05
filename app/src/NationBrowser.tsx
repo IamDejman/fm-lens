@@ -15,6 +15,7 @@ import type {
   NationDetails,
   NationalTeam,
   NationSummary,
+  WomenFootball,
 } from "./types";
 
 const text = nationListText;
@@ -79,8 +80,9 @@ interface NationProfileProps {
 }
 
 /**
- * A nation's rules, FIFA standing, rivals and national teams; only its ID where the build does not place them. Its
- * rules and its senior team's reputation can be edited where the row is the nation's own UID.
+ * A nation's rules, FIFA standing, rivals and national teams, men's and women's; only its ID where the build does not
+ * place them. Its rules, youth ratings and senior teams' reputations can be edited where the row is the nation's own
+ * UID.
  */
 function NationProfile({ nation, version, onClose }: NationProfileProps) {
   const loaded = useProfileDetails<NationDetails | null>(
@@ -156,6 +158,11 @@ function NationBody({ details }: { details: NationDetails }) {
               </EditableValue>
             </Fact>
             <Fact label={text.founded}>{orDash(details.founded)}</Fact>
+            <Fact label={text.youthRating}>
+              <EditableValue field="youth_rating">
+                {orDash(details.youthRating)}
+              </EditableValue>
+            </Fact>
           </dl>
         </section>
         {details.languages.length > 0 && (
@@ -182,6 +189,9 @@ function NationBody({ details }: { details: NationDetails }) {
               )}
             </Fact>
             <Fact label={text.joinedFifa}>{orDash(details.joinedFifa)}</Fact>
+            <Fact label={text.joinedContinental}>
+              {orDash(details.joinedContinental)}
+            </Fact>
           </dl>
         </section>
         {details.rivals.length > 0 && (
@@ -209,8 +219,14 @@ function NationBody({ details }: { details: NationDetails }) {
       </div>
       <div className="profile-stack">
         {details.teams.map((team) => (
-          <TeamGroup key={team.kind} team={team} />
+          <TeamGroup
+            key={team.kind}
+            team={team}
+            name={text.teamName(team.ageLimit)}
+            field="reputation"
+          />
         ))}
+        {details.women && <WomenGroups women={details.women} />}
       </div>
     </div>
   );
@@ -221,16 +237,57 @@ const nameOf = (person: NamedPerson | null) => person?.name ?? profileText.none;
 /** The kind of a senior national team (`NationalTeam.kind`). */
 const SENIOR = 0;
 
-/** One national team: who runs it, who leads it, and its squad. The senior team's reputation can be edited. */
-function TeamGroup({ team }: { team: NationalTeam }) {
+/** A nation's women's football: when it joined FIFA and its confederation, its youth rating, and its teams. */
+function WomenGroups({ women }: { women: WomenFootball }) {
+  return (
+    <>
+      <section className="profile-group">
+        <h3>{text.women}</h3>
+        <dl className="stats">
+          <Fact label={text.youthRating}>
+            <EditableValue field="women.youth_rating">
+              {orDash(women.youthRating)}
+            </EditableValue>
+          </Fact>
+          <Fact label={text.joinedFifa}>{orDash(women.joinedFifa)}</Fact>
+          <Fact label={text.joinedContinental}>
+            {orDash(women.joinedContinental)}
+          </Fact>
+        </dl>
+      </section>
+      {women.teams.map((team) => (
+        <TeamGroup
+          key={team.kind}
+          team={team}
+          name={text.womenTeamName(team.ageLimit)}
+          field="women.reputation"
+        />
+      ))}
+    </>
+  );
+}
+
+/**
+ * One national team: who runs it, who leads it, and its squad. The senior team's reputation can be edited, as
+ * `field`.
+ */
+function TeamGroup({
+  team,
+  name,
+  field,
+}: {
+  team: NationalTeam;
+  name: string;
+  field: string;
+}) {
   const meter = <ReputationMeter value={team.reputation} />;
   return (
     <section className="profile-group">
-      <h3>{text.teamName(team.ageLimit)}</h3>
+      <h3>{name}</h3>
       <dl className="stats">
         <Fact label={text.reputation}>
           {team.kind === SENIOR ? (
-            <EditableValue field="reputation">{meter}</EditableValue>
+            <EditableValue field={field}>{meter}</EditableValue>
           ) : (
             meter
           )}

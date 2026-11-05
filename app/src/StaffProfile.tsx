@@ -165,6 +165,18 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
             {details.contract && (
               <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />
             )}
+            {details.coachingLicence !== null && (
+              <section className="profile-group">
+                <h3>{profileText.qualifications}</h3>
+                <dl className="stats">
+                  <Fact label={profileText.coachingLicence}>
+                    <EditableValue field="coaching_licence">
+                      {profileText.licenceName(details.coachingLicence)}
+                    </EditableValue>
+                  </Fact>
+                </dl>
+              </section>
+            )}
             <section className="profile-group">
               <h3>{profileText.reputation}</h3>
               <ReputationBars reputation={details.reputation} />

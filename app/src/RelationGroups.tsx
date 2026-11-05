@@ -70,7 +70,7 @@ export function PreferencesGroup({
   );
 }
 
-/** The languages a person speaks besides, usually, his native one, and how well (out of 10); not there when none. */
+/** The languages a person speaks besides, usually, his native one, and how well, as FM words it; not there when none. */
 export function LanguagesGroup({ languages }: { languages: Language[] }) {
   if (languages.length === 0) {
     return null;
@@ -81,7 +81,7 @@ export function LanguagesGroup({ languages }: { languages: Language[] }) {
       <dl className="stats">
         {languages.map((language, index) => (
           <Fact key={index} label={language.name ?? "-"}>
-            {profileText.languageLevel(language.level)}
+            <span title={profileText.languageLevelTitle(language.level)}>{profileText.languageLevel(language.level)}</span>
           </Fact>
         ))}
       </dl>

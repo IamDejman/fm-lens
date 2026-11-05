@@ -289,6 +289,8 @@ export interface StaffDetails extends StaffSummary {
   languages: Language[];
   /** The people and clubs he favours and dislikes. Read-only. */
   preferences: Preference[];
+  /** 1 to 8, or 0 for none; null where the build does not place it. */
+  coachingLicence: number | null;
 }
 
 export interface FmDate {
@@ -634,8 +636,21 @@ export interface NationDetails {
   points: number | null;
   founded: number | null;
   joinedFifa: number | null;
+  joinedContinental: number | null;
+  /** 0 to 165. */
+  youthRating: number | null;
   /** Strongest first. */
   rivals: Related[];
+  /** The senior team first. */
+  teams: NationalTeam[];
+  /** Null where the nation has no women's container. */
+  women: WomenFootball | null;
+}
+
+export interface WomenFootball {
+  joinedFifa: number | null;
+  joinedContinental: number | null;
+  youthRating: number | null;
   /** The senior team first. */
   teams: NationalTeam[];
 }

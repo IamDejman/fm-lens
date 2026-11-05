@@ -710,6 +710,7 @@ function staffDetails(member: StaffSummary): StaffDetails {
     registrationAnytime: member.isHuman ? false : null,
     languages: languagesOf(member.uid),
     preferences: [],
+    coachingLicence: member.uid % 9,
   });
 }
 
@@ -742,6 +743,9 @@ function fieldTable(entity: Entity): EditField[] {
   if (entity === "nation") {
     return [
       { ...field("reputation", "u16", 0, 10_000), mass: false },
+      { ...field("youth_rating", "i16", 0, 165), mass: false },
+      { ...field("women.reputation", "u16", 0, 10_000), mass: false },
+      { ...field("women.youth_rating", "i16", 0, 165), mass: false },
       { ...field("population", "u32", 1, 2_000_000_000), mass: false },
       { ...field("dual_nationality", "u8", 0, 2), choices: [0, 2], mass: false },
       { ...field("naturalisation", "u8", 0, 50), blank: 255, mass: false },
@@ -817,6 +821,7 @@ function fieldTable(entity: Entity): EditField[] {
     ),
     ...personality,
     ...contract,
+    { ...field("coaching_licence", "i8", 0, 8), choices: [0, 1, 2, 3, 4, 5, 6, 7, 8] },
     { ...field("manager.unsackable", "flag", 0, 1), mass: false },
     { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];
@@ -857,6 +862,9 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         break;
       case "reputation":
         d.reputation[name as "home" | "current" | "world"] = value;
+        break;
+      case "coaching_licence":
+        (d as StaffDetails).coachingLicence = value;
         break;
       case "height":
         (d as PlayerDetails).heightCm = value;
@@ -1023,6 +1031,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return person.positionRatings[name];
       case "personality":
         return person.personality[name];
+      case "coaching_licence":
+        return (person as StaffDetails).coachingLicence;
       case "contract": {
         const contract = (person as PlayerDetails).contract;
         switch (name) {
@@ -2690,10 +2700,18 @@ function nationDetails(index: number): NationDetails | null {
     points: index === 2 ? null : 1900 - index * 41.37,
     founded: 1880 + index * 7,
     joinedFifa: 1904 + index * 5,
+    joinedContinental: 1950 + index * 3,
+    youthRating: 140 - index * 9,
     rivals: NATIONS.filter((_, i) => i !== index)
       .slice(0, 3)
       .map((rival, i) => ({ uid: 1000 + NATIONS.indexOf(rival), name: rival, strength: 100 - i * 15 })),
     teams: [team(null, 0, 8_500 - index * 300, older), team(21, 266, 6_000 - index * 200, younger)],
+    women: {
+      joinedFifa: 1970 + index * 4,
+      joinedContinental: 1972 + index * 4,
+      youthRating: 155 - index * 11,
+      teams: [team(null, 0, 9_000 - index * 450, []), team(20, 274, 4_000 - index * 150, [])],
+    },
   });
 }
 
@@ -2712,6 +2730,17 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
   const senior = d.teams.find((team) => team.kind === 0);
   if (values.reputation !== undefined && senior) {
     senior.reputation = values.reputation;
+  }
+  if (values.youth_rating !== undefined) {
+    d.youthRating = values.youth_rating;
+  }
+  const women = d.women;
+  const womenSenior = women?.teams.find((team) => team.kind === 0);
+  if (values["women.reputation"] !== undefined && womenSenior) {
+    womenSenior.reputation = values["women.reputation"];
+  }
+  if (values["women.youth_rating"] !== undefined && women) {
+    women.youthRating = values["women.youth_rating"];
   }
   if (values.population !== undefined) {
     d.population = values.population;
@@ -2737,6 +2766,16 @@ function nationValues(uid: number): FieldValues {
   const senior = d.teams.find((team) => team.kind === 0);
   if (senior) {
     values.reputation = senior.reputation;
+  }
+  if (d.youthRating !== null) {
+    values.youth_rating = d.youthRating;
+  }
+  const womenSenior = d.women?.teams.find((team) => team.kind === 0);
+  if (womenSenior) {
+    values["women.reputation"] = womenSenior.reputation;
+  }
+  if (d.women && d.women.youthRating !== null) {
+    values["women.youth_rating"] = d.women.youthRating;
   }
   if (d.population !== null) {
     values.population = d.population;

@@ -3527,10 +3527,13 @@ fn nation(session: &Session, uid: u32) -> Result<()> {
         or_dash(d.ranking.map(|r| r.to_string())),
         or_dash(d.points.map(|p| format!("{p:.2}")))
     );
+    let year = |year: Option<u16>| or_dash(year.map(|y| y.to_string()));
     println!(
-        "  founded        {}, joined FIFA {}",
-        or_dash(d.founded.map(|y| y.to_string())),
-        or_dash(d.joined_fifa.map(|y| y.to_string()))
+        "  founded        {}, joined FIFA {}, continental {}, youth rating {}",
+        year(d.founded),
+        year(d.joined_fifa),
+        year(d.joined_continental),
+        year(d.youth_rating)
     );
     let rivals: Vec<String> = d
         .rivals
@@ -3544,11 +3547,25 @@ fn nation(session: &Session, uid: u32) -> Result<()> {
         })
         .collect();
     println!("  rivals         {}", rivals.join(", "));
-    for team in &d.teams {
+    print_national_teams("team", &d.teams);
+    if let Some(women) = &d.women {
+        println!(
+            "  women          joined FIFA {}, continental {}, youth rating {}",
+            year(women.joined_fifa),
+            year(women.joined_continental),
+            year(women.youth_rating)
+        );
+        print_national_teams("women", &women.teams);
+    }
+    Ok(())
+}
+
+fn print_national_teams(label: &str, teams: &[fmlibre_core::NationalTeam]) {
+    for team in teams {
         let age = team.age_limit.map_or_else(|| "senior".to_owned(), |age| format!("U{age}"));
         let name = |person: &Option<fmlibre_core::Person>| person.as_ref().map_or("-", |p| p.name.as_str()).to_owned();
         println!(
-            "  team {age:<9} kind {:<4} reputation {:<5} manager {}, captain {}, vice {}, squad {}",
+            "  {label:<5} {age:<8} kind {:<4} reputation {:<5} manager {}, captain {}, vice {}, squad {}",
             team.kind,
             team.reputation,
             name(&team.manager),
@@ -3557,7 +3574,6 @@ fn nation(session: &Session, uid: u32) -> Result<()> {
             team.squad.len()
         );
     }
-    Ok(())
 }
 
 fn club(session: &Session, uid: u32) -> Result<()> {
