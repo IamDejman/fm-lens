@@ -51,6 +51,18 @@ export function fmShownWage(amount: number): number {
 }
 
 /**
+ * The next wage above `amount` (or below it, when `up` is false) that FM shows as it is, as the arrow keys step a wage:
+ * £300,000 goes up to £325,000 and down to £275,000; £185,198 goes up to £190,000 and down to £185,000.
+ */
+export function nextFmWage(amount: number, up: boolean): number {
+  const shown = fmShownWage(amount);
+  if (up) {
+    return shown > amount ? shown : shown + stepOf(shown + 1);
+  }
+  return shown < amount ? shown : shown - stepOf(shown);
+}
+
+/**
  * The wage to write when `typed` replaces `was` (both as shown): `typed` if FM shows it as it is, else the nearest
  * one FM does, or, where that would look the same as `was` in FM, the next one in the direction of the change.
  * £300,000 raised to £310,000 is £325,000; £200,000 raised to £226,000 is £225,000.
