@@ -118,6 +118,22 @@ enum Command {
         #[arg(long, default_value_t = 15)]
         limit: usize,
     },
+    /// List the competitions, by reputation; with a name, only those whose name holds it
+    Competitions {
+        /// Part of a name to look for.
+        name: Option<String>,
+        /// How many to print.
+        #[arg(long, default_value_t = 15)]
+        limit: usize,
+    },
+    /// List the awards, by prestige; with a name, only those whose name or competition holds it
+    Awards {
+        /// Part of a name to look for.
+        name: Option<String>,
+        /// How many to print.
+        #[arg(long, default_value_t = 15)]
+        limit: usize,
+    },
     /// Show what FMLibreEditor reads for the nation with this UID: its rules, FIFA ranking, rivals and teams.
     Nation {
         /// The nation's unique ID.
@@ -820,6 +836,10 @@ fn run(cli: Cli) -> Result<()> {
         Command::Nation { uid } => nation(&connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Cohesion { uid } => cohesion(&connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Officials { name, limit } => officials(&connect(process, ArraySource::ProfileFirst)?, name, limit),
+        Command::Competitions { name, limit } => {
+            competitions(&connect(process, ArraySource::ProfileFirst)?, name, limit)
+        }
+        Command::Awards { name, limit } => awards(&connect(process, ArraySource::ProfileFirst)?, name, limit),
         Command::Players { text, limit, filter, export, semicolon } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             let format = export.as_deref().map(|path| {
@@ -3496,6 +3516,63 @@ fn officials(session: &Session, name: Option<String>, limit: usize) -> Result<()
             o.current_ability,
             o.potential_ability,
             o.reputation
+        );
+    }
+    Ok(())
+}
+
+fn competitions(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
+    let started = Instant::now();
+    let mut all = session.competitions()?;
+    println!(
+        "{} competitions ({} women's) in {:.1} s",
+        all.len(),
+        all.iter().filter(|c| c.women).count(),
+        started.elapsed().as_secs_f64()
+    );
+    if let Some(name) = name {
+        let name = name.to_lowercase();
+        all.retain(|c| c.name.to_lowercase().contains(&name));
+    }
+    all.sort_by_key(|a| std::cmp::Reverse(a.reputation));
+    for c in all.iter().take(limit) {
+        println!(
+            "  {:<40} {:<10} {:<16} {:<14} rep {:>3}{}",
+            c.name,
+            c.uid,
+            c.nation.as_deref().unwrap_or("-"),
+            c.continent.as_deref().unwrap_or("-"),
+            c.reputation,
+            if c.women { "  women" } else { "" }
+        );
+    }
+    Ok(())
+}
+
+fn awards(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
+    let started = Instant::now();
+    let mut all = session.awards()?;
+    println!("{} awards in {:.1} s", all.len(), started.elapsed().as_secs_f64());
+    if let Some(name) = name {
+        let name = name.to_lowercase();
+        all.retain(|a| {
+            a.name.to_lowercase().contains(&name)
+                || a.competition.as_deref().is_some_and(|c| c.to_lowercase().contains(&name))
+        });
+    }
+    all.sort_by_key(|a| std::cmp::Reverse(a.prestige));
+    for a in all.iter().take(limit) {
+        println!(
+            "  {:<52} {:<8} {:<28} {:<12} prestige {:>2} period {} to {}{}{}",
+            a.name,
+            a.uid,
+            a.competition.as_deref().unwrap_or("-"),
+            a.nation.as_deref().unwrap_or("-"),
+            a.prestige,
+            a.period,
+            a.recipients,
+            if a.goalkeepers_only { " goalkeepers" } else { "" },
+            a.max_age.map_or_else(String::new, |age| format!(" max age {age}"))
         );
     }
     Ok(())

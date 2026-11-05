@@ -81,7 +81,7 @@ One family: Archivo (variable). The scale is fixed; 11px is the floor.
 
 | Keys | Does |
 |---|---|
-| ⌘1 to ⌘7 (Ctrl elsewhere) | Players, Staff, Clubs, Nations, Stadiums, Officials, Changes |
+| ⌘1 to ⌘9 (Ctrl elsewhere) | Players, Staff, Clubs, Nations, Competitions, Awards, Stadiums, Officials, Changes |
 | ⌘F | Search box of the open list |
 | Up / Down, Home / End | Move between rows |
 | Enter or Space | Open the focused row |

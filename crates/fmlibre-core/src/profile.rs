@@ -49,6 +49,54 @@ pub struct Layout {
     /// The game's list of work permits; only in the layouts it has been checked in.
     #[serde(default)]
     pub work_permit: Option<WorkPermitLayout>,
+    /// Competitions and awards; only in the layouts they have been checked in.
+    #[serde(default)]
+    pub competition: Option<CompetitionLayout>,
+    #[serde(default)]
+    pub award: Option<AwardLayout>,
+}
+
+/// A competition (`db::COMP`), `size` bytes read from its start. `table_items` is where its database table points at
+/// the vector of pointers to the competitions; `index` the u32 place in it each holds. Names are FM string pointers;
+/// `nation` (none for an international competition) and `continent` are pointers to places whose name is an FM string
+/// at `place_name`. `reputation` is a u16, 0 to 200, and `women` a byte, nonzero for a women's competition.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CompetitionLayout {
+    pub class: String,
+    pub size: u64,
+    pub table_items: u64,
+    pub index: u64,
+    pub uid: u64,
+    pub name: u64,
+    pub short_name: u64,
+    pub continent: u64,
+    pub nation: u64,
+    pub place_name: u64,
+    pub reputation: u64,
+    pub women: u64,
+}
+
+/// An award (`db::AWARD`), read as a competition is ([`CompetitionLayout`]); `competition`, `nation` and `continent`
+/// are the pointers it is linked by, the rest bytes: `prestige` 0 to 20, `period` and `recipients` codes,
+/// `goalkeepers_only` 1 for a goalkeepers' award and `max_age` the oldest a winner may be (0 for any age).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AwardLayout {
+    pub class: String,
+    pub size: u64,
+    pub table_items: u64,
+    pub index: u64,
+    pub uid: u64,
+    pub name: u64,
+    pub continent: u64,
+    pub competition: u64,
+    pub nation: u64,
+    pub goalkeepers_only: u64,
+    pub prestige: u64,
+    pub period: u64,
+    pub recipients: u64,
+    pub max_age: u64,
 }
 
 /// A loaned player's loan: in the player's person block, a pointer to a slot that points at a contract of the class
@@ -735,6 +783,12 @@ pub struct BuildProfile {
     /// ([`WorkPermitLayout`]), on the one build where it has been read.
     #[serde(default)]
     pub transfer_manager: Option<u64>,
+    /// RVAs in the game plugin of the static pointers to the database tables of competitions ([`CompetitionLayout`])
+    /// and awards ([`AwardLayout`]), on the one build where they have been read.
+    #[serde(default)]
+    pub competitions: Option<u64>,
+    #[serde(default)]
+    pub awards: Option<u64>,
 }
 
 /// The human manager's flags word, traced statically on the arm64 half of Steam build 26340721: the

@@ -371,6 +371,51 @@ export interface OfficialSummary {
   reputation: number;
 }
 
+/** A competition, read-only. */
+export interface CompetitionSummary {
+  uid: number;
+  name: string;
+  shortName: string | null;
+  /** Null for an international competition. */
+  nation: string | null;
+  nationUid: number | null;
+  continent: string | null;
+  /** 0 to 200. */
+  reputation: number;
+  women: boolean;
+}
+
+export interface CompetitionPage {
+  total: number;
+  rows: CompetitionSummary[];
+}
+
+/** An award, read-only. */
+export interface AwardSummary {
+  uid: number;
+  name: string;
+  /** The competition it is given in; null for a nation's or the world's award. */
+  competition: string | null;
+  competitionUid: number | null;
+  nation: string | null;
+  nationUid: number | null;
+  continent: string | null;
+  /** 0 to 20. */
+  prestige: number;
+  /** FM's code for how often it is given (see `awardListText.periodName`). */
+  period: number;
+  /** FM's code for who gets it (see `awardListText.recipientName`). */
+  recipients: number;
+  goalkeepersOnly: boolean;
+  /** The oldest a winner may be; null when any age may win. */
+  maxAge: number | null;
+}
+
+export interface AwardPage {
+  total: number;
+  rows: AwardSummary[];
+}
+
 export interface OfficialPage {
   total: number;
   rows: OfficialSummary[];

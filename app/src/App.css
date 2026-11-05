@@ -1551,6 +1551,14 @@ input::placeholder {
   width: 40%;
 }
 
+/* The competitions and awards lists beside a profile in a small window: name and the number. */
+@container (max-width: 480px) {
+  .with-profile .competition-grid :is(.col-continent, .col-nation),
+  .with-profile .award-grid :is(.col-competition, .col-nation) {
+    display: none;
+  }
+}
+
 /* The officials list beside a profile in a small window: name, CA and PA. */
 @container (max-width: 480px) {
   .with-profile .official-grid :is(.col-age, .col-rep) {
@@ -1603,26 +1611,38 @@ input::placeholder {
   font-size: var(--type-base);
 }
 
-.club-grid td.col-name {
+.club-grid td.col-name,
+.competition-grid td.col-name,
+.award-grid td.col-name {
   width: 100%;
   max-width: 0;
 }
 
-.club-grid .col-name .name {
+/* A long competition or award name is cut short, so the numbers beside it stay in view. */
+.award-grid td.col-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.club-grid .col-name .name,
+.competition-grid .col-name .name {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
 
-.club-grid .col-name :is(.name-text, .sub) {
+.club-grid .col-name :is(.name-text, .sub),
+.competition-grid .col-name .name-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.club-grid .col-name .tag.women {
+.club-grid .col-name .tag.women,
+.competition-grid .col-name .tag.women {
   flex: none;
   margin-left: 0;
 }

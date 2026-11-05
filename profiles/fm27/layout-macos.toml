@@ -166,6 +166,41 @@ record_person = 0x08
 record_granted_on = 0x12
 record_flags = 0x16
 
+# Competitions (db::COMP, 0x1B0 bytes each) and awards (db::AWARD, 0xA0), as their database tables list them: the
+# table points at its vector of pointers at +0x88, and each object holds its place in it at +0x08 and its UID at +0x0C.
+# Read on 11 Dec 2027: the Premier League (UID 11) is in England and Europe with reputation 190; 738 competitions are
+# women's. Of the awards, the Premier League Golden Glove is for goalkeepers and the Young Player of the Year for
+# players of 22 or under. A nation's and a continent's name are at +0x18.
+[competition]
+class = "N2db4COMPE"
+size = 0x190
+table_items = 0x88
+index = 0x08
+uid = 0x0C
+name = 0x40
+short_name = 0x48
+continent = 0x58
+nation = 0x60
+place_name = 0x18
+reputation = 0x188       # u16, 0..200
+women = 0xF9             # u8, nonzero for a women's competition
+
+[award]
+class = "N2db5AWARDE"
+size = 0xA0
+table_items = 0x88
+index = 0x08
+uid = 0x0C
+name = 0x30
+continent = 0x50
+competition = 0x58
+nation = 0x60
+goalkeepers_only = 0x7C  # u8, 1 for a goalkeepers' award
+prestige = 0x80          # u8, 0..20
+period = 0x86            # u8: 1 weekly, 2 monthly, 3 each season
+recipients = 0x8D        # u8: 1 a player, 2 a manager, 7 a team of players
+max_age = 0x93           # u8, 0 for any age
+
 [cluster]
 current_date = 0x908
 
