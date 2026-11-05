@@ -194,7 +194,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
 
         {tabs}
 
-        <div className="profile-body" ref={body}>
+        <div className="profile-body" ref={body} data-tour="profile">
           <SectionJump body={body} />
           {!loaded && (
             <p className="profile-status" role="status">

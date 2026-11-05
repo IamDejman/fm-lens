@@ -192,6 +192,7 @@ export function EditButton({ editing, ready }: { editing: ProfileEditing; ready:
       ref={editing.editButton}
       type="button"
       className="edit-toggle"
+      data-tour="edit"
       aria-pressed={active}
       aria-busy={editing.stage === "loading" || undefined}
       disabled={!ready}
@@ -283,6 +284,7 @@ export function EditBar({ editing }: { editing: ProfileEditing }) {
               <button
                 type="button"
                 className="primary"
+                data-tour="apply"
                 disabled={!canApply}
                 title={invalid > 0 ? editText.applyBlocked : undefined}
                 onClick={editing.apply}

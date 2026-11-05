@@ -80,6 +80,7 @@ export function nameNations(nations: readonly Nation[]): void {
 /** How the codes of a field that holds codes from a list (see `EditField.choices`) are named, by the field's key. */
 const CHOICE_NAMES = new Map<string, (code: number) => string>([
   ["contract.squad_status", profileText.squadStatusName],
+  ["coaching_licence", profileText.licenceName],
   // A nation's people may hold another nationality as well (0), or may not (2).
   ["dual_nationality", (code) => (code === 0 ? strings.nationList.allowed : strings.nationList.notAllowed)],
   ["nation", (address) => NATION_NAMES.get(address) ?? editText.unknownNation],

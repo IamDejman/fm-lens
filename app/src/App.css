@@ -1590,6 +1590,14 @@ input::placeholder {
   bottom: auto;
 }
 
+/* The exercise points at the profile and its Apply button on the right, so its card keeps to the left, above the
+   status line. */
+.tour.side {
+  right: auto;
+  bottom: 44px;
+  left: 16px;
+}
+
 .tour h2 {
   margin: 0 0 6px;
   font-size: var(--type-lg);
