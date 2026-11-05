@@ -146,6 +146,12 @@ pub enum MoveError {
     OnLoan,
     /// The player is not on loan.
     NotOnLoan,
+    /// The loan has a future fee: ending it early has the game complete the transfer.
+    FutureFee,
+    /// The game ended the loan but the player went to `club`, not back to his own.
+    JoinedOther {
+        club: String,
+    },
     /// A signing agreed for a later day is no longer waiting for it: the game has made it or cancelled it.
     NotPending,
     /// A player-coach, who works as staff too.
@@ -269,6 +275,10 @@ impl fmt::Display for MoveError {
             MoveError::SameClub => f.write_str("the player is at this club already"),
             MoveError::OnLoan => f.write_str("the player is on loan; players on loan cannot be moved yet"),
             MoveError::NotOnLoan => f.write_str("the player is not on loan"),
+            MoveError::FutureFee => {
+                f.write_str("the loan has a future fee; ending it early would have the game complete the transfer")
+            }
+            MoveError::JoinedOther { club } => write!(f, "the game ended the loan, but the player joined {club}"),
             MoveError::NotPending => {
                 f.write_str("the signing is no longer waiting for its day: FM has made it or cancelled it")
             }
@@ -370,6 +380,8 @@ impl Coded for MoveError {
             MoveError::SameClub => "move.sameClub",
             MoveError::OnLoan => "move.onLoan",
             MoveError::NotOnLoan => "move.notOnLoan",
+            MoveError::FutureFee => "loan.futureFee",
+            MoveError::JoinedOther { .. } => "loan.joinedOther",
             MoveError::NotPending => "move.notPending",
             MoveError::PlayerCoach => "move.playerCoach",
             MoveError::UnusualContract => "move.unusualContract",
@@ -437,6 +449,7 @@ impl Coded for MoveError {
             MoveError::NotInClause { field } => vec![("field", (*field).to_owned())],
             MoveError::UnknownRule { rule } => vec![("rule", rule.to_string())],
             MoveError::FamiliarityChanged { found } => vec![("found", found.to_string())],
+            MoveError::JoinedOther { club } => vec![("club", club.clone())],
             MoveError::Locked(lock) => lock.params(),
             MoveError::Memory(err) => err.params(),
             _ => Vec::new(),

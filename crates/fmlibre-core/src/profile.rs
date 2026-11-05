@@ -164,6 +164,8 @@ pub struct AwardLayout {
 pub struct LoanLayout {
     pub slot: u64,
     pub class: String,
+    /// The loan's future fee, a u32 in the contract, `u32::MAX` for none.
+    pub future_fee: u64,
 }
 
 /// Work permits: the transfer manager the game keeps them in ([`BuildProfile::transfer_manager`]), of class `class`; at

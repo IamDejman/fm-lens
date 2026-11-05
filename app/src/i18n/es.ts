@@ -242,6 +242,9 @@ const errors: ErrorTexts = {
   "ban.notBanned": () => "El jugador no tiene ninguna sanción que levantar.",
   "call.unavailable": () => "FM no puede hacer este cambio en esta versión.",
   "call.declined": () => "FM no hizo el cambio.",
+  "loan.futureFee": () =>
+    "Esta cesión tiene un traspaso futuro. Terminarla antes haría que FM completara el traspaso, así que FM Lens no la termina.",
+  "loan.joinedOther": (p) => `FM terminó la cesión, pero fichó por ${p.club} en lugar de volver.`,
   "injury.already": () => "Ya está lesionado. Cúralo primero.",
   "injury.noKind": () => "FM no tiene esa lesión.",
   "cohesion.none": () => "FM aún no le ha dado familiaridad con este club, así que no hay nada que subir.",
@@ -620,6 +623,7 @@ export const es: Strings = {
     loanWage: "Paga el club receptor por semana",
     loanStarts: "Inicio de la cesión",
     loanEnds: "Fin de la cesión",
+    loanFutureFee: "Traspaso futuro",
     workPermit: "Permiso de trabajo",
     permitGranted: (date: string) => `Concedido el ${date}`,
     permitNotGranted: "No concedido",

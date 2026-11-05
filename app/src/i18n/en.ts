@@ -100,6 +100,9 @@ const errors: ErrorTexts = {
   "attributes.level": () => "Choose a value from 1 to 20.",
   "call.unavailable": () => "FM can't make this change on this version.",
   "call.declined": () => "FM didn't make the change.",
+  "loan.futureFee": () =>
+    "This loan has a future fee. Ending it early would make FM complete the transfer, so FM Lens won't end it.",
+  "loan.joinedOther": (p) => `FM ended the loan, but he joined ${p.club} instead of going back.`,
   "injury.already": () => "He's injured already. Heal him first.",
   "injury.noKind": () => "FM has no such injury.",
   "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
@@ -565,6 +568,7 @@ export const en = {
     loanWage: "Borrower pays per week",
     loanStarts: "Loan began",
     loanEnds: "Loan ends",
+    loanFutureFee: "Future fee",
     /** A player's work permits, one per nation the game keeps a record of him for: granted on a date, or not. */
     workPermit: "Work permit",
     permitGranted: (date: string) => `Granted ${date}`,
