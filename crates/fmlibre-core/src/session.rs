@@ -325,6 +325,7 @@ impl Session {
         details.languages = self.player_languages(player).unwrap_or_default();
         details.clause_room = self.clause_room(player).unwrap_or(0);
         details.loan = self.loan(player);
+        details.work_permits = self.work_permits(player);
         if let Ok(date) = self.planned_retirement(player) {
             (details.retirement_known, details.retires) = (true, date);
         }
