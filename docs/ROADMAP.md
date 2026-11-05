@@ -75,8 +75,9 @@ further data-layout and game-behavior research.
 5. **Complex systems**: investigate transfers/loans, manager actions, nations,
    competitions, awards, officials, promises and intake as separate workstreams.
    Prioritize with the user and available evidence.
-6. **Broader delivery**: verify more platform/storefront/build combinations,
-   benchmark larger saves and establish a patch-validation process.
+6. **Broader delivery**: verify more platform/storefront/build combinations
+   and benchmark larger saves. A new build is checked with
+   `scripts/check-build.sh` and the steps in PATCH-VALIDATION.md.
 
 ## Validation gates
 
