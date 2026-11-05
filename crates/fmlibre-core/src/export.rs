@@ -342,7 +342,7 @@ fn release_clause(contract: &Contract) -> Option<u32> {
 fn clauses_text(contract: &Contract) -> String {
     let clause = |clause: &crate::Clause| {
         let name = clause_name(clause.kind).map_or_else(|| format!("Clause {}", clause.kind), str::to_owned);
-        let condition = clause.condition.map(|value| condition_text(clause.kind, value));
+        let condition = clause.condition.and_then(|value| condition_text(clause.kind, value));
         match (clause.amount, condition) {
             (Some(amount), Some(condition)) => format!("{name}: {amount} GBP, {condition}"),
             (Some(amount), None) => format!("{name}: {amount} GBP"),
@@ -370,33 +370,63 @@ fn clause_name(kind: u16) -> Option<&'static str> {
     Some(match kind {
         0 => "Minimum fee release clause",
         1 => "Relegation release clause",
+        2 => "Non-promotion release clause",
         3 => "Yearly wage rise",
+        4 => "Promotion wage rise",
+        5 => "Relegation wage drop",
+        6 => "Non-playing job release clause",
+        7 => "Release at any time",
+        8 => "Sell-on fee",
+        9 => "Sell-on fee from profit",
         10 => "Seasonal landmark goal bonus",
+        11 => "One-year extension after league matches",
+        12 => "Match highest earner",
+        13 => "Wage after reaching league matches",
+        14 => "Top division promotion wage rise",
         15 => "Top division relegation wage drop",
+        16 => "Minimum fee release clause (foreign clubs)",
+        17 => "Minimum fee release clause (clubs in a higher division)",
+        18 => "Minimum fee release clause (domestic clubs)",
         19 => "Wage after reaching international matches",
+        20 => "Wages paid by sponsor",
+        21 => "Share of gate receipts",
         22 => "Optional contract extension by club",
+        23 => "No compensation if offered a manager's job",
+        24 => "Compensation needed to leave",
+        25 => "One-year extension if promoted",
+        26 => "One-year extension if relegation is avoided",
         27 => "Minimum fee release clause (clubs in the Champions Cup)",
+        28 => "Guaranteed contract",
+        29 => "Automatic extension if promoted",
+        30 => "Injury release clause",
+        31 => "Minimum fee release clause (clubs in continental competitions)",
         32 => "Appearance fee",
         33 => "Goal bonus",
         34 => "Clean sheet bonus",
+        37 => "International cap bonus",
         38 => "Unused substitute fee",
         39 => "Assist bonus",
         40 => "Seasonal landmark assist bonus",
+        41 => "Seasonal landmark goals and assists bonus",
         _ => return None,
     })
 }
 
-/// What a clause depends on, in words, by its kind: goals, assists, international matches, years or a percentage.
-fn condition_text(kind: u16, value: u16) -> String {
-    match kind {
+/// What a clause depends on, in words, by its kind: goals, assists, matches, years or a percentage; nothing for a
+/// release clause, whose condition's meaning is not known.
+fn condition_text(kind: u16, value: u16) -> Option<String> {
+    Some(match kind {
+        0 | 16 | 17 | 18 | 27 | 31 => return None,
+        3 | 4 | 5 | 8 | 9 | 14 | 15 | 20 | 21 | 24 => format!("{value}%"),
         10 => format!("{value} goals"),
         40 => format!("{value} assists"),
+        41 => format!("{value} goals and assists"),
+        11 | 13 => format!("{value} league matches"),
         19 => format!("{value} international matches"),
         22 if value == 1 => "1 year".to_owned(),
         22 => format!("{value} years"),
-        3 | 15 => format!("{value}%"),
         _ => value.to_string(),
-    }
+    })
 }
 
 #[cfg(test)]
