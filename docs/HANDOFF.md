@@ -83,9 +83,11 @@ Built on top of it (core and Tauri only, no UI yet):
      slot FM Lens already reads), so `Session::end_loan` does the same, with kind 2 for a parent club a human runs
      and 3 otherwise, and reads back that the loan is gone and he plays for his own club. Undo starts the loan again
      until its old end. Undoing a started loan now ends it at once too. Unproven in the game (section 4).
-   - **Release through the game**: next. The editor's terminate-contract handler calls the same function on the
-     player's own contract; undo would sign him back with his old wage and end written over. Today's release writes
-     memory itself and works; switch only after End loan is proven in the game.
+   - **Release through the game**: not a single call, so Release stays on FM Lens' own memory writes (they work and
+     undo exactly). After emptying the slot, 0x2D4B9DC puts him in a team of the club of his main contract: for a
+     loan that is the parent club, for his own contract his own club, so he would stay there with no contract. The
+     editor follows it with 0x2d4f79c and the mover 0x2d49334 (kind 9) in a branch not yet settled (fm27-call-shapes.md
+     section 4).
    - **Future transfers**: the signing call with a 'TrDt' date after today (0x2d91328 stores it): a date step for
      the Sign dialog. Cancel (0x2d180b4) needs the offer pointer in scratch with a reference taken, which the bridge
      cannot do yet, so there is no undo: build it after a way to cancel exists.
