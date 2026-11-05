@@ -2504,6 +2504,16 @@ fn player(session: &Session, uid: u32) -> Result<()> {
         }
         None => println!("  contract       none"),
     }
+    if let Some(loan) = &d.loan {
+        println!(
+            "  loan           from {} (UID {}), borrower pays £{} per week, {} to {}",
+            loan.parent.as_deref().unwrap_or("?"),
+            loan.parent_uid.map_or_else(|| "-".to_owned(), |uid| uid.to_string()),
+            loan.wage,
+            date(loan.starts),
+            date(loan.ends)
+        );
+    }
     Ok(())
 }
 

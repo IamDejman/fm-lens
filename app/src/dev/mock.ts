@@ -38,6 +38,7 @@ import type {
   Health,
   Ban,
   Injury,
+  LoanTerms,
   Preference,
   Tie,
   Clause,
@@ -273,11 +274,27 @@ function details(player: PlayerSummary): PlayerDetails {
     preferences: preferencesOf(player),
     languages: languagesOf(player.uid),
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
+    loan: loanOf(player),
     retirementKnown: true,
     retires: retiresOf(player.uid),
     // Drawn last, so that the values above come out as before.
     morale: Math.round(7 + next() * 10),
   });
+}
+
+/** Every eleventh player at a club is there on loan from another club, which pays half his wage. */
+function loanOf(player: PlayerSummary): LoanTerms | null {
+  if (!player.club || player.uid % 11 !== 0) {
+    return null;
+  }
+  const parent = CLUBS[(CLUBS.indexOf(player.club) + 1) % CLUBS.length] ?? CLUBS[0]!;
+  return {
+    parent,
+    parentUid: 1000 + CLUBS.indexOf(parent),
+    wage: 5000 + (player.uid % 9) * 2500,
+    starts: { year: 2026, month: 8, day: 10 },
+    ends: { year: 2027, month: 6, day: 29 },
+  };
 }
 
 /** The fixture players healed through the editor, by UID, while the healing is not undone. */
@@ -749,6 +766,10 @@ function fieldTable(entity: Entity): EditField[] {
   const reputation = ["home", "current", "world"].map((key) => field(`reputation.${key}`, "u16", 0, 10_000));
   const personality = PERSONALITY.map((key) => field(`personality.${key}`, "u8", 1, 20));
   const contract = [field("contract.wage", "i32", 0, 10_000_000), field("contract.expires", "date", 20000101, 21001231)];
+  const loan = [
+    { ...field("loan.wage", "i32", 0, 10_000_000), mass: false },
+    { ...field("loan.ends", "date", 20000101, 21001231), mass: false },
+  ];
   if (entity === "club") {
     return [
       field("reputation", "u16", 0, 10_000),
@@ -782,6 +803,7 @@ function fieldTable(entity: Entity): EditField[] {
       ...personality,
       ...contract,
       ...playerContract,
+      ...loan,
     ];
   }
   return [
@@ -872,6 +894,15 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
           (d as StaffDetails).registrationAnytime = value === 1;
         }
         break;
+      case "loan": {
+        const loan = entity === "player" ? (d as PlayerDetails).loan : null;
+        if (loan && name === "wage") {
+          loan.wage = value;
+        } else if (loan && name === "ends") {
+          loan.ends = dateFromNumber(value);
+        }
+        break;
+      }
       case "contract":
         if (d.contract && name === "wage") {
           d.contract.wage = value;
@@ -1018,6 +1049,13 @@ function currentValues(entity: Entity, uid: number): FieldValues {
             return contract && contract.concerns.length > 0 ? contract.concerns.length : undefined;
         }
         return undefined;
+      }
+      case "loan": {
+        const loan = (person as PlayerDetails).loan;
+        if (name === "wage") {
+          return loan?.wage;
+        }
+        return name === "ends" && loan?.ends ? numberFromDate(loan.ends) : undefined;
       }
       case "manager":
         // Missing for everyone but the human manager, so an edit or undo of anyone else finds no record.

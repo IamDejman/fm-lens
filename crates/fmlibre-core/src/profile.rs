@@ -43,6 +43,18 @@ pub struct Layout {
     /// A match official; only in the layouts it has been checked in.
     #[serde(default)]
     pub official: Option<OfficialLayout>,
+    /// A loaned player's loan contract; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub loan: Option<LoanLayout>,
+}
+
+/// A loaned player's loan: in the player's person block, a pointer to a slot that points at a contract of the class
+/// `class` (as [`crate::rtti::class_of`] names it), laid out as a contract ([`ContractLayout`]).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LoanLayout {
+    pub slot: u64,
+    pub class: String,
 }
 
 /// A match official: an object of `size` bytes in the officials array ([`BuildProfile::officials`]).
