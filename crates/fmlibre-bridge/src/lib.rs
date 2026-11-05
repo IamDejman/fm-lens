@@ -4,24 +4,29 @@
 //! loads the libraries named in `DYLD_INSERT_LIBRARIES`, though, as Steam has it do for its
 //! overlay, and a Steam launch option names this one. Once loaded it checks in the Mach
 //! service of [`fmlibre_mem::bridge`] and, when the editor of the same user asks, hands over
-//! the game's task port. That is all it does: it hooks nothing, patches nothing and reads none
-//! of the game's data; the editor does the reading and writing, with the checks it makes on
-//! Windows.
+//! the game's task port. The editor does the reading and writing, with the checks it makes on
+//! Windows. The bridge hooks nothing, patches nothing and reads none of the game's data.
+//!
+//! For the edits only the game can make whole, such as a transfer, the editor also asks the
+//! bridge to run some of the game's own functions on its main thread ([`calls`]): only those
+//! the build profiles name for the running build, checked by the game plugin's UUID.
 //!
 //! It runs inside the game, so it never panics and stays idle whenever something is not as
 //! it expects.
 
 #![cfg(target_os = "macos")]
 
+mod calls;
+
 use std::ffi::CString;
 
-use fmlibre_mem::bridge::{RECEIVE_WITH_AUDIT, REQUEST, ReceivedRequest, Reply, service_name};
+use fmlibre_mem::bridge::{CallReply, RECEIVE_WITH_AUDIT, REQUEST, Received, Reply, service_name};
 use mach2::bootstrap::{bootstrap_check_in, bootstrap_port};
 use mach2::kern_return::KERN_SUCCESS;
 use mach2::mach_port::mach_port_deallocate;
 use mach2::message::{
     MACH_MSG_TIMEOUT_NONE, MACH_MSGH_BITS_COMPLEX, MACH_RCV_INTERRUPTED, MACH_RCV_TOO_LARGE, MACH_SEND_MSG,
-    MACH_SEND_TIMEOUT, mach_msg, mach_msg_destroy, mach_msg_size_t,
+    MACH_SEND_TIMEOUT, mach_msg, mach_msg_destroy, mach_msg_header_t, mach_msg_size_t,
 };
 use mach2::port::{MACH_PORT_NULL, mach_port_t};
 use mach2::traps::mach_task_self;
@@ -71,19 +76,18 @@ fn in_the_game() -> bool {
 }
 
 /// Answers requests on `port` for as long as the game runs: a request of the game's own user
-/// gets the game's task port, any other an empty answer.
+/// gets the game's task port, any other an empty answer; a call of the game's own user runs.
 fn serve(port: mach_port_t) {
     let task = unsafe { mach_task_self() };
     let user = unsafe { libc::geteuid() };
+    let mut received = Received::new();
     loop {
-        let mut received: ReceivedRequest = unsafe { std::mem::zeroed() };
-        let size = size_of::<ReceivedRequest>() as mach_msg_size_t;
         let code = unsafe {
             mach_msg(
-                &mut received.request.header,
+                received.buffer(),
                 RECEIVE_WITH_AUDIT,
                 0,
-                size,
+                Received::CAPACITY,
                 port,
                 MACH_MSG_TIMEOUT_NONE,
                 MACH_PORT_NULL,
@@ -99,34 +103,45 @@ fn serve(port: mach_port_t) {
             }
         }
 
-        let header = received.request.header;
-        if header.msgh_id != REQUEST
-            || header.msgh_bits & MACH_MSGH_BITS_COMPLEX != 0
-            || header.msgh_remote_port == MACH_PORT_NULL
-        {
+        let header = received.header();
+        let same_user = received.sender().is_some_and(|(sender_user, _)| sender_user == user);
+        if header.msgh_bits & MACH_MSGH_BITS_COMPLEX != 0 || header.msgh_remote_port == MACH_PORT_NULL {
             // Releases the rights the message brought; none of them is the game's.
-            unsafe { mach_msg_destroy(&mut received.request.header) };
+            unsafe { mach_msg_destroy(received.buffer()) };
             continue;
         }
-        let (sender_user, _) = received.sender();
-        let answer = if sender_user == user { task } else { MACH_PORT_NULL };
-        let mut reply = Reply::to(&received.request, answer);
-        let code = unsafe {
-            mach_msg(
-                &mut reply.header,
-                MACH_SEND_MSG | MACH_SEND_TIMEOUT,
-                size_of::<Reply>() as mach_msg_size_t,
-                0,
-                MACH_PORT_NULL,
-                SEND_TIMEOUT_MS,
-                MACH_PORT_NULL,
-            )
-        };
-        if code != KERN_SUCCESS {
-            // The editor has gone. Only its reply right is released. A copy of the task port
-            // that the kernel may hand back is left alone: releasing one too many would cut
-            // the game off from its own task.
-            unsafe { mach_port_deallocate(task, header.msgh_remote_port) };
+        if header.msgh_id == REQUEST {
+            let answer = if same_user { task } else { MACH_PORT_NULL };
+            let mut reply = Reply::to(&header, answer);
+            if !send(&mut reply.header, size_of::<Reply>()) {
+                // The editor has gone. Only its reply right is released. A copy of the task port
+                // that the kernel may hand back is left alone: releasing one too many would cut
+                // the game off from its own task.
+                unsafe { mach_port_deallocate(task, header.msgh_remote_port) };
+            }
+        } else if let Some(call) = received.call() {
+            let mut reply: Box<CallReply> = Box::new(calls::answer(&call, same_user));
+            if !send(&mut reply.header, size_of::<CallReply>()) {
+                unsafe { mach_port_deallocate(task, header.msgh_remote_port) };
+            }
+        } else {
+            unsafe { mach_msg_destroy(received.buffer()) };
         }
     }
+}
+
+/// Sends the answer whose header is `header`, `size` bytes long; false when it could not be delivered.
+fn send(header: &mut mach_msg_header_t, size: usize) -> bool {
+    let code = unsafe {
+        mach_msg(
+            header,
+            MACH_SEND_MSG | MACH_SEND_TIMEOUT,
+            size as mach_msg_size_t,
+            0,
+            MACH_PORT_NULL,
+            SEND_TIMEOUT_MS,
+            MACH_PORT_NULL,
+        )
+    };
+    code == KERN_SUCCESS
 }
