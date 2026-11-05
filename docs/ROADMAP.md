@@ -56,7 +56,7 @@ further data-layout and game-behavior research.
 | Currency selector | Available; broader locale checks remain |
 | Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent; native scaling/viewport regression checks required |
 | Keyboard navigation | Available: ⌘1-⌘7 sections, ⌘F search, arrow keys in lists, Enter/Space opens, Escape closes, ⌘S applies edits (see DESIGN-STANDARDS.md) |
-| Guided first-run tour | Partial: skippable introduction to navigation, search, settings and the editing boundary; no guided editing exercise |
+| Guided first-run tour | Delivered: skippable introduction to navigation, search, settings and the editing boundary, then, once the game can be edited, a guided first edit (open, Edit, change, Apply, Changes) that follows what the user does |
 
 ## Delivery order
 
