@@ -101,8 +101,16 @@ Built on top of it (core and Tauri only, no UI yet):
    with a UID, a birth date and values in range) guards the writes. The list's open profile now follows each read,
    so edited values show at once. Referee attributes stay read-only until their labels are known. Unproven in the
    game (section 4).
-6. Other batch items not built: staff formations and tendencies (labels need the screen);
-   tactical familiarity; human manager relations and moves; club kits, ownership, vision, allowances, income;
+6. **Max tactics**: done on `feat/tactical-familiarity` (a Max tactics button among a team's actions, gated by
+   `gameActions.maxTactics`). `Session::maximise_tactics` has the game run its editor's own action (`0x2392540`) on
+   the team, with the arguments built from the game's Value functions (`struct_value`, `map_new`, `map_insert`,
+   `map_drop`; `[editor]` in the build profile), after checking the team's id against the teams table. It reads every
+   player's familiarity record (`[tactics]` in `layout-macos.toml`) before and after and logs one change per player
+   raised, as the average of the values it changed, as percentages. Undo writes the old entries back and shortens
+   each list, refused once FM has changed the record. For a human manager's team, what the manager knows of his
+   players is not undone. Probe `tactics <club uid>` reads the records. Unproven in the game (section 4).
+7. Other batch items not built: staff formations and tendencies (labels need the screen);
+   human manager relations and moves; club kits, ownership, vision, allowances, income;
    nation FA settings, attendance, kits; promises, youth intake, bans add (low confidence, see
    fm27-player-extras.md); competition rules editing (fm27-competitions-awards-2.md).
 
@@ -126,6 +134,9 @@ before and after. Never use probe write commands; live writes go through FM Lens
   still a free agent; undo, and check FM no longer has it. Sign another for two days ahead, press Continue past the
   day, and check he joined with FM's contract.
 - Officials: edit Michael Oliver's reputation and current ability, check FM's official screen after Continue, undo.
+- Max tactics: probe `tactics <club uid>` for an AI club and for the user's club, press Max tactics on each senior
+  team, check FM's tactic familiarity panel is full and the probe shows the raised values; undo, and check the probe
+  reads exactly as before.
 - Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
 - Competitions and awards (#21): Premier League overview; World Golden Ball periods 5/6/9; PL awards.
 - Earlier items: staff licence labels 1-8 (#17), England FA and women's pages (#16), clause screens (#18), language

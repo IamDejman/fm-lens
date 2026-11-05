@@ -115,6 +115,7 @@ const errors: ErrorTexts = {
   "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi, yükseltilecek bir şey yok.",
   "cohesion.changed": (p) =>
     `Kulübe alışkınlığı şu an ${p.found}: oyun o zamandan beri değiştirmiş, bu yüzden dokunulmadı.`,
+  "tactics.changed": () => "Oyun o zamandan beri taktiğe alışkınlığını değiştirmiş, bu yüzden dokunulmadı.",
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
     "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",
@@ -523,6 +524,7 @@ export const tr: Strings = {
     work_permit: "Çalışma izni",
     bans: "Cezalar",
     cohesion: "Kulübe alışkınlık",
+    tactics: "Taktiğe alışkınlık",
     retirement: "Emeklilik",
     clause: "Sözleşme maddesi",
     "clause.amount": "Madde tutarı",
@@ -1843,6 +1845,8 @@ export const tr: Strings = {
     refreshAllTitle: "Herkese tam enerji, tam maç kondisyonu ve tam dinlenme",
     maxCohesion: "Uyumu tamamla",
     maxCohesionTitle: "Bütün oyuncular kulübe tamamen alışkın (deneysel)",
+    maxTactics: "Taktiği tamamla",
+    maxTacticsTitle: "Bütün oyuncular takımın taktiğine tamamen alışkın",
     maxAll: "Özellikleri tamamla",
     maxAllTitle:
       "Herkesin bütün özellikleri 20 (sakatlık eğilimi ve sertlik 1)",

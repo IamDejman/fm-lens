@@ -1596,6 +1596,11 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
+  if (entry.field === "tactics") {
+    tacticsRaised.delete(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   if (entry.field === "bans") {
     liftedPlayers.delete(entry.uid);
     entry.undoneAt = Date.now();
@@ -2231,6 +2236,12 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     }
     return report;
   }
+  if (action === "maxTactics") {
+    for (const player of team.players) {
+      raiseTactics(player, report);
+    }
+    return report;
+  }
   const values: [string, number][] =
     action === "inspire"
       ? [["morale", 20]]
@@ -2241,6 +2252,30 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     setValues(player, values, report);
   }
   return report;
+}
+
+/** Fixture players Max tactics made fully familiar with the tactic, by UID. */
+const tacticsRaised = new Set<number>();
+
+/** Max tactics for one fixture player: every fifth knows the tactic fully already, the rest 30 to 89 before. */
+function raiseTactics(player: { uid: number; name: string }, report: MassReport): void {
+  if (player.uid % 5 === 0 || tacticsRaised.has(player.uid)) {
+    return;
+  }
+  tacticsRaised.add(player.uid);
+  changes.push({
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid: player.uid,
+    field: "tactics",
+    old: 30 + (player.uid % 60),
+    new: 100,
+    undoneAt: null,
+    batch: report.batch,
+  });
+  report.applied++;
 }
 
 /** Fixture familiarity with the club, by UID, once Max cohesion changed it. */
@@ -2731,7 +2766,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true, maxTactics: true },
       };
       mockConnection = info;
       if (!refrozen) {
