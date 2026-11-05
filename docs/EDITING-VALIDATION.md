@@ -464,3 +464,49 @@ Liberia (UID 27), which ask for 99 years (so does Palestine, UID 1662). The
 check now takes up to 99 years and passes 143 of 143 on the same copy. FM's own
 calculator (`0x13B7E94`) reads the byte as signed and takes any value below 1
 as never, so the editor now takes 1 to 99 years, or never.
+
+## Call bridge, loans, signings and officials (5 November 2026)
+
+On the disposable `FM Lens Batch 2026-11-05.fm` copy (game date 11 Dec 2027),
+FM Lens 0.x universal build from `main` at 4b194ba, the new bridge installed in
+`FM27Scout` with Steam closed and FM relaunched from Steam. The main career's
+hash was checked before the session. Every write went through FM Lens; the
+probe only read.
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Add injury, Declan Rice (28106491) | Logged, then Undone | Injury, then none | Medical shows the injury at once |
+| Grant work permit, Holger Quintero (2000521121) | Not granted -> Granted | Permit granted 2027-12-11 | Pending recheck after Continue |
+| Sign free agent, no terms, Yannik Keitel (91179656) | -> 1. FSV Mainz 05, then Undone | Mainz, FM's contract; then no club, no contract | Mainz, #6, to 30/6/2030 |
+| Sign with terms: Keitel, £5,000, end 30/06/2029 | -> 1. FSV Mainz 05 | £5,000, signed 2027-12-11, expires 2029-06-30 | Mainz; contract page still 30/6/2030 (page viewed before, recheck after Continue) |
+| Loans (#19): White, Merino, Mosquera, Harriman-Annous | - | Clubs, starts, 2028-06-29, £55,000 / £98,000 / £30,000 / £2,304 | Squad > Loans: same clubs and dates, wage contribution £55K / £98K / £30K / £2.3K |
+| Loan start, Ethan Nwaneri (2000283271) to Brentford until 30/06/2028 | Arsenal -> Brentford | Loan 2027-12-11 to 2028-06-30, borrower pays £0 | Profile "On loan at Brentford", parent Arsenal |
+| Future transfer, Patrick Berg (53099570) to Rosenborg BK on 18/12/2027 | Joins 18 Dec 2027, then Undone | Still a free agent | "Transfer arranged, joining Rosenborg on 18/12/2027"; after Undo the badge still shows (recheck after Continue) |
+| Future transfer, Hugo González (67295025) to Getafe on 13/12/2027 | Joins 13 Dec 2027 | Still a free agent | Pending: Continue past 13 Dec |
+| Officials: Michael Oliver (103994) CA 180 -> 170, reputation 8,388 -> 8,600 | "2 changes applied" | CA/PA 170/180, rep 8600 | Pending recheck after Continue |
+| End loan, Mikel Merino (67211760), Arsenal loan at Real Hispalis with a £22.5M mandatory future fee | "FM didn't make the change", nothing logged | Real Hispalis, own contract £77,000 to 2030-06-30, no loan | News: Real Hispalis sign Merino for £22,500,000. **Failed**: fixed in #30 |
+| Undo of the loan FM Lens started, Nwaneri | Undone | Arsenal, his own contract, no loan, at once | Pending recheck after Continue |
+
+Findings so far:
+
+- The Sign and Loan dialog buttons and the Officials Apply button did not
+  respond to synthetic mouse clicks or to Return and Space on the focused
+  button; Tab then Return worked for Sign and Loan, and Cmd+S worked for Apply.
+  Not yet known whether a real click has the same problem.
+- End loan on a loan with a mandatory future fee has the game complete the
+  transfer: `end_contract` runs the loan's fee, as the daily loan expiry does.
+  The loan contract keeps the fee at +0xC0 (0xFFFFFFFF for none): White
+  58,000,000 (his option to buy), another Arsenal loan 50,747,118,
+  Harriman-Annous none. Which bit marks a fee mandatory is not mapped, so
+  FM Lens now refuses End loan on every loan with a future fee and shows the
+  fee in the Loan group (#30). End loan on a loan without one is still to test.
+- FM's Go on holiday button did not respond to single, double or slow clicks,
+  so the session stopped at 11 Dec 2027 without pressing Continue. Nothing was
+  saved after the edits.
+
+Still to check in FM, after Continue past 13 Dec 2027: Rice has no injury;
+Quintero's permit shows, then revoke it; Keitel's contract reads 30/06/2029
+and £5,000; Berg's arranged-transfer badge is gone; González joined Getafe
+with FM's contract; Oliver's official screen; Nwaneri back at Arsenal. Then
+End loan on a loan without a future fee, work permits (#20), competitions and
+awards (#21) and the earlier items in `HANDOFF.md` section 4.
