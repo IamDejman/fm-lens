@@ -7,12 +7,12 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     AddedInjury, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails,
-    ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, Entity, EntityArrays, ExportFormat,
-    ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GraphicsCounts, GraphicsIndex,
-    HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation,
-    NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture, Planned, PlayerDetails,
-    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, RelationSet,
-    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter,
+    ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, EndedLoan, Entity, EntityArrays,
+    ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GraphicsCounts,
+    GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError, MovePlan,
+    MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture, Planned,
+    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
+    RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter,
     StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup,
     Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
@@ -532,6 +532,42 @@ impl Connection {
         logged
     }
 
+    /// Logs a loan the game ended, as a change of the player's `loan` from the borrower's UID to his own club's, with
+    /// the clubs' names.
+    fn log_loan_end(&mut self, ended: EndedLoan) -> LoggedChange {
+        let club = self.club_name(ended.to_club);
+        self.players.update(ended.player, |player| {
+            player.club = Some(club);
+            player.club_uid = Some(ended.to_club);
+        });
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(ended.player),
+            change: Change {
+                entity: Entity::Player,
+                uid: ended.player,
+                field: "loan".to_owned(),
+                old: i64::from(ended.from_club),
+                new: i64::from(ended.to_club),
+            },
+            undone_at: None,
+            batch: None,
+            moved: Some(MovedClubs {
+                from: Some(self.club_name(ended.from_club)),
+                to: Some(self.club_name(ended.to_club)),
+                with: None,
+                fee: None,
+            }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::LoanEnded(ended)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs a free agent's signing, as a change of his `club` from none; undone by releasing him again.
     fn log_signing(&mut self, signed: SignedPlayer) -> LoggedChange {
         let to = self.club_name(signed.club);
@@ -981,7 +1017,28 @@ impl Connection {
             Some(Undo::Loan(started)) => {
                 let player =
                     self.players.get(started.player).ok_or_else(|| not_found(Entity::Player, started.player))?;
-                self.session.end_loan_today(player)?;
+                // Where the game ends loans at once, he goes back now; elsewhere the loan ends on the game's next day.
+                if self.session.game_actions().end_loan {
+                    self.session.end_loan(player, &self.human_clubs)?;
+                    let club = self.club_name(started.from_club);
+                    self.players.update(started.player, |player| {
+                        player.club = Some(club);
+                        player.club_uid = Some(started.from_club);
+                    });
+                } else {
+                    self.session.end_loan_today(player)?;
+                }
+            }
+            Some(Undo::LoanEnded(ended)) => {
+                let player = self.players.get(ended.player).ok_or_else(|| not_found(Entity::Player, ended.player))?;
+                let club = self.clubs.get(ended.from_club).ok_or_else(|| not_found(Entity::Club, ended.from_club))?;
+                let ends = ended.ends.ok_or(MoveError::UnusualContract)?;
+                self.session.start_loan(player, club, ends)?;
+                let name = self.club_name(ended.from_club);
+                self.players.update(ended.player, |player| {
+                    player.club = Some(name);
+                    player.club_uid = Some(ended.from_club);
+                });
             }
             Some(Undo::Signed(signed)) => {
                 let plan = self.plan_release(signed.player)?;
@@ -1254,8 +1311,11 @@ enum Undo {
     Injured(AddedInjury),
     /// A work permit the game granted or took away: undone by having it do the opposite.
     Permit(PermitChange),
-    /// A loan the game started: undone by having it end today, which the game does on its next day.
+    /// A loan the game started: undone by having the game end it, or where it cannot, end today, which the game does
+    /// on its next day.
     Loan(StartedLoan),
+    /// A loan the game ended: undone by having it start the loan again, until the same day.
+    LoanEnded(EndedLoan),
     /// A free agent the game signed: undone by releasing him again.
     Signed(SignedPlayer),
 }
@@ -2536,7 +2596,7 @@ fn set_work_permit(state: State<'_, AppState>, uid: u32, granted: bool) -> Resul
 }
 
 /// Has the game loan the player `uid` to the senior team of the club `club` from today until `ends` (a number like
-/// 20270630). Logged as a change of his `loan` from his club to that one, and undone by having the loan end today.
+/// 20270630). Logged as a change of his `loan` from his club to that one, and undone by ending the loan.
 #[tauri::command]
 fn start_loan(state: State<'_, AppState>, uid: u32, club: u32, ends: i64) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
@@ -2551,6 +2611,31 @@ fn start_loan(state: State<'_, AppState>, uid: u32, club: u32, ends: i64) -> Res
     })?;
     let started = connection.session.start_loan(player, to, ends)?;
     Ok(connection.log_loan(started))
+}
+
+/// The clubs the loan of the player `uid` would end between: the one he is loaned to, then his own. Only reads.
+#[tauri::command]
+fn plan_end_loan(state: State<'_, AppState>, uid: u32) -> Result<MovePreview, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let (from, to) = connection.session.plan_end_loan(player)?;
+    Ok(MovePreview {
+        from: ClubName { uid: from, name: connection.club_name(from) },
+        to: ClubName { uid: to, name: connection.club_name(to) },
+        fee: None,
+    })
+}
+
+/// Has the game end the loan of the player `uid` today: he goes back to his own club. Logged as a change of his `loan`
+/// from the borrower to his club, and undone by starting the loan again until the same day.
+#[tauri::command]
+fn end_loan(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let ended = connection.session.end_loan(player, &connection.human_clubs)?;
+    Ok(connection.log_loan_end(ended))
 }
 
 /// Has the game sign the free agent `uid` for the senior team of the club `club`, on its own terms; `terms` then replace
@@ -3178,6 +3263,8 @@ pub fn run() {
             add_injury,
             set_work_permit,
             start_loan,
+            plan_end_loan,
+            end_loan,
             sign_free_agent,
             keep_playing,
             change_tie,

@@ -891,6 +891,10 @@ pub struct CallRvas {
     pub map_drop: Option<u64>,
     /// Destroys the list of entity references [`CallRvas::sign_free_agent`] fills, three qwords from zero.
     pub refs_drop: Option<u64>,
+    /// `TRANSFER_MANAGER::end_contract(manager, player object, contract, kind, team or 0, 1, 0, 0, [0, 0])`: ends the
+    /// contract, as the game's daily check does once a loan runs out (the player goes back to his club) and its editor
+    /// does to release a player. The kind only picks the news. Returns nothing.
+    pub end_contract: Option<u64>,
 }
 
 impl CallRvas {
@@ -904,6 +908,7 @@ impl CallRvas {
             self.map_new,
             self.map_drop,
             self.refs_drop,
+            self.end_contract,
         ]
         .into_iter()
         .flatten()
