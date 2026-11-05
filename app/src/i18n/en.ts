@@ -1812,6 +1812,19 @@ export const en = {
     loanHint: "Nothing changes in FM until you press Loan.",
     loan: "Loan",
     loaning: "Loaning…",
+    // Signing a free agent for a club: FM signs him itself (where this version allows it).
+    signButton: "Sign",
+    signButtonTitle: "Sign him for a club",
+    signTitle: "Sign",
+    signChooseClub: "Pick the club to sign him for.",
+    signDoes: [
+      "FM signs him itself, on its own terms",
+      "A wage or contract end you enter replaces FM's",
+      "Undo in Changes releases him again",
+    ],
+    signHint: "Nothing changes in FM until you press Sign.",
+    sign: "Sign",
+    signing: "Signing…",
   },
 
   /**

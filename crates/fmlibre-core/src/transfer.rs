@@ -138,6 +138,8 @@ pub enum MoveError {
     },
     /// The player has no club.
     FreeAgent,
+    /// The player has a club: only a free agent signs for one.
+    HasClub,
     /// The player is at that club already.
     SameClub,
     /// The player is on loan, to his club or from it.
@@ -259,6 +261,7 @@ impl fmt::Display for MoveError {
             }
             MoveError::NotAClub { uid } => write!(f, "the club with UID {uid} has no senior team to join"),
             MoveError::FreeAgent => f.write_str("the player has no club; free agents cannot be moved yet"),
+            MoveError::HasClub => f.write_str("the player has a club; only a free agent signs for one"),
             MoveError::SameClub => f.write_str("the player is at this club already"),
             MoveError::OnLoan => f.write_str("the player is on loan; players on loan cannot be moved yet"),
             MoveError::PlayerCoach => f.write_str("player-coaches cannot be moved: they work as staff too"),
@@ -355,6 +358,7 @@ impl Coded for MoveError {
             MoveError::Moved { .. } => "move.moved",
             MoveError::NotAClub { .. } => "move.notAClub",
             MoveError::FreeAgent => "move.freeAgent",
+            MoveError::HasClub => "move.hasClub",
             MoveError::SameClub => "move.sameClub",
             MoveError::OnLoan => "move.onLoan",
             MoveError::PlayerCoach => "move.playerCoach",
@@ -853,7 +857,7 @@ impl Session {
 
     /// Checks contract terms against the ranges the editor writes for those fields; an
     /// end date must also come after `today`.
-    fn check_terms(&self, terms: MoveTerms, today: Option<FmDate>) -> Result<(), MoveError> {
+    pub(crate) fn check_terms(&self, terms: MoveTerms, today: Option<FmDate>) -> Result<(), MoveError> {
         let check = |key: &'static str, value: Option<i64>, after: i64| -> Result<(), MoveError> {
             let Some(value) = value else {
                 return Ok(());

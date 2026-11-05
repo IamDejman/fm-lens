@@ -45,6 +45,15 @@ set_work_permit = 0x2D85294
 # TRANSFER_MANAGER::start_loan: (manager, a STARTING_LOAN, 1), as the game's editor calls it from 0x238D860. Returns
 # nothing; the editor reads the loan back. See docs/recon/fm27-call-shapes.md section 3.
 start_loan = 0x2E0A324
+# TRANSFER_MANAGER::sign_free_agent: (manager, the player's person block, the club team, a terms map, an empty list
+# for the entities it touches, 0), as the game's editor calls it from 0x238C860. Returns true when he signed. An empty
+# map gives the game's own terms: no fee, from today. See docs/recon/fm27-call-shapes.md section 2.
+sign_free_agent = 0x2DFEDAC
+# The terms map's constructor and destructor (the map is three qwords), and the destructor of the list of entity
+# references the signing fills (three qwords too), each taking the object itself.
+map_new = 0x43F6B78
+map_drop = 0x43F6C38
+refs_drop = 0x43FE910
 
 # What a STARTING_LOAN (layout-macos.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58
 # (fees unset).

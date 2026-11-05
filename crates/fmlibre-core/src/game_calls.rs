@@ -1,8 +1,8 @@
 //! Edits the game makes itself.
 //!
 //! An injury is an object from the game's own pool, a work permit a record the transfer manager
-//! keeps and files, and a loan a contract, an offer and a move: more than values the editor can
-//! write. For those FM Lens has the game
+//! keeps and files, and a loan or a free agent's signing a contract, an offer and a move: more than
+//! values the editor can write. For those FM Lens has the game
 //! run its own functions, on its main thread, through the bridge ([`fmlibre_mem::call`]). Only on
 //! macOS, and only on a build whose profile lists the functions ([`CallRvas`]).
 
@@ -18,7 +18,7 @@ use crate::profile::CallRvas;
 use crate::rtti::class_of;
 use crate::session::Session;
 use crate::text::read_fm_string;
-use crate::transfer::{MoveError, PointerList};
+use crate::transfer::{MoveError, MoveTerms, PointerList};
 
 /// The cause the game's own training injuries give `add_injury`.
 const TRAINING_CAUSE: u64 = 3;
@@ -39,6 +39,7 @@ pub struct GameActions {
     pub add_injury: bool,
     pub work_permit: bool,
     pub start_loan: bool,
+    pub sign_free_agent: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -65,6 +66,19 @@ pub struct StartedLoan {
     pub to_club: u32,
     pub ends: FmDate,
 }
+
+/// A free agent the game signed for a club, and the end of the contract he has now.
+#[derive(Debug, Clone, Copy)]
+pub struct SignedPlayer {
+    pub player: u32,
+    pub club: u32,
+    pub expires: Option<FmDate>,
+}
+
+/// Where the signing's terms map and its list of entity references sit in the call's scratch memory: three qwords
+/// each, from zero.
+const TERMS_MAP: usize = 0;
+const REFERENCES: usize = 0x20;
 
 /// A work permit the game granted or took away.
 #[derive(Debug, Clone, Copy)]
@@ -98,6 +112,12 @@ impl Session {
                 && self.layout.work_permit.is_some()
                 && self.layout.starting_loan.is_some()
                 && self.layout.loan.is_some(),
+            sign_free_agent: calls.sign_free_agent.is_some()
+                && calls.map_new.is_some()
+                && calls.map_drop.is_some()
+                && calls.refs_drop.is_some()
+                && profile.transfer_manager.is_some()
+                && self.layout.work_permit.is_some(),
         }
     }
 
@@ -283,14 +303,7 @@ impl Session {
         if !is_user_pointer(own_club) || women(own_club)? != women(club.address)? {
             return Err(MoveError::MenAndWomen);
         }
-        // The senior team must point back at its club.
-        let senior = match PointerList::read(process, club.address + layout.club.teams)? {
-            Some(teams) => teams.elements(process)?.first().copied().unwrap_or(0),
-            None => 0,
-        };
-        if !is_user_pointer(senior) || process.read_u64(senior + layout.team.club)? != club.address {
-            return Err(MoveError::NotAClub { uid: club.uid });
-        }
+        let senior = self.senior_team(club)?;
         let today = self.game_date().ok_or(MoveError::CallUnavailable)?;
         if ends <= today {
             let max = self.field(crate::edit::Entity::Player, "loan.ends").map_or(i64::MAX, |field| field.max);
@@ -325,6 +338,80 @@ impl Session {
             return Err(MoveError::CallDeclined);
         }
         Ok(StartedLoan { player: player.uid, from_club, to_club: club.uid, ends })
+    }
+
+    /// Has the game sign the free agent `player` for the senior team of `club`, as its own editor does: it makes the
+    /// contract, on its own terms, and moves him. `terms` then replace its wage and end date, where given; the caller
+    /// writes them. The game says whether he signed, and his team is read back to tell.
+    pub fn sign_free_agent(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        terms: MoveTerms,
+    ) -> Result<SignedPlayer, MoveError> {
+        let function = self.game_function(|calls| calls.sign_free_agent)?;
+        let map_new = self.game_function(|calls| calls.map_new)?;
+        let map_drop = self.game_function(|calls| calls.map_drop)?;
+        let refs_drop = self.game_function(|calls| calls.refs_drop)?;
+        let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
+        let manager = self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)?;
+        let object = self.player_object(player)?;
+        let (process, layout) = (&self.process, &self.layout);
+        let p = &layout.player;
+        if is_user_pointer(process.read_u64(object + p.team)?)
+            || is_user_pointer(process.read_u64(object + p.contract)?)
+        {
+            return Err(MoveError::HasClub);
+        }
+        if process.read_u32(club.address + layout.club.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        let senior = self.senior_team(club)?;
+        self.check_terms(terms, self.game_date())?;
+
+        // The map and the list start empty, and are destroyed whatever the signing does.
+        let mut program = Program::new();
+        program.push(Step::new(map_new, &[Arg::scratch(TERMS_MAP)]));
+        let signing = program.push(Step::new(
+            function,
+            &[
+                Arg::value(manager),
+                Arg::value(object + p.person_block),
+                Arg::value(senior),
+                Arg::scratch(TERMS_MAP),
+                Arg::scratch(REFERENCES),
+                Arg::value(0),
+            ],
+        ));
+        program.push(Step::new(refs_drop, &[Arg::scratch(REFERENCES)]).cleanup());
+        program.push(Step::new(map_drop, &[Arg::scratch(TERMS_MAP)]).cleanup());
+        let outcome = self.call_game(&program)?;
+        let signed = outcome.results.get(signing).is_some_and(|&result| result as u8 != 0);
+        let team = process.read_u64(object + p.team)?;
+        if !signed || !is_user_pointer(team) || process.read_u64(team + layout.team.club)? != club.address {
+            return Err(MoveError::CallDeclined);
+        }
+        let contract = process.read_u64(object + p.contract)?;
+        let expires = if is_user_pointer(contract) {
+            let date = process.read_bytes(contract + layout.contract.expires, 4)?;
+            FmDate::from_raw(u16::from_le_bytes([date[0], date[1]]), u16::from_le_bytes([date[2], date[3]]))
+        } else {
+            None
+        };
+        Ok(SignedPlayer { player: player.uid, club: club.uid, expires })
+    }
+
+    /// The senior team of `club`, checked to point back at it.
+    fn senior_team(&self, club: &ClubSummary) -> Result<u64, MoveError> {
+        let (process, layout) = (&self.process, &self.layout);
+        let senior = match PointerList::read(process, club.address + layout.club.teams)? {
+            Some(teams) => teams.elements(process)?.first().copied().unwrap_or(0),
+            None => 0,
+        };
+        if !is_user_pointer(senior) || process.read_u64(senior + layout.team.club)? != club.address {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        Ok(senior)
     }
 
     /// The player object's identity block: where its vtable says its virtual base starts.

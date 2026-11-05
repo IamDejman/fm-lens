@@ -37,7 +37,12 @@ export interface EditorState {
   gameDate: FmDate | null;
 }
 
-export const NO_GAME_ACTIONS: GameActions = { addInjury: false, workPermit: false, startLoan: false };
+export const NO_GAME_ACTIONS: GameActions = {
+  addInjury: false,
+  workPermit: false,
+  startLoan: false,
+  signFreeAgent: false,
+};
 
 export const EditorContext = createContext<EditorState>({
   editable: false,

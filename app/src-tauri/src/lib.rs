@@ -12,9 +12,9 @@ use fmlibre_core::{
     HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation,
     NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture, Planned, PlayerDetails,
     PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, RelationSet,
-    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StadiumFilter, StadiumSummary, StaffChange,
-    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, find_game,
-    nation_summaries, nations, read_stadiums, sort_players,
+    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter,
+    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup,
+    Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -498,6 +498,12 @@ impl Connection {
     /// the clubs' names.
     fn log_loan(&mut self, started: StartedLoan) -> LoggedChange {
         let (from, to) = (i64::from(started.from_club), i64::from(started.to_club));
+        // His row names the club he plays for, the one he is loaned to.
+        let club = self.club_name(started.to_club);
+        self.players.update(started.player, |player| {
+            player.club = Some(club);
+            player.club_uid = Some(started.to_club);
+        });
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -512,7 +518,7 @@ impl Connection {
             undone_at: None,
             batch: None,
             moved: Some(MovedClubs {
-                from: self.club_name(started.from_club),
+                from: Some(self.club_name(started.from_club)),
                 to: Some(self.club_name(started.to_club)),
                 with: None,
                 fee: None,
@@ -521,6 +527,37 @@ impl Connection {
             tie: None,
             clause: None,
             undo: Some(Undo::Loan(started)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a free agent's signing, as a change of his `club` from none; undone by releasing him again.
+    fn log_signing(&mut self, signed: SignedPlayer) -> LoggedChange {
+        let to = self.club_name(signed.club);
+        self.players.update(signed.player, |player| {
+            player.club = Some(to.clone());
+            player.club_uid = Some(signed.club);
+            player.contract_expires = signed.expires;
+        });
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(signed.player),
+            change: Change {
+                entity: Entity::Player,
+                uid: signed.player,
+                field: "club".to_owned(),
+                old: 0,
+                new: i64::from(signed.club),
+            },
+            undone_at: None,
+            batch: None,
+            moved: Some(MovedClubs { from: None, to: Some(to), with: None, fee: None }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Signed(signed)),
         };
         self.log.push(logged.clone());
         logged
@@ -739,7 +776,7 @@ impl Connection {
             change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
             undone_at: None,
             batch: None,
-            moved: moved.then_some(MovedClubs { from, to: Some(to), with: None, fee: None }),
+            moved: moved.then_some(MovedClubs { from: Some(from), to: Some(to), with: None, fee: None }),
             captaincy: None,
             tie: None,
             clause: None,
@@ -847,7 +884,7 @@ impl Connection {
             change,
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from, to: Some(to), with, fee }),
+            moved: Some(MovedClubs { from: Some(from), to: Some(to), with, fee }),
             captaincy: None,
             tie: None,
             clause: None,
@@ -881,7 +918,7 @@ impl Connection {
             change,
             undone_at: None,
             batch: None,
-            moved: Some(MovedClubs { from: self.club_name(done.from_club), to: None, with: None, fee: None }),
+            moved: Some(MovedClubs { from: Some(self.club_name(done.from_club)), to: None, with: None, fee: None }),
             captaincy: None,
             tie: None,
             clause: None,
@@ -945,6 +982,15 @@ impl Connection {
                 let player =
                     self.players.get(started.player).ok_or_else(|| not_found(Entity::Player, started.player))?;
                 self.session.end_loan_today(player)?;
+            }
+            Some(Undo::Signed(signed)) => {
+                let plan = self.plan_release(signed.player)?;
+                self.session.apply_club_move(&plan)?;
+                self.players.update(signed.player, |player| {
+                    player.club = None;
+                    player.club_uid = None;
+                    player.contract_expires = None;
+                });
             }
             None => {
                 let (target, _) = self.target(entry.change.entity, entry.change.uid)?;
@@ -1210,6 +1256,8 @@ enum Undo {
     Permit(PermitChange),
     /// A loan the game started: undone by having it end today, which the game does on its next day.
     Loan(StartedLoan),
+    /// A free agent the game signed: undone by releasing him again.
+    Signed(SignedPlayer),
 }
 
 /// A member of staff's move or new job as the log keeps it: the writes to undo, and what his list row said before.
@@ -1310,7 +1358,9 @@ enum TeamAction {
 
 #[derive(Clone, Serialize)]
 struct MovedClubs {
-    from: String,
+    /// None for a free agent's signing, before which he had no club.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    from: Option<String>,
     /// None for a release, after which he has no club.
     #[serde(skip_serializing_if = "Option::is_none")]
     to: Option<String>,
@@ -2503,6 +2553,29 @@ fn start_loan(state: State<'_, AppState>, uid: u32, club: u32, ends: i64) -> Res
     Ok(connection.log_loan(started))
 }
 
+/// Has the game sign the free agent `uid` for the senior team of the club `club`, on its own terms; `terms` then replace
+/// its wage and contract end where given. Logged as a change of his `club` from none, and undone by releasing him again.
+#[tauri::command]
+fn sign_free_agent(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveTerms) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let to = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let target = player.target();
+    let signed = connection.session.sign_free_agent(player, to, terms)?;
+    let logged = connection.log_signing(signed);
+    // The terms asked for replace the game's, on the contract it made; the signing is logged already, so a term that
+    // does not land leaves him signed on the game's.
+    for (key, value) in [("contract.wage", terms.wage), ("contract.expires", terms.expires)] {
+        if let Some(value) = value {
+            let field = connection.session.field(Entity::Player, key)?;
+            let change = connection.session.write_field(&target, &field, value)?;
+            connection.note_change(&change, change.new);
+        }
+    }
+    Ok(logged)
+}
+
 /// Lifts every current ban of the player `uid`, as the game does once he has served them, and
 /// logs it as one change of his `bans` to none.
 #[tauri::command]
@@ -3105,6 +3178,7 @@ pub fn run() {
             add_injury,
             set_work_permit,
             start_loan,
+            sign_free_agent,
             keep_playing,
             change_tie,
             remove_tie,
