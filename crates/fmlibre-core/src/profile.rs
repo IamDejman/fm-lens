@@ -882,12 +882,32 @@ pub struct CallRvas {
     /// `TRANSFER_MANAGER::start_loan(manager, STARTING_LOAN*, 1)`: loans the player to the club team the object names,
     /// between its dates. Returns nothing.
     pub start_loan: Option<u64>,
+    /// `TRANSFER_MANAGER::sign_free_agent(manager, person block, club team, terms map*, references*, 0)`: signs a
+    /// free agent for the club team on the terms in the map, the game's own where it has none. Returns a bool.
+    pub sign_free_agent: Option<u64>,
+    /// Builds an empty terms map in three qwords; returns it.
+    pub map_new: Option<u64>,
+    /// Destroys a terms map [`CallRvas::map_new`] built.
+    pub map_drop: Option<u64>,
+    /// Destroys the list of entity references [`CallRvas::sign_free_agent`] fills, three qwords from zero.
+    pub refs_drop: Option<u64>,
 }
 
 impl CallRvas {
     /// Every function listed.
     pub fn all(&self) -> Vec<u64> {
-        [self.add_injury, self.set_work_permit, self.start_loan].into_iter().flatten().collect()
+        [
+            self.add_injury,
+            self.set_work_permit,
+            self.start_loan,
+            self.sign_free_agent,
+            self.map_new,
+            self.map_drop,
+            self.refs_drop,
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
     }
 }
 

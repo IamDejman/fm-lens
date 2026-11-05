@@ -105,6 +105,7 @@ export interface GameActions {
   addInjury: boolean;
   workPermit: boolean;
   startLoan: boolean;
+  signFreeAgent: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
@@ -875,7 +876,8 @@ export interface LoggedChange {
    * its new value.
    */
   moved?: {
-    from: string;
+    /** Absent for a free agent's signing (`sign_free_agent`), before which the player had no club. */
+    from?: string;
     /** Absent for a release, after which the player has no club. */
     to?: string;
     /** For a swap of two players, logged as one change, the player who went the other way. */

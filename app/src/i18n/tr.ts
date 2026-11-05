@@ -1621,6 +1621,18 @@ export const tr: Strings = {
     loanHint: "Kirala'ya basana kadar FM'de hiçbir şey değişmez.",
     loan: "Kirala",
     loaning: "Kiralanıyor…",
+    signButton: "İmzala",
+    signButtonTitle: "Onu bir kulübe imzalat",
+    signTitle: "İmza",
+    signChooseClub: "İmzalayacağı kulübü seç.",
+    signDoes: [
+      "FM onu kendisi, kendi koşullarıyla imzalatır",
+      "Girdiğin maaş ya da sözleşme bitişi FM'inkinin yerine geçer",
+      "Değişiklikler'deki Geri al onu yeniden serbest bırakır",
+    ],
+    signHint: "İmzala'ya basana kadar FM'de hiçbir şey değişmez.",
+    sign: "İmzala",
+    signing: "İmzalanıyor…",
   },
 
   ties: {

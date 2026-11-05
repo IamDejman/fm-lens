@@ -510,7 +510,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // "Healed 2 injuries" says it better than "2 → 0". A work permit is logged as 0 or 1, which it names. Keeping him from
   // retiring is logged with the date he was to retire on, which it names.
   const value = change.moved
-    ? valueChange(change.moved.from, change.moved.to ?? profileText.freeAgent)
+    ? valueChange(change.moved.from ?? profileText.freeAgent, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
       ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
       : change.tie
