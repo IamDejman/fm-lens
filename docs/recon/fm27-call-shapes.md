@@ -16,7 +16,7 @@ queue (dispatch_async_f). Scratch helpers live in reports/batch/scratch/transfer
 | 2 Free agent signing | partial | 0x2dfedac(TM, personBlock, destTeam, termsMap*, outVec*, w5=0) -> bool | medium-low |
 | 3 Loan start | found | 0x2e0a324(TM, STARTING_LOAN*, w2=1) | medium-high |
 | 3 Loan builder | found | 0x238d860(IGE, personBlock, team, map*) | medium-high |
-| 4 End a contract: loan recall, release | found | 0x2d4b9dc(TM, P, contract, w3 kind, 0, 1, 0, 0, stack u8 0, stack u64 0) | medium-high |
+| 4 End a contract: loan recall, release | loan: found; release: needs more | 0x2d4b9dc(TM, P, contract, w3 kind, 0, 1, 0, 0, stack u8 0, stack u64 0) | medium-high |
 | 5 Future transfer | found | 0x2dfedac with a 'TrDt' date after today -> 0x2d91328 | high (create), medium (cancel) |
 
 Conventions: TM = [game_plugin+0x56a49f8]. P = player object start (vtable 0x5588ee8). P+0x278 = person block,
@@ -288,10 +288,18 @@ Release: the editor's PERSON_TERMINATE_CONTRACT handler (0x3461e0 -> 0x238eafc) 
 own contract: at 0x238eccc, `0x2d4b9dc(TM, P, identity.vt[0x3a0](), 0, 0, 1, 0, 0, 0, 0)`; in its other branch
 (0x238ee24) it follows with `0x2d4f79c(TM, identity, 1, 0, 0, 0, 0)`, which withdraws the player's pending offers. The
 callee empties the contract slot (0xcaa088 on the P+0x2F0 holder), writes the history record (0x1bfd354), the news
-and the squad lists (0x2b5b15c, 0x2b56e30). Unproven: whether the team at [P+0x128] is cleared too. The editor pays
-nothing; the payoff the game books on a release elsewhere is 0x2619b40(0, identity, 1, 1), which appends a
-RELEASED_PLAYER_WAGES item (vtable 0x55c6b18) to the club's list at [club+0xb0] (medium confidence). Undo: sign him
-back with 0x2dfedac (section 2) and write his old wage and contract end over the game's terms.
+and the squad lists (0x2b5b15c, 0x2b56e30). The editor pays nothing; the payoff the game books on a release elsewhere
+is 0x2619b40(0, identity, 1, 1), which appends a RELEASED_PLAYER_WAGES item (vtable 0x55c6b18) to the club's list at
+[club+0xb0] (medium confidence).
+
+The call alone does not make him a free agent. Before it empties the slot, the callee keeps the club of the FULL
+contract in P+0x2F0 (0x2d4bd80 to 0x2d4be1c, at [sp+0x60]); after it, it sets the team at [P+0x128] to that club's
+team for him, `0x17c3000(club, P, 1, 1)`, else the club's first team (0x2d4c854 to 0x2d4c914). For a loan that club
+is the parent club, which is how the loan ends. For his own contract it is his own club, so he would stay there with
+no contract. The editor's other branch (0x238eddc) follows the call with 0x2d4f79c and the mover `0x2d49334(TM,
+identity, team, 9, 0, 0, 0, 1, stack 1, 0)`, but which contract the identity slots 0x398 and 0x3a0 return there is not
+settled. So FM Lens keeps its own release, which writes memory and undoes exactly; a release through the game needs
+that branch settled and a live test first.
 
 Ruled out for these: the UI handlers 0x342150, 0x33bd7c and 0x33d180 (validation only), the response builders of
 END_PLAYER_LOAN / ASK_FOR_LOAN_BACK / PLAYER_REQUEST_LOAN_RECALL, the mover 0x2d49334 (it always ends up with a
@@ -332,5 +340,6 @@ Contracted players (low): the same call reads a fee from 'TrFe' and, for a playe
 - The w23 skip guard in 0x2d85294.
 - w4..w7 beyond observed values for 0x2d49334.
 - Whether an empty terms map signs a free agent through 0x2dfedac (live test needed).
-- Whether 0x2d4b9dc clears the team at [P+0x128] on a release, and whether an early call recalls a loan cleanly.
+- Whether an early 0x2d4b9dc call recalls a loan cleanly (live test).
+- The editor's terminate branch at 0x238eddc: what the identity slots 0x398 and 0x3a0 return, and the mover's kind 9.
 - 0x2e0a324 return value and its tail (0x2e0c240 onward).
