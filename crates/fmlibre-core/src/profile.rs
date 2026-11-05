@@ -57,6 +57,24 @@ pub struct Layout {
     /// The kinds of injury; only in the layouts they have been checked in.
     #[serde(default)]
     pub injury_kind: Option<InjuryKindLayout>,
+    /// The object the game's function that starts a loan takes; only in the layouts it has been traced in.
+    #[serde(default)]
+    pub starting_loan: Option<StartingLoanLayout>,
+}
+
+/// A `STARTING_LOAN`, the `size`-byte object [`CallRvas::start_loan`] takes: the player's identity block at `player`,
+/// the borrowing club's team at `club`, the first and last days at `starts` and `ends` (FM dates: day of year, then
+/// year), the build's 16 default bytes at `defaults`. The game's editor builds one in its own stack frame, owning
+/// nothing.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StartingLoanLayout {
+    pub size: u64,
+    pub player: u64,
+    pub club: u64,
+    pub starts: u64,
+    pub ends: u64,
+    pub defaults: u64,
 }
 
 /// A competition (`db::COMP`), `size` bytes read from its start. `table_items` is where its database table points at
@@ -836,6 +854,18 @@ pub struct BuildProfile {
     /// shapes have been traced.
     #[serde(default)]
     pub calls: Option<CallRvas>,
+    /// What a `STARTING_LOAN` for [`CallRvas::start_loan`] starts from, on the one build where it has been traced.
+    #[serde(default)]
+    pub starting_loan: Option<StartingLoanRvas>,
+}
+
+/// RVAs in the game plugin of what the game's editor builds a `STARTING_LOAN` from ([`StartingLoanLayout`]): its
+/// vtable, and the 16 bytes it copies to [`StartingLoanLayout::defaults`].
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StartingLoanRvas {
+    pub vtable: u64,
+    pub defaults: u64,
 }
 
 /// RVAs in the game plugin of the functions FM Lens has the game run ([`fmlibre_mem::call`]). The bridge runs these
@@ -849,12 +879,15 @@ pub struct CallRvas {
     /// `TRANSFER_MANAGER::set_work_permit(manager, identity block, club team, force, grant)`: grants the player a work
     /// permit for the club's country, or takes it away. Returns nothing.
     pub set_work_permit: Option<u64>,
+    /// `TRANSFER_MANAGER::start_loan(manager, STARTING_LOAN*, 1)`: loans the player to the club team the object names,
+    /// between its dates. Returns nothing.
+    pub start_loan: Option<u64>,
 }
 
 impl CallRvas {
     /// Every function listed.
     pub fn all(&self) -> Vec<u64> {
-        [self.add_injury, self.set_work_permit].into_iter().flatten().collect()
+        [self.add_injury, self.set_work_permit, self.start_loan].into_iter().flatten().collect()
     }
 }
 
@@ -1155,7 +1188,11 @@ mod tests {
             let profile = profile_for(*plugin).expect("27.0.0 on macOS");
             assert_eq!(
                 profile.human_manager,
-                Some(HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".to_owned() })
+                Some(HumanManagerLayout {
+                    flags: 0x3FC,
+                    person_shift: 0x340,
+                    class: "N2db16HUMAN_NON_PLAYERE".to_owned()
+                })
             );
         }
         for text in BUILDS {

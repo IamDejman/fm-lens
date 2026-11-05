@@ -439,6 +439,8 @@ export const en = {
     "contract.expires": "Contract end",
     "loan.wage": "Loan wage paid by borrower",
     "loan.ends": "Loan end",
+    // A loan the game started, which the change log keeps as a change of the player's club for the loan.
+    loan: "Loan",
     "contract.squad_number": "Squad number",
     "contract.squad_status": "Squad status",
     "contract.transfer_listed": "Transfer listed",
@@ -1684,11 +1686,12 @@ export const en = {
     from: "From",
     to: "To",
 
-    // The switch at the top of the dialog: a move to a club, or a swap with one of its players.
+    // The switch at the top of the dialog: a move to a club, a swap with one of its players, or a loan.
     /** Its name for assistive technology. */
-    modeLabel: "Transfer or swap",
+    modeLabel: "Kind of move",
     modeMove: "Transfer to a club",
     modeSwap: "Swap with a player",
+    modeLoan: "Loan to a club",
 
     // Choosing the club
     /** The name of the search box, and of the list of clubs under it, for assistive technology. */
@@ -1797,6 +1800,18 @@ export const en = {
     swapHint: "Nothing changes in FM until you press Swap.",
     swap: "Swap",
     swapping: "Swapping…",
+    // Loaning him to a club instead: FM starts the loan itself (where this version allows it).
+    loanTitle: "Loan",
+    loanChooseClub: "Pick the club to loan him to.",
+    loanEndsAfterToday: "Pick a date after today",
+    loanDoes: [
+      "FM starts the loan itself, from today to the loan end",
+      "He keeps his contract with his own club",
+      "Undo in Changes sets the loan to end today. FM ends it on its next day",
+    ],
+    loanHint: "Nothing changes in FM until you press Loan.",
+    loan: "Loan",
+    loaning: "Loaning…",
   },
 
   /**

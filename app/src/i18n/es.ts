@@ -517,6 +517,7 @@ export const es: Strings = {
     "contract.expires": "Fin de contrato",
     "loan.wage": "Salario pagado por el club receptor",
     "loan.ends": "Fin de la cesión",
+    loan: "Cesión",
     "contract.squad_number": "Dorsal",
     "contract.squad_status": "Estatus en la plantilla",
     "contract.transfer_listed": "Transferible",
@@ -1573,9 +1574,10 @@ export const es: Strings = {
     from: "Origen",
     to: "Destino",
 
-    modeLabel: "Traspaso o intercambio",
+    modeLabel: "Tipo de movimiento",
     modeMove: "Traspasar a un club",
     modeSwap: "Intercambiar por un jugador",
+    modeLoan: "Ceder a un club",
 
     // El club
     searchLabel: "Buscar el club al que traspasar",
@@ -1661,6 +1663,17 @@ export const es: Strings = {
     swapHint: "Nada cambia en el juego hasta que pulsas Intercambiar.",
     swap: "Intercambiar",
     swapping: "Intercambiando…",
+    loanTitle: "Cesión",
+    loanChooseClub: "Elige el club al que cederlo.",
+    loanEndsAfterToday: "Elige una fecha posterior a hoy",
+    loanDoes: [
+      "FM inicia la cesión, desde hoy hasta el fin de la cesión",
+      "Mantiene su contrato con su club",
+      "Deshacer en Cambios pone el fin de la cesión en hoy. FM la termina al día siguiente",
+    ],
+    loanHint: "Nada cambia en FM hasta que pulses Ceder.",
+    loan: "Ceder",
+    loaning: "Cediendo…",
   },
 
   ties: {

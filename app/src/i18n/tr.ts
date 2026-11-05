@@ -505,6 +505,7 @@ export const tr: Strings = {
     "contract.expires": "Sözleşme bitişi",
     "loan.wage": "Kiralayan kulübün ödediği maaş",
     "loan.ends": "Kiralık bitişi",
+    loan: "Kiralık",
     "contract.squad_number": "Forma numarası",
     "contract.squad_status": "Forma süresi",
     "contract.transfer_listed": "Transfer listesinde",
@@ -1520,9 +1521,10 @@ export const tr: Strings = {
     to: "Yeni kulüp",
 
     // The switch at the top of the dialog
-    modeLabel: "Transfer veya takas",
+    modeLabel: "Hareket türü",
     modeMove: "Kulübe transfer et",
     modeSwap: "Oyuncuyla takas et",
+    modeLoan: "Bir kulübe kiralık ver",
 
     // Choosing the club
     searchLabel: "Transfer edileceği kulübü ara",
@@ -1608,6 +1610,17 @@ export const tr: Strings = {
     swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
     swap: "Takas et",
     swapping: "Takas ediliyor…",
+    loanTitle: "Kiralık",
+    loanChooseClub: "Kiralık verilecek kulübü seç.",
+    loanEndsAfterToday: "Bugünden sonraki bir tarih seç",
+    loanDoes: [
+      "FM kiralamayı kendisi başlatır, bugünden kiralık bitişine kadar",
+      "Kendi kulübüyle sözleşmesi sürer",
+      "Değişiklikler'deki Geri al kiralık bitişini bugüne çeker. FM ertesi gün bitirir",
+    ],
+    loanHint: "Kirala'ya basana kadar FM'de hiçbir şey değişmez.",
+    loan: "Kirala",
+    loaning: "Kiralanıyor…",
   },
 
   ties: {

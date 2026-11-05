@@ -263,6 +263,10 @@ export const addInjury = (uid: number, kind: number) => call<LoggedChange>("add_
 export const setWorkPermit = (uid: number, granted: boolean) =>
   call<LoggedChange>("set_work_permit", { uid, granted });
 
+/** Has the game loan the player to the senior team of `club` from today until `ends` (a number like 20270630). */
+export const startLoan = (uid: number, club: number, ends: number) =>
+  call<LoggedChange>("start_loan", { uid, club, ends });
+
 /**
  * Lifts every current ban of the player, as the game does once he has served them; his other absences stay. Logged
  * as one change of his field `bans` from how many he had to 0, and undone as one; fails when he has none.

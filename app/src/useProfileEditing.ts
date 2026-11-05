@@ -16,7 +16,7 @@ import { applyEdits, readValues } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { editText, fieldLabel } from "./labels";
-import type { EditField, Entity, FieldValues, GameActions, InjuryKind, LoggedChange } from "./types";
+import type { EditField, Entity, FieldValues, FmDate, GameActions, InjuryKind, LoggedChange } from "./types";
 
 /** What the app tells the profiles about editing. */
 export interface EditorState {
@@ -33,9 +33,11 @@ export interface EditorState {
   gameActions: GameActions;
   /** The kinds of injury the game knows, sorted by name; read once per connection. */
   injuryKinds: () => Promise<InjuryKind[]>;
+  /** The in-game date, when it could be read. */
+  gameDate: FmDate | null;
 }
 
-export const NO_GAME_ACTIONS: GameActions = { addInjury: false, workPermit: false };
+export const NO_GAME_ACTIONS: GameActions = { addInjury: false, workPermit: false, startLoan: false };
 
 export const EditorContext = createContext<EditorState>({
   editable: false,
@@ -43,6 +45,7 @@ export const EditorContext = createContext<EditorState>({
   onEdited: () => {},
   gameActions: NO_GAME_ACTIONS,
   injuryKinds: () => Promise.resolve([]),
+  gameDate: null,
 });
 
 /** The inputs of the profile being edited (header and body), for the components that draw them. */
