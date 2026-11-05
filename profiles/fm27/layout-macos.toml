@@ -256,6 +256,8 @@ uid = 0x134
 # is ranked 4th on 1922.83 points, its association was founded in 1863 and joined FIFA in 1905; its rivals are
 # Scotland 100, Germany 100, Argentina 90. Argentina takes 2 years of residence, Spain 10; China, Japan and India do
 # not allow dual nationality. National teams are laid out as a club's ([team]). Not yet compared with FM's screens.
+# The women's container is laid out as the men's: England's women joined FIFA and UEFA in 1972 and have a youth rating
+# of 161, the men 135 (joined UEFA 1954). The women's senior team ids are not the nation's UID (England's 2000169621).
 [national]
 code = 0x28
 capital = 0xF0
@@ -268,6 +270,7 @@ population = 0x1EC
 dual_nationality = 0x1F1
 naturalisation = 0x1F5
 container = 0x110
+women_container = 0x118
 container_nation = 0x170
 teams = 0x18
 rivals = 0x48
@@ -275,6 +278,8 @@ points = 0x378
 ranking = 0x570
 founded = 0x870
 joined_fifa = 0x86C
+joined_continental = 0x86E
+youth_rating = 0x874
 team_manager = 0x80
 team_id = 0x0C            # the senior team's is the nation's UID (251 of 251)
 

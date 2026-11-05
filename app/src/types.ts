@@ -621,8 +621,21 @@ export interface NationDetails {
   points: number | null;
   founded: number | null;
   joinedFifa: number | null;
+  joinedContinental: number | null;
+  /** 0 to 165. */
+  youthRating: number | null;
   /** Strongest first. */
   rivals: Related[];
+  /** The senior team first. */
+  teams: NationalTeam[];
+  /** Null where the nation has no women's container. */
+  women: WomenFootball | null;
+}
+
+export interface WomenFootball {
+  joinedFifa: number | null;
+  joinedContinental: number | null;
+  youthRating: number | null;
   /** The senior team first. */
   teams: NationalTeam[];
 }

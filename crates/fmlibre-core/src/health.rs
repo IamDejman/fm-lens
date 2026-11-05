@@ -15,6 +15,7 @@ use serde::Serialize;
 
 use crate::date::FmDate;
 use crate::edit::{Entity, Field};
+use crate::national::Side;
 use crate::profile::Layout;
 use crate::session::Session;
 
@@ -715,12 +716,22 @@ fn check_nations(session: &Session, players: &[SampledPlayer]) -> Option<CheckRe
         let uid = process.read_u32(nation + layout.nation.uid).ok()?;
         let rules = process.read_bytes(nation, n.nation_end() as usize).ok()?;
         let years = rules[n.naturalisation as usize];
-        let team = crate::national::senior_team(process, layout, nation, uid)?;
-        let reputation = process.read_bytes(team + layout.team.reputation, 2).ok()?;
+        // Both sides' senior teams and youth ratings, which the editor writes as well.
+        let mut sides = [Side::Men, Side::Women].into_iter().map(|side| {
+            let team = crate::national::senior_team(process, layout, nation, uid, side)?;
+            let reputation = process.read_bytes(team + layout.team.reputation, 2).ok()?;
+            let container = crate::national::container(process, layout, nation, side)?;
+            let youth = process.read_bytes(container + n.youth_rating, 2).ok()?;
+            let youth = i64::from(i16::from_le_bytes([youth[0], youth[1]]));
+            Some(
+                u16::from_le_bytes([reputation[0], reputation[1]]) <= 10_000
+                    && (0..=crate::national::MOST_YOUTH_RATING).contains(&youth),
+            )
+        });
         Some(
             matches!(rules[n.dual_nationality as usize], 0 | 2)
                 && (years <= MOST_NATURALISATION_YEARS || years == crate::national::NEVER)
-                && u16::from_le_bytes([reputation[0], reputation[1]]) <= 10_000,
+                && sides.try_fold(true, |all, fits| Some(all && fits?))?,
         )
     };
     let mut tally = Tally::default();
