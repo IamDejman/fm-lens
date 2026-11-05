@@ -65,7 +65,8 @@ function useFieldIndex(): { fields: ReadonlyMap<string, EditField> | null; error
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fieldTable("player"), fieldTable("staff"), fieldTable("club"), fieldTable("nation")]).then(
+    const entities = ["player", "staff", "club", "nation", "official"] as const;
+    Promise.all(entities.map(fieldTable)).then(
       (tables) => {
         if (!cancelled) {
           setFields(new Map(tables.flat().map((field) => [`${field.entity}:${field.key}`, field] as const)));
