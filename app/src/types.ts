@@ -581,6 +581,19 @@ export interface PlayerDetails extends PlayerSummary {
    * allocates nothing, so a release clause can be added to few contracts.
    */
   clauseRoom: number;
+  /** The terms of the loan he is on; null when he is on none, or the build does not place loans. */
+  loan: LoanTerms | null;
+}
+
+/** A loan's terms; the club the player plays for is the borrower. */
+export interface LoanTerms {
+  /** The club he is on loan from: the one his own contract is with. */
+  parent: string | null;
+  parentUid: number | null;
+  /** Pounds per week the borrowing club pays of his wage. */
+  wage: number;
+  starts: FmDate | null;
+  ends: FmDate | null;
 }
 
 /** A person or club a player favours or dislikes. */
