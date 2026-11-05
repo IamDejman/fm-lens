@@ -289,6 +289,8 @@ export interface StaffDetails extends StaffSummary {
   languages: Language[];
   /** The people and clubs he favours and dislikes. Read-only. */
   preferences: Preference[];
+  /** 1 to 8, or 0 for none; null where the build does not place it. */
+  coachingLicence: number | null;
 }
 
 export interface FmDate {

@@ -284,6 +284,21 @@ pub struct StaffDetails {
     pub languages: Vec<Language>,
     /// The people and clubs he favours and dislikes. Read-only.
     pub preferences: Vec<Preference>,
+    /// His coaching licence, 1 to 8, or 0 for none; `None` where the layout does not place it.
+    pub coaching_licence: Option<u8>,
+}
+
+/// The highest coaching licence level.
+pub const MOST_LICENCE: u8 = 8;
+
+/// The coaching licence level the game reads from the byte `byte`: 1 to 8 as it is, -1 to -7 as levels 2 to 8, and
+/// anything else as none (0).
+pub fn licence_level(byte: u8) -> u8 {
+    match byte as i8 {
+        level @ 1..=8 => level as u8,
+        level @ -7..=-1 => (1 - level) as u8,
+        _ => 0,
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -341,6 +356,7 @@ pub fn read_staff_details(
         registration_anytime: None,
         languages: Vec::new(),
         preferences: Vec::new(),
+        coaching_licence: s.coaching_licence.map(|offset| licence_level(u8_at(offset))),
     }))
 }
 
@@ -364,6 +380,13 @@ fn read_staff_contract(process: &Process, layout: &Layout, address: u64) -> Opti
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn licence_levels_as_the_game_reads_them() {
+        assert_eq!([1, 2, 7, 8].map(licence_level), [1, 2, 7, 8]);
+        assert_eq!([0xFF, 0xFE, 0xF9].map(licence_level), [2, 3, 8]);
+        assert_eq!([0, 9, 0x7F, 0x80, 0xF8].map(licence_level), [0; 5]);
+    }
 
     #[test]
     fn job_names() {
