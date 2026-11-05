@@ -505,11 +505,8 @@ export const en = {
     // Contract
     contract: "Contract",
     wage: "Wage per week",
-    /** Under the wage: the game keeps money in pounds; `converted` when the app shows another currency. */
-    wageNote: (converted: boolean): string =>
-      converted
-        ? "Converted at FM's exchange rate"
-        : "In pounds. Change the currency in Settings",
+    /** The hover text of money the app shows in another currency than the pounds the game keeps. */
+    converted: "Converted at FM's exchange rate",
     signed: "Signed",
     expires: "Expires",
     joined: "Joined",

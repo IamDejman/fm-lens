@@ -2003,7 +2003,7 @@ input::placeholder {
   margin-top: 6px;
 }
 
-/* Under a profile's header: Compare, Transfer and Release, in one row that wraps when the panel is narrow. */
+/* Under a profile's header: Transfer and Release, in one row that wraps when the panel is narrow. */
 .profile-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2016,11 +2016,6 @@ input::placeholder {
 
 .profile-toolbar:empty {
   display: none;
-}
-
-/* Moves on the left, Compare apart on the right. */
-.profile-toolbar > .compare-toggle {
-  margin-left: auto;
 }
 
 .profile-side {

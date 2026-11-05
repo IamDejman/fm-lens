@@ -288,7 +288,7 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
       <h3>{text.finances}</h3>
       {finances ? (
         <>
-          <dl className="stats">
+          <dl className="stats" title={converts ? profileText.converted : undefined}>
             <Fact label={text.balance}>
               <EditableValue field="finance.balance">
                 <span className={finances.balance < 0 ? "negative" : undefined}>{formatMoney(finances.balance)}</span>
@@ -309,7 +309,6 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
             <Fact label={text.ticketPrice}>{formatTicketPrice(finances.ticketPrice)}</Fact>
           </dl>
           <FreezeMoney club={club} />
-          <p className="note">{profileText.wageNote(converts)}</p>
         </>
       ) : (
         <p className="note">{text.noFinances}</p>
