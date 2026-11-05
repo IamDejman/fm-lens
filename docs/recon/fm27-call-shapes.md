@@ -157,6 +157,13 @@ missing key falls back to the default holder at game_plugin+0x56d63c0, giving fe
 with the free agent's person block and the destination club team. UNPROVEN: needs a live test on one free agent.
 Terms map construction is described in section 3 (Value helpers).
 
+As FM Lens calls it (`Session::sign_free_agent`, `[calls]` in the build profile): one bridge program of four steps on
+the call's scratch, the map at +0x0 and the out vector at +0x20. `0x43f6b78(&map)` builds the empty map; the signing
+runs; then two cleanup steps, which run even after a stop: `0x43fe910(&vec)` destroys the out vector (it takes the
+vector itself, where `0x4400a5c` wants a pointer to a pointer) and `0x43f6c38(&map)` destroys the map. The editor's
+IGE helpers around 0x238c860 only feed the UI and are skipped. Success is the true return and [P+0x128] now a team of
+the destination club.
+
 ## 3. Loan start
 
 ### 0x2e0a324

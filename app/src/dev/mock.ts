@@ -1583,6 +1583,19 @@ function feePlan(from: number, to: number, fee: number): FeePlan {
 /** The men's fixture club whose squad list is full, so that the move dialog's refusal can be seen. */
 const FULL_CLUB = 500 + (CLUBS.length - 1) * 7;
 
+/** The real commands' checks of a contract's terms, with their messages. */
+function checkTerms(terms: MoveTerms): void {
+  const outOfRange = (field: string, value: number, min: number, max: number) =>
+    failure("move.outOfRange", `${value} is not a valid ${field}; it takes ${min} to ${max}`, { field, value, min, max });
+  if (terms.wage !== undefined && (!Number.isInteger(terms.wage) || terms.wage < 0 || terms.wage > 10_000_000)) {
+    throw outOfRange("contract.wage", terms.wage, 0, 10_000_000);
+  }
+  const tomorrow = numberFromDate(GAME_DATE) + 1;
+  if (terms.expires !== undefined && (dateFromNumber(terms.expires) === null || terms.expires < tomorrow || terms.expires > 21001231)) {
+    throw outOfRange("contract.expires", terms.expires, tomorrow, 21001231);
+  }
+}
+
 /** `plan_club_move`: the checks of the real command that the fixtures can have, with its messages. */
 function planMove(uid: number, clubUid: number, terms: MoveTerms, fee?: number): MovePreview {
   const player = players.find((p) => p.uid === uid);
@@ -1593,15 +1606,7 @@ function planMove(uid: number, clubUid: number, terms: MoveTerms, fee?: number):
   if (!to) {
     throw notFound("club", clubUid);
   }
-  const outOfRange = (field: string, value: number, min: number, max: number) =>
-    failure("move.outOfRange", `${value} is not a valid ${field}; it takes ${min} to ${max}`, { field, value, min, max });
-  if (terms.wage !== undefined && (!Number.isInteger(terms.wage) || terms.wage < 0 || terms.wage > 10_000_000)) {
-    throw outOfRange("contract.wage", terms.wage, 0, 10_000_000);
-  }
-  const tomorrow = numberFromDate(GAME_DATE) + 1;
-  if (terms.expires !== undefined && (dateFromNumber(terms.expires) === null || terms.expires < tomorrow || terms.expires > 21001231)) {
-    throw outOfRange("contract.expires", terms.expires, tomorrow, 21001231);
-  }
+  checkTerms(terms);
   if (player.clubUid === null) {
     throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
   }
@@ -1672,6 +1677,53 @@ function movePlayer(uid: number, clubUid: number, terms: MoveTerms, fee?: number
     undoneAt: null,
     batch: null,
     moved: { from: preview.from.name, to: preview.to.name, ...(preview.fee && { fee: preview.fee.fee }) },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/**
+ * `sign_free_agent`: the game signs the fixture free agent for `clubUid` on its own terms, then the editor writes the
+ * wage and contract end given. Logged as a change of his `club` from 0; undoing it releases him again.
+ */
+function signFreeAgent(uid: number, clubUid: number, terms: MoveTerms): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  const to = clubs.find((c) => c.uid === clubUid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  if (!to) {
+    throw notFound("club", clubUid);
+  }
+  if (player.clubUid !== null) {
+    throw failure("move.hasClub", "the player has a club; only a free agent signs for one");
+  }
+  checkTerms(terms);
+  const id = changes.length + 1;
+  moveUndo.set(id, {
+    row: { club: null, clubUid: null, contractExpires: null },
+    written: written.get(`player:${uid}`),
+  });
+  player.club = to.name;
+  player.clubUid = to.uid;
+  player.contractExpires =
+    terms.expires === undefined ? { year: GAME_DATE.year + 1, month: 6, day: 30 } : dateFromNumber(terms.expires);
+  if (terms.wage !== undefined) {
+    writeValue("player", uid, "contract.wage", terms.wage);
+  }
+  movedPlayers.set(uid, (movedPlayers.get(uid) ?? 0) + 1);
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "club",
+    old: 0,
+    new: to.uid,
+    undoneAt: null,
+    batch: null,
+    moved: { to: to.name },
   };
   changes.push(logged);
   return { ...logged };
@@ -2537,7 +2589,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true },
       };
       mockConnection = info;
       if (!refrozen) {
@@ -2823,6 +2875,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return setWorkPermit(Number(args?.uid), Boolean(args?.granted)) as T;
     case "start_loan":
       return startLoan(Number(args?.uid), Number(args?.club), Number(args?.ends)) as T;
+    case "sign_free_agent":
+      return signFreeAgent(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
     case "change_clause":

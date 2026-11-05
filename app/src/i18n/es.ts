@@ -1674,6 +1674,18 @@ export const es: Strings = {
     loanHint: "Nada cambia en FM hasta que pulses Ceder.",
     loan: "Ceder",
     loaning: "Cediendo…",
+    signButton: "Fichar",
+    signButtonTitle: "Ficharlo por un club",
+    signTitle: "Fichaje",
+    signChooseClub: "Elige el club que lo ficha.",
+    signDoes: [
+      "FM lo ficha él mismo, con sus propias condiciones",
+      "El sueldo o el fin de contrato que pongas sustituye al de FM",
+      "Deshacer en Cambios lo deja libre de nuevo",
+    ],
+    signHint: "Nada cambia en FM hasta que pulses Fichar.",
+    sign: "Fichar",
+    signing: "Fichando…",
   },
 
   ties: {
