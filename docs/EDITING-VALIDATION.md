@@ -424,3 +424,38 @@ existing validation limits.
 Not established: other staff attributes, CA/PA, reputation, job and club moves,
 other club balances, facilities and capacities, squad number, loyalty bonus,
 listing flags and release-clause amounts.
+
+## Nation editing (5 November 2026)
+
+On the disposable `FM Lens Staff Club Contract 2026-11-05.fm` copy (FM's Save As
+dialog named it, and the probe read Saka's edited £310,000 wage), game date 11
+Dec 2027, with FM Lens built from `feat/nation-editing`. The main career's hash
+was checked before and after.
+
+- The probe's nations check read 141 of 144 sampled nations fit, and `fields
+  nation --stats` read 216 of 216 nation objects, each with a senior team.
+- FM Lens, Nations, England (UID 765): four changes in one Apply, "4 changes
+  applied". The probe then read exactly these four changes, nothing else in
+  England's reading differed.
+- FM's screens did not change before the reload, and Continue was not pressed
+  (the Spurs match was that day).
+- Saved as `FM Lens Nation 2026-11-05.fm`, the probe's reading unchanged. Quit
+  Game and Exit, FM's process gone, relaunched through Steam (health checks pass
+  on the same build), and that copy loaded. The probe's reading after the reload
+  matched the reading at save time line for line, England at a new address.
+
+| Edit | FM after save, quit and reload | Probe after reload |
+|---|---|---|
+| Population 57,690,300 -> 63,000,000 | Nation overview "63M" (was "57M") | 63000000 |
+| Senior team reputation 9,238 -> 6,000 | Men's national team "Continental" (was "Worldwide") | 6000 |
+| Dual nationality allowed -> not allowed | Not on the nation screens checked | not allowed |
+| Years to naturalise 5 -> 7 | Not on the nation screens checked | 7 |
+
+After the reload, FM Lens reported that FM had restarted. After Connect, it
+showed the reloaded values. Years to naturalise 7 -> 9 applied (probe 9), and
+Undo in Changes reported "Undone" with the probe's reading back to the reload
+reading line for line.
+
+Not established: FM acting on the dual nationality and naturalisation rules
+(eligibility, nationality gained), stale-value refusal for a nation, and which
+nations miss the nations check (141 of 143 after the reload).
