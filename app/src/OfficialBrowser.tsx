@@ -1,10 +1,12 @@
 import { Ability } from "./Ability";
-import { formatDate, formatNumber } from "./format";
+import { EditableValue } from "./EditControls";
+import { formatNumber } from "./format";
 import { officialListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
-import { Fact, ProfileFrame, ReputationMeter } from "./ProfileParts";
+import { Born, Fact, ProfileFrame, ReputationMeter } from "./ProfileParts";
 import type { OfficialSummary } from "./types";
+import { useProfileEditing } from "./useProfileEditing";
 
 const text = officialListText;
 const columns = text.columns;
@@ -70,7 +72,7 @@ function OfficialCells({ official }: { official: OfficialSummary }) {
   );
 }
 
-/** An official's profile: what the list reads, as facts. */
+/** An official's profile: what the list reads, as facts; abilities, reputation and birth date can be edited. */
 function OfficialProfile({
   official,
   onClose,
@@ -78,7 +80,7 @@ function OfficialProfile({
   official: OfficialSummary;
   onClose: () => void;
 }) {
-  const born = formatDate(official.dateOfBirth);
+  const editing = useProfileEditing("official", official.uid);
   const age = official.age === null ? null : profileText.age(official.age);
   return (
     <ProfileFrame
@@ -89,18 +91,24 @@ function OfficialProfile({
       fullName={null}
       meta={official.nation ?? undefined}
       vitals={[
-        born && `${text.born} ${born}`,
-        age,
+        official.dateOfBirth ? (
+          <Born dateOfBirth={official.dateOfBirth} age={official.age} />
+        ) : (
+          age
+        ),
         `${profileText.uid} ${official.uid}`,
       ]}
       currentAbility={official.currentAbility}
       potentialAbility={official.potentialAbility}
       loaded={{ details: official }}
       onClose={onClose}
+      editing={editing}
     >
       <dl className="stats">
         <Fact label={text.reputation}>
-          <ReputationMeter value={official.reputation} />
+          <EditableValue field="reputation">
+            <ReputationMeter value={official.reputation} />
+          </EditableValue>
         </Fact>
       </dl>
     </ProfileFrame>

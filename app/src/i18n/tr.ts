@@ -989,7 +989,6 @@ export const tr: Strings = {
       total > shown ? `${format(total)} hakem · en iyi ${shown}` : `${format(total)} hakem`,
     empty: (query) => (query === "" ? "FM'in bu sürümünde hakemler okunamadı." : `“${query}” aramasına uyan hakem yok.`),
     columns: { name: "İsim", nation: "Ülke", age: "Yaş", ca: "MY", pa: "PY", reputation: "İtibar", uid: "UID" },
-    born: "Doğum",
     reputation: "İtibar",
   },
 
@@ -1231,6 +1230,7 @@ export const tr: Strings = {
     staff: "personel",
     clubs: "kulüpler",
     nations: "ülkeler",
+    officials: "hakemler",
   },
 
   update: {
@@ -1316,7 +1316,7 @@ export const tr: Strings = {
       change: "Değişiklik",
       status: "Durum",
     },
-    kinds: { player: "Oyuncu", staff: "Personel", club: "Kulüp", nation: "Ülke" } satisfies Record<Entity, string>,
+    kinds: { player: "Oyuncu", staff: "Personel", club: "Kulüp", nation: "Ülke", official: "Hakem" } satisfies Record<Entity, string>,
     stored: (change) => `saklanan ${change}`,
     undone: (time) => `Geri alındı: ${time}`,
     undo: "Geri al",

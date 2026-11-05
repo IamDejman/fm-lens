@@ -1015,7 +1015,6 @@ export const en = {
     },
     empty: (query: string) => (query === "" ? "Couldn't read any officials on this version of FM." : `No officials match “${query}”.`),
     columns: { name: "Name", nation: "Nation", age: "Age", ca: "CA", pa: "PA", reputation: "Reputation", uid: "ID" },
-    born: "Born",
     reputation: "Reputation",
   },
 
@@ -1303,6 +1302,7 @@ export const en = {
     staff: "staff",
     clubs: "clubs",
     nations: "nations",
+    officials: "officials",
   } satisfies Record<CheckKey, string>,
 
   /** New versions: the notice under the masthead, and the version and Check for updates at the foot of the window. */
@@ -1435,7 +1435,7 @@ export const en = {
       status: "Status",
     },
     /** The small tag after a name. */
-    kinds: { player: "Player", staff: "Staff", club: "Club", nation: "Nation" } satisfies Record<Entity, string>,
+    kinds: { player: "Player", staff: "Staff", club: "Club", nation: "Nation", official: "Official" } satisfies Record<Entity, string>,
     /** Hover text of a change of an attribute: the values as stored; `change` is from `valueChange`. */
     stored: (change: string) => `stored ${change}`,
     undone: (time: string) => `Undone at ${time}`,
