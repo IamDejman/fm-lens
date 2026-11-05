@@ -631,7 +631,16 @@ export const es: Strings = {
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Estatus ${status}`,
     qualifications: "Titulación",
     coachingLicence: "Licencia de entrenador",
-    licenceName: (level: number): string => (level === 0 ? "Ninguna" : `Nivel ${level}`),
+    licenceName: (level: number): string =>
+      ({
+        1: "Licencia Continental Pro",
+        2: "Licencia Continental A",
+        3: "Licencia Continental B",
+        4: "Licencia Continental C",
+        5: "Licencia Nacional A",
+        6: "Licencia Nacional B",
+        7: "Licencia Nacional C",
+      })[level] ?? "Ninguna",
     squadNumber: "Dorsal",
     transferListed: "Transferible",
     loanListed: "Cedible",

@@ -268,7 +268,9 @@ person_block = 0xF8
 identity = 0x208
 person_block_shifts = [0x0, 0x340]
 # i8 coaching licence: 1 to 8 a level; -1 to -7 also levels 2 to 8, as the game reads it (property 'Pcqu', 0xCD6F8C
-# in the arm64 half of 27.0.0); any other value none. Nicolas Jover reads 2. Not yet compared with FM's screens.
+# in the arm64 half of 27.0.0); any other value none. FM's Coaching Qualification, checked on Arsenal's staff: 1
+# Continental Pro, 2 Continental A, 3 Continental B, 4 Continental C, 5 National A, 7 National C, 8 and 0 No
+# Qualifications; -1 Continental A "studying for a Continental Pro Licence" (-n: level n + 1, studying for n).
 coaching_licence = 0x204
 
 # u8, raw 0..100, shown as (raw + 2) / 5; as on Windows

@@ -284,7 +284,8 @@ pub struct StaffDetails {
     pub languages: Vec<Language>,
     /// The people and clubs he favours and dislikes. Read-only.
     pub preferences: Vec<Preference>,
-    /// His coaching licence, 1 to 8, or 0 for none; `None` where the layout does not place it.
+    /// His coaching licence: 1 Continental Pro, 2 to 4 Continental A to C, 5 to 7 National A to C, and 8 or 0
+    /// none; `None` where the layout does not place it.
     pub coaching_licence: Option<u8>,
 }
 
