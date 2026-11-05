@@ -6,14 +6,15 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
-    ArraySource, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove,
-    Coded, Cohered, EditError, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE,
-    GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Kind, Lifted, Listed, Loan,
-    MoveError, MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, Picture,
-    Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
-    PreferenceKind, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, Skipped, StadiumFilter,
-    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, Target, TemplateGroup, Tie,
-    TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
+    ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex,
+    ClubMove, Coded, Cohered, CompetitionSummary, EditError, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
+    Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health,
+    Kind, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary,
+    Operation, Paid, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary,
+    PlayerTemplate, Preference, PreferenceKind, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
+    SessionError, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex,
+    StaffPlan, Target, TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums,
+    sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -57,6 +58,9 @@ struct Connection {
     stadiums: Option<SearchIndex<StadiumSummary>>,
     /// Match officials, read once. Cleared when the connection is loaded again.
     officials: Option<SearchIndex<OfficialSummary>>,
+    /// Competitions and awards, read once. Cleared when the connection is loaded again.
+    competitions: Option<SearchIndex<CompetitionSummary>>,
+    awards: Option<SearchIndex<AwardSummary>>,
 }
 
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
@@ -228,6 +232,8 @@ impl Connection {
             career,
             stadiums: None,
             officials: None,
+            competitions: None,
+            awards: None,
         })
     }
 
@@ -1024,6 +1030,22 @@ impl Connection {
             self.officials = Some(SearchIndex::new(self.session.officials()?));
         }
         Ok(self.officials.as_ref().expect("official index just stored"))
+    }
+
+    /// The competitions, read once. Empty when this build's profile does not place them.
+    fn competition_index(&mut self) -> Result<&SearchIndex<CompetitionSummary>, Failure> {
+        if self.competitions.is_none() {
+            self.competitions = Some(SearchIndex::new(self.session.competitions()?));
+        }
+        Ok(self.competitions.as_ref().expect("competition index just stored"))
+    }
+
+    /// The awards, read once. Empty when this build's profile does not place them.
+    fn award_index(&mut self) -> Result<&SearchIndex<AwardSummary>, Failure> {
+        if self.awards.is_none() {
+            self.awards = Some(SearchIndex::new(self.session.awards()?));
+        }
+        Ok(self.awards.as_ref().expect("award index just stored"))
     }
 
     /// The nations of the players and staff in the lists.
@@ -1966,6 +1988,29 @@ fn search_officials(state: State<'_, AppState>, query: String, limit: usize) -> 
     Ok(page(index, &query, limit, |_| true, |_| {}))
 }
 
+/// Competitions matching `query` by name or UID, highest reputation first; at most `limit` rows. Only reads memory.
+#[tauri::command]
+fn search_competitions(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+) -> Result<Page<CompetitionSummary>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let index = connection.competition_index()?;
+    Ok(page(index, &query, limit, |_| true, |_| {}))
+}
+
+/// Awards matching `query` by name, competition or UID, most prestigious first; at most `limit` rows. Only reads
+/// memory.
+#[tauri::command]
+fn search_awards(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<AwardSummary>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let index = connection.award_index()?;
+    Ok(page(index, &query, limit, |_| true, |_| {}))
+}
+
 /// Nations of the players and staff in the lists, matching `query` by name; at most `limit` rows.
 #[tauri::command]
 fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<NationSummary>, Failure> {
@@ -2895,6 +2940,8 @@ pub fn run() {
             search_nations,
             search_stadiums,
             search_officials,
+            search_competitions,
+            search_awards,
             export_players,
             open_export,
             show_export,

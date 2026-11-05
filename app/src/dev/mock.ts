@@ -16,6 +16,10 @@ import type {
   NationSummary,
   OfficialPage,
   OfficialSummary,
+  AwardPage,
+  AwardSummary,
+  CompetitionPage,
+  CompetitionSummary,
   StadiumFilter,
   StadiumPage,
   StadiumSummary,
@@ -2553,6 +2557,28 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const officialPage: OfficialPage = { total: rows.length, rows: rows.slice(0, limit) };
       return officialPage as T;
     }
+    case "search_competitions": {
+      const query = fold(String(args?.query ?? ""));
+      const limit = Number(args?.limit ?? 200);
+      const rows = COMPETITIONS.filter(
+        (c) => query === "" || fold(c.name).includes(query) || String(c.uid) === String(args?.query ?? "").trim(),
+      ).sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name));
+      const competitionPage: CompetitionPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return competitionPage as T;
+    }
+    case "search_awards": {
+      const query = fold(String(args?.query ?? ""));
+      const limit = Number(args?.limit ?? 200);
+      const rows = AWARDS.filter(
+        (a) =>
+          query === "" ||
+          fold(a.name).includes(query) ||
+          fold(a.competition ?? "").includes(query) ||
+          String(a.uid) === String(args?.query ?? "").trim(),
+      ).sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name));
+      const awardPage: AwardPage = { total: rows.length, rows: rows.slice(0, limit) };
+      return awardPage as T;
+    }
     case "nation_details": {
       const index = Number(args?.uid) - 1000;
       return (index >= 0 && index < NATIONS.length ? nationDetails(index) : null) as T;
@@ -2648,6 +2674,72 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       throw new Error(`No fixture for command "${command}"`);
   }
 }
+
+/** The continent of a fixture nation. */
+const continentOf = (nation: string) => (nation === "Brazil" ? "South America" : "Europe");
+
+/** Made-up competitions: a league and a cup in each fixture nation, a women's league in some, and two others. */
+const COMPETITIONS: CompetitionSummary[] = [
+  ...NATIONS.flatMap((nation, i): CompetitionSummary[] => {
+    const place = { nation, nationUid: 1000 + i, continent: continentOf(nation) };
+    const league = { ...place, uid: 100 + i * 10, name: `${nation} First Division`, shortName: `${nation} 1` };
+    const cup = { ...place, uid: 101 + i * 10, name: `${nation} Cup`, shortName: null };
+    const women = { ...place, uid: 102 + i * 10, name: `${nation} Women's League`, shortName: null };
+    return [
+      { ...league, reputation: 170 - i * 9, women: false },
+      { ...cup, reputation: 120 - i * 6, women: false },
+      ...(i % 2 === 0 ? [{ ...women, reputation: 90 - i * 4, women: true }] : []),
+    ];
+  }),
+  {
+    uid: 1301394,
+    name: "Continental Champions Cup",
+    shortName: "Champions Cup",
+    nation: null,
+    nationUid: null,
+    continent: "Europe",
+    reputation: 200,
+    women: false,
+  },
+  { uid: 1301385, name: "World Cup", shortName: null, nation: null, nationUid: null, continent: null, reputation: 200, women: false },
+];
+
+/** Made-up awards: for each league a player and young player of the year, a golden glove and more; and a world award. */
+const AWARDS: AwardSummary[] = [
+  ...COMPETITIONS.filter((c) => c.name.endsWith("First Division")).flatMap((c, i): AwardSummary[] => {
+    const base = {
+      competition: c.name,
+      competitionUid: c.uid,
+      nation: c.nation,
+      nationUid: c.nationUid,
+      continent: c.continent,
+      goalkeepersOnly: false,
+      maxAge: null,
+    };
+    const name = (award: string) => `${c.name} ${award}`;
+    return [
+      { ...base, uid: 20_000 + i * 10, name: name("Player of the Year"), prestige: 17 - (i % 6), period: 3, recipients: 1 },
+      { ...base, uid: 20_001 + i * 10, name: name("Manager of the Month"), prestige: 12 - (i % 6), period: 2, recipients: 2 },
+      { ...base, uid: 20_002 + i * 10, name: name("Young Player of the Year"), prestige: 14 - (i % 6), period: 3, recipients: 1, maxAge: 22 },
+      { ...base, uid: 20_003 + i * 10, name: name("Golden Glove"), prestige: 13 - (i % 6), period: 3, recipients: 1, goalkeepersOnly: true },
+      { ...base, uid: 20_004 + i * 10, name: name("Team of the Week"), prestige: 6, period: 1, recipients: 7 },
+    ];
+  }),
+  {
+    uid: 102406,
+    name: "World Golden Ball",
+    competition: null,
+    competitionUid: null,
+    nation: null,
+    nationUid: null,
+    continent: null,
+    prestige: 20,
+    period: 6,
+    recipients: 1,
+    goalkeepersOnly: false,
+    maxAge: null,
+  },
+];
 
 /** Made-up match officials: a few established referees and some young ones still rising. */
 const OFFICIALS: OfficialSummary[] = Array.from({ length: 40 }, (_, i): OfficialSummary => {

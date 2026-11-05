@@ -21,6 +21,12 @@ officials = 0x56D2E90
 # 11 December 2027, Collins Sichenje's and Mees Rijks' granted. Only this build has it.
 transfer_manager = 0x56A49F8
 
+# The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902
+# awards and 8,238 competitions (the last a placeholder without a name), the Premier League (UID 11) seventh. Only this
+# build has them.
+awards = 0x56D2D18
+competitions = 0x56D2D30
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "F4540355-2186-39CB-9119-C706A6A35346"

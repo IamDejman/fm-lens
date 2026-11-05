@@ -12,9 +12,22 @@ import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
 import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
 import { SettingsMenu } from "./SettingsMenu";
-import { appText, changesText, clubListText, nationListText, officialListText, playerListText, stadiumListText, staffListText } from "./labels";
+import {
+  appText,
+  awardListText,
+  changesText,
+  clubListText,
+  competitionListText,
+  nationListText,
+  officialListText,
+  playerListText,
+  stadiumListText,
+  staffListText,
+} from "./labels";
 import { NationBrowser } from "./NationBrowser";
 import { OfficialBrowser } from "./OfficialBrowser";
+import { AwardBrowser } from "./AwardBrowser";
+import { CompetitionBrowser } from "./CompetitionBrowser";
 import { StadiumBrowser } from "./StadiumBrowser";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
@@ -25,13 +38,24 @@ import lensSymbol from "./assets/brand/fm-lens-symbol.png";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 import "./App.css";
 
-type View = "players" | "staff" | "clubs" | "nations" | "stadiums" | "officials" | "changes";
+type View =
+  | "players"
+  | "staff"
+  | "clubs"
+  | "nations"
+  | "competitions"
+  | "awards"
+  | "stadiums"
+  | "officials"
+  | "changes";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
   { id: "staff", label: staffListText.nav },
   { id: "clubs", label: clubListText.nav },
   { id: "nations", label: nationListText.nav },
+  { id: "competitions", label: competitionListText.nav },
+  { id: "awards", label: awardListText.nav },
   { id: "stadiums", label: stadiumListText.nav },
   { id: "officials", label: officialListText.nav },
   { id: "changes", label: changesText.nav },
@@ -216,7 +240,7 @@ function App() {
     }
   };
 
-  // ⌘1 to ⌘7 open the sections, in the order of the tabs.
+  // ⌘1 to ⌘9 open the sections, in the order of the tabs.
   useEffect(() => {
     if (!connection) {
       return;
@@ -315,6 +339,8 @@ function App() {
               <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
               <ClubBrowser version={dataVersion} active={view === "clubs"} />
               <NationBrowser version={dataVersion} active={view === "nations"} />
+              <CompetitionBrowser version={dataVersion} active={view === "competitions"} />
+              <AwardBrowser version={dataVersion} active={view === "awards"} />
               <StadiumBrowser version={dataVersion} active={view === "stadiums"} />
               <OfficialBrowser version={dataVersion} active={view === "officials"} />
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}

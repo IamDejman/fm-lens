@@ -1,4 +1,4 @@
-// The app's keyboard shortcuts: Command on a Mac, Control elsewhere. ⌘1 to ⌘7 open the sections, ⌘F goes to the
+// The app's keyboard shortcuts: Command on a Mac, Control elsewhere. ⌘1 to ⌘9 open the sections, ⌘F goes to the
 // search box of the open list, ⌘S applies the edits of the profile being edited.
 
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
