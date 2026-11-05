@@ -2,7 +2,7 @@
 
 import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
 import { formatAmount, formatDate, formatNumber, formatPercent } from "./format";
-import { choiceLabel, editText, profileText } from "./labels";
+import { blankLabel, choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
 import { nextFmWage, wageFmShows } from "./wage";
 
@@ -56,7 +56,7 @@ function inputText(field: EditField, shown: number): string {
  */
 export function valueText(field: EditField | undefined, shown: number): string {
   if (field !== undefined && shown === field.blank) {
-    return editText.none;
+    return blankLabel(field.key);
   }
   if (field?.scale === "percent") {
     return formatPercent(shown);

@@ -56,7 +56,7 @@ export function useChangeLog() {
 }
 
 /**
- * The editable fields of players, staff and clubs by `entity:key`, to turn stored values into shown ones and to
+ * The editable fields of players, staff, clubs and nations by `entity:key`, to turn stored values into shown ones and to
  * know what kind of value they are (a date, an amount of money); null until read.
  */
 function useFieldIndex(): { fields: ReadonlyMap<string, EditField> | null; error: string | null } {
@@ -65,7 +65,7 @@ function useFieldIndex(): { fields: ReadonlyMap<string, EditField> | null; error
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fieldTable("player"), fieldTable("staff"), fieldTable("club")]).then(
+    Promise.all([fieldTable("player"), fieldTable("staff"), fieldTable("club"), fieldTable("nation")]).then(
       (tables) => {
         if (!cancelled) {
           setFields(new Map(tables.flat().map((field) => [`${field.entity}:${field.key}`, field] as const)));

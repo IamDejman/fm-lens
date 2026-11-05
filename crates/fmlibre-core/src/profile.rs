@@ -99,6 +99,8 @@ pub struct NationalLayout {
     pub joined_fifa: u64,
     /// In a national team: pointer to the manager.
     pub team_manager: u64,
+    /// In a national team: `u32` id. The senior team's is the nation's UID.
+    pub team_id: u64,
 }
 
 impl NationalLayout {

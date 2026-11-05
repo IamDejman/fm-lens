@@ -1,3 +1,4 @@
+import { EditableValue } from "./EditControls";
 import { formatNumber, formatPercent } from "./format";
 import { NationFlag, WithPicture } from "./Picture";
 import {
@@ -8,6 +9,7 @@ import {
 } from "./ProfileParts";
 import { ListBrowser } from "./ListBrowser";
 import { nationListText, profileText } from "./labels";
+import { useProfileEditing } from "./useProfileEditing";
 import type {
   NamedPerson,
   NationDetails,
@@ -76,7 +78,10 @@ interface NationProfileProps {
   onClose: () => void;
 }
 
-/** A nation's rules, FIFA standing, rivals and national teams; only its ID where the build does not place them. */
+/**
+ * A nation's rules, FIFA standing, rivals and national teams; only its ID where the build does not place them. Its
+ * rules and its senior team's reputation can be edited where the row is the nation's own UID.
+ */
 function NationProfile({ nation, version, onClose }: NationProfileProps) {
   const loaded = useProfileDetails<NationDetails | null>(
     "nation_details",
@@ -84,6 +89,11 @@ function NationProfile({ nation, version, onClose }: NationProfileProps) {
     version,
   );
   const details = loaded?.details ?? null;
+  const editing = useProfileEditing(
+    "nation",
+    nation.uid,
+    nation.nationUid === nation.uid && loaded?.details !== null,
+  );
   const id =
     nation.nationUid === null ? text.noUid : `${text.uid} ${nation.nationUid}`;
   return (
@@ -96,6 +106,7 @@ function NationProfile({ nation, version, onClose }: NationProfileProps) {
       vitals={[details?.code, details?.continent, id]}
       loaded={loaded}
       onClose={onClose}
+      editing={editing}
     >
       {loaded?.details === null && <p className="note">{text.note}</p>}
       {details && <NationBody details={details} />}
@@ -126,14 +137,24 @@ function NationBody({ details }: { details: NationDetails }) {
           <dl className="stats">
             <Fact label={text.capital}>{orDash(details.capital)}</Fact>
             <Fact label={text.population}>
-              {orDash(
-                details.population === null
-                  ? null
-                  : formatNumber(details.population),
-              )}
+              <EditableValue field="population">
+                {orDash(
+                  details.population === null
+                    ? null
+                    : formatNumber(details.population),
+                )}
+              </EditableValue>
             </Fact>
-            <Fact label={text.dualNationality}>{orDash(dual)}</Fact>
-            <Fact label={text.naturalisation}>{orDash(years)}</Fact>
+            <Fact label={text.dualNationality}>
+              <EditableValue field="dual_nationality">
+                {orDash(dual)}
+              </EditableValue>
+            </Fact>
+            <Fact label={text.naturalisation}>
+              <EditableValue field="naturalisation">
+                {orDash(years)}
+              </EditableValue>
+            </Fact>
             <Fact label={text.founded}>{orDash(details.founded)}</Fact>
           </dl>
         </section>
@@ -197,14 +218,22 @@ function NationBody({ details }: { details: NationDetails }) {
 
 const nameOf = (person: NamedPerson | null) => person?.name ?? profileText.none;
 
-/** One national team: who runs it, who leads it, and its squad. */
+/** The kind of a senior national team (`NationalTeam.kind`). */
+const SENIOR = 0;
+
+/** One national team: who runs it, who leads it, and its squad. The senior team's reputation can be edited. */
 function TeamGroup({ team }: { team: NationalTeam }) {
+  const meter = <ReputationMeter value={team.reputation} />;
   return (
     <section className="profile-group">
       <h3>{text.teamName(team.ageLimit)}</h3>
       <dl className="stats">
         <Fact label={text.reputation}>
-          <ReputationMeter value={team.reputation} />
+          {team.kind === SENIOR ? (
+            <EditableValue field="reputation">{meter}</EditableValue>
+          ) : (
+            meter
+          )}
         </Fact>
         <Fact label={text.manager}>{nameOf(team.manager)}</Fact>
         <Fact label={text.captain}>{nameOf(team.captain)}</Fact>

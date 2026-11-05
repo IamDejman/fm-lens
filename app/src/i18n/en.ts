@@ -16,6 +16,7 @@ import type {
   CheckKey,
   Entity,
   ExportFormat,
+  MassEntity,
   MassOperationKind,
   MassPreview,
   PlayerSort,
@@ -39,14 +40,14 @@ const valuesLeftAlone = (count: number) =>
   count === 1 ? "1 value left alone" : `${format(count)} values left alone`;
 
 /** "237 players", "1 player", "237 staff", "1 member of staff", "12 clubs", "1 club". */
-const entityCount: Record<Entity, (count: number) => string> = {
+const entityCount: Record<MassEntity, (count: number) => string> = {
   player: (count) => (count === 1 ? "1 player" : `${format(count)} players`),
   staff: (count) => (count === 1 ? "1 member of staff" : `${format(count)} staff`),
   club: (count) => (count === 1 ? "1 club" : `${format(count)} clubs`),
 };
 
 /** What each list holds, in the plural. */
-const entityNouns: Record<Entity, string> = { player: "players", staff: "staff", club: "clubs" };
+const entityNouns: Record<MassEntity, string> = { player: "players", staff: "staff", club: "clubs" };
 
 const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Star player",
@@ -447,6 +448,10 @@ export const en = {
     "stadium.seating": "Seated capacity",
     "stadium.used": "Capacity in use",
     "stadium.expansion": "Expansion capacity",
+    // A nation's rules; its reputation is its senior team's.
+    population: "Population",
+    dual_nationality: "Dual nationality",
+    naturalisation: "Years to naturalise",
   },
 
   profile: {
@@ -1168,6 +1173,7 @@ export const en = {
     teams: "teams",
     staff: "staff",
     clubs: "clubs",
+    nations: "nations",
   } satisfies Record<CheckKey, string>,
 
   /** New versions: the notice under the masthead, and the version and Check for updates at the foot of the window. */
@@ -1296,7 +1302,7 @@ export const en = {
       status: "Status",
     },
     /** The small tag after a name. */
-    kinds: { player: "Player", staff: "Staff", club: "Club" } satisfies Record<Entity, string>,
+    kinds: { player: "Player", staff: "Staff", club: "Club", nation: "Nation" } satisfies Record<Entity, string>,
     /** Hover text of a change of an attribute: the values as stored; `change` is from `valueChange`. */
     stored: (change: string) => `stored ${change}`,
     undone: (time: string) => `Undone at ${time}`,
@@ -1376,18 +1382,18 @@ export const en = {
       player: "Mass edit players",
       staff: "Mass edit staff",
       club: "Mass edit clubs",
-    } satisfies Record<Entity, string>,
+    } satisfies Record<MassEntity, string>,
 
     // What it applies to
     /** `total` is the list's: the search and the filters of the list select them. */
-    scope: (entity: Entity, total: number) =>
+    scope: (entity: MassEntity, total: number) =>
       `All ${entityCount[entity](total)} in the list`,
     /** After the scope, when the list shows only the first `shown` rows of its `total`. */
     scopeAll: (shown: number) => `Every match, not just the ${format(shown)} on screen.`,
-    scopeNone: (entity: Entity) =>
+    scopeNone: (entity: MassEntity) =>
       `No ${entityNouns[entity]} match your search and filters.`,
     /** `limit` is the most one mass edit takes. */
-    scopeTooMany: (entity: Entity, total: number, limit: number) =>
+    scopeTooMany: (entity: MassEntity, total: number, limit: number) =>
       `That's ${entityCount[entity](total)}, but one mass edit takes up to ${format(limit)}. ` +
       "Narrow your search or filters.",
     loadingFields: "Loading fields…",
@@ -1457,7 +1463,7 @@ export const en = {
     /** Beside Preview while it cannot be pressed. */
     previewBlocked: "Fill in every field to preview",
     /** "312 changes for 140 of 237 players · 97 already have these values · 12 values left alone". */
-    summary: (entity: Entity, preview: MassPreview) =>
+    summary: (entity: MassEntity, preview: MassPreview) =>
       [
         preview.changes === 0
           ? "No changes"

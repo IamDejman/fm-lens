@@ -721,6 +721,15 @@ function fieldTable(entity: Entity): EditField[] {
     max: number,
     scale: EditField["scale"] = "plain",
   ): EditField => ({ key, entity, kind, scale, min, max, blank: null, choices: null, mass: true });
+  // A nation's senior team reputation and its rules, one nation at a time; 255 years is never.
+  if (entity === "nation") {
+    return [
+      { ...field("reputation", "u16", 0, 10_000), mass: false },
+      { ...field("population", "u32", 1, 2_000_000_000), mass: false },
+      { ...field("dual_nationality", "u8", 0, 2), choices: [0, 2], mass: false },
+      { ...field("naturalisation", "u8", 0, 50), blank: 255, mass: false },
+    ];
+  }
   // A player's squad number (255: none), squad status and listing are changed one player at a time.
   const playerContract: EditField[] = [
     { ...field("contract.squad_number", "u8", 1, 99), blank: 255, mass: false },
@@ -942,6 +951,9 @@ function profileOf(entity: Entity, uid: number): PlayerDetails | StaffDetails | 
  * leaves out contract fields without a contract, a contract end that is not set, and a club's missing finances.
  */
 function currentValues(entity: Entity, uid: number): FieldValues {
+  if (entity === "nation") {
+    return nationValues(uid);
+  }
   const d = profileOf(entity, uid);
   const person = d as PlayerDetails & StaffDetails;
   const club = d as ClubDetails;
@@ -1039,7 +1051,7 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
       club.reputation = value;
       return;
     }
-  } else {
+  } else if (entity !== "nation") {
     const row = entity === "player" ? players.find((p) => p.uid === uid) : staff.find((s) => s.uid === uid);
     if (row && group === "current_ability") {
       row.currentAbility = value;
@@ -1079,7 +1091,7 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
 
 /** `apply_edits`: every edit is checked and written on its own, like the real command, with the same messages. */
 function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyReport {
-  const name = profileOf(entity, uid).name;
+  const name = entity === "nation" ? nationName(uid) : profileOf(entity, uid).name;
   const report: ApplyReport = { applied: [], failed: [] };
   for (const edit of edits) {
     const field = fieldTable(entity).find((f) => f.key === edit.field);
@@ -2195,6 +2207,7 @@ const CHECKS: CheckKey[] = [
   "teams",
   "staff",
   "clubs",
+  "nations",
 ];
 const FAILING: CheckKey[] = ["gameDate", "attributes", "contracts"];
 
@@ -2626,7 +2639,7 @@ function nationDetails(index: number): NationDetails | null {
   });
   const older = members.filter((p) => (p.age ?? 30) > 21);
   const younger = members.filter((p) => (p.age ?? 30) <= 21);
-  return {
+  return withWrittenNation(1000 + index, {
     code: name.slice(0, 3).toUpperCase(),
     continent: name === "Brazil" ? "South America" : "Europe",
     capital: null,
@@ -2643,5 +2656,55 @@ function nationDetails(index: number): NationDetails | null {
       .slice(0, 3)
       .map((rival, i) => ({ uid: 1000 + NATIONS.indexOf(rival), name: rival, strength: 100 - i * 15 })),
     teams: [team(null, 0, 8_500 - index * 300, older), team(21, 266, 6_000 - index * 200, younger)],
-  };
+  });
+}
+
+/** The name of the nation with the made-up UID `uid`, or the real commands' failure. */
+function nationName(uid: number): string {
+  const name = NATIONS[uid - 1000];
+  if (name === undefined) {
+    throw notFound("nation", uid);
+  }
+  return name;
+}
+
+/** A generated nation profile with the values written through the editor on top. */
+function withWrittenNation(uid: number, d: NationDetails): NationDetails {
+  const values = written.get(`nation:${uid}`) ?? {};
+  const senior = d.teams.find((team) => team.kind === 0);
+  if (values.reputation !== undefined && senior) {
+    senior.reputation = values.reputation;
+  }
+  if (values.population !== undefined) {
+    d.population = values.population;
+  }
+  if (values.dual_nationality !== undefined) {
+    d.dualNationality = values.dual_nationality === 0;
+  }
+  if (values.naturalisation !== undefined) {
+    d.naturalisationNever = values.naturalisation === 255;
+    d.naturalisationYears = d.naturalisationNever ? null : values.naturalisation;
+  }
+  return d;
+}
+
+/** `read_values` of a nation: its senior team's reputation and its rules, as stored; none without a profile. */
+function nationValues(uid: number): FieldValues {
+  nationName(uid);
+  const d = nationDetails(uid - 1000);
+  if (d === null) {
+    return {};
+  }
+  const values: FieldValues = { naturalisation: d.naturalisationNever ? 255 : (d.naturalisationYears ?? 0) };
+  const senior = d.teams.find((team) => team.kind === 0);
+  if (senior) {
+    values.reputation = senior.reputation;
+  }
+  if (d.population !== null) {
+    values.population = d.population;
+  }
+  if (d.dualNationality !== null) {
+    values.dual_nationality = d.dualNationality ? 0 : 2;
+  }
+  return values;
 }
