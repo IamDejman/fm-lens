@@ -586,7 +586,10 @@ export const tr: Strings = {
     retires: "Emeklilik planı",
     preferences: "Sevdikleri ve sevmedikleri",
     languages: "Diller",
-    languageLevel: (level: number) => `${level}/10`,
+    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    languageLevel: (level: number): string =>
+      level > 9 ? "Ana dil" : level >= 7 ? "Akıcı" : level >= 5 ? "İyi" : level >= 2 ? "Temel" : "Konuşmuyor",
+    languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rakipler",
     linkedClubs: "Bağlı kulüpler",
     preferenceKinds: {
