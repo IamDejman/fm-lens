@@ -1,4 +1,4 @@
-//! Match officials, read-only. The game keeps a list of pointers to them, whose `(begin, end, capacity)` header is a
+//! Match officials. The game keeps a list of pointers to them, whose `(begin, end, capacity)` header is a
 //! static in the game plugin (see [`BuildProfile::officials`]); each is laid out as [`OfficialLayout`] places.
 //!
 //! [`BuildProfile::officials`]: crate::profile::BuildProfile::officials
@@ -26,6 +26,9 @@ const MOST_OFFICIALS: u64 = 20_000;
 #[serde(rename_all = "camelCase")]
 pub struct OfficialSummary {
     pub uid: u32,
+    /// Where the official lives in the game, for edits.
+    #[serde(skip)]
+    pub address: u64,
     pub name: String,
     pub nation: Option<String>,
     /// For the nation's flag.
@@ -57,23 +60,32 @@ impl Listed for OfficialSummary {
 }
 
 impl Session {
+    /// The pointers in the officials' list, the first checked to be an official. `None` where this build's profile or
+    /// layout does not place them; empty where the list does not check out. Only reads memory.
+    pub(crate) fn official_pointers(&self) -> Result<Option<Vec<u64>>, MoveError> {
+        let (Some(_), Some(rva)) = (self.layout.official.as_ref(), self.profile.as_ref().and_then(|p| p.officials))
+        else {
+            return Ok(None);
+        };
+        let Some(list) = PointerList::read_up_to(&self.process, self.plugin.base + rva, MOST_OFFICIALS)? else {
+            return Ok(Some(Vec::new()));
+        };
+        let pointers = list.elements(&self.process)?;
+        let official = |first: u64| {
+            is_user_pointer(first) && class_of(&self.process, &self.plugin, first).as_deref() == Some(OFFICIAL_CLASS)
+        };
+        Ok(Some(if pointers.first().is_some_and(|&first| official(first)) { pointers } else { Vec::new() }))
+    }
+
     /// Every match official. Empty where this build's profile or layout does not place them, or the array does not
     /// check out. Only reads memory.
     pub fn officials(&self) -> Result<Vec<OfficialSummary>, MoveError> {
-        let (Some(o), Some(rva)) = (self.layout.official.as_ref(), self.profile.as_ref().and_then(|p| p.officials))
-        else {
+        let (Some(o), Some(pointers)) = (self.layout.official.as_ref(), self.official_pointers()?) else {
             return Ok(Vec::new());
         };
-        let Some(list) = PointerList::read_up_to(&self.process, self.plugin.base + rva, MOST_OFFICIALS)? else {
-            return Ok(Vec::new());
-        };
-        let pointers = list.elements(&self.process)?;
         let Some(&first) = pointers.first() else {
             return Ok(Vec::new());
         };
-        if !is_user_pointer(first) || class_of(&self.process, &self.plugin, first).as_deref() != Some(OFFICIAL_CLASS) {
-            return Ok(Vec::new());
-        }
         let vtable = self.process.read_u64(first)?;
         let today = self.game_date();
         let (mut names, mut nations) = (Memo::default(), Memo::default());
@@ -100,6 +112,7 @@ impl Session {
             let date_of_birth = FmDate::from_raw(u16_at(o.date_of_birth), u16_at(o.date_of_birth + 2));
             officials.push(OfficialSummary {
                 uid,
+                address: pointer,
                 name: display_name(common, first, last, None, uid),
                 nation: nations.get(nation, |nation| nation_name(&self.process, &self.layout, nation)),
                 nation_uid: nation_uid(&self.process, &self.layout, nation),

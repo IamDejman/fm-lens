@@ -60,6 +60,9 @@ pub enum Check {
     /// The nations people belong to have a container that points back at them and a senior team that carries their
     /// UID, and rules of the values the game uses. Only on builds whose layout places nations.
     Nations,
+    /// The match officials are all of one class, with a UID, a birth date and abilities and a reputation in range.
+    /// Only on builds whose profile and layout place them.
+    Officials,
 }
 
 /// The checks a change to the game's lists and records needs (moves, swaps, healing, captains, ties, clauses,
@@ -67,7 +70,7 @@ pub enum Check {
 pub const STRUCTURE: [Check; 4] = [Check::Contracts, Check::Teams, Check::Staff, Check::Clubs];
 
 impl Check {
-    pub const ALL: [Check; 11] = [
+    pub const ALL: [Check; 12] = [
         Check::GameDate,
         Check::Players,
         Check::Positions,
@@ -79,6 +82,7 @@ impl Check {
         Check::Staff,
         Check::Clubs,
         Check::Nations,
+        Check::Officials,
     ];
 
     /// The name of the check in error codes' parameters and in the app: `gameDate`, `liveValues`, ...
@@ -95,6 +99,7 @@ impl Check {
             Check::Staff => "staff",
             Check::Clubs => "clubs",
             Check::Nations => "nations",
+            Check::Officials => "officials",
         }
     }
 
@@ -105,6 +110,7 @@ impl Check {
             Entity::Staff => Check::Staff,
             Entity::Club => Check::Clubs,
             Entity::Nation => Check::Nations,
+            Entity::Official => Check::Officials,
             Entity::Player if key.starts_with("attribute.") => Check::Attributes,
             Entity::Player if key.starts_with("position.") => Check::Positions,
             Entity::Player if key.starts_with("personality.") => Check::Personality,
@@ -131,6 +137,7 @@ impl fmt::Display for Check {
             Check::Staff => "the staff",
             Check::Clubs => "the clubs",
             Check::Nations => "the nations",
+            Check::Officials => "the officials",
         })
     }
 }
@@ -458,6 +465,7 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     let staff = check_staff(session);
     let clubs = check_clubs(session);
     let nations = check_nations(session, &players);
+    let officials = check_officials(session);
 
     let mut attributes = attributes.result(Check::Attributes, 0.99, String::new());
     attributes.passed &= signature;
@@ -502,6 +510,7 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
         ]
         .into_iter()
         .chain(nations)
+        .chain(officials)
         .collect(),
     }
 }
@@ -743,6 +752,37 @@ fn check_nations(session: &Session, players: &[SampledPlayer]) -> Option<CheckRe
     Some(tally.result(Check::Nations, 0.95, String::new()))
 }
 
+/// The match officials, every one of the first's class (its vtable) with a UID, a birth date, abilities up to 200 and
+/// a reputation up to 10000. `None` where the build does not place officials; failed where the list does not check
+/// out.
+fn check_officials(session: &Session) -> Option<CheckResult> {
+    let o = session.layout.official.as_ref()?;
+    let pointers = match session.official_pointers() {
+        Ok(found) => found?,
+        Err(_) => Vec::new(),
+    };
+    let process = &session.process;
+    let vtable = pointers.first().and_then(|&first| process.read_u64(first).ok());
+    let fits = |pointer: u64| -> Option<bool> {
+        let object = process.read_bytes(pointer, o.size as usize).ok()?;
+        let u16_at = |offset: u64| u16::from_le_bytes([object[offset as usize], object[offset as usize + 1]]);
+        let u32_at = |offset: u64| u32::from(u16_at(offset)) | (u32::from(u16_at(offset + 2)) << 16);
+        Some(
+            Some(u64::from_le_bytes(object[0..8].try_into().ok()?)) == vtable
+                && u32_at(o.uid) != 0
+                && FmDate::from_raw(u16_at(o.date_of_birth), u16_at(o.date_of_birth + 2)).is_some()
+                && u16_at(o.current_ability) <= 200
+                && u16_at(o.potential_ability) <= 200
+                && u16_at(o.reputation) <= 10_000,
+        )
+    };
+    let mut tally = Tally::default();
+    for pointer in pointers {
+        tally.add(is_user_pointer(pointer) && fits(pointer).unwrap_or(false));
+    }
+    Some(tally.result(Check::Officials, 0.95, String::new()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -808,6 +848,10 @@ mod tests {
         if layout.national.is_some() {
             assert_eq!(check(Entity::Nation, "reputation"), Check::Nations);
             assert_eq!(check(Entity::Nation, "population"), Check::Nations);
+        }
+        if layout.official.is_some() {
+            assert_eq!(check(Entity::Official, "reputation"), Check::Officials);
+            assert_eq!(check(Entity::Official, "date_of_birth"), Check::Officials);
         }
     }
 }

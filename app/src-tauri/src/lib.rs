@@ -360,8 +360,8 @@ impl Connection {
                 let hits = self.clubs.search(query).into_iter().filter(|c| filter.matches(c));
                 hits.map(|c| (c.target(), c.name.clone())).collect()
             }
-            // A nation is edited one at a time.
-            Entity::Nation => Vec::new(),
+            // A nation or an official is edited one at a time.
+            Entity::Nation | Entity::Official => Vec::new(),
         }
     }
 
@@ -1105,8 +1105,8 @@ impl Connection {
         Ok(logged.clone())
     }
 
-    /// Where the player, member of staff, club or nation with `uid` lives in the game, and its name. A nation is
-    /// found by its own UID, and only where no other nation has it.
+    /// Where the player, member of staff, club, nation or official with `uid` lives in the game, and its name. A
+    /// nation is found by its own UID, and only where no other nation has it.
     fn target(&self, entity: Entity, uid: u32) -> Result<(Target, String), Failure> {
         match entity {
             Entity::Player => self.players.get(uid).map(|p| (p.target(), p.name.clone())),
@@ -1119,6 +1119,14 @@ impl Connection {
                     _ => None,
                 }
             }
+            Entity::Official => match self.officials.as_ref() {
+                Some(index) => index.get(uid).map(|o| (o.target(), o.name.clone())),
+                // Not listed yet on this connection: read them.
+                None => {
+                    let officials = self.session.officials().unwrap_or_default();
+                    officials.into_iter().find(|o| o.uid == uid).map(|o| (o.target(), o.name))
+                }
+            },
         }
         .ok_or_else(|| not_found(entity, uid))
     }
@@ -1301,6 +1309,10 @@ impl Connection {
             Entity::Club => self.clubs.update(change.uid, |c| c.note_change(&change.field, value)),
             // The nations list shows only names, which no edit changes.
             Entity::Nation => false,
+            Entity::Official => self
+                .officials
+                .as_mut()
+                .is_some_and(|index| index.update(change.uid, |o| o.note_change(&change.field, value, today))),
         };
     }
 }

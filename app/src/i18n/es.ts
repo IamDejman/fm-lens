@@ -1012,7 +1012,6 @@ export const es: Strings = {
     empty: (query) =>
       query === "" ? "No se han podido leer los árbitros en esta versión de FM." : `Ningún árbitro coincide con «${query}».`,
     columns: { name: "Nombre", nation: "País", age: "Edad", ca: "HA", pa: "HP", reputation: "Reputación", uid: "UID" },
-    born: "Nacimiento",
     reputation: "Reputación",
   },
 
@@ -1268,6 +1267,7 @@ export const es: Strings = {
     staff: "el personal",
     clubs: "los clubes",
     nations: "los países",
+    officials: "los árbitros",
   },
 
   update: {
@@ -1361,7 +1361,7 @@ export const es: Strings = {
       change: "Cambio",
       status: "Estado",
     },
-    kinds: { player: "Jugador", staff: "Personal", club: "Club", nation: "País" },
+    kinds: { player: "Jugador", staff: "Personal", club: "Club", nation: "País", official: "Árbitro" },
     stored: (change) => `valor interno ${change}`,
     undone: (time) => `Deshecho a las ${time}`,
     undo: "Deshacer",

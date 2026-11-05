@@ -95,7 +95,13 @@ Built on top of it (core and Tauri only, no UI yet):
      pending offer (`[future_transfer]` in `layout-macos.toml`). Undo cancels it as the game's editor does:
      `cancel_offer` (0x2D180B4) on the offer with a reference held (`ref_copy`, `ref_drop`), then
      `drop_dated_transfer` (0x1827808). Unproven in the game (section 4).
-5. Other batch items not built: officials editing; staff formations and tendencies (labels need the screen);
+5. **Officials editing**: done on `feat/official-edits` (Edit on an official's profile: current and potential
+   ability, reputation, birth date, one official at a time). `Entity::Official` in `edit.rs`, offsets from
+   `[official]`, checked by the UID at +0x134; a new `officials` health check (every list entry of the first's class,
+   with a UID, a birth date and values in range) guards the writes. The list's open profile now follows each read,
+   so edited values show at once. Referee attributes stay read-only until their labels are known. Unproven in the
+   game (section 4).
+6. Other batch items not built: staff formations and tendencies (labels need the screen);
    tactical familiarity; human manager relations and moves; club kits, ownership, vision, allowances, income;
    nation FA settings, attendance, kits; promises, youth intake, bans add (low confidence, see
    fm27-player-extras.md); competition rules editing (fm27-competitions-awards-2.md).
@@ -119,6 +125,7 @@ before and after. Never use probe write commands; live writes go through FM Lens
 - Future transfer: sign one free agent to an AI club joining in a week; check FM shows the agreed transfer and he is
   still a free agent; undo, and check FM no longer has it. Sign another for two days ahead, press Continue past the
   day, and check he joined with FM's contract.
+- Officials: edit Michael Oliver's reputation and current ability, check FM's official screen after Continue, undo.
 - Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
 - Competitions and awards (#21): Premier League overview; World Golden Ball periods 5/6/9; PL awards.
 - Earlier items: staff licence labels 1-8 (#17), England FA and women's pages (#16), clause screens (#18), language
