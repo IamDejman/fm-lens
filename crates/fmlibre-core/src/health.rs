@@ -609,7 +609,9 @@ fn check_staff(session: &Session) -> CheckResult {
         let attributes = s.attributes.values().all(|&offset| bytes[at(offset)] <= 100)
             && s.ratings.values().all(|&offset| bytes[at(offset)] <= 20)
             && (0..crate::PERSONALITY.len() as u64).all(|i| bytes[at(s.personality + i)] <= 20);
-        tally.add(born && ability && reputation && attributes);
+        // A coaching licence of 0 to 8, or -1 to -7 (levels 2 to 8 as the game reads them).
+        let licence = s.coaching_licence.is_none_or(|offset| (-7..=8).contains(&(bytes[at(offset)] as i8)));
+        tally.add(born && ability && reputation && attributes && licence);
 
         let contract = u64::from_le_bytes(bytes[at(s.contract)..at(s.contract) + 8].try_into().expect("8 bytes"));
         if !is_user_pointer(contract) {
