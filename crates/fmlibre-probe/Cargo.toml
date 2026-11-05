@@ -9,7 +9,7 @@ authors.workspace = true
 
 [dependencies]
 fmlibre-core.workspace = true
-fmlibre-mem.workspace = true
+fmlibre-mem = { workspace = true, features = ["read-only"] }
 anyhow.workspace = true
 clap.workspace = true
 serde.workspace = true

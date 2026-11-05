@@ -31,6 +31,128 @@ pub struct Layout {
     /// The retirements the game has planned; only in the layouts they have been checked in.
     #[serde(default)]
     pub retirement: Option<RetirementLayout>,
+    /// A player's familiarity with his clubs and nations; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub cohesion: Option<CohesionLayout>,
+    /// The languages people speak; only in the layouts they have been checked in.
+    #[serde(default)]
+    pub language: Option<LanguageLayout>,
+    /// A nation's own facts and its national team container; only in the layouts they have been checked in.
+    #[serde(default)]
+    pub national: Option<NationalLayout>,
+    /// A match official; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub official: Option<OfficialLayout>,
+}
+
+/// A match official: an object of `size` bytes in the officials array ([`BuildProfile::officials`]).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OfficialLayout {
+    pub size: u64,
+    /// Name-table entry pointers, as a person's.
+    pub first_name: u64,
+    pub last_name: u64,
+    pub common_name: u64,
+    /// Pointer to the nation.
+    pub nation: u64,
+    /// `u16` day of the year and `u16` year.
+    pub date_of_birth: u64,
+    /// `u16` each; reputation 0 to 10000.
+    pub current_ability: u64,
+    pub potential_ability: u64,
+    pub reputation: u64,
+    pub uid: u64,
+}
+
+/// A nation's facts, and the men's national team container it points at (which points back at it): the FIFA
+/// ranking, the rivals and the national teams, which are laid out as a club's teams (see [`TeamLayout`]).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NationalLayout {
+    /// In a nation: FM string pointer to the three-letter code; pointers to the capital city and to the continent,
+    /// whose names are FM string pointers at `place_name`.
+    pub code: u64,
+    pub capital: u64,
+    pub continent: u64,
+    pub place_name: u64,
+    /// In a nation: the `(begin, end, capacity)` list of languages, of `entry_size` entries: a pointer to the
+    /// language and, at `language_percent`, the `u8` share of people who speak it.
+    pub languages: u64,
+    pub entry_size: u64,
+    pub language_percent: u64,
+    /// In a nation: `u32` population; `u8` dual nationality (0 allowed, 2 not); `u8` years of residence that gain
+    /// its nationality (255 none do).
+    pub population: u64,
+    pub dual_nationality: u64,
+    pub naturalisation: u64,
+    /// In a nation: pointer to the men's container. In the container: pointer back to the nation.
+    pub container: u64,
+    pub container_nation: u64,
+    /// In a container: the list of its national teams, its relations (rivals), the `f32` FIFA points, the `u16`
+    /// ranking (0 unranked), and the `u16` years its association was founded and joined FIFA.
+    pub teams: u64,
+    pub rivals: u64,
+    pub points: u64,
+    pub ranking: u64,
+    pub founded: u64,
+    pub joined_fifa: u64,
+    /// In a national team: pointer to the manager.
+    pub team_manager: u64,
+}
+
+impl NationalLayout {
+    /// One past the last byte the editor reads of a nation.
+    pub fn nation_end(&self) -> u64 {
+        [self.code, self.capital, self.continent, self.languages + 16, self.container, self.population + 4]
+            .into_iter()
+            .chain([self.dual_nationality, self.naturalisation])
+            .max()
+            .unwrap_or(0)
+            + 8
+    }
+
+    /// One past the last byte the editor reads of a container.
+    pub fn container_end(&self) -> u64 {
+        [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2].into_iter().max().unwrap_or(0)
+    }
+}
+
+/// The languages a person speaks besides, usually, his native one: a `(begin, end, capacity)` list of pointers to
+/// 16-byte links, each a pointer to the language and how well he speaks it, 0 to 10.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LanguageLayout {
+    /// In a player, and in a member of staff: the list.
+    pub player: u64,
+    pub staff: u64,
+    /// In a link: the pointer to the language, and the `u64` level.
+    pub language: u64,
+    pub level: u64,
+    /// In a language: the FM string pointer to its name.
+    pub name: u64,
+}
+
+/// A player's familiarity with the clubs and nations he plays for, which the game's team cohesion is made of: the
+/// second `(begin, end, capacity)` list of the record his `relations` pointer leads to, of small entries that name a
+/// club or nation by its internal id. The game's Max cohesion sets the entry for the team's club to the most.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CohesionLayout {
+    /// In the relations record: the list.
+    pub list: u64,
+    /// In an entry: the `u32` internal id of the club or nation.
+    pub id: u64,
+    /// In an entry: `u8`, 1 for a club, 2 for a nation.
+    pub kind: u64,
+    /// In an entry: `u8` familiarity, 0 to 100.
+    pub value: u64,
+    /// In an entry: `u8`, set on entries the game's action leaves alone.
+    pub flag: u64,
+    /// Bytes per entry.
+    pub size: u64,
+    /// In a club: the `u32` internal id its entries name it by.
+    pub club_id: u64,
 }
 
 /// The retirements the game has planned, which its retirement manager keeps (`RETIREMENT_MANAGER`, one object a
@@ -88,9 +210,10 @@ pub struct RelationLayout {
     pub target: u64,
     /// `u8`: 1 for a club, 3 for a person, 8 for a nation.
     pub target_kind: u64,
-    /// `u8`: 9 for a nationality, 70 for a nation he was trained in, 72 for a club he was trained at.
+    /// `u8`: 9 for a nationality, 70 for a nation he was trained in, 72 for a club he was trained at; 1 and 2 for a
+    /// favoured and disliked person, 3 and 4 for a favoured and disliked club.
     pub relation: u64,
-    /// `u8`: for a training, the homegrown rule it meets.
+    /// `u8`: for a training, the homegrown rule it meets; `i8` for a preference, its strength.
     pub value: u64,
     /// Bytes per entry.
     pub size: u64,
@@ -314,6 +437,9 @@ pub struct ClusterLayout {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StaffLayout {
+    /// Pointer to the record of his relations, laid out as a player's; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub relations: Option<u64>,
     pub uid: u64,
     pub full_name: u64,
     pub first_name: u64,
@@ -415,6 +541,15 @@ impl TeamLayout {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ClubLayout {
+    /// The club's relations, as a person's (see [`RelationLayout`]): a rival is a club it relates to with code 5.
+    #[serde(default)]
+    pub relations: Option<u64>,
+    /// The `(begin, end, capacity)` list of pointers to the club's links with other clubs (affiliations), and in a
+    /// link, the pointer to the other club.
+    #[serde(default)]
+    pub links: Option<u64>,
+    #[serde(default)]
+    pub link_club: Option<u64>,
     pub uid: u64,
     pub name: u64,
     pub short_name: u64,
@@ -556,6 +691,27 @@ pub struct BuildProfile {
     /// the same distance from the arrays in every build: 0xED60 before the players pair on Game Pass, 0xDAC0 on
     /// Steam.
     pub retirement_manager: Option<u64>,
+    /// Where the human manager's own flags sit, on the one build where that has been traced. Absent elsewhere,
+    /// which leaves the manager-only fields unavailable.
+    #[serde(default)]
+    pub human_manager: Option<HumanManagerLayout>,
+    /// RVA in the game plugin of the `(begin, end)` pair of the match officials' array ([`OfficialLayout`]), on the
+    /// one build where it has been read.
+    #[serde(default)]
+    pub officials: Option<u64>,
+}
+
+/// The human manager's flags word, traced statically on the arm64 half of Steam build 26340721: the
+/// `become_unsackable` action toggles bit 1 of the u32 at `flags` from the start of a `db::HUMAN_NON_PLAYER`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HumanManagerLayout {
+    /// Offset of the flags word from the start of the object, not shifted with the person block.
+    pub flags: u64,
+    /// The shift of the person block of a human manager on this build: the only one the flags were traced at.
+    pub person_shift: u64,
+    /// The mangled class name a human manager's vtable resolves to.
+    pub class: String,
 }
 
 /// Identifies a build of the game plugin from its headers as mapped in memory.
@@ -831,5 +987,21 @@ mod tests {
         // On Windows the Launch Preview's date sits with the arrays.
         let fingerprint = PluginFingerprint::Pe { size_of_image: 0x19E6_9000, link_timestamp: 0x6ADF_B11C };
         assert_eq!(profile_for(fingerprint).and_then(|profile| profile.current_date), None);
+    }
+
+    #[test]
+    fn only_the_traced_build_knows_the_human_manager() {
+        let traced = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let profile = profile_for(PluginFingerprint::MachO { uuid: traced }).expect("27.0.0's arm64 half");
+        assert_eq!(
+            profile.human_manager,
+            Some(HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".to_owned() })
+        );
+        for text in BUILDS {
+            let profile: BuildProfile = parse(text);
+            if profile.plugin != (PluginFingerprint::MachO { uuid: traced }) {
+                assert!(profile.human_manager.is_none(), "{}", profile.name);
+            }
+        }
     }
 }

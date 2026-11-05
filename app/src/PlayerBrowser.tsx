@@ -6,9 +6,11 @@ import { formatDate } from "./format";
 import { playerListText, positionLabel, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
+import { MoreMenu } from "./MoreMenu";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { countFilters, PlayerFilterBar, toPlayerFilter, type PlayerFilterFields } from "./PlayerFilters";
 import { PlayerProfile } from "./PlayerProfile";
+import { PlayerTemplatesButton } from "./PlayerTemplates";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
 import { readFields, readOrder } from "./savedFilters";
@@ -78,10 +80,11 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         />
       }
       toolbarActions={(list) => (
-        <>
+        <MoreMenu folded={list.besideProfile}>
           <ExportButton list={list} filter={filter} order={order} />
           <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
-        </>
+          <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
+        </MoreMenu>
       )}
       footer={<ComparisonTray comparison={comparison} />}
       tableClass="player-grid"

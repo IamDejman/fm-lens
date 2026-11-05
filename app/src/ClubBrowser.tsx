@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ClubProfile, readTab, type ClubTab } from "./ClubProfile";
 import { clubListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
@@ -17,15 +17,52 @@ type ClubKind = "all" | "men" | "women";
 /** The kind of clubs saved before the language was switched; all of them when there is none. */
 const readKind = (value: unknown): ClubKind => (value === "men" || value === "women" ? value : "all");
 
+const REPUTATION_RANGE = { min: 0, max: 10000 };
+const YEAR_RANGE = { min: 1800, max: 2200 };
+
+/** A whole number within `range`; nothing for an empty or unreadable input. */
+function whole(input: string, range: { min: number; max: number }): number | undefined {
+  if (input.trim() === "") {
+    return undefined;
+  }
+  const value = Number(input);
+  return Number.isFinite(value) ? Math.min(range.max, Math.max(range.min, Math.round(value))) : undefined;
+}
+
+const readText = (value: unknown) => (typeof value === "string" ? value : "");
+
 /** The clubs table with the profile of the selected club beside it. */
 export function ClubBrowser({ version, active }: { version: number; active: boolean }) {
   // It starts as it was before the language was switched, if it was (see `restore.ts`).
   const [kind, setKind] = useState<ClubKind>(() => restored("clubKind", readKind));
+  const [minReputation, setMinReputation] = useState(() => restored("clubMinRep", readText));
+  const [maxReputation, setMaxReputation] = useState(() => restored("clubMaxRep", readText));
+  const [foundedFrom, setFoundedFrom] = useState(() => restored("clubFoundedFrom", readText));
+  const [foundedTo, setFoundedTo] = useState(() => restored("clubFoundedTo", readText));
   useSnapshot("clubKind", () => kind);
+  useSnapshot("clubMinRep", () => minReputation);
+  useSnapshot("clubMaxRep", () => maxReputation);
+  useSnapshot("clubFoundedFrom", () => foundedFrom);
+  useSnapshot("clubFoundedTo", () => foundedTo);
   // The tab of the club profile is kept here, so that the next club picked opens on the squad when this one did.
   const [tab, setTab] = useState<ClubTab>(() => restored("clubTab", readTab));
   useSnapshot("clubTab", () => tab);
-  const filter: ClubFilter | undefined = kind === "all" ? undefined : { women: kind === "women" };
+  const minRep = whole(minReputation, REPUTATION_RANGE);
+  const maxRep = whole(maxReputation, REPUTATION_RANGE);
+  const fromYear = whole(foundedFrom, YEAR_RANGE);
+  const toYear = whole(foundedTo, YEAR_RANGE);
+  const filter: ClubFilter | undefined =
+    kind === "all" && minRep === undefined && maxRep === undefined && fromYear === undefined && toYear === undefined
+      ? undefined
+      : {
+          women: kind === "all" ? undefined : kind === "women",
+          minReputation: minRep,
+          maxReputation: maxRep,
+          foundedFrom: fromYear,
+          foundedTo: toYear,
+        };
+  const reputationLabel = useId();
+  const foundedLabel = useId();
 
   return (
     <ListBrowser<ClubSummary>
@@ -40,11 +77,62 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
       filterBar={
         <div className="filter-bar">
           <div className="filter-fields">
-            <select aria-label={filters.kind} value={kind} onChange={(e) => setKind(e.currentTarget.value as ClubKind)}>
-              <option value="all">{filters.all}</option>
-              <option value="men">{filters.men}</option>
-              <option value="women">{filters.women}</option>
-            </select>
+            <label className="filter-field">
+              <span>{filters.kind}</span>
+              <select aria-label={filters.kind} value={kind} onChange={(e) => setKind(e.currentTarget.value as ClubKind)}>
+                <option value="all">{filters.all}</option>
+                <option value="men">{filters.men}</option>
+                <option value="women">{filters.women}</option>
+              </select>
+            </label>
+            <div className="filter-field" role="group" aria-labelledby={reputationLabel}>
+              <span id={reputationLabel}>{filters.reputation}</span>
+              <input
+                type="number"
+                min={REPUTATION_RANGE.min}
+                max={REPUTATION_RANGE.max}
+                step={1}
+                placeholder={filters.minPlaceholder}
+                aria-label={filters.minReputation}
+                value={minReputation}
+                onChange={(e) => setMinReputation(e.currentTarget.value)}
+              />
+              <span aria-hidden="true">–</span>
+              <input
+                type="number"
+                min={REPUTATION_RANGE.min}
+                max={REPUTATION_RANGE.max}
+                step={1}
+                placeholder={filters.maxPlaceholder}
+                aria-label={filters.maxReputation}
+                value={maxReputation}
+                onChange={(e) => setMaxReputation(e.currentTarget.value)}
+              />
+            </div>
+            <div className="filter-field" role="group" aria-labelledby={foundedLabel}>
+              <span id={foundedLabel}>{filters.founded}</span>
+              <input
+                type="number"
+                min={YEAR_RANGE.min}
+                max={YEAR_RANGE.max}
+                step={1}
+                placeholder={filters.yearPlaceholder}
+                aria-label={filters.foundedFrom}
+                value={foundedFrom}
+                onChange={(e) => setFoundedFrom(e.currentTarget.value)}
+              />
+              <span aria-hidden="true">–</span>
+              <input
+                type="number"
+                min={YEAR_RANGE.min}
+                max={YEAR_RANGE.max}
+                step={1}
+                placeholder={filters.yearPlaceholder}
+                aria-label={filters.foundedTo}
+                value={foundedTo}
+                onChange={(e) => setFoundedTo(e.currentTarget.value)}
+              />
+            </div>
           </div>
         </div>
       }

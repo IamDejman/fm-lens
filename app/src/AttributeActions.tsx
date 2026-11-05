@@ -1,14 +1,14 @@
-// Above a player's attributes while his profile is read: Max attributes, which sets every one of them to its best at
-// once, and the box that freezes them.
+// Above a player's attributes while his profile is read: Set all attributes to a value from 1 to 20 at once, and the box
+// that freezes them.
 
 import { useContext, useEffect, useRef, useState } from "react";
-import { changeLog, freezeAttributes, frozenPlayers, maxAttributes, undoBatch } from "./editing";
+import { changeLog, freezeAttributes, frozenPlayers, setAttributes, undoBatch } from "./editing";
 import { describeError } from "./format";
 import { fieldLabel, massEditText, profileText } from "./labels";
 import { undoFailureLines } from "./massDraft";
 import { EditorContext, useEditSession } from "./useProfileEditing";
 
-/** What the last Max attributes, or the undo of it, came to. */
+/** What the last Set all attributes, or the undo of it, came to. */
 interface Outcome {
   message: string;
   /** Whether the message is why it did not happen. */
@@ -22,8 +22,11 @@ interface Outcome {
 /** Most refusals the line under the buttons lists. */
 const PROBLEMS_SHOWN = 5;
 
+/** The values an attribute can be given, best first. */
+const LEVELS = Array.from({ length: 20 }, (_, index) => 20 - index);
+
 /**
- * Max attributes, with what it wrote and the button that takes it back, and Freeze attributes, with what freezing does
+ * Set all attributes, with what it wrote and the button that takes it back, and Freeze attributes, with what freezing does
  * while it is on. Both wait while the game cannot be written to, and say why. Not there while the player is edited:
  * the inputs hold his attributes then.
  */
@@ -32,6 +35,7 @@ export function AttributeActions({ uid }: { uid: number }) {
   const editing = useEditSession() !== null;
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [level, setLevel] = useState(20);
   // Whether his attributes are frozen; null until the app has said.
   const [frozen, setFrozen] = useState<boolean | null>(null);
   const [freezeError, setFreezeError] = useState<string | null>(null);
@@ -91,15 +95,15 @@ export function AttributeActions({ uid }: { uid: number }) {
     }
   };
 
-  const max = () =>
+  const setAll = () =>
     write(async () => {
-      const report = await maxAttributes(uid);
+      const report = await setAttributes(uid, level);
       const lines = report.failed
         .slice(0, PROBLEMS_SHOWN)
         .map(({ field, error }) => `${fieldLabel("player", field)}: ${describeError(error)}`);
       const more = report.failed.length - PROBLEMS_SHOWN;
       return {
-        message: profileText.maxAttributesDone(report.applied),
+        message: profileText.setAttributesDone(report.applied, level),
         failed: false,
         problems: more > 0 ? [...lines, massEditText.more(more)] : lines,
         batch: report.applied > 0 ? report.batch : null,
@@ -112,7 +116,7 @@ export function AttributeActions({ uid }: { uid: number }) {
       // The log names the fields behind the changes that could not be taken back.
       const log = done.failed.length > 0 ? await changeLog().catch(() => []) : [];
       return {
-        message: profileText.maxAttributesUndone(done.undone),
+        message: profileText.setAttributesUndone(done.undone),
         failed: false,
         problems: undoFailureLines(done.failed, log),
         batch: null,
@@ -136,17 +140,38 @@ export function AttributeActions({ uid }: { uid: number }) {
   return (
     <div className="attribute-actions">
       <div className="attribute-buttons">
-        <button
-          type="button"
-          className="max-toggle"
-          disabled={!editable}
-          aria-disabled={busy || undefined}
-          aria-busy={busy || undefined}
-          title={editable ? profileText.maxAttributesTitle : readOnlyNote}
-          onClick={() => void max()}
+        <form
+          className="set-attributes"
+          title={editable ? undefined : readOnlyNote}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void setAll();
+          }}
         >
-          {profileText.maxAttributes}
-        </button>
+          <label>
+            <span>{profileText.setAttributes}</span>
+            <select
+              value={level}
+              disabled={!editable}
+              onChange={(e) => setLevel(Number(e.currentTarget.value))}
+            >
+              {LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="max-toggle"
+            disabled={!editable}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+          >
+            {profileText.setAttributesButton}
+          </button>
+        </form>
         {frozen !== null && (
           <label className="freeze-toggle" title={editable ? profileText.freezeAttributesNote : readOnlyNote}>
             <input
@@ -170,10 +195,10 @@ export function AttributeActions({ uid }: { uid: number }) {
                   type="button"
                   className="max-toggle"
                   aria-disabled={busy || undefined}
-                  title={profileText.undoMaxTitle}
+                  title={profileText.undoSetAttributesTitle}
                   onClick={() => outcome.batch !== null && void undo(outcome.batch)}
                 >
-                  {profileText.undoMax}
+                  {profileText.undoSetAttributes}
                 </button>
               )}
             </div>

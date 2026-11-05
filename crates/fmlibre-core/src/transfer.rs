@@ -230,6 +230,8 @@ pub enum MoveError {
     SameClause,
     /// The contract's list of clauses has no room for another.
     ClausesFull,
+    /// The player has no familiarity entry for the club that the editor can raise, or this build has none it knows.
+    NoFamiliarity,
     /// The editor does not make this change to this game: see [`Lock`].
     Locked(Lock),
     Memory(fmlibre_mem::Error),
@@ -314,6 +316,9 @@ impl fmt::Display for MoveError {
             MoveError::ClausesFull => f.write_str(
                 "the contract's list of clauses has no room for another, and the editor cannot make it bigger",
             ),
+            MoveError::NoFamiliarity => f.write_str(
+                "the game has not started the player's familiarity with this club yet, and the editor cannot add it",
+            ),
             MoveError::Locked(lock) => write!(f, "nothing was changed: {lock}"),
             MoveError::Memory(err) => write!(f, "{err}"),
         }
@@ -361,6 +366,7 @@ impl Coded for MoveError {
             MoveError::NotInClause { .. } => "clause.notInClause",
             MoveError::SameClause => "clause.same",
             MoveError::ClausesFull => "clause.noRoom",
+            MoveError::NoFamiliarity => "cohesion.none",
             MoveError::Locked(lock) => lock.code(),
             MoveError::Memory(err) => err.code(),
         }
@@ -412,6 +418,11 @@ pub(crate) struct PointerList {
 impl PointerList {
     /// The list whose header is at `header`, or `None` when the header does not hold one.
     pub(crate) fn read(process: &Process, header: u64) -> Result<Option<Self>, MoveError> {
+        Self::read_up_to(process, header, LONGEST_LIST)
+    }
+
+    /// [`PointerList::read`] for a list whose block may hold up to `longest` pointers.
+    pub(crate) fn read_up_to(process: &Process, header: u64, longest: u64) -> Result<Option<Self>, MoveError> {
         let bytes = process.read_bytes(header, 24)?;
         let word = |i: usize| u64::from_le_bytes(bytes[i * 8..i * 8 + 8].try_into().expect("8 bytes"));
         let (begin, end, capacity) = (word(0), word(1), word(2));
@@ -420,7 +431,7 @@ impl PointerList {
             && end <= capacity
             && (end - begin).is_multiple_of(8)
             && (capacity - begin).is_multiple_of(8)
-            && capacity - begin <= 8 * LONGEST_LIST;
+            && capacity - begin <= 8 * longest;
         Ok(sane.then_some(Self { header, begin, end, capacity }))
     }
 

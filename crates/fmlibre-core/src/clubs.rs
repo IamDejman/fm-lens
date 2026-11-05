@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
 use fmlibre_mem::{Module, Process, is_user_pointer};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::calibrate::ArrayRef;
 use crate::index::{Listed, SearchIndex};
 use crate::profile::{ClubFinanceLayout, Layout, StadiumLayout};
+use crate::relations::Related;
 use crate::text::read_fm_string;
 
 /// Supporter-mix percentages in the order FM stores them.
@@ -128,6 +129,10 @@ pub struct ClubDetails {
     pub finances: Option<Finances>,
     /// The stadium the senior team plays at, when the layout knows where it is and it looks real.
     pub stadium: Option<Stadium>,
+    /// Its rivals, strongest first (see [`crate::Session::club_rivals`]). Read-only.
+    pub rivals: Vec<Related>,
+    /// The clubs it has links with (see [`crate::Session::club_links`]). Read-only.
+    pub links: Vec<Related>,
 }
 
 /// A stadium's name and capacities, as stored.
@@ -141,6 +146,58 @@ pub struct Stadium {
     pub used: u32,
     /// The most it can be expanded to.
     pub expansion: u32,
+}
+
+/// One senior-team stadium, keyed by the club that plays there. Read from the same layout as the club profile.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StadiumSummary {
+    /// The club's UID. A club has one senior stadium in this list.
+    pub uid: u32,
+    pub club_uid: u32,
+    pub club: String,
+    pub women: bool,
+    pub name: Option<String>,
+    pub capacity: u32,
+    pub seating: u32,
+    pub used: u32,
+    pub expansion: u32,
+}
+
+impl Listed for StadiumSummary {
+    fn uid(&self) -> u32 {
+        self.uid
+    }
+
+    fn names(&self) -> String {
+        match &self.name {
+            Some(name) => format!("{name} {}", self.club),
+            None => self.club.clone(),
+        }
+    }
+
+    fn display_name(&self) -> &str {
+        self.name.as_deref().unwrap_or(&self.club)
+    }
+
+    fn rank(&self) -> i32 {
+        i32::try_from(self.capacity).unwrap_or(i32::MAX)
+    }
+}
+
+/// Bounds on a stadium's capacity. Unset fields match every stadium.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct StadiumFilter {
+    pub min_capacity: Option<u32>,
+    pub max_capacity: Option<u32>,
+}
+
+impl StadiumFilter {
+    pub fn matches(&self, stadium: &StadiumSummary) -> bool {
+        self.min_capacity.is_none_or(|min| stadium.capacity >= min)
+            && self.max_capacity.is_none_or(|max| stadium.capacity <= max)
+    }
 }
 
 /// The largest capacity a stadium's fields are believed to hold; the biggest of the test save held 115,109.
@@ -167,6 +224,38 @@ pub(crate) fn club_stadium(process: &Process, layout: &Layout, club: u64) -> Opt
     let stadium = process.read_u64(team + s.team_pointer).ok().filter(|&p| is_user_pointer(p))?;
     let bytes = process.read_bytes(stadium, s.end() as usize).ok()?;
     stadium_looks_real(&bytes, s).then_some((stadium, bytes))
+}
+
+/// The senior stadium of each club the layout can read. Empty when this build has no stadium layout.
+/// Only reads memory.
+pub fn read_stadiums<'a>(
+    process: &Process,
+    layout: &Layout,
+    clubs: impl IntoIterator<Item = &'a ClubSummary>,
+) -> Vec<StadiumSummary> {
+    if layout.stadium.is_none() {
+        return Vec::new();
+    }
+    clubs.into_iter().filter_map(|club| stadium_summary(process, layout, club)).collect()
+}
+
+fn stadium_summary(process: &Process, layout: &Layout, club: &ClubSummary) -> Option<StadiumSummary> {
+    let s = layout.stadium.as_ref()?;
+    let (_, bytes) = club_stadium(process, layout, club.address)?;
+    let u32_at =
+        |offset: u64| u32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"));
+    let name = u64::from_le_bytes(bytes[s.name as usize..s.name as usize + 8].try_into().expect("8 bytes"));
+    Some(StadiumSummary {
+        uid: club.uid,
+        club_uid: club.uid,
+        club: club.name.clone(),
+        women: club.women,
+        name: read_fm_string(process, name).filter(|name| !name.trim().is_empty()),
+        capacity: u32_at(s.capacity),
+        seating: u32_at(s.seating),
+        used: u32_at(s.used),
+        expansion: u32_at(s.expansion),
+    })
 }
 
 /// The class (vtable) of stadiums: the one the clubs' stadiums share, when nearly all of them share one. Only objects
@@ -226,6 +315,8 @@ pub fn read_club_details(
         facilities: BTreeMap::new(),
         finances: None,
         stadium: None,
+        rivals: Vec::new(),
+        links: Vec::new(),
     };
     if let (Some(s), Some((_, bytes))) = (layout.stadium.as_ref(), club_stadium(process, layout, club.address)) {
         let u32_at =
@@ -328,4 +419,33 @@ pub(crate) fn full_finance_class(process: &Process, module: &Module, array: &Arr
     let (&class, &count) = classes.iter().max_by_key(|&(_, &count)| count)?;
     // One class for (nearly) every real-looking record, and more than a handful of them.
     (count >= 10 && count * 100 >= real * 99).then_some(class)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn stadium(name: Option<&str>, capacity: u32) -> StadiumSummary {
+        StadiumSummary {
+            uid: 1,
+            club_uid: 1,
+            club: "Northbridge".to_owned(),
+            women: false,
+            name: name.map(str::to_owned),
+            capacity,
+            seating: capacity,
+            used: 0,
+            expansion: capacity + 1000,
+        }
+    }
+
+    #[test]
+    fn stadium_filter_bounds_capacity() {
+        let row = stadium(Some("Harbour Park"), 40_000);
+        assert!(StadiumFilter { min_capacity: Some(30_000), max_capacity: Some(50_000) }.matches(&row));
+        assert!(!StadiumFilter { min_capacity: Some(41_000), ..StadiumFilter::default() }.matches(&row));
+        assert!(!StadiumFilter { max_capacity: Some(10_000), ..StadiumFilter::default() }.matches(&row));
+        assert_eq!(row.names(), "Harbour Park Northbridge");
+        assert_eq!(stadium(None, 12_000).display_name(), "Northbridge");
+    }
 }

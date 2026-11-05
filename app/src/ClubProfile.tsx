@@ -22,6 +22,7 @@ import {
   type PanelIds,
   type RatingRow,
 } from "./ProfileParts";
+import { ClubTiesGroups } from "./RelationGroups";
 import { SquadTab } from "./SquadTab";
 import type { ClubDetails, ClubSummary, Finances, Stadium } from "./types";
 import { EditorContext, useProfileEditing } from "./useProfileEditing";
@@ -176,6 +177,7 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
       <div className="profile-stack">
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
         <ClubInfo details={details} />
+        <ClubTiesGroups rivals={details.rivals} links={details.links} />
       </div>
     </div>
   );

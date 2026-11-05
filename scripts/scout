@@ -10,7 +10,7 @@ if (( $# == 0 )); then
   set -- info
 fi
 case "$1" in
-  info|health|calibrate|player|players|club|clubs|staff|staff-member|fields|get|teams|--help|--version)
+  info|health|calibrate|player|players|club|clubs|staff|staff-member|fields|get|preferences|teams|--help|--version)
     exec "$probe" "$@"
     ;;
   bridge)

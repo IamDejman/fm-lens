@@ -10,6 +10,7 @@ import { currencyName, currencySymbolOf } from "./format";
 import { locale, setLocale, type Locale } from "./i18n";
 import { appText } from "./labels";
 import { askToLeave } from "./useProfileEditing";
+import { appearance, layoutPixels, setAppearance, setZoom, zoom, ZOOMS, type Appearance } from "./appearance";
 
 /** The room the menu keeps between itself and its button. */
 const GAP = 4;
@@ -74,10 +75,13 @@ const CHECK = (
 /**
  * The button and, once it is pressed, its menu. Choosing another language or currency reloads the window (see
  * `setLocale` and `setCurrency`), which the app survives connected (see `current_connection`), so edits pending in an
- * open profile are asked about first. While the app is `busy` the button waits.
+ * open profile are asked about first. While the app is `busy` the button waits. `details` is passive information
+ * (version, game, graphics) shown at the foot of the menu.
  */
-export function SettingsMenu({ busy }: { busy: boolean }) {
+export function SettingsMenu({ busy, details }: { busy: boolean; details?: ReactNode }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const [theme, updateTheme] = useState(appearance);
+  const [scale, updateScale] = useState(zoom);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -86,7 +90,7 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
   const show = () => {
     const box = button.current?.getBoundingClientRect();
     if (box) {
-      setAnchor({ right: document.documentElement.clientWidth - box.right, bottom: box.bottom });
+      setAnchor({ right: layoutPixels(window.innerWidth - box.right), bottom: layoutPixels(box.bottom) });
     }
   };
 
@@ -178,6 +182,7 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
         ref={button}
         type="button"
         className="settings-toggle"
+        data-tour="settings"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={BUTTON_LABEL}
@@ -206,7 +211,7 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
             className="settings-menu"
             role="menu"
             aria-label={appText.settingsLabel}
-            style={{ top: anchor.bottom + GAP, right: anchor.right }}
+            style={{ top: anchor.bottom + GAP, right: anchor.right, maxHeight: layoutPixels(window.innerHeight) - anchor.bottom - GAP * 2 }}
             onKeyDown={keyDown}
           >
             <div role="group" aria-labelledby={`${id}-language`}>
@@ -229,6 +234,20 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
                 </button>
               ))}
             </div>
+            <div role="group" aria-labelledby={`${id}-appearance`}>
+              <div id={`${id}-appearance`} className="settings-heading">{appText.appearance}</div>
+              {(["system", "light", "dark"] as const).map((value: Appearance) => <button key={value} type="button" role="menuitemradio"
+                aria-checked={theme === value} tabIndex={-1} onClick={() => { setAppearance(value); updateTheme(value); close(); }}>
+                {appText.themes[value]}{theme === value && CHECK}
+              </button>)}
+            </div>
+            <div role="group" aria-labelledby={`${id}-zoom`}>
+              <div id={`${id}-zoom`} className="settings-heading">{appText.zoomLabel}</div>
+              {ZOOMS.map((value) => <button key={value} type="button" role="menuitemradio" aria-checked={scale === value}
+                tabIndex={-1} onClick={() => { setZoom(value); updateScale(value); close(); }}>
+                {value}%{scale === value && CHECK}
+              </button>)}
+            </div>
             <div role="group" aria-labelledby={`${id}-currency`}>
               <div id={`${id}-currency`} className="settings-heading">
                 {appText.currencyLabel}
@@ -250,6 +269,11 @@ export function SettingsMenu({ busy }: { busy: boolean }) {
                 </button>
               ))}
             </div>
+            {details && (
+              <div role="group" aria-label={appText.detailsLabel} className="settings-details">
+                {details}
+              </div>
+            )}
           </div>,
           document.body,
         )}

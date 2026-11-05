@@ -63,6 +63,14 @@ export interface EntityArrays {
   fromProfile: boolean;
 }
 
+/** Who the user manages in the loaded career: what FM names a save after by default. */
+export interface Career {
+  /** The manager's staff UID. */
+  uid: number;
+  manager: string;
+  club: string | null;
+}
+
 export interface ConnectionInfo {
   game: GameInfo;
   profile: string | null;
@@ -84,17 +92,23 @@ export interface ConnectionInfo {
   knownBuild: boolean;
   /** What the checks the editor makes before it writes found on this game. */
   health: Health;
+  /** The human manager and club of the loaded career; connecting fails without one. */
+  career: Career | null;
   /** Only from `connect`: what it froze again of what was frozen in this save before, when there was any. */
   refrozen?: Refrozen;
 }
 
 export interface ReloadInfo {
+  editable: boolean;
+  writable: boolean;
+  knownBuild: boolean;
   players: number;
   staff: number;
   clubs: number;
   gameDate: FmDate | null;
   /** The checks, run again with the game as it is now. */
   health: Health;
+  career: Career | null;
   /**
    * Only when the game has loaded another save since: what was frozen in that one before and is frozen again, when
    * there was any. What was frozen in the save before is not held in this one.
@@ -201,6 +215,10 @@ export interface ClubDetails extends ClubSummary {
   finances: Finances | null;
   /** The stadium the senior team plays at; null when it could not be read. */
   stadium: Stadium | null;
+  /** Its rivals, strongest first. Read-only. */
+  rivals: Related[];
+  /** The clubs it is affiliated with. Read-only. */
+  links: Related[];
 }
 
 /** A stadium's name and capacities, as stored. */
@@ -262,6 +280,14 @@ export interface StaffDetails extends StaffSummary {
    */
   attributes: Record<string, Attribute>;
   contract: StaffContract | null;
+  /** Whether a human manager is protected from the sack; null where the build or the object does not tell. */
+  unsackable: boolean | null;
+  /** Whether a human manager may register his squad outside the windows; null like `unsackable`. */
+  registrationAnytime: boolean | null;
+  /** The languages he speaks besides, usually, his native one. Read-only. */
+  languages: Language[];
+  /** The people and clubs he favours and dislikes. Read-only. */
+  preferences: Preference[];
 }
 
 export interface FmDate {
@@ -293,6 +319,65 @@ export interface PlayerSummary {
 export interface PlayerPage {
   total: number;
   rows: PlayerSummary[];
+}
+
+/** The stadium a club's senior team plays at, from the same fields as the club profile. */
+export interface StadiumSummary {
+  /** The club's UID. One senior stadium per club. */
+  uid: number;
+  clubUid: number;
+  club: string;
+  women: boolean;
+  name: string | null;
+  capacity: number;
+  seating: number;
+  /** The capacity in use when the game limits it; 0 when it does not. */
+  used: number;
+  expansion: number;
+}
+
+export interface StadiumPage {
+  total: number;
+  rows: StadiumSummary[];
+}
+
+/** Filters for `search_stadiums`. */
+export interface StadiumFilter {
+  minCapacity?: number;
+  maxCapacity?: number;
+}
+
+/** A nation people in the loaded save belong to. Rankings, rules and kits are not part of this row. */
+export interface NationSummary {
+  /** Row id. The nation's own UID when that was read. */
+  uid: number;
+  /** The nation's own UID, for its flag. Null when `uid` is only a row id. */
+  nationUid: number | null;
+  name: string;
+}
+
+/** A match official, read-only. */
+export interface OfficialSummary {
+  uid: number;
+  name: string;
+  nation: string | null;
+  nationUid: number | null;
+  dateOfBirth: FmDate | null;
+  age: number | null;
+  currentAbility: number;
+  potentialAbility: number;
+  /** 0 to 10000. */
+  reputation: number;
+}
+
+export interface OfficialPage {
+  total: number;
+  rows: OfficialSummary[];
+}
+
+export interface NationPage {
+  total: number;
+  rows: NationSummary[];
 }
 
 /** A nation the nation field of a player or member of staff can be set to. */
@@ -357,6 +442,16 @@ export interface StaffFilter {
   job?: number;
   /** Only staff without a contract. */
   unemployed?: boolean;
+  /** Only the career's human managers. */
+  humanOnly?: boolean;
+  minAge?: number;
+  maxAge?: number;
+  minCurrentAbility?: number;
+  minPotentialAbility?: number;
+  /** Part of the nation's name; accents and case ignored. */
+  nation?: string;
+  /** Part of the employer's name; accents and case ignored. */
+  club?: string;
   /** Bounds on attributes, every one of which must hold. */
   attributes?: AttributeBound[];
 }
@@ -365,6 +460,12 @@ export interface StaffFilter {
 export interface ClubFilter {
   /** true: women's clubs only; false: men's clubs only. */
   women?: boolean;
+  /** 0–10000. A club with no reputation keeps to no bound. */
+  minReputation?: number;
+  maxReputation?: number;
+  /** A club with no founded year keeps to no bound. */
+  foundedFrom?: number;
+  foundedTo?: number;
 }
 
 /** An attribute as stored (`raw`, 0–100) and as FM shows it (`value`, 1–20). */
@@ -464,6 +565,10 @@ export interface PlayerDetails extends PlayerSummary {
   ties: Tie[];
   /** How many more ties his list has room for: the game sizes it to what it holds, and the editor allocates nothing. */
   tieRoom: number;
+  /** The people and clubs he favours and dislikes. Read-only. */
+  preferences: Preference[];
+  /** The languages he speaks besides, usually, his native one. Read-only. */
+  languages: Language[];
   /** Whether the editor can read the retirements the game has planned in this version of the game. */
   retirementKnown: boolean;
   /** The date the game plans him to retire on; null when it has planned none (or `retirementKnown` is false). */
@@ -473,6 +578,80 @@ export interface PlayerDetails extends PlayerSummary {
    * allocates nothing, so a release clause can be added to few contracts.
    */
   clauseRoom: number;
+}
+
+/** A person or club a player favours or dislikes. */
+export type PreferenceKind = "favouredPerson" | "dislikedPerson" | "favouredClub" | "dislikedClub";
+
+/** One of a player's favoured or disliked people and clubs. */
+export interface Preference {
+  /** Where it is in his list of relations. */
+  index: number;
+  kind: PreferenceKind;
+  /** The UID of the person or club. */
+  targetUid: number;
+  /** Null when the app could not name it. */
+  name: string | null;
+  /** How strongly, as the game stores it. */
+  strength: number;
+}
+
+/** A language a person speaks, and how well: FM's 0 to 10. */
+export interface Language {
+  name: string | null;
+  level: number;
+}
+
+/** A club another club is tied to: a rival, with how strong the rivalry is (0 to 100), or an affiliate. */
+/** A nation's profile, read-only. */
+export interface NationDetails {
+  code: string | null;
+  continent: string | null;
+  capital: string | null;
+  population: number | null;
+  /** Whether its people may hold another nationality as well; null when unknown. */
+  dualNationality: boolean | null;
+  /** Years of residence that gain its nationality; null when unknown or never. */
+  naturalisationYears: number | null;
+  naturalisationNever: boolean;
+  languages: NationLanguage[];
+  /** FIFA ranking; null when unranked. */
+  ranking: number | null;
+  points: number | null;
+  founded: number | null;
+  joinedFifa: number | null;
+  /** Strongest first. */
+  rivals: Related[];
+  /** The senior team first. */
+  teams: NationalTeam[];
+}
+
+export interface NationLanguage {
+  name: string | null;
+  percent: number;
+}
+
+export interface NationalTeam {
+  kind: number;
+  /** Null for the senior team. */
+  ageLimit: number | null;
+  reputation: number;
+  manager: NamedPerson | null;
+  captain: NamedPerson | null;
+  viceCaptain: NamedPerson | null;
+  squad: NamedPerson[];
+}
+
+export interface NamedPerson {
+  uid: number;
+  name: string;
+}
+
+export interface Related {
+  uid: number;
+  name: string | null;
+  /** Null for an affiliate. */
+  strength: number | null;
 }
 
 /** What ties a player to a nation or club: a secondary nationality, or a nation or club he was trained in. */
@@ -559,6 +738,7 @@ export type FieldValues = Record<string, number>;
 /** One value to write, as stored. */
 export interface FieldEdit {
   field: string;
+  expected: number;
   value: number;
 }
 
@@ -675,7 +855,7 @@ export type CaptainRole = "captain" | "viceCaptain";
  * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
  * "liftBans" lifts every ban, "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
  */
-export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes";
+export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes" | "maxCohesion";
 
 /** The columns that sort a squad table. */
 export type SquadSort =

@@ -8,8 +8,10 @@ use crate::date::FmDate;
 use crate::details::{Attribute, PERSONALITY, Reputation};
 use crate::filter::attribute_keys;
 use crate::index::{Listed, SearchIndex};
+use crate::languages::Language;
 use crate::players::{club_of_team, club_uid_of_team, nation_name, nation_uid};
 use crate::profile::{Layout, StaffLayout};
+use crate::relations::Preference;
 use crate::text::{Memo, display_name, is_name_like, read_fm_string, read_name_entry};
 
 /// Staff attributes grouped the way FM shows them.
@@ -273,6 +275,15 @@ pub struct StaffDetails {
     /// Attributes by key. Ratings FM stores as shown have `raw` equal to `value`.
     pub attributes: BTreeMap<String, Attribute>,
     pub contract: Option<StaffContract>,
+    /// Whether a human manager is protected from the sack, where the build and the object make that readable;
+    /// `None` for everyone else, never a guess.
+    pub unsackable: Option<bool>,
+    /// Whether a human manager may register his squad outside the registration windows; read like `unsackable`.
+    pub registration_anytime: Option<bool>,
+    /// The languages he speaks besides, usually, his native one. Read-only.
+    pub languages: Vec<Language>,
+    /// The people and clubs he favours and dislikes. Read-only.
+    pub preferences: Vec<Preference>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -326,6 +337,10 @@ pub fn read_staff_details(
         personality,
         attributes,
         contract: read_staff_contract(process, layout, u64_at(s.contract)),
+        unsackable: None,
+        registration_anytime: None,
+        languages: Vec::new(),
+        preferences: Vec::new(),
     }))
 }
 
