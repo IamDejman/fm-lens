@@ -1055,6 +1055,13 @@ export const en = {
           body: "The bar at the bottom shows whether you're connected to FM.",
         },
       },
+      exercise: {
+        list: { title: "Try an edit", body: "Open anyone in the list." },
+        edit: { title: "Edit", body: "Press Edit, or click a value." },
+        profile: { title: "Change a value", body: "Type a new value. Nothing goes into FM yet." },
+        apply: { title: "Apply", body: "Apply puts the change into FM. Discard drops it." },
+        changes: { title: "Changes", body: "Every applied change is listed here, and can be undone." },
+      },
     },
 
     // The note at the foot of the sidebar; which one shows depends on the connection (see `ConnectionInfo.editable`).
