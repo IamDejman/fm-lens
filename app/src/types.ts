@@ -581,6 +581,16 @@ export interface PlayerDetails extends PlayerSummary {
   clauseRoom: number;
   /** The terms of the loan he is on; null when he is on none, or the build does not place loans. */
   loan: LoanTerms | null;
+  /** One for each nation the game keeps a work permit record of him for; empty for most players. */
+  workPermits: WorkPermit[];
+}
+
+/** A player's work permit for one nation. */
+export interface WorkPermit {
+  nation: string | null;
+  nationUid: number | null;
+  granted: boolean;
+  grantedOn: FmDate | null;
 }
 
 /** A loan's terms; the club the player plays for is the borrower. */

@@ -2514,6 +2514,13 @@ fn player(session: &Session, uid: u32) -> Result<()> {
             date(loan.ends)
         );
     }
+    for permit in &d.work_permits {
+        println!(
+            "  work permit    {}: {}",
+            permit.nation.as_deref().unwrap_or("?"),
+            if permit.granted { format!("granted {}", date(permit.granted_on)) } else { "not granted".to_owned() }
+        );
+    }
     Ok(())
 }
 

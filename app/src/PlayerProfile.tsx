@@ -29,7 +29,7 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { ApplyReport, Concern, Contract, FmDate, LoanTerms, PlayerDetails, PlayerSummary } from "./types";
+import type { ApplyReport, Concern, Contract, FmDate, LoanTerms, PlayerDetails, PlayerSummary, WorkPermit } from "./types";
 import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
@@ -150,6 +150,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
 
       {details.contract && <ContractGroup details={details} contract={details.contract} />}
       {details.loan && <LoanGroup loan={details.loan} />}
+      {details.workPermits.length > 0 && <WorkPermitGroup permits={details.workPermits} />}
       <CareerGroup details={details} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} />
@@ -245,6 +246,24 @@ function LoanGroup({ loan }: { loan: LoanTerms }) {
         <Fact label={profileText.loanEnds}>
           <EditableValue field="loan.ends">{date(loan.ends)}</EditableValue>
         </Fact>
+      </dl>
+    </section>
+  );
+}
+
+/** His work permits: for each nation, whether one was granted and when. */
+function WorkPermitGroup({ permits }: { permits: readonly WorkPermit[] }) {
+  return (
+    <section className="profile-group">
+      <h3>{profileText.workPermit}</h3>
+      <dl className="stats">
+        {permits.map((permit, index) => (
+          <Fact key={permit.nationUid ?? index} label={permit.nation ?? profileText.none}>
+            {permit.granted
+              ? profileText.permitGranted(formatDate(permit.grantedOn) || profileText.none)
+              : profileText.permitNotGranted}
+          </Fact>
+        ))}
       </dl>
     </section>
   );

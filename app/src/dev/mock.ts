@@ -39,6 +39,7 @@ import type {
   Ban,
   Injury,
   LoanTerms,
+  WorkPermit,
   Preference,
   Tie,
   Clause,
@@ -275,6 +276,7 @@ function details(player: PlayerSummary): PlayerDetails {
     languages: languagesOf(player.uid),
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     loan: loanOf(player),
+    workPermits: workPermitsOf(player),
     retirementKnown: true,
     retires: retiresOf(player.uid),
     // Drawn last, so that the values above come out as before.
@@ -295,6 +297,15 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
     starts: { year: 2026, month: 8, day: 10 },
     ends: { year: 2027, month: 6, day: 29 },
   };
+}
+
+/** Every seventh player abroad has an English work permit record; most of those were granted one. */
+function workPermitsOf(player: PlayerSummary): WorkPermit[] {
+  if (!player.club || player.uid % 7 !== 0) {
+    return [];
+  }
+  const granted = player.uid % 3 !== 0;
+  return [{ nation: "England", nationUid: 765, granted, grantedOn: granted ? { year: 2026, month: 2, day: 3 } : null }];
 }
 
 /** The fixture players healed through the editor, by UID, while the healing is not undone. */
