@@ -13,6 +13,10 @@ current_date = 0x5C69700
 # The static pointer to the retirement manager, loaded in 61 places; its class is checked before it is used.
 retirement_manager = 0x5C5FEF0
 
+# The (begin, end) pair of the match officials' array, 0x78 above the players' as in the arm64 half: three functions
+# that walk the officials (by nation, by competition) load it where their arm64 twins load 0x56D2E90.
+officials = 0x5C89240
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "0981AB31-AC3B-3D93-944F-47FE4B59CD9E"
@@ -22,3 +26,11 @@ uuid = "0981AB31-AC3B-3D93-944F-47FE4B59CD9E"
 players = 0x5C891C8
 staff = 0x5C89210
 clubs = 0x5C89380
+
+# The human manager's flags word, traced statically: become_unsackable's handler (0x25643B0) finds the selected human
+# manager through the same vtable slots as the arm64 half and toggles bit 1 of the u32 at +0x3FC (andl/orl at
+# 0x25644AF). The object layout is the arm64 half's.
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = "N2db16HUMAN_NON_PLAYERE"
