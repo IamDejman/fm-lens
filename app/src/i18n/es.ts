@@ -598,7 +598,10 @@ export const es: Strings = {
     retires: "Prevé retirarse",
     preferences: "Afinidades",
     languages: "Idiomas",
-    languageLevel: (level: number) => `${level}/10`,
+    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    languageLevel: (level: number): string =>
+      level > 9 ? "Nativo" : level >= 7 ? "Fluido" : level >= 5 ? "Bueno" : level >= 2 ? "Básico" : "No lo habla",
+    languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rivales",
     linkedClubs: "Clubes afiliados",
     preferenceKinds: {
