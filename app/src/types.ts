@@ -94,8 +94,22 @@ export interface ConnectionInfo {
   health: Health;
   /** The human manager and club of the loaded career; connecting fails without one. */
   career: Career | null;
+  /** The edits the game makes itself on this build, through the bridge. */
+  gameActions: GameActions;
   /** Only from `connect`: what it froze again of what was frozen in this save before, when there was any. */
   refrozen?: Refrozen;
+}
+
+/** Which edits the game can make itself on this connection (see `add_injury` and `set_work_permit`). */
+export interface GameActions {
+  addInjury: boolean;
+  workPermit: boolean;
+}
+
+/** A kind of injury the game knows, as a choice for `add_injury`. */
+export interface InjuryKind {
+  uid: number;
+  name: string;
 }
 
 export interface ReloadInfo {
@@ -849,9 +863,11 @@ export interface LoggedChange {
   undoneAt: number | null;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
-  // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0, and
-  // lifting his bans (`lift_bans`) as a change of his field "bans", and keeping him from retiring (`keep_playing`) as
-  // a change of his field "retirement" from the date he was to retire on (a number like 20270630; 0 for none) to 0.
+  // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0 (adding
+  // one, `add_injury`, from 0 to 1), granting or taking away a work permit (`set_work_permit`) as one of his field
+  // "work_permit" between 0 and 1, lifting his bans (`lift_bans`) as a change of his field "bans", and keeping him from
+  // retiring (`keep_playing`) as a change of his field "retirement" from the date he was to retire on (a number like
+  // 20270630; 0 for none) to 0.
   /**
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
    * values are the clubs' UIDs: the clubs' names. A release (`release_player`) is logged the same way, with 0 for

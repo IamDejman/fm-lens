@@ -12,6 +12,7 @@ import type {
   FieldEdit,
   FieldValues,
   FmDate,
+  InjuryKind,
   LoggedChange,
   MassFilters,
   MassOperation,
@@ -251,6 +252,16 @@ export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("s
  * field `injuries` from how many he had to 0, and undone as one; fails when he has none.
  */
 export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { uid });
+
+/** The kinds of injury the game knows, in its order. */
+export const injuryKinds = () => call<InjuryKind[]>("injury_kinds");
+
+/** Has the game give the player an injury of the kind with UID `kind`; it picks how long it lasts. */
+export const addInjury = (uid: number, kind: number) => call<LoggedChange>("add_injury", { uid, kind });
+
+/** Has the game grant the player a work permit for his club's country, or take it away. */
+export const setWorkPermit = (uid: number, granted: boolean) =>
+  call<LoggedChange>("set_work_permit", { uid, granted });
 
 /**
  * Lifts every current ban of the player, as the game does once he has served them; his other absences stay. Logged

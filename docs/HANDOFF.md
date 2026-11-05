@@ -56,14 +56,8 @@ Built on top of it (core and Tauri only, no UI yet):
 
 ## 3. What is left, in order
 
-1. **UI for the two call actions** (`app/src`): add `gameActions` to `ConnectionInfo` in `types.ts` and to
-   `EditorState` (`useProfileEditing.ts`, provided in `App.tsx`). In `MedicalGroup.tsx`, where "No injuries" shows,
-   an Add injury control (select of `injury_kinds`, fetched once per connection, plus an Add button) when
-   `gameActions.addInjury`. In `PlayerProfile.tsx` `WorkPermitGroup`, a Grant / Revoke button when
-   `gameActions.workPermit`; show the group for a player at a club even with no records. Wrappers in `editing.ts`,
-   mock cases in `dev/mock.ts`, strings in en/es/tr, field labels for `work_permit` in the change log (`labels.ts`).
-   Error codes to translate: `call.unavailable`, `call.declined`, `injury.already`, `injury.noKind`. Run the design
-   and React review skills.
+1. **UI for the two call actions**: done on `feat/call-actions-ui` (Add injury in Medical, Grant / Revoke in Work
+   permit, both gated by `gameActions`, logged and undone from Changes). Preview checked; game check in section 4.
 2. **Loan start** (docs/recon/fm27-call-shapes.md section 3): fill the 0x70-byte STARTING_LOAN in scratch (vtable
    `base+0x55BE9D8`, player at +0x18 = the player object, loan club team at +0x20, dates at +0x30/+0x34 as FmDate,
    the rest as the table gives) and call `0x2E0A324(TRANSFER_MANAGER, &O, 1)`. Add `start_loan` to `[calls]` and
