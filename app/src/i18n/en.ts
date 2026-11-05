@@ -1003,6 +1003,46 @@ export const en = {
     reputation: "Reputation",
   },
 
+  competitionList: {
+    nav: "Competitions",
+    search: "Search competitions by name or ID",
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 competition" : `${format(total)} competitions`;
+      return total > shown ? `${count} · Top ${shown} by reputation` : count;
+    },
+    empty: (query: string) =>
+      query === "" ? "Couldn't read any competitions on this version of FM." : `No competitions match “${query}”.`,
+    columns: { name: "Name", nation: "Nation", continent: "Continent", reputation: "Reputation", uid: "ID" },
+    shortName: "Short name",
+    reputation: "Reputation",
+    /** The small tag on a women's competition. */
+    women: "Women",
+  },
+
+  awardList: {
+    nav: "Awards",
+    search: "Search awards by name, competition or ID",
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 award" : `${format(total)} awards`;
+      return total > shown ? `${count} · Top ${shown} by prestige` : count;
+    },
+    empty: (query: string) =>
+      query === "" ? "Couldn't read any awards on this version of FM." : `No awards match “${query}”.`,
+    columns: { name: "Name", competition: "Competition", nation: "Nation", prestige: "Prestige", uid: "ID" },
+    competition: "Competition",
+    prestige: "Prestige",
+    /** How often it is given, by FM's code; null for the codes not named yet. */
+    period: "Given",
+    periodName: (code: number): string | null =>
+      ({ 1: "Every week", 2: "Every month", 3: "Every season" })[code] ?? null,
+    /** Who gets it, by FM's code; null for the codes not named yet. */
+    recipients: "Given to",
+    recipientName: (code: number): string | null => ({ 1: "A player", 2: "A manager", 7: "A team of players" })[code] ?? null,
+    goalkeepersOnly: "Goalkeepers only",
+    ageLimit: "Age limit",
+    ageLimitValue: (age: number) => `${age} or under`,
+  },
+
   stadiumList: {
     nav: "Stadiums",
     search: "Search stadiums by name or club",

@@ -55,7 +55,7 @@ further data-layout and game-behavior research.
 | Light/dark appearance | Available: System, Light and Dark selector with local persistence; native light/dark check performed. FM-inspired refinement (see FM-LENS-INTERFACE.md) has native light/dark checks at 125/150% zoom, including native confirmation of the filter overflow fix |
 | Currency selector | Available; broader locale checks remain |
 | Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent; native scaling/viewport regression checks required |
-| Keyboard navigation | Available: ⌘1-⌘7 sections, ⌘F search, arrow keys in lists, Enter/Space opens, Escape closes, ⌘S applies edits (see DESIGN-STANDARDS.md) |
+| Keyboard navigation | Available: ⌘1-⌘9 sections, ⌘F search, arrow keys in lists, Enter/Space opens, Escape closes, ⌘S applies edits (see DESIGN-STANDARDS.md) |
 | Guided first-run tour | Delivered: skippable introduction to navigation, search, settings and the editing boundary, then, once the game can be edited, a guided first edit (open, Edit, change, Apply, Changes) that follows what the user does |
 
 ## Delivery order

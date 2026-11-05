@@ -10,6 +10,7 @@ mod clauses;
 mod clubs;
 mod coded;
 mod cohesion;
+mod competitions;
 mod date;
 mod details;
 mod edit;
@@ -21,7 +22,6 @@ mod health;
 mod index;
 mod languages;
 mod loans;
-mod work_permits;
 mod mass;
 mod medical;
 mod national;
@@ -39,6 +39,7 @@ mod staff_move;
 mod template;
 mod text;
 mod transfer;
+mod work_permits;
 
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
@@ -48,6 +49,7 @@ pub use clubs::{
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
+pub use competitions::{AwardSummary, CompetitionSummary};
 pub use date::FmDate;
 pub use details::{
     ATTRIBUTE_GROUPS, Attribute, Clause, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
@@ -62,7 +64,6 @@ pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
 pub use index::{Listed, SearchIndex};
 pub use languages::Language;
 pub use loans::LoanTerms;
-pub use work_permits::WorkPermit;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, LiftPlan, Lifted};
 pub use national::{NationDetails, NationLanguage, NationalTeam, Person, WomenFootball};
@@ -89,3 +90,4 @@ pub use staff_move::{Department, STAFF_JOBS, StaffChange, StaffPlan, department_
 pub use template::{PlayerTemplate, TemplateError, TemplateGroup};
 pub use text::{fold, is_name_like, read_fm_string, read_name_entry};
 pub use transfer::{Amounts, ClubMoney, ClubMove, FeePlan, MAX_FEE, MoveError, MovePlan, MoveTerms, Paid};
+pub use work_permits::WorkPermit;

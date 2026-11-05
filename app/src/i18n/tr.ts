@@ -981,6 +981,37 @@ export const tr: Strings = {
     reputation: "İtibar",
   },
 
+  competitionList: {
+    nav: "Turnuvalar",
+    search: "Turnuvaları isim veya UID ile ara",
+    summary: (total, shown) =>
+      total > shown ? `${format(total)} turnuva · itibarı en yüksek ${shown}` : `${format(total)} turnuva`,
+    empty: (query) =>
+      query === "" ? "FM'in bu sürümünde turnuvalar okunamadı." : `“${query}” aramasına uyan turnuva yok.`,
+    columns: { name: "İsim", nation: "Ülke", continent: "Kıta", reputation: "İtibar", uid: "UID" },
+    shortName: "Kısa isim",
+    reputation: "İtibar",
+    women: "Kadın",
+  },
+
+  awardList: {
+    nav: "Ödüller",
+    search: "Ödülleri isim, turnuva veya UID ile ara",
+    summary: (total, shown) =>
+      total > shown ? `${format(total)} ödül · prestiji en yüksek ${shown}` : `${format(total)} ödül`,
+    empty: (query) => (query === "" ? "FM'in bu sürümünde ödüller okunamadı." : `“${query}” aramasına uyan ödül yok.`),
+    columns: { name: "İsim", competition: "Turnuva", nation: "Ülke", prestige: "Prestij", uid: "UID" },
+    competition: "Turnuva",
+    prestige: "Prestij",
+    period: "Veriliş sıklığı",
+    periodName: (code) => ({ 1: "Her hafta", 2: "Her ay", 3: "Her sezon" })[code] ?? null,
+    recipients: "Kime",
+    recipientName: (code) => ({ 1: "Bir oyuncuya", 2: "Bir teknik direktöre", 7: "Bir oyuncu takımına" })[code] ?? null,
+    goalkeepersOnly: "Sadece kaleciler",
+    ageLimit: "Yaş sınırı",
+    ageLimitValue: (age) => `${age} yaş ve altı`,
+  },
+
   stadiumList: {
     nav: "Stadyumlar",
     search: "İsim veya kulüple stadyum ara",
