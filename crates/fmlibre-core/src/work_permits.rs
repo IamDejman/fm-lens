@@ -29,7 +29,8 @@ impl Session {
     /// places no permits or the manager is not where it says. Only reads memory.
     fn permit_records(&self) -> Option<Vec<u64>> {
         let w = self.layout.work_permit.as_ref()?;
-        let manager = self.process.read_u64(self.plugin.base + w.manager).ok().filter(|&m| is_user_pointer(m))?;
+        let slot = self.profile.as_ref()?.transfer_manager?;
+        let manager = self.process.read_u64(self.plugin.base + slot).ok().filter(|&m| is_user_pointer(m))?;
         if crate::rtti::class_of(&self.process, &self.plugin, manager).as_deref() != Some(w.class.as_str()) {
             return None;
         }
