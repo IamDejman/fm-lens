@@ -46,7 +46,8 @@ impl Arg {
 }
 
 /// One call of a function of the game plugin, with the arguments of the arm64 calling convention:
-/// `x0` to `x7`, the indirect result register `x8`, and four 8-byte stack slots.
+/// `x0` to `x7`, the indirect result register `x8`, and four 8-byte stack slots. On x86_64 the bridge
+/// passes the same twelve arguments the System V way, six in registers and the rest on the stack.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Step {

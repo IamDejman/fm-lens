@@ -881,7 +881,7 @@ pub struct BuildProfile {
     #[serde(default)]
     pub officials: Option<u64>,
     /// RVA in the game plugin of the static pointer to the transfer manager, which keeps the work permits
-    /// ([`WorkPermitLayout`]), on the one build where it has been read.
+    /// ([`WorkPermitLayout`]), on the builds where it has been found.
     #[serde(default)]
     pub transfer_manager: Option<u64>,
     /// RVAs in the game plugin of the static pointers to the database tables of competitions ([`CompetitionLayout`])
@@ -898,7 +898,7 @@ pub struct BuildProfile {
     /// their injuries, on the one build where it has been read.
     #[serde(default)]
     pub injury_manager: Option<u64>,
-    /// The game's own functions FM Lens has the game run, through the bridge on macOS, on the one build where their
+    /// The game's own functions FM Lens has the game run, through the bridge on macOS, on the builds where their
     /// shapes have been traced.
     #[serde(default)]
     pub calls: Option<CallRvas>,
@@ -1341,5 +1341,20 @@ mod tests {
         let officials = |uuid| profile_for(PluginFingerprint::MachO { uuid }).and_then(|profile| profile.officials);
         assert_eq!(officials(arm64), Some(0x56D_2E90));
         assert_eq!(officials(intel), Some(0x5C8_9240));
+    }
+
+    #[test]
+    fn both_halves_of_27_0_0_on_macos_have_work_permits() {
+        let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let permits = |uuid| {
+            let profile = profile_for(PluginFingerprint::MachO { uuid }).expect("27.0.0 on macOS");
+            let calls = profile.calls.unwrap_or_default();
+            (profile.transfer_manager, calls.set_work_permit, calls.find_work_permit, calls.remove_work_permit)
+        };
+        assert_eq!(permits(arm64), (Some(0x56A_49F8), Some(0x2D8_5294), Some(0x2DD_D12C), Some(0x2DC_0210)));
+        assert_eq!(permits(intel), (Some(0x5C5_DE80), Some(0x309_A010), Some(0x30F_C8E0), Some(0x30D_8D20)));
+        let intel = profile_for(PluginFingerprint::MachO { uuid: intel }).and_then(|profile| profile.calls);
+        assert_eq!(intel.map(|calls| calls.all().len()), Some(3), "only the work permit calls on Intel");
     }
 }
