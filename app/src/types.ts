@@ -872,6 +872,8 @@ export interface LoggedChange {
   new: number;
   /** When it was undone, if it was. */
   undoneAt: number | null;
+  /** Written to a game FM has since closed or loaded a save into: still listed, but no longer undone. */
+  earlierGame?: boolean;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
   // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0 (adding

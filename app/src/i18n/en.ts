@@ -1480,6 +1480,8 @@ export const en = {
     /** Hover text of a change of an attribute: the values as stored; `change` is from `valueChange`. */
     stored: (change: string) => `stored ${change}`,
     undone: (time: string) => `Undone at ${time}`,
+    /** A change made before FM was closed or loaded a save: it can no longer be undone. */
+    earlierGame: "Earlier game",
     undo: "Undo",
     /** Hover text of Undo; `label` is the field's name. */
     undoTitle: (label: string) => `Put ${label} back to its old value`,

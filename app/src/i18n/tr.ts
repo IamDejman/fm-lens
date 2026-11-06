@@ -195,6 +195,7 @@ const errors: ErrorTexts = {
   "app.dataChanged": () => `Bu veriler oyunda değişti; ${reload}.`,
   "app.noChange": (p) => `${p.id} numaralı bir değişiklik yok.`,
   "app.alreadyUndone": () => "Bu değişiklik zaten geri alındı.",
+  "app.earlierGame": () => "Bu değişiklik FM kapanmadan ya da bir kayıt yüklenmeden önce yapıldı; artık geri alınamaz.",
   "export.failed": (p) => `Dosya yazılamadı: ${p.reason}`,
   "export.notAllowed": (p) =>
     `FM Lens ${p.folder} klasörüne yazamıyor. macOS, Belgeler klasörünü kullanıp kullanamayacağını sorduysa ` +
@@ -1356,6 +1357,7 @@ export const tr: Strings = {
     kinds: { player: "Oyuncu", staff: "Personel", club: "Kulüp", nation: "Ülke", official: "Hakem" } satisfies Record<Entity, string>,
     stored: (change) => `saklanan ${change}`,
     undone: (time) => `Geri alındı: ${time}`,
+    earlierGame: "Önceki oyun",
     undo: "Geri al",
     undoTitle: (label) => `Eski değeri oyuna geri yaz: ${label}`,
     batch: "Toplu düzenleme",

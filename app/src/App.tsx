@@ -90,7 +90,7 @@ function App() {
   const [refrozen, setRefrozen] = useState<Refrozen | null>(null);
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
-  const { log, error: logError, reload: reloadLog, clear: clearLog } = useChangeLog();
+  const { log, error: logError, reload: reloadLog } = useChangeLog();
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
     if (inTauri) {
@@ -118,9 +118,9 @@ function App() {
   const connect = () =>
     run(appText.connecting, async () => {
       const { refrozen: again, ...connected } = await call<ConnectionInfo>("connect");
-      // A new connection has an empty change log, and its field tables may differ.
+      // A new connection lists the changes of the game before, and its field tables may differ.
       forgetFieldTables();
-      clearLog();
+      void reloadLog();
       setConnection(connected);
       setRefrozen(again ?? null);
       setDataVersion((v) => v + 1);
