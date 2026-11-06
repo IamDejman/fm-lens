@@ -3019,7 +3019,7 @@ fn apply_edits(
     Ok(report)
 }
 
-/// Flush successful Apply/Undo notifications once per entity, separately from the data write.
+/// Flush successful Apply/Undo notifications once per entity and refresh active views, separately from the data write.
 /// A failed refresh must never turn a successful mutation into an invitation to apply it again.
 #[tauri::command]
 fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
@@ -3027,6 +3027,7 @@ fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let pending = std::mem::take(&mut connection.pending_refresh);
     let contract = std::mem::take(&mut connection.pending_contract_refresh);
+    let refresh_views = !pending.is_empty() || contract;
     let mut seen = Vec::new();
     let mut errors = Vec::new();
     for (entity, uid) in pending {
@@ -3041,7 +3042,7 @@ fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
             errors.push(error.message);
         }
     }
-    if contract && let Err(error) = connection.session.refresh_views() {
+    if refresh_views && let Err(error) = connection.session.refresh_views() {
         errors.push(Failure::from(error).message);
     }
     if errors.is_empty() {
