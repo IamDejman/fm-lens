@@ -45,6 +45,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   endLoan: false,
   futureTransfer: false,
   maxTactics: false,
+  moveManager: false,
 };
 
 export const EditorContext = createContext<EditorState>({

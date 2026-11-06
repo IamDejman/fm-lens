@@ -29,6 +29,7 @@ mod national;
 mod officials;
 mod players;
 mod profile;
+mod promises;
 mod relations;
 mod retirement;
 pub mod rtti;
@@ -51,7 +52,7 @@ pub use clubs::{
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
-pub use competitions::{AwardSummary, CompetitionSummary};
+pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue};
 pub use date::FmDate;
 pub use details::{
     ATTRIBUTE_GROUPS, Attribute, Clause, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
@@ -62,8 +63,8 @@ pub use export::{ExportFormat, ExportHeader, Exported};
 pub use filter::{AttributeBound, ClubFilter, PlayerFilter, PlayerOrder, PlayerSort, StaffFilter, sort_players};
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use game_calls::{
-    AddedInjury, AgreedSigning, EndedLoan, FutureTransfer, GameActions, InjuryKind, PermitChange, SignedPlayer,
-    StartedLoan,
+    AddedInjury, AgreedSigning, EndedLoan, FutureTransfer, GameActions, InjuryKind, MANAGER_JOB, ManagerPlan,
+    MovedManager, PermitChange, SignedPlayer, StartedLoan,
 };
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
@@ -71,7 +72,7 @@ pub use index::{Listed, SearchIndex};
 pub use languages::{LEAST_LEVEL, Language, LanguagePlan, LanguageSet, MOST_LEVEL};
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
-pub use medical::{Ban, HealPlan, Healed, Injury, LiftPlan, Lifted};
+pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan, Lifted};
 pub use national::{NationDetails, NationLanguage, NationalTeam, Person, WomenFootball};
 pub use officials::OfficialSummary;
 pub use players::{
@@ -81,6 +82,7 @@ pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,
     profile_for,
 };
+pub use promises::{Promise, PromiseClosed, PromisePlan};
 pub use relations::{
     HOMEGROWN_RULES, MOST_STRENGTH, PersonRef, Preference, PreferenceKind, PreferencePlan, PreferenceSet, Related,
     Relation, RelationPlan, RelationSet, Tie, TieTarget,

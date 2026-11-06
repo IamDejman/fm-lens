@@ -238,6 +238,11 @@ function App() {
   const edited = useCallback(() => {
     setDataVersion((v) => v + 1);
     void reloadLog();
+    // The human manager may have changed clubs. Not knowing leaves the header as it was.
+    call<Career | null>("career").then(
+      (career) => setConnection((c) => c && { ...c, career }),
+      () => {},
+    );
   }, [reloadLog]);
 
   const editable = connection?.editable ?? false;
@@ -405,7 +410,9 @@ function App() {
 
       <footer className="colophon">
         <div className="colophon-main">
-          <span className="colophon-name">FM Lens</span>
+          <span className="colophon-name">
+            FM Lens{version && <span className="colophon-version"> {version}</span>}
+          </span>
           <span className={`status ${connection ? "on" : ""}`} data-tour="status">
             <span className="dot" />
             <span className="status-text">
