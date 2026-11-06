@@ -1,43 +1,33 @@
 import { updateText } from "./labels";
-import { openLatestRelease, type InstallProgress, type UpdateState } from "./update";
+import { openLatestRelease, type UpdateState } from "./update";
 
 const text = updateText;
 
-/** How far installing has got, in the notice's words. */
-function progressText(progress: InstallProgress): string {
-  switch (progress.phase) {
-    case "preparing":
-      return text.preparing;
-    case "downloading":
-      return text.downloading(progress.percent);
-    case "installing":
-      return text.installing;
-  }
-}
-
 /**
- * The notice under the masthead about a newer version: how far installing it has got, after which the app starts again
- * as the new version. Where this copy cannot install it, or installing failed, Download opens its release page and
- * Later hides the notice.
+ * The notice under the masthead about a newer version this copy cannot install itself, or failed to: Download opens
+ * its release page and Later hides the notice. An installed one shows as Relaunch to update in the colophon instead.
  */
-export function UpdateNotice({ update, onDismiss }: { update: UpdateState; onDismiss: () => void }) {
+export function UpdateNotice({
+  update,
+  onDismiss,
+}: {
+  update: Exclude<UpdateState, { phase: "ready" }>;
+  onDismiss: () => void;
+}) {
   return (
     <div className="update-notice" role="status">
       <span>
-        <strong>{update.phase === "installing" ? text.updating(update.version) : text.available(update.version)}</strong>
-        {update.phase === "installing" && <span className="update-progress">{progressText(update.progress)}</span>}
+        <strong>{text.available(update.version)}</strong>
         {update.phase === "failed" && <span className="update-error">{text.installFailed(update.reason)}</span>}
       </span>
-      {update.phase !== "installing" && (
-        <span className="update-actions">
-          <button type="button" className="primary" onClick={openLatestRelease}>
-            {text.download}
-          </button>
-          <button type="button" onClick={onDismiss}>
-            {text.later}
-          </button>
-        </span>
-      )}
+      <span className="update-actions">
+        <button type="button" className="primary" onClick={openLatestRelease}>
+          {text.download}
+        </button>
+        <button type="button" onClick={onDismiss}>
+          {text.later}
+        </button>
+      </span>
     </div>
   );
 }
