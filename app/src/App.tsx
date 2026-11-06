@@ -32,6 +32,8 @@ import { StadiumBrowser } from "./StadiumBrowser";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
+import { useUpdate } from "./update";
+import { UpdateNotice } from "./UpdateNotice";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
@@ -91,6 +93,7 @@ function App() {
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog } = useChangeLog();
+  const { update, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
     if (inTauri) {
@@ -348,6 +351,7 @@ function App() {
       </header>
 
       <div className="main">
+        {update && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
         {connection && <CompatibilityNotice connection={connection} />}
         {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
         {error && <div className="banner" role="alert">{error}</div>}

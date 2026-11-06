@@ -104,7 +104,9 @@ validated fields and the guarded memory layer for domain operations.
 - The installed bridge folder ~/Library/Application Support/FM27Scout/ is a
   stable legacy path. Do not rename it just for branding or break existing setup.
 - Keep the companion usable offline. Do not add runtime login/licensing
-  dependencies or restore upstream automatic updates.
+  dependencies. Updates come only from FM Lens's own signed releases in
+  IamDejman/fm-lens-releases, never from upstream, and the check at launch
+  gives up quietly offline.
 
 ## Evidence and status
 
