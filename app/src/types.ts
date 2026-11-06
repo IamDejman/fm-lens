@@ -635,6 +635,8 @@ export interface PlayerDetails extends PlayerSummary {
   injuries: Injury[];
   /** His current bans; empty when he has none. */
   bans: Ban[];
+  /** The promises made to him, open and recently closed; FM drops a closed one 31 days after it ends. */
+  promises: Promise[];
   /** His secondary nationalities, and the nations and clubs he was trained in (his homegrown status). */
   ties: Tie[];
   /** How many more ties his list has room for: the game sizes it to what it holds, and the editor allocates nothing. */
@@ -826,6 +828,17 @@ export interface Injury {
 }
 
 /** One current ban of a player. */
+/** A promise made to a player. FM names promises in its language files only, so `id` is FM's number for it. */
+export interface Promise {
+  id: number;
+  /** FM's status code: 0 while open. */
+  status: number;
+  closed: boolean;
+  made: FmDate | null;
+  /** When it is due while open; once closed, when it ended. */
+  due: FmDate | null;
+}
+
 export interface Ban {
   started: FmDate | null;
   /** How many matches he still has to miss. */
@@ -920,7 +933,8 @@ export interface LoggedChange {
   // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0 (adding
   // one, `add_injury`, from 0 to 1), granting or taking away a work permit (`set_work_permit`) as one of his field
   // "work_permit" (0 none, 1 a work permit, or the day an ESC slot began, like 20270203), lifting his bans
-  // (`lift_bans`) as a change of his field "bans", and keeping him from retiring (`keep_playing`) as a change of his
+  // (`lift_bans`) as a change of his field "bans", closing a promise (`close_promise`) as a change of his field "promise"
+  // from FM's number for it to 0, and keeping him from retiring (`keep_playing`) as a change of his
   // field "retirement" from the date he was to retire on (a number like 20270630; 0 for none) to 0.
   /**
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new

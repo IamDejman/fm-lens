@@ -562,6 +562,7 @@ export const es: Strings = {
     injuries: "Lesiones",
     work_permit: "Permiso de trabajo",
     bans: "Sanciones",
+    promise: "Promesa",
     cohesion: "Familiaridad con el club",
     tactics: "Familiaridad táctica",
     retirement: "Retirada",
@@ -781,6 +782,13 @@ export const es: Strings = {
     banStarted: (date) => `Desde el ${date}`,
     liftBans: "Levantar",
     liftBansTitle: "Levantar todas las sanciones de este jugador en el juego",
+    promises: "Promesas",
+    promiseName: (id) => `Promesa ${id}`,
+    promiseMade: (date) => `Hecha el ${date}`,
+    promiseDue: (date) => `Vence el ${date}`,
+    promiseEnded: (date) => `Terminó el ${date}`,
+    closePromise: "Cerrar",
+    closePromiseTitle: "Terminar esta promesa sin que cuente en su contra",
 
     // Sobre los atributos, mientras se lee el perfil
     setAttributes: "Poner todos los atributos en",
@@ -1404,6 +1412,7 @@ export const es: Strings = {
     healed: (count) => (count === 1 ? "1 lesión curada" : `${format(count)} lesiones curadas`),
     injuryAdded: "Lesión añadida",
     lifted: (count) => (count === 1 ? "1 sanción levantada" : `${format(count)} sanciones levantadas`),
+    promiseClosed: (id) => `Promesa ${id} cerrada`,
     keptPlaying: (date) => (date === null ? "Seguirá jugando" : `Retirada del ${date} evitada`),
     count: (total, undone) => {
       const count = changeCount(total);
