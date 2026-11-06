@@ -84,7 +84,7 @@ Nations, clubs and competitions
   joined FIFA.
 - Max tactics through FM's own editor action, and an experimental Max cohesion.
 - Competitions and Awards views, read-only.
-- Intel Macs get the officials, the human manager and work permits.
+- Intel Macs get the officials, your manager and work permits.
 
 ## Known issues
 

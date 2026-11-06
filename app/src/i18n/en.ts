@@ -99,6 +99,8 @@ const errors: ErrorTexts = {
   "edit.notApplied": (p) => `${field(p.field)} didn't stick: FM Lens wrote ${p.wrote}, FM has ${p.read}.`,
   "edit.conflict": (p) => `FM has since changed ${field(p.field)} to ${p.found}, so it was left alone.`,
   "move.outOfRange": (p) => `${field(p.field)} must be from ${p.min} to ${p.max}. You entered ${p.value}.`,
+  "move.humanClub": () => "He plays for your club. Transfer him in FM.",
+  "move.you": () => "That's you. Change clubs in FM.",
   "export.failed": (p) => `Couldn't save the file: ${p.reason}`,
   "export.notAllowed": (p) =>
     `FM Lens can't save to ${p.folder}. Allow it in System Settings › Privacy & Security › Files & Folders, ` +
@@ -940,7 +942,7 @@ export const en = {
       /** The entry of the job select that is no filter. */
       anyJob: "Any",
       unemployedOnly: "Unemployed only",
-      humanOnly: "Human managers only",
+      humanOnly: "Only you",
       age: "Age",
       minAge: "Minimum age",
       maxAge: "Maximum age",
@@ -1792,8 +1794,6 @@ export const en = {
     // The fee
     feeHeading: "Fee",
     fee: "Transfer fee",
-    /** Under the fee input while it can be sent, and while it cannot. */
-    feeHint: "Leave it empty for a free transfer",
     /** `max` is the most a fee can be, as amounts are shown. */
     feeInvalid: (max: string) => `Enter a whole amount from 0 to ${max}`,
     /**
@@ -1817,18 +1817,6 @@ export const en = {
     checking: "Checking the transfer…",
     /** The move can be made; `from` and `to` are the names of the clubs. */
     route: (from: string, to: string) => `${from} → ${to}`,
-    doesHeading: "What happens",
-    /** What the game does to the player, one line each. */
-    does: [
-      "He joins the new club's first team",
-      "His contract starts today and his squad number is cleared",
-      "He comes off the transfer and loan lists",
-      "Wage and contract end stay the same unless you change them",
-      "The buying club pays the fee from its balance and transfer budget. The selling club gets it.",
-      "If he was captain at his old club, that spot is left empty",
-      "It won't show in FM's transfer history",
-      "One Undo in Changes reverses the transfer and the fee",
-    ],
 
     // Swapping with a player of the club instead: the title, and the section that picks the player (the club is
     // chosen as for a move).
@@ -1854,35 +1842,17 @@ export const en = {
     staffButtonTitle: "Move them to another club",
     staffChooseClub: "Pick a club.",
     staffContract: "Same job, wage and contract end. The contract starts today.",
-    staffDoes: [
-      "They join the new club in the same departments (medical, coaching, scouting)",
-      "Same job, wage and contract end. The contract starts today",
-      "A team's manager isn't moved by this",
-      "You can undo it in Changes",
-    ],
     swapChooseClub: "Pick the other player's club.",
     swapChoosePlayer: "Pick the player to swap with.",
     swapChecking: "Checking the swap…",
     /** The swap can be made: who goes where, a line each. `from` is the club of the player, `to` that of the other. */
     swapRoute: (player: string, from: string, to: string, other: string) =>
       `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
-    swapDoesHeading: "What happens",
-    swapDoes: [
-      "Each joins the other club's first team",
-      "Both contracts start today and squad numbers are cleared",
-      "Both come off the transfer and loan lists",
-      "Captain spots they held at their old clubs are left empty",
-      "No fees are paid and career history doesn't change",
-      "One Undo in Changes reverses both moves",
-    ],
 
     // The foot
-    /** Nothing changes in the game until Transfer, or Swap. */
-    hint: "Nothing changes in FM until you press Transfer.",
     move: "Transfer",
     moving: "Transferring…",
     cancel: "Cancel",
-    swapHint: "Nothing changes in FM until you press Swap.",
     swap: "Swap",
     swapping: "Swapping…",
     // Loaning him to a club instead: FM starts the loan itself (where this version allows it).
@@ -1890,18 +1860,6 @@ export const en = {
     loanChooseClub: "Pick the club to loan him to.",
     loanEndsAfterToday: "Pick a date after today",
     joinsFromToday: "Pick today or a later date",
-    loanDoes: [
-      "FM starts the loan itself, from today to the loan end",
-      "He keeps his contract with his own club",
-      "Undo in Changes sets the loan to end today. FM ends it on its next day",
-    ],
-    /** The same, where FM can end a loan at once. */
-    loanDoesEnding: [
-      "FM starts the loan itself, from today to the loan end",
-      "He keeps his contract with his own club",
-      "Undo in Changes ends the loan, and he goes back to his club",
-    ],
-    loanHint: "Nothing changes in FM until you press Loan.",
     loan: "Loan",
     loaning: "Loaning…",
     // Signing a free agent for a club: FM signs him itself (where this version allows it).
@@ -1909,18 +1867,6 @@ export const en = {
     signButtonTitle: "Sign him for a club",
     signTitle: "Sign",
     signChooseClub: "Pick the club to sign him for.",
-    signDoes: [
-      "FM signs him itself, on its own terms",
-      "A wage or contract end you enter replaces FM's",
-      "Undo in Changes releases him again",
-    ],
-    // The same, for a day after today: the game agrees the signing now and makes it on that day.
-    signLaterDoes: [
-      "FM agrees the signing today, and he joins on that day",
-      "FM sets his contract then, on its own terms",
-      "Undo in Changes cancels the signing",
-    ],
-    signHint: "Nothing changes in FM until you press Sign.",
     sign: "Sign",
     signing: "Signing…",
   },
@@ -2079,19 +2025,8 @@ export const en = {
     checking: "Checking the release…",
     /** The player can be released; `club` is the name of their club. */
     ready: (club: string) => `${club} → free agent`,
-    doesHeading: "What happens",
-    /** What the game does to the player, one line each. */
-    does: [
-      "His contract ends and any club can sign him",
-      "No one gets paid",
-      "If he was captain, that spot is left empty",
-      "It won't show in FM's transfer history",
-      "One Undo in Changes brings him back on the same contract",
-    ],
 
     // The foot
-    /** Nothing changes in the game until Release. */
-    hint: "Nothing changes in FM until you press Release.",
     release: "Release",
     releasing: "Releasing…",
     cancel: "Cancel",
@@ -2109,16 +2044,8 @@ export const en = {
     checking: "Checking the loan…",
     /** The loan can be ended; `from` is the club he is loaned to and `to` his own. */
     ready: (from: string, to: string) => `${from} → ${to}`,
-    doesHeading: "What happens",
-    does: [
-      "FM ends the loan itself, today",
-      "He goes back to his own club, on his contract there",
-      "FM writes its news of the loan ending",
-      "Undo in Changes starts the loan again until its old end",
-    ],
 
     // The foot
-    hint: "Nothing changes in FM until you press End loan.",
     end: "End loan",
     ending: "Ending…",
     cancel: "Cancel",
@@ -2136,11 +2063,9 @@ export const en = {
     checking: "Checking the transfer…",
     /** The transfer can be cancelled; `dates` are the days he was to join on. */
     ready: (dates: string) => `Due ${dates}`,
-    doesHeading: "What happens",
-    does: ["FM cancels the deal itself, as its own editor does", "He stays where he is", "It can't be undone"],
 
     // The foot
-    hint: "Nothing changes in FM until you press Cancel transfer.",
+    hint: "It can't be undone.",
     confirm: "Cancel transfer",
     cancelling: "Cancelling…",
     cancel: "Keep it",
