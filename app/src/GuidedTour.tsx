@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { appText } from "./labels";
 
-const STORAGE_KEY = "fmlibre.tour";
-const EXERCISE_KEY = "fmlibre.tour.exercise";
+const STORAGE_KEY = "fmlens.tour";
+const EXERCISE_KEY = "fmlens.tour.exercise";
 
 const STEP_IDS = ["brand", "tabs", "search", "settings", "status"] as const;
 

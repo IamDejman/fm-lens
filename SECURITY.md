@@ -11,7 +11,7 @@ reproduce it, and what someone could do with it. The reply comes on the same rep
 
 - The FM Lens app.
 - The helper FM Lens sets up: the launcher and the library FM loads when Steam starts it
-  (`crates/fmlibre-bridge`), which lets FM Lens read and write FM's memory.
+  (`crates/fmlens-bridge`), which lets FM Lens read and write FM's memory.
 - Updates: FM Lens installs signed releases from
   [IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases) when it
   opens, and checks each one's signature first.

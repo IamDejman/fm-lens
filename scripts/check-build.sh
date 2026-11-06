@@ -25,12 +25,12 @@ while [ $# -gt 0 ]; do
 done
 
 if [ -z "$PROBE" ]; then
-  for candidate in "$ROOT/target/release/fmlibre-probe" "$ROOT/target/debug/fmlibre-probe"; do
+  for candidate in "$ROOT/target/release/fmlens-probe" "$ROOT/target/debug/fmlens-probe"; do
     if [ -x "$candidate" ]; then PROBE=$candidate; break; fi
   done
 fi
 if [ -z "$PROBE" ] || [ ! -x "$PROBE" ]; then
-  echo "No probe found. Build it: cargo build -p fmlibre-probe" >&2
+  echo "No probe found. Build it: cargo build -p fmlens-probe" >&2
   exit 2
 fi
 
