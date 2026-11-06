@@ -1,6 +1,6 @@
 [package]
 name = "fmlibre-bridge"
-description = "The library Football Manager loads on macOS to let FMLibreEditor reach its memory"
+description = "The library Football Manager loads on macOS to let FM Lens reach its memory"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

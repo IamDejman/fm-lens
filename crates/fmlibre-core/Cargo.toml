@@ -1,6 +1,6 @@
 [package]
 name = "fmlibre-core"
-description = "Football Manager specific logic for FMLibreEditor"
+description = "Football Manager specific logic for FM Lens"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

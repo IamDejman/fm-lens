@@ -7,7 +7,7 @@ version = "0.5.2"
 edition = "2024"
 rust-version = "1.90"
 license = "GPL-3.0-or-later"
-authors = ["FMLibreEditor contributors"]
+authors = ["FM Lens contributors"]
 
 [workspace.dependencies]
 # The app's dependency graph allows writes; the probe explicitly enables `read-only`.
