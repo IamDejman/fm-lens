@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download FM Lens</title>
+  <meta name="description" content="Download the latest FM Lens for Mac.">
+  <link rel="canonical" href="https://getfmlens.com/download/">
+  <meta name="theme-color" content="#251b37">
+  <link rel="icon" type="image/png" sizes="64x64" href="../images/icon-64.png">
+  <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="masthead">
+    <div class="wrap bar">
+      <a class="brand" href="/" aria-label="FM Lens home">
+        <img src="../images/symbol.png" alt="" width="40" height="40">
+        <span translate="no">FM Lens</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <div class="message">
+      <h1 id="title">Downloading FM Lens</h1>
+      <p id="status" role="status">Your download starts in a moment. If it does not,
+        <a id="fallback" href="https://github.com/IamDejman/fm-lens-releases/releases/latest">download it from GitHub</a>.</p>
+      <p>Open the disk image and drag <strong>FM Lens</strong> onto <strong>Applications</strong>. The first time, macOS
+        cannot check the app: open <strong>System Settings › Privacy &amp; Security</strong> and choose
+        <strong>Open Anyway</strong>.</p>
+      <p><a href="/#start">How to get started</a></p>
+    </div>
+  </main>
+
+  <script type="module">
+    import { latestRelease, RELEASES_PAGE } from "../release.js";
+
+    const release = await latestRelease();
+    const fallback = document.getElementById("fallback");
+    if (release) {
+      document.getElementById("title").textContent = `Downloading FM Lens ${release.version}`;
+      fallback.href = release.url;
+      window.location.assign(release.url);
+    } else {
+      document.getElementById("status").innerHTML = "";
+      document.getElementById("status").append(
+        "GitHub could not be reached from here. ",
+        Object.assign(document.createElement("a"), { href: RELEASES_PAGE, textContent: "Open the latest release" }),
+        " and choose the file that ends in .dmg.",
+      );
+    }
+  </script>
+</body>
+</html>

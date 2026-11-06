@@ -106,6 +106,7 @@ behind the launcher; another tool's launcher among them is started in turn.
 | `app/` | Tauri 2 desktop app (React + TypeScript) |
 | `docs/` | Install guide, roadmap and reverse-engineering notes (`recon/`) |
 | `docs/design/` | The interface's design system (`DESIGN.md`) and product notes (`PRODUCT.md`) |
+| `site/` | The website, [getfmlens.com](https://getfmlens.com) (see [The website](#the-website)) |
 
 ## Building
 
@@ -209,6 +210,19 @@ installed copy, which would then have to be updated by hand once. The macOS arch
 after the app is notarized, so its build makes no updater files itself
 (`tauri.bridge.conf.json`); a local `npm run release` or `npm run release:mac` needs no
 key.
+
+### The website
+
+[getfmlens.com](https://getfmlens.com) is the static site in `site/`: plain HTML and CSS
+with the app's Archivo typeface, no build step. `.github/workflows/site.yml` publishes it to
+GitHub Pages when `site/` changes on `main`; the domain's DNS at Namecheap points at GitHub
+Pages. To look at it locally, run `python3 -m http.server 4321 --directory site`.
+
+The files people download stay on the releases in fm-lens-releases. `site/release.js` asks
+GitHub's API for the latest release, so the home page shows its version and
+[getfmlens.com/download](https://getfmlens.com/download/) starts its disk image. A new
+release needs no change to the site. Installed copies keep reading `latest.json` from
+fm-lens-releases, as above.
 
 ## Using the probe
 

@@ -1,0 +1,477 @@
+/*
+ * getfmlens.com. It looks like the app: a dark plum masthead, violet for the main action, one typeface (Archivo,
+ * condensed and heavy for headings, regular width for text), and FM's four rating bands as the only decoration.
+ */
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url("fonts/archivo-latin-wdth-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url("fonts/archivo-latin-ext-wdth-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  color-scheme: light dark;
+  --page: #eef0f5;
+  --text: #191b28;
+  --muted: #586174;
+  --rule: #d5d9e4;
+  --strip: #251b37;
+  --on-strip: #ffffff;
+  --on-strip-muted: rgb(255 255 255 / 0.72);
+  --accent: #8338c4;
+  --accent-hover: #6f25b0;
+  --link: #6f25b0;
+  --focus: #2457c5;
+  /* FM's bands for a 1-20 value: 1-5, 6-10, 11-15, 16-20. */
+  --band-1: #b3402f;
+  --band-2: #8f5d0e;
+  --band-3: #5a761b;
+  --band-4: #1f7547;
+  --font: "Archivo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --wide: 1120px;
+  --gutter: clamp(16px, 4vw, 40px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #11131f;
+    --text: #f4f5fa;
+    --muted: #a9b0c2;
+    --rule: #2c3044;
+    --link: #d29cf0;
+    --focus: #8fb1ff;
+    --band-1: #e8775f;
+    --band-2: #dca244;
+    --band-3: #a8c45e;
+    --band-4: #57b784;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+a,
+button {
+  touch-action: manipulation;
+}
+
+h1,
+h2 {
+  text-wrap: balance;
+}
+
+[id] {
+  scroll-margin-top: 16px;
+}
+
+/* Hidden until the keyboard reaches it, first thing on the page. */
+.skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  transform: translateY(-150%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.wrap {
+  width: min(100% - 2 * var(--gutter), var(--wide));
+  margin-inline: auto;
+}
+
+/* The masthead: the brand, as in the app, and the way to the source. */
+.masthead {
+  background: var(--strip);
+  color: var(--on-strip);
+}
+
+.masthead :focus-visible {
+  outline-color: #8fb1ff;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 18px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.brand img {
+  width: 40px;
+  height: 40px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #f6f7f9;
+}
+
+.brand span {
+  font-size: 1.5rem;
+  font-stretch: 72%;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.bar nav {
+  display: flex;
+  gap: 20px;
+  font-stretch: 88%;
+  font-weight: 700;
+}
+
+.bar nav a {
+  color: var(--on-strip-muted);
+  text-decoration: none;
+}
+
+.bar nav a:hover {
+  color: var(--on-strip);
+  box-shadow: inset 0 -2px 0 #c86ee6;
+}
+
+/* The hero: what FM Lens is, the download, and the app itself breaking out of the masthead onto the page. */
+.hero {
+  --overlap: clamp(48px, 12vw, 180px);
+  position: relative;
+  padding-top: clamp(32px, 7vw, 88px);
+  /* FM's four bands along the foot of the masthead, behind the screenshot. */
+  border-bottom: 8px solid;
+  border-image: linear-gradient(90deg, var(--band-1) 0 25%, var(--band-2) 25% 50%, var(--band-3) 50% 75%, var(--band-4) 75%) 1;
+}
+
+.hero h1 {
+  max-width: 20ch;
+  margin: 0;
+  font-size: clamp(2rem, 1.4rem + 2.6vw, 3.5rem);
+  font-stretch: 72%;
+  font-weight: 850;
+  line-height: 1.02;
+}
+
+.hero .lead {
+  max-width: 34rem;
+  margin: 16px 0 0;
+  color: var(--on-strip-muted);
+  font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.25rem);
+  line-height: 1.55;
+}
+
+.get {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 32px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 26px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-stretch: 88%;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.button:hover {
+  background: var(--accent-hover);
+}
+
+.button svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.get p {
+  margin: 0;
+  color: var(--on-strip-muted);
+  font-size: 0.9375rem;
+}
+
+.shot {
+  position: relative;
+  margin-top: clamp(40px, 6vw, 72px);
+  margin-bottom: calc(-1 * var(--overlap));
+}
+
+.shot img {
+  width: 100%;
+  border: 1px solid rgb(37 27 55 / 0.16);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px -24px rgb(37 27 55 / 0.55);
+}
+
+/* The page under the masthead: one column of headings beside their content. */
+main {
+  padding-top: calc(clamp(48px, 12vw, 180px) + clamp(56px, 8vw, 104px));
+}
+
+.part {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 16px clamp(24px, 5vw, 72px);
+  padding-block: clamp(40px, 6vw, 72px);
+  border-top: 1px solid var(--rule);
+}
+
+.part:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.part h2 {
+  margin: 0;
+  font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem);
+  font-stretch: 70%;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px clamp(24px, 4vw, 48px);
+  margin: 0;
+}
+
+.features div {
+  max-width: 36ch;
+}
+
+.features dt {
+  font-size: 1.25rem;
+  font-stretch: 78%;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.features dd {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.steps {
+  display: grid;
+  gap: 24px;
+  max-width: 40rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0 12px;
+  counter-increment: step;
+}
+
+.steps li::before {
+  content: counter(step);
+  grid-row: span 2;
+  font-size: 2.5rem;
+  font-stretch: 66%;
+  font-weight: 880;
+  line-height: 0.9;
+  color: var(--band-4);
+}
+
+.steps li:nth-child(2)::before {
+  color: var(--band-3);
+}
+
+.steps li:nth-child(3)::before {
+  color: var(--band-2);
+}
+
+.steps p {
+  margin: 0;
+}
+
+/* The foot: where the source, the issues and the releases are. */
+footer {
+  margin-top: clamp(24px, 4vw, 48px);
+  padding-block: 40px 48px;
+  background: var(--strip);
+  color: var(--on-strip-muted);
+  font-size: 0.9375rem;
+}
+
+footer :focus-visible {
+  outline-color: #8fb1ff;
+}
+
+footer p {
+  margin: 0;
+  max-width: 48rem;
+}
+
+footer a {
+  color: var(--on-strip);
+}
+
+/* The download page and the missing page: a short message under the masthead. */
+.message {
+  max-width: 40rem;
+  padding-block: clamp(40px, 8vw, 96px);
+}
+
+.message h1 {
+  margin: 0 0 20px;
+  font-size: clamp(2.25rem, 1.6rem + 3vw, 3.75rem);
+  font-stretch: 66%;
+  font-weight: 880;
+  line-height: 0.98;
+}
+
+.message p {
+  margin: 0 0 16px;
+}
+
+.message.intro {
+  padding-bottom: 8px;
+}
+
+/* The release notes, as GitHub renders them. */
+.releases {
+  max-width: 44rem;
+  padding-bottom: clamp(40px, 8vw, 96px);
+}
+
+.releases article {
+  padding-block: 32px;
+  border-top: 1px solid var(--rule);
+}
+
+.releases article > h2 {
+  margin: 0;
+  font-size: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+  font-stretch: 70%;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.release-date {
+  margin: 8px 0 20px;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.release-body h2,
+.release-body h3 {
+  margin: 28px 0 8px;
+  font-size: 1.25rem;
+  font-stretch: 78%;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.release-body p,
+.release-body ul {
+  margin: 0 0 12px;
+}
+
+.release-body li {
+  margin-bottom: 6px;
+}
+
+@media (max-width: 760px) {
+  .part {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .features {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bar nav {
+    gap: 16px;
+    font-size: 0.9375rem;
+  }
+
+  .shot img {
+    border-radius: 8px;
+  }
+}
+
+/* GitHub keeps the line breaks of the release text; let the lines wrap to the page instead. */
+.release-body br {
+  display: none;
+}
