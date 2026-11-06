@@ -107,6 +107,7 @@ const errors: ErrorTexts = {
   "injury.noKind": () => "FM has no such injury.",
   "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
   "cohesion.changed": (p) => `FM has since changed his familiarity with the club to ${p.found}, so it was left alone.`,
+  "tactics.changed": () => "FM has since changed his familiarity with the tactic, so it was left alone.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM reloaded the save. Press Reload before you edit again.",
@@ -468,6 +469,8 @@ export const en = {
     bans: "Bans",
     // Max cohesion, which the change log keeps as a change of the player's familiarity with his club (0 to 100).
     cohesion: "Club familiarity",
+    // Max tactics, which the change log keeps as a change of the player's familiarity with the team's tactic (0 to 100).
+    tactics: "Tactical familiarity",
     // Keeping a player from retiring, which the change log keeps as a change of the date he was to retire on.
     retirement: "Retirement",
     // A change to a player's contract clauses, which the change log keeps as a change of the clause's amount.
@@ -2084,6 +2087,8 @@ export const en = {
     refreshAllTitle: "Full energy, full match sharpness and fully rested for everyone",
     maxCohesion: "Max cohesion",
     maxCohesionTitle: "Every player fully familiar with the club (experimental)",
+    maxTactics: "Max tactics",
+    maxTacticsTitle: "Every player fully familiar with the team's tactic",
     maxAll: "Max attributes",
     maxAllTitle:
       "Every attribute to 20 for everyone (injury proneness and dirtiness to 1)",
