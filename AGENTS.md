@@ -56,6 +56,10 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - Cut taglines, helper text and secondary labels. If a screen needs them to make
   sense, fix the layout. Retain text needed to explain a consequential setup
   action or resolve a real failure.
+- Keep user-facing text, release notes and the website included, short and
+  plain: what changed and what the reader does. Leave out internals, history
+  the reader does not need and filler. In docs/release-notes.md each paragraph
+  and list item is one line, because GitHub shows every line break there.
 - Improve UX, DX and AX together without breaking existing behavior. Use the
   product name FM Lens consistently.
 
