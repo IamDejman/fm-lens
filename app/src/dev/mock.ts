@@ -2585,12 +2585,15 @@ function liftBans(uid: number, batch: number | null = null): LoggedChange {
 const promiseUndo = new Map<number, string>();
 
 /** `close_promise`: the fixture player's open promise at `index` ends, logged as a change of his `promise` to 0. */
-function closePromise(uid: number, index: number): LoggedChange {
+function closePromise(uid: number, index: number, shown: PlayerPromise | undefined): LoggedChange {
   const player = players.find((p) => p.uid === uid);
   if (!player) {
     throw notFound("player", uid);
   }
   const promise = promisesOf(uid)[index];
+  if (shown !== undefined && JSON.stringify(promise) !== JSON.stringify(shown)) {
+    throw failure("move.changed", "the game has changed this since; reload and try again", {});
+  }
   if (!promise || promise.closed) {
     throw failure("promise.notOpen", "the player has no open promise there", { uid, index });
   }
@@ -3646,7 +3649,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
     case "close_promise":
-      return closePromise(Number(args?.uid), Number(args?.index)) as T;
+      return closePromise(Number(args?.uid), Number(args?.index), args?.promise as PlayerPromise | undefined) as T;
     case "change_clause":
       return changeClause(
         Number(args?.uid),
