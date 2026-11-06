@@ -1409,6 +1409,9 @@ export const en = {
     was: (value: string) => `was ${value}`,
     /** Hover text of an input that cannot be applied; `min` and `max` are the values it takes, as shown. */
     invalid: (min: number, max: number) => `Enter a whole number from ${min} to ${max}`,
+    /** The least and the most an input takes, as shown, beside it while editing. */
+    least: (value: string) => `Min: ${value}`,
+    most: (value: string) => `Max: ${value}`,
     /** The same for a date input; `from` and `to` are the earliest and the latest date it takes, as dates are shown. */
     invalidDate: (from: string, to: string) => `Enter a date from ${from} to ${to}`,
     /**
