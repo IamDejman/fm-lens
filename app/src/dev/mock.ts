@@ -1048,7 +1048,7 @@ function fieldTable(entity: Entity): EditField[] {
     ),
     ...personality,
     ...contract,
-    { ...field("coaching_licence", "i8", 0, 8), choices: [0, 1, 2, 3, 4, 5, 6, 7, 8] },
+    { ...field("coaching_licence", "i8", 0, 8), choices: [0, 7, 6, 5, 4, 3, 2, 1] },
     { ...field("manager.unsackable", "flag", 0, 1), mass: false },
     { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];

@@ -586,7 +586,16 @@ export const en = {
     /** A member of staff's coaching licence: 0 none, 1 to 8 FM's levels. */
     qualifications: "Qualifications",
     coachingLicence: "Coaching licence",
-    licenceName: (level: number): string => (level === 0 ? "None" : `Level ${level}`),
+    licenceName: (level: number): string =>
+      ({
+        1: "Continental Pro Licence",
+        2: "Continental A Licence",
+        3: "Continental B Licence",
+        4: "Continental C Licence",
+        5: "National A Licence",
+        6: "National B Licence",
+        7: "National C Licence",
+      })[level] ?? "None",
     squadNumber: "Squad number",
     transferListed: "Transfer listed",
     loanListed: "Loan listed",
