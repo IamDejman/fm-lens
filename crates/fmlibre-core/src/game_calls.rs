@@ -41,7 +41,7 @@ pub struct GameActions {
     pub start_loan: bool,
     pub sign_free_agent: bool,
     pub end_loan: bool,
-    /// Signing a free agent on a later day, and cancelling it.
+    /// Signing a free agent on a later day, and cancelling any transfer agreed for a later day.
     pub future_transfer: bool,
     /// Every player of a team fully familiar with its tactic, as the game's editor does it.
     pub max_tactics: bool,
@@ -114,6 +114,24 @@ pub struct AgreedSigning {
     pub club: u32,
     pub joins: FmDate,
     pub offer: u32,
+}
+
+/// A transfer the game agreed for a player on a later day, as his profile shows it: he joins `club` on `joins`.
+/// `offer` is the id of the game's offer, which waits for that day.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FutureTransfer {
+    pub offer: u32,
+    pub club: Option<String>,
+    pub club_uid: Option<u32>,
+    pub joins: Option<FmDate>,
+}
+
+/// A transfer agreed for a later day as cancelling takes it: the offer, and the team and kind `cancel_offer` takes.
+struct PendingTransfer {
+    offer: u64,
+    cancel: Option<(u64, u64)>,
+    shown: FutureTransfer,
 }
 
 /// The key of a signing's date in its terms map: 'TrDt'.
@@ -618,31 +636,152 @@ impl Session {
     /// editor cancels a future transfer: it cancels the offer, then drops its dated record. Read back to tell.
     pub fn cancel_signing(&self, player: &PlayerSummary, offer: u32) -> Result<(), MoveError> {
         let f = self.layout.future_transfer.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let manager = self.transfer_manager()?;
+        let identity = self.identity_block(self.player_object(player)?)?;
+        let found = self.pending_offer(manager, f, offer)?.ok_or(MoveError::NotPending)?;
+        if !self.names(self.process.read_u64(found + f.offer_person)?, identity, f)? {
+            return Err(MoveError::NotPending);
+        }
+        let target = self.cancel_target(f, found)?.ok_or(MoveError::CallDeclined)?;
+        self.run_cancel(manager, f, found, target, identity)?;
+        if self.dated_offers(manager, f)?.contains(&offer) || self.pending_offer(manager, f, offer)?.is_some() {
+            return Err(MoveError::CallDeclined);
+        }
+        Ok(())
+    }
+
+    /// The transfers the game agreed for `player` on a later day, club to club, a free agent's signing or a loan, in
+    /// the order it keeps them. Only reads memory; none where the build's layout does not place them.
+    pub fn future_transfers(&self, player: &PlayerSummary) -> Result<Vec<FutureTransfer>, MoveError> {
+        if self.layout.future_transfer.is_none() {
+            return Ok(Vec::new());
+        }
+        Ok(self.pending_transfers(player)?.1.into_iter().map(|pending| pending.shown).collect())
+    }
+
+    /// What [`Self::cancel_future_transfers`] would cancel, checked as it checks them. Only reads memory.
+    pub fn plan_cancel_future_transfers(&self, player: &PlayerSummary) -> Result<Vec<FutureTransfer>, MoveError> {
+        let (_, pending) = self.cancellable_transfers(player)?;
+        Ok(pending.into_iter().map(|pending| pending.shown).collect())
+    }
+
+    /// Has the game cancel every transfer it agreed for `player` on a later day, as its own editor does: for each, it
+    /// cancels the offer, then drops a dated record of his. It drops the first record it finds of his, not the
+    /// offer's, so all of them go together. Read back to tell: none of the offers waits for its day, and no record of
+    /// them is left. Says what was cancelled.
+    pub fn cancel_future_transfers(&self, player: &PlayerSummary) -> Result<Vec<FutureTransfer>, MoveError> {
+        let f = self.layout.future_transfer.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let manager = self.transfer_manager()?;
+        let (identity, pending) = self.cancellable_transfers(player)?;
+        for transfer in &pending {
+            let target = transfer.cancel.ok_or(MoveError::CallDeclined)?;
+            self.run_cancel(manager, f, transfer.offer, target, identity)?;
+        }
+        let dated = self.dated_offers(manager, f)?;
+        for transfer in &pending {
+            let id = transfer.shown.offer;
+            if dated.contains(&id) || self.pending_offer(manager, f, id)?.is_some() {
+                return Err(MoveError::CallDeclined);
+            }
+        }
+        Ok(pending.into_iter().map(|pending| pending.shown).collect())
+    }
+
+    /// `player`'s identity block and his transfers agreed for a later day, each with a team the game cancels it for,
+    /// as [`Self::cancel_future_transfers`] needs them.
+    fn cancellable_transfers(&self, player: &PlayerSummary) -> Result<(u64, Vec<PendingTransfer>), MoveError> {
+        let (identity, pending) = self.pending_transfers(player)?;
+        if pending.is_empty() {
+            return Err(MoveError::NotPending);
+        }
+        if pending.iter().any(|transfer| transfer.cancel.is_none()) {
+            return Err(MoveError::CallDeclined);
+        }
+        Ok((identity, pending))
+    }
+
+    /// `player`'s identity block and the offers the transfer manager agreed for him on a later day: each of its dated
+    /// records that names him, whose offer still waits for its day. Only reads memory.
+    fn pending_transfers(&self, player: &PlayerSummary) -> Result<(u64, Vec<PendingTransfer>), MoveError> {
+        let f = self.layout.future_transfer.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let manager = self.transfer_manager()?;
+        let identity = self.identity_block(self.player_object(player)?)?;
+        let (process, layout) = (&self.process, &self.layout);
+        let Some(records) = PointerList::read_up_to(process, manager + f.dated, LONGEST_OFFERS)? else {
+            return Ok((identity, Vec::new()));
+        };
+        let mut pending = Vec::new();
+        for record in records.elements(process)? {
+            if !is_user_pointer(record) || !self.names(process.read_u64(record + f.record_person)?, identity, f)? {
+                continue;
+            }
+            let id = process.read_u32(record + f.record_offer)?;
+            let Some(offer) = self.pending_offer(manager, f, id)? else {
+                continue;
+            };
+            let joining = process.read_u64(offer + f.offer_to_team)?;
+            let raw = process.read_u32(record + f.record_date)?;
+            pending.push(PendingTransfer {
+                offer,
+                cancel: self.cancel_target(f, offer)?,
+                shown: FutureTransfer {
+                    offer: id,
+                    club: is_user_pointer(joining)
+                        .then(|| crate::players::club_of_team(process, layout, joining))
+                        .flatten(),
+                    club_uid: crate::players::club_uid_of_team(process, layout, joining),
+                    joins: FmDate::from_raw(raw as u16, (raw >> 16) as u16),
+                },
+            });
+        }
+        Ok((identity, pending))
+    }
+
+    /// Whether the person reference `person` is the player whose identity block is `identity`: that block, or a
+    /// stand-in for it the game has not looked up yet.
+    fn names(&self, person: u64, identity: u64, f: &FutureTransferLayout) -> Result<bool, MoveError> {
+        if person == identity {
+            return Ok(true);
+        }
+        if !is_user_pointer(person) {
+            return Ok(false);
+        }
+        let process = &self.process;
+        Ok(process.read_u32(person + f.person_uid)? == u32::MAX
+            && process.read_u32(person + f.person_index)? == process.read_u32(identity + f.person_index)?)
+    }
+
+    /// The team and kind `cancel_offer` cancels the offer `offer` for, as the game's editor picks them: the team the
+    /// player joins, else the one he leaves. None for an offer with neither.
+    fn cancel_target(&self, f: &FutureTransferLayout, offer: u64) -> Result<Option<(u64, u64)>, MoveError> {
+        let joining = self.process.read_u64(offer + f.offer_to_team)?;
+        let leaving = self.process.read_u64(offer + f.offer_from_team)?;
+        Ok(if is_user_pointer(joining) {
+            Some((joining, CANCEL_JOINING))
+        } else if is_user_pointer(leaving) {
+            Some((leaving, CANCEL_LEAVING))
+        } else {
+            None
+        })
+    }
+
+    /// Has the game cancel the pending offer `offer` for the team and kind `target`, then drop a dated record of the
+    /// player whose identity block is `identity`, as its own editor does for each of a player's future transfers.
+    fn run_cancel(
+        &self,
+        manager: u64,
+        f: &FutureTransferLayout,
+        offer: u64,
+        (team, kind): (u64, u64),
+        identity: u64,
+    ) -> Result<(), MoveError> {
         let cancel = self.game_function(|calls| calls.cancel_offer)?;
         let drop_dated = self.game_function(|calls| calls.drop_dated_transfer)?;
         let ref_copy = self.game_function(|calls| calls.ref_copy)?;
         let ref_drop = self.game_function(|calls| calls.ref_drop)?;
-        let manager = self.transfer_manager()?;
-        let object = self.player_object(player)?;
-        let identity = self.identity_block(object)?;
-        let process = &self.process;
-        let found = self.pending_offer(manager, f, offer)?.ok_or(MoveError::NotPending)?;
-        if process.read_u64(found + f.offer_person)? != identity {
-            return Err(MoveError::NotPending);
-        }
-        let (joining, leaving) =
-            (process.read_u64(found + f.offer_to_team)?, process.read_u64(found + f.offer_from_team)?);
-        let (team, kind) = if is_user_pointer(joining) {
-            (joining, CANCEL_JOINING)
-        } else if is_user_pointer(leaving) {
-            (leaving, CANCEL_LEAVING)
-        } else {
-            return Err(MoveError::CallDeclined);
-        };
-
         let zero = Arg::value(0);
         let mut program = Program::new();
-        program.write_u64(OFFER_READ, found);
+        program.write_u64(OFFER_READ, offer);
         // The game's editor holds a reference to the offer while it cancels it, and gives it back after; so does this.
         program.push(Step::new(ref_copy, &[Arg::scratch(OFFER_HELD), Arg::scratch(OFFER_READ)]));
         program.push(Step::new(
@@ -663,13 +802,10 @@ impl Session {
         ));
         program.push(Step::new(
             drop_dated,
-            &[Arg::value(manager + f.dated_owner), Arg::value(found), Arg::value(identity)],
+            &[Arg::value(manager + f.dated_owner), Arg::value(offer), Arg::value(identity)],
         ));
-        program.push(Step::new(ref_drop, &[Arg::value(found)]).cleanup());
+        program.push(Step::new(ref_drop, &[Arg::value(offer)]).cleanup());
         self.call_game(&program)?;
-        if self.dated_offers(manager, f)?.contains(&offer) || self.pending_offer(manager, f, offer)?.is_some() {
-            return Err(MoveError::CallDeclined);
-        }
         Ok(())
     }
 

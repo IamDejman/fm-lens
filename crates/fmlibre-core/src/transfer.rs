@@ -152,7 +152,7 @@ pub enum MoveError {
     JoinedOther {
         club: String,
     },
-    /// A signing agreed for a later day is no longer waiting for it: the game has made it or cancelled it.
+    /// A transfer agreed for a later day is no longer waiting for it: the game has made it or cancelled it.
     NotPending,
     /// A player-coach, who works as staff too.
     PlayerCoach,
@@ -287,7 +287,7 @@ impl fmt::Display for MoveError {
             }
             MoveError::JoinedOther { club } => write!(f, "the game ended the loan, but the player joined {club}"),
             MoveError::NotPending => {
-                f.write_str("the signing is no longer waiting for its day: FM has made it or cancelled it")
+                f.write_str("the transfer is no longer waiting for its day: FM has made it or cancelled it")
             }
             MoveError::PlayerCoach => f.write_str("player-coaches cannot be moved: they work as staff too"),
             MoveError::UnusualContract => f.write_str("the player's contract is not a plain player's contract"),
