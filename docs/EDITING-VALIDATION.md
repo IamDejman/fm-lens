@@ -935,3 +935,22 @@ and disposable career hashes were recorded before the test and compared after
 FM exited. Both were unchanged. Installed bridge resources also matched the
 installed app after the test. Frontend build, native debug bundle, formatting,
 workspace Clippy/tests and separate app Clippy are recorded in those logs.
+
+## Refresh every successful update (follow-up to 0.5.7)
+
+The common refresh command now asks FM to refresh active views once after any
+queued successful edit or undo, in addition to notifying each changed entity.
+This covers single edits, logged game actions, mass edits, template apply/undo
+and Changes undo, which all feed the same queue. There is no Continue or
+simulation call. The broad active-view call remains mapped only for the known
+ARM64 build; on profiles without that mapping, the refresh API reports it as
+unsupported and skips it.
+
+The copied-career checks above establish immediate refresh for one player
+attribute and one contract expiry header on ARM64. They were run before this
+follow-up, and do not prove every view or game action refreshes correctly. This
+follow-up passed the frontend production build, `cargo fmt --all --check`,
+`cargo test --locked -p fmlens-core` (94 tests), the bridge build and a native
+Tauri debug bundle build. A new copied-career interaction check could not be
+run: Football Manager was closed and Steam's native UI was not exposed to the
+computer-use session. No save or Steam setting was changed.
