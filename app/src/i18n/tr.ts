@@ -1347,6 +1347,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.8": [
+        "Apple Silicon’da tamamlanan her Uygula ve Geri Al işleminden sonra FM’den düzenlenen kaydı ve açık ekranları Devam’a basmadan yenilemesi istenir.",
+        "Yeni yardımcıyı yüklemek için güncellemeden sonra FM’yi bir kez yeniden başlatın.",
+      ],
       "0.5.7": [
         "Apple Silicon’da Uygula ve Geri Al, Devam’a basmadan FM’deki özellikleri ve sözleşme bitiş tarihini yeniler.",
         "Yeni yardımcıyı yüklemek için güncellemeden sonra FM’yi bir kez yeniden başlatın.",
