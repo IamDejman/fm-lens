@@ -38,7 +38,10 @@ function AwardCells({ award }: { award: AwardSummary }) {
   return (
     <>
       <td className="col-name" title={award.name}>
-        {award.name}
+        <span className="name">
+          <span className="name-text">{award.name}</span>
+          {award.women && <span className="tag women">{text.women}</span>}
+        </span>
       </td>
       <td className="col-competition" title={award.competition ?? undefined}>
         {award.competition ?? profileText.none}
@@ -64,6 +67,7 @@ function AwardProfile({ award, onClose }: { award: AwardSummary; onClose: () => 
     <ProfileFrame
       name={award.name}
       fullName={null}
+      badge={award.women ? <span className="tag women">{text.women}</span> : undefined}
       meta={[award.nation, award.continent].filter(Boolean).join(", ") || undefined}
       vitals={[`${profileText.uid} ${award.uid}`]}
       loaded={{ details: award }}

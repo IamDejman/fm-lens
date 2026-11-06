@@ -218,11 +218,11 @@ impl Session {
         Ok(teams)
     }
 
-    fn team_object(&self, club: &ClubSummary, index: usize) -> Result<u64, MoveError> {
+    pub(crate) fn team_object(&self, club: &ClubSummary, index: usize) -> Result<u64, MoveError> {
         self.team_objects(club)?.get(index).copied().ok_or(MoveError::NoTeam { index })
     }
 
-    fn club_team(
+    pub(crate) fn club_team(
         &self,
         club: &ClubSummary,
         index: usize,

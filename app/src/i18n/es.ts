@@ -45,8 +45,19 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Jugador estrella",
   2: "Jugador importante",
   3: "Titular habitual",
-  4: "Jugador de rotación",
+  4: "Jugador de plantilla",
   5: "Revulsivo",
+  7: "Jugador secundario",
+  9: "Suplente de emergencia",
+  10: "Promesa emergente",
+  11: "Promesa de futuro",
+  13: "Joven",
+  15: "Portero titular",
+  16: "Portero de copa",
+  17: "Portero de copa nacional",
+  20: "Suplente",
+  21: "Suplente de emergencia",
+  22: "Prescindible",
 };
 
 /** The name of the field a failure names. */
@@ -88,7 +99,7 @@ const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
   10: "Prima por objetivo de goles en la temporada",
   11: "Ampliación de un año tras partidos de liga",
   12: "Igualar al que más cobra",
-  13: "Salario tras alcanzar partidos de liga",
+  13: "Salario tras alcanzar partidos de liga del club",
   14: "Aumento salarial por ascenso a primera división",
   15: "Rebaja salarial por descenso de primera división",
   16: "Cláusula de rescisión por traspaso mínimo (clubes extranjeros)",
@@ -114,7 +125,8 @@ const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
   38: "Prima por suplente no utilizado",
   39: "Prima por asistencia",
   40: "Prima por objetivo de asistencias en la temporada",
-  41: "Prima por objetivo de goles y asistencias en la temporada",
+  41: "Prima combinada por objetivo de goles y asistencias en la temporada",
+  55: "Cláusula de rescisión activa por descenso",
 };
 
 /** Reasons to be unhappy, by the codes the game keeps them as (see `en.ts`). */
@@ -242,11 +254,15 @@ const errors: ErrorTexts = {
   "ban.notBanned": () => "El jugador no tiene ninguna sanción que levantar.",
   "call.unavailable": () => "FM no puede hacer este cambio en esta versión.",
   "call.declined": () => "FM no hizo el cambio.",
+  "loan.futureFee": () =>
+    "Esta cesión tiene un traspaso futuro. Terminarla antes haría que FM completara el traspaso, así que FM Lens no la termina.",
+  "loan.joinedOther": (p) => `FM terminó la cesión, pero fichó por ${p.club} en lugar de volver.`,
   "injury.already": () => "Ya está lesionado. Cúralo primero.",
   "injury.noKind": () => "FM no tiene esa lesión.",
   "cohesion.none": () => "FM aún no le ha dado familiaridad con este club, así que no hay nada que subir.",
   "cohesion.changed": (p) =>
     `Su familiaridad con el club vale ahora ${p.found}: el juego la ha cambiado desde entonces, así que no se ha tocado.`,
+  "tactics.changed": () => "El juego ha cambiado desde entonces su familiaridad con la táctica, así que no se ha tocado.",
   "relation.missing": () => `Esa nacionalidad o formación ya no está en la lista del jugador; ${reload}.`,
   "relation.noRoom": () =>
     "La lista del jugador no tiene sitio y el editor no puede ampliarla; cambia una de sus entradas en su lugar.",
@@ -535,6 +551,7 @@ export const es: Strings = {
     work_permit: "Permiso de trabajo",
     bans: "Sanciones",
     cohesion: "Familiaridad con el club",
+    tactics: "Familiaridad táctica",
     retirement: "Retirada",
     clause: "Cláusula del contrato",
     "clause.amount": "Importe de la cláusula",
@@ -620,6 +637,7 @@ export const es: Strings = {
     loanWage: "Paga el club receptor por semana",
     loanStarts: "Inicio de la cesión",
     loanEnds: "Fin de la cesión",
+    loanFutureFee: "Traspaso futuro",
     workPermit: "Permiso de trabajo",
     permitActive: "Activo",
     permitEsc: (date: string) => `Plaza ESC desde el ${date}`,
@@ -631,7 +649,16 @@ export const es: Strings = {
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Estatus ${status}`,
     qualifications: "Titulación",
     coachingLicence: "Licencia de entrenador",
-    licenceName: (level: number): string => (level === 0 ? "Ninguna" : `Nivel ${level}`),
+    licenceName: (level: number): string =>
+      ({
+        1: "Licencia Continental Pro",
+        2: "Licencia Continental A",
+        3: "Licencia Continental B",
+        4: "Licencia Continental C",
+        5: "Licencia Nacional A",
+        6: "Licencia Nacional B",
+        7: "Licencia Nacional C",
+      })[level] ?? "Ninguna",
     squadNumber: "Dorsal",
     transferListed: "Transferible",
     loanListed: "Cedible",
@@ -652,9 +679,9 @@ export const es: Strings = {
     retires: "Prevé retirarse",
     preferences: "Afinidades",
     languages: "Idiomas",
-    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    /** How well a person speaks a language (0 to 10), in the words of FM's profile (see en.ts). */
     languageLevel: (level: number): string =>
-      level > 9 ? "Nativo" : level >= 7 ? "Fluido" : level >= 5 ? "Bueno" : level >= 2 ? "Básico" : "No lo habla",
+      level >= 7 ? "Fluido" : level >= 5 ? "Bueno" : level >= 2 ? "Básico" : "No lo habla",
     languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rivales",
     linkedClubs: "Clubes afiliados",
@@ -1045,12 +1072,22 @@ export const es: Strings = {
     competition: "Competición",
     prestige: "Prestigio",
     period: "Se entrega",
-    periodName: (code) => ({ 1: "Cada semana", 2: "Cada mes", 3: "Cada temporada" })[code] ?? null,
+    periodName: (code) =>
+      ({
+        1: "Cada semana",
+        2: "Cada mes",
+        3: "Cada temporada",
+        4: "Al final de la competición",
+        5: "Cada año natural",
+        6: "Cada año",
+        7: "Cada jornada",
+      })[code] ?? null,
     recipients: "Para",
     recipientName: (code) => ({ 1: "Un jugador", 2: "Un entrenador", 7: "Un equipo de jugadores" })[code] ?? null,
     goalkeepersOnly: "Solo porteros",
     ageLimit: "Límite de edad",
     ageLimitValue: (age) => `${age} años o menos`,
+    women: "Femenino",
   },
 
   stadiumList: {
@@ -1901,6 +1938,8 @@ export const es: Strings = {
       "Energía y ritmo de competición al máximo, y todos totalmente descansados",
     maxCohesion: "Cohesión al máximo",
     maxCohesionTitle: "Todos los jugadores totalmente familiarizados con el club (experimental)",
+    maxTactics: "Táctica al máximo",
+    maxTacticsTitle: "Todos los jugadores totalmente familiarizados con la táctica del equipo",
     maxAll: "Atributos al máximo",
     maxAllTitle:
       "Todos los atributos a 20 para todos (propensión a lesiones y juego sucio a 1)",

@@ -146,6 +146,12 @@ pub enum MoveError {
     OnLoan,
     /// The player is not on loan.
     NotOnLoan,
+    /// The loan has a future fee: ending it early has the game complete the transfer.
+    FutureFee,
+    /// The game ended the loan but the player went to `club`, not back to his own.
+    JoinedOther {
+        club: String,
+    },
     /// A signing agreed for a later day is no longer waiting for it: the game has made it or cancelled it.
     NotPending,
     /// A player-coach, who works as staff too.
@@ -242,6 +248,9 @@ pub enum MoveError {
     FamiliarityChanged {
         found: u8,
     },
+    /// The game has changed a player's familiarity with his team's tactic since FM Lens had it raised, so undoing it
+    /// would put back values over the game's own.
+    TacticsChanged,
     /// This build of the game, or this system, has no traced function of the game's for the change.
     CallUnavailable,
     /// The game ran its function and did not make the change.
@@ -269,6 +278,10 @@ impl fmt::Display for MoveError {
             MoveError::SameClub => f.write_str("the player is at this club already"),
             MoveError::OnLoan => f.write_str("the player is on loan; players on loan cannot be moved yet"),
             MoveError::NotOnLoan => f.write_str("the player is not on loan"),
+            MoveError::FutureFee => {
+                f.write_str("the loan has a future fee; ending it early would have the game complete the transfer")
+            }
+            MoveError::JoinedOther { club } => write!(f, "the game ended the loan, but the player joined {club}"),
             MoveError::NotPending => {
                 f.write_str("the signing is no longer waiting for its day: FM has made it or cancelled it")
             }
@@ -348,6 +361,9 @@ impl fmt::Display for MoveError {
                 f,
                 "the game has since changed the player's familiarity with this club to {found}, so it was left alone"
             ),
+            MoveError::TacticsChanged => {
+                f.write_str("the game has since changed the player's familiarity with the tactic, so it was left alone")
+            }
             MoveError::CallUnavailable => f.write_str("the game cannot make this change from FM Lens on this build"),
             MoveError::CallDeclined => f.write_str("the game did not make the change"),
             MoveError::AlreadyInjured => f.write_str("the player is injured already"),
@@ -370,6 +386,8 @@ impl Coded for MoveError {
             MoveError::SameClub => "move.sameClub",
             MoveError::OnLoan => "move.onLoan",
             MoveError::NotOnLoan => "move.notOnLoan",
+            MoveError::FutureFee => "loan.futureFee",
+            MoveError::JoinedOther { .. } => "loan.joinedOther",
             MoveError::NotPending => "move.notPending",
             MoveError::PlayerCoach => "move.playerCoach",
             MoveError::UnusualContract => "move.unusualContract",
@@ -404,6 +422,7 @@ impl Coded for MoveError {
             MoveError::ClausesFull => "clause.noRoom",
             MoveError::NoFamiliarity => "cohesion.none",
             MoveError::FamiliarityChanged { .. } => "cohesion.changed",
+            MoveError::TacticsChanged => "tactics.changed",
             MoveError::CallUnavailable => "call.unavailable",
             MoveError::CallDeclined => "call.declined",
             MoveError::AlreadyInjured => "injury.already",
@@ -437,6 +456,7 @@ impl Coded for MoveError {
             MoveError::NotInClause { field } => vec![("field", (*field).to_owned())],
             MoveError::UnknownRule { rule } => vec![("rule", rule.to_string())],
             MoveError::FamiliarityChanged { found } => vec![("found", found.to_string())],
+            MoveError::JoinedOther { club } => vec![("club", club.clone())],
             MoveError::Locked(lock) => lock.params(),
             MoveError::Memory(err) => err.params(),
             _ => Vec::new(),

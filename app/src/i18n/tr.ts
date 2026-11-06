@@ -38,8 +38,19 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Yıldız oyuncu",
   2: "Önemli oyuncu",
   3: "Düzenli ilk 11 oyuncusu",
-  4: "Rotasyon oyuncusu",
+  4: "Kadro oyuncusu",
   5: "Etkili yedek",
+  7: "Kenarda kalan oyuncu",
+  9: "Acil durum yedeği",
+  10: "Yükselen yetenek",
+  11: "Geleceğin yeteneği",
+  13: "Genç oyuncu",
+  15: "Birinci kaleci",
+  16: "Kupa kalecisi",
+  17: "Yerel kupa kalecisi",
+  20: "Yedek",
+  21: "Acil durum yedeği",
+  22: "Gözden çıkarılmış",
 };
 
 /** The name of the field a failure names. The sentences put no ending on it: "için" and a colon need none. */
@@ -110,11 +121,15 @@ const errors: ErrorTexts = {
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
   "call.unavailable": () => "FM bu sürümde bu değişikliği yapamıyor.",
   "call.declined": () => "FM değişikliği yapmadı.",
+  "loan.futureFee": () =>
+    "Bu kiralamada gelecek bonservis bedeli var. Erken bitirmek FM'in transferi tamamlamasına yol açar, bu yüzden FM Lens onu bitirmez.",
+  "loan.joinedOther": (p) => `FM kiralamayı bitirdi, ama oyuncu geri dönmek yerine ${p.club} kulübüne katıldı.`,
   "injury.already": () => "Zaten sakat. Önce iyileştir.",
   "injury.noKind": () => "FM'de böyle bir sakatlık yok.",
   "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi, yükseltilecek bir şey yok.",
   "cohesion.changed": (p) =>
     `Kulübe alışkınlığı şu an ${p.found}: oyun o zamandan beri değiştirmiş, bu yüzden dokunulmadı.`,
+  "tactics.changed": () => "Oyun o zamandan beri taktiğe alışkınlığını değiştirmiş, bu yüzden dokunulmadı.",
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
     "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",
@@ -273,12 +288,12 @@ const CLAUSE_NAMES_TR: Partial<Record<number, string>> = {
   5: "Küme düşmede maaş indirimi",
   6: "Teknik görev teklifinde serbest kalma maddesi",
   7: "Her an serbest kalma",
-  8: "Gelecek satıştan pay",
+  8: "Gelecek satıştan pay yüzdesi",
   9: "Gelecek satış kârından pay",
   10: "Sezonluk gol hedefi primi",
   11: "Lig maçlarından sonra bir yıl uzatma",
   12: "En yüksek ücretliyle eşitleme",
-  13: "Lig maçı sayısına ulaşınca maaş",
+  13: "Kulüp lig maçı sayısına ulaşınca maaş",
   14: "Üst lige yükselmede maaş artışı",
   15: "Üst ligden düşmede maaş indirimi",
   16: "Serbest kalma maddesi (yabancı kulüpler)",
@@ -304,7 +319,8 @@ const CLAUSE_NAMES_TR: Partial<Record<number, string>> = {
   38: "Oynamayan yedek ücreti",
   39: "Asist primi",
   40: "Sezonluk asist hedefi primi",
-  41: "Sezonluk gol ve asist hedefi primi",
+  41: "Sezonluk birleşik gol ve asist hedefi primi",
+  55: "Küme düşmede etkin serbest kalma maddesi",
 };
 
 export const tr: Strings = {
@@ -523,6 +539,7 @@ export const tr: Strings = {
     work_permit: "Çalışma izni",
     bans: "Cezalar",
     cohesion: "Kulübe alışkınlık",
+    tactics: "Taktiğe alışkınlık",
     retirement: "Emeklilik",
     clause: "Sözleşme maddesi",
     "clause.amount": "Madde tutarı",
@@ -608,6 +625,7 @@ export const tr: Strings = {
     loanWage: "Kiralayan kulübün haftalık ödediği",
     loanStarts: "Kiralık başlangıcı",
     loanEnds: "Kiralık bitişi",
+    loanFutureFee: "Gelecek bonservis bedeli",
     workPermit: "Çalışma izni",
     permitActive: "Aktif",
     permitEsc: (date: string) => `${date} tarihinden beri ESC kontenjanı`,
@@ -619,7 +637,16 @@ export const tr: Strings = {
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Durum ${status}`,
     qualifications: "Yeterlilikler",
     coachingLicence: "Antrenörlük lisansı",
-    licenceName: (level: number): string => (level === 0 ? "Yok" : `Seviye ${level}`),
+    licenceName: (level: number): string =>
+      ({
+        1: "Kıtasal Pro Lisansı",
+        2: "Kıtasal A Lisansı",
+        3: "Kıtasal B Lisansı",
+        4: "Kıtasal C Lisansı",
+        5: "Ulusal A Lisansı",
+        6: "Ulusal B Lisansı",
+        7: "Ulusal C Lisansı",
+      })[level] ?? "Yok",
     squadNumber: "Forma numarası",
     transferListed: "Transfer listesinde",
     loanListed: "Kiralık listesinde",
@@ -640,9 +667,9 @@ export const tr: Strings = {
     retires: "Emeklilik planı",
     preferences: "Sevdikleri ve sevmedikleri",
     languages: "Diller",
-    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    /** How well a person speaks a language (0 to 10), in the words of FM's profile (see en.ts). */
     languageLevel: (level: number): string =>
-      level > 9 ? "Ana dil" : level >= 7 ? "Akıcı" : level >= 5 ? "İyi" : level >= 2 ? "Temel" : "Konuşmuyor",
+      level >= 7 ? "Akıcı" : level >= 5 ? "İyi" : level >= 2 ? "Temel" : "Konuşmuyor",
     languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rakipler",
     linkedClubs: "Bağlı kulüpler",
@@ -1015,12 +1042,22 @@ export const tr: Strings = {
     competition: "Turnuva",
     prestige: "Prestij",
     period: "Veriliş sıklığı",
-    periodName: (code) => ({ 1: "Her hafta", 2: "Her ay", 3: "Her sezon" })[code] ?? null,
+    periodName: (code) =>
+      ({
+        1: "Her hafta",
+        2: "Her ay",
+        3: "Her sezon",
+        4: "Turnuva sonunda",
+        5: "Her takvim yılı",
+        6: "Her yıl",
+        7: "Her tur",
+      })[code] ?? null,
     recipients: "Kime",
     recipientName: (code) => ({ 1: "Bir oyuncuya", 2: "Bir teknik direktöre", 7: "Bir oyuncu takımına" })[code] ?? null,
     goalkeepersOnly: "Sadece kaleciler",
     ageLimit: "Yaş sınırı",
     ageLimitValue: (age) => `${age} yaş ve altı`,
+    women: "Kadın",
   },
 
   stadiumList: {
@@ -1843,6 +1880,8 @@ export const tr: Strings = {
     refreshAllTitle: "Herkese tam enerji, tam maç kondisyonu ve tam dinlenme",
     maxCohesion: "Uyumu tamamla",
     maxCohesionTitle: "Bütün oyuncular kulübe tamamen alışkın (deneysel)",
+    maxTactics: "Taktiği tamamla",
+    maxTacticsTitle: "Bütün oyuncular takımın taktiğine tamamen alışkın",
     maxAll: "Özellikleri tamamla",
     maxAllTitle:
       "Herkesin bütün özellikleri 20 (sakatlık eğilimi ve sertlik 1)",

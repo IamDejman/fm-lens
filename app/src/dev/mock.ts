@@ -129,6 +129,9 @@ const POSITIONS = ["gk", "sw", "dl", "dc", "dr", "dm", "ml", "mc", "mr", "aml", 
 /** From this rating FM counts a position as one a player can play: the list's positions and its filter use it. */
 const PLAYABLE_RATING = 15;
 
+/** Squad status codes the fixtures draw from: FM's five main ones, a few others it uses, and 14, which has no name. */
+const MOCK_SQUAD_STATUSES = [1, 2, 3, 4, 5, 7, 10, 11, 14, 22];
+
 /** Every eleventh fixture player is a goalkeeper. */
 const isKeeper = (uid: number) => uid % 11 === 0;
 
@@ -234,7 +237,7 @@ function details(player: PlayerSummary): PlayerDetails {
           signed: { year: 2024, month: 7, day: 1 },
           expires: player.contractExpires,
           joined: { year: 2022, month: 8, day: 15 },
-          squadStatus: 1 + Math.floor(next() * 5),
+          squadStatus: MOCK_SQUAD_STATUSES[Math.floor(next() * MOCK_SQUAD_STATUSES.length)],
           squadNumber: 1 + Math.floor(next() * 40),
           transferListed: next() < 0.1,
           loanListed: false,
@@ -247,6 +250,8 @@ function details(player: PlayerSummary): PlayerDetails {
             { index: 2, kind: 38, amount: Math.round(2000 + next() * 15000), condition: null },
             ...(next() < 0.5 ? [{ index: 3, kind: 0, amount: Math.round(50 + next() * 500) * 1_000_000, condition: null }] : []),
             ...(next() < 0.5 ? [{ index: 4, kind: 22, amount: null, condition: 1 }] : []),
+            ...(player.uid % 4 === 0 ? [{ index: 5, kind: 13, amount: 275_000, condition: 20 }] : []),
+            ...(player.uid % 6 === 0 ? [{ index: 6, kind: 55, amount: 28_000_000, condition: null }] : []),
           ]),
           // A few players have reasons to be unhappy: one over, and one or two that last.
           concerns:
@@ -295,7 +300,14 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
   }
   const started = startedLoans.get(player.uid);
   if (started) {
-    return { parent: started.parent, parentUid: started.parentUid, wage: 0, starts: GAME_DATE, ends: started.ends };
+    return {
+      parent: started.parent,
+      parentUid: started.parentUid,
+      wage: 0,
+      starts: GAME_DATE,
+      ends: started.ends,
+      futureFee: null,
+    };
   }
   if (!player.club || player.uid % 11 !== 0) {
     return null;
@@ -307,6 +319,8 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
     wage: 5000 + (player.uid % 9) * 2500,
     starts: { year: 2026, month: 8, day: 10 },
     ends: { year: 2027, month: 6, day: 29 },
+    // Every other one has a future fee, which End loan refuses.
+    futureFee: player.uid % 2 === 0 ? 25_000_000 : null,
   };
 }
 
@@ -377,6 +391,9 @@ function planEndLoan(uid: number): MovePreview {
   const loan = loanOf(player);
   if (!loan || player.club === null || player.clubUid === null || loan.parentUid === null || loan.parent === null) {
     throw failure("move.notOnLoan", "the player is not on loan");
+  }
+  if (loan.futureFee !== null) {
+    throw failure("loan.futureFee", "the loan has a future fee; ending it early would complete the transfer");
   }
   return { from: { uid: player.clubUid, name: player.club }, to: { uid: loan.parentUid, name: loan.parent } };
 }
@@ -1039,7 +1056,7 @@ function fieldTable(entity: Entity): EditField[] {
     ),
     ...personality,
     ...contract,
-    { ...field("coaching_licence", "i8", 0, 8), choices: [0, 1, 2, 3, 4, 5, 6, 7, 8] },
+    { ...field("coaching_licence", "i8", 0, 8), choices: [0, 7, 6, 5, 4, 3, 2, 1] },
     { ...field("manager.unsackable", "flag", 0, 1), mass: false },
     { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];
@@ -1596,6 +1613,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.field === "cohesion") {
     familiarity.set(entry.uid, entry.old ?? 0);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field === "tactics") {
+    tacticsRaised.delete(entry.uid);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -2234,6 +2256,12 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     }
     return report;
   }
+  if (action === "maxTactics") {
+    for (const player of team.players) {
+      raiseTactics(player, report);
+    }
+    return report;
+  }
   const values: [string, number][] =
     action === "inspire"
       ? [["morale", 20]]
@@ -2244,6 +2272,30 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     setValues(player, values, report);
   }
   return report;
+}
+
+/** Fixture players Max tactics made fully familiar with the tactic, by UID. */
+const tacticsRaised = new Set<number>();
+
+/** Max tactics for one fixture player: every fifth knows the tactic fully already, the rest 30 to 89 before. */
+function raiseTactics(player: { uid: number; name: string }, report: MassReport): void {
+  if (player.uid % 5 === 0 || tacticsRaised.has(player.uid)) {
+    return;
+  }
+  tacticsRaised.add(player.uid);
+  changes.push({
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid: player.uid,
+    field: "tactics",
+    old: 30 + (player.uid % 60),
+    new: 100,
+    undoneAt: null,
+    batch: report.batch,
+  });
+  report.applied++;
 }
 
 /** Fixture familiarity with the club, by UID, once Max cohesion changed it. */
@@ -2734,7 +2786,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true, maxTactics: true },
       };
       mockConnection = info;
       if (!refrozen) {
@@ -3107,6 +3159,7 @@ const AWARDS: AwardSummary[] = [
       nation: c.nation,
       nationUid: c.nationUid,
       continent: c.continent,
+      women: false,
       goalkeepersOnly: false,
       maxAge: null,
     };
@@ -3130,6 +3183,22 @@ const AWARDS: AwardSummary[] = [
     prestige: 20,
     period: 6,
     recipients: 1,
+    women: false,
+    goalkeepersOnly: false,
+    maxAge: null,
+  },
+  {
+    uid: 2000506221,
+    name: "World Golden Ball",
+    competition: null,
+    competitionUid: null,
+    nation: null,
+    nationUid: null,
+    continent: null,
+    prestige: 20,
+    period: 6,
+    recipients: 1,
+    women: true,
     goalkeepersOnly: false,
     maxAge: null,
   },
