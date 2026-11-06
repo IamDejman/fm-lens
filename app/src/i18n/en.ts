@@ -1803,6 +1803,8 @@ export const en = {
     pays: (club: string, fee: string, balance: string, budget: string | null) =>
       `${club} pays ${fee}: balance ${balance}${budget === null ? "" : `, transfer budget ${budget}`}`,
     receives: (club: string, fee: string, balance: string) => `${club} receives ${fee}: balance ${balance}`,
+    /** For a transfer FM makes itself, which moves the money by its own rules. */
+    gameFee: (buyer: string, seller: string, fee: string) => `${buyer} pays ${seller} ${fee}`,
     /** For a club outside the leagues being played, which the game keeps no finances for. */
     noFinances: (club: string) => `${club} has no finances in FM, so its money won't change`,
 
@@ -1828,6 +1830,12 @@ export const en = {
       "If he was captain at his old club, that spot is left empty",
       "It won't show in FM's transfer history",
       "One Undo in Changes reverses the transfer and the fee",
+    ],
+    /** The same when FM makes the transfer itself: the player is at your club. */
+    gameDoes: [
+      "FM makes the transfer itself and moves the fee by its own rules",
+      "Wage and contract end stay the same unless you change them",
+      "It can't be undone",
     ],
 
     // Swapping with a player of the club instead: the title, and the section that picks the player (the club is
