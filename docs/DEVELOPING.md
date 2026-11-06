@@ -158,14 +158,16 @@ macOS); `FMLIBRE_EXPORTS` names another folder. The columns and the JSON keys ar
 ### Releasing
 
 FM Lens is released for macOS only, from a Mac, to the public repository
-[IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases). The source
-repository stays private.
+[IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases). Each release
+links to its source, tagged `v<version>` in this repository.
 
 1. **Bump the version** in three places, and commit the bump:
    - `version` in the root `Cargo.toml` (`[workspace.package]`);
    - `app/package.json`;
    - `app/src-tauri/tauri.conf.json`.
-2. **Write what is new** in `docs/release-notes.md`.
+2. **Write what is new** in `docs/release-notes.md`, and in short under `update.changes` in
+   `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update themselves show that list
+   once, after they restart as the new version.
 3. **Build and publish:** `scripts/release-mac.sh --publish`. It builds the universal app
    with the bridge, signs the update with the updater key, and publishes the latest release
    with `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download,
