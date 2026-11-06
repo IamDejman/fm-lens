@@ -1,7 +1,7 @@
 ## Download
 
-- **FM-Lens-0.5.0-macos-universal.dmg**: open it and drag **FM Lens** onto **Applications**.
-- **FM-Lens-0.5.0-macos-universal.zip**: the same app, zipped.
+- **FM-Lens-0.5.1-macos-universal.dmg**: open it and drag **FM Lens** onto **Applications**.
+- **FM-Lens-0.5.1-macos-universal.zip**: the same app, zipped.
 
 Both run on Apple Silicon and Intel Macs. macOS only, with Football Manager 27 from Steam,
 build 26340721 (27.0.0). Another FM build opens read-only until FM Lens has a profile for it.
@@ -14,10 +14,20 @@ Security**, choose **Open Anyway** under the message about FM Lens, then open it
 Before you start, save your career under a new name in FM and work on that copy. FM Lens
 needs a small helper that FM loads at startup: save and quit FM, quit Steam, then choose
 **Set up** under **One-time setup** in FM Lens. Start FM from Steam, load the copy, and
-choose **Connect**. See
-[PERSONAL-SCOUT.md](https://github.com/IamDejman/fm-lens/blob/main/docs/PERSONAL-SCOUT.md).
+choose **Connect**.
 
-## What's new since 0.4.2
+**Coming from 0.5.0:** quit FM Lens, then drag this version onto **Applications** and
+replace the old one. This is the last time: from 0.5.1 on, FM Lens updates itself.
+
+## What's new in 0.5.1
+
+- **FM Lens updates itself.** When a newer version is out, FM Lens installs it as it opens
+  and restarts, which takes a few seconds. Without a connection it opens as usual.
+- **A simpler Changes page.** The notes above the list are gone, and the Changes tab no
+  longer shows a count that stays until you quit.
+- **A clearer disk image.** It opens on a window that shows where to drag FM Lens.
+
+## In 0.5.0, since 0.4.2
 
 Editing
 
@@ -65,5 +75,4 @@ Nations, clubs and competitions
 - FM shows only the strongest likes and dislikes on its own screens, so a weak one you
   change may not appear there.
 - Cancelling an agreed transfer can't be undone.
-- Not every field has been checked through a save and reload in FM. See
-  [EDITING-VALIDATION.md](https://github.com/IamDejman/fm-lens/blob/main/docs/EDITING-VALIDATION.md).
+- Not every field has been checked through a save and reload in FM.
