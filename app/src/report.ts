@@ -1,16 +1,19 @@
-// A problem report: GitHub's form for a bug report (.github/ISSUE_TEMPLATE/bug_report.yml), opened in the browser with
-// what FM Lens knows filled in. The user reads it and submits it there; the app sends nothing itself. The facts are
-// written in English, as the form is.
+// A problem report: what the user writes in Report a problem, sent with what FM Lens knows (its version, the FM build,
+// the Mac and the changes written while it has been open) to the report relay (relay/), which files it as an issue in
+// the fm-lens repository. Nothing leaves the app until the user presses Send. The facts are written in English, as the
+// issues are.
 
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { call, inTauri } from "./api";
 import type { ConnectionInfo, GameInfo, LoggedChange, Storefront } from "./types";
 
-/** The form's address (see capabilities/default.json, which lets the app open it). */
-const NEW_ISSUE = "https://github.com/IamDejman/fm-lens/issues/new";
+/** The report relay's address (see docs/DEVELOPING.md, The report relay). */
+const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws/report";
 
-/** The longest address the report makes: GitHub turns away much longer ones, so the oldest changes are left out. */
-const MAX_LENGTH = 7000;
+/** The most the relay takes for the changes, in characters: the oldest are left out past it. */
+const MAX_CHANGES = 8000;
+
+/** How long sending may take, in milliseconds. */
+const SEND_TIMEOUT_MS = 20_000;
 
 const STOREFRONTS: Record<Storefront, string> = { steam: "Steam", gamePass: "Game Pass", epic: "Epic", unknown: "Unknown" };
 
@@ -53,39 +56,24 @@ function describeChange(change: LoggedChange): string {
   return notes.length > 0 ? `${line}, ${notes.join(", ")}` : line;
 }
 
-/**
- * The address of the form with `facts` and `system` filled in. As many changes as fit go in, newest first, and a last
- * line says how many older ones were left out.
- */
-export function reportUrl(facts: ReportFacts, system: string): string {
-  const url = new URL(NEW_ISSUE);
-  url.searchParams.set("template", "bug_report.yml");
-  url.searchParams.set("version", facts.version ?? "-");
-  url.searchParams.set("fm-build", describeGame(facts));
-  url.searchParams.set("macos", system);
-  if (facts.log.length === 0) {
-    return url.toString();
-  }
-
-  // Room for the changes, less what the parameter's name and the last line take.
-  let room = MAX_LENGTH - url.toString().length - "&changes=".length - 120;
+/** The changes, newest first, as many as the relay takes; a last line says how many older ones were left out. */
+function describeChanges(log: LoggedChange[]): string {
+  // Room for the changes, less what the last line takes.
+  let room = MAX_CHANGES - 40;
   const lines: string[] = [];
-  for (const change of facts.log) {
+  for (const change of log) {
     const line = describeChange(change);
-    // Its length in the address, or a little more: the address writes a space as "+", not "%20".
-    const length = encodeURIComponent(`${line}\n`).length;
-    if (length > room) {
+    if (line.length + 1 > room) {
       break;
     }
     lines.push(line);
-    room -= length;
+    room -= line.length + 1;
   }
-  const left = facts.log.length - lines.length;
+  const left = log.length - lines.length;
   if (left > 0) {
     lines.push(`... and ${left} older ${left === 1 ? "change" : "changes"}`);
   }
-  url.searchParams.set("changes", lines.join("\n"));
-  return url.toString();
+  return lines.join("\n");
 }
 
 /** The system FM Lens runs on (see `system_version`): "macOS 27.2, Apple Silicon"; a hyphen when it cannot tell. */
@@ -97,12 +85,33 @@ async function systemVersion(): Promise<string> {
   }
 }
 
-/** Opens the form in the browser; the browser preview opens it in a new tab. Fails when the browser cannot be opened. */
-export async function openReport(facts: ReportFacts): Promise<void> {
-  const url = reportUrl(facts, await systemVersion());
-  if (inTauri) {
-    await openUrl(url);
-  } else {
-    window.open(url, "_blank", "noopener");
+/** How sending went: sent, turned away for now (too many reports from this address), or not sent. */
+export type SendResult = "sent" | "tooMany" | "failed";
+
+/** Sends `what` with `facts` to the relay. The browser preview sends nothing and says it was sent. */
+export async function sendReport(facts: ReportFacts, what: string): Promise<SendResult> {
+  if (!inTauri) {
+    return "sent";
+  }
+  const report = {
+    what,
+    version: facts.version ?? "",
+    fmBuild: describeGame(facts),
+    macos: await systemVersion(),
+    changes: describeChanges(facts.log),
+  };
+  try {
+    const response = await fetch(RELAY, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(report),
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+    });
+    if (response.ok) {
+      return "sent";
+    }
+    return response.status === 429 ? "tooMany" : "failed";
+  } catch {
+    return "failed";
   }
 }
