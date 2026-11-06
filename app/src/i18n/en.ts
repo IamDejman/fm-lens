@@ -514,6 +514,8 @@ export const en = {
     work_permit: "Work permit",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
     bans: "Bans",
+    // Closing a promise, which the change log keeps as a change of the player's promise.
+    promise: "Promise",
     // Max cohesion, which the change log keeps as a change of the player's familiarity with his club (0 to 100).
     cohesion: "Club familiarity",
     // Max tactics, which the change log keeps as a change of the player's familiarity with the team's tactic (0 to 100).
@@ -768,6 +770,14 @@ export const en = {
     /** Lifts every ban of the player at once. */
     liftBans: "Lift",
     liftBansTitle: "Lift all his bans",
+    /** The group of the promises made to a player; FM's own names for them are in its language files only. */
+    promises: "Promises",
+    promiseName: (id: number) => `Promise ${id}`,
+    promiseMade: (date: string) => `Made ${date}`,
+    promiseDue: (date: string) => `Due ${date}`,
+    promiseEnded: (date: string) => `Ended ${date}`,
+    closePromise: "Close",
+    closePromiseTitle: "End this promise without holding it against him",
 
     // Above the attributes, while the profile is read
     /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
@@ -1543,6 +1553,8 @@ export const en = {
     injuryAdded: "Added an injury",
     /** The same for lifting bans: `count` is how many bans the player had. */
     lifted: (count: number) => (count === 1 ? "Lifted 1 ban" : `Lifted ${format(count)} bans`),
+    /** What closing a promise changed, in the place of its values: `id` is FM's number for it. */
+    promiseClosed: (id: number) => `Closed promise ${id}`,
     /** What keeping a player from retiring changed: the date he was to retire on, or none when only his traits changed. */
     keptPlaying: (date: string | null) => (date === null ? "Will play on" : `Retirement on ${date} prevented`),
     /** The line beside the title; `undone` of the `total` changes were undone. */

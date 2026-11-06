@@ -29,6 +29,7 @@ mod national;
 mod officials;
 mod players;
 mod profile;
+mod promises;
 mod relations;
 mod retirement;
 pub mod rtti;
@@ -81,6 +82,7 @@ pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,
     profile_for,
 };
+pub use promises::{Promise, PromiseClosed, PromisePlan};
 pub use relations::{
     HOMEGROWN_RULES, MOST_STRENGTH, PersonRef, Preference, PreferenceKind, PreferencePlan, PreferenceSet, Related,
     Relation, RelationPlan, RelationSet, Tie, TieTarget,

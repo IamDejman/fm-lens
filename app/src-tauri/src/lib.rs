@@ -13,9 +13,10 @@ use fmlens_core::{
     InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation,
     NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned,
     PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
-    PreferenceSet, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
-    StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target,
-    TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
+    PreferenceSet, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError,
+    SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex,
+    StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums,
+    sort_players,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -703,6 +704,33 @@ impl Connection {
         logged
     }
 
+    /// Logs a promise just closed, as a change of the player's `promise` from FM's number for it to none.
+    fn log_promise(&mut self, done: PromiseClosed) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "promise".to_owned(),
+            old: i64::from(done.promise.id),
+            new: 0,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Promise(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs lifting just written, as a change of the player's `bans` from how many he had to none.
     fn log_lift(&mut self, done: Lifted, batch: Option<u32>) -> LoggedChange {
         let change = Change {
@@ -1274,6 +1302,7 @@ impl Connection {
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
             Some(Undo::Injury(injury)) => self.session.undo_injury(&injury)?,
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
+            Some(Undo::Promise(closed)) => self.session.undo_close_promise(&closed)?,
             Some(Undo::Cohesion(cohered)) => self.session.undo_cohesion(&cohered)?,
             Some(Undo::Tactics(raised)) => self.session.undo_tactics(&raised)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
@@ -1630,6 +1659,7 @@ enum Undo {
     /// One injury made longer or shorter, or taken out of the list.
     Injury(InjurySet),
     Lift(Lifted),
+    Promise(PromiseClosed),
     Cohesion(Cohered),
     Retirement(RetirementSet),
     Tie(RelationSet),
@@ -2985,6 +3015,18 @@ fn swap_players(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Logg
     Ok(connection.log_move(done, MoveTerms::default(), Vec::new(), None))
 }
 
+/// Closes the open promise at `index` in the promises of the player `uid`, as FM ends one that is not held against
+/// him, and logs it as one change of his `promise`. FM drops it 31 days later; until then Undo opens it again.
+#[tauri::command]
+fn close_promise(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_close_promise(player, index)?;
+    let done = connection.session.apply_close_promise(&plan)?;
+    Ok(connection.log_promise(done))
+}
+
 /// Heals every current injury of the player `uid`, as the game does when he gets over them,
 /// and logs it as one change of his `injuries` to none.
 #[tauri::command]
@@ -3837,6 +3879,7 @@ pub fn run() {
             staff_jobs,
             heal_player,
             lift_bans,
+            close_promise,
             injury_kinds,
             add_injury,
             set_work_permit,
