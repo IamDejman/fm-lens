@@ -1930,14 +1930,17 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
     }
 }
 
-/// Whether this copy of the app can update itself: download a new version, check its signature and put it in place.
-/// On Windows, a copy the installer put in place, which has its uninstaller beside it; on macOS, the app run from its
+/// Whether this copy of the app can update itself from FM Lens's own releases (the updater's endpoint in
+/// tauri.conf.json): download a new version, check its signature and put it in place. The macOS app run from its
 /// bundle, unless macOS runs it from a read-only copy, as it does an app opened where it was downloaded (App
-/// Translocation). A portable copy and a development build open the release's page instead.
+/// Translocation). A development build, and Windows, which has no FM Lens release, open the release's page instead.
 #[tauri::command]
 fn can_self_update() -> bool {
-    // An upstream editor update must never replace this read-only fork.
-    false
+    let Ok(exe) = std::env::current_exe() else {
+        return false;
+    };
+    cfg!(target_os = "macos")
+        && app_bundle(&exe).is_some_and(|bundle| !bundle.to_string_lossy().contains("/AppTranslocation/"))
 }
 
 /// The macOS app bundle the executable `exe` is in (`FMLibreEditor.app/Contents/MacOS/FMLibreEditor`); none for a
@@ -3623,6 +3626,8 @@ pub fn run() {
     tauri::Builder::default()
         // Opens the page of a new release in the browser (see app/src/update.ts).
         .plugin(tauri_plugin_opener::init())
+        // Installs a newer FM Lens when the window opens (see app/src/update.ts).
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
         .manage(Graphics::default())
         .setup(|app| {
