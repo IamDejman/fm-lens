@@ -2,7 +2,8 @@
 //!
 //! The game keeps a promise as a record (`INTERACTION_PROMISE`, see [`PromiseLayout`]) that the game's promise manager,
 //! the person it was made to, the person who made it and its subject all list. A player's own list hangs off his person
-//! block. FM names promises in its language files only, so the editor shows FM's number for each.
+//! block, and holds the promises he made as well as those made to him; the editor shows those made to him that FM's
+//! Promises page lists. FM names promises in its language files only, so the editor shows FM's number for each.
 //!
 //! Closing a promise does what the game does when one ends without being held against the player: it marks the record
 //! closed, with the status FM gives such an ending, and ends it today. The record stays in every list, so the game
@@ -95,7 +96,8 @@ impl Session {
         self.undo_patches(&done.patches)
     }
 
-    /// The records of the promises made to `player`. Each must point back at him.
+    /// The records of the promises made to `player` that FM's Promises page lists: those in his list that point back at
+    /// him and have a category. The others in his list are promises he made, or ones FM does not show.
     fn promise_records(&self, player: &PlayerSummary, l: &PromiseLayout) -> Result<Vec<u64>, MoveError> {
         let p = &self.layout.player;
         if self.process.read_u32(player.address + p.at(p.uid, player.shift))? != player.uid {
@@ -120,12 +122,19 @@ impl Session {
             return Err(MoveError::NotListed);
         }
         let bytes = self.process.read_bytes(begin, (end - begin) as usize)?;
-        let records: Vec<u64> = bytes.as_chunks::<8>().0.iter().map(|word| u64::from_le_bytes(*word)).collect();
         // The game points a promise at the person it was made to by his object, his person block or his identity.
         let him = [player.address, person, player.address + p.at(p.identity(), player.shift)];
-        for &record in &records {
-            if !is_user_pointer(record) || !him.contains(&self.process.read_u64(record + l.person)?) {
+        let mut records = Vec::new();
+        for word in bytes.as_chunks::<8>().0 {
+            let record = u64::from_le_bytes(*word);
+            if !is_user_pointer(record) {
                 return Err(MoveError::NotListed);
+            }
+            let fields = self.process.read_bytes(record, l.end() as usize)?;
+            let at = l.person as usize;
+            let person = u64::from_le_bytes(fields[at..at + 8].try_into().expect("8 bytes"));
+            if him.contains(&person) && fields[l.category as usize] != 0 {
+                records.push(record);
             }
         }
         Ok(records)
@@ -153,7 +162,7 @@ mod tests {
         if let Some(l) = layout.promise.as_ref() {
             // A promise record is 0x60 bytes; its list hangs 0xA8 into the person block (0x320 in a player).
             assert!(l.end() <= 0x60);
-            assert_eq!((l.list, l.person, l.due, l.closed, l.status), (0xA8, 0x20, 0x3C, 0x53, 0x56));
+            assert_eq!((l.list, l.person, l.due, l.closed, l.category, l.status), (0xA8, 0x20, 0x3C, 0x53, 0x55, 0x56));
             assert_eq!(layout.player.person_block + l.list, 0x320);
         }
     }

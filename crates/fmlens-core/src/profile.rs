@@ -435,7 +435,8 @@ impl InjuryLayout {
 /// A promise made to a person (`INTERACTION_PROMISE`, 0x60 bytes). `list` is in the person block: a pointer to the
 /// `(begin, end, capacity)` vector of pointers to his promises. In a promise: `person` points back at him, `made` and
 /// `due` are dates (`due` becomes the end date once it closes), `id` is FM's `u16` number for the promise, bit 0 of
-/// `closed` marks it ended, and `status` is FM's status code, 0 while open.
+/// `closed` marks it ended, `category` is 0 for the promises FM's own Promises page leaves out, and `status` is FM's
+/// status code, 0 while open.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PromiseLayout {
@@ -445,13 +446,14 @@ pub struct PromiseLayout {
     pub due: u64,
     pub id: u64,
     pub closed: u64,
+    pub category: u64,
     pub status: u64,
 }
 
 impl PromiseLayout {
     /// One past the last byte of every promise field.
     pub fn end(&self) -> u64 {
-        [self.person + 8, self.made + 4, self.due + 4, self.id + 2, self.closed + 1, self.status + 1]
+        [self.person + 8, self.made + 4, self.due + 4, self.id + 2, self.closed + 1, self.category + 1, self.status + 1]
             .into_iter()
             .max()
             .unwrap_or(0)
