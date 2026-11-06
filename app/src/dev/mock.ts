@@ -544,6 +544,12 @@ function addDays(date: FmDate, days: number): FmDate {
   return { year: moved.getUTCFullYear(), month: moved.getUTCMonth() + 1, day: moved.getUTCDate() };
 }
 
+/** How many days from `from` to `to`. */
+function numberOfDays(from: FmDate, to: FmDate): number {
+  const utc = (date: FmDate) => Date.UTC(date.year, date.month - 1, date.day);
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
+}
+
 /** The injuries the editor had the game give fixture players, by UID: the kind's name. */
 const addedInjuries = new Map<number, string>();
 
@@ -593,20 +599,102 @@ function addInjury(uid: number, kindUid: number): LoggedChange {
 function injuriesOf(uid: number): Injury[] {
   const added = addedInjuries.get(uid);
   if (added !== undefined) {
-    return [{ name: added, started: GAME_DATE, backSoonest: addDays(GAME_DATE, 10), backLatest: addDays(GAME_DATE, 18) }];
+    return [
+      { name: added, started: GAME_DATE, backSoonest: addDays(GAME_DATE, 10), backLatest: addDays(GAME_DATE, 18), days: 18 },
+    ];
   }
   if (uid % 7 !== 3 || healedPlayers.has(uid)) {
     return [];
   }
+  const set = injuriesSet.get(uid);
+  if (set !== undefined) {
+    return set;
+  }
   const injury = (name: string, daysAgo: number, soonest: number, latest: number): Injury => {
     const started = addDays(GAME_DATE, -daysAgo);
-    return { name, started, backSoonest: addDays(started, soonest), backLatest: addDays(started, latest) };
+    return { name, started, backSoonest: addDays(started, soonest), backLatest: addDays(started, latest), days: latest };
   };
   const injuries = [injury("Hamstring strain", 4, 21, 35)];
   if (uid % 2 === 0) {
     injuries.push(injury("Twisted ankle", 1, 7, 12));
   }
   return injuries;
+}
+
+/** The fixture players' injuries as changed through the editor, by UID, and as they were before each change. */
+const injuriesSet = new Map<number, Injury[]>();
+const injuryUndo = new Map<number, Injury[]>();
+
+/** Logs a change to a fixture player's injury, as a change of his `injury` from the days it lasted to the days now. */
+function logInjury(uid: number, before: Injury, after: Injury | null, next: Injury[]): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const end = (injury: Injury | null) =>
+    injury === null ? null : { name: injury.name ?? "-", rule: null, value: injury.days };
+  const id = changes.length + 1;
+  injuryUndo.set(id, injuriesOf(uid));
+  injuriesSet.set(uid, next);
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "injury",
+    old: before.days,
+    new: after?.days ?? 0,
+    undoneAt: null,
+    batch: null,
+    tie: { from: end(before), to: end(after) },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** The injury at `index` of a fixture player. */
+function injuryAt(uid: number, index: number): Injury {
+  const injury = injuriesOf(uid)[index];
+  if (injury === undefined) {
+    throw failure("list.missing", `the list holds nothing at number ${index}`, { index });
+  }
+  return injury;
+}
+
+/** `change_injury`: a fixture player's injury lasts `days` days from when it began, at the most. */
+function changeInjury(uid: number, index: number, days: number): LoggedChange {
+  const before = injuryAt(uid, index);
+  if (!Number.isInteger(days) || days < 1 || days > 730) {
+    throw failure("move.outOfRange", `${days} is not valid for days; it takes 1 to 730`, {
+      field: "days",
+      value: days,
+      min: 1,
+      max: 730,
+    });
+  }
+  if (days === before.days) {
+    throw failure("relation.same", "the player has that already");
+  }
+  const soonest =
+    before.started && before.backSoonest
+      ? Math.min(numberOfDays(before.started, before.backSoonest), days)
+      : days;
+  const after: Injury = {
+    ...before,
+    days,
+    backSoonest: before.started ? addDays(before.started, soonest) : null,
+    backLatest: before.started ? addDays(before.started, days) : null,
+  };
+  const next = injuriesOf(uid).map((injury, i) => (i === index ? after : injury));
+  return logInjury(uid, before, after, next);
+}
+
+/** `remove_injury`: takes one of a fixture player's injuries out of his list. */
+function removeInjury(uid: number, index: number): LoggedChange {
+  const before = injuryAt(uid, index);
+  const next = injuriesOf(uid).filter((_, i) => i !== index);
+  return logInjury(uid, before, null, next);
 }
 
 // Ties: secondary nationalities and homegrown status --------------------------------------------------------------
@@ -1902,6 +1990,11 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.clause) {
     clausesSet.set(entry.uid, clauseUndo.get(entry.id)!);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field === "injury") {
+    injuriesSet.set(entry.uid, injuryUndo.get(entry.id)!);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -3438,6 +3531,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return changeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.level)) as T;
     case "remove_language":
       return removeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
+    case "change_injury":
+      return changeInjury(Number(args?.uid), Number(args?.index), Number(args?.days)) as T;
+    case "remove_injury":
+      return removeInjury(Number(args?.uid), Number(args?.index)) as T;
     case "add_tie":
       return addTie(Number(args?.uid), args?.tie as TieKind, Number(args?.target), args?.rule as number | undefined) as T;
     case "homegrown_rules":
