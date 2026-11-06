@@ -329,9 +329,11 @@ started = 0x10            # date the ban began
 marker = 0x16             # u16, 0xFFFF for a ban
 matches = 0x1C            # u8, matches left to miss
 
-# A promise made to a person (INTERACTION_PROMISE, 0x60 bytes), from the game's code (docs/recon/fm27-promises.md);
-# not yet compared with FM's screens. His list hangs off his person block; a closed promise has bit 0 of `closed` set,
-# the end date at `due` and a status other than 0. FM drops closed promises 31 days after they end.
+# A promise made to a person (INTERACTION_PROMISE, 0x60 bytes), from the game's code (docs/recon/fm27-promises.md).
+# His list hangs off his person block, and also holds the promises he made: those point at someone else at `person`.
+# A closed promise has bit 0 of `closed` set, the end date at `due` and a status other than 0. FM drops closed promises
+# 31 days after they end. Arsenal, 11 Dec 2027: FM's Promises page listed the one promise with a `category` (Nico Paz,
+# playing time, due 23 Jan 2028), and none of the 17 a squad meeting left with category 0.
 [promise]
 list = 0xA8               # in the person block: pointer to the list (begin, end, capacity) of his promises
 person = 0x20             # pointer back at him
@@ -339,6 +341,7 @@ made = 0x38               # date
 due = 0x3C                # date: due while open, ended once closed
 id = 0x4E                 # u16, FM's number for the promise
 closed = 0x53             # u8, bit 0
+category = 0x55           # u8, 0 for the promises FM's Promises page does not list
 status = 0x56             # u8, 0 while open; 1 ended without being held against him
 
 # A person's relations: the list of 16-byte entries the record of his `relations` starts with. Each points at a
