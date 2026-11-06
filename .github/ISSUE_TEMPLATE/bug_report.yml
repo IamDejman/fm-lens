@@ -1,5 +1,5 @@
-# Report a problem in FM Lens's Settings menu opens this form with the version, FM build, macOS and changes filled
-# in (app/src/report.ts): keep these ids in step with it.
+# Report a problem, at the foot of FM Lens's window, opens this form with the version, FM build, macOS and changes
+# filled in (app/src/report.ts): keep these ids in step with it.
 name: Bug report
 description: Something in FM Lens does not work as it should.
 labels: [bug]
@@ -13,7 +13,7 @@ body:
     attributes:
       label: FM Lens version
       description: At the foot of the Settings menu.
-      placeholder: "0.5.3"
+      placeholder: "0.5.5"
     validations:
       required: true
   - type: input

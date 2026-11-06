@@ -4,11 +4,12 @@ import { NationFlag, WithPicture } from "./Picture";
 import {
   Fact,
   ProfileFrame,
+  RatingGroup,
   ReputationMeter,
   useProfileDetails,
 } from "./ProfileParts";
 import { ListBrowser } from "./ListBrowser";
-import { nationListText, profileText } from "./labels";
+import { NATION_STYLE_LABELS, nationListText, profileText } from "./labels";
 import { useProfileEditing } from "./useProfileEditing";
 import type {
   NamedPerson,
@@ -81,8 +82,8 @@ interface NationProfileProps {
 
 /**
  * A nation's rules, FIFA standing, rivals and national teams, men's and women's; only its ID where the build does not
- * place them. Its rules, FIFA points, youth ratings, game importance, attendance and senior teams' reputations can be
- * edited where the row is the nation's own UID.
+ * place them. Its rules, FIFA points, youth ratings, game importance, attendance, style and senior teams' reputations
+ * can be edited where the row is the nation's own UID.
  */
 function NationProfile({ nation, version, onClose }: NationProfileProps) {
   const loaded = useProfileDetails<NationDetails | null>(
@@ -206,6 +207,7 @@ function NationBody({ details }: { details: NationDetails }) {
             </Fact>
           </dl>
         </section>
+        <StyleGroup title={text.style} style={details.style} side="" />
         {details.rivals.length > 0 && (
           <section className="profile-group">
             <h3>{profileText.rivals}</h3>
@@ -277,6 +279,7 @@ function WomenGroups({ women }: { women: WomenFootball }) {
           </Fact>
         </dl>
       </section>
+      <StyleGroup title={text.womenStyle} style={women.style} side="women." />
       {women.teams.map((team) => (
         <TeamGroup
           key={team.kind}
@@ -287,6 +290,31 @@ function WomenGroups({ women }: { women: WomenFootball }) {
       ))}
     </>
   );
+}
+
+/**
+ * A side's style ratings, 0 to 20, in the order of their labels; inputs while the nation is edited. `side` is the
+ * prefix of the fields' keys: "" for the men's, "women." for the women's.
+ */
+function StyleGroup({
+  title,
+  style,
+  side,
+}: {
+  title: string;
+  style: Record<string, number> | null;
+  side: string;
+}) {
+  if (style === null) {
+    return null;
+  }
+  const rows = Object.entries(NATION_STYLE_LABELS).map(([key, label]) => ({
+    key,
+    field: `${side}style.${key}`,
+    label,
+    value: style[key],
+  }));
+  return <RatingGroup title={title} rows={rows} hint />;
 }
 
 /**

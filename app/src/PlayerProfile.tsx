@@ -8,6 +8,7 @@ import { keepPlaying, setWorkPermit } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { ATTRIBUTE_LABELS, editText, profileText, type AttributeKey } from "./labels";
 import { MedicalGroup } from "./MedicalGroup";
+import { PromisesGroup } from "./PromisesGroup";
 import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
@@ -189,6 +190,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
       {details.futureTransfers.length > 0 && <FutureTransferGroup transfers={details.futureTransfers} />}
       <WorkPermitGroup details={details} />
       <CareerGroup details={details} />
+      <PromisesGroup uid={details.uid} promises={details.promises} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} person={person} />
       <PreferencesGroup preferences={details.preferences} person={person} />

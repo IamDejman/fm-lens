@@ -36,6 +36,7 @@
   <script type="module">
     import { releaseNotes, RELEASES_PAGE } from "../release.js";
 
+    const DOWNLOAD_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>';
     const status = document.getElementById("status");
     const list = document.getElementById("releases");
     const releases = await releaseNotes();
@@ -61,7 +62,17 @@
         body.className = "release-body";
         // GitHub renders and sanitizes the release text it sends as HTML.
         body.innerHTML = release.html;
-        article.append(heading, meta, body);
+        article.append(heading, meta);
+        if (release.download) {
+          const link = document.createElement("a");
+          link.className = "button release-download";
+          link.href = release.download;
+          link.setAttribute("aria-label", `Download FM Lens ${release.version}`);
+          link.innerHTML = DOWNLOAD_ICON;
+          link.append("Download");
+          article.append(link);
+        }
+        article.append(body);
         list.append(article);
       }
     }

@@ -242,6 +242,17 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
+    /// Have the game transfer a player to another club's senior team in the running game, as its own editor does: from
+    /// any club, yours too. Nothing undoes it.
+    Transfer {
+        /// The player's UID.
+        uid: u32,
+        /// The UID of the club he joins.
+        club: u32,
+        /// A transfer fee in pounds; none for a free transfer.
+        #[arg(long)]
+        fee: Option<i64>,
+    },
     /// Release a player from his club in the running game: he becomes a free agent.
     Release {
         /// The player's UID.
@@ -817,6 +828,7 @@ fn run(cli: Cli) -> Result<()> {
         Some(
             Command::Set { .. }
                 | Command::Move { .. }
+                | Command::Transfer { .. }
                 | Command::Release { .. }
                 | Command::StaffMove { .. }
                 | Command::StaffJob { .. }
@@ -902,6 +914,9 @@ fn run(cli: Cli) -> Result<()> {
             let terms = MoveTerms { wage, expires };
             let session = connect(process, ArraySource::ProfileFirst)?;
             move_player(&session, uid, club, terms, fee, restore, hold)
+        }
+        Command::Transfer { uid, club, fee } => {
+            transfer_player(&connect(process, ArraySource::ProfileFirst)?, uid, club, fee)
         }
         Command::Release { uid, restore, hold } => {
             release_player(&connect(process, ArraySource::ProfileFirst)?, uid, restore, hold)
@@ -2975,6 +2990,48 @@ fn move_player(
             println!("  fee taken back");
         }
     }
+    Ok(())
+}
+
+fn transfer_player(session: &Session, uid: u32, club: u32, fee: Option<i64>) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let to = clubs.get(club).with_context(|| format!("no club with UID {club}"))?;
+    let plan = session.plan_transfer(player, to, MoveTerms::default())?;
+    let from = clubs.get(plan.from_club).context("his club is not in the list")?;
+    println!("{} (UID {uid}): {} -> {}, fee £{}", player.name, from.name, to.name, fee.unwrap_or(0));
+
+    // What the game might change: both clubs' money, and his contract.
+    let read = |entity: Entity, target: &fmlens_core::Target, key: &str| {
+        session.field(entity, key).ok().and_then(|field| session.read_field(target, &field).ok())
+    };
+    let money = |club: &fmlens_core::ClubSummary| {
+        let target = club.target();
+        (read(Entity::Club, &target, "finance.balance"), read(Entity::Club, &target, "finance.transfer_budget"))
+    };
+    let contract = |target: &fmlens_core::Target| {
+        (read(Entity::Player, target, "contract.wage"), read(Entity::Player, target, "contract.expires"))
+    };
+    let (buyer, seller) = (money(to), money(from));
+    let terms = contract(&player.target());
+    println!(
+        "  before: {} balance {:?} budget {:?}; {} balance {:?} budget {:?}",
+        to.name, buyer.0, buyer.1, from.name, seller.0, seller.1
+    );
+    println!("  before: wage {:?}, contract end {:?}", terms.0, terms.1);
+
+    let moved = session.transfer_player(player, to, MoveTerms::default(), fee.unwrap_or(0))?;
+    let now = session.players()?.into_iter().find(|p| p.uid == uid).context("the player is gone")?;
+    let (buyer, seller) = (money(to), money(from));
+    let terms = contract(&now.target());
+    println!("  now at {}, contract end {:?}", now.club.as_deref().unwrap_or("-"), moved.expires);
+    println!(
+        "  after: {} balance {:?} budget {:?}; {} balance {:?} budget {:?}",
+        to.name, buyer.0, buyer.1, from.name, seller.0, seller.1
+    );
+    println!("  after: wage {:?}, contract end {:?}", terms.0, terms.1);
+    ensure!(now.club_uid == Some(club), "the player does not read as being at {}", to.name);
     Ok(())
 }
 

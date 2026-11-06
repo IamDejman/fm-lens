@@ -59,20 +59,46 @@ Status: partial.
 
 Staff formation and set-piece option bytes (from setter 0xC9694C, code to offset):
 
-| Code | Offset | Meaning (guess) | Jover |
+| Code | Offset | Meaning | Jover |
 |---|---|---|---|
-| `Nppf` | +0xDF | preferred formation, slot 1 | 4 |
-| `Npsf` | +0xE0 | preferred formation, slot 2 | 7 |
-| `Npdf` | +0xE1 | defensive formation | 4 |
-| `Npaf` | +0xE2 | attacking formation | 28 |
-| `oopF` | +0xE3 | out of possession formation | 32 |
-| `oopS` | +0xE4 | out of possession style | 7 |
-| `Opdf` | +0xE5 | opposition defensive formation | 32 |
-| `Opaf` | +0xE6 | opposition attacking formation | 22 |
+| `Nppf` | +0xDF | preferred formation, in possession | 4 |
+| `Npsf` | +0xE0 | second formation, in possession | 7 |
+| `Npdf` | +0xE1 | defensive formation, in possession | 4 |
+| `Npaf` | +0xE2 | attacking formation, in possession | 28 |
+| `oopF` | +0xE3 | preferred formation, out of possession | 32 |
+| `oopS` | +0xE4 | second formation, out of possession | 7 |
+| `Opdf` | +0xE5 | defensive formation, out of possession | 32 |
+| `Opaf` | +0xE6 | attacking formation, out of possession | 22 |
 
 Each byte is a formation id. Commonest ids: 29, 4, 28, 3, 35, 64, 30, 7, 63, 22, 33, 32. Id 0 is
-unset (81 staff, the same 81 that have 3 in the option bytes below). The id to name table was
-not found. Names need the screen: read the formation a known staff member shows and match the id.
+unset (81 staff, the same 81 that have 3 in the option bytes below).
+
+Meanings traced 6 November 2026 (arm64 half of Steam 26340721):
+
+- `0x2B52CD4(owner, kind, in_possession)` returns a manager's formation: kind 0 preferred, 1
+  second, 2 attacking, 3 defensive. With a member of staff it reads +0xDF, +0xE0, +0xE2, +0xE1 in
+  possession and +0xE3, +0xE4, +0xE6, +0xE5 out of it. Without one it reads a team record's
+  +0x74..+0x77 and converts each to its out-of-possession id with `0x4ADDE2C`.
+- The AI's tactic builders (`0x2CE5248`, `0x2D09AA4`, `0x2B57520`) set the tactic's formation
+  from +0xDF and its out-of-possession shape from +0xE3.
+- At load (`0x15AC1E0`) an unset +0xDF becomes 3, unset +0xE0..+0xE2 copy it, and each unset
+  out-of-possession byte is worked out from its in-possession partner (+0xE3 from +0xDF, +0xE4
+  from +0xE0, +0xE6 from +0xE2).
+- `0x4ADDE2C` gives three out-of-possession ids per in-possession id; the ids it can give are 4,
+  7, 22, 27, 30, 32, 33, 35, 63 and 64. 63 gives 63 itself, 28 and 29 give 22.
+- FM's staff profile, Coaching Info, "Preferred Formations", lists two lines: +0xDF (green up
+  arrow, in possession) and +0xE3 (red down arrow, out of possession). The second, defensive and
+  attacking formations are not on the profile. Seen on 11 Dec 2027: Simeone (28, second 64) and
+  Arteta (29, second 4) both show 4-4-2 2DM out of possession, and the game's default for both 28 and 29 is 22; Glasner
+  (63, second 35) shows 5-2-2-1 DM AM for both lines, and after +0xDF and +0xE0 were changed to 29
+  and 28 FM showed 29 with the ball and still 5-2-2-1 DM AM without it. Read later the same day:
+  +0xE3 holds 22 for Arteta and Simeone, 63 for Glasner and 30 for Gasperini, whose profile shows
+  5-3-2 DM WB without the ball. With Glasner's +0xE3 changed from 63 to 22, FM showed 4-4-2 2DM
+  on the down-arrow line a day later and kept 5-2-2-1 DM AM on the up-arrow line.
+- Formation names are built at run time from a table of 64 entries of 24 bytes at
+  `0x573CFA0` (filled on first use by `0x495FC78`); the binary only holds the base shapes
+  ("4-2-3-1", "5-2-2-1 NEW" and so on). Names seen in FM: 22 4-4-2 2DM, 28 4-2-4 DM Wide,
+  29 4-2-3-1 DM AM Wide, 30 5-3-2 DM WB, 63 5-2-2-1 DM AM.
 
 Set-piece option bytes: `SPdt` +0xEE, `SPpd` +0xEF, `SPaf` +0xF0, `SPDm` +0xF1, `SPan` +0xF2,
 `SPdn` +0xF3, `Spdl` +0xF4. Values 0 to 2 (3 for the 81 unset). Meaning of each value is unknown.
@@ -290,7 +316,7 @@ edit. Not tested (read only).
 ## Needs the screen
 
 - Coaching licence labels per level, for Jover (level 2) and the manager.
-- Formation names for ids 3, 4, 7, 22, 28, 29, 30, 32, 33, 35.
+- Formation names for ids 3, 4, 7, 27, 32, 33, 35, 64 (or read the table at `0x573CFA0`).
 - Tendency names for the NT codes.
 - Which tactic setting each familiarity kind 0..5 is.
 - Staff nation knowledge percentages.

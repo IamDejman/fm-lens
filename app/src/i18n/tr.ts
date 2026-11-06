@@ -454,6 +454,21 @@ export const tr: Strings = {
     corporate: "Kurumsal",
   },
 
+  nationStyle: {
+    depth: "Derinlik",
+    directness: "Direkt Oyun",
+    flamboyancy: "Gösteriş",
+    flexibility: "Esneklik",
+    free_roles: "Serbest Roller",
+    marking: "Markaj",
+    offside: "Ofsayt",
+    pressing: "Pres",
+    sitting_back: "Geride Durma",
+    tempo: "Tempo",
+    playmaker: "Oyun Kurucu Kullanımı",
+    width: "Genişlik",
+  },
+
   supporterTraits: {
     loyalty: "Sadakat",
     passion: "Tutku",
@@ -532,6 +547,8 @@ export const tr: Strings = {
     "contract.loan_listed": "Kiralık listesinde",
     "contract.job": "Görev",
     coaching_licence: "Antrenörlük lisansı",
+    "formation.in_possession": "Topa sahipken",
+    "formation.out_of_possession": "Topa sahip değilken",
     "manager.unsackable": "Kovulamaz (deneysel)",
     "manager.registration_anytime": "Kadroyu her zaman kaydet (deneysel)",
     "tie.nationality": "İkinci uyruk",
@@ -546,8 +563,10 @@ export const tr: Strings = {
     level: "Seviye",
     club: "Kulüp",
     injuries: "Sakatlıklar",
+    injury: "Sakatlık",
     work_permit: "Çalışma izni",
     bans: "Cezalar",
+    promise: "Söz",
     cohesion: "Kulübe alışkınlık",
     tactics: "Taktiğe alışkınlık",
     retirement: "Emeklilik",
@@ -654,6 +673,7 @@ export const tr: Strings = {
     squadStatus: "Forma süresi",
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Durum ${status}`,
     qualifications: "Yeterlilikler",
+    formations: "Dizilişler",
     coachingLicence: "Antrenörlük lisansı",
     licenceName: (level: number): string =>
       ({
@@ -701,7 +721,7 @@ export const tr: Strings = {
     keepPlaying: "Emekli olmasını engelle",
     keepingPlaying: "Engelleniyor…",
     keepPlayingTitle:
-      "Emekliliğini iptal eder ve “Zirvedeyken emekli olur” yerine “Olabildiğince uzun futbol oynar” verir. Değişiklikler'den geri alabilirsiniz.",
+      "Emekliliğini iptal eder. Değişiklikler'den geri alabilirsiniz.",
 
     // Medical
     morale: (value) => `${value} / 20`,
@@ -749,7 +769,7 @@ export const tr: Strings = {
       }
     },
     moraleTitle: "10 Memnun. 15 ve üstü Aşırı Mutlu.",
-    jadednessTitle: "Oynamaktan ne kadar yorulduğu. -500 tamamen dinlenmiş demek. Yükseldikçe dinlenmeye daha çok ihtiyaç duyar.",
+    jadednessTitle: "Ne kadar yorgun olduğu. -500 tamamen dinlenmiş demek.",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
@@ -763,6 +783,13 @@ export const tr: Strings = {
     banStarted: (date) => `Başlangıç: ${date}`,
     liftBans: "Kaldır",
     liftBansTitle: "Tüm cezalarını kaldır",
+    promises: "Sözler",
+    promiseName: (id) => `Söz ${id}`,
+    promiseMade: (date) => `Verildi: ${date}`,
+    promiseDue: (date) => `Son tarih: ${date}`,
+    promiseEnded: (date) => `Bitti: ${date}`,
+    closePromise: "Kapat",
+    closePromiseTitle: "Bu sözü ona karşı sayılmadan bitir",
 
     // Above the attributes, while the profile is read
     setAttributes: "Bütün özellikleri şuna ayarla:",
@@ -1044,6 +1071,28 @@ export const tr: Strings = {
     shortName: "Kısa isim",
     reputation: "İtibar",
     women: "Kadın",
+    rules: "Kurallar",
+    ruleNames: {
+      level: "Seviye",
+      max_squad_size: "En Fazla Kadro",
+      min_squad_size: "En Az Kadro",
+      recommended_squad_size: "Önerilen Kadro",
+      max_prelim_squad_size: "En Fazla Ön Kadro",
+      min_foreign_players: "En Az Yabancı Oyuncu",
+      max_foreign_players: "En Fazla Yabancı Oyuncu",
+      foreign_trialists_can_play: "Denemedeki Yabancılar Oynayabilir",
+      subs_allowed: "Oyuncu Değişikliği Hakkı",
+      max_subs: "Yedek Sayısı",
+      extended_injury_time: "Uzatılmış Ek Süre",
+      daylight_offside_rule: "Açık Ofsayt Kuralı",
+      yellow_cards_for_fine: "Para Cezası İçin Sarı Kart",
+      min_games_for_medal: "Madalya İçin Maç",
+      number_of_medals: "Madalya Sayısı",
+      min_stadium_capacity: "En Az Stat Kapasitesi",
+      min_stadium_seating: "En Az Oturma Kapasitesi",
+      requires_grass_pitch: "Çim Saha Şartı",
+      requires_undersoil_heating: "Zemin Isıtma Şartı",
+    },
   },
 
   awardList: {
@@ -1136,6 +1185,8 @@ export const tr: Strings = {
     gameImportance: "Oyunun önemi",
     attendance: "Seyirci ilgisi",
     women: "Kadın futbolu",
+    style: "Oyun Tarzı",
+    womenStyle: "Kadın Futbolunda Oyun Tarzı",
     teamName: (ageLimit) => (ageLimit === null ? "A Milli Takım" : `U${ageLimit}`),
     womenTeamName: (ageLimit) => (ageLimit === null ? "Kadın A Milli Takımı" : `Kadınlar U${ageLimit}`),
     manager: "Teknik direktör",
@@ -1287,12 +1338,27 @@ export const tr: Strings = {
     download: "İndir",
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
     later: "Sonra",
+    checkForUpdates: "Güncellemeleri Denetle…",
+    checking: "Güncellemeler denetleniyor…",
+    upToDate: "FM Lens güncel.",
+    checkFailed: "Güncellemeler denetlenemedi.",
     whatsNew: (version) => `FM Lens ${version} sürümündeki yenilikler`,
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.5": [
+        "Kendi kulübünüzden oyuncu transfer edin. FM transferi yapar ve bedeli aktarır.",
+      ],
+      "0.5.4": [
+        "Bir sakatlığın süresini değiştirin ya da tek bir sakatlığı kaldırın.",
+        "Bir teknik direktörün topa sahipken ve topa sahip değilken dizilişlerini görün ve değiştirin.",
+        "Bir ülkenin oyun tarzı puanlarını görün ve değiştirin.",
+        "Bir turnuvanın kurallarını görün.",
+        "Bir oyuncuya verilen sözleri görün ve açık bir sözü kapatın.",
+        "Kulüp değiştir: başka bir kulübün teknik direktörü olun.",
+      ],
       "0.5.3": [
-        "FM Lens artık dosyalarında ve ayarlarında kendi adını kullanıyor. Kurulumunuz ve ayarlarınız kendiliğinden aktarıldı.",
+        "Dosyalar, ayarlar ve Steam yardımcısı artık FM Lens adını kullanıyor. Kurulumunuz aktarıldı.",
       ],
       "0.5.2": [
         "Ayarlar'daki Sorun bildir, sürümleriniz ve değişiklikleriniz doldurulmuş bir hata raporu açar.",
@@ -1309,6 +1375,7 @@ export const tr: Strings = {
     editTitle: "Bu profili düzenle",
     startFailed: (reason) => `Düzenleme başlatılamadı: ${reason}`,
     positionRating: (position) => `${position} puanı`,
+    womenStyle: (style) => `Kadın futbolunda ${style.toLocaleLowerCase("tr")}`,
     was: (value) => `önceki: ${value}`,
     invalid: (min, max) => `${min} ile ${max} arasında bir tam sayı girin`,
     least: (value) => `En az: ${value}`,
@@ -1353,6 +1420,7 @@ export const tr: Strings = {
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
     injuryAdded: "Sakatlık eklendi",
     lifted: (count) => `${format(count)} ceza kaldırıldı`,
+    promiseClosed: (id) => `${id} numaralı söz kapatıldı`,
     keptPlaying: (date) => (date === null ? "Oynamaya devam edecek" : `${date} tarihli emeklilik engellendi`),
     count: (total, undone) => {
       const count = changeCount(total);
@@ -1579,6 +1647,7 @@ export const tr: Strings = {
     pays: (club, fee, balance, budget) =>
       `${club} öder: ${fee}. Bakiye ${balance}${budget === null ? "" : `, transfer bütçesi ${budget}`}`,
     receives: (club, fee, balance) => `${club} alır: ${fee}. Bakiye ${balance}`,
+    gameFee: (buyer, seller, fee) => `${buyer} öder, ${seller} alır: ${fee}`,
     noFinances: (club) => `${club} için FM'de finans kaydı yok, parası değişmez`,
 
     // The contract
@@ -1590,6 +1659,7 @@ export const tr: Strings = {
     fixTerms: "Önce bedeli ya da sözleşme değerlerini düzeltin.",
     checking: "Transfer kontrol ediliyor…",
     route: (from, to) => `${from} → ${to}`,
+    permanent: "Geri alınamaz.",
 
     // Swapping with a player of the club instead
     swapTitle: "Oyuncuyla takas et",
@@ -1608,6 +1678,13 @@ export const tr: Strings = {
     staffButtonTitle: "Başka bir kulübe taşı",
     staffChooseClub: "Personelin taşınacağı kulübü seçin.",
     staffContract: "Görev ve sözleşme aynı kalır.",
+    managerButton: "Kulüp değiştir",
+    managerButtonTitle: "Başka bir kulübün teknik direktörü ol",
+    managerTitle: "Kulüp değiştir",
+    managerContract: "Oyun sana kendi koşullarıyla bir teknik direktör sözleşmesi yapar.",
+    managerDisplaced: (name) => `${name} işini kaybeder`,
+    managerMove: "Kulüp değiştir",
+    managerMoving: "Kulüp değiştiriliyor…",
     swapChooseClub: "Takas edilecek oyuncunun kulübünü seçin.",
     swapChoosePlayer: "Takas edilecek oyuncuyu seçin.",
     swapChecking: "Takas kontrol ediliyor…",
@@ -1671,6 +1748,9 @@ export const tr: Strings = {
     languagesTitle: "Her dili ne kadar iyi konuştuğunu değiştir",
     levelOf: (name) => `${name} seviyesi`,
     raisedBack: "FM bunu kendisi yeniden yükseltir",
+    injuriesTitle: "Her sakatlığın kaç gün süreceğini değiştir",
+    daysOut: "Sahalardan uzak kalacağı gün",
+    daysOf: (name) => `${name} için gün sayısı`,
     save: "Kaydet",
   },
 
