@@ -1926,6 +1926,19 @@ export const tr: Strings = {
     badIds: "Oyuncu kimliklerini virgül veya boşlukla ayırarak yazın.",
   },
 
+  report: {
+    title: "Sorun bildir",
+    what: "Ne oldu?",
+    sentWith: "Herkese açık paylaşılır; sürümlerin ve son değişikliklerin de eklenir.",
+    send: "Gönder",
+    sending: "Gönderiliyor…",
+    cancel: "İptal",
+    sent: "Gönderildi. Teşekkürler.",
+    close: "Kapat",
+    tooMany: "Buradan çok fazla rapor gönderildi. Bir saat sonra yeniden dene.",
+    failed: "Gönderilemedi. Daha sonra yeniden dene.",
+  },
+
   release: {
     button: "Serbest bırak",
     buttonTitle: "Bu oyuncuyu oyunda kulübünden serbest bırak: serbest oyuncu olur",

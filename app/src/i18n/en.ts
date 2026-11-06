@@ -1324,7 +1324,7 @@ export const en = {
     connected: "Connected",
     /** The name, for screen readers, of the app version and game build at the foot of the settings menu. */
     detailsLabel: "App details",
-    /** At the foot of the window: opens a bug report on GitHub with the version, FM build and changes filled in. */
+    /** At the foot of the window: opens the Report a problem dialog (see `report`). */
     reportProblem: "Report a problem",
     /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */
     more: "More",
@@ -2171,6 +2171,21 @@ export const en = {
     tooBig: "Template files must be under 128 KB.",
     invalid: "That isn't an FM Lens player template.",
     badIds: "Enter player IDs separated by commas or spaces.",
+  },
+
+  /** Report a problem: the dialog the button at the foot of the window opens. Nothing is sent until Send. */
+  report: {
+    title: "Report a problem",
+    what: "What happened?",
+    /** Reports are filed where anyone can read them, with the app's version, FM's build, macOS and the recent changes. */
+    sentWith: "Posted publicly, with your versions and recent changes.",
+    send: "Send",
+    sending: "Sending…",
+    cancel: "Cancel",
+    sent: "Sent. Thanks.",
+    close: "Close",
+    tooMany: "Too many reports from here. Try again in an hour.",
+    failed: "Couldn't send it. Try again later.",
   },
 
   /** Releasing a player from their club, which leaves them a free agent: the button beside Transfer and its dialog. */

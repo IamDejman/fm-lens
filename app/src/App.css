@@ -4320,6 +4320,44 @@ button.danger:hover:not(:disabled) {
   font-size: var(--type-base);
 }
 
+/* Report a problem: a box to write in, as wide as the move dialogs. */
+.report-dialog {
+  width: min(560px, 100%);
+}
+
+/* Once sent, Close sits where Send was. */
+.report-dialog .modal-foot {
+  justify-content: flex-end;
+}
+
+.report-what {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.report-what textarea {
+  min-height: 9rem;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+  resize: vertical;
+}
+
+.report-what textarea:hover:not(:read-only) {
+  border-color: var(--muted);
+}
+
+.report-what textarea:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
+}
+
 /* A move that failed: a bar across the foot of the dialog. */
 .banner.move-error {
   flex: none;
