@@ -3,6 +3,7 @@
 
 import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
+import { version as appVersion } from "../../package.json";
 import type {
   ApplyReport,
   AttributeBound,
@@ -3079,6 +3080,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "remove_bridge":
       mockBridge = { ...notSetUp(), steamRunning: false };
       return mockBridge as T;
+    case "app_version":
+      return appVersion as T;
     case "bridge_status":
       return (macPreview ? mockBridge : null) as T;
     case "connect": {

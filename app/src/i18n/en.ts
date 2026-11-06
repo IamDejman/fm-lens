@@ -1390,6 +1390,21 @@ export const en = {
     installFailed: (reason: string) => `Couldn't update: ${reason}. Download it instead.`,
     /** Hides the notice until the app starts again. */
     later: "Later",
+    /** After an update, once: the headline of the notice that lists what this version brought (see `changes`). */
+    whatsNew: (version: string) => `What's new in FM Lens ${version}`,
+    /** Opens this version's release notes in the browser. */
+    releaseNotes: "Release notes",
+    dismiss: "Dismiss",
+    /**
+     * What each version brought, as the notice lists it after an update; a version not listed here shows no notice.
+     * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
+     */
+    changes: {
+      "0.5.2": [
+        "Report a problem, in Settings, opens a bug report with your versions and changes filled in.",
+        "When FM moves its data, FM Lens reads the game again by itself: no more pressing Reload.",
+      ],
+    } as Record<string, readonly string[]>,
   },
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
