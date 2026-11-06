@@ -1928,7 +1928,8 @@ function undoChange(id: number): LoggedChange {
     return { ...entry };
   }
   const found = currentValues(entry.entity, entry.uid)[entry.field];
-  if (found !== entry.new) {
+  // Like the real undo: a value the game has put back itself is undone, with nothing to write.
+  if (found !== entry.new && found !== entry.old) {
     const message = `${entry.field} is now ${found}, not ${entry.new}; the game has changed it since`;
     throw failure("edit.conflict", message, { field: entry.field, expected: entry.new, found: found ?? 0 });
   }
@@ -2511,7 +2512,7 @@ function undoCaptain(entry: LoggedChange): void {
   const [clubUid, index] = undo ? undo.key.split(":").map(Number) : [0, 0];
   const now = undo && captainsOf(clubUid, index, []);
   if (!undo || now?.captain !== undo.after.captain || now?.viceCaptain !== undo.after.viceCaptain) {
-    throw failure("move.changed", "the game has changed the memory at 0x0 since; reload and try again", { address: "0x0" });
+    throw failure("move.changed", "the game has changed this since; reload and try again", { address: "0x0" });
   }
   captainsSet.set(undo.key, undo.before);
 }
