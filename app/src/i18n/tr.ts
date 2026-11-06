@@ -1302,6 +1302,9 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.3": [
+        "FM Lens artık dosyalarında ve ayarlarında kendi adını kullanıyor. Kurulumunuz ve ayarlarınız kendiliğinden aktarıldı.",
+      ],
       "0.5.2": [
         "Ayarlar'daki Sorun bildir, sürümleriniz ve değişiklikleriniz doldurulmuş bir hata raporu açar.",
         "FM verilerini taşıdığında FM Lens oyunu kendiliğinden yeniden okur: artık Verileri yeniden oku'ya basmanız gerekmez.",
