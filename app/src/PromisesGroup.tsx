@@ -50,14 +50,14 @@ export function PromisesGroup({ uid, promises }: { uid: number; promises: Player
     return null;
   }
 
-  const close = async (index: number) => {
+  const close = async (index: number, promise: PlayerPromise) => {
     if (closing !== null) {
       return;
     }
     setClosing(index);
     setError(null);
     try {
-      await closePromise(uid, index);
+      await closePromise(uid, index, promise);
       closed.current = index;
       onEdited();
     } catch (e) {
@@ -91,7 +91,7 @@ export function PromisesGroup({ uid, promises }: { uid: number; promises: Player
                 aria-disabled={closing === index || undefined}
                 aria-busy={closing === index || undefined}
                 title={editable ? profileText.closePromiseTitle : readOnlyNote}
-                onClick={() => void close(index)}
+                onClick={() => void close(index, promise)}
               >
                 {profileText.closePromise}
               </button>

@@ -4,7 +4,7 @@
 // it in the background, without asking: it downloads it, checks its signature against the key the app was built with and
 // puts it in place of this one, which keeps running. The colophon then offers Relaunch to update; otherwise the new
 // version runs the next time FM Lens opens. A copy that cannot replace itself (one macOS runs from where it was
-// downloaded, or a development build) names the new version and opens its release page instead. Offline, or when the
+// downloaded, or a development build) names the new version and opens the website's download page instead. Offline, or when the
 // check fails, nothing happens and the app works as before. Check for Updates, in the app menu on macOS, looks at once
 // and says what it found.
 
@@ -14,9 +14,9 @@ import { useCallback, useEffect, useState } from "react";
 import { call, inTauri } from "./api";
 import { describeError } from "./format";
 
-/** Where the releases are; the only pages the app opens (see capabilities/default.json). */
-const RELEASES_PAGE = "https://github.com/IamDejman/fm-lens-releases/releases";
-const LATEST_RELEASE_PAGE = `${RELEASES_PAGE}/latest`;
+/** The website's release notes and download pages: the only pages the app opens (see capabilities/default.json). */
+const RELEASES_PAGE = "https://getfmlens.com/releases/";
+const DOWNLOAD_PAGE = "https://getfmlens.com/download/";
 
 /** How long reading `latest.json` and downloading the new version may take, in milliseconds. */
 const CHECK_TIMEOUT_MS = 30_000;
@@ -42,16 +42,16 @@ export type UpdateState =
 /** What one look found: a newer version and what was done about it, no newer version, or no answer. */
 type Found = Extract<UpdateState, { version: string }> | "current" | "unreachable";
 
-/** Opens the release notes of `version`, on its release's page. */
+/** Opens the release notes of `version`, on the website. */
 export function openRelease(version: string): void {
-  openUrl(`${RELEASES_PAGE}/tag/v${version}`).catch(() => {
+  openUrl(`${RELEASES_PAGE}#v${version}`).catch(() => {
     // Nothing to fall back on: the notice stays, and its text says what the version brought.
   });
 }
 
-/** Opens the latest release's page in the browser. */
+/** Opens the website's download page, which starts the latest version's disk image. */
 export function openLatestRelease(): void {
-  void openUrl(LATEST_RELEASE_PAGE);
+  void openUrl(DOWNLOAD_PAGE);
 }
 
 /** Whether this copy can replace itself (see `can_self_update`): the macOS app, unless macOS runs it from a download. */

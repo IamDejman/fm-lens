@@ -73,6 +73,7 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
   "it is changed one person at a time": "se cambia persona a persona",
   "the new value is not one of the game's own records of that kind":
     "el nuevo valor no es uno de los registros del propio juego de ese tipo",
+  "it holds a value the editor cannot name": "tiene un valor que el editor no sabe nombrar",
 };
 
 const reload = "vuelve a leer los datos e inténtalo de nuevo";
@@ -239,9 +240,8 @@ const errors: ErrorTexts = {
   "move.onLoan": () => "El jugador está cedido; los jugadores cedidos aún no se pueden traspasar.",
   "move.playerCoach": () => "Los jugadores-entrenadores no se pueden traspasar: también trabajan como personal.",
   "move.unusualContract": () => "El contrato del jugador no es un contrato de jugador corriente.",
-  "move.humanClub": () =>
-    "El jugador está en un club que dirige un mánager humano. Las tácticas y el entrenamiento del club también " +
-    "apuntan a él, así que solo puede salir del club desde el propio juego.",
+  "move.humanClub": () => "Juega en tu club. Traspásalo desde FM.",
+  "move.you": () => "Ese eres tú. Cambia de club desde FM.",
   "move.menAndWomen": () => "Uno de los clubes es masculino y el otro, femenino.",
   "move.notListed": () => "Las listas de la plantilla no tienen al jugador donde deberían.",
   "move.noRoom": (p) =>
@@ -255,11 +255,11 @@ const errors: ErrorTexts = {
   "call.unavailable": () => "FM no puede hacer este cambio en esta versión.",
   "call.declined": () => "FM no hizo el cambio.",
   "loan.futureFee": () =>
-    "Esta cesión tiene un traspaso futuro. Terminarla antes haría que FM completara el traspaso, así que FM Lens no la termina.",
+    "Esta cesión tiene un traspaso futuro. Terminarla antes haría que FM completara el traspaso.",
   "loan.joinedOther": (p) => `FM terminó la cesión, pero fichó por ${p.club} en lugar de volver.`,
   "injury.already": () => "Ya está lesionado. Cúralo primero.",
   "injury.noKind": () => "FM no tiene esa lesión.",
-  "cohesion.none": () => "FM aún no le ha dado familiaridad con este club, así que no hay nada que subir.",
+  "cohesion.none": () => "FM aún no le ha dado familiaridad con este club.",
   "cohesion.changed": (p) =>
     `Su familiaridad con el club vale ahora ${p.found}: el juego la ha cambiado desde entonces, así que no se ha tocado.`,
   "tactics.changed": () => "El juego ha cambiado desde entonces su familiaridad con la táctica, así que no se ha tocado.",
@@ -746,8 +746,7 @@ export const es: Strings = {
     noUnhappiness: "Nada le hace estar descontento",
     removeUnhappiness: "Quitar todo",
     removingUnhappiness: "Quitando…",
-    removeUnhappinessTitle:
-      "Quita todos sus motivos de descontento. Puedes deshacerlo en Cambios.",
+    removeUnhappinessTitle: "Quita todos sus motivos de descontento.",
     concernSince: (date) => `desde el ${date}`,
     concernKind: (kind) => (kind === 1 ? "Preocupado" : kind === 2 ? "Interno" : `Tipo ${kind}`),
     concernMotive: (motive) => CONCERN_MOTIVES_ES[motive] ?? `Motivo ${motive}`,
@@ -756,7 +755,7 @@ export const es: Strings = {
     loyaltyBonus: "Prima de fidelidad",
     happiness: "Felicidad",
     playingTimeHappiness: "Felicidad con los minutos",
-    moodTitle: "Como lo muestra FMRTE, de -100 a 100; el juego lo muestra con palabras",
+    moodTitle: "De -100 a 100.",
     clauseName: (kind) => CLAUSE_NAMES_ES[kind] ?? `Cláusula ${kind}`,
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
@@ -783,8 +782,7 @@ export const es: Strings = {
           return String(value);
       }
     },
-    moraleTitle:
-      "En FM: 10 es satisfecho, 11 algo feliz, 15 y 20 extremadamente feliz.",
+    moraleTitle: "10 es satisfecho. Desde 15, extremadamente feliz.",
     jadednessTitle:
       "Lo cansado que está. -500 es totalmente descansado.",
     noInjuries: "Sin lesiones",
@@ -792,14 +790,14 @@ export const es: Strings = {
     injuryStarted: (date) => `Desde el ${date}`,
     injuryBack: (dates) => `Regreso previsto: ${dates}`,
     heal: "Curar",
-    healTitle: "Curar todas las lesiones de este jugador en el juego",
+    healTitle: "Curar todas sus lesiones",
     addInjury: "Añadir lesión",
     injuryKind: "Lesión",
     noBans: "Sin sanciones",
     banMatches: (matches) => (matches === 1 ? "1 partido" : `${format(matches)} partidos`),
     banStarted: (date) => `Desde el ${date}`,
     liftBans: "Levantar",
-    liftBansTitle: "Levantar todas las sanciones de este jugador en el juego",
+    liftBansTitle: "Levantar todas sus sanciones",
     promises: "Promesas",
     promiseName: (id) => `Promesa ${id}`,
     promiseMade: (date) => `Hecha el ${date}`,
@@ -815,15 +813,13 @@ export const es: Strings = {
       count === 0
         ? "Todos sus atributos ya tienen ese valor"
         : `${count === 1 ? "1 cambio escrito" : `${format(count)} cambios escritos`}. La propensión a lesiones y el ` +
-          `juego sucio quedan en ${21 - level}, porque para ellos menos es mejor.`,
+          `juego sucio quedan en ${21 - level}.`,
     setAttributesUndone: (count) =>
       count === 0 ? "No se ha deshecho nada" : count === 1 ? "1 cambio deshecho" : `${format(count)} cambios deshechos`,
     undoSetAttributes: "Deshacer",
     undoSetAttributesTitle: "Recuperar sus atributos anteriores",
     freezeAttributes: "Congelar los atributos",
-    freezeAttributesNote:
-      "Mientras FM Lens esté abierto y conectado, sus atributos no pueden bajar. Las mejoras sí cuentan. " +
-      "FM Lens lo recuerda para esta partida.",
+    freezeAttributesNote: "Sus atributos no pueden bajar mientras FM Lens esté conectado.",
 
     // Personal
     you: "Tú",
@@ -831,7 +827,7 @@ export const es: Strings = {
     id: "ID",
     job: "Puesto",
     changeJob: "Cambiar de puesto",
-    changeJobTitle: "Dar a este miembro del personal otro puesto en su club en el juego",
+    changeJobTitle: "Cambiar su puesto",
     newJob: "Nuevo puesto",
     applyJob: "Aplicar",
     cancelJob: "Cancelar",
@@ -920,7 +916,7 @@ export const es: Strings = {
       },
       saved: {
         save: "Guardar",
-        saveTitle: "Guardar con un nombre los filtros y el orden actuales",
+        saveTitle: "Guardar estos filtros y el orden",
         name: "Nombre del filtro guardado",
         namePlaceholder: "Nombre del filtro",
         ok: "Aceptar",
@@ -968,7 +964,7 @@ export const es: Strings = {
       job: "Puesto",
       anyJob: "Cualquiera",
       unemployedOnly: "Solo sin empleo",
-      humanOnly: "Solo mánagers humanos",
+      humanOnly: "Solo tú",
       age: "Edad",
       minAge: "Edad mínima",
       maxAge: "Edad máxima",
@@ -1013,9 +1009,7 @@ export const es: Strings = {
     perWeek: "por semana",
     noFinances: "FM solo lleva las finanzas de los clubes de ligas jugables.",
     freeze: "Congelar el dinero",
-    freezeNote:
-      "Mientras FM Lens esté abierto y conectado, el saldo no puede bajar. Los ingresos sí cuentan. " +
-      "FM Lens lo recuerda para esta partida.",
+    freezeNote: "El saldo no puede bajar mientras FM Lens esté conectado.",
 
     // Estadio
     stadium: "Estadio",
@@ -1023,9 +1017,7 @@ export const es: Strings = {
     seating: "Con asientos",
     used: "En uso",
     usedAll: "Todo",
-    usedTitle:
-      "La parte del aforo que el juego deja usar cuando la limita (por ejemplo, con asientos cerrados); 0 significa " +
-      "todo",
+    usedTitle: "La parte del aforo que deja usar el juego. 0 significa todo.",
     expansion: "Ampliable hasta",
     noStadium: "No se ha podido leer el estadio de este club.",
 
@@ -1189,7 +1181,6 @@ export const es: Strings = {
       maxCapacity: "Aforo máximo",
       placeholder: "Mín.",
     },
-    note: "El estadio del primer equipo de este club, leído de los mismos campos que la ficha del club.",
   },
 
   nationList: {
@@ -1255,7 +1246,7 @@ export const es: Strings = {
       steps: {
         brand: {
           title: "FM Lens",
-          body: "Mira todo lo de tu partida y cámbialo. Los cambios llegan a FM al pulsar Aplicar. Pruébalos antes en una copia.",
+          body: "Mira y cambia todo lo de tu partida. Pruébalo antes en una copia.",
         },
         tabs: {
           title: "Secciones",
@@ -1263,7 +1254,7 @@ export const es: Strings = {
         },
         search: {
           title: "Búsqueda y filtros",
-          body: "Escribe un nombre o ID. Usa Filtros para acotar.",
+          body: "Escribe un nombre o ID.",
         },
         settings: {
           title: "Ajustes",
@@ -1271,15 +1262,15 @@ export const es: Strings = {
         },
         status: {
           title: "Conexión",
-          body: "La barra de abajo muestra si estás conectado a FM.",
+          body: "Muestra si estás conectado a FM.",
         },
       },
       exercise: {
         list: { title: "Prueba una edición", body: "Abre a cualquiera de la lista." },
         edit: { title: "Editar", body: "Pulsa Editar o haz clic en un valor." },
-        profile: { title: "Cambia un valor", body: "Escribe un valor nuevo. Aún no se envía nada a FM." },
+        profile: { title: "Cambia un valor", body: "Escribe un valor nuevo." },
         apply: { title: "Aplicar", body: "Aplicar envía el cambio a FM. Descartar lo elimina." },
-        changes: { title: "Cambios", body: "Aquí aparece cada cambio aplicado, y se puede deshacer." },
+        changes: { title: "Cambios", body: "Cada cambio aplicado, listo para deshacer." },
       },
     },
 
@@ -1295,9 +1286,7 @@ export const es: Strings = {
     more: "Más",
     previewTag: "vista previa en el navegador · datos de ejemplo",
     noDate: "Sin fecha del juego",
-    noDateTitle:
-      "No se pudo leer la fecha del juego, así que no hay edades y los filtros de edad no encuentran a nadie. " +
-      "Busca actualizaciones.",
+    noDateTitle: "No se pudo leer la fecha del juego, así que no hay edades.",
     reload: "Recargar datos",
     detecting: "Buscando Football Manager…",
     connecting: "Cargando partida…",
@@ -1326,9 +1315,7 @@ export const es: Strings = {
 
       bridge: {
         title: "Configuración inicial",
-        intro:
-          "FM Lens necesita un pequeño ayudante que FM carga al iniciarse. Guarda y cierra FM, y luego Steam, " +
-          "antes de configurarlo.",
+        intro: "Guarda y cierra FM, y luego Steam.",
         library: "Ayudante",
         installed: "Instalado",
         missing: "No instalado",
@@ -1349,20 +1336,17 @@ export const es: Strings = {
 
   compatibility: {
     unknownBuild: (game) => `FM Lens aún no se ha probado con ${game}`,
-    unknownBuildText:
-      "FM Lens no se ha probado con esta versión de FM. Los valores pueden estar mal, así que la edición está " +
-      "desactivada.",
+    unknownBuildText: "Los valores pueden estar mal, así que la edición está desactivada.",
     allowedText:
       "La edición está activada donde pasaron las comprobaciones. Haz una copia de tu partida.",
     failedTitle: "Algunos datos parecen incorrectos",
-    reloadHint: "Si una partida aún se estaba cargando, «Recargar datos» vuelve a comprobarlo.",
-    noDate: "La fecha del juego no ha superado las comprobaciones, así que no se muestran las edades.",
+    reloadHint: "Si una partida aún se estaba cargando, pulsa Recargar datos.",
+    noDate: "No se pudo leer la fecha del juego, así que no se muestran las edades.",
     failed: (names) => `Quedan en solo lectura: ${names}.`,
     join: (names) =>
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`,
     allow: "Editar de todos modos",
-    allowTitle:
-      "Activa la edición hasta que se cierre FM Lens o se vuelva a conectar. Haz antes una copia de tu partida.",
+    allowTitle: "Haz antes una copia de tu partida.",
   },
 
   checks: {
@@ -1394,6 +1378,11 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.6": [
+        "Informar de un problema se abre en FM Lens, al pie de la ventana. Cuenta qué pasó y pulsa Enviar.",
+        "Buscar actualizaciones… está en el menú FM Lens.",
+        "Textos más cortos y claros en toda la app, también en los diálogos de traspaso.",
+      ],
       "0.5.5": [
         "Traspasa jugadores de tu propio club. FM hace el traspaso y mueve el precio.",
       ],
@@ -1420,7 +1409,7 @@ export const es: Strings = {
     appliedTitle: "Aplicado",
     unknownNation: "País desconocido",
     edit: "Editar",
-    editTitle: "Cambiar los valores de este perfil en el juego",
+    editTitle: "Editar este perfil",
     startFailed: (reason) => `No se ha podido empezar a editar: ${reason}`,
     positionRating: (position) => `Valoración de ${position}`,
     womenStyle: (style) => `${style} (femenino)`,
@@ -1482,9 +1471,7 @@ export const es: Strings = {
       }
       return `${count} · ${undone === 1 ? "1 deshecho" : `${format(undone)} deshechos`}`;
     },
-    empty:
-      "Aún no hay cambios. Abre un jugador, un miembro del personal o un club y elige Editar, o usa Edición " +
-      "masiva en una lista.",
+    empty: "Aún no hay cambios.",
     columns: {
       time: "Hora",
       name: "Nombre",
@@ -1518,28 +1505,21 @@ export const es: Strings = {
 
   export: {
     button: "Exportar",
-    buttonTitle:
-      "Escribir los jugadores que muestra la lista en un archivo CSV o JSON, para una hoja de cálculo o un script",
+    buttonTitle: "Exportar a CSV o JSON",
     title: "Exportar jugadores",
     scope: (count) =>
       count === 0
         ? "Ningún jugador coincide con la búsqueda y los filtros."
-        : `${count === 1 ? "1 jugador" : `${format(count)} jugadores`}: lo que seleccionan la búsqueda y los ` +
-          "filtros de la lista, en su orden.",
+        : count === 1
+          ? "1 jugador"
+          : `${format(count)} jugadores`,
     formatLabel: "Formato",
     formats: {
       csv: "CSV, separado por comas",
       csvSemicolon: "CSV, separado por punto y coma",
       json: "JSON",
     },
-    formatHints: {
-      csv: "Para la mayoría de hojas de cálculo y scripts",
-      csvSemicolon: "Para Excel donde los decimales se escriben con coma: en español, turco o alemán, por ejemplo",
-      json: "Para scripts: las posiciones, los atributos y la personalidad como objetos propios",
-    },
-    contents:
-      "Habilidades, posiciones, atributos (también los ocultos), personalidad, reputación, partidos " +
-      "internacionales y contratos. El dinero va en libras.",
+    contents: "El dinero va en libras.",
     export: "Exportar",
     exporting: "Exportando…",
     done: (count, file) =>
@@ -1557,7 +1537,7 @@ export const es: Strings = {
 
   massEdit: {
     button: "Edición masiva",
-    buttonTitle: "Cambiar valores de todo lo que muestra la lista, con una vista previa antes",
+    buttonTitle: "Editar a todos los de la lista",
     title: {
       player: "Edición masiva de jugadores",
       staff: "Edición masiva de personal",
@@ -1569,7 +1549,6 @@ export const es: Strings = {
       total === 1
         ? `El ${nouns[entity].one} que muestra ahora la lista (búsqueda y filtros)`
         : `Los ${entityCount(entity, total)} que muestra ahora la lista (búsqueda y filtros)`,
-    scopeAll: (shown) => `Son todas las coincidencias, no solo las ${format(shown)} primeras filas en pantalla.`,
     scopeNone: (entity) =>
       `Ningún ${nouns[entity].one} coincide con la búsqueda y los filtros, así que no hay nada que cambiar.`,
     scopeTooMany: (entity, total, limit) =>
@@ -1608,13 +1587,12 @@ export const es: Strings = {
     operation: "Operación",
     operations: { set: "Fijar en", add: "Sumar", scale: "Escalar al %" },
     values: { set: "Valor", add: "Cantidad", scale: "Porcentaje" },
-    addTitle: "Se suma a cada valor tal como se muestra; un número negativo resta",
-    addPointsTitle: "Puntos porcentuales sumados a cada valor (70 % más 10 es 80 %); un número negativo resta",
+    addTitle: "Un número negativo resta.",
+    addPointsTitle: "70 % + 10 = 80 %. Un número negativo resta.",
     rangeHint: (min, max) => `${format(min)}–${format(max)}`,
     amountHint: (max) => `±${format(max)}`,
     ofCurrent: "% del valor actual",
-    percentTitle:
-      "Un porcentaje del valor actual: 100 lo mantiene, 110 lo sube una décima parte, 50 lo reduce a la mitad",
+    percentTitle: "100 lo mantiene, 50 lo reduce a la mitad",
     invalidAdd: (min, max) => `Introduce un número entero de ${format(min)} a ${format(max)}`,
     invalidPercent: (min, max) => `Introduce un porcentaje entero de ${min} a ${max}`,
     dateSetOnly: "Una fecha solo se puede fijar",
@@ -1653,7 +1631,6 @@ export const es: Strings = {
     applyTitle: (count) => `Escribir ${changes(count)} en el juego`,
     applyFirst: "Genera antes la vista previa de la edición masiva",
     applyNothing: "La vista previa no tiene cambios que escribir",
-    hint: "Nada cambia en FM hasta que pulsas Aplicar.",
     applied: (count) =>
       count === 0
         ? "No se ha escrito ningún cambio"
@@ -1689,7 +1666,6 @@ export const es: Strings = {
 
     // El diálogo
     title: "Comparación",
-    hint: "Se resalta el mejor valor de cada fila.",
     tooFew: "Añade al menos dos jugadores para compararlos.",
     loading: "Cargando los jugadores…",
     tableLabel: "Valores de los jugadores comparados",
@@ -1701,7 +1677,7 @@ export const es: Strings = {
 
   move: {
     button: "Traspasar",
-    buttonTitle: "Traspasar a este jugador a otro club en el juego, por un precio si quieres",
+    buttonTitle: "Traspasarlo, intercambiarlo o cederlo",
 
     // El diálogo
     title: "Traspaso",
@@ -1718,13 +1694,12 @@ export const es: Strings = {
     resultsLabel: "Clubes encontrados",
     searching: "Buscando clubes…",
     searchFailed: (reason) => `No se han podido buscar los clubes: ${reason}`,
-    more: (count) => `y ${format(count)} más; escribe para acotar la búsqueda`,
+    more: (count) => `y ${format(count)} más`,
     change: "Elegir otro club",
 
     // El precio
     feeHeading: "Precio",
     fee: "Precio del traspaso",
-    feeHint: "Déjalo vacío para un traspaso gratuito",
     feeInvalid: (max) => `Introduce un importe entero, de 0 a ${max}`,
     pays: (club, fee, balance, budget) =>
       `${club} paga ${fee}: saldo ${balance}${budget === null ? "" : `, presupuesto de fichajes ${budget}`}`,
@@ -1741,22 +1716,7 @@ export const es: Strings = {
     fixTerms: "Corrige antes el precio o los valores del contrato.",
     checking: "Comprobando el traspaso…",
     route: (from, to) => `${from} → ${to}`,
-    doesHeading: "Qué hace el traspaso",
-    does: [
-      "Se une al primer equipo del nuevo club",
-      "Contrato con fecha del día del juego; se le quita el dorsal",
-      "Sale de las listas de transferibles y cedibles",
-      "El salario y el fin de contrato solo cambian si fijas otros nuevos",
-      "El precio sale del saldo y del presupuesto de fichajes del comprador, y entra en el saldo del vendedor",
-      "Cualquier capitanía en el club anterior queda vacante",
-      "El historial de traspasos del juego aún no lo recoge",
-      "Aparece en Cambios, donde deshacerlo revierte de una vez el traspaso y el precio",
-    ],
-    gameDoes: [
-      "FM hace el traspaso él mismo y mueve el precio según sus propias reglas",
-      "El salario y el fin de contrato solo cambian si fijas otros nuevos",
-      "No se puede deshacer",
-    ],
+    permanent: "No se puede deshacer.",
 
     // El intercambio
     swapTitle: "Intercambiar por un jugador",
@@ -1770,86 +1730,39 @@ export const es: Strings = {
       query === "" ? "Este club no tiene jugadores." : `Ningún jugador de este club coincide con «${query}».`,
     changePlayer: "Elegir otro jugador",
 
-    swapContract: "Cada jugador conserva su contrato; los salarios y los fines de contrato no cambian.",
+    swapContract: "Cada uno conserva su contrato.",
     // Mover a un miembro del personal
-    staffButtonTitle: "Mover a este miembro del personal a otro club en el juego",
+    staffButtonTitle: "Moverlo a otro club",
     staffChooseClub: "Elige el club al que mover a este miembro del personal.",
-    staffContract: "Conserva el puesto, el salario y el fin de contrato; el contrato lleva la fecha del día del juego.",
-    staffDoes: [
-      "Se une al nuevo club en los departamentos en los que trabaja (médico, técnico, ojeo)",
-      "Mismo puesto, salario y fin de contrato; el contrato lleva la fecha del día del juego",
-      "Del mánager de un equipo, al que apunta el propio equipo, se encarga el juego",
-      "Aparece en Cambios, donde se puede deshacer",
-    ],
+    staffContract: "Mismo puesto y contrato.",
     managerButton: "Cambiar de club",
     managerButtonTitle: "Pasar a ser el mánager de otro club",
     managerTitle: "Cambiar de club",
     managerContract: "El juego te hace un contrato de mánager en sus propios términos.",
-    managerDoes: [
-      "Pasas a ser el mánager del primer equipo del club",
-      "Tu trabajo actual termina",
-      "El mánager del club pierde su puesto",
-      "El juego fija tu salario y la duración del contrato",
-      "No se puede deshacer en Cambios",
-    ],
     managerDisplaced: (name) => `${name} pierde su puesto`,
-    managerHint: "Nada cambia en FM hasta que pulsas Cambiar de club.",
     managerMove: "Cambiar de club",
     managerMoving: "Cambiando de club…",
     swapChooseClub: "Elige el club del jugador por el que intercambiar.",
     swapChoosePlayer: "Elige el jugador por el que intercambiar.",
     swapChecking: "Comprobando el intercambio…",
     swapRoute: (player, from, to, other) => `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
-    swapDoesHeading: "Qué hace el intercambio",
-    swapDoes: [
-      "Cada uno se une al primer equipo del club del otro",
-      "Contratos con fecha del día del juego; se les quitan los dorsales",
-      "Ambos salen de las listas de transferibles y cedibles",
-      "Cualquier capitanía en sus clubes anteriores queda vacante",
-      "No se paga ningún precio; la trayectoria no se actualiza",
-      "Aparece en Cambios como un solo cambio, que deshace los dos movimientos",
-    ],
 
     // El pie
-    hint: "Nada cambia en FM hasta que pulsas Traspasar.",
     move: "Traspasar",
     moving: "Traspasando…",
     cancel: "Cancelar",
-    swapHint: "Nada cambia en el juego hasta que pulsas Intercambiar.",
     swap: "Intercambiar",
     swapping: "Intercambiando…",
     loanTitle: "Cesión",
     loanChooseClub: "Elige el club al que cederlo.",
     loanEndsAfterToday: "Elige una fecha posterior a hoy",
     joinsFromToday: "Elige hoy o una fecha posterior",
-    loanDoes: [
-      "FM inicia la cesión, desde hoy hasta el fin de la cesión",
-      "Mantiene su contrato con su club",
-      "Deshacer en Cambios pone el fin de la cesión en hoy. FM la termina al día siguiente",
-    ],
-    loanDoesEnding: [
-      "FM inicia la cesión, desde hoy hasta el fin de la cesión",
-      "Mantiene su contrato con su club",
-      "Deshacer en Cambios termina la cesión y vuelve a su club",
-    ],
-    loanHint: "Nada cambia en FM hasta que pulses Ceder.",
     loan: "Ceder",
     loaning: "Cediendo…",
     signButton: "Fichar",
     signButtonTitle: "Ficharlo por un club",
     signTitle: "Fichaje",
     signChooseClub: "Elige el club que lo ficha.",
-    signDoes: [
-      "FM lo ficha él mismo, con sus propias condiciones",
-      "El sueldo o el fin de contrato que pongas sustituye al de FM",
-      "Deshacer en Cambios lo deja libre de nuevo",
-    ],
-    signLaterDoes: [
-      "FM cierra el fichaje hoy y se incorpora ese día",
-      "FM fija su contrato ese día, con sus propias condiciones",
-      "Deshacer en Cambios cancela el fichaje",
-    ],
-    signHint: "Nada cambia en FM hasta que pulses Fichar.",
     sign: "Fichar",
     signing: "Fichando…",
   },
@@ -1870,12 +1783,10 @@ export const es: Strings = {
 
     // El botón y su diálogo
     change: "Cambiar",
-    changeTitle: "Cambiar las nacionalidades secundarias y la formación local de este jugador en el juego",
+    changeTitle: "Cambiar sus otras nacionalidades y su formación local",
     title: "Nacionalidad y formación local",
-    hint: "Cada cambio llega a FM al momento. Puedes deshacerlo en Cambios.",
-    full:
-      "El juego hizo la lista de este jugador justo del tamaño de lo que contiene: se puede cambiar o quitar una " +
-      "nacionalidad o una formación, pero no añadir.",
+    hint: "Los cambios llegan a FM al momento.",
+    full: "Su lista está llena, así que no se puede añadir nada.",
     nationOf: (name) => `País en lugar de ${name}`,
     ruleOf: (name) => `Regla de formación local para ${name}`,
     remove: "Quitar",
@@ -1884,15 +1795,14 @@ export const es: Strings = {
     addNation: "Añadir un país…",
     newRule: "Regla de formación local del nuevo país",
     add: "Añadir",
-    clubNote: "A un club se le puede dar otra regla o quitarlo; los clubes los añade el propio juego.",
     working: "Escribiendo en el juego…",
     close: "Cerrar",
   },
 
   lists: {
-    likesTitle: "Cambiar en el juego cuánto le gusta o disgusta cada persona y club",
+    likesTitle: "Cambiar cuánto le gusta o disgusta cada persona y club",
     strengthOf: (name) => `Intensidad para ${name}`,
-    languagesTitle: "Cambiar en el juego cómo de bien habla cada idioma",
+    languagesTitle: "Cambiar cómo de bien habla cada idioma",
     levelOf: (name) => `Nivel de ${name}`,
     raisedBack: "FM lo vuelve a subir por su cuenta",
     injuriesTitle: "Cambiar cuántos días dura cada lesión",
@@ -1903,12 +1813,10 @@ export const es: Strings = {
 
   clauses: {
     change: "Cambiar",
-    changeTitle: "Cambia en el juego las primas y cláusulas de este jugador",
+    changeTitle: "Cambiar sus primas y cláusulas",
     title: "Primas y cláusulas",
-    hint: "Cada cambio llega a FM al momento. Puedes deshacerlo en Cambios.",
-    full:
-      "El juego hizo la lista de este contrato justo del tamaño de lo que contiene: se puede cambiar o quitar una " +
-      "prima o cláusula, pero no añadir una cláusula de rescisión.",
+    hint: "Los cambios llegan a FM al momento.",
+    full: "Este contrato no tiene sitio para una cláusula de rescisión.",
     amountOf: (name) => `Importe de ${name}`,
     conditionOf: (name) => `Condición de ${name}`,
     save: "Guardar",
@@ -1979,26 +1887,30 @@ export const es: Strings = {
     badIds: "Escribe los ID de jugador separados por comas o espacios.",
   },
 
+  report: {
+    title: "Informar de un problema",
+    what: "¿Qué pasó?",
+    sentWith: "Se publica, con tus versiones y tus cambios recientes.",
+    send: "Enviar",
+    sending: "Enviando…",
+    cancel: "Cancelar",
+    sent: "Enviado. Gracias.",
+    close: "Cerrar",
+    tooMany: "Demasiados informes desde aquí. Vuelve a intentarlo en una hora.",
+    failed: "No se pudo enviar. Inténtalo más tarde.",
+  },
+
   release: {
     button: "Rescindir",
-    buttonTitle: "Rescindir el contrato de este jugador con su club en el juego: pasa a ser agente libre",
+    buttonTitle: "Rescindir su contrato. Pasa a ser agente libre.",
 
     // El diálogo
     title: "Rescisión",
     from: "Sale de",
     checking: "Comprobando la rescisión…",
     ready: (club) => `${club} → agente libre`,
-    doesHeading: "Qué hace la rescisión",
-    does: [
-      "Sale de todos los equipos del club y su contrato termina: es agente libre y cualquier club puede ficharlo",
-      "Nadie cobra nada",
-      "Cualquier capitanía en el club queda vacante",
-      "El historial de traspasos del juego no lo recoge",
-      "Aparece en Cambios, donde deshacerla devuelve al jugador con el mismo contrato",
-    ],
 
     // El pie
-    hint: "Nada cambia en FM hasta que pulsas Rescindir.",
     release: "Rescindir",
     releasing: "Rescindiendo…",
     cancel: "Cancelar",
@@ -2006,23 +1918,15 @@ export const es: Strings = {
 
   endLoan: {
     button: "Terminar cesión",
-    buttonTitle: "Termina su cesión. Vuelve a su club.",
+    buttonTitle: "Vuelve a su club.",
 
     // El diálogo
     title: "Terminar cesión",
     from: "Cedido en",
     checking: "Comprobando la cesión…",
     ready: (from, to) => `${from} → ${to}`,
-    doesHeading: "Qué pasa",
-    does: [
-      "FM termina la cesión, hoy mismo",
-      "Vuelve a su club, con el contrato que tiene allí",
-      "FM publica su noticia del fin de la cesión",
-      "Deshacer en Cambios vuelve a iniciar la cesión hasta su fin anterior",
-    ],
 
     // El pie
-    hint: "Nada cambia en FM hasta que pulsas Terminar cesión.",
     end: "Terminar cesión",
     ending: "Terminando…",
     cancel: "Cancelar",
@@ -2037,11 +1941,9 @@ export const es: Strings = {
     from: "Se incorpora a",
     checking: "Comprobando el traspaso…",
     ready: (dates) => `Previsto para ${dates}`,
-    doesHeading: "Qué pasa",
-    does: ["FM cancela el acuerdo él mismo, como su propio editor", "Se queda donde está", "No se puede deshacer"],
 
     // El pie
-    hint: "Nada cambia en FM hasta que pulsas Cancelar traspaso.",
+    hint: "No se puede deshacer.",
     confirm: "Cancelar traspaso",
     cancelling: "Cancelando…",
     cancel: "Mantenerlo",
@@ -2090,8 +1992,7 @@ export const es: Strings = {
     maxAll: "Atributos al máximo",
     maxAllTitle:
       "Todos los atributos a 20 para todos (propensión a lesiones y juego sucio a 1)",
-    hint:
-      "Incluye a los cedidos. Puedes deshacerlo en Cambios.",
+    hint: "Incluye a los cedidos.",
 
     // Lo que hizo una acción
     written: (count) =>

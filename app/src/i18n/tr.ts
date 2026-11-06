@@ -66,6 +66,7 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
   "it is changed one person at a time": "bu alan kişi kişi değiştirilir",
   "the new value is not one of the game's own records of that kind":
     "yeni değer, oyunun bu türdeki kendi kayıtlarından biri değil",
+  "it holds a value the editor cannot name": "düzenleyicinin adlandıramadığı bir değer tutuyor",
 };
 
 const reload = "verileri yeniden okuyup tekrar deneyin";
@@ -107,9 +108,8 @@ const errors: ErrorTexts = {
   "move.onLoan": () => "Oyuncu kiralık; kiralık oyuncular henüz taşınamıyor.",
   "move.playerCoach": () => "Oyuncu-antrenörler taşınamıyor: aynı zamanda personel olarak da çalışıyorlar.",
   "move.unusualContract": () => "Oyuncunun sözleşmesi olağan bir oyuncu sözleşmesi değil.",
-  "move.humanClub": () =>
-    "Oyuncu, bir insan menajerin yönettiği kulüpte. Kulübün taktikleri ve antrenmanı da ona bağlı; bu yüzden " +
-    "kulüpten ancak oyunun içinden ayrılabilir.",
+  "move.humanClub": () => "Senin kulübünde oynuyor. Transferini FM'de yap.",
+  "move.you": () => "Bu sensin. Kulüp değişikliğini FM'de yap.",
   "move.menAndWomen": () => "Kulüplerden biri erkek, diğeri kadın kulübü.",
   "move.notListed": () => "Kadro listeleri oyuncuyu olması gereken yerde tutmuyor.",
   "move.noRoom": (p) =>
@@ -122,11 +122,11 @@ const errors: ErrorTexts = {
   "call.unavailable": () => "FM bu sürümde bu değişikliği yapamıyor.",
   "call.declined": () => "FM değişikliği yapmadı.",
   "loan.futureFee": () =>
-    "Bu kiralamada gelecek bonservis bedeli var. Erken bitirmek FM'in transferi tamamlamasına yol açar, bu yüzden FM Lens onu bitirmez.",
+    "Bu kiralamada gelecek bonservis bedeli var. Erken bitirmek FM'in transferi tamamlamasına yol açar.",
   "loan.joinedOther": (p) => `FM kiralamayı bitirdi, ama oyuncu geri dönmek yerine ${p.club} kulübüne katıldı.`,
   "injury.already": () => "Zaten sakat. Önce iyileştir.",
   "injury.noKind": () => "FM'de böyle bir sakatlık yok.",
-  "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi, yükseltilecek bir şey yok.",
+  "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi.",
   "cohesion.changed": (p) =>
     `Kulübe alışkınlığı şu an ${p.found}: oyun o zamandan beri değiştirmiş, bu yüzden dokunulmadı.`,
   "tactics.changed": () => "Oyun o zamandan beri taktiğe alışkınlığını değiştirmiş, bu yüzden dokunulmadı.",
@@ -733,7 +733,7 @@ export const tr: Strings = {
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
-    removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır. Değişiklikler'den geri alabilirsiniz.",
+    removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır.",
     concernSince: (date) => `${date} tarihinden beri`,
     concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : `Tür ${kind}`),
     concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? `Neden ${motive}`,
@@ -742,7 +742,7 @@ export const tr: Strings = {
     loyaltyBonus: "Sadakat primi",
     happiness: "Mutluluk",
     playingTimeHappiness: "Forma süresi mutluluğu",
-    moodTitle: "FMRTE'nin gösterdiği gibi, -100 ile 100 arasında; oyun bunu kelimelerle gösterir",
+    moodTitle: "-100 ile 100 arasında.",
     clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? `Madde ${kind}`,
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
@@ -769,21 +769,21 @@ export const tr: Strings = {
           return String(value);
       }
     },
-    moraleTitle: "FM'de: 10 Memnun, 11 Biraz Mutlu, 15 ve 20 Aşırı Mutlu.",
+    moraleTitle: "10 Memnun. 15 ve üstü Aşırı Mutlu.",
     jadednessTitle: "Ne kadar yorgun olduğu. -500 tamamen dinlenmiş demek.",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
     injuryBack: (dates) => `Beklenen dönüş: ${dates}`,
     heal: "İyileştir",
-    healTitle: "Bu oyuncunun tüm sakatlıklarını oyunda iyileştir",
+    healTitle: "Tüm sakatlıklarını iyileştir",
     addInjury: "Sakatlık ekle",
     injuryKind: "Sakatlık",
     noBans: "Cezası yok",
     banMatches: (matches) => `${format(matches)} maç`,
     banStarted: (date) => `Başlangıç: ${date}`,
     liftBans: "Kaldır",
-    liftBansTitle: "Bu oyuncunun tüm cezalarını oyunda kaldır",
+    liftBansTitle: "Tüm cezalarını kaldır",
     promises: "Sözler",
     promiseName: (id) => `Söz ${id}`,
     promiseMade: (date) => `Verildi: ${date}`,
@@ -798,14 +798,12 @@ export const tr: Strings = {
     setAttributesDone: (count, level) =>
       count === 0
         ? "Bütün özellikleri zaten bu değerde"
-        : `${changes(count)} yazıldı. Sakatlık eğilimi ve sertlik ${21 - level} oldu, çünkü onlarda düşük olan iyidir.`,
+        : `${changes(count)} yazıldı. Sakatlık eğilimi ve sertlik ${21 - level} oldu.`,
     setAttributesUndone: (count) => (count === 0 ? "Hiçbir şey geri alınmadı" : `${changes(count)} geri alındı`),
     undoSetAttributes: "Geri al",
     undoSetAttributesTitle: "Eski özelliklerini geri getir",
     freezeAttributes: "Özellikleri dondur",
-    freezeAttributesNote:
-      "FM Lens açık ve bağlıyken özellikleri düşemez. Gelişmeler yine sayılır. " +
-      "FM Lens bunu bu kayıt için hatırlar.",
+    freezeAttributesNote: "FM Lens bağlıyken özellikleri düşemez.",
 
     // Staff
     you: "Siz",
@@ -813,7 +811,7 @@ export const tr: Strings = {
     id: "ID",
     job: "Görev",
     changeJob: "Görevi değiştir",
-    changeJobTitle: "Bu personele oyunda kulübünde başka bir görev ver",
+    changeJobTitle: "Görevini değiştir",
     newJob: "Yeni görev",
     applyJob: "Uygula",
     cancelJob: "Vazgeç",
@@ -902,7 +900,7 @@ export const tr: Strings = {
       },
       saved: {
         save: "Kaydet",
-        saveTitle: "Geçerli filtreleri ve sıralamayı bir adla kaydet",
+        saveTitle: "Bu filtreleri ve sıralamayı kaydet",
         name: "Kayıtlı filtrenin adı",
         namePlaceholder: "Filtre adı",
         ok: "Tamam",
@@ -951,7 +949,7 @@ export const tr: Strings = {
       job: "Görev",
       anyJob: "Tümü",
       unemployedOnly: "Yalnızca işsizler",
-      humanOnly: "Yalnızca insan menajerler",
+      humanOnly: "Yalnızca sen",
       age: "Yaş",
       minAge: "En düşük yaş",
       maxAge: "En yüksek yaş",
@@ -997,9 +995,7 @@ export const tr: Strings = {
     perWeek: "haftalık",
     noFinances: "FM, parayı yalnızca oynanabilir liglerdeki kulüpler için tutar.",
     freeze: "Parayı dondur",
-    freezeNote:
-      "FM Lens açık ve bağlıyken bakiye düşemez. Gelirler yine eklenir. " +
-      "FM Lens bunu bu kayıt için hatırlar.",
+    freezeNote: "FM Lens bağlıyken bakiye düşemez.",
 
     // Club info
     stadium: "Stadyum",
@@ -1007,7 +1003,7 @@ export const tr: Strings = {
     seating: "Oturma",
     used: "Kullanılan",
     usedAll: "Tamamı",
-    usedTitle: "Oyunun kapasitenin ne kadarını kullandığı, bir sınır koyduğunda (örneğin bazı tribünler kapalıyken); 0 tamamı demektir",
+    usedTitle: "Oyunun kapasitenin ne kadarını kullandığı. 0 tamamı demektir.",
     expansion: "Genişleyebileceği",
     noStadium: "Bu kulübün stadyumu okunamadı.",
     info: "Kulüp bilgisi",
@@ -1159,7 +1155,6 @@ export const tr: Strings = {
       maxCapacity: "En yüksek kapasite",
       placeholder: "Min",
     },
-    note: "Bu kulübün A takımının stadyumu; kulüp profilindeki alanlardan okunur.",
   },
 
   nationList: {
@@ -1223,7 +1218,7 @@ export const tr: Strings = {
       steps: {
         brand: {
           title: "FM Lens",
-          body: "Kaydınızdaki her şeyi görün ve değiştirin. Düzenlemeler Uygula'ya bastığınızda FM'ye gider. Önce bir kopyada deneyin.",
+          body: "Kaydınızdaki her şeyi görün ve değiştirin. Önce bir kopyada deneyin.",
         },
         tabs: {
           title: "Bölümler",
@@ -1231,7 +1226,7 @@ export const tr: Strings = {
         },
         search: {
           title: "Arama ve filtreler",
-          body: "Bir isim ya da kimlik yazın. Daraltmak için Filtreler'i kullanın.",
+          body: "Bir isim ya da kimlik yazın.",
         },
         settings: {
           title: "Ayarlar",
@@ -1239,15 +1234,15 @@ export const tr: Strings = {
         },
         status: {
           title: "Bağlantı",
-          body: "Alttaki çubuk FM'ye bağlı olup olmadığınızı gösterir.",
+          body: "FM'ye bağlı olup olmadığınızı gösterir.",
         },
       },
       exercise: {
         list: { title: "Bir düzenleme deneyin", body: "Listeden birini açın." },
         edit: { title: "Düzenle", body: "Düzenle'ye basın ya da bir değere tıklayın." },
-        profile: { title: "Bir değeri değiştirin", body: "Yeni bir değer yazın. FM'ye henüz hiçbir şey gitmez." },
+        profile: { title: "Bir değeri değiştirin", body: "Yeni bir değer yazın." },
         apply: { title: "Uygula", body: "Uygula değişikliği FM'ye gönderir. Vazgeç onu bırakır." },
-        changes: { title: "Değişiklikler", body: "Uygulanan her değişiklik burada listelenir ve geri alınabilir." },
+        changes: { title: "Değişiklikler", body: "Uygulanan her değişiklik, geri almaya hazır." },
       },
     },
 
@@ -1263,9 +1258,7 @@ export const tr: Strings = {
     more: "Daha fazla",
     previewTag: "tarayıcı önizlemesi · örnek veriler",
     noDate: "Oyun içi tarih yok",
-    noDateTitle:
-      "Oyun içi tarih okunamadı, bu yüzden yaşlar gizli ve yaş filtreleri kimseyi bulmuyor. " +
-      "Güncellemeleri kontrol edin.",
+    noDateTitle: "Oyun içi tarih okunamadı, bu yüzden yaşlar gizli.",
     reload: "Verileri yeniden oku",
     detecting: "Football Manager aranıyor…",
     connecting: "Kayıt yükleniyor…",
@@ -1293,9 +1286,7 @@ export const tr: Strings = {
 
       bridge: {
         title: "Tek seferlik kurulum",
-        intro:
-          "FM Lens'in, FM'nin açılışta yüklediği küçük bir yardımcıya ihtiyacı var. Kurmadan önce kaydedip FM'yi, " +
-          "ardından Steam'i kapatın.",
+        intro: "Kaydedip FM'yi, ardından Steam'i kapatın.",
         library: "Yardımcı",
         installed: "Kurulu",
         missing: "Kurulu değil",
@@ -1315,17 +1306,16 @@ export const tr: Strings = {
 
   compatibility: {
     unknownBuild: (game) => `FM Lens henüz ${game} ile denenmedi`,
-    unknownBuildText:
-      "FM Lens bu FM sürümüyle denenmedi. Değerler yanlış olabilir, bu yüzden düzenleme kapalı.",
+    unknownBuildText: "Değerler yanlış olabilir, bu yüzden düzenleme kapalı.",
     allowedText: "Denetimlerin geçtiği yerlerde düzenleme açık. Kaydınızı yedekleyin.",
     failedTitle: "Bazı veriler yanlış görünüyor",
-    reloadHint: "Kayıt hâlâ yükleniyorduysa “Verileri yeniden oku” yeniden denetler.",
-    noDate: "Oyun içi tarih denetimden geçmedi, bu yüzden yaşlar gösterilmiyor.",
+    reloadHint: "Kayıt hâlâ yükleniyorduysa Verileri yeniden oku'ya basın.",
+    noDate: "Oyun içi tarih okunamadı, bu yüzden yaşlar gösterilmiyor.",
     failed: (names) => `Salt okunur bırakılanlar: ${names}.`,
     join: (names) =>
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ve ${names[names.length - 1]}`,
     allow: "Yine de düzenle",
-    allowTitle: "Düzenlemeyi FM Lens kapanana ya da yeniden bağlanana kadar açar. Önce kayıt dosyanızı yedekleyin.",
+    allowTitle: "Önce kayıt dosyanızı yedekleyin.",
   },
 
   checks: {
@@ -1357,6 +1347,11 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.6": [
+        "Sorun bildir artık FM Lens içinde, pencerenin altında açılıyor. Ne olduğunu yaz ve Gönder'e bas.",
+        "Güncellemeleri Denetle… FM Lens menüsünde.",
+        "Uygulama genelinde daha kısa ve sade metinler; transfer pencereleri de dahil.",
+      ],
       "0.5.5": [
         "Kendi kulübünüzden oyuncu transfer edin. FM transferi yapar ve bedeli aktarır.",
       ],
@@ -1383,7 +1378,7 @@ export const tr: Strings = {
     appliedTitle: "Uygulandı",
     unknownNation: "Bilinmeyen ülke",
     edit: "Düzenle",
-    editTitle: "Bu profilin değerlerini oyunda değiştir",
+    editTitle: "Bu profili düzenle",
     startFailed: (reason) => `Düzenleme başlatılamadı: ${reason}`,
     positionRating: (position) => `${position} puanı`,
     womenStyle: (style) => `Kadın futbolunda ${style.toLocaleLowerCase("tr")}`,
@@ -1437,9 +1432,7 @@ export const tr: Strings = {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} geri alındı`;
     },
-    empty:
-      "Henüz değişiklik yok. Bir oyuncu, personel veya kulüp açıp Düzenle düğmesine basın " +
-      "ya da bir listede Toplu düzenleme düğmesini kullanın.",
+    empty: "Henüz değişiklik yok.",
     columns: {
       time: "Saat",
       name: "İsim",
@@ -1473,26 +1466,16 @@ export const tr: Strings = {
 
   export: {
     button: "Dışa aktar",
-    buttonTitle: "Listedeki oyuncuları bir tablo programı ya da betik için CSV veya JSON dosyasına yaz",
+    buttonTitle: "CSV veya JSON olarak dışa aktar",
     title: "Oyuncuları dışa aktar",
-    scope: (count) =>
-      count === 0
-        ? "Arama ve filtrelere uyan oyuncu yok."
-        : `${format(count)} oyuncu: listenin arama ve filtrelerinin seçtikleri, listedeki sırayla.`,
+    scope: (count) => (count === 0 ? "Arama ve filtrelere uyan oyuncu yok." : `${format(count)} oyuncu`),
     formatLabel: "Biçim",
     formats: {
       csv: "CSV, virgülle ayrılmış",
       csvSemicolon: "CSV, noktalı virgülle ayrılmış",
       json: "JSON",
     },
-    formatHints: {
-      csv: "Çoğu tablo programı ve betik için",
-      csvSemicolon: "Ondalık virgül kullanan dillerdeki Excel için",
-      json: "Betikler için",
-    },
-    contents:
-      "Yetenekler, pozisyonlar, özellikler (gizliler dahil), kişilik, itibar, milli maçlar ve sözleşmeler. " +
-      "Paralar sterlin.",
+    contents: "Paralar sterlin.",
     export: "Dışa aktar",
     exporting: "Dışa aktarılıyor…",
     done: (count, file) => `${format(count)} oyuncu ${file} dosyasına aktarıldı`,
@@ -1507,7 +1490,7 @@ export const tr: Strings = {
 
   massEdit: {
     button: "Toplu düzenleme",
-    buttonTitle: "Listenin gösterdiği her şeyin değerlerini, önce önizleme yaparak değiştir",
+    buttonTitle: "Listedeki herkesi düzenle",
     title: {
       player: "Oyuncuları toplu düzenle",
       staff: "Personeli toplu düzenle",
@@ -1516,7 +1499,6 @@ export const tr: Strings = {
 
     // What it applies to
     scope: (entity, total) => `Listenin şu an gösterdiği ${entityCount(entity, total)} (arama ve filtreler)`,
-    scopeAll: (shown) => `Yalnızca ekrandaki ilk ${format(shown)} satır değil, eşleşen her kayıt kapsanır.`,
     scopeNone: (entity) =>
       `Aramaya ve filtrelere uyan ${nouns[entity].plain} yok, bu yüzden değiştirilecek bir şey yok.`,
     scopeTooMany: (entity, total, limit) =>
@@ -1559,12 +1541,12 @@ export const tr: Strings = {
       string
     >,
     values: { set: "Değer", add: "Miktar", scale: "Yüzde" } satisfies Record<MassOperationKind["op"], string>,
-    addTitle: "Her değere, gösterildiği gibi eklenir; negatif sayı çıkarır",
-    addPointsTitle: "Her değere yüzde puanı olarak eklenir (%70 artı 10, %80 eder); negatif sayı çıkarır",
+    addTitle: "Negatif sayı çıkarır.",
+    addPointsTitle: "%70 + 10 = %80. Negatif sayı çıkarır.",
     rangeHint: (min, max) => `${format(min)}–${format(max)}`,
     amountHint: (max) => `±${format(max)}`,
     ofCurrent: "% (mevcut değerin)",
-    percentTitle: "Mevcut değerin yüzdesi: 100 değeri korur, 110 onda bir artırır, 50 yarıya indirir",
+    percentTitle: "100 korur, 50 yarıya indirir",
     invalidAdd: (min, max) => `${format(min)} ile ${format(max)} arasında bir tam sayı girin`,
     invalidPercent: (min, max) => `${min} ile ${max} arasında tam sayı bir yüzde girin`,
     dateSetOnly: "Tarih yalnızca ayarlanabilir",
@@ -1606,7 +1588,6 @@ export const tr: Strings = {
     applyTitle: (count) => `Oyuna ${changes(count)} yaz`,
     applyFirst: "Önce toplu düzenlemeyi önizleyin",
     applyNothing: "Önizlemede yazılacak değişiklik yok",
-    hint: "Uygula'ya basana kadar FM'de hiçbir şey değişmez.",
     applied: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} uygulandı`),
     failure: (name, label, reason) => `${name} · ${label}: ${reason}`,
     undo: "Bu toplu düzenlemeyi geri al",
@@ -1633,9 +1614,6 @@ export const tr: Strings = {
 
     // The dialog
     title: "Karşılaştırma",
-    hint:
-      "Her satırdaki en iyi değer vurgulanır: en yüksek olan ya da " +
-      "düşük değerin daha iyi olduğu satırlarda en düşük olan.",
     tooFew: "Karşılaştırmak için en az iki oyuncu ekleyin.",
     loading: "Oyuncular yükleniyor…",
     tableLabel: "Karşılaştırılan oyuncuların değerleri",
@@ -1647,7 +1625,7 @@ export const tr: Strings = {
 
   move: {
     button: "Transfer",
-    buttonTitle: "Bu oyuncuyu oyunda başka bir kulübe transfer et; istersen bir bedelle",
+    buttonTitle: "Transfer et, takas et ya da kirala",
 
     // The dialog
     title: "Transfer",
@@ -1665,13 +1643,12 @@ export const tr: Strings = {
     resultsLabel: "Bulunan kulüpler",
     searching: "Kulüpler aranıyor…",
     searchFailed: (reason) => `Kulüpler aranamadı: ${reason}`,
-    more: (count) => `ve ${format(count)} tane daha; aramayı daraltmak için yazın`,
+    more: (count) => `ve ${format(count)} tane daha`,
     change: "Başka kulüp seç",
 
     // The fee
     feeHeading: "Bedel",
     fee: "Bonservis bedeli",
-    feeHint: "Bedelsiz transfer için boş bırakın",
     feeInvalid: (max) => `0 ile ${max} arasında tam bir tutar girin`,
     pays: (club, fee, balance, budget) =>
       `${club} öder: ${fee}. Bakiye ${balance}${budget === null ? "" : `, transfer bütçesi ${budget}`}`,
@@ -1688,22 +1665,7 @@ export const tr: Strings = {
     fixTerms: "Önce bedeli ya da sözleşme değerlerini düzeltin.",
     checking: "Transfer kontrol ediliyor…",
     route: (from, to) => `${from} → ${to}`,
-    doesHeading: "Transfer ne yapar",
-    does: [
-      "Yeni kulübün A takımına katılır",
-      "Sözleşme oyundaki tarihle başlar; forma numarası silinir",
-      "Transfer ve kiralık listelerinden çıkar",
-      "Maaş ve sözleşme bitişi, siz yeni değer girmedikçe aynı kalır",
-      "Bedel, alan kulübün bakiyesinden ve transfer bütçesinden düşer, satan kulübün bakiyesine eklenir",
-      "Eski kulübündeki kaptanlığı boş kalır",
-      "Oyunun transfer geçmişinde henüz görünmez",
-      "Değişiklikler bölümünde listelenir; tek geri alma transferi ve bedeli birlikte geri alır",
-    ],
-    gameDoes: [
-      "FM transferi kendisi yapar ve bedeli kendi kurallarıyla aktarır",
-      "Maaş ve sözleşme bitişi, siz yeni değer girmedikçe aynı kalır",
-      "Geri alınamaz",
-    ],
+    permanent: "Geri alınamaz.",
 
     // Swapping with a player of the club instead
     swapTitle: "Oyuncuyla takas et",
@@ -1718,85 +1680,38 @@ export const tr: Strings = {
     changePlayer: "Başka oyuncu seç",
 
     // What the dialog says about the swap
-    swapContract: "Her oyuncu kendi sözleşmesini korur; maaşlar ve sözleşme bitişleri değişmez.",
-    staffButtonTitle: "Bu personeli oyunda başka bir kulübe taşı",
+    swapContract: "Her oyuncu kendi sözleşmesini korur.",
+    staffButtonTitle: "Başka bir kulübe taşı",
     staffChooseClub: "Personelin taşınacağı kulübü seçin.",
-    staffContract: "Görevi, maaşı ve sözleşme bitişi aynı kalır; sözleşme oyundaki tarihle başlar.",
-    staffDoes: [
-      "Yeni kulübe, çalıştığı bölümlerde (sağlık, antrenörlük, gözlem) katılır",
-      "Görevi, maaşı ve sözleşme bitişi aynı kalır; sözleşme oyundaki tarihle başlar",
-      "Takımın kendisinin işaret ettiği teknik direktör gibi roller oyuna bırakılır",
-      "Değişiklikler bölümünde listelenir ve oradan geri alınabilir",
-    ],
+    staffContract: "Görev ve sözleşme aynı kalır.",
     managerButton: "Kulüp değiştir",
     managerButtonTitle: "Başka bir kulübün teknik direktörü ol",
     managerTitle: "Kulüp değiştir",
     managerContract: "Oyun sana kendi koşullarıyla bir teknik direktör sözleşmesi yapar.",
-    managerDoes: [
-      "Kulübün A takımının teknik direktörü olursun",
-      "Mevcut işin sona erer",
-      "Kulübün teknik direktörü işini kaybeder",
-      "Maaşını ve sözleşme süreni oyun belirler",
-      "Değişiklikler'den geri alınamaz",
-    ],
     managerDisplaced: (name) => `${name} işini kaybeder`,
-    managerHint: "Kulüp değiştir'e basana kadar FM'de hiçbir şey değişmez.",
     managerMove: "Kulüp değiştir",
     managerMoving: "Kulüp değiştiriliyor…",
     swapChooseClub: "Takas edilecek oyuncunun kulübünü seçin.",
     swapChoosePlayer: "Takas edilecek oyuncuyu seçin.",
     swapChecking: "Takas kontrol ediliyor…",
     swapRoute: (player, from, to, other) => `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
-    swapDoesHeading: "Takas işlemi ne yapar",
-    swapDoes: [
-      "İkisi de diğerinin kulübünün A takımına katılır",
-      "Sözleşmeler oyundaki tarihle başlar; forma numaraları silinir",
-      "İkisi de transfer ve kiralık listelerinden çıkar",
-      "Eski kulüplerindeki kaptanlıkları boş kalır",
-      "Bedel ödenmez; kariyer geçmişi güncellenmez",
-      "Değişiklikler bölümünde tek değişiklik olarak listelenir; geri alınırsa ikisi de eski kulübüne döner",
-    ],
 
     // The foot
-    hint: "Transfer et'e basana kadar FM'de hiçbir şey değişmez.",
     move: "Transfer et",
     moving: "Transfer ediliyor…",
     cancel: "İptal",
-    swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
     swap: "Takas et",
     swapping: "Takas ediliyor…",
     loanTitle: "Kiralık",
     loanChooseClub: "Kiralık verilecek kulübü seç.",
     loanEndsAfterToday: "Bugünden sonraki bir tarih seç",
     joinsFromToday: "Bugünü ya da sonraki bir tarihi seç",
-    loanDoes: [
-      "FM kiralamayı kendisi başlatır, bugünden kiralık bitişine kadar",
-      "Kendi kulübüyle sözleşmesi sürer",
-      "Değişiklikler'deki Geri al kiralık bitişini bugüne çeker. FM ertesi gün bitirir",
-    ],
-    loanDoesEnding: [
-      "FM kiralamayı kendisi başlatır, bugünden kiralık bitişine kadar",
-      "Kendi kulübüyle sözleşmesi sürer",
-      "Değişiklikler'deki Geri al kiralığı bitirir ve kulübüne döner",
-    ],
-    loanHint: "Kirala'ya basana kadar FM'de hiçbir şey değişmez.",
     loan: "Kirala",
     loaning: "Kiralanıyor…",
     signButton: "İmzala",
     signButtonTitle: "Onu bir kulübe imzalat",
     signTitle: "İmza",
     signChooseClub: "İmzalayacağı kulübü seç.",
-    signDoes: [
-      "FM onu kendisi, kendi koşullarıyla imzalatır",
-      "Girdiğin maaş ya da sözleşme bitişi FM'inkinin yerine geçer",
-      "Değişiklikler'deki Geri al onu yeniden serbest bırakır",
-    ],
-    signLaterDoes: [
-      "FM transferi bugün kabul eder, oyuncu o gün katılır",
-      "FM sözleşmesini o gün kendi koşullarıyla belirler",
-      "Değişiklikler'deki Geri al transferi iptal eder",
-    ],
-    signHint: "İmzala'ya basana kadar FM'de hiçbir şey değişmez.",
     sign: "İmzala",
     signing: "İmzalanıyor…",
   },
@@ -1817,12 +1732,10 @@ export const tr: Strings = {
 
     // The button under the group, and the dialog it opens
     change: "Değiştir",
-    changeTitle: "Bu oyuncunun ikinci uyruklarını ve yerli statüsünü oyunda değiştir",
+    changeTitle: "Diğer uyruklarını ve yerli statüsünü değiştir",
     title: "Uyruk ve yetiştiği yer",
-    hint: "Her değişiklik FM'ye hemen gider. Değişiklikler'den geri alabilirsiniz.",
-    full:
-      "Oyun bu oyuncunun listesini, tuttuğu kayıtlar kadar ayırmış: bir uyruk ya da yetiştiği yer değiştirilebilir " +
-      "veya kaldırılabilir, ama yenisi eklenemez.",
+    hint: "Değişiklikler FM'ye hemen gider.",
+    full: "Listesi dolu, yeni bir şey eklenemez.",
     nationOf: (name) => `${name} yerine ülke`,
     ruleOf: (name) => `${name} için yerli kuralı`,
     remove: "Kaldır",
@@ -1831,15 +1744,14 @@ export const tr: Strings = {
     addNation: "Ülke ekle…",
     newRule: "Yeni ülkenin yerli kuralı",
     add: "Ekle",
-    clubNote: "Bir kulübün kuralı değiştirilebilir ya da kulüp kaldırılabilir; kulüpleri oyun kendisi ekler.",
     working: "Oyuna yazılıyor…",
     close: "Kapat",
   },
 
   lists: {
-    likesTitle: "Her kişiyi ve kulübü ne kadar sevdiğini ya da sevmediğini oyunda değiştir",
+    likesTitle: "Kişileri ve kulüpleri ne kadar sevdiğini değiştir",
     strengthOf: (name) => `${name} için derece`,
-    languagesTitle: "Her dili ne kadar iyi konuştuğunu oyunda değiştir",
+    languagesTitle: "Her dili ne kadar iyi konuştuğunu değiştir",
     levelOf: (name) => `${name} seviyesi`,
     raisedBack: "FM bunu kendisi yeniden yükseltir",
     injuriesTitle: "Her sakatlığın kaç gün süreceğini değiştir",
@@ -1850,12 +1762,10 @@ export const tr: Strings = {
 
   clauses: {
     change: "Değiştir",
-    changeTitle: "Bu oyuncunun primlerini ve sözleşme maddelerini oyunda değiştir",
+    changeTitle: "Primlerini ve maddelerini değiştir",
     title: "Primler ve maddeler",
-    hint: "Her değişiklik FM'ye hemen gider. Değişiklikler'den geri alabilirsiniz.",
-    full:
-      "Oyun bu sözleşmenin listesini, tuttuğu kayıtlar kadar ayırmış: bir prim ya da madde değiştirilebilir veya " +
-      "kaldırılabilir, ama serbest kalma maddesi eklenemez.",
+    hint: "Değişiklikler FM'ye hemen gider.",
+    full: "Bu sözleşmede serbest kalma maddesine yer yok.",
     amountOf: (name) => `${name} tutarı`,
     conditionOf: (name) => `${name} koşulu`,
     save: "Kaydet",
@@ -1926,26 +1836,30 @@ export const tr: Strings = {
     badIds: "Oyuncu kimliklerini virgül veya boşlukla ayırarak yazın.",
   },
 
+  report: {
+    title: "Sorun bildir",
+    what: "Ne oldu?",
+    sentWith: "Herkese açık paylaşılır; sürümlerin ve son değişikliklerin de eklenir.",
+    send: "Gönder",
+    sending: "Gönderiliyor…",
+    cancel: "İptal",
+    sent: "Gönderildi. Teşekkürler.",
+    close: "Kapat",
+    tooMany: "Buradan çok fazla rapor gönderildi. Bir saat sonra yeniden dene.",
+    failed: "Gönderilemedi. Daha sonra yeniden dene.",
+  },
+
   release: {
     button: "Serbest bırak",
-    buttonTitle: "Bu oyuncuyu oyunda kulübünden serbest bırak: serbest oyuncu olur",
+    buttonTitle: "Serbest bırak. Serbest oyuncu olur.",
 
     // The dialog
     title: "Serbest bırak",
     from: "Ayrıldığı kulüp",
     checking: "Serbest bırakma kontrol ediliyor…",
     ready: (club) => `${club} → serbest oyuncu`,
-    doesHeading: "Serbest bırakma ne yapar",
-    does: [
-      "Kulübün bütün takımlarından çıkar ve sözleşmesi sona erer: her kulübün alabileceği serbest oyuncu olur",
-      "Kimseye ödeme yapılmaz",
-      "Kulüpteki kaptanlığı boş kalır",
-      "Oyunun transfer geçmişinde görünmez",
-      "Değişiklikler bölümünde listelenir; tek geri alma oyuncuyu aynı sözleşmeyle geri getirir",
-    ],
 
     // The foot
-    hint: "Serbest bırak'a basana kadar FM'de hiçbir şey değişmez.",
     release: "Serbest bırak",
     releasing: "Serbest bırakılıyor…",
     cancel: "İptal",
@@ -1953,23 +1867,15 @@ export const tr: Strings = {
 
   endLoan: {
     button: "Kiralığı bitir",
-    buttonTitle: "Kiralığını bitir. Kulübüne döner.",
+    buttonTitle: "Kulübüne döner.",
 
     // The dialog
     title: "Kiralığı bitir",
     from: "Kiralık olduğu kulüp",
     checking: "Kiralık kontrol ediliyor…",
     ready: (from, to) => `${from} → ${to}`,
-    doesHeading: "Ne olur",
-    does: [
-      "FM kiralığı kendisi, bugün bitirir",
-      "Kendi kulübüne, oradaki sözleşmesiyle döner",
-      "FM kiralığın bitişiyle ilgili haberini yazar",
-      "Değişiklikler'deki Geri al kiralığı eski bitişine kadar yeniden başlatır",
-    ],
 
     // The foot
-    hint: "Kiralığı bitir'e basana kadar FM'de hiçbir şey değişmez.",
     end: "Kiralığı bitir",
     ending: "Bitiriliyor…",
     cancel: "İptal",
@@ -1984,11 +1890,9 @@ export const tr: Strings = {
     from: "Katılacağı kulüp",
     checking: "Transfer kontrol ediliyor…",
     ready: (dates) => `Tarih: ${dates}`,
-    doesHeading: "Ne olur",
-    does: ["FM anlaşmayı kendi editörü gibi kendisi iptal eder", "Oyuncu olduğu yerde kalır", "Geri alınamaz"],
 
     // The foot
-    hint: "Transferi iptal et'e basana kadar FM'de hiçbir şey değişmez.",
+    hint: "Geri alınamaz.",
     confirm: "Transferi iptal et",
     cancelling: "İptal ediliyor…",
     cancel: "Vazgeç",
@@ -2032,8 +1936,7 @@ export const tr: Strings = {
     maxAll: "Özellikleri tamamla",
     maxAllTitle:
       "Herkesin bütün özellikleri 20 (sakatlık eğilimi ve sertlik 1)",
-    hint:
-      "Kiralıktakiler de dahil. Değişiklikler'den geri alabilirsiniz.",
+    hint: "Kiralıktakiler de dahil.",
 
     // What an action did, under the buttons
     written: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} yazıldı`),
