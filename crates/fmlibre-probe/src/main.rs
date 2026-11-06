@@ -318,6 +318,8 @@ enum Command {
         #[arg(long, default_value_t = 0)]
         hold: u64,
     },
+    /// List every transfer the game has agreed for a later day: who, from which club, to which, and when.
+    FutureTransfers,
     /// Show a player's ties: his secondary nationalities, and the nations and clubs he was trained in.
     Ties {
         /// The player's UID.
@@ -922,6 +924,7 @@ fn run(cli: Cli) -> Result<()> {
             let restore_after = restore.then_some(hold);
             retirements(&connect(process, ArraySource::ProfileFirst)?, uid, keep, restore_after)
         }
+        Command::FutureTransfers => future_transfers(&connect(process, ArraySource::ProfileFirst)?),
         Command::Ties { uid } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
@@ -3122,6 +3125,28 @@ fn ban_list(session: &Session, uid: Option<u32>, lift: bool, restore_after: Opti
         session.undo_lift_bans(&done)?;
         ensure!(show("restored")? == before, "his bans are not all back");
     }
+    Ok(())
+}
+
+/// Every transfer agreed for a later day, player by player. Only reads memory.
+fn future_transfers(session: &Session) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let mut count = 0;
+    for player in players.iter() {
+        for transfer in session.future_transfers(player).unwrap_or_default() {
+            count += 1;
+            let from = player.club.as_deref().unwrap_or("no club");
+            let to = transfer.club.as_deref().unwrap_or("?");
+            println!(
+                "  {}  {} (UID {})  {from} -> {to}  offer {}",
+                iso_date(transfer.joins),
+                player.name,
+                player.uid,
+                transfer.offer
+            );
+        }
+    }
+    println!("{count} transfer(s) agreed for a later day.");
     Ok(())
 }
 
