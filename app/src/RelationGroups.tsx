@@ -53,7 +53,7 @@ function useListShown(hasEntries: boolean, uid: number): boolean {
  * The Change button under a list of a profile, which opens `dialog` while the game can be written to. Focus goes back
  * to it once the dialog is gone.
  */
-function ListChange({
+export function ListChange({
   title,
   dialog,
 }: {

@@ -1,15 +1,20 @@
-// The Medical group of a player's profile: his energy, match sharpness and morale, his current injuries, and
-// the button that heals them (or, without any, the control that has the game give him one); then his bans, and the
-// button that lifts them.
+// The Medical group of a player's profile: his energy, match sharpness and morale, his current injuries, the button
+// that heals them and the one that changes how long each lasts (or, without any, the control that has the game give him
+// one); then his bans, and the button that lifts them.
 
 import { useContext, useEffect, useRef, useState, type RefObject } from "react";
 import { EditableValue } from "./EditControls";
-import { addInjury, healPlayer, liftBans, wholePercent } from "./editing";
+import { addInjury, changeInjury, healPlayer, liftBans, removeInjury, wholePercent } from "./editing";
 import { describeError, formatDate, formatDateRange, formatNumber, formatPercent } from "./format";
-import { fieldLabel, profileText } from "./labels";
+import { fieldLabel, listText, profileText } from "./labels";
 import { Fact } from "./ProfileParts";
+import { ListChange } from "./RelationGroups";
+import { ValueListDialog } from "./ValueListDialog";
 import type { Ban, Injury, InjuryKind, PlayerDetails } from "./types";
 import { EditorContext } from "./useProfileEditing";
+
+/** The days an injury can be made to last from when it began, as the editor writes them. */
+const INJURY_DAYS = { least: 1, most: 730 };
 
 /** A stored percentage (0–10000) as the profile shows it: "87%". The squad table of a club shows them the same way. */
 export const percentText = (stored: number) => formatPercent(wholePercent(stored));
@@ -67,7 +72,7 @@ export function MedicalGroup({ details }: { details: PlayerDetails }) {
         </Fact>
       </dl>
       {injured ? (
-        <InjuryList uid={details.uid} injuries={details.injuries} headingRef={injuriesHeading} />
+        <InjuryList uid={details.uid} who={details.name} injuries={details.injuries} headingRef={injuriesHeading} />
       ) : (
         <>
           <p ref={noInjuries} tabIndex={-1} className="injuries-none">
@@ -172,16 +177,18 @@ function injuryDates({ started, backSoonest, backLatest }: Injury): string {
 }
 
 /**
- * The injuries a player has, each with its name and dates, and the Heal button for all of them. Healing asks no
- * question: it is logged like any change, and undone from the Changes view. Only there while he has an injury, so the
- * state of a heal goes with the list that was healed.
+ * The injuries a player has, each with its name and dates, the Heal button for all of them, and the Change button that
+ * sets how many days each lasts, or takes one out. Healing asks no question: it is logged like any change, and undone
+ * from the Changes view. Only there while he has an injury, so the state of a heal goes with the list that was healed.
  */
 function InjuryList({
   uid,
+  who,
   injuries,
   headingRef,
 }: {
   uid: number;
+  who: string;
   injuries: Injury[];
   headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
@@ -256,6 +263,33 @@ function InjuryList({
           );
         })}
       </ul>
+      <ListChange
+        title={listText.injuriesTitle}
+        dialog={(onClose) => (
+          <ValueListDialog
+            title={listText.daysOut}
+            who={who}
+            sections={[
+              {
+                key: "injuries",
+                heading: null,
+                rows: injuries.map((injury, index) => ({
+                  index,
+                  name: injury.name ?? profileText.unknownInjury,
+                  note: injuryDates(injury) || undefined,
+                  value: injury.days,
+                })),
+              },
+            ]}
+            {...INJURY_DAYS}
+            inputLabel={listText.daysOf}
+            save={(index, days) => changeInjury(uid, index, days)}
+            remove={(index) => removeInjury(uid, index)}
+            list={injuries}
+            onClose={onClose}
+          />
+        )}
+      />
     </div>
   );
 }

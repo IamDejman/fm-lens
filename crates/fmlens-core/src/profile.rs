@@ -150,6 +150,12 @@ pub struct CompetitionLayout {
     pub place_name: u64,
     pub reputation: u64,
     pub women: u64,
+    /// Pointer to the competition's loaded rule data (`ACTUAL_COMP`), and in it the `(begin, end, capacity)` vector of
+    /// its rules: 16-byte entries of a key (a FourCC in the low 32 bits) and a pointer to a value node, `[type][value]`.
+    #[serde(default)]
+    pub actual: Option<u64>,
+    #[serde(default)]
+    pub rules: Option<u64>,
 }
 
 /// A kind of injury (`db::INJURY`), read from its database table as a competition is ([`CompetitionLayout`]). Its
@@ -276,6 +282,9 @@ pub struct NationalLayout {
     /// In a container: the `i8` game importance, 0 to 4, and the `u8` attendance, 0 to 16.
     pub game_importance: u64,
     pub attendance: u64,
+    /// In a container: twelve `i8` style ratings, 0 to 20, in the order of `national::STYLE`.
+    #[serde(default)]
+    pub style: Option<u64>,
     /// In a national team: pointer to the manager.
     pub team_manager: u64,
     /// In a national team: `u32` id. The senior team's is the nation's UID.
@@ -298,6 +307,7 @@ impl NationalLayout {
         [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2, self.joined_continental + 2]
             .into_iter()
             .chain([self.youth_rating + 2, self.game_importance + 1, self.attendance + 1])
+            .chain(self.style.map(|offset| offset + crate::national::STYLE.len() as u64))
             .max()
             .unwrap_or(0)
     }

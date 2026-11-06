@@ -39,6 +39,8 @@ export function positionLabel(key: string): string {
 
 export const CLUB_FACILITY_LABELS = strings.clubFacilities;
 
+export const NATION_STYLE_LABELS = strings.nationStyle;
+
 export const SUPPORTER_TRAIT_LABELS = strings.supporterTraits;
 
 /** The kinds of supporters, in the order of the supporter-mix bar. */
@@ -257,6 +259,14 @@ export function fieldLabel(entity: Entity, key: string): string {
     case "position": {
       const position = labelIn(POSITION_LABELS, name);
       return position === undefined ? key : editText.positionRating(position);
+    }
+    case "style":
+      return labelIn(NATION_STYLE_LABELS, name) ?? key;
+    case "women": {
+      // "women.style.tempo"; the women's other fields are named in FIELD_LABELS.
+      const [, part, style = ""] = key.split(".");
+      const label = part === "style" ? labelIn(NATION_STYLE_LABELS, style) : undefined;
+      return label === undefined ? key : editText.womenStyle(label);
     }
     default:
       return key;
