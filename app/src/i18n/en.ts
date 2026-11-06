@@ -1396,6 +1396,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.3": [
+        "FM Lens now goes by its own name in its files and settings. Your setup and settings carried over by themselves.",
+      ],
       "0.5.2": [
         "Report a problem, in Settings, opens a bug report with your versions and changes filled in.",
         "When FM moves its data, FM Lens reads the game again by itself: no more pressing Reload.",
