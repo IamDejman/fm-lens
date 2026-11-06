@@ -1090,6 +1090,29 @@ export const en = {
     reputation: "Reputation",
     /** The small tag on a women's competition. */
     women: "Women",
+    rules: "Rules",
+    /** A competition's rules as FM's own data for it holds them, by the keys FM Lens reads them with. */
+    ruleNames: {
+      level: "Level",
+      max_squad_size: "Max squad size",
+      min_squad_size: "Min squad size",
+      recommended_squad_size: "Recommended squad size",
+      max_prelim_squad_size: "Max preliminary squad",
+      min_foreign_players: "Min foreign players",
+      max_foreign_players: "Max foreign players",
+      foreign_trialists_can_play: "Foreign trialists may play",
+      subs_allowed: "Substitutions allowed",
+      max_subs: "Substitutes named",
+      extended_injury_time: "Extended stoppage time",
+      daylight_offside_rule: "Daylight offside",
+      yellow_cards_for_fine: "Yellow cards for a fine",
+      min_games_for_medal: "Games for a medal",
+      number_of_medals: "Medals",
+      min_stadium_capacity: "Min stadium capacity",
+      min_stadium_seating: "Min seated capacity",
+      requires_grass_pitch: "Grass pitch required",
+      requires_undersoil_heating: "Undersoil heating required",
+    },
   },
 
   awardList: {
