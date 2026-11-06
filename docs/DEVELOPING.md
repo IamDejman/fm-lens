@@ -230,8 +230,9 @@ Report a problem sends its report to `relay/`, an AWS Lambda function
 (`fm-lens-report-relay`, us-east-1) behind a public function URL, which the app holds in
 `app/src/report.ts`. The relay files the report as an issue in this repository with its own
 fine-grained GitHub token (Issues: read and write, on this repository only), set as the
-function's `GITHUB_TOKEN`; without one it answers 503. It keeps nothing and counts reports
-by address: 5 an hour from one address, 100 a day in all. `node --test` in `relay/` runs its
+function's `GITHUB_TOKEN`; without one it answers 503. It keeps no reports, only counts in
+the DynamoDB table `fm-lens-report-relay`, which the function may update and which drops
+them once they are old: 5 an hour from one address, 100 a day in all. `node --test` in `relay/` runs its
 tests, and CI runs them too. To send new code, run `relay/deploy.sh` with `AWS_PROFILE` and
 `AWS_REGION` set for the account the function is in.
 

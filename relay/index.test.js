@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PER_ADDRESS_HOUR, PER_DAY, createLimiter, createRelay, issueFor, readReport } from "./index.js";
+import { PER_ADDRESS_HOUR, PER_DAY, createRelay, createTableLimiter, issueFor, readReport } from "./index.js";
 
 const REPORT = {
   what: "Apply failed on a wage\nIt said the value didn't stick.",
@@ -12,7 +12,7 @@ const REPORT = {
 
 /** Sends the relay `body` at `path` as a function URL request from `sourceIp`, and returns the status and JSON answer. */
 async function post(options, body, { path = "/report", sourceIp = "203.0.113.9", method = "POST" } = {}) {
-  const relay = createRelay(options);
+  const relay = createRelay({ limiter: createTableLimiter({ table: "t", update: table().update }), ...options });
   const response = await relay({
     rawPath: path,
     requestContext: { http: { method, sourceIp } },
@@ -93,27 +93,9 @@ test("bad requests are turned away before GitHub is asked", async () => {
   assert.equal(sent.length, 0);
 });
 
-test("one address may send a few reports an hour, and all of them a few a day", () => {
-  let now = 0;
-  const limiter = createLimiter(() => now);
-  for (let i = 0; i < PER_ADDRESS_HOUR; i++) {
-    assert.equal(limiter.allow("a"), true);
-  }
-  assert.equal(limiter.allow("a"), false);
-  assert.equal(limiter.allow("b"), true);
-  now += 60 * 60 * 1000;
-  assert.equal(limiter.allow("a"), true);
-
-  const day = createLimiter(() => now);
-  for (let i = 0; i < PER_DAY; i++) {
-    assert.equal(day.allow(`address-${i}`), true);
-  }
-  assert.equal(day.allow("another"), false);
-});
-
 test("the relay counts reports by the address AWS saw, and answers the preflight", async () => {
   const { fetch } = github();
-  const limiter = createLimiter();
+  const limiter = createTableLimiter({ table: "t", update: table().update });
   const options = { token: "t", repo: "o/n", fetch, limiter };
   for (let i = 0; i < PER_ADDRESS_HOUR; i++) {
     assert.equal((await post(options, REPORT)).status, 201);
@@ -123,17 +105,50 @@ test("the relay counts reports by the address AWS saw, and answers the preflight
   assert.deepEqual(await post(options, "", { method: "OPTIONS" }), { status: 204, json: null, cors: "*" });
 });
 
-test("turned-away addresses aren't kept, so the limiter stays small", () => {
-  let now = 0;
-  const limiter = createLimiter(() => now);
-  for (let i = 0; i < PER_DAY; i++) {
-    limiter.allow(`address-${i}`);
+/** A stand-in for the DynamoDB table: UpdateItem with the conditional ADD the table limiter sends. */
+function table() {
+  const items = new Map();
+  const update = async (input) => {
+    const key = input.Key.key.S;
+    const max = Number(input.ExpressionAttributeValues[":max"].N);
+    const item = items.get(key) ?? { reports: 0 };
+    if (item.reports >= max) {
+      throw Object.assign(new Error("The conditional request failed"), { name: "ConditionalCheckFailedException" });
+    }
+    items.set(key, {
+      reports: item.reports + 1,
+      expires: item.expires ?? Number(input.ExpressionAttributeValues[":expires"].N),
+    });
+  };
+  return { update, items };
+}
+
+test("the table counts by address for the hour and in all for the day", async () => {
+  let now = Date.UTC(2026, 10, 6, 12);
+  const { update, items } = table();
+  const limiter = createTableLimiter({ table: "t", update, now: () => now });
+  for (let i = 0; i < PER_ADDRESS_HOUR; i++) {
+    assert.equal(await limiter.allow("a"), true);
   }
-  for (let i = 0; i < 10_000; i++) {
-    assert.equal(limiter.allow(`flood-${i}`), false);
-  }
+  assert.equal(await limiter.allow("a"), false);
+  assert.equal(await limiter.allow("b"), true);
   now += 60 * 60 * 1000;
-  assert.equal(limiter.allow("flood-0"), false);
-  now += 24 * 60 * 60 * 1000;
-  assert.equal(limiter.allow("flood-0"), true);
+  assert.equal(await limiter.allow("a"), true);
+  assert.ok([...items.values()].every((item) => item.expires * 1000 > now));
+
+  for (let i = 0; items.get(`day#${Math.floor(now / 86_400_000)}`).reports < PER_DAY; i++) {
+    await limiter.allow(`address-${i}`);
+  }
+  assert.equal(await limiter.allow("another"), false);
+});
+
+test("the relay turns reports away when it can't count them", async () => {
+  const { fetch, sent } = github();
+  const limiter = {
+    allow: async () => {
+      throw new Error("throttled");
+    },
+  };
+  assert.equal((await post({ token: "t", repo: "o/n", fetch, limiter }, REPORT)).status, 503);
+  assert.equal(sent.length, 0);
 });
