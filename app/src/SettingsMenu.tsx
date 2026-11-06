@@ -75,10 +75,10 @@ const CHECK = (
 /**
  * The button and, once it is pressed, its menu. Choosing another language or currency reloads the window (see
  * `setLocale` and `setCurrency`), which the app survives connected (see `current_connection`), so edits pending in an
- * open profile are asked about first. While the app is `busy` the button waits. `details` is passive information
- * (version, game, graphics) shown at the foot of the menu.
+ * open profile are asked about first. While the app is `busy` the button waits. `onReport` opens a problem report
+ * (see report.ts). `details` is passive information (version, game, graphics) shown at the foot of the menu.
  */
-export function SettingsMenu({ busy, details }: { busy: boolean; details?: ReactNode }) {
+export function SettingsMenu({ busy, details, onReport }: { busy: boolean; details?: ReactNode; onReport: () => void }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [theme, updateTheme] = useState(appearance);
   const [scale, updateScale] = useState(zoom);
@@ -141,9 +141,9 @@ export function SettingsMenu({ busy, details }: { busy: boolean; details?: React
     }
   };
 
-  // The arrow keys go through both lists, as one.
+  // The arrow keys go through the lists and Report a problem, as one.
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitemradio"]'));
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitemradio"], [role="menuitem"]'));
     const at = items.findIndex((item) => item === document.activeElement);
     let next: HTMLElement | undefined;
     switch (event.key) {
@@ -268,6 +268,19 @@ export function SettingsMenu({ busy, details }: { busy: boolean; details?: React
                   {code === currency && CHECK}
                 </button>
               ))}
+            </div>
+            <div role="group">
+              <button
+                type="button"
+                role="menuitem"
+                tabIndex={-1}
+                onClick={() => {
+                  close();
+                  onReport();
+                }}
+              >
+                {appText.reportProblem}
+              </button>
             </div>
             {details && (
               <div role="group" aria-label={appText.detailsLabel} className="settings-details">

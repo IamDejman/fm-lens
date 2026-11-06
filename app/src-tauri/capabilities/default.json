@@ -8,7 +8,10 @@
     "updater:default",
     {
       "identifier": "opener:allow-open-url",
-      "allow": [{ "url": "https://github.com/IamDejman/fm-lens-releases/*" }]
+      "allow": [
+        { "url": "https://github.com/IamDejman/fm-lens-releases/*" },
+        { "url": "https://github.com/IamDejman/fm-lens/issues/new*" }
+      ]
     }
   ]
 }

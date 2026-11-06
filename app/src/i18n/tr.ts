@@ -1208,6 +1208,7 @@ export const tr: Strings = {
     notConnected: "Bağlı değil",
     connected: "Bağlı",
     detailsLabel: "Uygulama ayrıntıları",
+    reportProblem: "Sorun bildir",
     more: "Daha fazla",
     previewTag: "tarayıcı önizlemesi · örnek veriler",
     noDate: "Oyun içi tarih yok",
