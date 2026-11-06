@@ -8,7 +8,7 @@
 # first time), with docs/release-notes.md as its text. Copies of FM Lens then install it when they next open.
 #
 # The updater key is ~/.tauri/fm-lens-updater.key, or the file FM_LENS_UPDATER_KEY names; its public half is in
-# tauri.conf.json. Without it no installed copy accepts the update: keep a backup of it.
+# tauri.conf.json. Without it no installed copy accepts the update: keep a backup of it. Needs pipx for the disk image.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -38,11 +38,10 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 cp "$BUNDLE/FM Lens.app.tar.gz" "$OUT/$NAME.app.tar.gz"
 ditto -c -k --keepParent "$BUNDLE/FM Lens.app" "$OUT/$NAME.zip"
-STAGE=$(mktemp -d)
-ditto "$BUNDLE/FM Lens.app" "$STAGE/FM Lens.app"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -quiet -volname "FM Lens" -srcfolder "$STAGE" -ov -format UDZO "$OUT/$NAME.dmg"
-rm -rf "$STAGE"
+# The disk image window: the app, an arrow and Applications on the background in scripts/dmg/. dmgbuild writes its
+# layout without opening Finder; pipx fetches it the first time.
+pipx run --spec dmgbuild==1.6.7 dmgbuild -s "$ROOT/scripts/dmg/settings.py" -D app="$BUNDLE/FM Lens.app" \
+  -D background="$ROOT/scripts/dmg/background.png" "FM Lens" "$OUT/$NAME.dmg"
 
 # One universal app serves both kinds of Mac.
 URL="https://github.com/$REPO/releases/download/v$VERSION/$NAME.app.tar.gz"
