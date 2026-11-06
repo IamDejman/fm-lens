@@ -542,7 +542,7 @@ Steam and the copy reloaded, then FM went on holiday from 11 to 14 Dec 2027
 | Clause names (#18) | FMRTE's names | `clauses UID` for 16 players | Contract page: most match; FM names 8 Sell On Fee Percentage, 13 Wage After Reaching Club League Games, 41 Seasonal Landmark Combined Goal and Assist Bonus, 55 Active Relegation Release Clause; FM does not list 63. Fixed in #38 |
 | Wage budget, club finance +0x814 | Wage budget (spending) | Arsenal £5,376,891 p/w, total (+0x808) £6,503,366 | Finances > Wage Budget: "Spending Wage Budget £5,376,891 p/w", Total Wage Budget £6.5M; "Current wage total (incl. bonuses) / Budget" £5,376,891 / £6,503,366 |
 | England (#16) | Association founded 1863, joined FIFA 1905, women joined FIFA 1972 | Same; reputation 6,000 men, 9,950 women | "FA Founded 1863" on both pages; "About England" says founded in 1905 (men) and 1972 (women), the FIFA years; reputation Continental and Worldwide |
-| Tour (#12), Intel (#13) | - | - | Not run: the tour needs the desktop app's local storage cleared; Intel needs FM under Rosetta, not tried |
+| Tour (#12), Intel (#13) | - | - | Not run: the tour needs the desktop app's local storage cleared; Intel needs FM under Rosetta, not tried. Both run on 6 November (below) |
 
 Findings:
 
@@ -554,7 +554,8 @@ Findings:
   FM Lens' own header date also stays at the connect date until Reload.
 - Revoking a work permit clears FM Lens' and the probe's permit, but FM keeps
   showing a permit (the ESC slot, then an active permit to 30/6/2032 after a
-  day). FM reads it from somewhere the revoke does not reach. Not yet fixed.
+  day). FM reads it from somewhere the revoke does not reach. Fixed in #39,
+  checked on 6 November (below).
 - FM's end of a loan can put the player on his parent club's loan list (it did
   for Pedrosa, not for Yang). #33 restores the flag with the loan.
 - Award byte +0x8A is 1 for every women's award (3,902 awards read). Period
@@ -570,3 +571,49 @@ Findings:
   (fixed in #33). The copy keeps it.
 - FM shows a squad status, a contract's clauses and its bonuses only for
   players it has scouted; your own club's are always shown.
+
+## Work permits, tour and Intel (6 November 2026)
+
+Same `FM Lens Batch 2026-11-05.fm` copy, reloaded at 11 Dec 2027. FM Lens built
+from `main` at b8937bf (#30 to #39 merged) and installed in `~/Applications`.
+Nothing was saved; FM was quit without saving after each part. The main
+career's hash was checked before and after (OK both times).
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Tour (#12), local storage keys `fmlibre.tour` and `fmlibre.tour.exercise` cleared | Exercise starts at 1 of 5 on connect; open a row, Edit, change a value, Apply, Changes reach 5 of 5; Discard goes back to 3 of 5; the card sits bottom-left, clear of Apply; Done stores `fmlibre.tour.exercise` | Quintero's crossing 5 -> 6 | - |
+| Revoke (#39), Holger Quintero (2000521121), ESC slot since 11 Dec 2027 | ESC slot -> None | No permit record | Contract > Work Permit: "No Work Permit", re-apply immediately |
+| The same, after Continue to 12 Dec (Arsenal 3-0 Tottenham, instant result) | - | Still no record: FM did not make a new one | Still "No Work Permit"; profile badge ESC -> Wp |
+| Grant, Quintero | None -> Active | England: active | Same day: badge still Wp (cached). After Continue to 13 Dec: badge gone, Contract page "Work Permit: Active, until 30/6/2032" |
+| Undo of a Grant, Quintero (earlier the same session) | Undone | No permit record | - |
+| Revoke then Undo, Collins Sichenje (12092701), ESC slot since 3 Feb 2027 | Revoked, then "Undone" | No record, then ESC slot since 13 Dec 2027 | - |
+| Intel (#13): FM under Rosetta with the bridge | Connects; Officials: Michael Oliver, 42, England, 8,600, 170 / 180, ID 103994 | Build profile "FM27 Steam build 26340721 (27.0.0, macOS, Intel)", game_plugin UUID `0981AB31-AC3B-3D93-944F-47FE4B59CD9E`; health 12 of 12 pass | Loads and plays the copy |
+| Intel reads against arm64 | - | 1,166 officials, Oliver the same; `nation 765` identical apart from its address (4th, 1922.83 points, founded 1863, FIFA 1905); the human manager unsackable and registered at any time, person block shifted by 0x340, as on arm64; 445 planned retirements (arm64, two days later: 438) | - |
+| Work permits on Intel | No Work permit tab | No permit line | - |
+
+How FM ran under Rosetta, with Steam running and the arm64 FM quit:
+
+```bash
+arch -x86_64 -e DYLD_INSERT_LIBRARIES="$HOME/Library/Application Support/FM27Scout/libfmlibre_bridge.dylib" -e SteamAppId=4530370 -e SteamGameId=4530370 "$HOME/Library/Application Support/Steam/steamapps/common/Football Manager 27/fm.app/Contents/MacOS/Football Manager 27"
+```
+
+`vmmap` showed the Rosetta runtime and the bridge's translated x86_64 slice.
+Steam's own launch (`fmlibre-launch`) still starts the arm64 half, and its
+launch options were not changed.
+
+Findings:
+
+- Revoke now clears FM's permit (fixed in #39): FM's own page and badge follow
+  after a day, and FM does not make the record again.
+- Undo of a revoked ESC slot gives the slot back dated the day of the undo, not
+  its first date (Sichenje: 3 Feb 2027 -> 13 Dec 2027). The game's call dates
+  a new slot today.
+- The Changes view writes a revoked ESC slot as "Active -> None": the change
+  text knows only whether a permit exists.
+- Reload, or connecting to a restarted FM, clears the session's Changes list,
+  so its Undo buttons are gone.
+- The Intel profile has no `transfer_manager` and no permit calls, so FM Lens
+  reads no work permits on Intel and hides the tab. Writes were not tried on
+  Intel.
+- Ronaldo's and Benzema's planned retirements (30 June 2027) are not on this
+  copy on either architecture: its date is past them.
