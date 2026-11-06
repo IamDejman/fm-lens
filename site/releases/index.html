@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Release notes: FM Lens</title>
+  <meta name="description" content="What is new in each version of FM Lens.">
+  <link rel="canonical" href="https://getfmlens.com/releases/">
+  <meta name="theme-color" content="#251b37">
+  <link rel="icon" type="image/png" sizes="64x64" href="../images/icon-64.png">
+  <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="masthead">
+    <div class="wrap bar">
+      <a class="brand" href="/" aria-label="FM Lens home">
+        <img src="../images/symbol.png" alt="" width="40" height="40">
+        <span translate="no">FM Lens</span>
+      </a>
+      <nav aria-label="Elsewhere">
+        <a href="https://github.com/IamDejman/fm-lens">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <div class="message intro">
+      <h1>Release notes</h1>
+      <p id="status" role="status">Loading the releases…</p>
+    </div>
+    <div id="releases" class="releases"></div>
+  </main>
+
+  <script type="module">
+    import { releaseNotes, RELEASES_PAGE } from "../release.js";
+
+    const DOWNLOAD_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>';
+    const status = document.getElementById("status");
+    const list = document.getElementById("releases");
+    const releases = await releaseNotes();
+    if (!releases) {
+      status.textContent = "";
+      status.append(
+        "GitHub could not be reached from here. ",
+        Object.assign(document.createElement("a"), { href: RELEASES_PAGE.replace(/\/latest$/, ""), textContent: "Read the release notes on GitHub" }),
+        ".",
+      );
+    } else {
+      status.remove();
+      const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+      for (const release of releases) {
+        const article = document.createElement("article");
+        const heading = document.createElement("h2");
+        heading.id = `v${release.version}`;
+        heading.textContent = `FM Lens ${release.version}`;
+        const meta = document.createElement("p");
+        meta.className = "release-date";
+        meta.textContent = date.format(new Date(release.published));
+        const body = document.createElement("div");
+        body.className = "release-body";
+        // GitHub renders and sanitizes the release text it sends as HTML.
+        body.innerHTML = release.html;
+        article.append(heading, meta);
+        if (release.download) {
+          const link = document.createElement("a");
+          link.className = "button release-download";
+          link.href = release.download;
+          link.setAttribute("aria-label", `Download FM Lens ${release.version}`);
+          link.innerHTML = DOWNLOAD_ICON;
+          link.append("Download");
+          article.append(link);
+        }
+        article.append(body);
+        list.append(article);
+      }
+    }
+  </script>
+</body>
+</html>

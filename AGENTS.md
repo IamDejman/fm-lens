@@ -56,6 +56,10 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - Cut taglines, helper text and secondary labels. If a screen needs them to make
   sense, fix the layout. Retain text needed to explain a consequential setup
   action or resolve a real failure.
+- Keep user-facing text, release notes and the website included, short and
+  plain: what changed and what the reader does. Leave out internals, history
+  the reader does not need and filler. In docs/release-notes.md each paragraph
+  and list item is one line, because GitHub shows every line break there.
 - Improve UX, DX and AX together without breaking existing behavior. Use the
   product name FM Lens consistently.
 
@@ -71,6 +75,8 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - profiles/fm27/: platform/build fingerprints and layouts.
 - app/src/assets/brand/: original transparent logo masters.
 - docs/: roadmap, validation evidence and inherited reference documentation.
+- site/: the website, getfmlens.com, published to GitHub Pages from main by
+  .github/workflows/site.yml. It links to the releases; it never hosts them.
 - docs/internal/: notes written for the next agent or maintainer, such as a
   batch handoff; keep them out of the public docs list in README.md.
 
