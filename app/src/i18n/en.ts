@@ -1451,6 +1451,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.8": [
+        "On Apple Silicon, every successful Apply and Undo asks FM to refresh the edited record and active screens without pressing Continue.",
+        "Restart FM once after updating to load the new helper.",
+      ],
       "0.5.7": [
         "On Apple Silicon, Apply and Undo refresh FM’s attributes and contract expiry header without pressing Continue.",
         "Restart FM once after updating to load the new helper.",

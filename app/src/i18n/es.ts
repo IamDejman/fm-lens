@@ -1378,6 +1378,10 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.8": [
+        "En Apple Silicon, cada Aplicar y Deshacer completado pide a FM que actualice el registro editado y las pantallas abiertas sin pulsar Continuar.",
+        "Reinicia FM una vez tras actualizar para cargar el nuevo asistente.",
+      ],
       "0.5.7": [
         "En Apple Silicon, Aplicar y Deshacer actualizan los atributos y la fecha de fin de contrato en FM sin pulsar Continuar.",
         "Reinicia FM una vez tras actualizar para cargar el nuevo asistente.",
