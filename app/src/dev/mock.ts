@@ -3611,6 +3611,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return planStaffMove(Number(args?.uid), Number(args?.club)) as T;
     case "move_staff":
       return moveStaff(Number(args?.uid), Number(args?.club)) as T;
+    case "refresh_game_ui":
+      return undefined as T;
     case "career":
       return mockCareer() as T;
     case "plan_manager_move":
