@@ -1385,10 +1385,17 @@ export const es: Strings = {
     download: "Descargar",
     installFailed: (reason) => `No se ha podido actualizar: ${reason}. Descárgala desde su página.`,
     later: "Más tarde",
+    checkForUpdates: "Buscar actualizaciones…",
+    checking: "Buscando actualizaciones…",
+    upToDate: "FM Lens está actualizado.",
+    checkFailed: "No se han podido buscar actualizaciones.",
     whatsNew: (version) => `Novedades de FM Lens ${version}`,
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.5": [
+        "Traspasa jugadores de tu propio club. FM hace el traspaso y mueve el precio.",
+      ],
       "0.5.4": [
         "Cambia la duración de una lesión o quita una sola lesión.",
         "Consulta y cambia las formaciones de un mánager con y sin balón.",
