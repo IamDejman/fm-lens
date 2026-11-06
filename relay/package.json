@@ -1,0 +1,14 @@
+{
+  "name": "fm-lens-report-relay",
+  "private": true,
+  "version": "1.0.0",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "deploy": "./deploy.sh",
+    "test": "node --test"
+  }
+}
