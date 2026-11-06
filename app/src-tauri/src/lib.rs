@@ -2693,14 +2693,16 @@ fn add_injury(state: State<'_, AppState>, uid: u32, kind: u32) -> Result<LoggedC
 }
 
 /// Has the game give the player `uid` a work permit for his club's country, or take his away. Logged as a change of
-/// his `work_permit` from 0 or 1 to the other, and undone by the opposite call.
+/// his `work_permit`: 0 for none, 1 for a work permit, or for an ESC slot the day it began as a number like 20270203.
+/// Undone by the opposite call.
 #[tauri::command]
 fn set_work_permit(state: State<'_, AppState>, uid: u32, granted: bool) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
     let change = connection.session.set_work_permit(player, granted)?;
-    let (old, new) = (i64::from(change.was_granted), i64::from(change.granted));
+    let old = change.esc_since().map_or(i64::from(change.was_granted), FmDate::to_number);
+    let new = i64::from(change.granted);
     Ok(connection.log_game_change(uid, "work_permit", old, new, Undo::Permit(change)))
 }
 
