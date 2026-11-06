@@ -1970,6 +1970,8 @@ export const en = {
     languagesTitle: "Change how well he speaks each language",
     /** The level input of a row, for assistive technology: `name` is the language's. */
     levelOf: (name: string) => `Level of ${name}`,
+    /** Under a main language of the country his club is in, which FM raises back if it is set lower. */
+    raisedBack: "FM raises it back on its own",
     save: "Save",
   },
 
