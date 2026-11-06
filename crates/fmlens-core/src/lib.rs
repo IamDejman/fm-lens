@@ -63,8 +63,8 @@ pub use export::{ExportFormat, ExportHeader, Exported};
 pub use filter::{AttributeBound, ClubFilter, PlayerFilter, PlayerOrder, PlayerSort, StaffFilter, sort_players};
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use game_calls::{
-    AddedInjury, AgreedSigning, EndedLoan, FutureTransfer, GameActions, InjuryKind, PermitChange, SignedPlayer,
-    StartedLoan,
+    AddedInjury, AgreedSigning, EndedLoan, FutureTransfer, GameActions, InjuryKind, MANAGER_JOB, ManagerPlan,
+    MovedManager, PermitChange, SignedPlayer, StartedLoan,
 };
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
