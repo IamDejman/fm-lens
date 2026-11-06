@@ -3,8 +3,8 @@
 This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
-The current FM27 Apple Silicon layout defines 167 player fields, 39 staff fields
-and 14 club fields. Two staff fields are manager-only bits of the human manager's
+The current FM27 Apple Silicon layout defines 169 player fields, 40 staff fields,
+14 club fields, 7 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam build 26340721 (ARM64) for an object of
 class `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
 missing. `manager.unsackable` (bit 1) passed bounded apply/undo and save/reload
@@ -127,6 +127,8 @@ records cannot be imported through a template.
 | `contract.happiness` | i8 | plain | -100–100 |
 | `contract.playing_time_happiness` | i8 | plain | -100–100 |
 | `contract.unhappiness` | u32 | plain | 0–0 |
+| `loan.wage` | i32 | plain | 0–10000000 |
+| `loan.ends` | date | plain | 2000-01-01–2100-12-31 |
 | `trait.0` | flag | plain | 0–1 |
 | `trait.1` | flag | plain | 0–1 |
 | `trait.2` | flag | plain | 0–1 |
@@ -233,6 +235,7 @@ records cannot be imported through a template.
 | `personality.controversy` | u8 | plain | 1–20 |
 | `contract.wage` | i32 | plain | 0–10000000 |
 | `contract.expires` | date | plain | 2000-01-01–2100-12-31 |
+| `coaching_licence` | i8 | plain | 0 (none), 7 (National C) to 1 (Continental Pro) |
 | `manager.unsackable` | flag (bit 1) | plain | 0–1 |
 | `manager.registration_anytime` | flag (bit 8) | plain | 0–1 |
 
@@ -255,10 +258,43 @@ records cannot be imported through a template.
 | `stadium.used` | u32 | plain | 0–250000 |
 | `stadium.expansion` | u32 | plain | 0–250000 |
 
+## Nations
+
+One nation at a time; none where the build's layout does not place nations.
+
+| Field | Storage | Scale | Writable range |
+| --- | --- | --- | --- |
+| `reputation` | u16 | plain | 0–10000 |
+| `youth_rating` | i16 | plain | 0–165 |
+| `women.reputation` | u16 | plain | 0–10000 |
+| `women.youth_rating` | i16 | plain | 0–165 |
+| `population` | u32 | plain | 1–2000000000 |
+| `dual_nationality` | u8 | plain | 0 or 2 |
+| `naturalisation` | u8 | plain | 1–99, or 255 (never) |
+
+## Officials
+
+One official at a time; none where the build's layout does not place officials.
+
+| Field | Storage | Scale | Writable range |
+| --- | --- | --- | --- |
+| `current_ability` | u16 | plain | 1–200 |
+| `potential_ability` | u16 | plain | 1–200 |
+| `reputation` | u16 | plain | 0–10000 |
+| `date_of_birth` | date | plain | 1940-01-01–2020-12-31 |
+
+## Changes made through the game
+
+Some changes are not field writes: the game makes them itself through the
+bridge, or FM Lens edits a list. These include work permits, injuries, loans,
+free-agent signings, Max tactics, secondary nationalities and homegrown ties,
+contract clauses and a planned retirement. ROADMAP.md lists each one and what
+has been checked in FM.
+
 ## Unsupported systems
 
-Nations, competitions, awards, officials, promises and youth-intake records do
-not yet have validated editing layouts in this fork. Complete loans/transfers,
-manager relations and moves, work permits, languages, ownership, kits and competition
-rule behavior also remain research work. These cannot be enabled by adding
-inputs or reusing a Windows offset on macOS.
+Competition and award editing, promises and youth-intake records do not yet
+have validated editing layouts in this fork. Complete transfers, other future
+transfers, manager relations and moves, language editing, ownership, kits and
+competition rule behavior also remain research work. These cannot be enabled by
+adding inputs or reusing a Windows offset on macOS.
