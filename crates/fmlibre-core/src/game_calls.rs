@@ -138,9 +138,18 @@ pub struct PermitChange {
     pub player: u32,
     /// Whether he holds one now.
     pub granted: bool,
-    /// Whether he held one before, and whether it was an ESC slot.
+    /// Whether he held one before.
     pub was_granted: bool,
-    pub was_esc: bool,
+    /// For an ESC slot he held, the day it began as the game keeps it: the 4 bytes at the record's
+    /// `record_esc_since`. None for a work permit or nothing.
+    pub was_esc: Option<u32>,
+}
+
+impl PermitChange {
+    /// The day the ESC slot he held began.
+    pub fn esc_since(&self) -> Option<FmDate> {
+        self.was_esc.and_then(|raw| FmDate::from_raw(raw as u16, (raw >> 16) as u16))
+    }
 }
 
 impl Session {
@@ -327,22 +336,34 @@ impl Session {
     pub fn set_work_permit(&self, player: &PlayerSummary, grant: bool) -> Result<PermitChange, MoveError> {
         let (manager, identity, team) = self.permit_holder(player)?;
         let held = self.club_permit(manager, identity, team)?;
-        let was_esc = held.is_some_and(|(_, esc)| esc);
         match (grant, held) {
-            (true, None) => self.give_permit(manager, identity, team, false, false)?,
+            (true, None) => {
+                self.give_permit(manager, identity, team, false, false)?;
+            }
             (false, Some((record, _))) => self.take_permit(manager, identity, team, record)?,
             // The profile offers Grant only without a record and Revoke only with one: the game has moved on.
             _ => return Err(MoveError::CallDeclined),
         }
+        let was_esc = held.and_then(|(_, esc)| esc);
         Ok(PermitChange { player: player.uid, granted: grant, was_granted: held.is_some(), was_esc })
     }
 
-    /// Undoes `change`: a permit given is taken away again, and one taken away given back, as an ESC slot where it was
-    /// one (from today, as the game dates a new slot).
+    /// Undoes `change`: a permit given is taken away again, and one taken away given back, as an ESC slot from the day
+    /// it began where it was one.
     pub fn undo_work_permit(&self, player: &PlayerSummary, change: &PermitChange) -> Result<(), MoveError> {
+        let w = self.layout.work_permit.as_ref().ok_or(MoveError::CallUnavailable)?;
         let (manager, identity, team) = self.permit_holder(player)?;
         match (change.was_granted, self.club_permit(manager, identity, team)?) {
-            (true, None) => self.give_permit(manager, identity, team, true, change.was_esc),
+            (true, None) => {
+                match (self.give_permit(manager, identity, team, true, change.was_esc.is_some())?, change.was_esc) {
+                    // The game dates the slot today, and keeps its list of ESC slots unordered: the record gets back its
+                    // own day, which is read back.
+                    ((record, Some(today)), Some(since)) => {
+                        self.write_patch(record + w.record_esc_since, &today.to_le_bytes(), &since.to_le_bytes())
+                    }
+                    _ => Ok(()),
+                }
+            }
             (false, Some((record, _))) => self.take_permit(manager, identity, team, record),
             _ => Err(MoveError::CallDeclined),
         }
@@ -363,9 +384,10 @@ impl Session {
         Ok((manager, identity, team))
     }
 
-    /// The player's record for his club's country, as the game finds it, and whether it is an ESC slot; none when he
-    /// holds no permit there. The game gives its place in the list of records, which is read here.
-    fn club_permit(&self, manager: u64, identity: u64, team: u64) -> Result<Option<(u64, bool)>, MoveError> {
+    /// The player's record for his club's country, as the game finds it, and for an ESC slot the day it began as the
+    /// game keeps it; none when he holds no permit there. The game gives its place in the list of records, which is
+    /// read here.
+    fn club_permit(&self, manager: u64, identity: u64, team: u64) -> Result<Option<(u64, Option<u32>)>, MoveError> {
         let find = self.game_function(|calls| calls.find_work_permit)?;
         let w = self.layout.work_permit.as_ref().ok_or(MoveError::CallUnavailable)?;
         let mut program = Program::new();
@@ -382,12 +404,21 @@ impl Session {
             return Err(MoveError::Changed { address: record });
         }
         let esc = self.process.read_bytes(record + w.record_flags, 1)?[0] & 1 == 1;
-        Ok(Some((record, esc)))
+        let since = if esc { Some(self.process.read_u32(record + w.record_esc_since)?) } else { None };
+        Ok(Some((record, since)))
     }
 
     /// Has the game make the player a record for his club's country: with `force` 0 and no ESC slot, as its editor
-    /// does, only where its rules say he needs a permit; forced, as it was, to give back one taken away.
-    fn give_permit(&self, manager: u64, identity: u64, team: u64, force: bool, esc: bool) -> Result<(), MoveError> {
+    /// does, only where its rules say he needs a permit; forced, as it was, to give back one taken away. Gives the record
+    /// as [`Session::club_permit`] reads it.
+    fn give_permit(
+        &self,
+        manager: u64,
+        identity: u64,
+        team: u64,
+        force: bool,
+        esc: bool,
+    ) -> Result<(u64, Option<u32>), MoveError> {
         let set = self.game_function(|calls| calls.set_work_permit)?;
         let mut program = Program::new();
         program.push(Step::new(
@@ -402,7 +433,7 @@ impl Session {
         ));
         self.call_game(&program)?;
         match self.club_permit(manager, identity, team)? {
-            Some((_, made)) if made == esc => Ok(()),
+            Some(made) if made.1.is_some() == esc => Ok(made),
             _ => Err(MoveError::CallDeclined),
         }
     }
@@ -831,5 +862,21 @@ impl Session {
     fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
         let vtable = self.process.read_u64(object)?;
         Ok(object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_revoked_esc_slot_keeps_the_day_it_began() {
+        let since = FmDate { year: 2027, month: 2, day: 3 };
+        let change =
+            PermitChange { player: 12_092_701, granted: false, was_granted: true, was_esc: Some(packed_date(since)) };
+        assert_eq!(change.esc_since(), Some(since));
+        assert_eq!(PermitChange { was_esc: None, ..change }.esc_since(), None);
+        // The game's unset day, 1 January 1900.
+        assert_eq!(PermitChange { was_esc: Some(0x076C_0001), ..change }.esc_since(), None);
     }
 }
