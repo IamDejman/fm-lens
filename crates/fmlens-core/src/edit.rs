@@ -506,11 +506,15 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         let field = field("coaching_licence", offset, Kind::I8, 0..=i64::from(crate::staff::MOST_LICENCE));
         out.push(field.plausible(-7..=8).choices(&COACHING_LICENCES));
     }
-    // The formations he prefers, offered as the ids staff of the test save held, which the game has.
-    if let Some(offset) = s.formations {
-        for (n, key) in ["formation.preferred", "formation.second"].into_iter().enumerate() {
-            let field = field(key, offset + n as u64, Kind::U8, 1..=i64::from(MOST_FORMATION));
-            out.push(field.plausible(0..=255).choices(&FORMATIONS).single());
+    // The formations he prefers in possession and out of it, the two FM's staff profile shows, offered as ids the game
+    // itself uses for each.
+    if let Some([in_possession, out_of_possession]) = s.formations {
+        for (key, offset, choices) in [
+            ("formation.in_possession", in_possession, &IN_POSSESSION_FORMATIONS[..]),
+            ("formation.out_of_possession", out_of_possession, &OUT_OF_POSSESSION_FORMATIONS[..]),
+        ] {
+            let field = field(key, offset, Kind::U8, 1..=i64::from(MOST_FORMATION));
+            out.push(field.plausible(0..=255).choices(choices).single());
         }
     }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
@@ -564,8 +568,13 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
 /// Continental Pro. Level 8 is the game's own none, which FM shows as 0 is, so it is not offered twice.
 pub const COACHING_LICENCES: [i64; 8] = [0, 7, 6, 5, 4, 3, 2, 1];
 
-/// The formation ids the editor offers for a member of staff: those staff of the test save held most (11 Dec 2027).
-pub const FORMATIONS: [i64; 12] = [3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64];
+/// The in-possession formation ids the editor offers for a member of staff: those staff of the test save held most
+/// (11 Dec 2027).
+pub const IN_POSSESSION_FORMATIONS: [i64; 12] = [3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64];
+
+/// The out-of-possession formation ids the editor offers: those the game gives a member of staff for an
+/// in-possession formation when his own is unset (function 0x4ADDE2C in the arm64 half of 27.0.0).
+pub const OUT_OF_POSSESSION_FORMATIONS: [i64; 10] = [4, 7, 22, 27, 30, 32, 33, 35, 63, 64];
 
 /// The highest formation id the editor writes.
 const MOST_FORMATION: u8 = 64;
@@ -1605,6 +1614,20 @@ mod tests {
         assert!(!field.takes(8) && field.is_plausible(8));
         // The game's other form of levels 2 to 8 reads as plausible, and is replaced on a write.
         assert!(field.is_plausible(-1) && field.is_plausible(-7) && !field.is_plausible(-8) && !field.is_plausible(9));
+    }
+
+    #[test]
+    fn a_manager_s_formations_are_the_two_fm_s_profile_shows() {
+        let layout: crate::profile::Layout =
+            toml::from_str(include_str!("../../../profiles/fm27/layout-macos.toml")).expect("macOS layout");
+        assert_eq!(layout.staff.formations, Some([0xDF, 0xE3]));
+        let staff = fields(&layout, Entity::Staff);
+        let field = |key: &str| staff.iter().find(|f| f.key == key).cloned().expect("field");
+        let (with_the_ball, without_it) = (field("formation.in_possession"), field("formation.out_of_possession"));
+        assert_eq!((with_the_ball.offset, without_it.offset), (0xDF, 0xE3));
+        // 29 is a common formation with the ball, never one the game gives without it.
+        assert!(with_the_ball.takes(29) && with_the_ball.takes(22));
+        assert!(without_it.takes(22) && !without_it.takes(29));
     }
 
     #[test]

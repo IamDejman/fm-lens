@@ -1298,7 +1298,7 @@ function staffDetails(member: StaffSummary): StaffDetails {
     languages: currentLanguages(true, member.uid),
     preferences: currentPreferences(true, member.uid),
     coachingLicence: member.uid % 9,
-    formations: [[29, 4, 28, 3][member.uid % 4], [4, 7, 0, 35][member.uid % 4]],
+    formations: [[29, 4, 28, 3][member.uid % 4], [22, 4, 0, 32][member.uid % 4]],
   });
 }
 
@@ -1426,11 +1426,12 @@ function fieldTable(entity: Entity): EditField[] {
     ...personality,
     ...contract,
     { ...field("coaching_licence", "i8", 0, 8), choices: [0, 7, 6, 5, 4, 3, 2, 1] },
-    ...["formation.preferred", "formation.second"].map((key) => ({
-      ...field(key, "u8", 1, 64),
+    {
+      ...field("formation.in_possession", "u8", 1, 64),
       choices: [3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64],
       mass: false,
-    })),
+    },
+    { ...field("formation.out_of_possession", "u8", 1, 64), choices: [4, 7, 22, 27, 30, 32, 33, 35, 63, 64], mass: false },
     { ...field("manager.unsackable", "flag", 0, 1), mass: false },
     { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];
@@ -1478,7 +1479,7 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
       case "formation": {
         const formations = (d as StaffDetails).formations;
         if (formations !== null) {
-          formations[name === "second" ? 1 : 0] = value;
+          formations[name === "out_of_possession" ? 1 : 0] = value;
         }
         break;
       }
@@ -1659,7 +1660,7 @@ function currentValues(entity: Entity, uid: number): FieldValues {
       case "coaching_licence":
         return (person as StaffDetails).coachingLicence;
       case "formation":
-        return (person as StaffDetails).formations?.[name === "second" ? 1 : 0];
+        return (person as StaffDetails).formations?.[name === "out_of_possession" ? 1 : 0];
       case "contract": {
         const contract = (person as PlayerDetails).contract;
         switch (name) {
