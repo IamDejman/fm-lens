@@ -134,7 +134,7 @@ const errors: ErrorTexts = {
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
     "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",
-  "guard.careerChanged": () => "FM kariyer verilerini değiştirdi. Düzenlemeden önce FM Lens'i yeniden yükleyin.",
+  "guard.careerChanged": () => "FM, FM Lens okuduktan sonra verilerini taşıdı. Verileri yeniden oku'ya basıp tekrar deneyin.",
   "guard.failed": (p) =>
     `${checkName(p.check)} oyunun bu sürümünde denetimden geçmedi, bu yüzden FM Lens onları değiştirmiyor.`,
   "retirement.none": () => "Oyun bu oyuncunun emekliliğini planlamamış ve oyuncu zaten oynamaya devam etmek istiyor.",
@@ -1203,7 +1203,7 @@ export const tr: Strings = {
     noteEditable: "Düzenleme açık",
     noteReadOnly: "Salt okunur",
     noteUnknownBuild: "Salt okunur: bu FM sürümü henüz desteklenmiyor",
-    noteReloadRequired: "Kayıt değişti. Düzenlemek için yeniden okuyun.",
+    noteReloadRequired: "FM verilerini taşıdı. Düzenlemek için verileri yeniden okuyun.",
 
     notConnected: "Bağlı değil",
     connected: "Bağlı",

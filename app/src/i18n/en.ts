@@ -122,7 +122,7 @@ const errors: ErrorTexts = {
   "list.missing": () => "That entry is no longer in the list. Press Reload and try again.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
-  "guard.careerChanged": () => "FM reloaded the save. Press Reload before you edit again.",
+  "guard.careerChanged": () => "FM has moved its data since FM Lens read it. Press Reload, then try again.",
   "guard.failed": (p) =>
     `${checkName(p.check)} look wrong in this FM version, so FM Lens won't change them.`,
   "move.changed": () => "FM has changed this since. Press Reload and try again.",
@@ -1260,7 +1260,7 @@ export const en = {
     noteReadOnly: "Read-only",
     /** Read-only because the game is a version FM Lens was not checked with (see `compatibility`). */
     noteUnknownBuild: "Read-only: this FM version isn't supported yet",
-    noteReloadRequired: "Save changed. Press Reload to edit again.",
+    noteReloadRequired: "FM moved its data. Press Reload to edit again.",
 
     // The status line and the busy texts beside it
     notConnected: "Not connected",
