@@ -128,7 +128,7 @@ Small copy issues remain in new list summaries (for example “1 nations”); br
 translation and zoom checks across all new screens remain open. The underlying
 editing/save/reload evidence above remains narrower than complete field coverage.
 
-## Favoured and disliked people and clubs (strength and removal, unverified)
+## Favoured and disliked people and clubs (strength and removal)
 
 `scripts/scout preferences [UID]` reads these from the same relation list as
 secondary nationalities and homegrown ties: to a person, relation 1 is favoured
@@ -150,10 +150,10 @@ Editing is limited to what the read already establishes: a strength from 1 to
 (the entries after it move up, the list end moves back and the freed entry is
 cleared). Both are logged in Changes and undone there. Adding an entry or
 pointing one at another target waits until an FM session establishes bytes
-`0x08` and `0x0D` and how a person target is stored. Neither write has been
-checked in FM yet.
+`0x08` and `0x0D` and how a person target is stored. Both writes were checked
+in FM on 6 November (see Round 1 below).
 
-## Languages (level and removal, unverified)
+## Languages (level and removal)
 
 A person's languages (player `+0x338`, staff `+0x1B8`, the human manager's
 shifted `0x340`) are a list of pointers to 16-byte links, each a pointer to the
@@ -165,8 +165,27 @@ moves back and the freed slot is cleared. The link is left where it is, so an
 undo can point at it again. Both are logged in Changes and undone there. Adding
 a language needs a new link, which the editor does not allocate.
 
-Not yet checked in FM: that its Personal page shows the new level or the removal,
-and that both survive a save and reload.
+FM's Personal page showed a removal after a day (Round 1 below). FM restored a
+nation's own language to 10. Not yet checked: a save and reload.
+
+## Future transfers (listing and cancel)
+
+A player's profile lists the moves FM agreed for him on a later day: each dated
+record of the transfer manager (`+0x50`) that names him, as his identity block or
+as a stand-in FM has not looked up yet, whose offer still waits for its day
+(status `0x13`). It shows the club he joins (the offer's `+0x40` team) and the
+day (the record's `+0x08`). Cancel transfer, beside Transfer, has the game cancel
+all of them as its own editor does: for each offer, `cancel_offer` for the team
+he joins (kind 2), else the one he leaves (kind 0), then `drop_dated_transfer`.
+The game drops the first dated record of his, not the offer's, so all go
+together. The read-back checks that none of the offers waits any more and no
+record of them is left. Each cancel is logged in Changes; nothing undoes it.
+See recon/fm27-future-transfers.md.
+
+Checked in FM for a free agent (Round 1 below). Not yet checked: a club-to-club
+deal and a loan agreed for a later day listed with the right club and day; the
+cancel leaving him at his club on his contract; both clubs' budgets before and
+after; FM's news; a player with two pending deals; and a save and reload.
 
 ## Human manager: unsackable flag (experimental, persistence tested)
 
@@ -658,3 +677,40 @@ both times).
 
 Both findings of the morning session about ESC slots are fixed: Changes names
 the slot and its date, and Undo gives the slot back with its first date.
+
+## Round 1: nations, likes, languages, future transfers (6 November 2026)
+
+Same `FM Lens Batch 2026-11-05.fm` copy, from 11 to 15 Dec 2027 (two holidays
+of 3 and 1 days, the assistant playing Spurs and Liverpool). FM Lens built from
+`feat/cancel-future-transfer` (#46 to #49 and #51 stacked). Nothing was saved;
+FM was quit without saving. The main career's hash was checked before and after
+(OK both times) and the copy's file time is unchanged.
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| England FIFA points 1,922.83 -> 1,950.50 | Applied; Undo "Undone" | 1950.50 after the holidays; 1922.83 after Undo | Ranking 4th on both pages; FM does not show points |
+| England game importance 1 -> 3, attendance 15 -> 12 | Applied; attendance 18 refused (most 16); Undo "Undone" | Not printed | Not shown by FM |
+| Saka, Timber 10 -> 45 -> 70 | Saved; Undo of both "Undone" | 45, 70, then 10 | Favoured Personnel lists only the strongest: manager (98) and Konsa (60) at 45; at 70 Timber appears between them after a day |
+| Saka, remove Gilberto Mora (18) | Removed; Undo "Undone" | 6 entries, then 7 with Mora 18 | Mora (18) was never in FM's short list |
+| Human manager, Arsenal 100 -> 80 | Saved; Undo "Undone" | 1 entry | Favourite club Arsenal |
+| Saliba, remove Arabic (6) | Removed; Undo "Undone" | English 10, then Arabic 6, English 10 | Personal: "French (Fluent), English (Fluent)" after a day, no Arabic |
+| Human manager, English 10 -> 7 | Saved | 7, then 10 after the holiday | "English (Fluent)" (7 and 10 both read Fluent) |
+| Berg (53099570), free agent, signed for Arsenal joining 28 Dec 2027 | Future transfer: Arsenal, 28 Dec 2027; Cancel transfer button | Still a free agent | "Transfer arranged, joining Arsenal on 28/12/2027" |
+| Cancel transfer on Berg | Section and button gone; Changes row with "-" | Free agent, no contract | Same day: badge still shown (cached). News "Patrick Berg deal falls through", Move Cancelled. After the holiday: Trn badge gone |
+| Undo of Berg's signing after the cancel | "The transfer is no longer waiting for its day: FM has made it or cancelled it" | - | - |
+| Reload after the holidays (#44) | Date 14 Dec 2027; all 10 changes and their Undo buttons kept | - | - |
+
+Findings:
+
+- FM sets the human manager's English back to 10 within three days. It looks
+  like a nation's own language is kept at 10 (Saliba's French is not in his
+  list at all, yet FM shows it). Undo then refused with "The game has changed
+  the memory at 0x... since; reload and try again", although the value already
+  equals the undo target. Undo should accept that, and the message should not
+  show an address.
+- The 5 November badge question is settled: FM's profile keeps the badge until
+  the next day, then drops it.
+
+Not checked: a club-to-club or loan deal agreed for a later day, both clubs'
+budgets, a save and reload, the women's nation fields, and FIFA points changing
+FM's ranking at its next ranking date.

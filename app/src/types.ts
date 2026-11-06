@@ -107,7 +107,10 @@ export interface GameActions {
   startLoan: boolean;
   signFreeAgent: boolean;
   endLoan: boolean;
-  /** Signs a free agent for a later day (`sign_free_agent_later`), and cancels it on undo. */
+  /**
+   * Signs a free agent for a later day (`sign_free_agent_later`), cancelled on undo, and cancels any transfer agreed
+   * for a later day (`cancel_future_transfers`).
+   */
   futureTransfer: boolean;
   /** Makes every player of a team fully familiar with its tactic (`team_action` "maxTactics"), as FM's editor does. */
   maxTactics: boolean;
@@ -653,6 +656,17 @@ export interface PlayerDetails extends PlayerSummary {
   loan: LoanTerms | null;
   /** One for each nation he holds a work permit for; empty for most players. */
   workPermits: WorkPermit[];
+  /** The moves FM agreed for him on a later day; empty for most players, or where the build does not place them. */
+  futureTransfers: FutureTransfer[];
+}
+
+/** A move FM agreed for a player on a later day: the club he joins (null where FM names none yet) and the day. */
+export interface FutureTransfer {
+  /** The id of FM's offer, which waits for that day. */
+  offer: number;
+  club: string | null;
+  clubUid: number | null;
+  joins: FmDate | null;
 }
 
 /** A player's work permit for one nation: an active work permit, or an ESC slot from a day. */
@@ -899,6 +913,8 @@ export interface LoggedChange {
   earlierGame?: boolean;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
+  /** Set for a change nothing undoes: a transfer agreed for a later day FM cancelled (`cancel_future_transfers`). */
+  permanent?: boolean;
   // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0 (adding
   // one, `add_injury`, from 0 to 1), granting or taking away a work permit (`set_work_permit`) as one of his field
   // "work_permit" (0 none, 1 a work permit, or the day an ESC slot began, like 20270203), lifting his bans
@@ -907,7 +923,8 @@ export interface LoggedChange {
   /**
    * Set for a move to another club, which is logged as a change of the player's field `club` whose old and new
    * values are the clubs' UIDs: the clubs' names. A release (`release_player`) is logged the same way, with 0 for
-   * its new value.
+   * its new value. A cancelled transfer agreed for a later day is logged as a change of his field `future_transfer`
+   * from the club's UID to 0, with that club as `to` and the day as `joins`.
    */
   moved?: {
     /** Absent for a free agent's signing (`sign_free_agent`), before which the player had no club. */

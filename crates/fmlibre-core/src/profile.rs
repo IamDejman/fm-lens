@@ -88,16 +88,23 @@ pub struct TacticsLayout {
 
 /// The transfers `TRANSFER_MANAGER` has agreed for a later day. From the manager: its offers at `offers` and the
 /// records of the dated ones at `dated`, each a (begin, end) of pointers, and `dated_owner`, what
-/// [`CallRvas::drop_dated_transfer`] takes. A record holds its offer's id (u32) at `record_offer`. An offer holds its
-/// id (u32) at `offer_id`, the player's identity block at `offer_person`, the team he joins and the one he leaves at
-/// `offer_to_team` and `offer_from_team`, and its status byte at `offer_status`, `pending` until its day.
+/// [`CallRvas::drop_dated_transfer`] takes. A record holds the player at `record_person`, the day (an FM date: day of
+/// year, then year) at `record_date` and its offer's id (u32) at `record_offer`. An offer holds its id (u32) at
+/// `offer_id`, the player at `offer_person`, the team he joins and the one he leaves at `offer_to_team` and
+/// `offer_from_team`, and its status byte at `offer_status`, `pending` until its day. The player is his identity block,
+/// or a stand-in the game has not looked up yet: its UID (u32) at `person_uid` is `u32::MAX`, and its u32 at
+/// `person_index` is the identity block's.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FutureTransferLayout {
     pub offers: u64,
     pub dated: u64,
     pub dated_owner: u64,
+    pub record_person: u64,
+    pub record_date: u64,
     pub record_offer: u64,
+    pub person_uid: u64,
+    pub person_index: u64,
     pub offer_id: u64,
     pub offer_person: u64,
     pub offer_to_team: u64,

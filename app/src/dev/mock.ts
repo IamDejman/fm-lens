@@ -38,6 +38,7 @@ import type {
   Detection,
   Failure,
   FmDate,
+  FutureTransfer,
   GameInfo,
   Health,
   Ban,
@@ -286,6 +287,7 @@ function details(player: PlayerSummary): PlayerDetails {
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     loan: loanOf(player),
     workPermits: workPermitsOf(player),
+    futureTransfers: futureTransfersOf(player),
     retirementKnown: true,
     retires: retiresOf(player.uid),
     // Drawn last, so that the values above come out as before.
@@ -322,6 +324,64 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
     // Every other one has a future fee, which End loan refuses.
     futureFee: player.uid % 2 === 0 ? 25_000_000 : null,
   };
+}
+
+/**
+ * The moves the game agreed for a player on a later day, by UID, once the editor changed them: a free agent's signing
+ * made with a date, or none after a cancel. Before that, every 13th player at a club has a deal agreed with another.
+ */
+const futureTransfers = new Map<number, FutureTransfer[]>();
+
+function futureTransfersOf(player: PlayerSummary): FutureTransfer[] {
+  const fixture = (club: string): FutureTransfer => {
+    const to = CLUBS[(CLUBS.indexOf(club) + 2) % CLUBS.length] ?? CLUBS[0]!;
+    const joins = { year: 2027, month: 7, day: 1 };
+    return { offer: 500 + player.uid, club: to, clubUid: 1000 + CLUBS.indexOf(to), joins };
+  };
+  const agreed =
+    futureTransfers.get(player.uid) ?? (player.club && player.uid % 13 === 0 ? [fixture(player.club)] : []);
+  return agreed.map((transfer) => ({ ...transfer }));
+}
+
+/** `plan_cancel_future_transfers`: the fixture player's agreed moves, or why there are none to cancel. */
+function planCancelFutureTransfers(uid: number): FutureTransfer[] {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const agreed = futureTransfersOf(player);
+  if (agreed.length === 0) {
+    throw failure("move.notPending", "the transfer is no longer waiting for its day: FM has made it or cancelled it");
+  }
+  return agreed;
+}
+
+/** `cancel_future_transfers`: the game cancels them all; each is logged as a change nothing undoes. */
+function cancelFutureTransfers(uid: number): LoggedChange[] {
+  const agreed = planCancelFutureTransfers(uid);
+  const name = players.find((p) => p.uid === uid)?.name ?? "";
+  futureTransfers.set(uid, []);
+  return agreed.map((transfer) => {
+    const logged: LoggedChange = {
+      id: changes.length + 1,
+      at: Date.now(),
+      name,
+      entity: "player",
+      uid,
+      field: "future_transfer",
+      old: transfer.clubUid ?? 0,
+      new: 0,
+      undoneAt: null,
+      batch: null,
+      moved: {
+        ...(transfer.club === null ? {} : { to: transfer.club }),
+        ...(transfer.joins === null ? {} : { joins: numberFromDate(transfer.joins) }),
+      },
+      permanent: true,
+    };
+    changes.push(logged);
+    return { ...logged };
+  });
 }
 
 /** The loans the editor had the game start, by UID: the club he is loaned from, until when. */
@@ -1745,6 +1805,9 @@ function undoChange(id: number): LoggedChange {
       "This change was made before FM was closed or loaded a save, so it can no longer be undone.",
     );
   }
+  if (entry.permanent) {
+    throw failure("app.permanent", "This change cannot be undone.");
+  }
   const staffRow = entry.entity === "staff" ? staffUndo.get(entry.id) : undefined;
   if (staffRow) {
     Object.assign(staff.find((s) => s.uid === entry.uid)!, staffRow);
@@ -1780,8 +1843,16 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
-  // A signing for a later day is cancelled: he never left the free agents.
+  // A signing for a later day is cancelled: he never left the free agents. One cancelled already is not pending.
   if (entry.moved?.joins !== undefined) {
+    const joins = entry.moved.joins;
+    const player = players.find((p) => p.uid === entry.uid);
+    const agreed = player ? futureTransfersOf(player) : [];
+    const kept = agreed.filter((t) => !(t.clubUid === entry.new && t.joins && numberFromDate(t.joins) === joins));
+    if (kept.length === agreed.length) {
+      throw failure("move.notPending", "the transfer is no longer waiting for its day: FM has made it or cancelled it");
+    }
+    futureTransfers.set(entry.uid, kept);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -2103,6 +2174,10 @@ function signFreeAgentLater(uid: number, clubUid: number, joins: number): Logged
     moved: { to: to.name, joins },
   };
   changes.push(logged);
+  futureTransfers.set(uid, [
+    ...futureTransfersOf(player),
+    { offer: 900 + logged.id, club: to.name, clubUid: to.uid, joins: dateFromNumber(joins) },
+  ]);
   return { ...logged };
 }
 
@@ -3318,6 +3393,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return endLoan(Number(args?.uid)) as T;
     case "sign_free_agent":
       return signFreeAgent(Number(args?.uid), Number(args?.club), (args?.terms ?? {}) as MoveTerms) as T;
+    case "plan_cancel_future_transfers":
+      return planCancelFutureTransfers(Number(args?.uid)) as T;
+    case "cancel_future_transfers":
+      return cancelFutureTransfers(Number(args?.uid)) as T;
     case "sign_free_agent_later":
       return signFreeAgentLater(Number(args?.uid), Number(args?.club), Number(args?.joins)) as T;
     case "lift_bans":

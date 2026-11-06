@@ -12,7 +12,7 @@ import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { PositionPitch, PositionRatings } from "./PositionPitch";
-import { EndLoanButton, ReleaseButton } from "./ReleaseDialog";
+import { CancelTransferButton, EndLoanButton, ReleaseButton } from "./ReleaseDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { TiesGroup } from "./TiesGroup";
 import {
@@ -29,7 +29,17 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { ApplyReport, Concern, Contract, FmDate, LoanTerms, PlayerDetails, PlayerSummary, WorkPermit } from "./types";
+import type {
+  ApplyReport,
+  Concern,
+  Contract,
+  FmDate,
+  FutureTransfer,
+  LoanTerms,
+  PlayerDetails,
+  PlayerSummary,
+  WorkPermit,
+} from "./types";
 import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
@@ -50,6 +60,8 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
   const { gameActions } = useContext(EditorContext);
   const details = loaded?.details;
   const info = details ?? player;
+  // A move FM agreed for him on a later day: its dialog shows the first one, and cancels all of them, as FM's editor.
+  const agreed = details?.futureTransfers[0];
   // The birth date and the height, like the nationality above them and the abilities, are inputs where they are shown
   // while the player is edited.
   const vitals = [
@@ -114,6 +126,16 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
               ) : (
                 <ReleaseButton player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }} />
               ))}
+            {gameActions.futureTransfer && agreed !== undefined && (
+              <CancelTransferButton
+                player={{
+                  uid: info.uid,
+                  name: info.name,
+                  club: agreed.club ?? profileText.none,
+                  clubUid: agreed.clubUid,
+                }}
+              />
+            )}
           </div>
         )
       }
@@ -162,6 +184,7 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
 
       {details.contract && <ContractGroup details={details} contract={details.contract} />}
       {details.loan && <LoanGroup loan={details.loan} />}
+      {details.futureTransfers.length > 0 && <FutureTransferGroup transfers={details.futureTransfers} />}
       <WorkPermitGroup details={details} />
       <CareerGroup details={details} />
       <TiesGroup details={details} />
@@ -260,6 +283,32 @@ function LoanGroup({ loan }: { loan: LoanTerms }) {
         </Fact>
         {loan.futureFee !== null && <Fact label={profileText.loanFutureFee}>{formatMoney(loan.futureFee)}</Fact>}
       </dl>
+    </section>
+  );
+}
+
+/** The moves FM agreed for him on a later day: the club he joins, and the day. */
+function FutureTransferGroup({ transfers }: { transfers: FutureTransfer[] }) {
+  return (
+    <section className="profile-group">
+      <h3>{profileText.futureTransfer}</h3>
+      {transfers.map((transfer) => (
+        <dl key={transfer.offer} className="stats">
+          <Fact label={profileText.futureClub}>
+            {transfer.club === null ? (
+              profileText.none
+            ) : (
+              <WithPicture
+                inline
+                picture={<ClubLogo uid={transfer.clubUid} name={transfer.club} size={PICTURE_SIZE.textLogo} />}
+              >
+                {transfer.club}
+              </WithPicture>
+            )}
+          </Fact>
+          <Fact label={profileText.futureJoins}>{formatDate(transfer.joins) || profileText.none}</Fact>
+        </dl>
+      ))}
     </section>
   );
 }

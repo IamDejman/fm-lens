@@ -526,9 +526,12 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // club: he became a free agent), and so do the players' for a captaincy. A heal is logged as a change of his
   // injuries from how many he had to none (adding one, from none to one), and lifting his bans as one of his bans:
   // "Healed 2 injuries" says it better than "2 → 0". A work permit is logged as a number, which it names. Keeping
-  // him from retiring is logged with the date he was to retire on, which it names.
+  // him from retiring is logged with the date he was to retire on, which it names. A cancelled transfer agreed for a
+  // later day is logged with the club he was to join, which goes to none.
   const value = change.moved
-    ? valueChange(change.moved.from ?? profileText.freeAgent, change.moved.to ?? profileText.freeAgent)
+    ? change.field === "future_transfer"
+      ? valueChange(change.moved.to ?? profileText.none, profileText.none)
+      : valueChange(change.moved.from ?? profileText.freeAgent, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
       ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
       : change.tie
@@ -583,6 +586,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
             text.undone(formatTime(change.undoneAt))
           ) : change.earlierGame ? (
             text.earlierGame
+          ) : change.permanent ? (
+            profileText.none
           ) : (
             <button type="button" disabled={undoing} title={text.undoTitle(label)} onClick={() => onUndo(change)}>
               {text.undo}

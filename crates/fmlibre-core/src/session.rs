@@ -326,6 +326,7 @@ impl Session {
         details.clause_room = self.clause_room(player).unwrap_or(0);
         details.loan = self.loan(player);
         details.work_permits = self.work_permits(player);
+        details.future_transfers = self.future_transfers(player).unwrap_or_default();
         if let Ok(date) = self.planned_retirement(player) {
             (details.retirement_known, details.retires) = (true, date);
         }
