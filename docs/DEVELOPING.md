@@ -243,6 +243,7 @@ fmlens-probe get player 7458500                     # those fields' values for o
 fmlens-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
 fmlens-probe move 13200568 1139 --restore           # move a player to a club and back: this writes too
 fmlens-probe swap 13200568 72048035 --restore       # two players swap clubs and back: this writes too
+fmlens-probe transfer 2000216551 603 --fee 1000000  # FM transfers a player from your club: this writes, for good
 fmlens-probe release 91100466 --restore             # release a player from his club and back: this writes too
 fmlens-probe staff-move 4000571 1139 --restore      # move a member of staff to a club and back: this writes too
 fmlens-probe staff-job 4000571 14 --restore         # give a member of staff another job and back: this writes too
