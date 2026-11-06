@@ -455,6 +455,21 @@ export const tr: Strings = {
     corporate: "Kurumsal",
   },
 
+  nationStyle: {
+    depth: "Derinlik",
+    directness: "Direkt Oyun",
+    flamboyancy: "Gösteriş",
+    flexibility: "Esneklik",
+    free_roles: "Serbest Roller",
+    marking: "Markaj",
+    offside: "Ofsayt",
+    pressing: "Pres",
+    sitting_back: "Geride Durma",
+    tempo: "Tempo",
+    playmaker: "Oyun Kurucu Kullanımı",
+    width: "Genişlik",
+  },
+
   supporterTraits: {
     loyalty: "Sadakat",
     passion: "Tutku",
@@ -1165,6 +1180,8 @@ export const tr: Strings = {
     gameImportance: "Oyunun önemi",
     attendance: "Seyirci ilgisi",
     women: "Kadın futbolu",
+    style: "Oyun Tarzı",
+    womenStyle: "Kadın Futbolunda Oyun Tarzı",
     teamName: (ageLimit) => (ageLimit === null ? "A Milli Takım" : `U${ageLimit}`),
     womenTeamName: (ageLimit) => (ageLimit === null ? "Kadın A Milli Takımı" : `Kadınlar U${ageLimit}`),
     manager: "Teknik direktör",
@@ -1343,6 +1360,7 @@ export const tr: Strings = {
     editTitle: "Bu profilin değerlerini oyunda değiştir",
     startFailed: (reason) => `Düzenleme başlatılamadı: ${reason}`,
     positionRating: (position) => `${position} puanı`,
+    womenStyle: (style) => `Kadın futbolunda ${style.toLocaleLowerCase("tr")}`,
     was: (value) => `önceki: ${value}`,
     invalid: (min, max) => `${min} ile ${max} arasında bir tam sayı girin`,
     least: (value) => `En az: ${value}`,

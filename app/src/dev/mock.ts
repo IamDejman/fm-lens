@@ -1318,10 +1318,12 @@ function fieldTable(entity: Entity): EditField[] {
       { ...field("youth_rating", "i16", 0, 165), mass: false },
       { ...field("game_importance", "i8", 0, 4), mass: false },
       { ...field("attendance", "u8", 0, 16), mass: false },
+      ...NATION_STYLE.map((key) => ({ ...field(`style.${key}`, "i8", 0, 20), mass: false })),
       { ...field("women.reputation", "u16", 0, 10_000), mass: false },
       { ...field("women.youth_rating", "i16", 0, 165), mass: false },
       { ...field("women.game_importance", "i8", 0, 4), mass: false },
       { ...field("women.attendance", "u8", 0, 16), mass: false },
+      ...NATION_STYLE.map((key) => ({ ...field(`women.style.${key}`, "i8", 0, 20), mass: false })),
       { ...field("points", "f32", 0, floatBits(3000)), mass: false },
       { ...field("population", "u32", 1, 2_000_000_000), mass: false },
       { ...field("dual_nationality", "u8", 0, 2), choices: [0, 2], mass: false },
@@ -3737,6 +3739,7 @@ function nationDetails(index: number): NationDetails | null {
     youthRating: 140 - index * 9,
     gameImportance: index % 3,
     attendance: 15 - index,
+    style: nationStyle(index),
     rivals: NATIONS.filter((_, i) => i !== index)
       .slice(0, 3)
       .map((rival, i) => ({ uid: 1000 + NATIONS.indexOf(rival), name: rival, strength: 100 - i * 15 })),
@@ -3747,9 +3750,31 @@ function nationDetails(index: number): NationDetails | null {
       youthRating: 155 - index * 11,
       gameImportance: 4,
       attendance: 10 - (index % 4),
+      style: nationStyle(index + 5),
       teams: [team(null, 0, 9_000 - index * 450, []), team(20, 274, 4_000 - index * 150, [])],
     },
   });
+}
+
+/** The keys of a nation's style ratings, as the real build names them. */
+const NATION_STYLE = [
+  "depth",
+  "directness",
+  "flamboyancy",
+  "flexibility",
+  "free_roles",
+  "marking",
+  "offside",
+  "pressing",
+  "sitting_back",
+  "tempo",
+  "playmaker",
+  "width",
+];
+
+/** Made-up style ratings around FM's usual 10. */
+function nationStyle(seed: number): Record<string, number> {
+  return Object.fromEntries(NATION_STYLE.map((key, i) => [key, 10 + (((seed + i) * 7) % 9) - 4]));
 }
 
 /** The name of the nation with the made-up UID `uid`, or the real commands' failure. */
@@ -3790,6 +3815,18 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
   }
   if (values["women.attendance"] !== undefined && women) {
     women.attendance = values["women.attendance"];
+  }
+  for (const [prefix, side] of [
+    ["", d],
+    ["women.", women],
+  ] as const) {
+    const style = side?.style;
+    for (const key of NATION_STYLE) {
+      const value = values[`${prefix}style.${key}`];
+      if (value !== undefined && style) {
+        style[key] = value;
+      }
+    }
   }
   if (values.points !== undefined) {
     d.points = floatOfBits(values.points);
@@ -3854,6 +3891,14 @@ function nationValues(uid: number): FieldValues {
   }
   if (d.women && d.women.attendance !== null) {
     values["women.attendance"] = d.women.attendance;
+  }
+  for (const [prefix, style] of [
+    ["", d.style],
+    ["women.", d.women?.style ?? null],
+  ] as const) {
+    for (const [key, value] of Object.entries(style ?? {})) {
+      values[`${prefix}style.${key}`] = value;
+    }
   }
   // FM keeps the points of an unranked nation too; the profile shows none.
   values.points = floatBits(d.points ?? 0);

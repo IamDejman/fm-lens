@@ -761,6 +761,8 @@ export interface NationDetails {
   /** FM's game importance, 0 to 4, and attendance, 0 to 16, of its men's football. */
   gameImportance: number | null;
   attendance: number | null;
+  /** Its men's style ratings, 0 to 20, by key ("depth", "tempo", …); null where the build does not place them. */
+  style: Record<string, number> | null;
   /** Strongest first. */
   rivals: Related[];
   /** The senior team first. */
@@ -775,6 +777,7 @@ export interface WomenFootball {
   youthRating: number | null;
   gameImportance: number | null;
   attendance: number | null;
+  style: Record<string, number> | null;
   /** The senior team first. */
   teams: NationalTeam[];
 }
