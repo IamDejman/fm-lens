@@ -36,6 +36,8 @@ pub struct Language {
     pub name: Option<String>,
     /// How well he speaks it, 0 to 10.
     pub level: u8,
+    /// A main language of the country his club is in: the game raises a level set lower back on its own, within days.
+    pub local: bool,
 }
 
 /// A person's list of languages, as read.
@@ -44,6 +46,8 @@ struct LanguageList {
     begin: u64,
     /// The pointer to each link, and what it says.
     links: Vec<u64>,
+    /// The language each link points at.
+    targets: Vec<u64>,
     languages: Vec<Language>,
 }
 
@@ -71,12 +75,47 @@ pub struct LanguageSet {
 impl Session {
     /// The languages `player` speaks besides, usually, his native one. Empty where the layout does not place them.
     pub fn player_languages(&self, player: &PlayerSummary) -> Result<Vec<Language>, MoveError> {
-        Ok(self.language_list(PersonRef::Player(player))?.map_or_else(Vec::new, |list| list.languages))
+        let p = &self.layout.player;
+        let team = self.process.read_u64(player.address + p.at(p.team, player.shift)).unwrap_or(0);
+        Ok(self.language_list(PersonRef::Player(player))?.map_or_else(Vec::new, |list| self.marked(list, team)))
     }
 
     /// The languages the member of staff `member` speaks besides, usually, his native one.
     pub fn staff_languages(&self, member: &StaffSummary) -> Result<Vec<Language>, MoveError> {
-        Ok(self.language_list(PersonRef::Staff(member))?.map_or_else(Vec::new, |list| list.languages))
+        let s = &self.layout.staff;
+        let contract = self.process.read_u64(member.address + s.at(s.contract, member.shift)).unwrap_or(0);
+        let team = if is_user_pointer(contract) {
+            self.process.read_u64(contract + self.layout.contract.team).unwrap_or(0)
+        } else {
+            0
+        };
+        Ok(self.language_list(PersonRef::Staff(member))?.map_or_else(Vec::new, |list| self.marked(list, team)))
+    }
+
+    /// The languages of `list`, each marked where it is a main language of the country of the club whose team is
+    /// `team`.
+    fn marked(&self, list: LanguageList, team: u64) -> Vec<Language> {
+        let spoken = self.club_country(team).map(|nation| self.main_languages(nation)).unwrap_or_default();
+        let mut languages = list.languages;
+        for (language, target) in languages.iter_mut().zip(&list.targets) {
+            language.local = spoken.contains(target);
+        }
+        languages
+    }
+
+    /// The nation the club whose team is `team` is in, as the game finds it for most clubs: the one it plays in when
+    /// based abroad, else its own. None for a person without a club, or where the layout does not place them.
+    fn club_country(&self, team: u64) -> Option<u64> {
+        let c = &self.layout.club;
+        let (plays_in, nation) = (c.plays_in?, c.nation?);
+        if !is_user_pointer(team) {
+            return None;
+        }
+        let club = self.process.read_u64(team + self.layout.team.club).ok().filter(|&club| is_user_pointer(club))?;
+        [plays_in, nation]
+            .into_iter()
+            .filter_map(|offset| self.process.read_u64(club + offset).ok())
+            .find(|&nation| is_user_pointer(nation))
     }
 
     /// Works out giving the language at `index` in the list of `person` the level `level`, 1 to 10. Nothing is
@@ -162,7 +201,7 @@ impl Session {
         let words = self.process.read_bytes(header, 24)?;
         let word = |i: usize| u64::from_le_bytes(words[i * 8..i * 8 + 8].try_into().expect("8 bytes"));
         let (begin, end, capacity) = (word(0), word(1), word(2));
-        let mut list = LanguageList { header, begin, links: Vec::new(), languages: Vec::new() };
+        let mut list = LanguageList { header, begin, links: Vec::new(), targets: Vec::new(), languages: Vec::new() };
         if begin == end {
             return Ok(list);
         }
@@ -188,7 +227,8 @@ impl Session {
             let name =
                 self.process.read_u64(language + l.name).ok().and_then(|text| read_fm_string(&self.process, text));
             list.links.push(link);
-            list.languages.push(Language { name, level: level as u8 });
+            list.targets.push(language);
+            list.languages.push(Language { name, level: level as u8, local: false });
         }
         Ok(list)
     }

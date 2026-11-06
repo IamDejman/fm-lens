@@ -1750,6 +1750,7 @@ export const tr: Strings = {
     strengthOf: (name) => `${name} için derece`,
     languagesTitle: "Her dili ne kadar iyi konuştuğunu oyunda değiştir",
     levelOf: (name) => `${name} seviyesi`,
+    raisedBack: "FM bunu kendisi yeniden yükseltir",
     save: "Kaydet",
   },
 

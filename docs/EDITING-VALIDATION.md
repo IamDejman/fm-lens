@@ -165,8 +165,15 @@ moves back and the freed slot is cleared. The link is left where it is, so an
 undo can point at it again. Both are logged in Changes and undone there. Adding
 a language needs a new link, which the editor does not allocate.
 
-FM's Personal page showed a removal after a day (Round 1 below). FM restored a
-nation's own language to 10. Not yet checked: a save and reload.
+FM's Personal page showed a removal after a day (Round 1 below). FM raises a
+lowered level in a main language of the country the person's club is in back up
+on its own, within days (Round 2 below); other languages keep the level set. The
+profile marks each language as `local` where it is one of the languages the
+largest share of that country speaks (all of them on a tie). The country is the
+game's own lookup for most clubs (`0xe015c4` on Steam 26340721 arm64): the
+nation a club based abroad plays in (club `+0xE8`), else its own (`+0xD8`); the
+lookup names a few clubs by UID instead, which the editor does not follow. Not
+yet checked: a save and reload.
 
 ## Future transfers (listing and cancel)
 

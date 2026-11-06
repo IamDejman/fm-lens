@@ -1804,6 +1804,7 @@ export const es: Strings = {
     strengthOf: (name) => `Intensidad para ${name}`,
     languagesTitle: "Cambiar en el juego cómo de bien habla cada idioma",
     levelOf: (name) => `Nivel de ${name}`,
+    raisedBack: "FM lo vuelve a subir por su cuenta",
     save: "Guardar",
   },
 

@@ -310,6 +310,25 @@ impl Session {
             .collect())
     }
 
+    /// The main languages of the nation object at `nation`: those the largest share of its people speak (Croatian,
+    /// Bosnian and Serbian in Croatia, all at 100; German alone in Switzerland), as pointers to the game's languages.
+    /// Empty where the layout does not place them or the list does not read.
+    pub(crate) fn main_languages(&self, nation: u64) -> Vec<u64> {
+        let Ok(n) = self.national() else {
+            return Vec::new();
+        };
+        let entries = self.entries(nation + n.languages, n.entry_size, MOST_LANGUAGES).unwrap_or_default();
+        let spoken: Vec<(u64, u8)> = entries
+            .iter()
+            .filter_map(|entry| {
+                let language = u64::from_le_bytes(entry.get(0..8)?.try_into().ok()?);
+                Some((language, *entry.get(n.language_percent as usize)?))
+            })
+            .filter(|&(language, _)| is_user_pointer(language))
+            .collect();
+        most_spoken(spoken)
+    }
+
     /// The rivals in the relation list at `header` of a container, strongest first.
     fn nation_rivals(&self, header: u64, own: Option<u32>) -> Result<Vec<Related>, MoveError> {
         let (n, r) = (self.national()?, &self.layout.relation);
@@ -449,9 +468,25 @@ impl Session {
     }
 }
 
+/// The languages of `spoken`, each with the share of people who speak it, that the largest share speaks; ties all count.
+fn most_spoken(spoken: Vec<(u64, u8)>) -> Vec<u64> {
+    let most = spoken.iter().map(|&(_, percent)| percent).max();
+    spoken.into_iter().filter(|&(_, percent)| Some(percent) == most).map(|(language, _)| language).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_nations_main_languages_are_those_the_most_speak() {
+        // Croatia as the game lists it: Croatian, Bosnian and Serbian 100, English 55, Macedonian and Slovenian 80.
+        let croatia = vec![(1, 100), (2, 100), (3, 100), (4, 55), (5, 80), (6, 80)];
+        assert_eq!(most_spoken(croatia), [1, 2, 3]);
+        // Switzerland: Italian 8, French 22, German 62, English 8.
+        assert_eq!(most_spoken(vec![(1, 8), (2, 22), (3, 62), (4, 8)]), [3]);
+        assert!(most_spoken(Vec::new()).is_empty());
+    }
 
     #[test]
     fn years_below_one_are_never() {

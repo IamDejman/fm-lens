@@ -726,6 +726,8 @@ export interface Preference {
 export interface Language {
   name: string | null;
   level: number;
+  /** A main language of the country his club is in: FM raises a level set lower back on its own, within days. */
+  local: boolean;
 }
 
 /** A club another club is tied to: a rival, with how strong the rivalry is (0 to 100), or an affiliate. */
