@@ -71,8 +71,11 @@ pub struct AwardSummary {
     pub continent: Option<String>,
     /// 0 to 20.
     pub prestige: u8,
-    /// How often it is given: 1 weekly, 2 monthly, 3 each season; other codes are not named yet.
+    /// How often it is given: 1 weekly, 2 monthly, 3 each season, 4 at the end of the competition, 5 each calendar
+    /// year, 6 each year, 7 each round; other codes are not named yet.
     pub period: u8,
+    /// Whether it is a women's award.
+    pub women: bool,
     /// Who gets it: 1 a player, 2 a manager, 7 a team of players; other codes are not named yet.
     pub recipients: u8,
     pub goalkeepers_only: bool,
@@ -224,6 +227,7 @@ impl Session {
                 continent: continents.get(continent, |continent| place_name(&self.process, continent, c.place_name)),
                 prestige: bytes[a.prestige as usize],
                 period: bytes[a.period as usize],
+                women: bytes[a.women as usize] == 1,
                 recipients: bytes[a.recipients as usize],
                 goalkeepers_only: bytes[a.goalkeepers_only as usize] == 1,
                 max_age: (max_age != 0 && max_age != 0xFF).then_some(max_age),

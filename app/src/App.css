@@ -1551,6 +1551,17 @@ input::placeholder {
   width: 40%;
 }
 
+/* The awards list beside a profile: its name and competition, the nation being in the profile. */
+@container (max-width: 760px) {
+  .with-profile .award-grid .col-nation {
+    display: none;
+  }
+
+  .with-profile .award-grid td.col-name {
+    width: 70%;
+  }
+}
+
 /* The competitions and awards lists beside a profile in a small window: name and the number. */
 @container (max-width: 480px) {
   .with-profile .competition-grid :is(.col-continent, .col-nation),
@@ -1620,21 +1631,39 @@ input::placeholder {
 }
 
 .club-grid td.col-name,
-.competition-grid td.col-name,
-.award-grid td.col-name {
+.competition-grid td.col-name {
   width: 100%;
   max-width: 0;
 }
 
-/* A long competition or award name is cut short, so the numbers beside it stay in view. */
+/* An award's name, competition and nation each take a share of the row, cut short, so a long competition never
+ * squeezes the name. */
+.award-grid td:is(.col-name, .col-competition, .col-nation) {
+  max-width: 0;
+}
+
 .award-grid td.col-name {
+  width: 50%;
+}
+
+.award-grid td.col-competition {
+  width: 30%;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.award-grid td.col-nation {
+  width: 20%;
+}
+
+.award-grid .col-nation .with-picture-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .club-grid .col-name .name,
-.competition-grid .col-name .name {
+.competition-grid .col-name .name,
+.award-grid .col-name .name {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1642,7 +1671,8 @@ input::placeholder {
 }
 
 .club-grid .col-name :is(.name-text, .sub),
-.competition-grid .col-name .name-text {
+.competition-grid .col-name .name-text,
+.award-grid .col-name .name-text {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1650,7 +1680,8 @@ input::placeholder {
 }
 
 .club-grid .col-name .tag.women,
-.competition-grid .col-name .tag.women {
+.competition-grid .col-name .tag.women,
+.award-grid .col-name .tag.women {
   flex: none;
   margin-left: 0;
 }

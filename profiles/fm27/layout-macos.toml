@@ -240,7 +240,9 @@ competition = 0x58
 nation = 0x60
 goalkeepers_only = 0x7C  # u8, 1 for a goalkeepers' award
 prestige = 0x80          # u8, 0..20
-period = 0x86            # u8: 1 weekly, 2 monthly, 3 each season
+period = 0x86            # u8: 1 weekly, 2 monthly, 3 each season, 4 at the end of the competition, 5 each calendar
+                         # year, 6 each year (World Golden Ball: 26 Oct to 25 Oct), 7 each round
+women = 0x8A             # u8, 1 for a women's award
 recipients = 0x8D        # u8: 1 a player, 2 a manager, 7 a team of players
 max_age = 0x93           # u8, 0 for any age
 

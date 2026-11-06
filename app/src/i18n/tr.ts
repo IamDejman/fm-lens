@@ -1021,12 +1021,22 @@ export const tr: Strings = {
     competition: "Turnuva",
     prestige: "Prestij",
     period: "Veriliş sıklığı",
-    periodName: (code) => ({ 1: "Her hafta", 2: "Her ay", 3: "Her sezon" })[code] ?? null,
+    periodName: (code) =>
+      ({
+        1: "Her hafta",
+        2: "Her ay",
+        3: "Her sezon",
+        4: "Turnuva sonunda",
+        5: "Her takvim yılı",
+        6: "Her yıl",
+        7: "Her tur",
+      })[code] ?? null,
     recipients: "Kime",
     recipientName: (code) => ({ 1: "Bir oyuncuya", 2: "Bir teknik direktöre", 7: "Bir oyuncu takımına" })[code] ?? null,
     goalkeepersOnly: "Sadece kaleciler",
     ageLimit: "Yaş sınırı",
     ageLimitValue: (age) => `${age} yaş ve altı`,
+    women: "Kadın",
   },
 
   stadiumList: {
