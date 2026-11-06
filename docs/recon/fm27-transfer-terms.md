@@ -66,7 +66,7 @@ Undo (read back and revert): read the two vectors at [club+0xb0], match by id pa
 
 ## 5. Can the game call replace FM Lens' memory-write move?
 
-For a club-to-club move with a fee: statics say 0x2dfedac with TrFe is the editor's own path, so it produces history, contract, news and clauses, which the Patch-based move in `crates/fmlibre-core/src/transfer.rs` and `move_player` does not. Not proven: fee debit/credit (0xeb5410 is only a transfer-value history accumulator, 0.75 x fee, kind 5; the balance posting was not located), window/budget/work-permit refusals in 0x2d1ac58, behaviour for human-managed clubs. Recommend: add as an opt-in path, keep the memory-write move as fallback, and keep the FeePlan payment only if the live check shows the game does not post the fee.
+For a club-to-club move with a fee: statics say 0x2dfedac with TrFe is the editor's own path, so it produces history, contract, news and clauses, which the Patch-based move in `crates/fmlens-core/src/transfer.rs` and `move_player` does not. Not proven: fee debit/credit (0xeb5410 is only a transfer-value history accumulator, 0.75 x fee, kind 5; the balance posting was not located), window/budget/work-permit refusals in 0x2d1ac58, behaviour for human-managed clubs. Recommend: add as an opt-in path, keep the memory-write move as fallback, and keep the FeePlan payment only if the live check shows the game does not post the fee.
 
 ## 6. Confidence
 

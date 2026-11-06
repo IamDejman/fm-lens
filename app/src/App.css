@@ -597,6 +597,22 @@ dd,
   text-overflow: ellipsis;
 }
 
+/* Relaunch to update: small enough to sit in the colophon's line, in the accent so it is noticed. */
+.colophon .relaunch {
+  min-height: 0;
+  padding: 0 10px;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--type-sm);
+  line-height: 20px;
+}
+
+.colophon .relaunch:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
 .colophon-name {
   flex: none;
   color: var(--text);
@@ -717,6 +733,13 @@ dd,
 .update-actions {
   display: flex;
   gap: 8px;
+}
+
+/* What a version brought, in the notice after an update. */
+.whats-new {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
 }
 
 /* Connect */

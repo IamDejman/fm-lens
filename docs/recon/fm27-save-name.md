@@ -12,7 +12,7 @@ career by its human manager and club (`Career` in `app/src-tauri/src/lib.rs`).
 ## What was found
 
 - FM does not keep the `.fm` file open after loading and does not log its name.
-- `fmlibre-probe find "Registration Kepa 2026-11-04"` hits:
+- `fmlens-probe find "Registration Kepa 2026-11-04"` hits:
   - nine Unity (IL2CPP) `System.String` objects in UTF-16, with and without `.fm`,
     one of them the full path under `.../Football Manager 27/games/`;
   - seven UTF-8 copies. They sit in short-lived buffers that repeat the

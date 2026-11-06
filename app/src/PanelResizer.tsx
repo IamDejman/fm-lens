@@ -6,7 +6,7 @@ import { profileText } from "./labels";
 // profiles and one for the wide panels (a club's squad), so the next profile opens as wide as the last one was left.
 
 /** Where the widths are kept. */
-const STORAGE_KEY = "fmlibre.profileWidth";
+const STORAGE_KEY = "fmlens.profileWidth";
 
 /** The narrowest a panel can be made: its `min-width` in the style sheet. */
 const PANEL_MIN = 440;

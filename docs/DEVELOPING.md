@@ -1,7 +1,7 @@
-# Developing FMLibreEditor
+# Developing FM Lens
 
 How the editor works, how to build and release it, and how to use the command-line probe.
-For installing and using the app, see [INSTALL.md](INSTALL.md).
+For installing and using the app, see the [README](../README.md).
 
 ## Goals
 
@@ -19,7 +19,7 @@ For installing and using the app, see [INSTALL.md](INSTALL.md).
 
 FM27's interface is Unity (IL2CPP), but the game itself, its database and
 simulation, lives in a native, anti-tamper protected module: `game_plugin.dll`.
-FMLibreEditor runs as a separate process and reads that module's heap data with
+FM Lens runs as a separate process and reads that module's heap data with
 `ReadProcessMemory`. To edit, it writes values back with `WriteProcessMemory`, and
 only into the game's heap. It never patches the game's code and never allocates
 memory in the game. On Windows it puts no code of its own in the game either; on macOS
@@ -40,7 +40,7 @@ places the entity arrays, the in-game date and the retirement manager for each b
 For a build without one, the editor still finds the arrays by scanning, and then:
 - **No writes by default.** The app says that this version of the game is new to it. It writes nothing until the user
   presses Edit anyway, which lasts until the app is closed or connects again.
-- **Checks before any write** (`crates/fmlibre-core/src/health.rs`), on every build. Each check samples up to 2,000
+- **Checks before any write** (`crates/fmlens-core/src/health.rs`), on every build. Each check samples up to 2,000
   players, members of staff or clubs, and looks for what a layout that reads the wrong bytes cannot fake:
   - every player rates 20 in his natural position;
   - goalkeepers are better at goalkeeping than outfield players, strikers at finishing and centre-backs at tackling;
@@ -54,7 +54,7 @@ For a build without one, the editor still finds the arrays by scanning, and then
   before it, and the latest not long before. Otherwise the app shows no ages, rather than wrong ones.
 
 Each check was tried against a layout broken on purpose (a field group moved by a byte or a pointer's width), and each
-such layout failed its check. After an update, `fmlibre-probe health` shows what the checks find, and `calibrate`
+such layout failed its check. After an update, `fmlens-probe health` shows what the checks find, and `calibrate`
 where the arrays are. A new build profile takes their RVAs and the date's, which `find` locates as in the
 [Game Pass 0.9.2409.0 notes](recon/fm27-gamepass-0.9.2409.md), or on macOS as in the
 [notes on 27.0.0 there](recon/fm27-steam-macos.md#2700-steam-build-26340721).
@@ -65,10 +65,10 @@ macOS lets no app read another app's memory unless the other app allows debuggin
 Football Manager does not: it is signed with Apple's hardened runtime. Unless System
 Integrity Protection is turned off, macOS lets no other app attach to it. What the game
 does allow is loading extra libraries named in `DYLD_INSERT_LIBRARIES` (Steam's overlay uses
-the same door), so FMLibreEditor comes with a small one, the bridge (`crates/fmlibre-bridge`).
+the same door), so FM Lens comes with a small one, the bridge (`crates/fmlens-bridge`).
 
 Steam on macOS runs a launch option as a program, with the game among its arguments, so the
-launch option names a small launcher, `fmlibre-launch`, that comes with the bridge. The
+launch option names a small launcher, `fmlens-launch`, that comes with the bridge. The
 launcher puts the bridge in `DYLD_INSERT_LIBRARIES` (in front of the libraries Steam names
 there) and then turns into the game, so Steam keeps following the process it started. The
 bridge hooks nothing, patches nothing and reads none of the game's data. It only answers the editor of the
@@ -78,13 +78,13 @@ editor works as it does on Windows: it reads with `mach_vm_read_overwrite`, writ
 
 The connect panel of the app sets the bridge up (**Set up the bridge**) or takes it out
 again. Setting up copies the bridge and the launcher to
-`~/Library/Application Support/FMLibreEditor/` and puts the launcher in front of FM27's
+`~/Library/Application Support/FM27Scout/` and puts the launcher in front of FM27's
 launch options in Steam, which only works while Steam is closed; Steam keeps the launch
 options to itself while it runs. With Steam open, set the launch option yourself: right-click
 Football Manager 27 in Steam, then **Properties › General › Launch Options**, and enter
 
 ```text
-'/Users/<you>/Library/Application Support/FMLibreEditor/fmlibre-launch' %command%
+'/Users/<you>/Library/Application Support/FM27Scout/fmlens-launch' %command%
 ```
 
 The panel shows the line with your own folder in it. Launch options you already have stay,
@@ -98,10 +98,10 @@ behind the launcher; another tool's launcher among them is started in turn.
 
 | Path | Contents |
 |---|---|
-| `crates/fmlibre-mem` | Process access on Windows and macOS: processes, modules, memory regions, PE and Mach-O headers, guarded writes |
-| `crates/fmlibre-bridge` | macOS: the library the game loads to hand its memory to the editor, and the launcher Steam starts the game through |
-| `crates/fmlibre-core` | Football Manager logic: game detection, calibration, decoders, editable fields |
-| `crates/fmlibre-probe` | Command-line probe |
+| `crates/fmlens-mem` | Process access on Windows and macOS: processes, modules, memory regions, PE and Mach-O headers, guarded writes |
+| `crates/fmlens-bridge` | macOS: the library the game loads to hand its memory to the editor, and the launcher Steam starts the game through |
+| `crates/fmlens-core` | Football Manager logic: game detection, calibration, decoders, editable fields |
+| `crates/fmlens-probe` | Command-line probe |
 | `profiles/` | Object layouts per edition and addresses per game build |
 | `app/` | Tauri 2 desktop app (React + TypeScript) |
 | `docs/` | Install guide, roadmap and reverse-engineering notes (`recon/`) |
@@ -113,12 +113,12 @@ Requirements: Windows 10/11, Rust stable (via [rustup](https://rustup.rs)),
 Visual Studio Build Tools with the C++ workload, and Node.js 20+ for the app.
 
 ```powershell
-cargo build --release -p fmlibre-probe
+cargo build --release -p fmlens-probe
 cd app; npm install; npm run tauri dev     # run the desktop app
-npm run release                            # build target\release\FMLibreEditor.exe
+npm run release                            # build target\release\FM Lens.exe
 ```
 
-`npm run release` builds a stand-alone `FMLibreEditor.exe` without an installer. It
+`npm run release` builds a stand-alone `FM Lens.exe` without an installer. It
 needs the WebView2 runtime, which Windows 10 and 11 already have.
 
 On macOS: Xcode's command line tools, Rust stable with the Intel target as well
@@ -126,13 +126,13 @@ On macOS: Xcode's command line tools, Rust stable with the Intel target as well
 game), and Node.js 20+.
 
 ```sh
-cargo build --release -p fmlibre-probe -p fmlibre-bridge
+cargo build --release -p fmlens-probe -p fmlens-bridge
 cd app; npm install; npm run tauri dev     # run the desktop app
-npm run release:mac                        # build FMLibreEditor.app, universal, with the bridge
+npm run release:mac                        # build FM Lens.app, universal, with the bridge
 ```
 
 `npm run release:mac` writes the app to
-`target/universal-apple-darwin/release/bundle/macos/FMLibreEditor.app`, signed ad hoc: it
+`target/universal-apple-darwin/release/bundle/macos/FM Lens.app`, signed ad hoc: it
 has no Developer ID and is not notarized. macOS opens a copy downloaded from the internet
 only once it is allowed in **System Settings › Privacy & Security** (**Open Anyway**).
 
@@ -142,30 +142,32 @@ players, for working on the UI without the game.
 The app reads graphics packs from
 `Documents\Sports Interactive\Football Manager 27\graphics` on Windows and from
 `~/Library/Application Support/Sports Interactive/Football Manager 27/graphics` on macOS.
-If FM keeps its user data somewhere else, set the environment variable `FMLIBRE_GRAPHICS`
+If FM keeps its user data somewhere else, set the environment variable `FMLENS_GRAPHICS`
 to that graphics folder before starting the app.
 
 The app remembers what was frozen in each save in `frozen.json` in its data folder
-(`%APPDATA%\io.github.tozmoz.fmlibreeditor` on Windows,
-`~/Library/Application Support/io.github.tozmoz.fmlibreeditor` on macOS). A save is told
+(`%APPDATA%\local.fm.lens` on Windows,
+`~/Library/Application Support/local.fm.lens` on macOS). A save is told
 apart by the storefront and the UIDs of its human managers. To test without touching that
-file, set `FMLIBRE_DATA` to another folder before starting the app.
+file, set `FMLENS_DATA` to another folder before starting the app.
 
-Exports go to `Documents\FMLibreEditor\Exports` (`~/Documents/FMLibreEditor/Exports` on
-macOS); `FMLIBRE_EXPORTS` names another folder. The columns and the JSON keys are in
-`crates/fmlibre-core/src/export.rs`.
+Exports go to `Documents\FM Lens\Exports` (`~/Documents/FM Lens/Exports` on
+macOS); `FMLENS_EXPORTS` names another folder. The columns and the JSON keys are in
+`crates/fmlens-core/src/export.rs`.
 
 ### Releasing
 
 FM Lens is released for macOS only, from a Mac, to the public repository
-[IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases). The source
-repository stays private.
+[IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases). Each release
+links to its source, tagged `v<version>` in this repository.
 
 1. **Bump the version** in three places, and commit the bump:
    - `version` in the root `Cargo.toml` (`[workspace.package]`);
    - `app/package.json`;
    - `app/src-tauri/tauri.conf.json`.
-2. **Write what is new** in `docs/release-notes.md`.
+2. **Write what is new** in `docs/release-notes.md`, and in short under `update.changes` in
+   `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update themselves show that list
+   once, after they relaunch as the new version.
 3. **Build and publish:** `scripts/release-mac.sh --publish`. It builds the universal app
    with the bridge, signs the update with the updater key, and publishes the latest release
    with `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download,
@@ -185,11 +187,12 @@ everyone has to download the next version by hand.
 
 When its window opens, the app reads `latest.json` from the latest release of
 fm-lens-releases (the endpoint in `app/src-tauri/tauri.conf.json`). When that names a newer
-version, the macOS app installs it at once, without asking: Tauri's updater plugin downloads
-the `.app.tar.gz`, checks its signature against the public key, puts it in place of the
-running app's bundle (macOS asks for an administrator's password where the user may not
-change it), and the app starts again (`restart_app`). A notice under the masthead shows how
-far it has got. At startup an app run from its bundle puts its bridge and launcher in place
+version, the macOS app installs it in the background, without asking: Tauri's updater plugin
+downloads the `.app.tar.gz`, checks its signature against the public key and puts it in place
+of the running app's bundle (macOS asks for an administrator's password where the user may
+not change it). The running app carries on; the colophon then shows **Relaunch to update**,
+which starts the new version (`restart_app`), and otherwise it runs the next time the app
+opens. At startup an app run from its bundle puts its bridge and launcher in place
 of the installed ones where they differ (`bridge_setup::refresh`), so the game loads the new
 bridge the next time it starts.
 
@@ -212,38 +215,38 @@ key.
 Start FM27, load a save, then run:
 
 ```powershell
-fmlibre-probe info                                   # process, storefront, modules, game_plugin.dll layout
-fmlibre-probe calibrate                              # identify the build and locate players, staff, clubs
-fmlibre-probe health                                 # the checks the editor makes before it writes, and what each found
-fmlibre-probe players "arda guler"                   # search players (accents ignored), best first
-fmlibre-probe players --position st --max-age 20 --min-pa 170 --sort pa   # wonderkid strikers
-fmlibre-probe players --max-age 21 --export young.csv   # every match to a file, as the app's Export writes it (.json: JSON; --semicolon)
-fmlibre-probe player 7458500                         # everything read for one player
-fmlibre-probe staff arteta                           # search staff; staff-member <id> for details
-fmlibre-probe clubs tottenham                        # search clubs; club <uid> for details
-fmlibre-probe fields player                          # what the editor can change (also: staff)
-fmlibre-probe get player 7458500                     # those fields' values for one player
-fmlibre-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
-fmlibre-probe move 13200568 1139 --restore           # move a player to a club and back: this writes too
-fmlibre-probe swap 13200568 72048035 --restore       # two players swap clubs and back: this writes too
-fmlibre-probe release 91100466 --restore             # release a player from his club and back: this writes too
-fmlibre-probe staff-move 4000571 1139 --restore      # move a member of staff to a club and back: this writes too
-fmlibre-probe staff-job 4000571 14 --restore         # give a member of staff another job and back: this writes too
-fmlibre-probe injuries 728                           # the current injuries of a club's players
-fmlibre-probe heal 37055843 --heal --restore         # heal a player and list his injuries again: this writes too
-fmlibre-probe bans                                   # every player with a ban; bans <uid> for one player's
-fmlibre-probe bans 29120248 --lift --restore         # lift a player's bans and list them again: this writes too
-fmlibre-probe ties 2000138835                        # secondary nationalities and homegrown status, numbered
-fmlibre-probe tie-set 2000138835 0 --nation 765 --restore   # point tie 0 at England and back: this writes too
-fmlibre-probe teams 680                              # a club's teams: kinds, captains, players' fitness and morale
-fmlibre-probe captain 680 43425040 --restore         # make a player captain (--vice: vice-captain) and back
-fmlibre-probe scan                                   # find arrays of game objects in game_plugin.dll
-fmlibre-probe refs 0x1a5a5396990 --span 0x3c8        # every pointer into an object (holders, lists, squads too)
-fmlibre-probe dump game_plugin.dll+0x1000 --len 0x100
-fmlibre-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0
-fmlibre-probe column game_plugin.dll+0x5681dc0 0x294 --find 7458500   # find a player by UID
-fmlibre-probe find "18 July 2026"                    # search memory for text (UTF-8 and UTF-16)
-fmlibre-probe find "c7 80 ea 07" --as hex --module game_plugin.dll
+fmlens-probe info                                   # process, storefront, modules, game_plugin.dll layout
+fmlens-probe calibrate                              # identify the build and locate players, staff, clubs
+fmlens-probe health                                 # the checks the editor makes before it writes, and what each found
+fmlens-probe players "arda guler"                   # search players (accents ignored), best first
+fmlens-probe players --position st --max-age 20 --min-pa 170 --sort pa   # wonderkid strikers
+fmlens-probe players --max-age 21 --export young.csv   # every match to a file, as the app's Export writes it (.json: JSON; --semicolon)
+fmlens-probe player 7458500                         # everything read for one player
+fmlens-probe staff arteta                           # search staff; staff-member <id> for details
+fmlens-probe clubs tottenham                        # search clubs; club <uid> for details
+fmlens-probe fields player                          # what the editor can change (also: staff)
+fmlens-probe get player 7458500                     # those fields' values for one player
+fmlens-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
+fmlens-probe move 13200568 1139 --restore           # move a player to a club and back: this writes too
+fmlens-probe swap 13200568 72048035 --restore       # two players swap clubs and back: this writes too
+fmlens-probe release 91100466 --restore             # release a player from his club and back: this writes too
+fmlens-probe staff-move 4000571 1139 --restore      # move a member of staff to a club and back: this writes too
+fmlens-probe staff-job 4000571 14 --restore         # give a member of staff another job and back: this writes too
+fmlens-probe injuries 728                           # the current injuries of a club's players
+fmlens-probe heal 37055843 --heal --restore         # heal a player and list his injuries again: this writes too
+fmlens-probe bans                                   # every player with a ban; bans <uid> for one player's
+fmlens-probe bans 29120248 --lift --restore         # lift a player's bans and list them again: this writes too
+fmlens-probe ties 2000138835                        # secondary nationalities and homegrown status, numbered
+fmlens-probe tie-set 2000138835 0 --nation 765 --restore   # point tie 0 at England and back: this writes too
+fmlens-probe teams 680                              # a club's teams: kinds, captains, players' fitness and morale
+fmlens-probe captain 680 43425040 --restore         # make a player captain (--vice: vice-captain) and back
+fmlens-probe scan                                   # find arrays of game objects in game_plugin.dll
+fmlens-probe refs 0x1a5a5396990 --span 0x3c8        # every pointer into an object (holders, lists, squads too)
+fmlens-probe dump game_plugin.dll+0x1000 --len 0x100
+fmlens-probe element game_plugin.dll+0x5681dc0 0    # follow an array and dump element 0
+fmlens-probe column game_plugin.dll+0x5681dc0 0x294 --find 7458500   # find a player by UID
+fmlens-probe find "18 July 2026"                    # search memory for text (UTF-8 and UTF-16)
+fmlens-probe find "c7 80 ea 07" --as hex --module game_plugin.dll
 ```
 
 Addresses and lengths are hexadecimal. Add `--json report.json` to `info` or `scan`
@@ -263,9 +266,9 @@ a build without a profile too, as far as the checks allow, so that a new build c
 
 If Windows denies access, run the probe from an administrator terminal.
 
-On macOS, `fmlibre-probe bridge` shows whether the game loads the bridge;
-`fmlibre-probe bridge setup` installs the bridge and the launcher built next to the probe
-and sets the launch option (quit Steam first), and `fmlibre-probe bridge remove` takes them
+On macOS, `fmlens-probe bridge` shows whether the game loads the bridge;
+`fmlens-probe bridge setup` installs the bridge and the launcher built next to the probe
+and sets the launch option (quit Steam first), and `fmlens-probe bridge remove` takes them
 out again.
 Then start FM27 from Steam: the other commands work as on Windows, with `game_plugin` in
 place of `game_plugin.dll` in addresses.

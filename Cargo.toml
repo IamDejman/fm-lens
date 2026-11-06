@@ -3,17 +3,17 @@ resolver = "3"
 members = ["crates/*", "app/src-tauri"]
 
 [workspace.package]
-version = "0.5.1"
+version = "0.5.2"
 edition = "2024"
 rust-version = "1.90"
 license = "GPL-3.0-or-later"
-authors = ["FMLibreEditor contributors"]
+authors = ["FM Lens contributors"]
 
 [workspace.dependencies]
 # The app's dependency graph allows writes; the probe explicitly enables `read-only`.
 # Cargo unifies that feature during workspace checks. Build the desktop package separately.
-fmlibre-mem = { path = "crates/fmlibre-mem", default-features = false }
-fmlibre-core = { path = "crates/fmlibre-core" }
+fmlens-mem = { path = "crates/fmlens-mem", default-features = false }
+fmlens-core = { path = "crates/fmlens-core" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
