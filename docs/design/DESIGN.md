@@ -1,5 +1,5 @@
 ---
-name: FMLibreEditor
+name: FM Lens
 description: A free real-time editor for Football Manager 27, set as a football season almanac.
 colors:
   page: "#f6f7f9"
@@ -302,13 +302,13 @@ components:
     padding: "0 18px"
 ---
 
-# Design System: FMLibreEditor
+# Design System: FM Lens
 
 ## Overview
 
 **Creative North Star: "The Season Almanac"**
 
-FMLibreEditor is set like a football yearbook, the annual that prints every squad as a table. A cool white page carries near-black ink, hairline rules part the rows, and a thick ink rule stands over every section heading. One typeface does all the work: Archivo, bundled with the app so Windows (WebView2) and macOS (WKWebView) read alike, condensed and heavy for names, headings and big figures, regular width for running text. The page is dense the way an almanac is dense: rows of 34px, small print in the margins, figures that line up down every column.
+FM Lens is set like a football yearbook, the annual that prints every squad as a table. A cool white page carries near-black ink, hairline rules part the rows, and a thick ink rule stands over every section heading. One typeface does all the work: Archivo, bundled with the app so Windows (WebView2) and macOS (WKWebView) read alike, condensed and heavy for names, headings and big figures, regular width for running text. The page is dense the way an almanac is dense: rows of 34px, small print in the margins, figures that line up down every column.
 
 Colour is not decoration here. It appears only where it means something: FM's four attribute bands, retuned as earthy inks, rate every 1 to 20 value and every position on the pitch; a marker-yellow highlighter marks an edit not yet applied; brick red marks danger; blue is the keyboard's focus and nothing else. What is picked is printed in reverse, white on ink. At night the page turns: the night edition swaps paper and ink and keeps every meaning.
 
@@ -461,7 +461,7 @@ Every change waits in highlighter until it is applied.
 
 ### Colophon
 Small print along the foot, over a hairline.
-- **Line one:** "FMLibreEditor · beta" in ink at width 88% and weight 750, the connection status with its dot (frame grey, ok-green when connected) and the game, counts of players, staff and clubs; in the browser preview a framed tag.
+- **Line one:** "FM Lens · beta" in ink at width 88% and weight 750, the connection status with its dot (frame grey, ok-green when connected) and the game, counts of players, staff and clubs; in the browser preview a framed tag.
 - **The two-line adaptation:** where the game and the notes fit, they share one line and the notes sit to the right. Where they do not (Turkish strings run long, and the minimum window is 960 wide), the notes wrap to a second line of their own. The note on applying edits and backing up is never cut except, with an ellipsis, in a window too narrow for it even alone; the graphics packs' note shows whole or wraps out of sight. Each line is 27px.
 
 ### Buttons

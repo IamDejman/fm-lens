@@ -1,5 +1,5 @@
 //! The bridge library that Football Manager loads on macOS so the app can reach its memory
-//! (see `fmlibre_core::bridge_setup`). Windows needs none: there `status` is always `None`.
+//! (see `fmlens_core::bridge_setup`). Windows needs none: there `status` is always `None`.
 
 use serde::Serialize;
 
@@ -32,7 +32,7 @@ pub struct BridgeAccount {
 mod imp {
     use std::path::PathBuf;
 
-    use fmlibre_core::bridge_setup::{self, BRIDGE_FILE, BridgeStatus, LAUNCHER_FILE, Places};
+    use fmlens_core::bridge_setup::{self, BRIDGE_FILE, BridgeStatus, LAUNCHER_FILE, Places};
     use tauri::{AppHandle, Manager};
 
     use super::{BridgeAccount, BridgeInfo};
