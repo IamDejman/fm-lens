@@ -18,7 +18,7 @@ retirement_manager = 0x56A82A8
 officials = 0x56D2E90
 
 # The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: 1,045 records on a save at
-# 11 December 2027, Collins Sichenje's and Mees Rijks' granted. Only this build has it.
+# 11 December 2027, Collins Sichenje's and Mees Rijks' granted. The Intel half has it too, found statically.
 transfer_manager = 0x56A49F8
 
 # The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902

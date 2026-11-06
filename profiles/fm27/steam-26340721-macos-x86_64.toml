@@ -1,6 +1,7 @@
 # FM27 27.0.0 on Steam for macOS (app 4530370, build 26340721): the Intel half of the universal game_plugin, which Intel
-# Macs run, and Apple silicon Macs under Rosetta. Found in the file, not read in a running game: its arm64 half kept every
-# RVA of the Launch Preview, and in this half the code's RIP-relative loads still peak at the Launch Preview's Intel
+# Macs run, and Apple silicon Macs under Rosetta. Found in the file, then checked in the game under Rosetta on 6 November
+# 2026, reads and work permit calls: its arm64 half kept every RVA of the Launch Preview, and in this half the code's
+# RIP-relative loads still peak at the Launch Preview's Intel
 # RVAs (steam-26227640-macos-x86_64.toml): 7,730 at the date, 184 and 170 at the players' begin and end, 18 and 18 at the
 # staff's, 105 and 93 at the clubs'.
 name = "FM27 Steam build 26340721 (27.0.0, macOS, Intel)"
@@ -16,6 +17,11 @@ retirement_manager = 0x5C5FEF0
 # The (begin, end) pair of the match officials' array, 0x78 above the players' as in the arm64 half: three functions
 # that walk the officials (by nation, by competition) load it where their arm64 twins load 0x56D2E90.
 officials = 0x5C89240
+
+# The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: the game's editor action
+# for work permits (0x2569350, the twin of the arm64 0x238F110: keys 'dref' and 'tick', the player through identity
+# slot 0x6E0) loads it at 0x2569424, where the arm64 half loads 0x56A49F8. Loaded in 985 places.
+transfer_manager = 0x5C5DE80
 
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
@@ -34,3 +40,18 @@ clubs = 0x5C89380
 flags = 0x3FC
 person_shift = 0x340
 class = "N2db16HUMAN_NON_PLAYERE"
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
+# no others on this build. Each is a direct call of the work permit action above, with the arm64 half's arguments;
+# see docs/recon/fm27-steam-26340721-macos-x86_64.md.
+[calls]
+# TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force, esc), called at
+# 0x25696A8 with force 0 and esc 0 for 'tick' false ("add_work_permit").
+set_work_permit = 0x309A010
+# TRANSFER_MANAGER::find_work_permit: (manager, identity block, club team), called at 0x25695C8: -1 unless the
+# identity's flag 0x4 is set, then a binary search of the records at +0x720 by the id at +0x08. Only reads.
+find_work_permit = 0x30FC8E0
+# TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), called at 0x2569658 for 'tick' true
+# ("remove_work_permit") with the record at [manager + 0x720] of the place found: takes it out of the ESC slots at
+# +0x780 and the records at +0x720.
+remove_work_permit = 0x30D8D20
