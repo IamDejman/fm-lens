@@ -1547,7 +1547,7 @@ export const en = {
     // After Apply
     /** FM shows written values once it moves on, so the message says how to see them. */
     applied: (count: number) =>
-      `${changeCount(count)} applied. ${count === 1 ? "It shows" : "They show"} in FM after you press Continue.`,
+      `${changeCount(count)} applied.`,
     /** Every value asked for was the game's already. */
     nothingToChange: "Nothing to change. FM already has these values.",
     /** A change the game refused; `label` is the field's name (see `fieldLabel`) and `reason` the game's answer. */

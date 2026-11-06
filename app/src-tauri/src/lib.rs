@@ -47,6 +47,8 @@ struct Connection {
     /// The clubs human managers run: their players are not moved to other clubs.
     human_clubs: Vec<u32>,
     log: Vec<LoggedChange>,
+    pending_refresh: Vec<(Entity, u32)>,
+    pending_contract_refresh: bool,
     /// The mass edit last previewed, until it is applied or replaced.
     mass: Option<PendingMass>,
     /// The next id for a mass-edit preview or batch.
@@ -226,6 +228,8 @@ impl Connection {
             clubs,
             human_clubs,
             log: Vec::new(),
+            pending_refresh: Vec::new(),
+            pending_contract_refresh: false,
             mass: None,
             next_id: 1,
             frozen,
@@ -395,6 +399,7 @@ impl Connection {
 
     /// Logs a change just written; `batch` groups the changes of one mass edit.
     fn log_change(&mut self, change: Change, name: String, batch: Option<u32>) -> LoggedChange {
+        self.pending_contract_refresh |= change.field.starts_with("contract.");
         self.note_change(&change, change.new);
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -410,6 +415,7 @@ impl Connection {
             clause: None,
             undo: None,
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -474,6 +480,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Captain(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -501,6 +508,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Heal(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -522,6 +530,7 @@ impl Connection {
             clause: None,
             undo: Some(undo),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -562,6 +571,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Loan(started)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -600,6 +610,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::LoanEnded(ended)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -632,6 +643,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Signed(signed)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -671,6 +683,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Permanent),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -705,6 +718,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Permanent),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -739,6 +753,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::SignedLater(agreed)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -766,6 +781,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Promise(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -793,6 +809,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Lift(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -859,6 +876,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Preference(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -898,6 +916,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Language(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -933,6 +952,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Injury(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -961,6 +981,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Cohesion(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -989,6 +1010,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Tactics(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1017,6 +1039,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Retirement(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1059,6 +1082,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Tie(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1088,6 +1112,7 @@ impl Connection {
             clause: Some(ClauseChange { from: done.before.clone(), to: done.after.clone() }),
             undo: Some(Undo::Clause(done)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1147,6 +1172,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, job })),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1259,6 +1285,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Permanent),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1310,6 +1337,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Move(before)),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1351,6 +1379,7 @@ impl Connection {
             clause: None,
             undo: Some(Undo::Move(LoggedMove { done, rows, paid: Vec::new() })),
         };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
     }
@@ -1448,10 +1477,12 @@ impl Connection {
                 // list: both go back as they were.
                 if ended.wage != 0 {
                     let change = self.session.write_field(&target, &wage, i64::from(ended.wage))?;
+                    self.pending_contract_refresh |= change.field.starts_with("contract.");
                     self.note_change(&change, change.new);
                 }
                 if let Some((field, was)) = listed {
                     let change = self.session.write_field(&target, &field, i64::from(was))?;
+                    self.pending_contract_refresh |= change.field.starts_with("contract.");
                     self.note_change(&change, change.new);
                 }
                 let name = self.club_name(ended.from_club);
@@ -1480,6 +1511,8 @@ impl Connection {
             }
         }
         let logged = self.log.iter_mut().find(|logged| logged.id == id).expect("found above");
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.pending_contract_refresh |= logged.change.field.starts_with("contract.");
         logged.undone_at = Some(now_ms());
         Ok(logged.clone())
     }
@@ -2123,7 +2156,8 @@ fn can_self_update() -> bool {
     let Ok(exe) = std::env::current_exe() else {
         return false;
     };
-    cfg!(target_os = "macos")
+    !cfg!(debug_assertions)
+        && cfg!(target_os = "macos")
         && app_bundle(&exe).is_some_and(|bundle| !bundle.to_string_lossy().contains("/AppTranslocation/"))
 }
 
@@ -2982,6 +3016,41 @@ fn apply_edits(
         }
     }
     Ok(report)
+}
+
+/// Flush successful Apply/Undo notifications once per entity, separately from the data write.
+/// A failed refresh must never turn a successful mutation into an invitation to apply it again.
+#[tauri::command]
+fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let pending = std::mem::take(&mut connection.pending_refresh);
+    let contract = std::mem::take(&mut connection.pending_contract_refresh);
+    let mut seen = Vec::new();
+    let mut errors = Vec::new();
+    for (entity, uid) in pending {
+        if seen.contains(&(entity, uid)) {
+            continue;
+        }
+        seen.push((entity, uid));
+        let result = connection
+            .target(entity, uid)
+            .and_then(|(target, _)| connection.session.refresh_entity(&target).map(|_| ()).map_err(Failure::from));
+        if let Err(error) = result {
+            errors.push(error.message);
+        }
+    }
+    if contract && let Err(error) = connection.session.refresh_views() {
+        errors.push(Failure::from(error).message);
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(Failure::new(
+            "app.refreshFailed",
+            format!("Changes applied, but FM's screen could not refresh: {}", errors.join("; ")),
+        ))
+    }
 }
 
 /// Every change written this session, newest first.
@@ -4075,6 +4144,7 @@ pub fn run() {
             read_values,
             apply_edits,
             change_log,
+            refresh_game_ui,
             undo_change,
             plan_mass_edit,
             capture_player_template,

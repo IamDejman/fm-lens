@@ -99,7 +99,7 @@ mod imp {
     /// alone. Failing only means the old ones stay, until the bridge is set up again.
     pub fn refresh(app: &AppHandle) {
         let exe = std::env::current_exe().ok();
-        if exe.as_deref().and_then(crate::app_bundle).is_none() {
+        if cfg!(debug_assertions) || exe.as_deref().and_then(crate::app_bundle).is_none() {
             return;
         }
         if let (Ok(places), Ok(bundled)) = (places(app), app.path().resource_dir()) {

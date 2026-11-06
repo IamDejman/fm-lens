@@ -1456,8 +1456,8 @@ export const es: Strings = {
       count === 0
         ? "No se ha aplicado ningún cambio"
         : count === 1
-          ? "1 cambio aplicado. Se verá en FM cuando pulses Continuar."
-          : `${format(count)} cambios aplicados. Se verán en FM cuando pulses Continuar.`,
+          ? "1 cambio aplicado."
+          : `${format(count)} cambios aplicados.`,
     nothingToChange: "Nada que cambiar. FM ya tiene estos valores.",
     refused: (label, reason) => `${label}: ${reason}`,
     rereadFailed: (reason) => `No se han podido volver a leer los valores: ${reason}`,

@@ -59,6 +59,18 @@ further data-layout and game-behavior research.
 | Keyboard navigation | Available: ⌘1-⌘9 sections, ⌘F search, arrow keys in lists, Enter/Space opens, Escape closes, ⌘S applies edits (see DESIGN-STANDARDS.md) |
 | Guided first-run tour | Delivered: skippable introduction to navigation, search, settings and the editing boundary, then, once the game can be edited, a guided first edit (open, Edit, change, Apply, Changes) that follows what the user does |
 
+## Automatic refresh after Apply and Undo (6 November 2026)
+
+Implemented on Steam build 26340721, macOS ARM64, through FM’s own
+entity-change notifier on its main thread. A copied-career test on the 0.5.5
+source baseline showed Saka’s Finishing 16 → 17 → 16 in the already-open FM
+Overview after Apply and Undo, with no Continue or navigation. Contract edits
+also request an unfiltered refresh of active views: a subsequent copied-career
+test showed the expiry header updating immediately 30 June → 29 June → 30 June
+2032 after Apply/Undo, still at 16:30. Other fields/screens remain unverified.
+Intel has no mapped notifier.
+See the latest entry in EDITING-VALIDATION.md.
+
 ## Delivery order
 
 1. **Read-only foundation**: the read path is delivered. The probe remains
