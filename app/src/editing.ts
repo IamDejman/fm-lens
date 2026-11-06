@@ -294,6 +294,9 @@ export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("s
  */
 export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { uid });
 
+/** Closes the open promise at `index` in the promises of the player `uid`. */
+export const closePromise = (uid: number, index: number) => call<LoggedChange>("close_promise", { uid, index });
+
 /** The kinds of injury the game knows, in its order. */
 export const injuryKinds = () => call<InjuryKind[]>("injury_kinds");
 

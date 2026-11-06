@@ -43,6 +43,7 @@ import type {
   GameInfo,
   Health,
   Ban,
+  Promise as PlayerPromise,
   Injury,
   LoanTerms,
   WorkPermit,
@@ -281,6 +282,7 @@ function details(player: PlayerSummary): PlayerDetails {
     traits: [7, 10, 19, 20, 35, 43, 51].filter(() => next() < 0.4),
     injuries: injuriesOf(player.uid),
     bans: bansOf(player.uid),
+    promises: promisesOf(player.uid),
     ties: tiesOf(player),
     tieRoom: tieRoomOf(player),
     preferences: currentPreferences(false, player.uid),
@@ -980,6 +982,27 @@ function bansOf(uid: number): Ban[] {
     return [];
   }
   return [{ started: addDays(GAME_DATE, -3), matches: 1 + (uid % 3) }];
+}
+
+/** The fixture promises closed through the editor, as `uid:index`, while the closing is not undone. */
+const closedPromises = new Set<string>();
+
+/**
+ * The promises made to a fixture player: every seventh one has two, one open and one ended a week ago, and FM's
+ * numbers for them follow his UID.
+ */
+function promisesOf(uid: number): PlayerPromise[] {
+  if (uid % 7 !== 3) {
+    return [];
+  }
+  const open = (index: number, id: number, made: number, due: number): PlayerPromise =>
+    closedPromises.has(`${uid}:${index}`)
+      ? { id, status: 1, closed: true, made: addDays(GAME_DATE, made), due: GAME_DATE }
+      : { id, status: 0, closed: false, made: addDays(GAME_DATE, made), due: addDays(GAME_DATE, due) };
+  return [
+    open(0, 3 + (uid % 5), -40, 60),
+    { id: 11, status: 1, closed: true, made: addDays(GAME_DATE, -120), due: addDays(GAME_DATE, -7) },
+  ];
 }
 
 /** The fixture players' contract clauses as changed through the editor, by UID, and as they were before each change. */
@@ -1896,6 +1919,11 @@ function undoChange(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
+  if (entry.field === "promise") {
+    closedPromises.delete(promiseUndo.get(entry.id)!);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   if (entry.field === "retirement") {
     keptPlayers.delete(entry.uid);
     entry.undoneAt = Date.now();
@@ -2388,6 +2416,37 @@ function liftBans(uid: number, batch: number | null = null): LoggedChange {
     batch,
   };
   changes.push(logged);
+  return { ...logged };
+}
+
+/** Which promise (as `uid:index`) each closing, by the id of its logged change, closed, for its undo. */
+const promiseUndo = new Map<number, string>();
+
+/** `close_promise`: the fixture player's open promise at `index` ends, logged as a change of his `promise` to 0. */
+function closePromise(uid: number, index: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const promise = promisesOf(uid)[index];
+  if (!promise || promise.closed) {
+    throw failure("promise.notOpen", "the player has no open promise there", { uid, index });
+  }
+  closedPromises.add(`${uid}:${index}`);
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: player.name,
+    entity: "player",
+    uid,
+    field: "promise",
+    old: promise.id,
+    new: 0,
+    undoneAt: null,
+    batch: null,
+  };
+  changes.push(logged);
+  promiseUndo.set(logged.id, `${uid}:${index}`);
   return { ...logged };
 }
 
@@ -3411,6 +3470,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return signFreeAgentLater(Number(args?.uid), Number(args?.club), Number(args?.joins)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
+    case "close_promise":
+      return closePromise(Number(args?.uid), Number(args?.index)) as T;
     case "change_clause":
       return changeClause(
         Number(args?.uid),

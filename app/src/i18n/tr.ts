@@ -549,6 +549,7 @@ export const tr: Strings = {
     injuries: "Sakatlıklar",
     work_permit: "Çalışma izni",
     bans: "Cezalar",
+    promise: "Söz",
     cohesion: "Kulübe alışkınlık",
     tactics: "Taktiğe alışkınlık",
     retirement: "Emeklilik",
@@ -764,6 +765,13 @@ export const tr: Strings = {
     banStarted: (date) => `Başlangıç: ${date}`,
     liftBans: "Kaldır",
     liftBansTitle: "Bu oyuncunun tüm cezalarını oyunda kaldır",
+    promises: "Sözler",
+    promiseName: (id) => `Söz ${id}`,
+    promiseMade: (date) => `Verildi: ${date}`,
+    promiseDue: (date) => `Son tarih: ${date}`,
+    promiseEnded: (date) => `Bitti: ${date}`,
+    closePromise: "Kapat",
+    closePromiseTitle: "Bu sözü ona karşı sayılmadan bitir",
 
     // Above the attributes, while the profile is read
     setAttributes: "Bütün özellikleri şuna ayarla:",
@@ -1361,6 +1369,7 @@ export const tr: Strings = {
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
     injuryAdded: "Sakatlık eklendi",
     lifted: (count) => `${format(count)} ceza kaldırıldı`,
+    promiseClosed: (id) => `${id} numaralı söz kapatıldı`,
     keptPlaying: (date) => (date === null ? "Oynamaya devam edecek" : `${date} tarihli emeklilik engellendi`),
     count: (total, undone) => {
       const count = changeCount(total);

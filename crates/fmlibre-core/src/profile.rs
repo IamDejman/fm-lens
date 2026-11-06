@@ -40,6 +40,9 @@ pub struct Layout {
     /// A nation's own facts and its national team container; only in the layouts they have been checked in.
     #[serde(default)]
     pub national: Option<NationalLayout>,
+    /// A promise made to a person; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub promise: Option<PromiseLayout>,
     /// A match official; only in the layouts it has been checked in.
     #[serde(default)]
     pub official: Option<OfficialLayout>,
@@ -423,6 +426,32 @@ impl InjuryLayout {
     /// One past the last byte of every injury field.
     pub fn end(&self) -> u64 {
         [self.kind + 8, self.team + 8, self.started + 4, self.longest + 2, self.shortest + 2]
+            .into_iter()
+            .max()
+            .unwrap_or(0)
+    }
+}
+
+/// A promise made to a person (`INTERACTION_PROMISE`, 0x60 bytes). `list` is in the person block: a pointer to the
+/// `(begin, end, capacity)` vector of pointers to his promises. In a promise: `person` points back at him, `made` and
+/// `due` are dates (`due` becomes the end date once it closes), `id` is FM's `u16` number for the promise, bit 0 of
+/// `closed` marks it ended, and `status` is FM's status code, 0 while open.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PromiseLayout {
+    pub list: u64,
+    pub person: u64,
+    pub made: u64,
+    pub due: u64,
+    pub id: u64,
+    pub closed: u64,
+    pub status: u64,
+}
+
+impl PromiseLayout {
+    /// One past the last byte of every promise field.
+    pub fn end(&self) -> u64 {
+        [self.person + 8, self.made + 4, self.due + 4, self.id + 2, self.closed + 1, self.status + 1]
             .into_iter()
             .max()
             .unwrap_or(0)
