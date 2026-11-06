@@ -108,9 +108,7 @@ remain installed while Steam's launch option references it.
 - [Brand assets and generation prompts](docs/brand/FM-LENS.md)
 - [Agent instructions](AGENTS.md)
 
-Some documents inherited from FMLibreEditor, such as `docs/INSTALL.md`, describe
-the upstream editor, including features this fork does not enable. Every pull
-request runs the checks in `.github/workflows/validate.yml`.
+Every pull request runs the checks in `.github/workflows/validate.yml`.
 
 ## Security
 
