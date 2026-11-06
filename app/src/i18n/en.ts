@@ -516,6 +516,10 @@ export const en = {
     youth_rating: "Youth rating",
     "women.reputation": "Women's reputation",
     "women.youth_rating": "Women's youth rating",
+    game_importance: "Game importance",
+    attendance: "Attendance",
+    "women.game_importance": "Women's game importance",
+    "women.attendance": "Women's attendance",
     points: "FIFA points",
   },
 
@@ -1163,6 +1167,8 @@ export const en = {
     joinedFifa: "Joined FIFA",
     joinedContinental: "Joined confederation",
     youthRating: "Youth rating",
+    gameImportance: "Game importance",
+    attendance: "Attendance",
     women: "Women's football",
     teamName: (ageLimit: number | null) => (ageLimit === null ? "Senior team" : `Under-${ageLimit}s`),
     womenTeamName: (ageLimit: number | null) =>

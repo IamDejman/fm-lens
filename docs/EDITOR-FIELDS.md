@@ -4,7 +4,7 @@ This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
 The current FM27 Apple Silicon layout defines 169 player fields, 40 staff fields,
-14 club fields, 8 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
+14 club fields, 12 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam build 26340721 (ARM64) for an object of
 class `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
 missing. `manager.unsackable` (bit 1) passed bounded apply/undo and save/reload
@@ -268,6 +268,8 @@ One nation at a time; none where the build's layout does not place nations.
 | `youth_rating` | i16 | plain | 0–165 |
 | `women.reputation` | u16 | plain | 0–10000 |
 | `women.youth_rating` | i16 | plain | 0–165 |
+| `game_importance`, `women.game_importance` | i8 | plain | 0–4 |
+| `attendance`, `women.attendance` | u8 | plain | 0–16 |
 | `points` (men's FIFA points) | f32, typed to two decimals | plain | 0.00–3000.00 |
 | `population` | u32 | plain | 1–2000000000 |
 | `dual_nationality` | u8 | plain | 0 or 2 |

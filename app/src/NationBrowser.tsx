@@ -81,8 +81,8 @@ interface NationProfileProps {
 
 /**
  * A nation's rules, FIFA standing, rivals and national teams, men's and women's; only its ID where the build does not
- * place them. Its rules, youth ratings and senior teams' reputations can be edited where the row is the nation's own
- * UID.
+ * place them. Its rules, FIFA points, youth ratings, game importance, attendance and senior teams' reputations can be
+ * edited where the row is the nation's own UID.
  */
 function NationProfile({ nation, version, onClose }: NationProfileProps) {
   const loaded = useProfileDetails<NationDetails | null>(
@@ -161,6 +161,16 @@ function NationBody({ details }: { details: NationDetails }) {
             <Fact label={text.youthRating}>
               <EditableValue field="youth_rating">
                 {orDash(details.youthRating)}
+              </EditableValue>
+            </Fact>
+            <Fact label={text.gameImportance}>
+              <EditableValue field="game_importance">
+                {orDash(details.gameImportance)}
+              </EditableValue>
+            </Fact>
+            <Fact label={text.attendance}>
+              <EditableValue field="attendance">
+                {orDash(details.attendance)}
               </EditableValue>
             </Fact>
           </dl>
@@ -249,6 +259,16 @@ function WomenGroups({ women }: { women: WomenFootball }) {
           <Fact label={text.youthRating}>
             <EditableValue field="women.youth_rating">
               {orDash(women.youthRating)}
+            </EditableValue>
+          </Fact>
+          <Fact label={text.gameImportance}>
+            <EditableValue field="women.game_importance">
+              {orDash(women.gameImportance)}
+            </EditableValue>
+          </Fact>
+          <Fact label={text.attendance}>
+            <EditableValue field="women.attendance">
+              {orDash(women.attendance)}
             </EditableValue>
           </Fact>
           <Fact label={text.joinedFifa}>{orDash(women.joinedFifa)}</Fact>
