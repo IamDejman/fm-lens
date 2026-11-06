@@ -830,6 +830,8 @@ export interface Injury {
   /** When he is expected back, at the soonest and at the latest. */
   backSoonest: FmDate | null;
   backLatest: FmDate | null;
+  /** How many days from when it began he is out at the most. */
+  days: number;
 }
 
 /** One current ban of a player. */
