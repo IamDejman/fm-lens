@@ -1,6 +1,6 @@
 [package]
 name = "fmlibre-app"
-description = "FMLibreEditor desktop app"
+description = "FM Lens desktop app"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
