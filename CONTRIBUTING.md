@@ -1,5 +1,8 @@
 # Contributing to FM Lens
 
+Follow the [code of conduct](CODE_OF_CONDUCT.md), and report security problems
+as [SECURITY.md](SECURITY.md) describes.
+
 Read [AGENTS.md](AGENTS.md) and the [roadmap](docs/ROADMAP.md) first. Report
 FM Lens bugs and requests in this repository, including the app version,
 game build, platform, reproduction steps, expected behavior and actual result.
