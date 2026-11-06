@@ -304,7 +304,6 @@ function App() {
                 onClick={() => show(id)}
               >
                 {label}
-                {id === "changes" && log.length > 0 && <small>{log.length}</small>}
               </button>
             ))}
           </nav>

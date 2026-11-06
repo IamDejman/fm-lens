@@ -342,24 +342,6 @@ dd,
   outline-offset: -3px;
 }
 
-/* How many changes the log holds, after the tab's name. */
-.tab small {
-  min-width: 20px;
-  padding: 0 6px;
-  border-radius: 9px;
-  background: rgb(255 255 255 / 0.16);
-  font-size: var(--type-sm);
-  font-stretch: 90%;
-  font-weight: 800;
-  line-height: 18px;
-  text-align: center;
-}
-
-.tab.active small {
-  background: #8338c4;
-  color: #ffffff;
-}
-
 /* The right of the masthead: what the app is doing, the game's date, Reload and the language. */
 .masthead-side {
   display: flex;
