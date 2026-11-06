@@ -25,7 +25,7 @@ export type Currency = keyof typeof RATES;
 export const CURRENCIES = Object.keys(RATES) as Currency[];
 
 /** Where the chosen currency is kept. */
-const STORAGE_KEY = "fmlibre.currency";
+const STORAGE_KEY = "fmlens.currency";
 
 function isCurrency(value: string | null): value is Currency {
   return value !== null && Object.prototype.hasOwnProperty.call(RATES, value);

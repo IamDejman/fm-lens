@@ -14,7 +14,7 @@ import { useModal } from "./useModal";
 const FORMATS: readonly ExportFormat[] = ["csv", "csvSemicolon", "json"];
 
 /** Where the format chosen last is kept. */
-const STORAGE_KEY = "fmlibre.exportFormat";
+const STORAGE_KEY = "fmlens.exportFormat";
 
 /**
  * The format chosen last; at first, CSV with semicolons in a language whose Excel writes decimals with a comma (Turkish
