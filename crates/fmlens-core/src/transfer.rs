@@ -911,6 +911,10 @@ impl Session {
     /// game already holds everything they found, as when it restores a nation's own language,
     /// the change is undone and nothing is written.
     pub(crate) fn undo_patches(&self, patches: &[Patch]) -> Result<(), MoveError> {
+        // The addresses belong to the career they were written in; another one may hold anything there.
+        if let Some(lock) = self.session_lock() {
+            return Err(MoveError::Locked(lock));
+        }
         let now = patches
             .iter()
             .map(|patch| self.process.read_bytes(patch.address, patch.after.len()))

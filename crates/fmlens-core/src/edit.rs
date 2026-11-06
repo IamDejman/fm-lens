@@ -224,6 +224,10 @@ pub struct Field {
     /// does not fit this object, and the field is left alone.
     #[serde(skip)]
     plausible: RangeInclusive<i64>,
+    /// Whether the field is only written over 0 or one of its choices: a code the editor cannot name stays as the
+    /// game holds it.
+    #[serde(skip)]
+    listed_only: bool,
 }
 
 impl Field {
@@ -243,6 +247,7 @@ impl Field {
             offset,
             shifted: false,
             plausible: range,
+            listed_only: false,
         }
     }
 
@@ -307,6 +312,17 @@ impl Field {
     fn plausible(mut self, plausible: RangeInclusive<i64>) -> Self {
         self.plausible = plausible;
         self
+    }
+
+    /// Writes the field only over 0 or one of its choices.
+    fn listed_only(mut self) -> Self {
+        self.listed_only = true;
+        self
+    }
+
+    /// Whether `old` is a value the editor may write over.
+    pub fn replaceable(&self, old: i64) -> bool {
+        !self.listed_only || old == 0 || self.choices.as_ref().is_some_and(|c| c.contains(&old))
     }
 
     fn in_record(mut self, place: Place) -> Self {
@@ -507,14 +523,14 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         out.push(field.plausible(-7..=8).choices(&COACHING_LICENCES));
     }
     // The formations he prefers in possession and out of it, the two FM's staff profile shows, offered as ids the game
-    // itself uses for each.
+    // itself uses for each. One he holds that is not among them is unidentified, and left as it is.
     if let Some([in_possession, out_of_possession]) = s.formations {
         for (key, offset, choices) in [
             ("formation.in_possession", in_possession, &IN_POSSESSION_FORMATIONS[..]),
             ("formation.out_of_possession", out_of_possession, &OUT_OF_POSSESSION_FORMATIONS[..]),
         ] {
             let field = field(key, offset, Kind::U8, 1..=i64::from(MOST_FORMATION));
-            out.push(field.plausible(0..=255).choices(choices).single());
+            out.push(field.plausible(0..=255).choices(choices).listed_only().single());
         }
     }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
@@ -575,6 +591,9 @@ pub const IN_POSSESSION_FORMATIONS: [i64; 12] = [3, 4, 7, 22, 28, 29, 30, 32, 33
 /// The out-of-possession formation ids the editor offers: those the game gives a member of staff for an
 /// in-possession formation when his own is unset (function 0x4ADDE2C in the arm64 half of 27.0.0).
 pub const OUT_OF_POSSESSION_FORMATIONS: [i64; 10] = [4, 7, 22, 27, 30, 32, 33, 35, 63, 64];
+
+/// Why a field holding a code the editor cannot name is left as it is.
+const UNLISTED: &str = "it holds a value the editor cannot name";
 
 /// The highest formation id the editor writes.
 const MOST_FORMATION: u8 = 64;
@@ -1102,6 +1121,9 @@ impl Session {
         if !field.is_plausible(old) {
             return Err(EditError::Implausible { field: field.key.clone(), value: old });
         }
+        if !restoring && !field.replaceable(old) {
+            return Err(EditError::Unsupported { field: field.key.clone(), reason: UNLISTED });
+        }
         if field.kind == Kind::Date && old == 0 {
             return Err(EditError::Unset { field: field.key.clone() });
         }
@@ -1628,6 +1650,10 @@ mod tests {
         // 29 is a common formation with the ball, never one the game gives without it.
         assert!(with_the_ball.takes(29) && with_the_ball.takes(22));
         assert!(without_it.takes(22) && !without_it.takes(29));
+        // A formation the editor cannot name stays as it is; none or a listed one may be replaced.
+        assert!(with_the_ball.replaceable(0) && with_the_ball.replaceable(29));
+        assert!(!with_the_ball.replaceable(50) && with_the_ball.is_plausible(50));
+        assert!(field("coaching_licence").replaceable(-3));
     }
 
     #[test]

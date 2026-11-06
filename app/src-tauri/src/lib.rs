@@ -13,9 +13,9 @@ use fmlens_core::{
     InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
     MoveTerms, MovedManager, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange,
     PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate,
-    Preference, PreferenceKind, PreferenceSet, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex,
-    Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails,
-    StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan,
+    Preference, PreferenceKind, PreferenceSet, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS,
+    SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange,
+    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan,
     TransferredPlayer, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -2947,7 +2947,8 @@ fn read_values(state: State<'_, AppState>, entity: Entity, uid: u32) -> Result<B
         .into_iter()
         .zip(values)
         .filter_map(|(field, value)| {
-            let value = value.filter(|&value| field.is_plausible(value))?;
+            // A value the editor cannot name is left read-only.
+            let value = value.filter(|&value| field.is_plausible(value) && field.replaceable(value))?;
             (field.kind != Kind::Date || value != 0).then_some((field.key, value))
         })
         .collect())
@@ -3238,11 +3239,16 @@ fn swap_players(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Logg
 /// Closes the open promise at `index` in the promises of the player `uid`, as FM ends one that is not held against
 /// him, and logs it as one change of his `promise`. FM drops it 31 days later; until then Undo opens it again.
 #[tauri::command]
-fn close_promise(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
+fn close_promise(
+    state: State<'_, AppState>,
+    uid: u32,
+    index: usize,
+    promise: Promise,
+) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
-    let plan = connection.session.plan_close_promise(player, index)?;
+    let plan = connection.session.plan_close_promise(player, index, &promise)?;
     let done = connection.session.apply_close_promise(&plan)?;
     Ok(connection.log_promise(done))
 }

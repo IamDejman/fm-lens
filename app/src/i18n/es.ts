@@ -73,6 +73,7 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
   "it is changed one person at a time": "se cambia persona a persona",
   "the new value is not one of the game's own records of that kind":
     "el nuevo valor no es uno de los registros del propio juego de ese tipo",
+  "it holds a value the editor cannot name": "tiene un valor que el editor no sabe nombrar",
 };
 
 const reload = "vuelve a leer los datos e inténtalo de nuevo";
