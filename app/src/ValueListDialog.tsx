@@ -4,7 +4,8 @@
 
 import { useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { describeError } from "./format";
+import { RangeHint } from "./EditControls";
+import { describeError, formatNumber } from "./format";
 import { editText, listText, tieText } from "./labels";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
@@ -138,6 +139,7 @@ export function ValueListDialog({
           autoComplete="off"
           className="clause-condition"
           aria-label={inputLabel(name)}
+          aria-describedby={id("range")}
           aria-invalid={next === null || undefined}
           title={next === null ? editText.invalid(least, most) : undefined}
           value={text}
@@ -192,6 +194,8 @@ export function ValueListDialog({
           <p id={id("who")} className="move-player">
             {who}
           </p>
+          {/* Every row takes the same numbers: one hint says them for all. */}
+          <RangeHint id={id("range")} min={formatNumber(least)} max={formatNumber(most)} />
         </header>
 
         <div className="modal-body">
