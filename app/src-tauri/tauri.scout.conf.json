@@ -3,8 +3,8 @@
   "bundle": {
     "createUpdaterArtifacts": false,
     "resources": {
-      "../../target/debug/libfmlibre_bridge.dylib": "libfmlibre_bridge.dylib",
-      "../../target/debug/fmlibre-launch": "fmlibre-launch"
+      "../../target/debug/libfmlens_bridge.dylib": "libfmlens_bridge.dylib",
+      "../../target/debug/fmlens-launch": "fmlens-launch"
     },
     "macOS": {
       "signingIdentity": "-"

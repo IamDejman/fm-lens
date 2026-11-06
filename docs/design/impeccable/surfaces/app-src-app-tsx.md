@@ -5,7 +5,7 @@ primary_target: "app/src/App.tsx"
 related_targets: ["app/src/App.css"]
 ---
 
-# The FMLibreEditor app
+# The FM Lens app
 
 ## Scope and mode
 

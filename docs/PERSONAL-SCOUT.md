@@ -1,7 +1,7 @@
 # FM Lens
 
-Personal macOS scouting milestone, derived from FMLibreEditor commit
-`5fdb1e3`. Upstream remains at https://github.com/tozmoz/FMLibreEditor.
+Personal macOS scouting milestone, derived from the upstream editor the README
+credits, at commit `5fdb1e3`.
 The project retains its GPL-3.0-or-later license and upstream attribution.
 
 ## Scope
@@ -31,7 +31,7 @@ Requirements: Xcode command-line tools, Rust stable, Node.js and npm.
 
 ```sh
 export PATH="$HOME/.cargo/bin:$PATH"
-cargo build --locked -p fmlibre-probe -p fmlibre-bridge
+cargo build --locked -p fmlens-probe -p fmlens-bridge
 cd app
 npm ci
 npm run tauri -- build --debug --bundles app --config src-tauri/tauri.scout.conf.json
@@ -50,7 +50,7 @@ career is not supported.
 2. Open FM Lens and select **Set up the bridge**, or run:
 
    ```sh
-   target/debug/fmlibre-probe bridge setup --from target/debug
+   target/debug/fmlens-probe bridge setup --from target/debug
    ```
 
 3. Start Steam, start FM27 from Steam, and load the career.
@@ -83,7 +83,7 @@ and reports write local files, not game data.
 Save and quit FM, then quit Steam. Use **Remove the bridge** in the companion or:
 
 ```sh
-target/debug/fmlibre-probe bridge remove
+target/debug/fmlens-probe bridge remove
 ```
 
 This removes the launch option before removing files, so FM remains launchable.
