@@ -2559,7 +2559,7 @@ fn player(session: &Session, uid: u32) -> Result<()> {
         println!(
             "  work permit    {}: {}",
             permit.nation.as_deref().unwrap_or("?"),
-            if permit.granted { format!("granted {}", date(permit.granted_on)) } else { "not granted".to_owned() }
+            if permit.esc { format!("ESC slot since {}", date(permit.esc_since)) } else { "active".to_owned() }
         );
     }
     Ok(())

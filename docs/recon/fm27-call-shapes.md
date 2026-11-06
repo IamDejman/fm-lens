@@ -9,7 +9,7 @@ queue (dispatch_async_f). Scratch helpers live in reports/batch/scratch/transfer
 
 | Item | Status | Final signature | Confidence |
 | --- | --- | --- | --- |
-| 1 Work permit grant/revoke | found | 0x2d85294(TM, P+0x388, team, w3 force, w4 grant), void | high |
+| 1 Work permit grant/revoke | found | grant 0x2d85294(TM, P+0x388, team, 0, 0); revoke 0x2ddd12c lookup then 0x2dc0210(TM, P+0x388, record) | high |
 | 1 Record lookup | found | 0x2ddd12c(TM, P+0x388, team) -> int32 index or -1 | high |
 | 1 Record remove | found | 0x2dc0210(TM, P+0x388, record*) | medium-high |
 | 2 Low-level mover | found, NOT a signer | 0x2d49334(TM, idBlock, team or 0, w3..w7, stack u8, stack u64) -> bool | medium |
@@ -45,11 +45,12 @@ Grant call at 0x238f470:
     add x1, x19, x23     ; x23 = vbase [-0x18] = 0x388, x1 = P+0x388
     mov x0, x20          ; TM
     mov w3, #0           ; force = 0
-    mov w4, #0           ; grant = 0 (!)
+    mov w4, #0           ; esc = 0
     bl  0x2d85294        ; x2 = team (below)
 
-The editor itself passes w3=0, w4=0. With grant 0 this revokes or records an ungranted entry, so do not copy
-the editor's w3/w4 for a grant.
+The editor passes w3=0, w4=0, and that is a grant: a record is the permit, and w4 only says whether it is an ESC
+slot (flag bit 0, dated today, listed at +0x780). w4=0 on a held permit only clears the ESC flag; it does not take
+the permit away. To revoke, remove the record as the editor does.
 
 Team (x2): if the contract P+0x2f0 is non-null and its vtable slot 0x90 returns 0 (FULL contract), x2 =
 [contract+0x18]. Otherwise x2 = identity vtable slot 0x230 = [P+0x128]. For a contracted player both are the same

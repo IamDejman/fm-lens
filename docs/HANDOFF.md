@@ -38,7 +38,8 @@ finances, free-agent signings. FM Lens now has the game run its own functions fo
   cancelled, never runs. arm64 only (inline asm trampoline).
 - Editor: `Process::call` (macOS, writable, not `read-only`), `Session::call_game` in
   `crates/fmlibre-core/src/game_calls.rs`.
-- Profile: `[calls]` in `profiles/fm27/steam-26340721-macos-arm64.toml` (`add_injury`, `set_work_permit`), plus
+- Profile: `[calls]` in `profiles/fm27/steam-26340721-macos-arm64.toml` (`add_injury`, `set_work_permit`,
+  `find_work_permit`, `remove_work_permit`), plus
   `injury_kinds` and `injury_manager` statics and `[injury_kind]` in `layout-macos.toml`. `CallRvas` in profile.rs
   must list every key (`deny_unknown_fields`); the bridge reads the same table.
 - An old bridge drops a CALL; the editor gets the kernel's send-once notice and says to set the bridge up again.
@@ -50,8 +51,10 @@ Built on top of it (core and Tauri only, no UI yet):
 - `Session::injury_kinds()` (live: 136 kinds, probe `injury-kinds`), `Session::add_injury(player, kind_uid)`:
   `0x27047D4(INJURY_MANAGER, P, kind index, 3, 0, 0, 0, 0, [0, 0, 0])`. Only for a player with no injury, as FM's
   training does. Undo empties the list (as Heal does). Tauri: `injury_kinds`, `add_injury`, `Undo::Injured`.
-- `Session::set_work_permit(player, grant)`: `0x2D85294(TRANSFER_MANAGER, P + vbase (0x388), [P+0x128], 1, grant)`.
-  Verified by reading the permits back. Tauri: `set_work_permit`, `Undo::Permit`.
+- `Session::set_work_permit(player, grant)`, as FM's editor does it. Grant: `0x2D85294(TRANSFER_MANAGER, P + vbase
+  (0x388), team, 0, 0)` makes his permit record. Revoke: `0x2DDD12C` finds his record, `0x2DC0210` removes it.
+  A record is the permit; flag bit 0 makes it an ESC slot instead. Verified by reading the record back. Undo gives
+  the permit back forced, as an ESC slot if it was one. Tauri: `set_work_permit`, `Undo::Permit`.
 - `ConnectionInfo.gameActions { addInjury, workPermit, startLoan, signFreeAgent, endLoan, futureTransfer }` says which
   of these this build supports.
 
@@ -114,7 +117,8 @@ before and after. Never use probe write commands; live writes go through FM Lens
 
 - Install the new bridge (Steam closed), relaunch FM, load the copy, Save As `FM Lens Batch <date>`.
 - Calls: add an injury to a fit player (e.g. kind 110 "tight hamstring"), check FM's medical centre and the
-  player's medical tab, undo; grant a work permit to a non-English player without one, check FM's profile, revoke.
+  player's medical tab, undo; revoke a foreign player's work permit, check FM's contract page shows none after a
+  day, grant it back, check "Active work permit", undo both.
 - Loans (#19): loan wage and end for White, Merino, Mosquera, Harriman-Annous against FM's loan screens.
 - Loan start: loan one first-team player to another club until 30 June, check FM's loan screen (club, dates, the
   wage FM set) and both squads; undo, press Continue once, and check FM ended the loan and he is back.
@@ -126,7 +130,7 @@ before and after. Never use probe write commands; live writes go through FM Lens
   still a free agent; undo, and check FM no longer has it. Sign another for two days ahead, press Continue past the
   day, and check he joined with FM's contract.
 - Officials: edit Michael Oliver's reputation and current ability, check FM's official screen after Continue, undo.
-- Work permits (#20): Sichenje and Rijks shown granted; one "Not granted" player.
+- Work permits (#20): Sichenje and Rijks shown as ESC slots; a player with a plain record shown as Active.
 - Competitions and awards (#21): Premier League overview; World Golden Ball periods 5/6/9; PL awards.
 - Earlier items: staff licence labels 1-8 (#17), England FA and women's pages (#16), clause screens (#18), language
   words (#15), tour exercise in the desktop app (#12), wage bill vs +0x814, squad status labels.

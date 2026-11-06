@@ -408,25 +408,25 @@ function endLoan(uid: number): LoggedChange {
   return { ...logged };
 }
 
-/** Every seventh player abroad has an English work permit record; most of those were granted one. */
+/** Every seventh player abroad holds an English work permit; a few of those an ESC slot. */
 function workPermitsOf(player: PlayerSummary): WorkPermit[] {
   const set = permitsSet.get(player.uid);
   if (set !== undefined) {
-    return set === null ? [] : [{ nation: "England", nationUid: 765, granted: set, grantedOn: set ? GAME_DATE : null }];
+    return set ? [{ nation: "England", nationUid: 765, esc: false, escSince: null }] : [];
   }
   if (!player.club || player.uid % 7 !== 0) {
     return [];
   }
-  const granted = player.uid % 3 !== 0;
-  return [{ nation: "England", nationUid: 765, granted, grantedOn: granted ? { year: 2026, month: 2, day: 3 } : null }];
+  const esc = player.uid % 3 === 0;
+  return [{ nation: "England", nationUid: 765, esc, escSince: esc ? { year: 2026, month: 2, day: 3 } : null }];
 }
 
-/** The work permits granted (true) or taken away (false) through the editor, by UID; null for no record again. */
-const permitsSet = new Map<number, boolean | null>();
+/** The work permits given (true) or taken away (false) through the editor, by UID. */
+const permitsSet = new Map<number, boolean>();
 /** What each permit change replaced, by change ID: undefined when the player had the fixture's permits. */
-const permitUndo = new Map<number, boolean | null | undefined>();
+const permitUndo = new Map<number, boolean | undefined>();
 
-/** `set_work_permit`: the fixture player is granted an English work permit, or has his taken away. */
+/** `set_work_permit`: the fixture player is given an English work permit, or has his taken away. */
 function setWorkPermit(uid: number, granted: boolean): LoggedChange {
   const player = players.find((p) => p.uid === uid);
   if (!player) {
@@ -435,7 +435,10 @@ function setWorkPermit(uid: number, granted: boolean): LoggedChange {
   if (!player.club) {
     throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
   }
-  const was = workPermitsOf(player).some((permit) => permit.granted);
+  const was = workPermitsOf(player).length > 0;
+  if (was === granted) {
+    throw failure("call.declined", "the game did not make the change");
+  }
   const logged: LoggedChange = {
     id: changes.length + 1,
     at: Date.now(),
