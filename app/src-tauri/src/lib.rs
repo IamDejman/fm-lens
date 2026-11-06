@@ -15,8 +15,8 @@ use fmlens_core::{
     PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate,
     Preference, PreferenceKind, PreferenceSet, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex,
     Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails,
-    StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, find_game,
-    nation_summaries, nations, read_stadiums, sort_players,
+    StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan,
+    TransferredPlayer, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -636,6 +636,45 @@ impl Connection {
         logged
     }
 
+    /// Logs a transfer the game made, as a change of the player's `club` from one club UID to the other. Nothing undoes
+    /// it.
+    fn log_transfer(&mut self, moved: TransferredPlayer) -> LoggedChange {
+        let (from, to) = (self.club_name(moved.from_club), self.club_name(moved.to_club));
+        self.players.update(moved.player, |player| {
+            player.club = Some(to.clone());
+            player.club_uid = Some(moved.to_club);
+            player.contract_expires = moved.expires;
+        });
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(moved.player),
+            change: Change {
+                entity: Entity::Player,
+                uid: moved.player,
+                field: "club".to_owned(),
+                old: i64::from(moved.from_club),
+                new: i64::from(moved.to_club),
+            },
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: Some(MovedClubs {
+                from: Some(from),
+                to: Some(to),
+                with: None,
+                fee: Some(moved.fee).filter(|&fee| fee > 0),
+                joins: None,
+            }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Permanent),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs a transfer agreed for a later day the game cancelled, as a change of the player's `future_transfer` from
     /// the club he was to join (its UID; 0 when the game names none) to none, with that club and the day. Nothing
     /// undoes it.
@@ -1123,11 +1162,17 @@ impl Connection {
         Ok(Some(self.session.plan_fee(buyer, seller, fee)?))
     }
 
-    /// Works out moving the player `uid` to the club `club` on the contract `terms`.
-    fn plan_move(&self, uid: u32, club: u32, terms: MoveTerms) -> Result<MovePlan, Failure> {
+    /// Works out moving the player `uid` to the club `club` on the contract `terms`: written by FM Lens, or, from a
+    /// club a human manager runs, made by the game itself where it can.
+    fn plan_move(&self, uid: u32, club: u32, terms: MoveTerms) -> Result<MoveRoute, Failure> {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
         let to = self.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
-        Ok(self.session.plan_club_move(player, to, terms, &self.human_clubs)?)
+        match self.session.plan_club_move(player, to, terms, &self.human_clubs) {
+            Err(MoveError::HumanClub) if self.session.game_actions().transfer => {
+                Ok(MoveRoute::Game(self.session.plan_transfer(player, to, terms)?))
+            }
+            planned => Ok(MoveRoute::Write(planned?)),
+        }
     }
 
     /// Works out releasing the player `uid` from his club.
@@ -1731,8 +1776,8 @@ enum Undo {
     SignedLater(AgreedSigning),
     /// A player the game made fully familiar with his team's tactic: undone by putting his familiarity back.
     Tactics(fmlens_core::RaisedTactics),
-    /// A change nothing undoes: a transfer agreed for a later day the game cancelled, which only the clubs' own
-    /// negotiation agrees again.
+    /// A change nothing undoes: a transfer the game made, or one agreed for a later day the game cancelled, which only
+    /// the clubs' own negotiation agrees again.
     Permanent,
 }
 
@@ -1889,6 +1934,25 @@ struct MovePreview {
     /// For the human manager's move, the name of the club's manager, whom the game dismisses.
     #[serde(skip_serializing_if = "Option::is_none")]
     displaced: Option<String>,
+    /// The game makes the move itself, and nothing undoes it.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    permanent: bool,
+}
+
+/// How a move to another club is made: written by FM Lens, or made by the game itself.
+enum MoveRoute {
+    Write(MovePlan),
+    Game(TransferPlan),
+}
+
+impl MoveRoute {
+    /// The UIDs of the club the player leaves and the club he joins.
+    fn clubs(&self) -> (u32, u32) {
+        match self {
+            MoveRoute::Write(plan) => (plan.from_club, plan.to_club),
+            MoveRoute::Game(plan) => (plan.from_club, plan.to_club),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -2949,15 +3013,23 @@ fn plan_club_move(
 ) -> Result<MovePreview, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
-    let plan = connection.plan_move(uid, club, terms)?;
-    let fee = connection.plan_fee(plan.from_club, plan.to_club, fee)?;
+    let route = connection.plan_move(uid, club, terms)?;
+    let (from, to) = route.clubs();
+    let fee = connection.plan_fee(from, to, fee)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
-    Ok(MovePreview { from: Some(name(plan.from_club)), to: name(plan.to_club), fee, displaced: None })
+    Ok(MovePreview {
+        from: Some(name(from)),
+        to: name(to),
+        fee,
+        displaced: None,
+        permanent: matches!(route, MoveRoute::Game(_)),
+    })
 }
 
 /// Moves the player `uid` to the senior team of the club `club` on the contract `terms`, the club paying his old
 /// one `fee` pounds if given, worked out again from the game as it is now, and logs the move. When the fee cannot be
-/// paid, the player is moved back.
+/// paid, the player is moved back. From a club a human manager runs the game makes the transfer itself, which nothing
+/// undoes.
 #[tauri::command]
 fn move_player(
     state: State<'_, AppState>,
@@ -2968,7 +3040,10 @@ fn move_player(
 ) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let plan = connection.plan_move(uid, club, terms)?;
+    let plan = match connection.plan_move(uid, club, terms)? {
+        MoveRoute::Write(plan) => plan,
+        MoveRoute::Game(plan) => return transfer_player(connection, &plan, terms, fee),
+    };
     let fee_plan = connection.plan_fee(plan.from_club, plan.to_club, fee)?;
     let club = |uid: u32| connection.clubs.get(uid).cloned().ok_or_else(|| not_found(Entity::Club, uid));
     let (buyer, seller) = (club(plan.to_club)?, club(plan.from_club)?);
@@ -2984,6 +3059,47 @@ fn move_player(
         None => Vec::new(),
     };
     Ok(connection.log_move(done, terms, paid, fee_plan.map(|plan| plan.fee)))
+}
+
+/// Has the game transfer the player of `plan` for `fee` pounds, or none, and logs it. The game gives him a contract of
+/// its own, so his wage and contract end are then written back over it, or those of `terms` where given, as when
+/// FM Lens moves a player.
+fn transfer_player(
+    connection: &mut Connection,
+    plan: &TransferPlan,
+    terms: MoveTerms,
+    fee: Option<i64>,
+) -> Result<LoggedChange, Failure> {
+    let player = connection.players.get(plan.player).ok_or_else(|| not_found(Entity::Player, plan.player))?;
+    let to = connection.clubs.get(plan.to_club).ok_or_else(|| not_found(Entity::Club, plan.to_club))?;
+    let target = player.target();
+    let session = &connection.session;
+    let kept = |key: &str, given: Option<i64>| -> Result<Option<i64>, Failure> {
+        match given {
+            Some(value) => Ok(Some(value)),
+            None => Ok(Some(session.read_field(&target, &session.field(Entity::Player, key)?)?)),
+        }
+    };
+    let terms =
+        MoveTerms { wage: kept("contract.wage", terms.wage)?, expires: kept("contract.expires", terms.expires)? };
+    let moved = connection.session.transfer_player(player, to, terms, fee.unwrap_or(0))?;
+    let logged = connection.log_transfer(moved);
+    write_terms(connection, &target, terms)?;
+    Ok(logged)
+}
+
+/// Writes the wage and contract end of `terms`, where given, over those of the contract the game just made for the
+/// player `target`, and notes each change. The move is logged already, so a term that does not land leaves him on the
+/// game's.
+fn write_terms(connection: &mut Connection, target: &Target, terms: MoveTerms) -> Result<(), Failure> {
+    for (key, value) in [("contract.wage", terms.wage), ("contract.expires", terms.expires)] {
+        if let Some(value) = value {
+            let field = connection.session.field(Entity::Player, key)?;
+            let change = connection.session.write_field(target, &field, value)?;
+            connection.note_change(&change, change.new);
+        }
+    }
+    Ok(())
 }
 
 /// Checks that the player `uid` can be released from his club, and names it; the error says why he cannot. Nothing is
@@ -3015,7 +3131,13 @@ fn plan_staff_move(state: State<'_, AppState>, uid: u32, club: u32) -> Result<Mo
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let plan = connection.plan_staff_move(uid, club)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
-    Ok(MovePreview { from: Some(name(plan.from_club)), to: name(plan.to_club), fee: None, displaced: None })
+    Ok(MovePreview {
+        from: Some(name(plan.from_club)),
+        to: name(plan.to_club),
+        fee: None,
+        displaced: None,
+        permanent: false,
+    })
 }
 
 /// Moves the member of staff `uid` to the club `club`, in the departments he works in, worked out again from the game
@@ -3052,6 +3174,7 @@ fn plan_manager_move(state: State<'_, AppState>, uid: u32, club: u32) -> Result<
         to: name(plan.to_club),
         fee: None,
         displaced: plan.displaced.and_then(|uid| connection.staff.get(uid)).map(|found| found.name.clone()),
+        permanent: false,
     })
 }
 
@@ -3092,7 +3215,13 @@ fn plan_club_swap(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Mo
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let plan = connection.plan_swap(uid, other)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
-    Ok(MovePreview { from: Some(name(plan.from_club)), to: name(plan.to_club), fee: None, displaced: None })
+    Ok(MovePreview {
+        from: Some(name(plan.from_club)),
+        to: name(plan.to_club),
+        fee: None,
+        displaced: None,
+        permanent: false,
+    })
 }
 
 /// Swaps the clubs of the players `uid` and `other`, worked out again from the game as it is
@@ -3193,6 +3322,7 @@ fn plan_end_loan(state: State<'_, AppState>, uid: u32) -> Result<MovePreview, Fa
         to: ClubName { uid: to, name: connection.club_name(to) },
         fee: None,
         displaced: None,
+        permanent: false,
     })
 }
 
@@ -3258,15 +3388,7 @@ fn sign_free_agent(state: State<'_, AppState>, uid: u32, club: u32, terms: MoveT
     let target = player.target();
     let signed = connection.session.sign_free_agent(player, to, terms)?;
     let logged = connection.log_signing(signed);
-    // The terms asked for replace the game's, on the contract it made; the signing is logged already, so a term that
-    // does not land leaves him signed on the game's.
-    for (key, value) in [("contract.wage", terms.wage), ("contract.expires", terms.expires)] {
-        if let Some(value) = value {
-            let field = connection.session.field(Entity::Player, key)?;
-            let change = connection.session.write_field(&target, &field, value)?;
-            connection.note_change(&change, change.new);
-        }
-    }
+    write_terms(connection, &target, terms)?;
     Ok(logged)
 }
 

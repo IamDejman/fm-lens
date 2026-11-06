@@ -2212,16 +2212,12 @@ function planMove(uid: number, clubUid: number, terms: MoveTerms, fee?: number):
   if (player.clubUid === clubUid) {
     throw failure("move.sameClub", "the player is at this club already");
   }
-  if (staff.some((s) => s.isHuman && s.clubUid === player.clubUid)) {
-    throw failure(
-      "move.humanClub",
-      "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
-    );
-  }
+  // From your club FM makes the transfer itself, and nothing undoes it.
+  const permanent = staff.some((s) => s.isHuman && s.clubUid === player.clubUid);
   if (to.women) {
     throw failure("move.menAndWomen", "one club is a men's club and the other a women's club");
   }
-  if (clubUid === FULL_CLUB) {
+  if (clubUid === FULL_CLUB && !permanent) {
     const message = "the club's squad list has no room for another player (36 now), and the editor cannot make it bigger";
     throw failure("move.noRoom", message, { players: 36 });
   }
@@ -2230,6 +2226,7 @@ function planMove(uid: number, clubUid: number, terms: MoveTerms, fee?: number):
     from: { uid: from.uid, name: from.name },
     to: { uid: to.uid, name: to.name },
     ...(fee !== undefined && fee > 0 && { fee: feePlan(from.uid, to.uid, fee) }),
+    ...(permanent && { permanent }),
   };
 }
 
@@ -2250,11 +2247,13 @@ function movePlayer(uid: number, clubUid: number, terms: MoveTerms, fee?: number
       }
     }
   }
-  moveUndo.set(id, {
-    row: { club: player.club, clubUid: player.clubUid, contractExpires: player.contractExpires },
-    written: written.get(`player:${uid}`),
-    paid,
-  });
+  if (!preview.permanent) {
+    moveUndo.set(id, {
+      row: { club: player.club, clubUid: player.clubUid, contractExpires: player.contractExpires },
+      written: written.get(`player:${uid}`),
+      paid,
+    });
+  }
   player.club = preview.to.name;
   player.clubUid = preview.to.uid;
   if (terms.expires !== undefined) {
@@ -2276,6 +2275,7 @@ function movePlayer(uid: number, clubUid: number, terms: MoveTerms, fee?: number
     undoneAt: null,
     batch: null,
     moved: { from: preview.from.name, to: preview.to.name, ...(preview.fee && { fee: preview.fee.fee }) },
+    ...(preview.permanent && { permanent: true }),
   };
   changes.push(logged);
   return { ...logged };
@@ -3325,7 +3325,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true, maxTactics: true, moveManager: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, futureTransfer: true, maxTactics: true, moveManager: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
