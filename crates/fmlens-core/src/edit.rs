@@ -1184,7 +1184,7 @@ impl Session {
     }
 
     /// Checks that the object at the target's address still carries the target's UID.
-    fn check_uid(&self, target: &Target) -> Result<(), EditError> {
+    pub(crate) fn check_uid(&self, target: &Target) -> Result<(), EditError> {
         let uid_offset = match target.entity {
             Entity::Player => self.layout.player.at(self.layout.player.uid, target.shift),
             Entity::Staff => self.layout.staff.at(self.layout.staff.uid, target.shift),

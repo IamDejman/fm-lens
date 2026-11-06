@@ -26,7 +26,10 @@ Macs from [getfmlens.com](https://getfmlens.com). FM Lens updates itself after t
    small helper that FM loads when Steam starts it.
 3. Start FM from Steam, load the copy of your save and choose **Connect**.
 
-Edits go into FM when you press **Apply** and show after you press **Continue**.
+Edits go into FM when you press **Apply**. On the supported Apple Silicon build,
+Apply and Undo also notify FM to refresh its views, without advancing time.
+Attribute and contract-expiry header refresh have been checked in FM. Other
+fields and panels have not all been verified.
 **Changes** lists each one, with **Undo**. To take the helper out again, choose
 **Remove the helper** in FM Lens.
 

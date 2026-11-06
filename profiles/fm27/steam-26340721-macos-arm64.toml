@@ -8,6 +8,7 @@ storefront = "steam"
 # The in-game date, a variable of its own: 16 November 2026 on a save whose screens read 16/11/2026, then 17 November
 # once the game had moved on a day.
 current_date = 0x56B1DB8
+game_ui = 0x56D48B8
 
 # The static pointer to the retirement manager (RETIREMENT_MANAGER): read on that save, with Cristiano Ronaldo and Karim
 # Benzema among the planned retirements.
@@ -35,6 +36,10 @@ injury_manager = 0x56A82A0
 # The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
 # no others on this build. Traced statically; see docs/recon/fm27-player-extras.md.
 [calls]
+# GAME_UI virtual slot +0xA0, used by FM's morale action with the person's identity.
+entity_changed = 0x30B50
+# Same rfui dispatcher; an empty reference vector requests an unfiltered view refresh.
+refresh_views = 0x2FC20
 # INJURY_MANAGER::add_injury, as the game's training injuries call it: (manager, player, kind index, cause 3, 0, 0,
 # 0, 0, then on the stack a news byte 0, 0 and a u16 0). Returns the new injury, or null when injuries are switched
 # off or he already has one of that kind.

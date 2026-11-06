@@ -1,0 +1,76 @@
+//! Notify FM's UI after a successful edit; never advances simulation or reapplies an edit.
+
+use fmlens_mem::{
+    call::{Arg, Program, Step},
+    is_user_pointer,
+};
+
+use crate::rtti::class_of;
+use crate::transfer::MoveError;
+use crate::{Entity, Session, Target};
+
+impl Session {
+    /// Refresh entire active views after a contract change. FM's transfer UI uses the same rfui
+    /// message with an empty entity vector. The dispatcher owns screen-reference lifetimes and
+    /// supplies the game's default options; no editor context or navigation is synthesized.
+    pub fn refresh_views(&self) -> Result<bool, MoveError> {
+        let Some(function) = self.profile.as_ref().and_then(|p| p.calls.as_ref()).and_then(|c| c.refresh_views) else {
+            return Ok(false);
+        };
+        // A reference vector is three pointers (begin/end/capacity), as initialized by 0x43FE850.
+        // The zeroed scratch holds an empty vector, read synchronously by 0x2FC20 / 0x77DB60.
+        let mut program = Program::new();
+        program.push(Step::new(function, &[Arg::scratch(0), Arg::value(0), Arg::value(0)]));
+        self.call_game(&program)?;
+        Ok(true)
+    }
+
+    /// Refresh views of an entity after Apply or Undo. False means this build has no traced notifier.
+    /// Failure does not undo the already successful data write.
+    pub fn refresh_entity(&self, target: &Target) -> Result<bool, MoveError> {
+        let Some(profile) = self.profile.as_ref() else { return Ok(false) };
+        let (Some(slot), Some(function)) = (profile.game_ui, profile.calls.as_ref().and_then(|c| c.entity_changed))
+        else {
+            return Ok(false);
+        };
+        if let Some(lock) = self.structure_lock() {
+            return Err(MoveError::Locked(lock));
+        }
+        self.check_uid(target).map_err(|_| MoveError::Moved { uid: target.uid })?;
+        let ui = self.process.read_u64(self.plugin.base + slot)?;
+        if !is_user_pointer(ui)
+            || class_of(&self.process, &self.plugin, ui).as_deref() != Some("N11game_plugin7GAME_UIE")
+        {
+            return Err(MoveError::CallUnavailable);
+        }
+        let table = self.process.read_u64(ui)?;
+        if self.process.read_u64(table + 0xA0)? != self.plugin.base + function {
+            return Err(MoveError::CallUnavailable);
+        }
+        // Player and staff identities differ from their person blocks. Use the established layout, including
+        // player-coaches and human-manager shifts; the primary staff vtable's last virtual base is not its identity.
+        let table = self.process.read_u64(target.address)?;
+        if !self.plugin.contains(table) {
+            return Err(MoveError::Moved { uid: target.uid });
+        }
+        let offset = match target.entity {
+            Entity::Player => self.layout.player.at(self.layout.player.identity(), target.shift),
+            Entity::Staff => self.layout.staff.at(self.layout.staff.identity(), target.shift),
+            Entity::Official => self.process.read_u64(table - 0x18)?,
+            // Clubs and nations inherit IDENTITY directly: their primary vtables have the same reference getter
+            // at +0x88 (0x11B3D1C) that the notifier uses through 0x1B23A8.
+            Entity::Club | Entity::Nation => 0,
+        };
+        if offset > 0x1000 {
+            return Err(MoveError::CallUnavailable);
+        }
+        let identity = target.address + offset;
+        if !is_user_pointer(identity) {
+            return Err(MoveError::CallUnavailable);
+        }
+        let mut program = Program::new();
+        program.push(Step::new(function, &[Arg::value(ui), Arg::value(identity)]));
+        self.call_game(&program)?;
+        Ok(true)
+    }
+}

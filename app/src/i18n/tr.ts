@@ -1415,7 +1415,7 @@ export const tr: Strings = {
     keepEditing: "Düzenlemeye devam et",
 
     // After Apply
-    applied: (count) => `${changes(count)} uygulandı. FM'de Devam'a bastığınızda görünür.`,
+    applied: (count) => `${changes(count)} uygulandı.`,
     nothingToChange: "Değiştirilecek bir şey yok. FM'de bu değerler zaten var.",
     refused: (label, reason) => `${label}: ${reason}`,
     rereadFailed: (reason) => `Değerler geri okunamadı: ${reason}`,
