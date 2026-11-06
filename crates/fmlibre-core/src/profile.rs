@@ -263,6 +263,9 @@ pub struct NationalLayout {
     pub joined_fifa: u64,
     pub joined_continental: u64,
     pub youth_rating: u64,
+    /// In a container: the `i8` game importance, 0 to 4, and the `u8` attendance, 0 to 16.
+    pub game_importance: u64,
+    pub attendance: u64,
     /// In a national team: pointer to the manager.
     pub team_manager: u64,
     /// In a national team: `u32` id. The senior team's is the nation's UID.
@@ -284,7 +287,7 @@ impl NationalLayout {
     pub fn container_end(&self) -> u64 {
         [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2, self.joined_continental + 2]
             .into_iter()
-            .chain([self.youth_rating + 2])
+            .chain([self.youth_rating + 2, self.game_importance + 1, self.attendance + 1])
             .max()
             .unwrap_or(0)
     }
