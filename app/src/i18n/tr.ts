@@ -1347,6 +1347,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.7": [
+        "Apple Silicon’da Uygula ve Geri Al, Devam’a basmadan FM’deki özellikleri ve sözleşme bitiş tarihini yeniler.",
+        "Yeni yardımcıyı yüklemek için güncellemeden sonra FM’yi bir kez yeniden başlatın.",
+      ],
       "0.5.6": [
         "Sorun bildir artık FM Lens içinde, pencerenin altında açılıyor. Ne olduğunu yaz ve Gönder'e bas.",
         "Güncellemeleri Denetle… FM Lens menüsünde.",
@@ -1410,7 +1414,7 @@ export const tr: Strings = {
     keepEditing: "Düzenlemeye devam et",
 
     // After Apply
-    applied: (count) => `${changes(count)} uygulandı. FM'de Devam'a bastığınızda görünür.`,
+    applied: (count) => `${changes(count)} uygulandı.`,
     nothingToChange: "Değiştirilecek bir şey yok. FM'de bu değerler zaten var.",
     refused: (label, reason) => `${label}: ${reason}`,
     rereadFailed: (reason) => `Değerler geri okunamadı: ${reason}`,

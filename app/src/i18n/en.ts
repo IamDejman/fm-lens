@@ -1451,6 +1451,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.7": [
+        "On Apple Silicon, Apply and Undo refresh FM’s attributes and contract expiry header without pressing Continue.",
+        "Restart FM once after updating to load the new helper.",
+      ],
       "0.5.6": [
         "Report a problem opens in FM Lens, at the foot of the window. Say what happened and press Send.",
         "Check for Updates… is in the FM Lens menu.",
@@ -1545,7 +1549,7 @@ export const en = {
     // After Apply
     /** FM shows written values once it moves on, so the message says how to see them. */
     applied: (count: number) =>
-      `${changeCount(count)} applied. ${count === 1 ? "It shows" : "They show"} in FM after you press Continue.`,
+      `${changeCount(count)} applied.`,
     /** Every value asked for was the game's already. */
     nothingToChange: "Nothing to change. FM already has these values.",
     /** A change the game refused; `label` is the field's name (see `fieldLabel`) and `reason` the game's answer. */

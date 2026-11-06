@@ -973,6 +973,9 @@ pub struct BuildProfile {
     /// What the game's own editor actions start from, on the one build where it has been traced.
     #[serde(default)]
     pub editor: Option<EditorRvas>,
+    /// The GAME_UI singleton, only where its entity-notification call is traced.
+    #[serde(default)]
+    pub game_ui: Option<u64>,
 }
 
 /// RVAs in the game plugin of the static pointers to the registry of the game's Value types (an integer Value is the
@@ -1001,6 +1004,10 @@ pub struct StartingLoanRvas {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CallRvas {
+    /// GAME_UI::entity_changed(ui, identity): invalidates views of this entity.
+    pub entity_changed: Option<u64>,
+    /// Broadcast rfui to active views, with an entity-reference vector and optional panel IDs.
+    pub refresh_views: Option<u64>,
     /// `INJURY_MANAGER::add_injury(manager, player, kind index, cause, 0, 0, 0, 0, [news byte, 0, 0])`: gives the
     /// player an injury of the kind and returns it, or null when it does not.
     pub add_injury: Option<u64>,
@@ -1060,6 +1067,8 @@ impl CallRvas {
     /// Every function listed.
     pub fn all(&self) -> Vec<u64> {
         [
+            self.entity_changed,
+            self.refresh_views,
             self.add_injury,
             self.set_work_permit,
             self.find_work_permit,

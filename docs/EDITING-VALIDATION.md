@@ -820,3 +820,118 @@ Findings:
 - +0xE3 is the formation FM's profile shows without the ball, and an edit shows
   a day later with the in-possession line unchanged.
 - 22 is 4-4-2 2DM and 30 is 5-3-2 DM WB.
+
+
+## Automatic refresh without Continue (6 November 2026)
+
+Implementation worktree: `codex/automatic-refresh`, based on main `97ca87a`
+(version 0.5.5). The installed `/Applications/FM Lens.app` (0.5.4) was left
+untouched. Earlier testing used an older development bundle; the observations
+below are from the new 0.5.5 development bundle. Debug builds now refuse
+self-update so an update cannot replace the binary under test.
+
+Target: FM27 Steam 26340721, native ARM64, module UUID
+`F4540355-2186-39CB-9119-C706A6A35346`. The game fingerprint and health checks
+were reinspected. The disposable `FM Lens Refresh 2026-11-06.fm` was copied
+from `FM Lens Batch 2026-11-05.fm` and explicitly loaded in FM. Initial game
+time was 11 Dec 2027, 16:30. Saka UID 28122642, Finishing 16 (stored 80),
+contract expiry 30 June 2032. Local diagnostics: `reports/automatic-refresh/`.
+
+| Action | FM Lens / readback | FM, with Overview kept open |
+|---|---|---|
+| Apply Finishing 16 → 17 | Applied | Immediately 17 |
+| Undo Finishing | Undone | Immediately 16 |
+| Apply expiry 30 June → 2 July 2032 | Applied; probe confirmed 2 July | Header still 30/6/2032 |
+| Undo expiry | Undone | Header 30/6/2032, baseline restored |
+
+No Continue, day advancement, navigation, save or reload was used between
+Apply/Undo and inspecting those results. The game stayed at 16:30 throughout.
+This establishes an attribute-panel refresh, not persistence or universal
+refresh coverage. The contract-header cache was unresolved in this first test;
+the follow-up below resolves the tested expiry header. No new
+save/reload persistence claim is made by this test. Both edits were undone.
+
+Mechanism: successful mutations queue entity/UID pairs; the shared frontend
+edit callback flushes them through a separate command, deduplicated per
+entity. It resolves the current target and uses the existing known-build,
+current-career and main-thread call guards. A refresh error is reported
+separately from mutation success so the user is not invited to repeat an
+already-applied action. The notifier is mapped only for the ARM64 profile;
+unmapped profiles skip it. No simulation or Continue call is made.
+
+Static trace: `GAME_UI` singleton at RVA `0x56D48B8`, vtable slot `+0xA0`,
+function RVA `0x30B50`. The notifier consumes a DB IDENTITY, constructs
+entity references via `0x6585E4`, then issues `rfui` through `0x2FB64` /
+`0x2FC20` / `0x77DB60` to active views. Runtime RTTI and the notifier slot
+are checked. Player/staff identity offsets use the mapped layout, including
+shifts; club/nation use direct IDENTITY inheritance, officials their virtual
+base. The contract object itself is not an IDENTITY and is never passed as one.
+
+Checks passed: frontend production build; cargo fmt; workspace Clippy with
+warnings denied; workspace tests; separate no-default-features memory tests;
+separate app Clippy with warnings denied; native debug Tauri app build.
+Native Apply/Undo interaction was exercised on the copied career as above.
+
+Cleanup: FM exited through its Quit dialog without saving or advancing. The
+development app was closed; the installed 0.5.4 app was left running. The main
+career SHA-256 matched its recorded baseline afterward; the disposable career
+was also byte-identical to its source copy. Installed bridge and
+launcher files, including compatibility filenames, were restored atomically
+from the installed app resources. Debug bundles now also skip automatic
+replacement of installed helpers. Steam configuration was not changed.
+
+
+## Contract-header refresh without Continue (6 November 2026)
+
+Follow-up on `codex/automatic-refresh` (0.5.5 source baseline `97ca87a`).
+The earlier entity-only notifier refreshed attributes but left the contract
+header cached. This is resolved for the tested expiry header by additionally
+requesting an unfiltered refresh of active views after contract field changes
+and successful Undo. The normal entity notification remains in place.
+
+Static trace: `GAME_UI` slot +0x1B8 / RVA `0x33788`, called after FM's
+transfer editor action at `0x238C95C`, forwards to `0x77DCFC`. It sends
+`rfui` with an empty entity-reference vector at `0x56D6318`. The existing
+active-view dispatcher `0x2FC20` calls the same serializer `0x77DB60` with
+the same default options at `0x56D6300`, obtaining and releasing the current
+view references itself. FM Lens now calls this dispatcher with a synchronous
+zeroed scratch vector (begin/end/capacity), null panel list and zero panel
+count. Its vector representation was checked against constructor `0x43FE850`
+and serializer `0x43FC8F4`. This avoids retaining an editor-dialog context or
+simulating navigation. The new call is allowlisted only in the known ARM64
+profile and passes the existing main-thread, writable-build and current-career
+guards. A batch requests this full-view refresh only once when contract fields
+changed. Refresh failure remains separate from mutation success.
+
+Live target reinspected: PID 57696, FM27 Steam 26340721, ARM64, module UUID
+`F4540355-2186-39CB-9119-C706A6A35346`. Health checks passed, including
+contracts, teams, staff, clubs, nations and officials. The new bridge was
+loaded using the local launcher while Steam was running; Steam configuration
+and installed helpers were not changed. The native 0.5.5 test bundle was
+selected by its full path.
+
+Explicitly loaded `FM Lens Refresh 2026-11-06.fm` through FM's Load Game
+dialog. Initial game time: 11 Dec 2027, 16:30. Opened Bukayo Saka's Overview
+and left it there throughout the experiment. UID 28122642; probe baseline
+expiry 2032-06-30, wage 310000/week, Finishing 16.
+
+| Action in FM Lens | FM's already-open profile header | Game time |
+|---|---|---|
+| Baseline | 30/6/2032 | 11 Dec 2027, 16:30 |
+| Apply expiry 30 June → 29 June 2032 | Immediately 29/6/2032 | Unchanged |
+| Changes → Undo | Immediately 30/6/2032 | Unchanged |
+
+Apply was reported at 23:19:38, Undo at 23:19:53 in FM Lens. No Continue,
+FM navigation, save or reload occurred between these observations. The page
+stayed on Saka, and no unrelated news or navigation was observed. His wage
+header stayed £300K p/w (FM's rounded display of the unchanged 310000).
+This verifies the expiry-header refresh on this build; it does not establish
+all contract fields, staff headers, Intel behavior, or new persistence results.
+The sole test change was undone, and FM exited through its Quit dialog without
+saving. The test bundle was closed; the installed app remained running.
+
+Local evidence and checks: `reports/automatic-refresh/contract-*`. The main
+and disposable career hashes were recorded before the test and compared after
+FM exited. Both were unchanged. Installed bridge resources also matched the
+installed app after the test. Frontend build, native debug bundle, formatting,
+workspace Clippy/tests and separate app Clippy are recorded in those logs.

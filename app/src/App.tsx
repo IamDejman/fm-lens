@@ -244,6 +244,8 @@ function App() {
   // Changes were written or undone: the lists and the open profile read the game again, and so does the log.
   // The lists keep their search, filters, sort and selection when they do.
   const edited = useCallback(() => {
+    // Notify FM independently: a screen refresh failure does not mean the successful edit failed.
+    void call<void>("refresh_game_ui").catch((e: unknown) => setError(describeError(e)));
     setDataVersion((v) => v + 1);
     void reloadLog();
     // The human manager may have changed clubs. Not knowing leaves the header as it was.

@@ -30,6 +30,7 @@ mod officials;
 mod players;
 mod profile;
 mod promises;
+mod refresh;
 mod relations;
 mod retirement;
 pub mod rtti;
