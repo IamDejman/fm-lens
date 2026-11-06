@@ -133,7 +133,8 @@ const errors: ErrorTexts = {
 
 /**
  * The kinds of contract clauses and bonuses, by the codes contracts hold them as; named as FMRTE names them, and the
- * rest after the game's own list of kinds.
+ * rest after the game's own list of kinds. 8, 13, 41 and 55 are named as FM's contract screen names them; FM does not
+ * show 63 there.
  */
 const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   0: "Minimum fee release clause",
@@ -144,12 +145,12 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   5: "Relegation wage drop",
   6: "Non-playing job release clause",
   7: "Release at any time",
-  8: "Sell-on fee",
+  8: "Sell-on fee percentage",
   9: "Sell-on fee from profit",
   10: "Seasonal landmark goal bonus",
-  11: "One-year extension after league matches",
+  11: "One-year extension after league games",
   12: "Match highest earner",
-  13: "Wage after reaching league matches",
+  13: "Wage after reaching club league games",
   14: "Top division promotion wage rise",
   15: "Top division relegation wage drop",
   16: "Minimum fee release clause (foreign clubs)",
@@ -175,7 +176,8 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   38: "Unused substitute fee",
   39: "Assist bonus",
   40: "Seasonal landmark assist bonus",
-  41: "Seasonal landmark goals and assists bonus",
+  41: "Seasonal landmark combined goal and assist bonus",
+  55: "Active relegation release clause",
 };
 
 /** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them. */
@@ -692,7 +694,7 @@ export const en = {
           return `${value} goals and assists`;
         case 11:
         case 13:
-          return value === 1 ? "1 league match" : `${value} league matches`;
+          return value === 1 ? "1 league game" : `${value} league games`;
         case 19:
           return value === 1 ? "1 international match" : `${value} international matches`;
         case 22:
