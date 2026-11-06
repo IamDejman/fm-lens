@@ -21,11 +21,13 @@ import {
  * date input (`YYYY-MM-DD`, with the calendar of the browser) for a date. A field that holds a code from a list is a
  * select of its choices, and a yes-or-no a checkbox with the name of the field, or with Yes or No `inFact`, where the
  * label beside it names the field. A number that may be left empty says "none" while it is. A changed input is
- * outlined in the accent colour and says what it was; one that cannot be applied is outlined as an error. Nothing while
- * the profile is not being edited.
+ * outlined in the accent colour and says what it was; one that cannot be applied is outlined as an error. A number
+ * input has the least and the most it takes under it, unless `hint` is false: in a group of inputs that take the same,
+ * one `SharedRangeHint` says it for all. Nothing while the profile is not being edited.
  */
-export function EditInput({ field, inFact = false }: { field: string; inFact?: boolean }) {
+export function EditInput({ field, inFact = false, hint = true }: { field: string; inFact?: boolean; hint?: boolean }) {
   const session = useEditSession();
+  const hintId = useId();
   const applied = useContext(AppliedFieldsContext).has(field);
   const input = session?.input(field);
   if (!session || !input) {
@@ -81,6 +83,8 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
   }
 
   const date = spec.kind === "date";
+  // A date input's calendar keeps to its range on its own.
+  const hinted = hint && !date;
   // A float such as FIFA points is typed to two decimal places; its range is in hundredths.
   const unit = spec.kind === "f32" ? 100 : 1;
   // A number that may be left empty is a text input: a number input reads what is no number (a lone minus sign) as
@@ -104,6 +108,7 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
       value={text}
       readOnly={session.busy}
       aria-label={label}
+      aria-describedby={hinted ? hintId : undefined}
       title={title || undefined}
       {...common}
       onChange={(e) => session.type(field, e.currentTarget.value)}
@@ -124,39 +129,82 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
       onWheel={(e) => e.currentTarget.blur()}
     />
   );
-  if (spec.kind === "i32") {
-    return (
+  const shown =
+    spec.kind === "i32" ? (
       <span className="edit-money">
         <span className="edit-unit" aria-hidden="true">
           {currencySymbol}
         </span>
         {control}
       </span>
-    );
-  }
-  if (spec.scale === "percent") {
-    return (
+    ) : spec.scale === "percent" ? (
       <span className="edit-percent">
         {control}
         <span className="edit-unit" aria-hidden="true">
           {editText.percent}
         </span>
       </span>
+    ) : (
+      control
     );
+  if (!hinted) {
+    return shown;
   }
-  return control;
+  return (
+    <span className="edit-ranged">
+      {shown}
+      <RangeHint id={hintId} min={valueText(spec, range.min)} max={valueText(spec, range.max)} />
+    </span>
+  );
+}
+
+/** "Min: 1 Max: 100": the least and the most a number input takes, as they are shown. */
+export function RangeHint({ id, min, max }: { id?: string; min: string; max: string }) {
+  return (
+    <span id={id} className="range-hint">
+      {/* The space keeps the two apart where the hint is read out as one line. */}
+      <span>{editText.least(min)}</span> <span>{editText.most(max)}</span>
+    </span>
+  );
+}
+
+/**
+ * The range of `field` while it is edited, said once for a group of inputs that all take the same, such as a profile's
+ * attributes; nothing while it is not.
+ */
+export function SharedRangeHint({ field }: { field: string }) {
+  const session = useEditSession();
+  const input = session?.has(field) ? session.input(field) : undefined;
+  if (!input) {
+    return null;
+  }
+  return (
+    <p className="range-hint-line">
+      <RangeHint min={valueText(input.field, input.range.min)} max={valueText(input.field, input.range.max)} />
+    </p>
+  );
 }
 
 /**
  * `children` while the profile is read, the input of `field` in their place while it is edited. `inFact`: the value of
- * a fact, whose label names the field (see `EditInput`). While the profile is read, a value that can be edited is a
- * button that begins editing with its input focused.
+ * a fact, whose label names the field; `hint`: whether its range is said under it (see `EditInput`). While the profile
+ * is read, a value that can be edited is a button that begins editing with its input focused.
  */
-export function EditableValue({ field, inFact, children }: { field: string; inFact?: boolean; children: ReactNode }) {
+export function EditableValue({
+  field,
+  inFact,
+  hint,
+  children,
+}: {
+  field: string;
+  inFact?: boolean;
+  hint?: boolean;
+  children: ReactNode;
+}) {
   const editing = useEditableField(field);
   const applied = useContext(AppliedFieldsContext).has(field);
   if (editing) {
-    return <EditInput field={field} inFact={inFact} />;
+    return <EditInput field={field} inFact={inFact} hint={hint} />;
   }
   const value = <ActivatableValue field={field}>{children}</ActivatableValue>;
   return applied ? <span className="edit-applied" title={editText.appliedTitle}>{value}</span> : value;

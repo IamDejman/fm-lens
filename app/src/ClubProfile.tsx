@@ -208,7 +208,7 @@ function ratingRows(
 /** The club's facilities as ratings; inputs while the club is edited. */
 function Facilities({ facilities }: { facilities: Record<string, number> }) {
   const rows = ratingRows(CLUB_FACILITY_LABELS, facilities, "facilities");
-  return rows.length > 0 ? <RatingGroup title={text.facilities} rows={rows} /> : null;
+  return rows.length > 0 ? <RatingGroup title={text.facilities} rows={rows} hint /> : null;
 }
 
 function Supporters({ traits, mix }: { traits: Record<string, number>; mix: Record<string, number> }) {

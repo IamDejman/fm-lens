@@ -2792,6 +2792,45 @@ select.edit-input {
   font-weight: 600;
 }
 
+/* A number input over the least and the most it takes. */
+.edit-ranged {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 2px 0;
+}
+
+.range-hint {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0 10px;
+  color: var(--muted);
+  font-size: var(--type-xs);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
+/* One hint for a group of inputs that all take the same, above them. */
+.range-hint-line {
+  margin: 12px 6px 6px;
+}
+
+h3 + .range-hint-line {
+  margin-top: 0;
+}
+
+.range-hint-line .range-hint,
+.modal-head .range-hint {
+  justify-content: flex-start;
+}
+
+.modal-head .range-hint {
+  margin-top: 4px;
+}
+
 /* The values of a player's Medical group side by side, not as rows across the whole panel. */
 .medical-values {
   display: flex;

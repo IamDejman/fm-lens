@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import { AttributeActions } from "./AttributeActions";
 import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
-import { EditableValue, EditInput } from "./EditControls";
+import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
 import { keepPlaying, setWorkPermit } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
@@ -151,6 +151,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
   return (
     <>
       <AttributeActions uid={details.uid} />
+      {/* Attributes, personality and position ratings all take 1 to 20: one hint says it for all of them. */}
+      <SharedRangeHint field="attribute.determination" />
 
       <div className="profile-pair">
         <div className="profile-columns">
