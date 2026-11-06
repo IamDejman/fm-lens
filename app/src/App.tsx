@@ -129,23 +129,26 @@ function App() {
       setDataVersion((v) => v + 1);
     });
 
-  const reload = () =>
-    run(appText.reloading, async () => {
-      try {
-        const { refrozen: again, ...reloaded } = await call<ReloadInfo>("reload");
-        setConnection((c) => c && { ...c, ...reloaded });
-        if (again) {
-          setRefrozen(again);
+  const reload = useCallback(
+    () =>
+      run(appText.reloading, async () => {
+        try {
+          const { refrozen: again, ...reloaded } = await call<ReloadInfo>("reload");
+          setConnection((c) => c && { ...c, ...reloaded });
+          if (again) {
+            setRefrozen(again);
+          }
+          setDataVersion((v) => v + 1);
+          void reloadLog();
+        } catch (e) {
+          // The Rust side drops the connection when reading fails (e.g. the game was closed).
+          setConnection(null);
+          void detect();
+          throw e;
         }
-        setDataVersion((v) => v + 1);
-        void reloadLog();
-      } catch (e) {
-        // The Rust side drops the connection when reading fails (e.g. the game was closed).
-        setConnection(null);
-        void detect();
-        throw e;
-      }
-    });
+      }),
+    [run, reloadLog, detect],
+  );
 
   // At startup: the Rust side keeps its connection, lists and change log when the window is reloaded (that is how a
   // change of language keeps the connection), so the app first asks for the connection it may have already. With
@@ -178,23 +181,32 @@ function App() {
   }, [detect, reloadLog]);
 
   // FM may have been closed or restarted while the app was in the background. On coming back, the app checks, and
-  // says so and offers to connect again rather than showing a game that has gone.
+  // says so and offers to connect again rather than showing a game that has gone. FM may also have moved its lists (on
+  // loading a save, and at times as the game goes on), which turns editing off: the app then reads the game again, as
+  // Reload does, rather than leaving that to be found at the next Apply.
   const attached = connection !== null;
+  const idle = busy === null;
   useEffect(() => {
     if (!attached) {
       return;
     }
     const check = () => {
-      call<ConnectionInfo | null>("current_connection").catch((e: unknown) => {
-        setConnection(null);
-        // Looking for the game clears the message as it starts, so the message is set after.
-        void detect();
-        setError(describeError(e));
-      });
+      call<ConnectionInfo | null>("current_connection")
+        .then((current) => {
+          if (idle && current?.writable && current.knownBuild && !current.editable) {
+            void reload();
+          }
+        })
+        .catch((e: unknown) => {
+          setConnection(null);
+          // Looking for the game clears the message as it starts, so the message is set after.
+          void detect();
+          setError(describeError(e));
+        });
     };
     window.addEventListener("focus", check);
     return () => window.removeEventListener("focus", check);
-  }, [attached, detect]);
+  }, [attached, idle, detect, reload]);
 
   // Until connected, the app keeps looking for the game, so starting FM27 or loading a save shows up on its own.
   useEffect(() => {
