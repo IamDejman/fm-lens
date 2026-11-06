@@ -282,7 +282,7 @@ function details(player: PlayerSummary): PlayerDetails {
     ties: tiesOf(player),
     tieRoom: tieRoomOf(player),
     preferences: currentPreferences(false, player.uid),
-    languages: languagesOf(player.uid),
+    languages: currentLanguages(false, player.uid),
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     loan: loanOf(player),
     workPermits: workPermitsOf(player),
@@ -765,7 +765,7 @@ function preferenceAt(uid: number, isStaff: boolean, index: number): [string, Pr
   }
   const preference = currentPreferences(isStaff, uid).find((p) => p.index === index);
   if (!preference) {
-    throw failure("relation.missing", `the person has no preference number ${index}`, { index });
+    throw failure("list.missing", `the list holds nothing at number ${index}`, { index });
   }
   return [person.name, preference];
 }
@@ -783,7 +783,7 @@ function logPreference(
   const key = preferenceKey(isStaff, uid);
   preferenceUndo.set(id, [key, currentPreferences(isStaff, uid)]);
   preferencesSet.set(key, next);
-  const end = (p: Preference | null) => p && { name: p.name ?? String(p.targetUid), rule: null, strength: p.strength };
+  const end = (p: Preference | null) => p && { name: p.name ?? String(p.targetUid), rule: null, value: p.strength };
   const logged: LoggedChange = {
     id,
     at: Date.now(),
@@ -825,6 +825,89 @@ function removePreference(uid: number, isStaff: boolean, index: number): LoggedC
   const [name, before] = preferenceAt(uid, isStaff, index);
   const next = currentPreferences(isStaff, uid).filter((p) => p.index !== index);
   return logPreference(isStaff, uid, name, before, null, next);
+}
+
+// Languages -------------------------------------------------------------------------------------------------------
+
+/** The languages changed through the editor, by "player:UID" or "staff:UID"; the others are the fixture's. */
+const languagesSet = new Map<string, Language[]>();
+
+/** What each change to a person's languages found, by the id of its logged change, for its undo. */
+const languageUndo = new Map<number, [string, Language[]]>();
+
+/** The languages of the fixture player, or member of staff for `isStaff`, `uid` as the game holds them now. */
+function currentLanguages(isStaff: boolean, uid: number): Language[] {
+  return languagesSet.get(preferenceKey(isStaff, uid)) ?? languagesOf(uid);
+}
+
+/** The name of the fixture person `uid` and his language at `index`, or the real commands' failures. */
+function languageAt(uid: number, isStaff: boolean, index: number): [string, Language] {
+  const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
+  if (!person) {
+    throw notFound(isStaff ? "staff" : "player", uid);
+  }
+  const language = currentLanguages(isStaff, uid)[index];
+  if (!language) {
+    throw failure("list.missing", `the list holds nothing at number ${index}`, { index });
+  }
+  return [person.name, language];
+}
+
+/** Logs a change to a person's languages as the real commands do, keeping them as they were for undoing it. */
+function logLanguage(
+  isStaff: boolean,
+  uid: number,
+  name: string,
+  before: Language,
+  after: Language | null,
+  next: Language[],
+): LoggedChange {
+  const id = changes.length + 1;
+  const key = preferenceKey(isStaff, uid);
+  languageUndo.set(id, [key, currentLanguages(isStaff, uid)]);
+  languagesSet.set(key, next);
+  const end = (l: Language | null) => l && { name: l.name ?? "-", rule: null, value: l.level };
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name,
+    entity: isStaff ? "staff" : "player",
+    uid,
+    field: "language",
+    old: before.level,
+    new: after?.level ?? 0,
+    undoneAt: null,
+    batch: null,
+    tie: { from: end(before), to: end(after) },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** `change_language`: gives a fixture person's language another level, 1 to 10. */
+function changeLanguage(uid: number, isStaff: boolean, index: number, level: number): LoggedChange {
+  const [name, before] = languageAt(uid, isStaff, index);
+  if (!Number.isInteger(level) || level < 1 || level > 10) {
+    throw failure("move.outOfRange", `${level} is not a valid level; it takes 1 to 10`, {
+      field: "level",
+      value: level,
+      min: 1,
+      max: 10,
+    });
+  }
+  if (level === before.level) {
+    throw failure("relation.same", "the player has that already");
+  }
+  const after = { ...before, level };
+  const next = currentLanguages(isStaff, uid).map((l, i) => (i === index ? after : l));
+  return logLanguage(isStaff, uid, name, before, after, next);
+}
+
+/** `remove_language`: takes a fixture person's language out of his list. */
+function removeLanguage(uid: number, isStaff: boolean, index: number): LoggedChange {
+  const [name, before] = languageAt(uid, isStaff, index);
+  const next = currentLanguages(isStaff, uid).filter((_, i) => i !== index);
+  return logLanguage(isStaff, uid, name, before, null, next);
 }
 
 /** The fixture players whose bans were lifted through the editor, by UID, while the lifting is not undone. */
@@ -1038,7 +1121,7 @@ function staffDetails(member: StaffSummary): StaffDetails {
     // Only the human manager's flags are read; everyone else's stay unknown, as in the app.
     unsackable: member.isHuman ? false : null,
     registrationAnytime: member.isHuman ? false : null,
-    languages: languagesOf(member.uid),
+    languages: currentLanguages(true, member.uid),
     preferences: currentPreferences(true, member.uid),
     coachingLicence: member.uid % 9,
   });
@@ -1748,6 +1831,12 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.clause) {
     clausesSet.set(entry.uid, clauseUndo.get(entry.id)!);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field === "language") {
+    const [key, languages] = languageUndo.get(entry.id)!;
+    languagesSet.set(key, languages);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -3259,6 +3348,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return changePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.strength)) as T;
     case "remove_preference":
       return removePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
+    case "change_language":
+      return changeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.level)) as T;
+    case "remove_language":
+      return removeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
     case "add_tie":
       return addTie(Number(args?.uid), args?.tie as TieKind, Number(args?.target), args?.rule as number | undefined) as T;
     case "homegrown_rules":

@@ -142,6 +142,7 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
 }
 
 function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChangeJob: boolean }) {
+  const person = { uid: details.uid, staff: true, name: details.name };
   return (
     <>
       <StaffFreeze uid={details.uid} />
@@ -184,11 +185,8 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
           </div>
         </div>
       </div>
-      <LanguagesGroup languages={details.languages} />
-      <PreferencesGroup
-        preferences={details.preferences}
-        owner={{ uid: details.uid, staff: true, name: details.name }}
-      />
+      <LanguagesGroup languages={details.languages} person={person} />
+      <PreferencesGroup preferences={details.preferences} person={person} />
     </>
   );
 }

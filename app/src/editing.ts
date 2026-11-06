@@ -251,6 +251,14 @@ export const changePreference = (uid: number, staff: boolean, index: number, str
 export const removePreference = (uid: number, staff: boolean, index: number) =>
   call<LoggedChange>("remove_preference", { uid, staff, index });
 
+/** Gives the language `index` of the player `uid`, or of the member of staff `uid` for `staff`, the level `level`, 1 to 10. */
+export const changeLanguage = (uid: number, staff: boolean, index: number, level: number) =>
+  call<LoggedChange>("change_language", { uid, staff, index, level });
+
+/** Takes the language `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
+export const removeLanguage = (uid: number, staff: boolean, index: number) =>
+  call<LoggedChange>("remove_language", { uid, staff, index });
+
 /** The homegrown rules `changeTie` and `addTie` write, by the game's code. */
 export const homegrownRules = () => call<number[]>("homegrown_rules");
 

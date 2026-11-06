@@ -12,7 +12,7 @@ use fmlibre_core::{
     GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError,
     MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture,
     Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
-    PreferenceKind, PreferenceOwner, PreferenceSet, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
+    Language, LanguageSet, PreferenceKind, PersonRef, PreferenceSet, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
     StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target,
     TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
@@ -729,7 +729,7 @@ impl Connection {
             preference.map(|preference| TieEnd {
                 name: preference.name.clone().unwrap_or_else(|| preference.target_uid.to_string()),
                 rule: None,
-                strength: Some(preference.strength),
+                value: Some(i64::from(preference.strength)),
             })
         };
         let change = Change {
@@ -756,6 +756,45 @@ impl Connection {
             tie: Some(TieChange { from: end(named.first()), to: end(named.get(1)) }),
             clause: None,
             undo: Some(Undo::Preference(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a change to a person's languages just written, as a change of his field `language` from one level to the
+    /// other (0 for one taken out), with the language and its level before and after.
+    fn log_language(&mut self, done: LanguageSet) -> LoggedChange {
+        let end = |language: Option<&Language>| {
+            language.map(|language| TieEnd {
+                name: language.name.clone().unwrap_or_else(|| "-".to_owned()),
+                rule: None,
+                value: Some(i64::from(language.level)),
+            })
+        };
+        let change = Change {
+            entity: done.entity,
+            uid: done.person,
+            field: "language".to_owned(),
+            old: i64::from(done.before.level),
+            new: done.after.as_ref().map_or(0, |after| i64::from(after.level)),
+        };
+        let name = match done.entity {
+            Entity::Staff => self.staff.get(done.person).map_or_else(|| done.person.to_string(), |m| m.name.clone()),
+            _ => self.player_name(done.person),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change,
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
+            clause: None,
+            undo: Some(Undo::Language(done)),
         };
         self.log.push(logged.clone());
         logged
@@ -858,7 +897,7 @@ impl Connection {
             relation.as_ref().map(|relation| TieEnd {
                 name: relation.name.clone().unwrap_or_else(|| relation.target_uid.to_string()),
                 rule: relation.rule,
-                strength: None,
+                value: None,
             })
         };
         let uid = |relation: &Option<fmlibre_core::Relation>| relation.as_ref().map_or(0, |r| i64::from(r.target_uid));
@@ -1166,6 +1205,7 @@ impl Connection {
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
             Some(Undo::Preference(preference)) => self.session.undo_preference(&preference)?,
+            Some(Undo::Language(language)) => self.session.undo_language(&language)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
             Some(Undo::Staff(logged)) => {
                 self.session.undo_staff_change(&logged.done)?;
@@ -1508,6 +1548,7 @@ enum Undo {
     Retirement(RetirementSet),
     Tie(RelationSet),
     Preference(PreferenceSet),
+    Language(LanguageSet),
     Clause(ClauseSet),
     Captain(CaptainSet),
     Staff(LoggedStaff),
@@ -1545,15 +1586,16 @@ struct TieChange {
     to: Option<TieEnd>,
 }
 
-/// The nation or club of a tie, and its homegrown rule for a training; or the person or club of a preference, and its
-/// strength.
+/// The nation or club of a tie, and its homegrown rule for a training; the person or club of a preference, and its
+/// strength; or a language, and its level.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TieEnd {
     name: String,
     rule: Option<u8>,
+    /// A preference's strength, or a language's level.
     #[serde(skip_serializing_if = "Option::is_none")]
-    strength: Option<i8>,
+    value: Option<i64>,
 }
 
 /// A contract clause before and after a change: none before for one added, none after for one taken out.
@@ -3018,11 +3060,11 @@ fn add_tie(
 }
 
 /// The player `uid`, or the member of staff `uid` for `staff`, as the owner of preferences.
-fn preference_owner(connection: &Connection, uid: u32, staff: bool) -> Result<PreferenceOwner<'_>, Failure> {
+fn person_ref(connection: &Connection, uid: u32, staff: bool) -> Result<PersonRef<'_>, Failure> {
     Ok(if staff {
-        PreferenceOwner::Staff(connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?)
+        PersonRef::Staff(connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?)
     } else {
-        PreferenceOwner::Player(connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?)
+        PersonRef::Player(connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?)
     })
 }
 
@@ -3038,7 +3080,7 @@ fn change_preference(
 ) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let owner = preference_owner(connection, uid, staff)?;
+    let owner = person_ref(connection, uid, staff)?;
     let plan = connection.session.plan_preference_strength(owner, index, strength)?;
     let done = connection.session.apply_preference(&plan)?;
     Ok(connection.log_preference(done))
@@ -3050,10 +3092,40 @@ fn change_preference(
 fn remove_preference(state: State<'_, AppState>, uid: u32, staff: bool, index: usize) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let owner = preference_owner(connection, uid, staff)?;
+    let owner = person_ref(connection, uid, staff)?;
     let plan = connection.session.plan_preference_removal(owner, index)?;
     let done = connection.session.apply_preference(&plan)?;
     Ok(connection.log_preference(done))
+}
+
+/// Gives the language `index` of the player `uid`, or of the member of staff `uid` for `staff`, the level `level`, 1
+/// to 10. Logged and undone like any change.
+#[tauri::command]
+fn change_language(
+    state: State<'_, AppState>,
+    uid: u32,
+    staff: bool,
+    index: usize,
+    level: u8,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let person = person_ref(connection, uid, staff)?;
+    let plan = connection.session.plan_language_level(person, index, level)?;
+    let done = connection.session.apply_language(&plan)?;
+    Ok(connection.log_language(done))
+}
+
+/// Takes the language `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. Logged
+/// and undone like any change.
+#[tauri::command]
+fn remove_language(state: State<'_, AppState>, uid: u32, staff: bool, index: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let person = person_ref(connection, uid, staff)?;
+    let plan = connection.session.plan_language_removal(person, index)?;
+    let done = connection.session.apply_language(&plan)?;
+    Ok(connection.log_language(done))
 }
 
 /// Gives the clause `index` of the contract of the player `uid` the amount `amount` and the condition `condition`;
@@ -3593,6 +3665,8 @@ pub fn run() {
             add_tie,
             change_preference,
             remove_preference,
+            change_language,
+            remove_language,
             change_clause,
             remove_clause,
             add_release_clause,
