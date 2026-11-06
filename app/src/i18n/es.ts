@@ -1979,6 +1979,19 @@ export const es: Strings = {
     badIds: "Escribe los ID de jugador separados por comas o espacios.",
   },
 
+  report: {
+    title: "Informar de un problema",
+    what: "¿Qué pasó?",
+    sentWith: "Se publica, con tus versiones y tus cambios recientes.",
+    send: "Enviar",
+    sending: "Enviando…",
+    cancel: "Cancelar",
+    sent: "Enviado. Gracias.",
+    close: "Cerrar",
+    tooMany: "Demasiados informes desde aquí. Vuelve a intentarlo en una hora.",
+    failed: "No se pudo enviar. Inténtalo más tarde.",
+  },
+
   release: {
     button: "Rescindir",
     buttonTitle: "Rescindir el contrato de este jugador con su club en el juego: pasa a ser agente libre",
