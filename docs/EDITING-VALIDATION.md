@@ -754,3 +754,69 @@ Findings:
 - Undo of a change FM has already put back reports "Undone" without writing.
 - Cancelling a club-to-club deal through the game leaves the player at his club
   on his contract; the buying club's transfer budget rose by 4.8M at once.
+
+## Six features: injuries, formations, style, rules, promises, manager move (6 November 2026)
+
+Same `FM Lens Batch 2026-11-05.fm` copy, from 11 to 12 Dec 2027 (a holiday of 1
+day, the assistant beating Spurs 2-0). FM Lens built from a local branch merging
+#70, #73, #74, #76, #77 and #78 on `main`, rebuilt once with the #77 fix. Nothing
+was saved; FM's process was ended without saving. The main career's hash was
+checked before and after (OK both times) and the copy's file time is unchanged.
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| #70 Gyökeres, injury days -> 14 | Saved; Undo "Undone"; saved again | Back 21 Dec 2027 | 11 Dec: "Expected to return in 12 days" (cached). 12 Dec: "in 10 days" |
+| #70 João Pedro, remove his injury | Removed | No injury | 11 Dec: still "Inj" (cached). 12 Dec: no badge, fitness "Fair" |
+| #70 Calafiori, not edited | Longest 2 days | - | "1 - 2 days" |
+| #73 Preferred formation of 3 managers | 29, 28, 63 | Same | 4-2-3-1 DM AM Wide, 4-2-4 DM Wide, 5-2-2-1 DM AM |
+| #73 Second formation of the same | 4, 64, 35 | Same | 4 and 64 both 4-4-2 2DM; 64 also 5-3-2 DM WB; 35 5-2-2-1 DM AM |
+| #73 Glasner 63 / 35 -> 29 / 28 | Saved | 29 / 28 | 12 Dec: "4-2-3-1 DM AM Wide" and "5-2-2-1 DM AM" |
+| #74 England style ratings | Depth 7, directness 14, flamboyancy 5, flexibility 6, free roles 6, marking 6, offside 15, pressing 18, sitting back 10, tempo 17, playmaker 7, width 15 | Same | Not shown by FM |
+| #74 England depth 7 -> 12 | Saved | 12 | Not shown by FM |
+| #76 Premier League, yellow cards for a fine | 6 | - | "£25,000 fine if 6 or more yellow cards received in one match" |
+| #76 Premier League, other rules | Extended stoppage Yes, medal games 5, stadium 5,000 / 5,000, grass Yes, undersoil heating Yes | - | Not on FM's rules page. FM's 5 subs, 9 named and squad of 25 are not in FM Lens |
+| #77 Promises, as opened | Gyökeres: promise 7, due 31 Jan 2028. Nico Paz: none | Nico Paz's list: 3 records | Promises page: only Nico Paz, playing time, 44 days |
+| #77 After the fix (9ec665e) | Nico Paz: promise 1, made 24 Nov 2027, due 23 Jan 2028. Gyökeres: none | - | Same promise |
+| #77 Close Nico Paz's promise | "Ended 11 Dec 2027" | Closed, status 1, ends 11 Dec | 11 Dec: "44 days" (cached). 12 Dec: "Completed", "Succeeded" |
+| #77 Undo of the close | "Undone" | Open, status 0, due 23 Jan 2028 | - |
+| #78 Human manager, Arsenal -> Nottingham Forest | Dialog: "Oliver Glasner loses his job". Header and profile: Nottingham Forest | Manager of Nottingham Forest; Glasner no job | At once: "Eluwande takes charge at Nott'm Forest", "Welcome to Nott'm Forest!", Forest's portal |
+
+Findings:
+
+- #77: a player's promise list also holds promises he made, which point at
+  someone else (category 0, id 16, the manager as the person promised). One such
+  record made the reader drop his whole list. The 17 promise 7 records of 4 Aug
+  2027 (topic 1998, category 0) are a squad-wide set FM's Promises page does not
+  list. The reader now keeps only records that point back at him and have a
+  category, which matched FM's page for Arsenal. A close counts as kept in FM.
+- #73: the preferred byte is right: FM took 29 after a day. The second byte is
+  not FM's second formation: 28 did not show, and FM listed his old preferred
+  (63) second. FM Lens also shows formation ids, not names.
+- FM's "in N days" counts the day itself: 21 Dec from 12 Dec reads 10 days, and
+  23 Jan from 11 Dec reads 44.
+- `fmlens-probe injuries 602` stops at Gabriel with an invalid address;
+  `heal UID` reads each player.
+
+Not checked: a day after the manager move, a save and reload, moving the human
+manager to a women's team (the club picker lists them), and FM's own view of a
+nation's style ratings.
+
+## Formations in and out of possession (#73 reworked, 6 November 2026)
+
+Same `FM Lens Batch 2026-11-05.fm` copy, from 11 to 12 Dec 2027 (a holiday of 1
+day). FM Lens built from `feat/staff-formations` (f44977e), which edits +0xDF and
++0xE3 instead of +0xDF and +0xE0. Nothing was saved; FM's process was ended
+without saving. The hashes of the main career and the copy were checked before
+and after (OK both times).
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Out of possession of 4 managers | - | Arteta 22, Simeone 22, Glasner 63, Gasperini 30 | Down-arrow line on 11 Dec (run above): 4-4-2 2DM, 4-4-2 2DM, 5-2-2-1 DM AM, 5-3-2 DM WB |
+| Choices for Glasner's out of possession | 4, 7, 22, 27, 30, 32, 33, 35, 63, 64 | - | - |
+| Glasner out of possession 63 -> 22 | Applied: "It shows in FM after you press Continue" | 63 / 22, same after the day | 12 Dec: up arrow "5-2-2-1 DM AM", down arrow "4-4-2 2DM" |
+
+Findings:
+
+- +0xE3 is the formation FM's profile shows without the ball, and an edit shows
+  a day later with the in-possession line unchanged.
+- 22 is 4-4-2 2DM and 30 is 5-3-2 DM WB.

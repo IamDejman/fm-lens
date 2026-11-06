@@ -19,6 +19,7 @@ import type {
   MassOperation,
   MassPreview,
   MassReport,
+  ManagerPreview,
   MovePreview,
   MoveTerms,
   Nation,
@@ -269,6 +270,12 @@ export const planStaffMove = (uid: number, club: number) => call<MovePreview>("p
 /** Moves the member of staff to the club, in the departments he works in; logged and undone like any change. */
 export const moveStaff = (uid: number, club: number) => call<LoggedChange>("move_staff", { uid, club });
 
+/** Checks the human manager can be made the manager of the club, and names who it dismisses. Nothing is written. */
+export const planManagerMove = (uid: number, club: number) => call<ManagerPreview>("plan_manager_move", { uid, club });
+
+/** Has the game make the human manager the club's manager, as its own editor does; logged, with no undo. */
+export const moveManager = (uid: number, club: number) => call<LoggedChange>("move_manager", { uid, club });
+
 /** Gives the member of staff another job at his club (a contract code); logged and undone like any change. */
 export const changeStaffJob = (uid: number, job: number) => call<LoggedChange>("change_staff_job", { uid, job });
 
@@ -293,6 +300,14 @@ export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("s
  * field `injuries` from how many he had to 0, and undone as one; fails when he has none.
  */
 export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { uid });
+/** Makes the injury `index` of the player `uid` last `days` days from when it began, at the most: 1 to 730. */
+export const changeInjury = (uid: number, index: number, days: number) =>
+  call<LoggedChange>("change_injury", { uid, index, days });
+/** Takes the injury `index` out of the list of the player `uid`; his others stay. */
+export const removeInjury = (uid: number, index: number) => call<LoggedChange>("remove_injury", { uid, index });
+
+/** Closes the open promise at `index` in the promises of the player `uid`. */
+export const closePromise = (uid: number, index: number) => call<LoggedChange>("close_promise", { uid, index });
 
 /** The kinds of injury the game knows, in its order. */
 export const injuryKinds = () => call<InjuryKind[]>("injury_kinds");

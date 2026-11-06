@@ -25,6 +25,13 @@ export function fieldName(dict: Strings, key: string): string {
       const position = own(dict.positions, name);
       return position === undefined ? key : dict.edit.positionRating(position);
     }
+    case "style":
+      return own(dict.nationStyle, name) ?? key;
+    case "women": {
+      const [, part, style = ""] = key.split(".");
+      const label = part === "style" ? own(dict.nationStyle, style) : undefined;
+      return label === undefined ? key : dict.edit.womenStyle(label);
+    }
     default:
       return key;
   }

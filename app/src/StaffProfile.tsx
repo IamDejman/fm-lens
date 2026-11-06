@@ -3,7 +3,15 @@ import { EditableValue, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
 import { changeStaffJob, staffJobs } from "./editing";
 import { describeError } from "./format";
-import { editText, fieldLabel, jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
+import {
+  choiceLabel,
+  editText,
+  fieldLabel,
+  jobLabel,
+  profileText,
+  STAFF_ATTRIBUTE_LABELS,
+  type StaffAttributeKey,
+} from "./labels";
 import { MoveButton } from "./MoveDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -33,6 +41,12 @@ const KNOWLEDGE: StaffAttributeKey[] = [
   "data_analysis", "judging_ability", "judging_potential", "judging_staff", "negotiating", "tactical_knowledge",
 ];
 const MEDICAL: StaffAttributeKey[] = ["physiotherapy", "sports_science"];
+
+/** His preferred formations in possession and out of possession, as the editor keys them. */
+const FORMATION_FIELDS = ["formation.in_possession", "formation.out_of_possession"] as const;
+
+/** A formation id as the profile shows it: "-" for none. */
+const formationText = (field: string, id: number) => (id === 0 ? "-" : choiceLabel(field, id));
 
 /** The game stores these two as shown (1–20); every other attribute is stored as 0–100. */
 const STORED_AS_SHOWN = new Set<string>(["working_with_youngsters", "authority"]);
@@ -93,6 +107,7 @@ interface StaffProfileProps {
 export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
   const loaded = useProfileDetails<StaffDetails>("staff_details", member.uid, version);
   const editing = useProfileEditing("staff", member.uid);
+  const { gameActions } = useContext(EditorContext);
   const details = loaded?.details;
   const info: StaffSummary = details ?? member;
   const vitals = [info.dateOfBirth && <Born dateOfBirth={info.dateOfBirth} age={info.age} />, `${profileText.id} ${info.uid}`];
@@ -122,13 +137,13 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
       onClose={onClose}
       editing={editing}
       actions={
-        // Only while the profile is read, not edited, and for someone with a club to leave who is not you.
+        // Only while the profile is read, not edited: for someone with a club to leave who is not you, and for you
+        // where the game can make you another club's manager, with a club or without.
         editing.editable &&
         editing.stage === "view" &&
-        info.club !== null &&
-        !info.isHuman && (
+        (info.isHuman ? gameActions.moveManager : info.club !== null) && (
           <MoveButton
-            kind="staff"
+            kind={info.isHuman ? "manager" : "staff"}
             player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
             contract={null}
             ready={details !== undefined}
@@ -177,6 +192,18 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
                       {profileText.licenceName(details.coachingLicence)}
                     </EditableValue>
                   </Fact>
+                </dl>
+              </section>
+            )}
+            {details.formations !== null && (
+              <section className="profile-group">
+                <h3>{profileText.formations}</h3>
+                <dl className="stats">
+                  {FORMATION_FIELDS.map((field, n) => (
+                    <Fact key={field} label={fieldLabel("staff", field)}>
+                      <EditableValue field={field}>{formationText(field, details.formations?.[n] ?? 0)}</EditableValue>
+                    </Fact>
+                  ))}
                 </dl>
               </section>
             )}
