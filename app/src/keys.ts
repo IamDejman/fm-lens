@@ -1,7 +1,7 @@
 // The app's keyboard shortcuts: Command on a Mac, Control elsewhere. ⌘1 to ⌘9 open the sections, ⌘F goes to the
 // search box of the open list, ⌘S applies the edits of the profile being edited.
 
-const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+export const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 /** Whether `event` is Command (Control off a Mac) with `key` and no other modifier. */
 export function isShortcut(event: KeyboardEvent, key: string): boolean {
