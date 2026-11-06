@@ -117,7 +117,7 @@ export function PositionRatings({ ratings }: { ratings: Record<string, number> }
             <div className="stat" key={key} title={profileText.positionTooltip(label, value, profileText.positionTiers[tier])}>
               <dt>{label}</dt>
               <dd className="position-rating">
-                <EditableValue field={`position.${key}`}>
+                <EditableValue field={`position.${key}`} hint={false}>
                   <span className={`swatch pos-${tier}`} aria-hidden="true" />
                   {value}
                 </EditableValue>

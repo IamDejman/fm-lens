@@ -1,5 +1,5 @@
 import { Fragment, useContext, useEffect, useId, useState, type ReactNode } from "react";
-import { EditableValue } from "./EditControls";
+import { EditableValue, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
 import { changeStaffJob, staffJobs } from "./editing";
 import { describeError } from "./format";
@@ -150,6 +150,8 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
       {details.isHuman && (details.unsackable !== null || details.registrationAnytime !== null) && (
         <ManagerGroup unsackable={details.unsackable} registrationAnytime={details.registrationAnytime} />
       )}
+      {/* Attributes and personality all take 1 to 20: one hint says it for all of them. */}
+      <SharedRangeHint field="attribute.determination" />
       <div className="profile-pair">
         <div className="profile-columns">
           <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />

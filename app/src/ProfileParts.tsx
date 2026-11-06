@@ -1,7 +1,7 @@
 import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
-import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput } from "./EditControls";
+import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput, SharedRangeHint } from "./EditControls";
 import { converts } from "./currency";
 import { describeError, formatDate, formatMoney, formatNumber } from "./format";
 import { isShortcut } from "./keys";
@@ -361,7 +361,8 @@ function RatingItem({ row }: { row: RatingRow }) {
       <dt>{row.label}</dt>
       {editing && row.field ? (
         <dd className="edit-cell">
-          <EditInput field={row.field} />
+          {/* Ratings all take 1 to 20, which one hint says for the profile (see `SharedRangeHint`). */}
+          <EditInput field={row.field} hint={false} />
         </dd>
       ) : (
         <dd className={`${row.value === undefined ? "value" : `value ${tierClass(row.value, row.lowerIsBetter)}`}${applied ? " edit-applied" : ""}`}>
@@ -376,10 +377,13 @@ function RatingItem({ row }: { row: RatingRow }) {
   );
 }
 
-export function RatingGroup({ title, rows }: { title: string; rows: RatingRow[] }) {
+/** A heading over ratings; `hint`: the range their inputs take is said under it, where no other hint says it. */
+export function RatingGroup({ title, rows, hint = false }: { title: string; rows: RatingRow[]; hint?: boolean }) {
+  const shared = hint ? rows.find((row) => row.field !== undefined)?.field : undefined;
   return (
     <section className="profile-group">
       <h3>{title}</h3>
+      {shared !== undefined && <SharedRangeHint field={shared} />}
       <RatingList rows={rows} />
     </section>
   );
