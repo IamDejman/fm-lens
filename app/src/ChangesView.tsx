@@ -490,8 +490,8 @@ function captaincyNotes({ captaincy, field }: LoggedChange): string[] {
 }
 
 /**
- * One side of a change to a player's tie or a person's preference: the nation, club or person, and a training's rule
- * or a preference's strength; "None" for none.
+ * One side of a change to a player's tie or a person's preference or language: the nation, club, person or language,
+ * and a training's rule, a preference's strength or a language's level; "None" for none.
  */
 function tieEnd(end: TieEnd | null): string {
   if (end === null) {
@@ -500,7 +500,7 @@ function tieEnd(end: TieEnd | null): string {
   if (end.rule !== null) {
     return `${end.name} · ${ruleLabel(end.rule)}`;
   }
-  return end.strength === undefined ? end.name : `${end.name} · ${formatNumber(end.strength)}`;
+  return end.value === undefined ? end.name : `${end.name} · ${formatNumber(end.value)}`;
 }
 
 /** One side of a change to a contract clause: its name, what it depends on and its amount; "None" for no clause. */

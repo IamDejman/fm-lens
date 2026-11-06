@@ -153,6 +153,21 @@ pointing one at another target waits until an FM session establishes bytes
 `0x08` and `0x0D` and how a person target is stored. Neither write has been
 checked in FM yet.
 
+## Languages (level and removal, unverified)
+
+A person's languages (player `+0x338`, staff `+0x1B8`, the human manager's
+shifted `0x340`) are a list of pointers to 16-byte links, each a pointer to the
+language and a `u64` level from 0 to 10 (see recon/fm27-person-extras.md; levels
+1 to 10 were seen). Player and staff profiles have a Change dialog that writes a
+level from 1 to 10 over the link's, with its expected value, or removes a
+language as a tie is removed: the pointers after it move up, the list's end
+moves back and the freed slot is cleared. The link is left where it is, so an
+undo can point at it again. Both are logged in Changes and undone there. Adding
+a language needs a new link, which the editor does not allocate.
+
+Not yet checked in FM: that its Personal page shows the new level or the removal,
+and that both survive a save and reload.
+
 ## Human manager: unsackable flag (experimental, persistence tested)
 
 Implemented `manager.unsackable` from a static trace of the ARM64 plugin of FM27

@@ -193,25 +193,25 @@ pub struct RelationSet {
     patches: Vec<Patch>,
 }
 
-/// Whose preferences: a player's, or a member of staff's, the human manager's included.
+/// A person whose lists the editor changes: a player, or a member of staff, the human manager included.
 #[derive(Debug, Clone, Copy)]
-pub enum PreferenceOwner<'a> {
+pub enum PersonRef<'a> {
     Player(&'a PlayerSummary),
     Staff(&'a StaffSummary),
 }
 
-impl PreferenceOwner<'_> {
-    fn uid(&self) -> u32 {
+impl PersonRef<'_> {
+    pub(crate) fn uid(&self) -> u32 {
         match self {
-            PreferenceOwner::Player(player) => player.uid,
-            PreferenceOwner::Staff(member) => member.uid,
+            PersonRef::Player(player) => player.uid,
+            PersonRef::Staff(member) => member.uid,
         }
     }
 
-    fn entity(&self) -> Entity {
+    pub(crate) fn entity(&self) -> Entity {
         match self {
-            PreferenceOwner::Player(_) => Entity::Player,
-            PreferenceOwner::Staff(_) => Entity::Staff,
+            PersonRef::Player(_) => Entity::Player,
+            PersonRef::Staff(_) => Entity::Staff,
         }
     }
 }
@@ -408,7 +408,7 @@ impl Session {
         let list = self.relation_list(player)?.ok_or(MoveError::NoRelation { index })?;
         let before = list.entries.get(index).and_then(|entry| self.tie_at(index, entry));
         let before = before.ok_or(MoveError::NoRelation { index })?;
-        let patches = self.removal(&list, index);
+        let patches = removal(list.header, list.begin, &list.entries, index);
         Ok(RelationPlan { player: player.uid, before: Some(before), after: None, patches })
     }
 
@@ -416,7 +416,7 @@ impl Session {
     /// written.
     pub fn plan_preference_strength(
         &self,
-        owner: PreferenceOwner,
+        owner: PersonRef,
         index: usize,
         strength: i8,
     ) -> Result<PreferencePlan, MoveError> {
@@ -439,9 +439,9 @@ impl Session {
 
     /// Works out taking the preference at `index` out of the list of `owner`: the entries after it move up one.
     /// Nothing is written.
-    pub fn plan_preference_removal(&self, owner: PreferenceOwner, index: usize) -> Result<PreferencePlan, MoveError> {
+    pub fn plan_preference_removal(&self, owner: PersonRef, index: usize) -> Result<PreferencePlan, MoveError> {
         let (list, before) = self.preference_in(owner, index)?;
-        let patches = self.removal(&list, index);
+        let patches = removal(list.header, list.begin, &list.entries, index);
         Ok(PreferencePlan { entity: owner.entity(), person: owner.uid(), before, after: None, patches })
     }
 
@@ -459,28 +459,15 @@ impl Session {
     }
 
     /// The list of relations of `owner` and the preference at `index` in it.
-    fn preference_in(&self, owner: PreferenceOwner, index: usize) -> Result<(RelationList, Preference), MoveError> {
+    fn preference_in(&self, owner: PersonRef, index: usize) -> Result<(RelationList, Preference), MoveError> {
         let list = match owner {
-            PreferenceOwner::Player(player) => self.relation_list(player)?,
-            PreferenceOwner::Staff(member) => self.staff_relation_list(member)?,
+            PersonRef::Player(player) => self.relation_list(player)?,
+            PersonRef::Staff(member) => self.staff_relation_list(member)?,
         };
-        let list = list.ok_or(MoveError::NoRelation { index })?;
+        let list = list.ok_or(MoveError::NotInList { index })?;
         let before = list.entries.get(index).and_then(|entry| self.preference_at(index, entry));
-        let before = before.ok_or(MoveError::NoRelation { index })?;
+        let before = before.ok_or(MoveError::NotInList { index })?;
         Ok((list, before))
-    }
-
-    /// The writes that take the entry at `index` out of `list`. As in a squad list: the list repeats its last entry for
-    /// a moment, then ends one earlier and clears it.
-    fn removal(&self, list: &RelationList, index: usize) -> Vec<Patch> {
-        let size = self.layout.relation.size;
-        let entries = &list.entries;
-        let last = entries.len() - 1;
-        let mut patches = Patches::default();
-        patches.push(list.begin + index as u64 * size, entries[index..last].concat(), entries[index + 1..].concat());
-        patches.push(list.header + 8, list.end.to_le_bytes(), (list.end - size).to_le_bytes());
-        patches.push(list.begin + last as u64 * size, entries[last].clone(), vec![0; size as usize]);
-        patches.0
     }
 
     /// Works out adding a tie of `tie` to `target` to the list of `player`, with the homegrown rule `rule` for a
@@ -686,4 +673,41 @@ impl Session {
 /// Whether two ties say the same: the same kind, to the same nation or club, under the same rule.
 fn same(a: &Relation, b: &Relation) -> bool {
     a.tie == b.tie && a.target == b.target && a.rule == b.rule
+}
+
+/// The writes that take the entry at `index` out of the `(begin, end, capacity)` list whose header is at `header`, its
+/// entries `entries` from `begin`. As in a squad list: the list repeats its last entry for a moment, then ends one
+/// earlier and clears it.
+pub(crate) fn removal(header: u64, begin: u64, entries: &[Vec<u8>], index: usize) -> Vec<Patch> {
+    let size = entries[index].len() as u64;
+    let last = entries.len() - 1;
+    let end = begin + entries.len() as u64 * size;
+    let mut patches = Patches::default();
+    patches.push(begin + index as u64 * size, entries[index..last].concat(), entries[index + 1..].concat());
+    patches.push(header + 8, end.to_le_bytes(), (end - size).to_le_bytes());
+    patches.push(begin + last as u64 * size, entries[last].clone(), vec![0; size as usize]);
+    patches.0
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn removal_moves_the_later_entries_up_and_clears_the_last() {
+        let entries = vec![vec![1u8; 8], vec![2; 8], vec![3; 8]];
+        let (end, shorter) = (0x1018u64.to_le_bytes(), 0x1010u64.to_le_bytes());
+
+        let mut first = Patches::default();
+        first.push(0x1000, [[1u8; 8], [2; 8]].concat(), [[2u8; 8], [3; 8]].concat());
+        first.push(0x108, end, shorter);
+        first.push(0x1010, [3u8; 8], [0u8; 8]);
+        assert_eq!(removal(0x100, 0x1000, &entries, 0), first.0);
+
+        // The last entry: nothing moves up.
+        let mut last = Patches::default();
+        last.push(0x108, end, shorter);
+        last.push(0x1010, [3u8; 8], [0u8; 8]);
+        assert_eq!(removal(0x100, 0x1000, &entries, 2), last.0);
+    }
 }
