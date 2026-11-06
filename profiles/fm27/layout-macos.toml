@@ -153,17 +153,18 @@ class = "N2db13LOAN_CONTRACTE"
 # unset date (1 January 1900) right after loading a save: the build profiles name the date
 # itself, a variable of its own away from the arrays.
 [work_permit]
-# TRANSFER_MANAGER keeps a record per player and nation that needs a permit, 0x18 bytes each: the nation's
-# pointer, the player's id (+0x08), the year the record was made (+0x10), the date it was granted (+0x12, unset
-# 1 Jan 1900) and flags (+0x16, bit 0 granted). Read on 11 Dec 2027: 1,045 records, all for England, 25 granted,
-# which is also the length of the manager's list of granted ones at +0x780. The manager is found through the build
-# profile's transfer_manager.
+# TRANSFER_MANAGER keeps a record per player and nation he holds a work permit for, 0x18 bytes each: the nation's
+# pointer, the player's id (+0x08), the year the record was made (+0x10), the day his ESC slot began (+0x12, unset
+# 1 Jan 1900) and flags (+0x16, bit 0 an ESC slot: FM's one-year exception for an under-23, not a permit). FM shows
+# a record without the flag as an active work permit, and no record as none. Read on 11 Dec 2027: 1,045 records,
+# all for England, 25 ESC slots, which is also the length of the manager's list of them at +0x780. The manager is
+# found through the build profile's transfer_manager.
 class = "16TRANSFER_MANAGER"
 records = 0x720          # (begin, end) of pointers to the records, sorted by player id
 person = 0x390           # u32 player id, in the identity block (identity + 8)
 record_size = 0x18
 record_person = 0x08
-record_granted_on = 0x12
+record_esc_since = 0x12
 record_flags = 0x16
 
 # Competitions (db::COMP, 0x1B0 bytes each) and awards (db::AWARD, 0xA0), as their database tables list them: the

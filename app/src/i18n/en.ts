@@ -459,7 +459,7 @@ export const en = {
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
-    // A work permit FM granted or took away, which the change log keeps as 0 (not granted) or 1 (granted).
+    // A work permit FM gave or took away, which the change log keeps as 0 (none) or 1 (held).
     work_permit: "Work permit",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
     bans: "Bans",
@@ -565,12 +565,12 @@ export const en = {
     loanWage: "Borrower pays per week",
     loanStarts: "Loan began",
     loanEnds: "Loan ends",
-    /** A player's work permits, one per nation the game keeps a record of him for: granted on a date, or not. */
+    /** A player's work permits, one per nation he holds one for: active, or an ESC slot (FM's name) from a day. */
     workPermit: "Work permit",
-    permitGranted: (date: string) => `Granted ${date}`,
-    permitNotGranted: "Not granted",
-    permitGrantedPlain: "Granted",
-    /** Has FM grant him a work permit for his club's country, or take it away. */
+    permitActive: "Active",
+    permitEsc: (date: string) => `ESC slot since ${date}`,
+    permitNone: "None",
+    /** Has FM give him a work permit for his club's country, or take his away. */
     grantPermit: "Grant",
     revokePermit: "Revoke",
     joined: "Joined",

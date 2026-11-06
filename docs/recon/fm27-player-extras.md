@@ -83,28 +83,33 @@ Status: found, live-verified.
 
 Where. TRANSFER_MANAGER singleton: pointer in a global at game_plugin+0x56a49f8 (vtable 0x55f9988
 "16TRANSFER_MANAGER"). At manager +0x720 is a vector (begin, end) of pointers to 0x18-byte permit records,
-sorted by the u32 at record +8. 1045 records were present. At manager +0x780 is a vector of the granted
-records (25 entries, equal to the count of records with flag 1).
+sorted by the u32 at record +8. 1045 records were present. A record means the player holds a work permit for
+that nation: FM shows "Active work permit" until his contract ends. At manager +0x780 is a vector of the records
+that are ESC slots (25 entries, equal to the count of records with flag 1).
 
 Record layout:
 - +0x00 pointer to the db NATION (nation id at +8, nation UID at +0x0C)
 - +0x08 u32 person id (matches player +0x390 for 1006 of 1045)
 - +0x0C u16 a, +0x0E u16 b (accumulators, meaning unknown, start 0; likely the British score inputs)
 - +0x10 u16 year created
-- +0x12 FmDate grant date (1/1/1900 unset)
-- +0x16 u8 flag, bit 0 = granted
+- +0x12 FmDate the day the ESC slot began (1/1/1900 unset)
+- +0x16 u8 flag, bit 0 = ESC slot (Elite Significant Contribution: FM's one-year exception for an under-23)
 
 Evidence. Flag-1 records seen for Collins Sichenje (Kenya, Charlton), Mees Rijks (Netherlands, Bristol Rovers),
 Benony Breki Andresson (Iceland, Stockport).
 
-Values to check in FM: those three players, Contract or Transfer info: work permit status "Has work permit".
+Checked in FM on 15 Dec 2027: a flag-1 record shows as an ESC slot, a flag-0 record as "Active work permit,
+Until <contract end>".
 
 Editing. Use FM's functions, not raw flag writes, because the granted list at +0x780 must stay in step:
-- set/grant: 0x2d85294(manager, player, team, w3 force, w4 grant). w4=1 sets flag bit 0 and the date to now.
-  w4=0 clears the flag, resets the date and removes the record from the +0x780 list.
+- give: 0x2d85294(manager, player, team, w3 force, w4 esc). It makes the record where there is none. w4=1 makes
+  it an ESC slot dated today and adds it to +0x780; w4=0 clears the flag, resets the date and takes it off +0x780,
+  so the record stays as a work permit. With w3=0 it acts only where the rules say he needs a permit (the gate at
+  game_plugin+0x56d499a and the rules check); w3=1 skips the gate. FM's editor gives with (0, 0).
 - create record: 0x2d8427c(manager, player, team, w3, w4 grant).
 - lookup: 0x2ddd12c(manager, player, team) returns an index into the +0x720 vector or -1.
-- remove record: 0x2dc0210(manager, player, record).
+- remove record: 0x2dc0210(manager, player, record). Takes it off +0x780 and +0x720 and frees it. FM's editor
+  removes a permit with the lookup, then this.
 Editor handlers `add_work_permit` 0x238f2b8 and `remove_work_permit` 0x238f3d8 show the call shape and read the
 manager from the global at +0x56a49f8. Daily steps: CALCULATING_BRITISH_WORK_PERMIT_SCORES and
 PROCESSING_WORK_PERMIT_DECISION_DATES. Rules: work_permit_rules, work_permit_days_to_wait, work_permit_cost.
