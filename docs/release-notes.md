@@ -1,5 +1,5 @@
 ## What's new
 
-- Report a problem opens in FM Lens, at the foot of the window. Say what happened and press Send.
-- Check for Updates… is in the FM Lens menu.
-- Shorter, plainer text across the app, the move dialogs included.
+- On Apple Silicon, Apply and Undo now refresh FM’s attribute panels and contract expiry header without pressing Continue. Other panels have not all been checked.
+
+Restart FM once after updating to load the new helper.

@@ -1378,6 +1378,10 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.7": [
+        "En Apple Silicon, Aplicar y Deshacer actualizan los atributos y la fecha de fin de contrato en FM sin pulsar Continuar.",
+        "Reinicia FM una vez tras actualizar para cargar el nuevo asistente.",
+      ],
       "0.5.6": [
         "Informar de un problema se abre en FM Lens, al pie de la ventana. Cuenta qué pasó y pulsa Enviar.",
         "Buscar actualizaciones… está en el menú FM Lens.",
