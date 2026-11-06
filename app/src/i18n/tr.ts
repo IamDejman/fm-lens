@@ -548,6 +548,8 @@ export const tr: Strings = {
     "contract.loan_listed": "Kiralık listesinde",
     "contract.job": "Görev",
     coaching_licence: "Antrenörlük lisansı",
+    "formation.in_possession": "Topa sahipken",
+    "formation.out_of_possession": "Topa sahip değilken",
     "manager.unsackable": "Kovulamaz (deneysel)",
     "manager.registration_anytime": "Kadroyu her zaman kaydet (deneysel)",
     "tie.nationality": "İkinci uyruk",
@@ -672,6 +674,7 @@ export const tr: Strings = {
     squadStatus: "Forma süresi",
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Durum ${status}`,
     qualifications: "Yeterlilikler",
+    formations: "Dizilişler",
     coachingLicence: "Antrenörlük lisansı",
     licenceName: (level: number): string =>
       ({

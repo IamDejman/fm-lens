@@ -318,6 +318,8 @@ export interface StaffDetails extends StaffSummary {
   preferences: Preference[];
   /** 1 to 8, or 0 for none; null where the build does not place it. */
   coachingLicence: number | null;
+  /** His preferred formation ids in and out of possession, 0 for none; null where the build does not place them. */
+  formations: [number, number] | null;
 }
 
 export interface FmDate {
