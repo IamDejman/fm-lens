@@ -5,18 +5,27 @@
 //
 // Ending a loan early is the same dialog: where the game ends loans itself on this version, a loaned player's profile
 // has End loan, which sends him back to his own club, and one undo starts the loan again.
+//
+// So is cancelling a move FM agreed for a later day: a player with one has Cancel transfer, which has the game cancel
+// it as its own editor does. Nothing undoes that.
 
 import { useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { endLoan, planEndLoan, planRelease, releasePlayer } from "./editing";
-import { describeError } from "./format";
-import { endLoanText, releaseText } from "./labels";
-import type { LoggedChange } from "./types";
+import {
+  cancelFutureTransfers,
+  endLoan,
+  planCancelFutureTransfers,
+  planEndLoan,
+  planRelease,
+  releasePlayer,
+} from "./editing";
+import { describeError, formatDate } from "./format";
+import { cancelTransferText, endLoanText, profileText, releaseText } from "./labels";
 import { ClubLine } from "./MoveDialog";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
 
-/** The player the dialog releases, and the club he is at. */
+/** The player the dialog releases, and the club he is at (for Cancel transfer, the club he was to join). */
 interface ReleasingPlayer {
   uid: number;
   name: string;
@@ -40,9 +49,19 @@ const ENDINGS = {
     plan: (uid: number) => planEndLoan(uid).then(({ from, to }) => endLoanText.ready(from.name, to.name)),
     make: endLoan,
   },
+  cancelTransfer: {
+    text: { ...cancelTransferText, act: cancelTransferText.confirm, busy: cancelTransferText.cancelling },
+    plan: (uid: number) =>
+      planCancelFutureTransfers(uid).then((transfers) =>
+        cancelTransferText.ready(
+          transfers.map((transfer) => formatDate(transfer.joins) || profileText.none).join(", "),
+        ),
+      ),
+    make: cancelFutureTransfers,
+  },
 } satisfies Record<
   string,
-  { text: object; plan: (uid: number) => Promise<string>; make: (uid: number) => Promise<LoggedChange> }
+  { text: object; plan: (uid: number) => Promise<string>; make: (uid: number) => Promise<unknown> }
 >;
 
 type Ending = keyof typeof ENDINGS;
@@ -55,6 +74,14 @@ export function ReleaseButton({ player }: { player: ReleasingPlayer }) {
 /** The End loan button of a loaned player's profile, and the dialog it opens. */
 export function EndLoanButton({ player }: { player: ReleasingPlayer }) {
   return <EndingButton ending="endLoan" player={player} />;
+}
+
+/**
+ * The Cancel transfer button of the profile of a player FM agreed a move for on a later day; `player.club` is the club
+ * he was to join.
+ */
+export function CancelTransferButton({ player }: { player: ReleasingPlayer }) {
+  return <EndingButton ending="cancelTransfer" player={player} />;
 }
 
 function EndingButton({ ending, player }: { ending: Ending; player: ReleasingPlayer }) {

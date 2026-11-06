@@ -12,6 +12,7 @@ import type {
   FieldEdit,
   FieldValues,
   FmDate,
+  FutureTransfer,
   InjuryKind,
   LoggedChange,
   MassFilters,
@@ -312,6 +313,13 @@ export const planEndLoan = (uid: number) => call<MovePreview>("plan_end_loan", {
 
 /** Has the game end the player's loan today: he goes back to his own club. */
 export const endLoan = (uid: number) => call<LoggedChange>("end_loan", { uid });
+
+/** The moves FM agreed for the player on a later day, as cancelling them finds them; rejects when they cannot be. */
+export const planCancelFutureTransfers = (uid: number) =>
+  call<FutureTransfer[]>("plan_cancel_future_transfers", { uid });
+
+/** Has the game cancel every move it agreed for the player on a later day. Nothing undoes it. */
+export const cancelFutureTransfers = (uid: number) => call<LoggedChange[]>("cancel_future_transfers", { uid });
 
 /** Has the game sign the free agent for the senior team of `club` on its own terms; `terms` then replace them. */
 export const signFreeAgent = (uid: number, club: number, terms: MoveTerms) =>

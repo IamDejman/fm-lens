@@ -518,6 +518,7 @@ mod tests {
             clause_room: 0,
             loan: None,
             work_permits: Vec::new(),
+            future_transfers: Vec::new(),
         }
     }
 

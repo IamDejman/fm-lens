@@ -168,6 +168,25 @@ a language needs a new link, which the editor does not allocate.
 Not yet checked in FM: that its Personal page shows the new level or the removal,
 and that both survive a save and reload.
 
+## Future transfers (listing and cancel, unverified)
+
+A player's profile lists the moves FM agreed for him on a later day: each dated
+record of the transfer manager (`+0x50`) that names him, as his identity block or
+as a stand-in FM has not looked up yet, whose offer still waits for its day
+(status `0x13`). It shows the club he joins (the offer's `+0x40` team) and the
+day (the record's `+0x08`). Cancel transfer, beside Transfer, has the game cancel
+all of them as its own editor does: for each offer, `cancel_offer` for the team
+he joins (kind 2), else the one he leaves (kind 0), then `drop_dated_transfer`.
+The game drops the first dated record of his, not the offer's, so all go
+together. The read-back checks that none of the offers waits any more and no
+record of them is left. Each cancel is logged in Changes; nothing undoes it.
+See recon/fm27-future-transfers.md.
+
+Not yet checked in FM: a club-to-club deal and a loan agreed for a later day
+listed with the right club and day; the cancel leaving him at his club on his
+contract, with FM's arranged-transfer badge gone; both clubs' budgets before and
+after; FM's news; a player with two pending deals; and a save and reload.
+
 ## Human manager: unsackable flag (experimental, persistence tested)
 
 Implemented `manager.unsackable` from a static trace of the ARM64 plugin of FM27

@@ -196,6 +196,7 @@ const errors: ErrorTexts = {
   "app.dataChanged": () => `Bu veriler oyunda değişti; ${reload}.`,
   "app.noChange": (p) => `${p.id} numaralı bir değişiklik yok.`,
   "app.alreadyUndone": () => "Bu değişiklik zaten geri alındı.",
+  "app.permanent": () => "Bu değişiklik geri alınamaz.",
   "app.earlierGame": () => "Bu değişiklik FM kapanmadan ya da bir kayıt yüklenmeden önce yapıldı; artık geri alınamaz.",
   "export.failed": (p) => `Dosya yazılamadı: ${p.reason}`,
   "export.notAllowed": (p) =>
@@ -524,6 +525,7 @@ export const tr: Strings = {
     "loan.wage": "Kiralayan kulübün ödediği maaş",
     "loan.ends": "Kiralık bitişi",
     "transfer.joins": "Katılış tarihi",
+    future_transfer: "Anlaşılmış transfer",
     loan: "Kiralık",
     "contract.squad_number": "Forma numarası",
     "contract.squad_status": "Forma süresi",
@@ -640,6 +642,9 @@ export const tr: Strings = {
     loanStarts: "Kiralık başlangıcı",
     loanEnds: "Kiralık bitişi",
     loanFutureFee: "Gelecek bonservis bedeli",
+    futureTransfer: "Anlaşılmış transfer",
+    futureClub: "Kulüp",
+    futureJoins: "Katılış tarihi",
     workPermit: "Çalışma izni",
     permitActive: "Aktif",
     permitEsc: (date: string) => `${date} tarihinden beri ESC kontenjanı`,
@@ -1871,6 +1876,25 @@ export const tr: Strings = {
     end: "Kiralığı bitir",
     ending: "Bitiriliyor…",
     cancel: "İptal",
+  },
+
+  cancelTransfer: {
+    button: "Transferi iptal et",
+    buttonTitle: "FM'in ileri bir tarih için anlaştığı transferi iptal et.",
+
+    // The dialog
+    title: "Transferi iptal et",
+    from: "Katılacağı kulüp",
+    checking: "Transfer kontrol ediliyor…",
+    ready: (dates) => `Tarih: ${dates}`,
+    doesHeading: "Ne olur",
+    does: ["FM anlaşmayı kendi editörü gibi kendisi iptal eder", "Oyuncu olduğu yerde kalır", "Geri alınamaz"],
+
+    // The foot
+    hint: "Transferi iptal et'e basana kadar FM'de hiçbir şey değişmez.",
+    confirm: "Transferi iptal et",
+    cancelling: "İptal ediliyor…",
+    cancel: "Vazgeç",
   },
 
   squad: {
