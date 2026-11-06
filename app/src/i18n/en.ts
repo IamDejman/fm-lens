@@ -392,6 +392,22 @@ export const en = {
     corporate: "Corporate",
   },
 
+  /** A nation's style ratings, 0 to 20, in the order the profile lists them. */
+  nationStyle: {
+    depth: "Depth",
+    directness: "Directness",
+    flamboyancy: "Flamboyancy",
+    flexibility: "Flexibility",
+    free_roles: "Free Roles",
+    marking: "Marking",
+    offside: "Offside",
+    pressing: "Pressing",
+    sitting_back: "Sitting Back",
+    tempo: "Tempo",
+    playmaker: "Use of Playmaker",
+    width: "Width",
+  },
+
   supporterTraits: {
     loyalty: "Loyalty",
     passion: "Passion",
@@ -475,6 +491,8 @@ export const en = {
     // A member of staff's job, which the change log keeps as a change of its code.
     "contract.job": "Job",
     coaching_licence: "Coaching licence",
+    "formation.in_possession": "In possession",
+    "formation.out_of_possession": "Out of possession",
     "manager.unsackable": "Unsackable (experimental)",
     "manager.registration_anytime": "Register squad any time (experimental)",
     // A player's ties, which the change log keeps as changes of the nation or club (see `ties`).
@@ -494,10 +512,14 @@ export const en = {
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
+    // One injury made longer or shorter, or taken out, which the change log keeps as a change of its days.
+    injury: "Injury",
     // A work permit FM gave or took away, which the change log keeps as 0 (none) or 1 (held).
     work_permit: "Work permit",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
     bans: "Bans",
+    // Closing a promise, which the change log keeps as a change of the player's promise.
+    promise: "Promise",
     // Max cohesion, which the change log keeps as a change of the player's familiarity with his club (0 to 100).
     cohesion: "Club familiarity",
     // Max tactics, which the change log keeps as a change of the player's familiarity with the team's tactic (0 to 100).
@@ -625,6 +647,7 @@ export const en = {
     squadStatusName: (status: number) => SQUAD_STATUSES[status] ?? `Status ${status}`,
     /** A member of staff's coaching licence: 0 none, 1 to 8 FM's levels. */
     qualifications: "Qualifications",
+    formations: "Formations",
     coachingLicence: "Coaching licence",
     licenceName: (level: number): string =>
       ({
@@ -676,7 +699,7 @@ export const en = {
     keepPlaying: "Prevent retirement",
     keepingPlaying: "Preventing…",
     keepPlayingTitle:
-      "Cancels his retirement and swaps “Will retire at top” for “Will play football as long as possible”. You can undo it in Changes.",
+      "Cancels his retirement. You can undo it in Changes.",
 
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
     /** A player's morale, 1–20. */
@@ -732,7 +755,7 @@ export const en = {
     },
     moraleTitle: "In FM: 10 is content, 11 slightly happy, 15 and 20 extremely happy.",
     /** Hover text of jadedness, which the profile shows as stored. */
-    jadednessTitle: "How tired he is from playing. -500 is fully rested. The higher it is, the more he needs a rest.",
+    jadednessTitle: "How tired he is. -500 is fully rested.",
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
@@ -752,6 +775,14 @@ export const en = {
     /** Lifts every ban of the player at once. */
     liftBans: "Lift",
     liftBansTitle: "Lift all his bans",
+    /** The group of the promises made to a player; FM's own names for them are in its language files only. */
+    promises: "Promises",
+    promiseName: (id: number) => `Promise ${id}`,
+    promiseMade: (date: string) => `Made ${date}`,
+    promiseDue: (date: string) => `Due ${date}`,
+    promiseEnded: (date: string) => `Ended ${date}`,
+    closePromise: "Close",
+    closePromiseTitle: "End this promise without holding it against him",
 
     // Above the attributes, while the profile is read
     /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
@@ -1090,6 +1121,29 @@ export const en = {
     reputation: "Reputation",
     /** The small tag on a women's competition. */
     women: "Women",
+    rules: "Rules",
+    /** A competition's rules as FM's own data for it holds them, by the keys FM Lens reads them with. */
+    ruleNames: {
+      level: "Level",
+      max_squad_size: "Max squad size",
+      min_squad_size: "Min squad size",
+      recommended_squad_size: "Recommended squad size",
+      max_prelim_squad_size: "Max preliminary squad",
+      min_foreign_players: "Min foreign players",
+      max_foreign_players: "Max foreign players",
+      foreign_trialists_can_play: "Foreign trialists may play",
+      subs_allowed: "Substitutions allowed",
+      max_subs: "Substitutes named",
+      extended_injury_time: "Extended stoppage time",
+      daylight_offside_rule: "Daylight offside",
+      yellow_cards_for_fine: "Yellow cards for a fine",
+      min_games_for_medal: "Games for a medal",
+      number_of_medals: "Medals",
+      min_stadium_capacity: "Min stadium capacity",
+      min_stadium_seating: "Min seated capacity",
+      requires_grass_pitch: "Grass pitch required",
+      requires_undersoil_heating: "Undersoil heating required",
+    },
   },
 
   awardList: {
@@ -1192,6 +1246,8 @@ export const en = {
     gameImportance: "Game importance",
     attendance: "Attendance",
     women: "Women's football",
+    style: "Style",
+    womenStyle: "Women's style",
     teamName: (ageLimit: number | null) => (ageLimit === null ? "Senior team" : `Under-${ageLimit}s`),
     womenTeamName: (ageLimit: number | null) =>
       ageLimit === null ? "Women's senior team" : `Women's under-${ageLimit}s`,
@@ -1398,8 +1454,16 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.4": [
+        "Change how long an injury lasts, or take one injury out.",
+        "See and change a manager's formations in and out of possession.",
+        "See and change a nation's style ratings.",
+        "See a competition's rules.",
+        "See a player's promises, and close an open one.",
+        "Change club: become the manager of another club.",
+      ],
       "0.5.3": [
-        "FM Lens now goes by its own name in its files and settings. Your setup and settings carried over by themselves.",
+        "Files, settings and the Steam helper now use the FM Lens name. Your setup carried over.",
       ],
       "0.5.2": [
         "Report a problem, in Settings, opens a bug report with your versions and changes filled in.",
@@ -1422,6 +1486,8 @@ export const en = {
     startFailed: (reason: string) => `Couldn't start editing: ${reason}`,
     /** The name of a position's field, e.g. "ST rating"; `position` is its entry in `positions`. */
     positionRating: (position: string) => `${position} rating`,
+    /** A women's style rating in the Changes view, e.g. "Women's tempo". */
+    womenStyle: (style: string) => `Women's ${style.toLowerCase()}`,
     /** Hover text of a changed input: the value it started from, as shown. */
     was: (value: string) => `was ${value}`,
     /** Hover text of an input that cannot be applied; `min` and `max` are the values it takes, as shown. */
@@ -1500,6 +1566,8 @@ export const en = {
     injuryAdded: "Added an injury",
     /** The same for lifting bans: `count` is how many bans the player had. */
     lifted: (count: number) => (count === 1 ? "Lifted 1 ban" : `Lifted ${format(count)} bans`),
+    /** What closing a promise changed, in the place of its values: `id` is FM's number for it. */
+    promiseClosed: (id: number) => `Closed promise ${id}`,
     /** What keeping a player from retiring changed: the date he was to retire on, or none when only his traits changed. */
     keptPlaying: (date: string | null) => (date === null ? "Will play on" : `Retirement on ${date} prevented`),
     /** The line beside the title; `undone` of the `total` changes were undone. */
@@ -1803,6 +1871,8 @@ export const en = {
     pays: (club: string, fee: string, balance: string, budget: string | null) =>
       `${club} pays ${fee}: balance ${balance}${budget === null ? "" : `, transfer budget ${budget}`}`,
     receives: (club: string, fee: string, balance: string) => `${club} receives ${fee}: balance ${balance}`,
+    /** For a transfer FM makes itself, which moves the money by its own rules. */
+    gameFee: (buyer: string, seller: string, fee: string) => `${buyer} pays ${seller} ${fee}`,
     /** For a club outside the leagues being played, which the game keeps no finances for. */
     noFinances: (club: string) => `${club} has no finances in FM, so its money won't change`,
 
@@ -1817,6 +1887,8 @@ export const en = {
     checking: "Checking the transfer…",
     /** The move can be made; `from` and `to` are the names of the clubs. */
     route: (from: string, to: string) => `${from} → ${to}`,
+    /** Under the route when FM makes the change itself, which nothing undoes. */
+    permanent: "It can't be undone.",
 
     // Swapping with a player of the club instead: the title, and the section that picks the player (the club is
     // chosen as for a move).
@@ -1842,6 +1914,15 @@ export const en = {
     staffButtonTitle: "Move them to another club",
     staffChooseClub: "Pick a club.",
     staffContract: "Same job, wage and contract end. The contract starts today.",
+    // Making the human manager another club's manager: the game makes his contract and dismisses the club's manager.
+    managerButton: "Change club",
+    managerButtonTitle: "Become the manager of another club",
+    managerTitle: "Change club",
+    managerContract: "The game gives you a manager's contract on its own terms.",
+    /** In the plan, under the clubs: `name` is the club's manager now. */
+    managerDisplaced: (name: string) => `${name} loses his job`,
+    managerMove: "Change club",
+    managerMoving: "Changing club…",
     swapChooseClub: "Pick the other player's club.",
     swapChoosePlayer: "Pick the player to swap with.",
     swapChecking: "Checking the swap…",
@@ -1925,6 +2006,11 @@ export const en = {
     levelOf: (name: string) => `Level of ${name}`,
     /** Under a main language of the country his club is in, which FM raises back if it is set lower. */
     raisedBack: "FM raises it back on its own",
+    injuriesTitle: "Change how many days each injury lasts",
+    /** The title of the dialog that changes them. */
+    daysOut: "Days out",
+    /** The days input of a row, for assistive technology: `name` is the injury's. */
+    daysOf: (name: string) => `Days out with ${name}`,
     save: "Save",
   },
 
