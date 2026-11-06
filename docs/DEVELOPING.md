@@ -172,6 +172,10 @@ repository stays private.
    `FM-Lens-<version>-macos-universal.app.tar.gz` to update from, and `latest.json`.
    Without `--publish` it only writes these files to `target/release-mac/<version>/`.
 
+   The disk image opens on a window with the app, an arrow and Applications. dmgbuild
+   (fetched with `pipx`) lays it out from `scripts/dmg/settings.py`, on the background
+   `scripts/dmg/background.py` draws; run that again after changing the layout.
+
 The updater key is `~/.tauri/fm-lens-updater.key` (or the file `FM_LENS_UPDATER_KEY`
 names); its public half is `plugins.updater.pubkey` in `app/src-tauri/tauri.conf.json`.
 Keep a backup of it: installed copies accept only updates signed with it, so without it
