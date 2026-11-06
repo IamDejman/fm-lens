@@ -300,6 +300,14 @@ export const swapPlayers = (uid: number, other: number) => call<LoggedChange>("s
  * field `injuries` from how many he had to 0, and undone as one; fails when he has none.
  */
 export const healPlayer = (uid: number) => call<LoggedChange>("heal_player", { uid });
+/** Makes the injury `index` of the player `uid` last `days` days from when it began, at the most: 1 to 730. */
+export const changeInjury = (uid: number, index: number, days: number) =>
+  call<LoggedChange>("change_injury", { uid, index, days });
+/** Takes the injury `index` out of the list of the player `uid`; his others stay. */
+export const removeInjury = (uid: number, index: number) => call<LoggedChange>("remove_injury", { uid, index });
+
+/** Closes the open promise at `index` in the promises of the player `uid`. */
+export const closePromise = (uid: number, index: number) => call<LoggedChange>("close_promise", { uid, index });
 
 /** The kinds of injury the game knows, in its order. */
 export const injuryKinds = () => call<InjuryKind[]>("injury_kinds");

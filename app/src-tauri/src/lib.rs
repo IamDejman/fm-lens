@@ -7,15 +7,16 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet,
-    ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, EndedLoan, Entity,
-    EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN,
-    GameActions, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Language,
-    LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation,
-    NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned,
-    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
-    PreferenceSet, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
-    StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target,
-    TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
+    ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionRule, CompetitionSummary, EditError,
+    EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE,
+    GAME_PLUGIN, GameActions, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury,
+    InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
+    MoveTerms, MovedManager, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange,
+    PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate,
+    Preference, PreferenceKind, PreferenceSet, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex,
+    Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails,
+    StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, find_game,
+    nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -703,6 +704,33 @@ impl Connection {
         logged
     }
 
+    /// Logs a promise just closed, as a change of the player's `promise` from FM's number for it to none.
+    fn log_promise(&mut self, done: PromiseClosed) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "promise".to_owned(),
+            old: i64::from(done.promise.id),
+            new: 0,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Promise(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs lifting just written, as a change of the player's `bans` from how many he had to none.
     fn log_lift(&mut self, done: Lifted, batch: Option<u32>) -> LoggedChange {
         let change = Change {
@@ -830,6 +858,41 @@ impl Connection {
             tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
             clause: None,
             undo: Some(Undo::Language(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a change to one of a player's injuries just written, as a change of his field `injury` from the days it
+    /// lasted at the most to the days it lasts now (0 for one taken out), with the injury's name.
+    fn log_injury(&mut self, done: InjurySet) -> LoggedChange {
+        let end = |injury: Option<&Injury>| {
+            injury.map(|injury| TieEnd {
+                name: injury.name.clone().unwrap_or_else(|| "-".to_owned()),
+                rule: None,
+                value: Some(i64::from(injury.days)),
+            })
+        };
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "injury".to_owned(),
+            old: i64::from(done.before.days),
+            new: done.after.as_ref().map_or(0, |after| i64::from(after.days)),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
+            clause: None,
+            undo: Some(Undo::Injury(done)),
         };
         self.log.push(logged.clone());
         logged
@@ -1285,7 +1348,9 @@ impl Connection {
                 }
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
+            Some(Undo::Injury(injury)) => self.session.undo_injury(&injury)?,
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
+            Some(Undo::Promise(closed)) => self.session.undo_close_promise(&closed)?,
             Some(Undo::Cohesion(cohered)) => self.session.undo_cohesion(&cohered)?,
             Some(Undo::Tactics(raised)) => self.session.undo_tactics(&raised)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
@@ -1639,7 +1704,10 @@ fn serialize_permanent<S: serde::Serializer>(_: &Option<Undo>, serializer: S) ->
 enum Undo {
     Move(LoggedMove),
     Heal(Healed),
+    /// One injury made longer or shorter, or taken out of the list.
+    Injury(InjurySet),
     Lift(Lifted),
+    Promise(PromiseClosed),
     Cohesion(Cohered),
     Retirement(RetirementSet),
     Tie(RelationSet),
@@ -2608,6 +2676,29 @@ fn search_competitions(
     Ok(page(index, &query, limit, |_| true, |_| {}))
 }
 
+/// The rules of the competition with the UID `uid` that FM keeps as plain numbers and yes-or-no values; `None` where
+/// this build's layout does not place them. Only reads memory.
+#[tauri::command]
+fn competition_rules(state: State<'_, AppState>, uid: u32) -> Result<Option<Vec<CompetitionRule>>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let rules = |connection: &mut Connection| {
+        let competition =
+            connection.competition_index()?.get(uid).cloned().ok_or_else(|| {
+                Failure::new("app.notFound", format!("No competition with UID {uid}")).with("uid", uid)
+            })?;
+        Ok::<_, Failure>(connection.session.competition_rules(&competition))
+    };
+    match rules(connection)? {
+        // FM moved its competitions since the list was read: read it again, once.
+        Err(MoveError::Changed { .. }) => {
+            connection.competitions = None;
+            Ok(rules(connection)??)
+        }
+        read => Ok(read?),
+    }
+}
+
 /// Awards matching `query` by name, competition or UID, most prestigious first; at most `limit` rows. Only reads
 /// memory.
 #[tauri::command]
@@ -3015,6 +3106,18 @@ fn swap_players(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Logg
     Ok(connection.log_move(done, MoveTerms::default(), Vec::new(), None))
 }
 
+/// Closes the open promise at `index` in the promises of the player `uid`, as FM ends one that is not held against
+/// him, and logs it as one change of his `promise`. FM drops it 31 days later; until then Undo opens it again.
+#[tauri::command]
+fn close_promise(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_close_promise(player, index)?;
+    let done = connection.session.apply_close_promise(&plan)?;
+    Ok(connection.log_promise(done))
+}
+
 /// Heals every current injury of the player `uid`, as the game does when he gets over them,
 /// and logs it as one change of his `injuries` to none.
 #[tauri::command]
@@ -3317,6 +3420,29 @@ fn remove_language(state: State<'_, AppState>, uid: u32, staff: bool, index: usi
     let plan = connection.session.plan_language_removal(person, index)?;
     let done = connection.session.apply_language(&plan)?;
     Ok(connection.log_language(done))
+}
+
+/// Makes the injury `index` of the player `uid` last `days` days from when it began, at the most. Logged and undone like
+/// any change.
+#[tauri::command]
+fn change_injury(state: State<'_, AppState>, uid: u32, index: usize, days: u16) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_injury_length(player, index, days)?;
+    let done = connection.session.apply_injury(&plan)?;
+    Ok(connection.log_injury(done))
+}
+
+/// Takes the injury `index` out of the list of the player `uid`; his others stay. Logged and undone like any change.
+#[tauri::command]
+fn remove_injury(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_injury_removal(player, index)?;
+    let done = connection.session.apply_injury(&plan)?;
+    Ok(connection.log_injury(done))
 }
 
 /// Gives the clause `index` of the contract of the player `uid` the amount `amount` and the condition `condition`;
@@ -3807,6 +3933,7 @@ pub fn run() {
             search_stadiums,
             search_officials,
             search_competitions,
+            competition_rules,
             search_awards,
             export_players,
             open_export,
@@ -3847,6 +3974,7 @@ pub fn run() {
             staff_jobs,
             heal_player,
             lift_bans,
+            close_promise,
             injury_kinds,
             add_injury,
             set_work_permit,
@@ -3865,6 +3993,8 @@ pub fn run() {
             remove_preference,
             change_language,
             remove_language,
+            change_injury,
+            remove_injury,
             change_clause,
             remove_clause,
             add_release_clause,

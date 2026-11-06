@@ -544,6 +544,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
           ? valueChange(permitText(change.old), permitText(change.new))
         : change.field === "bans"
           ? text.lifted(change.old)
+          : change.field === "promise"
+            ? text.promiseClosed(change.old)
           : change.field === "retirement"
             ? text.keptPlaying(change.old === 0 ? null : formatDate(dateFromNumber(change.old)))
           : change.field === "contract.job"
