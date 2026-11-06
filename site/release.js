@@ -23,7 +23,10 @@ export async function latestRelease() {
   }
 }
 
-/** The ten latest releases, newest first, with their notes as GitHub renders them, or null when it cannot be reached. */
+/**
+ * The ten latest releases, newest first, with their notes as GitHub renders them and their disk image (null when it has
+ * none), or null when GitHub cannot be reached.
+ */
 export async function releaseNotes() {
   try {
     const response = await fetch(`${API}?per_page=10`, { headers: { Accept: "application/vnd.github.html+json" } });
@@ -37,6 +40,7 @@ export async function releaseNotes() {
         version: release.tag_name.replace(/^v/, ""),
         published: release.published_at,
         html: release.body_html ?? "",
+        download: release.assets.find((asset) => asset.name.endsWith(".dmg"))?.browser_download_url ?? null,
       }));
   } catch {
     return null;

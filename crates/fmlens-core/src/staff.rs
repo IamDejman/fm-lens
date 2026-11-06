@@ -287,6 +287,9 @@ pub struct StaffDetails {
     /// His coaching licence: 1 Continental Pro, 2 to 4 Continental A to C, 5 to 7 National A to C, and 8 or 0
     /// none; `None` where the layout does not place it.
     pub coaching_licence: Option<u8>,
+    /// The formation ids of his preferred formation in possession and out of possession, 0 for none; `None` where the
+    /// layout does not place them.
+    pub formations: Option<[u8; 2]>,
 }
 
 /// The highest coaching licence level.
@@ -358,6 +361,7 @@ pub fn read_staff_details(
         languages: Vec::new(),
         preferences: Vec::new(),
         coaching_licence: s.coaching_licence.map(|offset| licence_level(u8_at(offset))),
+        formations: s.formations.map(|offsets| offsets.map(u8_at)),
     }))
 }
 

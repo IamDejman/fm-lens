@@ -506,6 +506,17 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         let field = field("coaching_licence", offset, Kind::I8, 0..=i64::from(crate::staff::MOST_LICENCE));
         out.push(field.plausible(-7..=8).choices(&COACHING_LICENCES));
     }
+    // The formations he prefers in possession and out of it, the two FM's staff profile shows, offered as ids the game
+    // itself uses for each.
+    if let Some([in_possession, out_of_possession]) = s.formations {
+        for (key, offset, choices) in [
+            ("formation.in_possession", in_possession, &IN_POSSESSION_FORMATIONS[..]),
+            ("formation.out_of_possession", out_of_possession, &OUT_OF_POSSESSION_FORMATIONS[..]),
+        ] {
+            let field = field(key, offset, Kind::U8, 1..=i64::from(MOST_FORMATION));
+            out.push(field.plausible(0..=255).choices(choices).single());
+        }
+    }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
     // located on the build and class it was traced on, so it reads as missing for everyone else.
     out.push(Field::flag(Entity::Staff, "manager.unsackable", 0, 1).in_record(Place::HumanManagerFlags).single());
@@ -557,14 +568,25 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
 /// Continental Pro. Level 8 is the game's own none, which FM shows as 0 is, so it is not offered twice.
 pub const COACHING_LICENCES: [i64; 8] = [0, 7, 6, 5, 4, 3, 2, 1];
 
+/// The in-possession formation ids the editor offers for a member of staff: those staff of the test save held most
+/// (11 Dec 2027).
+pub const IN_POSSESSION_FORMATIONS: [i64; 12] = [3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64];
+
+/// The out-of-possession formation ids the editor offers: those the game gives a member of staff for an
+/// in-possession formation when his own is unset (function 0x4ADDE2C in the arm64 half of 27.0.0).
+pub const OUT_OF_POSSESSION_FORMATIONS: [i64; 10] = [4, 7, 22, 27, 30, 32, 33, 35, 63, 64];
+
+/// The highest formation id the editor writes.
+const MOST_FORMATION: u8 = 64;
+
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
 
 /// The most FIFA points the editor writes; the leader of the test save had 1,995.88.
 const MOST_FIFA_POINTS: f32 = 3000.0;
 
-/// The senior national teams' reputations and the containers' youth ratings, game importance and attendance, men's and
-/// women's, the men's FIFA points, the population, whether dual nationality is allowed, and the years of residence that
+/// The senior national teams' reputations and the containers' youth ratings, game importance, attendance and style
+/// ratings, men's and women's, the men's FIFA points, the population, whether dual nationality is allowed, and the years of residence that
 /// gain the nationality (255: no number of years does). One nation at a time; none where the build's layout does not
 /// place nations.
 fn nation_fields(layout: &Layout) -> Vec<Field> {
@@ -589,16 +611,36 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
             .plausible(0..=i64::from(u8::MAX))
             .in_record(Place::NationalContainer(side))
     };
-    vec![
+    // Twelve style ratings a side, after the side's other fields.
+    let style = |prefix: &str, side: Side| -> Vec<Field> {
+        let Some(offset) = n.style else {
+            return Vec::new();
+        };
+        (0u64..)
+            .zip(crate::national::STYLE)
+            .map(|(index, key)| {
+                field(&format!("{prefix}style.{key}"), offset + index, Kind::I8, 0..=crate::national::MOST_STYLE)
+                    .plausible(0..=i64::from(i8::MAX))
+                    .in_record(Place::NationalContainer(side))
+            })
+            .collect()
+    };
+    let mut fields = vec![
         field("reputation", layout.team.reputation, Kind::U16, 0..=10_000).in_record(Place::NationalTeam(Side::Men)),
         youth("youth_rating", Side::Men),
         importance("game_importance", Side::Men),
         attendance("attendance", Side::Men),
+    ];
+    fields.extend(style("", Side::Men));
+    fields.extend([
         field("women.reputation", layout.team.reputation, Kind::U16, 0..=10_000)
             .in_record(Place::NationalTeam(Side::Women)),
         youth("women.youth_rating", Side::Women),
         importance("women.game_importance", Side::Women),
         attendance("women.attendance", Side::Women),
+    ]);
+    fields.extend(style("women.", Side::Women));
+    fields.extend([
         // The live points FM ranks by at its next ranking date; the published position follows then, not at once.
         field("points", n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
             .plausible(0..=f32_bits(f32::MAX))
@@ -610,7 +652,8 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
         field("naturalisation", n.naturalisation, Kind::U8, 1..=99)
             .plausible(0..=255)
             .blank(i64::from(crate::national::NEVER)),
-    ]
+    ]);
+    fields
 }
 
 /// An official's abilities, reputation and birth date, as the officials list reads them. One official at a time; none
@@ -1371,9 +1414,11 @@ mod tests {
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        // The 2 contract fields, the coaching licence where the layout places it and the human manager's 2 flags.
+        // The 2 contract fields, the coaching licence and the 2 formations where the layout places them, and the human
+        // manager's 2 flags.
         let licence = usize::from(layout.staff.coaching_licence.is_some());
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + 2);
+        let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
+        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + formations + 2);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).
@@ -1461,23 +1506,21 @@ mod tests {
         };
         let key = |key: &str| nations.iter().find(|f| f.key == key).cloned().expect(key);
         let keys: Vec<&str> = nations.iter().map(|f| f.key.as_str()).collect();
-        assert_eq!(
-            keys,
-            [
-                "reputation",
-                "youth_rating",
-                "game_importance",
-                "attendance",
-                "women.reputation",
-                "women.youth_rating",
-                "women.game_importance",
-                "women.attendance",
-                "points",
-                "population",
-                "dual_nationality",
-                "naturalisation"
-            ]
-        );
+        let styles = |prefix: &str| -> Vec<String> {
+            let style = n.style.map(|_| crate::national::STYLE.as_slice()).unwrap_or_default();
+            style.iter().map(|key| format!("{prefix}style.{key}")).collect()
+        };
+        let side = |prefix: &str| {
+            ["reputation", "youth_rating", "game_importance", "attendance"]
+                .map(|key| format!("{prefix}{key}"))
+                .into_iter()
+                .chain(styles(prefix))
+        };
+        let expected: Vec<String> = side("")
+            .chain(side("women."))
+            .chain(["points", "population", "dual_nationality", "naturalisation"].map(String::from))
+            .collect();
+        assert_eq!(keys, expected);
         assert!(nations.iter().all(|f| !f.mass && !f.shifted));
 
         // The men's FIFA points, an f32 in the container held as its bits: England's 1,922.83 is in range, a negative
@@ -1523,6 +1566,16 @@ mod tests {
             );
             assert!(attendance.takes(0) && attendance.takes(16) && !attendance.takes(17));
         }
+        // Style ratings, 0 to 20 (most nations 10), twelve bytes a side from Ndep to Nwid.
+        if n.style.is_some() {
+            for (prefix, side) in [("", Side::Men), ("women.", Side::Women)] {
+                let depth = key(&format!("{prefix}style.depth"));
+                let width = key(&format!("{prefix}style.width"));
+                assert_eq!((depth.place, depth.offset, depth.kind), (Place::NationalContainer(side), 0x892, Kind::I8));
+                assert_eq!((width.place, width.offset), (Place::NationalContainer(side), 0x89D));
+                assert!(depth.takes(0) && depth.takes(10) && depth.takes(20) && !depth.takes(21) && !depth.takes(-1));
+            }
+        }
         let population = key("population");
         assert_eq!((population.place, population.offset, population.kind), (Place::Object, n.population, Kind::U32));
         assert!(population.takes(9_646) && population.takes(232_679_478) && !population.takes(0));
@@ -1561,6 +1614,20 @@ mod tests {
         assert!(!field.takes(8) && field.is_plausible(8));
         // The game's other form of levels 2 to 8 reads as plausible, and is replaced on a write.
         assert!(field.is_plausible(-1) && field.is_plausible(-7) && !field.is_plausible(-8) && !field.is_plausible(9));
+    }
+
+    #[test]
+    fn a_manager_s_formations_are_the_two_fm_s_profile_shows() {
+        let layout: crate::profile::Layout =
+            toml::from_str(include_str!("../../../profiles/fm27/layout-macos.toml")).expect("macOS layout");
+        assert_eq!(layout.staff.formations, Some([0xDF, 0xE3]));
+        let staff = fields(&layout, Entity::Staff);
+        let field = |key: &str| staff.iter().find(|f| f.key == key).cloned().expect("field");
+        let (with_the_ball, without_it) = (field("formation.in_possession"), field("formation.out_of_possession"));
+        assert_eq!((with_the_ball.offset, without_it.offset), (0xDF, 0xE3));
+        // 29 is a common formation with the ball, never one the game gives without it.
+        assert!(with_the_ball.takes(29) && with_the_ball.takes(22));
+        assert!(without_it.takes(22) && !without_it.takes(29));
     }
 
     #[test]
