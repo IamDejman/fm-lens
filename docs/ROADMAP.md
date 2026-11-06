@@ -62,13 +62,14 @@ further data-layout and game-behavior research.
 ## Automatic refresh after Apply and Undo (6 November 2026)
 
 Implemented on Steam build 26340721, macOS ARM64, through FM’s own
-entity-change notifier on its main thread. A copied-career test on the 0.5.5
-source baseline showed Saka’s Finishing 16 → 17 → 16 in the already-open FM
-Overview after Apply and Undo, with no Continue or navigation. Contract edits
-also request an unfiltered refresh of active views: a subsequent copied-career
-test showed the expiry header updating immediately 30 June → 29 June → 30 June
-2032 after Apply/Undo, still at 16:30. Other fields/screens remain unverified.
-Intel has no mapped notifier.
+entity-change notifier and active-view refresh on its main thread after every
+queued successful edit or undo. A copied-career test on the 0.5.5 source
+baseline showed Saka’s Finishing 16 → 17 → 16 in the already-open FM Overview
+after Apply and Undo, with no Continue or navigation. A subsequent copied-career
+test showed the contract expiry header updating immediately 30 June → 29 June
+→ 30 June 2032 after Apply/Undo, still at 16:30. These tests predate the
+generalized active-view refresh and cover only those observed fields. Other
+fields/screens remain unverified. Intel has no mapped notifier.
 See the latest entry in EDITING-VALIDATION.md.
 
 ## Delivery order
