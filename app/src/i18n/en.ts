@@ -119,6 +119,7 @@ const errors: ErrorTexts = {
   "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
   "cohesion.changed": (p) => `FM has since changed his familiarity with the club to ${p.found}, so it was left alone.`,
   "tactics.changed": () => "FM has since changed his familiarity with the tactic, so it was left alone.",
+  "list.missing": () => "That entry is no longer in the list. Press Reload and try again.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM reloaded the save. Press Reload before you edit again.",
@@ -472,12 +473,15 @@ export const en = {
     "tie.nationality": "Secondary nationality",
     "tie.trainedInNation": "Trained in nation",
     "tie.trainedAtClub": "Trained at club",
-    // A person's likes and dislikes, which the change log keeps as changes of their strength (see `likes`).
+    // A person's likes and dislikes, which the change log keeps as changes of their strength (see `lists`).
     "preference.favouredClub": "Favoured club",
     "preference.dislikedClub": "Disliked club",
     "preference.favouredPerson": "Favoured person",
     "preference.dislikedPerson": "Disliked person",
     strength: "Strength",
+    // A person's languages, which the change log keeps as changes of their level (see `lists`).
+    language: "Language",
+    level: "Level",
     // A move to another club, which the change log keeps as a change of the player's club.
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
@@ -1945,11 +1949,14 @@ export const en = {
     close: "Close",
   },
 
-  /** Changing how strongly a player or member of staff likes or dislikes each person and club. */
-  likes: {
-    changeTitle: "Change how strongly he likes or dislikes each person and club",
+  /** Changing a player's or member of staff's likes and dislikes, and languages: the button under each, and its dialog. */
+  lists: {
+    likesTitle: "Change how strongly he likes or dislikes each person and club",
     /** The strength input of a row, for assistive technology: `name` is the person's or club's. */
     strengthOf: (name: string) => `Strength for ${name}`,
+    languagesTitle: "Change how well he speaks each language",
+    /** The level input of a row, for assistive technology: `name` is the language's. */
+    levelOf: (name: string) => `Level of ${name}`,
     save: "Save",
   },
 

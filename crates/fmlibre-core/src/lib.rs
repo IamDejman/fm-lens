@@ -67,7 +67,7 @@ pub use game_calls::{
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
 pub use index::{Listed, SearchIndex};
-pub use languages::Language;
+pub use languages::{LEAST_LEVEL, Language, LanguagePlan, LanguageSet, MOST_LEVEL};
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, LiftPlan, Lifted};
@@ -81,7 +81,7 @@ pub use profile::{
     profile_for,
 };
 pub use relations::{
-    HOMEGROWN_RULES, MOST_STRENGTH, Preference, PreferenceKind, PreferenceOwner, PreferencePlan, PreferenceSet, Related,
+    HOMEGROWN_RULES, MOST_STRENGTH, Preference, PreferenceKind, PersonRef, PreferencePlan, PreferenceSet, Related,
     Relation, RelationPlan, RelationSet, Tie, TieTarget,
 };
 pub use retirement::{PlannedRetirement, RetirementPlan, RetirementSet};

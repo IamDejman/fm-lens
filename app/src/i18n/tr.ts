@@ -130,6 +130,7 @@ const errors: ErrorTexts = {
   "cohesion.changed": (p) =>
     `Kulübe alışkınlığı şu an ${p.found}: oyun o zamandan beri değiştirmiş, bu yüzden dokunulmadı.`,
   "tactics.changed": () => "Oyun o zamandan beri taktiğe alışkınlığını değiştirmiş, bu yüzden dokunulmadı.",
+  "list.missing": () => `Bu kayıt artık listede yok; ${reload}.`,
   "retirement.unknown": () => "Düzenleyici, oyunun bu sürümünde planlanan emeklilikleri bulamıyor.",
   "guard.unknownBuild": () =>
     "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",
@@ -540,6 +541,8 @@ export const tr: Strings = {
     "preference.favouredPerson": "Sevdiği kişi",
     "preference.dislikedPerson": "Sevmediği kişi",
     strength: "Derece",
+    language: "Dil",
+    level: "Seviye",
     club: "Kulüp",
     injuries: "Sakatlıklar",
     work_permit: "Çalışma izni",
@@ -1735,9 +1738,11 @@ export const tr: Strings = {
     close: "Kapat",
   },
 
-  likes: {
-    changeTitle: "Her kişiyi ve kulübü ne kadar sevdiğini ya da sevmediğini oyunda değiştir",
+  lists: {
+    likesTitle: "Her kişiyi ve kulübü ne kadar sevdiğini ya da sevmediğini oyunda değiştir",
     strengthOf: (name) => `${name} için derece`,
+    languagesTitle: "Her dili ne kadar iyi konuştuğunu oyunda değiştir",
+    levelOf: (name) => `${name} seviyesi`,
     save: "Kaydet",
   },
 

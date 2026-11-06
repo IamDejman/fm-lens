@@ -175,7 +175,7 @@ export const templatesText = strings.templates;
 
 /** A player's secondary nationalities and homegrown status: the group in his profile and its dialog. */
 export const tieText = strings.ties;
-export const likesText = strings.likes;
+export const listText = strings.lists;
 
 /** A contract's bonuses and clauses: the button under them in the profile and its dialog. */
 export const clauseText = strings.clauses;

@@ -124,6 +124,7 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
 }
 
 function ProfileBody({ details }: { details: PlayerDetails }) {
+  const person = { uid: details.uid, staff: false, name: details.name };
   const goalkeeper = isGoalkeeper(details);
   return (
     <>
@@ -164,11 +165,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
       <WorkPermitGroup details={details} />
       <CareerGroup details={details} />
       <TiesGroup details={details} />
-      <LanguagesGroup languages={details.languages} />
-      <PreferencesGroup
-        preferences={details.preferences}
-        owner={{ uid: details.uid, staff: false, name: details.name }}
-      />
+      <LanguagesGroup languages={details.languages} person={person} />
+      <PreferencesGroup preferences={details.preferences} person={person} />
     </>
   );
 }
