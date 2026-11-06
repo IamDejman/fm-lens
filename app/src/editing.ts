@@ -19,6 +19,7 @@ import type {
   MassOperation,
   MassPreview,
   MassReport,
+  ManagerPreview,
   MovePreview,
   MoveTerms,
   Nation,
@@ -268,6 +269,12 @@ export const planStaffMove = (uid: number, club: number) => call<MovePreview>("p
 
 /** Moves the member of staff to the club, in the departments he works in; logged and undone like any change. */
 export const moveStaff = (uid: number, club: number) => call<LoggedChange>("move_staff", { uid, club });
+
+/** Checks the human manager can be made the manager of the club, and names who it dismisses. Nothing is written. */
+export const planManagerMove = (uid: number, club: number) => call<ManagerPreview>("plan_manager_move", { uid, club });
+
+/** Has the game make the human manager the club's manager, as its own editor does; logged, with no undo. */
+export const moveManager = (uid: number, club: number) => call<LoggedChange>("move_manager", { uid, club });
 
 /** Gives the member of staff another job at his club (a contract code); logged and undone like any change. */
 export const changeStaffJob = (uid: number, job: number) => call<LoggedChange>("change_staff_job", { uid, job });

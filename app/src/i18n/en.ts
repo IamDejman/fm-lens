@@ -1857,6 +1857,23 @@ export const en = {
       "A team's manager isn't moved by this",
       "You can undo it in Changes",
     ],
+    // Making the human manager another club's manager: the game makes his contract and dismisses the club's manager.
+    managerButton: "Change club",
+    managerButtonTitle: "Become the manager of another club",
+    managerTitle: "Change club",
+    managerContract: "The game gives you a manager's contract on its own terms.",
+    managerDoes: [
+      "You become the manager of the club's first team",
+      "Your current job ends",
+      "The club's manager loses his job",
+      "The game sets your wage and contract length",
+      "It can't be undone in Changes",
+    ],
+    /** In the plan, under the clubs: `name` is the club's manager now. */
+    managerDisplaced: (name: string) => `${name} loses his job`,
+    managerHint: "Nothing changes in FM until you press Change club.",
+    managerMove: "Change club",
+    managerMoving: "Changing club…",
     swapChooseClub: "Pick the other player's club.",
     swapChoosePlayer: "Pick the player to swap with.",
     swapChecking: "Checking the swap…",

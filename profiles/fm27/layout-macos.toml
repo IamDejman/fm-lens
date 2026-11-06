@@ -427,6 +427,9 @@ players = 0x38
 captain = 0x88            # Tottenham: Micky van de Ven, as on Windows
 vice_captain = 0x90       # Tottenham: Pedro Porro
 reputation = 0xA8         # Tottenham: 7650
+# The manager's object, as for a national team; the game's signing of a manager dismisses the one it finds here
+# (0x2DFFC98 in the arm64 half of Steam build 26340721, docs/recon/fm27-manager-moves.md).
+manager = 0x80
 
 # The game brings its own allocator to macOS: it carves the chunks it gets from malloc into
 # blocks of the same size classes as on Windows (blocks of 8 bytes too, which malloc never

@@ -238,6 +238,11 @@ function App() {
   const edited = useCallback(() => {
     setDataVersion((v) => v + 1);
     void reloadLog();
+    // The human manager may have changed clubs. Not knowing leaves the header as it was.
+    call<Career | null>("career").then(
+      (career) => setConnection((c) => c && { ...c, career }),
+      () => {},
+    );
   }, [reloadLog]);
 
   const editable = connection?.editable ?? false;
