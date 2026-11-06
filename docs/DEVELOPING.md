@@ -107,6 +107,7 @@ behind the launcher; another tool's launcher among them is started in turn.
 | `docs/` | Install guide, roadmap and reverse-engineering notes (`recon/`) |
 | `docs/design/` | The interface's design system (`DESIGN.md`) and product notes (`PRODUCT.md`) |
 | `site/` | The website, [getfmlens.com](https://getfmlens.com) (see [The website](#the-website)) |
+| `relay/` | The service Report a problem sends to (see [The report relay](#the-report-relay)) |
 
 ## Building
 
@@ -222,6 +223,17 @@ GitHub's API for the latest release, so the home page shows its version and
 [getfmlens.com/download](https://getfmlens.com/download/) starts its disk image. A new
 release needs no change to the site. Installed copies keep reading `latest.json` from
 fm-lens-releases, as above.
+
+### The report relay
+
+Report a problem sends its report to `relay/`, an AWS Lambda function
+(`fm-lens-report-relay`, us-east-1) behind a public function URL, which the app holds in
+`app/src/report.ts`. The relay files the report as an issue in this repository with its own
+fine-grained GitHub token (Issues: read and write, on this repository only), set as the
+function's `GITHUB_TOKEN`; without one it answers 503. It keeps nothing and counts reports
+by address: 5 an hour from one address, 100 a day in all. `node --test` in `relay/` runs its
+tests, and CI runs them too. To send new code, run `relay/deploy.sh` with `AWS_PROFILE` and
+`AWS_REGION` set for the account the function is in.
 
 ## Using the probe
 
