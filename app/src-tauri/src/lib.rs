@@ -7,13 +7,13 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlibre_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet,
-    ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, EndedLoan, Entity,
-    EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN,
-    GameActions, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Language,
-    LanguageSet, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, NationDetails, NationSummary,
-    OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter,
-    PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet, RelationSet,
-    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter,
+    ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionRule, CompetitionSummary, EditError,
+    EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE,
+    GAME_PLUGIN, GameActions, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind,
+    Kind, Language, LanguageSet, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, NationDetails,
+    NationSummary, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
+    RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter,
     StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup,
     Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
@@ -2556,6 +2556,29 @@ fn search_competitions(
     Ok(page(index, &query, limit, |_| true, |_| {}))
 }
 
+/// The rules of the competition with the UID `uid` that FM keeps as plain numbers and yes-or-no values; `None` where
+/// this build's layout does not place them. Only reads memory.
+#[tauri::command]
+fn competition_rules(state: State<'_, AppState>, uid: u32) -> Result<Option<Vec<CompetitionRule>>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let rules = |connection: &mut Connection| {
+        let competition =
+            connection.competition_index()?.get(uid).cloned().ok_or_else(|| {
+                Failure::new("app.notFound", format!("No competition with UID {uid}")).with("uid", uid)
+            })?;
+        Ok::<_, Failure>(connection.session.competition_rules(&competition))
+    };
+    match rules(connection)? {
+        // FM moved its competitions since the list was read: read it again, once.
+        Err(MoveError::Changed { .. }) => {
+            connection.competitions = None;
+            Ok(rules(connection)??)
+        }
+        read => Ok(read?),
+    }
+}
+
 /// Awards matching `query` by name, competition or UID, most prestigious first; at most `limit` rows. Only reads
 /// memory.
 #[tauri::command]
@@ -3714,6 +3737,7 @@ pub fn run() {
             search_stadiums,
             search_officials,
             search_competitions,
+            competition_rules,
             search_awards,
             export_players,
             open_export,

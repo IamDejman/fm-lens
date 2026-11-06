@@ -34,6 +34,57 @@ pub struct CompetitionSummary {
     /// 0 to 200.
     pub reputation: u16,
     pub women: bool,
+    /// Where the competition was when the list was read.
+    #[serde(skip)]
+    pub address: u64,
+}
+
+/// A rule of a competition, as its loaded rule data holds it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CompetitionRule {
+    /// The editor's name for it, e.g. "max_foreign_players".
+    pub key: &'static str,
+    pub value: RuleValue,
+}
+
+/// A number, or yes or no.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
+pub enum RuleValue {
+    Flag(bool),
+    Number(u32),
+}
+
+/// The rules the profile shows: FM's code for each, the editor's name for it, and whether it is a yes or no. FM's
+/// names, from its own rule loader, are the editor's names but for a few shortened ones.
+const RULES: [(&[u8; 4], &str, bool); 19] = [
+    (b"levl", "level", false),
+    (b"mxss", "max_squad_size", false),
+    (b"miss", "min_squad_size", false),
+    (b"rcss", "recommended_squad_size", false),
+    (b"mxps", "max_prelim_squad_size", false),
+    (b"MiFp", "min_foreign_players", false),
+    (b"MxFp", "max_foreign_players", false),
+    (b"ftcp", "foreign_trialists_can_play", true),
+    (b"SBal", "subs_allowed", false),
+    (b"SBmx", "max_subs", false),
+    (b"Ueit", "extended_injury_time", true),
+    (b"DaOr", "daylight_offside_rule", true),
+    (b"yctf", "yellow_cards_for_fine", false),
+    (b"mgqm", "min_games_for_medal", false),
+    (b"NoMd", "number_of_medals", false),
+    (b"mnsc", "min_stadium_capacity", false),
+    (b"mstc", "min_stadium_seating", false),
+    (b"rqgp", "requires_grass_pitch", true),
+    (b"rquh", "requires_undersoil_heating", true),
+];
+
+/// The most rules a competition is read with; the Premier League has 52.
+const MOST_RULES: u64 = 512;
+
+/// The key of a rule entry for FM's code `code`: the code's letters, first letter highest, in the low 32 bits.
+fn rule_code(code: &[u8; 4]) -> u32 {
+    u32::from_be_bytes(*code)
 }
 
 impl Listed for CompetitionSummary {
@@ -167,7 +218,7 @@ impl Session {
         let rows = table_rows(self, slot, c.table_items, &c.class, c.index, c.size)?;
         let (mut nations, mut continents) = (Memo::default(), Memo::default());
         let mut competitions = Vec::with_capacity(rows.len());
-        for (_, bytes) in rows {
+        for (pointer, bytes) in rows {
             let u16_at = |at: u64| u16::from_le_bytes([bytes[at as usize], bytes[at as usize + 1]]);
             let u64_at = |at: u64| u64::from_le_bytes(bytes[at as usize..at as usize + 8].try_into().expect("8 bytes"));
             let uid = u32::from_le_bytes(bytes[c.uid as usize..c.uid as usize + 4].try_into().expect("4 bytes"));
@@ -186,9 +237,83 @@ impl Session {
                 continent: continents.get(continent, |continent| place_name(&self.process, continent, c.place_name)),
                 reputation: u16_at(c.reputation),
                 women: bytes[c.women as usize] != 0,
+                address: pointer,
             });
         }
         Ok(competitions)
+    }
+
+    /// The rules of `competition` that FM keeps as plain numbers and yes-or-no values, in the order of [`RULES`];
+    /// `None` where the layout does not place them or the rule data does not check out. Only reads memory.
+    pub fn competition_rules(
+        &self,
+        competition: &CompetitionSummary,
+    ) -> Result<Option<Vec<CompetitionRule>>, MoveError> {
+        let Some(c) = self.layout.competition.as_ref() else {
+            return Ok(None);
+        };
+        let (Some(actual), Some(rules)) = (c.actual, c.rules) else {
+            return Ok(None);
+        };
+        let address = competition.address;
+        if !is_user_pointer(address)
+            || self.process.read_u32(address + c.uid).ok() != Some(competition.uid)
+            || class_of(&self.process, &self.plugin, address).as_deref() != Some(c.class.as_str())
+        {
+            return Err(MoveError::Changed { address });
+        }
+        let actual = self.process.read_u64(address + actual)?;
+        if !is_user_pointer(actual) {
+            return Ok(None);
+        }
+        let header = self.process.read_bytes(actual + rules, 16)?;
+        let begin = u64::from_le_bytes(header[0..8].try_into().expect("8 bytes"));
+        let end = u64::from_le_bytes(header[8..16].try_into().expect("8 bytes"));
+        let size = end.wrapping_sub(begin);
+        if !is_user_pointer(begin) || end < begin || size % 16 != 0 || size / 16 > MOST_RULES {
+            return Ok(None);
+        }
+        // Each entry's code and its node's type and first four value bytes.
+        let entries = self.process.read_bytes(begin, size as usize)?;
+        let mut nodes = Vec::with_capacity(entries.len() / 16);
+        for entry in entries.as_chunks::<16>().0 {
+            let code = u32::from_le_bytes(entry[0..4].try_into().expect("4 bytes"));
+            let node = u64::from_le_bytes(entry[8..16].try_into().expect("8 bytes"));
+            if !is_user_pointer(node) {
+                return Ok(None);
+            }
+            let bytes = self.process.read_bytes(node, 12)?;
+            let kind = u64::from_le_bytes(bytes[0..8].try_into().expect("8 bytes"));
+            nodes.push((code, kind, u32::from_le_bytes(bytes[8..12].try_into().expect("4 bytes"))));
+        }
+        let node = |code: &[u8; 4]| nodes.iter().find(|&&(at, ..)| at == rule_code(code)).copied();
+        // FM's value types are objects of its own, found where they are this run: every competition holds its year,
+        // year interval and base year as numbers and says whether it is inactive and whether it is a league as yes or
+        // no.
+        let Some((_, number, year)) = node(b"year") else {
+            return Ok(None);
+        };
+        if !(1900..=2100).contains(&year)
+            || [b"ygap", b"bsyr"].iter().any(|code| node(code).map(|n| n.1) != Some(number))
+        {
+            return Ok(None);
+        }
+        let flag = [b"inac", b"ilgf", b"cita"].iter().find_map(|code| node(code)).map(|n| n.1).filter(|&f| f != number);
+        Ok(Some(
+            RULES
+                .iter()
+                .filter_map(|&(code, key, is_flag)| {
+                    let (_, kind, value) = node(code)?;
+                    let value = if is_flag {
+                        (Some(kind) == flag && value & 0xFF <= 1).then_some(RuleValue::Flag(value & 0xFF == 1))?
+                    } else {
+                        // FM's "none" is all bits set.
+                        (kind == number && value != u32::MAX).then_some(RuleValue::Number(value))?
+                    };
+                    Some(CompetitionRule { key, value })
+                })
+                .collect(),
+        ))
     }
 
     /// Every award. Empty where this build's profile or layout does not place them, or the table does not check out.
@@ -234,5 +359,31 @@ impl Session {
             });
         }
         Ok(awards)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rule_codes_read_as_fm_stores_them() {
+        // The Premier League's entry for its year has the key 0x79656172, "year" from its highest byte down.
+        assert_eq!(rule_code(b"year"), 0x7965_6172);
+        assert_eq!(rule_code(b"MxFp"), 0x4D78_4670);
+        // Every rule is named once.
+        let mut keys: Vec<&str> = RULES.iter().map(|&(_, key, _)| key).collect();
+        keys.sort_unstable();
+        keys.dedup();
+        assert_eq!(keys.len(), RULES.len());
+    }
+
+    #[test]
+    fn the_macos_layout_places_the_rules() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        if let Some(c) = layout.competition.as_ref() {
+            assert_eq!((c.actual, c.rules), (Some(0xB0), Some(0x50)));
+            assert!(c.actual.is_some_and(|actual| actual + 8 <= c.size));
+        }
     }
 }

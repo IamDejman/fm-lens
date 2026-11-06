@@ -412,6 +412,13 @@ export interface CompetitionSummary {
   women: boolean;
 }
 
+/** A competition's rule, as FM's own data for it holds it: a number, or yes or no. */
+export interface CompetitionRule {
+  /** e.g. "max_foreign_players"; a key of `competitionList.ruleNames`. */
+  key: string;
+  value: number | boolean;
+}
+
 export interface CompetitionPage {
   total: number;
   rows: CompetitionSummary[];

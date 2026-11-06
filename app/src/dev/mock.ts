@@ -20,6 +20,7 @@ import type {
   AwardPage,
   AwardSummary,
   CompetitionPage,
+  CompetitionRule,
   CompetitionSummary,
   StadiumFilter,
   StadiumPage,
@@ -3319,6 +3320,13 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const competitionPage: CompetitionPage = { total: rows.length, rows: rows.slice(0, limit) };
       return competitionPage as T;
     }
+    case "competition_rules": {
+      const uid = Number(args?.uid);
+      if (!COMPETITIONS.some((c) => c.uid === uid)) {
+        throw failure("app.notFound", `No competition with UID ${uid}`, { uid });
+      }
+      return competitionRules(uid) as T;
+    }
     case "search_awards": {
       const query = fold(String(args?.query ?? ""));
       const limit = Number(args?.limit ?? 200);
@@ -3486,6 +3494,32 @@ const COMPETITIONS: CompetitionSummary[] = [
   },
   { uid: 1301385, name: "World Cup", shortName: null, nation: null, nationUid: null, continent: null, reputation: 200, women: false },
 ];
+
+/** Made-up rules: a league's squad, foreign and stadium rules; a cup's substitutes; none for the rest. */
+function competitionRules(uid: number): CompetitionRule[] {
+  if (uid >= 1_000_000) {
+    return [];
+  }
+  const league = uid % 10 === 0;
+  return league
+    ? [
+        { key: "level", value: 0 },
+        { key: "max_squad_size", value: 25 },
+        { key: "max_foreign_players", value: 4 + (uid % 7) },
+        { key: "subs_allowed", value: 5 },
+        { key: "max_subs", value: 9 },
+        { key: "extended_injury_time", value: true },
+        { key: "min_games_for_medal", value: 5 },
+        { key: "min_stadium_capacity", value: 5000 },
+        { key: "requires_grass_pitch", value: true },
+        { key: "requires_undersoil_heating", value: uid % 20 === 0 },
+      ]
+    : [
+        { key: "subs_allowed", value: 5 },
+        { key: "max_subs", value: 9 },
+        { key: "extended_injury_time", value: false },
+      ];
+}
 
 /** Made-up awards: for each league a player and young player of the year, a golden glove and more; and a world award. */
 const AWARDS: AwardSummary[] = [
