@@ -3054,7 +3054,7 @@ const notSetUp = (): BridgeInfo => ({
   ready: false,
   installed: false,
   launchOption:
-    'DYLD_INSERT_LIBRARIES="/Users/me/Library/Application Support/FMLibreEditor/libfmlibre_bridge.dylib" %command%',
+    'DYLD_INSERT_LIBRARIES="/Users/me/Library/Application Support/FM27Scout/libfmlens_bridge.dylib" %command%',
   steamRunning: true,
   accounts: [{ id: "123456789", launchOptions: null, loadsBridge: false }],
 });
@@ -3067,7 +3067,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const noBridge: Failure = {
         code: "memory.noBridge",
         params: { pid: String(game.pid) },
-        message: `macOS does not let FMLibreEditor into the game (pid ${game.pid}): it was started without the bridge`,
+        message: `macOS does not let FM Lens into the game (pid ${game.pid}): it was started without the bridge`,
       };
       const reachable = !macPreview || mockBridge.ready;
       const detection: Detection = {
@@ -3258,7 +3258,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const selected = selectTargets("player", String(args?.query ?? ""), {
         playerFilter: (args?.filter ?? {}) as PlayerFilter,
       });
-      const folder = "C:\\Users\\you\\Documents\\FMLibreEditor\\Exports";
+      const folder = "C:\\Users\\you\\Documents\\FM Lens\\Exports";
       const two = (n: number) => String(n).padStart(2, "0");
       const stem = gameDate ? `players-${gameDate.year}-${two(gameDate.month)}-${two(gameDate.day)}` : "players";
       const file = `${stem}.${args?.format === "json" ? "json" : "csv"}`;

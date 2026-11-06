@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generatedAt": "2026-10-31T21:10:51Z",
-  "title": "Design System: FMLibreEditor",
+  "title": "Design System: FM Lens",
   "extensions": {
     "colorMeta": {
       "page": {
@@ -1381,13 +1381,13 @@
       "kind": "custom",
       "refersTo": "colophon",
       "description": "Small print along the foot: the game on the first line, the notes beside it or on a second line of their own.",
-      "html": "<footer class=\"ds-colophon\"><div class=\"ds-col-main\"><span class=\"ds-col-name\">FMLibreEditor · beta</span><span class=\"ds-col-status\"><i></i>FM27 · 400 players · 120 staff · 12 clubs</span></div><div class=\"ds-col-notes\"><span>Edits reach the game only when you apply them. Back up your save first.</span><span>No graphics packs found</span></div></footer>",
+      "html": "<footer class=\"ds-colophon\"><div class=\"ds-col-main\"><span class=\"ds-col-name\">FM Lens · beta</span><span class=\"ds-col-status\"><i></i>FM27 · 400 players · 120 staff · 12 clubs</span></div><div class=\"ds-col-notes\"><span>Edits reach the game only when you apply them. Back up your save first.</span><span>No graphics packs found</span></div></footer>",
       "css": ".ds-colophon { font-family: 'Archivo Variable', system-ui, -apple-system, 'Segoe UI', sans-serif; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 32px; width: 640px; padding: 0 18px; border-top: 1px solid var(--border, #d6d9df); color: var(--muted, #5b6069); font-size: 12px; line-height: 27px; white-space: nowrap; } .ds-col-main, .ds-col-notes { display: flex; align-items: center; gap: 16px; min-width: 0; } .ds-col-notes { flex-wrap: wrap; height: 27px; overflow: hidden; } .ds-col-name { color: var(--text, #16181d); font-stretch: 88%; font-weight: 750; } .ds-col-status { display: inline-flex; align-items: center; gap: 7px; } .ds-col-status i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #1f7547); }"
     }
   ],
   "narrative": {
     "northStar": "The Season Almanac",
-    "overview": "**Creative North Star: \"The Season Almanac\"**\n\nFMLibreEditor is set like a football yearbook, the annual that prints every squad as a table. A cool white page carries near-black ink, hairline rules part the rows, and a thick ink rule stands over every section heading. One typeface does all the work: Archivo, bundled with the app so Windows (WebView2) and macOS (WKWebView) read alike, condensed and heavy for names, headings and big figures, regular width for running text. The page is dense the way an almanac is dense: rows of 34px, small print in the margins, figures that line up down every column.\n\nColour is not decoration here. It appears only where it means something: FM's four attribute bands, retuned as earthy inks, rate every 1 to 20 value and every position on the pitch; a marker-yellow highlighter marks an edit not yet applied; brick red marks danger; blue is the keyboard's focus and nothing else. What is picked is printed in reverse, white on ink. At night the page turns: the night edition swaps paper and ink and keeps every meaning.\n\nThe maintainer rejected two earlier looks as generic: a grey-green dashboard, then an imitation of FM's own skin. This system is neither. It owes FM only the attribute bands and the pitch map, the two things players read the way the game shows them.",
+    "overview": "**Creative North Star: \"The Season Almanac\"**\n\nFM Lens is set like a football yearbook, the annual that prints every squad as a table. A cool white page carries near-black ink, hairline rules part the rows, and a thick ink rule stands over every section heading. One typeface does all the work: Archivo, bundled with the app so Windows (WebView2) and macOS (WKWebView) read alike, condensed and heavy for names, headings and big figures, regular width for running text. The page is dense the way an almanac is dense: rows of 34px, small print in the margins, figures that line up down every column.\n\nColour is not decoration here. It appears only where it means something: FM's four attribute bands, retuned as earthy inks, rate every 1 to 20 value and every position on the pitch; a marker-yellow highlighter marks an edit not yet applied; brick red marks danger; blue is the keyboard's focus and nothing else. What is picked is printed in reverse, white on ink. At night the page turns: the night edition swaps paper and ink and keeps every meaning.\n\nThe maintainer rejected two earlier looks as generic: a grey-green dashboard, then an imitation of FM's own skin. This system is neither. It owes FM only the attribute bands and the pitch map, the two things players read the way the game shows them.",
     "keyCharacteristics": [
       "Cool white page (never cream), near-black ink, a night edition that inverts them.",
       "One family, Archivo, with its width axis doing the work of a second face.",

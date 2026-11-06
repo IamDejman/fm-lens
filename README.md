@@ -84,7 +84,7 @@ Requirements: Xcode command-line tools, Rust stable, Node.js and npm.
 
 ```sh
 export PATH="$HOME/.cargo/bin:$PATH"
-cargo build --locked -p fmlibre-probe -p fmlibre-bridge
+cargo build --locked -p fmlens-probe -p fmlens-bridge
 cd app
 npm ci
 npm run tauri -- build --debug --bundles app --config src-tauri/tauri.scout.conf.json
@@ -108,9 +108,7 @@ remain installed while Steam's launch option references it.
 - [Brand assets and generation prompts](docs/brand/FM-LENS.md)
 - [Agent instructions](AGENTS.md)
 
-Some documents inherited from FMLibreEditor, such as `docs/INSTALL.md`, describe
-the upstream editor, including features this fork does not enable. Every pull
-request runs the checks in `.github/workflows/validate.yml`.
+Every pull request runs the checks in `.github/workflows/validate.yml`.
 
 ## Security
 
