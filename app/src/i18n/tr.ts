@@ -1301,6 +1301,15 @@ export const tr: Strings = {
     installing: "Kuruluyor: FM Lens kapanıp yeni sürümle yeniden açılacak.",
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
     later: "Sonra",
+    whatsNew: (version) => `FM Lens ${version} sürümündeki yenilikler`,
+    releaseNotes: "Sürüm notları",
+    dismiss: "Kapat",
+    changes: {
+      "0.5.2": [
+        "Ayarlar'daki Sorun bildir, sürümleriniz ve değişiklikleriniz doldurulmuş bir hata raporu açar.",
+        "FM verilerini taşıdığında FM Lens oyunu kendiliğinden yeniden okur: artık Verileri yeniden oku'ya basmanız gerekmez.",
+      ],
+    },
   },
 
   edit: {

@@ -35,6 +35,7 @@ import { restored, useSnapshot } from "./restore";
 import { StaffBrowser } from "./StaffBrowser";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
+import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
@@ -96,10 +97,10 @@ function App() {
   const { log, error: logError, reload: reloadLog } = useChangeLog();
   const { update, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
+  const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   useEffect(() => {
-    if (inTauri) {
-      void getVersion().then(setVersion).catch(() => {});
-    }
+    // The browser preview stands in for the app with the version in package.json.
+    (inTauri ? getVersion() : call<string>("app_version")).then(setVersion).catch(() => {});
   }, []);
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
@@ -369,6 +370,7 @@ function App() {
 
       <div className="main">
         {update && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
+        {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
         {connection && <CompatibilityNotice connection={connection} />}
         {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
         {error && <div className="banner" role="alert">{error}</div>}
