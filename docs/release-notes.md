@@ -1,10 +1,12 @@
-## Download
+## Install
 
-Download **FM-Lens-0.5.3-macos-universal.dmg**, open it and drag **FM Lens** onto **Applications**. It runs on Apple Silicon and Intel Macs, with Football Manager 27 version 27.0.0 from Steam. Other versions open read-only.
+Open **FM-Lens-0.5.3-macos-universal.dmg** and drag **FM Lens** onto **Applications**. The first time you open it, go to **System Settings › Privacy & Security** and choose **Open Anyway**.
 
-The first time you open it, macOS can't check the app. Open **System Settings › Privacy & Security** and choose **Open Anyway**.
+It runs on Apple Silicon and Intel Macs, with Football Manager 27 version 27.0.0 from Steam. Other versions open read-only.
 
-FM Lens 0.5.1 and later update themselves. Coming from 0.5.0, replace the app in **Applications** with this one.
+## Update
+
+Already have FM Lens 0.5.1 or later? It updates itself. On 0.5.0, drag this one onto **Applications** and choose **Replace**.
 
 ## What's new
 
