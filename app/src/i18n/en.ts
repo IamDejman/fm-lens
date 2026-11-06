@@ -1056,13 +1056,23 @@ export const en = {
     /** How often it is given, by FM's code; null for the codes not named yet. */
     period: "Given",
     periodName: (code: number): string | null =>
-      ({ 1: "Every week", 2: "Every month", 3: "Every season" })[code] ?? null,
+      ({
+        1: "Every week",
+        2: "Every month",
+        3: "Every season",
+        4: "At the end of the competition",
+        5: "Every calendar year",
+        6: "Every year",
+        7: "Every round",
+      })[code] ?? null,
     /** Who gets it, by FM's code; null for the codes not named yet. */
     recipients: "Given to",
     recipientName: (code: number): string | null => ({ 1: "A player", 2: "A manager", 7: "A team of players" })[code] ?? null,
     goalkeepersOnly: "Goalkeepers only",
     ageLimit: "Age limit",
     ageLimitValue: (age: number) => `${age} or under`,
+    /** The small tag on a women's award. */
+    women: "Women",
   },
 
   stadiumList: {

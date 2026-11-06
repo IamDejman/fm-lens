@@ -158,7 +158,8 @@ pub struct InjuryKindLayout {
 
 /// An award (`db::AWARD`), read as a competition is ([`CompetitionLayout`]); `competition`, `nation` and `continent`
 /// are the pointers it is linked by, the rest bytes: `prestige` 0 to 20, `period` and `recipients` codes,
-/// `goalkeepers_only` 1 for a goalkeepers' award and `max_age` the oldest a winner may be (0 for any age).
+/// `goalkeepers_only` 1 for a goalkeepers' award, `women` 1 for a women's award and `max_age` the oldest a winner may
+/// be (0 for any age).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AwardLayout {
@@ -174,6 +175,7 @@ pub struct AwardLayout {
     pub goalkeepers_only: u64,
     pub prestige: u64,
     pub period: u64,
+    pub women: u64,
     pub recipients: u64,
     pub max_age: u64,
 }

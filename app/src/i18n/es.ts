@@ -1051,12 +1051,22 @@ export const es: Strings = {
     competition: "Competición",
     prestige: "Prestigio",
     period: "Se entrega",
-    periodName: (code) => ({ 1: "Cada semana", 2: "Cada mes", 3: "Cada temporada" })[code] ?? null,
+    periodName: (code) =>
+      ({
+        1: "Cada semana",
+        2: "Cada mes",
+        3: "Cada temporada",
+        4: "Al final de la competición",
+        5: "Cada año natural",
+        6: "Cada año",
+        7: "Cada jornada",
+      })[code] ?? null,
     recipients: "Para",
     recipientName: (code) => ({ 1: "Un jugador", 2: "Un entrenador", 7: "Un equipo de jugadores" })[code] ?? null,
     goalkeepersOnly: "Solo porteros",
     ageLimit: "Límite de edad",
     ageLimitValue: (age) => `${age} años o menos`,
+    women: "Femenino",
   },
 
   stadiumList: {
