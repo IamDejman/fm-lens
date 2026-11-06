@@ -1943,6 +1943,30 @@ fn can_self_update() -> bool {
         && app_bundle(&exe).is_some_and(|bundle| !bundle.to_string_lossy().contains("/AppTranslocation/"))
 }
 
+/// The system the app runs on, for a problem report (see report.ts): "macOS 27.2, Apple Silicon". Elsewhere, or when
+/// macOS's version cannot be read, the system's and the processor's names.
+#[tauri::command]
+fn system_version() -> String {
+    let processor = match std::env::consts::ARCH {
+        "aarch64" => "Apple Silicon",
+        "x86_64" => "Intel",
+        other => other,
+    };
+    match macos_version() {
+        Some(version) => format!("macOS {version}, {processor}"),
+        None => format!("{}, {processor}", std::env::consts::OS),
+    }
+}
+
+/// macOS's version, "27.2", from the file macOS keeps it in.
+fn macos_version() -> Option<String> {
+    let plist = std::fs::read_to_string("/System/Library/CoreServices/SystemVersion.plist").ok()?;
+    let (_, after) = plist.split_once("<key>ProductVersion</key>")?;
+    let (_, value) = after.split_once("<string>")?;
+    let (version, _) = value.split_once("</string>")?;
+    Some(version.trim().to_owned())
+}
+
 /// The macOS app bundle the executable `exe` is in (`FMLibreEditor.app/Contents/MacOS/FMLibreEditor`); none for a
 /// development build, which runs from the target folder.
 fn app_bundle(exe: &Path) -> Option<&Path> {
@@ -3757,6 +3781,7 @@ pub fn run() {
             graphics_info,
             can_self_update,
             restart_app,
+            system_version,
             bridge::bridge_status,
             bridge::set_up_bridge,
             bridge::remove_bridge

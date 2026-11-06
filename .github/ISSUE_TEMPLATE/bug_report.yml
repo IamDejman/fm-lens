@@ -1,3 +1,5 @@
+# Report a problem in FM Lens's Settings menu opens this form with the version, FM build, macOS and changes filled
+# in (app/src/report.ts): keep these ids in step with it.
 name: Bug report
 description: Something in FM Lens does not work as it should.
 labels: [bug]
@@ -10,19 +12,20 @@ body:
     id: version
     attributes:
       label: FM Lens version
-      description: Shown at the foot of the app's window.
+      description: At the foot of the Settings menu.
       placeholder: "0.5.1"
     validations:
       required: true
-  - type: dropdown
-    id: platform
+  - type: input
+    id: fm-build
     attributes:
-      label: Where you run Football Manager 27
-      options:
-        - macOS Apple Silicon, Steam
-        - Other (describe below; not currently verified)
-    validations:
-      required: true
+      label: FM build
+      placeholder: "FM27 Steam 26340721, editing on"
+  - type: input
+    id: macos
+    attributes:
+      label: macOS
+      placeholder: "macOS 27.2, Apple Silicon"
   - type: textarea
     id: what
     attributes:
@@ -30,6 +33,10 @@ body:
       description: What you did, what you expected, and what happened instead. Paste any error the app showed.
     validations:
       required: true
+  - type: textarea
+    id: changes
+    attributes:
+      label: What you changed in FM Lens before it happened
   - type: textarea
     id: more
     attributes:
