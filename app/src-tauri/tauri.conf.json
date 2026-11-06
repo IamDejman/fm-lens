@@ -31,8 +31,8 @@
       "nsis"
     ],
     "createUpdaterArtifacts": false,
-    "publisher": "FMLibreEditor contributors",
-    "copyright": "Copyright (C) 2026 FMLibreEditor contributors. GPL-3.0-or-later.",
+    "publisher": "FM Lens contributors",
+    "copyright": "Copyright (C) 2026 FM Lens contributors. GPL-3.0-or-later.",
     "category": "Utility",
     "shortDescription": "Read-only Football Manager 27 companion",
     "windows": {
