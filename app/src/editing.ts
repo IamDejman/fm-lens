@@ -299,6 +299,9 @@ export const changeInjury = (uid: number, index: number, days: number) =>
 /** Takes the injury `index` out of the list of the player `uid`; his others stay. */
 export const removeInjury = (uid: number, index: number) => call<LoggedChange>("remove_injury", { uid, index });
 
+/** Closes the open promise at `index` in the promises of the player `uid`. */
+export const closePromise = (uid: number, index: number) => call<LoggedChange>("close_promise", { uid, index });
+
 /** The kinds of injury the game knows, in its order. */
 export const injuryKinds = () => call<InjuryKind[]>("injury_kinds");
 
