@@ -715,8 +715,7 @@ export const es: Strings = {
     keepPlaying: "Evitar la retirada",
     keepingPlaying: "Evitando…",
     keepPlayingTitle:
-      "Cancela su retirada y cambia «Se retirará en lo más alto» por «Jugará al fútbol tanto tiempo como pueda». " +
-      "Puedes deshacerlo en Cambios.",
+      "Cancela su retirada. Puedes deshacerlo en Cambios.",
 
     // Médico
     morale: (value) => `${value} / 20`,
@@ -767,7 +766,7 @@ export const es: Strings = {
     moraleTitle:
       "En FM: 10 es satisfecho, 11 algo feliz, 15 y 20 extremadamente feliz.",
     jadednessTitle:
-      "Lo cansado que está de jugar. -500 es totalmente descansado. Cuanto más alto, más necesita descansar.",
+      "Lo cansado que está. -500 es totalmente descansado.",
     noInjuries: "Sin lesiones",
     unknownInjury: "Lesión desconocida",
     injuryStarted: (date) => `Desde el ${date}`,
@@ -1341,7 +1340,7 @@ export const es: Strings = {
     dismiss: "Cerrar",
     changes: {
       "0.5.3": [
-        "FM Lens usa ahora su propio nombre en sus archivos y ajustes. Tu configuración y tus ajustes se han conservado solos.",
+        "Los archivos, los ajustes y el ayudante de Steam usan ahora el nombre FM Lens. Tu configuración se ha conservado.",
       ],
       "0.5.2": [
         "Informar de un problema, en Ajustes, abre un informe de error con tus versiones y cambios ya rellenados.",
