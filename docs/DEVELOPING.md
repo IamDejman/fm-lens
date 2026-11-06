@@ -157,46 +157,42 @@ macOS); `FMLIBRE_EXPORTS` names another folder. The columns and the JSON keys ar
 
 ### Releasing
 
-1. **Bump the version** in three places:
+FM Lens is released for macOS only, from a Mac, to the public repository
+[IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases). The source
+repository stays private.
+
+1. **Bump the version** in three places, and commit the bump:
    - `version` in the root `Cargo.toml` (`[workspace.package]`);
    - `app/package.json`;
    - `app/src-tauri/tauri.conf.json`.
+2. **Write what is new** in `docs/release-notes.md`.
+3. **Build and publish:** `scripts/release-mac.sh --publish`. It builds the universal app
+   with the bridge, signs the update with the updater key, and publishes the latest release
+   with `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download,
+   `FM-Lens-<version>-macos-universal.app.tar.gz` to update from, and `latest.json`.
+   Without `--publish` it only writes these files to `target/release-mac/<version>/`.
 
-   Commit the bump.
-2. **Tag it and push the tag:** `git tag v0.1.0` and `git push origin v0.1.0`.
-3. **The `Release` workflow** (`.github/workflows/release.yml`) runs the checks and builds,
-   on GitHub's Windows and macOS machines:
-   - `FMLibreEditor-Setup.exe`, a per-user NSIS installer in English, Turkish and Spanish;
-   - `FMLibreEditor-portable.zip`;
-   - `FMLibreEditor-macOS.zip`, the universal app with the bridge and its launcher;
-   - `FMLibreEditor-macOS.app.tar.gz`, the same app, which installed macOS apps update from.
-
-   It opens a **draft** release with these files, `latest.json` and
-   `docs/release-notes.md` as its text.
-4. **Write what is new in the draft and publish it.** From then on, installed Windows copies
-   and macOS apps of a version with the updater (any after 0.4.1) offer **Update** in their
-   notice.
-
-The download links in the README point at the latest published release. People outside the
-repository can use them once it is public.
+The updater key is `~/.tauri/fm-lens-updater.key` (or the file `FM_LENS_UPDATER_KEY`
+names); its public half is `plugins.updater.pubkey` in `app/src-tauri/tauri.conf.json`.
+Keep a backup of it: installed copies accept only updates signed with it, so without it
+everyone has to download the next version by hand.
 
 #### Updates from inside the app
 
-A copy the Windows installer put in place, and the macOS app, update themselves with Tauri's
-updater plugin: it reads `latest.json` from the latest published release (the endpoint in
-`app/src-tauri/tauri.conf.json`), downloads the file it names for the system, and checks its
-signature against the public key in the same file.
+When its window opens, the app reads `latest.json` from the latest release of
+fm-lens-releases (the endpoint in `app/src-tauri/tauri.conf.json`). When that names a newer
+version, the macOS app installs it at once, without asking: Tauri's updater plugin downloads
+the `.app.tar.gz`, checks its signature against the public key, puts it in place of the
+running app's bundle (macOS asks for an administrator's password where the user may not
+change it), and the app starts again (`restart_app`). A notice under the masthead shows how
+far it has got. At startup an app run from its bundle puts its bridge and launcher in place
+of the installed ones where they differ (`bridge_setup::refresh`), so the game loads the new
+bridge the next time it starts.
 
-- **Windows:** the installer runs in passive mode; the app closes and the installer opens
-  the new version.
-- **macOS:** the app in `FMLibreEditor-macOS.app.tar.gz` takes the place of the running
-  one's bundle (macOS asks for an administrator's password where the user may not change
-  it), and the app starts again (`restart_app`). At startup an app run from its bundle puts
-  its bridge and launcher in place of the installed ones where they differ
-  (`bridge_setup::refresh`), so the game loads the new bridge the next time it starts.
-
-Portable copies, a macOS app that macOS runs from where it was downloaded (App
-Translocation) and development builds open the release's page instead (`can_self_update`).
+A macOS app that macOS runs from where it was downloaded (App Translocation) and development
+builds cannot replace themselves (`can_self_update`): their notice names the new version and
+opens its release page. Offline, or before the first release, the check fails quietly and
+the app works as before. Versions up to 0.5.0 have no updater: install the next one by hand.
 
 The workflow signs the installer and the macOS archive with the private key in the
 repository's secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`,

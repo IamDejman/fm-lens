@@ -1375,26 +1375,19 @@ export const en = {
 
   /** New versions: the notice under the masthead, and the version and Check for updates at the foot of the window. */
   update: {
-    /** The notice's headline, and what a check by hand found. */
+    /** The notice's headline while the app installs a newer version, which it does at once, without asking. */
+    updating: (version: string) => `Updating to FM Lens ${version}`,
+    /** The headline where this copy cannot install it itself (see `can_self_update`), or installing failed. */
     available: (version: string) => `FM Lens ${version} is available`,
-    youHave: (version: string) => `You have ${version}.`,
     /** Opens the release's page in the browser. */
     download: "Download",
-    /** Downloads the new version's installer and runs it, where the app can update itself (see `can_self_update`). */
-    install: "Update",
-    installTitle: "Download and install it. FM Lens restarts.",
     preparing: "Preparing…",
     /** `percent` is null while the size of the download is not known. */
     downloading: (percent: number | null) => (percent === null ? "Downloading…" : `Downloading… ${percent}%`),
     installing: "Installing. FM Lens will restart.",
     installFailed: (reason: string) => `Couldn't update: ${reason}. Download it instead.`,
-    notInstallable: "Can't install this version from here. Download it instead.",
     /** Hides the notice until the app starts again. */
     later: "Later",
-    check: "Check for updates",
-    checking: "Checking for updates…",
-    upToDate: "You have the latest version.",
-    failed: "Couldn't check for updates.",
   },
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
