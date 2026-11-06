@@ -980,8 +980,12 @@ function fieldTable(entity: Entity): EditField[] {
     return [
       { ...field("reputation", "u16", 0, 10_000), mass: false },
       { ...field("youth_rating", "i16", 0, 165), mass: false },
+      { ...field("game_importance", "i8", 0, 4), mass: false },
+      { ...field("attendance", "u8", 0, 16), mass: false },
       { ...field("women.reputation", "u16", 0, 10_000), mass: false },
       { ...field("women.youth_rating", "i16", 0, 165), mass: false },
+      { ...field("women.game_importance", "i8", 0, 4), mass: false },
+      { ...field("women.attendance", "u8", 0, 16), mass: false },
       { ...field("points", "f32", 0, floatBits(3000)), mass: false },
       { ...field("population", "u32", 1, 2_000_000_000), mass: false },
       { ...field("dual_nationality", "u8", 0, 2), choices: [0, 2], mass: false },
@@ -3305,6 +3309,8 @@ function nationDetails(index: number): NationDetails | null {
     joinedFifa: 1904 + index * 5,
     joinedContinental: 1950 + index * 3,
     youthRating: 140 - index * 9,
+    gameImportance: index % 3,
+    attendance: 15 - index,
     rivals: NATIONS.filter((_, i) => i !== index)
       .slice(0, 3)
       .map((rival, i) => ({ uid: 1000 + NATIONS.indexOf(rival), name: rival, strength: 100 - i * 15 })),
@@ -3313,6 +3319,8 @@ function nationDetails(index: number): NationDetails | null {
       joinedFifa: 1970 + index * 4,
       joinedContinental: 1972 + index * 4,
       youthRating: 155 - index * 11,
+      gameImportance: 4,
+      attendance: 10 - (index % 4),
       teams: [team(null, 0, 9_000 - index * 450, []), team(20, 274, 4_000 - index * 150, [])],
     },
   });
@@ -3337,6 +3345,12 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
   if (values.youth_rating !== undefined) {
     d.youthRating = values.youth_rating;
   }
+  if (values.game_importance !== undefined) {
+    d.gameImportance = values.game_importance;
+  }
+  if (values.attendance !== undefined) {
+    d.attendance = values.attendance;
+  }
   const women = d.women;
   const womenSenior = women?.teams.find((team) => team.kind === 0);
   if (values["women.reputation"] !== undefined && womenSenior) {
@@ -3344,6 +3358,12 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
   }
   if (values["women.youth_rating"] !== undefined && women) {
     women.youthRating = values["women.youth_rating"];
+  }
+  if (values["women.game_importance"] !== undefined && women) {
+    women.gameImportance = values["women.game_importance"];
+  }
+  if (values["women.attendance"] !== undefined && women) {
+    women.attendance = values["women.attendance"];
   }
   if (values.points !== undefined) {
     d.points = floatOfBits(values.points);
@@ -3390,12 +3410,24 @@ function nationValues(uid: number): FieldValues {
   if (d.youthRating !== null) {
     values.youth_rating = d.youthRating;
   }
+  if (d.gameImportance !== null) {
+    values.game_importance = d.gameImportance;
+  }
+  if (d.attendance !== null) {
+    values.attendance = d.attendance;
+  }
   const womenSenior = d.women?.teams.find((team) => team.kind === 0);
   if (womenSenior) {
     values["women.reputation"] = womenSenior.reputation;
   }
   if (d.women && d.women.youthRating !== null) {
     values["women.youth_rating"] = d.women.youthRating;
+  }
+  if (d.women && d.women.gameImportance !== null) {
+    values["women.game_importance"] = d.women.gameImportance;
+  }
+  if (d.women && d.women.attendance !== null) {
+    values["women.attendance"] = d.women.attendance;
   }
   // FM keeps the points of an unranked nation too; the profile shows none.
   values.points = floatBits(d.points ?? 0);
