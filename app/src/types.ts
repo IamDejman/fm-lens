@@ -114,6 +114,8 @@ export interface GameActions {
   futureTransfer: boolean;
   /** Makes every player of a team fully familiar with its tactic (`team_action` "maxTactics"), as FM's editor does. */
   maxTactics: boolean;
+  /** Makes the human manager the manager of a club (`move_manager`), as FM's editor does. */
+  moveManager: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
@@ -1048,6 +1050,13 @@ export interface MovePreview {
   to: { uid: number; name: string };
   /** What the fee does to the two clubs' money, when one is to be paid. */
   fee?: FeePlan;
+}
+
+/** The human manager's move to a club: he may have none to leave, and the club's manager loses his job. */
+export interface ManagerPreview extends Omit<MovePreview, "from"> {
+  from: MovePreview["from"] | null;
+  /** The name of the club's manager, whom the game dismisses. */
+  displaced?: string;
 }
 
 /** An amount of money before and after a fee is paid, in pounds. */

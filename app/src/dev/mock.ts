@@ -73,6 +73,7 @@ import type {
   MassOperationKind,
   MassPreview,
   MassReport,
+  ManagerPreview,
   MovePreview,
   MoveTerms,
   PlannedChange,
@@ -1709,6 +1710,8 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
 
 /** The jobs the real `change_staff_job` gives, by contract code. */
 const STAFF_JOBS = [2, 20, 22, 26, 34, 60, 64, 12, 40, 48, 50, 14, 44, 58];
+/** The contract job of a club's manager. */
+const MANAGER_JOB = 16;
 
 /** What a member of staff's move or new job changed, by the change's id: his list row as it was. */
 const staffUndo = new Map<number, Pick<StaffSummary, "club" | "clubUid" | "job">>();
@@ -1731,6 +1734,53 @@ function movableStaff(uid: number): StaffSummary {
     throw failure("staff.role", message);
   }
   return member;
+}
+
+/**
+ * `plan_manager_move`: the human manager's move to a club, and the club's manager, whom the game dismisses: the first
+ * of its staff with a manager's job.
+ */
+function planManagerMove(uid: number, clubUid: number): ManagerPreview {
+  const member = staff.find((s) => s.uid === uid);
+  if (!member) {
+    throw notFound("staff", uid);
+  }
+  const to = clubs.find((c) => c.uid === clubUid);
+  if (!to) {
+    throw notFound("club", clubUid);
+  }
+  if (member.clubUid === clubUid) {
+    throw failure("move.sameClub", "the player is at this club already");
+  }
+  const from = clubs.find((c) => c.uid === member.clubUid);
+  const sitting = staff.find((s) => s.clubUid === clubUid && s.job === MANAGER_JOB && !s.isHuman);
+  return {
+    from: from ? { uid: from.uid, name: from.name } : null,
+    to: { uid: to.uid, name: to.name },
+    ...(sitting && { displaced: sitting.name }),
+  };
+}
+
+/** `move_manager`: the human manager becomes the club's manager and its manager loses his job. Nothing undoes it. */
+function moveManager(uid: number, clubUid: number): LoggedChange {
+  const preview = planManagerMove(uid, clubUid);
+  const member = staff.find((s) => s.uid === uid)!;
+  const sitting = staff.find((s) => s.clubUid === clubUid && s.job === MANAGER_JOB && !s.isHuman);
+  if (sitting) {
+    sitting.club = null;
+    sitting.clubUid = null;
+    sitting.job = null;
+  }
+  member.club = preview.to.name;
+  member.clubUid = preview.to.uid;
+  member.job = MANAGER_JOB;
+  const logged = logStaff(member, "club", preview.from?.uid ?? 0, preview.to.uid, {
+    ...(preview.from && { from: preview.from.name }),
+    to: preview.to.name,
+  });
+  const entry = changes.find((c) => c.id === logged.id)!;
+  entry.permanent = true;
+  return { ...entry };
 }
 
 /** `plan_staff_move`: the checks of the real command that the fixtures can have, with its messages. */
@@ -3104,7 +3154,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true, maxTactics: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true, maxTactics: true, moveManager: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
@@ -3379,6 +3429,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return planStaffMove(Number(args?.uid), Number(args?.club)) as T;
     case "move_staff":
       return moveStaff(Number(args?.uid), Number(args?.club)) as T;
+    case "career":
+      return mockCareer() as T;
+    case "plan_manager_move":
+      return planManagerMove(Number(args?.uid), Number(args?.club)) as T;
+    case "move_manager":
+      return moveManager(Number(args?.uid), Number(args?.club)) as T;
     case "change_staff_job":
       return changeStaffJob(Number(args?.uid), Number(args?.job)) as T;
     case "plan_club_swap":

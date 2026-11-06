@@ -709,6 +709,9 @@ pub struct TeamLayout {
     pub captain: u64,
     pub vice_captain: u64,
     pub reputation: u64,
+    /// Pointer to the object of the team's manager, null for none; where it has been traced.
+    #[serde(default)]
+    pub manager: Option<u64>,
 }
 
 impl TeamLayout {
