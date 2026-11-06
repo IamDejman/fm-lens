@@ -11,7 +11,7 @@ const text = updateText;
 const VERSION_KEY = "fm-lens.version";
 /** Set once the introduction is over (see GuidedTour.tsx): versions up to 0.5.1 kept no version, so it tells an
  * update from a first start. */
-const TOUR_KEY = "fmlibre.tour";
+const TOUR_KEY = "fmlens.tour";
 
 /**
  * The version whose changes to show, once: the one running, when another version ran on this computer before and this

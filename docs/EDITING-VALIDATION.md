@@ -94,8 +94,8 @@ tests were run during implementation. The native bundle was built through Tauri
 and signed ad hoc. Local logs and private diagnostic outputs stay in ignored
 `reports/`; game saves and memory reports are not repository artifacts.
 
-For isolated editor state, launch the development bundle with `FMLIBRE_DATA`
-and `FMLIBRE_EXPORTS` pointing to local directories under `reports/`. This keeps
+For isolated editor state, launch the development bundle with `FMLENS_DATA`
+and `FMLENS_EXPORTS` pointing to local directories under `reports/`. This keeps
 test freezes and exports separate from ordinary app state.
 
 Next validation priorities: stale-draft/undo conflict in the native app, career
@@ -259,7 +259,7 @@ review, Apply, readback and conditional undo path is unchanged. The human
 manager's unsackable flag now shows in its own group without needing a contract.
 
 Builder checks: frontend build (tsc and Vite), `cargo fmt --all --check`,
-`cargo clippy --locked -p fmlibre-app --all-targets -- -D warnings`, the Tauri
+`cargo clippy --locked -p fmlens-app --all-targets -- -D warnings`, the Tauri
 debug app build, the Impeccable detector over the changed UI files and
 `git diff --check`. Pending native checks: direct activation by mouse and
 keyboard, focus and selection, pending/apply/undo after activation, switching
@@ -347,7 +347,7 @@ career), game date 8 Dec 2027, Arsenal (UID 602). The main career's hash was
 checked before and after.
 
 - Before: FM's Squad > Dynamics showed Team Cohesion "Very Good", ring about 85%
-  full. `fmlibre-probe cohesion 602`: 37 to raise, 11 at 100, 6 skipped.
+  full. `fmlens-probe cohesion 602`: 37 to raise, 11 at 100, 6 skipped.
 - FM Lens, Squad tab, first team, Max cohesion: "18 changes made", one mass edit
   in Changes (for example Eze 38 -> 100, Meslier 1 -> 100, Merino 4 -> 100). The 18
   include three players out on loan, which the probe's list leaves out.
@@ -630,7 +630,7 @@ career's hash was checked before and after (OK both times).
 
 | Check | FM Lens | Probe | FM |
 |---|---|---|---|
-| Tour (#12), local storage keys `fmlibre.tour` and `fmlibre.tour.exercise` cleared | Exercise starts at 1 of 5 on connect; open a row, Edit, change a value, Apply, Changes reach 5 of 5; Discard goes back to 3 of 5; the card sits bottom-left, clear of Apply; Done stores `fmlibre.tour.exercise` | Quintero's crossing 5 -> 6 | - |
+| Tour (#12), local storage keys `fmlens.tour` and `fmlens.tour.exercise` cleared | Exercise starts at 1 of 5 on connect; open a row, Edit, change a value, Apply, Changes reach 5 of 5; Discard goes back to 3 of 5; the card sits bottom-left, clear of Apply; Done stores `fmlens.tour.exercise` | Quintero's crossing 5 -> 6 | - |
 | Revoke (#39), Holger Quintero (2000521121), ESC slot since 11 Dec 2027 | ESC slot -> None | No permit record | Contract > Work Permit: "No Work Permit", re-apply immediately |
 | The same, after Continue to 12 Dec (Arsenal 3-0 Tottenham, instant result) | - | Still no record: FM did not make a new one | Still "No Work Permit"; profile badge ESC -> Wp |
 | Grant, Quintero | None -> Active | England: active | Same day: badge still Wp (cached). After Continue to 13 Dec: badge gone, Contract page "Work Permit: Active, until 30/6/2032" |
@@ -643,11 +643,11 @@ career's hash was checked before and after (OK both times).
 How FM ran under Rosetta, with Steam running and the arm64 FM quit:
 
 ```bash
-arch -x86_64 -e DYLD_INSERT_LIBRARIES="$HOME/Library/Application Support/FM27Scout/libfmlibre_bridge.dylib" -e SteamAppId=4530370 -e SteamGameId=4530370 "$HOME/Library/Application Support/Steam/steamapps/common/Football Manager 27/fm.app/Contents/MacOS/Football Manager 27"
+arch -x86_64 -e DYLD_INSERT_LIBRARIES="$HOME/Library/Application Support/FM27Scout/libfmlens_bridge.dylib" -e SteamAppId=4530370 -e SteamGameId=4530370 "$HOME/Library/Application Support/Steam/steamapps/common/Football Manager 27/fm.app/Contents/MacOS/Football Manager 27"
 ```
 
 `vmmap` showed the Rosetta runtime and the bridge's translated x86_64 slice.
-Steam's own launch (`fmlibre-launch`) still starts the arm64 half, and its
+Steam's own launch (`fmlens-launch`) still starts the arm64 half, and its
 launch options were not changed.
 
 Findings:

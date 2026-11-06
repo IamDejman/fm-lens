@@ -8,7 +8,7 @@
 import { useEffect, useRef } from "react";
 
 /** Where the snapshot is kept: a JSON object with a `version` and the `parts`, by name. */
-const STORAGE_KEY = "fmlibre.restore";
+const STORAGE_KEY = "fmlens.restore";
 
 /** The format of the snapshot; one of another format is left alone. */
 const VERSION = 1;
