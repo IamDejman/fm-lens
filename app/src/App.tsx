@@ -405,7 +405,9 @@ function App() {
 
       <footer className="colophon">
         <div className="colophon-main">
-          <span className="colophon-name">FM Lens</span>
+          <span className="colophon-name">
+            FM Lens{version && <span className="colophon-version"> {version}</span>}
+          </span>
           <span className={`status ${connection ? "on" : ""}`} data-tour="status">
             <span className="dot" />
             <span className="status-text">

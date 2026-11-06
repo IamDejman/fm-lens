@@ -508,6 +508,8 @@ export const en = {
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
+    // One injury made longer or shorter, or taken out, which the change log keeps as a change of its days.
+    injury: "Injury",
     // A work permit FM gave or took away, which the change log keeps as 0 (none) or 1 (held).
     work_permit: "Work permit",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
@@ -690,7 +692,7 @@ export const en = {
     keepPlaying: "Prevent retirement",
     keepingPlaying: "Preventing…",
     keepPlayingTitle:
-      "Cancels his retirement and swaps “Will retire at top” for “Will play football as long as possible”. You can undo it in Changes.",
+      "Cancels his retirement. You can undo it in Changes.",
 
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
     /** A player's morale, 1–20. */
@@ -746,7 +748,7 @@ export const en = {
     },
     moraleTitle: "In FM: 10 is content, 11 slightly happy, 15 and 20 extremely happy.",
     /** Hover text of jadedness, which the profile shows as stored. */
-    jadednessTitle: "How tired he is from playing. -500 is fully rested. The higher it is, the more he needs a rest.",
+    jadednessTitle: "How tired he is. -500 is fully rested.",
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
@@ -1104,6 +1106,29 @@ export const en = {
     reputation: "Reputation",
     /** The small tag on a women's competition. */
     women: "Women",
+    rules: "Rules",
+    /** A competition's rules as FM's own data for it holds them, by the keys FM Lens reads them with. */
+    ruleNames: {
+      level: "Level",
+      max_squad_size: "Max squad size",
+      min_squad_size: "Min squad size",
+      recommended_squad_size: "Recommended squad size",
+      max_prelim_squad_size: "Max preliminary squad",
+      min_foreign_players: "Min foreign players",
+      max_foreign_players: "Max foreign players",
+      foreign_trialists_can_play: "Foreign trialists may play",
+      subs_allowed: "Substitutions allowed",
+      max_subs: "Substitutes named",
+      extended_injury_time: "Extended stoppage time",
+      daylight_offside_rule: "Daylight offside",
+      yellow_cards_for_fine: "Yellow cards for a fine",
+      min_games_for_medal: "Games for a medal",
+      number_of_medals: "Medals",
+      min_stadium_capacity: "Min stadium capacity",
+      min_stadium_seating: "Min seated capacity",
+      requires_grass_pitch: "Grass pitch required",
+      requires_undersoil_heating: "Undersoil heating required",
+    },
   },
 
   awardList: {
@@ -1414,6 +1439,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.3": [
+        "Files, settings and the Steam helper now use the FM Lens name. Your setup carried over.",
+      ],
       "0.5.2": [
         "Report a problem, in Settings, opens a bug report with your versions and changes filled in.",
         "When FM moves its data, FM Lens reads the game again by itself: no more pressing Reload.",
@@ -1996,6 +2024,11 @@ export const en = {
     levelOf: (name: string) => `Level of ${name}`,
     /** Under a main language of the country his club is in, which FM raises back if it is set lower. */
     raisedBack: "FM raises it back on its own",
+    injuriesTitle: "Change how many days each injury lasts",
+    /** The title of the dialog that changes them. */
+    daysOut: "Days out",
+    /** The days input of a row, for assistive technology: `name` is the injury's. */
+    daysOf: (name: string) => `Days out with ${name}`,
     save: "Save",
   },
 

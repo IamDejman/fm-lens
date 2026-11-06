@@ -147,6 +147,12 @@ pub struct CompetitionLayout {
     pub place_name: u64,
     pub reputation: u64,
     pub women: u64,
+    /// Pointer to the competition's loaded rule data (`ACTUAL_COMP`), and in it the `(begin, end, capacity)` vector of
+    /// its rules: 16-byte entries of a key (a FourCC in the low 32 bits) and a pointer to a value node, `[type][value]`.
+    #[serde(default)]
+    pub actual: Option<u64>,
+    #[serde(default)]
+    pub rules: Option<u64>,
 }
 
 /// A kind of injury (`db::INJURY`), read from its database table as a competition is ([`CompetitionLayout`]). Its
