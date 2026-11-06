@@ -307,7 +307,7 @@ export interface StaffDetails extends StaffSummary {
   unsackable: boolean | null;
   /** Whether a human manager may register his squad outside the windows; null like `unsackable`. */
   registrationAnytime: boolean | null;
-  /** The languages he speaks besides, usually, his native one. Read-only. */
+  /** The languages he speaks besides, usually, his native one. */
   languages: Language[];
   /** The people and clubs he favours and dislikes. Read-only. */
   preferences: Preference[];
@@ -638,7 +638,7 @@ export interface PlayerDetails extends PlayerSummary {
   tieRoom: number;
   /** The people and clubs he favours and dislikes. Read-only. */
   preferences: Preference[];
-  /** The languages he speaks besides, usually, his native one. Read-only. */
+  /** The languages he speaks besides, usually, his native one. */
   languages: Language[];
   /** Whether the editor can read the retirements the game has planned in this version of the game. */
   retirementKnown: boolean;
@@ -680,13 +680,20 @@ export interface LoanTerms {
 export type PreferenceKind = "favouredPerson" | "dislikedPerson" | "favouredClub" | "dislikedClub";
 
 /** One of a player's favoured or disliked people and clubs. */
-/** One side of a logged change to a tie or a preference: none for one added or taken out. */
+/** One side of a logged change to a tie, a preference or a language: none for one added or taken out. */
 export interface TieEnd {
   name: string;
   /** A training's homegrown rule. */
   rule: number | null;
-  /** A preference's strength. */
-  strength?: number;
+  /** A preference's strength, or a language's level. */
+  value?: number;
+}
+
+/** A person whose likes and dislikes or languages are changed: a player, or a member of staff for `staff`. */
+export interface PersonRef {
+  uid: number;
+  staff: boolean;
+  name: string;
 }
 
 export interface Preference {
@@ -919,7 +926,8 @@ export interface LoggedChange {
    * `tie.trainedInNation` or `tie.trainedAtClub` from one nation's or club's UID to the other's (0 for none): the
    * names and homegrown rules on either side. Set too for a change to a person's likes and dislikes, logged as a change
    * of his field `preference.favouredClub` (or `dislikedClub`, `favouredPerson`, `dislikedPerson`) from one strength to
-   * the other (0 for one taken out): the names and strengths on either side.
+   * the other (0 for one taken out): the names and strengths on either side. And for a change to his languages, logged
+   * as a change of his field `language` from one level to the other (0 for one taken out).
    */
   tie?: {
     from: TieEnd | null;

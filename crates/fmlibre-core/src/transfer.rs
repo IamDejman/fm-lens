@@ -176,6 +176,10 @@ pub enum MoveError {
     NoRelation {
         index: usize,
     },
+    /// A person's likes and dislikes, or languages, hold nothing at this place in the list.
+    NotInList {
+        index: usize,
+    },
     /// The player's list of relations has no room for another.
     RelationsFull,
     /// The new nation or club is not one of the game's own, or not of the kind the tie takes.
@@ -303,6 +307,7 @@ impl fmt::Display for MoveError {
             MoveError::NoRelation { index } => {
                 write!(f, "the player has no nationality or homegrown tie number {index}")
             }
+            MoveError::NotInList { index } => write!(f, "the list holds nothing at number {index}"),
             MoveError::RelationsFull => f.write_str(
                 "the player's list of nationalities and ties has no room for another, and the editor cannot make it \
                  bigger; change one of them instead",
@@ -398,6 +403,7 @@ impl Coded for MoveError {
             MoveError::NotInjured => "heal.notInjured",
             MoveError::NotBanned => "ban.notBanned",
             MoveError::NoRelation { .. } => "relation.missing",
+            MoveError::NotInList { .. } => "list.missing",
             MoveError::RelationsFull => "relation.noRoom",
             MoveError::WrongTarget => "relation.target",
             MoveError::SameRelation => "relation.same",
@@ -452,7 +458,9 @@ impl Coded for MoveError {
                 vec![("department", (*department).to_owned()), ("staff", staff.to_string())]
             }
             MoveError::UnusualJob { job } => vec![("job", job.to_string())],
-            MoveError::NoRelation { index } | MoveError::NoClause { index } => vec![("index", index.to_string())],
+            MoveError::NoRelation { index } | MoveError::NoClause { index } | MoveError::NotInList { index } => {
+                vec![("index", index.to_string())]
+            }
             MoveError::NotInClause { field } => vec![("field", (*field).to_owned())],
             MoveError::UnknownRule { rule } => vec![("rule", rule.to_string())],
             MoveError::FamiliarityChanged { found } => vec![("found", found.to_string())],

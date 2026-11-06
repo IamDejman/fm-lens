@@ -263,6 +263,7 @@ const errors: ErrorTexts = {
   "cohesion.changed": (p) =>
     `Su familiaridad con el club vale ahora ${p.found}: el juego la ha cambiado desde entonces, así que no se ha tocado.`,
   "tactics.changed": () => "El juego ha cambiado desde entonces su familiaridad con la táctica, así que no se ha tocado.",
+  "list.missing": () => `Esa entrada ya no está en la lista; ${reload}.`,
   "relation.missing": () => `Esa nacionalidad o formación ya no está en la lista del jugador; ${reload}.`,
   "relation.noRoom": () =>
     "La lista del jugador no tiene sitio y el editor no puede ampliarla; cambia una de sus entradas en su lugar.",
@@ -553,6 +554,8 @@ export const es: Strings = {
     "preference.favouredPerson": "Persona favorita",
     "preference.dislikedPerson": "Persona que no soporta",
     strength: "Intensidad",
+    language: "Idioma",
+    level: "Nivel",
     club: "Club",
     injuries: "Lesiones",
     work_permit: "Permiso de trabajo",
@@ -1789,9 +1792,11 @@ export const es: Strings = {
     close: "Cerrar",
   },
 
-  likes: {
-    changeTitle: "Cambiar en el juego cuánto le gusta o disgusta cada persona y club",
+  lists: {
+    likesTitle: "Cambiar en el juego cuánto le gusta o disgusta cada persona y club",
     strengthOf: (name) => `Intensidad para ${name}`,
+    languagesTitle: "Cambiar en el juego cómo de bien habla cada idioma",
+    levelOf: (name) => `Nivel de ${name}`,
     save: "Guardar",
   },
 
