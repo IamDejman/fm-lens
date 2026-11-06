@@ -617,3 +617,21 @@ Findings:
   Intel.
 - Ronaldo's and Benzema's planned retirements (30 June 2027) are not on this
   copy on either architecture: its date is past them.
+
+## ESC slot wording and Undo (#42, 6 November 2026)
+
+Same `FM Lens Batch 2026-11-05.fm` copy at 11 Dec 2027, FM arm64 started
+directly with the bridge from `main` at 3751ccb (#40 to #42 merged). FM Lens
+from the same commit (`tauri build --no-bundle`). Nothing was saved; FM was
+quit without saving. The main career's hash was checked before and after (OK
+both times).
+
+| Check | FM Lens | Probe |
+|---|---|---|
+| Revoke, Collins Sichenje (12092701), ESC slot since 3 Feb 2027 | Work permit: None. Changes: "ESC slot since 3 Feb 2027 -> None" | No permit record |
+| Undo of that Revoke | "Undone" | ESC slot since 2027-02-03 |
+| Revoke, Gabriel (19242094), a work permit | Changes: "Active -> None" | No permit record |
+| Undo of that Revoke | "Undone" | England: active |
+
+Both findings of the morning session about ESC slots are fixed: Changes names
+the slot and its date, and Undo gives the slot back with its first date.
