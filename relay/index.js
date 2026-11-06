@@ -2,8 +2,9 @@
 // fm-lens repository with its own GitHub token, so nobody leaves the app. It keeps nothing: a report is checked,
 // sent on to GitHub and forgotten. Each address may send a few reports an hour, and all of them together a few a day.
 //
-// It runs as an AWS Lambda function behind a function URL (relay/deploy.sh). Environment: GITHUB_TOKEN (a
-// fine-grained token that may write issues in GITHUB_REPO) and GITHUB_REPO (owner/name, IamDejman/fm-lens by default).
+// It runs as an AWS Lambda function behind a function URL (relay/deploy.sh), and counts reports in a DynamoDB table
+// that every instance shares. Environment: GITHUB_TOKEN (a fine-grained token that may write issues in GITHUB_REPO),
+// GITHUB_REPO (owner/name, IamDejman/fm-lens by default) and LIMIT_TABLE (fm-lens-report-relay by default).
 
 /** The longest each part of a report may be, in characters, and the request as a whole, in bytes. */
 export const LIMITS = { what: 5000, line: 200, changes: 8000, request: 20_000 };
@@ -68,32 +69,41 @@ export function issueFor(report) {
 }
 
 /**
- * Counts reports, by address for the hour and in all for the day. Only reports let through are kept, so it holds at
- * most PER_DAY times, whatever is sent to it. Each function instance counts on its own.
+ * Counts reports in the DynamoDB table `table`, by address for each clock hour and in all for each day, so every
+ * instance of the function sees the same counts. `update` sends one UpdateItem request; each count adds one only while
+ * it is under its limit, and DynamoDB drops it a window after its own ends (the table's TTL is on `expires`).
  */
-export function createLimiter(now = Date.now) {
-  const byAddress = new Map();
-  let day = [];
-  return {
-    /** Whether `address` may send a report now; if so, it is counted. */
-    allow(address) {
-      const at = now();
-      day = day.filter((time) => at - time < DAY);
-      for (const [key, times] of byAddress) {
-        const recent = times.filter((time) => at - time < HOUR);
-        if (recent.length === 0) {
-          byAddress.delete(key);
-        } else {
-          byAddress.set(key, recent);
-        }
-      }
-      const recent = byAddress.get(address) ?? [];
-      if (recent.length >= PER_ADDRESS_HOUR || day.length >= PER_DAY) {
+export function createTableLimiter({ table, update, now = Date.now }) {
+  const count = async (key, max, expires) => {
+    try {
+      await update({
+        TableName: table,
+        Key: { key: { S: key } },
+        UpdateExpression: "ADD reports :one SET expires = if_not_exists(expires, :expires)",
+        ConditionExpression: "attribute_not_exists(reports) OR reports < :max",
+        ExpressionAttributeValues: {
+          ":one": { N: "1" },
+          ":max": { N: String(max) },
+          ":expires": { N: String(Math.floor(expires / 1000)) },
+        },
+      });
+      return true;
+    } catch (err) {
+      if (err instanceof Error && err.name === "ConditionalCheckFailedException") {
         return false;
       }
-      byAddress.set(address, [...recent, at]);
-      day.push(at);
-      return true;
+      throw err;
+    }
+  };
+  return {
+    async allow(address) {
+      const at = now();
+      const hour = Math.floor(at / HOUR);
+      const day = Math.floor(at / DAY);
+      return (
+        (await count(`address#${address}#${hour}`, PER_ADDRESS_HOUR, (hour + 2) * HOUR)) &&
+        (await count(`day#${day}`, PER_DAY, (day + 2) * DAY))
+      );
     },
   };
 }
@@ -110,10 +120,11 @@ function answer(statusCode, body) {
 }
 
 /**
- * The relay's handler for function URL requests. `token` and `repo` name where issues go; `fetch` and `limiter` are
- * swapped in by the tests. Reports are counted by the address AWS saw the request come from, which a sender can't set.
+ * The relay's handler for function URL requests. `token` and `repo` name where issues go, and `limiter` counts reports;
+ * `fetch` is swapped in by the tests. Reports are counted by the address AWS saw the request come from, which a sender
+ * can't set.
  */
-export function createRelay({ token, repo, fetch = globalThis.fetch, limiter = createLimiter() }) {
+export function createRelay({ token, repo, limiter, fetch = globalThis.fetch }) {
   return async (event) => {
     const method = event.requestContext?.http?.method ?? "";
     const path = event.rawPath ?? "/";
@@ -143,7 +154,14 @@ export function createRelay({ token, repo, fetch = globalThis.fetch, limiter = c
     if (error) {
       return answer(400, { error });
     }
-    if (!limiter.allow(event.requestContext?.http?.sourceIp ?? "unknown")) {
+    let allowed;
+    try {
+      allowed = await limiter.allow(event.requestContext?.http?.sourceIp ?? "unknown");
+    } catch (err) {
+      console.error(`The counts could not be read: ${err instanceof Error ? err.message : String(err)}`);
+      return answer(503, { error: "unavailable" });
+    }
+    if (!allowed) {
       return answer(429, { error: "tooMany" });
     }
     try {
@@ -171,8 +189,21 @@ export function createRelay({ token, repo, fetch = globalThis.fetch, limiter = c
   };
 }
 
-/** The Lambda entry point. */
-export const handler = createRelay({
-  token: process.env.GITHUB_TOKEN,
-  repo: process.env.GITHUB_REPO || "IamDejman/fm-lens",
-});
+let relay;
+
+/** The Lambda entry point. The AWS SDK comes with Lambda's Node.js runtime, so it is loaded only there. */
+export async function handler(event) {
+  if (!relay) {
+    const { DynamoDBClient, UpdateItemCommand } = await import("@aws-sdk/client-dynamodb");
+    const client = new DynamoDBClient({});
+    relay = createRelay({
+      token: process.env.GITHUB_TOKEN,
+      repo: process.env.GITHUB_REPO || "IamDejman/fm-lens",
+      limiter: createTableLimiter({
+        table: process.env.LIMIT_TABLE || "fm-lens-report-relay",
+        update: (input) => client.send(new UpdateItemCommand(input)),
+      }),
+    });
+  }
+  return relay(event);
+}
