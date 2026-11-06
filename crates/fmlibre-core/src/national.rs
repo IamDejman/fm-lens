@@ -7,6 +7,8 @@
 //! [`NationalLayout`]: crate::profile::NationalLayout
 //! [`RelationLayout`]: crate::profile::RelationLayout
 
+use std::collections::BTreeMap;
+
 use fmlibre_mem::{Process, is_user_pointer};
 use serde::Serialize;
 
@@ -70,6 +72,8 @@ pub struct NationDetails {
     /// FM's game importance, 0 to 4, and attendance, 0 to 16, of its men's football.
     pub game_importance: Option<u8>,
     pub attendance: Option<u8>,
+    /// Its men's style ratings, 0 to 20, by the keys of `STYLE`.
+    pub style: Option<BTreeMap<&'static str, u8>>,
     /// Its rivals, strongest first.
     pub rivals: Vec<Related>,
     /// Its national teams with a squad or a manager, and its senior team; the senior team first.
@@ -88,6 +92,7 @@ pub struct WomenFootball {
     pub youth_rating: Option<u16>,
     pub game_importance: Option<u8>,
     pub attendance: Option<u8>,
+    pub style: Option<BTreeMap<&'static str, u8>>,
     /// The senior team first.
     pub teams: Vec<NationalTeam>,
 }
@@ -102,6 +107,7 @@ struct Association {
     youth_rating: Option<u16>,
     game_importance: Option<u8>,
     attendance: Option<u8>,
+    style: Option<BTreeMap<&'static str, u8>>,
 }
 
 /// A language spoken in a nation, and by what share of its people.
@@ -151,6 +157,26 @@ pub const MOST_YOUTH_RATING: i64 = 165;
 /// The highest game importance and attendance the editor writes: the most a container holds in 27.0.0.
 pub const MOST_GAME_IMPORTANCE: i64 = 4;
 pub const MOST_ATTENDANCE: i64 = 16;
+
+/// A container's style ratings in the order FM keeps them, by the keys the editor names them with. FM's codes are
+/// Ndep, Ndir, Nflm, Nflx, Nfrl, Nmar, Noff, Nprs, Nstb, Ntpo, Nupm and Nwid.
+pub const STYLE: [&str; 12] = [
+    "depth",
+    "directness",
+    "flamboyancy",
+    "flexibility",
+    "free_roles",
+    "marking",
+    "offside",
+    "pressing",
+    "sitting_back",
+    "tempo",
+    "playmaker",
+    "width",
+];
+
+/// The highest style rating: most nations read 10, none more than 20.
+pub const MOST_STYLE: i64 = 20;
 
 /// The `side` container of the nation at `nation`, where it points back at the nation. Only reads memory.
 pub(crate) fn container(process: &Process, layout: &Layout, nation: u64, side: Side) -> Option<u64> {
@@ -233,6 +259,7 @@ impl Session {
             youth_rating: None,
             game_importance: None,
             attendance: None,
+            style: None,
             rivals: Vec::new(),
             teams: Vec::new(),
             women: None,
@@ -246,6 +273,7 @@ impl Session {
                 youth_rating: facts.youth_rating,
                 game_importance: facts.game_importance,
                 attendance: facts.attendance,
+                style: facts.style,
                 teams: self.national_teams(container, players, staff).unwrap_or_default(),
             });
         }
@@ -262,13 +290,14 @@ impl Session {
         details.youth_rating = facts.youth_rating;
         details.game_importance = facts.game_importance;
         details.attendance = facts.attendance;
+        details.style = facts.style;
         details.rivals = self.nation_rivals(container + n.rivals, nation.uid).unwrap_or_default();
         details.teams = self.national_teams(container, players, staff).unwrap_or_default();
         Ok(Some(details))
     }
 
     /// The facts a container holds by value: the FIFA standing, the association's years, the youth rating, the game
-    /// importance and the attendance.
+    /// importance, the attendance and the style ratings.
     fn association(&self, container: u64) -> Result<Association, MoveError> {
         let n = self.national()?;
         let c = self.process.read_bytes(container, n.container_end() as usize)?;
@@ -287,6 +316,14 @@ impl Session {
             youth_rating: u16::try_from(youth).ok().filter(|&youth| i64::from(youth) <= MOST_YOUTH_RATING),
             game_importance: within(c[n.game_importance as usize], MOST_GAME_IMPORTANCE),
             attendance: within(c[n.attendance as usize], MOST_ATTENDANCE),
+            // All twelve or none: one out of range means the container is not what the layout says.
+            style: n.style.and_then(|offset| {
+                let style = &c[offset as usize..offset as usize + STYLE.len()];
+                style
+                    .iter()
+                    .all(|&rating| i64::from(rating) <= MOST_STYLE)
+                    .then(|| STYLE.into_iter().zip(style.iter().copied()).collect())
+            }),
         })
     }
 

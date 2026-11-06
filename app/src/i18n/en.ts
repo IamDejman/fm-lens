@@ -390,6 +390,22 @@ export const en = {
     corporate: "Corporate",
   },
 
+  /** A nation's style ratings, 0 to 20, in the order the profile lists them. */
+  nationStyle: {
+    depth: "Depth",
+    directness: "Directness",
+    flamboyancy: "Flamboyancy",
+    flexibility: "Flexibility",
+    free_roles: "Free Roles",
+    marking: "Marking",
+    offside: "Offside",
+    pressing: "Pressing",
+    sitting_back: "Sitting Back",
+    tempo: "Tempo",
+    playmaker: "Use of Playmaker",
+    width: "Width",
+  },
+
   supporterTraits: {
     loyalty: "Loyalty",
     passion: "Passion",
@@ -1190,6 +1206,8 @@ export const en = {
     gameImportance: "Game importance",
     attendance: "Attendance",
     women: "Women's football",
+    style: "Style",
+    womenStyle: "Women's style",
     teamName: (ageLimit: number | null) => (ageLimit === null ? "Senior team" : `Under-${ageLimit}s`),
     womenTeamName: (ageLimit: number | null) =>
       ageLimit === null ? "Women's senior team" : `Women's under-${ageLimit}s`,
@@ -1417,6 +1435,8 @@ export const en = {
     startFailed: (reason: string) => `Couldn't start editing: ${reason}`,
     /** The name of a position's field, e.g. "ST rating"; `position` is its entry in `positions`. */
     positionRating: (position: string) => `${position} rating`,
+    /** A women's style rating in the Changes view, e.g. "Women's tempo". */
+    womenStyle: (style: string) => `Women's ${style.toLowerCase()}`,
     /** Hover text of a changed input: the value it started from, as shown. */
     was: (value: string) => `was ${value}`,
     /** Hover text of an input that cannot be applied; `min` and `max` are the values it takes, as shown. */

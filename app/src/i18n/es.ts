@@ -469,6 +469,21 @@ export const es: Strings = {
     corporate: "Corporativas",
   },
 
+  nationStyle: {
+    depth: "Profundidad",
+    directness: "Juego directo",
+    flamboyancy: "Vistosidad",
+    flexibility: "Flexibilidad",
+    free_roles: "Roles libres",
+    marking: "Marcaje",
+    offside: "Fuera de juego",
+    pressing: "Presión",
+    sitting_back: "Repliegue",
+    tempo: "Ritmo",
+    playmaker: "Uso del organizador",
+    width: "Amplitud",
+  },
+
   supporterTraits: {
     loyalty: "Lealtad",
     passion: "Pasión",
@@ -1175,6 +1190,8 @@ export const es: Strings = {
     gameImportance: "Importancia del juego",
     attendance: "Asistencia",
     women: "Fútbol femenino",
+    style: "Estilo",
+    womenStyle: "Estilo femenino",
     teamName: (ageLimit) => (ageLimit === null ? "Selección absoluta" : `Sub-${ageLimit}`),
     womenTeamName: (ageLimit) => (ageLimit === null ? "Selección femenina absoluta" : `Femenina sub-${ageLimit}`),
     manager: "Seleccionador",
@@ -1355,6 +1372,7 @@ export const es: Strings = {
     editTitle: "Cambiar los valores de este perfil en el juego",
     startFailed: (reason) => `No se ha podido empezar a editar: ${reason}`,
     positionRating: (position) => `Valoración de ${position}`,
+    womenStyle: (style) => `${style} (femenino)`,
     was: (value) => `antes: ${value}`,
     invalid: (min, max) => `Introduce un número entero de ${min} a ${max}`,
     least: (value) => `Mín.: ${value}`,

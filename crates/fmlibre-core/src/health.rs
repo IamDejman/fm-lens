@@ -727,7 +727,7 @@ fn check_nations(session: &Session, players: &[SampledPlayer]) -> Option<CheckRe
         let uid = process.read_u32(nation + layout.nation.uid).ok()?;
         let rules = process.read_bytes(nation, n.nation_end() as usize).ok()?;
         let years = rules[n.naturalisation as usize];
-        // Both sides' senior teams, youth ratings, game importance and attendance, which the editor writes as well.
+        // Both sides' senior teams, youth ratings, game importance, attendance and style, which the editor writes as well.
         let mut sides = [Side::Men, Side::Women].into_iter().map(|side| {
             let team = crate::national::senior_team(process, layout, nation, uid, side)?;
             let reputation = process.read_bytes(team + layout.team.reputation, 2).ok()?;
@@ -736,11 +736,16 @@ fn check_nations(session: &Session, players: &[SampledPlayer]) -> Option<CheckRe
             let youth = i64::from(i16::from_le_bytes([youth[0], youth[1]]));
             let importance = process.read_bytes(container + n.game_importance, 1).ok()?;
             let attendance = process.read_bytes(container + n.attendance, 1).ok()?;
+            let style = match n.style {
+                Some(offset) => process.read_bytes(container + offset, crate::national::STYLE.len()).ok()?,
+                None => Vec::new(),
+            };
             Some(
                 u16::from_le_bytes([reputation[0], reputation[1]]) <= 10_000
                     && (0..=crate::national::MOST_YOUTH_RATING).contains(&youth)
                     && (0..=crate::national::MOST_GAME_IMPORTANCE).contains(&i64::from(importance[0] as i8))
-                    && (0..=crate::national::MOST_ATTENDANCE).contains(&i64::from(attendance[0])),
+                    && (0..=crate::national::MOST_ATTENDANCE).contains(&i64::from(attendance[0]))
+                    && style.iter().all(|&rating| (0..=crate::national::MOST_STYLE).contains(&i64::from(rating as i8))),
             )
         });
         Some(
