@@ -81,12 +81,15 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
   }
 
   const date = spec.kind === "date";
+  // A float such as FIFA points is typed to two decimal places; its range is in hundredths.
+  const unit = spec.kind === "f32" ? 100 : 1;
   // A number that may be left empty is a text input: a number input reads what is no number (a lone minus sign) as
   // empty, which here would stand for "none".
   const clearable = spec.blank !== null;
   const blank = clearable ? blankLabel(spec.key) : undefined;
   // As wide as the longest value it takes, a minus sign included; an input that may be empty has room for its hint.
-  const digits = Math.max(String(range.min).length, String(range.max).length, blank?.length ?? 0);
+  const widest = (value: number) => (unit === 1 ? String(value) : (value / unit).toFixed(2)).length;
+  const digits = Math.max(widest(range.min), widest(range.max), blank?.length ?? 0);
   const control = (
     <input
       type={date ? "date" : clearable ? "text" : "number"}
@@ -94,9 +97,9 @@ export function EditInput({ field, inFact = false }: { field: string; inFact?: b
       className={`edit-input${outline}`}
       // A date input is as wide as the browser makes it.
       style={date ? undefined : ({ "--digits": digits } as CSSProperties)}
-      min={date ? isoFromNumber(range.min) : range.min}
-      max={date ? isoFromNumber(range.max) : range.max}
-      step={date ? undefined : 1}
+      min={date ? isoFromNumber(range.min) : range.min / unit}
+      max={date ? isoFromNumber(range.max) : range.max / unit}
+      step={date ? undefined : 1 / unit}
       placeholder={blank}
       value={text}
       readOnly={session.busy}
