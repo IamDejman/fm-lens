@@ -286,6 +286,11 @@ person_block_shifts = [0x0, 0x340]
 # Continental Pro, 2 Continental A, 3 Continental B, 4 Continental C, 5 National A, 7 National C, 8 and 0 No
 # Qualifications; -1 Continental A "studying for a Continental Pro Licence" (-n: level n + 1, studying for n).
 coaching_licence = 0x204
+# u8 formation ids of his preferred formation in possession ('Nppf') and out of possession ('oopF'), the two lines of
+# FM's "Preferred Formations" (set at 0xC9694C, read by 0x2B52CD4 in the arm64 half of 27.0.0). The bytes between are
+# his second, defensive and attacking ones in possession (+0xE0..+0xE2), then out of possession (+0xE4..+0xE6), which
+# FM's profile does not show. 0 for none, on 81 of 20,219 staff on 11 Dec 2027.
+formations = [0xDF, 0xE3]
 
 # u8, raw 0..100, shown as (raw + 2) / 5; as on Windows
 [staff.attributes]
