@@ -620,6 +620,13 @@ dd,
   font-weight: 750;
 }
 
+.colophon-version {
+  color: var(--muted);
+  font-stretch: 100%;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
 .status {
   display: inline-flex;
   align-items: center;
@@ -4347,6 +4354,14 @@ button.danger:hover:not(:disabled) {
 .injury-name {
   display: block;
   font-weight: 600;
+}
+
+/* A promise: its number and dates, and at the end of its row the button that closes it. */
+.promise-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .injury-dates {

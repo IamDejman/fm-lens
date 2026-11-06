@@ -107,6 +107,7 @@ interface StaffProfileProps {
 export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
   const loaded = useProfileDetails<StaffDetails>("staff_details", member.uid, version);
   const editing = useProfileEditing("staff", member.uid);
+  const { gameActions } = useContext(EditorContext);
   const details = loaded?.details;
   const info: StaffSummary = details ?? member;
   const vitals = [info.dateOfBirth && <Born dateOfBirth={info.dateOfBirth} age={info.age} />, `${profileText.id} ${info.uid}`];
@@ -136,13 +137,13 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
       onClose={onClose}
       editing={editing}
       actions={
-        // Only while the profile is read, not edited, and for someone with a club to leave who is not you.
+        // Only while the profile is read, not edited: for someone with a club to leave who is not you, and for you
+        // where the game can make you another club's manager, with a club or without.
         editing.editable &&
         editing.stage === "view" &&
-        info.club !== null &&
-        !info.isHuman && (
+        (info.isHuman ? gameActions.moveManager : info.club !== null) && (
           <MoveButton
-            kind="staff"
+            kind={info.isHuman ? "manager" : "staff"}
             player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
             contract={null}
             ready={details !== undefined}

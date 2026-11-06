@@ -576,8 +576,8 @@ pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
 /// The most FIFA points the editor writes; the leader of the test save had 1,995.88.
 const MOST_FIFA_POINTS: f32 = 3000.0;
 
-/// The senior national teams' reputations and the containers' youth ratings, game importance and attendance, men's and
-/// women's, the men's FIFA points, the population, whether dual nationality is allowed, and the years of residence that
+/// The senior national teams' reputations and the containers' youth ratings, game importance, attendance and style
+/// ratings, men's and women's, the men's FIFA points, the population, whether dual nationality is allowed, and the years of residence that
 /// gain the nationality (255: no number of years does). One nation at a time; none where the build's layout does not
 /// place nations.
 fn nation_fields(layout: &Layout) -> Vec<Field> {
@@ -602,16 +602,36 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
             .plausible(0..=i64::from(u8::MAX))
             .in_record(Place::NationalContainer(side))
     };
-    vec![
+    // Twelve style ratings a side, after the side's other fields.
+    let style = |prefix: &str, side: Side| -> Vec<Field> {
+        let Some(offset) = n.style else {
+            return Vec::new();
+        };
+        (0u64..)
+            .zip(crate::national::STYLE)
+            .map(|(index, key)| {
+                field(&format!("{prefix}style.{key}"), offset + index, Kind::I8, 0..=crate::national::MOST_STYLE)
+                    .plausible(0..=i64::from(i8::MAX))
+                    .in_record(Place::NationalContainer(side))
+            })
+            .collect()
+    };
+    let mut fields = vec![
         field("reputation", layout.team.reputation, Kind::U16, 0..=10_000).in_record(Place::NationalTeam(Side::Men)),
         youth("youth_rating", Side::Men),
         importance("game_importance", Side::Men),
         attendance("attendance", Side::Men),
+    ];
+    fields.extend(style("", Side::Men));
+    fields.extend([
         field("women.reputation", layout.team.reputation, Kind::U16, 0..=10_000)
             .in_record(Place::NationalTeam(Side::Women)),
         youth("women.youth_rating", Side::Women),
         importance("women.game_importance", Side::Women),
         attendance("women.attendance", Side::Women),
+    ]);
+    fields.extend(style("women.", Side::Women));
+    fields.extend([
         // The live points FM ranks by at its next ranking date; the published position follows then, not at once.
         field("points", n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
             .plausible(0..=f32_bits(f32::MAX))
@@ -623,7 +643,8 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
         field("naturalisation", n.naturalisation, Kind::U8, 1..=99)
             .plausible(0..=255)
             .blank(i64::from(crate::national::NEVER)),
-    ]
+    ]);
+    fields
 }
 
 /// An official's abilities, reputation and birth date, as the officials list reads them. One official at a time; none
@@ -1476,23 +1497,21 @@ mod tests {
         };
         let key = |key: &str| nations.iter().find(|f| f.key == key).cloned().expect(key);
         let keys: Vec<&str> = nations.iter().map(|f| f.key.as_str()).collect();
-        assert_eq!(
-            keys,
-            [
-                "reputation",
-                "youth_rating",
-                "game_importance",
-                "attendance",
-                "women.reputation",
-                "women.youth_rating",
-                "women.game_importance",
-                "women.attendance",
-                "points",
-                "population",
-                "dual_nationality",
-                "naturalisation"
-            ]
-        );
+        let styles = |prefix: &str| -> Vec<String> {
+            let style = n.style.map(|_| crate::national::STYLE.as_slice()).unwrap_or_default();
+            style.iter().map(|key| format!("{prefix}style.{key}")).collect()
+        };
+        let side = |prefix: &str| {
+            ["reputation", "youth_rating", "game_importance", "attendance"]
+                .map(|key| format!("{prefix}{key}"))
+                .into_iter()
+                .chain(styles(prefix))
+        };
+        let expected: Vec<String> = side("")
+            .chain(side("women."))
+            .chain(["points", "population", "dual_nationality", "naturalisation"].map(String::from))
+            .collect();
+        assert_eq!(keys, expected);
         assert!(nations.iter().all(|f| !f.mass && !f.shifted));
 
         // The men's FIFA points, an f32 in the container held as its bits: England's 1,922.83 is in range, a negative
@@ -1537,6 +1556,16 @@ mod tests {
                 (Place::NationalContainer(side), 0x891, Kind::U8)
             );
             assert!(attendance.takes(0) && attendance.takes(16) && !attendance.takes(17));
+        }
+        // Style ratings, 0 to 20 (most nations 10), twelve bytes a side from Ndep to Nwid.
+        if n.style.is_some() {
+            for (prefix, side) in [("", Side::Men), ("women.", Side::Women)] {
+                let depth = key(&format!("{prefix}style.depth"));
+                let width = key(&format!("{prefix}style.width"));
+                assert_eq!((depth.place, depth.offset, depth.kind), (Place::NationalContainer(side), 0x892, Kind::I8));
+                assert_eq!((width.place, width.offset), (Place::NationalContainer(side), 0x89D));
+                assert!(depth.takes(0) && depth.takes(10) && depth.takes(20) && !depth.takes(21) && !depth.takes(-1));
+            }
         }
         let population = key("population");
         assert_eq!((population.place, population.offset, population.kind), (Place::Object, n.population, Kind::U32));
