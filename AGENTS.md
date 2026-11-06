@@ -71,6 +71,8 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - profiles/fm27/: platform/build fingerprints and layouts.
 - app/src/assets/brand/: original transparent logo masters.
 - docs/: roadmap, validation evidence and inherited reference documentation.
+- docs/internal/: notes written for the next agent or maintainer, such as a
+  batch handoff; keep them out of the public docs list in README.md.
 
 Keep raw memory access out of the frontend. Use stable entity identifiers,
 validated fields and the guarded memory layer for domain operations.

@@ -1,16 +1,25 @@
-# Manual validation only. This fork does not publish upstream editor releases.
+# The checks every pull request must pass before it merges into main (see the branch's protection); it also runs on
+# main itself, and can be started by hand. Releases are published from a Mac (see docs/DEVELOPING.md), not here.
 name: Validate FM Lens
 
 on:
+  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# A newer push to the same pull request replaces a run still going.
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   macos-checks:
     runs-on: macos-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

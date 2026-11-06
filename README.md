@@ -2,16 +2,40 @@
 
 ![FM Lens logo](app/src/assets/brand/fm-lens-logo.png)
 
-A personal Football Manager companion for FM27 Steam on Apple Silicon. It reads
-a running career and can edit the player, staff and club fields that are already
-mapped. Features that still need a memory layout stay off.
+FM Lens is a companion for Football Manager 27 on macOS. It reads the career you
+have loaded and lets you search, compare and edit players, staff and clubs while
+FM runs. Fields that still need a memory layout stay off.
 
-FM Lens derives from [FMLibreEditor](https://github.com/tozmoz/FMLibreEditor),
-starting at commit `5fdb1e3e03a32b9855913f8c5ce7a885003e9c13`. Its Git history,
-copyright notices and GPL-3.0-or-later license are retained. This fork's delivered
-features differ from the upstream editor.
+**[Download the latest release](https://github.com/IamDejman/fm-lens-releases/releases/latest)**
+for Apple Silicon and Intel Macs. FM Lens updates itself after that.
 
-## Current build
+![FM Lens with sample data: the player list and a player's profile](docs/images/fm-lens.png)
+
+## What you need
+
+- macOS, on Apple Silicon or Intel.
+- Football Manager 27 from Steam, build 26340721 (27.0.0). Other builds open
+  read-only until FM Lens has a profile for them.
+- A copy of your save. FM Lens writes to the running game, and not every field
+  has been checked through a save and reload in FM.
+
+## Getting started
+
+1. Open the disk image and drag **FM Lens** onto **Applications**. The app is not
+   notarized by Apple: the first time, open **System Settings › Privacy &
+   Security** and choose **Open Anyway**.
+2. Save and quit FM, quit Steam, then choose **Set up** under **One-time setup**
+   in FM Lens. This adds a small helper that FM loads when Steam starts it.
+   System Integrity Protection stays on.
+3. Start FM from Steam, load the copy of your save and choose **Connect**.
+
+Edits go into FM when you press **Apply**, and FM shows them after you press
+**Continue**. The **Changes** view lists every change, with **Undo**.
+
+Found a problem? [Open an issue](https://github.com/IamDejman/fm-lens/issues/new/choose).
+Questions and ideas go to [Discussions](https://github.com/IamDejman/fm-lens/discussions).
+
+## What it does
 
 - Connect to a loaded FM27 Steam career through a local macOS bridge, with System
   Integrity Protection enabled.
@@ -54,7 +78,7 @@ complete feature coverage or support for other game builds. See the
 FM Lens connected, searched and displayed profiles with its network access
 blocked. A fresh Steam Offline Mode launch has not yet been tested.
 
-## Build and use
+## Build from source
 
 Requirements: Xcode command-line tools, Rust stable, Node.js and npm.
 
@@ -67,7 +91,7 @@ npm run tauri -- build --debug --bundles app --config src-tauri/tauri.scout.conf
 ```
 
 The local Apple Silicon bundle is `target/debug/bundle/macos/FM Lens.app`.
-It is signed ad hoc; no notarized FM Lens release is published.
+Releases are built and published as [Releasing](docs/DEVELOPING.md#releasing) describes.
 
 See [setup, removal and validation notes](docs/PERSONAL-SCOUT.md) before setting
 up the bridge. Save and quit FM, then quit Steam before setup. The launcher must
@@ -75,21 +99,31 @@ remain installed while Steam's launch option references it.
 
 ## Documentation
 
-- [Agent instructions](AGENTS.md)
-- [Feature status and roadmap](docs/ROADMAP.md)
-- [Current build and live verification](docs/PERSONAL-SCOUT.md)
-- [Editing tests and remaining validation](docs/EDITING-VALIDATION.md)
-- [Mapped editing fields](docs/EDITOR-FIELDS.md)
-- [Brand assets and generation prompts](docs/brand/FM-LENS.md)
 - [Contributing and checks](CONTRIBUTING.md)
+- [Developing and releasing](docs/DEVELOPING.md)
+- [Feature status and roadmap](docs/ROADMAP.md)
+- [Mapped editing fields](docs/EDITOR-FIELDS.md)
+- [Editing tests and remaining validation](docs/EDITING-VALIDATION.md)
+- [Current build and live verification](docs/PERSONAL-SCOUT.md)
+- [Brand assets and generation prompts](docs/brand/FM-LENS.md)
+- [Agent instructions](AGENTS.md)
 
-Other inherited documents and screenshots may describe upstream behavior,
-including editing features this fork does not enable. The GitHub validation
-workflow is manual and does not publish releases.
+Some documents inherited from FMLibreEditor, such as `docs/INSTALL.md`, describe
+the upstream editor, including features this fork does not enable. Every pull
+request runs the checks in `.github/workflows/validate.yml`.
+
+## Security
+
+Report security problems privately, as [SECURITY.md](SECURITY.md) describes, not
+in a public issue.
 
 ## Attribution and license
 
 GPL-3.0-or-later. See [LICENSE](LICENSE).
+
+FM Lens derives from [FMLibreEditor](https://github.com/tozmoz/FMLibreEditor),
+starting at commit `5fdb1e3e03a32b9855913f8c5ce7a885003e9c13`. Its Git history,
+copyright notices and GPL-3.0-or-later license are retained.
 
 Original implementation: [FMLibreEditor](https://github.com/tozmoz/FMLibreEditor)
 and its contributors. Upstream credits memory-layout leads to
