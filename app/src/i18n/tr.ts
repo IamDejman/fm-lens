@@ -567,6 +567,7 @@ export const tr: Strings = {
     youth_rating: "Altyapı puanı",
     "women.reputation": "Kadın takımı itibarı",
     "women.youth_rating": "Kadın altyapı puanı",
+    points: "FIFA puanı",
   },
 
   profile: {
@@ -1301,6 +1302,7 @@ export const tr: Strings = {
     invalidDate: (from, to) => `${from} ile ${to} arasında bir tarih girin`,
     invalidMoney: (from, to) => `${from} ile ${to} arasında tam bir tutar girin`,
     invalidPercentage: (from, to) => `${from} ile ${to} arasında tam sayı bir yüzde girin`,
+    invalidDecimal: (from, to) => `${from} ile ${to} arasında en fazla iki ondalık basamaklı bir sayı girin`,
     percent: "%",
     yes: "Evet",
     no: "Hayır",

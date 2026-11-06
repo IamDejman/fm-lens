@@ -982,6 +982,7 @@ function fieldTable(entity: Entity): EditField[] {
       { ...field("youth_rating", "i16", 0, 165), mass: false },
       { ...field("women.reputation", "u16", 0, 10_000), mass: false },
       { ...field("women.youth_rating", "i16", 0, 165), mass: false },
+      { ...field("points", "f32", 0, floatBits(3000)), mass: false },
       { ...field("population", "u32", 1, 2_000_000_000), mass: false },
       { ...field("dual_nationality", "u8", 0, 2), choices: [0, 2], mass: false },
       { ...field("naturalisation", "u8", 0, 50), blank: 255, mass: false },
@@ -3344,6 +3345,9 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
   if (values["women.youth_rating"] !== undefined && women) {
     women.youthRating = values["women.youth_rating"];
   }
+  if (values.points !== undefined) {
+    d.points = floatOfBits(values.points);
+  }
   if (values.population !== undefined) {
     d.population = values.population;
   }
@@ -3355,6 +3359,20 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
     d.naturalisationYears = d.naturalisationNever ? null : values.naturalisation;
   }
   return d;
+}
+
+const floatView = new DataView(new ArrayBuffer(4));
+
+/** The bits of `value` as a 32-bit float, as an "f32" field stores it. */
+function floatBits(value: number): number {
+  floatView.setFloat32(0, value);
+  return floatView.getUint32(0);
+}
+
+/** The float whose bits are `bits`. */
+function floatOfBits(bits: number): number {
+  floatView.setUint32(0, bits);
+  return floatView.getFloat32(0);
 }
 
 /** `read_values` of a nation: its senior team's reputation and its rules, as stored; none without a profile. */
@@ -3379,6 +3397,8 @@ function nationValues(uid: number): FieldValues {
   if (d.women && d.women.youthRating !== null) {
     values["women.youth_rating"] = d.women.youthRating;
   }
+  // FM keeps the points of an unranked nation too; the profile shows none.
+  values.points = floatBits(d.points ?? 0);
   if (d.population !== null) {
     values.population = d.population;
   }

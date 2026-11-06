@@ -182,11 +182,13 @@ function NationBody({ details }: { details: NationDetails }) {
           <dl className="stats">
             <Fact label={text.ranking}>{orDash(details.ranking)}</Fact>
             <Fact label={text.points}>
-              {orDash(
-                details.points === null
-                  ? null
-                  : formatNumber(details.points, TWO_DECIMALS),
-              )}
+              <EditableValue field="points">
+                {orDash(
+                  details.points === null
+                    ? null
+                    : formatNumber(details.points, TWO_DECIMALS),
+                )}
+              </EditableValue>
             </Fact>
             <Fact label={text.joinedFifa}>{orDash(details.joinedFifa)}</Fact>
             <Fact label={text.joinedContinental}>

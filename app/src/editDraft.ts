@@ -9,6 +9,9 @@ import { nextFmWage, wageFmShows } from "./wage";
 /** The field of a player's or staff member's wage, which FM shows rounded (see wage.ts). */
 const WAGE = "contract.wage";
 
+/** How a float such as FIFA points is written out. */
+const TWO_DECIMALS = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+
 /**
  * The text of each input that was typed into, by field key; the others still show the value the game had. A number
  * input holds the number as typed (nothing, for a field with a blank, when it is left empty), a date input
@@ -26,25 +29,32 @@ const SAME: Verdict = { status: "same" };
 const INVALID: Verdict = { status: "invalid" };
 
 /**
- * The value `text` stands for in the input of `field`, as shown (for a date, the number like 20290630); null when
- * it stands for none: empty, not a whole number, or for a date not a whole, real `YYYY-MM-DD`.
+ * The value `text` stands for in the input of `field`, as shown (for a date, the number like 20290630; for a float,
+ * hundredths); null when it stands for none: empty, not a whole number (a float: more than two decimal places), or
+ * for a date not a whole, real `YYYY-MM-DD`.
  */
 function parseInput(field: EditField, text: string): number | null {
   const trimmed = text.trim();
   if (field.kind === "date") {
     return numberFromIso(trimmed);
   }
+  if (field.kind === "f32") {
+    return trimmed === "" || !/^-?\d+(\.\d{1,2})?$/.test(trimmed) ? null : Math.round(Number(trimmed) * 100);
+  }
   const shown = Number(trimmed);
   return trimmed === "" || !Number.isInteger(shown) ? null : shown;
 }
 
 /**
- * What the input of `field` holds for the value `shown`: the number, `YYYY-MM-DD` for a date, nothing for the blank
- * (an empty input is how a squad number says "none").
+ * What the input of `field` holds for the value `shown`: the number, `YYYY-MM-DD` for a date, a float to two decimal
+ * places, nothing for the blank (an empty input is how a squad number says "none").
  */
 function inputText(field: EditField, shown: number): string {
   if (field.kind === "date") {
     return isoFromNumber(shown);
+  }
+  if (field.kind === "f32") {
+    return (shown / 100).toFixed(2);
   }
   return shown === field.blank ? "" : String(shown);
 }
@@ -64,6 +74,8 @@ export function valueText(field: EditField | undefined, shown: number): string {
   switch (field?.kind) {
     case "date":
       return formatDate(dateFromNumber(shown)) || String(shown);
+    case "f32":
+      return formatNumber(shown / 100, TWO_DECIMALS);
     case "flag":
       return shown === 0 ? editText.no : editText.yes;
     case "i32":
@@ -146,6 +158,8 @@ function invalidMessage(field: EditField, range: { min: number; max: number }): 
   switch (field.kind) {
     case "date":
       return editText.invalidDate(valueText(field, range.min), valueText(field, range.max));
+    case "f32":
+      return editText.invalidDecimal(valueText(field, range.min), valueText(field, range.max));
     case "i32":
       return editText.invalidMoney(valueText(field, range.min), valueText(field, range.max));
     default:
