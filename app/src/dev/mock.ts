@@ -1548,6 +1548,12 @@ function undoChange(id: number): LoggedChange {
   if (entry.undoneAt !== null) {
     throw failure("app.alreadyUndone", "This change has already been undone.");
   }
+  if (entry.earlierGame) {
+    throw failure(
+      "app.earlierGame",
+      "This change was made before FM was closed or loaded a save, so it can no longer be undone.",
+    );
+  }
   const staffRow = entry.entity === "staff" ? staffUndo.get(entry.id) : undefined;
   if (staffRow) {
     Object.assign(staff.find((s) => s.uid === entry.uid)!, staffRow);
@@ -2493,7 +2499,7 @@ function applyMass(id: number): MassReport {
 function undoMassBatch(batch: number): BatchUndo {
   const report: BatchUndo = { undone: 0, failed: [] };
   for (const entry of [...changes].reverse()) {
-    if (entry.batch !== batch || entry.undoneAt !== null) {
+    if (entry.batch !== batch || entry.undoneAt !== null || entry.earlierGame) {
       continue;
     }
     try {
@@ -2679,6 +2685,33 @@ const failedChecks = new URLSearchParams(window.location.search).has("failedchec
 const writable = new URLSearchParams(window.location.search).has("writable");
 /** `?refrozen` previews connecting to a save in which players and a club were frozen the last time. */
 const refrozen = new URLSearchParams(window.location.search).has("refrozen");
+/** `?restarted` previews connecting after FM was restarted: the changes made before are listed, no longer undone. */
+const restarted = new URLSearchParams(window.location.search).has("restarted");
+
+/** What `?restarted` lists: an edit, and a mass edit of two players, made an hour before FM was restarted. */
+function earlierChanges(): LoggedChange[] {
+  const at = Date.now() - 60 * 60 * 1000;
+  const batch = nextMassId++;
+  const [first, second, third] = players;
+  const change = (id: number, player: PlayerSummary, field: string, old: number, value: number): LoggedChange => ({
+    id,
+    at: at + id * 60_000,
+    name: player.name,
+    entity: "player",
+    uid: player.uid,
+    field,
+    old,
+    new: value,
+    undoneAt: null,
+    earlierGame: true,
+    batch: id === 1 ? null : batch,
+  });
+  return [
+    change(1, first, "attribute.finishing", 70, 85),
+    change(2, second, "attribute.pace", 60, 100),
+    change(3, third, "attribute.pace", 65, 100),
+  ];
+}
 const CHECKS: CheckKey[] = [
   "gameDate",
   "players",
@@ -2789,6 +2822,9 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         career: mockCareer(),
         gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, endLoan: true, futureTransfer: true, maxTactics: true },
       };
+      if (restarted && changes.length === 0) {
+        changes.push(...earlierChanges());
+      }
       mockConnection = info;
       if (!refrozen) {
         return info as T;
