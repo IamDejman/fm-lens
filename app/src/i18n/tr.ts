@@ -1354,8 +1354,6 @@ export const tr: Strings = {
   changes: {
     nav: "Değişiklikler",
     title: "Bu oturumdaki değişiklikler",
-    hint: "En yeniler üstte. FM o değeri değiştirmediği sürece geri alabilirsiniz.",
-    continueHint: "Değişiklikler FM'de Devam'a bastığınızda görünür.",
     swappedWith: (name) => `Takas: ${name}`,
     fee: (amount) => `Bedel ${amount}`,
     joins: (date) => `Katılış: ${date}`,

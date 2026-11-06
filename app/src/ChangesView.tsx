@@ -281,8 +281,6 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
           <h2 className="view-title">{text.title}</h2>
           <span className="count">{text.count(log.length, undone)}</span>
         </div>
-        <p className="view-note">{text.hint}</p>
-        <p className="view-note">{text.continueHint}</p>
         {problem && (
           <div className="banner" role="alert">
             {problem}

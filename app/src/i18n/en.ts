@@ -1476,9 +1476,6 @@ export const en = {
     /** The entry in the sidebar. */
     nav: "Changes",
     title: "Changes this session",
-    hint: "Newest first. You can undo a change until FM changes that value itself.",
-    /** Under the hint: a change shows in the game only after it has moved on once. */
-    continueHint: "Changes show in FM after you press Continue.",
     /** Under a move to another club that was a swap: the player who went the other way. */
     swappedWith: (name: string) => `Swapped with ${name}`,
     /** Under a transfer that had a fee: the amount, written out. */
