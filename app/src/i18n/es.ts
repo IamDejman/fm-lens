@@ -1382,6 +1382,7 @@ export const es: Strings = {
         "Informar de un problema se abre en FM Lens, al pie de la ventana. Cuenta qué pasó y pulsa Enviar.",
         "Buscar actualizaciones… está en el menú FM Lens.",
         "Textos más cortos y claros en toda la app, también en los diálogos de traspaso.",
+        "Deshacer y cerrar una promesa se detienen si FM lo ha cambiado. Una táctica que FM Lens no sabe nombrar se queda como está.",
       ],
       "0.5.5": [
         "Traspasa jugadores de tu propio club. FM hace el traspaso y mueve el precio.",

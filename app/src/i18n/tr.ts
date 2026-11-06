@@ -1351,6 +1351,7 @@ export const tr: Strings = {
         "Sorun bildir artık FM Lens içinde, pencerenin altında açılıyor. Ne olduğunu yaz ve Gönder'e bas.",
         "Güncellemeleri Denetle… FM Lens menüsünde.",
         "Uygulama genelinde daha kısa ve sade metinler; transfer pencereleri de dahil.",
+        "FM bir şeyi değiştirdiyse Geri al ve söz kapatma durur. FM Lens'in adlandıramadığı bir diziliş olduğu gibi kalır.",
       ],
       "0.5.5": [
         "Kendi kulübünüzden oyuncu transfer edin. FM transferi yapar ve bedeli aktarır.",
