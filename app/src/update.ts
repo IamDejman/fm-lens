@@ -5,11 +5,12 @@
 // puts it in place of this one, which keeps running. The colophon then offers Relaunch to update; otherwise the new
 // version runs the next time FM Lens opens. A copy that cannot replace itself (one macOS runs from where it was
 // downloaded, or a development build) names the new version and opens its release page instead. Offline, or when the
-// check fails, nothing happens and the app works as before.
+// check fails, nothing happens and the app works as before. Check for Updates, in the app menu on macOS, looks at once
+// and says what it found.
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { check } from "@tauri-apps/plugin-updater";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { call, inTauri } from "./api";
 import { describeError } from "./format";
 
@@ -30,7 +31,16 @@ export type UpdateState =
   | { phase: "ready"; version: string }
   /** This copy cannot replace itself: the user downloads the new version. */
   | { phase: "available"; version: string }
-  | { phase: "failed"; version: string; reason: string };
+  | { phase: "failed"; version: string; reason: string }
+  /** Check for Updates is looking, or installing what it found. */
+  | { phase: "checking" }
+  /** Check for Updates found no newer version. */
+  | { phase: "current" }
+  /** Check for Updates could not reach the releases. */
+  | { phase: "unreachable" };
+
+/** What one look found: a newer version and what was done about it, no newer version, or no answer. */
+type Found = Extract<UpdateState, { version: string }> | "current" | "unreachable";
 
 /** Opens the release notes of `version`, on its release's page. */
 export function openRelease(version: string): void {
@@ -50,11 +60,49 @@ const canSelfUpdate = (): Promise<boolean> => call<boolean>("can_self_update");
 /** Whether the checks have started in this window: once, however often the hook mounts. */
 let checking = false;
 
+/** The version installed in this run: looking again would only fetch it again. */
+let installed: Found | null = null;
+
+/** Looks for a newer version, and installs it where this copy can. */
+async function lookOnce(): Promise<Found> {
+  if (installed) {
+    return installed;
+  }
+  let found: Awaited<ReturnType<typeof check>>;
+  try {
+    found = await check({ timeout: CHECK_TIMEOUT_MS });
+  } catch {
+    return "unreachable";
+  }
+  if (found === null) {
+    return "current";
+  }
+  const { version } = found;
+  if (!(await canSelfUpdate().catch(() => false))) {
+    return { phase: "available", version };
+  }
+  try {
+    await found.downloadAndInstall(undefined, { timeout: DOWNLOAD_TIMEOUT_MS });
+    installed = { phase: "ready", version };
+    return installed;
+  } catch (e) {
+    return { phase: "failed", version, reason: describeError(e) };
+  }
+}
+
+/** The look under way: a check asked for while one runs gets its answer instead of starting another. */
+let looking: Promise<Found> | null = null;
+
+const look = (): Promise<Found> =>
+  (looking ??= lookOnce().finally(() => {
+    looking = null;
+  }));
+
 /**
  * Looks for a newer version when the window opens, and again every four hours until one turns up, and installs it in
  * the background where this copy can.
- * `update` is what to tell the user, null while there is nothing to tell; `relaunch` starts the installed version;
- * `dismiss` hides a notice the user cannot act on now.
+ * `update` is what to tell the user, null while there is nothing to tell; `checkNow` looks at once and says what it
+ * found; `relaunch` starts the installed version; `dismiss` hides a notice the user cannot act on now.
  */
 export function useUpdate() {
   const [update, setUpdate] = useState<UpdateState | null>(null);
@@ -64,31 +112,27 @@ export function useUpdate() {
       return;
     }
     checking = true;
-    const look = async () => {
-      // Offline, or no release yet: the app carries on as it is, and looks again later.
-      const found = await check({ timeout: CHECK_TIMEOUT_MS }).catch(() => null);
-      if (found === null) {
-        setTimeout(() => void look(), RECHECK_MS);
+    const lookLater = async () => {
+      // Offline, no release yet, or nothing newer: the app carries on as it is, and looks again later.
+      const found = await look();
+      if (typeof found === "string") {
+        setTimeout(() => void lookLater(), RECHECK_MS);
         return;
       }
-      const { version } = found;
-      if (!(await canSelfUpdate().catch(() => false))) {
-        setUpdate({ phase: "available", version });
-        return;
-      }
-      try {
-        await found.downloadAndInstall(undefined, { timeout: DOWNLOAD_TIMEOUT_MS });
-        setUpdate({ phase: "ready", version });
-      } catch (e) {
-        setUpdate({ phase: "failed", version, reason: describeError(e) });
-      }
+      setUpdate(found);
     };
-    void look();
+    void lookLater();
+  }, []);
+
+  const checkNow = useCallback(async () => {
+    setUpdate({ phase: "checking" });
+    const found = await look();
+    setUpdate(typeof found === "string" ? { phase: found } : found);
   }, []);
 
   const relaunch = (version: string) => {
     call("restart_app").catch((e: unknown) => setUpdate({ phase: "failed", version, reason: describeError(e) }));
   };
 
-  return { update, relaunch, dismiss: () => setUpdate(null) };
+  return { update, checkNow, relaunch, dismiss: () => setUpdate(null) };
 }
