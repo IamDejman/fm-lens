@@ -560,6 +560,7 @@ export const es: Strings = {
     level: "Nivel",
     club: "Club",
     injuries: "Lesiones",
+    injury: "Lesión",
     work_permit: "Permiso de trabajo",
     bans: "Sanciones",
     cohesion: "Familiaridad con el club",
@@ -1806,6 +1807,9 @@ export const es: Strings = {
     languagesTitle: "Cambiar en el juego cómo de bien habla cada idioma",
     levelOf: (name) => `Nivel de ${name}`,
     raisedBack: "FM lo vuelve a subir por su cuenta",
+    injuriesTitle: "Cambiar cuántos días dura cada lesión",
+    daysOut: "Días de baja",
+    daysOf: (name) => `Días de baja por ${name}`,
     save: "Guardar",
   },
 
