@@ -1,7 +1,7 @@
-# Developing FMLibreEditor
+# Developing FM Lens
 
 How the editor works, how to build and release it, and how to use the command-line probe.
-For installing and using the app, see [INSTALL.md](INSTALL.md).
+For installing and using the app, see the [README](../README.md).
 
 ## Goals
 
