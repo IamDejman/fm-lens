@@ -10,7 +10,7 @@
 //! drops it 31 days later as it does every closed promise; until then an undo opens it again.
 
 use fmlens_mem::is_user_pointer;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::date::FmDate;
 use crate::players::PlayerSummary;
@@ -25,7 +25,7 @@ const MOST_PROMISES: u64 = 64;
 const ENDED: u8 = 1;
 
 /// One promise made to a player, as the profile shows it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Promise {
     /// FM's number for the promise, e.g. 7; FM's own names are in its language files only.
@@ -64,11 +64,20 @@ impl Session {
         self.promise_records(player, l)?.into_iter().map(|record| self.read_promise(record, l)).collect()
     }
 
-    /// Works out closing the open promise at `index` in the promises of `player`. Nothing is written.
-    pub fn plan_close_promise(&self, player: &PlayerSummary, index: usize) -> Result<PromisePlan, MoveError> {
+    /// Works out closing the open promise at `index` in the promises of `player`, provided it is still `shown`, the one
+    /// the editor showed there. Nothing is written.
+    pub fn plan_close_promise(
+        &self,
+        player: &PlayerSummary,
+        index: usize,
+        shown: &Promise,
+    ) -> Result<PromisePlan, MoveError> {
         let l = self.layout.promise.as_ref().ok_or(MoveError::NotInList { index })?;
         let record = *self.promise_records(player, l)?.get(index).ok_or(MoveError::NotInList { index })?;
         let promise = self.read_promise(record, l)?;
+        if promise != *shown {
+            return Err(MoveError::Changed { address: record });
+        }
         if promise.closed {
             return Err(MoveError::NotInList { index });
         }
