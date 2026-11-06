@@ -2,11 +2,8 @@
 // fm-lens repository with its own GitHub token, so nobody leaves the app. It keeps nothing: a report is checked,
 // sent on to GitHub and forgotten. Each address may send a few reports an hour, and all of them together a few a day.
 //
-// Environment: GITHUB_TOKEN (a fine-grained token that may write issues in GITHUB_REPO), GITHUB_REPO (owner/name,
-// IamDejman/fm-lens by default) and PORT.
-
-import { createServer } from "node:http";
-import { pathToFileURL } from "node:url";
+// It runs as an AWS Lambda function behind a function URL (relay/deploy.sh). Environment: GITHUB_TOKEN (a
+// fine-grained token that may write issues in GITHUB_REPO) and GITHUB_REPO (owner/name, IamDejman/fm-lens by default).
 
 /** The longest each part of a report may be, in characters, and the request as a whole, in bytes. */
 export const LIMITS = { what: 5000, line: 200, changes: 8000, request: 20_000 };
@@ -70,7 +67,10 @@ export function issueFor(report) {
   return { title, body, labels: ["bug"] };
 }
 
-/** Counts reports, by address for the hour and in all for the day. */
+/**
+ * Counts reports, by address for the hour and in all for the day. Only reports let through are kept, so it holds at
+ * most PER_DAY times, whatever is sent to it. Each function instance counts on its own.
+ */
 export function createLimiter(now = Date.now) {
   const byAddress = new Map();
   let day = [];
@@ -79,20 +79,20 @@ export function createLimiter(now = Date.now) {
     allow(address) {
       const at = now();
       day = day.filter((time) => at - time < DAY);
-      const recent = (byAddress.get(address) ?? []).filter((time) => at - time < HOUR);
-      if (recent.length >= PER_ADDRESS_HOUR || day.length >= PER_DAY) {
-        byAddress.set(address, recent);
-        return false;
-      }
-      recent.push(at);
-      byAddress.set(address, recent);
-      day.push(at);
-      // Addresses with nothing in the last hour are dropped, so the map stays small.
       for (const [key, times] of byAddress) {
-        if (times.every((time) => at - time >= HOUR)) {
+        const recent = times.filter((time) => at - time < HOUR);
+        if (recent.length === 0) {
           byAddress.delete(key);
+        } else {
+          byAddress.set(key, recent);
         }
       }
+      const recent = byAddress.get(address) ?? [];
+      if (recent.length >= PER_ADDRESS_HOUR || day.length >= PER_DAY) {
+        return false;
+      }
+      byAddress.set(address, [...recent, at]);
+      day.push(at);
       return true;
     },
   };
@@ -105,76 +105,46 @@ const CORS = {
   "Access-Control-Max-Age": "86400",
 };
 
-function send(res, status, body) {
-  res.writeHead(status, { ...CORS, "Content-Type": "application/json" });
-  res.end(JSON.stringify(body));
-}
-
-/** Reads the request's body, up to `max` bytes; null when it is longer. */
-async function readBody(req, max) {
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > max) {
-      return null;
-    }
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks).toString("utf8");
-}
-
-/** The address a request came from: Railway's proxy puts the client's first in X-Forwarded-For. */
-function addressOf(req) {
-  const forwarded = req.headers["x-forwarded-for"];
-  const first = typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "";
-  return first || req.socket.remoteAddress || "unknown";
+function answer(statusCode, body) {
+  return { statusCode, headers: { ...CORS, "Content-Type": "application/json" }, body: JSON.stringify(body) };
 }
 
 /**
- * The relay's request handler. `token` and `repo` name where issues go; `fetch` and `limiter` are swapped in by the
- * tests.
+ * The relay's handler for function URL requests. `token` and `repo` name where issues go; `fetch` and `limiter` are
+ * swapped in by the tests. Reports are counted by the address AWS saw the request come from, which a sender can't set.
  */
 export function createRelay({ token, repo, fetch = globalThis.fetch, limiter = createLimiter() }) {
-  return async (req, res) => {
-    const path = new URL(req.url ?? "/", "http://relay").pathname;
-    if (req.method === "OPTIONS") {
-      res.writeHead(204, CORS);
-      res.end();
-      return;
+  return async (event) => {
+    const method = event.requestContext?.http?.method ?? "";
+    const path = event.rawPath ?? "/";
+    if (method === "OPTIONS") {
+      return { statusCode: 204, headers: CORS, body: "" };
     }
-    if (req.method === "GET" && path === "/health") {
-      send(res, 200, { ok: true });
-      return;
+    if (method === "GET" && path === "/health") {
+      return answer(200, { ok: true });
     }
-    if (req.method !== "POST" || path !== "/report") {
-      send(res, 404, { error: "notFound" });
-      return;
+    if (method !== "POST" || path !== "/report") {
+      return answer(404, { error: "notFound" });
     }
     if (!token) {
-      send(res, 503, { error: "unavailable" });
-      return;
+      return answer(503, { error: "unavailable" });
     }
-    const raw = await readBody(req, LIMITS.request);
-    if (raw === null) {
-      send(res, 413, { error: "tooLong" });
-      return;
+    const raw = event.isBase64Encoded ? Buffer.from(event.body ?? "", "base64").toString("utf8") : (event.body ?? "");
+    if (Buffer.byteLength(raw, "utf8") > LIMITS.request) {
+      return answer(413, { error: "tooLong" });
     }
     let input;
     try {
       input = JSON.parse(raw);
     } catch {
-      send(res, 400, { error: "invalid" });
-      return;
+      return answer(400, { error: "invalid" });
     }
     const { report, error } = readReport(input);
     if (error) {
-      send(res, 400, { error });
-      return;
+      return answer(400, { error });
     }
-    if (!limiter.allow(addressOf(req))) {
-      send(res, 429, { error: "tooMany" });
-      return;
+    if (!limiter.allow(event.requestContext?.http?.sourceIp ?? "unknown")) {
+      return answer(429, { error: "tooMany" });
     }
     try {
       const response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
@@ -191,29 +161,18 @@ export function createRelay({ token, repo, fetch = globalThis.fetch, limiter = c
       });
       if (!response.ok) {
         console.error(`GitHub answered ${response.status}`);
-        send(res, 502, { error: "notFiled" });
-        return;
+        return answer(502, { error: "notFiled" });
       }
-      send(res, 201, { sent: true });
+      return answer(201, { sent: true });
     } catch (err) {
       console.error(`GitHub could not be reached: ${err instanceof Error ? err.message : String(err)}`);
-      send(res, 502, { error: "notFiled" });
+      return answer(502, { error: "notFiled" });
     }
   };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const repo = process.env.GITHUB_REPO || "IamDejman/fm-lens";
-  const relay = createRelay({ token: process.env.GITHUB_TOKEN, repo });
-  const port = Number(process.env.PORT) || 8080;
-  createServer((req, res) => {
-    relay(req, res).catch((err) => {
-      console.error(err);
-      if (!res.headersSent) {
-        send(res, 500, { error: "failed" });
-      }
-    });
-  }).listen(port, () => {
-    console.log(`Report relay on port ${port}, filing in ${repo}${process.env.GITHUB_TOKEN ? "" : " (no GITHUB_TOKEN yet)"}`);
-  });
-}
+/** The Lambda entry point. */
+export const handler = createRelay({
+  token: process.env.GITHUB_TOKEN,
+  repo: process.env.GITHUB_REPO || "IamDejman/fm-lens",
+});

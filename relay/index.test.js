@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
 import { test } from "node:test";
-import { PER_ADDRESS_HOUR, PER_DAY, createLimiter, createRelay, issueFor, readReport } from "./server.js";
+import { PER_ADDRESS_HOUR, PER_DAY, createLimiter, createRelay, issueFor, readReport } from "./index.js";
 
 const REPORT = {
   what: "Apply failed on a wage\nIt said the value didn't stick.",
@@ -11,22 +10,20 @@ const REPORT = {
   changes: "Kabia (player 2000216551): contract.wage 2000 → 7045",
 };
 
-/** Runs the relay on a free port with `options`, posts `body` to `path`, and returns the status and JSON answer. */
-async function post(options, body, { path = "/report", headers = {} } = {}) {
+/** Sends the relay `body` at `path` as a function URL request from `sourceIp`, and returns the status and JSON answer. */
+async function post(options, body, { path = "/report", sourceIp = "203.0.113.9", method = "POST" } = {}) {
   const relay = createRelay(options);
-  const server = createServer((req, res) => void relay(req, res));
-  await new Promise((resolve) => server.listen(0, resolve));
-  try {
-    const { port } = server.address();
-    const response = await fetch(`http://127.0.0.1:${port}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...headers },
-      body: typeof body === "string" ? body : JSON.stringify(body),
-    });
-    return { status: response.status, json: await response.json(), cors: response.headers.get("access-control-allow-origin") };
-  } finally {
-    server.close();
-  }
+  const response = await relay({
+    rawPath: path,
+    requestContext: { http: { method, sourceIp } },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+    isBase64Encoded: false,
+  });
+  return {
+    status: response.statusCode,
+    json: response.body === "" ? null : JSON.parse(response.body),
+    cors: response.headers["Access-Control-Allow-Origin"],
+  };
 }
 
 /** A stand-in for GitHub that records the issues it is sent and answers with `status`. */
@@ -114,14 +111,29 @@ test("one address may send a few reports an hour, and all of them a few a day", 
   assert.equal(day.allow("another"), false);
 });
 
-test("the relay counts reports by the address the proxy names", async () => {
+test("the relay counts reports by the address AWS saw, and answers the preflight", async () => {
   const { fetch } = github();
   const limiter = createLimiter();
   const options = { token: "t", repo: "o/n", fetch, limiter };
-  const headers = { "X-Forwarded-For": "203.0.113.9, 10.0.0.1" };
   for (let i = 0; i < PER_ADDRESS_HOUR; i++) {
-    assert.equal((await post(options, REPORT, { headers })).status, 201);
+    assert.equal((await post(options, REPORT)).status, 201);
   }
-  assert.equal((await post(options, REPORT, { headers })).status, 429);
-  assert.equal((await post(options, REPORT, { headers: { "X-Forwarded-For": "198.51.100.4" } })).status, 201);
+  assert.equal((await post(options, REPORT)).status, 429);
+  assert.equal((await post(options, REPORT, { sourceIp: "198.51.100.4" })).status, 201);
+  assert.deepEqual(await post(options, "", { method: "OPTIONS" }), { status: 204, json: null, cors: "*" });
+});
+
+test("turned-away addresses aren't kept, so the limiter stays small", () => {
+  let now = 0;
+  const limiter = createLimiter(() => now);
+  for (let i = 0; i < PER_DAY; i++) {
+    limiter.allow(`address-${i}`);
+  }
+  for (let i = 0; i < 10_000; i++) {
+    assert.equal(limiter.allow(`flood-${i}`), false);
+  }
+  now += 60 * 60 * 1000;
+  assert.equal(limiter.allow("flood-0"), false);
+  now += 24 * 60 * 60 * 1000;
+  assert.equal(limiter.allow("flood-0"), true);
 });
