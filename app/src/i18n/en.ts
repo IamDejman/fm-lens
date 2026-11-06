@@ -1452,6 +1452,14 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.4": [
+        "Change how long an injury lasts, or take one injury out.",
+        "See and change a manager's formations in and out of possession.",
+        "See and change a nation's style ratings.",
+        "See a competition's rules.",
+        "See a player's promises, and close an open one.",
+        "Change club: become the manager of another club.",
+      ],
       "0.5.3": [
         "Files, settings and the Steam helper now use the FM Lens name. Your setup carried over.",
       ],
