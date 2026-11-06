@@ -27,6 +27,9 @@ replace the old one. From 0.5.1 on, FM Lens updates itself when it opens.
 - **No more surprise Reload.** FM moves its data when it loads a save, and at times as the
   game goes on. FM Lens now reads the game again by itself when you come back to it, so
   editing keeps working instead of failing at Apply.
+- **Updates wait for you.** FM Lens installs a new version in the background and no longer
+  restarts on its own. Choose **Relaunch to update** at the foot of the window when it
+  suits you, or the new version runs the next time you open FM Lens.
 
 ## In 0.5.1
 

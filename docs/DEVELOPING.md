@@ -167,7 +167,7 @@ links to its source, tagged `v<version>` in this repository.
    - `app/src-tauri/tauri.conf.json`.
 2. **Write what is new** in `docs/release-notes.md`, and in short under `update.changes` in
    `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update themselves show that list
-   once, after they restart as the new version.
+   once, after they relaunch as the new version.
 3. **Build and publish:** `scripts/release-mac.sh --publish`. It builds the universal app
    with the bridge, signs the update with the updater key, and publishes the latest release
    with `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download,
@@ -187,11 +187,12 @@ everyone has to download the next version by hand.
 
 When its window opens, the app reads `latest.json` from the latest release of
 fm-lens-releases (the endpoint in `app/src-tauri/tauri.conf.json`). When that names a newer
-version, the macOS app installs it at once, without asking: Tauri's updater plugin downloads
-the `.app.tar.gz`, checks its signature against the public key, puts it in place of the
-running app's bundle (macOS asks for an administrator's password where the user may not
-change it), and the app starts again (`restart_app`). A notice under the masthead shows how
-far it has got. At startup an app run from its bundle puts its bridge and launcher in place
+version, the macOS app installs it in the background, without asking: Tauri's updater plugin
+downloads the `.app.tar.gz`, checks its signature against the public key and puts it in place
+of the running app's bundle (macOS asks for an administrator's password where the user may
+not change it). The running app carries on; the colophon then shows **Relaunch to update**,
+which starts the new version (`restart_app`), and otherwise it runs the next time the app
+opens. At startup an app run from its bundle puts its bridge and launcher in place
 of the installed ones where they differ (`bridge_setup::refresh`), so the game loads the new
 bridge the next time it starts.
 

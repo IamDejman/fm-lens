@@ -1,5 +1,5 @@
-// What a version brought, said once after FM Lens has updated itself to it: the update installs without asking and
-// restarts the app, so this notice under the masthead is where the user learns what changed.
+// What a version brought, said once after FM Lens has updated itself to it: the update installs without asking, so this
+// notice under the masthead is where the user learns what changed.
 
 import { useEffect, useState } from "react";
 import { updateText } from "./labels";
