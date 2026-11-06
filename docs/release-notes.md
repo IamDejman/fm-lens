@@ -1,7 +1,7 @@
 ## Download
 
-- **FM-Lens-0.5.1-macos-universal.dmg**: open it and drag **FM Lens** onto **Applications**.
-- **FM-Lens-0.5.1-macos-universal.zip**: the same app, zipped.
+- **FM-Lens-0.5.2-macos-universal.dmg**: open it and drag **FM Lens** onto **Applications**.
+- **FM-Lens-0.5.2-macos-universal.zip**: the same app, zipped.
 
 Both run on Apple Silicon and Intel Macs. macOS only, with Football Manager 27 from Steam,
 build 26340721 (27.0.0). Another FM build opens read-only until FM Lens has a profile for it.
@@ -17,9 +17,21 @@ needs a small helper that FM loads at startup: save and quit FM, quit Steam, the
 choose **Connect**.
 
 **Coming from 0.5.0:** quit FM Lens, then drag this version onto **Applications** and
-replace the old one. This is the last time: from 0.5.1 on, FM Lens updates itself.
+replace the old one. From 0.5.1 on, FM Lens updates itself when it opens.
 
-## What's new in 0.5.1
+## What's new in 0.5.2
+
+- **Report a problem.** In the Settings menu. It opens a bug report on GitHub with the
+  FM Lens version, the FM build, your Mac and the changes you made filled in. You read it
+  and send it yourself; FM Lens sends nothing.
+- **No more surprise Reload.** FM moves its data when it loads a save, and at times as the
+  game goes on. FM Lens now reads the game again by itself when you come back to it, so
+  editing keeps working instead of failing at Apply.
+- **Updates wait for you.** FM Lens installs a new version in the background and no longer
+  restarts on its own. Choose **Relaunch to update** at the foot of the window when it
+  suits you, or the new version runs the next time you open FM Lens.
+
+## In 0.5.1
 
 - **FM Lens updates itself.** When a newer version is out, FM Lens installs it as it opens
   and restarts, which takes a few seconds. Without a connection it opens as usual.
@@ -80,4 +92,4 @@ Nations, clubs and competitions
 ## Source code
 
 FM Lens is free software under the GNU GPL, version 3 or later. The source of this
-version is [IamDejman/fm-lens at v0.5.1](https://github.com/IamDejman/fm-lens/tree/v0.5.1).
+version is [IamDejman/fm-lens at v0.5.2](https://github.com/IamDejman/fm-lens/tree/v0.5.2).

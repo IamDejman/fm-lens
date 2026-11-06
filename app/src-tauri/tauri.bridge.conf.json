@@ -3,8 +3,8 @@
   "bundle": {
     "createUpdaterArtifacts": true,
     "resources": {
-      "../../target/universal-apple-darwin/release/libfmlibre_bridge.dylib": "libfmlibre_bridge.dylib",
-      "../../target/universal-apple-darwin/release/fmlibre-launch": "fmlibre-launch"
+      "../../target/universal-apple-darwin/release/libfmlens_bridge.dylib": "libfmlens_bridge.dylib",
+      "../../target/universal-apple-darwin/release/fmlens-launch": "fmlens-launch"
     },
     "macOS": {
       "signingIdentity": "-"

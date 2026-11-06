@@ -19,7 +19,7 @@ a `summary.md`. It exits 0 only when every step passes:
 | --- | --- |
 | info | the probe reads the game and its game_plugin UUID |
 | profile | FM Lens has a profile for that UUID |
-| health | every pre-write check passes (`crates/fmlibre-core/src/health.rs`) |
+| health | every pre-write check passes (`crates/fmlens-core/src/health.rs`) |
 | scan | scanning, without the profile, finds the player, staff and club arrays |
 | arrays match | the arrays scanning finds are the ones the profile names |
 | player, staff, club, teams, nation, officials, cohesion | each reader decodes a known entity |
@@ -35,7 +35,7 @@ A small patch often rebuilds game_plugin without changing its objects: the UUID 
 layouts do not. If `profile` fails and every other step passes:
 
 1. Copy the closest profile to `profiles/fm27/<storefront>-<build>-<platform>.toml` with the new UUID and name.
-2. Take the arrays from `scan.txt`, and the in-game date's RVA from `fmlibre-probe find "<date FM shows>"`
+2. Take the arrays from `scan.txt`, and the in-game date's RVA from `fmlens-probe find "<date FM shows>"`
    ([macOS notes](recon/fm27-steam-macos.md#2700-steam-build-26340721)).
 3. The profile's other values (retirement manager, officials, human manager) were traced in the old build's code:
    re-trace each as its comment says, or leave it out, which turns that feature off on this build.

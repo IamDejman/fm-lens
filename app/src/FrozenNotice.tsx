@@ -1,5 +1,5 @@
 // The notice under the masthead after connecting to a save in which players' attributes or clubs' money were frozen
-// before: what is frozen again, and what waits until FMLibreEditor can write to this version of the game.
+// before: what is frozen again, and what waits until FM Lens can write to this version of the game.
 
 import { appText } from "./labels";
 import type { Refrozen } from "./types";

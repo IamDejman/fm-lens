@@ -55,8 +55,8 @@ launchers' settings, that only loads after Steam has been quit.
 
 ## The bridge
 
-`crates/fmlibre-bridge` builds `libfmlibre_bridge.dylib`. Loaded, it checks that the process
-is Football Manager, checks in the Mach service `io.github.tozmoz.fmlibreeditor.bridge.<pid>`
+`crates/fmlens-bridge` builds `libfmlens_bridge.dylib`. Loaded, it checks that the process
+is Football Manager, checks in the Mach service `local.fm.lens.bridge.<pid>`
 and waits on it in a thread of its own. A request from a process of the same user, by the
 audit token the kernel attaches, gets `mach_task_self()` back as a port descriptor; anyone
 else gets an empty answer. The editor checks with `pid_for_task` that the port it got is the
@@ -104,12 +104,12 @@ option into words and starts the first word as a program. The first launch optio
 bridge, `DYLD_INSERT_LIBRARIES="…" %command%`, which a shell would take, made it fail:
 
 ```text
-Failed running GameID 4530370: "DYLD_INSERT_LIBRARIES="…/libfmlibre_bridge.dylib" '…/fm.app'" (OS Error 260)
+Failed running GameID 4530370: "DYLD_INSERT_LIBRARIES="…/libfmlens_bridge.dylib" '…/fm.app'" (OS Error 260)
 ```
 
 Error 260 is Cocoa's "no such file": the variable was taken for the program. So the launch
-option is `'…/fmlibre-launch' %command%`, quoted the way Steam quotes the game. The launcher
-is a small program of `fmlibre-bridge`: it finds the bundle's executable from its
+option is `'…/fmlens-launch' %command%`, quoted the way Steam quotes the game. The launcher
+is a small program of `fmlens-bridge`: it finds the bundle's executable from its
 `Info.plist`, puts the bridge in front of the libraries `DYLD_INSERT_LIBRARIES` already names,
 and `exec`s the game, which keeps the process id Steam follows. Without the bridge beside it,
 it starts the game as it is. Started that way, FM27 (pid 14183) loaded the bridge next to the
@@ -138,7 +138,7 @@ Each Steam account keeps them in
 `~/Library/Application Support/Steam/userdata/<account>/config/localconfig.vdf`, under
 `UserLocalConfigStore/Software/Valve/Steam/apps/4530370/LaunchOptions`. Steam reads the file
 when it starts and writes it back when it quits, so the editor changes it only while Steam is
-closed, keeps a `.fmlibre-backup` of the first version it changed, and edits the one value in
+closed, keeps a `.fmlens-backup` of the first version it changed, and edits the one value in
 place. Set up and taken out again on a copy of a real file, it came back byte for byte.
 
 ## The object layout
@@ -245,7 +245,7 @@ release clause can therefore not be added here, and the editor refuses it, as it
 
 ### The retirement manager
 
-The probe's `types` and `instances` now read Itanium type info on the Mac (`fmlibre_core::rtti`). `RETIREMENT_MANAGER`
+The probe's `types` and `instances` now read Itanium type info on the Mac (`fmlens_core::rtti`). `RETIREMENT_MANAGER`
 (`18RETIREMENT_MANAGER`) has one vtable, `game_plugin+0x55F7DA0`, and one object. It is laid out as on Windows:
 
 - the planned retirements at `+0x30`: 13 pointers to 24-byte entries;
@@ -290,7 +290,7 @@ it showed no ages.
 The new profiles take the Launch Preview's RVAs with the new UUIDs.
 
 With the arm64 profile, on a save dated 15 November 2026, the checks the editor makes before it writes
-(`fmlibre-probe health`) all passed, in 62 ms. Their gaps were close to Game Pass's:
+(`fmlens-probe health`) all passed, in 62 ms. Their gaps were close to Game Pass's:
 - **Players:** goalkeeping 43, finishing 36, tackling 35.
 - **Staff:** goalkeeping 45, physiotherapy 49, judging potential 32.
 - **Contracts:** 1,790 of 1,790 pointed back at their players, and 727 were signed after the player joined.

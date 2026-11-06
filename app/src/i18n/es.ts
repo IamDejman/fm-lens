@@ -1332,14 +1332,21 @@ export const es: Strings = {
   },
 
   update: {
-    updating: (version) => `Actualizando a FM Lens ${version}`,
+    relaunch: "Reiniciar para actualizar",
     available: (version) => `FM Lens ${version} ya está disponible`,
     download: "Descargar",
-    preparing: "Preparando…",
-    downloading: (percent) => (percent === null ? "Descargando…" : `Descargando… ${percent} %`),
-    installing: "Instalando: FM Lens se cerrará y volverá a abrirse con la nueva versión.",
     installFailed: (reason) => `No se ha podido actualizar: ${reason}. Descárgala desde su página.`,
     later: "Más tarde",
+    whatsNew: (version) => `Novedades de FM Lens ${version}`,
+    releaseNotes: "Notas de la versión",
+    dismiss: "Cerrar",
+    changes: {
+      "0.5.2": [
+        "Informar de un problema, en Ajustes, abre un informe de error con tus versiones y cambios ya rellenados.",
+        "Cuando FM mueve sus datos, FM Lens vuelve a leer la partida solo: ya no hace falta pulsar Recargar datos.",
+        "Las actualizaciones se instalan en segundo plano. Pulsa Reiniciar para actualizar, al pie de la ventana, cuando te venga bien.",
+      ],
+    },
   },
 
   edit: {

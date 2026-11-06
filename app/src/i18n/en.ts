@@ -1379,19 +1379,31 @@ export const en = {
 
   /** New versions: the notice under the masthead, and the version and Check for updates at the foot of the window. */
   update: {
-    /** The notice's headline while the app installs a newer version, which it does at once, without asking. */
-    updating: (version: string) => `Updating to FM Lens ${version}`,
+    /** In the colophon once a newer version is installed, which the app does in the background, without asking. */
+    relaunch: "Relaunch to update",
     /** The headline where this copy cannot install it itself (see `can_self_update`), or installing failed. */
     available: (version: string) => `FM Lens ${version} is available`,
     /** Opens the release's page in the browser. */
     download: "Download",
-    preparing: "Preparing…",
-    /** `percent` is null while the size of the download is not known. */
-    downloading: (percent: number | null) => (percent === null ? "Downloading…" : `Downloading… ${percent}%`),
-    installing: "Installing. FM Lens will restart.",
     installFailed: (reason: string) => `Couldn't update: ${reason}. Download it instead.`,
     /** Hides the notice until the app starts again. */
     later: "Later",
+    /** After an update, once: the headline of the notice that lists what this version brought (see `changes`). */
+    whatsNew: (version: string) => `What's new in FM Lens ${version}`,
+    /** Opens this version's release notes in the browser. */
+    releaseNotes: "Release notes",
+    dismiss: "Dismiss",
+    /**
+     * What each version brought, as the notice lists it after an update; a version not listed here shows no notice.
+     * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
+     */
+    changes: {
+      "0.5.2": [
+        "Report a problem, in Settings, opens a bug report with your versions and changes filled in.",
+        "When FM moves its data, FM Lens reads the game again by itself: no more pressing Reload.",
+        "Updates install in the background. Press Relaunch to update, at the foot of the window, when it suits you.",
+      ],
+    } as Record<string, readonly string[]>,
   },
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */

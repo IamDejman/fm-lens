@@ -62,7 +62,7 @@ UID at `+0x294` and the person block at `+0x288` are the first things to verify.
 
 ## Game Pass findings
 
-### Attaching (`fmlibre-probe info`)
+### Attaching (`fmlens-probe info`)
 
 - `OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ)` on the Game Pass
   `fm.exe` works **without administrator rights**.
@@ -94,7 +94,7 @@ The `game_plugin_plugin_build_timestamp` export points into `.debug` and starts
 with `call`/`jmp`: it is code, so it cannot serve as a data fingerprint. Use the
 package version instead.
 
-### Entity arrays (`fmlibre-probe scan`)
+### Entity arrays (`fmlens-probe scan`)
 
 The scan took 2.3 s (debug build) and found 20 arrays, all with their
 `(begin, end)` pairs in `.ecode`. The cluster sits at the same relative offsets as
@@ -115,7 +115,7 @@ identified yet. Element counts depend on the leagues loaded in the save.
 
 ### Player layout: same as Steam
 
-Verified with `fmlibre-probe column game_plugin.dll+0x5681dc0 0x294 --find <UID>`:
+Verified with `fmlens-probe column game_plugin.dll+0x5681dc0 0x294 --find <UID>`:
 Lionel Messi (UID 7458500) is element 360 and Erling Haaland (UID 29179241)
 element 6975 of the players array, both at the Steam offset.
 
@@ -144,7 +144,7 @@ More player fields, checked on Messi's object against the Steam offsets:
 | `+0x2F8..+0x2FF` | personality, 1–20 | ambition 18, pressure 19 |
 | `+0x310` | date of birth: `u16` day of year (1-based) + `u16` year | 175, 1987 → 24 June 1987 |
 
-More fields, read with `fmlibre-probe player 7458500`:
+More fields, read with `fmlens-probe player 7458500`:
 
 | Offset | Content | Messi |
 |---|---|---|
@@ -178,7 +178,7 @@ FM stores unset dates as zero or as days in 1900 (a rolling contract "expires"
 The current in-game date sits in static data right after the entity-array cluster,
 at RVA `0x5682608` = players pair `+0x848`: a `u16` day of year with a flag in the
 high bit (`0x80C7` → day 199) and a `u16` year (2026), i.e. 18 July 2026 in the
-test save. Confirmed with `fmlibre-probe find "18 Temmuz 2026"` and
+test save. Confirmed with `fmlens-probe find "18 Temmuz 2026"` and
 `find "18 Tem"`: the game's UI strings read "18 Temmuz 2026" and "Cts 18 Tem"
 (18 July 2026 is a Saturday), and there is no trace of the other candidate.
 
@@ -199,7 +199,7 @@ under which the name decodes, so no build-specific vtable is needed.
 ### Staff
 
 Staff offsets follow fm-editor's FM27 notes and read correctly on Game Pass
-(`fmlibre-probe staff`, `staff-member <id>`):
+(`fmlens-probe staff`, `staff-member <id>`):
 
 | Offset | Content |
 |---|---|
@@ -228,7 +228,7 @@ the reader skips it.
 
 ### Clubs
 
-`fmlibre-probe clubs` reads 31,227 clubs in 0.3 s (debug build); the six entries
+`fmlens-probe clubs` reads 31,227 clubs in 0.3 s (debug build); the six entries
 without a name share the array but are not clubs, and are skipped. Checked on
 Tottenham Hotspur (UID 728) against fm-editor's Steam witnesses:
 
@@ -257,18 +257,18 @@ when the ticket price, budgets and corporate rating look like a real club's.
 
 ### Staff and club layouts
 
-`fmlibre-probe calibrate` decodes 100% of sampled staff (name-table entries at
+`fmlens-probe calibrate` decodes 100% of sampled staff (name-table entries at
 `+0x150` / `+0x158`) and clubs (name at `+0xC0`), both with and without the build
 profile (`--scan`). Clubs are reached from players through the team pointer at
 `+0x130` and `team+0x30`; nations through `+0x2F0` with the name at `nation+0x18`.
 Nation names come from the game's own translations, so they follow the game
 language (e.g. `Arjantin` in a Turkish game).
 
-`fmlibre-probe players` reads all 59,304 players in 0.5 s (debug build).
+`fmlens-probe players` reads all 59,304 players in 0.5 s (debug build).
 
 ### Writing
 
-`fmlibre-probe set` opens the process with `PROCESS_VM_WRITE | PROCESS_VM_OPERATION`
+`fmlens-probe set` opens the process with `PROCESS_VM_WRITE | PROCESS_VM_OPERATION`
 on top of the read rights. Like reading, this works on the Game Pass build without
 administrator rights. Every write goes through `WriteProcessMemory`, and only after
 these checks:
@@ -282,7 +282,7 @@ these checks:
   field. If it is not, the layout does not fit this object and nothing is written.
 - The value is read back afterwards. If it differs, the old value is put back.
 
-`fmlibre-probe fields player --stats` reads every object and checks each field
+`fmlens-probe fields player --stats` reads every object and checks each field
 against its range. All 59,304 players and 29,499 staff hold plausible values in every
 field. Every player rates 1 as a sweeper (`+0x151`): the game no longer uses that
 position, so it is not offered for editing.
