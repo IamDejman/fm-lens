@@ -43,6 +43,8 @@ pub struct GameActions {
     pub end_loan: bool,
     /// Signing a free agent on a later day, and cancelling it.
     pub future_transfer: bool,
+    /// Every player of a team fully familiar with its tactic, as the game's editor does it.
+    pub max_tactics: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -70,14 +72,20 @@ pub struct StartedLoan {
     pub ends: FmDate,
 }
 
-/// A loan the game ended: the player went back from the club he was loaned to, to his own. `ends` is when the loan
-/// was to end, for starting it again.
+/// A loan the game ended: the player went back from the club he was loaned to, to his own. `starts`, `ends` and `wage`
+/// are the loan's terms, for starting it again as it was.
 #[derive(Debug, Clone, Copy)]
 pub struct EndedLoan {
     pub player: u32,
     pub from_club: u32,
     pub to_club: u32,
+    pub starts: Option<FmDate>,
     pub ends: Option<FmDate>,
+    /// Pounds per week the borrowing club paid of his wage.
+    pub wage: i32,
+    /// Whether his own club had him on its loan list, which the game's end of a loan can change; none where it could
+    /// not be read.
+    pub loan_listed: Option<bool>,
 }
 
 /// The kinds of contract end the game's daily check passes for a loan that ran out, which pick its news: one for a
@@ -185,12 +193,21 @@ impl Session {
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.future_transfer.is_some(),
+            max_tactics: calls.maximise_tactics.is_some()
+                && calls.struct_value.is_some()
+                && calls.map_new.is_some()
+                && calls.map_insert.is_some()
+                && calls.map_drop.is_some()
+                && profile.editor.as_ref().is_some_and(|editor| {
+                    self.process.read_bytes(self.plugin.base + editor.enabled, 1).is_ok_and(|byte| byte[0] == 1)
+                })
+                && self.layout.tactics.is_some(),
         }
     }
 
     /// Has the game run `program`. Refused while the checks a change to the game's lists and records needs have not
     /// passed, as any such change is.
-    fn call_game(&self, program: &Program) -> Result<Outcome, MoveError> {
+    pub(crate) fn call_game(&self, program: &Program) -> Result<Outcome, MoveError> {
         if let Some(lock) = self.structure_lock() {
             return Err(MoveError::Locked(lock));
         }
@@ -210,7 +227,7 @@ impl Session {
     }
 
     /// The function `pick` names in this build's profile.
-    fn game_function(&self, pick: impl Fn(&CallRvas) -> Option<u64>) -> Result<u64, MoveError> {
+    pub(crate) fn game_function(&self, pick: impl Fn(&CallRvas) -> Option<u64>) -> Result<u64, MoveError> {
         self.profile.as_ref().and_then(|p| p.calls.as_ref()).and_then(pick).ok_or(MoveError::CallUnavailable)
     }
 
@@ -411,6 +428,29 @@ impl Session {
         club: &ClubSummary,
         ends: FmDate,
     ) -> Result<StartedLoan, MoveError> {
+        self.start_loan_from(player, club, None, ends)
+    }
+
+    /// Has the game start again the loan it ended, `ended`, back to `club`: from the day it started until the day it
+    /// was to end. The game's loan has the borrower pay nothing; the caller writes `ended.wage` back.
+    pub fn restart_loan(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        ended: &EndedLoan,
+    ) -> Result<StartedLoan, MoveError> {
+        let ends = ended.ends.ok_or(MoveError::UnusualContract)?;
+        self.start_loan_from(player, club, ended.starts, ends)
+    }
+
+    /// As [`Session::start_loan`], from `starts` where it is given and not after today.
+    fn start_loan_from(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        starts: Option<FmDate>,
+        ends: FmDate,
+    ) -> Result<StartedLoan, MoveError> {
         let function = self.game_function(|calls| calls.start_loan)?;
         let (Some(rvas), Some(o)) =
             (self.profile.as_ref().and_then(|p| p.starting_loan.as_ref()), self.layout.starting_loan.as_ref())
@@ -463,7 +503,7 @@ impl Session {
         put(0x6F, &[0xFF]);
         put(o.player, &self.identity_block(object)?.to_le_bytes());
         put(o.club, &senior.to_le_bytes());
-        put(o.starts, &packed_date(today).to_le_bytes());
+        put(o.starts, &packed_date(starts.filter(|&day| day <= today).unwrap_or(today)).to_le_bytes());
         put(o.ends, &packed_date(ends).to_le_bytes());
 
         let mut program = Program::new();
@@ -704,6 +744,11 @@ impl Session {
     pub fn plan_end_loan(&self, player: &PlayerSummary) -> Result<(u32, u32), MoveError> {
         let object = self.player_object(player)?;
         let terms = self.loan(player).ok_or(MoveError::NotOnLoan)?;
+        // The game completes a transfer with a mandatory future fee when the loan ends; which fees are mandatory is
+        // not known, so no loan with one is ended.
+        if terms.future_fee.is_some() {
+            return Err(MoveError::FutureFee);
+        }
         // He plays for the club he is loaned to; his own contract names his parent club.
         let team = self.process.read_u64(object + self.layout.player.team)?;
         match (crate::players::club_uid_of_team(&self.process, &self.layout, team), terms.parent_uid) {
@@ -722,7 +767,12 @@ impl Session {
         let object = self.player_object(player)?;
         let (from_club, to_club) = self.plan_end_loan(player)?;
         let loan = self.loan_contract(object, 0).ok_or(MoveError::NotOnLoan)?;
-        let ends = self.loan(player).and_then(|terms| terms.ends);
+        let terms = self.loan(player).ok_or(MoveError::NotOnLoan)?;
+        let loan_listed = self
+            .field(crate::edit::Entity::Player, "contract.loan_listed")
+            .and_then(|field| self.read_field(&player.target(), &field))
+            .ok()
+            .map(|value| value != 0);
         let kind = if human_clubs.contains(&to_club) { LOAN_ENDED_HUMAN } else { LOAN_ENDED };
 
         let zero = Arg::value(0);
@@ -746,12 +796,22 @@ impl Session {
         self.call_game(&program)?;
         let (process, layout) = (&self.process, &self.layout);
         let team = process.read_u64(object + layout.player.team)?;
-        if self.loan_contract(object, 0).is_some()
-            || crate::players::club_uid_of_team(process, layout, team) != Some(to_club)
-        {
+        if self.loan_contract(object, 0).is_some() {
             return Err(MoveError::CallDeclined);
         }
-        Ok(EndedLoan { player: player.uid, from_club, to_club, ends })
+        if crate::players::club_uid_of_team(process, layout, team) != Some(to_club) {
+            let club = crate::players::club_of_team(process, layout, team).unwrap_or_else(|| "-".to_owned());
+            return Err(MoveError::JoinedOther { club });
+        }
+        Ok(EndedLoan {
+            player: player.uid,
+            from_club,
+            to_club,
+            starts: terms.starts,
+            ends: terms.ends,
+            wage: terms.wage,
+            loan_listed,
+        })
     }
 
     /// The senior team of `club`, checked to point back at it.

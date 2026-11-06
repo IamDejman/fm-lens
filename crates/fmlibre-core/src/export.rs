@@ -359,8 +359,18 @@ fn squad_status_name(code: u8) -> Option<&'static str> {
         1 => "Star player",
         2 => "Important player",
         3 => "Regular starter",
-        4 => "Rotation player",
+        4 => "Squad player",
         5 => "Impact sub",
+        7 => "Fringe player",
+        9 | 21 => "Emergency backup",
+        10 => "Breakthrough prospect",
+        11 => "Future prospect",
+        13 => "Youngster",
+        15 => "First-choice goalkeeper",
+        16 => "Cup goalkeeper",
+        17 => "Domestic cup goalkeeper",
+        20 => "Backup",
+        22 => "Surplus to requirements",
         _ => return None,
     })
 }
@@ -376,12 +386,12 @@ fn clause_name(kind: u16) -> Option<&'static str> {
         5 => "Relegation wage drop",
         6 => "Non-playing job release clause",
         7 => "Release at any time",
-        8 => "Sell-on fee",
+        8 => "Sell-on fee percentage",
         9 => "Sell-on fee from profit",
         10 => "Seasonal landmark goal bonus",
-        11 => "One-year extension after league matches",
+        11 => "One-year extension after league games",
         12 => "Match highest earner",
-        13 => "Wage after reaching league matches",
+        13 => "Wage after reaching club league games",
         14 => "Top division promotion wage rise",
         15 => "Top division relegation wage drop",
         16 => "Minimum fee release clause (foreign clubs)",
@@ -407,7 +417,8 @@ fn clause_name(kind: u16) -> Option<&'static str> {
         38 => "Unused substitute fee",
         39 => "Assist bonus",
         40 => "Seasonal landmark assist bonus",
-        41 => "Seasonal landmark goals and assists bonus",
+        41 => "Seasonal landmark combined goal and assist bonus",
+        55 => "Active relegation release clause",
         _ => return None,
     })
 }
@@ -421,7 +432,7 @@ fn condition_text(kind: u16, value: u16) -> Option<String> {
         10 => format!("{value} goals"),
         40 => format!("{value} assists"),
         41 => format!("{value} goals and assists"),
-        11 | 13 => format!("{value} league matches"),
+        11 | 13 => format!("{value} league games"),
         19 => format!("{value} international matches"),
         22 if value == 1 => "1 year".to_owned(),
         22 => format!("{value} years"),
@@ -542,6 +553,17 @@ mod tests {
         assert_eq!(cell("release_clause_gbp"), "150000000");
         assert_eq!(cell("asking_price_gbp"), "");
         assert_eq!(cell("clauses"), "Minimum fee release clause: 150000000 GBP; Yearly wage rise: 10%");
+    }
+
+    #[test]
+    fn squad_statuses_carry_fm_names() {
+        // As FM's contract screen named them for Zaïre-Emery, Nwaneri, Quintero, Kepa and Gyökeres.
+        assert_eq!(squad_status_name(4), Some("Squad player"));
+        assert_eq!(squad_status_name(10), Some("Breakthrough prospect"));
+        assert_eq!(squad_status_name(11), Some("Future prospect"));
+        assert_eq!(squad_status_name(17), Some("Domestic cup goalkeeper"));
+        assert_eq!(squad_status_name(22), Some("Surplus to requirements"));
+        assert_eq!(squad_status_name(14), None);
     }
 
     #[test]

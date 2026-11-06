@@ -110,6 +110,15 @@ enum Command {
         /// The club's unique ID.
         uid: u32,
     },
+    /// Show each player's familiarity with his team's tactic, list by list (0 to 10000), for a team of the club with
+    /// this UID, and the team's id in the game's teams table, as Max tactics would find them. Only reads.
+    Tactics {
+        /// The club's unique ID.
+        uid: u32,
+        /// Which of the club's teams: 0 is the senior team.
+        #[arg(long, default_value_t = 0)]
+        team: usize,
+    },
     /// List the match officials, by current ability; with a name, only those whose name holds it.
     Officials {
         /// Part of a name to look for.
@@ -843,6 +852,7 @@ fn run(cli: Cli) -> Result<()> {
         Command::Club { uid } => club(&connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Nation { uid } => nation(&connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Cohesion { uid } => cohesion(&connect(process, ArraySource::ProfileFirst)?, uid),
+        Command::Tactics { uid, team } => tactics(&connect(process, ArraySource::ProfileFirst)?, uid, team),
         Command::Officials { name, limit } => officials(&connect(process, ArraySource::ProfileFirst)?, name, limit),
         Command::Competitions { name, limit } => {
             competitions(&connect(process, ArraySource::ProfileFirst)?, name, limit)
@@ -2554,6 +2564,9 @@ fn player(session: &Session, uid: u32) -> Result<()> {
             date(loan.starts),
             date(loan.ends)
         );
+        if let Some(fee) = loan.future_fee {
+            println!("                 future fee £{fee}");
+        }
     }
     for permit in &d.work_permits {
         println!(
@@ -3519,6 +3532,25 @@ fn cohesion(session: &Session, uid: u32) -> Result<()> {
     Ok(())
 }
 
+fn tactics(session: &Session, uid: u32, team: usize) -> Result<()> {
+    let clubs = ClubIndex::new(session.clubs()?);
+    let club = clubs.get(uid).with_context(|| format!("no club with UID {uid}"))?;
+    let players = PlayerIndex::new(session.players()?);
+    let read = session.team_tactics(club, team, &players)?;
+    let id = read.id.map_or_else(|| "not in the teams table".to_owned(), |id| id.to_string());
+    let on = if read.editor_on { "on" } else { "off" };
+    println!("{} team {team}: id {id}, editor actions {on}, {} players", club.name, read.players.len());
+    for player in &read.players {
+        let name = players.get(player.uid).map_or("-", |p| p.name.as_str());
+        let shown = match &player.lists {
+            Some(lists) => lists.iter().map(|values| format!("{values:?}")).collect::<Vec<_>>().join(" "),
+            None => "no record".to_owned(),
+        };
+        println!("  {name:<28} {shown}");
+    }
+    Ok(())
+}
+
 fn officials(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
     let mut all = session.officials()?;
     println!("{} officials", all.len());
@@ -3585,7 +3617,7 @@ fn awards(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
     all.sort_by_key(|a| std::cmp::Reverse(a.prestige));
     for a in all.iter().take(limit) {
         println!(
-            "  {:<52} {:<8} {:<28} {:<12} prestige {:>2} period {} to {}{}{}",
+            "  {:<52} {:<8} {:<28} {:<12} prestige {:>2} period {} to {}{}{}{}",
             a.name,
             a.uid,
             a.competition.as_deref().unwrap_or("-"),
@@ -3594,6 +3626,7 @@ fn awards(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
             a.period,
             a.recipients,
             if a.goalkeepers_only { " goalkeepers" } else { "" },
+            if a.women { " women" } else { "" },
             a.max_age.map_or_else(String::new, |age| format!(" max age {age}"))
         );
     }

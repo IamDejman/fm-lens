@@ -368,7 +368,9 @@ fn loan_fields(layout: &Layout) -> Vec<Field> {
 }
 
 /// The squad statuses the editor offers, by the codes contracts hold them as (see the names in the app's
-/// dictionaries). The game uses more codes than these, e.g. for goalkeepers and youngsters.
+/// dictionaries). The game uses more codes than these, named from FM's contract screen: 7 fringe player, 9 and
+/// 21 emergency backup, 10 breakthrough prospect, 11 future prospect, 13 youngster, 15 first-choice goalkeeper,
+/// 16 cup goalkeeper, 17 domestic cup goalkeeper, 20 backup, 22 surplus to requirements; 14 is unnamed.
 pub const SQUAD_STATUSES: [i64; 5] = [1, 2, 3, 4, 5];
 
 /// A squad number from 1 to 99 (255: none), the squad status, and whether the player is on
@@ -543,8 +545,9 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
     fields
 }
 
-/// The coaching licence levels a member of staff may be given: none (0), then 1 to 8.
-pub const COACHING_LICENCES: [i64; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+/// The coaching licence levels a member of staff may be given, lowest first: none (0), then 7 National C up to 1
+/// Continental Pro. Level 8 is the game's own none, which FM shows as 0 is, so it is not offered twice.
+pub const COACHING_LICENCES: [i64; 8] = [0, 7, 6, 5, 4, 3, 2, 1];
 
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
@@ -1474,7 +1477,9 @@ mod tests {
         let field = staff.iter().find(|f| f.key == "coaching_licence").cloned().expect("field");
         assert_eq!((field.offset, field.kind, field.min, field.max), (offset, Kind::I8, 0, 8));
         assert!(field.shifted && field.mass);
-        assert!(field.takes(0) && field.takes(8) && !field.takes(9) && !field.takes(-1));
+        assert!(field.takes(0) && field.takes(1) && field.takes(7) && !field.takes(9) && !field.takes(-1));
+        // Level 8, the game's own none, is not offered beside 0, but an undo may still write it back.
+        assert!(!field.takes(8) && field.is_plausible(8));
         // The game's other form of levels 2 to 8 reads as plausible, and is replaced on a write.
         assert!(field.is_plausible(-1) && field.is_plausible(-7) && !field.is_plausible(-8) && !field.is_plausible(9));
     }

@@ -109,6 +109,8 @@ export interface GameActions {
   endLoan: boolean;
   /** Signs a free agent for a later day (`sign_free_agent_later`), and cancels it on undo. */
   futureTransfer: boolean;
+  /** Makes every player of a team fully familiar with its tactic (`team_action` "maxTactics"), as FM's editor does. */
+  maxTactics: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
@@ -428,6 +430,7 @@ export interface AwardSummary {
   period: number;
   /** FM's code for who gets it (see `awardListText.recipientName`). */
   recipients: number;
+  women: boolean;
   goalkeepersOnly: boolean;
   /** The oldest a winner may be; null when any age may win. */
   maxAge: number | null;
@@ -669,6 +672,8 @@ export interface LoanTerms {
   wage: number;
   starts: FmDate | null;
   ends: FmDate | null;
+  /** The fee agreed for a permanent move when the loan ends, mandatory or an option. */
+  futureFee: number | null;
 }
 
 /** A person or club a player favours or dislikes. */
@@ -968,7 +973,7 @@ export type CaptainRole = "captain" | "viceCaptain";
  * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
  * "liftBans" lifts every ban, "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
  */
-export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes" | "maxCohesion";
+export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes" | "maxCohesion" | "maxTactics";
 
 /** The columns that sort a squad table. */
 export type SquadSort =

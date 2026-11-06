@@ -54,8 +54,19 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Star player",
   2: "Important player",
   3: "Regular starter",
-  4: "Rotation player",
+  4: "Squad player",
   5: "Impact sub",
+  7: "Fringe player",
+  9: "Emergency backup",
+  10: "Breakthrough prospect",
+  11: "Future prospect",
+  13: "Youngster",
+  15: "First-choice goalkeeper",
+  16: "Cup goalkeeper",
+  17: "Domestic cup goalkeeper",
+  20: "Backup",
+  21: "Emergency backup",
+  22: "Surplus to requirements",
 };
 
 /**
@@ -100,10 +111,14 @@ const errors: ErrorTexts = {
   "attributes.level": () => "Choose a value from 1 to 20.",
   "call.unavailable": () => "FM can't make this change on this version.",
   "call.declined": () => "FM didn't make the change.",
+  "loan.futureFee": () =>
+    "This loan has a future fee. Ending it early would make FM complete the transfer, so FM Lens won't end it.",
+  "loan.joinedOther": (p) => `FM ended the loan, but he joined ${p.club} instead of going back.`,
   "injury.already": () => "He's injured already. Heal him first.",
   "injury.noKind": () => "FM has no such injury.",
   "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
   "cohesion.changed": (p) => `FM has since changed his familiarity with the club to ${p.found}, so it was left alone.`,
+  "tactics.changed": () => "FM has since changed his familiarity with the tactic, so it was left alone.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM reloaded the save. Press Reload before you edit again.",
@@ -118,7 +133,8 @@ const errors: ErrorTexts = {
 
 /**
  * The kinds of contract clauses and bonuses, by the codes contracts hold them as; named as FMRTE names them, and the
- * rest after the game's own list of kinds.
+ * rest after the game's own list of kinds. 8, 13, 41 and 55 are named as FM's contract screen names them; FM does not
+ * show 63 there.
  */
 const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   0: "Minimum fee release clause",
@@ -129,12 +145,12 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   5: "Relegation wage drop",
   6: "Non-playing job release clause",
   7: "Release at any time",
-  8: "Sell-on fee",
+  8: "Sell-on fee percentage",
   9: "Sell-on fee from profit",
   10: "Seasonal landmark goal bonus",
-  11: "One-year extension after league matches",
+  11: "One-year extension after league games",
   12: "Match highest earner",
-  13: "Wage after reaching league matches",
+  13: "Wage after reaching club league games",
   14: "Top division promotion wage rise",
   15: "Top division relegation wage drop",
   16: "Minimum fee release clause (foreign clubs)",
@@ -160,7 +176,8 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   38: "Unused substitute fee",
   39: "Assist bonus",
   40: "Seasonal landmark assist bonus",
-  41: "Seasonal landmark goals and assists bonus",
+  41: "Seasonal landmark combined goal and assist bonus",
+  55: "Active relegation release clause",
 };
 
 /** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them. */
@@ -465,6 +482,8 @@ export const en = {
     bans: "Bans",
     // Max cohesion, which the change log keeps as a change of the player's familiarity with his club (0 to 100).
     cohesion: "Club familiarity",
+    // Max tactics, which the change log keeps as a change of the player's familiarity with the team's tactic (0 to 100).
+    tactics: "Tactical familiarity",
     // Keeping a player from retiring, which the change log keeps as a change of the date he was to retire on.
     retirement: "Retirement",
     // A change to a player's contract clauses, which the change log keeps as a change of the clause's amount.
@@ -565,6 +584,7 @@ export const en = {
     loanWage: "Borrower pays per week",
     loanStarts: "Loan began",
     loanEnds: "Loan ends",
+    loanFutureFee: "Future fee",
     /** A player's work permits, one per nation he holds one for: active, or an ESC slot (FM's name) from a day. */
     workPermit: "Work permit",
     permitActive: "Active",
@@ -579,7 +599,16 @@ export const en = {
     /** A member of staff's coaching licence: 0 none, 1 to 8 FM's levels. */
     qualifications: "Qualifications",
     coachingLicence: "Coaching licence",
-    licenceName: (level: number): string => (level === 0 ? "None" : `Level ${level}`),
+    licenceName: (level: number): string =>
+      ({
+        1: "Continental Pro Licence",
+        2: "Continental A Licence",
+        3: "Continental B Licence",
+        4: "Continental C Licence",
+        5: "National A Licence",
+        6: "National B Licence",
+        7: "National C Licence",
+      })[level] ?? "None",
     squadNumber: "Squad number",
     transferListed: "Transfer listed",
     loanListed: "Loan listed",
@@ -601,10 +630,12 @@ export const en = {
     retires: "Plans to retire",
     preferences: "Likes and dislikes",
     languages: "Languages",
-    /** How well a language is spoken: FM's 0 to 10. */
-    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    /**
+     * How well a person speaks a language (0 to 10), in the words of FM's profile: 7 to 10 fluent (10 too, as for
+     * Gyökeres' English), 5 good, 3 and 4 basic. FM leaves out a language at 1.
+     */
     languageLevel: (level: number): string =>
-      level > 9 ? "Native" : level >= 7 ? "Fluent" : level >= 5 ? "Good" : level >= 2 ? "Basic" : "Does not speak",
+      level >= 7 ? "Fluent" : level >= 5 ? "Good" : level >= 2 ? "Basic" : "Does not speak",
     languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rivals",
     linkedClubs: "Affiliated clubs",
@@ -663,7 +694,7 @@ export const en = {
           return `${value} goals and assists`;
         case 11:
         case 13:
-          return value === 1 ? "1 league match" : `${value} league matches`;
+          return value === 1 ? "1 league game" : `${value} league games`;
         case 19:
           return value === 1 ? "1 international match" : `${value} international matches`;
         case 22:
@@ -1049,13 +1080,23 @@ export const en = {
     /** How often it is given, by FM's code; null for the codes not named yet. */
     period: "Given",
     periodName: (code: number): string | null =>
-      ({ 1: "Every week", 2: "Every month", 3: "Every season" })[code] ?? null,
+      ({
+        1: "Every week",
+        2: "Every month",
+        3: "Every season",
+        4: "At the end of the competition",
+        5: "Every calendar year",
+        6: "Every year",
+        7: "Every round",
+      })[code] ?? null,
     /** Who gets it, by FM's code; null for the codes not named yet. */
     recipients: "Given to",
     recipientName: (code: number): string | null => ({ 1: "A player", 2: "A manager", 7: "A team of players" })[code] ?? null,
     goalkeepersOnly: "Goalkeepers only",
     ageLimit: "Age limit",
     ageLimitValue: (age: number) => `${age} or under`,
+    /** The small tag on a women's award. */
+    women: "Women",
   },
 
   stadiumList: {
@@ -2080,6 +2121,8 @@ export const en = {
     refreshAllTitle: "Full energy, full match sharpness and fully rested for everyone",
     maxCohesion: "Max cohesion",
     maxCohesionTitle: "Every player fully familiar with the club (experimental)",
+    maxTactics: "Max tactics",
+    maxTacticsTitle: "Every player fully familiar with the team's tactic",
     maxAll: "Max attributes",
     maxAllTitle:
       "Every attribute to 20 for everyone (injury proneness and dirtiness to 1)",

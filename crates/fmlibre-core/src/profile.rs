@@ -63,6 +63,27 @@ pub struct Layout {
     /// The transfers the game has agreed for a later day; only in the layouts they have been traced in.
     #[serde(default)]
     pub future_transfer: Option<FutureTransferLayout>,
+    /// Players' familiarity with their team's tactic; only in the layouts it has been traced in.
+    #[serde(default)]
+    pub tactics: Option<TacticsLayout>,
+}
+
+/// A player's familiarity with his team's tactic, which the game's editor raises to the most for a team
+/// ([`CallRvas::maximise_tactics`]). His pointer at `record` leads to a record with a list of 4-byte entries
+/// (begin, end, capacity) at each of `lists`, the familiarity in the low 14 bits of each entry's first u16, and a list
+/// of 16-byte entries at `store`, the familiarity the u16 at `store_value`; `dirty` is the byte the game sets once it
+/// has changed them. Familiarity runs to 10000. A team's id in the game's teams table is the u32 at `team_id`, and the
+/// table's pointer at `teams` leads to its (begin, end) of teams.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TacticsLayout {
+    pub record: u64,
+    pub lists: Vec<u64>,
+    pub store: u64,
+    pub store_value: u64,
+    pub dirty: u64,
+    pub team_id: u64,
+    pub teams: u64,
 }
 
 /// The transfers `TRANSFER_MANAGER` has agreed for a later day. From the manager: its offers at `offers` and the
@@ -137,7 +158,8 @@ pub struct InjuryKindLayout {
 
 /// An award (`db::AWARD`), read as a competition is ([`CompetitionLayout`]); `competition`, `nation` and `continent`
 /// are the pointers it is linked by, the rest bytes: `prestige` 0 to 20, `period` and `recipients` codes,
-/// `goalkeepers_only` 1 for a goalkeepers' award and `max_age` the oldest a winner may be (0 for any age).
+/// `goalkeepers_only` 1 for a goalkeepers' award, `women` 1 for a women's award and `max_age` the oldest a winner may
+/// be (0 for any age).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AwardLayout {
@@ -153,6 +175,7 @@ pub struct AwardLayout {
     pub goalkeepers_only: u64,
     pub prestige: u64,
     pub period: u64,
+    pub women: u64,
     pub recipients: u64,
     pub max_age: u64,
 }
@@ -164,6 +187,8 @@ pub struct AwardLayout {
 pub struct LoanLayout {
     pub slot: u64,
     pub class: String,
+    /// The loan's future fee, a u32 in the contract, `u32::MAX` for none.
+    pub future_fee: u64,
 }
 
 /// Work permits: the transfer manager the game keeps them in ([`BuildProfile::transfer_manager`]), of class `class`; at
@@ -880,6 +905,21 @@ pub struct BuildProfile {
     /// What a `STARTING_LOAN` for [`CallRvas::start_loan`] starts from, on the one build where it has been traced.
     #[serde(default)]
     pub starting_loan: Option<StartingLoanRvas>,
+    /// What the game's own editor actions start from, on the one build where it has been traced.
+    #[serde(default)]
+    pub editor: Option<EditorRvas>,
+}
+
+/// RVAs in the game plugin of the static pointers to the registry of the game's Value types (an integer Value is the
+/// registry's entry at `integer_type` and the number) and to the database table of teams ([`TacticsLayout`]), and of
+/// the byte the game's editor actions check is 1 before they do anything.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EditorRvas {
+    pub value_types: u64,
+    pub integer_type: u64,
+    pub teams: u64,
+    pub enabled: u64,
 }
 
 /// RVAs in the game plugin of what the game's editor builds a `STARTING_LOAN` from ([`StartingLoanLayout`]): its
@@ -944,6 +984,11 @@ pub struct CallRvas {
     pub ref_copy: Option<u64>,
     /// `(object)`: gives back a reference to the object, destroying it with the last.
     pub ref_drop: Option<u64>,
+    /// `(Value*, map*)`: makes the Value of a struct, moving the map's entries into it.
+    pub struct_value: Option<u64>,
+    /// The game's editor action that makes every player of a team fully familiar with its tactic: `(map*)`, the map
+    /// holding under 'dref' a struct whose own map holds the team's reference under 'dref'. Returns nothing.
+    pub maximise_tactics: Option<u64>,
 }
 
 impl CallRvas {
@@ -968,6 +1013,8 @@ impl CallRvas {
             self.drop_dated_transfer,
             self.ref_copy,
             self.ref_drop,
+            self.struct_value,
+            self.maximise_tactics,
         ]
         .into_iter()
         .flatten()
