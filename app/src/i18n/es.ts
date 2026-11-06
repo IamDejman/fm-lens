@@ -1330,21 +1330,14 @@ export const es: Strings = {
   },
 
   update: {
+    updating: (version) => `Actualizando a FM Lens ${version}`,
     available: (version) => `FM Lens ${version} ya está disponible`,
-    youHave: (version) => `Tienes la versión ${version}.`,
     download: "Descargar",
-    install: "Actualizar",
-    installTitle: "Descargar e instalar la nueva versión; FM Lens se cierra y vuelve a abrirse con ella",
     preparing: "Preparando…",
     downloading: (percent) => (percent === null ? "Descargando…" : `Descargando… ${percent} %`),
     installing: "Instalando: FM Lens se cerrará y volverá a abrirse con la nueva versión.",
     installFailed: (reason) => `No se ha podido actualizar: ${reason}. Descárgala desde su página.`,
-    notInstallable: "Esta versión no se puede instalar desde aquí. Descárgala desde su página.",
     later: "Más tarde",
-    check: "Buscar actualizaciones",
-    checking: "Buscando actualizaciones…",
-    upToDate: "Tienes la última versión.",
-    failed: "No se ha podido comprobar si hay actualizaciones.",
   },
 
   edit: {

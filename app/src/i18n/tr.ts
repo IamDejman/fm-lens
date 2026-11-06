@@ -1292,21 +1292,14 @@ export const tr: Strings = {
   },
 
   update: {
+    updating: (version) => `FM Lens ${version} sürümüne güncelleniyor`,
     available: (version) => `FM Lens ${version} yayımlandı`,
-    youHave: (version) => `Sizdeki sürüm: ${version}.`,
     download: "İndir",
-    install: "Güncelle",
-    installTitle: "Yeni sürümü indir ve kur; FM Lens kapanıp yeni sürümle yeniden açılır",
     preparing: "Hazırlanıyor…",
     downloading: (percent) => (percent === null ? "İndiriliyor…" : `İndiriliyor… %${percent}`),
     installing: "Kuruluyor: FM Lens kapanıp yeni sürümle yeniden açılacak.",
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
-    notInstallable: "Bu sürüm buradan kurulamıyor. Bunun yerine sayfasından indirin.",
     later: "Sonra",
-    check: "Güncellemeleri denetle",
-    checking: "Güncellemeler denetleniyor…",
-    upToDate: "En son sürümü kullanıyorsunuz.",
-    failed: "Güncellemeler denetlenemedi.",
   },
 
   edit: {
