@@ -121,11 +121,11 @@ const errors: ErrorTexts = {
   "call.unavailable": () => "FM bu sürümde bu değişikliği yapamıyor.",
   "call.declined": () => "FM değişikliği yapmadı.",
   "loan.futureFee": () =>
-    "Bu kiralamada gelecek bonservis bedeli var. Erken bitirmek FM'in transferi tamamlamasına yol açar, bu yüzden FM Lens onu bitirmez.",
+    "Bu kiralamada gelecek bonservis bedeli var. Erken bitirmek FM'in transferi tamamlamasına yol açar.",
   "loan.joinedOther": (p) => `FM kiralamayı bitirdi, ama oyuncu geri dönmek yerine ${p.club} kulübüne katıldı.`,
   "injury.already": () => "Zaten sakat. Önce iyileştir.",
   "injury.noKind": () => "FM'de böyle bir sakatlık yok.",
-  "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi, yükseltilecek bir şey yok.",
+  "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi.",
   "cohesion.changed": (p) =>
     `Kulübe alışkınlığı şu an ${p.found}: oyun o zamandan beri değiştirmiş, bu yüzden dokunulmadı.`,
   "tactics.changed": () => "Oyun o zamandan beri taktiğe alışkınlığını değiştirmiş, bu yüzden dokunulmadı.",
@@ -712,7 +712,7 @@ export const tr: Strings = {
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
-    removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır. Değişiklikler'den geri alabilirsiniz.",
+    removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır.",
     concernSince: (date) => `${date} tarihinden beri`,
     concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : `Tür ${kind}`),
     concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? `Neden ${motive}`,
@@ -721,7 +721,7 @@ export const tr: Strings = {
     loyaltyBonus: "Sadakat primi",
     happiness: "Mutluluk",
     playingTimeHappiness: "Forma süresi mutluluğu",
-    moodTitle: "FMRTE'nin gösterdiği gibi, -100 ile 100 arasında; oyun bunu kelimelerle gösterir",
+    moodTitle: "-100 ile 100 arasında.",
     clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? `Madde ${kind}`,
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
@@ -748,21 +748,21 @@ export const tr: Strings = {
           return String(value);
       }
     },
-    moraleTitle: "FM'de: 10 Memnun, 11 Biraz Mutlu, 15 ve 20 Aşırı Mutlu.",
+    moraleTitle: "10 Memnun. 15 ve üstü Aşırı Mutlu.",
     jadednessTitle: "Oynamaktan ne kadar yorulduğu. -500 tamamen dinlenmiş demek. Yükseldikçe dinlenmeye daha çok ihtiyaç duyar.",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
     injuryBack: (dates) => `Beklenen dönüş: ${dates}`,
     heal: "İyileştir",
-    healTitle: "Bu oyuncunun tüm sakatlıklarını oyunda iyileştir",
+    healTitle: "Tüm sakatlıklarını iyileştir",
     addInjury: "Sakatlık ekle",
     injuryKind: "Sakatlık",
     noBans: "Cezası yok",
     banMatches: (matches) => `${format(matches)} maç`,
     banStarted: (date) => `Başlangıç: ${date}`,
     liftBans: "Kaldır",
-    liftBansTitle: "Bu oyuncunun tüm cezalarını oyunda kaldır",
+    liftBansTitle: "Tüm cezalarını kaldır",
 
     // Above the attributes, while the profile is read
     setAttributes: "Bütün özellikleri şuna ayarla:",
@@ -770,14 +770,12 @@ export const tr: Strings = {
     setAttributesDone: (count, level) =>
       count === 0
         ? "Bütün özellikleri zaten bu değerde"
-        : `${changes(count)} yazıldı. Sakatlık eğilimi ve sertlik ${21 - level} oldu, çünkü onlarda düşük olan iyidir.`,
+        : `${changes(count)} yazıldı. Sakatlık eğilimi ve sertlik ${21 - level} oldu.`,
     setAttributesUndone: (count) => (count === 0 ? "Hiçbir şey geri alınmadı" : `${changes(count)} geri alındı`),
     undoSetAttributes: "Geri al",
     undoSetAttributesTitle: "Eski özelliklerini geri getir",
     freezeAttributes: "Özellikleri dondur",
-    freezeAttributesNote:
-      "FM Lens açık ve bağlıyken özellikleri düşemez. Gelişmeler yine sayılır. " +
-      "FM Lens bunu bu kayıt için hatırlar.",
+    freezeAttributesNote: "FM Lens bağlıyken özellikleri düşemez.",
 
     // Staff
     you: "Siz",
@@ -785,7 +783,7 @@ export const tr: Strings = {
     id: "ID",
     job: "Görev",
     changeJob: "Görevi değiştir",
-    changeJobTitle: "Bu personele oyunda kulübünde başka bir görev ver",
+    changeJobTitle: "Görevini değiştir",
     newJob: "Yeni görev",
     applyJob: "Uygula",
     cancelJob: "Vazgeç",
@@ -874,7 +872,7 @@ export const tr: Strings = {
       },
       saved: {
         save: "Kaydet",
-        saveTitle: "Geçerli filtreleri ve sıralamayı bir adla kaydet",
+        saveTitle: "Bu filtreleri ve sıralamayı kaydet",
         name: "Kayıtlı filtrenin adı",
         namePlaceholder: "Filtre adı",
         ok: "Tamam",
@@ -969,9 +967,7 @@ export const tr: Strings = {
     perWeek: "haftalık",
     noFinances: "FM, parayı yalnızca oynanabilir liglerdeki kulüpler için tutar.",
     freeze: "Parayı dondur",
-    freezeNote:
-      "FM Lens açık ve bağlıyken bakiye düşemez. Gelirler yine eklenir. " +
-      "FM Lens bunu bu kayıt için hatırlar.",
+    freezeNote: "FM Lens bağlıyken bakiye düşemez.",
 
     // Club info
     stadium: "Stadyum",
@@ -979,7 +975,7 @@ export const tr: Strings = {
     seating: "Oturma",
     used: "Kullanılan",
     usedAll: "Tamamı",
-    usedTitle: "Oyunun kapasitenin ne kadarını kullandığı, bir sınır koyduğunda (örneğin bazı tribünler kapalıyken); 0 tamamı demektir",
+    usedTitle: "Oyunun kapasitenin ne kadarını kullandığı. 0 tamamı demektir.",
     expansion: "Genişleyebileceği",
     noStadium: "Bu kulübün stadyumu okunamadı.",
     info: "Kulüp bilgisi",
@@ -1109,7 +1105,6 @@ export const tr: Strings = {
       maxCapacity: "En yüksek kapasite",
       placeholder: "Min",
     },
-    note: "Bu kulübün A takımının stadyumu; kulüp profilindeki alanlardan okunur.",
   },
 
   nationList: {
@@ -1171,7 +1166,7 @@ export const tr: Strings = {
       steps: {
         brand: {
           title: "FM Lens",
-          body: "Kaydınızdaki her şeyi görün ve değiştirin. Düzenlemeler Uygula'ya bastığınızda FM'ye gider. Önce bir kopyada deneyin.",
+          body: "Kaydınızdaki her şeyi görün ve değiştirin. Önce bir kopyada deneyin.",
         },
         tabs: {
           title: "Bölümler",
@@ -1179,7 +1174,7 @@ export const tr: Strings = {
         },
         search: {
           title: "Arama ve filtreler",
-          body: "Bir isim ya da kimlik yazın. Daraltmak için Filtreler'i kullanın.",
+          body: "Bir isim ya da kimlik yazın.",
         },
         settings: {
           title: "Ayarlar",
@@ -1187,15 +1182,15 @@ export const tr: Strings = {
         },
         status: {
           title: "Bağlantı",
-          body: "Alttaki çubuk FM'ye bağlı olup olmadığınızı gösterir.",
+          body: "FM'ye bağlı olup olmadığınızı gösterir.",
         },
       },
       exercise: {
         list: { title: "Bir düzenleme deneyin", body: "Listeden birini açın." },
         edit: { title: "Düzenle", body: "Düzenle'ye basın ya da bir değere tıklayın." },
-        profile: { title: "Bir değeri değiştirin", body: "Yeni bir değer yazın. FM'ye henüz hiçbir şey gitmez." },
+        profile: { title: "Bir değeri değiştirin", body: "Yeni bir değer yazın." },
         apply: { title: "Uygula", body: "Uygula değişikliği FM'ye gönderir. Vazgeç onu bırakır." },
-        changes: { title: "Değişiklikler", body: "Uygulanan her değişiklik burada listelenir ve geri alınabilir." },
+        changes: { title: "Değişiklikler", body: "Uygulanan her değişiklik, geri almaya hazır." },
       },
     },
 
@@ -1211,9 +1206,7 @@ export const tr: Strings = {
     more: "Daha fazla",
     previewTag: "tarayıcı önizlemesi · örnek veriler",
     noDate: "Oyun içi tarih yok",
-    noDateTitle:
-      "Oyun içi tarih okunamadı, bu yüzden yaşlar gizli ve yaş filtreleri kimseyi bulmuyor. " +
-      "Güncellemeleri kontrol edin.",
+    noDateTitle: "Oyun içi tarih okunamadı, bu yüzden yaşlar gizli.",
     reload: "Verileri yeniden oku",
     detecting: "Football Manager aranıyor…",
     connecting: "Kayıt yükleniyor…",
@@ -1241,9 +1234,7 @@ export const tr: Strings = {
 
       bridge: {
         title: "Tek seferlik kurulum",
-        intro:
-          "FM Lens'in, FM'nin açılışta yüklediği küçük bir yardımcıya ihtiyacı var. Kurmadan önce kaydedip FM'yi, " +
-          "ardından Steam'i kapatın.",
+        intro: "Kaydedip FM'yi, ardından Steam'i kapatın.",
         library: "Yardımcı",
         installed: "Kurulu",
         missing: "Kurulu değil",
@@ -1263,17 +1254,16 @@ export const tr: Strings = {
 
   compatibility: {
     unknownBuild: (game) => `FM Lens henüz ${game} ile denenmedi`,
-    unknownBuildText:
-      "FM Lens bu FM sürümüyle denenmedi. Değerler yanlış olabilir, bu yüzden düzenleme kapalı.",
+    unknownBuildText: "Değerler yanlış olabilir, bu yüzden düzenleme kapalı.",
     allowedText: "Denetimlerin geçtiği yerlerde düzenleme açık. Kaydınızı yedekleyin.",
     failedTitle: "Bazı veriler yanlış görünüyor",
-    reloadHint: "Kayıt hâlâ yükleniyorduysa “Verileri yeniden oku” yeniden denetler.",
-    noDate: "Oyun içi tarih denetimden geçmedi, bu yüzden yaşlar gösterilmiyor.",
+    reloadHint: "Kayıt hâlâ yükleniyorduysa Verileri yeniden oku'ya basın.",
+    noDate: "Oyun içi tarih okunamadı, bu yüzden yaşlar gösterilmiyor.",
     failed: (names) => `Salt okunur bırakılanlar: ${names}.`,
     join: (names) =>
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} ve ${names[names.length - 1]}`,
     allow: "Yine de düzenle",
-    allowTitle: "Düzenlemeyi FM Lens kapanana ya da yeniden bağlanana kadar açar. Önce kayıt dosyanızı yedekleyin.",
+    allowTitle: "Önce kayıt dosyanızı yedekleyin.",
   },
 
   checks: {
@@ -1316,7 +1306,7 @@ export const tr: Strings = {
     appliedTitle: "Uygulandı",
     unknownNation: "Bilinmeyen ülke",
     edit: "Düzenle",
-    editTitle: "Bu profilin değerlerini oyunda değiştir",
+    editTitle: "Bu profili düzenle",
     startFailed: (reason) => `Düzenleme başlatılamadı: ${reason}`,
     positionRating: (position) => `${position} puanı`,
     was: (value) => `önceki: ${value}`,
@@ -1368,9 +1358,7 @@ export const tr: Strings = {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} geri alındı`;
     },
-    empty:
-      "Henüz değişiklik yok. Bir oyuncu, personel veya kulüp açıp Düzenle düğmesine basın " +
-      "ya da bir listede Toplu düzenleme düğmesini kullanın.",
+    empty: "Henüz değişiklik yok.",
     columns: {
       time: "Saat",
       name: "İsim",
@@ -1404,26 +1392,16 @@ export const tr: Strings = {
 
   export: {
     button: "Dışa aktar",
-    buttonTitle: "Listedeki oyuncuları bir tablo programı ya da betik için CSV veya JSON dosyasına yaz",
+    buttonTitle: "CSV veya JSON olarak dışa aktar",
     title: "Oyuncuları dışa aktar",
-    scope: (count) =>
-      count === 0
-        ? "Arama ve filtrelere uyan oyuncu yok."
-        : `${format(count)} oyuncu: listenin arama ve filtrelerinin seçtikleri, listedeki sırayla.`,
+    scope: (count) => (count === 0 ? "Arama ve filtrelere uyan oyuncu yok." : `${format(count)} oyuncu`),
     formatLabel: "Biçim",
     formats: {
       csv: "CSV, virgülle ayrılmış",
       csvSemicolon: "CSV, noktalı virgülle ayrılmış",
       json: "JSON",
     },
-    formatHints: {
-      csv: "Çoğu tablo programı ve betik için",
-      csvSemicolon: "Ondalık virgül kullanan dillerdeki Excel için",
-      json: "Betikler için",
-    },
-    contents:
-      "Yetenekler, pozisyonlar, özellikler (gizliler dahil), kişilik, itibar, milli maçlar ve sözleşmeler. " +
-      "Paralar sterlin.",
+    contents: "Paralar sterlin.",
     export: "Dışa aktar",
     exporting: "Dışa aktarılıyor…",
     done: (count, file) => `${format(count)} oyuncu ${file} dosyasına aktarıldı`,
@@ -1438,7 +1416,7 @@ export const tr: Strings = {
 
   massEdit: {
     button: "Toplu düzenleme",
-    buttonTitle: "Listenin gösterdiği her şeyin değerlerini, önce önizleme yaparak değiştir",
+    buttonTitle: "Listedeki herkesi düzenle",
     title: {
       player: "Oyuncuları toplu düzenle",
       staff: "Personeli toplu düzenle",
@@ -1447,7 +1425,6 @@ export const tr: Strings = {
 
     // What it applies to
     scope: (entity, total) => `Listenin şu an gösterdiği ${entityCount(entity, total)} (arama ve filtreler)`,
-    scopeAll: (shown) => `Yalnızca ekrandaki ilk ${format(shown)} satır değil, eşleşen her kayıt kapsanır.`,
     scopeNone: (entity) =>
       `Aramaya ve filtrelere uyan ${nouns[entity].plain} yok, bu yüzden değiştirilecek bir şey yok.`,
     scopeTooMany: (entity, total, limit) =>
@@ -1490,12 +1467,12 @@ export const tr: Strings = {
       string
     >,
     values: { set: "Değer", add: "Miktar", scale: "Yüzde" } satisfies Record<MassOperationKind["op"], string>,
-    addTitle: "Her değere, gösterildiği gibi eklenir; negatif sayı çıkarır",
-    addPointsTitle: "Her değere yüzde puanı olarak eklenir (%70 artı 10, %80 eder); negatif sayı çıkarır",
+    addTitle: "Negatif sayı çıkarır.",
+    addPointsTitle: "%70 + 10 = %80. Negatif sayı çıkarır.",
     rangeHint: (min, max) => `${format(min)}–${format(max)}`,
     amountHint: (max) => `±${format(max)}`,
     ofCurrent: "% (mevcut değerin)",
-    percentTitle: "Mevcut değerin yüzdesi: 100 değeri korur, 110 onda bir artırır, 50 yarıya indirir",
+    percentTitle: "100 korur, 50 yarıya indirir",
     invalidAdd: (min, max) => `${format(min)} ile ${format(max)} arasında bir tam sayı girin`,
     invalidPercent: (min, max) => `${min} ile ${max} arasında tam sayı bir yüzde girin`,
     dateSetOnly: "Tarih yalnızca ayarlanabilir",
@@ -1537,7 +1514,6 @@ export const tr: Strings = {
     applyTitle: (count) => `Oyuna ${changes(count)} yaz`,
     applyFirst: "Önce toplu düzenlemeyi önizleyin",
     applyNothing: "Önizlemede yazılacak değişiklik yok",
-    hint: "Uygula'ya basana kadar FM'de hiçbir şey değişmez.",
     applied: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} uygulandı`),
     failure: (name, label, reason) => `${name} · ${label}: ${reason}`,
     undo: "Bu toplu düzenlemeyi geri al",
@@ -1564,9 +1540,6 @@ export const tr: Strings = {
 
     // The dialog
     title: "Karşılaştırma",
-    hint:
-      "Her satırdaki en iyi değer vurgulanır: en yüksek olan ya da " +
-      "düşük değerin daha iyi olduğu satırlarda en düşük olan.",
     tooFew: "Karşılaştırmak için en az iki oyuncu ekleyin.",
     loading: "Oyuncular yükleniyor…",
     tableLabel: "Karşılaştırılan oyuncuların değerleri",
@@ -1578,7 +1551,7 @@ export const tr: Strings = {
 
   move: {
     button: "Transfer",
-    buttonTitle: "Bu oyuncuyu oyunda başka bir kulübe transfer et; istersen bir bedelle",
+    buttonTitle: "Transfer et, takas et ya da kirala",
 
     // The dialog
     title: "Transfer",
@@ -1596,7 +1569,7 @@ export const tr: Strings = {
     resultsLabel: "Bulunan kulüpler",
     searching: "Kulüpler aranıyor…",
     searchFailed: (reason) => `Kulüpler aranamadı: ${reason}`,
-    more: (count) => `ve ${format(count)} tane daha; aramayı daraltmak için yazın`,
+    more: (count) => `ve ${format(count)} tane daha`,
     change: "Başka kulüp seç",
 
     // The fee
@@ -1631,10 +1604,10 @@ export const tr: Strings = {
     changePlayer: "Başka oyuncu seç",
 
     // What the dialog says about the swap
-    swapContract: "Her oyuncu kendi sözleşmesini korur; maaşlar ve sözleşme bitişleri değişmez.",
-    staffButtonTitle: "Bu personeli oyunda başka bir kulübe taşı",
+    swapContract: "Her oyuncu kendi sözleşmesini korur.",
+    staffButtonTitle: "Başka bir kulübe taşı",
     staffChooseClub: "Personelin taşınacağı kulübü seçin.",
-    staffContract: "Görevi, maaşı ve sözleşme bitişi aynı kalır; sözleşme oyundaki tarihle başlar.",
+    staffContract: "Görev ve sözleşme aynı kalır.",
     swapChooseClub: "Takas edilecek oyuncunun kulübünü seçin.",
     swapChoosePlayer: "Takas edilecek oyuncuyu seçin.",
     swapChecking: "Takas kontrol ediliyor…",
@@ -1676,12 +1649,10 @@ export const tr: Strings = {
 
     // The button under the group, and the dialog it opens
     change: "Değiştir",
-    changeTitle: "Bu oyuncunun ikinci uyruklarını ve yerli statüsünü oyunda değiştir",
+    changeTitle: "Diğer uyruklarını ve yerli statüsünü değiştir",
     title: "Uyruk ve yetiştiği yer",
-    hint: "Her değişiklik FM'ye hemen gider. Değişiklikler'den geri alabilirsiniz.",
-    full:
-      "Oyun bu oyuncunun listesini, tuttuğu kayıtlar kadar ayırmış: bir uyruk ya da yetiştiği yer değiştirilebilir " +
-      "veya kaldırılabilir, ama yenisi eklenemez.",
+    hint: "Değişiklikler FM'ye hemen gider.",
+    full: "Listesi dolu, yeni bir şey eklenemez.",
     nationOf: (name) => `${name} yerine ülke`,
     ruleOf: (name) => `${name} için yerli kuralı`,
     remove: "Kaldır",
@@ -1690,15 +1661,14 @@ export const tr: Strings = {
     addNation: "Ülke ekle…",
     newRule: "Yeni ülkenin yerli kuralı",
     add: "Ekle",
-    clubNote: "Bir kulübün kuralı değiştirilebilir ya da kulüp kaldırılabilir; kulüpleri oyun kendisi ekler.",
     working: "Oyuna yazılıyor…",
     close: "Kapat",
   },
 
   lists: {
-    likesTitle: "Her kişiyi ve kulübü ne kadar sevdiğini ya da sevmediğini oyunda değiştir",
+    likesTitle: "Kişileri ve kulüpleri ne kadar sevdiğini değiştir",
     strengthOf: (name) => `${name} için derece`,
-    languagesTitle: "Her dili ne kadar iyi konuştuğunu oyunda değiştir",
+    languagesTitle: "Her dili ne kadar iyi konuştuğunu değiştir",
     levelOf: (name) => `${name} seviyesi`,
     raisedBack: "FM bunu kendisi yeniden yükseltir",
     save: "Kaydet",
@@ -1706,12 +1676,10 @@ export const tr: Strings = {
 
   clauses: {
     change: "Değiştir",
-    changeTitle: "Bu oyuncunun primlerini ve sözleşme maddelerini oyunda değiştir",
+    changeTitle: "Primlerini ve maddelerini değiştir",
     title: "Primler ve maddeler",
-    hint: "Her değişiklik FM'ye hemen gider. Değişiklikler'den geri alabilirsiniz.",
-    full:
-      "Oyun bu sözleşmenin listesini, tuttuğu kayıtlar kadar ayırmış: bir prim ya da madde değiştirilebilir veya " +
-      "kaldırılabilir, ama serbest kalma maddesi eklenemez.",
+    hint: "Değişiklikler FM'ye hemen gider.",
+    full: "Bu sözleşmede serbest kalma maddesine yer yok.",
     amountOf: (name) => `${name} tutarı`,
     conditionOf: (name) => `${name} koşulu`,
     save: "Kaydet",
@@ -1784,7 +1752,7 @@ export const tr: Strings = {
 
   release: {
     button: "Serbest bırak",
-    buttonTitle: "Bu oyuncuyu oyunda kulübünden serbest bırak: serbest oyuncu olur",
+    buttonTitle: "Serbest bırak. Serbest oyuncu olur.",
 
     // The dialog
     title: "Serbest bırak",
@@ -1800,7 +1768,7 @@ export const tr: Strings = {
 
   endLoan: {
     button: "Kiralığı bitir",
-    buttonTitle: "Kiralığını bitir. Kulübüne döner.",
+    buttonTitle: "Kulübüne döner.",
 
     // The dialog
     title: "Kiralığı bitir",
@@ -1869,8 +1837,7 @@ export const tr: Strings = {
     maxAll: "Özellikleri tamamla",
     maxAllTitle:
       "Herkesin bütün özellikleri 20 (sakatlık eğilimi ve sertlik 1)",
-    hint:
-      "Kiralıktakiler de dahil. Değişiklikler'den geri alabilirsiniz.",
+    hint: "Kiralıktakiler de dahil.",
 
     // What an action did, under the buttons
     written: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} yazıldı`),

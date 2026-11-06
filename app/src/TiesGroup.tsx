@@ -328,7 +328,6 @@ function TiesDialog({ details, onClose }: TiesDialogProps) {
                     </button>
                   </div>
                 )}
-                {kind === "trainedAtClub" && ties.length > 0 && <p className="move-note">{text.clubNote}</p>}
               </section>
             );
           })}

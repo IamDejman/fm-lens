@@ -392,7 +392,6 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
           <p id={scopeId} className={scope.total > MASS_LIMIT ? "mass-scope warn" : "mass-scope"}>
             {scopeText}
           </p>
-          {!blocked && scope.total > scope.shown && <p className="mass-scope-note">{text.scopeAll(scope.shown)}</p>}
         </header>
 
         <div className="modal-body">
@@ -515,7 +514,6 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
         )}
 
         <footer className="modal-foot">
-          <span className="mass-foot-note">{applied || blocked ? "" : text.hint}</span>
           {canUndo && (
             <button
               type="button"

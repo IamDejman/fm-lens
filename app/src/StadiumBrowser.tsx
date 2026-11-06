@@ -121,7 +121,6 @@ function StadiumProfile({ stadium, onClose }: { stadium: StadiumSummary; onClose
       loaded={{ details: stadium }}
       onClose={onClose}
     >
-      <p className="note">{stadiumListText.note}</p>
       <dl className="stats">
         <Fact label={clubProfileText.capacity}>{formatNumber(stadium.capacity)}</Fact>
         <Fact label={clubProfileText.seating}>{formatNumber(stadium.seating)}</Fact>

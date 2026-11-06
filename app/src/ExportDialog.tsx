@@ -200,10 +200,7 @@ function ExportDialog({ scope, onClose }: { scope: ExportScope; onClose: () => v
                   checked={format === option}
                   onChange={() => choose(option)}
                 />
-                <span>
-                  <span className="export-format-name">{text.formats[option]}</span>
-                  <span className="export-format-hint">{text.formatHints[option]}</span>
-                </span>
+                <span className="export-format-name">{text.formats[option]}</span>
               </label>
             ))}
           </fieldset>
