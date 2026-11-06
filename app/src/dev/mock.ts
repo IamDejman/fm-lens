@@ -452,7 +452,8 @@ function setWorkPermit(uid: number, granted: boolean): LoggedChange {
   if (!player.club) {
     throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
   }
-  const was = workPermitsOf(player).length > 0;
+  const [held] = workPermitsOf(player);
+  const was = held !== undefined;
   if (was === granted) {
     throw failure("call.declined", "the game did not make the change");
   }
@@ -463,7 +464,7 @@ function setWorkPermit(uid: number, granted: boolean): LoggedChange {
     entity: "player",
     uid,
     field: "work_permit",
-    old: was ? 1 : 0,
+    old: held?.escSince ? numberFromDate(held.escSince) : was ? 1 : 0,
     new: granted ? 1 : 0,
     undoneAt: null,
     batch: null,

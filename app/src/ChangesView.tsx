@@ -496,8 +496,13 @@ function clauseEnd(clause: Clause | null): string {
   return clause === null ? profileText.none : clauseLine(clause);
 }
 
-/** A work permit as the change log keeps it: 1 held, 0 not. */
-const permitText = (stored: number) => (stored ? profileText.permitActive : profileText.permitNone);
+/** A work permit as the change log keeps it: 0 none, 1 a work permit, or the day an ESC slot began (like 20270203). */
+const permitText = (stored: number) =>
+  stored === 0
+    ? profileText.permitNone
+    : stored === 1
+      ? profileText.permitActive
+      : profileText.permitEsc(formatDate(dateFromNumber(stored)));
 
 function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);
@@ -508,8 +513,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // A move to another club is logged with the clubs' UIDs as its values: their names say more (a release has no new
   // club: he became a free agent), and so do the players' for a captaincy. A heal is logged as a change of his
   // injuries from how many he had to none (adding one, from none to one), and lifting his bans as one of his bans:
-  // "Healed 2 injuries" says it better than "2 → 0". A work permit is logged as 0 or 1, which it names. Keeping him from
-  // retiring is logged with the date he was to retire on, which it names.
+  // "Healed 2 injuries" says it better than "2 → 0". A work permit is logged as a number, which it names. Keeping
+  // him from retiring is logged with the date he was to retire on, which it names.
   const value = change.moved
     ? valueChange(change.moved.from ?? profileText.freeAgent, change.moved.to ?? profileText.freeAgent)
     : change.captaincy
