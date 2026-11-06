@@ -197,9 +197,9 @@ struct PendingMass {
 }
 
 impl Connection {
-    /// Reads every list. A reload keeps the change log; a mass edit previewed before is dropped,
-    /// since its people may have moved. Nothing is frozen yet.
-    fn load(session: Session, log: Vec<LoggedChange>) -> Result<Self, Failure> {
+    /// Reads every list, with an empty change log (see `carry_log`); a mass edit previewed before is dropped, since its
+    /// people may have moved. Nothing is frozen yet.
+    fn load(session: Session) -> Result<Self, Failure> {
         // The game may have loaded a save or moved on since the checks last ran; the date the lists' ages are worked
         // out from is one of them.
         session.recheck();
@@ -216,7 +216,6 @@ impl Connection {
             .map(|member| Career { uid: member.uid, manager: member.name.clone(), club: member.club.clone() });
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
-        let next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
         let frozen = Frozen::default();
         Ok(Self {
             session,
@@ -224,9 +223,9 @@ impl Connection {
             staff,
             clubs,
             human_clubs,
-            log,
+            log: Vec::new(),
             mass: None,
-            next_id,
+            next_id: 1,
             frozen,
             save,
             career,
@@ -235,6 +234,33 @@ impl Connection {
             competitions: None,
             awards: None,
         })
+    }
+
+    /// Whether this connection, just made, reads the game `before` read, moved on: the same process and save, and the
+    /// players still in it the objects they were.
+    fn same_game_as(&self, before: &Connection) -> bool {
+        self.session.process.pid() == before.session.process.pid()
+            && self.save == before.save
+            && same_objects(
+                before
+                    .players
+                    .iter()
+                    .map(|player| (player.target(), self.players.get(player.uid).map(PlayerSummary::target))),
+            )
+    }
+
+    /// Takes over the change log of the connection before this one, just made. In the same game its changes can still
+    /// be undone; from another (FM closed, or a save loaded since) they stay listed, but the objects they were written
+    /// to are gone, so they are no longer undone.
+    fn carry_log(&mut self, mut log: Vec<LoggedChange>, same_game: bool) {
+        if !same_game {
+            for logged in &mut log {
+                logged.earlier_game = true;
+                logged.undo = None;
+            }
+        }
+        self.next_id = log.iter().filter_map(|logged| logged.batch).max().unwrap_or(0) + 1;
+        self.log = log;
     }
 
     /// Freezes again what was frozen in this save before, as the file at `path` remembers it: the attributes of its
@@ -374,6 +400,7 @@ impl Connection {
             name,
             change,
             undone_at: None,
+            earlier_game: false,
             batch,
             moved: None,
             captaincy: None,
@@ -437,6 +464,7 @@ impl Connection {
             name: self.club_name(done.club),
             change,
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: None,
             captaincy: Some(captaincy),
@@ -463,6 +491,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch,
             moved: None,
             captaincy: None,
@@ -483,6 +512,7 @@ impl Connection {
             name: self.player_name(uid),
             change,
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: None,
             captaincy: None,
@@ -516,6 +546,7 @@ impl Connection {
                 new: to,
             },
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: Some(MovedClubs {
                 from: Some(self.club_name(started.from_club)),
@@ -553,6 +584,7 @@ impl Connection {
                 new: i64::from(ended.to_club),
             },
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: Some(MovedClubs {
                 from: Some(self.club_name(ended.from_club)),
@@ -590,6 +622,7 @@ impl Connection {
                 new: i64::from(signed.club),
             },
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: Some(MovedClubs { from: None, to: Some(to), with: None, fee: None, joins: None }),
             captaincy: None,
@@ -617,6 +650,7 @@ impl Connection {
                 new: i64::from(agreed.club),
             },
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: Some(MovedClubs {
                 from: None,
@@ -649,6 +683,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch,
             moved: None,
             captaincy: None,
@@ -693,6 +728,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch,
             moved: None,
             captaincy: None,
@@ -720,6 +756,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch,
             moved: None,
             captaincy: None,
@@ -747,6 +784,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: None,
             captaincy: None,
@@ -787,6 +825,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: None,
             captaincy: None,
@@ -815,6 +854,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: None,
             captaincy: None,
@@ -873,6 +913,7 @@ impl Connection {
             name,
             change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: moved.then_some(MovedClubs { from: Some(from), to: Some(to), with: None, fee: None, joins: None }),
             captaincy: None,
@@ -981,6 +1022,7 @@ impl Connection {
             name,
             change,
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: Some(MovedClubs { from: Some(from), to: Some(to), with, fee, joins: None }),
             captaincy: None,
@@ -1015,6 +1057,7 @@ impl Connection {
             name: self.player_name(done.player),
             change,
             undone_at: None,
+            earlier_game: false,
             batch: None,
             moved: Some(MovedClubs {
                 from: Some(self.club_name(done.from_club)),
@@ -1043,6 +1086,12 @@ impl Connection {
             .ok_or_else(|| Failure::new("app.noChange", format!("No change {id}")).with("id", id))?;
         if entry.undone_at.is_some() {
             return Err(Failure::new("app.alreadyUndone", "This change has already been undone."));
+        }
+        if entry.earlier_game {
+            return Err(Failure::new(
+                "app.earlierGame",
+                "This change was made before FM was closed or loaded a save, so it can no longer be undone.",
+            ));
         }
         match entry.undo {
             Some(Undo::Move(moved)) => {
@@ -1373,6 +1422,9 @@ struct LoggedChange {
     change: Change,
     /// When it was undone, if it was.
     undone_at: Option<u64>,
+    /// Written to a game FM has since closed or loaded a save into: still listed, but no longer undone.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    earlier_game: bool,
     /// The mass edit it was part of, if any.
     batch: Option<u32>,
     /// For a move to another club, logged as a change of the field `club` from one club UID
@@ -1677,8 +1729,25 @@ fn now_ms() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |since| since.as_millis() as u64)
 }
 
+/// The connected game, and the change log of the one before it while no game is connected (FM was closed or
+/// restarted): the next connection lists those changes.
 #[derive(Default)]
-struct AppState(Mutex<Option<Connection>>);
+struct AppState(Mutex<Option<Connection>>, Mutex<Vec<LoggedChange>>);
+
+/// Whether a game read again holds the same objects: `players` gives each player read before, at the address he had
+/// then and the one he has now if he is still there. Loading a save makes every object afresh; playing on only adds
+/// some players and removes others, so all those still there must be where they were, and some must be there.
+fn same_objects(players: impl IntoIterator<Item = (Target, Option<Target>)>) -> bool {
+    let mut kept = false;
+    for (then, now) in players {
+        match now {
+            Some(now) if now == then => kept = true,
+            Some(_) => return false,
+            None => {}
+        }
+    }
+    kept
+}
 
 /// The pictures of the user's graphics packs, once the packs have been read.
 #[derive(Default)]
@@ -1981,9 +2050,9 @@ fn connect_session(pid: u32) -> Result<Session, Failure> {
 async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
-    let (connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
+    let (mut connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let pid = find_game(None)?;
-        let mut connection = Connection::load(connect_session(pid)?, Vec::new())?;
+        let mut connection = Connection::load(connect_session(pid)?)?;
         // Without a human manager the lists are not a career the user can recognise or should edit.
         if connection.career.is_none() {
             return Err(no_career());
@@ -1993,23 +2062,35 @@ async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Res
     })
     .await??;
 
+    // The changes of the connection before: undone still in the same game, only listed from another.
+    let mut guard = state.0.lock()?;
+    let (log, same_game) = match guard.take() {
+        Some(before) => {
+            let same_game = connection.same_game_as(&before);
+            (before.log, same_game)
+        }
+        None => (std::mem::take(&mut *state.1.lock()?), false),
+    };
+    connection.carry_log(log, same_game);
     let mut info = connection.info(started.elapsed().as_millis());
     info.refrozen = (!refrozen.is_empty()).then_some(refrozen);
-    *state.0.lock()? = Some(connection);
+    *guard = Some(connection);
     Ok(info)
 }
 
 /// The connection made before, if the app is still attached, without reading the game
 /// again: lets the window pick it up after a reload (e.g. to change the language) with
 /// the lists and the change log as they were. Once the game it was made to has quit (e.g.
-/// FM was restarted), drops it and says so.
+/// FM was restarted), drops it and says so; the next connection lists its changes.
 #[tauri::command]
 fn current_connection(state: State<'_, AppState>) -> Result<Option<ConnectionInfo>, Failure> {
     let mut guard = state.0.lock()?;
     if let Some(connection) = guard.as_ref()
         && let Err(quit @ SessionError::NoSuchProcess(_)) = find_game(Some(connection.session.process.pid()))
     {
-        *guard = None;
+        if let Some(gone) = guard.take() {
+            *state.1.lock()? = gone.log;
+        }
         return Err(quit.into());
     }
     Ok(guard.as_ref().map(|connection| connection.info(0)))
@@ -2033,33 +2114,40 @@ fn allow_editing(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> 
 /// stays frozen, unless the game has loaded another save: then what was frozen in that one before is frozen instead.
 #[tauri::command]
 async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ReloadInfo, Failure> {
-    let old = state.0.lock()?.take().ok_or_else(not_connected)?;
+    let mut old = state.0.lock()?.take().ok_or_else(not_connected)?;
+    // Kept apart while the game is read, so that a reload that fails loses no change.
+    let log = std::mem::take(&mut old.log);
     let path = file.0.clone();
-    let (connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
-        let (save, frozen) = (old.save, old.frozen);
+    let loaded = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         // A game that has quit says so plainly, rather than as whatever opening its process gives.
         let pid = find_game(Some(old.session.process.pid()))?;
         // Loading a different career replaces the arrays and cached class identities.
         let session = connect_session(pid)?;
-        let mut connection = Connection::load(session, old.log)?;
+        let mut connection = Connection::load(session)?;
         if connection.career.is_none() {
             return Err(no_career());
         }
-        let same_objects = old.session.current_career()
-            && old.players.iter().all(|player| {
-                connection.players.get(player.uid).is_some_and(|current| current.target() == player.target())
-            });
-        if connection.save == save && same_objects {
-            connection.frozen = frozen;
-            return Ok((connection, None));
+        // The game has only moved on (its lists may have grown elsewhere in memory): what was frozen stays frozen.
+        if connection.same_game_as(&old) {
+            connection.frozen = old.frozen;
+            return Ok((connection, None, true));
         }
-        // Old addresses must never be used to undo changes in a different career.
-        connection.log.clear();
-        connection.next_id = 1;
         let refrozen = connection.restore_frozen(path.as_deref());
-        Ok((connection, (!refrozen.is_empty()).then_some(refrozen)))
+        Ok((connection, (!refrozen.is_empty()).then_some(refrozen), false))
     })
-    .await??;
+    .await
+    .map_err(Failure::from)
+    .and_then(|loaded| loaded);
+    let (mut connection, refrozen, same_game) = match loaded {
+        Ok(loaded) => loaded,
+        Err(err) => {
+            // The connection is dropped; the next one lists its changes.
+            *state.1.lock()? = log;
+            return Err(err);
+        }
+    };
+    // Old addresses must never be used to undo changes in another game: there they are only listed.
+    connection.carry_log(log, same_game);
     let info = ReloadInfo {
         editable: connection.session.process.can_write() && connection.session.writes_allowed(),
         writable: connection.session.process.can_write(),
@@ -3279,7 +3367,7 @@ fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, Failu
         .log
         .iter()
         .rev()
-        .filter(|logged| logged.batch == Some(batch) && logged.undone_at.is_none())
+        .filter(|logged| logged.batch == Some(batch) && logged.undone_at.is_none() && !logged.earlier_game)
         .map(|logged| logged.id)
         .collect();
     let mut report = BatchUndo { undone: 0, failed: Vec::new() };
@@ -3426,4 +3514,24 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn at(uid: u32, address: u64) -> Target {
+        Target { entity: Entity::Player, uid, address, shift: 0 }
+    }
+
+    #[test]
+    fn a_game_that_played_on_holds_the_same_objects() {
+        // One player removed since, the others where they were: the game moved on.
+        assert!(same_objects([(at(1, 0x1000), Some(at(1, 0x1000))), (at(2, 0x2000), None)]));
+        // A save loaded since made him afresh.
+        assert!(!same_objects([(at(1, 0x1000), Some(at(1, 0x1000))), (at(2, 0x2000), Some(at(2, 0x9000)))]));
+        // Nobody is left to tell.
+        assert!(!same_objects([(at(1, 0x1000), None)]));
+        assert!(!same_objects([]));
+    }
 }

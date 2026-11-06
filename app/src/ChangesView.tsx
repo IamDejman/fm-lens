@@ -46,13 +46,7 @@ export function useChangeLog() {
     }
   }, []);
 
-  const clear = useCallback(() => {
-    asked.current++;
-    setLog([]);
-    setError(null);
-  }, []);
-
-  return { log, error, reload, clear };
+  return { log, error, reload };
 }
 
 /**
@@ -112,6 +106,8 @@ interface Batch {
   changes: LoggedChange[];
   /** How many of them are not undone. */
   remaining: number;
+  /** Made before FM was closed or loaded a save, as all of a mass edit's changes are or none: no longer undone. */
+  earlierGame: boolean;
   /** The names of the fields it changed, each once, in the order they were written. */
   fields: string[];
 }
@@ -133,7 +129,14 @@ function entriesOf(log: readonly LoggedChange[]): Entry[] {
     }
     let batch = batches.get(change.batch);
     if (batch === undefined) {
-      batch = { id: change.batch, entity: change.entity, changes: [], remaining: 0, fields: [] };
+      batch = {
+        id: change.batch,
+        entity: change.entity,
+        changes: [],
+        remaining: 0,
+        earlierGame: change.earlierGame === true,
+        fields: [],
+      };
       batches.set(change.batch, batch);
       entries.push({ kind: "batch", batch });
     }
@@ -428,17 +431,20 @@ function BatchRow({ batch, open, undoing, outcome, onToggle, onUndo }: BatchRowP
       </td>
       <td className="col-status">
         <div className="row-actions">
-          {batch.remaining > 0 && (
-            <button
-              type="button"
-              className="batch-undo"
-              disabled={undoing}
-              title={text.undoBatchTitle(batch.remaining)}
-              onClick={() => onUndo(batch.id)}
-            >
-              {text.undoBatch}
-            </button>
-          )}
+          {batch.remaining > 0 &&
+            (batch.earlierGame ? (
+              text.earlierGame
+            ) : (
+              <button
+                type="button"
+                className="batch-undo"
+                disabled={undoing}
+                title={text.undoBatchTitle(batch.remaining)}
+                onClick={() => onUndo(batch.id)}
+              >
+                {text.undoBatch}
+              </button>
+            ))}
           <button type="button" className="batch-toggle" aria-expanded={open} onClick={() => onToggle(batch.id)}>
             {open ? text.hideChanges : text.showChanges}
           </button>
@@ -567,12 +573,14 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       </td>
       <td className="col-status">
         <div className="row-actions">
-          {change.undoneAt === null ? (
+          {change.undoneAt !== null ? (
+            text.undone(formatTime(change.undoneAt))
+          ) : change.earlierGame ? (
+            text.earlierGame
+          ) : (
             <button type="button" disabled={undoing} title={text.undoTitle(label)} onClick={() => onUndo(change)}>
               {text.undo}
             </button>
-          ) : (
-            text.undone(formatTime(change.undoneAt))
           )}
         </div>
         {change.undoneAt === null && failure !== undefined && (

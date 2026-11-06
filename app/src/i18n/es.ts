@@ -323,6 +323,8 @@ const errors: ErrorTexts = {
   "app.dataChanged": () => `Estos datos han cambiado en el juego; ${reload}.`,
   "app.noChange": (p) => `No existe el cambio ${p.id}.`,
   "app.alreadyUndone": () => "Este cambio ya se ha deshecho.",
+  "app.earlierGame": () =>
+    "Este cambio se hizo antes de que FM se cerrara o cargara una partida, así que ya no se puede deshacer.",
   "export.failed": (p) => `No se ha podido escribir el archivo: ${p.reason}`,
   "export.notAllowed": (p) =>
     `FM Lens no puede escribir en ${p.folder}. Si macOS ha preguntado si puede usar tu carpeta Documentos, ` +
@@ -1401,6 +1403,7 @@ export const es: Strings = {
     kinds: { player: "Jugador", staff: "Personal", club: "Club", nation: "País", official: "Árbitro" },
     stored: (change) => `valor interno ${change}`,
     undone: (time) => `Deshecho a las ${time}`,
+    earlierGame: "Partida anterior",
     undo: "Deshacer",
     undoTitle: (label) => `Volver a escribir en el juego el valor anterior de ${label}`,
     batch: "Edición masiva",
