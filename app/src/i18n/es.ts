@@ -1390,6 +1390,14 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.4": [
+        "Cambia la duración de una lesión o quita una sola lesión.",
+        "Consulta y cambia las formaciones de un mánager con y sin balón.",
+        "Consulta y cambia las valoraciones de estilo de un país.",
+        "Consulta las reglas de una competición.",
+        "Consulta las promesas hechas a un jugador y cierra una abierta.",
+        "Cambiar de club: pasa a ser el mánager de otro club.",
+      ],
       "0.5.3": [
         "Los archivos, los ajustes y el ayudante de Steam usan ahora el nombre FM Lens. Tu configuración se ha conservado.",
       ],
