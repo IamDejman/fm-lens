@@ -563,9 +563,10 @@ pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
 /// The most FIFA points the editor writes; the leader of the test save had 1,995.88.
 const MOST_FIFA_POINTS: f32 = 3000.0;
 
-/// The senior national teams' reputations and the containers' youth ratings, men's and women's, the men's FIFA points,
-/// the population, whether dual nationality is allowed, and the years of residence that gain the nationality (255: no
-/// number of years does). One nation at a time; none where the build's layout does not place nations.
+/// The senior national teams' reputations and the containers' youth ratings, game importance and attendance, men's and
+/// women's, the men's FIFA points, the population, whether dual nationality is allowed, and the years of residence that
+/// gain the nationality (255: no number of years does). One nation at a time; none where the build's layout does not
+/// place nations.
 fn nation_fields(layout: &Layout) -> Vec<Field> {
     let Some(n) = layout.national.as_ref() else {
         return Vec::new();
@@ -578,12 +579,26 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
             .plausible(0..=i64::from(i16::MAX))
             .in_record(Place::NationalContainer(side))
     };
+    let importance = |key: &str, side: Side| {
+        field(key, n.game_importance, Kind::I8, 0..=crate::national::MOST_GAME_IMPORTANCE)
+            .plausible(0..=i64::from(i8::MAX))
+            .in_record(Place::NationalContainer(side))
+    };
+    let attendance = |key: &str, side: Side| {
+        field(key, n.attendance, Kind::U8, 0..=crate::national::MOST_ATTENDANCE)
+            .plausible(0..=i64::from(u8::MAX))
+            .in_record(Place::NationalContainer(side))
+    };
     vec![
         field("reputation", layout.team.reputation, Kind::U16, 0..=10_000).in_record(Place::NationalTeam(Side::Men)),
         youth("youth_rating", Side::Men),
+        importance("game_importance", Side::Men),
+        attendance("attendance", Side::Men),
         field("women.reputation", layout.team.reputation, Kind::U16, 0..=10_000)
             .in_record(Place::NationalTeam(Side::Women)),
         youth("women.youth_rating", Side::Women),
+        importance("women.game_importance", Side::Women),
+        attendance("women.attendance", Side::Women),
         // The live points FM ranks by at its next ranking date; the published position follows then, not at once.
         field("points", n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
             .plausible(0..=f32_bits(f32::MAX))
@@ -1434,8 +1449,12 @@ mod tests {
             [
                 "reputation",
                 "youth_rating",
+                "game_importance",
+                "attendance",
                 "women.reputation",
                 "women.youth_rating",
+                "women.game_importance",
+                "women.attendance",
                 "points",
                 "population",
                 "dual_nationality",
@@ -1469,6 +1488,23 @@ mod tests {
             assert_eq!((youth.place, youth.offset, youth.kind), (Place::NationalContainer(side), 0x874, Kind::I16));
             // England's men have 135, its women 161.
             assert!(youth.takes(0) && youth.takes(135) && youth.takes(165) && !youth.takes(166) && !youth.takes(-1));
+        }
+        // FM's game importance, 0 to 4 (England's men 1), and attendance, 0 to 16 (England's men 15, women 10).
+        for (name, side) in [("game_importance", Side::Men), ("women.game_importance", Side::Women)] {
+            let importance = key(name);
+            assert_eq!(
+                (importance.place, importance.offset, importance.kind),
+                (Place::NationalContainer(side), 0x885, Kind::I8)
+            );
+            assert!(importance.takes(0) && importance.takes(4) && !importance.takes(5) && !importance.takes(-1));
+        }
+        for (name, side) in [("attendance", Side::Men), ("women.attendance", Side::Women)] {
+            let attendance = key(name);
+            assert_eq!(
+                (attendance.place, attendance.offset, attendance.kind),
+                (Place::NationalContainer(side), 0x891, Kind::U8)
+            );
+            assert!(attendance.takes(0) && attendance.takes(16) && !attendance.takes(17));
         }
         let population = key("population");
         assert_eq!((population.place, population.offset, population.kind), (Place::Object, n.population, Kind::U32));

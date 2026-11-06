@@ -719,6 +719,9 @@ export interface NationDetails {
   joinedContinental: number | null;
   /** 0 to 165. */
   youthRating: number | null;
+  /** FM's game importance, 0 to 4, and attendance, 0 to 16, of its men's football. */
+  gameImportance: number | null;
+  attendance: number | null;
   /** Strongest first. */
   rivals: Related[];
   /** The senior team first. */
@@ -731,6 +734,8 @@ export interface WomenFootball {
   joinedFifa: number | null;
   joinedContinental: number | null;
   youthRating: number | null;
+  gameImportance: number | null;
+  attendance: number | null;
   /** The senior team first. */
   teams: NationalTeam[];
 }
@@ -811,7 +816,8 @@ export interface EditField {
    * Clubs: "reputation", "facilities.training", "facilities.youth_facilities", "facilities.youth_coaching",
    * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
    * "finance.wage_budget", "finance.total_wage_budget".
-   * Nations: "reputation" (the senior team's), "points" (FIFA), "population", "dual_nationality", "naturalisation".
+   * Nations: "reputation" (the senior team's), "youth_rating", "game_importance", "attendance", the same four with
+   * "women.", "points" (FIFA), "population", "dual_nationality", "naturalisation".
    */
   key: string;
   entity: Entity;

@@ -67,6 +67,9 @@ pub struct NationDetails {
     pub joined_continental: Option<u16>,
     /// How good the young players it brings through are, 0 to 165.
     pub youth_rating: Option<u16>,
+    /// FM's game importance, 0 to 4, and attendance, 0 to 16, of its men's football.
+    pub game_importance: Option<u8>,
+    pub attendance: Option<u8>,
     /// Its rivals, strongest first.
     pub rivals: Vec<Related>,
     /// Its national teams with a squad or a manager, and its senior team; the senior team first.
@@ -83,6 +86,8 @@ pub struct WomenFootball {
     pub joined_fifa: Option<u16>,
     pub joined_continental: Option<u16>,
     pub youth_rating: Option<u16>,
+    pub game_importance: Option<u8>,
+    pub attendance: Option<u8>,
     /// The senior team first.
     pub teams: Vec<NationalTeam>,
 }
@@ -95,6 +100,8 @@ struct Association {
     joined_fifa: Option<u16>,
     joined_continental: Option<u16>,
     youth_rating: Option<u16>,
+    game_importance: Option<u8>,
+    attendance: Option<u8>,
 }
 
 /// A language spoken in a nation, and by what share of its people.
@@ -140,6 +147,10 @@ pub enum Side {
 
 /// The highest youth rating the editor writes: the most a container holds in 27.0.0 is 165.
 pub const MOST_YOUTH_RATING: i64 = 165;
+
+/// The highest game importance and attendance the editor writes: the most a container holds in 27.0.0.
+pub const MOST_GAME_IMPORTANCE: i64 = 4;
+pub const MOST_ATTENDANCE: i64 = 16;
 
 /// The `side` container of the nation at `nation`, where it points back at the nation. Only reads memory.
 pub(crate) fn container(process: &Process, layout: &Layout, nation: u64, side: Side) -> Option<u64> {
@@ -220,6 +231,8 @@ impl Session {
             joined_fifa: None,
             joined_continental: None,
             youth_rating: None,
+            game_importance: None,
+            attendance: None,
             rivals: Vec::new(),
             teams: Vec::new(),
             women: None,
@@ -231,6 +244,8 @@ impl Session {
                 joined_fifa: facts.joined_fifa,
                 joined_continental: facts.joined_continental,
                 youth_rating: facts.youth_rating,
+                game_importance: facts.game_importance,
+                attendance: facts.attendance,
                 teams: self.national_teams(container, players, staff).unwrap_or_default(),
             });
         }
@@ -245,12 +260,15 @@ impl Session {
         details.joined_fifa = facts.joined_fifa;
         details.joined_continental = facts.joined_continental;
         details.youth_rating = facts.youth_rating;
+        details.game_importance = facts.game_importance;
+        details.attendance = facts.attendance;
         details.rivals = self.nation_rivals(container + n.rivals, nation.uid).unwrap_or_default();
         details.teams = self.national_teams(container, players, staff).unwrap_or_default();
         Ok(Some(details))
     }
 
-    /// The facts a container holds by value: the FIFA standing, the association's years and the youth rating.
+    /// The facts a container holds by value: the FIFA standing, the association's years, the youth rating, the game
+    /// importance and the attendance.
     fn association(&self, container: u64) -> Result<Association, MoveError> {
         let n = self.national()?;
         let c = self.process.read_bytes(container, n.container_end() as usize)?;
@@ -259,6 +277,7 @@ impl Session {
         let points = f32::from_le_bytes(c[n.points as usize..n.points as usize + 4].try_into().expect("4"));
         let year = |offset: u64| Some(u16_at(offset)).filter(|year| (1850..=2100).contains(year));
         let youth = i16::from_le_bytes([c[n.youth_rating as usize], c[n.youth_rating as usize + 1]]);
+        let within = |byte: u8, most: i64| Some(byte).filter(|&byte| i64::from(byte) <= most);
         Ok(Association {
             ranking: (ranking > 0).then_some(ranking),
             points: (ranking > 0 && points.is_finite() && points > 0.0).then_some(points),
@@ -266,6 +285,8 @@ impl Session {
             joined_fifa: year(n.joined_fifa),
             joined_continental: year(n.joined_continental),
             youth_rating: u16::try_from(youth).ok().filter(|&youth| i64::from(youth) <= MOST_YOUTH_RATING),
+            game_importance: within(c[n.game_importance as usize], MOST_GAME_IMPORTANCE),
+            attendance: within(c[n.attendance as usize], MOST_ATTENDANCE),
         })
     }
 
