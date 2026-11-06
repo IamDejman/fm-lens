@@ -1,9 +1,9 @@
 #!/bin/zsh
 set -eu
 task_root="${0:A:h:h}"
-probe="$task_root/target/debug/fmlibre-probe"
+probe="$task_root/target/debug/fmlens-probe"
 if [[ ! -x "$probe" ]]; then
-  print -u2 "Build the probe first: cargo build --locked -p fmlibre-probe -p fmlibre-bridge"
+  print -u2 "Build the probe first: cargo build --locked -p fmlens-probe -p fmlens-bridge"
   exit 1
 fi
 if (( $# == 0 )); then

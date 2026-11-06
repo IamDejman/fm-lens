@@ -10,7 +10,7 @@ docs/EDITING-VALIDATION.md before making support or feature claims.
 Use docs/EDITOR-FIELDS.md for the mapped field catalog; it is not a validation
 certificate.
 
-This repository derives from FMLibreEditor commit
+This repository derives from the upstream editor the README credits, at commit
 5fdb1e3e03a32b9855913f8c5ce7a885003e9c13. Preserve upstream history,
 GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 
@@ -18,7 +18,7 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 
 1. Read the current scope and validation documents above, then inspect the branch,
    working tree and remotes. Preserve existing work. The FM Lens origin is
-   IamDejman/fm-lens; keep tozmoz/FMLibreEditor as the separate upstream.
+   IamDejman/fm-lens; keep the upstream remote separate.
    Pass `--repo IamDejman/fm-lens` explicitly to GitHub CLI operations: its
    inferred repository may resolve to upstream. Never send private diagnostics
    or create task PRs against upstream by accident.
@@ -63,10 +63,10 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 
 - app/src/: React/TypeScript interface, filters, profiles and local state.
 - app/src-tauri/: Tauri commands, connections and desktop packaging.
-- crates/fmlibre-mem/: process access and the final memory-write guard.
-- crates/fmlibre-core/: FM decoding, layouts, validation and domain operations.
-- crates/fmlibre-bridge/: macOS bridge library and Steam launcher.
-- crates/fmlibre-probe/: diagnostics; upstream mutation commands remain present
+- crates/fmlens-mem/: process access and the final memory-write guard.
+- crates/fmlens-core/: FM decoding, layouts, validation and domain operations.
+- crates/fmlens-bridge/: macOS bridge library and Steam launcher.
+- crates/fmlens-probe/: diagnostics; upstream mutation commands remain present
   but this build refuses game-memory writes.
 - profiles/fm27/: platform/build fingerprints and layouts.
 - app/src/assets/brand/: original transparent logo masters.
@@ -79,7 +79,7 @@ validated fields and the guarded memory layer for domain operations.
 
 ## Game-data rules
 
-- The desktop app is built without the `fmlibre-mem` `read-only` feature and
+- The desktop app is built without the `fmlens-mem` `read-only` feature and
   opens a known build for writing. Unknown builds stay read-only. The probe is
   built with `read-only`, and `scripts/scout` only runs read queries. A UI
   switch is not the write guard.
@@ -196,9 +196,9 @@ npm --prefix app run build
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
-cargo test --locked -p fmlibre-mem --no-default-features
-cargo clippy --locked -p fmlibre-app --all-targets -- -D warnings
-cargo build --locked -p fmlibre-probe -p fmlibre-bridge
+cargo test --locked -p fmlens-mem --no-default-features
+cargo clippy --locked -p fmlens-app --all-targets -- -D warnings
+cargo build --locked -p fmlens-probe -p fmlens-bridge
 cd app
 npm run tauri -- build --debug --bundles app --config src-tauri/tauri.scout.conf.json
 ```
