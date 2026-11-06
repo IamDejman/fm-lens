@@ -625,7 +625,16 @@ export const tr: Strings = {
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Durum ${status}`,
     qualifications: "Yeterlilikler",
     coachingLicence: "Antrenörlük lisansı",
-    licenceName: (level: number): string => (level === 0 ? "Yok" : `Seviye ${level}`),
+    licenceName: (level: number): string =>
+      ({
+        1: "Kıtasal Pro Lisansı",
+        2: "Kıtasal A Lisansı",
+        3: "Kıtasal B Lisansı",
+        4: "Kıtasal C Lisansı",
+        5: "Ulusal A Lisansı",
+        6: "Ulusal B Lisansı",
+        7: "Ulusal C Lisansı",
+      })[level] ?? "Yok",
     squadNumber: "Forma numarası",
     transferListed: "Transfer listesinde",
     loanListed: "Kiralık listesinde",
