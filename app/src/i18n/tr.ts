@@ -1357,6 +1357,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.6": [
+        "Sorun bildir artık pencerenin altında, sürümün yanında.",
+        "Güncellemeleri Denetle… FM Lens menüsünde.",
+      ],
       "0.5.5": [
         "Kendi kulübünüzden oyuncu transfer edin. FM transferi yapar ve bedeli aktarır.",
       ],

@@ -1458,6 +1458,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.6": [
+        "Report a problem is now at the foot of the window, next to the version.",
+        "Check for Updates… is in the FM Lens menu.",
+      ],
       "0.5.5": [
         "Transfer players out of your own club. FM makes the transfer and moves the fee.",
       ],
