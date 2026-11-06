@@ -496,8 +496,8 @@ function clauseEnd(clause: Clause | null): string {
   return clause === null ? profileText.none : clauseLine(clause);
 }
 
-/** A work permit as the change log keeps it: 1 granted, 0 not. */
-const permitText = (stored: number) => (stored ? profileText.permitGrantedPlain : profileText.permitNotGranted);
+/** A work permit as the change log keeps it: 1 held, 0 not. */
+const permitText = (stored: number) => (stored ? profileText.permitActive : profileText.permitNone);
 
 function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeRowProps) {
   const label = fieldLabel(change.entity, change.field);

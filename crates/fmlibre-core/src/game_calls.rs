@@ -132,13 +132,15 @@ const CANCEL_LEAVING: u64 = 0;
 /// The longest list of offers the editor reads.
 const LONGEST_OFFERS: u64 = 1 << 20;
 
-/// A work permit the game granted or took away.
+/// A work permit for his club's country the game gave a player or took away.
 #[derive(Debug, Clone, Copy)]
 pub struct PermitChange {
     pub player: u32,
+    /// Whether he holds one now.
     pub granted: bool,
-    /// Whether he held a granted work permit before.
+    /// Whether he held one before, and whether it was an ESC slot.
     pub was_granted: bool,
+    pub was_esc: bool,
 }
 
 impl Session {
@@ -156,6 +158,8 @@ impl Session {
                 && profile.injury_kinds.is_some()
                 && self.layout.injury_kind.is_some(),
             work_permit: calls.set_work_permit.is_some()
+                && calls.find_work_permit.is_some()
+                && calls.remove_work_permit.is_some()
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
             start_loan: calls.start_loan.is_some()
@@ -318,9 +322,35 @@ impl Session {
         Ok(AddedInjury { player: player.uid, kind: kind.name, undo })
     }
 
-    /// Has the game grant `player` a work permit for his club's country, or take it away, as its own editor does.
+    /// Has the game give `player` a work permit for his club's country, or take his away, as its own editor does: it
+    /// makes him a record without an ESC slot, where its rules say he needs one, or removes his record.
     pub fn set_work_permit(&self, player: &PlayerSummary, grant: bool) -> Result<PermitChange, MoveError> {
-        let function = self.game_function(|calls| calls.set_work_permit)?;
+        let (manager, identity, team) = self.permit_holder(player)?;
+        let held = self.club_permit(manager, identity, team)?;
+        let was_esc = held.is_some_and(|(_, esc)| esc);
+        match (grant, held) {
+            (true, None) => self.give_permit(manager, identity, team, false, false)?,
+            (false, Some((record, _))) => self.take_permit(manager, identity, team, record)?,
+            // The profile offers Grant only without a record and Revoke only with one: the game has moved on.
+            _ => return Err(MoveError::CallDeclined),
+        }
+        Ok(PermitChange { player: player.uid, granted: grant, was_granted: held.is_some(), was_esc })
+    }
+
+    /// Undoes `change`: a permit given is taken away again, and one taken away given back, as an ESC slot where it was
+    /// one (from today, as the game dates a new slot).
+    pub fn undo_work_permit(&self, player: &PlayerSummary, change: &PermitChange) -> Result<(), MoveError> {
+        let (manager, identity, team) = self.permit_holder(player)?;
+        match (change.was_granted, self.club_permit(manager, identity, team)?) {
+            (true, None) => self.give_permit(manager, identity, team, true, change.was_esc),
+            (false, Some((record, _))) => self.take_permit(manager, identity, team, record),
+            _ => Err(MoveError::CallDeclined),
+        }
+    }
+
+    /// What the game's work permit functions take: the transfer manager, the player's identity block (where his
+    /// vtable says his virtual base starts) and his club team.
+    fn permit_holder(&self, player: &PlayerSummary) -> Result<(u64, u64, u64), MoveError> {
         let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
         let manager = self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)?;
         let object = self.player_object(player)?;
@@ -328,22 +358,65 @@ impl Session {
         if !is_user_pointer(team) {
             return Err(MoveError::FreeAgent);
         }
-        // The game takes the player's identity block: where his vtable says his virtual base starts.
         let vtable = self.process.read_u64(object)?;
         let identity = object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64);
-        let was_granted = self.work_permits(player).iter().any(|permit| permit.granted);
+        Ok((manager, identity, team))
+    }
 
+    /// The player's record for his club's country, as the game finds it, and whether it is an ESC slot; none when he
+    /// holds no permit there. The game gives its place in the list of records, which is read here.
+    fn club_permit(&self, manager: u64, identity: u64, team: u64) -> Result<Option<(u64, bool)>, MoveError> {
+        let find = self.game_function(|calls| calls.find_work_permit)?;
+        let w = self.layout.work_permit.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let mut program = Program::new();
+        program.push(Step::new(find, &[Arg::value(manager), Arg::value(identity), Arg::value(team)]));
+        let outcome = self.call_game(&program)?;
+        // An int: its place, or -1.
+        let Ok(index) = usize::try_from(outcome.results.first().copied().unwrap_or(u64::MAX) as u32 as i32) else {
+            return Ok(None);
+        };
+        let records = self.permit_records().ok_or(MoveError::CallUnavailable)?;
+        let record = *records.get(index).ok_or(MoveError::CallDeclined)?;
+        // The record must be his: the person's id the identity block holds at +0x08.
+        if self.process.read_u32(record + w.record_person)? != self.process.read_u32(identity + 8)? {
+            return Err(MoveError::Changed { address: record });
+        }
+        let esc = self.process.read_bytes(record + w.record_flags, 1)?[0] & 1 == 1;
+        Ok(Some((record, esc)))
+    }
+
+    /// Has the game make the player a record for his club's country: with `force` 0 and no ESC slot, as its editor
+    /// does, only where its rules say he needs a permit; forced, as it was, to give back one taken away.
+    fn give_permit(&self, manager: u64, identity: u64, team: u64, force: bool, esc: bool) -> Result<(), MoveError> {
+        let set = self.game_function(|calls| calls.set_work_permit)?;
         let mut program = Program::new();
         program.push(Step::new(
-            function,
-            &[Arg::value(manager), Arg::value(identity), Arg::value(team), Arg::value(1), Arg::value(u64::from(grant))],
+            set,
+            &[
+                Arg::value(manager),
+                Arg::value(identity),
+                Arg::value(team),
+                Arg::value(u64::from(force)),
+                Arg::value(u64::from(esc)),
+            ],
         ));
         self.call_game(&program)?;
-        let granted = self.work_permits(player).iter().any(|permit| permit.granted);
-        if granted != grant {
-            return Err(MoveError::CallDeclined);
+        match self.club_permit(manager, identity, team)? {
+            Some((_, made)) if made == esc => Ok(()),
+            _ => Err(MoveError::CallDeclined),
         }
-        Ok(PermitChange { player: player.uid, granted, was_granted })
+    }
+
+    /// Has the game remove the player's `record`, as its editor does; it frees the record and drops it from its lists.
+    fn take_permit(&self, manager: u64, identity: u64, team: u64, record: u64) -> Result<(), MoveError> {
+        let remove = self.game_function(|calls| calls.remove_work_permit)?;
+        let mut program = Program::new();
+        program.push(Step::new(remove, &[Arg::value(manager), Arg::value(identity), Arg::value(record)]));
+        self.call_game(&program)?;
+        match self.club_permit(manager, identity, team)? {
+            None => Ok(()),
+            Some(_) => Err(MoveError::CallDeclined),
+        }
     }
 
     /// Has the game loan `player` to the senior team of `club` from today until `ends`, as its own editor does: it

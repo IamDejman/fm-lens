@@ -1081,7 +1081,7 @@ impl Connection {
             }
             Some(Undo::Permit(change)) => {
                 let player = self.players.get(change.player).ok_or_else(|| not_found(Entity::Player, change.player))?;
-                self.session.set_work_permit(player, change.was_granted)?;
+                self.session.undo_work_permit(player, &change)?;
             }
             Some(Undo::Loan(started)) => {
                 let player =
@@ -1409,7 +1409,7 @@ enum Undo {
     Staff(LoggedStaff),
     /// An injury the game gave: undone by healing it.
     Injured(AddedInjury),
-    /// A work permit the game granted or took away: undone by having it do the opposite.
+    /// A work permit the game gave or took away: undone by having it take the permit away or give it back.
     Permit(PermitChange),
     /// A loan the game started: undone by having the game end it, or where it cannot, end today, which the game does
     /// on its next day.
@@ -2692,7 +2692,7 @@ fn add_injury(state: State<'_, AppState>, uid: u32, kind: u32) -> Result<LoggedC
     Ok(connection.log_game_change(uid, "injuries", 0, 1, Undo::Injured(added)))
 }
 
-/// Has the game grant the player `uid` a work permit for his club's country, or take it away. Logged as a change of
+/// Has the game give the player `uid` a work permit for his club's country, or take his away. Logged as a change of
 /// his `work_permit` from 0 or 1 to the other, and undone by the opposite call.
 #[tauri::command]
 fn set_work_permit(state: State<'_, AppState>, uid: u32, granted: bool) -> Result<LoggedChange, Failure> {
