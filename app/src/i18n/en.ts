@@ -1451,6 +1451,11 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.6": [
+        "Report a problem opens in FM Lens, at the foot of the window. Say what happened and press Send.",
+        "Check for Updates… is in the FM Lens menu.",
+        "Shorter, plainer text across the app, the move dialogs included.",
+      ],
       "0.5.5": [
         "Transfer players out of your own club. FM makes the transfer and moves the fee.",
       ],

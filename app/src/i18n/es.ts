@@ -1377,6 +1377,11 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.6": [
+        "Informar de un problema se abre en FM Lens, al pie de la ventana. Cuenta qué pasó y pulsa Enviar.",
+        "Buscar actualizaciones… está en el menú FM Lens.",
+        "Textos más cortos y claros en toda la app, también en los diálogos de traspaso.",
+      ],
       "0.5.5": [
         "Traspasa jugadores de tu propio club. FM hace el traspaso y mueve el precio.",
       ],
