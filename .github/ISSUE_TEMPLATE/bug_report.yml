@@ -13,7 +13,7 @@ body:
     attributes:
       label: FM Lens version
       description: At the foot of the Settings menu.
-      placeholder: "0.5.5"
+      placeholder: "0.5.6"
     validations:
       required: true
   - type: input
