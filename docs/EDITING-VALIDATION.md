@@ -189,10 +189,10 @@ together. The read-back checks that none of the offers waits any more and no
 record of them is left. Each cancel is logged in Changes; nothing undoes it.
 See recon/fm27-future-transfers.md.
 
-Checked in FM for a free agent (Round 1 below). Not yet checked: a club-to-club
-deal and a loan agreed for a later day listed with the right club and day; the
-cancel leaving him at his club on his contract; both clubs' budgets before and
-after; FM's news; a player with two pending deals; and a save and reload.
+Checked in FM for a free agent (Round 1 below) and a club-to-club deal (Round 2
+below). Not yet checked: a loan agreed for a later day, the selling club's
+budget, FM's news of a cancelled club deal, a player with two pending deals, and
+a save and reload.
 
 ## Human manager: unsackable flag (experimental, persistence tested)
 
@@ -721,3 +721,36 @@ Findings:
 Not checked: a club-to-club or loan deal agreed for a later day, both clubs'
 budgets, a save and reload, the women's nation fields, and FIFA points changing
 FM's ranking at its next ranking date.
+
+## Round 2: Undo of restored values, club deal cancel, languages (6 November 2026)
+
+Same `FM Lens Batch 2026-11-05.fm` copy, from 11 to 18 Dec 2027 (holidays of 3
+and 4 days, offers rejected). FM Lens built from `main` at 875a101 (#46 to #53)
+and installed as the universal release app. Nothing was saved; FM was quit
+without saving. The main career's hash was checked before and after (OK both
+times) and the copy's file time is unchanged.
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| #52 Min/Max hints in the installed app | Saliba in edit mode: "Min: 1 Max: 20" over the attributes, "Min: 1 Max: 200" under CA and PA, "Min: 140 Max: 220" under height; "Min: 1 Max: 10" in the Languages dialog | - | - |
+| Saliba (Arsenal, France), English 10 -> 7 | Saved | 7; 10 after 3 days | - |
+| Akanji (Inter, Switzerland), French 5 -> 3, Italian 10 -> 7, English 10 -> 7 | Saved | 3, 7, 7 after 3 days; 3, 10, 7 after 7 days | - |
+| Human manager (Arsenal, Nigeria), English 10 -> 7 | Saved | 7 after 7 days | - |
+| #53 Undo of Saliba's English and Akanji's Italian, already 10 again | "Undone" for both | Unchanged at 10 | - |
+| Undo of Akanji's French and English and the manager's English | "Undone" | 5, 10 and 10 | - |
+| #51 Iñaki Peña (67221484), Panathinaikos -> Barcelona on 2 Jan 2028 | Future transfer: Barcelona, 2 Jan 2028; Cancel transfer | 54 deals listed (`future-transfers`), then 53 without his | After 3 days: contracted to Panathinaikos, no offers, transfer status not set |
+| Barcelona's money around the cancel | - | Transfer budget 87,411,534 -> 92,222,112 at once; balance 98.0M -> 94.8M over 3 days (wages) | - |
+| Local language marks (after the fix, a fresh load) | - | Saliba English, Akanji Italian (not French), Trossard and Ndidi Turkish, Doku English, the manager English; Toronto FC: English, not French; AS Monaco: French; Dinamo Zagreb: Serbian and Bosnian, not English (55%) | - |
+
+Findings:
+
+- FM raises a lowered main language of the country a person's club is in
+  back to 10: Saliba's English within 3 days, Akanji's Italian within 7. The
+  languages of his nation but not of his club's country (Akanji's French) and
+  others (Akanji's English in Italy) keep the level set. The manager's English
+  stayed at 7 for 7 days, though in Round 1 it went back within 3, so FM does
+  this on its own schedule, not on a set day. FM Lens now marks such a language
+  in the Languages dialog.
+- Undo of a change FM has already put back reports "Undone" without writing.
+- Cancelling a club-to-club deal through the game leaves the player at his club
+  on his contract; the buying club's transfer budget rose by 4.8M at once.
