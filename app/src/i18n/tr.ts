@@ -535,6 +535,11 @@ export const tr: Strings = {
     "tie.nationality": "İkinci uyruk",
     "tie.trainedInNation": "Yetiştiği ülke",
     "tie.trainedAtClub": "Yetiştiği kulüp",
+    "preference.favouredClub": "Sevdiği kulüp",
+    "preference.dislikedClub": "Sevmediği kulüp",
+    "preference.favouredPerson": "Sevdiği kişi",
+    "preference.dislikedPerson": "Sevmediği kişi",
+    strength: "Derece",
     club: "Kulüp",
     injuries: "Sakatlıklar",
     work_permit: "Çalışma izni",
@@ -1728,6 +1733,12 @@ export const tr: Strings = {
     clubNote: "Bir kulübün kuralı değiştirilebilir ya da kulüp kaldırılabilir; kulüpleri oyun kendisi ekler.",
     working: "Oyuna yazılıyor…",
     close: "Kapat",
+  },
+
+  likes: {
+    changeTitle: "Her kişiyi ve kulübü ne kadar sevdiğini ya da sevmediğini oyunda değiştir",
+    strengthOf: (name) => `${name} için derece`,
+    save: "Kaydet",
   },
 
   clauses: {

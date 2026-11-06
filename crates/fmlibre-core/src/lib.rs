@@ -81,7 +81,8 @@ pub use profile::{
     profile_for,
 };
 pub use relations::{
-    HOMEGROWN_RULES, Preference, PreferenceKind, Related, Relation, RelationPlan, RelationSet, Tie, TieTarget,
+    HOMEGROWN_RULES, MOST_STRENGTH, Preference, PreferenceKind, PreferenceOwner, PreferencePlan, PreferenceSet, Related,
+    Relation, RelationPlan, RelationSet, Tie, TieTarget,
 };
 pub use retirement::{PlannedRetirement, RetirementPlan, RetirementSet};
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};

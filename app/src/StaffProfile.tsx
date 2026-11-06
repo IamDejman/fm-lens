@@ -185,7 +185,10 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
         </div>
       </div>
       <LanguagesGroup languages={details.languages} />
-      <PreferencesGroup preferences={details.preferences} />
+      <PreferencesGroup
+        preferences={details.preferences}
+        owner={{ uid: details.uid, staff: true, name: details.name }}
+      />
     </>
   );
 }

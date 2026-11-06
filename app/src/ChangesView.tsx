@@ -7,7 +7,7 @@ import { clauseLine } from "./ClauseList";
 import { valueText } from "./editDraft";
 import { changeLog, dateFromNumber, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
 import { fieldTable } from "./fieldTables";
-import { describeError, formatDate, formatDateTime, formatMoney, formatTime } from "./format";
+import { describeError, formatDate, formatDateTime, formatMoney, formatNumber, formatTime } from "./format";
 import {
   changesText as text,
   fieldLabel,
@@ -20,7 +20,7 @@ import {
 } from "./labels";
 import { undoFailureLines } from "./massDraft";
 import { ruleLabel } from "./TiesGroup";
-import type { Clause, EditField, Entity, LoggedChange } from "./types";
+import type { Clause, EditField, Entity, LoggedChange, TieEnd } from "./types";
 
 /**
  * This session's change log. `reload` reads it again; when several reads overlap, the answer to the last one asked
@@ -489,12 +489,18 @@ function captaincyNotes({ captaincy, field }: LoggedChange): string[] {
   return notes;
 }
 
-/** One side of a change to a player's tie: the nation or club, and a training's rule; "None" for no tie. */
-function tieEnd(end: { name: string; rule: number | null } | null): string {
+/**
+ * One side of a change to a player's tie or a person's preference: the nation, club or person, and a training's rule
+ * or a preference's strength; "None" for none.
+ */
+function tieEnd(end: TieEnd | null): string {
   if (end === null) {
     return profileText.none;
   }
-  return end.rule === null ? end.name : `${end.name} · ${ruleLabel(end.rule)}`;
+  if (end.rule !== null) {
+    return `${end.name} · ${ruleLabel(end.rule)}`;
+  }
+  return end.strength === undefined ? end.name : `${end.name} · ${formatNumber(end.strength)}`;
 }
 
 /** One side of a change to a contract clause: its name, what it depends on and its amount; "None" for no clause. */

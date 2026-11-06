@@ -1,4 +1,5 @@
-//! A player's relations: his secondary nationalities, homegrown ties, and read-only preferences for people and clubs.
+//! A person's relations: a player's secondary nationalities and homegrown ties, and the people and clubs a player or
+//! member of staff favours and dislikes.
 //!
 //! The game keeps a person's relations as one list, the first field of the record his `relations` pointer leads to
 //! (see [`RelationLayout`]): 16-byte entries that each point at a nation, club, person or competition and say how he
@@ -11,6 +12,10 @@
 //! allocates nothing: a tie is added only where the list's block has room (see [`HeapLayout`]), which most players'
 //! lists lack, so changing one of his ties is the way to give him another.
 //!
+//! A preference, favoured or disliked, can be given another strength or taken out, the human manager's too. Adding
+//! one, or pointing one at another club or person, waits until what the game keeps in the entry's bytes `0x08` and
+//! `0x0D` is known.
+//!
 //! [`HeapLayout`]: crate::profile::HeapLayout
 //! [`RelationLayout`]: crate::profile::RelationLayout
 
@@ -18,6 +23,7 @@ use fmlibre_mem::is_user_pointer;
 use serde::{Deserialize, Serialize};
 
 use crate::clubs::ClubSummary;
+use crate::edit::Entity;
 use crate::players::{Nation, PlayerSummary, nation_name};
 use crate::session::Session;
 use crate::staff::StaffSummary;
@@ -34,6 +40,9 @@ const NATION: u8 = 8;
 
 /// The game's code for a club's rivalry with another club.
 const RIVAL: u8 = 5;
+
+/// The strengths the editor writes for a preference: all but one of the 41,131 on the validation career were 1 to 100.
+pub const MOST_STRENGTH: i8 = 100;
 
 /// The homegrown rules the editor writes, by the game's code: 15–21, 0–21, 15–21 excluding loans, and 0–19 for a
 /// year. The game has others, which the editor shows but does not write.
@@ -136,7 +145,7 @@ impl PreferenceKind {
     }
 }
 
-/// A read-only preference for a person or club.
+/// A person's or club's place in a player's or member of staff's preferences.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Preference {
@@ -184,6 +193,50 @@ pub struct RelationSet {
     patches: Vec<Patch>,
 }
 
+/// Whose preferences: a player's, or a member of staff's, the human manager's included.
+#[derive(Debug, Clone, Copy)]
+pub enum PreferenceOwner<'a> {
+    Player(&'a PlayerSummary),
+    Staff(&'a StaffSummary),
+}
+
+impl PreferenceOwner<'_> {
+    fn uid(&self) -> u32 {
+        match self {
+            PreferenceOwner::Player(player) => player.uid,
+            PreferenceOwner::Staff(member) => member.uid,
+        }
+    }
+
+    fn entity(&self) -> Entity {
+        match self {
+            PreferenceOwner::Player(_) => Entity::Player,
+            PreferenceOwner::Staff(_) => Entity::Staff,
+        }
+    }
+}
+
+/// A change to a person's preferences, worked out from the game as it is now and ready to be written.
+#[derive(Debug, Clone)]
+pub struct PreferencePlan {
+    pub entity: Entity,
+    pub person: u32,
+    /// The preference before and after: none after for one taken out.
+    pub before: Preference,
+    pub after: Option<Preference>,
+    patches: Vec<Patch>,
+}
+
+/// A change to a person's preferences that was written: what undoing it takes.
+#[derive(Debug, Clone)]
+pub struct PreferenceSet {
+    pub entity: Entity,
+    pub person: u32,
+    pub before: Preference,
+    pub after: Option<Preference>,
+    patches: Vec<Patch>,
+}
+
 /// A player's list of relations, as read.
 struct RelationList {
     header: u64,
@@ -215,18 +268,9 @@ impl Session {
     /// The favoured and disliked people and clubs of the member of staff `member`, read-only like a player's. Empty
     /// where the layout does not place his relations.
     pub fn staff_preferences(&self, member: &StaffSummary) -> Result<Vec<Preference>, MoveError> {
-        let st = &self.layout.staff;
-        let Some(relations) = st.relations else {
+        let Some(list) = self.staff_relation_list(member)? else {
             return Ok(Vec::new());
         };
-        if self.process.read_u32(member.address + st.at(st.uid, member.shift))? != member.uid {
-            return Err(MoveError::Moved { uid: member.uid });
-        }
-        let header = self.process.read_u64(member.address + st.at(relations, member.shift))?;
-        if !is_user_pointer(header) {
-            return Ok(Vec::new());
-        }
-        let list = self.relation_list_at(header)?;
         Ok(list.entries.iter().enumerate().filter_map(|(index, entry)| self.preference_at(index, entry)).collect())
     }
 
@@ -361,18 +405,82 @@ impl Session {
     /// Works out taking the tie at `index` out of the list of `player`: the entries after it move up one. Nothing is
     /// written.
     pub fn plan_relation_removal(&self, player: &PlayerSummary, index: usize) -> Result<RelationPlan, MoveError> {
-        let size = self.layout.relation.size;
         let list = self.relation_list(player)?.ok_or(MoveError::NoRelation { index })?;
         let before = list.entries.get(index).and_then(|entry| self.tie_at(index, entry));
         let before = before.ok_or(MoveError::NoRelation { index })?;
+        let patches = self.removal(&list, index);
+        Ok(RelationPlan { player: player.uid, before: Some(before), after: None, patches })
+    }
+
+    /// Works out giving the preference at `index` in the list of `owner` the strength `strength`, 1 to 100. Nothing is
+    /// written.
+    pub fn plan_preference_strength(
+        &self,
+        owner: PreferenceOwner,
+        index: usize,
+        strength: i8,
+    ) -> Result<PreferencePlan, MoveError> {
+        let r = &self.layout.relation;
+        let (list, before) = self.preference_in(owner, index)?;
+        if !(1..=MOST_STRENGTH).contains(&strength) {
+            let max = i64::from(MOST_STRENGTH);
+            return Err(MoveError::OutOfRange { field: "strength", value: strength.into(), min: 1, max });
+        }
+        let mut patches = Patches::default();
+        let address = list.begin + index as u64 * r.size + r.value;
+        patches.push(address, before.strength.to_le_bytes(), strength.to_le_bytes());
+        if patches.0.is_empty() {
+            return Err(MoveError::SameRelation);
+        }
+        let after = Preference { strength, ..before.clone() };
+        let (entity, person) = (owner.entity(), owner.uid());
+        Ok(PreferencePlan { entity, person, before, after: Some(after), patches: patches.0 })
+    }
+
+    /// Works out taking the preference at `index` out of the list of `owner`: the entries after it move up one.
+    /// Nothing is written.
+    pub fn plan_preference_removal(&self, owner: PreferenceOwner, index: usize) -> Result<PreferencePlan, MoveError> {
+        let (list, before) = self.preference_in(owner, index)?;
+        let patches = self.removal(&list, index);
+        Ok(PreferencePlan { entity: owner.entity(), person: owner.uid(), before, after: None, patches })
+    }
+
+    /// Writes a planned change to a person's preferences, each write over the bytes it expects, after checking them
+    /// all.
+    pub fn apply_preference(&self, plan: &PreferencePlan) -> Result<PreferenceSet, MoveError> {
+        self.apply_patches(&plan.patches)?;
+        let PreferencePlan { entity, person, ref before, ref after, ref patches } = *plan;
+        Ok(PreferenceSet { entity, person, before: before.clone(), after: after.clone(), patches: patches.clone() })
+    }
+
+    /// Puts the preferences back as they were, provided the list still holds what the change wrote.
+    pub fn undo_preference(&self, done: &PreferenceSet) -> Result<(), MoveError> {
+        self.undo_patches(&done.patches)
+    }
+
+    /// The list of relations of `owner` and the preference at `index` in it.
+    fn preference_in(&self, owner: PreferenceOwner, index: usize) -> Result<(RelationList, Preference), MoveError> {
+        let list = match owner {
+            PreferenceOwner::Player(player) => self.relation_list(player)?,
+            PreferenceOwner::Staff(member) => self.staff_relation_list(member)?,
+        };
+        let list = list.ok_or(MoveError::NoRelation { index })?;
+        let before = list.entries.get(index).and_then(|entry| self.preference_at(index, entry));
+        let before = before.ok_or(MoveError::NoRelation { index })?;
+        Ok((list, before))
+    }
+
+    /// The writes that take the entry at `index` out of `list`. As in a squad list: the list repeats its last entry for
+    /// a moment, then ends one earlier and clears it.
+    fn removal(&self, list: &RelationList, index: usize) -> Vec<Patch> {
+        let size = self.layout.relation.size;
         let entries = &list.entries;
         let last = entries.len() - 1;
         let mut patches = Patches::default();
-        // As in a squad list: the list repeats its last entry for a moment, then ends one earlier and clears it.
         patches.push(list.begin + index as u64 * size, entries[index..last].concat(), entries[index + 1..].concat());
         patches.push(list.header + 8, list.end.to_le_bytes(), (list.end - size).to_le_bytes());
         patches.push(list.begin + last as u64 * size, entries[last].clone(), vec![0; size as usize]);
-        Ok(RelationPlan { player: player.uid, before: Some(before), after: None, patches: patches.0 })
+        patches.0
     }
 
     /// Works out adding a tie of `tie` to `target` to the list of `player`, with the homegrown rule `rule` for a
@@ -446,6 +554,23 @@ impl Session {
             return Err(MoveError::Moved { uid: player.uid });
         }
         let header = self.process.read_u64(player.address + p.at(p.relations, player.shift))?;
+        if !is_user_pointer(header) {
+            return Ok(None);
+        }
+        self.relation_list_at(header).map(Some)
+    }
+
+    /// The list of relations of the member of staff `member`, or `None` for one without a record of them or where the
+    /// layout does not place it.
+    fn staff_relation_list(&self, member: &StaffSummary) -> Result<Option<RelationList>, MoveError> {
+        let st = &self.layout.staff;
+        let Some(relations) = st.relations else {
+            return Ok(None);
+        };
+        if self.process.read_u32(member.address + st.at(st.uid, member.shift))? != member.uid {
+            return Err(MoveError::Moved { uid: member.uid });
+        }
+        let header = self.process.read_u64(member.address + st.at(relations, member.shift))?;
         if !is_user_pointer(header) {
             return Ok(None);
         }
