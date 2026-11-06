@@ -322,10 +322,9 @@ impl fmt::Display for MoveError {
             MoveError::OutOfRange { field, value, min, max } => {
                 write!(f, "{value} is not a valid {field}; it takes {min} to {max}")
             }
-            MoveError::Changed { address } => {
-                write!(f, "the game has changed the memory at {address:#x} since; reload and try again")
-            }
-            MoveError::NotApplied { address } => write!(f, "wrote to {address:#x} but read back something else"),
+            // The address stays in the failure's parameters, for a report; the message is read by people.
+            MoveError::Changed { .. } => f.write_str("the game has changed this since; reload and try again"),
+            MoveError::NotApplied { .. } => f.write_str("the change was written, but the game holds something else"),
             MoveError::You => f.write_str("this is you, the human manager"),
             MoveError::Unemployed => f.write_str("the member of staff has no club"),
             MoveError::StaffRole => f.write_str(
@@ -877,10 +876,16 @@ impl Session {
     }
 
     /// Writes back what `patches` found, in reverse order, provided memory still holds all
-    /// they wrote; when a write fails, the ones already undone are written again.
+    /// they wrote; when a write fails, the ones already undone are written again. Where the
+    /// game already holds everything they found, as when it restores a nation's own language,
+    /// the change is undone and nothing is written.
     pub(crate) fn undo_patches(&self, patches: &[Patch]) -> Result<(), MoveError> {
-        for patch in patches {
-            self.expect(patch.address, &patch.after)?;
+        let now = patches
+            .iter()
+            .map(|patch| self.process.read_bytes(patch.address, patch.after.len()))
+            .collect::<Result<Vec<_>, _>>()?;
+        if undo_state(patches, &now)? == UndoState::Restored {
+            return Ok(());
         }
         for (i, patch) in patches.iter().enumerate().rev() {
             if let Err(err) = self.write_patch(patch.address, &patch.after, &patch.before) {
@@ -928,6 +933,28 @@ impl Session {
             return Err(MoveError::Changed { address });
         }
         Ok(())
+    }
+}
+
+/// Where an undo of `patches` stands, by the bytes memory holds `now` at each of them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum UndoState {
+    /// Memory holds all they wrote: the undo writes back what they found.
+    Written,
+    /// Memory holds all they found: the game has put it back itself, so there is nothing to undo.
+    Restored,
+}
+
+/// Whether memory holds all `patches` wrote, or all they found; anything else is a change the game made since, at the
+/// first patch it touched, which an undo leaves alone.
+fn undo_state(patches: &[Patch], now: &[Vec<u8>]) -> Result<UndoState, MoveError> {
+    let all = |side: fn(&Patch) -> &[u8]| patches.iter().zip(now).all(|(patch, bytes)| bytes.as_slice() == side(patch));
+    if !patches.is_empty() && all(|patch| &patch.before) {
+        return Ok(UndoState::Restored);
+    }
+    match patches.iter().zip(now).find(|(patch, bytes)| bytes.as_slice() != patch.after.as_slice()) {
+        Some((patch, _)) => Err(MoveError::Changed { address: patch.address }),
+        None => Ok(UndoState::Written),
     }
 }
 
@@ -1079,5 +1106,22 @@ mod tests {
         patches.push(0x10, [1u8], [1u8]);
         patches.push(0x20, [1u8], [2u8]);
         assert_eq!(patches.0, [Patch { address: 0x20, before: vec![1], after: vec![2] }]);
+    }
+
+    #[test]
+    fn an_undo_writes_back_only_over_what_was_written_or_finds_it_already_back() {
+        let patches = [
+            Patch { address: 0x10, before: vec![10], after: vec![7] },
+            Patch { address: 0x20, before: vec![1, 2], after: vec![3, 4] },
+        ];
+        let state = |now: [&[u8]; 2]| undo_state(&patches, &now.map(<[u8]>::to_vec));
+        assert_eq!(state([&[7], &[3, 4]]).unwrap(), UndoState::Written);
+        // The game put it all back itself, as it does with a nation's own language.
+        assert_eq!(state([&[10], &[1, 2]]).unwrap(), UndoState::Restored);
+        // Half back, or changed to something else: left alone, at the first patch the game touched.
+        assert!(matches!(state([&[10], &[3, 4]]), Err(MoveError::Changed { address: 0x10 })));
+        assert!(matches!(state([&[7], &[9, 9]]), Err(MoveError::Changed { address: 0x20 })));
+        assert!(!MoveError::Changed { address: 0x20 }.to_string().contains("0x"));
+        assert!(!MoveError::NotApplied { address: 0x20 }.to_string().contains("0x"));
     }
 }
