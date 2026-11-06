@@ -620,6 +620,13 @@ dd,
   font-weight: 750;
 }
 
+.colophon-version {
+  color: var(--muted);
+  font-stretch: 100%;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
 .status {
   display: inline-flex;
   align-items: center;

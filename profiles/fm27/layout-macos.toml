@@ -188,6 +188,10 @@ nation = 0x60
 place_name = 0x18
 reputation = 0x188       # u16, 0..200
 women = 0xF9             # u8, nonzero for a women's competition
+# Its loaded rule data (ACTUAL_COMP) and the vector of its rules there: 52 for the Premier League, 48 for the Champions
+# League. Read on Steam 26340721 arm64; the rules are not yet compared with FM's screens.
+actual = 0xB0
+rules = 0x50
 
 # The kinds of injury (db::INJURY): a database table at a static of the build profile (`injury_kinds`), its vector of
 # pointers at +0x88, each kind 0x78 bytes with its place at +0x08 and its UID at +0x0C. 136 kinds on 11 Dec 2027; the

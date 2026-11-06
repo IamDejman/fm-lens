@@ -562,6 +562,7 @@ export const tr: Strings = {
     level: "Seviye",
     club: "Kulüp",
     injuries: "Sakatlıklar",
+    injury: "Sakatlık",
     work_permit: "Çalışma izni",
     bans: "Cezalar",
     cohesion: "Kulübe alışkınlık",
@@ -717,7 +718,7 @@ export const tr: Strings = {
     keepPlaying: "Emekli olmasını engelle",
     keepingPlaying: "Engelleniyor…",
     keepPlayingTitle:
-      "Emekliliğini iptal eder ve “Zirvedeyken emekli olur” yerine “Olabildiğince uzun futbol oynar” verir. Değişiklikler'den geri alabilirsiniz.",
+      "Emekliliğini iptal eder. Değişiklikler'den geri alabilirsiniz.",
 
     // Medical
     morale: (value) => `${value} / 20`,
@@ -765,7 +766,7 @@ export const tr: Strings = {
       }
     },
     moraleTitle: "FM'de: 10 Memnun, 11 Biraz Mutlu, 15 ve 20 Aşırı Mutlu.",
-    jadednessTitle: "Oynamaktan ne kadar yorulduğu. -500 tamamen dinlenmiş demek. Yükseldikçe dinlenmeye daha çok ihtiyaç duyar.",
+    jadednessTitle: "Ne kadar yorgun olduğu. -500 tamamen dinlenmiş demek.",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
@@ -1064,6 +1065,28 @@ export const tr: Strings = {
     shortName: "Kısa isim",
     reputation: "İtibar",
     women: "Kadın",
+    rules: "Kurallar",
+    ruleNames: {
+      level: "Seviye",
+      max_squad_size: "En Fazla Kadro",
+      min_squad_size: "En Az Kadro",
+      recommended_squad_size: "Önerilen Kadro",
+      max_prelim_squad_size: "En Fazla Ön Kadro",
+      min_foreign_players: "En Az Yabancı Oyuncu",
+      max_foreign_players: "En Fazla Yabancı Oyuncu",
+      foreign_trialists_can_play: "Denemedeki Yabancılar Oynayabilir",
+      subs_allowed: "Oyuncu Değişikliği Hakkı",
+      max_subs: "Yedek Sayısı",
+      extended_injury_time: "Uzatılmış Ek Süre",
+      daylight_offside_rule: "Açık Ofsayt Kuralı",
+      yellow_cards_for_fine: "Para Cezası İçin Sarı Kart",
+      min_games_for_medal: "Madalya İçin Maç",
+      number_of_medals: "Madalya Sayısı",
+      min_stadium_capacity: "En Az Stat Kapasitesi",
+      min_stadium_seating: "En Az Oturma Kapasitesi",
+      requires_grass_pitch: "Çim Saha Şartı",
+      requires_undersoil_heating: "Zemin Isıtma Şartı",
+    },
   },
 
   awardList: {
@@ -1319,6 +1342,9 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.3": [
+        "Dosyalar, ayarlar ve Steam yardımcısı artık FM Lens adını kullanıyor. Kurulumunuz aktarıldı.",
+      ],
       "0.5.2": [
         "Ayarlar'daki Sorun bildir, sürümleriniz ve değişiklikleriniz doldurulmuş bir hata raporu açar.",
         "FM verilerini taşıdığında FM Lens oyunu kendiliğinden yeniden okur: artık Verileri yeniden oku'ya basmanız gerekmez.",
@@ -1768,6 +1794,9 @@ export const tr: Strings = {
     languagesTitle: "Her dili ne kadar iyi konuştuğunu oyunda değiştir",
     levelOf: (name) => `${name} seviyesi`,
     raisedBack: "FM bunu kendisi yeniden yükseltir",
+    injuriesTitle: "Her sakatlığın kaç gün süreceğini değiştir",
+    daysOut: "Sahalardan uzak kalacağı gün",
+    daysOf: (name) => `${name} için gün sayısı`,
     save: "Kaydet",
   },
 
