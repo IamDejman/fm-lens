@@ -3,7 +3,15 @@ import { EditableValue, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
 import { changeStaffJob, staffJobs } from "./editing";
 import { describeError } from "./format";
-import { editText, fieldLabel, jobLabel, profileText, STAFF_ATTRIBUTE_LABELS, type StaffAttributeKey } from "./labels";
+import {
+  choiceLabel,
+  editText,
+  fieldLabel,
+  jobLabel,
+  profileText,
+  STAFF_ATTRIBUTE_LABELS,
+  type StaffAttributeKey,
+} from "./labels";
 import { MoveButton } from "./MoveDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -33,6 +41,12 @@ const KNOWLEDGE: StaffAttributeKey[] = [
   "data_analysis", "judging_ability", "judging_potential", "judging_staff", "negotiating", "tactical_knowledge",
 ];
 const MEDICAL: StaffAttributeKey[] = ["physiotherapy", "sports_science"];
+
+/** His preferred formation and his second, as the editor keys them. */
+const FORMATION_FIELDS = ["formation.preferred", "formation.second"] as const;
+
+/** A formation id as the profile shows it: "-" for none. */
+const formationText = (field: string, id: number) => (id === 0 ? "-" : choiceLabel(field, id));
 
 /** The game stores these two as shown (1–20); every other attribute is stored as 0–100. */
 const STORED_AS_SHOWN = new Set<string>(["working_with_youngsters", "authority"]);
@@ -177,6 +191,18 @@ function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChange
                       {profileText.licenceName(details.coachingLicence)}
                     </EditableValue>
                   </Fact>
+                </dl>
+              </section>
+            )}
+            {details.formations !== null && (
+              <section className="profile-group">
+                <h3>{profileText.formations}</h3>
+                <dl className="stats">
+                  {FORMATION_FIELDS.map((field, n) => (
+                    <Fact key={field} label={fieldLabel("staff", field)}>
+                      <EditableValue field={field}>{formationText(field, details.formations?.[n] ?? 0)}</EditableValue>
+                    </Fact>
+                  ))}
                 </dl>
               </section>
             )}

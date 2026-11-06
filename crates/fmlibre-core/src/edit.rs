@@ -506,6 +506,13 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         let field = field("coaching_licence", offset, Kind::I8, 0..=i64::from(crate::staff::MOST_LICENCE));
         out.push(field.plausible(-7..=8).choices(&COACHING_LICENCES));
     }
+    // The formations he prefers, offered as the ids staff of the test save held, which the game has.
+    if let Some(offset) = s.formations {
+        for (n, key) in ["formation.preferred", "formation.second"].into_iter().enumerate() {
+            let field = field(key, offset + n as u64, Kind::U8, 1..=i64::from(MOST_FORMATION));
+            out.push(field.plausible(0..=255).choices(&FORMATIONS).single());
+        }
+    }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
     // located on the build and class it was traced on, so it reads as missing for everyone else.
     out.push(Field::flag(Entity::Staff, "manager.unsackable", 0, 1).in_record(Place::HumanManagerFlags).single());
@@ -556,6 +563,12 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
 /// The coaching licence levels a member of staff may be given, lowest first: none (0), then 7 National C up to 1
 /// Continental Pro. Level 8 is the game's own none, which FM shows as 0 is, so it is not offered twice.
 pub const COACHING_LICENCES: [i64; 8] = [0, 7, 6, 5, 4, 3, 2, 1];
+
+/// The formation ids the editor offers for a member of staff: those staff of the test save held most (11 Dec 2027).
+pub const FORMATIONS: [i64; 12] = [3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64];
+
+/// The highest formation id the editor writes.
+const MOST_FORMATION: u8 = 64;
 
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
@@ -1371,9 +1384,11 @@ mod tests {
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        // The 2 contract fields, the coaching licence where the layout places it and the human manager's 2 flags.
+        // The 2 contract fields, the coaching licence and the 2 formations where the layout places them, and the human
+        // manager's 2 flags.
         let licence = usize::from(layout.staff.coaching_licence.is_some());
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + 2);
+        let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
+        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + formations + 2);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).

@@ -473,6 +473,8 @@ export const en = {
     // A member of staff's job, which the change log keeps as a change of its code.
     "contract.job": "Job",
     coaching_licence: "Coaching licence",
+    "formation.preferred": "Preferred formation",
+    "formation.second": "Second formation",
     "manager.unsackable": "Unsackable (experimental)",
     "manager.registration_anytime": "Register squad any time (experimental)",
     // A player's ties, which the change log keeps as changes of the nation or club (see `ties`).
@@ -623,6 +625,7 @@ export const en = {
     squadStatusName: (status: number) => SQUAD_STATUSES[status] ?? `Status ${status}`,
     /** A member of staff's coaching licence: 0 none, 1 to 8 FM's levels. */
     qualifications: "Qualifications",
+    formations: "Formations",
     coachingLicence: "Coaching licence",
     licenceName: (level: number): string =>
       ({
