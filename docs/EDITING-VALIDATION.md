@@ -611,10 +611,10 @@ Findings:
 - The Changes view writes a revoked ESC slot as "Active -> None": the change
   text knows only whether a permit exists.
 - Reload, or connecting to a restarted FM, clears the session's Changes list,
-  so its Undo buttons are gone.
+  so its Undo buttons are gone. Fixed in #44, not yet checked in FM.
 - The Intel profile has no `transfer_manager` and no permit calls, so FM Lens
   reads no work permits on Intel and hides the tab. Writes were not tried on
-  Intel.
+  Intel. Fixed in #41: grant, revoke and both undos checked under Rosetta.
 - Ronaldo's and Benzema's planned retirements (30 June 2027) are not on this
   copy on either architecture: its date is past them.
 
