@@ -1452,6 +1452,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.5": [
+        "Transfer players out of your own club. FM makes the transfer and moves the fee.",
+      ],
       "0.5.4": [
         "Change how long an injury lasts, or take one injury out.",
         "See and change a manager's formations in and out of possession.",
