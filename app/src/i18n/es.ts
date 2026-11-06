@@ -548,6 +548,11 @@ export const es: Strings = {
     "tie.nationality": "Nacionalidad secundaria",
     "tie.trainedInNation": "Formado en el país",
     "tie.trainedAtClub": "Formado en el club",
+    "preference.favouredClub": "Club favorito",
+    "preference.dislikedClub": "Club que no soporta",
+    "preference.favouredPerson": "Persona favorita",
+    "preference.dislikedPerson": "Persona que no soporta",
+    strength: "Intensidad",
     club: "Club",
     injuries: "Lesiones",
     work_permit: "Permiso de trabajo",
@@ -1782,6 +1787,12 @@ export const es: Strings = {
     clubNote: "A un club se le puede dar otra regla o quitarlo; los clubes los añade el propio juego.",
     working: "Escribiendo en el juego…",
     close: "Cerrar",
+  },
+
+  likes: {
+    changeTitle: "Cambiar en el juego cuánto le gusta o disgusta cada persona y club",
+    strengthOf: (name) => `Intensidad para ${name}`,
+    save: "Guardar",
   },
 
   clauses: {

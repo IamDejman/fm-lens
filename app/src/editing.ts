@@ -240,6 +240,17 @@ export const removeTie = (uid: number, index: number) => call<LoggedChange>("rem
 export const addTie = (uid: number, tie: TieKind, target: number, rule?: number) =>
   call<LoggedChange>("add_tie", { uid, tie, target, rule });
 
+/**
+ * Gives the preference `index` of the player `uid`, or of the member of staff `uid` for `staff`, the strength
+ * `strength`, 1 to 100.
+ */
+export const changePreference = (uid: number, staff: boolean, index: number, strength: number) =>
+  call<LoggedChange>("change_preference", { uid, staff, index, strength });
+
+/** Takes the preference `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
+export const removePreference = (uid: number, staff: boolean, index: number) =>
+  call<LoggedChange>("remove_preference", { uid, staff, index });
+
 /** The homegrown rules `changeTie` and `addTie` write, by the game's code. */
 export const homegrownRules = () => call<number[]>("homegrown_rules");
 

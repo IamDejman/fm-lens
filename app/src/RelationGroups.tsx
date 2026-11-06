@@ -1,7 +1,10 @@
-import { profileText } from "./labels";
+import { useContext, useEffect, useRef, useState } from "react";
+import { likesText, profileText, tieText } from "./labels";
 import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
+import { PreferencesDialog, type PreferenceOwner } from "./PreferencesDialog";
 import { Fact } from "./ProfileParts";
 import type { Related, Language, Preference, PreferenceKind } from "./types";
+import { EditorContext } from "./useProfileEditing";
 
 /** The order the kinds of preference are listed in: clubs first, as FM's profile does. */
 const PREFERENCE_KINDS: readonly PreferenceKind[] = [
@@ -26,12 +29,30 @@ function ClubName({ uid, name }: { uid: number; name: string }) {
   );
 }
 
-/** The people and clubs a player or member of staff favours and dislikes; not there when he has none. */
+/**
+ * The people and clubs a player or member of staff favours and dislikes, and the button that opens the dialog that
+ * changes them while the game can be written to; not there when he has none.
+ */
 export function PreferencesGroup({
   preferences,
+  owner,
 }: {
   preferences: Preference[];
+  owner: PreferenceOwner;
 }) {
+  const { editable, readOnlyNote } = useContext(EditorContext);
+  const [open, setOpen] = useState(false);
+  const button = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+
+  // Once the dialog is gone, focus goes back to the button that opened it.
+  useEffect(() => {
+    if (wasOpen.current && !open) {
+      button.current?.focus();
+    }
+    wasOpen.current = open;
+  }, [open]);
+
   if (preferences.length === 0) {
     return null;
   }
@@ -66,6 +87,27 @@ export function PreferencesGroup({
           );
         })}
       </dl>
+      <div className="ties-foot">
+        <button
+          ref={button}
+          type="button"
+          className="heal-toggle"
+          aria-haspopup="dialog"
+          disabled={!editable}
+          title={editable ? likesText.changeTitle : readOnlyNote}
+          onClick={() => setOpen(true)}
+        >
+          {tieText.change}
+        </button>
+      </div>
+      {open && (
+        <PreferencesDialog
+          owner={owner}
+          preferences={preferences}
+          kinds={PREFERENCE_KINDS}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </section>
   );
 }
