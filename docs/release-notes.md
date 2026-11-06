@@ -1,14 +1,15 @@
 ## Download
 
-- **FM Lens.app** (universal: Apple Silicon and Intel), zipped.
+- **FM-Lens-0.5.0-macos-universal.dmg**: open it and drag **FM Lens** onto **Applications**.
+- **FM-Lens-0.5.0-macos-universal.zip**: the same app, zipped.
 
-macOS only, with Football Manager 27 from Steam, build 26340721 (27.0.0). Another FM build
-opens read-only until FM Lens has a profile for it. There is no Windows build: this fork
-builds and checks the Mac app only.
+Both run on Apple Silicon and Intel Macs. macOS only, with Football Manager 27 from Steam,
+build 26340721 (27.0.0). Another FM build opens read-only until FM Lens has a profile for it.
+There is no Windows build: this fork builds and checks the Mac app only.
 
-The app is signed ad hoc, not notarized by Apple. The first time you open it, macOS says it
-cannot check the app: open **System Settings › Privacy & Security**, choose **Open Anyway**
-under the message about FM Lens, then open it again.
+The app is signed ad hoc, not notarized by Apple. The first time you open it from
+Applications, macOS says it cannot check the app: open **System Settings › Privacy &
+Security**, choose **Open Anyway** under the message about FM Lens, then open it again.
 
 Before you start, save your career under a new name in FM and work on that copy. FM Lens
 needs a small helper that FM loads at startup: save and quit FM, quit Steam, then choose
