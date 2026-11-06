@@ -159,16 +159,15 @@ macOS); `FMLENS_EXPORTS` names another folder. The columns and the JSON keys are
 ### Releasing
 
 FM Lens is released for macOS only, from a Mac, to the public repository
-[IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases). Each release
-links to its source, tagged `v<version>` in this repository.
+[IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases).
 
 1. **Bump the version** in three places, and commit the bump:
    - `version` in the root `Cargo.toml` (`[workspace.package]`);
    - `app/package.json`;
    - `app/src-tauri/tauri.conf.json`.
-2. **Write what is new** in `docs/release-notes.md`, and in short under `update.changes` in
-   `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update themselves show that list
-   once, after they relaunch as the new version.
+2. **Write what is new** in `docs/release-notes.md`, its only section, and in short under
+   `update.changes` in `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update
+   themselves show that list once, after they relaunch as the new version.
 3. **Build and publish:** `scripts/release-mac.sh --publish`. It builds the universal app
    with the bridge, signs the update with the updater key, and publishes the latest release
    with `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download,
@@ -243,6 +242,7 @@ fmlens-probe get player 7458500                     # those fields' values for o
 fmlens-probe set player 7458500 attribute.finishing 18 --shown   # change one: this writes to the game
 fmlens-probe move 13200568 1139 --restore           # move a player to a club and back: this writes too
 fmlens-probe swap 13200568 72048035 --restore       # two players swap clubs and back: this writes too
+fmlens-probe transfer 2000216551 603 --fee 1000000  # FM transfers a player from your club: this writes, for good
 fmlens-probe release 91100466 --restore             # release a player from his club and back: this writes too
 fmlens-probe staff-move 4000571 1139 --restore      # move a member of staff to a club and back: this writes too
 fmlens-probe staff-job 4000571 14 --restore         # give a member of staff another job and back: this writes too

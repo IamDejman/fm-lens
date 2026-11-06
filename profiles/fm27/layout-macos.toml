@@ -188,6 +188,10 @@ nation = 0x60
 place_name = 0x18
 reputation = 0x188       # u16, 0..200
 women = 0xF9             # u8, nonzero for a women's competition
+# Its loaded rule data (ACTUAL_COMP) and the vector of its rules there: 52 for the Premier League, 48 for the Champions
+# League. Read on Steam 26340721 arm64; the rules are not yet compared with FM's screens.
+actual = 0xB0
+rules = 0x50
 
 # The kinds of injury (db::INJURY): a database table at a static of the build profile (`injury_kinds`), its vector of
 # pointers at +0x88, each kind 0x78 bytes with its place at +0x08 and its UID at +0x0C. 136 kinds on 11 Dec 2027; the
@@ -282,6 +286,11 @@ person_block_shifts = [0x0, 0x340]
 # Continental Pro, 2 Continental A, 3 Continental B, 4 Continental C, 5 National A, 7 National C, 8 and 0 No
 # Qualifications; -1 Continental A "studying for a Continental Pro Licence" (-n: level n + 1, studying for n).
 coaching_licence = 0x204
+# u8 formation ids of his preferred formation in possession ('Nppf') and out of possession ('oopF'), the two lines of
+# FM's "Preferred Formations" (set at 0xC9694C, read by 0x2B52CD4 in the arm64 half of 27.0.0). The bytes between are
+# his second, defensive and attacking ones in possession (+0xE0..+0xE2), then out of possession (+0xE4..+0xE6), which
+# FM's profile does not show. 0 for none, on 81 of 20,219 staff on 11 Dec 2027.
+formations = [0xDF, 0xE3]
 
 # u8, raw 0..100, shown as (raw + 2) / 5; as on Windows
 [staff.attributes]
@@ -328,6 +337,21 @@ list = 0x18               # in the record: the list (begin, end, capacity) of ab
 started = 0x10            # date the ban began
 marker = 0x16             # u16, 0xFFFF for a ban
 matches = 0x1C            # u8, matches left to miss
+
+# A promise made to a person (INTERACTION_PROMISE, 0x60 bytes), from the game's code (docs/recon/fm27-promises.md).
+# His list hangs off his person block, and also holds the promises he made: those point at someone else at `person`.
+# A closed promise has bit 0 of `closed` set, the end date at `due` and a status other than 0. FM drops closed promises
+# 31 days after they end. Arsenal, 11 Dec 2027: FM's Promises page listed the one promise with a `category` (Nico Paz,
+# playing time, due 23 Jan 2028), and none of the 17 a squad meeting left with category 0.
+[promise]
+list = 0xA8               # in the person block: pointer to the list (begin, end, capacity) of his promises
+person = 0x20             # pointer back at him
+made = 0x38               # date
+due = 0x3C                # date: due while open, ended once closed
+id = 0x4E                 # u16, FM's number for the promise
+closed = 0x53             # u8, bit 0
+category = 0x55           # u8, 0 for the promises FM's Promises page does not list
+status = 0x56             # u8, 0 while open; 1 ended without being held against him
 
 # A person's relations: the list of 16-byte entries the record of his `relations` starts with. Each points at a
 # nation, club, person or competition and says how he is tied to it. Kenan Yıldız (Juventus): Germany, his
@@ -395,6 +419,9 @@ joined_continental = 0x86E
 youth_rating = 0x874
 game_importance = 0x885     # England men 1; the men's most common is 1, the women's 4
 attendance = 0x891          # England men 15, women 10
+# Twelve i8 style ratings, 0 to 20, most 10; the 17 nations that play no football read 0 in all of them. Named
+# from FM's codes (Ndep, Ndir, Nflm, Nflx, Nfrl, Nmar, Noff, Nprs, Nstb, Ntpo, Nupm, Nwid) in this order.
+style = 0x892
 team_manager = 0x80
 team_id = 0x0C            # the senior team's is the nation's UID (251 of 251)
 
@@ -427,6 +454,9 @@ players = 0x38
 captain = 0x88            # Tottenham: Micky van de Ven, as on Windows
 vice_captain = 0x90       # Tottenham: Pedro Porro
 reputation = 0xA8         # Tottenham: 7650
+# The manager's object, as for a national team; the game's signing of a manager dismisses the one it finds here
+# (0x2DFFC98 in the arm64 half of Steam build 26340721, docs/recon/fm27-manager-moves.md).
+manager = 0x80
 
 # The game brings its own allocator to macOS: it carves the chunks it gets from malloc into
 # blocks of the same size classes as on Windows (blocks of 8 bytes too, which malloc never

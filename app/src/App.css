@@ -4346,6 +4346,14 @@ button.danger:hover:not(:disabled) {
   font-weight: 600;
 }
 
+/* A promise: its number and dates, and at the end of its row the button that closes it. */
+.promise-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .injury-dates {
   display: block;
   color: var(--muted);
