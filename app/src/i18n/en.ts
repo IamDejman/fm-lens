@@ -492,6 +492,8 @@ export const en = {
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
+    // One injury made longer or shorter, or taken out, which the change log keeps as a change of its days.
+    injury: "Injury",
     // A work permit FM gave or took away, which the change log keeps as 0 (none) or 1 (held).
     work_permit: "Work permit",
     // Lifting a player's bans, which the change log keeps as a change of his bans.
@@ -1979,6 +1981,11 @@ export const en = {
     levelOf: (name: string) => `Level of ${name}`,
     /** Under a main language of the country his club is in, which FM raises back if it is set lower. */
     raisedBack: "FM raises it back on its own",
+    injuriesTitle: "Change how many days each injury lasts",
+    /** The title of the dialog that changes them. */
+    daysOut: "Days out",
+    /** The days input of a row, for assistive technology: `name` is the injury's. */
+    daysOf: (name: string) => `Days out with ${name}`,
     save: "Save",
   },
 

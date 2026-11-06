@@ -547,6 +547,7 @@ export const tr: Strings = {
     level: "Seviye",
     club: "Kulüp",
     injuries: "Sakatlıklar",
+    injury: "Sakatlık",
     work_permit: "Çalışma izni",
     bans: "Cezalar",
     cohesion: "Kulübe alışkınlık",
@@ -1753,6 +1754,9 @@ export const tr: Strings = {
     languagesTitle: "Her dili ne kadar iyi konuştuğunu oyunda değiştir",
     levelOf: (name) => `${name} seviyesi`,
     raisedBack: "FM bunu kendisi yeniden yükseltir",
+    injuriesTitle: "Her sakatlığın kaç gün süreceğini değiştir",
+    daysOut: "Sahalardan uzak kalacağı gün",
+    daysOf: (name) => `${name} için gün sayısı`,
     save: "Kaydet",
   },
 
