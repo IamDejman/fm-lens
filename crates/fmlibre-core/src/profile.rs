@@ -202,7 +202,7 @@ pub struct WorkPermitLayout {
     pub person: u64,
     pub record_size: u64,
     pub record_person: u64,
-    pub record_granted_on: u64,
+    pub record_esc_since: u64,
     pub record_flags: u64,
 }
 
@@ -939,9 +939,16 @@ pub struct CallRvas {
     /// `INJURY_MANAGER::add_injury(manager, player, kind index, cause, 0, 0, 0, 0, [news byte, 0, 0])`: gives the
     /// player an injury of the kind and returns it, or null when it does not.
     pub add_injury: Option<u64>,
-    /// `TRANSFER_MANAGER::set_work_permit(manager, identity block, club team, force, grant)`: grants the player a work
-    /// permit for the club's country, or takes it away. Returns nothing.
+    /// `TRANSFER_MANAGER::set_work_permit(manager, identity block, club team, force, esc)`: makes the player a work
+    /// permit record for the club's country, an ESC slot or not, or takes the slot away. Unforced, it does so only
+    /// where the game's rules say he needs a permit. Returns nothing.
     pub set_work_permit: Option<u64>,
+    /// `TRANSFER_MANAGER::find_work_permit(manager, identity block, club team)`: the place in the manager's list of the
+    /// player's record for the club's country, as an int, or -1. Only reads.
+    pub find_work_permit: Option<u64>,
+    /// `TRANSFER_MANAGER::remove_work_permit(manager, identity block, record)`: takes the record out of the manager's
+    /// lists and frees it. Returns nothing.
+    pub remove_work_permit: Option<u64>,
     /// `TRANSFER_MANAGER::start_loan(manager, STARTING_LOAN*, 1)`: loans the player to the club team the object names,
     /// between its dates. Returns nothing.
     pub start_loan: Option<u64>,
@@ -990,6 +997,8 @@ impl CallRvas {
         [
             self.add_injury,
             self.set_work_permit,
+            self.find_work_permit,
+            self.remove_work_permit,
             self.start_loan,
             self.sign_free_agent,
             self.map_new,

@@ -39,9 +39,16 @@ injury_manager = 0x56A82A0
 # 0, 0, then on the stack a news byte 0, 0 and a u16 0). Returns the new injury, or null when injuries are switched
 # off or he already has one of that kind.
 add_injury = 0x27047D4
-# TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force 1, grant 1 or 0).
-# The game's editor passes force 0 and grant 0, which takes a permit away. See docs/recon/fm27-call-shapes.md.
+# TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force, esc). It makes the
+# player a work permit record, an ESC slot where esc is 1 (dated today), or takes the slot away. The game's editor
+# gives a permit with force 0 and esc 0, which does nothing unless the game's rules say he needs one.
 set_work_permit = 0x2D85294
+# TRANSFER_MANAGER::find_work_permit: (manager, identity block, club team). The place of his record for the club's
+# country in the manager's list, or -1. Only reads.
+find_work_permit = 0x2DDD12C
+# TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), as the game's editor takes a permit away:
+# the record leaves both of the manager's lists and is freed. See docs/recon/fm27-call-shapes.md section 1.
+remove_work_permit = 0x2DC0210
 # TRANSFER_MANAGER::start_loan: (manager, a STARTING_LOAN, 1), as the game's editor calls it from 0x238D860. Returns
 # nothing; the editor reads the loan back. See docs/recon/fm27-call-shapes.md section 3.
 start_loan = 0x2E0A324

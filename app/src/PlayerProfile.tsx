@@ -264,9 +264,9 @@ function LoanGroup({ loan }: { loan: LoanTerms }) {
 }
 
 /**
- * His work permits: for each nation, whether one was granted and when. Where the game grants them itself on this
- * build, a player at a club has the button that has it grant him one for his club's country, or take it away; then the
- * group is there even before the game keeps a record of him.
+ * His work permits: for each nation, an active work permit or an ESC slot from a day. Where the game gives them itself
+ * on this build, a player at a club has the button that has it give him one for his club's country, or take his away;
+ * then the group is there even while he holds none.
  */
 function WorkPermitGroup({ details }: { details: PlayerDetails }) {
   const { gameActions } = useContext(EditorContext);
@@ -282,24 +282,24 @@ function WorkPermitGroup({ details }: { details: PlayerDetails }) {
         <dl className="stats">
           {permits.map((permit, index) => (
             <Fact key={permit.nationUid ?? index} label={permit.nation ?? profileText.none}>
-              {permit.granted
-                ? profileText.permitGranted(formatDate(permit.grantedOn) || profileText.none)
-                : profileText.permitNotGranted}
+              {permit.esc
+                ? profileText.permitEsc(formatDate(permit.escSince) || profileText.none)
+                : profileText.permitActive}
             </Fact>
           ))}
         </dl>
       ) : (
-        <p className="injuries-none">{profileText.permitNotGranted}</p>
+        <p className="injuries-none">{profileText.permitNone}</p>
       )}
       {changeable && <PermitToggle uid={details.uid} permits={permits} />}
     </section>
   );
 }
 
-/** Grant while he has no granted permit, Revoke while he has one; logged like any change, and undone from Changes. */
+/** Grant while he holds no permit, Revoke while he holds one; logged like any change, and undone from Changes. */
 function PermitToggle({ uid, permits }: { uid: number; permits: readonly WorkPermit[] }) {
   const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
-  const granted = permits.some((permit) => permit.granted);
+  const granted = permits.length > 0;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
