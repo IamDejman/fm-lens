@@ -1241,6 +1241,7 @@ export const es: Strings = {
     notConnected: "Sin conexión",
     connected: "Conectado",
     detailsLabel: "Detalles de la app",
+    reportProblem: "Informar de un problema",
     more: "Más",
     previewTag: "vista previa en el navegador · datos de ejemplo",
     noDate: "Sin fecha del juego",

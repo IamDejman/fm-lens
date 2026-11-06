@@ -1268,6 +1268,8 @@ export const en = {
     connected: "Connected",
     /** The name, for screen readers, of the app version and game build at the foot of the settings menu. */
     detailsLabel: "App details",
+    /** In the settings menu: opens a bug report on GitHub with the version, FM build and changes filled in. */
+    reportProblem: "Report a problem",
     /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */
     more: "More",
     /** Beside the status line in a plain browser, where fixtures stand in for the game. */

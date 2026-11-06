@@ -3347,6 +3347,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return applyEdits(args?.entity as Entity, Number(args?.uid), (args?.edits ?? []) as FieldEdit[]) as T;
     case "change_log":
       return changes.map((c) => ({ ...c })).reverse() as T;
+    case "system_version":
+      return "macOS 27.2, Apple Silicon" as T;
     case "undo_change":
       return undoChange(Number(args?.id)) as T;
     case "plan_mass_edit":

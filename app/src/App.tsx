@@ -11,6 +11,7 @@ import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
 import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
+import { openReport } from "./report";
 import { SettingsMenu } from "./SettingsMenu";
 import {
   appText,
@@ -335,6 +336,10 @@ function App() {
           <span data-tour="settings">
             <SettingsMenu
               busy={busy !== null}
+              onReport={() => {
+                const detected = detection?.games[0]?.info ?? null;
+                openReport({ version, connection, detected, log }).catch((e: unknown) => setError(describeError(e)));
+              }}
               details={[
                 `FM Lens${version ? ` ${version}` : ""}`,
                 connection
