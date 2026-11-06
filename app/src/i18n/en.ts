@@ -1324,7 +1324,7 @@ export const en = {
     connected: "Connected",
     /** The name, for screen readers, of the app version and game build at the foot of the settings menu. */
     detailsLabel: "App details",
-    /** In the settings menu: opens a bug report on GitHub with the version, FM build and changes filled in. */
+    /** At the foot of the window: opens a bug report on GitHub with the version, FM build and changes filled in. */
     reportProblem: "Report a problem",
     /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */
     more: "More",
@@ -1431,7 +1431,7 @@ export const en = {
     officials: "officials",
   } satisfies Record<CheckKey, string>,
 
-  /** New versions: the notice under the masthead, and the version and Check for updates at the foot of the window. */
+  /** New versions: the notice under the masthead, Relaunch to update at the foot of the window, and Check for Updates. */
   update: {
     /** In the colophon once a newer version is installed, which the app does in the background, without asking. */
     relaunch: "Relaunch to update",
@@ -1442,6 +1442,12 @@ export const en = {
     installFailed: (reason: string) => `Couldn't update: ${reason}. Download it instead.`,
     /** Hides the notice until the app starts again. */
     later: "Later",
+    /** In the app menu on macOS, under About FM Lens: looks for a newer version at once. */
+    checkForUpdates: "Check for Updates…",
+    checking: "Checking for updates…",
+    upToDate: "FM Lens is up to date.",
+    /** Offline, or the releases could not be read. */
+    checkFailed: "Couldn't check for updates.",
     /** After an update, once: the headline of the notice that lists what this version brought (see `changes`). */
     whatsNew: (version: string) => `What's new in FM Lens ${version}`,
     /** Opens this version's release notes in the browser. */
