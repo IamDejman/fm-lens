@@ -10,7 +10,7 @@ Read-only reverse engineering. No memory was written, the FM UI was not touched.
 
 ## Method
 
-- `instances <class>` (vtable scan) and `scan` (global begin/end pointer arrays) from `fmlibre-probe`.
+- `instances <class>` (vtable scan) and `scan` (global begin/end pointer arrays) from `fmlens-probe`.
 - Bulk reads of each contiguous pool into files, then offline analysis (histograms per offset, comparison against well-known entries).
 - Names use the text.rs convention: FM string = u32 length + UTF-8. "Name entry" = pointer to pointer to FM string.
 - Dates: u16 day-of-year (1-based, low 9 bits) + u16 year. Checked: Michael Oliver 20 Feb 1985 = day 51, Marciniak = day 7 of 1981, Turpin = day 136 of 1982.
