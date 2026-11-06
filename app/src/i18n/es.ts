@@ -45,8 +45,19 @@ const SQUAD_STATUSES: Partial<Record<number, string>> = {
   1: "Jugador estrella",
   2: "Jugador importante",
   3: "Titular habitual",
-  4: "Jugador de rotación",
+  4: "Jugador de plantilla",
   5: "Revulsivo",
+  7: "Jugador secundario",
+  9: "Suplente de emergencia",
+  10: "Promesa emergente",
+  11: "Promesa de futuro",
+  13: "Joven",
+  15: "Portero titular",
+  16: "Portero de copa",
+  17: "Portero de copa nacional",
+  20: "Suplente",
+  21: "Suplente de emergencia",
+  22: "Prescindible",
 };
 
 /** The name of the field a failure names. */
