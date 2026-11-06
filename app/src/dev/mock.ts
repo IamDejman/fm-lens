@@ -281,7 +281,7 @@ function details(player: PlayerSummary): PlayerDetails {
     bans: bansOf(player.uid),
     ties: tiesOf(player),
     tieRoom: tieRoomOf(player),
-    preferences: preferencesOf(player),
+    preferences: currentPreferences(false, player.uid),
     languages: languagesOf(player.uid),
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     loan: loanOf(player),
@@ -724,6 +724,109 @@ function addTie(uid: number, kind: TieKind, target: number, rule?: number): Logg
   return logTie(player, null, after, [...ties, after]);
 }
 
+// Likes and dislikes ----------------------------------------------------------------------------------------------
+
+/** The likes and dislikes changed through the editor, by "player:UID" or "staff:UID"; the others are the fixture's. */
+const preferencesSet = new Map<string, Preference[]>();
+
+/** What each change to a person's likes and dislikes found, by the id of its logged change, for its undo. */
+const preferenceUndo = new Map<number, [string, Preference[]]>();
+
+const preferenceKey = (isStaff: boolean, uid: number) => `${isStaff ? "staff" : "player"}:${uid}`;
+
+/** A fixture member of staff's likes: the human manager and every fourth member favour a club, as the game has them. */
+function staffPreferencesOf(member: StaffSummary): Preference[] {
+  if (!member.isHuman && member.uid % 4 !== 0) {
+    return [];
+  }
+  const liked = member.uid % CLUBS.length;
+  return [{ index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 100 }];
+}
+
+/** The likes and dislikes of the fixture player, or member of staff for `isStaff`, `uid` as the game holds them now. */
+function currentPreferences(isStaff: boolean, uid: number): Preference[] {
+  const set = preferencesSet.get(preferenceKey(isStaff, uid));
+  if (set) {
+    return set;
+  }
+  if (isStaff) {
+    const member = staff.find((m) => m.uid === uid);
+    return member ? staffPreferencesOf(member) : [];
+  }
+  const player = players.find((p) => p.uid === uid);
+  return player ? preferencesOf(player) : [];
+}
+
+/** The name of the fixture person `uid` and his preference at `index`, or the real commands' failures. */
+function preferenceAt(uid: number, isStaff: boolean, index: number): [string, Preference] {
+  const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
+  if (!person) {
+    throw notFound(isStaff ? "staff" : "player", uid);
+  }
+  const preference = currentPreferences(isStaff, uid).find((p) => p.index === index);
+  if (!preference) {
+    throw failure("relation.missing", `the person has no preference number ${index}`, { index });
+  }
+  return [person.name, preference];
+}
+
+/** Logs a change to a person's likes as the real commands do, keeping his likes as they were for undoing it. */
+function logPreference(
+  isStaff: boolean,
+  uid: number,
+  name: string,
+  before: Preference,
+  after: Preference | null,
+  next: Preference[],
+): LoggedChange {
+  const id = changes.length + 1;
+  const key = preferenceKey(isStaff, uid);
+  preferenceUndo.set(id, [key, currentPreferences(isStaff, uid)]);
+  preferencesSet.set(key, next);
+  const end = (p: Preference | null) => p && { name: p.name ?? String(p.targetUid), rule: null, strength: p.strength };
+  const logged: LoggedChange = {
+    id,
+    at: Date.now(),
+    name,
+    entity: isStaff ? "staff" : "player",
+    uid,
+    field: `preference.${before.kind}`,
+    old: before.strength,
+    new: after?.strength ?? 0,
+    undoneAt: null,
+    batch: null,
+    tie: { from: end(before), to: end(after) },
+  };
+  changes.push(logged);
+  return { ...logged };
+}
+
+/** `change_preference`: gives a fixture person's preference another strength, 1 to 100. */
+function changePreference(uid: number, isStaff: boolean, index: number, strength: number): LoggedChange {
+  const [name, before] = preferenceAt(uid, isStaff, index);
+  if (!Number.isInteger(strength) || strength < 1 || strength > 100) {
+    throw failure("move.outOfRange", `${strength} is not a valid strength; it takes 1 to 100`, {
+      field: "strength",
+      value: strength,
+      min: 1,
+      max: 100,
+    });
+  }
+  if (strength === before.strength) {
+    throw failure("relation.same", "the player has that already");
+  }
+  const after = { ...before, strength };
+  const next = currentPreferences(isStaff, uid).map((p) => (p.index === index ? after : p));
+  return logPreference(isStaff, uid, name, before, after, next);
+}
+
+/** `remove_preference`: takes a fixture person's preference out of his list. */
+function removePreference(uid: number, isStaff: boolean, index: number): LoggedChange {
+  const [name, before] = preferenceAt(uid, isStaff, index);
+  const next = currentPreferences(isStaff, uid).filter((p) => p.index !== index);
+  return logPreference(isStaff, uid, name, before, null, next);
+}
+
 /** The fixture players whose bans were lifted through the editor, by UID, while the lifting is not undone. */
 const liftedPlayers = new Set<number>();
 
@@ -936,7 +1039,7 @@ function staffDetails(member: StaffSummary): StaffDetails {
     unsackable: member.isHuman ? false : null,
     registrationAnytime: member.isHuman ? false : null,
     languages: languagesOf(member.uid),
-    preferences: [],
+    preferences: currentPreferences(true, member.uid),
     coachingLicence: member.uid % 9,
   });
 }
@@ -1645,6 +1748,12 @@ function undoChange(id: number): LoggedChange {
   }
   if (entry.clause) {
     clausesSet.set(entry.uid, clauseUndo.get(entry.id)!);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  if (entry.field.startsWith("preference.")) {
+    const [key, preferences] = preferenceUndo.get(entry.id)!;
+    preferencesSet.set(key, preferences);
     entry.undoneAt = Date.now();
     return { ...entry };
   }
@@ -3146,6 +3255,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       ) as T;
     case "remove_tie":
       return removeTie(Number(args?.uid), Number(args?.index)) as T;
+    case "change_preference":
+      return changePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.strength)) as T;
+    case "remove_preference":
+      return removePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
     case "add_tie":
       return addTie(Number(args?.uid), args?.tie as TieKind, Number(args?.target), args?.rule as number | undefined) as T;
     case "homegrown_rules":

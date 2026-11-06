@@ -12,7 +12,7 @@ use fmlibre_core::{
     GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError,
     MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture,
     Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
-    PreferenceKind, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
+    PreferenceKind, PreferenceOwner, PreferenceSet, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
     StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target,
     TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
@@ -712,6 +712,55 @@ impl Connection {
         }
     }
 
+    /// Logs a change to a person's preferences just written, as a change of his field `preference.favouredClub`,
+    /// `preference.dislikedClub`, `preference.favouredPerson` or `preference.dislikedPerson` from one strength to the
+    /// other (0 for one taken out), with the person or club and its strength before and after.
+    fn log_preference(&mut self, done: PreferenceSet) -> LoggedChange {
+        let field = match done.before.kind {
+            PreferenceKind::FavouredClub => "preference.favouredClub",
+            PreferenceKind::DislikedClub => "preference.dislikedClub",
+            PreferenceKind::FavouredPerson => "preference.favouredPerson",
+            PreferenceKind::DislikedPerson => "preference.dislikedPerson",
+        };
+        // The person's or club's name, before and after: the game's records name only clubs.
+        let mut named: Vec<Preference> = std::iter::once(done.before.clone()).chain(done.after.clone()).collect();
+        self.name_preferences(&mut named);
+        let end = |preference: Option<&Preference>| {
+            preference.map(|preference| TieEnd {
+                name: preference.name.clone().unwrap_or_else(|| preference.target_uid.to_string()),
+                rule: None,
+                strength: Some(preference.strength),
+            })
+        };
+        let change = Change {
+            entity: done.entity,
+            uid: done.person,
+            field: field.to_owned(),
+            old: i64::from(done.before.strength),
+            new: done.after.as_ref().map_or(0, |after| i64::from(after.strength)),
+        };
+        let name = match done.entity {
+            Entity::Staff => self.staff.get(done.person).map_or_else(|| done.person.to_string(), |m| m.name.clone()),
+            _ => self.player_name(done.person),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change,
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(named.first()), to: end(named.get(1)) }),
+            clause: None,
+            undo: Some(Undo::Preference(done)),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs raising a player's familiarity with his club just written, as a change of his `cohesion` from what it was
     /// to the most.
     fn log_cohesion(&mut self, done: Cohered, batch: Option<u32>) -> LoggedChange {
@@ -809,6 +858,7 @@ impl Connection {
             relation.as_ref().map(|relation| TieEnd {
                 name: relation.name.clone().unwrap_or_else(|| relation.target_uid.to_string()),
                 rule: relation.rule,
+                strength: None,
             })
         };
         let uid = |relation: &Option<fmlibre_core::Relation>| relation.as_ref().map_or(0, |r| i64::from(r.target_uid));
@@ -1115,6 +1165,7 @@ impl Connection {
             Some(Undo::Tactics(raised)) => self.session.undo_tactics(&raised)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
+            Some(Undo::Preference(preference)) => self.session.undo_preference(&preference)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
             Some(Undo::Staff(logged)) => {
                 self.session.undo_staff_change(&logged.done)?;
@@ -1456,6 +1507,7 @@ enum Undo {
     Cohesion(Cohered),
     Retirement(RetirementSet),
     Tie(RelationSet),
+    Preference(PreferenceSet),
     Clause(ClauseSet),
     Captain(CaptainSet),
     Staff(LoggedStaff),
@@ -1493,12 +1545,15 @@ struct TieChange {
     to: Option<TieEnd>,
 }
 
-/// The nation or club of a tie, and its homegrown rule for a training.
+/// The nation or club of a tie, and its homegrown rule for a training; or the person or club of a preference, and its
+/// strength.
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TieEnd {
     name: String,
     rule: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    strength: Option<i8>,
 }
 
 /// A contract clause before and after a change: none before for one added, none after for one taken out.
@@ -2962,6 +3017,45 @@ fn add_tie(
     Ok(connection.log_tie(done))
 }
 
+/// The player `uid`, or the member of staff `uid` for `staff`, as the owner of preferences.
+fn preference_owner(connection: &Connection, uid: u32, staff: bool) -> Result<PreferenceOwner<'_>, Failure> {
+    Ok(if staff {
+        PreferenceOwner::Staff(connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?)
+    } else {
+        PreferenceOwner::Player(connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?)
+    })
+}
+
+/// Gives the preference `index` of the player `uid`, or of the member of staff `uid` for `staff`, the strength
+/// `strength`, 1 to 100. Logged and undone like any change.
+#[tauri::command]
+fn change_preference(
+    state: State<'_, AppState>,
+    uid: u32,
+    staff: bool,
+    index: usize,
+    strength: i8,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let owner = preference_owner(connection, uid, staff)?;
+    let plan = connection.session.plan_preference_strength(owner, index, strength)?;
+    let done = connection.session.apply_preference(&plan)?;
+    Ok(connection.log_preference(done))
+}
+
+/// Takes the preference `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`.
+/// Logged and undone like any change.
+#[tauri::command]
+fn remove_preference(state: State<'_, AppState>, uid: u32, staff: bool, index: usize) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let owner = preference_owner(connection, uid, staff)?;
+    let plan = connection.session.plan_preference_removal(owner, index)?;
+    let done = connection.session.apply_preference(&plan)?;
+    Ok(connection.log_preference(done))
+}
+
 /// Gives the clause `index` of the contract of the player `uid` the amount `amount` and the condition `condition`;
 /// what is left out stays, and only what the clause has can be changed. Logged and undone like any change.
 #[tauri::command]
@@ -3497,6 +3591,8 @@ pub fn run() {
             change_tie,
             remove_tie,
             add_tie,
+            change_preference,
+            remove_preference,
             change_clause,
             remove_clause,
             add_release_clause,

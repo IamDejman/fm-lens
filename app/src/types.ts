@@ -680,6 +680,15 @@ export interface LoanTerms {
 export type PreferenceKind = "favouredPerson" | "dislikedPerson" | "favouredClub" | "dislikedClub";
 
 /** One of a player's favoured or disliked people and clubs. */
+/** One side of a logged change to a tie or a preference: none for one added or taken out. */
+export interface TieEnd {
+  name: string;
+  /** A training's homegrown rule. */
+  rule: number | null;
+  /** A preference's strength. */
+  strength?: number;
+}
+
 export interface Preference {
   /** Where it is in his list of relations. */
   index: number;
@@ -908,11 +917,13 @@ export interface LoggedChange {
   /**
    * Set for a change to a player's ties, which is logged as a change of his field `tie.nationality`,
    * `tie.trainedInNation` or `tie.trainedAtClub` from one nation's or club's UID to the other's (0 for none): the
-   * names and homegrown rules on either side.
+   * names and homegrown rules on either side. Set too for a change to a person's likes and dislikes, logged as a change
+   * of his field `preference.favouredClub` (or `dislikedClub`, `favouredPerson`, `dislikedPerson`) from one strength to
+   * the other (0 for one taken out): the names and strengths on either side.
    */
   tie?: {
-    from: { name: string; rule: number | null } | null;
-    to: { name: string; rule: number | null } | null;
+    from: TieEnd | null;
+    to: TieEnd | null;
   };
   /**
    * Set for a change to a player's contract clauses (`change_clause`, `remove_clause`, `add_release_clause`), which is

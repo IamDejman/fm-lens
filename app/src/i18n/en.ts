@@ -472,6 +472,12 @@ export const en = {
     "tie.nationality": "Secondary nationality",
     "tie.trainedInNation": "Trained in nation",
     "tie.trainedAtClub": "Trained at club",
+    // A person's likes and dislikes, which the change log keeps as changes of their strength (see `likes`).
+    "preference.favouredClub": "Favoured club",
+    "preference.dislikedClub": "Disliked club",
+    "preference.favouredPerson": "Favoured person",
+    "preference.dislikedPerson": "Disliked person",
+    strength: "Strength",
     // A move to another club, which the change log keeps as a change of the player's club.
     club: "Club",
     // Healing a player, which the change log keeps as a change of his injuries.
@@ -1937,6 +1943,14 @@ export const en = {
     clubNote: "You can change a club's rule or remove it. Only FM adds clubs.",
     working: "Saving…",
     close: "Close",
+  },
+
+  /** Changing how strongly a player or member of staff likes or dislikes each person and club. */
+  likes: {
+    changeTitle: "Change how strongly he likes or dislikes each person and club",
+    /** The strength input of a row, for assistive technology: `name` is the person's or club's. */
+    strengthOf: (name: string) => `Strength for ${name}`,
+    save: "Save",
   },
 
   /** Changing a contract's bonuses and clauses: the button under them in the profile, and the dialog it opens. */
