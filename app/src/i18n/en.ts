@@ -674,7 +674,7 @@ export const en = {
     keepPlaying: "Prevent retirement",
     keepingPlaying: "Preventing…",
     keepPlayingTitle:
-      "Cancels his retirement and swaps “Will retire at top” for “Will play football as long as possible”. You can undo it in Changes.",
+      "Cancels his retirement. You can undo it in Changes.",
 
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
     /** A player's morale, 1–20. */
@@ -730,7 +730,7 @@ export const en = {
     },
     moraleTitle: "In FM: 10 is content, 11 slightly happy, 15 and 20 extremely happy.",
     /** Hover text of jadedness, which the profile shows as stored. */
-    jadednessTitle: "How tired he is from playing. -500 is fully rested. The higher it is, the more he needs a rest.",
+    jadednessTitle: "How tired he is. -500 is fully rested.",
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
@@ -1397,7 +1397,7 @@ export const en = {
      */
     changes: {
       "0.5.3": [
-        "FM Lens now goes by its own name in its files and settings. Your setup and settings carried over by themselves.",
+        "Files, settings and the Steam helper now use the FM Lens name. Your setup carried over.",
       ],
       "0.5.2": [
         "Report a problem, in Settings, opens a bug report with your versions and changes filled in.",
