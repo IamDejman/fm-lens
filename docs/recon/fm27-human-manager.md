@@ -66,7 +66,7 @@ other seven bits of the byte.
 
 ## Reproducible read-only probe commands
 
-Build the probe (`cargo build --locked -p fmlibre-probe -p fmlibre-bridge`), load
+Build the probe (`cargo build --locked -p fmlens-probe -p fmlens-bridge`), load
 a disposable copy of a career, then:
 
 ```sh
