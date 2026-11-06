@@ -613,6 +613,8 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   const outcome = key !== null && planned?.key === key ? planned.outcome : null;
   const preview = outcome !== null && "preview" in outcome ? outcome.preview : null;
   const canMove = (sign || loan ? key !== null : preview !== null) && !moving;
+  // FM makes the transfer of a player at your club. That depends on his club alone, so the last plan still says so.
+  const fromYourClub = planned !== null && "preview" in planned.outcome && planned.outcome.preview.permanent === true;
 
   // What the button makes, for the plan it is offered for: the signing, the loan or the swap, or the move to the club.
   const make = sign
@@ -840,8 +842,13 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
     const lines = [text.route(made.from.name, made.to.name)];
     if (made.fee) {
       const amount = formatMoney(made.fee.fee);
-      lines.push(moneyLine(made.fee.buyer, made.to.name, amount, true));
-      lines.push(moneyLine(made.fee.seller, made.from.name, amount, false));
+      if (made.permanent) {
+        // FM makes this transfer and moves the money by its own rules, so its balances can't be shown ahead.
+        lines.push(text.gameFee(made.to.name, made.from.name, amount));
+      } else {
+        lines.push(moneyLine(made.fee.buyer, made.to.name, amount, true));
+        lines.push(moneyLine(made.fee.seller, made.from.name, amount, false));
+      }
     }
     return lines.join("\n");
   };
@@ -878,7 +885,7 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
         : {
             title: text.title,
             choose: staff ? text.staffChooseClub : text.chooseClub,
-            does: staff ? text.staffDoes : text.does,
+            does: staff ? text.staffDoes : fromYourClub ? text.gameDoes : text.does,
             hint: text.hint,
             button: text.move,
             busy: text.moving,

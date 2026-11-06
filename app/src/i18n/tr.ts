@@ -1608,6 +1608,7 @@ export const tr: Strings = {
     pays: (club, fee, balance, budget) =>
       `${club} öder: ${fee}. Bakiye ${balance}${budget === null ? "" : `, transfer bütçesi ${budget}`}`,
     receives: (club, fee, balance) => `${club} alır: ${fee}. Bakiye ${balance}`,
+    gameFee: (buyer, seller, fee) => `${buyer} öder, ${seller} alır: ${fee}`,
     noFinances: (club) => `${club} için FM'de finans kaydı yok, parası değişmez`,
 
     // The contract
@@ -1629,6 +1630,11 @@ export const tr: Strings = {
       "Eski kulübündeki kaptanlığı boş kalır",
       "Oyunun transfer geçmişinde henüz görünmez",
       "Değişiklikler bölümünde listelenir; tek geri alma transferi ve bedeli birlikte geri alır",
+    ],
+    gameDoes: [
+      "FM transferi kendisi yapar ve bedeli kendi kurallarıyla aktarır",
+      "Maaş ve sözleşme bitişi, siz yeni değer girmedikçe aynı kalır",
+      "Geri alınamaz",
     ],
 
     // Swapping with a player of the club instead

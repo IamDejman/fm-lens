@@ -42,6 +42,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   workPermit: false,
   startLoan: false,
   signFreeAgent: false,
+  transfer: false,
   endLoan: false,
   futureTransfer: false,
   maxTactics: false,

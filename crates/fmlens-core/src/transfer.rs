@@ -88,6 +88,17 @@ impl MovePlan {
     }
 }
 
+/// A transfer for the game to make itself ([`Session::transfer_player`]), worked out from the game as it is now: the
+/// player and his object, his club, and the club he joins and its senior team.
+#[derive(Debug, Clone)]
+pub struct TransferPlan {
+    pub player: u32,
+    pub from_club: u32,
+    pub to_club: u32,
+    pub(crate) object: u64,
+    pub(crate) senior: u64,
+}
+
 /// A move that was written: what undoing it takes.
 #[derive(Debug, Clone)]
 pub struct ClubMove {
@@ -590,6 +601,29 @@ impl Session {
             to_club: joining.club_uid,
             other: None,
             patches: patches.0,
+        })
+    }
+
+    /// Works out the game transferring `player` to the senior team of `club` itself, under the contract `terms`: the
+    /// checks of a move, from any club, a human manager's too. Nothing is written.
+    pub fn plan_transfer(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        terms: MoveTerms,
+    ) -> Result<TransferPlan, MoveError> {
+        self.check_terms(terms, self.game_date())?;
+        let leaving = self.departure(player, &[])?;
+        if self.process.read_u32(club.address + self.layout.club.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        let joining = self.arrival(club.address, &leaving)?;
+        Ok(TransferPlan {
+            player: leaving.uid,
+            from_club: leaving.club_uid,
+            to_club: joining.club_uid,
+            object: leaving.object,
+            senior: joining.senior,
         })
     }
 

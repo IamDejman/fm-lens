@@ -18,7 +18,7 @@ use crate::profile::{CallRvas, FutureTransferLayout};
 use crate::rtti::class_of;
 use crate::session::Session;
 use crate::text::read_fm_string;
-use crate::transfer::{MoveError, MoveTerms, PointerList};
+use crate::transfer::{MoveError, MoveTerms, PointerList, TransferPlan};
 
 /// The cause the game's own training injuries give `add_injury`.
 const TRAINING_CAUSE: u64 = 3;
@@ -40,6 +40,8 @@ pub struct GameActions {
     pub work_permit: bool,
     pub start_loan: bool,
     pub sign_free_agent: bool,
+    /// Transferring a player with a club to another, for a fee.
+    pub transfer: bool,
     pub end_loan: bool,
     /// Signing a free agent on a later day, and cancelling any transfer agreed for a later day.
     pub future_transfer: bool,
@@ -101,6 +103,16 @@ pub struct SignedPlayer {
     pub expires: Option<FmDate>,
 }
 
+/// A player the game transferred from one club to another for `fee` pounds, and the end of the contract he has now.
+#[derive(Debug, Clone, Copy)]
+pub struct TransferredPlayer {
+    pub player: u32,
+    pub from_club: u32,
+    pub to_club: u32,
+    pub fee: i64,
+    pub expires: Option<FmDate>,
+}
+
 /// Where the signing's terms map and its list of entity references sit in the call's scratch memory: three qwords
 /// each, from zero.
 const TERMS_MAP: usize = 0;
@@ -139,6 +151,9 @@ const TRANSFER_DATE: u64 = 0x5472_4474;
 /// Where the signing's date sits in the scratch memory, as the game's raw date, and the Value made from it.
 const RAW_DATE: usize = 0x40;
 const DATE_VALUE: usize = 0x50;
+/// The key of a transfer's fee in its terms map, 'TrFe', and where its integer Value sits in the scratch memory.
+const TRANSFER_FEE: u64 = 0x5472_4665;
+const FEE_VALUE: usize = 0x60;
 
 /// Where cancelling puts the offer in the scratch memory: as read, and the copy that holds a reference through the call.
 /// Each slot is a pointer and a u32.
@@ -199,6 +214,14 @@ impl Session {
                 && calls.map_new.is_some()
                 && calls.map_drop.is_some()
                 && calls.refs_drop.is_some()
+                && profile.transfer_manager.is_some()
+                && self.layout.work_permit.is_some(),
+            transfer: calls.sign_free_agent.is_some()
+                && calls.map_new.is_some()
+                && calls.map_drop.is_some()
+                && calls.refs_drop.is_some()
+                && calls.map_insert.is_some()
+                && profile.editor.is_some()
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
             end_loan: calls.end_contract.is_some()
@@ -576,21 +599,49 @@ impl Session {
     ) -> Result<SignedPlayer, MoveError> {
         let (object, senior) = self.signing_target(player, club)?;
         self.check_terms(terms, self.game_date())?;
-        let signed = self.run_signing(object, senior, None)?;
+        let signed = self.run_signing(object, senior, None, None)?;
+        let expires = self.joined(object, club, signed)?;
+        Ok(SignedPlayer { player: player.uid, club: club.uid, expires })
+    }
+
+    /// Has the game transfer `player` from his club to the senior team of `club` for `fee` pounds, as its own editor
+    /// does: it makes the offer and the contract, on its own terms, and moves him, with its news and his history. Any
+    /// club may sell, a human manager's too. `terms` then replace its wage and end date, where given; the caller
+    /// writes them. His team is read back to tell. Nothing undoes it.
+    pub fn transfer_player(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        terms: MoveTerms,
+        fee: i64,
+    ) -> Result<TransferredPlayer, MoveError> {
+        let TransferPlan { from_club, to_club, object, senior, .. } = self.plan_transfer(player, club, terms)?;
+        let amount = i32::try_from(fee).ok().filter(|&amount| amount >= 0).ok_or(MoveError::OutOfRange {
+            field: "transfer.fee",
+            value: fee,
+            min: 0,
+            max: i64::from(i32::MAX),
+        })?;
+        let moved = self.run_signing(object, senior, None, Some(amount))?;
+        let expires = self.joined(object, club, moved)?;
+        Ok(TransferredPlayer { player: player.uid, from_club, to_club, fee, expires })
+    }
+
+    /// Checks that the player `object` plays for `club` now, after the game said whether he `joined`, and reads the end
+    /// of the contract he has.
+    fn joined(&self, object: u64, club: &ClubSummary, joined: bool) -> Result<Option<FmDate>, MoveError> {
         let (process, layout) = (&self.process, &self.layout);
         let p = &layout.player;
         let team = process.read_u64(object + p.team)?;
-        if !signed || !is_user_pointer(team) || process.read_u64(team + layout.team.club)? != club.address {
+        if !joined || !is_user_pointer(team) || process.read_u64(team + layout.team.club)? != club.address {
             return Err(MoveError::CallDeclined);
         }
         let contract = process.read_u64(object + p.contract)?;
-        let expires = if is_user_pointer(contract) {
-            let date = process.read_bytes(contract + layout.contract.expires, 4)?;
-            FmDate::from_raw(u16::from_le_bytes([date[0], date[1]]), u16::from_le_bytes([date[2], date[3]]))
-        } else {
-            None
-        };
-        Ok(SignedPlayer { player: player.uid, club: club.uid, expires })
+        if !is_user_pointer(contract) {
+            return Ok(None);
+        }
+        let date = process.read_bytes(contract + layout.contract.expires, 4)?;
+        Ok(FmDate::from_raw(u16::from_le_bytes([date[0], date[1]]), u16::from_le_bytes([date[2], date[3]])))
     }
 
     /// Has the game agree to sign the free agent `player` for the senior team of `club` on `joins`, a day after
@@ -616,7 +667,7 @@ impl Session {
             });
         }
         let before = self.dated_offers(manager, f)?;
-        let signed = self.run_signing(object, senior, Some(joins))?;
+        let signed = self.run_signing(object, senior, Some(joins), None)?;
         // One new dated record, for an offer that names him and waits for its day; and he has not joined yet.
         let added: Vec<u32> = self.dated_offers(manager, f)?.into_iter().filter(|id| !before.contains(id)).collect();
         let [offer] = added[..] else {
@@ -827,8 +878,14 @@ impl Session {
     }
 
     /// Has the game sign the player `object` for the team `senior`, on `joins` when given (the date term of the terms
-    /// map), else today. Says whether the game says he signed.
-    fn run_signing(&self, object: u64, senior: u64, joins: Option<FmDate>) -> Result<bool, MoveError> {
+    /// map), else today, for `fee` pounds when given (its fee term). Says whether the game says he signed.
+    fn run_signing(
+        &self,
+        object: u64,
+        senior: u64,
+        joins: Option<FmDate>,
+        fee: Option<i32>,
+    ) -> Result<bool, MoveError> {
         let function = self.game_function(|calls| calls.sign_free_agent)?;
         let map_new = self.game_function(|calls| calls.map_new)?;
         let map_drop = self.game_function(|calls| calls.map_drop)?;
@@ -852,6 +909,22 @@ impl Session {
                 &[Arg::scratch(TERMS_MAP), Arg::value(TRANSFER_DATE), Arg::scratch(DATE_VALUE)],
             ));
             program.push(Step::new(value_drop, &[Arg::scratch(DATE_VALUE)]).cleanup());
+        }
+        if let Some(fee) = fee {
+            let map_insert = self.game_function(|calls| calls.map_insert)?;
+            let editor = self.profile.as_ref().and_then(|p| p.editor.as_ref()).ok_or(MoveError::CallUnavailable)?;
+            let types = self.process.read_u64(self.plugin.base + editor.value_types)?;
+            if !is_user_pointer(types) {
+                return Err(MoveError::CallUnavailable);
+            }
+            // The fee, as the game's editor adds it: an integer Value (the type registry's entry, then the number),
+            // which holds nothing to free.
+            program.write_u64(FEE_VALUE, types + editor.integer_type);
+            program.write_u64(FEE_VALUE + 8, u64::from(fee as u32));
+            program.push(Step::new(
+                map_insert,
+                &[Arg::scratch(TERMS_MAP), Arg::value(TRANSFER_FEE), Arg::scratch(FEE_VALUE)],
+            ));
         }
         let signing = program.push(Step::new(
             function,

@@ -106,6 +106,8 @@ export interface GameActions {
   workPermit: boolean;
   startLoan: boolean;
   signFreeAgent: boolean;
+  /** Transfers a player from your club to another (`move_player`), as FM's editor does. */
+  transfer: boolean;
   endLoan: boolean;
   /**
    * Signs a free agent for a later day (`sign_free_agent_later`), cancelled on undo, and cancels any transfer agreed
@@ -1048,6 +1050,8 @@ export interface MovePreview {
   to: { uid: number; name: string };
   /** What the fee does to the two clubs' money, when one is to be paid. */
   fee?: FeePlan;
+  /** FM makes the move itself (the player is at your club), and it can't be undone. */
+  permanent?: boolean;
 }
 
 /** An amount of money before and after a fee is paid, in pounds. */
