@@ -4440,6 +4440,12 @@ button.danger:hover:not(:disabled) {
   min-width: 0;
 }
 
+.tie-note {
+  display: block;
+  color: var(--muted);
+  font-size: var(--type-xs);
+}
+
 /* A clause's amount, up to ten digits of pounds, and its condition, a few digits. */
 .clause-row .clause-amount {
   width: 9em;

@@ -443,6 +443,10 @@ uid = 0x0C
 relations = 0x48          # the club's relations, laid out as a person's: code 5 to a club is a rivalry, 0-100
 links = 0x118             # list of pointers to its links with other clubs (affiliations)
 link_club = 0x08          # in a link: the other club
+# The country a club is in, as the game's own lookup (0xe015c4 on Steam 26340721 arm64) finds it for most clubs: the
+# nation it plays in when based abroad, else its own nation. The lookup names a few clubs by UID instead.
+plays_in = 0xE8
+nation = 0xD8
 name = 0xC0
 short_name = 0xC8
 women = 0xB9

@@ -197,6 +197,7 @@ export function LanguagesGroup({
       rows: languages.map((language, index) => ({
         index,
         name: language.name ?? profileText.none,
+        note: language.local ? listText.raisedBack : undefined,
         value: language.level,
       })),
     },

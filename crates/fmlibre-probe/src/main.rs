@@ -2495,8 +2495,11 @@ fn player(session: &Session, uid: u32) -> Result<()> {
     };
 
     println!("{} (UID {})", d.summary.name, d.summary.uid);
-    let languages: Vec<String> =
-        d.languages.iter().map(|l| format!("{} {}", l.name.as_deref().unwrap_or("?"), l.level)).collect();
+    let languages: Vec<String> = d
+        .languages
+        .iter()
+        .map(|l| format!("{} {}{}", l.name.as_deref().unwrap_or("?"), l.level, if l.local { "*" } else { "" }))
+        .collect();
     println!("  languages      {}", if languages.is_empty() { "-".to_owned() } else { languages.join(", ") });
     if let Some(full) = &d.summary.full_name {
         println!("  full name      {full}");
@@ -2616,8 +2619,11 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
     let d = session.staff_details(member)?.context("the staff member's data changed while reading; try again")?;
     let s = &d.summary;
     println!("{} (id {}){}", s.name, s.uid, if s.is_human { ", the human manager" } else { "" });
-    let languages: Vec<String> =
-        d.languages.iter().map(|l| format!("{} {}", l.name.as_deref().unwrap_or("?"), l.level)).collect();
+    let languages: Vec<String> = d
+        .languages
+        .iter()
+        .map(|l| format!("{} {}{}", l.name.as_deref().unwrap_or("?"), l.level, if l.local { "*" } else { "" }))
+        .collect();
     println!("  languages      {}", if languages.is_empty() { "-".to_owned() } else { languages.join(", ") });
     println!("  preferences    {}", d.preferences.len());
     if let Some(full) = &s.full_name {

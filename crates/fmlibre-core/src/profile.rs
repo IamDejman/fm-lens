@@ -741,6 +741,12 @@ pub struct ClubLayout {
     pub links: Option<u64>,
     #[serde(default)]
     pub link_club: Option<u64>,
+    /// Pointers to the nation a club based abroad plays in, null for the others, and to its own nation: the game takes
+    /// the first that is set as the country the club is in.
+    #[serde(default)]
+    pub plays_in: Option<u64>,
+    #[serde(default)]
+    pub nation: Option<u64>,
     pub uid: u64,
     pub name: u64,
     pub short_name: u64,
