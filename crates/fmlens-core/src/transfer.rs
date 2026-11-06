@@ -291,10 +291,7 @@ impl fmt::Display for MoveError {
             }
             MoveError::PlayerCoach => f.write_str("player-coaches cannot be moved: they work as staff too"),
             MoveError::UnusualContract => f.write_str("the player's contract is not a plain player's contract"),
-            MoveError::HumanClub => f.write_str(
-                "the player is at a club a human manager runs; its tactics and training point at him too, \
-                 so he leaves it in the game itself",
-            ),
+            MoveError::HumanClub => f.write_str("he plays for your club; transfer him in FM"),
             MoveError::MenAndWomen => f.write_str("one club is a men's club and the other a women's club"),
             MoveError::NotListed => f.write_str("the squad lists do not hold the player where they should"),
             MoveError::NoRoom { players } => write!(
@@ -325,7 +322,7 @@ impl fmt::Display for MoveError {
             // The address stays in the failure's parameters, for a report; the message is read by people.
             MoveError::Changed { .. } => f.write_str("the game has changed this since; reload and try again"),
             MoveError::NotApplied { .. } => f.write_str("the change was written, but the game holds something else"),
-            MoveError::You => f.write_str("this is you, the human manager"),
+            MoveError::You => f.write_str("that's you; change clubs in FM"),
             MoveError::Unemployed => f.write_str("the member of staff has no club"),
             MoveError::StaffRole => f.write_str(
                 "the club or one of its teams points at this member of staff directly, as a team does at its \

@@ -107,9 +107,8 @@ const errors: ErrorTexts = {
   "move.onLoan": () => "Oyuncu kiralık; kiralık oyuncular henüz taşınamıyor.",
   "move.playerCoach": () => "Oyuncu-antrenörler taşınamıyor: aynı zamanda personel olarak da çalışıyorlar.",
   "move.unusualContract": () => "Oyuncunun sözleşmesi olağan bir oyuncu sözleşmesi değil.",
-  "move.humanClub": () =>
-    "Oyuncu, bir insan menajerin yönettiği kulüpte. Kulübün taktikleri ve antrenmanı da ona bağlı; bu yüzden " +
-    "kulüpten ancak oyunun içinden ayrılabilir.",
+  "move.humanClub": () => "Senin kulübünde oynuyor. Transferini FM'de yap.",
+  "move.you": () => "Bu sensin. Kulüp değişikliğini FM'de yap.",
   "move.menAndWomen": () => "Kulüplerden biri erkek, diğeri kadın kulübü.",
   "move.notListed": () => "Kadro listeleri oyuncuyu olması gereken yerde tutmuyor.",
   "move.noRoom": (p) =>
@@ -924,7 +923,7 @@ export const tr: Strings = {
       job: "Görev",
       anyJob: "Tümü",
       unemployedOnly: "Yalnızca işsizler",
-      humanOnly: "Yalnızca insan menajerler",
+      humanOnly: "Yalnızca sen",
       age: "Yaş",
       minAge: "En düşük yaş",
       maxAge: "En yüksek yaş",
@@ -1603,7 +1602,6 @@ export const tr: Strings = {
     // The fee
     feeHeading: "Bedel",
     fee: "Bonservis bedeli",
-    feeHint: "Bedelsiz transfer için boş bırakın",
     feeInvalid: (max) => `0 ile ${max} arasında tam bir tutar girin`,
     pays: (club, fee, balance, budget) =>
       `${club} öder: ${fee}. Bakiye ${balance}${budget === null ? "" : `, transfer bütçesi ${budget}`}`,
@@ -1619,17 +1617,6 @@ export const tr: Strings = {
     fixTerms: "Önce bedeli ya da sözleşme değerlerini düzeltin.",
     checking: "Transfer kontrol ediliyor…",
     route: (from, to) => `${from} → ${to}`,
-    doesHeading: "Transfer ne yapar",
-    does: [
-      "Yeni kulübün A takımına katılır",
-      "Sözleşme oyundaki tarihle başlar; forma numarası silinir",
-      "Transfer ve kiralık listelerinden çıkar",
-      "Maaş ve sözleşme bitişi, siz yeni değer girmedikçe aynı kalır",
-      "Bedel, alan kulübün bakiyesinden ve transfer bütçesinden düşer, satan kulübün bakiyesine eklenir",
-      "Eski kulübündeki kaptanlığı boş kalır",
-      "Oyunun transfer geçmişinde henüz görünmez",
-      "Değişiklikler bölümünde listelenir; tek geri alma transferi ve bedeli birlikte geri alır",
-    ],
 
     // Swapping with a player of the club instead
     swapTitle: "Oyuncuyla takas et",
@@ -1648,66 +1635,27 @@ export const tr: Strings = {
     staffButtonTitle: "Bu personeli oyunda başka bir kulübe taşı",
     staffChooseClub: "Personelin taşınacağı kulübü seçin.",
     staffContract: "Görevi, maaşı ve sözleşme bitişi aynı kalır; sözleşme oyundaki tarihle başlar.",
-    staffDoes: [
-      "Yeni kulübe, çalıştığı bölümlerde (sağlık, antrenörlük, gözlem) katılır",
-      "Görevi, maaşı ve sözleşme bitişi aynı kalır; sözleşme oyundaki tarihle başlar",
-      "Takımın kendisinin işaret ettiği teknik direktör gibi roller oyuna bırakılır",
-      "Değişiklikler bölümünde listelenir ve oradan geri alınabilir",
-    ],
     swapChooseClub: "Takas edilecek oyuncunun kulübünü seçin.",
     swapChoosePlayer: "Takas edilecek oyuncuyu seçin.",
     swapChecking: "Takas kontrol ediliyor…",
     swapRoute: (player, from, to, other) => `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
-    swapDoesHeading: "Takas işlemi ne yapar",
-    swapDoes: [
-      "İkisi de diğerinin kulübünün A takımına katılır",
-      "Sözleşmeler oyundaki tarihle başlar; forma numaraları silinir",
-      "İkisi de transfer ve kiralık listelerinden çıkar",
-      "Eski kulüplerindeki kaptanlıkları boş kalır",
-      "Bedel ödenmez; kariyer geçmişi güncellenmez",
-      "Değişiklikler bölümünde tek değişiklik olarak listelenir; geri alınırsa ikisi de eski kulübüne döner",
-    ],
 
     // The foot
-    hint: "Transfer et'e basana kadar FM'de hiçbir şey değişmez.",
     move: "Transfer et",
     moving: "Transfer ediliyor…",
     cancel: "İptal",
-    swapHint: "Siz takas etmeden oyunda hiçbir şey değişmez.",
     swap: "Takas et",
     swapping: "Takas ediliyor…",
     loanTitle: "Kiralık",
     loanChooseClub: "Kiralık verilecek kulübü seç.",
     loanEndsAfterToday: "Bugünden sonraki bir tarih seç",
     joinsFromToday: "Bugünü ya da sonraki bir tarihi seç",
-    loanDoes: [
-      "FM kiralamayı kendisi başlatır, bugünden kiralık bitişine kadar",
-      "Kendi kulübüyle sözleşmesi sürer",
-      "Değişiklikler'deki Geri al kiralık bitişini bugüne çeker. FM ertesi gün bitirir",
-    ],
-    loanDoesEnding: [
-      "FM kiralamayı kendisi başlatır, bugünden kiralık bitişine kadar",
-      "Kendi kulübüyle sözleşmesi sürer",
-      "Değişiklikler'deki Geri al kiralığı bitirir ve kulübüne döner",
-    ],
-    loanHint: "Kirala'ya basana kadar FM'de hiçbir şey değişmez.",
     loan: "Kirala",
     loaning: "Kiralanıyor…",
     signButton: "İmzala",
     signButtonTitle: "Onu bir kulübe imzalat",
     signTitle: "İmza",
     signChooseClub: "İmzalayacağı kulübü seç.",
-    signDoes: [
-      "FM onu kendisi, kendi koşullarıyla imzalatır",
-      "Girdiğin maaş ya da sözleşme bitişi FM'inkinin yerine geçer",
-      "Değişiklikler'deki Geri al onu yeniden serbest bırakır",
-    ],
-    signLaterDoes: [
-      "FM transferi bugün kabul eder, oyuncu o gün katılır",
-      "FM sözleşmesini o gün kendi koşullarıyla belirler",
-      "Değişiklikler'deki Geri al transferi iptal eder",
-    ],
-    signHint: "İmzala'ya basana kadar FM'de hiçbir şey değişmez.",
     sign: "İmzala",
     signing: "İmzalanıyor…",
   },
@@ -1843,17 +1791,8 @@ export const tr: Strings = {
     from: "Ayrıldığı kulüp",
     checking: "Serbest bırakma kontrol ediliyor…",
     ready: (club) => `${club} → serbest oyuncu`,
-    doesHeading: "Serbest bırakma ne yapar",
-    does: [
-      "Kulübün bütün takımlarından çıkar ve sözleşmesi sona erer: her kulübün alabileceği serbest oyuncu olur",
-      "Kimseye ödeme yapılmaz",
-      "Kulüpteki kaptanlığı boş kalır",
-      "Oyunun transfer geçmişinde görünmez",
-      "Değişiklikler bölümünde listelenir; tek geri alma oyuncuyu aynı sözleşmeyle geri getirir",
-    ],
 
     // The foot
-    hint: "Serbest bırak'a basana kadar FM'de hiçbir şey değişmez.",
     release: "Serbest bırak",
     releasing: "Serbest bırakılıyor…",
     cancel: "İptal",
@@ -1868,16 +1807,8 @@ export const tr: Strings = {
     from: "Kiralık olduğu kulüp",
     checking: "Kiralık kontrol ediliyor…",
     ready: (from, to) => `${from} → ${to}`,
-    doesHeading: "Ne olur",
-    does: [
-      "FM kiralığı kendisi, bugün bitirir",
-      "Kendi kulübüne, oradaki sözleşmesiyle döner",
-      "FM kiralığın bitişiyle ilgili haberini yazar",
-      "Değişiklikler'deki Geri al kiralığı eski bitişine kadar yeniden başlatır",
-    ],
 
     // The foot
-    hint: "Kiralığı bitir'e basana kadar FM'de hiçbir şey değişmez.",
     end: "Kiralığı bitir",
     ending: "Bitiriliyor…",
     cancel: "İptal",
@@ -1892,11 +1823,9 @@ export const tr: Strings = {
     from: "Katılacağı kulüp",
     checking: "Transfer kontrol ediliyor…",
     ready: (dates) => `Tarih: ${dates}`,
-    doesHeading: "Ne olur",
-    does: ["FM anlaşmayı kendi editörü gibi kendisi iptal eder", "Oyuncu olduğu yerde kalır", "Geri alınamaz"],
 
     // The foot
-    hint: "Transferi iptal et'e basana kadar FM'de hiçbir şey değişmez.",
+    hint: "Geri alınamaz.",
     confirm: "Transferi iptal et",
     cancelling: "İptal ediliyor…",
     cancel: "Vazgeç",

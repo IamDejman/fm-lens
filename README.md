@@ -45,7 +45,7 @@ Questions and ideas go to [Discussions](https://github.com/IamDejman/fm-lens/dis
   injuries, lift bans, and run the squad actions that are already built:
   inspire, refresh fitness and sharpness, max attributes and an experimental
   max cohesion, which raises existing club familiarity only.
-- Experimental human manager options on this build: unsackable, and squad
+- Experimental options for your own manager on this build: unsackable, and squad
   registration at any time. Dismissal protection is unverified.
 - Filter players by age, ability, position, nationality, club, attributes,
   contract expiry and transfer/loan listing. Staff filters include age, nation,

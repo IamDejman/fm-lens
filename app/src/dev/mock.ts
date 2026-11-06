@@ -2025,7 +2025,7 @@ function planMove(uid: number, clubUid: number, terms: MoveTerms, fee?: number):
   if (staff.some((s) => s.isHuman && s.clubUid === player.clubUid)) {
     throw failure(
       "move.humanClub",
-      "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
+      "he plays for your club; transfer him in FM",
     );
   }
   if (to.women) {
@@ -2195,7 +2195,7 @@ function planRelease(uid: number): MovePreview["from"] {
   if (staff.some((s) => s.isHuman && s.clubUid === player.clubUid)) {
     throw failure(
       "move.humanClub",
-      "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
+      "he plays for your club; transfer him in FM",
     );
   }
   const from = clubs.find((c) => c.uid === player.clubUid)!;
@@ -2246,7 +2246,7 @@ function planSwap(uid: number, otherUid: number): MovePreview {
     if (staff.some((s) => s.isHuman && s.clubUid === p.clubUid)) {
       throw failure(
         "move.humanClub",
-        "the player is at a club a human manager runs; its tactics and training point at him too, so he leaves it in the game itself",
+        "he plays for your club; transfer him in FM",
       );
     }
   }
