@@ -91,11 +91,14 @@ Meanings traced 6 November 2026 (arm64 half of Steam 26340721):
   attacking formations are not on the profile. Seen on 11 Dec 2027: Simeone (28, second 64) and
   Arteta (29, second 4) both show 4-4-2 2DM out of possession, and the game's default for both 28 and 29 is 22; Glasner
   (63, second 35) shows 5-2-2-1 DM AM for both lines, and after +0xDF and +0xE0 were changed to 29
-  and 28 FM showed 29 with the ball and still 5-2-2-1 DM AM without it.
+  and 28 FM showed 29 with the ball and still 5-2-2-1 DM AM without it. Read later the same day:
+  +0xE3 holds 22 for Arteta and Simeone, 63 for Glasner and 30 for Gasperini, whose profile shows
+  5-3-2 DM WB without the ball. With Glasner's +0xE3 changed from 63 to 22, FM showed 4-4-2 2DM
+  on the down-arrow line a day later and kept 5-2-2-1 DM AM on the up-arrow line.
 - Formation names are built at run time from a table of 64 entries of 24 bytes at
   `0x573CFA0` (filled on first use by `0x495FC78`); the binary only holds the base shapes
-  ("4-2-3-1", "5-2-2-1 NEW" and so on). Names seen in FM: 29 4-2-3-1 DM AM Wide, 28 4-2-4 DM
-  Wide, 63 5-2-2-1 DM AM; 22 is likely 4-4-2 2DM (the default above).
+  ("4-2-3-1", "5-2-2-1 NEW" and so on). Names seen in FM: 22 4-4-2 2DM, 28 4-2-4 DM Wide,
+  29 4-2-3-1 DM AM Wide, 30 5-3-2 DM WB, 63 5-2-2-1 DM AM.
 
 Set-piece option bytes: `SPdt` +0xEE, `SPpd` +0xEF, `SPaf` +0xF0, `SPDm` +0xF1, `SPan` +0xF2,
 `SPdn` +0xF3, `Spdl` +0xF4. Values 0 to 2 (3 for the 81 unset). Meaning of each value is unknown.
@@ -313,7 +316,7 @@ edit. Not tested (read only).
 ## Needs the screen
 
 - Coaching licence labels per level, for Jover (level 2) and the manager.
-- Formation names for ids 3, 4, 7, 22, 27, 30, 32, 33, 35, 64 (or read the table at `0x573CFA0`).
+- Formation names for ids 3, 4, 7, 27, 32, 33, 35, 64 (or read the table at `0x573CFA0`).
 - Tendency names for the NT codes.
 - Which tactic setting each familiarity kind 0..5 is.
 - Staff nation knowledge percentages.
