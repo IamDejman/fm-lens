@@ -628,10 +628,12 @@ export const en = {
     retires: "Plans to retire",
     preferences: "Likes and dislikes",
     languages: "Languages",
-    /** How well a language is spoken: FM's 0 to 10. */
-    /** How well a person speaks a language (0 to 10), in FM's words: its bands are those of its language filter. */
+    /**
+     * How well a person speaks a language (0 to 10), in the words of FM's profile: 7 to 10 fluent (10 too, as for
+     * Gyökeres' English), 5 good, 3 and 4 basic. FM leaves out a language at 1.
+     */
     languageLevel: (level: number): string =>
-      level > 9 ? "Native" : level >= 7 ? "Fluent" : level >= 5 ? "Good" : level >= 2 ? "Basic" : "Does not speak",
+      level >= 7 ? "Fluent" : level >= 5 ? "Good" : level >= 2 ? "Basic" : "Does not speak",
     languageLevelTitle: (level: number) => `${level}/10`,
     rivals: "Rivals",
     linkedClubs: "Affiliated clubs",
