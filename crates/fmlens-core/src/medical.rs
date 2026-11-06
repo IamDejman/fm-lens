@@ -169,7 +169,8 @@ impl Session {
             return Err(MoveError::SameRelation);
         }
         let after = |days: u16| before.started.map(|date| date.plus_days(i64::from(days)));
-        let changed = Injury { back_soonest: after(shortest.min(days)), back_latest: after(days), days, ..before.clone() };
+        let changed =
+            Injury { back_soonest: after(shortest.min(days)), back_latest: after(days), days, ..before.clone() };
         Ok(InjuryPlan { player: player.uid, before, after: Some(changed), patches: patches.0 })
     }
 
