@@ -719,6 +719,13 @@ dd,
   gap: 8px;
 }
 
+/* What a version brought, in the notice after an update. */
+.whats-new {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
 /* Connect */
 
 .connect {

@@ -12,7 +12,8 @@ import { call, inTauri } from "./api";
 import { describeError } from "./format";
 
 /** Where the releases are; the only pages the app opens (see capabilities/default.json). */
-const LATEST_RELEASE_PAGE = "https://github.com/IamDejman/fm-lens-releases/releases/latest";
+const RELEASES_PAGE = "https://github.com/IamDejman/fm-lens-releases/releases";
+const LATEST_RELEASE_PAGE = `${RELEASES_PAGE}/latest`;
 
 /** How long reading `latest.json` and downloading the new version may take, in milliseconds. */
 const CHECK_TIMEOUT_MS = 30_000;
@@ -33,6 +34,13 @@ export type UpdateState =
   | { phase: "failed"; version: string; reason: string };
 
 /** Opens the latest release's page in the browser. */
+/** Opens the release notes of `version`, on its release's page. */
+export function openRelease(version: string): void {
+  openUrl(`${RELEASES_PAGE}/tag/v${version}`).catch(() => {
+    // Nothing to fall back on: the notice stays, and its text says what the version brought.
+  });
+}
+
 export function openLatestRelease(): void {
   void openUrl(LATEST_RELEASE_PAGE);
 }
