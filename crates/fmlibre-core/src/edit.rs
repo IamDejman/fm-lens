@@ -66,6 +66,14 @@ pub enum Kind {
     /// A pointer to another of the game's objects, such as a person's nation. Only an object of the same class as
     /// the one it points at now may take its place.
     Pointer,
+    /// A non-negative `f32`, such as a nation's FIFA points, held as its bits: for such numbers the bits run in the
+    /// order of the values, so ranges and expected values compare exactly and an undo writes back the very value.
+    F32,
+}
+
+/// The bits of `value`, a non-negative `f32`, as a field of [`Kind::F32`] holds them.
+pub fn f32_bits(value: f32) -> i64 {
+    i64::from(value.to_bits())
 }
 
 impl Kind {
@@ -73,7 +81,7 @@ impl Kind {
         match self {
             Kind::U8 | Kind::I8 | Kind::Flag => 1,
             Kind::U16 | Kind::I16 => 2,
-            Kind::I32 | Kind::U32 | Kind::Date => 4,
+            Kind::I32 | Kind::U32 | Kind::Date | Kind::F32 => 4,
             Kind::Pointer => 8,
         }
     }
@@ -87,7 +95,7 @@ impl Kind {
             Kind::U16 => i64::from(u16_at(0)),
             Kind::I16 => i64::from(u16_at(0) as i16),
             Kind::I32 => i64::from(i32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
-            Kind::U32 => i64::from(u32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
+            Kind::U32 | Kind::F32 => i64::from(u32::from_le_bytes(bytes[..4].try_into().expect("4 bytes"))),
             Kind::Date => FmDate::from_raw(u16_at(0), u16_at(2)).map_or(0, FmDate::to_number),
             Kind::Pointer => i64::from_le_bytes(bytes[..8].try_into().expect("8 bytes")),
         }
@@ -103,7 +111,7 @@ impl Kind {
             Kind::U16 => u16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I16 => i16::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::I32 => i32::try_from(value).expect(FITS).to_le_bytes().to_vec(),
-            Kind::U32 => u32::try_from(value).expect(FITS).to_le_bytes().to_vec(),
+            Kind::U32 | Kind::F32 => u32::try_from(value).expect(FITS).to_le_bytes().to_vec(),
             Kind::Date => {
                 let date = FmDate::from_number(value).expect(FITS);
                 let flags = u16::from_le_bytes([old[0], old[1]]) & !0x1FF;
@@ -552,9 +560,12 @@ pub const COACHING_LICENCES: [i64; 8] = [0, 7, 6, 5, 4, 3, 2, 1];
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
 
-/// The senior national teams' reputations and the containers' youth ratings, men's and women's, the population,
-/// whether dual nationality is allowed, and the years of residence that gain the nationality (255: no number of years
-/// does). One nation at a time; none where the build's layout does not place nations.
+/// The most FIFA points the editor writes; the leader of the test save had 1,995.88.
+const MOST_FIFA_POINTS: f32 = 3000.0;
+
+/// The senior national teams' reputations and the containers' youth ratings, men's and women's, the men's FIFA points,
+/// the population, whether dual nationality is allowed, and the years of residence that gain the nationality (255: no
+/// number of years does). One nation at a time; none where the build's layout does not place nations.
 fn nation_fields(layout: &Layout) -> Vec<Field> {
     let Some(n) = layout.national.as_ref() else {
         return Vec::new();
@@ -573,6 +584,10 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
         field("women.reputation", layout.team.reputation, Kind::U16, 0..=10_000)
             .in_record(Place::NationalTeam(Side::Women)),
         youth("women.youth_rating", Side::Women),
+        // The live points FM ranks by at its next ranking date; the published position follows then, not at once.
+        field("points", n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
+            .plausible(0..=f32_bits(f32::MAX))
+            .in_record(Place::NationalContainer(Side::Men)),
         // Tuvalu has 9,646 people, Nigeria 232,679,478.
         field("population", n.population, Kind::U32, 1..=2_000_000_000).plausible(0..=i64::from(u32::MAX)),
         field("dual_nationality", n.dual_nationality, Kind::U8, 0..=2).choices(&DUAL_NATIONALITY),
@@ -1421,12 +1436,23 @@ mod tests {
                 "youth_rating",
                 "women.reputation",
                 "women.youth_rating",
+                "points",
                 "population",
                 "dual_nationality",
                 "naturalisation"
             ]
         );
         assert!(nations.iter().all(|f| !f.mass && !f.shifted));
+
+        // The men's FIFA points, an f32 in the container held as its bits: England's 1,922.83 is in range, a negative
+        // number or one past 3,000 is not, and the bytes written are the float's own.
+        let points = key("points");
+        assert_eq!((points.place, points.offset, points.kind), (Place::NationalContainer(Side::Men), 0x378, Kind::F32));
+        let england = f32_bits(1922.83);
+        assert!(points.takes(0) && points.takes(england) && points.takes(f32_bits(3000.0)));
+        assert!(!points.takes(f32_bits(3000.01)) && !points.takes(f32_bits(-1.0)));
+        assert_eq!(points.decode(&1922.83f32.to_le_bytes()), england);
+        assert_eq!(points.encode(f32_bits(2000.5), &[0; 4]), 2000.5f32.to_le_bytes());
 
         // The senior teams' reputations, found through the containers; the youth ratings in the containers; the rest
         // in the nation itself.

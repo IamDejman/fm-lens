@@ -580,6 +580,7 @@ export const es: Strings = {
     youth_rating: "Valoración de cantera",
     "women.reputation": "Reputación femenina",
     "women.youth_rating": "Valoración de cantera femenina",
+    points: "Puntos FIFA",
   },
 
   profile: {
@@ -1339,6 +1340,7 @@ export const es: Strings = {
     invalidDate: (from, to) => `Introduce una fecha del ${from} al ${to}`,
     invalidMoney: (from, to) => `Introduce un importe entero de ${from} a ${to}`,
     invalidPercentage: (from, to) => `Introduce un porcentaje entero de ${from} a ${to}`,
+    invalidDecimal: (from, to) => `Introduce un número con hasta dos decimales de ${from} a ${to}`,
     percent: "%",
     yes: "Sí",
     no: "No",

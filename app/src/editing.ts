@@ -66,14 +66,32 @@ export const undoChange = (id: number) => call<LoggedChange>("undo_change", { id
 /** The whole percentage the game shows (0–100) for a stored one (0–10000), for a profile that has no field table. */
 export const wholePercent = (stored: number): number => Math.floor((stored + 50) / 100);
 
+const floatBits = new DataView(new ArrayBuffer(4));
+
+/** The float whose bits are `bits`, as an "f32" field stores it. */
+function floatOf(bits: number): number {
+  floatBits.setUint32(0, bits);
+  return floatBits.getFloat32(0);
+}
+
+/** The bits of `value` as a 32-bit float. */
+function bitsOf(value: number): number {
+  floatBits.setFloat32(0, value);
+  return floatBits.getUint32(0);
+}
+
 /**
  * The value the game shows for a stored one: attributes are stored 0–100 and shown 1–20, percentages are stored
- * 0–10000 and shown 0–100, and money is stored in pounds and shown in the chosen currency (see `currency.ts`). A
- * blank, such as an asking price that is not set, is shown as it is stored.
+ * 0–10000 and shown 0–100, money is stored in pounds and shown in the chosen currency (see `currency.ts`), and a
+ * float is shown in hundredths (1922.83 as 192283). A blank, such as an asking price that is not set, is shown as it
+ * is stored.
  */
 export function shownValue(field: EditField, stored: number): number {
   if (field.kind === "i32") {
     return stored === field.blank ? stored : toShown(stored);
+  }
+  if (field.kind === "f32") {
+    return Math.round(floatOf(stored) * 100);
   }
   switch (field.scale) {
     case "attribute":
@@ -95,11 +113,14 @@ export const isStoredFiner = (field: EditField | undefined): boolean =>
 
 /**
  * The stored value to write for a value typed as shown: the middle of the stored values the game shows as it; for
- * money, the nearest whole pound.
+ * money, the nearest whole pound; for a float, its bits.
  */
 export function storedValue(field: EditField, shown: number): number {
   if (field.kind === "i32") {
     return shown === field.blank ? shown : toPounds(shown);
+  }
+  if (field.kind === "f32") {
+    return bitsOf(shown / 100);
   }
   switch (field.scale) {
     case "attribute":
