@@ -165,7 +165,10 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
       <CareerGroup details={details} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} />
-      <PreferencesGroup preferences={details.preferences} />
+      <PreferencesGroup
+        preferences={details.preferences}
+        owner={{ uid: details.uid, staff: false, name: details.name }}
+      />
     </>
   );
 }
