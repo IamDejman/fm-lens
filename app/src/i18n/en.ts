@@ -125,6 +125,11 @@ const errors: ErrorTexts = {
   "guard.careerChanged": () => "FM reloaded the save. Press Reload before you edit again.",
   "guard.failed": (p) =>
     `${checkName(p.check)} look wrong in this FM version, so FM Lens won't change them.`,
+  "move.changed": () => "FM has changed this since. Press Reload and try again.",
+  "move.notApplied": () => "FM Lens wrote the change, but FM holds something else.",
+  "memory.read": (p) => `Couldn't read FM's memory (system error ${p.code}).`,
+  "memory.write": (p) => `Couldn't write to FM's memory (system error ${p.code}).`,
+  "memory.notWritable": () => "That isn't part of FM's writable memory, so nothing was written.",
   "memory.noBridge": () =>
     "FM was started without the FM Lens helper. Quit FM and start it again from Steam.",
   "setup.steamRunning": () =>

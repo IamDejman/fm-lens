@@ -1006,8 +1006,10 @@ impl Session {
         self.write(target, field, value, None, false)
     }
 
-    /// Like [`Session::write_field`], but only while the game still holds `expected`:
-    /// otherwise nothing is written and the error is a [`EditError::Conflict`].
+    /// Like [`Session::write_field`], but only while the game still holds `expected`, or
+    /// already holds `value`, when nothing needs writing: otherwise nothing is written and the
+    /// error is a [`EditError::Conflict`]. An undo of a value the game has put back itself
+    /// is done.
     pub fn write_field_if(
         &self,
         target: &Target,
@@ -1050,7 +1052,7 @@ impl Session {
         let old_bytes = self.process.read_bytes(address, field.kind.size())?;
         let old = field.decode(&old_bytes);
         if let Some(expected) = expected
-            && old != expected
+            && conflicts(expected, old, value)
         {
             return Err(EditError::Conflict { field: field.key.clone(), expected, found: old });
         }
@@ -1124,7 +1126,8 @@ impl Session {
         Ok(None)
     }
 
-    /// Undoes `change`, provided the game still holds the value it wrote.
+    /// Undoes `change`, provided the game still holds the value it wrote, or already holds the
+    /// one it found.
     pub fn revert(&self, target: &Target, change: &Change) -> Result<Change, EditError> {
         let field = self.field(target.entity, &change.field)?;
         self.write(target, &field, change.old, Some(change.new), true)
@@ -1239,9 +1242,23 @@ impl Session {
     }
 }
 
+/// Whether a write of `value` over `expected` meets something else: the game holds `old`, neither what the write
+/// expects nor what it would write.
+fn conflicts(expected: i64, old: i64, value: i64) -> bool {
+    old != expected && old != value
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_write_meets_a_conflict_only_where_the_game_holds_neither_value() {
+        // Undo of 10 to 7: the game holds 7, or has put 10 back itself.
+        assert!(!conflicts(7, 7, 10));
+        assert!(!conflicts(7, 10, 10));
+        assert!(conflicts(7, 8, 10));
+    }
 
     #[test]
     fn kinds_round_trip() {
