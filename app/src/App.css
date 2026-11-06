@@ -3020,21 +3020,6 @@ button.danger:hover:not(:disabled) {
   font-weight: 850;
 }
 
-.changes .toolbar {
-  margin-bottom: 4px;
-}
-
-.view-note {
-  margin: 0 0 12px;
-  color: var(--muted);
-  font-size: var(--type-base);
-}
-
-/* Notes one under the other are one block of text: the air goes under the last of them. */
-.view-note:has(+ .view-note) {
-  margin-bottom: 2px;
-}
-
 /* A row is not picked, only undone. */
 .changes-grid tbody tr {
   cursor: default;

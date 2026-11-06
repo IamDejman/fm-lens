@@ -1397,8 +1397,6 @@ export const es: Strings = {
   changes: {
     nav: "Cambios",
     title: "Cambios de esta sesión",
-    hint: "Los más recientes primero. Puedes deshacer un cambio mientras FM no cambie ese valor.",
-    continueHint: "Los cambios se ven en FM cuando pulsas Continuar.",
     swappedWith: (name) => `Intercambiado por ${name}`,
     fee: (amount) => `Traspaso: ${amount}`,
     joins: (date) => `Se incorpora el ${date}`,
