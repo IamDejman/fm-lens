@@ -76,3 +76,8 @@ Nations, clubs and competitions
   change may not appear there.
 - Cancelling an agreed transfer can't be undone.
 - Not every field has been checked through a save and reload in FM.
+
+## Source code
+
+FM Lens is free software under the GNU GPL, version 3 or later. The source of this
+version is [IamDejman/fm-lens at v0.5.1](https://github.com/IamDejman/fm-lens/tree/v0.5.1).
