@@ -368,7 +368,9 @@ fn loan_fields(layout: &Layout) -> Vec<Field> {
 }
 
 /// The squad statuses the editor offers, by the codes contracts hold them as (see the names in the app's
-/// dictionaries). The game uses more codes than these, e.g. for goalkeepers and youngsters.
+/// dictionaries). The game uses more codes than these, named from FM's contract screen: 7 fringe player, 9 and
+/// 21 emergency backup, 10 breakthrough prospect, 11 future prospect, 13 youngster, 15 first-choice goalkeeper,
+/// 16 cup goalkeeper, 17 domestic cup goalkeeper, 20 backup, 22 surplus to requirements; 14 is unnamed.
 pub const SQUAD_STATUSES: [i64; 5] = [1, 2, 3, 4, 5];
 
 /// A squad number from 1 to 99 (255: none), the squad status, and whether the player is on
