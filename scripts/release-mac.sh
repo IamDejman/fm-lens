@@ -5,7 +5,8 @@
 #
 # Usage: scripts/release-mac.sh [--publish]
 # --publish uploads those files as the latest release of the public repository IamDejman/fm-lens-releases (made the
-# first time), with docs/release-notes.md as its text. Copies of FM Lens then install it when they next open.
+# first time), with docs/release-notes.md as its text. Copies of FM Lens then install it when they next open. GitHub shows
+# every line break in release text, so each paragraph and list item of that file is one line.
 #
 # The updater key is ~/.tauri/fm-lens-updater.key, or the file FM_LENS_UPDATER_KEY names; its public half is in
 # tauri.conf.json. Without it no installed copy accepts the update: keep a backup of it. Needs pipx for the disk image.
@@ -18,12 +19,17 @@ PUBLISH=false
 while [ $# -gt 0 ]; do
   case "$1" in
     --publish) PUBLISH=true; shift ;;
-    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
 
 [ -f "$KEY" ] || { echo "No updater key at $KEY" >&2; exit 2; }
+if $PUBLISH && perl -0ne 'exit !/\S\n(?:[ \t]+\S|(?![-*+] |\d+\. |#|>|\|)\S)/' "$ROOT/docs/release-notes.md"; then
+  echo "docs/release-notes.md splits a paragraph or list item over lines, which GitHub would show as breaks." >&2
+  echo "Put each paragraph and list item on one line." >&2
+  exit 2
+fi
 VERSION=$(node -p "require('$ROOT/app/src-tauri/tauri.conf.json').version")
 NAME="FM-Lens-$VERSION-macos-universal"
 BUNDLE="$ROOT/target/universal-apple-darwin/release/bundle/macos"

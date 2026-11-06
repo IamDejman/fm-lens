@@ -412,6 +412,13 @@ export interface CompetitionSummary {
   women: boolean;
 }
 
+/** A competition's rule, as FM's own data for it holds it: a number, or yes or no. */
+export interface CompetitionRule {
+  /** e.g. "max_foreign_players"; a key of `competitionList.ruleNames`. */
+  key: string;
+  value: number | boolean;
+}
+
 export interface CompetitionPage {
   total: number;
   rows: CompetitionSummary[];
@@ -756,6 +763,8 @@ export interface NationDetails {
   /** FM's game importance, 0 to 4, and attendance, 0 to 16, of its men's football. */
   gameImportance: number | null;
   attendance: number | null;
+  /** Its men's style ratings, 0 to 20, by key ("depth", "tempo", …); null where the build does not place them. */
+  style: Record<string, number> | null;
   /** Strongest first. */
   rivals: Related[];
   /** The senior team first. */
@@ -770,6 +779,7 @@ export interface WomenFootball {
   youthRating: number | null;
   gameImportance: number | null;
   attendance: number | null;
+  style: Record<string, number> | null;
   /** The senior team first. */
   teams: NationalTeam[];
 }
@@ -825,6 +835,8 @@ export interface Injury {
   /** When he is expected back, at the soonest and at the latest. */
   backSoonest: FmDate | null;
   backLatest: FmDate | null;
+  /** How many days from when it began he is out at the most. */
+  days: number;
 }
 
 /** One current ban of a player. */

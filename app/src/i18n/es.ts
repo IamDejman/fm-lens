@@ -469,6 +469,21 @@ export const es: Strings = {
     corporate: "Corporativas",
   },
 
+  nationStyle: {
+    depth: "Profundidad",
+    directness: "Juego directo",
+    flamboyancy: "Vistosidad",
+    flexibility: "Flexibilidad",
+    free_roles: "Roles libres",
+    marking: "Marcaje",
+    offside: "Fuera de juego",
+    pressing: "Presión",
+    sitting_back: "Repliegue",
+    tempo: "Ritmo",
+    playmaker: "Uso del organizador",
+    width: "Amplitud",
+  },
+
   supporterTraits: {
     loyalty: "Lealtad",
     passion: "Pasión",
@@ -560,6 +575,7 @@ export const es: Strings = {
     level: "Nivel",
     club: "Club",
     injuries: "Lesiones",
+    injury: "Lesión",
     work_permit: "Permiso de trabajo",
     bans: "Sanciones",
     promise: "Promesa",
@@ -716,8 +732,7 @@ export const es: Strings = {
     keepPlaying: "Evitar la retirada",
     keepingPlaying: "Evitando…",
     keepPlayingTitle:
-      "Cancela su retirada y cambia «Se retirará en lo más alto» por «Jugará al fútbol tanto tiempo como pueda». " +
-      "Puedes deshacerlo en Cambios.",
+      "Cancela su retirada. Puedes deshacerlo en Cambios.",
 
     // Médico
     morale: (value) => `${value} / 20`,
@@ -768,7 +783,7 @@ export const es: Strings = {
     moraleTitle:
       "En FM: 10 es satisfecho, 11 algo feliz, 15 y 20 extremadamente feliz.",
     jadednessTitle:
-      "Lo cansado que está de jugar. -500 es totalmente descansado. Cuanto más alto, más necesita descansar.",
+      "Lo cansado que está. -500 es totalmente descansado.",
     noInjuries: "Sin lesiones",
     unknownInjury: "Lesión desconocida",
     injuryStarted: (date) => `Desde el ${date}`,
@@ -1085,6 +1100,28 @@ export const es: Strings = {
     shortName: "Nombre corto",
     reputation: "Reputación",
     women: "Femenino",
+    rules: "Reglas",
+    ruleNames: {
+      level: "Nivel",
+      max_squad_size: "Tamaño máximo de plantilla",
+      min_squad_size: "Tamaño mínimo de plantilla",
+      recommended_squad_size: "Tamaño de plantilla recomendado",
+      max_prelim_squad_size: "Máximo en la lista preliminar",
+      min_foreign_players: "Mínimo de extranjeros",
+      max_foreign_players: "Máximo de extranjeros",
+      foreign_trialists_can_play: "Pueden jugar extranjeros a prueba",
+      subs_allowed: "Cambios permitidos",
+      max_subs: "Suplentes convocados",
+      extended_injury_time: "Tiempo añadido ampliado",
+      daylight_offside_rule: "Fuera de juego con luz",
+      yellow_cards_for_fine: "Amarillas para una multa",
+      min_games_for_medal: "Partidos para una medalla",
+      number_of_medals: "Medallas",
+      min_stadium_capacity: "Aforo mínimo del estadio",
+      min_stadium_seating: "Asientos mínimos del estadio",
+      requires_grass_pitch: "Exige césped natural",
+      requires_undersoil_heating: "Exige calefacción bajo el césped",
+    },
   },
 
   awardList: {
@@ -1183,6 +1220,8 @@ export const es: Strings = {
     gameImportance: "Importancia del juego",
     attendance: "Asistencia",
     women: "Fútbol femenino",
+    style: "Estilo",
+    womenStyle: "Estilo femenino",
     teamName: (ageLimit) => (ageLimit === null ? "Selección absoluta" : `Sub-${ageLimit}`),
     womenTeamName: (ageLimit) => (ageLimit === null ? "Selección femenina absoluta" : `Femenina sub-${ageLimit}`),
     manager: "Seleccionador",
@@ -1348,6 +1387,9 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.3": [
+        "Los archivos, los ajustes y el ayudante de Steam usan ahora el nombre FM Lens. Tu configuración se ha conservado.",
+      ],
       "0.5.2": [
         "Informar de un problema, en Ajustes, abre un informe de error con tus versiones y cambios ya rellenados.",
         "Cuando FM mueve sus datos, FM Lens vuelve a leer la partida solo: ya no hace falta pulsar Recargar datos.",
@@ -1363,6 +1405,7 @@ export const es: Strings = {
     editTitle: "Cambiar los valores de este perfil en el juego",
     startFailed: (reason) => `No se ha podido empezar a editar: ${reason}`,
     positionRating: (position) => `Valoración de ${position}`,
+    womenStyle: (style) => `${style} (femenino)`,
     was: (value) => `antes: ${value}`,
     invalid: (min, max) => `Introduce un número entero de ${min} a ${max}`,
     least: (value) => `Mín.: ${value}`,
@@ -1813,6 +1856,9 @@ export const es: Strings = {
     languagesTitle: "Cambiar en el juego cómo de bien habla cada idioma",
     levelOf: (name) => `Nivel de ${name}`,
     raisedBack: "FM lo vuelve a subir por su cuenta",
+    injuriesTitle: "Cambiar cuántos días dura cada lesión",
+    daysOut: "Días de baja",
+    daysOf: (name) => `Días de baja por ${name}`,
     save: "Guardar",
   },
 

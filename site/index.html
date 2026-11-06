@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FM Lens: Football Manager 27 companion for Mac</title>
+  <meta name="description" content="A free Mac companion for Football Manager 27. Search, compare and edit players, staff and clubs in your loaded career while FM runs.">
+  <link rel="canonical" href="https://getfmlens.com/">
+  <meta name="theme-color" content="#251b37">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://getfmlens.com/">
+  <meta property="og:title" content="FM Lens: Football Manager 27 companion for Mac">
+  <meta property="og:description" content="Search, compare and edit players, staff and clubs in your loaded FM27 career while you play. Free and open source.">
+  <meta property="og:image" content="https://getfmlens.com/images/social.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" sizes="64x64" href="images/icon-64.png">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+  <link rel="preload" href="fonts/archivo-latin-wdth-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "FM Lens",
+    "url": "https://getfmlens.com/",
+    "applicationCategory": "GameApplication",
+    "operatingSystem": "macOS",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "license": "https://www.gnu.org/licenses/gpl-3.0.html"
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="masthead">
+    <div class="wrap bar">
+      <a class="brand" href="/" aria-label="FM Lens home">
+        <img src="images/symbol.png" alt="" width="40" height="40">
+        <span translate="no">FM Lens</span>
+      </a>
+      <nav aria-label="Elsewhere">
+        <a href="/releases/">Release notes</a>
+        <a href="https://github.com/IamDejman/fm-lens">GitHub</a>
+      </nav>
+    </div>
+
+    <div class="hero">
+      <div class="wrap">
+        <h1>FM Lens is a free Mac companion for Football Manager 27.</h1>
+        <p class="lead">It reads the career you have loaded and lets you search, compare and edit players, staff and
+          clubs while FM runs.</p>
+        <div class="get">
+          <a class="button" href="/download/">
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>
+            Download for Mac
+          </a>
+          <p id="release-line">For Apple Silicon and Intel Macs.</p>
+        </div>
+        <div class="shot">
+          <img src="images/fm-lens-1280.webp"
+            srcset="images/fm-lens-800.webp 800w, images/fm-lens-1280.webp 1280w, images/fm-lens-1920.webp 1920w"
+            sizes="(min-width: 1200px) 1120px, calc(100vw - 32px)" width="1920" height="1200"
+            fetchpriority="high"
+            alt="FM Lens showing a list of players beside one player's profile, with his attributes rated 1 to 20">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <section class="part" aria-labelledby="what">
+      <h2 id="what">What it does</h2>
+      <dl class="features">
+        <div>
+          <dt>Find anyone</dt>
+          <dd>Search and filter players, staff and clubs. Browse nations, stadiums and officials too.</dd>
+        </div>
+        <div>
+          <dt>Edit your save</dt>
+          <dd>Attributes, CA and PA, positions, traits, personality and contracts, plus club finances and
+            facilities.</dd>
+        </div>
+        <div>
+          <dt>Undo any change</dt>
+          <dd>Edits go into FM when you press Apply. Changes lists each one, ready to undo.</dd>
+        </div>
+        <div>
+          <dt>Templates</dt>
+          <dd>Copy a player's profile onto others, with a preview first.</dd>
+        </div>
+        <div>
+          <dt>Squad actions</dt>
+          <dd>Heal injuries, lift bans, refresh fitness and sharpness, or freeze a player's attributes.</dd>
+        </div>
+        <div>
+          <dt>Out of your way</dt>
+          <dd>Works offline and updates itself.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="part" aria-labelledby="start">
+      <h2 id="start">Get started</h2>
+      <ol class="steps">
+        <li>
+          <p>Open the disk image and drag <strong>FM Lens</strong> onto <strong>Applications</strong>. The first time,
+            macOS cannot check the app: open <strong>System Settings › Privacy &amp; Security</strong> and choose
+            <strong>Open Anyway</strong>.</p>
+        </li>
+        <li>
+          <p>Save and quit FM, quit Steam, then choose <strong>Set up</strong> in FM Lens.</p>
+        </li>
+        <li>
+          <p>Start FM from Steam, load a copy of your save and choose <strong>Connect</strong>.</p>
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>FM Lens is free and <a href="https://github.com/IamDejman/fm-lens">open source</a> under the GPL-3.0
+        license. It is not affiliated with or endorsed by Sports Interactive or SEGA.</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { latestRelease } from "./release.js";
+
+    const release = await latestRelease();
+    if (release) {
+      document.getElementById("release-line").textContent = `Version ${release.version}, for Apple Silicon and Intel Macs.`;
+    }
+  </script>
+</body>
+</html>
