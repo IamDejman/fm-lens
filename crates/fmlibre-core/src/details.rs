@@ -137,6 +137,8 @@ pub struct PlayerDetails {
     pub loan: Option<crate::loans::LoanTerms>,
     /// His work permits (see [`crate::Session::work_permits`]).
     pub work_permits: Vec<crate::work_permits::WorkPermit>,
+    /// The transfers the game agreed for him on a later day (see [`crate::Session::future_transfers`]).
+    pub future_transfers: Vec<crate::game_calls::FutureTransfer>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -342,6 +344,7 @@ pub fn read_player_details(
         clause_room: 0,
         loan: None,
         work_permits: Vec::new(),
+        future_transfers: Vec::new(),
     }))
 }
 

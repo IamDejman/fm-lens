@@ -95,7 +95,13 @@ impl Session {
             return Err(MoveError::SameRelation);
         }
         let after = Language { level, ..before.clone() };
-        Ok(LanguagePlan { entity: person.entity(), person: person.uid(), before, after: Some(after), patches: patches.0 })
+        Ok(LanguagePlan {
+            entity: person.entity(),
+            person: person.uid(),
+            before,
+            after: Some(after),
+            patches: patches.0,
+        })
     }
 
     /// Works out taking the language at `index` out of the list of `person`: the ones after it move up one. Nothing

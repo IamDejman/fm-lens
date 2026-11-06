@@ -8,13 +8,14 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use fmlibre_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet,
     ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, EndedLoan, Entity,
-    EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo,
-    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Lifted, Listed, Loan, MoveError,
-    MovePlan, MoveTerms, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange, Picture,
-    Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
-    Language, LanguageSet, PreferenceKind, PersonRef, PreferenceSet, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped,
-    StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target,
-    TemplateGroup, Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
+    EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN,
+    GameActions, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, InjuryKind, Kind, Language,
+    LanguageSet, Lifted, Listed, Loan, MoveError, MovePlan, MoveTerms, Nation, NationDetails, NationSummary,
+    OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter,
+    PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet, RelationSet,
+    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter,
+    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup,
+    Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -634,6 +635,40 @@ impl Connection {
         logged
     }
 
+    /// Logs a transfer agreed for a later day the game cancelled, as a change of the player's `future_transfer` from
+    /// the club he was to join (its UID; 0 when the game names none) to none, with that club and the day. Nothing
+    /// undoes it.
+    fn log_cancelled_transfer(&mut self, player: u32, cancelled: FutureTransfer) -> LoggedChange {
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(player),
+            change: Change {
+                entity: Entity::Player,
+                uid: player,
+                field: "future_transfer".to_owned(),
+                old: cancelled.club_uid.map_or(0, i64::from),
+                new: 0,
+            },
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: Some(MovedClubs {
+                from: None,
+                to: cancelled.club,
+                with: None,
+                fee: None,
+                joins: cancelled.joins.map(FmDate::to_number),
+            }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Permanent),
+        };
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs a free agent's signing the game agreed for a later day, as a change of his `club` from none with the day
     /// he joins; undone by cancelling it. He stays a free agent until then, so his list row does not change.
     fn log_signing_later(&mut self, agreed: AgreedSigning) -> LoggedChange {
@@ -1183,6 +1218,9 @@ impl Connection {
             ));
         }
         match entry.undo {
+            Some(Undo::Permanent) => {
+                return Err(Failure::new("app.permanent", "This change cannot be undone."));
+            }
             Some(Undo::Move(moved)) => {
                 // The fee goes back first, by what it changed; if the player cannot go back, it is paid again.
                 self.session.refund_fee(&moved.paid)?;
@@ -1533,9 +1571,19 @@ struct LoggedChange {
     #[serde(skip_serializing_if = "Option::is_none")]
     clause: Option<ClauseChange>,
     /// For a move, healing, lifting bans, a captaincy, a tie or a clause: what undoing it takes. Other changes write
-    /// back `old`.
-    #[serde(skip)]
+    /// back `old`. The app is told only of a change nothing undoes, as `permanent: true`.
+    #[serde(rename = "permanent", serialize_with = "serialize_permanent", skip_serializing_if = "is_undoable")]
     undo: Option<Undo>,
+}
+
+/// Whether undoing a change can be tried: all but a [`Undo::Permanent`] one.
+fn is_undoable(undo: &Option<Undo>) -> bool {
+    !matches!(undo, Some(Undo::Permanent))
+}
+
+/// A [`Undo::Permanent`] change's `undo`, as the app is told of it.
+fn serialize_permanent<S: serde::Serializer>(_: &Option<Undo>, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_bool(true)
 }
 
 /// What undoing a change takes when writing back its old value is not enough.
@@ -1567,6 +1615,9 @@ enum Undo {
     SignedLater(AgreedSigning),
     /// A player the game made fully familiar with his team's tactic: undone by putting his familiarity back.
     Tactics(fmlibre_core::RaisedTactics),
+    /// A change nothing undoes: a transfer agreed for a later day the game cancelled, which only the clubs' own
+    /// negotiation agrees again.
+    Permanent,
 }
 
 /// A member of staff's move or new job as the log keeps it: the writes to undo, and what his list row said before.
@@ -2953,6 +3004,27 @@ fn sign_free_agent_later(state: State<'_, AppState>, uid: u32, club: u32, joins:
     Ok(connection.log_signing_later(agreed))
 }
 
+/// The transfers the game agreed for the player `uid` on a later day, as cancelling them finds them; the error says why
+/// they cannot be cancelled. Nothing is written.
+#[tauri::command]
+fn plan_cancel_future_transfers(state: State<'_, AppState>, uid: u32) -> Result<Vec<FutureTransfer>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    Ok(connection.session.plan_cancel_future_transfers(player)?)
+}
+
+/// Has the game cancel every transfer it agreed for the player `uid` on a later day, as its own editor does. Each is
+/// logged as a change of his `future_transfer` to none, which nothing undoes.
+#[tauri::command]
+fn cancel_future_transfers(state: State<'_, AppState>, uid: u32) -> Result<Vec<LoggedChange>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let cancelled = connection.session.cancel_future_transfers(player)?;
+    Ok(cancelled.into_iter().map(|transfer| connection.log_cancelled_transfer(uid, transfer)).collect())
+}
+
 /// Has the game sign the free agent `uid` for the senior team of the club `club`, on its own terms; `terms` then replace
 /// its wage and contract end where given. Logged as a change of his `club` from none, and undone by releasing him again.
 #[tauri::command]
@@ -3659,6 +3731,8 @@ pub fn run() {
             end_loan,
             sign_free_agent,
             sign_free_agent_later,
+            plan_cancel_future_transfers,
+            cancel_future_transfers,
             keep_playing,
             change_tie,
             remove_tie,

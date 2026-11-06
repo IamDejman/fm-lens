@@ -324,6 +324,7 @@ const errors: ErrorTexts = {
   "app.dataChanged": () => `Estos datos han cambiado en el juego; ${reload}.`,
   "app.noChange": (p) => `No existe el cambio ${p.id}.`,
   "app.alreadyUndone": () => "Este cambio ya se ha deshecho.",
+  "app.permanent": () => "Este cambio no se puede deshacer.",
   "app.earlierGame": () =>
     "Este cambio se hizo antes de que FM se cerrara o cargara una partida, así que ya no se puede deshacer.",
   "export.failed": (p) => `No se ha podido escribir el archivo: ${p.reason}`,
@@ -537,6 +538,7 @@ export const es: Strings = {
     "loan.wage": "Salario pagado por el club receptor",
     "loan.ends": "Fin de la cesión",
     "transfer.joins": "Se incorpora",
+    future_transfer: "Traspaso pendiente",
     loan: "Cesión",
     "contract.squad_number": "Dorsal",
     "contract.squad_status": "Estatus en la plantilla",
@@ -653,6 +655,9 @@ export const es: Strings = {
     loanStarts: "Inicio de la cesión",
     loanEnds: "Fin de la cesión",
     loanFutureFee: "Traspaso futuro",
+    futureTransfer: "Traspaso pendiente",
+    futureClub: "Club",
+    futureJoins: "Se incorpora",
     workPermit: "Permiso de trabajo",
     permitActive: "Activo",
     permitEsc: (date: string) => `Plaza ESC desde el ${date}`,
@@ -1925,6 +1930,25 @@ export const es: Strings = {
     end: "Terminar cesión",
     ending: "Terminando…",
     cancel: "Cancelar",
+  },
+
+  cancelTransfer: {
+    button: "Cancelar traspaso",
+    buttonTitle: "Cancela el traspaso que FM acordó para más adelante.",
+
+    // El diálogo
+    title: "Cancelar traspaso",
+    from: "Se incorpora a",
+    checking: "Comprobando el traspaso…",
+    ready: (dates) => `Previsto para ${dates}`,
+    doesHeading: "Qué pasa",
+    does: ["FM cancela el acuerdo él mismo, como su propio editor", "Se queda donde está", "No se puede deshacer"],
+
+    // El pie
+    hint: "Nada cambia en FM hasta que pulsas Cancelar traspaso.",
+    confirm: "Cancelar traspaso",
+    cancelling: "Cancelando…",
+    cancel: "Mantenerlo",
   },
 
   squad: {

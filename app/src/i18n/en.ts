@@ -458,6 +458,7 @@ export const en = {
     "loan.wage": "Loan wage paid by borrower",
     "loan.ends": "Loan end",
     "transfer.joins": "Joins",
+    future_transfer: "Future transfer",
     // A loan the game started, which the change log keeps as a change of the player's club for the loan.
     loan: "Loan",
     "contract.squad_number": "Squad number",
@@ -600,6 +601,10 @@ export const en = {
     loanStarts: "Loan began",
     loanEnds: "Loan ends",
     loanFutureFee: "Future fee",
+    /** A move FM agreed for a later day: the club he joins, and the day. */
+    futureTransfer: "Future transfer",
+    futureClub: "Club",
+    futureJoins: "Joins",
     /** A player's work permits, one per nation he holds one for: active, or an ESC slot (FM's name) from a day. */
     workPermit: "Work permit",
     permitActive: "Active",
@@ -2100,6 +2105,28 @@ export const en = {
     end: "End loan",
     ending: "Ending…",
     cancel: "Cancel",
+  },
+
+  /** Cancelling the moves FM agreed for a player on a later day: the button beside Transfer, and its dialog. */
+  cancelTransfer: {
+    button: "Cancel transfer",
+    buttonTitle: "Cancel the move FM agreed for a later day.",
+
+    // The dialog
+    title: "Cancel transfer",
+    /** The club the player was to join. */
+    from: "Joins",
+    checking: "Checking the transfer…",
+    /** The transfer can be cancelled; `dates` are the days he was to join on. */
+    ready: (dates: string) => `Due ${dates}`,
+    doesHeading: "What happens",
+    does: ["FM cancels the deal itself, as its own editor does", "He stays where he is", "It can't be undone"],
+
+    // The foot
+    hint: "Nothing changes in FM until you press Cancel transfer.",
+    confirm: "Cancel transfer",
+    cancelling: "Cancelling…",
+    cancel: "Keep it",
   },
 
   /**
