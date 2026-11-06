@@ -800,3 +800,23 @@ Findings:
 Not checked: a day after the manager move, a save and reload, moving the human
 manager to a women's team (the club picker lists them), and FM's own view of a
 nation's style ratings.
+
+## Formations in and out of possession (#73 reworked, 6 November 2026)
+
+Same `FM Lens Batch 2026-11-05.fm` copy, from 11 to 12 Dec 2027 (a holiday of 1
+day). FM Lens built from `feat/staff-formations` (f44977e), which edits +0xDF and
++0xE3 instead of +0xDF and +0xE0. Nothing was saved; FM's process was ended
+without saving. The hashes of the main career and the copy were checked before
+and after (OK both times).
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Out of possession of 4 managers | - | Arteta 22, Simeone 22, Glasner 63, Gasperini 30 | Down-arrow line on 11 Dec (run above): 4-4-2 2DM, 4-4-2 2DM, 5-2-2-1 DM AM, 5-3-2 DM WB |
+| Choices for Glasner's out of possession | 4, 7, 22, 27, 30, 32, 33, 35, 63, 64 | - | - |
+| Glasner out of possession 63 -> 22 | Applied: "It shows in FM after you press Continue" | 63 / 22, same after the day | 12 Dec: up arrow "5-2-2-1 DM AM", down arrow "4-4-2 2DM" |
+
+Findings:
+
+- +0xE3 is the formation FM's profile shows without the ball, and an edit shows
+  a day later with the in-possession line unchanged.
+- 22 is 4-4-2 2DM and 30 is 5-3-2 DM WB.
