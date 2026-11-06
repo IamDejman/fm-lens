@@ -248,6 +248,9 @@ pub enum MoveError {
     FamiliarityChanged {
         found: u8,
     },
+    /// The game has changed a player's familiarity with his team's tactic since FM Lens had it raised, so undoing it
+    /// would put back values over the game's own.
+    TacticsChanged,
     /// This build of the game, or this system, has no traced function of the game's for the change.
     CallUnavailable,
     /// The game ran its function and did not make the change.
@@ -358,6 +361,9 @@ impl fmt::Display for MoveError {
                 f,
                 "the game has since changed the player's familiarity with this club to {found}, so it was left alone"
             ),
+            MoveError::TacticsChanged => {
+                f.write_str("the game has since changed the player's familiarity with the tactic, so it was left alone")
+            }
             MoveError::CallUnavailable => f.write_str("the game cannot make this change from FM Lens on this build"),
             MoveError::CallDeclined => f.write_str("the game did not make the change"),
             MoveError::AlreadyInjured => f.write_str("the player is injured already"),
@@ -416,6 +422,7 @@ impl Coded for MoveError {
             MoveError::ClausesFull => "clause.noRoom",
             MoveError::NoFamiliarity => "cohesion.none",
             MoveError::FamiliarityChanged { .. } => "cohesion.changed",
+            MoveError::TacticsChanged => "tactics.changed",
             MoveError::CallUnavailable => "call.unavailable",
             MoveError::CallDeclined => "call.declined",
             MoveError::AlreadyInjured => "injury.already",

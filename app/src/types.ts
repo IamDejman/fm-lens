@@ -109,6 +109,8 @@ export interface GameActions {
   endLoan: boolean;
   /** Signs a free agent for a later day (`sign_free_agent_later`), and cancels it on undo. */
   futureTransfer: boolean;
+  /** Makes every player of a team fully familiar with its tactic (`team_action` "maxTactics"), as FM's editor does. */
+  maxTactics: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
@@ -970,7 +972,7 @@ export type CaptainRole = "captain" | "viceCaptain";
  * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
  * "liftBans" lifts every ban, "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
  */
-export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes" | "maxCohesion";
+export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes" | "maxCohesion" | "maxTactics";
 
 /** The columns that sort a squad table. */
 export type SquadSort =

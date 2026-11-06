@@ -43,6 +43,8 @@ pub struct GameActions {
     pub end_loan: bool,
     /// Signing a free agent on a later day, and cancelling it.
     pub future_transfer: bool,
+    /// Every player of a team fully familiar with its tactic, as the game's editor does it.
+    pub max_tactics: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -187,12 +189,21 @@ impl Session {
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.future_transfer.is_some(),
+            max_tactics: calls.maximise_tactics.is_some()
+                && calls.struct_value.is_some()
+                && calls.map_new.is_some()
+                && calls.map_insert.is_some()
+                && calls.map_drop.is_some()
+                && profile.editor.as_ref().is_some_and(|editor| {
+                    self.process.read_bytes(self.plugin.base + editor.enabled, 1).is_ok_and(|byte| byte[0] == 1)
+                })
+                && self.layout.tactics.is_some(),
         }
     }
 
     /// Has the game run `program`. Refused while the checks a change to the game's lists and records needs have not
     /// passed, as any such change is.
-    fn call_game(&self, program: &Program) -> Result<Outcome, MoveError> {
+    pub(crate) fn call_game(&self, program: &Program) -> Result<Outcome, MoveError> {
         if let Some(lock) = self.structure_lock() {
             return Err(MoveError::Locked(lock));
         }
@@ -212,7 +223,7 @@ impl Session {
     }
 
     /// The function `pick` names in this build's profile.
-    fn game_function(&self, pick: impl Fn(&CallRvas) -> Option<u64>) -> Result<u64, MoveError> {
+    pub(crate) fn game_function(&self, pick: impl Fn(&CallRvas) -> Option<u64>) -> Result<u64, MoveError> {
         self.profile.as_ref().and_then(|p| p.calls.as_ref()).and_then(pick).ok_or(MoveError::CallUnavailable)
     }
 
