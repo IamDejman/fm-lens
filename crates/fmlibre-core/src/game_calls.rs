@@ -70,14 +70,20 @@ pub struct StartedLoan {
     pub ends: FmDate,
 }
 
-/// A loan the game ended: the player went back from the club he was loaned to, to his own. `ends` is when the loan
-/// was to end, for starting it again.
+/// A loan the game ended: the player went back from the club he was loaned to, to his own. `starts`, `ends` and `wage`
+/// are the loan's terms, for starting it again as it was.
 #[derive(Debug, Clone, Copy)]
 pub struct EndedLoan {
     pub player: u32,
     pub from_club: u32,
     pub to_club: u32,
+    pub starts: Option<FmDate>,
     pub ends: Option<FmDate>,
+    /// Pounds per week the borrowing club paid of his wage.
+    pub wage: i32,
+    /// Whether his own club had him on its loan list, which the game's end of a loan can change; none where it could
+    /// not be read.
+    pub loan_listed: Option<bool>,
 }
 
 /// The kinds of contract end the game's daily check passes for a loan that ran out, which pick its news: one for a
@@ -338,6 +344,29 @@ impl Session {
         club: &ClubSummary,
         ends: FmDate,
     ) -> Result<StartedLoan, MoveError> {
+        self.start_loan_from(player, club, None, ends)
+    }
+
+    /// Has the game start again the loan it ended, `ended`, back to `club`: from the day it started until the day it
+    /// was to end. The game's loan has the borrower pay nothing; the caller writes `ended.wage` back.
+    pub fn restart_loan(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        ended: &EndedLoan,
+    ) -> Result<StartedLoan, MoveError> {
+        let ends = ended.ends.ok_or(MoveError::UnusualContract)?;
+        self.start_loan_from(player, club, ended.starts, ends)
+    }
+
+    /// As [`Session::start_loan`], from `starts` where it is given and not after today.
+    fn start_loan_from(
+        &self,
+        player: &PlayerSummary,
+        club: &ClubSummary,
+        starts: Option<FmDate>,
+        ends: FmDate,
+    ) -> Result<StartedLoan, MoveError> {
         let function = self.game_function(|calls| calls.start_loan)?;
         let (Some(rvas), Some(o)) =
             (self.profile.as_ref().and_then(|p| p.starting_loan.as_ref()), self.layout.starting_loan.as_ref())
@@ -390,7 +419,7 @@ impl Session {
         put(0x6F, &[0xFF]);
         put(o.player, &self.identity_block(object)?.to_le_bytes());
         put(o.club, &senior.to_le_bytes());
-        put(o.starts, &packed_date(today).to_le_bytes());
+        put(o.starts, &packed_date(starts.filter(|&day| day <= today).unwrap_or(today)).to_le_bytes());
         put(o.ends, &packed_date(ends).to_le_bytes());
 
         let mut program = Program::new();
@@ -654,7 +683,12 @@ impl Session {
         let object = self.player_object(player)?;
         let (from_club, to_club) = self.plan_end_loan(player)?;
         let loan = self.loan_contract(object, 0).ok_or(MoveError::NotOnLoan)?;
-        let ends = self.loan(player).and_then(|terms| terms.ends);
+        let terms = self.loan(player).ok_or(MoveError::NotOnLoan)?;
+        let loan_listed = self
+            .field(crate::edit::Entity::Player, "contract.loan_listed")
+            .and_then(|field| self.read_field(&player.target(), &field))
+            .ok()
+            .map(|value| value != 0);
         let kind = if human_clubs.contains(&to_club) { LOAN_ENDED_HUMAN } else { LOAN_ENDED };
 
         let zero = Arg::value(0);
@@ -685,7 +719,15 @@ impl Session {
             let club = crate::players::club_of_team(process, layout, team).unwrap_or_else(|| "-".to_owned());
             return Err(MoveError::JoinedOther { club });
         }
-        Ok(EndedLoan { player: player.uid, from_club, to_club, ends })
+        Ok(EndedLoan {
+            player: player.uid,
+            from_club,
+            to_club,
+            starts: terms.starts,
+            ends: terms.ends,
+            wage: terms.wage,
+            loan_listed,
+        })
     }
 
     /// The senior team of `club`, checked to point back at it.
