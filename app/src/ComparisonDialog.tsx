@@ -102,17 +102,12 @@ export function ComparisonDialog({ players, onClose }: ComparisonDialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={noteId}
+        aria-describedby={enough ? undefined : noteId}
         aria-busy={(enough && columns === null) || undefined}
         tabIndex={-1}
       >
         <header className="modal-head">
           <h2 id={titleId}>{text.title}</h2>
-          {enough && (
-            <p id={noteId} className="compare-hint">
-              {text.hint}
-            </p>
-          )}
         </header>
 
         <div className="modal-body">

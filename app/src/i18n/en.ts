@@ -114,11 +114,11 @@ const errors: ErrorTexts = {
   "call.unavailable": () => "FM can't make this change on this version.",
   "call.declined": () => "FM didn't make the change.",
   "loan.futureFee": () =>
-    "This loan has a future fee. Ending it early would make FM complete the transfer, so FM Lens won't end it.",
+    "This loan has a future fee. Ending it early would make FM complete the transfer.",
   "loan.joinedOther": (p) => `FM ended the loan, but he joined ${p.club} instead of going back.`,
   "injury.already": () => "He's injured already. Heal him first.",
   "injury.noKind": () => "FM has no such injury.",
-  "cohesion.none": () => "FM hasn't given him a familiarity with this club yet, so there's nothing to raise.",
+  "cohesion.none": () => "FM hasn't set his familiarity with this club yet.",
   "cohesion.changed": (p) => `FM has since changed his familiarity with the club to ${p.found}, so it was left alone.`,
   "tactics.changed": () => "FM has since changed his familiarity with the tactic, so it was left alone.",
   "list.missing": () => "That entry is no longer in the list. Press Reload and try again.",
@@ -691,7 +691,7 @@ export const en = {
     noUnhappiness: "Nothing makes him unhappy",
     removeUnhappiness: "Remove all",
     removingUnhappiness: "Removing…",
-    removeUnhappinessTitle: "Clears every reason he's unhappy. You can undo it in Changes.",
+    removeUnhappinessTitle: "Clears every reason he's unhappy.",
     concernSince: (date: string) => `since ${date}`,
     concernKind: (kind: number) => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : `Type ${kind}`),
     concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? `Reason ${motive}`,
@@ -701,7 +701,7 @@ export const en = {
     loyaltyBonus: "Loyalty bonus",
     happiness: "Happiness",
     playingTimeHappiness: "Playing time happiness",
-    moodTitle: "From -100 to 100. FM shows it in words.",
+    moodTitle: "From -100 to 100.",
     /** The name of a clause or bonus by its kind; a kind the app does not know yet by its number. */
     clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? `Clause ${kind}`,
     /** What a clause depends on, by kind; null where what it means is not known. */
@@ -730,7 +730,7 @@ export const en = {
           return String(value);
       }
     },
-    moraleTitle: "In FM: 10 is content, 11 slightly happy, 15 and 20 extremely happy.",
+    moraleTitle: "10 is content. 15 and up is extremely happy.",
     /** Hover text of jadedness, which the profile shows as stored. */
     jadednessTitle: "How tired he is from playing. -500 is fully rested. The higher it is, the more he needs a rest.",
     noInjuries: "No injuries",
@@ -761,15 +761,13 @@ export const en = {
     setAttributesDone: (count: number, level: number) =>
       count === 0
         ? "Every attribute has that value already"
-        : `${changeCount(count)} made. Injury proneness and dirtiness set to ${21 - level}, since lower is better.`,
+        : `${changeCount(count)} made. Injury proneness and dirtiness set to ${21 - level}.`,
     setAttributesUndone: (count: number) => (count === 0 ? "Nothing was undone" : `Undid ${changeCount(count)}`),
     undoSetAttributes: "Undo",
     undoSetAttributesTitle: "Put his old attributes back",
     /** Freezing his attributes, while the game can be written to, and what that does. */
     freezeAttributes: "Freeze attributes",
-    freezeAttributesNote:
-      "While FM Lens is open and connected, his attributes can't drop. Gains still count. " +
-      "FM Lens remembers this for this save.",
+    freezeAttributesNote: "His attributes can't drop while FM Lens is connected.",
 
     // Staff
     /** Badge on the manager the user controls. */
@@ -779,7 +777,7 @@ export const en = {
     job: "Job",
     /** Giving a member of staff another job at their club, under the job in the contract. */
     changeJob: "Change job",
-    changeJobTitle: "Give them a different job at their club",
+    changeJobTitle: "Change their job",
     newJob: "New job",
     applyJob: "Apply",
     cancelJob: "Cancel",
@@ -997,9 +995,7 @@ export const en = {
     noFinances: "FM only tracks money for clubs in playable leagues.",
     /** Freezing the club's money, while the game can be written to, and what that does. */
     freeze: "Freeze money",
-    freezeNote:
-      "While FM Lens is open and connected, the balance can't go down. Income still counts. " +
-      "FM Lens remembers this for this save.",
+    freezeNote: "The balance can't go down while FM Lens is connected.",
 
     // Stadium
     stadium: "Stadium",
@@ -1008,7 +1004,7 @@ export const en = {
     used: "In use",
     /** The capacity in use when the game does not limit it (stored as 0). */
     usedAll: "All of it",
-    usedTitle: "How much of the capacity FM lets in, for example while seats are closed. 0 means all of it.",
+    usedTitle: "How much of the capacity FM lets in. 0 means all of it.",
     expansion: "Can grow to",
     /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
     noStadium: "Couldn't read this club's stadium.",
@@ -1155,8 +1151,6 @@ export const en = {
       maxCapacity: "Maximum capacity",
       placeholder: "Min",
     },
-    /** In the profile: where the numbers come from. */
-    note: "Where the club's first team plays.",
   },
 
   /** Nations of the people in the save. Not a nation's ranking, rules or kit. */
@@ -1227,7 +1221,7 @@ export const en = {
       steps: {
         brand: {
           title: "FM Lens",
-          body: "See everything in your save and change it. Edits go into FM when you press Apply. Try them on a copy of your save first.",
+          body: "See and change everything in your save. Try it on a copy of your save first.",
         },
         tabs: {
           title: "Sections",
@@ -1235,7 +1229,7 @@ export const en = {
         },
         search: {
           title: "Search and filters",
-          body: "Type a name or ID. Use Filters to narrow it down.",
+          body: "Type a name or ID.",
         },
         settings: {
           title: "Settings",
@@ -1243,15 +1237,15 @@ export const en = {
         },
         status: {
           title: "Connection",
-          body: "The bar at the bottom shows whether you're connected to FM.",
+          body: "Shows whether you're connected to FM.",
         },
       },
       exercise: {
         list: { title: "Try an edit", body: "Open anyone in the list." },
         edit: { title: "Edit", body: "Press Edit, or click a value." },
-        profile: { title: "Change a value", body: "Type a new value. Nothing goes into FM yet." },
+        profile: { title: "Change a value", body: "Type a new value." },
         apply: { title: "Apply", body: "Apply puts the change into FM. Discard drops it." },
-        changes: { title: "Changes", body: "Every applied change is listed here, and can be undone." },
+        changes: { title: "Changes", body: "Every change you applied, ready to undo." },
       },
     },
 
@@ -1278,8 +1272,7 @@ export const en = {
     previewTag: "browser preview · sample data",
     /** In place of the game's date when it could not be read, and the note it shows on hover. */
     noDate: "No in-game date",
-    noDateTitle:
-      "Couldn't read the in-game date, so ages are hidden and age filters find no one. Check for updates.",
+    noDateTitle: "Couldn't read the in-game date, so ages are hidden.",
     /** The button that reads the game again, once connected. */
     reload: "Reload",
     detecting: "Looking for Football Manager…",
@@ -1318,8 +1311,7 @@ export const en = {
       /** macOS: the bridge FM27 has to load before the app can reach it, and setting it up. */
       bridge: {
         title: "One-time setup",
-        intro:
-          "FM Lens needs a small helper that FM loads at startup. Save and quit FM, then quit Steam, before you set it up.",
+        intro: "Save and quit FM, then quit Steam.",
         library: "Helper",
         installed: "Installed",
         missing: "Not installed",
@@ -1343,8 +1335,7 @@ export const en = {
   compatibility: {
     /** The headline for a version without a profile; `game` as the status line names it. */
     unknownBuild: (game: string) => `${game} is not supported yet`,
-    unknownBuildText:
-      "FM Lens hasn't been tested with this FM version. Values may be wrong, so editing is off.",
+    unknownBuildText: "Values may be wrong, so editing is off.",
     /** Once Edit anyway was pressed. */
     allowedText: "Editing is on where checks passed. Back up your save.",
     /** The headline when checks did not pass on a version the editor knows, and what may help. */
@@ -1358,7 +1349,7 @@ export const en = {
     join: (names: string[]) =>
       names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`,
     allow: "Edit anyway",
-    allowTitle: "Turns editing on until you close FM Lens or reconnect. Back up your save first.",
+    allowTitle: "Back up your save first.",
   },
 
   /** What each check is about (`CheckKey`), as the notice lists the ones that did not pass and the errors name them. */
@@ -1507,7 +1498,7 @@ export const en = {
       const count = changeCount(total);
       return undone === 0 ? count : `${count} · ${undone} undone`;
     },
-    empty: "No changes yet. Open a player, staff member or club and press Edit.",
+    empty: "No changes yet.",
     columns: {
       time: "Time",
       /** The player, member of staff or club the change was made to. */
@@ -1555,27 +1546,17 @@ export const en = {
   /** Exporting players to a file: the button in the toolbar of the player list and the dialog it opens. */
   export: {
     button: "Export",
-    buttonTitle: "Save the players in this list to a CSV or JSON file",
+    buttonTitle: "Export to CSV or JSON",
     title: "Export players",
     /** What the export covers: everything the list's search and filters select, in its order. */
-    scope: (count: number) =>
-      count === 0
-        ? "No players match your search and filters."
-        : `${entityCount.player(count)}, in list order.`,
+    scope: (count: number) => (count === 0 ? "No players match your search and filters." : entityCount.player(count)),
     formatLabel: "Format",
     formats: {
       csv: "CSV, comma-separated",
       csvSemicolon: "CSV, semicolon-separated",
       json: "JSON",
     } satisfies Record<ExportFormat, string>,
-    formatHints: {
-      csv: "For most spreadsheets and scripts",
-      csvSemicolon: "For Excel in languages that use a decimal comma",
-      json: "For scripts",
-    } satisfies Record<ExportFormat, string>,
-    contents:
-      "Abilities, positions, attributes (hidden ones too), personality, reputation, caps and contracts. " +
-      "Money is in pounds.",
+    contents: "Money is in pounds.",
     export: "Export",
     exporting: "Exporting…",
     /** After the export: what was written, and where. */
@@ -1594,7 +1575,7 @@ export const en = {
   massEdit: {
     /** The button in the toolbar of the player, staff and club lists. */
     button: "Mass edit",
-    buttonTitle: "Change everyone in the list at once. You see a preview first.",
+    buttonTitle: "Edit everyone in the list",
     title: {
       player: "Mass edit players",
       staff: "Mass edit staff",
@@ -1605,8 +1586,6 @@ export const en = {
     /** `total` is the list's: the search and the filters of the list select them. */
     scope: (entity: MassEntity, total: number) =>
       `All ${entityCount[entity](total)} in the list`,
-    /** After the scope, when the list shows only the first `shown` rows of its `total`. */
-    scopeAll: (shown: number) => `Every match, not just the ${format(shown)} on screen.`,
     scopeNone: (entity: MassEntity) =>
       `No ${entityNouns[entity]} match your search and filters.`,
     /** `limit` is the most one mass edit takes. */
@@ -1652,16 +1631,16 @@ export const en = {
     /** The name of the value input, by operation. */
     values: { set: "Value", add: "Amount", scale: "Percent" } satisfies Record<MassOperationKind["op"], string>,
     /** Hover text of the amount of an Add. */
-    addTitle: "Added to each value. Use a negative number to subtract.",
+    addTitle: "Use a negative number to subtract.",
     /** The same for a percentage: the amount is in percentage points, not a percent of the value (that is Scale). */
-    addPointsTitle: "Percentage points added to each value (70% + 10 = 80%). Use a negative number to subtract.",
+    addPointsTitle: "70% + 10 = 80%. Use a negative number to subtract.",
     /** The hint in an empty value input: what it takes. */
     rangeHint: (min: number, max: number) => `${format(min)}–${format(max)}`,
     /** The same for an amount, which may be negative: up to `max` either way. */
     amountHint: (max: number) => `±${format(max)}`,
     /** After the input of a Scale: the number is a percent of the value the game has now. */
     ofCurrent: "% of current",
-    percentTitle: "Percent of the current value: 100 keeps it, 110 adds a tenth, 50 halves it",
+    percentTitle: "100 keeps it, 50 halves it",
     /** Hover text of an amount that cannot be applied; `min` and `max` are what it takes. */
     invalidAdd: (min: number, max: number) => `Enter a whole number from ${format(min)} to ${format(max)}`,
     invalidPercent: (min: number, max: number) => `Enter a whole percent from ${min} to ${max}`,
@@ -1709,8 +1688,6 @@ export const en = {
     applyTitle: (changes: number) => `Apply ${changeCount(changes).toLowerCase()}`,
     applyFirst: "Preview the mass edit first",
     applyNothing: "Nothing to apply",
-    /** Nothing changes in the game until Apply. */
-    hint: "Nothing changes in FM until you press Apply.",
     applied: (count: number) => (count === 0 ? "Nothing changed" : `${changeCount(count)} applied`),
     /** A change the game refused: who, which field (see `fieldLabel`) and the game's answer. */
     failure: (name: string, label: string, reason: string) => `${name} · ${label}: ${reason}`,
@@ -1744,8 +1721,6 @@ export const en = {
 
     // The dialog
     title: "Comparison",
-    /** Under the title: what the highlight in the table means. */
-    hint: "The best value in each row is highlighted.",
     /** What the dialog says when fewer than two players are picked. */
     tooFew: "Add at least two players to compare them.",
     loading: "Loading players…",
@@ -1765,7 +1740,7 @@ export const en = {
   move: {
     /** The button in the header of a player's profile. */
     button: "Transfer",
-    buttonTitle: "Move him to another club, with or without a fee",
+    buttonTitle: "Transfer, swap or loan him",
 
     // The dialog
     title: "Transfer",
@@ -1787,7 +1762,7 @@ export const en = {
     searching: "Searching clubs…",
     searchFailed: (reason: string) => `Couldn't search clubs: ${reason}`,
     /** Under the list when the search found more clubs than it lists; `count` is how many more. */
-    more: (count: number) => `and ${format(count)} more. Keep typing to narrow it down.`,
+    more: (count: number) => `and ${format(count)} more`,
     /** Takes the place of the search once a club is picked: the button that brings it back. */
     change: "Choose another club",
 
@@ -1837,11 +1812,11 @@ export const en = {
 
     // What the dialog says about the swap
     /** A swap has no contract terms to set. */
-    swapContract: "Both keep their own contracts. Wages and contract ends don't change.",
+    swapContract: "Both keep their contracts.",
     // Moving a member of staff, who has neither a fee nor terms to set, and no swap.
     staffButtonTitle: "Move them to another club",
     staffChooseClub: "Pick a club.",
-    staffContract: "Same job, wage and contract end. The contract starts today.",
+    staffContract: "Same job and contract.",
     swapChooseClub: "Pick the other player's club.",
     swapChoosePlayer: "Pick the player to swap with.",
     swapChecking: "Checking the swap…",
@@ -1895,10 +1870,9 @@ export const en = {
     change: "Change",
     changeTitle: "Change his other nationalities and homegrown status",
     title: "Nationality and homegrown",
-    hint: "Each change goes into FM straight away. You can undo it in Changes.",
+    hint: "Changes go into FM straight away.",
     /** When the player's list has no room for another tie. */
-    full:
-      "FM left no room in his list, so you can change or remove entries but not add new ones.",
+    full: "His list is full, so nothing can be added.",
     /** The control of a row, for assistive technology: `name` is the nation's or club's. */
     nationOf: (name: string) => `Nation instead of ${name}`,
     ruleOf: (name: string) => `Homegrown rule for ${name}`,
@@ -1909,8 +1883,6 @@ export const en = {
     addNation: "Add a nation…",
     newRule: "Homegrown rule of the new nation",
     add: "Add",
-    /** Under the clubs: what the dialog cannot do with them. */
-    clubNote: "You can change a club's rule or remove it. Only FM adds clubs.",
     working: "Saving…",
     close: "Close",
   },
@@ -1933,10 +1905,9 @@ export const en = {
     change: "Change",
     changeTitle: "Change his bonuses and clauses",
     title: "Bonuses and clauses",
-    hint: "Each change goes into FM straight away. You can undo it in Changes.",
+    hint: "Changes go into FM straight away.",
     /** When the contract has no release clause and its list has no room for one. */
-    full:
-      "FM left no room in this contract, so you can change or remove clauses but not add a release clause.",
+    full: "No room for a release clause in this contract.",
     /** The inputs of a row, for assistive technology: `name` is the clause's. */
     amountOf: (name: string) => `Amount of ${name}`,
     conditionOf: (name: string) => `Condition of ${name}`,
@@ -2035,7 +2006,7 @@ export const en = {
   /** Ending a player's loan early: the button beside Transfer and Release on a loaned player's profile, and its dialog. */
   endLoan: {
     button: "End loan",
-    buttonTitle: "End his loan. He goes back to his club.",
+    buttonTitle: "He goes back to his club.",
 
     // The dialog
     title: "End loan",
@@ -2128,7 +2099,7 @@ export const en = {
     maxAllTitle:
       "Every attribute to 20 for everyone (injury proneness and dirtiness to 1)",
     /** Beside the buttons: whom they cover, and where undoing is. */
-    hint: "Includes players out on loan. You can undo in Changes.",
+    hint: "Includes players out on loan.",
 
     // What an action did, under the buttons
     /** `count` is how many values were written. */
