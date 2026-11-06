@@ -103,7 +103,7 @@ button {
 
 h1,
 h2 {
-  text-wrap: balance;
+  text-wrap: pretty;
 }
 
 [id] {
@@ -209,7 +209,6 @@ h2 {
 }
 
 .hero h1 {
-  max-width: 20ch;
   margin: 0;
   font-size: clamp(2rem, 1.4rem + 2.6vw, 3.5rem);
   font-stretch: 72%;
@@ -218,7 +217,6 @@ h2 {
 }
 
 .hero .lead {
-  max-width: 34rem;
   margin: 16px 0 0;
   color: var(--on-strip-muted);
   font-size: clamp(1.0625rem, 1rem + 0.4vw, 1.25rem);
@@ -277,8 +275,9 @@ h2 {
   box-shadow: 0 24px 60px -24px rgb(37 27 55 / 0.55);
 }
 
-/* The page under the masthead: one column of headings beside their content. */
-main {
+/* The page under the masthead: one column of headings beside their content. On the home page it starts below the
+   screenshot that hangs out of the masthead. */
+.masthead:has(.shot) + main {
   padding-top: calc(clamp(48px, 12vw, 180px) + clamp(56px, 8vw, 104px));
 }
 
@@ -310,10 +309,6 @@ main {
   margin: 0;
 }
 
-.features div {
-  max-width: 36ch;
-}
-
 .features dt {
   font-size: 1.25rem;
   font-stretch: 78%;
@@ -329,7 +324,6 @@ main {
 .steps {
   display: grid;
   gap: 24px;
-  max-width: 40rem;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -380,7 +374,6 @@ footer :focus-visible {
 
 footer p {
   margin: 0;
-  max-width: 48rem;
 }
 
 footer a {
@@ -389,7 +382,6 @@ footer a {
 
 /* The download page and the missing page: a short message under the masthead. */
 .message {
-  max-width: 40rem;
   padding-block: clamp(40px, 8vw, 96px);
 }
 
@@ -409,15 +401,27 @@ footer a {
   padding-bottom: 8px;
 }
 
-/* The release notes, as GitHub renders them. */
+/* The release notes, as GitHub renders them: the version and its date beside the notes, like the home page's parts. */
 .releases {
-  max-width: 44rem;
   padding-bottom: clamp(40px, 8vw, 96px);
 }
 
 .releases article {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  column-gap: clamp(24px, 5vw, 72px);
   padding-block: 32px;
   border-top: 1px solid var(--rule);
+}
+
+.release-body {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.release-body > :first-child {
+  margin-top: 0;
 }
 
 .releases article > h2 {
@@ -453,8 +457,14 @@ footer a {
 }
 
 @media (max-width: 760px) {
-  .part {
+  .part,
+  .releases article {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .release-body {
+    grid-column: auto;
+    grid-row: auto;
   }
 
   .features {
