@@ -174,6 +174,9 @@ export const releaseText = strings.release;
 export const endLoanText = strings.endLoan;
 export const cancelTransferText = strings.cancelTransfer;
 
+/** Report a problem: the dialog the button at the foot of the window opens. */
+export const reportText = strings.report;
+
 /** Copying a player onto others, and saved player templates. */
 export const templatesText = strings.templates;
 

@@ -37,6 +37,9 @@ jobs:
       - name: Build frontend
         working-directory: app
         run: npm run build
+      - name: Test the report relay
+        working-directory: relay
+        run: node --test
       - name: Check formatting
         run: cargo fmt --all --check
       - name: Check Rust

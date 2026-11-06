@@ -12,7 +12,7 @@ import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
 import { isShortcut, MAC, shortcutAria, shortcutLabel } from "./keys";
-import { openReport } from "./report";
+import { ReportDialog } from "./ReportDialog";
 import { SettingsMenu } from "./SettingsMenu";
 import {
   appText,
@@ -99,6 +99,7 @@ function App() {
   const { log, error: logError, reload: reloadLog } = useChangeLog();
   const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   useEffect(() => {
     // The browser preview stands in for the app with the version in package.json.
@@ -425,16 +426,15 @@ function App() {
             </span>
           </span>
           {!inTauri && <span className="tag">{appText.previewTag}</span>}
-          <button
-            type="button"
-            className="colophon-report"
-            onClick={() => {
-              const detected = detection?.games[0]?.info ?? null;
-              openReport({ version, connection, detected, log }).catch((e: unknown) => setError(describeError(e)));
-            }}
-          >
+          <button type="button" className="colophon-report" onClick={() => setReporting(true)}>
             {appText.reportProblem}
           </button>
+          {reporting && (
+            <ReportDialog
+              facts={{ version, connection, detected: detection?.games[0]?.info ?? null, log }}
+              onClose={() => setReporting(false)}
+            />
+          )}
           {update?.phase === "ready" && (
             <button type="button" className="relaunch" onClick={() => relaunch(update.version)}>
               {updateText.relaunch}
