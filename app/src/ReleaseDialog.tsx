@@ -254,15 +254,6 @@ function ReleaseDialog({ ending, player, onReleased, onClose }: ReleaseDialogPro
           <p className={`move-plan ${plan.tone}`} role="status">
             {plan.message}
           </p>
-
-          <section className="move-section" aria-labelledby={id("does")}>
-            <h3 id={id("does")}>{text.doesHeading}</h3>
-            <ul className="move-facts">
-              {text.does.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </section>
         </div>
 
         {failure !== null && (
@@ -272,7 +263,7 @@ function ReleaseDialog({ ending, player, onReleased, onClose }: ReleaseDialogPro
         )}
 
         <footer className="modal-foot">
-          <span className="move-foot-note">{text.hint}</span>
+          {"hint" in text && <span className="move-foot-note">{text.hint}</span>}
           <button type="button" className="primary" disabled={!canRelease} onClick={() => void release()}>
             {releasing ? text.busy : text.act}
           </button>
