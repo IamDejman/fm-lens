@@ -1,4 +1,4 @@
-// The notice under the masthead when the game is a version FMLibreEditor has no profile for, or some of the checks it
+// The notice under the masthead when the game is a version FM Lens has no profile for, or some of the checks it
 // makes before writing did not pass: what that leaves out, and the way to edit anyway or to look for a newer version.
 
 import { describeGame } from "./format";

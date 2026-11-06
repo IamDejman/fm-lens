@@ -84,7 +84,7 @@ Requirements: Xcode command-line tools, Rust stable, Node.js and npm.
 
 ```sh
 export PATH="$HOME/.cargo/bin:$PATH"
-cargo build --locked -p fmlibre-probe -p fmlibre-bridge
+cargo build --locked -p fmlens-probe -p fmlens-bridge
 cd app
 npm ci
 npm run tauri -- build --debug --bundles app --config src-tauri/tauri.scout.conf.json

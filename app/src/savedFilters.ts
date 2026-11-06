@@ -10,7 +10,7 @@ import { isRecord } from "./restore";
 import type { PlayerOrder, PlayerSort } from "./types";
 
 /** Where the saved filters are kept: a JSON array of `SavedPlayerFilter`. */
-export const STORAGE_KEY = "fmlibre.savedPlayerFilters";
+export const STORAGE_KEY = "fmlens.savedPlayerFilters";
 
 /** The most filters that are kept, and the longest name one has. */
 export const MAX_SAVED = 20;
