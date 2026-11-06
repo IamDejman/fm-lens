@@ -702,7 +702,7 @@ export const tr: Strings = {
     keepPlaying: "Emekli olmasını engelle",
     keepingPlaying: "Engelleniyor…",
     keepPlayingTitle:
-      "Emekliliğini iptal eder ve “Zirvedeyken emekli olur” yerine “Olabildiğince uzun futbol oynar” verir. Değişiklikler'den geri alabilirsiniz.",
+      "Emekliliğini iptal eder. Değişiklikler'den geri alabilirsiniz.",
 
     // Medical
     morale: (value) => `${value} / 20`,
@@ -750,7 +750,7 @@ export const tr: Strings = {
       }
     },
     moraleTitle: "FM'de: 10 Memnun, 11 Biraz Mutlu, 15 ve 20 Aşırı Mutlu.",
-    jadednessTitle: "Oynamaktan ne kadar yorulduğu. -500 tamamen dinlenmiş demek. Yükseldikçe dinlenmeye daha çok ihtiyaç duyar.",
+    jadednessTitle: "Ne kadar yorgun olduğu. -500 tamamen dinlenmiş demek.",
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
     injuryStarted: (date) => `Başlangıç: ${date}`,
@@ -1303,7 +1303,7 @@ export const tr: Strings = {
     dismiss: "Kapat",
     changes: {
       "0.5.3": [
-        "FM Lens artık dosyalarında ve ayarlarında kendi adını kullanıyor. Kurulumunuz ve ayarlarınız kendiliğinden aktarıldı.",
+        "Dosyalar, ayarlar ve Steam yardımcısı artık FM Lens adını kullanıyor. Kurulumunuz aktarıldı.",
       ],
       "0.5.2": [
         "Ayarlar'daki Sorun bildir, sürümleriniz ve değişiklikleriniz doldurulmuş bir hata raporu açar.",

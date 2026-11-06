@@ -34,7 +34,7 @@
     "publisher": "FM Lens contributors",
     "copyright": "Copyright (C) 2026 FM Lens contributors. GPL-3.0-or-later.",
     "category": "Utility",
-    "shortDescription": "Read-only Football Manager 27 companion",
+    "shortDescription": "Football Manager 27 companion",
     "windows": {
       "nsis": {
         "installMode": "currentUser",
