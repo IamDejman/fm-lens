@@ -631,6 +631,11 @@ impl Session {
     pub fn plan_end_loan(&self, player: &PlayerSummary) -> Result<(u32, u32), MoveError> {
         let object = self.player_object(player)?;
         let terms = self.loan(player).ok_or(MoveError::NotOnLoan)?;
+        // The game completes a transfer with a mandatory future fee when the loan ends; which fees are mandatory is
+        // not known, so no loan with one is ended.
+        if terms.future_fee.is_some() {
+            return Err(MoveError::FutureFee);
+        }
         // He plays for the club he is loaned to; his own contract names his parent club.
         let team = self.process.read_u64(object + self.layout.player.team)?;
         match (crate::players::club_uid_of_team(&self.process, &self.layout, team), terms.parent_uid) {
@@ -673,10 +678,12 @@ impl Session {
         self.call_game(&program)?;
         let (process, layout) = (&self.process, &self.layout);
         let team = process.read_u64(object + layout.player.team)?;
-        if self.loan_contract(object, 0).is_some()
-            || crate::players::club_uid_of_team(process, layout, team) != Some(to_club)
-        {
+        if self.loan_contract(object, 0).is_some() {
             return Err(MoveError::CallDeclined);
+        }
+        if crate::players::club_uid_of_team(process, layout, team) != Some(to_club) {
+            let club = crate::players::club_of_team(process, layout, team).unwrap_or_else(|| "-".to_owned());
+            return Err(MoveError::JoinedOther { club });
         }
         Ok(EndedLoan { player: player.uid, from_club, to_club, ends })
     }

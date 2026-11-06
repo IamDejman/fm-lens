@@ -110,6 +110,9 @@ const errors: ErrorTexts = {
   "ban.notBanned": () => "Oyuncunun kaldırılacak bir cezası yok.",
   "call.unavailable": () => "FM bu sürümde bu değişikliği yapamıyor.",
   "call.declined": () => "FM değişikliği yapmadı.",
+  "loan.futureFee": () =>
+    "Bu kiralamada gelecek bonservis bedeli var. Erken bitirmek FM'in transferi tamamlamasına yol açar, bu yüzden FM Lens onu bitirmez.",
+  "loan.joinedOther": (p) => `FM kiralamayı bitirdi, ama oyuncu geri dönmek yerine ${p.club} kulübüne katıldı.`,
   "injury.already": () => "Zaten sakat. Önce iyileştir.",
   "injury.noKind": () => "FM'de böyle bir sakatlık yok.",
   "cohesion.none": () => "FM ona henüz bu kulübe bir alışkınlık vermedi, yükseltilecek bir şey yok.",
@@ -608,6 +611,7 @@ export const tr: Strings = {
     loanWage: "Kiralayan kulübün haftalık ödediği",
     loanStarts: "Kiralık başlangıcı",
     loanEnds: "Kiralık bitişi",
+    loanFutureFee: "Gelecek bonservis bedeli",
     workPermit: "Çalışma izni",
     permitGranted: (date: string) => `${date} tarihinde verildi`,
     permitNotGranted: "Verilmedi",
