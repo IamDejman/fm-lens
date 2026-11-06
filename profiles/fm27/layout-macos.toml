@@ -399,6 +399,9 @@ joined_continental = 0x86E
 youth_rating = 0x874
 game_importance = 0x885     # England men 1; the men's most common is 1, the women's 4
 attendance = 0x891          # England men 15, women 10
+# Twelve i8 style ratings, 0 to 20, most 10; the 17 nations that play no football read 0 in all of them. Named
+# from FM's codes (Ndep, Ndir, Nflm, Nflx, Nfrl, Nmar, Noff, Nprs, Nstb, Ntpo, Nupm, Nwid) in this order.
+style = 0x892
 team_manager = 0x80
 team_id = 0x0C            # the senior team's is the nation's UID (251 of 251)
 
