@@ -16,6 +16,8 @@ export interface ValueRow {
   name: string;
   /** What the row shows for the name, where that is more than the name: a club's logo beside it, say. */
   label?: ReactNode;
+  /** A line under the name, where the game treats the row's number in its own way. */
+  note?: string;
   value: number;
 }
 
@@ -125,21 +127,28 @@ export function ValueListDialog({
     }
   };
 
-  const row = ({ index, name, label, value }: ValueRow) => {
+  const row = ({ index, name, label, note, value }: ValueRow) => {
     const text = typed[index] ?? String(value);
     const next = numberOf(text);
     const changed = next !== null && next !== value;
     const saveRow = () => next !== null && void write(() => save(index, next));
     return (
       <li key={index} className="tie-row clause-row">
-        <span className="tie-target">{label ?? name}</span>
+        <span className="tie-target">
+          {label ?? name}
+          {note !== undefined && (
+            <span id={id(`note-${index}`)} className="tie-note">
+              {note}
+            </span>
+          )}
+        </span>
         <input
           type="text"
           inputMode="numeric"
           autoComplete="off"
           className="clause-condition"
           aria-label={inputLabel(name)}
-          aria-describedby={id("range")}
+          aria-describedby={note === undefined ? id("range") : `${id("range")} ${id(`note-${index}`)}`}
           aria-invalid={next === null || undefined}
           title={next === null ? editText.invalid(least, most) : undefined}
           value={text}

@@ -666,9 +666,9 @@ function preferencesOf(player: PlayerSummary): Preference[] {
 /** A fixture person's other languages: none for every third, one or two for the rest. */
 function languagesOf(uid: number): Language[] {
   const pool: Language[] = [
-    { name: "English", level: 10 },
-    { name: "Spanish", level: 5 },
-    { name: "German", level: 2 },
+    { name: "English", level: 10, local: true },
+    { name: "Spanish", level: 5, local: false },
+    { name: "German", level: 2, local: false },
   ];
   return uid % 3 === 0 ? [] : pool.slice(uid % 2, (uid % 2) + 1 + (uid % 5 === 0 ? 1 : 0));
 }
