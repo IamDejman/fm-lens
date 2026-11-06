@@ -288,12 +288,12 @@ const CLAUSE_NAMES_TR: Partial<Record<number, string>> = {
   5: "Küme düşmede maaş indirimi",
   6: "Teknik görev teklifinde serbest kalma maddesi",
   7: "Her an serbest kalma",
-  8: "Gelecek satıştan pay",
+  8: "Gelecek satıştan pay yüzdesi",
   9: "Gelecek satış kârından pay",
   10: "Sezonluk gol hedefi primi",
   11: "Lig maçlarından sonra bir yıl uzatma",
   12: "En yüksek ücretliyle eşitleme",
-  13: "Lig maçı sayısına ulaşınca maaş",
+  13: "Kulüp lig maçı sayısına ulaşınca maaş",
   14: "Üst lige yükselmede maaş artışı",
   15: "Üst ligden düşmede maaş indirimi",
   16: "Serbest kalma maddesi (yabancı kulüpler)",
@@ -319,7 +319,8 @@ const CLAUSE_NAMES_TR: Partial<Record<number, string>> = {
   38: "Oynamayan yedek ücreti",
   39: "Asist primi",
   40: "Sezonluk asist hedefi primi",
-  41: "Sezonluk gol ve asist hedefi primi",
+  41: "Sezonluk birleşik gol ve asist hedefi primi",
+  55: "Küme düşmede etkin serbest kalma maddesi",
 };
 
 export const tr: Strings = {

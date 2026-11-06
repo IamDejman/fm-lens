@@ -99,7 +99,7 @@ const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
   10: "Prima por objetivo de goles en la temporada",
   11: "Ampliación de un año tras partidos de liga",
   12: "Igualar al que más cobra",
-  13: "Salario tras alcanzar partidos de liga",
+  13: "Salario tras alcanzar partidos de liga del club",
   14: "Aumento salarial por ascenso a primera división",
   15: "Rebaja salarial por descenso de primera división",
   16: "Cláusula de rescisión por traspaso mínimo (clubes extranjeros)",
@@ -125,7 +125,8 @@ const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
   38: "Prima por suplente no utilizado",
   39: "Prima por asistencia",
   40: "Prima por objetivo de asistencias en la temporada",
-  41: "Prima por objetivo de goles y asistencias en la temporada",
+  41: "Prima combinada por objetivo de goles y asistencias en la temporada",
+  55: "Cláusula de rescisión activa por descenso",
 };
 
 /** Reasons to be unhappy, by the codes the game keeps them as (see `en.ts`). */
