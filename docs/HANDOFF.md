@@ -148,7 +148,8 @@ before and after. Never use probe write commands; live writes go through FM Lens
 - Competitions and awards (#21): Premier League overview; World Golden Ball periods 5/6/9; PL awards.
 - Earlier items: staff licence labels 1-8 (#17), England FA and women's pages (#16), clause screens (#18), language
   words (#15), tour exercise in the desktop app (#12), wage bill vs +0x814, squad status labels.
-- Intel (#13): only if Rosetta can run FM.
+- Intel (#13): done on 6 Nov under Rosetta (reads only). The Intel profile has no work permits yet.
+- 6 Nov: Revoke, Grant and their Undo (#39), the tour (#12) and Intel (#13) checked; see EDITING-VALIDATION.md.
 - The fuller list is in `reports/batch/SCREEN-CHECKS.md` (local, not in git); record results in
   docs/EDITING-VALIDATION.md.
 
