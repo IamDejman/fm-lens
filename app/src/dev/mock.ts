@@ -2966,6 +2966,8 @@ const writable = new URLSearchParams(window.location.search).has("writable");
 const refrozen = new URLSearchParams(window.location.search).has("refrozen");
 /** `?restarted` previews connecting after FM was restarted: the changes made before are listed, no longer undone. */
 const restarted = new URLSearchParams(window.location.search).has("restarted");
+/** `?moved` previews FM moving its lists after connecting: editing is off until the app reads the game again. */
+let listsMoved = false;
 
 /** What `?restarted` lists: an edit, and a mass edit of two players, made an hour before FM was restarted. */
 function earlierChanges(): LoggedChange[] {
@@ -3105,6 +3107,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         changes.push(...earlierChanges());
       }
       mockConnection = info;
+      listsMoved = new URLSearchParams(window.location.search).has("moved");
       if (!refrozen) {
         return info as T;
       }
@@ -3129,8 +3132,9 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "current_connection":
       // Like the real command after a window reload; here a reload starts the fixtures afresh, so it is null then.
-      return (mockConnection && { ...mockConnection, loadMs: 0 }) as T;
+      return (mockConnection && { ...mockConnection, loadMs: 0, editable: mockConnection.editable && !listsMoved }) as T;
     case "reload": {
+      listsMoved = false;
       const reloaded: ReloadInfo = {
         editable: mockConnection?.editable ?? false,
         writable: mockConnection?.writable ?? false,
