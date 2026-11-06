@@ -1,0 +1,17 @@
+[package]
+name = "fmlens-probe"
+description = "Read-only probe for a running Football Manager process"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+fmlens-core.workspace = true
+fmlens-mem = { workspace = true, features = ["read-only"] }
+anyhow.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+memchr = "2.8.3"

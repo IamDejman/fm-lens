@@ -21,7 +21,7 @@ const LANGUAGES = {
 export type Locale = keyof typeof LANGUAGES;
 
 /** Where the chosen language is kept. */
-const STORAGE_KEY = "fmlibre.locale";
+const STORAGE_KEY = "fmlens.locale";
 
 /** Whether `value` names one of the languages of the UI. */
 function isLocale(value: string | null | undefined): value is Locale {
