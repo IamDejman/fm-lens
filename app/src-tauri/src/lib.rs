@@ -3174,7 +3174,7 @@ fn plan_manager_move(state: State<'_, AppState>, uid: u32, club: u32) -> Result<
         to: name(plan.to_club),
         fee: None,
         displaced: plan.displaced.and_then(|uid| connection.staff.get(uid)).map(|found| found.name.clone()),
-        permanent: false,
+        permanent: true,
     })
 }
 

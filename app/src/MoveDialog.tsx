@@ -628,8 +628,6 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
   const outcome = key !== null && planned?.key === key ? planned.outcome : null;
   const preview = outcome !== null && "preview" in outcome ? outcome.preview : null;
   const canMove = (sign || loan ? key !== null : preview !== null) && !moving;
-  // FM makes the transfer of a player at your club. That depends on his club alone, so the last plan still says so.
-  const fromYourClub = planned !== null && "preview" in planned.outcome && planned.outcome.preview.permanent === true;
 
   // What the button makes, for the plan it is offered for: the signing, the loan or the swap, or the move to the club.
   const make = sign
@@ -884,17 +882,17 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
     if ("displaced" in made && made.displaced) {
       lines.push(text.managerDisplaced(made.displaced));
     }
+    if ("permanent" in made && made.permanent) {
+      lines.push(text.permanent);
+    }
     return lines.join("\n");
   };
 
-  // The dialog's words for what it makes: the title, the prompt for a club, the list of what happens, the note beside
-  // the button, and the button as it is and while it works.
+  // The dialog's words for what it makes: the title, the prompt for a club, and the button as it is and while it works.
   const words = sign
     ? {
         title: text.signTitle,
         choose: text.signChooseClub,
-        does: later ? text.signLaterDoes : text.signDoes,
-        hint: text.signHint,
         button: text.sign,
         busy: text.signing,
       }
@@ -902,8 +900,6 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
       ? {
           title: text.loanTitle,
           choose: text.loanChooseClub,
-          does: gameActions.endLoan ? text.loanDoesEnding : text.loanDoes,
-          hint: text.loanHint,
           button: text.loan,
           busy: text.loaning,
         }
@@ -911,8 +907,6 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
         ? {
             title: text.swapTitle,
             choose: text.swapChooseClub,
-            does: text.swapDoes,
-            hint: text.swapHint,
             button: text.swap,
             busy: text.swapping,
           }
@@ -920,16 +914,12 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
           ? {
               title: text.managerTitle,
               choose: text.staffChooseClub,
-              does: text.managerDoes,
-              hint: text.managerHint,
               button: text.managerMove,
               busy: text.managerMoving,
             }
           : {
               title: text.title,
               choose: staff ? text.staffChooseClub : text.chooseClub,
-              does: staff ? text.staffDoes : fromYourClub ? text.gameDoes : text.does,
-              hint: text.hint,
               button: text.move,
               busy: text.moving,
             };
@@ -1123,14 +1113,16 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
                       value={feeText}
                       readOnly={moving}
                       aria-invalid={feeVerdict.status === "invalid" || undefined}
-                      aria-describedby={id("fee-note")}
+                      aria-describedby={feeNote ? id("fee-note") : undefined}
                       onChange={(e) => setFeeText(e.currentTarget.value)}
                       onWheel={(e) => e.currentTarget.blur()}
                     />
                   </span>
-                  <p id={id("fee-note")} className={feeNote ? "move-note invalid" : "move-note"}>
-                    {feeNote ? feeNote.message : text.feeHint}
-                  </p>
+                  {feeNote && (
+                    <p id={id("fee-note")} className="move-note invalid">
+                      {feeNote.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
@@ -1242,15 +1234,6 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
           <p className={`move-plan ${plan.tone}`} role="status">
             {plan.message}
           </p>
-
-          <section className="move-section" aria-labelledby={id("does")}>
-            <h3 id={id("does")}>{swap ? text.swapDoesHeading : text.doesHeading}</h3>
-            <ul className="move-facts">
-              {words.does.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </section>
         </div>
 
         {failure !== null && (
@@ -1260,7 +1243,6 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
         )}
 
         <footer className="modal-foot">
-          <span className="move-foot-note">{words.hint}</span>
           <button ref={moveButton} type="button" className="primary" disabled={!canMove} onClick={() => void move()}>
             {moving ? words.busy : words.button}
           </button>

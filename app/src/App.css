@@ -3264,6 +3264,7 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   padding: 12px 20px;
   border-top: 1px solid var(--border);
@@ -4300,17 +4301,6 @@ button.danger:hover:not(:disabled) {
   border-color: var(--danger);
   background: var(--danger-soft);
   color: var(--danger);
-}
-
-.move-facts {
-  margin: 0;
-  padding-left: 20px;
-  color: var(--muted);
-  font-size: var(--type-base);
-}
-
-.move-facts li + li {
-  margin-top: 2px;
 }
 
 .move-foot-note {
