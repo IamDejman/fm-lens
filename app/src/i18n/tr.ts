@@ -1293,12 +1293,9 @@ export const tr: Strings = {
   },
 
   update: {
-    updating: (version) => `FM Lens ${version} sürümüne güncelleniyor`,
+    relaunch: "Güncellemek için yeniden başlat",
     available: (version) => `FM Lens ${version} yayımlandı`,
     download: "İndir",
-    preparing: "Hazırlanıyor…",
-    downloading: (percent) => (percent === null ? "İndiriliyor…" : `İndiriliyor… %${percent}`),
-    installing: "Kuruluyor: FM Lens kapanıp yeni sürümle yeniden açılacak.",
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
     later: "Sonra",
     whatsNew: (version) => `FM Lens ${version} sürümündeki yenilikler`,
@@ -1308,6 +1305,7 @@ export const tr: Strings = {
       "0.5.2": [
         "Ayarlar'daki Sorun bildir, sürümleriniz ve değişiklikleriniz doldurulmuş bir hata raporu açar.",
         "FM verilerini taşıdığında FM Lens oyunu kendiliğinden yeniden okur: artık Verileri yeniden oku'ya basmanız gerekmez.",
+        "Güncellemeler arka planda kurulur. Size uygun olduğunda pencerenin altındaki Güncellemek için yeniden başlat'a basın.",
       ],
     },
   },

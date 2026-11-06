@@ -24,6 +24,7 @@ import {
   playerListText,
   stadiumListText,
   staffListText,
+  updateText,
 } from "./labels";
 import { NationBrowser } from "./NationBrowser";
 import { OfficialBrowser } from "./OfficialBrowser";
@@ -95,7 +96,7 @@ function App() {
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog } = useChangeLog();
-  const { update, dismiss: dismissUpdate } = useUpdate();
+  const { update, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   useEffect(() => {
@@ -369,7 +370,7 @@ function App() {
       </header>
 
       <div className="main">
-        {update && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
+        {update && update.phase !== "ready" && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
         {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
         {connection && <CompatibilityNotice connection={connection} />}
         {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
@@ -412,6 +413,11 @@ function App() {
             </span>
           </span>
           {!inTauri && <span className="tag">{appText.previewTag}</span>}
+          {update?.phase === "ready" && (
+            <button type="button" className="relaunch" onClick={() => relaunch(update.version)}>
+              {updateText.relaunch}
+            </button>
+          )}
         </div>
         {connection && !editable && (
           <div className="colophon-notes">
