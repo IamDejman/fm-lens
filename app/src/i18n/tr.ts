@@ -66,6 +66,7 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
   "it is changed one person at a time": "bu alan kişi kişi değiştirilir",
   "the new value is not one of the game's own records of that kind":
     "yeni değer, oyunun bu türdeki kendi kayıtlarından biri değil",
+  "it holds a value the editor cannot name": "düzenleyicinin adlandıramadığı bir değer tutuyor",
 };
 
 const reload = "verileri yeniden okuyup tekrar deneyin";
