@@ -42,8 +42,8 @@ const KNOWLEDGE: StaffAttributeKey[] = [
 ];
 const MEDICAL: StaffAttributeKey[] = ["physiotherapy", "sports_science"];
 
-/** His preferred formation and his second, as the editor keys them. */
-const FORMATION_FIELDS = ["formation.preferred", "formation.second"] as const;
+/** His preferred formations in possession and out of possession, as the editor keys them. */
+const FORMATION_FIELDS = ["formation.in_possession", "formation.out_of_possession"] as const;
 
 /** A formation id as the profile shows it: "-" for none. */
 const formationText = (field: string, id: number) => (id === 0 ? "-" : choiceLabel(field, id));
