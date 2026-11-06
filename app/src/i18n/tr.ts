@@ -1353,6 +1353,14 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.4": [
+        "Bir sakatlığın süresini değiştirin ya da tek bir sakatlığı kaldırın.",
+        "Bir teknik direktörün topa sahipken ve topa sahip değilken dizilişlerini görün ve değiştirin.",
+        "Bir ülkenin oyun tarzı puanlarını görün ve değiştirin.",
+        "Bir turnuvanın kurallarını görün.",
+        "Bir oyuncuya verilen sözleri görün ve açık bir sözü kapatın.",
+        "Kulüp değiştir: başka bir kulübün teknik direktörü olun.",
+      ],
       "0.5.3": [
         "Dosyalar, ayarlar ve Steam yardımcısı artık FM Lens adını kullanıyor. Kurulumunuz aktarıldı.",
       ],
