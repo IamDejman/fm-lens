@@ -1100,11 +1100,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmlibre-app"
+name = "fmlens-app"
 version = "0.5.2"
 dependencies = [
- "fmlibre-core",
- "fmlibre-mem",
+ "fmlens-core",
+ "fmlens-mem",
  "serde",
  "serde_json",
  "tauri",
@@ -1114,20 +1114,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmlibre-bridge"
+name = "fmlens-bridge"
 version = "0.5.2"
 dependencies = [
- "fmlibre-mem",
+ "fmlens-mem",
  "libc",
  "mach2",
  "toml 1.1.8+spec-1.1.0",
 ]
 
 [[package]]
-name = "fmlibre-core"
+name = "fmlens-core"
 version = "0.5.2"
 dependencies = [
- "fmlibre-mem",
+ "fmlens-mem",
  "memchr",
  "serde",
  "serde_json",
@@ -1136,7 +1136,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmlibre-mem"
+name = "fmlens-mem"
 version = "0.5.2"
 dependencies = [
  "libc",
@@ -1145,13 +1145,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmlibre-probe"
+name = "fmlens-probe"
 version = "0.5.2"
 dependencies = [
  "anyhow",
  "clap",
- "fmlibre-core",
- "fmlibre-mem",
+ "fmlens-core",
+ "fmlens-mem",
  "memchr",
  "serde",
  "serde_json",

@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use fmlibre_core::{
+use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet,
     ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionSummary, EditError, EndedLoan, Entity,
     EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN,
@@ -17,25 +17,25 @@ use fmlibre_core::{
     StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup,
     Tie, TieTarget, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
-use fmlibre_mem::{Process, find_processes, is_current_process_elevated, list_modules};
+use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
 use tauri::{Manager, State};
 
 /// The environment variable that names the graphics folder to read packs from, instead of
 /// `Documents\Sports Interactive\Football Manager 27\graphics` on Windows and
 /// `~/Library/Application Support/Sports Interactive/Football Manager 27/graphics` on macOS.
-const GRAPHICS_FOLDER: &str = "FMLIBRE_GRAPHICS";
+const GRAPHICS_FOLDER: &str = "FMLENS_GRAPHICS";
 
 /// The environment variable that names the folder the app keeps its own files in, instead of its data folder
-/// (`%APPDATA%\io.github.tozmoz.fmlibreeditor` on Windows): for now, what was frozen in each save.
-const DATA_FOLDER: &str = "FMLIBRE_DATA";
+/// (`%APPDATA%\local.fm.lens` on Windows): for now, what was frozen in each save.
+const DATA_FOLDER: &str = "FMLENS_DATA";
 
 /// The file in that folder that remembers what was frozen in each save (see `Remembered`).
 const FROZEN_FILE: &str = "frozen.json";
 
-/// The environment variable that names the folder exports are written to, instead of `FMLibreEditor\Exports` in the
+/// The environment variable that names the folder exports are written to, instead of `FM Lens\Exports` in the
 /// documents folder.
-const EXPORTS_FOLDER: &str = "FMLIBRE_EXPORTS";
+const EXPORTS_FOLDER: &str = "FMLENS_EXPORTS";
 
 /// The connected game, the people read from it and the changes written this session.
 struct Connection {
@@ -843,7 +843,7 @@ impl Connection {
             uid: done.player,
             field: "cohesion".to_owned(),
             old: i64::from(done.before),
-            new: i64::from(fmlibre_core::MOST_FAMILIARITY),
+            new: i64::from(fmlens_core::MOST_FAMILIARITY),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -865,7 +865,7 @@ impl Connection {
 
     /// Logs a player the game made fully familiar with his team's tactic, as a change of his `tactics` from how
     /// familiar he was with the parts it changed to how familiar he is now, as percentages.
-    fn log_tactics(&mut self, done: fmlibre_core::RaisedTactics, batch: Option<u32>) -> LoggedChange {
+    fn log_tactics(&mut self, done: fmlens_core::RaisedTactics, batch: Option<u32>) -> LoggedChange {
         let change = Change {
             entity: Entity::Player,
             uid: done.player,
@@ -928,14 +928,14 @@ impl Connection {
             Tie::TrainedInNation => "tie.trainedInNation",
             Tie::TrainedAtClub => "tie.trainedAtClub",
         };
-        let end = |relation: &Option<fmlibre_core::Relation>| {
+        let end = |relation: &Option<fmlens_core::Relation>| {
             relation.as_ref().map(|relation| TieEnd {
                 name: relation.name.clone().unwrap_or_else(|| relation.target_uid.to_string()),
                 rule: relation.rule,
                 value: None,
             })
         };
-        let uid = |relation: &Option<fmlibre_core::Relation>| relation.as_ref().map_or(0, |r| i64::from(r.target_uid));
+        let uid = |relation: &Option<fmlens_core::Relation>| relation.as_ref().map_or(0, |r| i64::from(r.target_uid));
         let change = Change {
             entity: Entity::Player,
             uid: done.player,
@@ -1614,7 +1614,7 @@ enum Undo {
     /// A free agent the game agreed to sign on a later day: undone by having it cancel the signing.
     SignedLater(AgreedSigning),
     /// A player the game made fully familiar with his team's tactic: undone by putting his familiarity back.
-    Tactics(fmlibre_core::RaisedTactics),
+    Tactics(fmlens_core::RaisedTactics),
     /// A change nothing undoes: a transfer agreed for a later day the game cancelled, which only the clubs' own
     /// negotiation agrees again.
     Permanent,
@@ -1967,7 +1967,7 @@ fn macos_version() -> Option<String> {
     Some(version.trim().to_owned())
 }
 
-/// The macOS app bundle the executable `exe` is in (`FMLibreEditor.app/Contents/MacOS/FMLibreEditor`); none for a
+/// The macOS app bundle the executable `exe` is in (`FM Lens.app/Contents/MacOS/FM Lens`); none for a
 /// development build, which runs from the target folder.
 fn app_bundle(exe: &Path) -> Option<&Path> {
     let macos = exe.parent()?;
@@ -2155,7 +2155,7 @@ macro_rules! coded_failures {
     )*};
 }
 
-coded_failures!(EditError, MoveError, SessionError, fmlibre_mem::Error);
+coded_failures!(EditError, MoveError, SessionError, fmlens_mem::Error);
 
 impl<T> From<std::sync::PoisonError<T>> for Failure {
     fn from(err: std::sync::PoisonError<T>) -> Self {
@@ -2347,7 +2347,7 @@ fn search_players(
     limit: usize,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
-) -> Result<Page<fmlibre_core::PlayerSummary>, Failure> {
+) -> Result<Page<fmlens_core::PlayerSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
@@ -2371,7 +2371,7 @@ fn search_staff(
     query: String,
     limit: usize,
     filter: Option<StaffFilter>,
-) -> Result<Page<fmlibre_core::StaffSummary>, Failure> {
+) -> Result<Page<fmlens_core::StaffSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
@@ -2385,7 +2385,7 @@ fn search_clubs(
     query: String,
     limit: usize,
     filter: Option<ClubFilter>,
-) -> Result<Page<fmlibre_core::ClubSummary>, Failure> {
+) -> Result<Page<fmlens_core::ClubSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
