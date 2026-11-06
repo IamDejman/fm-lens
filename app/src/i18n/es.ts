@@ -1340,6 +1340,9 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.3": [
+        "FM Lens usa ahora su propio nombre en sus archivos y ajustes. Tu configuración y tus ajustes se han conservado solos.",
+      ],
       "0.5.2": [
         "Informar de un problema, en Ajustes, abre un informe de error con tus versiones y cambios ya rellenados.",
         "Cuando FM mueve sus datos, FM Lens vuelve a leer la partida solo: ya no hace falta pulsar Recargar datos.",

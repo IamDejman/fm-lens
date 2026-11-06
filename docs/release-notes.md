@@ -1,7 +1,7 @@
 ## Download
 
-- **FM-Lens-0.5.2-macos-universal.dmg**: open it and drag **FM Lens** onto **Applications**.
-- **FM-Lens-0.5.2-macos-universal.zip**: the same app, zipped.
+- **FM-Lens-0.5.3-macos-universal.dmg**: open it and drag **FM Lens** onto **Applications**.
+- **FM-Lens-0.5.3-macos-universal.zip**: the same app, zipped.
 
 Both run on Apple Silicon and Intel Macs. macOS only, with Football Manager 27 from Steam,
 build 26340721 (27.0.0). Another FM build opens read-only until FM Lens has a profile for it.
@@ -19,7 +19,16 @@ choose **Connect**.
 **Coming from 0.5.0:** quit FM Lens, then drag this version onto **Applications** and
 replace the old one. From 0.5.1 on, FM Lens updates itself when it opens.
 
-## What's new in 0.5.2
+## What's new in 0.5.3
+
+- **FM Lens everywhere.** The name of the editor FM Lens started from is gone from its
+  files, its settings and the helper FM loads through Steam. Your setup and settings move
+  over by themselves: there is nothing to set up again, and a game that is already running
+  keeps connecting.
+- **Coming from 0.5.2:** FM Lens installs this update in the background. Choose **Relaunch
+  to update** at the foot of the window when it suits you.
+
+## In 0.5.2
 
 - **Report a problem.** In the Settings menu. It opens a bug report on GitHub with the
   FM Lens version, the FM build, your Mac and the changes you made filled in. You read it
@@ -92,4 +101,4 @@ Nations, clubs and competitions
 ## Source code
 
 FM Lens is free software under the GNU GPL, version 3 or later. The source of this
-version is [IamDejman/fm-lens at v0.5.2](https://github.com/IamDejman/fm-lens/tree/v0.5.2).
+version is [IamDejman/fm-lens at v0.5.3](https://github.com/IamDejman/fm-lens/tree/v0.5.3).
