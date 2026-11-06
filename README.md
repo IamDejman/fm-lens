@@ -6,8 +6,8 @@ FM Lens is a companion for Football Manager 27 on macOS. It reads the career you
 have loaded and lets you search, compare and edit players, staff and clubs while
 FM runs. Fields that still need a memory layout stay off.
 
-**[Download the latest release](https://github.com/IamDejman/fm-lens-releases/releases/latest)**
-for Apple Silicon and Intel Macs. FM Lens updates itself after that.
+**[Download FM Lens](https://getfmlens.com/download/)** for Apple Silicon and Intel
+Macs from [getfmlens.com](https://getfmlens.com). FM Lens updates itself after that.
 
 ![FM Lens with sample data: the player list and a player's profile](docs/images/fm-lens.png)
 
