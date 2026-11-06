@@ -669,6 +669,8 @@ export interface LoanTerms {
   wage: number;
   starts: FmDate | null;
   ends: FmDate | null;
+  /** The fee agreed for a permanent move when the loan ends, mandatory or an option. */
+  futureFee: number | null;
 }
 
 /** A person or club a player favours or dislikes. */

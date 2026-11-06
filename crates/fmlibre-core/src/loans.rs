@@ -24,6 +24,8 @@ pub struct LoanTerms {
     pub wage: i32,
     pub starts: Option<FmDate>,
     pub ends: Option<FmDate>,
+    /// The fee agreed for a permanent move when the loan ends, mandatory or an option.
+    pub future_fee: Option<u32>,
 }
 
 impl Session {
@@ -59,6 +61,12 @@ impl Session {
             wage: i32::from_le_bytes(bytes[c.wage as usize..c.wage as usize + 4].try_into().expect("4 bytes")),
             starts: date(c.joined),
             ends: date(c.expires),
+            future_fee: self
+                .layout
+                .loan
+                .as_ref()
+                .and_then(|l| self.process.read_u32(loan + l.future_fee).ok())
+                .filter(|&fee| fee != u32::MAX),
         })
     }
 

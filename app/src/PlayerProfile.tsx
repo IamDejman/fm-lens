@@ -242,7 +242,7 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
   );
 }
 
-/** The loan he is on: the club he is on loan from, what the borrowing club pays and when the loan ends. */
+/** The loan he is on: the club he is on loan from, what the borrower pays, when the loan ends and any future fee. */
 function LoanGroup({ loan }: { loan: LoanTerms }) {
   const date = (value: FmDate | null) => formatDate(value) || profileText.none;
   return (
@@ -257,6 +257,7 @@ function LoanGroup({ loan }: { loan: LoanTerms }) {
         <Fact label={profileText.loanEnds}>
           <EditableValue field="loan.ends">{date(loan.ends)}</EditableValue>
         </Fact>
+        {loan.futureFee !== null && <Fact label={profileText.loanFutureFee}>{formatMoney(loan.futureFee)}</Fact>}
       </dl>
     </section>
   );
