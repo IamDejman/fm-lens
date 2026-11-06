@@ -1353,6 +1353,9 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.5": [
+        "Kendi kulübünüzden oyuncu transfer edin. FM transferi yapar ve bedeli aktarır.",
+      ],
       "0.5.4": [
         "Bir sakatlığın süresini değiştirin ya da tek bir sakatlığı kaldırın.",
         "Bir teknik direktörün topa sahipken ve topa sahip değilken dizilişlerini görün ve değiştirin.",
