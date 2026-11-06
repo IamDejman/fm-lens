@@ -1,9 +1,9 @@
 import { formatNumber } from "./format";
-import { competitionListText, profileText } from "./labels";
+import { competitionListText, editText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
-import { Fact, ProfileFrame } from "./ProfileParts";
-import type { CompetitionSummary } from "./types";
+import { Fact, ProfileFrame, useProfileDetails } from "./ProfileParts";
+import type { CompetitionRule, CompetitionSummary } from "./types";
 
 const text = competitionListText;
 const columns = text.columns;
@@ -30,7 +30,9 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
         </>
       }
       cells={(competition) => <CompetitionCells competition={competition} />}
-      profile={(competition, panel) => <CompetitionProfile competition={competition} onClose={panel.onClose} />}
+      profile={(competition, panel) => (
+        <CompetitionProfile competition={competition} version={version} onClose={panel.onClose} />
+      )}
     />
   );
 }
@@ -58,8 +60,16 @@ function CompetitionCells({ competition }: { competition: CompetitionSummary }) 
   );
 }
 
-/** A competition's profile: where it is played and its reputation. */
-function CompetitionProfile({ competition, onClose }: { competition: CompetitionSummary; onClose: () => void }) {
+/** A competition's profile: where it is played, its reputation and its rules. */
+function CompetitionProfile({
+  competition,
+  version,
+  onClose,
+}: {
+  competition: CompetitionSummary;
+  version: number;
+  onClose: () => void;
+}) {
   const flag = { width: 48, height: 32 };
   return (
     <ProfileFrame
@@ -75,6 +85,33 @@ function CompetitionProfile({ competition, onClose }: { competition: Competition
       <dl className="stats">
         <Fact label={text.reputation}>{formatNumber(competition.reputation)}</Fact>
       </dl>
+      <CompetitionRules uid={competition.uid} version={version} />
     </ProfileFrame>
+  );
+}
+
+const ruleNames: Record<string, string> = text.ruleNames;
+
+/** The competition's rules that FM keeps as plain numbers and yes-or-no values; nothing where it has none to show. */
+function CompetitionRules({ uid, version }: { uid: number; version: number }) {
+  const loaded = useProfileDetails<CompetitionRule[] | null>("competition_rules", uid, version);
+  if (loaded?.error !== undefined) {
+    return <p className="note">{loaded.error}</p>;
+  }
+  const rules = loaded?.details ?? [];
+  if (rules.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{text.rules}</h3>
+      <dl className="stats">
+        {rules.map((rule) => (
+          <Fact key={rule.key} label={ruleNames[rule.key] ?? rule.key}>
+            {typeof rule.value === "boolean" ? (rule.value ? editText.yes : editText.no) : formatNumber(rule.value)}
+          </Fact>
+        ))}
+      </dl>
+    </section>
   );
 }

@@ -40,6 +40,9 @@ pub struct Layout {
     /// A nation's own facts and its national team container; only in the layouts they have been checked in.
     #[serde(default)]
     pub national: Option<NationalLayout>,
+    /// A promise made to a person; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub promise: Option<PromiseLayout>,
     /// A match official; only in the layouts it has been checked in.
     #[serde(default)]
     pub official: Option<OfficialLayout>,
@@ -147,6 +150,12 @@ pub struct CompetitionLayout {
     pub place_name: u64,
     pub reputation: u64,
     pub women: u64,
+    /// Pointer to the competition's loaded rule data (`ACTUAL_COMP`), and in it the `(begin, end, capacity)` vector of
+    /// its rules: 16-byte entries of a key (a FourCC in the low 32 bits) and a pointer to a value node, `[type][value]`.
+    #[serde(default)]
+    pub actual: Option<u64>,
+    #[serde(default)]
+    pub rules: Option<u64>,
 }
 
 /// A kind of injury (`db::INJURY`), read from its database table as a competition is ([`CompetitionLayout`]). Its
@@ -273,6 +282,9 @@ pub struct NationalLayout {
     /// In a container: the `i8` game importance, 0 to 4, and the `u8` attendance, 0 to 16.
     pub game_importance: u64,
     pub attendance: u64,
+    /// In a container: twelve `i8` style ratings, 0 to 20, in the order of `national::STYLE`.
+    #[serde(default)]
+    pub style: Option<u64>,
     /// In a national team: pointer to the manager.
     pub team_manager: u64,
     /// In a national team: `u32` id. The senior team's is the nation's UID.
@@ -295,6 +307,7 @@ impl NationalLayout {
         [self.points + 4, self.ranking + 2, self.founded + 2, self.joined_fifa + 2, self.joined_continental + 2]
             .into_iter()
             .chain([self.youth_rating + 2, self.game_importance + 1, self.attendance + 1])
+            .chain(self.style.map(|offset| offset + crate::national::STYLE.len() as u64))
             .max()
             .unwrap_or(0)
     }
@@ -423,6 +436,34 @@ impl InjuryLayout {
     /// One past the last byte of every injury field.
     pub fn end(&self) -> u64 {
         [self.kind + 8, self.team + 8, self.started + 4, self.longest + 2, self.shortest + 2]
+            .into_iter()
+            .max()
+            .unwrap_or(0)
+    }
+}
+
+/// A promise made to a person (`INTERACTION_PROMISE`, 0x60 bytes). `list` is in the person block: a pointer to the
+/// `(begin, end, capacity)` vector of pointers to his promises. In a promise: `person` points back at him, `made` and
+/// `due` are dates (`due` becomes the end date once it closes), `id` is FM's `u16` number for the promise, bit 0 of
+/// `closed` marks it ended, `category` is 0 for the promises FM's own Promises page leaves out, and `status` is FM's
+/// status code, 0 while open.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PromiseLayout {
+    pub list: u64,
+    pub person: u64,
+    pub made: u64,
+    pub due: u64,
+    pub id: u64,
+    pub closed: u64,
+    pub category: u64,
+    pub status: u64,
+}
+
+impl PromiseLayout {
+    /// One past the last byte of every promise field.
+    pub fn end(&self) -> u64 {
+        [self.person + 8, self.made + 4, self.due + 4, self.id + 2, self.closed + 1, self.category + 1, self.status + 1]
             .into_iter()
             .max()
             .unwrap_or(0)
@@ -649,6 +690,10 @@ pub struct StaffLayout {
     /// has been traced in.
     #[serde(default)]
     pub coaching_licence: Option<u64>,
+    /// The `u8` formation ids of his preferred formation in possession and out of possession, the two FM's staff
+    /// profile shows; only in the layouts they have been traced in.
+    #[serde(default)]
+    pub formations: Option<[u64; 2]>,
     /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
     pub attributes: BTreeMap<String, u64>,
     /// Ratings stored as shown (1..20) by key.
@@ -686,6 +731,7 @@ impl StaffLayout {
             .values()
             .chain(self.ratings.values())
             .chain(self.coaching_licence.as_ref())
+            .chain(self.formations.iter().flatten())
             .map(|offset| offset + 1);
         fields.into_iter().chain(single_bytes).max().unwrap_or(0)
     }
@@ -709,6 +755,9 @@ pub struct TeamLayout {
     pub captain: u64,
     pub vice_captain: u64,
     pub reputation: u64,
+    /// Pointer to the object of the team's manager, null for none; where it has been traced.
+    #[serde(default)]
+    pub manager: Option<u64>,
 }
 
 impl TeamLayout {

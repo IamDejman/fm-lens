@@ -409,7 +409,7 @@ footer a {
 .releases article {
   display: grid;
   grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   column-gap: clamp(24px, 5vw, 72px);
   padding-block: 32px;
   border-top: 1px solid var(--rule);
@@ -417,7 +417,16 @@ footer a {
 
 .release-body {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1 / span 3;
+}
+
+.release-download {
+  align-self: start;
+  justify-self: start;
+  min-height: 44px;
+  margin-bottom: 24px;
+  padding: 0 20px;
+  font-size: 1rem;
 }
 
 .release-body > :first-child {
