@@ -1722,6 +1722,7 @@ export const es: Strings = {
     pays: (club, fee, balance, budget) =>
       `${club} paga ${fee}: saldo ${balance}${budget === null ? "" : `, presupuesto de fichajes ${budget}`}`,
     receives: (club, fee, balance) => `${club} recibe ${fee}: saldo ${balance}`,
+    gameFee: (buyer, seller, fee) => `${buyer} paga ${fee} a ${seller}`,
     noFinances: (club) => `${club} no tiene finanzas en FM, así que su dinero no cambia`,
 
     // El contrato
@@ -1743,6 +1744,11 @@ export const es: Strings = {
       "Cualquier capitanía en el club anterior queda vacante",
       "El historial de traspasos del juego aún no lo recoge",
       "Aparece en Cambios, donde deshacerlo revierte de una vez el traspaso y el precio",
+    ],
+    gameDoes: [
+      "FM hace el traspaso él mismo y mueve el precio según sus propias reglas",
+      "El salario y el fin de contrato solo cambian si fijas otros nuevos",
+      "No se puede deshacer",
     ],
 
     // El intercambio
