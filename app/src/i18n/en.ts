@@ -516,6 +516,7 @@ export const en = {
     youth_rating: "Youth rating",
     "women.reputation": "Women's reputation",
     "women.youth_rating": "Women's youth rating",
+    points: "FIFA points",
   },
 
   profile: {
@@ -1396,6 +1397,8 @@ export const en = {
     invalidMoney: (from: string, to: string) => `Enter a whole amount from ${from} to ${to}`,
     /** The same for a percentage, in whole percent; `from` and `to` are the least and the most it takes, as shown. */
     invalidPercentage: (from: string, to: string) => `Enter a whole percentage from ${from} to ${to}`,
+    /** The same for a number with up to two decimal places, such as FIFA points; `from` and `to` as shown. */
+    invalidDecimal: (from: string, to: string) => `Enter a number with up to two decimal places from ${from} to ${to}`,
     /** After the input of a percentage: the game shows energy and match sharpness as 0–100%. */
     percent: "%",
     /** The two values of a yes-or-no field, as the lists of changes and the hover text of its checkbox say them. */
