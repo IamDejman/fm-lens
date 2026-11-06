@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { call, inTauri } from "./api";
+import { addCheckForUpdates } from "./appMenu";
 import { BridgeSetup } from "./BridgeSetup";
 import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
@@ -10,7 +11,7 @@ import { describeBuild, describeError, formatDate } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
-import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
+import { isShortcut, MAC, shortcutAria, shortcutLabel } from "./keys";
 import { openReport } from "./report";
 import { SettingsMenu } from "./SettingsMenu";
 import {
@@ -96,13 +97,19 @@ function App() {
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog } = useChangeLog();
-  const { update, relaunch, dismiss: dismissUpdate } = useUpdate();
+  const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   useEffect(() => {
     // The browser preview stands in for the app with the version in package.json.
     (inTauri ? getVersion() : call<string>("app_version")).then(setVersion).catch(() => {});
   }, []);
+  useEffect(() => {
+    if (inTauri && MAC) {
+      // Without it the app menu stays as it was: the checks every four hours carry on.
+      addCheckForUpdates(updateText.checkForUpdates, () => void checkNow()).catch(() => {});
+    }
+  }, [checkNow]);
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
     setBusy(label);
@@ -355,10 +362,6 @@ function App() {
           <span data-tour="settings">
             <SettingsMenu
               busy={busy !== null}
-              onReport={() => {
-                const detected = detection?.games[0]?.info ?? null;
-                openReport({ version, connection, detected, log }).catch((e: unknown) => setError(describeError(e)));
-              }}
               details={[
                 `FM Lens${version ? ` ${version}` : ""}`,
                 connection
@@ -420,6 +423,16 @@ function App() {
             </span>
           </span>
           {!inTauri && <span className="tag">{appText.previewTag}</span>}
+          <button
+            type="button"
+            className="colophon-report"
+            onClick={() => {
+              const detected = detection?.games[0]?.info ?? null;
+              openReport({ version, connection, detected, log }).catch((e: unknown) => setError(describeError(e)));
+            }}
+          >
+            {appText.reportProblem}
+          </button>
           {update?.phase === "ready" && (
             <button type="button" className="relaunch" onClick={() => relaunch(update.version)}>
               {updateText.relaunch}

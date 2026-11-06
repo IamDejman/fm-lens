@@ -75,10 +75,10 @@ const CHECK = (
 /**
  * The button and, once it is pressed, its menu. Choosing another language or currency reloads the window (see
  * `setLocale` and `setCurrency`), which the app survives connected (see `current_connection`), so edits pending in an
- * open profile are asked about first. While the app is `busy` the button waits. `onReport` opens a problem report
- * (see report.ts). `details` is passive information (version, game, graphics) shown at the foot of the menu.
+ * open profile are asked about first. While the app is `busy` the button waits. `details` is passive information
+ * (version, game, graphics) shown at the foot of the menu.
  */
-export function SettingsMenu({ busy, details, onReport }: { busy: boolean; details?: ReactNode; onReport: () => void }) {
+export function SettingsMenu({ busy, details }: { busy: boolean; details?: ReactNode }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [theme, updateTheme] = useState(appearance);
   const [scale, updateScale] = useState(zoom);
@@ -268,19 +268,6 @@ export function SettingsMenu({ busy, details, onReport }: { busy: boolean; detai
                   {code === currency && CHECK}
                 </button>
               ))}
-            </div>
-            <div role="group">
-              <button
-                type="button"
-                role="menuitem"
-                tabIndex={-1}
-                onClick={() => {
-                  close();
-                  onReport();
-                }}
-              >
-                {appText.reportProblem}
-              </button>
             </div>
             {details && (
               <div role="group" aria-label={appText.detailsLabel} className="settings-details">
