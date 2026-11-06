@@ -5,9 +5,37 @@
 // It runs as an AWS Lambda function behind a function URL (relay/deploy.sh), and counts reports in a DynamoDB table
 // that every instance shares. Environment: GITHUB_TOKEN (a fine-grained token that may write issues in GITHUB_REPO),
 // GITHUB_REPO (owner/name, IamDejman/fm-lens by default) and LIMIT_TABLE (fm-lens-report-relay by default).
+//
+// Screenshots and videos go straight from the app to the S3 bucket UPLOAD_BUCKET, never through the relay: the app asks
+// for upload addresses (POST /uploads), puts each file there, and sends the report with the files' keys, which the
+// issue links. The bucket serves `reports/` publicly (relay/setup-attachments.sh). Without UPLOAD_BUCKET, reports
+// without files work as before.
+
+import { createHash, createHmac, randomUUID } from "node:crypto";
 
 /** The longest each part of a report may be, in characters, and the request as a whole, in bytes. */
 export const LIMITS = { what: 5000, line: 200, changes: 8000, request: 20_000 };
+
+/** The files a report may carry: their types, with the extension each is kept under, and how many and how big. */
+export const FILES = {
+  "image/png": { ext: "png", kind: "image" },
+  "image/jpeg": { ext: "jpg", kind: "image" },
+  "image/gif": { ext: "gif", kind: "image" },
+  "image/webp": { ext: "webp", kind: "image" },
+  "video/mp4": { ext: "mp4", kind: "video" },
+  "video/quicktime": { ext: "mov", kind: "video" },
+};
+export const FILE_LIMITS = {
+  image: { count: 5, bytes: 10 * 1024 * 1024 },
+  video: { count: 1, bytes: 50 * 1024 * 1024 },
+};
+
+/** How long an upload address works, in seconds. */
+const UPLOAD_EXPIRES = 15 * 60;
+
+/** A key the relay hands out: `reports/<day>/<uuid>.<ext>`. */
+const KEY =
+  /^reports\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|gif|webp|mp4|mov)$/;
 
 /** How many reports one address may send an hour, and all addresses together a day. */
 export const PER_ADDRESS_HOUR = 5;
@@ -52,8 +80,61 @@ export function readReport(input) {
   return { report };
 }
 
+/**
+ * The files asked for in `input` (`{ files: [{ type, size }] }`), or why they are turned away: a type not in `FILES`,
+ * more of a kind than `FILE_LIMITS` allows, or one too big.
+ */
+export function readFiles(input) {
+  const files = input?.files;
+  if (!Array.isArray(files) || files.length === 0) {
+    return { error: "invalid" };
+  }
+  const counts = { image: 0, video: 0 };
+  const read = [];
+  for (const file of files) {
+    const type = FILES[file?.type];
+    if (!type || !Number.isInteger(file.size) || file.size <= 0) {
+      return { error: "invalid" };
+    }
+    const limit = FILE_LIMITS[type.kind];
+    counts[type.kind] += 1;
+    if (counts[type.kind] > limit.count || file.size > limit.bytes) {
+      return { error: "tooLarge" };
+    }
+    read.push({ type: file.type, size: file.size, ext: type.ext });
+  }
+  return { files: read };
+}
+
+/** The keys in `input.attachments`, or why they are turned away: not ones the relay hands out, or too many. */
+export function readAttachments(input) {
+  const keys = input?.attachments;
+  if (keys === undefined) {
+    return { keys: [] };
+  }
+  if (!Array.isArray(keys) || keys.some((key) => typeof key !== "string" || !KEY.test(key))) {
+    return { error: "invalid" };
+  }
+  const counts = { image: 0, video: 0 };
+  for (const key of keys) {
+    const kind = isVideo(key) ? "video" : "image";
+    counts[kind] += 1;
+    if (counts[kind] > FILE_LIMITS[kind].count) {
+      return { error: "invalid" };
+    }
+  }
+  return { keys: [...new Set(keys)] };
+}
+
+const isVideo = (key) => /\.(mp4|mov)$/.test(key);
+
+/** Where the bucket serves `key`. */
+export function publicUrl(bucket, region, key) {
+  return `https://${bucket}.s3.${region}.amazonaws.com/${encodePath(key)}`;
+}
+
 /** The issue for `report`, laid out as GitHub lays out its own bug report form (.github/ISSUE_TEMPLATE/bug_report.yml). */
-export function issueFor(report) {
+export function issueFor(report, files = []) {
   const firstLine = report.what.split("\n")[0].trim();
   const title = firstLine.length > 70 ? `${firstLine.slice(0, 69)}…` : firstLine;
   const section = (label, value) => `### ${label}\n\n${value === "" ? "_No response_" : value}`;
@@ -63,9 +144,77 @@ export function issueFor(report) {
     section("macOS", report.macos),
     section("What happened", report.what),
     section("What you changed in FM Lens before it happened", report.changes),
+    ...(files.length > 0 ? [section("Files", files.map(fileLink).join("\n\n"))] : []),
     "_Sent from Report a problem in FM Lens._",
   ].join("\n\n");
   return { title, body, labels: ["bug"] };
+}
+
+/** A screenshot shown in the issue, or a link to a video, which GitHub plays only from its own storage. */
+function fileLink(url, index) {
+  return isVideo(url) ? `[Video](${url})` : `![Screenshot ${index + 1}](${url})`;
+}
+
+/** `value` encoded as SigV4 wants it: everything but A-Z, a-z, 0-9 and -._~. */
+function encode(value) {
+  return encodeURIComponent(value).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+}
+
+const encodePath = (key) => key.split("/").map(encode).join("/");
+
+const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+const hmac = (key, value) => createHmac("sha256", key).update(value).digest();
+
+/**
+ * A presigned S3 URL (Signature Version 4, query string) for `method` on `key` in `bucket`. `headers` are signed as
+ * well, besides the host, so the request must send them as they are: an upload its Content-Type and Content-Length.
+ */
+export function presign({
+  method,
+  bucket,
+  region,
+  key,
+  headers = {},
+  credentials,
+  expires,
+  now = new Date(),
+  host = `${bucket}.s3.${region}.amazonaws.com`,
+}) {
+  const stamp = now
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+  const day = stamp.slice(0, 8);
+  const scope = `${day}/${region}/s3/aws4_request`;
+  const signed = {
+    ...Object.fromEntries(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), String(v)])),
+    host,
+  };
+  const names = Object.keys(signed).sort();
+  const query = {
+    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
+    "X-Amz-Credential": `${credentials.accessKeyId}/${scope}`,
+    "X-Amz-Date": stamp,
+    "X-Amz-Expires": String(expires),
+    "X-Amz-SignedHeaders": names.join(";"),
+    ...(credentials.sessionToken ? { "X-Amz-Security-Token": credentials.sessionToken } : {}),
+  };
+  const canonicalQuery = Object.keys(query)
+    .sort()
+    .map((name) => `${encode(name)}=${encode(query[name])}`)
+    .join("&");
+  const canonical = [
+    method,
+    `/${encodePath(key)}`,
+    canonicalQuery,
+    names.map((name) => `${name}:${signed[name].trim()}\n`).join(""),
+    names.join(";"),
+    "UNSIGNED-PAYLOAD",
+  ].join("\n");
+  const toSign = ["AWS4-HMAC-SHA256", stamp, scope, sha256(canonical)].join("\n");
+  const signingKey = hmac(hmac(hmac(hmac(`AWS4${credentials.secretAccessKey}`, day), region), "s3"), "aws4_request");
+  const signature = createHmac("sha256", signingKey).update(toSign).digest("hex");
+  return `https://${host}/${encodePath(key)}?${canonicalQuery}&X-Amz-Signature=${signature}`;
 }
 
 /**
@@ -96,13 +245,15 @@ export function createTableLimiter({ table, update, now = Date.now }) {
     }
   };
   return {
-    async allow(address) {
+    /** Counts one report from `address`, or with `what` "uploads", one request for upload addresses. */
+    async allow(address, what = "report") {
       const at = now();
       const hour = Math.floor(at / HOUR);
       const day = Math.floor(at / DAY);
+      const prefix = what === "uploads" ? "uploads#" : "";
       return (
-        (await count(`address#${address}#${hour}`, PER_ADDRESS_HOUR, (hour + 2) * HOUR)) &&
-        (await count(`day#${day}`, PER_DAY, (day + 2) * DAY))
+        (await count(`${prefix}address#${address}#${hour}`, PER_ADDRESS_HOUR, (hour + 2) * HOUR)) &&
+        (await count(`${prefix}day#${day}`, PER_DAY, (day + 2) * DAY))
       );
     },
   };
@@ -124,7 +275,7 @@ function answer(statusCode, body) {
  * `fetch` is swapped in by the tests. Reports are counted by the address AWS saw the request come from, which a sender
  * can't set.
  */
-export function createRelay({ token, repo, limiter, fetch = globalThis.fetch }) {
+export function createRelay({ token, repo, limiter, uploads, fetch = globalThis.fetch }) {
   return async (event) => {
     const method = event.requestContext?.http?.method ?? "";
     const path = event.rawPath ?? "/";
@@ -134,10 +285,10 @@ export function createRelay({ token, repo, limiter, fetch = globalThis.fetch }) 
     if (method === "GET" && path === "/health") {
       return answer(200, { ok: true });
     }
-    if (method !== "POST" || path !== "/report") {
+    if (method !== "POST" || (path !== "/report" && path !== "/uploads")) {
       return answer(404, { error: "notFound" });
     }
-    if (!token) {
+    if (!token || (path === "/uploads" && !uploads)) {
       return answer(503, { error: "unavailable" });
     }
     const raw = event.isBase64Encoded ? Buffer.from(event.body ?? "", "base64").toString("utf8") : (event.body ?? "");
@@ -150,19 +301,72 @@ export function createRelay({ token, repo, limiter, fetch = globalThis.fetch }) 
     } catch {
       return answer(400, { error: "invalid" });
     }
+    const address = event.requestContext?.http?.sourceIp ?? "unknown";
+    const allow = async (what) => {
+      try {
+        return (await limiter.allow(address, what)) ? null : answer(429, { error: "tooMany" });
+      } catch (err) {
+        console.error(`The counts could not be read: ${err instanceof Error ? err.message : String(err)}`);
+        return answer(503, { error: "unavailable" });
+      }
+    };
+
+    if (path === "/uploads") {
+      const { files, error } = readFiles(input);
+      if (error) {
+        return answer(error === "tooLarge" ? 413 : 400, { error });
+      }
+      const refused = await allow("uploads");
+      if (refused) {
+        return refused;
+      }
+      const day = new Date().toISOString().slice(0, 10);
+      const credentials = uploads.credentials();
+      return answer(200, {
+        uploads: files.map((file) => {
+          const key = `reports/${day}/${randomUUID()}.${file.ext}`;
+          const url = presign({
+            method: "PUT",
+            bucket: uploads.bucket,
+            region: uploads.region,
+            key,
+            headers: { "Content-Type": file.type, "Content-Length": file.size },
+            credentials,
+            expires: UPLOAD_EXPIRES,
+          });
+          return { key, url };
+        }),
+      });
+    }
+
     const { report, error } = readReport(input);
-    if (error) {
-      return answer(400, { error });
+    const { keys, error: filesError } = readAttachments(input);
+    if (error || filesError || (keys.length > 0 && !uploads)) {
+      return answer(400, { error: error ?? filesError ?? "invalid" });
     }
-    let allowed;
+    const refused = await allow("report");
+    if (refused) {
+      return refused;
+    }
+    // Each file must be in the bucket, as big as its kind may be at the most.
+    const files = keys.map((key) => publicUrl(uploads.bucket, uploads.region, key));
     try {
-      allowed = await limiter.allow(event.requestContext?.http?.sourceIp ?? "unknown");
+      const found = await Promise.all(
+        files.map(async (url) => {
+          const response = await fetch(url, {
+            method: "HEAD",
+            signal: AbortSignal.timeout(10_000),
+          });
+          const size = Number(response.headers.get("content-length"));
+          return response.ok && size <= FILE_LIMITS[isVideo(url) ? "video" : "image"].bytes;
+        }),
+      );
+      if (found.includes(false)) {
+        return answer(400, { error: "invalid" });
+      }
     } catch (err) {
-      console.error(`The counts could not be read: ${err instanceof Error ? err.message : String(err)}`);
-      return answer(503, { error: "unavailable" });
-    }
-    if (!allowed) {
-      return answer(429, { error: "tooMany" });
+      console.error(`The files could not be checked: ${err instanceof Error ? err.message : String(err)}`);
+      return answer(502, { error: "notFiled" });
     }
     try {
       const response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
@@ -174,7 +378,7 @@ export function createRelay({ token, repo, limiter, fetch = globalThis.fetch }) 
           "User-Agent": "fm-lens-report-relay",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-        body: JSON.stringify(issueFor(report)),
+        body: JSON.stringify(issueFor(report, files)),
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) {
@@ -199,6 +403,18 @@ export async function handler(event) {
     relay = createRelay({
       token: process.env.GITHUB_TOKEN,
       repo: process.env.GITHUB_REPO || "IamDejman/fm-lens",
+      uploads: process.env.UPLOAD_BUCKET
+        ? {
+            bucket: process.env.UPLOAD_BUCKET,
+            region: process.env.AWS_REGION,
+            // The function's own role, which may put objects in the bucket.
+            credentials: () => ({
+              accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+              secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+              sessionToken: process.env.AWS_SESSION_TOKEN,
+            }),
+          }
+        : undefined,
       limiter: createTableLimiter({
         table: process.env.LIMIT_TABLE || "fm-lens-report-relay",
         update: (input) => client.send(new UpdateItemCommand(input)),
