@@ -546,6 +546,8 @@ export const es: Strings = {
     "contract.loan_listed": "Cedible",
     "contract.job": "Puesto",
     coaching_licence: "Licencia de entrenador",
+    "formation.preferred": "Formación preferida",
+    "formation.second": "Segunda formación",
     "manager.unsackable": "Indespedible (experimental)",
     "manager.registration_anytime": "Inscribir plantilla en cualquier momento (experimental)",
     "tie.nationality": "Nacionalidad secundaria",
@@ -668,6 +670,7 @@ export const es: Strings = {
     squadStatus: "Estatus en la plantilla",
     squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Estatus ${status}`,
     qualifications: "Titulación",
+    formations: "Formaciones",
     coachingLicence: "Licencia de entrenador",
     licenceName: (level: number): string =>
       ({

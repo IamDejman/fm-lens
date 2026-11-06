@@ -649,6 +649,10 @@ pub struct StaffLayout {
     /// has been traced in.
     #[serde(default)]
     pub coaching_licence: Option<u64>,
+    /// The `u8` formation ids of his preferred formation and, after it, his second; only in the layouts they have been
+    /// traced in.
+    #[serde(default)]
+    pub formations: Option<u64>,
     /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
     pub attributes: BTreeMap<String, u64>,
     /// Ratings stored as shown (1..20) by key.
@@ -687,7 +691,9 @@ impl StaffLayout {
             .chain(self.ratings.values())
             .chain(self.coaching_licence.as_ref())
             .map(|offset| offset + 1);
-        fields.into_iter().chain(single_bytes).max().unwrap_or(0)
+        // The two formation bytes.
+        let formations = self.formations.map(|offset| offset + 2);
+        fields.into_iter().chain(single_bytes).chain(formations).max().unwrap_or(0)
     }
 
     pub fn max_shift(&self) -> u64 {
