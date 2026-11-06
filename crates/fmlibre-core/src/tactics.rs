@@ -209,7 +209,12 @@ impl Session {
     }
 
     /// How familiar each player of the team at `team` in the list of `club`'s teams is with its tactic. Only reads.
-    pub fn team_tactics(&self, club: &ClubSummary, team: usize, players: &PlayerIndex) -> Result<TeamTactics, MoveError> {
+    pub fn team_tactics(
+        &self,
+        club: &ClubSummary,
+        team: usize,
+        players: &PlayerIndex,
+    ) -> Result<TeamTactics, MoveError> {
         let (layout, editor) = self.tactics_layout()?;
         let object = self.team_object(club, team)?;
         let id = self.team_id(object, layout, editor)?;
@@ -283,7 +288,8 @@ impl Session {
             if !sane {
                 return Err(MoveError::NotListed);
             }
-            let bytes = if begin == end { Vec::new() } else { self.process.read_bytes(begin, (end - begin) as usize)? };
+            let bytes =
+                if begin == end { Vec::new() } else { self.process.read_bytes(begin, (end - begin) as usize)? };
             lists.push(List { at, entry, begin, end, capacity, bytes });
         }
         let dirty = self.process.read_bytes(record + layout.dirty, 1)?[0];

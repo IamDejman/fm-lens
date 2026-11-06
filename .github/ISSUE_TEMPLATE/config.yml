@@ -1,1 +1,8 @@
 blank_issues_enabled: true
+contact_links:
+  - name: Question
+    url: https://github.com/IamDejman/fm-lens/discussions/categories/q-a
+    about: Ask how to do something in FM Lens.
+  - name: Security problem
+    url: https://github.com/IamDejman/fm-lens/security/advisories/new
+    about: Report it privately, not in a public issue.

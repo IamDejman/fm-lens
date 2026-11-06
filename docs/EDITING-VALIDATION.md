@@ -558,7 +558,7 @@ Quintero's permit shows, then revoke it; Keitel's contract reads 30/06/2029
 and £5,000; Berg's arranged-transfer badge is gone; González joined Getafe
 with FM's contract; Oliver's official screen; Nwaneri back at Arsenal. Then
 End loan on a loan without a future fee, work permits (#20), competitions and
-awards (#21) and the earlier items in `HANDOFF.md` section 4.
+awards (#21) and the earlier items in `docs/internal/HANDOFF.md` section 4.
 
 ### Rechecks and the rest of section 4 (5 November 2026, evening)
 
