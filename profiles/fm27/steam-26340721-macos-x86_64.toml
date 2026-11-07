@@ -11,6 +11,11 @@ storefront = "steam"
 # The in-game date.
 current_date = 0x5C69700
 
+# The static pointer to the game's GAME_UI. The game's editor actions load it and call its virtual slot +0xA0 with the
+# person (0x25647FA, the twin of the arm64 0x238A61C, which loads 0x56D48B8), as entity_changed below. Loaded before
+# +0xA0 calls in nine places; see docs/recon/fm27-intel-refresh.md.
+game_ui = 0x5C8AC88
+
 # The static pointer to the retirement manager, loaded in 61 places; its class is checked before it is used.
 retirement_manager = 0x5C5FEF0
 
@@ -42,9 +47,16 @@ person_shift = 0x340
 class = "N2db16HUMAN_NON_PLAYERE"
 
 # The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
-# no others on this build. Each is a direct call of the work permit action above, with the arm64 half's arguments;
-# see docs/recon/fm27-steam-26340721-macos-x86_64.md.
+# no others on this build. The work permit calls are direct calls of the work permit action above, with the arm64
+# half's arguments (see docs/recon/fm27-steam-26340721-macos-x86_64.md); the refresh calls are traced from GAME_UI's
+# vtable (see docs/recon/fm27-intel-refresh.md).
 [calls]
+# GAME_UI virtual slot +0xA0, the twin of the arm64 0x30B50: (ui, the person's identity). It makes the identity's
+# reference vector (0x683730) and hands it to the rfui notifier (0x2F9D0), which calls refresh_views.
+entity_changed = 0x308A0
+# The rfui dispatcher, the twin of the arm64 0x2FC20 instruction for instruction; an empty reference vector requests
+# an unfiltered view refresh.
+refresh_views = 0x2FA70
 # TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force, esc), called at
 # 0x25696A8 with force 0 and esc 0 for 'tick' false ("add_work_permit").
 set_work_permit = 0x309A010
