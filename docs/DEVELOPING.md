@@ -243,7 +243,9 @@ one. `relay/setup-attachments.sh` sets the bucket, its CORS and lifecycle, the r
 files and `UPLOAD_BUCKET` up; run it again before deploying a relay that needs a change there. Without it, reports
 without files work as before. `node --test` in `relay/` runs its
 tests, and CI runs them too. To send new code, run `relay/deploy.sh` with `AWS_PROFILE` and
-`AWS_REGION` set for the account the function is in.
+`AWS_REGION` set for the account the function is in. The app's content security policy (`security.csp` in
+`app/src-tauri/tauri.conf.json`) names the relay and the bucket, as it names every address the window may reach: a new
+relay, bucket or service goes there too, or the app cannot reach it.
 
 ## Using the probe
 
