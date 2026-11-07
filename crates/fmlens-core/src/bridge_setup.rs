@@ -13,7 +13,7 @@
 //! Before 0.5.3 the bridge and its launcher had other names (`EARLIER_BRIDGE_FILE`,
 //! `EARLIER_LAUNCHER_FILE`). A launch option that still names the earlier launcher keeps working:
 //! that launcher is kept as this one until the launch option moves to the new name, which
-//! `refresh` does once Steam is closed.
+//! `refresh` does once Steam is closed. The earlier bridge goes at once.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -285,25 +285,26 @@ fn names_earlier(config: &Path, places: &Places) -> bool {
 }
 
 /// Keeps a setup from before 0.5.3 working: while a launch option names the earlier launcher, that
-/// launcher is `launcher`, which loads the bridge under its new name beside it; once none does, the
-/// earlier files go. Returns whether a file changed.
+/// launcher is `launcher`, which loads the bridge under its new name beside it. Nothing loads the
+/// earlier bridge, so it goes at once, and the earlier launcher once no launch option names it.
+/// Returns whether a file changed.
 fn keep_earlier(places: &Places, launcher: &[u8]) -> Result<bool, SetupError> {
-    if configs(&places.steam_users).iter().any(|config| names_earlier(config, places)) {
-        if std::fs::read(&places.earlier_launcher).is_ok_and(|now| now == launcher) {
-            return Ok(false);
-        }
+    let named = configs(&places.steam_users).iter().any(|config| names_earlier(config, places));
+    let mut changed = false;
+    if named && !std::fs::read(&places.earlier_launcher).is_ok_and(|now| now == launcher) {
         write_new(&places.earlier_launcher, launcher, true)?;
-        return Ok(true);
+        changed = true;
     }
-    let mut removed = false;
-    for file in [&places.earlier_launcher, &places.earlier_bridge] {
+    let unused =
+        if named { &[&places.earlier_bridge][..] } else { &[&places.earlier_launcher, &places.earlier_bridge] };
+    for file in unused {
         match std::fs::remove_file(file) {
-            Ok(()) => removed = true,
+            Ok(()) => changed = true,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-            Err(err) => return Err(SetupError::Io(file.clone(), err)),
+            Err(err) => return Err(SetupError::Io((*file).clone(), err)),
         }
     }
-    Ok(removed)
+    Ok(changed)
 }
 
 /// Takes the launcher out of FM27's launch options, and removes the files once no launch
@@ -830,12 +831,15 @@ mod tests {
         let before = status(&places);
         assert!(before.installed && before.accounts[0].loads_bridge, "{before:?}");
 
-        // While Steam runs, its launch option stays, and the launcher it names becomes the new one.
+        // While Steam runs, its launch option stays, and the launcher it names becomes the new one. That one loads
+        // the bridge under its new name, so the earlier bridge goes.
         assert!(refresh_while(&places, &bundle, true).expect("refresh"));
         assert_eq!(std::fs::read(&places.bridge).expect("library"), b"new bridge");
         assert_eq!(std::fs::read(&places.launcher).expect("launcher"), b"new launcher");
         assert_eq!(std::fs::read(&places.earlier_launcher).expect("earlier launcher"), b"new launcher");
+        assert!(!places.earlier_bridge.exists());
         assert!(names_earlier(&config_file, &places));
+        assert!(status(&places).accounts[0].loads_bridge);
         assert!(!refresh_while(&places, &bundle, true).expect("refresh again"));
 
         // Once Steam is closed, the launch option moves to the new launcher and the earlier files go.
