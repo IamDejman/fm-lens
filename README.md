@@ -2,37 +2,41 @@
 
 ![FM Lens logo](app/src/assets/brand/fm-lens-logo.png)
 
-FM Lens is a free Mac companion for Football Manager 27. It reads the career you
-have loaded and lets you search, compare and edit players, staff and clubs while
+FM Lens is a free companion for Football Manager 27 on Mac and Windows. It reads
+the career you have loaded and lets you search, compare and edit players, staff and clubs while
 FM runs.
 
 **[Download FM Lens](https://getfmlens.com/download/)** for Apple Silicon and Intel
-Macs from [getfmlens.com](https://getfmlens.com). FM Lens updates itself after that.
+Macs or Windows from [getfmlens.com](https://getfmlens.com). FM Lens updates itself
+after that.
 
 ![FM Lens with sample data: the player list and a player's profile](docs/images/fm-lens.png)
 
 ## What you need
 
-- A Mac with Apple Silicon or Intel.
+- A Mac with Apple Silicon or Intel, or a PC with 64-bit Windows 10 or 11.
 - Football Manager 27 from Steam, version 27.0.0 (build 26340721). Other builds
   open read-only.
 - A copy of your save to edit.
 
 ## Getting started
 
-1. Open the disk image and drag **FM Lens** onto **Applications**. The first
-   time, open **System Settings › Privacy & Security** and choose **Open Anyway**.
-2. Save and quit FM, quit Steam, then choose **Set up** in FM Lens. This adds a
-   small helper that FM loads when Steam starts it.
-3. Start FM from Steam, load the copy of your save and choose **Connect**.
+1. On a Mac, open the disk image and drag **FM Lens** onto **Applications**. The
+   first time, open **System Settings › Privacy & Security** and choose **Open
+   Anyway**. Then save and quit FM, quit Steam, and choose **Set up** in FM Lens.
+   This adds a small helper that FM loads when Steam starts it.
 
-Edits go into FM when you press **Apply**. On the supported build, Apple
-Silicon or Intel, each successful Apply and Undo asks FM to refresh the affected
-record and its active views, without advancing time. Attribute and
+   On Windows, run the installer. If Windows protected your PC, choose **More
+   info**, then **Run anyway**. Windows needs no setup.
+2. Start FM from Steam, load the copy of your save and choose **Connect**.
+
+Edits go into FM when you press **Apply**. On the supported build, on Apple
+Silicon, Intel or Windows, each successful Apply and Undo asks FM to refresh the
+affected record and its active views, without advancing time. Attribute and
 contract-expiry header refresh have been checked in FM on Apple Silicon and
 Intel; other fields and panels have not all been verified.
-**Changes** lists each one, with **Undo**. To take the helper out again, choose
-**Remove the helper** in FM Lens.
+**Changes** lists each one, with **Undo**. To take the Mac helper out again,
+choose **Remove the helper** in FM Lens.
 
 Found a problem? [Open an issue](https://github.com/IamDejman/fm-lens/issues/new/choose).
 Questions and ideas go to [Discussions](https://github.com/IamDejman/fm-lens/discussions).
@@ -58,7 +62,7 @@ Questions and ideas go to [Discussions](https://github.com/IamDejman/fm-lens/dis
   such as history and finances.
 - Max cohesion, an unsackable manager and squad registration at any time are
   experimental.
-- There is no Windows version.
+- Promises are not available on Windows yet.
 
 Test results are in the [editing validation record](docs/EDITING-VALIDATION.md).
 
@@ -97,7 +101,7 @@ type are sent. PostHog does not keep the IP address. For the app it keeps the
 country and city the connection came from; for the site, not even that.
 
 The app sends these events with a random install id, the app version, the macOS
-version and processor, and the app language:
+or Windows version and processor, and the app language:
 
 - `app_opened`: the app started.
 - `fm_connected`: FM Lens connected to FM, with FM's version and store.
