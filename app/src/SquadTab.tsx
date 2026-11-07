@@ -13,6 +13,7 @@ import { intlLocale } from "./i18n";
 import {
   appText,
   fieldLabel,
+  jadedText,
   massEditText,
   positionLabel,
   profileText,
@@ -729,7 +730,9 @@ function SquadRow({ player, role, editable, busy, onCaptain }: SquadRowProps) {
       </td>
       <td className="num">{percentText(player.condition)}</td>
       <td className="num">{percentText(player.matchSharpness)}</td>
-      <td className="num">{formatNumber(player.jadedness)}</td>
+      <td className="num" title={profileText.jadednessTitle(formatNumber(player.jadedness))}>
+        {jadedText(player.jadedness)}
+      </td>
       <td className="num">{profileText.morale(player.morale)}</td>
       <td className="col-actions">
         {player.playsHere && (
