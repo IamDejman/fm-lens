@@ -1498,4 +1498,28 @@ mod tests {
         assert_eq!(refresh(arm64), (Some(0x56D_48B8), Some(0x3_0B50), Some(0x2_FC20)));
         assert_eq!(refresh(intel), (Some(0x5C8_AC88), Some(0x3_08A0), Some(0x2_FA70)));
     }
+
+    /// 27.0.0 on Windows: the statics and the game's own functions traced on the Steam test save (see
+    /// docs/EDITING-VALIDATION.md, "Windows reads" and "Windows game actions").
+    #[test]
+    fn steam_27_0_0_on_windows_finds_what_was_traced() {
+        let windows = PluginFingerprint::Pe { size_of_image: 0x1821_C000, link_timestamp: 0x6AE5_65AF };
+        let profile = profile_for(windows).expect("27.0.0 on Windows");
+        assert_eq!(
+            (profile.game_ui, profile.officials, profile.transfer_manager, profile.awards, profile.competitions),
+            (Some(0x570_1B50), Some(0x570_5848), Some(0x56F_3A18), Some(0x570_56D0), Some(0x570_56E8))
+        );
+        assert_eq!((profile.injury_kinds, profile.injury_manager), (Some(0x570_5710), Some(0x56F_7D08)));
+        let calls = profile.calls.expect("the game's own actions");
+        assert_eq!((calls.entity_changed, calls.refresh_views), (Some(0x1D_81B0), Some(0x1D_73D0)));
+        assert_eq!(
+            (calls.set_work_permit, calls.find_work_permit, calls.remove_work_permit),
+            (Some(0xB5_0C80), Some(0xBB_10C0), Some(0xB8_F540))
+        );
+        assert_eq!(
+            (calls.add_injury, calls.start_loan, calls.sign_free_agent, calls.maximise_tactics),
+            (Some(0x2DA_8370), Some(0xBD_F080), Some(0xBD_6270), Some(0x31A_B350))
+        );
+        assert_eq!(calls.all().len(), 22, "every call but ref_drop");
+    }
 }
