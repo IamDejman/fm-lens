@@ -1,8 +1,8 @@
 // Anonymous visit counts for this site, sent to PostHog without cookies or stored ids (cookieless mode): the pages seen
 // and the downloads started. The README's Privacy section lists what the site and the app send.
 
-/** FM Lens's PostHog project key. It can only add events, so it is safe in a page. Empty sends nothing. */
-const KEY = "";
+/** FM Lens's PostHog project key. It can only add events, so it is safe in a page. */
+const KEY = "phc_xoND6FWuBkhD46EWt7tr89NnoUQ5yQoHm2QDMrVCjU2q";
 
 const CONFIG = {
   api_host: "https://us.i.posthog.com",
