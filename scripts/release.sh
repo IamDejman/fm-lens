@@ -74,6 +74,8 @@ ditto -c -k --keepParent "$BUNDLE/FM Lens.app" "$OUT/$MAC.zip"
 # layout without opening Finder; pipx fetches it the first time.
 pipx run --spec dmgbuild==1.6.7 dmgbuild -s "$ROOT/scripts/dmg/settings.py" -D app="$BUNDLE/FM Lens.app" \
   -D background="$ROOT/scripts/dmg/background.png" "FM Lens" "$OUT/$MAC.dmg"
+# The built app is in the disk image now: remove it, or this Mac offers a second FM Lens beside the installed one.
+rm -r "$BUNDLE/FM Lens.app"
 
 # One universal app serves both kinds of Mac.
 DOWNLOADS="https://github.com/$REPO/releases/download/v$VERSION"
