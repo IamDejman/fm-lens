@@ -10,6 +10,10 @@ const CONFIG = {
   cookieless_mode: "always",
   autocapture: false,
   capture_heatmaps: false,
+  // Off here, whatever the project settings turn on, so the site sends only what the README lists.
+  capture_performance: false,
+  capture_dead_clicks: false,
+  capture_exceptions: false,
   disable_session_recording: true,
   disable_surveys: true,
 };
