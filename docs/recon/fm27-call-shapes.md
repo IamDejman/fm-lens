@@ -29,6 +29,11 @@ For 0x2dfedac and its IGE caller 0x238c860 the argument order is x1 = person blo
 (not team then person). Evidence: the callee reads the vbase through [x1]-0x18 and `ldrb [x2+0x2f]` is the team
 kind byte. At 0x238c908: `ldr x0,[x8,#0x9f8]; mov x4,sp; mov x1,x22; mov x2,x21; mov x3,x20; mov w5,#0; bl 0x2dfedac`.
 
+On Windows (Steam 26340721, 0xBD6270) the second argument is the `ACTUAL_PERSON`, not the person block: MSVC lays the
+block out as `PERSON` (0x288 in a player, no virtual-base pointer) then `ACTUAL_PERSON` (0x2B0, virtual-base pointer at
++8). The function finds `PERSON` through `[rdx+8]`, and its wrapper at 0xBD6120 gets the argument from `PERSON`'s
+slot 0x668, which returns `ACTUAL_PERSON`. Passing the person block itself faults at 0xBD62B2.
+
 ## 1. Work permits
 
 ### IGE handler (true start 0x238f110)

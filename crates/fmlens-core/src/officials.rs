@@ -15,7 +15,10 @@ use crate::session::Session;
 use crate::text::{Memo, display_name, read_name_entry};
 use crate::transfer::{MoveError, PointerList};
 
-/// The class every official is, as its vtable names it.
+/// The class every official is, as its vtable names it: MSVC's name on Windows, the Itanium C++ ABI's on macOS.
+#[cfg(windows)]
+const OFFICIAL_CLASS: &str = ".?AVOFFICIAL@db@@";
+#[cfg(target_os = "macos")]
 const OFFICIAL_CLASS: &str = "N2db8OFFICIALE";
 
 /// The most officials the editor reads; the test save had 1166.

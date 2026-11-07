@@ -9,7 +9,8 @@
 //! macOS opens another process's memory only to a debugger, and only when the process
 //! allows it, which the game does not. The game hands its memory over itself instead,
 //! through the small library of `fmlens-bridge` that it loads at start; [`bridge`] is
-//! what the two sides say to each other.
+//! what the two sides say to each other. On Windows the same library runs the game's own
+//! functions for the editor, loaded into the game for one call at a time.
 
 #![cfg(any(windows, target_os = "macos"))]
 
@@ -31,8 +32,8 @@ pub use macos::{
 pub use module::Module;
 #[cfg(windows)]
 pub use windows::{
-    Export, PeImage, Process, ProcessEntry, Region, Section, find_processes, is_current_process_elevated, list_modules,
-    region_at, regions,
+    Export, PeImage, Process, ProcessEntry, Region, Section, bridge, find_processes, is_current_process_elevated,
+    list_modules, region_at, regions,
 };
 
 /// Whether `p` looks like a user-mode pointer: 8-byte aligned and inside the
