@@ -1429,6 +1429,19 @@ mod tests {
         assert_eq!(permits(arm64), (Some(0x56A_49F8), Some(0x2D8_5294), Some(0x2DD_D12C), Some(0x2DC_0210)));
         assert_eq!(permits(intel), (Some(0x5C5_DE80), Some(0x309_A010), Some(0x30F_C8E0), Some(0x30D_8D20)));
         let intel = profile_for(PluginFingerprint::MachO { uuid: intel }).and_then(|profile| profile.calls);
-        assert_eq!(intel.map(|calls| calls.all().len()), Some(3), "only the work permit calls on Intel");
+        assert_eq!(intel.map(|calls| calls.all().len()), Some(5), "only the work permit and refresh calls on Intel");
+    }
+
+    #[test]
+    fn both_halves_of_27_0_0_on_macos_refresh_fm() {
+        let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let refresh = |uuid| {
+            let profile = profile_for(PluginFingerprint::MachO { uuid }).expect("27.0.0 on macOS");
+            let calls = profile.calls.unwrap_or_default();
+            (profile.game_ui, calls.entity_changed, calls.refresh_views)
+        };
+        assert_eq!(refresh(arm64), (Some(0x56D_48B8), Some(0x3_0B50), Some(0x2_FC20)));
+        assert_eq!(refresh(intel), (Some(0x5C8_AC88), Some(0x3_08A0), Some(0x2_FA70)));
     }
 }

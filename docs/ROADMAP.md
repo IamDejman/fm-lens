@@ -72,8 +72,8 @@ generalized active-view refresh and cover only those observed fields. Other
 fields/screens remain unverified. On 7 November, on 0.5.8 with the general
 refresh, every edit checked showed in FM without Continue: Lift bans, Heal all,
 Refresh all, Inspire all, Max attributes, Max cohesion, Max tactics, a club's
-transfer budget, a Clubs Mass edit, closing a promise, a staff formation and a work permit revoke and grant, with their undos. Intel has
-no mapped notifier.
+transfer budget, a Clubs Mass edit, closing a promise, a staff formation and a work permit revoke and grant, with their undos. On Intel
+both refresh calls are mapped, found statically and not yet checked in FM (recon/fm27-intel-refresh.md).
 See the latest entry in EDITING-VALIDATION.md.
 
 ## Delivery order
