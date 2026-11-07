@@ -29,8 +29,8 @@ Macs from [getfmlens.com](https://getfmlens.com). FM Lens updates itself after t
 Edits go into FM when you press **Apply**. On the supported build, Apple
 Silicon or Intel, each successful Apply and Undo asks FM to refresh the affected
 record and its active views, without advancing time. Attribute and
-contract-expiry header refresh have been checked in FM on Apple Silicon; other
-fields and panels, and Intel, have not all been verified.
+contract-expiry header refresh have been checked in FM on Apple Silicon and
+Intel; other fields and panels have not all been verified.
 **Changes** lists each one, with **Undo**. To take the helper out again, choose
 **Remove the helper** in FM Lens.
 
