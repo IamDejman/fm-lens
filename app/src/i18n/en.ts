@@ -192,6 +192,7 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
 
 /** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them. */
 const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
+  570: "Worried about the poor dressing room atmosphere",
   596: "Left out of a competition squad",
   808: "Thinks a teammate has been treated unfairly",
   926: "Doesn't believe a teammate deserves the playing time he wants",
@@ -435,20 +436,27 @@ export const en = {
     2: "Coach",
     4: "Chairperson",
     6: "Director",
+    8: "Managing Director",
+    10: "Director of Football",
     12: "Physio",
     14: "Scout",
     16: "Manager",
     20: "Assistant Coach",
     22: "Set Piece Coach",
+    24: "General Manager",
     26: "Fitness Coach",
     34: "Goalkeeping Coach",
+    38: "Chief Doctor",
     40: "Head of Sports Science",
     44: "Chief Scout",
+    46: "Doctor",
     48: "Sports Scientist",
     50: "Head Physio",
     58: "Recruitment Analyst",
     60: "Performance Analyst",
+    62: "Head Performance Analyst",
     64: "Head of Youth Development",
+    66: "Owner",
     70: "President",
     86: "Loan Manager",
     88: "Technical Director",
@@ -763,8 +771,10 @@ export const en = {
       }
     },
     moraleTitle: "10 is content. 15 and up is extremely happy.",
-    /** Hover text of jadedness, which the profile shows as stored. */
-    jadednessTitle: "How tired he is. -500 is fully rested.",
+    /** Jadedness as FM shows it: a player is jaded above 400. */
+    jaded: "Jaded",
+    /** Hover text of jadedness, with the stored value. */
+    jadednessTitle: (stored: string) => `Value ${stored}. Jaded above 400, fully rested at -500.`,
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
@@ -2250,14 +2260,15 @@ export const en = {
     /** The name of the switch for assistive technology. */
     teamsLabel: "Team",
     /**
-     * The names of the teams (see `teamLabel` in labels.ts): the first team, a B team, a team with an age limit, and
-     * any other, which is named by its place in the club's list (`place` counts from 1, the first team being the
+     * The names of the teams (see `teamLabel` in labels.ts): the first team, a B team, a team with an age limit, your
+     * club's youth candidates, and any other, which is named by its place in the club's list (`place` counts from 1, the first team being the
      * first).
      */
     teams: {
       first: "First team",
       b: "B team",
       age: (limit: number) => `U${limit}`,
+      youth: "Youth Candidates",
       other: (place: number) => `Team ${place}`,
     },
     /** When the game lists no team for the club. */

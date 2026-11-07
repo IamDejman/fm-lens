@@ -6,7 +6,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { EditableValue } from "./EditControls";
 import { addInjury, changeInjury, healPlayer, liftBans, removeInjury, wholePercent } from "./editing";
 import { describeError, formatDate, formatDateRange, formatNumber, formatPercent } from "./format";
-import { fieldLabel, listText, profileText } from "./labels";
+import { fieldLabel, jadedText, listText, profileText } from "./labels";
 import { Fact, focusLost, GroupHead } from "./ProfileParts";
 import { ListChange } from "./RelationGroups";
 import { ValueListDialog } from "./ValueListDialog";
@@ -33,8 +33,11 @@ export function MedicalGroups({ details }: { details: PlayerDetails }) {
           <Fact label={fieldLabel("player", "match_sharpness")}>
             <EditableValue field="match_sharpness">{percentText(details.matchSharpness)}</EditableValue>
           </Fact>
-          <Fact label={fieldLabel("player", "jadedness")} title={profileText.jadednessTitle}>
-            <EditableValue field="jadedness">{formatNumber(details.jadedness)}</EditableValue>
+          <Fact
+            label={fieldLabel("player", "jadedness")}
+            title={profileText.jadednessTitle(formatNumber(details.jadedness))}
+          >
+            <EditableValue field="jadedness">{jadedText(details.jadedness)}</EditableValue>
           </Fact>
         </dl>
       </section>

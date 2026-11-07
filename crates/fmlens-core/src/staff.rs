@@ -54,6 +54,8 @@ pub fn job_name(code: u8) -> Option<&'static str> {
         2 => "Coach",
         4 => "Chairperson",
         6 => "Director",
+        8 => "Managing Director",
+        10 => "Director of Football",
         // Giuseppe Marotta (Inter) and Florentino Pérez (Real Madrid).
         70 => "President",
         12 => "Physio",
@@ -61,15 +63,21 @@ pub fn job_name(code: u8) -> Option<&'static str> {
         16 => "Manager",
         20 => "Assistant Coach",
         22 => "Set Piece Coach",
+        24 => "General Manager",
         26 => "Fitness Coach",
         34 => "Goalkeeping Coach",
+        38 => "Chief Doctor",
         40 => "Head of Sports Science",
         44 => "Chief Scout",
+        46 => "Doctor",
         48 => "Sports Scientist",
         50 => "Head Physio",
         58 => "Recruitment Analyst",
         60 => "Performance Analyst",
+        62 => "Head Performance Analyst",
         64 => "Head of Youth Development",
+        // John Henry (Liverpool) and Tony Bloom.
+        66 => "Owner",
         86 => "Loan Manager",
         88 => "Technical Director",
         _ => return None,
@@ -400,6 +408,13 @@ mod tests {
         assert_eq!(job_name(1), Some("Player"));
         assert_eq!(job_name(3), Some("Coach"));
         assert_eq!(job_name(7), Some("Director"));
+        assert_eq!(job_name(8), Some("Managing Director"));
+        assert_eq!(job_name(10), Some("Director of Football"));
+        assert_eq!(job_name(24), Some("General Manager"));
+        assert_eq!(job_name(38), Some("Chief Doctor"));
+        assert_eq!(job_name(46), Some("Doctor"));
+        assert_eq!(job_name(62), Some("Head Performance Analyst"));
+        assert_eq!(job_name(66), Some("Owner"));
         assert_eq!(job_name(255), None);
     }
 
