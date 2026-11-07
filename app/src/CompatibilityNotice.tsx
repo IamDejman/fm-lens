@@ -24,7 +24,7 @@ export function CompatibilityNotice(props: {
   const noDate = failed.includes("gameDate");
   const locked = failed.filter((check) => check !== "gameDate").map((check) => CHECK_NAMES[check]);
   return (
-    <div className="compatibility-notice" role="status">
+    <div className="compatibility-notice">
       <div className="compatibility-text">
         <strong>{unknown ? text.unknownBuild(describeGame(connection.game)) : text.failedTitle}</strong>
         {unknown && <p>{connection.editable ? text.allowedText : text.unknownBuildText}</p>}
