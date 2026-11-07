@@ -7,13 +7,18 @@ reads", "Windows game actions", "Windows edits").
 ## 1. Where things stand (7 November 2026)
 
 FM Lens runs on Windows against FM27 Steam build 26340721 and does what the Mac app does, except for the gaps in
-section 3. It has been checked only on the test box (section 2), never shipped to anyone.
+section 3 that are marked left. FM Lens 0.6.2 is the first release with a Windows installer, and installed copies
+update themselves from it. Everything here was checked on the test box (section 2), Windows Server 2022, not on
+Windows 10 or 11 themselves.
 
 | PR | What it brought to Windows |
 | --- | --- |
 | #130 | The reads that were macOS-only: officials, competitions and rules, awards, kinds of injury, nations, club relations, staff likes, licence and formations, loans, work permits, future transfers, languages, cohesion |
 | #135 | The game's own actions through a Windows bridge DLL: injuries, work permits, loans, free agents, transfers, future transfers, max tactics, manager moves, refresh |
 | #143 | The new FM Lens icon on the exe and taskbar |
+| #146 | The NSIS installer built in CI, signed updates in `latest.json`, self-update with Relaunch, Check for Updates in Settings, About, and the small gaps in section 3.3 |
+| #147 | One FM Lens at a time, on macOS and Windows |
+| #150 | Release 0.6.2: the site and README offer the Windows download |
 
 Checked in the running game on Windows, each undone, the save never written: every read above, every game action
 above, and the app's direct edits (attributes and CA/PA, contract, mass edit, clone and templates, freeze money,
@@ -60,7 +65,8 @@ Status after the "Ship FM Lens for Windows" PR. Each item says what was done, or
 4. **Check for Updates: done.** Settings, About, on Windows only (macOS keeps it in the app menu).
 5. **Code signing: unsigned, with SmartScreen guidance** ("More info", "Run anyway"), like the ad hoc Mac app.
    Buying an Authenticode certificate is the user's decision.
-6. **Release repo and site:** changed in the release that first ships the Windows download (see section 1).
+6. **Release repo and site: done** in 0.6.2 (#150): the site offers both downloads, and `IamDejman/fm-lens-releases`
+   describes FM Lens for macOS and Windows.
 
 ### 3.2 Features that read nothing on Windows
 
