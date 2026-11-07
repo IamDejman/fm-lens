@@ -138,7 +138,7 @@ listing = 0x57            # u8; bit 0 transfer listed, bit 1 loan listed
 squad_number = 0x5D       # u8; 255 = none
 team = 0x10               # team pointer (the employer, for staff); its club is at team+0x30
 senior_team = 0x18        # the employer's senior team; the same as `team` except for player-coaches
-job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant coach, ...)
+job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant manager, ...)
 # Lists (begin, end, capacity) of a contract's extras. Read on the Windows Game Pass build with Kylian Mbappé,
 # whose clauses list holds his release clause (859,031,872 pounds, a billion euros) and three bonuses.
 clauses = 0x68            # 8-byte entries: u32 amount (0xFFFFFFFF: none), u16 condition (0xFFFF: none), u16 kind

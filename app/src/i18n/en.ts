@@ -441,7 +441,7 @@ export const en = {
     12: "Physio",
     14: "Scout",
     16: "Manager",
-    20: "Assistant Coach",
+    20: "Assistant Manager",
     22: "Set Piece Coach",
     24: "General Manager",
     26: "Fitness Coach",
