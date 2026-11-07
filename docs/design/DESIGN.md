@@ -20,9 +20,9 @@ colors:
   on-accent: "#ffffff"
   strip: "#251b37"
   on-strip: "#ffffff"
-  strip-underline: "#c86ee6"
+  strip-mark: "#c86ee6"
   accent-text: "#2457c5"
-  focus-on-strip: "#8fb1ff"
+  strip-focus: "#8fb1ff"
   pending: "#8a6a00"
   pending-soft: "#ffe27a"
   on-pending: "#16181d"
@@ -195,13 +195,13 @@ components:
   masthead:
     backgroundColor: "{colors.strip}"
     textColor: "{colors.on-strip}"
-    height: "52px"
-    padding: "0 14px 0 18px"
+    height: "48px"
+    padding: "0 16px"
   tab:
     backgroundColor: "transparent"
     textColor: "rgb(255 255 255 / 0.7)"
     typography: "{typography.tab}"
-    padding: "0 14px"
+    padding: "0 16px"
     height: "38px"
   tab-active:
     textColor: "{colors.on-strip}"
@@ -211,7 +211,7 @@ components:
     textColor: "{colors.text}"
     typography: "{typography.button}"
     rounded: "{rounded.base}"
-    padding: "5px 12px"
+    padding: "4px 12px"
     height: "30px"
   button-hover:
     backgroundColor: "{colors.hover}"
@@ -227,7 +227,7 @@ components:
   segmented-pressed:
     backgroundColor: "{colors.accent}"
     textColor: "{colors.on-accent}"
-    padding: "3px 10px"
+    padding: "3px 12px"
     height: "26px"
   search:
     backgroundColor: "{colors.field}"
@@ -239,7 +239,7 @@ components:
     backgroundColor: "{colors.accent-soft}"
     textColor: "{colors.text}"
     rounded: "{rounded.base}"
-    padding: "3px 7px 3px 10px"
+    padding: "3px 8px 3px 12px"
   table-head:
     backgroundColor: "{colors.raised}"
     textColor: "{colors.muted}"
@@ -260,31 +260,32 @@ components:
     backgroundColor: "{colors.raised}"
     textColor: "{colors.text}"
     rounded: "{rounded.pill}"
-    padding: "1px 10px"
+    padding: "1px 12px"
     height: "24px"
   group-head:
     textColor: "{colors.muted}"
     typography: "{typography.group-head}"
-    padding: "5px 2px"
+    padding: "4px 2px"
   stat-row:
     textColor: "{colors.muted}"
     typography: "{typography.body-small}"
-    padding: "2px 6px"
+    padding: "2px 8px"
     height: "29px"
   edit-input:
     backgroundColor: "{colors.field}"
     textColor: "{colors.text}"
     rounded: "{rounded.base}"
-    padding: "2px 6px"
+    padding: "2px 8px"
   edit-input-changed:
     backgroundColor: "{colors.pending-soft}"
     textColor: "{colors.on-pending}"
+    borderColor: "{colors.text}"
   tag:
     backgroundColor: "transparent"
     textColor: "{colors.muted}"
     typography: "{typography.label}"
     rounded: "{rounded.tag}"
-    padding: "0 5px"
+    padding: "0 4px"
   menu:
     backgroundColor: "{colors.panel}"
     textColor: "{colors.text}"
@@ -303,7 +304,7 @@ components:
   colophon:
     textColor: "{colors.muted}"
     typography: "{typography.small-print}"
-    padding: "0 18px"
+    padding: "0 16px"
 ---
 
 # Design System: FM Lens
@@ -335,7 +336,7 @@ Every token has a light value and a dark value. The dark set is applied through 
 ### Primary
 - **Violet** (accent / accent-hover): the main action (Edit, Apply, Connect), the picked row's bar, the pressed half of a segmented switch, the filter count, the "you" tag, the selection highlight. Hover darkens it in both lightings so white text keeps 4.5:1. In dark it is a brighter `#b442d1`.
 - **Violet washes** (accent-soft, accent-faint): a picked or pressed secondary control, a filter chip, an update notice. The picked row uses 14% of accent over the panel.
-- **Plum** (strip): the masthead, `#251b37` in both lightings. Text on it is on-strip. Its open tab is marked by a 3px `#c86ee6` underline.
+- **Plum** (strip): the masthead, `#251b37` in both lightings. Text on it is on-strip. Its open tab is marked by a 3px strip-mark (`#c86ee6`) underline.
 
 ### Secondary
 - **Pending** (pending-soft, pending, on-pending): an edit not yet applied. It fills a changed input, the review list, the swatch before the change count, and draws the 4px rule under a profile head while Edit is on. `pending` is the edge and the words on the page.
@@ -343,7 +344,7 @@ Every token has a light value and a dark value. The dark set is applied through 
 - **OK** (ok): the connected dot in the colophon, and an input or move the game accepted.
 
 ### Tertiary
-- **Focus** (accent-text): the 2px focus ring, offset 2px, inset where the control sits flush. On the masthead the ring is `#8fb1ff` in both lightings. Blue is for focus and for the resizer edge that the keyboard or pointer holds.
+- **Focus** (accent-text): the 2px focus ring, offset 2px, inset where the control sits flush. On the masthead the ring is strip-focus (`#8fb1ff`) in both lightings. Blue is for focus and for the resizer edge that the keyboard or pointer holds.
 - **The Four Bands** (tier-1 to tier-4): brick, ochre, olive and pitch green. They colour a rating's digits by value (1 to 5, 6 to 10, 11 to 15, 16 to 20) and the pitch map's markers. Text on a band's fill is on-tier. A status chip's dot reuses them for good (tier-4) and warn (tier-2).
 - **Supporter Mix** (mix-1 to mix-6): six hues for the supporter-mix bar only, in a fixed order.
 
@@ -400,10 +401,10 @@ The window opens at 1280×800 and holds down to 960×600. The shell is a column:
 
 A list workspace puts the search, the toolbar, the filters and the table on the left, with `14px 18px 0` around them. A picked row opens its profile beside it (`flex: 0 1 560px`, at least 440px; a club's squad widens it to 880px), parted by a 1px border-strong rule that doubles as a drag handle. The list keeps at least 360px. Below 800px of workspace the profile takes the list's place, and closing it brings the list back. The table sits in a size container and sheds columns as its own width falls (steps at 1200, 960, 880, 780, 580, 560 and 320px): Born and UID go first, then Contract, then Nation and Positions, down to name, CA and PA beside a profile in the smallest window. Text cut short keeps its whole value in the hover.
 
-A profile is a head, an optional toolbar, tabs, then a body with 16px padding that scrolls. Attribute groups sit in three columns (gap 12px), two in a narrow staff profile, split groups in two (gap 16px). Dialogs centre over a scrim with 24px around them, 20px gutters inside, 16px body padding and 14px between blocks.
+A profile is a head, an optional toolbar, tabs, then a body with 16px padding that scrolls. Attribute groups sit in three columns (gap 12px), two in a narrow staff profile, split groups in two (gap 16px). Dialogs centre over a scrim with 24px around them, 24px gutters inside, 16px body padding and 16px between blocks.
 
 ### Spacing
-The scale is 4, 8, 12, 16, 24, 32px (`--space-1` to `--space-6`). It is the rule: new and touched rules use it. Older rules still carry off-scale values (2, 3, 5, 6, 10, 14, 18, 20, 22px). That is debt, and each one moves onto the scale when its rule is next touched. Do not add new off-scale values.
+The scale is 4, 8, 12, 16, 24, 32px (`--space-1` to `--space-6`). Every margin, padding and gap is one of these tokens. Under 4px (1, 2, 3px) is an optical nudge inside a control, such as a chip, a table cell or a border's width, not spacing. Room reserved for something else, such as the 44px a report keeps for its close button, is not spacing either.
 
 Rows are 34px in tables and 29px in stat lists; both have a 1px border below them.
 
@@ -434,16 +435,16 @@ Icons are inline SVG line drawings at 10 to 16px, stroke 1.6 to 1.8, round caps,
 ## Components
 
 ### Top Bar
-One row, 52px at least, plum in both lightings. It follows `.masthead` and `App.tsx`.
+One row, 48px at least, plum in both lightings. It follows `.masthead` and `App.tsx`.
 - **Left:** the brand mark (a 40px symbol and the word FM Lens), then the tabs: Players, Staff, Clubs, a Lists menu, and Changes. The tabs only show once a game is connected.
-- **Tabs:** 38px, 14px type, white text at 70%; hover adds a 6% white wash and a 3px white underline at 30%; the open tab is full white with a 3px `#c86ee6` underline. The ring is `#8fb1ff`, inset.
+- **Tabs:** 38px, 14px type, white text at 70%; hover adds a 6% white wash and a 3px white underline at 30%; the open tab is full white with a 3px strip-mark underline. The ring is strip-focus, inset.
 - **Lists:** a tab that opens a menu of Nations, Officials, Stadiums and the other reference lists, each with its shortcut at the right and the open one marked by a violet bar and bold. It is the open tab when one of them is showing.
 - **Changes:** carries a count chip (white at 16%, 9px radius) when changes stand.
 - **Right:** the busy message, your manager and club (two quiet buttons that open your profile and your squad, a dot between them), the game date as a dateline, Reload, and the settings gear. Buttons here are outlined in white at 40% with a 10% wash on hover.
 - **Narrow:** under 1100px the mark loses its word and tabs tighten; under 900px the tabs take a row of their own under the mark.
 
 ### List Workspace
-- **Toolbar:** the search (36px, 200 to 440px, 16px magnifier; hover and focus turn the outline to the text colour, and focus doubles it with a 1px ring), then a Filters button and a More menu at the right. Gaps are 8px and 14px.
+- **Toolbar:** the search (36px, 200 to 440px, 16px magnifier; hover and focus turn the outline to the text colour, and focus doubles it with a 1px ring), then a Filters button and a More menu at the right. Gaps are 8px and 16px.
 - **Filters:** the button shows a violet count of filters in effect. Each filter in effect is a removable chip (violet 10% fill, violet 45% edge, an x to remove it), and Clear sits at the end as an underlined text action. The form of fields opens under it as a grid of equal cells, each a muted label over its control.
 - **More:** one menu for the less common list actions (export and the rest), the same with or without a profile open.
 - **Table:** sticky 32px head on the raised tone over a 1px border-strong rule, column heads in muted uppercase. Rows are 34px with a 1px hairline and a faint zebra on every second row. A sortable head is a button that looks like the head; its arrow is always laid out and hidden until it is the sort. Names are Title type with a muted sub-line; ability and reputation are Figure type, right-aligned.
@@ -460,7 +461,7 @@ A page that opens beside the row.
 - **Tools:** a button at the end of a player's tab row, with a chevron, that opens a panel of Set all attributes and Freeze attributes. It stays out of the way of the data.
 - **Groups:** a Group Head over a 1px border-strong rule, then label and value rows (29px, hairline between, zebra, muted label, value right-aligned). A 1 to 20 value is Rating type in its band's colour. A group's own actions sit at the right of its heading.
 - **Other parts:** the pitch map (band-coloured markers), the legend, the supporter-mix bar, progress bars.
-- **Edit mode:** every value that can be edited is shown while the profile is read, and Edit turns it into an input where it is. The Edit toggle turns from violet-filled to pressed (raised fill, text colour, inset ring). A 4px pending rule appears under the head. Inputs are right-aligned, tabular, sized to their largest value (`--digits`), with no spin buttons. A changed input fills with pending-soft; an invalid one turns danger-soft; an applied one takes a green edge. The footer has a 2px rule, the change count led by a pending swatch, then Review, Discard, Apply (violet) and Done. The review list opens above it on pending-soft.
+- **Edit mode:** every value that can be edited is shown while the profile is read, and Edit turns it into an input where it is. The Edit toggle turns from violet-filled to pressed (raised fill, text colour, inset ring). A 4px pending rule appears under the head. Inputs are right-aligned, tabular, sized to their largest value (`--digits`), with no spin buttons. A changed input fills with pending-soft inside an ink frame (text colour); an invalid one turns danger-soft; an applied one takes a green edge. The footer has a 2px rule, the change count led by a pending swatch, then Review, Discard, Apply (violet) and Done. The review list opens above it on pending-soft.
 
 ### Dialogs
 - **Box:** square corners, a 3px rule across the top in the text colour, the panel colour, the Dialog shadow, over the scrim. Up to 960px wide (comparison to 1120px; export 620px; move and confirm 560 and 440px).
@@ -495,7 +496,7 @@ Small print along the foot, over a hairline, 27px a line.
 - **Disabled:** 45% opacity. Controls that must stay Tab stops use `aria-disabled` at 55%.
 
 ### Menus
-A menu is the panel colour, a border-strong frame, 4px radius, 4px padding, the Menu shadow, `min-width: 12rem`. Items are 3px-cornered, `6px 10px`, transparent; hover and focus take the hover tone. A drop button ends with a 10px chevron that turns when open. An item may end with a tag or a shortcut in muted 12px. A checked item is bold with a 3px violet bar. A 1px rule sets apart the item that changes the most.
+A menu is the panel colour, a border-strong frame, 4px radius, 4px padding, the Menu shadow, `min-width: 12rem`. Items are 3px-cornered, `8px 12px`, transparent; hover and focus take the hover tone. A drop button ends with a 10px chevron that turns when open. An item may end with a tag or a shortcut in muted 12px. A checked item is bold with a 3px violet bar. A 1px rule sets apart the item that changes the most.
 
 ### Tags and Badges
 - **Tag:** Label type in a 2px-cornered frame, muted. "You" is violet-filled; injured is danger; loan is tier-2; listed takes the text colour; the women's-club tag is weight 500.
@@ -509,7 +510,7 @@ A menu is the panel colour, a border-strong frame, 4px radius, 4px padding, the 
 
 ### The Icon and Mark
 - **App icon:** "FML" in Archivo at weight 850 and width 72, white on a rounded tile with macOS's margin, over a bar of the four band tints. Generated by `app/src-tauri/icons/make-icon.py` from the bundled font.
-- **In-app mark:** the masthead shows the lens symbol (a 40px `#f6f7f9` tile, 8px corners) and the word FM Lens.
+- **In-app mark:** the masthead shows the lens symbol (a 40px on-strip tile, 8px corners) and the word FM Lens.
 - The icon's letters are always "FML".
 
 ## Do's and Don'ts
@@ -523,7 +524,7 @@ A menu is the panel colour, a border-strong frame, 4px radius, 4px padding, the 
 - **Do** put one main action on a surface, and the data before the tools.
 - **Do** set every number in tabular figures, and names, headings and figures in condensed heavy Archivo.
 - **Do** define every colour as a custom property with a dark value; dark is a swap of tokens.
-- **Do** use the spacing scale (4, 8, 12, 16, 24, 32px) in every rule you add or touch, and every font size from the `--type-*` scale.
+- **Do** use the spacing scale (4, 8, 12, 16, 24, 32px) for every margin, padding and gap, and every font size from the `--type-*` scale.
 - **Do** let the colophon's notes take a second line rather than cut the advice on applying edits.
 - **Do** switch off the entry slide and the pulse under reduced motion.
 
