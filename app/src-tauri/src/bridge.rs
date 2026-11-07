@@ -1,5 +1,6 @@
 //! The bridge library that Football Manager loads on macOS so the app can reach its memory
-//! (see `fmlens_core::bridge_setup`). Windows needs none: there `status` is always `None`.
+//! (see `fmlens_core::bridge_setup`). Windows needs no setup: there `status` is always `None`,
+//! and the app only puts the library it carries where the game can load it for the game's own actions.
 
 use serde::Serialize;
 
@@ -127,7 +128,45 @@ mod imp {
         set_up(app)
     }
 
+    /// Windows: puts the bridge library the app carries in the app's local data folder, where the game can load it
+    /// for each of its own actions, and has the editor use it. Without one the editor looks beside its executable,
+    /// as while developing.
+    #[cfg(windows)]
+    pub fn refresh(app: &AppHandle) {
+        #[cfg(fmlens_bridge)]
+        {
+            use tauri::Manager;
+
+            const LIBRARY: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/fmlens_bridge.dll"));
+            let placed = app.path().app_local_data_dir().ok().and_then(|folder| place(&folder.join("bridge"), LIBRARY));
+            if let Some(path) = placed {
+                fmlens_mem::bridge::set_library(path);
+            }
+        }
+        #[cfg(not(fmlens_bridge))]
+        let _ = app;
+    }
+
+    #[cfg(not(windows))]
     pub fn refresh(_: &AppHandle) {}
+
+    /// The library `bytes` in `folder`, under a name of its own content, written there unless it already is.
+    #[cfg(all(windows, fmlens_bridge))]
+    fn place(folder: &std::path::Path, bytes: &[u8]) -> Option<std::path::PathBuf> {
+        use std::hash::{DefaultHasher, Hash, Hasher};
+
+        let mut hasher = DefaultHasher::new();
+        bytes.hash(&mut hasher);
+        let path = folder.join(format!("fmlens_bridge-{:016x}.dll", hasher.finish()));
+        if std::fs::read(&path).is_ok_and(|on_disk| on_disk == bytes) {
+            return Some(path);
+        }
+        std::fs::create_dir_all(folder).ok()?;
+        let partial = folder.join(format!("fmlens_bridge-{}.partial", std::process::id()));
+        std::fs::write(&partial, bytes).ok()?;
+        std::fs::rename(&partial, &path).ok()?;
+        Some(path)
+    }
 }
 
 /// The bridge's state on macOS; `None` elsewhere, where the app needs no bridge.

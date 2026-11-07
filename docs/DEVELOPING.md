@@ -22,8 +22,9 @@ simulation, lives in a native, anti-tamper protected module: `game_plugin.dll`.
 FM Lens runs as a separate process and reads that module's heap data with
 `ReadProcessMemory`. To edit, it writes values back with `WriteProcessMemory`, and
 only into the game's heap. It never patches the game's code and never allocates
-memory in the game. On Windows it puts no code of its own in the game either; on macOS
-the game loads one small library of ours, the bridge (see [On macOS](#on-macos)).
+memory in the game. For the game's own actions, such as signing a player, a small library
+of ours, the bridge, runs the game's function on its main thread (see [On Windows](#on-windows)
+and [On macOS](#on-macos)).
 
 Before every write it checks four things:
 - the object still belongs to the same person;
@@ -58,6 +59,16 @@ such layout failed its check. After an update, `fmlens-probe health` shows what 
 where the arrays are. A new build profile takes their RVAs and the date's, which `find` locates as in the
 [Game Pass 0.9.2409.0 notes](recon/fm27-gamepass-0.9.2409.md), or on macOS as in the
 [notes on 27.0.0 there](recon/fm27-steam-macos.md#2700-steam-build-26340721).
+
+### On Windows
+
+The editor reads and writes the game's memory directly. For a game action it puts the request
+in a shared section only its own user can open, hooks the messages of the game's main thread
+with the bridge (`fmlens_bridge.dll`) and posts the game's window one message. Windows loads
+the bridge into the game to deliver it; the bridge runs the request there, only for a build and
+function the profiles allow, and writes the answer back. The editor then removes its hook and
+Windows unloads the bridge, so nothing of FM Lens stays in the game between actions. The app
+carries the bridge inside `FM Lens.exe` and writes it to its local data folder when it starts.
 
 ### On macOS
 
@@ -99,7 +110,7 @@ behind the launcher; another tool's launcher among them is started in turn.
 | Path | Contents |
 |---|---|
 | `crates/fmlens-mem` | Process access on Windows and macOS: processes, modules, memory regions, PE and Mach-O headers, guarded writes |
-| `crates/fmlens-bridge` | macOS: the library the game loads to hand its memory to the editor, and the launcher Steam starts the game through |
+| `crates/fmlens-bridge` | The library that runs the game's own actions on its main thread; on macOS it also hands the game's memory to the editor, with the launcher Steam starts the game through |
 | `crates/fmlens-core` | Football Manager logic: game detection, calibration, decoders, editable fields |
 | `crates/fmlens-probe` | Command-line probe |
 | `profiles/` | Object layouts per edition and addresses per game build |
@@ -120,8 +131,9 @@ cd app; npm install; npm run tauri dev     # run the desktop app
 npm run release                            # build target\release\FM Lens.exe
 ```
 
-`npm run release` builds a stand-alone `FM Lens.exe` without an installer. It
-needs the WebView2 runtime, which Windows 10 and 11 already have.
+`npm run release` builds the bridge, then a stand-alone `FM Lens.exe` with the bridge
+inside, without an installer. It needs the WebView2 runtime, which Windows 10 and 11
+already have. To embed a bridge built elsewhere, set `FMLENS_BRIDGE_DLL` to its path.
 
 On macOS: Xcode's command line tools, Rust stable with the Intel target as well
 (`rustup target add x86_64-apple-darwin`, for the bridge to load in Intel builds of the

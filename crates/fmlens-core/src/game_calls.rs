@@ -186,9 +186,10 @@ const TRANSFER_FEE: u64 = 0x5472_4665;
 const FEE_VALUE: usize = 0x60;
 
 /// Where cancelling puts the offer in the scratch memory: as read, and the copy that holds a reference through the call.
-/// Each slot is a pointer and a u32.
+/// Each slot is a pointer and a u32. An empty slot follows, for giving the reference back where a build has no ref_drop.
 const OFFER_READ: usize = 0;
 const OFFER_HELD: usize = 0x10;
+const NO_OFFER: usize = 0x20;
 /// What `cancel_offer` cancels for: the team the player joins, or the one he leaves.
 const CANCEL_JOINING: u64 = 2;
 const CANCEL_LEAVING: u64 = 0;
@@ -221,7 +222,8 @@ impl Session {
         let (Some(profile), Some(calls)) = (&self.profile, self.profile.as_ref().and_then(|p| p.calls.as_ref())) else {
             return GameActions::default();
         };
-        if !cfg!(target_os = "macos") {
+        #[cfg(windows)]
+        if fmlens_mem::bridge::library().is_none() {
             return GameActions::default();
         }
         // Resolve discovery once here, including a failed attempt. Otherwise a temporarily
@@ -276,7 +278,7 @@ impl Session {
                 && available(calls.cancel_offer)
                 && available(calls.drop_dated_transfer)
                 && available(calls.ref_copy)
-                && available(calls.ref_drop)
+                && (available(calls.ref_drop) || available(calls.ref_assign))
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.future_transfer.is_some(),
@@ -316,10 +318,13 @@ impl Session {
             let allowed = self.profile.as_ref().and_then(|p| p.calls.as_ref()).map(CallRvas::all).unwrap_or_default();
             Ok(self.process.call(uuid, program, |rva| allowed.contains(&rva))?)
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(windows)]
         {
-            let _ = program;
-            Err(MoveError::CallUnavailable)
+            let crate::profile::PluginFingerprint::Pe { size_of_image, link_timestamp } = self.fingerprint else {
+                return Err(MoveError::CallUnavailable);
+            };
+            let allowed = self.profile.as_ref().and_then(|p| p.calls.as_ref()).map(CallRvas::all).unwrap_or_default();
+            Ok(self.process.call((size_of_image, link_timestamp), program, |rva| allowed.contains(&rva))?)
         }
     }
 
@@ -335,6 +340,7 @@ impl Session {
 
     /// Only narrows the build profile. Earlier helpers have no discovery message and
     /// retain their original CALL allowlist, which still checks each complete program.
+    /// On Windows the bridge library ships with the editor and knows the same profiles.
     pub(crate) fn helper_supports(&self, function: u64) -> Result<bool, MoveError> {
         #[cfg(target_os = "macos")]
         {
@@ -348,10 +354,10 @@ impl Session {
                     && caps.functions.contains(&function)
             }))
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(windows)]
         {
             let _ = function;
-            Ok(false)
+            Ok(fmlens_mem::bridge::library().is_some())
         }
     }
 
@@ -484,8 +490,8 @@ impl Session {
         }
     }
 
-    /// What the game's work permit functions take: the transfer manager, the player's identity block (where his
-    /// vtable says his virtual base starts) and his club team.
+    /// What the game's work permit functions take: the transfer manager, the player's identity block and his club
+    /// team.
     fn permit_holder(&self, player: &PlayerSummary) -> Result<(u64, u64, u64), MoveError> {
         let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
         let manager = self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)?;
@@ -494,9 +500,7 @@ impl Session {
         if !is_user_pointer(team) {
             return Err(MoveError::FreeAgent);
         }
-        let vtable = self.process.read_u64(object)?;
-        let identity = object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64);
-        Ok((manager, identity, team))
+        Ok((manager, self.identity_block(object)?, team))
     }
 
     /// The player's record for his club's country, as the game finds it, and for an ESC slot the day it began as the
@@ -903,7 +907,15 @@ impl Session {
         let cancel = self.game_function(|calls| calls.cancel_offer)?;
         let drop_dated = self.game_function(|calls| calls.drop_dated_transfer)?;
         let ref_copy = self.game_function(|calls| calls.ref_copy)?;
-        let ref_drop = self.game_function(|calls| calls.ref_drop)?;
+        // Builds without ref_drop give the reference back by emptying the slot that holds it.
+        let release = match self.game_function(|calls| calls.ref_drop) {
+            Ok(ref_drop) => Step::new(ref_drop, &[Arg::value(offer)]),
+            Err(MoveError::CallUnavailable) => {
+                let ref_assign = self.game_function(|calls| calls.ref_assign)?;
+                Step::new(ref_assign, &[Arg::scratch(OFFER_HELD), Arg::scratch(NO_OFFER)])
+            }
+            Err(error) => return Err(error),
+        };
         let zero = Arg::value(0);
         let mut program = Program::new();
         program.write_u64(OFFER_READ, offer);
@@ -929,7 +941,7 @@ impl Session {
             drop_dated,
             &[Arg::value(manager + f.dated_owner), Arg::value(offer), Arg::value(identity)],
         ));
-        program.push(Step::new(ref_drop, &[Arg::value(offer)]).cleanup());
+        program.push(release.cleanup());
         self.call_game(&program)?;
         Ok(())
     }
@@ -986,7 +998,7 @@ impl Session {
             function,
             &[
                 Arg::value(manager),
-                Arg::value(object + s.at(s.person_block, member.shift)),
+                Arg::value(object + s.at(s.actual_person(), member.shift)),
                 Arg::value(senior),
                 Arg::scratch(TERMS_MAP),
                 Arg::scratch(REFERENCES),
@@ -1017,7 +1029,8 @@ impl Session {
             return Err(MoveError::CallUnavailable);
         }
         if self.process.read_u32(member.address + s.at(s.uid, member.shift))? != member.uid
-            || class_of(&self.process, &self.plugin, member.address).as_deref() != Some(human.class.as_str())
+            || class_of(&self.process, &self.plugin, member.address + human.class_at).as_deref()
+                != Some(human.class.as_str())
         {
             return Err(MoveError::Moved { uid: member.uid });
         }
@@ -1097,7 +1110,7 @@ impl Session {
             function,
             &[
                 Arg::value(manager),
-                Arg::value(object + self.layout.player.person_block),
+                Arg::value(object + self.layout.player.actual_person()),
                 Arg::value(senior),
                 Arg::scratch(TERMS_MAP),
                 Arg::scratch(REFERENCES),
@@ -1235,9 +1248,16 @@ impl Session {
     }
 
     /// The player object's identity block: where its vtable says its virtual base starts.
+    #[cfg(target_os = "macos")]
     fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
         let vtable = self.process.read_u64(object)?;
         Ok(object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64))
+    }
+
+    /// The player object's identity block. MSVC's vtables keep no offset to it, so the layout places it.
+    #[cfg(windows)]
+    fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
+        Ok(object + self.layout.player.identity())
     }
 }
 
