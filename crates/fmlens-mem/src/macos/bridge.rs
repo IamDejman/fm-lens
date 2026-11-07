@@ -388,7 +388,10 @@ pub(crate) fn call(
         Some(Status::Done | Status::Stopped) => None,
         Some(Status::Refused) => Some("it refused"),
         Some(Status::WrongBuild) => Some("the game is not the build the editor expected"),
-        Some(Status::NotAllowed) => Some("it does not allow this call"),
+        // A bridge allows the calls of the editor it came with: one that does not is older than this editor.
+        Some(Status::NotAllowed) => Some(
+            "it does not allow this call. If the editor was updated since the game started, restart the game from Steam",
+        ),
         Some(Status::Busy) => Some("the game was busy and nothing ran; try again when the game is idle"),
         Some(Status::Unsupported) => Some(
             "it cannot make this call. If the editor was updated since the game started, restart the game from Steam",
