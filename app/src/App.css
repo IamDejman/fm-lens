@@ -4462,6 +4462,11 @@ button.danger:hover:not(:disabled) {
   opacity: 0.6;
 }
 
+/* An empty date input shows nothing: WebKit would fill in today's real date, not the game's. */
+.move-input[type="date"][data-empty]:not(:focus) {
+  -webkit-text-fill-color: transparent;
+}
+
 /* Under an input: the value it started from once changed, or why it cannot be sent. */
 .move-note {
   margin: 0;
