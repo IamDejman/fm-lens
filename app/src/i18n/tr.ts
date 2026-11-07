@@ -1208,6 +1208,7 @@ export const tr: Strings = {
     appearanceLight: "Açık",
     appearanceDark: "Koyu",
     zoomLabel: "Yakınlaştırma",
+    usageLabel: "Anonim kullanım verisi paylaş",
     appearance: "Görünüm",
     themes: { system: "Sistem", light: "Açık", dark: "Koyu" },
     tour: {

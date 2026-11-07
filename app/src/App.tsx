@@ -38,6 +38,7 @@ import { StaffBrowser } from "./StaffBrowser";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
+import { track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
@@ -103,6 +104,7 @@ function App() {
   const [reporting, setReporting] = useState(false);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   useEffect(() => {
+    trackOpened();
     // The browser preview stands in for the app with the version in package.json.
     (inTauri ? getVersion() : call<string>("app_version")).then(setVersion).catch(() => {});
     if (inTauri) {
@@ -141,6 +143,13 @@ function App() {
       void reloadLog();
       setConnection(connected);
       setRefrozen(again ?? null);
+      track("fm_connected", {
+        edition: connected.game.edition,
+        storefront: connected.game.storefront,
+        fm_build: connected.game.steamBuild ?? connected.game.packageVersion,
+        known_build: connected.knownBuild,
+        editable: connected.editable,
+      });
       setDataVersion((v) => v + 1);
     });
 
@@ -294,7 +303,10 @@ function App() {
   // With edits pending in the open profile, leaving for another view asks first.
   const show = (id: View) => {
     if (id !== view) {
-      askToLeave(() => setView(id));
+      askToLeave(() => {
+        setView(id);
+        track("tab_viewed", { tab: id });
+      });
     }
   };
 

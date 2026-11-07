@@ -1236,6 +1236,7 @@ export const es: Strings = {
     appearanceLight: "Claro",
     appearanceDark: "Oscuro",
     zoomLabel: "Zoom",
+    usageLabel: "Compartir uso anónimo",
     appearance: "Apariencia",
     themes: { system: "Sistema", light: "Claro", dark: "Oscuro" },
     tour: {
