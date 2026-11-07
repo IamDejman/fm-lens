@@ -3038,7 +3038,8 @@ fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
     let mut seen = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     let mut note = |error: Failure| {
-        // The bridge in the game answers every call the same way: once it refuses, the rest would too.
+        // Unsupported optional refresh functions are skipped in core. A transport/protocol
+        // failure is still an error; stop this flush instead of repeating it for every entity.
         let refused = error.code == "memory.bridge";
         if !errors.contains(&error.message) {
             errors.push(error.message);
@@ -4141,7 +4142,8 @@ pub fn run() {
                 .map(PathBuf::from)
                 .or_else(|| app.path().document_dir().ok().map(|folder| folder.join("FM Lens").join("Exports")));
             app.manage(ExportsFolder(exports));
-            // macOS: after an update, the game is to load the bridge that came with this version.
+            // Stage the bundled helper for FM's next normal launch. A running game keeps
+            // serving through its existing helper; compatibility is discovered on connection.
             bridge::refresh(app.handle());
             // Frozen money and attributes: every little while, what the game took from them is put back.
             let handle = app.handle().clone();

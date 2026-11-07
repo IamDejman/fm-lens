@@ -1,5 +1,7 @@
 //! Notify FM's UI after a successful edit; never advances simulation or reapplies an edit.
 
+use std::sync::Mutex;
+
 use fmlens_mem::{
     call::{Arg, Program, Step},
     is_user_pointer,
@@ -9,6 +11,29 @@ use crate::rtti::class_of;
 use crate::transfer::MoveError;
 use crate::{Entity, Session, Target};
 
+/// Earlier helpers cannot advertise their allowlist. Remember only explicit, zero-execution
+/// refusals of optional refresh functions, independently; never hide a timeout or guard error.
+#[derive(Default)]
+pub(crate) struct OptionalRefresh(Mutex<Vec<u64>>);
+
+impl OptionalRefresh {
+    fn run(&self, function: u64, call: impl FnOnce() -> Result<(), MoveError>) -> Result<bool, MoveError> {
+        let mut unsupported = self.0.lock().unwrap_or_else(|e| e.into_inner());
+        if unsupported.contains(&function) {
+            return Ok(false);
+        }
+        match call() {
+            Ok(()) => Ok(true),
+            #[cfg(target_os = "macos")]
+            Err(MoveError::Memory(fmlens_mem::Error::BridgeUnsupported { .. })) => {
+                unsupported.push(function);
+                Ok(false)
+            }
+            Err(error) => Err(error),
+        }
+    }
+}
+
 impl Session {
     /// Refresh entire active views after a contract change. FM's transfer UI uses the same rfui
     /// message with an empty entity vector. The dispatcher owns screen-reference lifetimes and
@@ -17,12 +42,14 @@ impl Session {
         let Some(function) = self.profile.as_ref().and_then(|p| p.calls.as_ref()).and_then(|c| c.refresh_views) else {
             return Ok(false);
         };
+        if !self.helper_supports(function)? {
+            return Ok(false);
+        }
         // A reference vector is three pointers (begin/end/capacity), as initialized by 0x43FE850.
         // The zeroed scratch holds an empty vector, read synchronously by 0x2FC20 / 0x77DB60.
         let mut program = Program::new();
         program.push(Step::new(function, &[Arg::scratch(0), Arg::value(0), Arg::value(0)]));
-        self.call_game(&program)?;
-        Ok(true)
+        self.refresh_support.run(function, || self.call_game(&program).map(|_| ()))
     }
 
     /// Refresh views of an entity after Apply or Undo. False means this build has no traced notifier.
@@ -33,6 +60,9 @@ impl Session {
         else {
             return Ok(false);
         };
+        if !self.helper_supports(function)? {
+            return Ok(false);
+        }
         if let Some(lock) = self.structure_lock() {
             return Err(MoveError::Locked(lock));
         }
@@ -70,7 +100,35 @@ impl Session {
         }
         let mut program = Program::new();
         program.push(Step::new(function, &[Arg::value(ui), Arg::value(identity)]));
-        self.call_game(&program)?;
-        Ok(true)
+        self.refresh_support.run(function, || self.call_game(&program).map(|_| ()))
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn older_helpers_skip_only_the_refused_refresh_and_keep_other_calls_working() {
+        let support = OptionalRefresh::default();
+        let refused = || Err(MoveError::Memory(fmlens_mem::Error::BridgeUnsupported { pid: 1 }));
+        assert!(!support.run(100, refused).unwrap());
+        assert!(!support.run(100, || panic!("must not retry a known unsupported notifier")).unwrap());
+        assert!(support.run(200, || Ok(())).unwrap(), "independent view refresh still works");
+    }
+
+    #[test]
+    fn refresh_errors_are_reported_and_do_not_disable_the_function() {
+        let support = OptionalRefresh::default();
+        for error in [
+            fmlens_mem::Error::Bridge { pid: 1, reason: "timed out; it may have run" },
+            fmlens_mem::Error::NoBridge { pid: 1 },
+            fmlens_mem::Error::ReadOnly,
+        ] {
+            assert!(support.run(100, || Err(MoveError::Memory(error))).is_err());
+            assert!(support.run(100, || Ok(())).unwrap());
+        }
+        assert!(support.run(100, || Err(MoveError::Moved { uid: 1 })).is_err());
+        assert!(support.run(100, || Ok(())).unwrap());
     }
 }

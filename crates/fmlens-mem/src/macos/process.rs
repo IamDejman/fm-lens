@@ -2,7 +2,7 @@ use std::ffi::c_int;
 use std::ops::Range;
 use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use mach2::kern_return::KERN_SUCCESS;
@@ -72,6 +72,8 @@ pub struct Process {
     writable: bool,
     /// Where the modules are mapped, and when that was read: a write never goes there.
     modules: Mutex<Option<(Instant, Vec<Range<u64>>)>>,
+    /// Cached only for this opened process, never across FM restarts.
+    capabilities: OnceLock<Option<super::bridge::Capabilities>>,
 }
 
 // A task port is a number in this process's port space; Mach calls on it are thread-safe.
@@ -98,7 +100,7 @@ impl Process {
     }
 
     fn open(pid: u32, writable: bool) -> Result<Self> {
-        Ok(Self { task: task_port(pid)?, pid, writable, modules: Mutex::new(None) })
+        Ok(Self { task: task_port(pid)?, pid, writable, modules: Mutex::new(None), capabilities: OnceLock::new() })
     }
 
     pub fn pid(&self) -> u32 {
@@ -114,6 +116,16 @@ impl Process {
         self.task
     }
 
+    /// Read-only discovery; None is an earlier helper whose supported calls remain available.
+    pub fn bridge_capabilities(&self) -> Result<Option<&super::bridge::Capabilities>> {
+        if self.capabilities.get().is_none() {
+            // A transient discovery error must not disable calls for the whole connection.
+            let discovered = super::bridge::capabilities(self.pid)?;
+            let _ = self.capabilities.set(discovered);
+        }
+        Ok(self.capabilities.get().and_then(Option::as_ref))
+    }
+
     /// Has the bridge in the game run `program`, steps of the game plugin's own functions, on the
     /// game's main thread ([`crate::call`]). `plugin_uuid` names the build they were written for and
     /// `allowed` the functions its profile lists. Only on a process opened for writing.
@@ -125,6 +137,19 @@ impl Process {
     ) -> Result<crate::call::Outcome> {
         if cfg!(feature = "read-only") || !self.writable {
             return Err(Error::ReadOnly);
+        }
+        // The app's profile and the helper each retain their own allowlist. Discovery only
+        // narrows availability; it never grants a call that either side would refuse.
+        if let Some(reason) = crate::call::refusal(&program.steps, &allowed) {
+            return Err(Error::Bridge { pid: self.pid, reason });
+        }
+        if let Some(caps) = self.bridge_capabilities()? {
+            if caps.plugin_uuid != plugin_uuid {
+                return Err(Error::Bridge { pid: self.pid, reason: "the game is not the build the editor expected" });
+            }
+            if !caps.supports(plugin_uuid, program) {
+                return Err(Error::BridgeUnsupported { pid: self.pid });
+            }
         }
         super::bridge::call(self.pid, plugin_uuid, program, allowed)
     }
@@ -258,6 +283,34 @@ mod tests {
 
     #[test]
     #[cfg(not(feature = "read-only"))]
+    fn capabilities_reject_unsupported_programs_before_sending_and_preserve_local_guards() {
+        use crate::call::{Program, SCRATCH_SIZE, Step};
+
+        let process = Process::open_read_write(std::process::id()).unwrap();
+        process
+            .capabilities
+            .set(Some(super::super::bridge::Capabilities {
+                plugin_uuid: [7; 16],
+                functions: vec![0x100],
+                indirect: false,
+                max_steps: 12,
+                scratch_size: SCRATCH_SIZE,
+            }))
+            .unwrap();
+        let mut program = Program::new();
+        program.push(Step::new(0x200, &[]));
+        // No bridge service exists in this test process: reaching the transport would
+        // return NoBridge, so these checks establish preflight, not just reply handling.
+        assert!(matches!(process.call([7; 16], &program, |_| true), Err(Error::BridgeUnsupported { .. })));
+        program.steps[0].rva = 0x100;
+        assert!(matches!(process.call([8; 16], &program, |_| true), Err(Error::Bridge { .. })));
+        assert!(matches!(process.call([7; 16], &program, |_| false), Err(Error::Bridge { .. })));
+        let read_only = Process::open_read(std::process::id()).unwrap();
+        assert!(matches!(read_only.call([7; 16], &program, |_| true), Err(Error::ReadOnly)));
+    }
+
+    #[test]
+    #[cfg(not(feature = "read-only"))]
     fn writes_heap_data_only() {
         let process = Process::open_read_write(std::process::id()).expect("open this process");
         let heap = vec![0u8; 64].into_boxed_slice();
@@ -294,6 +347,9 @@ mod tests {
         process.writable = true;
         assert!(matches!(process.write_bytes(addr, &[1, 2, 3]), Err(Error::ReadOnly)));
         assert!(matches!(process.write_bytes(addr, &[]), Err(Error::ReadOnly)));
+        let mut program = crate::call::Program::new();
+        program.push(crate::call::Step::new(0x100, &[]));
+        assert!(matches!(process.call([7; 16], &program, |_| true), Err(Error::ReadOnly)));
         assert_eq!(&heap[..3], &[7, 7, 7]);
     }
 
