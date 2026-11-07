@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   FILE_LIMITS,
+  PER_ADDRESS_DAY,
   PER_ADDRESS_HOUR,
   PER_DAY,
   createRelay,
@@ -13,6 +14,7 @@ import {
   readAttachments,
   readFiles,
   readReport,
+  senderOf,
 } from "./index.js";
 
 const REPORT = {
@@ -126,6 +128,28 @@ test("the relay counts reports by the address AWS saw, and answers the preflight
   assert.deepEqual(await post(options, "", { method: "OPTIONS" }), { status: 204, json: null, cors: "*" });
 });
 
+test("the relay counts the addresses of one IPv6 network as one sender", async () => {
+  const { fetch } = github();
+  const limiter = createTableLimiter({ table: "t", update: table().update });
+  const options = { token: "t", repo: "o/n", fetch, limiter };
+  for (let i = 0; i < PER_ADDRESS_HOUR; i++) {
+    assert.equal((await post(options, REPORT, { sourceIp: `2001:db8:1:2::${i + 1}` })).status, 201);
+  }
+  assert.equal((await post(options, REPORT, { sourceIp: "2001:db8:1:2:aaaa:bbbb:cccc:dddd" })).status, 429);
+  assert.equal((await post(options, REPORT, { sourceIp: "2001:db8:1:3::1" })).status, 201);
+});
+
+test("a sender is an IPv4 address, or an IPv6 address's /64 network", () => {
+  assert.equal(senderOf("203.0.113.9"), "203.0.113.9");
+  assert.equal(senderOf("::ffff:203.0.113.9"), "203.0.113.9");
+  assert.equal(senderOf("2001:0db8:0001:0002:0003:0004:0005:0006"), "2001:db8:1:2::/64");
+  assert.equal(senderOf("2001:db8::1"), "2001:db8:0:0::/64");
+  assert.equal(senderOf("2001:db8:1:2::"), "2001:db8:1:2::/64");
+  assert.equal(senderOf("::1"), "0:0:0:0::/64");
+  assert.equal(senderOf("64:ff9b::198.51.100.4"), "64:ff9b:0:0::/64");
+  assert.equal(senderOf("unknown"), "unknown");
+});
+
 /** A stand-in for the DynamoDB table: UpdateItem with the conditional ADD the table limiter sends. */
 function table() {
   const items = new Map();
@@ -144,7 +168,7 @@ function table() {
   return { update, items };
 }
 
-test("the table counts by address for the hour and in all for the day", async () => {
+test("the table counts by sender for the hour and the day, and in all for the day", async () => {
   let now = Date.UTC(2026, 10, 6, 12);
   const { update, items } = table();
   const limiter = createTableLimiter({ table: "t", update, now: () => now });
@@ -156,6 +180,18 @@ test("the table counts by address for the hour and in all for the day", async ()
   now += 60 * 60 * 1000;
   assert.equal(await limiter.allow("a"), true);
   assert.ok([...items.values()].every((item) => item.expires * 1000 > now));
+
+  // A sender can't use up the day's reports alone, however it spreads them over the hours.
+  for (let i = 0; i < PER_ADDRESS_DAY; i++) {
+    if (i % PER_ADDRESS_HOUR === 0) {
+      now += 60 * 60 * 1000;
+    }
+    assert.equal(await limiter.allow("c"), true);
+  }
+  assert.equal(await limiter.allow("c"), false);
+  now += 60 * 60 * 1000;
+  assert.equal(await limiter.allow("c"), false);
+  assert.equal(await limiter.allow("d"), true);
 
   for (let i = 0; items.get(`day#${Math.floor(now / 86_400_000)}`).reports < PER_DAY; i++) {
     await limiter.allow(`address-${i}`);
