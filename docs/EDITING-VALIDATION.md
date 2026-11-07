@@ -1290,3 +1290,10 @@ Not run: Remove unhappiness and Lift bans (no Arsenal player was unhappy or
 banned, so both were off), and saving, quitting and reloading an edited copy.
 Max tactics is a game action, checked in "Windows game actions" above. What
 Windows still lacks next to macOS is in `docs/internal/WINDOWS-PARITY-HANDOFF.md`.
+
+
+## Modal navigation shortcuts (7 November 2026)
+
+Branch `codex/modal-shortcut-isolation`, based on main at `06963d9`. Section navigation and modal shortcut interception now share the same nine section keys, so shortcuts 7, 8 and 9 are intercepted along with 1 through 6. Added frontend regression checks for all nine keys on Mac and Windows modifier conventions, including modified/composing input and preservation of ordinary editing shortcuts; CI runs them with `npm test`.
+
+Checks: both frontend shortcut tests, production frontend build and `git diff --check` passed. The existing large-chunk warning remains. Native verification then passed in the ad-hoc-signed Tauri debug app: connect sample data, open Lukas Kowalski, open Settings with Cmd+comma, press Cmd+1 through Cmd+9, observing Settings and its focus after each key. Escape returned to the same player profile; Cmd+9 then opened Changes normally. For this check only, the API adapter used the existing sample-data backend inside the native WKWebView; that temporary change was restored before committing. No FM process, career, game-memory write or installed app was involved. This verifies native keyboard/modal handling, not live-game editing or pending-edit consequences.
