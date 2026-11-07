@@ -1383,6 +1383,13 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.6.1": [
+        "Yeni oyuncu profili: Özellikler, Moral, Sözleşme, Sağlık ve Kariyer sekmeleri ve adın altında bunları açan durum etiketleri.",
+        "Ayarlar artık kendi penceresinde açılır: dişli simgesi veya Cmd+,.",
+        "Her listede Filtreler var; etkin her filtre kaldırabileceğiniz bir etiket olarak görünür.",
+        "FM Lens’in sayı gösterdiği yerlerde FM’nin kendi adları: personel görevleri, Altyapı adayları ve Yıpranmış.",
+        "İmza penceresi, bir oyuncuyu imzalamak anlaşılmış bir transferini iptal edecekse sizi uyarır.",
+      ],
       "0.6.0": [
         "FM Lens güncellemeleri, FM içinde çalışan yardımcıyı kullanmaya devam eder. Desteklenen özellikler oyunu yeniden başlatmadan çalışır.",
         "Eski bir yardımcı FM ekranlarını hemen yenileyemeyebilir veya yeni bir işlemi desteklemeyebilir. FM’yi bir sonraki başlatışınızda güncellenir.",

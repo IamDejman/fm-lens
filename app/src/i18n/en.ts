@@ -1494,6 +1494,13 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.6.1": [
+        "A new player profile: tabs for Attributes, Mood, Contract, Medical and Career, and status chips under the name that open them.",
+        "Settings opens in its own window from the gear or Cmd+,.",
+        "Every list has Filters, with a chip for each filter in effect that you can remove.",
+        "FM’s own names for staff jobs, Youth Candidates and jadedness, where FM Lens showed numbers.",
+        "The Sign dialog warns you when signing a player cancels a move he has agreed.",
+      ],
       "0.6.0": [
         "FM Lens updates keep using the helper already running in FM. Supported features keep working without restarting the game.",
         "An older helper may not refresh FM’s screens immediately or support a newly added action. It updates the next time you start FM.",
