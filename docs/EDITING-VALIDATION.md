@@ -1134,7 +1134,7 @@ Findings:
 - Remove unhappiness on the squad screen never turned on: the squad rows left
   out the unhappy flag. Fixed in #136 and checked above.
 - Still shown raw: staff jobs 8, 10, 38 and 66, unhappiness reason 570, the
-  fourth squad tab and jadedness.
+  fourth squad tab and jadedness. Named in the next section.
 - The selling club's transfer budget fell by 7,949,095 when the deal was
   cancelled; in Round 2 the buying club's rose. FM seems to move transfer
   budgets when it agrees a deal, and the cancel reverses that. The fee was not
@@ -1196,3 +1196,50 @@ signing function: on Windows its second argument is the player's
 The layout now names that offset (`actual_person`) for players and staff.
 Moving your manager back leaves the manager it displaced without a job, as in
 the game.
+
+## Raw values named (7 November 2026)
+
+FM27 Steam build 26340721 ARM64. FM Lens 0.6.0 built from
+`fix/raw-value-labels`, on `main` at 4bd8f95 (#137). Same copy as above
+(Arsenal, 11 Dec 2027). Continue was never pressed and the copy was not saved.
+
+Each name is FM's own, read from the staff or player screen of a holder:
+
+| Value | Holder in the probe | FM shows | FM Lens now |
+|---|---|---|---|
+| Job 8 | David Hopkinson (Newcastle), Billy Hogan (Liverpool) | Managing Director | Managing Director |
+| Job 10 | Ross Wilson (Newcastle), Julian Ward (Liverpool) | Director of Football | Director of Football |
+| Job 24 | Maria Begoña Santiago Ramos (Estoril Praia), 3 holders | General Manager | General Manager |
+| Job 38 | Adem Hallard (Newcastle) | Chief Doctor | Chief Doctor |
+| Job 46 | Max Thompson (Liverpool) | Doctor | Doctor |
+| Job 62 | Thomas Coffield (Newcastle) | Head Performance Analyst | Head Performance Analyst |
+| Job 66 | John Henry (Liverpool) | Owner | Owner |
+| Unhappiness reason 570 | Saka, his only concern | Worried about the poor dressing room atmosphere | The same, Internal, since 7 Dec 2027 |
+| Team kind 22 | Arsenal's fourth team, no players | Youth Candidates | Youth Candidates tab |
+
+Kind 22 is the only one of its kind among the teams of the top 400 clubs, at
+the human club; FM has no other extra team view.
+
+Jadedness (`+0x252`, -500 fully rested). FM's Fitness card:
+
+| Player | Stored | Energy | FM shows |
+|---|---|---|---|
+| Piero Hincapié | 302 | - | Match fit |
+| Kylian Mbappé | 397 | - | Tired after last match |
+| Kalvin André | 400 | - | Match fit |
+| Khvicha Kvaratskhelia | 401 | 8,994 | A little jaded and could do with a rest (Rst) |
+| Bukayo Saka | 404 | 9,007 | Match fit but starting to get jaded |
+
+So a player is jaded above 400. FM's wording past that line seems to depend on
+energy too, so FM Lens shows only "Jaded" or "-", with the stored value on
+hover.
+
+| Check | FM Lens |
+|---|---|
+| Staff list | The seven jobs show their names; no "Job N" left |
+| Arsenal's squad tabs | First team, U21, U18, Youth Candidates |
+| Arsenal's Jaded. column | Saka, Rice and Kvaratskhelia "Jaded", the rest "-" |
+| Saka's Mood | "Worried about the poor dressing room atmosphere, Internal, since 7 Dec 2027" |
+| Saka's Medical | Jadedness "Jaded"; Edit shows 404 with Min -500, Max 1,000 |
+
+Unknown jobs, reasons and team kinds still show their number.

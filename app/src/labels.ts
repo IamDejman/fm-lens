@@ -190,8 +190,9 @@ export const clauseText = strings.clauses;
 /** A club's squad: the tab of its profile with its teams' players, the actions on a team and the captains. */
 export const squadText = strings.squad;
 
-/** The kind of team the game calls a B team (see `ClubTeam.kind`). */
+/** The kinds of team the game calls a B team and your club's youth candidates (see `ClubTeam.kind`). */
 const B_TEAM_KIND = 3;
+const YOUTH_CANDIDATES_KIND = 22;
 
 /** What names a team: its place in the club's list, and where it is known the kind and age limit the game gives it. */
 export interface TeamId {
@@ -202,8 +203,8 @@ export interface TeamId {
 
 /**
  * The name of a club's team as its squad screen shows it: the first team, a team by its age limit ("U21"), a B team,
- * and any other by its place in the club's list ("Team 3"). Where only the place is known, as in the Changes view, a
- * team other than the first is named by it alone.
+ * your club's youth candidates, and any other by its place in the club's list ("Team 3"). Where only the place is
+ * known, as in the Changes view, a team other than the first is named by it alone.
  */
 export function teamLabel({ index, kind, ageLimit }: TeamId): string {
   if (index === 0) {
@@ -212,7 +213,15 @@ export function teamLabel({ index, kind, ageLimit }: TeamId): string {
   if (ageLimit !== undefined && ageLimit !== null) {
     return squadText.teams.age(ageLimit);
   }
-  return kind === B_TEAM_KIND ? squadText.teams.b : squadText.teams.other(index + 1);
+  if (kind === B_TEAM_KIND) {
+    return squadText.teams.b;
+  }
+  return kind === YOUTH_CANDIDATES_KIND ? squadText.teams.youth : squadText.teams.other(index + 1);
+}
+
+/** Jadedness as FM shows it: jaded above 400 (Kvaratskhelia at 401 is, Kalvin André at 400 is not), else none. */
+export function jadedText(stored: number): string {
+  return stored > 400 ? profileText.jaded : profileText.none;
 }
 
 /**
