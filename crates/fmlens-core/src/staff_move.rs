@@ -54,7 +54,7 @@ const DEPARTMENTS: [Department; 3] = [Department::Medical, Department::Coaching,
 /// belongs to. A manager, the board, the directors and jobs the editor cannot name are left as they are.
 pub const STAFF_JOBS: [(u8, Department); 14] = [
     (2, Department::Coaching),  // Coach
-    (20, Department::Coaching), // Assistant Coach
+    (20, Department::Coaching), // Assistant Manager
     (22, Department::Coaching), // Set Piece Coach
     (26, Department::Coaching), // Fitness Coach, some of whom the medical team lists too
     (34, Department::Coaching), // Goalkeeping Coach
