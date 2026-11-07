@@ -954,3 +954,38 @@ follow-up passed the frontend production build, `cargo fmt --all --check`,
 Tauri debug bundle build. A new copied-career interaction check could not be
 run: Football Manager was closed and Steam's native UI was not exposed to the
 computer-use session. No save or Steam setting was changed.
+
+## Edits show without Continue (7 November 2026)
+
+FM Lens 0.5.8 (installed app), FM27 Steam build 26340721, macOS ARM64. Two
+copies: `Fm Lens Checks 2026-11-07` (Arsenal, 11 Dec 2027 16:30) and the
+reloaded `FM Lens Validation 2026-11-04` (8 Dec 2027 11:00). Each check: apply
+in FM Lens, switch to FM and look at the screen already open or one opened
+after, with no Continue. The clock never moved. Nothing was saved after the
+edits.
+
+| Action | FM before | FM after Apply | After Undo |
+|---|---|---|---|
+| Lift bans (3) | Hincapié Sus | BPR, ban gone | Not undoable here (see below) |
+| Heal all (3) | Gyökeres Inj | Injury flag gone | Same |
+| Refresh all (61) | Hincapié Match fit, Kvaratskhelia Rst | Fully fit, Rst gone | Same |
+| Inspire all (45) | Atmosphere Poor, support Average, 3 issues, Hincapié Content | Excellent, Very good, no issues, Delighted | Poor, Average, 3 issues, Slightly Happy |
+| Max attributes (1,483) | Hincapié's attributes, personality Driven | All 20, Born Leader, CA stars up | Original values and Driven |
+| Max cohesion (18) | Team Cohesion Very Good | Excellent | Very Good |
+| Max tactics (29) | Effectiveness bars mixed, some amber | Bars further right, green | Back near the start; FM keeps some manager knowledge, as noted in the roadmap |
+| Transfer budget, Arsenal | £1.04M (portal tile) | £5M | £1.04M |
+| Work permit revoke, Gilberto Mora | Active work permit | No Work Permit, re-apply immediately | - |
+| Work permit grant, Mora | No Work Permit | Active work permit, until 30/6/2032 | - |
+
+Max cohesion and permit grant needed a Continue before 0.5.8; with the refresh
+after every update both now show at once. Max tactics and Max cohesion gave
+"No changes made" on the first copy, which earlier tests had already maxed.
+
+Changes from before a save was loaded are listed as "Earlier game" with no
+Undo, for the group and for each row. The refusal inside the editor after a
+career change (#95) is covered by its unit test; there is no way to reach it
+from the interface.
+
+Not covered: the Players and Clubs Mass edit screen (the team actions above go
+through the same queue and are logged as mass edits), closing a promise, and
+formation edits.
