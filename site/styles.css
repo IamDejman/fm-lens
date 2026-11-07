@@ -401,6 +401,25 @@ footer a {
   padding-bottom: 8px;
 }
 
+/* The privacy page: a short policy at a readable width. */
+.message.policy {
+  max-width: 46rem;
+}
+
+.policy ul {
+  margin: 0 0 16px;
+  padding-left: 1.25em;
+}
+
+.policy li {
+  margin-bottom: 6px;
+}
+
+.policy code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
 /* The release notes, as GitHub renders them: the version and its date beside the notes, like the home page's parts. */
 .releases {
   padding-bottom: clamp(40px, 8vw, 96px);
@@ -448,7 +467,8 @@ footer a {
 }
 
 .release-body h2,
-.release-body h3 {
+.release-body h3,
+.policy h2 {
   margin: 28px 0 8px;
   font-size: 1.25rem;
   font-stretch: 78%;
