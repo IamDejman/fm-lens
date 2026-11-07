@@ -1,4 +1,4 @@
-import { useContext, useEffect, useId, useState, type ReactNode } from "react";
+import { useContext, useEffect, useId, useState } from "react";
 import { EditableValue } from "./EditControls";
 import { freezeMoney, frozenClubs } from "./editing";
 import { converts, inCurrency } from "./currency";
@@ -250,11 +250,13 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
                 {finances.transferBudget < 0 ? profileText.notSet : formatMoney(finances.transferBudget)}
               </EditableValue>
             </Fact>
-            <Fact label={perWeek(text.wageBudget)}>
+            <Fact label={text.wageBudget}>
               <EditableValue field="finance.wage_budget">{formatMoney(finances.wageBudget)}</EditableValue>
+              <PerWeek />
             </Fact>
-            <Fact label={perWeek(text.totalWageBudget)}>
+            <Fact label={text.totalWageBudget}>
               <EditableValue field="finance.total_wage_budget">{formatMoney(finances.totalWageBudget)}</EditableValue>
+              <PerWeek />
             </Fact>
             <Fact label={text.ticketPrice}>{formatTicketPrice(finances.ticketPrice)}</Fact>
           </dl>
@@ -341,14 +343,9 @@ function FreezeMoney({ club }: { club: number }) {
   );
 }
 
-/** The label of an amount per week: the name, with "per week" in small print under it. */
-function perWeek(label: string): ReactNode {
-  return (
-    <>
-      {label}
-      <span className="unit">{text.perWeek}</span>
-    </>
-  );
+/** After an amount per week: "p/w" in small print. */
+function PerWeek() {
+  return <span className="unit">{text.perWeek}</span>;
 }
 
 /** A ticket price: a whole amount as it is, anything else with two decimals ("£41.80"). */

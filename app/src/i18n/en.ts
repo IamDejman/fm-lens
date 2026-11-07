@@ -794,6 +794,9 @@ export const en = {
     tools: "Tools",
     tabsLabel: "Player sections",
     tabs: { attributes: "Attributes", mood: "Mood", contract: "Contract", medical: "Medical", career: "Career" },
+    /** The tabs of a member of staff's profile. */
+    staffTabsLabel: "Staff sections",
+    staffTabs: { attributes: "Attributes", contract: "Contract", personal: "Personal" },
     statusLabel: "Status",
     injured: "Injured",
     banned: "Banned",
@@ -918,6 +921,9 @@ export const en = {
       contractEndsBy: "Contract ends by",
       transferListedOnly: "Transfer listed only",
       loanListedOnly: "Loan listed only",
+      /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */
+      chips: "Filters in effect",
+      removeChip: (label: string) => `Remove ${label}`,
       /** Bounds on attributes, a row each, under the other filters; the staff list has them too. */
       attributes: {
         heading: "Attributes",
@@ -1036,11 +1042,11 @@ export const en = {
     finances: "Finances",
     balance: "Balance",
     transferBudget: "Transfer budget",
-    wageBudget: "Wage budget (spending)",
+    wageBudget: "Wage budget used",
     totalWageBudget: "Total wage budget",
     ticketPrice: "Average ticket price",
-    /** Under the labels of the two wage budgets, which are amounts per week. */
-    perWeek: "per week",
+    /** After the two wage budgets, which are amounts per week. */
+    perWeek: "p/w",
     /** Clubs outside the leagues being played have no finance record in memory. */
     noFinances: "FM only tracks money for clubs in playable leagues.",
     /** Freezing the club's money, while the game can be written to, and what that does. */

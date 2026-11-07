@@ -39,8 +39,6 @@ export interface ListState {
   total: number | null;
   /** How many of them the list has rows for: the best ones (see `summary`). */
   shown: number;
-  /** Whether a profile is open beside the list, which leaves the toolbar little room. */
-  besideProfile: boolean;
 }
 
 interface ListBrowserProps<Row extends { uid: number }> {
@@ -244,7 +242,6 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
             query,
             total: settled ? page.total : null,
             shown: page?.rows.length ?? 0,
-            besideProfile: showProfile,
           })}
         </div>
         {filterBar}
