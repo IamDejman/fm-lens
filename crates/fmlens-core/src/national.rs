@@ -205,6 +205,12 @@ pub(crate) fn senior_team(process: &Process, layout: &Layout, nation: u64, uid: 
 }
 
 impl Session {
+    /// Whether this build's layout places nations' details: where it does not, `nation_details` is `None` for every
+    /// nation.
+    pub fn places_nation_details(&self) -> bool {
+        self.layout.national.is_some()
+    }
+
     /// The profile of `nation`; `None` where the layout does not place nations' details or the nation's object does
     /// not check out. Only reads memory.
     pub fn nation_details(

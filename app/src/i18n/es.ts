@@ -640,6 +640,9 @@ export const es: Strings = {
     potentialAbility: "Habilidad potencial",
     potentialAbilityShort: "HP",
     potentialRange: "Potencial fijado como un rango",
+    personalDetails: "Datos personales",
+    fullNameLabel: "Nombre completo",
+    heightLabel: "Altura",
 
     // Atributos
     technical: "Técnicos",
@@ -815,7 +818,7 @@ export const es: Strings = {
     tabsLabel: "Secciones del jugador",
     tabs: { attributes: "Atributos", mood: "Moral", contract: "Contrato", medical: "Médico", career: "Trayectoria" },
     staffTabsLabel: "Secciones del empleado",
-    staffTabs: { attributes: "Atributos", contract: "Contrato", personal: "Personal" },
+    staffTabs: { attributes: "Atributos", contract: "Contrato", career: "Trayectoria" },
     statusLabel: "Estado",
     injured: "Lesionado",
     banned: "Sancionado",
@@ -1214,7 +1217,6 @@ export const es: Strings = {
     },
     empty: (query) => (query === "" ? "No se han encontrado países." : `Ningún país coincide con «${query}».`),
     columns: { name: "País", uid: "UID" },
-    note: "Solo los países de los jugadores y el personal de esta partida.",
     uid: "UID",
     noUid: "Sin UID",
     nation: "País",
@@ -2038,25 +2040,19 @@ export const es: Strings = {
 
     // Las acciones sobre todo el equipo
     actionsLabel: "Acciones sobre todo el equipo",
-    healAll: (injured) =>
-      injured === 0
-        ? "Curar a todos"
-        : `Curar a todos (${injured === 1 ? "1 lesionado" : `${format(injured)} lesionados`})`,
+    healAll: "Curar",
+    injuredCount: (injured) => (injured === 1 ? "1 lesionado" : `${format(injured)} lesionados`),
     healAllTitle: "Curar a todo el equipo",
     healNone: "Nadie en este equipo está lesionado",
-    liftAll: (banned) =>
-      banned === 0
-        ? "Levantar sanciones"
-        : `Levantar sanciones (${banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`})`,
+    liftAll: "Levantar sanciones",
+    bannedCount: (banned) => (banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`),
     liftAllTitle: "Levantar todas las sanciones del equipo",
     liftNone: "Nadie en este equipo está sancionado",
-    refreshAll: "Recuperar a todos",
+    refreshAll: "Recuperar físico",
     refreshAllTitle:
       "Energía y ritmo de competición al máximo, y todos totalmente descansados",
-    removeUnhappiness: (unhappy) =>
-      unhappy === 0
-        ? "Quitar descontento"
-        : `Quitar descontento (${unhappy === 1 ? "1 descontento" : `${format(unhappy)} descontentos`})`,
+    removeUnhappiness: "Quitar descontento",
+    unhappyCount: (unhappy) => (unhappy === 1 ? "1 descontento" : `${format(unhappy)} descontentos`),
     removeUnhappinessTitle: "Quitar todos los motivos de descontento del equipo",
     unhappyNone: "Nadie en este equipo está descontento",
     moreLabel: "Más acciones sobre todo el equipo",

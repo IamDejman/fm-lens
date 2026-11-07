@@ -2828,6 +2828,15 @@ fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Re
     Ok(page(&index, &query, limit, |_| true, |_| {}))
 }
 
+/// Whether this build's layout places nations' details (see `nation_details`): without them the nations list opens no
+/// profile, as it would only repeat the row.
+#[tauri::command]
+fn nations_detailed(state: State<'_, AppState>) -> Result<bool, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    Ok(connection.session.places_nation_details())
+}
+
 /// The profile of the nation in the nations list with the row id `uid`; `None` where this build's layout does not place
 /// nations' details. Only reads memory.
 #[tauri::command]
@@ -4201,6 +4210,7 @@ pub fn run() {
             staff_details,
             club_details,
             nation_details,
+            nations_detailed,
             list_nations,
             freeze_money,
             frozen_clubs,
