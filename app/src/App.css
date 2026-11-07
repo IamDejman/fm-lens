@@ -242,8 +242,10 @@ dd,
   font-variant-numeric: tabular-nums;
 }
 
-/* Text for assistive technology only: out of sight, but read out. */
-.sr-only {
+/* Text for assistive technology only: out of sight, but read out. So is a live region while it is empty: it is always
+   there, so that it is read out when it fills, and takes no room until then. */
+.sr-only,
+.live-region:empty {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -283,7 +285,9 @@ dd,
   align-items: center;
   align-self: center;
   gap: 9px;
+  margin: 0;
   padding: 2px 0;
+  font-size: inherit;
 }
 
 .brand-symbol {

@@ -136,11 +136,10 @@ export function ReportDialog({ facts, onClose }: { facts: ReportFacts; onClose: 
         </header>
 
         <div className="modal-body">
-          {sent ? (
-            <p className="move-plan ok" role="status">
-              {text.sent}
-            </p>
-          ) : (
+          <div className="live-region" role="status">
+            {sent && <p className="move-plan ok">{text.sent}</p>}
+          </div>
+          {!sent && (
             <>
               <label className="report-what">
                 {text.what}

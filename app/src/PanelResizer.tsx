@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { layoutPixels } from "./appearance";
 import { profileText } from "./labels";
 
@@ -54,6 +54,8 @@ function saveWidths(widths: Widths): void {
  */
 export function usePanelWidth(kind: PanelKind) {
   const [widths, setWidths] = useState(savedWidths);
+  // The panel itself, for the button that widens it (see `PanelWidthButton`).
+  const panel = useRef<HTMLElement>(null);
   const width = widths[kind];
   const set = (next: number | undefined) => {
     // Another panel may have saved its width since this one opened: start from what is saved.
@@ -65,7 +67,7 @@ export function usePanelWidth(kind: PanelKind) {
     setWidths(all);
   };
   const style = width === undefined ? undefined : { flexBasis: `min(${width}px, 100% - ${LIST_MIN}px)` };
-  return { width, set, style };
+  return { width, set, style, panel };
 }
 
 /** The widest `panel` can be made in the space it has now: the list keeps `LIST_MIN`. */
@@ -176,5 +178,25 @@ export function PanelResizer({ panelWidth }: { panelWidth: ReturnType<typeof use
       onDoubleClick={(event) => reset(panelOf(event.currentTarget))}
       onKeyDown={onKeyDown}
     />
+  );
+}
+
+/**
+ * The button beside Close that gives the panel all the room the list leaves it, or its usual width again: the panel
+ * can be resized without dragging.
+ */
+export function PanelWidthButton({ panelWidth }: { panelWidth: ReturnType<typeof usePanelWidth> }) {
+  const widened = panelWidth.width !== undefined;
+  const label = widened ? profileText.usualWidth : profileText.widen;
+  const toggle = () => {
+    const panel = panelWidth.panel.current;
+    panelWidth.set(widened || panel === null ? undefined : widest(panel));
+  };
+  return (
+    <button type="button" className="icon-button" onClick={toggle} aria-label={label} title={label}>
+      <svg viewBox="0 0 20 20" aria-hidden="true">
+        <path d={widened ? "M2 10h5m6 0h5M4 7l3 3-3 3m12-6-3 3 3 3" : "M2 10h16M5 7l-3 3 3 3m10-6 3 3-3 3"} />
+      </svg>
+    </button>
   );
 }
