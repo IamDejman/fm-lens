@@ -2097,6 +2097,16 @@ export const en = {
     what: "What happened?",
     /** Reports are filed where anyone can read them, with the app's version, FM's build, macOS and the recent changes. */
     sentWith: "Posted publicly, with your versions and recent changes.",
+    attach: "Attach",
+    /** The list of screenshots and videos to send. */
+    files: "Files",
+    video: "Video",
+    remove: (name: string) => `Remove ${name}`,
+    fileProblem: {
+      type: "Only images and MP4 or MOV videos.",
+      count: "Up to 5 images and 1 video.",
+      size: "Images up to 10\u00a0MB, videos up to 50\u00a0MB.",
+    },
     send: "Send",
     sending: "Sending…",
     cancel: "Cancel",

@@ -232,7 +232,12 @@ Report a problem sends its report to `relay/`, an AWS Lambda function
 fine-grained GitHub token (Issues: read and write, on this repository only), set as the
 function's `GITHUB_TOKEN`; without one it answers 503. It keeps no reports, only counts in
 the DynamoDB table `fm-lens-report-relay`, which the function may update and which drops
-them once they are old: 5 an hour from one address, 100 a day in all. `node --test` in `relay/` runs its
+them once they are old: 5 an hour from one address, 100 a day in all. Screenshots and videos (up to 5 images
+of 10 MB and one MP4 or MOV video of 50 MB) never pass through it: the app asks it for presigned upload addresses
+(`POST /uploads`, counted like reports), puts each file in the S3 bucket named by the function's `UPLOAD_BUCKET`, and
+sends the report with the files' keys; the relay checks each is there and links it in the issue. The bucket serves
+`reports/` publicly, as the issues are public. `relay/setup-attachments.sh` sets the bucket, its CORS, the role's
+permission to put files and `UPLOAD_BUCKET` up, once; without it, reports without files work as before. `node --test` in `relay/` runs its
 tests, and CI runs them too. To send new code, run `relay/deploy.sh` with `AWS_PROFILE` and
 `AWS_REGION` set for the account the function is in.
 

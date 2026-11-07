@@ -1,19 +1,79 @@
 // A problem report: what the user writes in Report a problem, sent with what FM Lens knows (its version, the FM build,
 // the Mac and the changes written while it has been open) to the report relay (relay/), which files it as an issue in
 // the fm-lens repository. Nothing leaves the app until the user presses Send. The facts are written in English, as the
-// issues are.
+// issues are. Screenshots and videos go straight to the relay's bucket, at addresses the relay hands out, and the issue
+// links them.
 
 import { call, inTauri } from "./api";
 import type { ConnectionInfo, GameInfo, LoggedChange, Storefront } from "./types";
 
 /** The report relay's address (see docs/DEVELOPING.md, The report relay). */
-const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws/report";
+const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws";
 
 /** The most the relay takes for the changes, in characters: the oldest are left out past it. */
 const MAX_CHANGES = 8000;
 
-/** How long sending may take, in milliseconds. */
+/** How long sending may take, in milliseconds, and putting one file in the bucket. */
 const SEND_TIMEOUT_MS = 20_000;
+const UPLOAD_TIMEOUT_MS = 180_000;
+
+/** The files a report may carry, as the relay takes them (relay/index.js, FILES and FILE_LIMITS). */
+const FILE_TYPES: Record<string, "image" | "video"> = {
+  "image/png": "image",
+  "image/jpeg": "image",
+  "image/gif": "image",
+  "image/webp": "image",
+  "video/mp4": "video",
+  "video/quicktime": "video",
+};
+const TYPES_BY_EXTENSION: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+};
+const FILE_LIMITS = {
+  image: { count: 5, bytes: 10 * 1024 * 1024 },
+  video: { count: 1, bytes: 50 * 1024 * 1024 },
+};
+
+/** What the file picker offers. */
+export const ACCEPTED_FILES = Object.keys(FILE_TYPES).join(",");
+
+/** A file to send with a report, with the type the relay knows it by. */
+export interface Attachment {
+  file: File;
+  type: string;
+  kind: "image" | "video";
+}
+
+/** Why a file was not added: a type the relay doesn't take, one too many of its kind, or too big. */
+export type AttachProblem = "type" | "count" | "size";
+
+/** `current` with what of `added` the relay takes, and why any was left out. */
+export function attach(current: Attachment[], added: File[]): { files: Attachment[]; problem: AttachProblem | null } {
+  const files = [...current];
+  let problem: AttachProblem | null = null;
+  for (const file of added) {
+    const type = FILE_TYPES[file.type]
+      ? file.type
+      : TYPES_BY_EXTENSION[file.name.split(".").pop()?.toLowerCase() ?? ""];
+    const kind = type ? FILE_TYPES[type] : undefined;
+    if (!type || !kind) {
+      problem = "type";
+    } else if (files.filter((f) => f.kind === kind).length >= FILE_LIMITS[kind].count) {
+      problem = "count";
+    } else if (file.size === 0 || file.size > FILE_LIMITS[kind].bytes) {
+      problem = "size";
+    } else {
+      files.push({ file, type, kind });
+    }
+  }
+  return { files, problem };
+}
 
 const STOREFRONTS: Record<Storefront, string> = { steam: "Steam", gamePass: "Game Pass", epic: "Epic", unknown: "Unknown" };
 
@@ -88,20 +148,59 @@ async function systemVersion(): Promise<string> {
 /** How sending went: sent, turned away for now (too many reports from this address), or not sent. */
 export type SendResult = "sent" | "tooMany" | "failed";
 
-/** Sends `what` with `facts` to the relay. The browser preview sends nothing and says it was sent. */
-export async function sendReport(facts: ReportFacts, what: string): Promise<SendResult> {
+/** Thrown when the relay turns a request away for now. */
+class TooMany extends Error {}
+
+/** Puts `files` in the relay's bucket, and returns their keys. */
+async function upload(files: Attachment[]): Promise<string[]> {
+  const response = await fetch(`${RELAY}/uploads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      files: files.map(({ file, type }) => ({ type, size: file.size })),
+    }),
+    signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+  });
+  if (response.status === 429) {
+    throw new TooMany();
+  }
+  if (!response.ok) {
+    throw new Error(`The relay answered ${response.status}`);
+  }
+  const { uploads } = (await response.json()) as {
+    uploads: { key: string; url: string }[];
+  };
+  await Promise.all(
+    uploads.map(async ({ url }, i) => {
+      const put = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": files[i].type },
+        body: files[i].file,
+        signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
+      });
+      if (!put.ok) {
+        throw new Error(`The bucket answered ${put.status}`);
+      }
+    }),
+  );
+  return uploads.map(({ key }) => key);
+}
+
+/** Sends `what` and `files` with `facts` to the relay. The browser preview sends nothing and says it was sent. */
+export async function sendReport(facts: ReportFacts, what: string, files: Attachment[] = []): Promise<SendResult> {
   if (!inTauri) {
     return "sent";
   }
-  const report = {
-    what,
-    version: facts.version ?? "",
-    fmBuild: describeGame(facts),
-    macos: await systemVersion(),
-    changes: describeChanges(facts.log),
-  };
   try {
-    const response = await fetch(RELAY, {
+    const report = {
+      what,
+      version: facts.version ?? "",
+      fmBuild: describeGame(facts),
+      macos: await systemVersion(),
+      changes: describeChanges(facts.log),
+      ...(files.length > 0 ? { attachments: await upload(files) } : {}),
+    };
+    const response = await fetch(`${RELAY}/report`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(report),
@@ -111,7 +210,7 @@ export async function sendReport(facts: ReportFacts, what: string): Promise<Send
       return "sent";
     }
     return response.status === 429 ? "tooMany" : "failed";
-  } catch {
-    return "failed";
+  } catch (err) {
+    return err instanceof TooMany ? "tooMany" : "failed";
   }
 }
