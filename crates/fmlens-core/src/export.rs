@@ -171,12 +171,21 @@ fn write_csv(
 }
 
 /// One line of a CSV file: the cells apart by `separator`, each in quotes where it holds the separator, a quote or a
-/// line break, with its quotes doubled.
+/// line break, with its quotes doubled. A cell a spreadsheet would run as a formula, such as a name an edited database
+/// set to `=HYPERLINK(...)`, starts with `'` so that it stays text; numbers stay as they are.
 fn write_csv_row<'a>(out: &mut impl Write, cells: impl Iterator<Item = &'a str>, separator: u8) -> io::Result<()> {
     for (i, cell) in cells.enumerate() {
         if i > 0 {
             out.write_all(&[separator])?;
         }
+        let text;
+        let cell =
+            if cell.starts_with(['=', '+', '-', '@', '\t', '\r']) && !cell.parse::<f64>().is_ok_and(f64::is_finite) {
+                text = format!("'{cell}");
+                text.as_str()
+            } else {
+                cell
+            };
         if cell.bytes().any(|byte| byte == separator || matches!(byte, b'"' | b'\n' | b'\r')) {
             write!(out, "\"{}\"", cell.replace('"', "\"\""))?;
         } else {
@@ -573,6 +582,17 @@ mod tests {
         let mut out = Vec::new();
         write_csv_row(&mut out, ["plain", "a;b", "say \"hi\"", "a,b"].into_iter(), b';').unwrap();
         assert_eq!(String::from_utf8(out).unwrap(), "plain;\"a;b\";\"say \"\"hi\"\"\";a,b\r\n");
+    }
+
+    #[test]
+    fn csv_keeps_formulas_as_text() {
+        let mut out = Vec::new();
+        let cells = ["=HYPERLINK(\"x\")", "+1+1", "@SUM(A1)", "-2+3", "\tx", "-12", "+3.5"];
+        write_csv_row(&mut out, cells.into_iter(), b';').unwrap();
+        assert_eq!(
+            String::from_utf8(out).unwrap(),
+            "\"'=HYPERLINK(\"\"x\"\")\";'+1+1;'@SUM(A1);'-2+3;'\tx;-12;+3.5\r\n"
+        );
     }
 
     #[test]
