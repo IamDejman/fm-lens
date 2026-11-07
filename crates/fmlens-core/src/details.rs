@@ -214,7 +214,7 @@ pub(crate) const MOST_CONCERNS: u64 = 64;
 
 /// The reasons to be unhappy listed in the record `record` points at; none when there is no record or it does not
 /// look like one.
-fn read_concerns(process: &Process, record: u64) -> Vec<Concern> {
+pub(crate) fn read_concerns(process: &Process, record: u64) -> Vec<Concern> {
     if !is_user_pointer(record) {
         return Vec::new();
     }

@@ -810,6 +810,7 @@ export const es: Strings = {
     closePromiseTitle: "Terminar esta promesa sin que cuente en su contra",
 
     // Sobre los atributos, mientras se lee el perfil
+    tools: "Herramientas",
     setAttributes: "Poner todos los atributos en",
     setAttributesButton: "Aplicar",
     setAttributesDone: (count, level) =>
@@ -1182,7 +1183,8 @@ export const es: Strings = {
       capacity: "Aforo",
       minCapacity: "Aforo mínimo",
       maxCapacity: "Aforo máximo",
-      placeholder: "Mín.",
+      minPlaceholder: "Mín.",
+      maxPlaceholder: "Máx.",
     },
   },
 
@@ -1229,6 +1231,7 @@ export const es: Strings = {
   },
 
   app: {
+    lists: "Listas",
     settingsLabel: "Ajustes",
     languageLabel: "Idioma",
     currencyLabel: "Moneda",
@@ -1254,7 +1257,7 @@ export const es: Strings = {
         },
         tabs: {
           title: "Secciones",
-          body: "Jugadores, personal, clubes, países y estadios.",
+          body: "Jugadores, personal y clubes. Países, estadios y más en Listas.",
         },
         search: {
           title: "Búsqueda y filtros",
@@ -2022,19 +2025,30 @@ export const es: Strings = {
         : `Levantar sanciones (${banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`})`,
     liftAllTitle: "Levantar todas las sanciones del equipo",
     liftNone: "Nadie en este equipo está sancionado",
-    inspireAll: "Motivar a todos",
-    inspireAllTitle: "Moral al máximo para todos",
     refreshAll: "Recuperar a todos",
     refreshAllTitle:
       "Energía y ritmo de competición al máximo, y todos totalmente descansados",
+    removeUnhappiness: (unhappy) =>
+      unhappy === 0
+        ? "Quitar descontento"
+        : `Quitar descontento (${unhappy === 1 ? "1 descontento" : `${format(unhappy)} descontentos`})`,
+    removeUnhappinessTitle: "Quitar todos los motivos de descontento del equipo",
+    unhappyNone: "Nadie en este equipo está descontento",
+    moreLabel: "Más acciones sobre todo el equipo",
+    maxMorale: "Moral al máximo",
+    maxMoraleTitle: "Moral al máximo para todos",
     maxCohesion: "Cohesión al máximo",
-    maxCohesionTitle: "Todos los jugadores totalmente familiarizados con el club (experimental)",
+    maxCohesionTitle: "Todos los jugadores totalmente familiarizados con el club",
+    experimental: "Experimental",
     maxTactics: "Táctica al máximo",
     maxTacticsTitle: "Todos los jugadores totalmente familiarizados con la táctica del equipo",
-    maxAll: "Atributos al máximo",
+    maxAll: "Atributos al máximo…",
     maxAllTitle:
       "Todos los atributos a 20 para todos (propensión a lesiones y juego sucio a 1)",
-    hint: "Incluye a los cedidos.",
+    maxAllAsk: (count) =>
+      `¿Todos los atributos al máximo para ${count === 1 ? "1 jugador" : `${format(count)} jugadores`}?`,
+    maxAllConfirm: "Atributos al máximo",
+    cancel: "Cancelar",
 
     // Lo que hizo una acción
     written: (count) =>

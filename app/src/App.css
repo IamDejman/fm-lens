@@ -342,6 +342,19 @@ dd,
   outline-offset: -3px;
 }
 
+/* How many changes of the session stand, beside Changes. */
+.tab-count {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 0.16);
+  font-size: var(--type-xs);
+  font-stretch: 100%;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: center;
+}
+
 /* The right of the masthead: what the app is doing, the game's date, Reload and the language. */
 .masthead-side {
   display: flex;
@@ -1212,13 +1225,18 @@ input::placeholder {
   margin: 0;
 }
 
-/* Above a player's attributes: Max attributes and the box that freezes them in a row, then what the last write came to
-   (in the box of a squad's, see Club squad) and what freezing does while it is on. */
-.attribute-buttons {
+/* After a player's attributes: Tools, which opens Set all attributes and the box that freezes them in a row, then what
+   the last write came to (in the box of a squad's, see Club squad) and what freezing does while it is on. */
+.attribute-buttons,
+.attribute-tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
+}
+
+.attribute-tools[hidden] {
+  display: none;
 }
 
 .attribute-buttons .freeze-toggle {
@@ -1889,13 +1907,6 @@ input::placeholder {
   font-weight: 600;
   line-height: 1;
   user-select: none;
-}
-
-/* Where a nation has no flag: an empty frame, not a flag that is not its own. */
-.picture-frame {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 /* A picture beside the words it goes with, in a table cell. */
@@ -4664,11 +4675,6 @@ button.danger:hover:not(:disabled) {
   gap: 8px;
 }
 
-.squad-hint {
-  flex: 1 1 16rem;
-  margin: 0;
-}
-
 /* What the last action did: a live region that is always there, and takes no room while it is empty. It takes focus
    when the button that had it is gone. */
 .squad-result {
@@ -4837,6 +4843,64 @@ button.danger:hover:not(:disabled) {
 .settings-menu button:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
+}
+
+/* A menu that opens from a button (see DropMenu): its button ends with a chevron; an item may end with a tag or a
+   shortcut, and a rule sets apart the item that changes the most. */
+.drop-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.drop-chevron {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.drop-toggle[aria-expanded="true"] .drop-chevron {
+  transform: rotate(180deg);
+}
+
+.drop-menu button {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.drop-menu .tag,
+.drop-menu kbd {
+  margin-left: auto;
+}
+
+.drop-menu kbd {
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--type-sm);
+}
+
+.drop-menu [aria-checked="true"] {
+  font-weight: 750;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.menu-separator {
+  flex: none;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border);
+}
+
+/* A question before an action that writes a lot. */
+.confirm-dialog {
+  width: min(440px, 100%);
 }
 
 /* The settings menu: a heading over each list; a language with its flag and its own name, a currency with its sign

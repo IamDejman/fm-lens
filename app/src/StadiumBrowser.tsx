@@ -54,7 +54,7 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
                 min={CAPACITY_RANGE.min}
                 max={CAPACITY_RANGE.max}
                 step={1}
-                placeholder={filters.placeholder}
+                placeholder={filters.minPlaceholder}
                 aria-label={filters.minCapacity}
                 value={minCapacity}
                 onChange={(e) => setMinCapacity(e.currentTarget.value)}
@@ -65,7 +65,7 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
                 min={CAPACITY_RANGE.min}
                 max={CAPACITY_RANGE.max}
                 step={1}
-                placeholder={filters.placeholder}
+                placeholder={filters.maxPlaceholder}
                 aria-label={filters.maxCapacity}
                 value={maxCapacity}
                 onChange={(e) => setMaxCapacity(e.currentTarget.value)}
