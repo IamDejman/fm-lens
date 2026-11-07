@@ -798,6 +798,18 @@ export const tr: Strings = {
 
     // Above the attributes, while the profile is read
     tools: "Araçlar",
+    tabsLabel: "Oyuncu bölümleri",
+    tabs: { attributes: "Özellikler", mood: "Moral", contract: "Sözleşme", medical: "Sağlık", career: "Kariyer" },
+    statusLabel: "Durum",
+    injured: "Sakat",
+    banned: "Cezalı",
+    concerns: (count: number) => `${format(count)} şikâyet`,
+    contractTo: (date: string) => `Sözleşme ${date} tarihine kadar`,
+    moraleAndHappiness: "Moral ve mutluluk",
+    fitness: "Kondisyon",
+    international: "Milli takım",
+    noPromises: "Söz yok",
+    noContract: "Sözleşmesi yok",
     setAttributes: "Bütün özellikleri şuna ayarla:",
     setAttributesButton: "Uygula",
     setAttributesDone: (count, level) =>

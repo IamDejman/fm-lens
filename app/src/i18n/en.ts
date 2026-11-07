@@ -792,6 +792,18 @@ export const en = {
     // After the attributes, while the profile is read
     /** The button that opens Set all attributes and Freeze attributes. */
     tools: "Tools",
+    tabsLabel: "Player sections",
+    tabs: { attributes: "Attributes", mood: "Mood", contract: "Contract", medical: "Medical", career: "Career" },
+    statusLabel: "Status",
+    injured: "Injured",
+    banned: "Banned",
+    concerns: (count: number) => (count === 1 ? "1 concern" : `${format(count)} concerns`),
+    contractTo: (date: string) => `Contract to ${date}`,
+    moraleAndHappiness: "Morale and happiness",
+    fitness: "Fitness",
+    international: "International",
+    noPromises: "No promises",
+    noContract: "No contract",
     /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
     setAttributes: "Set all attributes to",
     setAttributesButton: "Apply",
