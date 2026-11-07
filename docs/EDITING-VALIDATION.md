@@ -1209,6 +1209,7 @@ Each name is FM's own, read from the staff or player screen of a holder:
 |---|---|---|---|
 | Job 8 | David Hopkinson (Newcastle), Billy Hogan (Liverpool) | Managing Director | Managing Director |
 | Job 10 | Ross Wilson (Newcastle), Julian Ward (Liverpool) | Director of Football | Director of Football |
+| Job 20 | Albert Stuivenberg, Raúl Valbuena (Arsenal) | Assistant Manager, on the Club overview's staff list | Assistant Manager, was Assistant Coach |
 | Job 24 | Maria Begoña Santiago Ramos (Estoril Praia), 3 holders | General Manager | General Manager |
 | Job 38 | Adem Hallard (Newcastle) | Chief Doctor | Chief Doctor |
 | Job 46 | Max Thompson (Liverpool) | Doctor | Doctor |
