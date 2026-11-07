@@ -1266,6 +1266,8 @@ export const en = {
     appearanceDark: "Dark",
     /** The interface scale, separate from the window's own zoom. */
     zoomLabel: "Zoom",
+    /** A switch: anonymous counts of launches and edits, sent to PostHog (see `usage.ts`). */
+    usageLabel: "Share anonymous usage",
     appearance: "Appearance",
     themes: { system: "System", light: "Light", dark: "Dark" },
     /** Shown once, until it is skipped or finished. It introduces browsing, settings and the editing boundary. */

@@ -88,6 +88,29 @@ The app is `target/debug/bundle/macos/FM Lens.app`. Releases are built as
 - [Brand assets and generation prompts](docs/brand/FM-LENS.md)
 - [Agent instructions](AGENTS.md)
 
+## Privacy
+
+FM Lens and [getfmlens.com](https://getfmlens.com) count use anonymously with
+[PostHog](https://posthog.com), to know how many people use them and which
+features matter. No names, no values you edit, no file paths and nothing you
+type are sent. PostHog works out the country from the connection and does not
+keep the IP address.
+
+The app sends these events with a random install id, the app version, the macOS
+version and processor, and the app language:
+
+- `app_opened`: the app started.
+- `fm_connected`: FM Lens connected to FM, with FM's version and store.
+- `tab_viewed`: a section opened, such as Players.
+- `edit_applied`: an edit went into FM, with its kind (`move_player`, or the
+  field changed, such as `contract.wage`), never the value.
+- `change_undone`, `players_exported` and `report_sent`.
+
+To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
+nothing.
+
+The site counts page views and downloads started, without cookies or stored ids.
+
 ## Security
 
 Report security problems privately, as [SECURITY.md](SECURITY.md) describes, not
