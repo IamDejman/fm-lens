@@ -993,3 +993,20 @@ The formation check also names three of FM's ids: 4 is 4-3-3 DM Wide, 7 is
 4-4-2 Diamond Narrow and 29 is 4-2-3-1 DM AM Wide. In the 11 other clubs of
 that mass edit FM Lens left the transfer budget alone, saying FM's record for
 it is missing or looks wrong.
+
+## Refresh on Intel under Rosetta (#107, 7 November 2026)
+
+FM27 Steam build 26340721 run as x86_64 under Rosetta, with the release bridge
+and FM Lens built from #107. Copy: `FM Lens Batch 2026-11-05` (Arsenal, 11 Dec
+2027 16:30). Declan Rice's profile stayed open in FM; each check was read from
+it with no Continue, and the clock never moved.
+
+| Action | FM before | FM after Apply | After Undo |
+|---|---|---|---|
+| Finishing, Declan Rice | 11 | 15, with the change arrow | 11 |
+| Contract end, Rice | £350K p/w 30/6/2030 | 30/6/2031 | 30/6/2030 |
+
+FM was quit without saving. The main career and the copy's hashes were checked
+before and after (OK). `FM Lens Validation 2026-11-04` was loaded once by
+mistake on the way, not edited or saved; its hash is unchanged.
+

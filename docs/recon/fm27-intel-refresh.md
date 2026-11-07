@@ -1,6 +1,6 @@
 # FM27 Steam 26340721 on macOS: refresh after edits on Intel (x86_64)
 
-7 November 2026. Static work only: nothing was run in an Intel or Rosetta game. The values come from the x86_64 slice
+7 November 2026. Found statically, then checked in FM under Rosetta the same day (see "Checked in FM"). The values come from the x86_64 slice
 of `game_plugin` (LC_UUID `0981AB31-AC3B-3D93-944F-47FE4B59CD9E`), compared with the arm64 slice
 (`F4540355-2186-39CB-9119-C706A6A35346`). Both slices were cut with `lipo -thin` from the installed file (read only)
 and disassembled with `llvm-objdump`. RVAs are file addresses of the slice, as in
@@ -88,8 +88,13 @@ and were checked under Rosetta on 6 November.
 - `cargo build --locked -p fmlens-probe -p fmlens-bridge`, and the release bridge for `x86_64-apple-darwin`: its
   allowlist for the Intel UUID has `0x308A0` and `0x2FA70`.
 
-## Not done
+## Checked in FM
 
-Not checked in FM. On 7 November FM was already running natively (arm64), so it was not quit and relaunched under
-Rosetta. To check: run FM as x86_64 with the bridge from this branch, load a disposable copy, apply and undo an
-attribute and a contract expiry, and confirm FM shows each at once without Continue, as on arm64.
+FM ran as x86_64 under Rosetta with the release bridge from this branch, on the disposable `FM Lens Batch 2026-11-05`
+copy (Arsenal, 11 Dec 2027 16:30), as EDITING-VALIDATION.md describes. FM Lens was built from this branch. Each edit
+showed on Declan Rice's profile, already open in FM, without Continue; the clock never moved:
+
+- Finishing 11 to 15: FM showed 15 at once, with the change arrow. Undo: 11 again.
+- Contract end 30/6/2030 to 30/6/2031: the profile header showed 30/6/2031 at once. Undo: 30/6/2030 again.
+
+FM was quit without saving, and the copy's hash was unchanged.
