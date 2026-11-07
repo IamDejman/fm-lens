@@ -1256,6 +1256,7 @@ export const tr: Strings = {
     detailsLabel: "Uygulama ayrıntıları",
     reportProblem: "Sorun bildir",
     more: "Daha fazla",
+    debugTag: "DEBUG",
     previewTag: "tarayıcı önizlemesi · örnek veriler",
     noDate: "Oyun içi tarih yok",
     noDateTitle: "Oyun içi tarih okunamadı, bu yüzden yaşlar gizli.",

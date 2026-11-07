@@ -99,11 +99,15 @@ function App() {
   const { log, error: logError, reload: reloadLog } = useChangeLog();
   const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
+  const [debugBuild, setDebugBuild] = useState(false);
   const [reporting, setReporting] = useState(false);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   useEffect(() => {
     // The browser preview stands in for the app with the version in package.json.
     (inTauri ? getVersion() : call<string>("app_version")).then(setVersion).catch(() => {});
+    if (inTauri) {
+      call<boolean>("debug_build").then(setDebugBuild).catch(() => {});
+    }
   }, []);
   useEffect(() => {
     if (inTauri && MAC) {
@@ -419,6 +423,7 @@ function App() {
           <span className="colophon-name">
             FM Lens{version && <span className="colophon-version"> {version}</span>}
           </span>
+          {debugBuild && <span className="tag">{appText.debugTag}</span>}
           <span className={`status ${connection ? "on" : ""}`} data-tour="status">
             <span className="dot" />
             <span className="status-text">

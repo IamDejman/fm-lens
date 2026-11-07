@@ -1284,6 +1284,7 @@ export const es: Strings = {
     detailsLabel: "Detalles de la app",
     reportProblem: "Informar de un problema",
     more: "Más",
+    debugTag: "DEBUG",
     previewTag: "vista previa en el navegador · datos de ejemplo",
     noDate: "Sin fecha del juego",
     noDateTitle: "No se pudo leer la fecha del juego, así que no hay edades.",
