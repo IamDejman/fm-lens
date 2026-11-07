@@ -44,7 +44,7 @@ export function useWhatsNew(version: string | null): { whatsNew: string | null; 
 /** The notice: what `version` brought, its release notes, and the button that dismisses it. */
 export function WhatsNewNotice({ version, onDismiss }: { version: string; onDismiss: () => void }) {
   return (
-    <div className="frozen-notice" role="status">
+    <div className="frozen-notice">
       <div className="compatibility-text">
         <strong>{text.whatsNew(version)}</strong>
         <ul className="whats-new">

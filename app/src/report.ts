@@ -100,9 +100,7 @@ function describeGame({ connection, detected }: ReportFacts): string {
     ? "not connected"
     : connection.editable
       ? "editing on"
-      : connection.restartNeeded && connection.knownBuild
-        ? "read-only, FM restart needed"
-        : connection.knownBuild
+      : connection.knownBuild
         ? "read-only"
         : "read-only, unsupported build";
   return build ? `${build}, ${state}` : state;

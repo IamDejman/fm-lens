@@ -135,7 +135,6 @@ const errors: ErrorTexts = {
   "guard.unknownBuild": () =>
     "FM Lens oyunun bu sürümünde doğrulanmadı. Bu sürüm doğrulanana kadar düzenleme kapalı kalır.",
   "guard.careerChanged": () => "FM, FM Lens okuduktan sonra verilerini taşıdı. Verileri yeniden oku'ya basıp tekrar deneyin.",
-  "guard.restartGame": () => "FM Lens, FM açıkken güncellendi. FM'i Steam'den yeniden başlatıp tekrar deneyin.",
   "guard.failed": (p) =>
     `${checkName(p.check)} oyunun bu sürümünde denetimden geçmedi, bu yüzden FM Lens onları değiştirmiyor.`,
   "retirement.none": () => "Oyun bu oyuncunun emekliliğini planlamamış ve oyuncu zaten oynamaya devam etmek istiyor.",
@@ -613,6 +612,8 @@ export const tr: Strings = {
     loading: "Profil yükleniyor…",
     resize: "Profil panelini boyutlandır",
     resizeHint: "Boyutu değiştirmek için sürükleyin. Sıfırlamak için çift tıklayın.",
+    widen: "Paneli genişlet",
+    usualWidth: "Panel genişliğini sıfırla",
     none: "-",
 
     // Header
@@ -1269,7 +1270,6 @@ export const tr: Strings = {
     noteReadOnly: "Salt okunur",
     noteUnknownBuild: "Salt okunur: bu FM sürümü henüz desteklenmiyor",
     noteReloadRequired: "FM verilerini taşıdı. Düzenlemek için verileri yeniden okuyun.",
-    noteRestartFm: "Düzenlemek için FM'i Steam'den yeniden başlatın",
 
     notConnected: "Bağlı değil",
     connected: "Bağlı",
@@ -1328,8 +1328,6 @@ export const tr: Strings = {
   compatibility: {
     unknownBuild: (game) => `FM Lens henüz ${game} ile denenmedi`,
     unknownBuildText: "Değerler yanlış olabilir, bu yüzden düzenleme kapalı.",
-    restartTitle: "Düzenlemek için FM'i yeniden başlatın",
-    restartText: "FM Lens, FM açıkken güncellendi. FM'i kapatıp Steam'den yeniden başlatın.",
     allowedText: "Denetimlerin geçtiği yerlerde düzenleme açık. Kaydınızı yedekleyin.",
     failedTitle: "Bazı veriler yanlış görünüyor",
     reloadHint: "Kayıt hâlâ yükleniyorduysa Verileri yeniden oku'ya basın.",
@@ -1370,6 +1368,11 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.6.0": [
+        "FM Lens güncellemeleri, FM içinde çalışan yardımcıyı kullanmaya devam eder. Desteklenen özellikler oyunu yeniden başlatmadan çalışır.",
+        "Eski bir yardımcı FM ekranlarını hemen yenileyemeyebilir veya yeni bir işlemi desteklemeyebilir. FM’yi bir sonraki başlatışınızda güncellenir.",
+        "Kadro işlemlerini ve profil araçlarını bulmak artık daha kolay.",
+      ],
       "0.5.11": [
         "Sevdikleri ve sevmedikleri: bir kulübü veya kişiyi başkasıyla değiştirin.",
         "FM Lens güncellenirken FM açıksa, FM'i Steam'den yeniden başlatana kadar düzenleme kapalı kalır.",

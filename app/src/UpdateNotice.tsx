@@ -24,7 +24,7 @@ export function UpdateNotice({
 }) {
   if (update.phase === "checking" || update.phase === "current" || update.phase === "unreachable") {
     return (
-      <div className="update-notice" role="status">
+      <div className="update-notice">
         <strong>{CHECK_RESULT[update.phase]}</strong>
         {update.phase !== "checking" && (
           <span className="update-actions">
@@ -37,7 +37,7 @@ export function UpdateNotice({
     );
   }
   return (
-    <div className="update-notice" role="status">
+    <div className="update-notice">
       <span>
         <strong>{text.available(update.version)}</strong>
         {update.phase === "failed" && <span className="update-error">{text.installFailed(update.reason)}</span>}
