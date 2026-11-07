@@ -1,7 +1,7 @@
 // Above a player's attributes while his profile is read: Set all attributes to a value from 1 to 20 at once, and the box
-// that freezes them.
+// that freezes them. The Tools button that opens them is at the end of the profile's tabs.
 
-import { useContext, useEffect, useId, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Chevron } from "./DropMenu";
 import { changeLog, freezeAttributes, frozenPlayers, setAttributes, undoBatch } from "./editing";
 import { describeError } from "./format";
@@ -26,12 +26,29 @@ const PROBLEMS_SHOWN = 5;
 /** The values an attribute can be given, best first. */
 const LEVELS = Array.from({ length: 20 }, (_, index) => 20 - index);
 
+/** The Tools button at the end of a player's tabs, which opens Set all attributes and Freeze attributes. */
+export function ToolsToggle({ open, controls, onToggle }: { open: boolean; controls: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      className="max-toggle drop-toggle"
+      aria-expanded={open}
+      aria-controls={controls}
+      onClick={onToggle}
+    >
+      {profileText.tools}
+      <Chevron />
+    </button>
+  );
+}
+
 /**
- * Tools, after a player's attributes: it opens Set all attributes and Freeze attributes. Under it, what Set all
- * attributes wrote with the button that takes it back, and what freezing does while it is on. Both wait while the game
- * cannot be written to, and say why. Not there while the player is edited: the inputs hold his attributes then.
+ * Set all attributes and Freeze attributes, while the Tools button is open (`open`; `panel` is the id it controls).
+ * Under them, what Set all attributes wrote with the button that takes it back, and what freezing does while it is on.
+ * Both wait while the game cannot be written to, and say why. Not there while the player is edited: the inputs hold his
+ * attributes then.
  */
-export function AttributeActions({ uid }: { uid: number }) {
+export function AttributeActions({ uid, open, panel }: { uid: number; open: boolean; panel: string }) {
   const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
   const editing = useEditSession() !== null;
   const [busy, setBusy] = useState(false);
@@ -40,8 +57,6 @@ export function AttributeActions({ uid }: { uid: number }) {
   // Whether his attributes are frozen; null until the app has said.
   const [frozen, setFrozen] = useState<boolean | null>(null);
   const [freezeError, setFreezeError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const panel = useId();
   const alive = useRef(true);
   const resultBox = useRef<HTMLDivElement>(null);
 
@@ -142,62 +157,50 @@ export function AttributeActions({ uid }: { uid: number }) {
 
   return (
     <div className="attribute-actions">
-      <div className="attribute-buttons">
-        <button
-          type="button"
-          className="max-toggle drop-toggle"
-          aria-expanded={open}
-          aria-controls={panel}
-          onClick={() => setOpen((was) => !was)}
+      <div id={panel} className="attribute-tools" hidden={!open}>
+        <form
+          className="set-attributes"
+          title={editable ? undefined : readOnlyNote}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void setAll();
+          }}
         >
-          {profileText.tools}
-          <Chevron />
-        </button>
-        <div id={panel} className="attribute-tools" hidden={!open}>
-          <form
-            className="set-attributes"
-            title={editable ? undefined : readOnlyNote}
-            onSubmit={(e) => {
-              e.preventDefault();
-              void setAll();
-            }}
-          >
-            <label>
-              <span>{profileText.setAttributes}</span>
-              <select
-                value={level}
-                disabled={!editable}
-                onChange={(e) => setLevel(Number(e.currentTarget.value))}
-              >
-                {LEVELS.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="submit"
-              className="max-toggle"
+          <label>
+            <span>{profileText.setAttributes}</span>
+            <select
+              value={level}
               disabled={!editable}
-              aria-disabled={busy || undefined}
-              aria-busy={busy || undefined}
+              onChange={(e) => setLevel(Number(e.currentTarget.value))}
             >
-              {profileText.setAttributesButton}
-            </button>
-          </form>
-          {frozen !== null && (
-            <label className="freeze-toggle" title={editable ? profileText.freezeAttributesNote : readOnlyNote}>
-              <input
-                type="checkbox"
-                checked={frozen}
-                disabled={!editable}
-                onChange={(e) => void freeze(e.currentTarget.checked)}
-              />
-              <span>{profileText.freezeAttributes}</span>
-            </label>
-          )}
-        </div>
+              {LEVELS.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="max-toggle"
+            disabled={!editable}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+          >
+            {profileText.setAttributesButton}
+          </button>
+        </form>
+        {frozen !== null && (
+          <label className="freeze-toggle" title={editable ? profileText.freezeAttributesNote : readOnlyNote}>
+            <input
+              type="checkbox"
+              checked={frozen}
+              disabled={!editable}
+              onChange={(e) => void freeze(e.currentTarget.checked)}
+            />
+            <span>{profileText.freezeAttributes}</span>
+          </label>
+        )}
       </div>
       {/* A live region that is always there, so that it is read out when it fills; it takes no room while empty. */}
       <div ref={resultBox} className="squad-result" role="status" tabIndex={-1}>
