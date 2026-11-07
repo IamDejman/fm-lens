@@ -5,6 +5,7 @@
 // links them.
 
 import { call, inTauri } from "./api";
+import { track } from "./usage";
 import type { ConnectionInfo, GameInfo, LoggedChange, Storefront } from "./types";
 
 /** The report relay's address (see docs/DEVELOPING.md, The report relay). */
@@ -207,6 +208,7 @@ export async function sendReport(facts: ReportFacts, what: string, files: Attach
       signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
     });
     if (response.ok) {
+      track("report_sent", { attachments: files.length });
       return "sent";
     }
     return response.status === 429 ? "tooMany" : "failed";

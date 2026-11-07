@@ -1043,6 +1043,8 @@ export interface SquadPlayer extends PlayerSummary {
   injuries: number;
   /** How many current bans he has. */
   bans: number;
+  /** Whether he has a reason to be unhappy that lasts. */
+  unhappy: boolean;
 }
 
 /** A team's two captaincies. */
@@ -1050,9 +1052,18 @@ export type CaptainRole = "captain" | "viceCaptain";
 
 /**
  * What a team-wide action does to every player of the team, those out on loan too: "heal" heals every injury,
- * "liftBans" lifts every ban, "inspire" sets morale to 20, "refresh" sets energy and match sharpness to 100%.
+ * "liftBans" lifts every ban, "maxMorale" sets morale to 20, "removeUnhappiness" clears every reason to be unhappy,
+ * "refresh" sets energy and match sharpness to 100%.
  */
-export type TeamAction = "heal" | "liftBans" | "inspire" | "refresh" | "maxAttributes" | "maxCohesion" | "maxTactics";
+export type TeamAction =
+  | "heal"
+  | "liftBans"
+  | "maxMorale"
+  | "removeUnhappiness"
+  | "refresh"
+  | "maxAttributes"
+  | "maxCohesion"
+  | "maxTactics";
 
 /** The columns that sort a squad table. */
 export type SquadSort =

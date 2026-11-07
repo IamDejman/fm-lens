@@ -11,6 +11,7 @@ import { locale, setLocale, type Locale } from "./i18n";
 import { appText } from "./labels";
 import { askToLeave } from "./useProfileEditing";
 import { appearance, layoutPixels, setAppearance, setZoom, zoom, ZOOMS, type Appearance } from "./appearance";
+import { setUsageOn, usageOn } from "./usage";
 
 /** The room the menu keeps between itself and its button. */
 const GAP = 4;
@@ -82,6 +83,7 @@ export function SettingsMenu({ busy, details }: { busy: boolean; details?: React
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [theme, updateTheme] = useState(appearance);
   const [scale, updateScale] = useState(zoom);
+  const [sharing, updateSharing] = useState(usageOn);
   const button = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const id = useId();
@@ -143,7 +145,9 @@ export function SettingsMenu({ busy, details }: { busy: boolean; details?: React
 
   // The arrow keys go through the lists and Report a problem, as one.
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[role="menuitemradio"], [role="menuitem"]'));
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+      '[role="menuitemradio"], [role="menuitemcheckbox"], [role="menuitem"]',
+    ));
     const at = items.findIndex((item) => item === document.activeElement);
     let next: HTMLElement | undefined;
     switch (event.key) {
@@ -268,6 +272,22 @@ export function SettingsMenu({ busy, details }: { busy: boolean; details?: React
                   {code === currency && CHECK}
                 </button>
               ))}
+            </div>
+            <div role="group">
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={sharing}
+                tabIndex={-1}
+                onClick={() => {
+                  setUsageOn(!sharing);
+                  updateSharing(!sharing);
+                  close();
+                }}
+              >
+                {appText.usageLabel}
+                {sharing && CHECK}
+              </button>
             </div>
             {details && (
               <div role="group" aria-label={appText.detailsLabel} className="settings-details">

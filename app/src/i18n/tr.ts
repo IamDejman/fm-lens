@@ -795,6 +795,7 @@ export const tr: Strings = {
     closePromiseTitle: "Bu sözü ona karşı sayılmadan bitir",
 
     // Above the attributes, while the profile is read
+    tools: "Araçlar",
     setAttributes: "Bütün özellikleri şuna ayarla:",
     setAttributesButton: "Uygula",
     setAttributesDone: (count, level) =>
@@ -1155,7 +1156,8 @@ export const tr: Strings = {
       capacity: "Kapasite",
       minCapacity: "En düşük kapasite",
       maxCapacity: "En yüksek kapasite",
-      placeholder: "Min",
+      minPlaceholder: "Min",
+      maxPlaceholder: "Maks",
     },
   },
 
@@ -1200,6 +1202,7 @@ export const tr: Strings = {
   },
 
   app: {
+    lists: "Listeler",
     settingsLabel: "Ayarlar",
     languageLabel: "Dil",
     currencyLabel: "Para birimi",
@@ -1208,6 +1211,7 @@ export const tr: Strings = {
     appearanceLight: "Açık",
     appearanceDark: "Koyu",
     zoomLabel: "Yakınlaştırma",
+    usageLabel: "Anonim kullanım verisi paylaş",
     appearance: "Görünüm",
     themes: { system: "Sistem", light: "Açık", dark: "Koyu" },
     tour: {
@@ -1224,7 +1228,7 @@ export const tr: Strings = {
         },
         tabs: {
           title: "Bölümler",
-          body: "Oyuncular, personel, kulüpler, ülkeler ve stadyumlar.",
+          body: "Oyuncular, personel ve kulüpler. Ülkeler, stadyumlar ve dahası Listeler altında.",
         },
         search: {
           title: "Arama ve filtreler",
@@ -1350,6 +1354,17 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.6.0": [
+        "FM Lens güncellemeleri, FM içinde çalışan yardımcıyı kullanmaya devam eder. Desteklenen özellikler oyunu yeniden başlatmadan çalışır.",
+        "Eski bir yardımcı FM ekranlarını hemen yenileyemeyebilir veya yeni bir işlemi desteklemeyebilir. FM’yi bir sonraki başlatışınızda güncellenir.",
+        "Kadro işlemlerini ve profil araçlarını bulmak artık daha kolay.",
+      ],
+      "0.5.11": [
+        "Sevdikleri ve sevmedikleri: bir kulübü veya kişiyi başkasıyla değiştirin.",
+        "FM Lens güncellenirken FM açıksa, FM'i Steam'den yeniden başlatana kadar düzenleme kapalı kalır.",
+        "Rapor dosyaları siz raporu gönderene kadar gizli kalır ve CSV dışa aktarımları artık formül çalıştırmaz.",
+        "FM Lens artık kaydınızdan ad veya değer almadan anonim kullanımı sayar. Ayarlar'dan kapatabilirsiniz.",
+      ],
       "0.5.10": [
         "Intel Mac’lerde tamamlanan her Uygula ve Geri Al işleminden sonra FM’den düzenlenen kaydı ve açık ekranları Devam’a basmadan yenilemesi istenir.",
         "Yeni yardımcıyı yüklemek için güncellemeden sonra FM’yi bir kez yeniden başlatın.",
@@ -1932,7 +1947,7 @@ export const tr: Strings = {
     hint: "Geri alınamaz.",
     confirm: "Transferi iptal et",
     cancelling: "İptal ediliyor…",
-    cancel: "Vazgeç",
+    cancel: "İptal",
   },
 
   squad: {
@@ -1962,18 +1977,25 @@ export const tr: Strings = {
     liftAll: (banned) => (banned === 0 ? "Cezaları kaldır" : `Cezaları kaldır (${format(banned)} cezalı)`),
     liftAllTitle: "Takımdaki tüm cezaları kaldır",
     liftNone: "Bu takımda cezalı oyuncu yok",
-    inspireAll: "Hepsine moral ver",
-    inspireAllTitle: "Herkesin moralini en üste çıkar ve mutsuzluk nedenlerini kaldır",
     refreshAll: "Hepsini dinlendir",
     refreshAllTitle: "Herkese tam enerji, tam maç kondisyonu ve tam dinlenme",
+    removeUnhappiness: (unhappy) => (unhappy === 0 ? "Mutsuzluğu kaldır" : `Mutsuzluğu kaldır (${format(unhappy)} mutsuz)`),
+    removeUnhappinessTitle: "Takımdaki bütün mutsuzluk nedenlerini kaldır",
+    unhappyNone: "Bu takımda mutsuz oyuncu yok",
+    moreLabel: "Takımın tamamına yönelik diğer işlemler",
+    maxMorale: "Morali tamamla",
+    maxMoraleTitle: "Herkesin morali en üste",
     maxCohesion: "Uyumu tamamla",
-    maxCohesionTitle: "Bütün oyuncular kulübe tamamen alışkın (deneysel)",
+    maxCohesionTitle: "Bütün oyuncular kulübe tamamen alışkın",
+    experimental: "Deneysel",
     maxTactics: "Taktiği tamamla",
     maxTacticsTitle: "Bütün oyuncular takımın taktiğine tamamen alışkın",
-    maxAll: "Özellikleri tamamla",
+    maxAll: "Özellikleri tamamla…",
     maxAllTitle:
       "Herkesin bütün özellikleri 20 (sakatlık eğilimi ve sertlik 1)",
-    hint: "Kiralıktakiler de dahil.",
+    maxAllAsk: (count) => `${format(count)} oyuncunun bütün özellikleri tamamlansın mı?`,
+    maxAllConfirm: "Özellikleri tamamla",
+    cancel: "İptal",
 
     // What an action did, under the buttons
     written: (count) => (count === 0 ? "Hiçbir değişiklik yazılmadı" : `${changes(count)} yazıldı`),

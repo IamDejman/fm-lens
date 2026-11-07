@@ -2699,6 +2699,7 @@ function clubSquads(clubUid: number): ClubTeam[] {
         morale: d.morale,
         injuries: d.injuries.length,
         bans: d.bans.length,
+        unhappy: d.contract?.concerns.some((concern) => concern.ended === null) ?? false,
       };
     }),
   }));
@@ -2785,6 +2786,12 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     }
     return report;
   }
+  if (action === "removeUnhappiness") {
+    for (const player of team.players.filter((p) => p.unhappy)) {
+      setValues(player, [["contract.unhappiness", 0]], report);
+    }
+    return report;
+  }
   if (action === "maxCohesion") {
     for (const player of team.players) {
       raiseFamiliarity(player, report);
@@ -2798,7 +2805,7 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
     return report;
   }
   const values: [string, number][] =
-    action === "inspire"
+    action === "maxMorale"
       ? [["morale", 20]]
       : action === "refresh"
         ? [["condition", 10_000], ["match_sharpness", 10_000], ["jadedness", -500]]

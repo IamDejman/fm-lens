@@ -198,8 +198,8 @@ impl Session {
         fresh
     }
 
-    /// Why nothing may be written now, if it may not: a build the editor has no profile for, or another career loaded
-    /// since the session attached, whose objects old addresses no longer belong to.
+    /// Why nothing may be written now: an unknown build or another career loaded since
+    /// the session attached, whose objects old addresses no longer belong to.
     pub(crate) fn session_lock(&self) -> Option<Lock> {
         if !self.known_build() {
             return Some(Lock::UnknownBuild);
