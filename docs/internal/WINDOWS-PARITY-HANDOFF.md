@@ -19,6 +19,7 @@ Windows 10 or 11 themselves.
 | #146 | The NSIS installer built in CI, signed updates in `latest.json`, self-update with Relaunch, Check for Updates in Settings, About, and the small gaps in section 3.3 |
 | #147 | One FM Lens at a time, on macOS and Windows |
 | #150 | Release 0.6.2: the site and README offer the Windows download |
+| #153 | The FM Lens icon and wordmark in the installer |
 
 Checked in the running game on Windows, each undone, the save never written: every read above, every game action
 above, and the app's direct edits (attributes and CA/PA, contract, mass edit, clone and templates, freeze money,
@@ -55,13 +56,16 @@ Status after the "Ship FM Lens for Windows" PR. Each item says what was done, or
 
 1. **Installer: done.** `npm run release:windows` builds the NSIS installer (current user, no administrator) with
    the bridge DLL embedded. The `windows-checks` job in `.github/workflows/validate.yml` builds it on every run and
-   keeps it as the `fm-lens-windows-installer` artifact for 30 days.
+   keeps it as the `fm-lens-windows-installer` artifact for 30 days. It shows the FM Lens icon, and the wordmark
+   `scripts/nsis/sidebar.py` draws on its first and last pages.
 2. **Updater files: done.** `scripts/release.sh` (was `release-mac.sh`) takes the installer from the passing Validate
    run of the commit it releases, signs it on the Mac with the same updater key (`tauri signer sign`; the key never
    goes to GitHub) and adds `windows-x86_64` to `latest.json`.
 3. **Updates inside the app: done.** `can_self_update` is true on Windows when `uninstall.exe` sits beside the exe,
    so only an installed copy updates itself. `app/src/update.ts` downloads in the background and runs the installer
-   only on Relaunch, as the installer closes the app.
+   only on Relaunch, as the installer closes the app. Checked from 0.6.1 to the published 0.6.2. The installer
+   remembers the language picked when it was run by hand, so an update asks nothing and the new version opens about
+   2 s after Relaunch; a copy installed silently (`/S`) has none, and its first update asks for one.
 4. **Check for Updates: done.** Settings, About, on Windows only (macOS keeps it in the app menu).
 5. **Code signing: unsigned, with SmartScreen guidance** ("More info", "Run anyway"), like the ad hoc Mac app.
    Buying an Authenticode certificate is the user's decision.
