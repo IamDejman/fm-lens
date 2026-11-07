@@ -25,9 +25,7 @@ impl Coded for MemoryError {
             MemoryError::Posix { .. } => "memory.posix",
             #[cfg(target_os = "macos")]
             MemoryError::NoBridge { .. } => "memory.noBridge",
-            #[cfg(target_os = "macos")]
             MemoryError::Bridge { .. } => "memory.bridge",
-            #[cfg(target_os = "macos")]
             MemoryError::BridgeUnsupported { .. } => "memory.bridgeUnsupported",
             MemoryError::Read { .. } => "memory.read",
             MemoryError::Write { .. } => "memory.write",
@@ -49,8 +47,8 @@ impl Coded for MemoryError {
                 vec![("operation", (*op).to_owned()), ("code", code.to_string())]
             }
             #[cfg(target_os = "macos")]
-            MemoryError::NoBridge { pid } | MemoryError::BridgeUnsupported { pid } => vec![("pid", pid.to_string())],
-            #[cfg(target_os = "macos")]
+            MemoryError::NoBridge { pid } => vec![("pid", pid.to_string())],
+            MemoryError::BridgeUnsupported { pid } => vec![("pid", pid.to_string())],
             MemoryError::Bridge { pid, reason } => vec![("pid", pid.to_string()), ("reason", (*reason).to_owned())],
             MemoryError::Read { addr, code, .. } | MemoryError::Write { addr, code, .. } => {
                 vec![("address", format!("{addr:#x}")), ("code", code.to_string())]

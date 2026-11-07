@@ -9,6 +9,9 @@ storefront = "steam"
 # the arrays (ClusterLayout::current_date) reads 1 January 1900, unset, as on Game Pass.
 current_date = 0x56AF378
 
+# The static pointer to the game's UI (game_plugin::GAME_UI), whose entity_changed refreshes FM's screens after an edit.
+game_ui = 0x5701B50
+
 # The static pointer to the retirement manager (RETIREMENT_MANAGER): the only pointer to the one object of that
 # class, 0xDAC0 before the players pair as in build 26227640.
 retirement_manager = 0x56F7D10
@@ -30,6 +33,79 @@ competitions = 0x57056E8
 # (INJURY_MANAGER), 8 bytes before the retirement manager's.
 injury_kinds = 0x5705710
 injury_manager = 0x56F7D08
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
+# no others on this build. Their arguments are those of the macOS profiles (steam-26340721-macos-arm64.toml), passed
+# the Windows x64 way; each was traced at the same caller as on macOS.
+[calls]
+# GAME_UI virtual slot +0x98 (+0xA0 on macOS): (ui, identity), as the game's editor calls it after removing injuries
+# (0x29CA72C).
+entity_changed = 0x1D81B0
+# The same rfui dispatcher: (an empty reference vector, the address of 16 zero bytes of options) refreshes every view.
+refresh_views = 0x1D73D0
+# INJURY_MANAGER::add_injury, as the game's training injuries call it at 0x2DA7A50: (manager, player, kind index,
+# cause 3, 0, 0, 0, 0, then on the stack a news byte 0, 0 and a u16 0).
+add_injury = 0x2DA8370
+# TRANSFER_MANAGER::set_work_permit: (manager, identity block, club team, force, esc), the last a byte on the stack.
+# The game's editor (0x29CEB70) calls it with force 0 and esc 0 to give a permit.
+set_work_permit = 0xB50C80
+# TRANSFER_MANAGER::find_work_permit: (manager, identity block, club team). The place of his record for the club's
+# country in the manager's list, or -1. Only reads. 98 for Gabriel at Arsenal on the Steam test save.
+find_work_permit = 0xBB10C0
+# TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), as the game's editor takes a permit away
+# after finding it.
+remove_work_permit = 0xB8F540
+# TRANSFER_MANAGER::start_loan: (manager, a STARTING_LOAN, 1), as the game's editor calls it from 0x29CD370.
+start_loan = 0xBDF080
+# TRANSFER_MANAGER::sign_free_agent: (manager, the player's ACTUAL_PERSON, 0x28 into his person block, the club team,
+# a terms map, an empty list for the entities it touches, 0). Returns true when he signed.
+sign_free_agent = 0xBD6270
+# The terms map's constructor and destructor, and the destructor of the list of entity references the signing fills.
+map_new = 0x8EC30
+map_drop = 0xA02FF0
+refs_drop = 0xC2C60
+# TRANSFER_MANAGER::end_contract: (manager, the player object, the contract, a kind for the news, 0, 1, 0, 0, then two
+# zeros on the stack), as the game's daily check ends a loan that has run out.
+end_contract = 0xB13810
+# The date term of a signing ('TrDt'): the date type, the Value of a date (type, &Value, &raw date), the map's insert
+# (map, key, &Value) and the Value's destructor.
+date_type = 0xFB35F0
+date_value = 0xFB36E0
+map_insert = 0xA032F0
+value_drop = 0x9F97F0
+# Cancelling a transfer agreed for a later day, as the game's editor does at 0x29CBEBD: cancel_offer (manager, &slot
+# holding the offer with a reference taken, its team, 2 or 0, 0, 0, 0, 1, then two zeros on the stack); then
+# drop_dated_transfer (manager + 0x18, offer, the player's identity block). This build has no ref_drop: ref_assign
+# (&slot, &empty slot) gives the reference back, as the slot's own assignment does.
+cancel_offer = 0xADAD40
+drop_dated_transfer = 0x1A50680
+ref_copy = 0x7C7550
+ref_assign = 0x7C7570
+# The game's editor action that makes every player of a team fully familiar with its tactic, and the struct Value its
+# map holds the team's reference in.
+struct_value = 0x9FA000
+maximise_tactics = 0x31AB350
+
+# What a STARTING_LOAN (layout.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58.
+[starting_loan]
+vtable = 0x4CB2988
+defaults = 0x4C8E390
+
+# What the game's editor actions start from: the registry of Value types (its integer type at +0x28), the database
+# table of teams, and the byte the editor's actions check is 1.
+[editor]
+value_types = 0x5700F38
+integer_type = 0x28
+teams = 0x5705768
+enabled = 0x5705DE0
+
+# The human manager's flags word, as on macOS: the become_unsackable action (0x2E191E0) sets or clears bit 1 of the u32
+# at +0x3FC. MSVC keeps the class's vtable on the person block, 0x440 into the object (shifted 0x340).
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = ".?AVHUMAN_NON_PLAYER@db@@"
+class_at = 0x440
 
 # game_plugin.dll as mapped in memory; these two values identify the build.
 [plugin]
