@@ -213,11 +213,13 @@ impl Connection {
         let mut humans: Vec<u32> = staff.iter().filter(|member| member.is_human).map(|member| member.uid).collect();
         humans.sort_unstable();
         let save = save_of(&session, &humans);
-        let career = staff
-            .iter()
-            .filter(|member| member.is_human)
-            .min_by_key(|member| member.uid)
-            .map(|member| Career { uid: member.uid, manager: member.name.clone(), club: member.club.clone() });
+        let career =
+            staff.iter().filter(|member| member.is_human).min_by_key(|member| member.uid).map(|member| Career {
+                uid: member.uid,
+                manager: member.name.clone(),
+                club: member.club.clone(),
+                club_uid: member.club_uid,
+            });
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
         let frozen = Frozen::default();
@@ -2276,6 +2278,7 @@ struct Career {
     uid: u32,
     manager: String,
     club: Option<String>,
+    club_uid: Option<u32>,
 }
 
 #[derive(Serialize)]

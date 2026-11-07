@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { chipLabel, rangeText, type FilterChip } from "./FilterBar";
 import { ATTRIBUTE_LABELS, playerListText, profileText, STAFF_ATTRIBUTE_LABELS } from "./labels";
 import { FEET, GOALKEEPING, HIDDEN, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { isRecord } from "./restore";
@@ -67,6 +68,26 @@ function end(input: string): number | undefined {
   }
   const value = Number(input);
   return Number.isFinite(value) ? Math.min(SCALE.max, Math.max(SCALE.min, Math.round(value))) : undefined;
+}
+
+/** A chip for each row in effect ("Finishing: ≥ 15"), which takes that row out. */
+export function attributeChips(
+  rows: readonly AttributeRow[],
+  choices: AttributeChoices,
+  onChange: (rows: AttributeRow[]) => void,
+): FilterChip[] {
+  return rows.flatMap((row, index): FilterChip[] => {
+    const range = row.key === "" ? null : rangeText(end(row.min), end(row.max));
+    return range === null
+      ? []
+      : [
+          {
+            key: `attribute-${index}`,
+            label: chipLabel(choices.labels[row.key] ?? row.key, range),
+            remove: () => onChange(rows.filter((_, at) => at !== index)),
+          },
+        ];
+  });
 }
 
 /** The bounds the rows ask for: a row counts once it has an attribute and at least one end. */

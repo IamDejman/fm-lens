@@ -68,7 +68,6 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         <PlayerFilterBar
           fields={fields}
           onChange={setFields}
-          active={filterCount}
           actions={
             <SavedFilterControls
               fields={fields}
@@ -83,7 +82,7 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         />
       }
       toolbarActions={(list) => (
-        <MoreMenu folded={list.besideProfile}>
+        <MoreMenu>
           <ExportButton list={list} filter={filter} order={order} />
           <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
           <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
@@ -111,6 +110,8 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
           <td className="col-name" title={p.fullName && p.fullName !== p.name ? `${p.name}\n${p.fullName}` : p.name}>
             <div className="name">{p.name}</div>
             {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
+            {/* Shown instead of the Club column beside an open profile. */}
+            <div className="sub row-club">{p.club ?? profileText.freeAgent}</div>
           </td>
           <td className="num col-age">{p.age ?? profileText.none}</td>
           <PositionsCell positions={p.positions} />
