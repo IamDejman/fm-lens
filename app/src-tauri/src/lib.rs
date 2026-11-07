@@ -3034,9 +3034,17 @@ fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let pending = std::mem::take(&mut connection.pending_refresh);
     let contract = std::mem::take(&mut connection.pending_contract_refresh);
-    let refresh_views = !pending.is_empty() || contract;
+    let mut refresh_views = !pending.is_empty() || contract;
     let mut seen = Vec::new();
-    let mut errors = Vec::new();
+    let mut errors: Vec<String> = Vec::new();
+    let mut note = |error: Failure| {
+        // The bridge in the game answers every call the same way: once it refuses, the rest would too.
+        let refused = error.code == "memory.bridge";
+        if !errors.contains(&error.message) {
+            errors.push(error.message);
+        }
+        refused
+    };
     for (entity, uid) in pending {
         if seen.contains(&(entity, uid)) {
             continue;
@@ -3045,12 +3053,15 @@ fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
         let result = connection
             .target(entity, uid)
             .and_then(|(target, _)| connection.session.refresh_entity(&target).map(|_| ()).map_err(Failure::from));
-        if let Err(error) = result {
-            errors.push(error.message);
+        if let Err(error) = result
+            && note(error)
+        {
+            refresh_views = false;
+            break;
         }
     }
     if refresh_views && let Err(error) = connection.session.refresh_views() {
-        errors.push(Failure::from(error).message);
+        note(Failure::from(error));
     }
     if errors.is_empty() {
         Ok(())
