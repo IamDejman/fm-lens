@@ -39,8 +39,6 @@ export interface ListState {
   total: number | null;
   /** How many of them the list has rows for: the best ones (see `summary`). */
   shown: number;
-  /** Whether a profile is open beside the list, which leaves the toolbar little room. */
-  besideProfile: boolean;
 }
 
 interface ListBrowserProps<Row extends { uid: number }> {
@@ -83,16 +81,21 @@ interface ListBrowserProps<Row extends { uid: number }> {
   header: ReactNode;
   /** The cells of one row. */
   cells: (row: Row) => ReactNode;
-  /** The profile panel of the selected row. */
-  profile: (row: Row, panel: { version: number; onClose: () => void }) => ReactNode;
+  /** The profile panel of the selected row, beside the table. */
+  profile?: (row: Row, panel: { version: number; onClose: () => void }) => ReactNode;
+  /**
+   * In place of a profile, what a row holds besides its cells, in a row of its own under it: the table keeps its whole
+   * width, and picking the row again folds it away. Without either, picking a row does nothing.
+   */
+  detail?: (row: Row) => ReactNode;
   /** A row to open, asked for elsewhere in the app; each new object is a new request. */
   reveal?: Reveal | null;
 }
 
-/** A searchable table with the profile of the selected row beside it. */
+/** A searchable table with the profile of the selected row beside it, or its detail under it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
   const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
-  const { name, footer, tableClass, header, cells, profile, reveal } = props;
+  const { name, footer, tableClass, header, cells, profile, detail, reveal } = props;
   // What the list held before the language was switched, if it was: the search text, and the UID of the row to select
   // as soon as the rows are there again.
   const [start] = useState(() => restored(name, readList));
@@ -108,6 +111,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const searchInput = useRef<HTMLInputElement>(null);
   const tableWrap = useRef<HTMLDivElement>(null);
   const selectedRow = useRef<HTMLTableRowElement>(null);
+  const headRow = useRef<HTMLTableRowElement>(null);
 
   // The arguments as JSON, which is how they reach the command: the effect below depends on their value.
   const argsKey = JSON.stringify(requestArgs ?? {});
@@ -139,8 +143,19 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
     // Only a new request counts: the rows and search it finds are read as they are then.
   }, [reveal]);
 
-  // Another row replaces the profile, and with it the edits pending in it: the profile asks first.
-  const pick = (row: Row) => (row.uid === selected?.uid ? setSelected(row) : askToLeave(() => setSelected(row)));
+  // Another row replaces the profile, and with it the edits pending in it: the profile asks first. A detail has no edits,
+  // and picking its row again folds it away.
+  const pick = (row: Row) => {
+    if (detail) {
+      setSelected((open) => (open?.uid === row.uid ? null : row));
+    } else if (profile) {
+      if (row.uid === selected?.uid) {
+        setSelected(row);
+      } else {
+        askToLeave(() => setSelected(row));
+      }
+    }
+  };
 
   useEffect(() => {
     // Keep hidden lists mounted for navigation state, but defer their reads until opened.
@@ -217,7 +232,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const settled = page !== null && shownFor !== null && shownFor.query === query && shownFor.argsKey === argsKey;
 
   // A hidden list has no profile open: its window-wide Escape handler must not fire.
-  const showProfile = active && selected !== null;
+  const showProfile = active && selected !== null && profile !== undefined;
   const className = ["workspace", showProfile && "with-profile", !active && "inactive"].filter(Boolean).join(" ");
 
   return (
@@ -244,7 +259,6 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
             query,
             total: settled ? page.total : null,
             shown: page?.rows.length ?? 0,
-            besideProfile: showProfile,
           })}
         </div>
         {filterBar}
@@ -252,44 +266,62 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
 
         <div className="table-wrap" ref={tableWrap} data-tour={active ? "list" : undefined}>
           {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
-          <table className={tableClass ? `grid ${tableClass}` : "grid"} role="grid" aria-labelledby={countId}>
+          <table
+            className={["grid", tableClass, !profile && !detail && "static"].filter(Boolean).join(" ")}
+            role="grid"
+            aria-labelledby={countId}
+          >
             <thead>
-              <tr>{header}</tr>
+              <tr ref={headRow}>{header}</tr>
             </thead>
             <tbody>
               {page?.rows.map((row, index) => {
                 const isSelected = row.uid === selected?.uid;
                 return (
-                  <tr
-                    key={row.uid}
-                    ref={isSelected ? selectedRow : undefined}
-                    className={isSelected ? "selected" : undefined}
-                    aria-selected={isSelected}
-                    // One row is a Tab stop, the selected one or else the first; the arrow keys reach the others.
-                    tabIndex={row.uid === tabStop ? 0 : -1}
-                    onClick={() => pick(row)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        pick(row);
-                        return;
-                      }
-                      const rows = e.currentTarget.parentElement?.children;
-                      const to =
-                        e.key === "ArrowDown" ? index + 1
-                        : e.key === "ArrowUp" ? index - 1
-                        : e.key === "Home" ? 0
-                        : e.key === "End" ? (rows?.length ?? 0) - 1
-                        : null;
-                      const target = to === null ? null : rows?.item(to);
-                      if (target instanceof HTMLElement) {
-                        e.preventDefault();
-                        target.focus();
-                      }
-                    }}
-                  >
-                    {cells(row)}
-                  </tr>
+                  <Fragment key={row.uid}>
+                    <tr
+                      ref={isSelected ? selectedRow : undefined}
+                      className={isSelected ? "selected" : undefined}
+                      aria-selected={profile || detail ? isSelected : undefined}
+                      aria-expanded={detail ? isSelected : undefined}
+                      // One row is a Tab stop, the selected one or else the first; the arrow keys reach the others.
+                      tabIndex={row.uid === tabStop ? 0 : -1}
+                      onClick={() => pick(row)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          pick(row);
+                          return;
+                        }
+                        if (e.key === "Escape" && detail && isSelected) {
+                          e.preventDefault();
+                          setSelected(null);
+                          return;
+                        }
+                        // The rows of the list, not the detail under one.
+                        const rows = e.currentTarget.parentElement?.querySelectorAll(":scope > tr:not(.row-detail)");
+                        const to =
+                          e.key === "ArrowDown" ? index + 1
+                          : e.key === "ArrowUp" ? index - 1
+                          : e.key === "Home" ? 0
+                          : e.key === "End" ? (rows?.length ?? 0) - 1
+                          : null;
+                        const target = to === null ? null : rows?.item(to);
+                        if (target instanceof HTMLElement) {
+                          e.preventDefault();
+                          target.focus();
+                        }
+                      }}
+                    >
+                      {cells(row)}
+                    </tr>
+                    {detail && isSelected && (
+                      <tr className="row-detail">
+                        {/* Only a picked row has one, so the head is there to count the columns of. */}
+                        <td colSpan={headRow.current?.cells.length ?? 1}>{detail(row)}</td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
@@ -300,7 +332,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
       </section>
 
       {showProfile && (
-        <Fragment key={selected.uid}>{profile(selected, { version, onClose: closeProfile })}</Fragment>
+        <Fragment key={selected.uid}>{profile?.(selected, { version, onClose: closeProfile })}</Fragment>
       )}
     </div>
   );

@@ -28,6 +28,9 @@
   /* The masthead is dark plum in both lightings. */
   --strip: #251b37;
   --on-strip: #ffffff;
+  /* On the masthead, in both lightings: the line under the open tab, and the keyboard's focus ring. */
+  --strip-mark: #c86ee6;
+  --strip-focus: #8fb1ff;
   /* Blue is for the keyboard's focus only. */
   --accent-text: #2457c5;
 
@@ -75,6 +78,14 @@
   --type-3xl: 28px;
 
   --radius: 4px;
+  /* The spacing scale: every margin, padding and gap is one of these. Under 4px is an optical nudge inside a control
+     (a chip, a table cell, a border's width), not spacing. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
   --scroll: #b5bbca;
   --display: "Archivo Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
 
@@ -182,7 +193,7 @@ body {
 /* One button: an outline on the page by default, filled with violet for the main action, red for what removes. */
 button {
   min-height: 30px;
-  padding: 5px 12px;
+  padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: transparent;
@@ -270,9 +281,9 @@ dd,
   flex-wrap: wrap;
   flex: none;
   align-items: flex-end;
-  gap: 18px;
-  min-height: 52px;
-  padding: 0 14px 0 18px;
+  gap: var(--space-4);
+  min-height: 48px;
+  padding: 0 var(--space-4);
   background: var(--strip);
   color: var(--on-strip);
   container: masthead / inline-size;
@@ -284,7 +295,7 @@ dd,
   flex: none;
   align-items: center;
   align-self: center;
-  gap: 9px;
+  gap: var(--space-2);
   margin: 0;
   padding: 2px 0;
   font-size: inherit;
@@ -294,7 +305,7 @@ dd,
   display: block;
   width: 40px;
   height: 40px;
-  background: #f6f7f9;
+  background: var(--on-strip);
   border-radius: 8px;
 }
 
@@ -317,13 +328,13 @@ dd,
 .tab {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 38px;
-  padding: 0 14px;
+  padding: 0 var(--space-4);
   border: 0;
   border-radius: 0;
   background: transparent;
-  color: rgb(255 255 255 / 0.7);
+  color: color-mix(in srgb, var(--on-strip) 70%, transparent);
   font-size: var(--type-md);
   font-stretch: 88%;
   font-weight: 750;
@@ -331,27 +342,27 @@ dd,
 
 .tab:hover:not(:disabled, .active) {
   border-color: transparent;
-  background: rgb(255 255 255 / 0.06);
-  box-shadow: inset 0 -3px 0 rgb(255 255 255 / 0.3);
+  background: color-mix(in srgb, var(--on-strip) 6%, transparent);
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--on-strip) 30%, transparent);
   color: var(--on-strip);
 }
 
 .tab.active {
-  box-shadow: inset 0 -3px 0 #c86ee6;
+  box-shadow: inset 0 -3px 0 var(--strip-mark);
   color: var(--on-strip);
 }
 
 .tab:focus-visible {
-  outline-color: #8fb1ff;
+  outline-color: var(--strip-focus);
   outline-offset: -3px;
 }
 
 /* How many changes of the session stand, beside Changes. */
 .tab-count {
   min-width: 18px;
-  padding: 0 5px;
+  padding: 0 var(--space-1);
   border-radius: 9px;
-  background: rgb(255 255 255 / 0.16);
+  background: color-mix(in srgb, var(--on-strip) 16%, transparent);
   font-size: var(--type-xs);
   font-stretch: 100%;
   font-variant-numeric: tabular-nums;
@@ -364,37 +375,52 @@ dd,
   display: flex;
   align-items: center;
   align-self: center;
-  gap: 12px;
+  gap: var(--space-3);
   min-width: 0;
   margin-left: auto;
 }
 
 .busy {
-  color: rgb(246 247 249 / 0.8);
+  color: color-mix(in srgb, var(--on-strip) 80%, transparent);
   font-size: var(--type-base);
 }
 
-/* The connected career, before its date: it gives way first when the masthead is short of room. */
-/* The connected career, which opens the user's own manager: quiet until pointed at. */
-.masthead .career {
+/* The connected career, before its date: the user's own manager, which opens their profile, and club, which opens its
+   squad, each quiet until pointed at. The manager gives way first when the masthead is short of room; the club keeps
+   its whole name. */
+.career {
+  display: flex;
   flex: 0 1 auto;
-  display: block;
+  align-items: center;
   min-width: 0;
+}
+
+.career-dot {
+  color: color-mix(in srgb, var(--on-strip) 50%, transparent);
+}
+
+.masthead .career button {
   min-height: 28px;
-  padding: 4px 8px;
-  overflow: hidden;
+  padding: var(--space-1) var(--space-2);
   border-color: transparent;
-  color: rgb(246 247 249 / 0.8);
+  color: color-mix(in srgb, var(--on-strip) 80%, transparent);
   font-size: var(--type-base);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.masthead .career .career-manager {
+  flex: 0 1 auto;
+  display: block;
+  min-width: 3rem;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.masthead .career:hover:not(:disabled) {
-  border-color: rgb(246 247 249 / 0.35);
-  background: rgb(246 247 249 / 0.08);
-  color: rgb(246 247 249);
+.masthead .career button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--on-strip) 35%, transparent);
+  background: color-mix(in srgb, var(--on-strip) 8%, transparent);
+  color: var(--on-strip);
 }
 
 /* The game's date. */
@@ -416,21 +442,21 @@ dd,
 
 .masthead button {
   flex: none;
-  border-color: rgb(246 247 249 / 0.4);
+  border-color: color-mix(in srgb, var(--on-strip) 40%, transparent);
   color: var(--on-strip);
 }
 
 .masthead button:hover:not(:disabled) {
   border-color: var(--on-strip);
-  background: rgb(246 247 249 / 0.1);
+  background: color-mix(in srgb, var(--on-strip) 10%, transparent);
 }
 
 .masthead button:active:not(:disabled) {
-  background: rgb(246 247 249 / 0.18);
+  background: color-mix(in srgb, var(--on-strip) 18%, transparent);
 }
 
 .masthead :focus-visible {
-  outline-color: #8fb1ff;
+  outline-color: var(--strip-focus);
 }
 
 /* A narrow window or a large UI scale: the mark without its word, closer tabs and a shorter career keep one row. */
@@ -440,10 +466,10 @@ dd,
   }
 
   .tab {
-    padding: 0 10px;
+    padding: 0 var(--space-3);
   }
 
-  .masthead .career {
+  .masthead .career .career-manager {
     max-width: 9rem;
   }
 }
@@ -458,7 +484,7 @@ dd,
     min-height: 48px;
   }
 
-  .masthead .career {
+  .masthead .career .career-manager {
     max-width: none;
   }
 
@@ -468,14 +494,11 @@ dd,
   }
 }
 
-/* The settings: a button with a gear and a chevron, outlined like the masthead's other buttons. The menu of the
-   languages and currencies hangs from it over the window, as the captain menu does from a squad row (see Club
-   squad). */
+/* The settings: a button with a gear, outlined like the masthead's other buttons, which opens the Settings window. */
 .settings-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px 5px 10px;
+  padding: var(--space-1) var(--space-2);
 }
 
 .settings-gear {
@@ -488,20 +511,6 @@ dd,
   stroke-linejoin: round;
 }
 
-.settings-chevron {
-  width: 12px;
-  height: 12px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.settings-toggle[aria-expanded="true"] .settings-chevron {
-  transform: rotate(180deg);
-}
-
 /* A flag, 3:2. A hairline of ink holds its edge where it is white (the Union Jack's) on a light page. */
 .language-flag {
   display: block;
@@ -509,14 +518,16 @@ dd,
   width: 21px;
   height: 14px;
   border-radius: 1px;
-  outline: 1px solid rgb(22 24 29 / 0.22);
+  outline: 1px solid color-mix(in srgb, var(--text) 22%, transparent);
   outline-offset: -1px;
 }
 
 /* A segmented switch: two or three buttons in one frame; the pressed one is the choice in effect. The mode switch of
-   the move dialog (see Moving a player) is one, and so is the switch between the teams of a squad (see Club squad). */
+   the move dialog (see Moving a player) is one, so is the switch between the teams of a squad (see Club squad), and so
+   are the language, theme and zoom of Settings. */
 .move-mode,
-.squad-teams {
+.squad-teams,
+.settings-switch {
   display: inline-flex;
   align-self: flex-start;
   overflow: hidden;
@@ -525,10 +536,11 @@ dd,
 }
 
 .move-mode button,
-.squad-teams button {
+.squad-teams button,
+.settings-switch button {
   min-width: 40px;
   min-height: 26px;
-  padding: 3px 10px;
+  padding: 3px var(--space-3);
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -539,24 +551,28 @@ dd,
 }
 
 .move-mode button + button,
-.squad-teams button + button {
+.squad-teams button + button,
+.settings-switch button + button {
   border-left: 1px solid var(--border-strong);
 }
 
 .move-mode button:hover:not(:disabled, [aria-pressed="true"]),
-.squad-teams button:hover:not(:disabled, [aria-pressed="true"]) {
+.squad-teams button:hover:not(:disabled, [aria-pressed="true"]),
+.settings-switch button:hover:not(:disabled, [aria-pressed="true"]) {
   background: var(--hover);
   color: var(--text);
 }
 
 .move-mode button[aria-pressed="true"],
-.squad-teams button[aria-pressed="true"] {
+.squad-teams button[aria-pressed="true"],
+.settings-switch button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--on-accent);
 }
 
 .move-mode button:focus-visible,
-.squad-teams button:focus-visible {
+.squad-teams button:focus-visible,
+.settings-switch button:focus-visible {
   outline-offset: -2px;
 }
 
@@ -577,8 +593,8 @@ dd,
   flex: none;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 0 32px;
-  padding: 0 18px;
+  gap: 0 var(--space-6);
+  padding: 0 var(--space-4);
   border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: var(--type-sm);
@@ -590,7 +606,7 @@ dd,
 .colophon-notes {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
@@ -617,7 +633,7 @@ dd,
 /* Relaunch to update: small enough to sit in the colophon's line, in the accent so it is noticed. */
 .colophon .relaunch {
   min-height: 0;
-  padding: 0 10px;
+  padding: 0 var(--space-3);
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
@@ -667,7 +683,7 @@ dd,
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -696,7 +712,7 @@ dd,
 /* A label beside a value: small capitals in a hairline frame. */
 .tag {
   display: inline-block;
-  padding: 0 5px;
+  padding: 0 var(--space-1);
   border: 1px solid var(--border-strong);
   border-radius: 2px;
   color: var(--muted);
@@ -709,8 +725,8 @@ dd,
 }
 
 .banner {
-  margin: 12px 18px 0;
-  padding: 10px 14px;
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--danger);
   border-radius: var(--radius);
   background: var(--danger-soft);
@@ -725,9 +741,9 @@ dd,
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
-  margin: 12px 18px 0;
-  padding: 8px 8px 8px 14px;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
   border: 1px solid var(--accent-text);
   border-radius: var(--radius);
   background: var(--accent-faint);
@@ -735,7 +751,7 @@ dd,
 
 .update-progress,
 .update-error {
-  margin-left: 8px;
+  margin-left: var(--space-2);
   color: var(--muted);
 }
 
@@ -755,9 +771,9 @@ dd,
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 16px;
-  margin: 12px 18px 0;
-  padding: 8px 8px 8px 14px;
+  gap: var(--space-2) var(--space-4);
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
   border: 1px solid var(--pending);
   border-left-width: 4px;
   border-radius: var(--radius);
@@ -776,13 +792,13 @@ dd,
 
 .update-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* What a version brought, in the notice after an update. */
 .whats-new {
-  margin: 4px 0 0;
-  padding-left: 18px;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
   color: var(--muted);
 }
 
@@ -792,19 +808,19 @@ dd,
   display: grid;
   place-items: center;
   flex: 1;
-  padding: 24px;
+  padding: var(--space-5);
   overflow-y: auto;
 }
 
 /* A panel on the app's ground: the connect card, with a heading, the facts it found and its one action. */
 .card {
   width: min(540px, 100%);
-  padding: 14px 0 0;
+  padding: var(--space-4) 0 0;
   border-top: 3px solid var(--text);
 }
 
 .card h2 {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-2);
   font-size: var(--type-3xl);
   font-stretch: 78%;
   font-weight: 850;
@@ -812,12 +828,12 @@ dd,
 }
 
 .card .muted {
-  margin: 0 0 18px;
+  margin: 0 0 var(--space-4);
 }
 
 .card > button.primary {
   min-height: 36px;
-  padding-inline: 16px;
+  padding-inline: var(--space-4);
   font-size: var(--type-md);
 }
 
@@ -825,13 +841,13 @@ dd,
 .facts {
   display: grid;
   grid-template-columns: 120px 1fr;
-  margin: 0 0 20px;
+  margin: 0 0 var(--space-5);
   border-top: 1px solid var(--border);
 }
 
 .facts dt,
 .facts dd {
-  padding: 6px 12px;
+  padding: var(--space-2) var(--space-3);
 }
 
 .facts dt {
@@ -852,7 +868,7 @@ dd,
 }
 
 .hint {
-  margin: 0 0 18px;
+  margin: 0 0 var(--space-4);
 }
 
 .hint.error {
@@ -862,18 +878,18 @@ dd,
 /* macOS: the bridge the game loads, a section of the card under a rule. First while it is not set up, under the
    button once it is. */
 .bridge {
-  margin: 0 0 20px;
-  padding: 12px 0 0;
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) 0 0;
   border-top: 2px solid var(--text);
 }
 
 .card > button + .bridge {
-  margin: 20px 0 0;
+  margin: var(--space-5) 0 0;
 }
 
 /* Once the bridge is set up, removing it is all that is left: a quiet link under Connect. */
 .bridge-undo {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 .bridge-undo button {
@@ -894,43 +910,43 @@ dd,
 }
 
 .bridge h3 {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-2);
   font-size: var(--type-lg);
 }
 
 .bridge .muted {
-  margin: 0 0 14px;
+  margin: 0 0 var(--space-4);
 }
 
 .bridge .facts {
   grid-template-columns: 180px 1fr;
-  margin-bottom: 14px;
+  margin-bottom: var(--space-4);
 }
 
 .bridge-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .bridge-manual {
-  margin-top: 16px;
+  margin-top: var(--space-4);
 }
 
 .bridge-manual .muted {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .launch-option {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .launch-option code {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--field);
@@ -995,7 +1011,7 @@ dd,
   flex: 1;
   min-width: 240px;
   min-height: 0;
-  padding: 14px 18px 0;
+  padding: var(--space-4) var(--space-4) 0;
   overflow: auto;
 }
 
@@ -1012,20 +1028,20 @@ dd,
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
-  margin-bottom: 10px;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 /* The search field leads the list: the first thing to type into after alt-tabbing in. */
 .search {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex: 1 1 240px;
   min-width: 200px;
   max-width: 440px;
   min-height: 36px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -1053,7 +1069,7 @@ dd,
 .search input {
   flex: 1;
   min-width: 0;
-  padding: 8px 0;
+  padding: var(--space-2) 0;
   border: 0;
   outline: 0;
   background: transparent;
@@ -1089,8 +1105,8 @@ input::placeholder {
 .filter-bar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 /* Wraps when the saved filters and the name form do not fit beside the buttons. */
@@ -1098,14 +1114,14 @@ input::placeholder {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 4px;
+  gap: var(--space-2) var(--space-1);
 }
 
 .filter-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
 }
 
 .filter-toggle svg {
@@ -1125,7 +1141,7 @@ input::placeholder {
 /* How many filters are in effect. */
 .filter-count {
   min-width: 18px;
-  padding: 0 5px;
+  padding: 0 var(--space-1);
   border-radius: 2px;
   background: var(--accent);
   color: var(--on-accent);
@@ -1136,7 +1152,7 @@ input::placeholder {
 }
 
 .filter-clear {
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border-color: transparent;
   background: transparent;
   color: var(--text);
@@ -1149,13 +1165,55 @@ input::placeholder {
   background: var(--hover);
 }
 
+/* The filters in effect in the head of the bar, a chip each: pressed, it takes its filter out. */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 18rem;
+  padding: 3px var(--space-2) 3px var(--space-3);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  font-size: var(--type-base);
+}
+
+.filter-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-chip svg {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.filter-chip:hover:not(:disabled) svg {
+  stroke: var(--text);
+}
+
 /* The filters as a form: a grid of equal cells, as many to a row as fit, each a label over its control, so no field is
    left on a line of its own and every input is as wide as its cell. */
 .filter-fields {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
   align-items: end;
-  gap: 10px 14px;
+  gap: var(--space-3) var(--space-4);
   font-size: var(--type-base);
 }
 
@@ -1163,7 +1221,7 @@ input::placeholder {
 .filter-field {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
   color: var(--muted);
 }
@@ -1172,7 +1230,7 @@ input::placeholder {
 .filter-field[role="group"] {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  column-gap: 6px;
+  column-gap: var(--space-2);
 }
 
 .filter-field[role="group"] > span:first-child {
@@ -1183,7 +1241,7 @@ input::placeholder {
 .filter-field:has(> input[type="checkbox"]) {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 30px;
   color: var(--text);
 }
@@ -1193,7 +1251,7 @@ input::placeholder {
 .saved-select,
 .saved-form input {
   min-height: 30px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -1218,8 +1276,8 @@ input::placeholder {
 .freeze-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 4px 6px 6px;
+  gap: var(--space-2);
+  margin: var(--space-1) var(--space-2) var(--space-2);
   color: var(--text);
   font-size: var(--type-base);
   font-weight: 650;
@@ -1229,21 +1287,21 @@ input::placeholder {
   margin: 0;
 }
 
-/* After a player's attributes: Tools, which opens Set all attributes and the box that freezes them in a row, then what
-   the last write came to (in the box of a squad's, see Club squad) and what freezing does while it is on. */
-.attribute-buttons,
+/* Over a player's attributes: what Tools opens, Set all attributes and the box that freezes them in a row, then what the
+   last write came to (in the box of a squad's, see Club squad) and what freezing does while it is on. None of it takes
+   room while it is not there. */
 .attribute-tools {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: var(--space-2) var(--space-4);
 }
 
 .attribute-tools[hidden] {
   display: none;
 }
 
-.attribute-buttons .freeze-toggle {
+.attribute-tools .freeze-toggle {
   margin: 0;
 }
 
@@ -1251,19 +1309,19 @@ input::placeholder {
 .set-attributes {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: var(--type-base);
 }
 
 .set-attributes label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .set-attributes select {
   min-height: 30px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -1278,8 +1336,16 @@ input::placeholder {
   outline-offset: 0;
 }
 
-.attribute-actions > :not(:first-child):not(:empty) {
-  margin: 8px 0 0;
+.profile-panel > .attribute-actions + * {
+  margin-top: 0;
+}
+
+.attribute-actions:has(> :not([hidden], :empty)) {
+  margin-bottom: var(--space-4);
+}
+
+.attribute-actions > :not([hidden], :empty) ~ :not([hidden], :empty) {
+  margin-top: var(--space-2);
 }
 
 .note.error {
@@ -1288,9 +1354,9 @@ input::placeholder {
 
 /* Giving a member of staff another job: a quiet button under the job, then the select and its buttons in a row. */
 .job-change {
-  margin: 0 6px 8px;
+  margin: 0 var(--space-2) var(--space-2);
   min-height: 26px;
-  padding: 2px 10px;
+  padding: 2px var(--space-3);
   font-size: var(--type-sm);
 }
 
@@ -1298,8 +1364,8 @@ input::placeholder {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 8px;
-  margin: 0 6px 8px;
+  gap: var(--space-2) var(--space-2);
+  margin: 0 var(--space-2) var(--space-2);
   font-size: var(--type-base);
 }
 
@@ -1309,7 +1375,7 @@ input::placeholder {
 
 .job-change-form select {
   min-height: 30px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -1328,7 +1394,7 @@ input::placeholder {
   display: grid;
   grid-column: 1 / -1;
   justify-items: start;
-  gap: 6px;
+  gap: var(--space-2);
   color: var(--muted);
 }
 
@@ -1336,7 +1402,7 @@ input::placeholder {
   display: grid;
   grid-template-columns: minmax(11rem, 15rem) 4.5rem auto 4.5rem 30px;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   color: var(--text);
 }
 
@@ -1371,7 +1437,7 @@ input::placeholder {
   top: 0;
   z-index: 1;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border-bottom: 1px solid var(--border-strong);
   background: var(--raised);
   color: var(--muted);
@@ -1388,7 +1454,7 @@ input::placeholder {
 .grid th .sort {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1);
   padding: 0;
   border: 0;
   border-radius: 3px;
@@ -1451,12 +1517,13 @@ input::placeholder {
 
 .grid td {
   height: 34px;
-  padding: 3px 12px;
+  padding: 3px var(--space-3);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
-.grid tbody tr:nth-child(even) td {
+/* Counted without the detail open under a row, so the stripes stay put when it opens. */
+.grid tbody tr:nth-child(even of :not(.row-detail)) td {
   background: var(--zebra);
 }
 
@@ -1480,6 +1547,35 @@ input::placeholder {
 .grid tbody tr:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
+}
+
+/* A list whose rows open nothing. */
+.grid.static tbody tr {
+  cursor: default;
+}
+
+/* What a picked row holds besides its cells, under it, as a competition's rules: on the row's bar and a lighter tint
+ * so the two read as one, its facts in columns across the table. */
+.grid tbody tr.row-detail {
+  cursor: default;
+}
+
+.grid tbody tr.row-detail td,
+.grid tbody tr.row-detail:hover td {
+  height: auto;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  box-shadow: inset 3px 0 0 var(--accent);
+  white-space: normal;
+}
+
+.row-detail .stats {
+  columns: 240px;
+  column-gap: var(--space-6);
+}
+
+.row-detail .stat {
+  break-inside: avoid;
 }
 
 /* With a profile open the table is narrow: drop Born and UID, then Nation, once they no longer fit. */
@@ -1527,7 +1623,7 @@ input::placeholder {
   }
 
   .player-grid :is(th, td) {
-    padding-inline: 8px;
+    padding-inline: var(--space-2);
   }
 
   .player-grid td.col-name {
@@ -1541,23 +1637,36 @@ input::placeholder {
   .player-grid .ability {
     min-width: 0;
   }
-
-  /* Beside an open profile the list is for picking the next player: name, positions and CA, the name with the room. */
-  .with-profile .player-grid :is(.col-age, .col-club, .col-pa) {
-    display: none;
-  }
-
-  .with-profile .player-grid .col-positions {
-    display: table-cell;
-    color: var(--muted);
-  }
-
-  .with-profile .player-grid td.col-name {
-    width: 62%;
-  }
 }
 
-/* The narrowest list, beside a profile in the smallest window: name and CA. */
+/* Beside an open profile the list is for picking the next player: the name with the club under it, then positions,
+   CA and PA. */
+.player-grid .col-name .row-club {
+  display: none;
+}
+
+.with-profile .player-grid .col-name .sub {
+  display: none;
+}
+
+.with-profile .player-grid .col-name .row-club {
+  display: block;
+}
+
+.with-profile .player-grid :is(.col-age, .col-nation, .col-club, .col-contract, .col-born, .col-uid) {
+  display: none;
+}
+
+.with-profile .player-grid .col-positions {
+  display: table-cell;
+  color: var(--muted);
+}
+
+.with-profile .player-grid td.col-name {
+  width: 62%;
+}
+
+/* The narrowest list, beside a profile in the smallest window: name, CA and PA. */
 @container (max-width: 320px) {
   .with-profile .player-grid .col-positions {
     display: none;
@@ -1616,7 +1725,7 @@ input::placeholder {
   right: 16px;
   bottom: 16px;
   width: min(22rem, calc(100% - 32px));
-  padding: 14px 16px;
+  padding: var(--space-4) var(--space-4);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--panel);
@@ -1638,18 +1747,18 @@ input::placeholder {
 }
 
 .tour h2 {
-  margin: 0 0 6px;
+  margin: 0 0 var(--space-2);
   font-size: var(--type-lg);
 }
 
 .tour p {
-  margin: 0 0 12px;
+  margin: 0 0 var(--space-3);
 }
 
 .tour-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .tour-progress {
@@ -1694,7 +1803,7 @@ input::placeholder {
 .award-grid .col-name .name {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -1840,7 +1949,7 @@ input::placeholder {
 }
 
 .empty {
-  padding: 28px 24px;
+  padding: var(--space-6) var(--space-5);
   color: var(--muted);
   text-align: center;
 }
@@ -1917,7 +2026,7 @@ input::placeholder {
 .with-picture {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 /* Never taller than a line of text, so a row with a picture is as tall as one without. */
@@ -1936,7 +2045,7 @@ input::placeholder {
 }
 
 .picture-text > .picture {
-  margin-right: 6px;
+  margin-right: var(--space-2);
 }
 
 /* Player profile */
@@ -2033,22 +2142,34 @@ input::placeholder {
   user-select: none;
 }
 
-/* The head of a profile, as FM's: the name large, what he is under it, his abilities and the actions at the right. */
+/* The head of a profile, as FM's: the name large with the actions at its end, what he is under it with his abilities at
+   the end of that line, then his status. */
 .profile-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 14px 16px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0 var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-3);
   border-bottom: 1px solid var(--border);
   background: var(--raised);
 }
 
 .profile-id {
-  flex: 1;
+  display: grid;
+  grid-column: 2;
+  gap: var(--space-1);
   min-width: 0;
 }
 
-.profile-id h2 {
+.profile-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.profile-title h2 {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: var(--type-3xl);
   font-stretch: 75%;
@@ -2061,10 +2182,6 @@ input::placeholder {
   margin: 0;
 }
 
-.profile-id .profile-meta {
-  margin-top: 6px;
-}
-
 .profile-fullname,
 .profile-vitals {
   color: var(--muted);
@@ -2074,36 +2191,93 @@ input::placeholder {
   font-size: var(--type-base);
 }
 
+/* What the person is, with the abilities at the end of the line; in a narrow panel the abilities go under it. */
+.profile-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-1) var(--space-4);
+}
+
+.profile-lines {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.profile-summary > :last-child:not(.profile-lines) {
+  margin-left: auto;
+}
+
+/* Across the whole header, under the picture, names and ratings: a player's status, each chip a button to the tab that
+   has it, with a dot for how good the news is; then Transfer and Release at the end of the row. */
+.profile-status-row {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-moves {
+  margin-left: auto;
+}
+
+.profile-moves button {
+  min-height: 24px;
+  padding: 1px var(--space-2);
+  font-size: var(--type-sm);
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 24px;
+  padding: 1px var(--space-2);
+  border-color: var(--border);
+  border-radius: 999px;
+  background: var(--raised);
+  font-size: var(--type-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.status-chip[data-tone]::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+  content: "";
+}
+
+.status-chip[data-tone="good"] {
+  --tone: var(--tier-4);
+}
+
+.status-chip[data-tone="warn"] {
+  --tone: var(--tier-2);
+}
+
+.status-chip[data-tone="bad"] {
+  --tone: var(--danger);
+}
+
 .profile-vitals .vital {
   white-space: nowrap;
 }
 
-/* A profile with no line of its own under the names (a club) still wants air above its small print. */
-.profile-id :is(h2, .profile-fullname) + .profile-vitals {
-  margin-top: 6px;
-}
-
-/* Under a profile's header: Transfer and Release, in one row that wraps when the panel is narrow. */
-.profile-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--raised);
-}
-
-.profile-toolbar:empty {
-  display: none;
-}
-
-.profile-side {
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+/* A club's small print, under its short name. */
+.profile-fullname + .profile-vitals {
+  margin-top: var(--space-1);
 }
 
 .icon-button {
@@ -2133,13 +2307,15 @@ input::placeholder {
   stroke-linecap: round;
 }
 
-/* Current and potential ability, large, side by side: the two numbers a player reads first. */
+/* Current and potential ability, large, side by side, each after its label: the two numbers a player reads first. */
 .profile-abilities {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: auto auto;
+  display: flex;
   align-items: baseline;
-  gap: 0 18px;
+  gap: var(--space-1);
+}
+
+.profile-abilities abbr ~ abbr {
+  margin-left: var(--space-3);
 }
 
 .profile-abilities abbr,
@@ -2172,14 +2348,16 @@ input::placeholder {
 .profile-body {
   flex: 1;
   min-height: 0;
-  padding: 16px;
+  padding: var(--space-4);
   container: profile / inline-size;
   overflow-x: hidden;
   overflow-y: auto;
 }
 
+/* Groups stand 16px apart, side by side and one over the other; the two halves of a wide profile 32px (see
+   `.profile-pair`). */
 .profile-body > * + * {
-  margin-top: 22px;
+  margin-top: var(--space-4);
 }
 
 .profile-body .banner {
@@ -2187,7 +2365,7 @@ input::placeholder {
 }
 
 .profile-status {
-  margin: 24px 0;
+  margin: var(--space-5) 0;
   color: var(--muted);
   text-align: center;
   animation: profile-pulse 1.4s ease-in-out infinite;
@@ -2216,27 +2394,36 @@ input::placeholder {
 .profile-columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 12px;
+  gap: var(--space-4);
   align-items: start;
+}
+
+/* In a narrow profile a member of staff's attributes take two columns: Coaching beside Mental and Medical, Knowledge
+   under them. */
+@container profile (max-width: 640px) {
+  .profile-columns.staff-attributes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--space-4);
+  }
 }
 
 .profile-split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 16px;
+  gap: var(--space-4);
   align-items: start;
 }
 
 .profile-stack {
   display: grid;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 /* Two blocks of a profile, such as the attributes and the ratings under them, that stand one over the other and side by
    side once the panel is made wide enough for both (see PanelResizer). */
 .profile-pair {
   display: grid;
-  gap: 22px 28px;
+  gap: var(--space-4) var(--space-6);
   align-items: start;
 }
 
@@ -2250,7 +2437,7 @@ input::placeholder {
 .profile-group h3,
 .profile-group h4 {
   margin: 0 0 2px;
-  padding: 5px 2px 5px;
+  padding: var(--space-1) 2px var(--space-1);
   border-bottom: 1px solid var(--border-strong);
   color: var(--muted);
   font-size: var(--type-sm);
@@ -2258,6 +2445,30 @@ input::placeholder {
   font-weight: 850;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+}
+
+/* A heading with the buttons for its group at its end, on the same divider. */
+.profile-group .group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0 0 2px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.profile-group .group-head h3 {
+  flex: 1 0 auto;
+  margin: 0;
+  padding-block: 3px;
+  border-bottom: 0;
+}
+
+.group-head button {
+  min-height: 24px;
+  padding: 1px var(--space-3);
+  font-size: var(--type-sm);
 }
 
 /* Label and value rows: attributes, contract and career facts, reputation. */
@@ -2272,9 +2483,9 @@ input::placeholder {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 29px;
-  padding: 2px 6px;
+  padding: 2px var(--space-2);
   border-bottom: 1px solid var(--border);
 }
 
@@ -2294,8 +2505,8 @@ input::placeholder {
 /* While editing, a row holds an input: it gives up a little of its air so the longest one-word name ("Konsantrasyon")
    still fits beside it in the narrowest profile. Names wrap only between words. */
 .profile.editing .stat {
-  gap: 6px;
-  padding-inline: 6px;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
 }
 
 .stat dd {
@@ -2308,9 +2519,10 @@ input::placeholder {
   color: var(--text);
 }
 
-/* The unit of an amount, in small print under its label. */
-.stat dt .unit {
-  display: block;
+/* The unit of an amount, in small print after it. */
+.stat dd .unit {
+  margin-left: 3px;
+  color: var(--muted);
   font-size: var(--type-sm);
 }
 
@@ -2343,7 +2555,7 @@ input::placeholder {
 }
 
 .note {
-  margin: 0 6px 6px;
+  margin: 0 var(--space-2) var(--space-2);
   color: var(--muted);
   font-size: var(--type-sm);
   line-height: 1.35;
@@ -2357,9 +2569,10 @@ input::placeholder {
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-  padding: 0 6px;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-2);
+  list-style: none;
 }
 
 .tag.listed {
@@ -2369,7 +2582,7 @@ input::placeholder {
 
 /* Marks the manager the user controls, beside the name. */
 .tag.you {
-  margin-left: 8px;
+  margin-left: var(--space-2);
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
@@ -2378,7 +2591,7 @@ input::placeholder {
 
 /* Marks a women's club, beside the name. */
 .tag.women {
-  margin-left: 8px;
+  margin-left: var(--space-2);
   font-weight: 500;
   white-space: nowrap;
   vertical-align: middle;
@@ -2393,7 +2606,7 @@ input::placeholder {
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .bar {
@@ -2451,9 +2664,16 @@ input::placeholder {
   fill: var(--on-tier);
   font-size: 9px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
+}
+
+.pitch-pos {
+  font-size: 7.5px;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 .pos-natural {
@@ -2486,17 +2706,22 @@ input::placeholder {
 .legend {
   display: grid;
   gap: 3px;
-  margin: 10px 0 0;
-  padding: 0 6px;
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-2);
   color: var(--muted);
   font-size: var(--type-sm);
   list-style: none;
 }
 
+/* A player's feet, under the key of his pitch. */
+.legend + .ratings {
+  margin-top: var(--space-2);
+}
+
 .legend li {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .legend .range {
@@ -2545,7 +2770,7 @@ input::placeholder {
 }
 
 .stats + .mix {
-  margin-top: 14px;
+  margin-top: var(--space-4);
 }
 
 /* One stacked bar, as thick as a thin mark: a 2px gap of the panel colour between the segments, and rounded ends. */
@@ -2553,7 +2778,7 @@ input::placeholder {
   display: flex;
   gap: 2px;
   height: 12px;
-  margin: 6px 8px 0;
+  margin: var(--space-2) var(--space-2) 0;
   overflow: hidden;
   border-radius: 2px;
 }
@@ -2574,7 +2799,7 @@ input::placeholder {
 .profile-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 /* The Compare button sits before Edit and looks like it: pressed while the player is in the comparison. So does Move to
@@ -2587,7 +2812,22 @@ input::placeholder {
 .heal-toggle,
 .max-toggle,
 .squad-action {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
+}
+
+/* How many players an action on the team is for, after its label. */
+.action-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: 9px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
 }
 
 /* Edit is a profile's main action: filled with violet until it is on, then pressed in; amber is left to the values it
@@ -2648,7 +2888,7 @@ input::placeholder {
 .edit-input {
   flex: none;
   width: calc(var(--digits, 2) * 1ch + 1.2rem);
-  padding: 2px 6px;
+  padding: 2px var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -2678,13 +2918,14 @@ input::placeholder {
   outline-offset: 1px;
 }
 
-/* A value other than the game's is marked with the highlighter, inside an ink frame, until it is applied. */
+/* A value other than the game's is marked with the highlighter, inside an ink frame, until it is applied. Red is kept
+   for a value that cannot be applied (.invalid). */
 .edit-input.changed,
 .edit-flag.changed {
-  border-color: var(--danger);
+  border-color: var(--text);
   background: var(--pending-soft);
   color: var(--on-pending);
-  box-shadow: inset 0 0 0 1px var(--danger);
+  box-shadow: inset 0 0 0 1px var(--text);
 }
 
 .edit-input.applied, .edit-flag.applied { border-color: var(--ok); box-shadow: inset 0 0 0 1px var(--ok); }
@@ -2698,8 +2939,8 @@ input::placeholder {
   justify-content: flex-end;
   min-width: 28px;
   min-height: 28px;
-  margin: -4px -6px;
-  padding: 2px 6px;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2));
+  padding: 2px var(--space-2);
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: transparent;
@@ -2768,8 +3009,8 @@ select.edit-input {
 .edit-flag {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 10px 2px 8px;
+  gap: var(--space-2);
+  padding: 2px var(--space-3) 2px var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -2805,7 +3046,7 @@ select.edit-input {
 .edit-percent {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .edit-unit {
@@ -2826,7 +3067,7 @@ select.edit-input {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0 10px;
+  gap: 0 var(--space-3);
   color: var(--muted);
   font-size: var(--type-xs);
   font-weight: 400;
@@ -2836,7 +3077,7 @@ select.edit-input {
 
 /* One hint for a group of inputs that all take the same, above them. */
 .range-hint-line {
-  margin: 12px 6px 6px;
+  margin: var(--space-3) var(--space-2) var(--space-2);
 }
 
 h3 + .range-hint-line {
@@ -2849,26 +3090,14 @@ h3 + .range-hint-line {
 }
 
 .modal-head .range-hint {
-  margin-top: 4px;
+  margin-top: var(--space-1);
 }
 
-/* The values of a player's Medical group side by side, not as rows across the whole panel. */
-.medical-values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 28px;
-}
-
-.medical-values .stat {
-  flex: none;
-  gap: 12px;
-}
-
-/* The position ratings under the pitch: as many cells to a row as fit, each value with the colour of its band. */
+/* The position ratings under the pitch while a player is edited: as many cells to a row as fit, each value with the colour of its band. */
 .position-ratings {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr));
-  gap: 0 16px;
+  gap: 0 var(--space-4);
 }
 
 .position-ratings .stat dt {
@@ -2878,7 +3107,7 @@ h3 + .range-hint-line {
 .position-rating {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
@@ -2906,7 +3135,7 @@ h3 + .range-hint-line {
 .edit-with-unit {
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 /* An input in a line of small print or under the abilities wants a little air around it. */
@@ -2927,7 +3156,7 @@ h3 + .range-hint-line {
 }
 
 .edit-report:not(:empty) {
-  padding: 8px 44px 8px 16px;
+  padding: var(--space-2) 44px var(--space-2) var(--space-4);
   border-top: 1px solid var(--border);
   background: var(--raised);
 }
@@ -2942,8 +3171,8 @@ h3 + .range-hint-line {
 }
 
 .edit-problems {
-  margin: 4px 0 0;
-  padding-left: 18px;
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
   color: var(--danger);
 }
 
@@ -2960,7 +3189,7 @@ h3 + .range-hint-line {
 .edit-review {
   max-height: 9.5rem;
   margin: 0;
-  padding: 8px 16px;
+  padding: var(--space-2) var(--space-4);
   overflow-y: auto;
   border-top: 1px solid var(--border);
   background: var(--pending-soft);
@@ -2972,7 +3201,7 @@ h3 + .range-hint-line {
 .edit-review li {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   padding: 1px 0;
 }
 
@@ -2986,8 +3215,8 @@ h3 + .range-hint-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border-top: 2px solid var(--text);
   background: var(--panel);
 }
@@ -3010,7 +3239,7 @@ h3 + .range-hint-line {
   display: inline-block;
   width: 11px;
   height: 11px;
-  margin-right: 8px;
+  margin-right: var(--space-2);
   border-radius: 2px;
   background: var(--pending-soft);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pending-soft), black 35%);
@@ -3051,7 +3280,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .changes-grid .tag.kind {
-  margin-left: 8px;
+  margin-left: var(--space-2);
   font-weight: 500;
   vertical-align: middle;
 }
@@ -3069,13 +3298,13 @@ button.danger:hover:not(:disabled) {
 
 .changes-grid .col-status button {
   min-height: 26px;
-  padding: 2px 12px;
+  padding: 2px var(--space-3);
 }
 
 .changes-grid .row-error {
   display: block;
   max-width: 24rem;
-  margin-top: 4px;
+  margin-top: var(--space-1);
   color: var(--danger);
   font-size: var(--type-sm);
 }
@@ -3092,33 +3321,17 @@ button.danger:hover:not(:disabled) {
 /* Mass edit */
 
 /* The button at the end of a list's toolbar. */
-.toolbar .mass-edit-toggle,
-.toolbar .export-toggle {
+.toolbar > .mass-edit-toggle {
   margin-left: auto;
 }
 
-/* Export comes first in the player list's toolbar; Mass edit stays beside it. */
-.toolbar .export-toggle + .mass-edit-toggle {
-  margin-left: 0;
-}
-
-/* The player list's actions: in the toolbar as they are, or, beside an open profile, behind More (see MoreMenu). */
-.more-menu,
-.more-panel {
-  display: contents;
-}
-
-.more-panel[hidden] {
-  display: none;
-}
-
-.more-menu[data-folded] {
+/* The player list's less common actions, behind More (see MoreMenu). */
+.more-menu {
   position: relative;
-  display: block;
   margin-left: auto;
 }
 
-.more-menu[data-folded] .more-panel:not([hidden]) {
+.more-panel:not([hidden]) {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -3126,22 +3339,22 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-direction: column;
   min-width: 12rem;
-  padding: 4px;
+  padding: var(--space-1);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
 }
 
-.more-menu[data-folded] .more-panel button {
+.more-panel button {
   margin: 0;
-  padding: 6px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 0;
   border-radius: 3px;
   text-align: left;
 }
 
-.more-menu[data-folded] .more-panel button:hover:not(:disabled) {
+.more-panel button:hover:not(:disabled) {
   background: var(--hover);
 }
 
@@ -3152,7 +3365,7 @@ button.danger:hover:not(:disabled) {
 
 .export-formats {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -3160,7 +3373,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .export-formats legend {
-  margin-bottom: 6px;
+  margin-bottom: var(--space-2);
   padding: 0;
   font-weight: 700;
 }
@@ -3168,7 +3381,7 @@ button.danger:hover:not(:disabled) {
 .export-format {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-3);
   cursor: pointer;
 }
 
@@ -3210,7 +3423,7 @@ button.danger:hover:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--space-5);
   background: var(--scrim);
 }
 
@@ -3240,12 +3453,12 @@ button.danger:hover:not(:disabled) {
 
 /* A dialog's head: its title and subject, over a hairline. */
 .modal-head {
-  padding: 14px 20px 12px;
+  padding: var(--space-4) var(--space-5) var(--space-3);
   border-bottom: 1px solid var(--border);
 }
 
 .modal-head h2 {
-  margin: 0 0 4px;
+  margin: 0 0 var(--space-1);
   font-size: var(--type-2xl);
   font-stretch: 78%;
   font-weight: 850;
@@ -3255,9 +3468,9 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--space-4);
   min-height: 0;
-  padding: 16px 20px;
+  padding: var(--space-4) var(--space-5);
   overflow-y: auto;
 }
 
@@ -3275,8 +3488,8 @@ button.danger:hover:not(:disabled) {
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 12px 20px;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
   border-top: 1px solid var(--border);
 }
 
@@ -3285,23 +3498,23 @@ button.danger:hover:not(:disabled) {
 }
 
 .template-controls { border: 0; padding: 0; min-width: 0; }
-.template-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-.template-dialog h3 { margin: 0 0 12px; font-size: var(--type-lg); }
-.template-dialog label:not(.template-groups label) { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.template-columns { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+.template-dialog h3 { margin: 0 0 var(--space-3); font-size: var(--type-lg); }
+.template-dialog label:not(.template-groups label) { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-3); }
 .template-dialog input:not([type="checkbox"]), .template-dialog select, .template-dialog textarea { width: 100%; min-width: 0; }
-.template-dialog textarea { font: 12px/1.5 monospace; resize: vertical; }
-.template-groups { display: grid; gap: 7px; margin: 14px 0; }
-.template-groups label { display: flex; align-items: center; gap: 8px; }
+.template-dialog textarea { font: var(--type-sm)/1.5 monospace; resize: vertical; }
+.template-groups { display: grid; gap: var(--space-2); margin: var(--space-4) 0; }
+.template-groups label { display: flex; align-items: center; gap: var(--space-2); }
 .template-hits { display: flex; flex-direction: column; max-height: 180px; overflow-y: auto; border-block: 1px solid var(--border); }
-.template-hits button { display: flex; justify-content: space-between; gap: 12px; text-align: left; border: 0; border-bottom: 1px solid var(--border); }
+.template-hits button { display: flex; justify-content: space-between; gap: var(--space-3); text-align: left; border: 0; border-bottom: 1px solid var(--border); }
 .template-hits button span:last-child { color: var(--muted); font-size: var(--type-sm); }
 .template-hits button[aria-pressed="true"] { background: var(--text); color: var(--panel); }
 .template-hits button[aria-pressed="true"] span { color: inherit; }
-.template-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: start; margin: 10px 0; }
+.template-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: start; margin: var(--space-3) 0; }
 .template-file { max-width: 190px; }
-.template-targets { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; }
-.template-dialog details { margin-block: 12px; }
-.template-dialog summary { cursor: pointer; margin-bottom: 10px; }
+.template-targets { border-top: 1px solid var(--border); margin-top: var(--space-5); padding-top: var(--space-4); }
+.template-dialog details { margin-block: var(--space-3); }
+.template-dialog summary { cursor: pointer; margin-bottom: var(--space-3); }
 @media (max-width: 650px) { .template-columns { grid-template-columns: 1fr; } }
 
 .mass-scope.warn {
@@ -3318,7 +3531,7 @@ button.danger:hover:not(:disabled) {
 
 .mass-rows {
   display: grid;
-  gap: 10px;
+  gap: var(--space-3);
 }
 
 /* Field, operation, value and the remove button; a note about the value goes under them. */
@@ -3326,14 +3539,14 @@ button.danger:hover:not(:disabled) {
   display: grid;
   grid-template-columns: minmax(12rem, 1.7fr) minmax(8rem, 0.8fr) minmax(10rem, 1fr) auto;
   align-items: center;
-  gap: 4px 10px;
+  gap: var(--space-1) var(--space-3);
 }
 
 .mass-row select,
 .mass-input {
   min-width: 0;
   min-height: 30px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -3356,7 +3569,7 @@ button.danger:hover:not(:disabled) {
 .mass-value-cell {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -3412,15 +3625,15 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .mass-add {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
   font-size: var(--type-base);
 }
 
@@ -3443,7 +3656,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .mass-preview {
-  padding: 5px 18px;
+  padding: var(--space-1) var(--space-4);
 }
 
 .mass-preview:not(:disabled) {
@@ -3471,7 +3684,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .mass-summary:not(:empty) + .mass-listing {
-  margin-top: -6px;
+  margin-top: calc(-1 * var(--space-2));
 }
 
 .mass-table-wrap {
@@ -3499,7 +3712,7 @@ button.danger:hover:not(:disabled) {
 
 /* "and 1,234 more", under a table that lists only the first rows. */
 .mass-more {
-  margin: 4px 2px 0;
+  margin: var(--space-1) 2px 0;
   color: var(--muted);
   font-size: var(--type-base);
 }
@@ -3511,7 +3724,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .mass-skipped[open] summary {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
   color: var(--text);
 }
 
@@ -3528,7 +3741,7 @@ button.danger:hover:not(:disabled) {
 
 .mass-result:not(:empty) {
   max-height: 12rem;
-  padding: 10px 20px;
+  padding: var(--space-3) var(--space-5);
   overflow-y: auto;
   border-top: 1px solid var(--border);
   background: var(--raised);
@@ -3540,19 +3753,19 @@ button.danger:hover:not(:disabled) {
 }
 
 .mass-result p:not(:first-child) {
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 
 .mass-problems {
   max-height: 9rem;
-  margin: 4px 0 0;
+  margin: var(--space-1) 0 0;
   overflow-y: auto;
 }
 
 /* A call that failed: a bar across the foot of the dialog. */
 .banner.mass-error {
   margin: 0;
-  padding: 10px 20px;
+  padding: var(--space-3) var(--space-5);
   border-width: 1px 0 0;
   border-radius: 0;
   font-size: var(--type-base);
@@ -3572,7 +3785,7 @@ button.danger:hover:not(:disabled) {
 
 /* Marks a change that was part of a mass edit, beside the name. */
 .changes-grid .tag.batch {
-  margin-left: 6px;
+  margin-left: var(--space-2);
   border-color: var(--text);
   color: var(--text);
   vertical-align: middle;
@@ -3588,12 +3801,12 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 /* What undoing a whole mass edit did, under its buttons. */
 .changes-grid .row-note {
-  margin-top: 4px;
+  margin-top: var(--space-1);
   font-size: var(--type-sm);
 }
 
@@ -3618,7 +3831,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .changes-grid tr.in-batch td:first-child {
-  padding-left: 28px;
+  padding-left: var(--space-5);
 }
 
 /* The fields a mass edit changed may be several: their names wrap rather than widen the table. */
@@ -3630,11 +3843,11 @@ button.danger:hover:not(:disabled) {
 .pager {
   display: flex;
   align-items: center;
-  gap: 8px 12px;
+  gap: var(--space-2) var(--space-3);
 }
 
 .pager button {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--type-base);
 }
 
@@ -3648,7 +3861,7 @@ button.danger:hover:not(:disabled) {
    either, as it ends at the edge of the window. */
 .pager-bar {
   flex: none;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-bottom: 0;
   background: var(--raised);
@@ -3656,7 +3869,7 @@ button.danger:hover:not(:disabled) {
 
 /* The pager of a mass edit takes a row of the table, under the row of the mass edit. */
 .changes-grid .batch-pager td {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
 }
 
 /* Saved filters */
@@ -3665,7 +3878,7 @@ button.danger:hover:not(:disabled) {
 .filter-save,
 .saved-form button,
 .saved-ask button {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--type-base);
 }
 
@@ -3674,7 +3887,7 @@ button.danger:hover:not(:disabled) {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: var(--type-base);
 }
 
@@ -3693,7 +3906,7 @@ button.danger:hover:not(:disabled) {
 .saved-pick {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   margin-left: auto;
 }
 
@@ -3703,7 +3916,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .saved-delete {
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border-color: transparent;
   background: transparent;
   color: var(--muted);
@@ -3724,8 +3937,8 @@ button.danger:hover:not(:disabled) {
   flex: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 10px;
-  padding: 8px 12px;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-bottom: 0;
   background: var(--raised);
@@ -3735,7 +3948,7 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex: 1 1 12rem;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-2);
   min-width: 0;
   margin: 0;
   padding: 0;
@@ -3746,7 +3959,7 @@ button.danger:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  padding: 1px 2px 1px 10px;
+  padding: 1px 2px 1px var(--space-3);
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--panel);
@@ -3774,7 +3987,7 @@ button.danger:hover:not(:disabled) {
 
 .compare-clear,
 .compare-open {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--type-base);
 }
 
@@ -3823,7 +4036,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .compare-grid :is(th, td) {
-  padding: 5px 12px;
+  padding: var(--space-1) var(--space-3);
   border-bottom: 1px solid var(--border);
 }
 
@@ -3860,7 +4073,7 @@ button.danger:hover:not(:disabled) {
 
 /* The heading of a group of rows, as the headings of the profile are. */
 .compare-grid th.compare-group {
-  padding: 10px 12px 5px;
+  padding: var(--space-2) var(--space-3) var(--space-1);
   border-top: 3px solid var(--text);
   border-bottom: 1px solid var(--border);
   background: var(--panel);
@@ -3874,7 +4087,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .compare-grid .compare-head {
-  padding: 10px 12px;
+  padding: var(--space-3) var(--space-3);
   font-weight: 400;
   vertical-align: top;
 }
@@ -3905,7 +4118,7 @@ button.danger:hover:not(:disabled) {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 4px 6px;
+  gap: var(--space-1) var(--space-2);
   margin-top: 2px;
 }
 
@@ -3929,7 +4142,7 @@ button.danger:hover:not(:disabled) {
 /* A number or an amount that is no rating: a chip like the others, so the highlight has something to go round. */
 .compare-figure {
   display: inline-block;
-  padding: 1px 6px;
+  padding: 1px var(--space-2);
   border-radius: 3px;
   font-weight: 600;
 }
@@ -3954,7 +4167,7 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-1);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -3962,7 +4175,7 @@ button.danger:hover:not(:disabled) {
 
 /* A position in the colour of its band, as on the pitch (.pos-natural and the others set --pos). */
 .compare-positions li {
-  padding: 1px 7px;
+  padding: 1px var(--space-2);
   border: 1px solid var(--pos);
   border-radius: 3px;
   color: var(--pos);
@@ -3984,14 +4197,9 @@ button.danger:hover:not(:disabled) {
 
 /* Transferring a player */
 
-/* Transfer takes the room Release leaves: leaving to a club is the usual way out. */
 .move-actions {
   display: flex;
-  gap: 6px;
-}
-
-.move-actions .move-toggle {
-  flex: 1;
+  gap: var(--space-2);
 }
 
 /* Narrower than the dialogs that hold tables: a club, a few inputs and a short list. */
@@ -4007,8 +4215,8 @@ button.danger:hover:not(:disabled) {
 
 /* The headings of the sections, as the profile's are. */
 .move-section h3 {
-  margin: 0 0 8px;
-  padding: 5px 2px 0;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1) 2px 0;
   border-top: 3px solid var(--text);
   color: var(--text);
   font-size: var(--type-sm);
@@ -4022,8 +4230,8 @@ button.danger:hover:not(:disabled) {
 .move-club {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 10px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
 }
@@ -4055,7 +4263,7 @@ button.danger:hover:not(:disabled) {
 
 .move-change {
   flex: none;
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--type-base);
 }
 
@@ -4067,7 +4275,7 @@ button.danger:hover:not(:disabled) {
 
 .move-mode button {
   flex: 1;
-  padding: 5px 14px;
+  padding: var(--space-1) var(--space-4);
   font-size: var(--type-base);
   letter-spacing: 0;
 }
@@ -4093,7 +4301,7 @@ button.danger:hover:not(:disabled) {
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 4px 6px;
+  gap: var(--space-1) var(--space-2);
 }
 
 /* The search box is as wide as the dialog. */
@@ -4105,8 +4313,8 @@ button.danger:hover:not(:disabled) {
    come and go; the list is dimmed while the search has not answered for what is typed. */
 .move-results-box {
   min-height: 21rem;
-  margin-top: 8px;
-  padding: 4px;
+  margin-top: var(--space-2);
+  padding: var(--space-1);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
 }
@@ -4131,8 +4339,8 @@ button.danger:hover:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 5px 8px;
+  gap: var(--space-3);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--radius);
   cursor: pointer;
 }
@@ -4151,7 +4359,7 @@ button.danger:hover:not(:disabled) {
 
 /* What the search says under its list: a live region that is always there, and out of the layout while it is empty. */
 .move-results-note {
-  margin: 4px 4px 0;
+  margin: var(--space-1) var(--space-1) 0;
   color: var(--muted);
   font-size: var(--type-base);
 }
@@ -4172,12 +4380,12 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 12px 28px;
+  gap: var(--space-3) var(--space-6);
 }
 
 .move-term {
   display: grid;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -4190,7 +4398,7 @@ button.danger:hover:not(:disabled) {
 .move-money {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .move-unit {
@@ -4201,7 +4409,7 @@ button.danger:hover:not(:disabled) {
 .move-input {
   min-width: 0;
   min-height: 30px;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -4268,7 +4476,7 @@ button.danger:hover:not(:disabled) {
 /* What the move comes to, or why it cannot be made: a live region that is always there. A swap is two lines. */
 .move-plan {
   margin: 0;
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--raised);
@@ -4314,13 +4522,13 @@ button.danger:hover:not(:disabled) {
 .report-what {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
   font-weight: 600;
 }
 
 .report-what textarea {
   min-height: 9rem;
-  padding: 8px 10px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--field);
@@ -4344,8 +4552,8 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .report-files ul {
@@ -4395,7 +4603,7 @@ button.danger:hover:not(:disabled) {
 .banner.move-error {
   flex: none;
   margin: 0;
-  padding: 10px 20px;
+  padding: var(--space-3) var(--space-5);
   border-width: 1px 0 0;
   border-radius: 0;
   font-size: var(--type-base);
@@ -4403,43 +4611,29 @@ button.danger:hover:not(:disabled) {
 
 /* Medical */
 
-/* The Medical group of a player's profile has its values side by side (see Editing); under them either no injuries,
-   which takes focus when the Heal button that had it is gone... */
+/* A group with nothing in it says so: no injuries, which takes focus when the Heal button that had it is gone... */
 .injuries-none {
   width: fit-content;
-  margin: 8px 6px 0;
+  margin: var(--space-2) var(--space-2) 0;
   color: var(--muted);
   font-size: var(--type-base);
 }
 
 .injuries-none:focus-visible,
-.injuries-head h4:focus-visible {
+.group-head h3:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
-/* ...or the injuries: a heading with the Heal button at its end, then each injury with its dates in small print. */
-.injuries-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 12px;
-  padding-right: 6px;
-}
-
-.injuries-head h4 {
-  margin: 0;
-}
-
+/* ...or the injuries, each with its dates in small print. */
 .injury-list {
-  margin: 6px 0 0;
-  padding: 0 6px;
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-2);
   list-style: none;
 }
 
 .injury-list li + li {
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 
 .injury-name {
@@ -4452,7 +4646,7 @@ button.danger:hover:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .injury-dates {
@@ -4461,8 +4655,7 @@ button.danger:hover:not(:disabled) {
   font-size: var(--type-sm);
 }
 
-/* Nationality and homegrown: each kind of tie a row of the group, its ties one under another, and the button that
-   opens the dialog at the group's foot. */
+/* Nationality and homegrown: each kind of tie a row of the group, its ties one under another. */
 .tie-list {
   margin: 0;
   padding: 0;
@@ -4471,13 +4664,6 @@ button.danger:hover:not(:disabled) {
 
 .tie-rule {
   color: var(--muted);
-}
-
-.ties-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-  padding-right: 6px;
 }
 
 /* The dialog: a row per tie, its nation and rule selects and Remove side by side, wrapping in a narrow window. */
@@ -4491,13 +4677,13 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .tie-rows .tie-row + .tie-row,
 .tie-rows + .tie-row,
 .tie-rows + select {
-  margin-top: 6px;
+  margin-top: var(--space-2);
 }
 
 .tie-row select {
@@ -4541,32 +4727,31 @@ button.danger:hover:not(:disabled) {
 }
 
 .ties-status {
-  padding: 6px 20px;
+  padding: var(--space-2) var(--space-5);
   color: var(--muted);
   font-size: var(--type-base);
 }
 
-/* ...and, for a player with none, the injuries the game can give him and the button that adds the one chosen. */
+/* For a player with no injury, on the heading: the injuries the game can give him and the button that adds the one
+   chosen. */
 .injury-add {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 8px 6px 0;
-}
-
-.injury-add select {
+  gap: var(--space-2);
   min-width: 0;
-  max-width: 260px;
 }
 
-/* Grant or Revoke under a player's work permits. */
-.permit-action {
-  margin: 8px 6px 0;
+.group-head .injury-add select {
+  min-width: 0;
+  max-width: 200px;
+  min-height: 24px;
+  padding-block: 1px;
+  font-size: var(--type-sm);
 }
 
 /* Why Heal did not work, under the heading with the button. */
 .heal-error {
-  margin: 6px 6px 0;
+  margin: var(--space-2) var(--space-2) 0;
   color: var(--danger);
   font-size: var(--type-base);
 }
@@ -4578,14 +4763,34 @@ button.danger:hover:not(:disabled) {
 .profile-tabs {
   display: flex;
   flex: none;
-  gap: 2px;
-  padding: 0 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--space-2);
+  padding: 0 var(--space-3);
   border-bottom: 1px solid var(--border);
+}
+
+.profile-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.profile-tabs .max-toggle {
+  min-height: 26px;
+  margin: var(--space-1) 0 var(--space-1) auto;
+  padding: 2px var(--space-3);
+}
+
+/* The tab on show in a player's profile: its groups one under another, like the body of a profile without tabs. */
+.profile-panel > * + * {
+  margin-top: var(--space-5);
 }
 
 .profile-tab {
   margin-bottom: -1px;
-  padding: 8px 14px;
+  padding: var(--space-2) var(--space-4);
   border: 0;
   border-bottom: 3px solid transparent;
   border-radius: 0;
@@ -4623,7 +4828,7 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
   min-height: 30rem;
 }
 
@@ -4634,7 +4839,7 @@ button.danger:hover:not(:disabled) {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 6px 16px;
+  gap: var(--space-2) var(--space-4);
 }
 
 .squad-summary p {
@@ -4658,7 +4863,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .squad-teams button {
-  padding: 4px 12px;
+  padding: var(--space-1) var(--space-3);
   font-size: var(--type-base);
   letter-spacing: 0;
   white-space: nowrap;
@@ -4670,13 +4875,13 @@ button.danger:hover:not(:disabled) {
   flex: none;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  gap: var(--space-2) var(--space-4);
 }
 
 .squad-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 /* What the last action did: a live region that is always there, and takes no room while it is empty. It takes focus
@@ -4687,7 +4892,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .squad-result:not(:empty) {
-  padding: 8px 12px;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--raised);
@@ -4702,7 +4907,7 @@ button.danger:hover:not(:disabled) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .squad-result p {
@@ -4728,11 +4933,11 @@ button.danger:hover:not(:disabled) {
 }
 
 .squad-grid :is(th, td) {
-  padding: 6px 7px;
+  padding: var(--space-1) var(--space-2);
 }
 
 .squad-grid :is(th, td):first-child {
-  padding-left: 12px;
+  padding-left: var(--space-3);
 }
 
 /* The tags may take a second line under the name. */
@@ -4755,11 +4960,11 @@ button.danger:hover:not(:disabled) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px 6px;
+  gap: 2px var(--space-2);
 }
 
 .squad-name .tag {
-  padding: 0 7px;
+  padding: 0 var(--space-2);
   font-size: var(--type-xs);
   line-height: 1.6;
   white-space: nowrap;
@@ -4777,7 +4982,7 @@ button.danger:hover:not(:disabled) {
 
 /* C and VC after a name: the captain's is filled in the accent colour, the vice-captain's outlined. */
 .role-badge {
-  padding: 0 5px;
+  padding: 0 var(--space-1);
   border: 1px solid var(--text);
   border-radius: 2px;
   color: var(--text);
@@ -4810,9 +5015,8 @@ button.danger:hover:not(:disabled) {
   cursor: default;
 }
 
-/* A menu over the window: the captain menu of a squad row, and the settings menu under the masthead's gear. */
-.squad-menu,
-.settings-menu {
+/* A menu over the window: the captain menu of a squad row, and the menus that open from a button (see DropMenu). */
+.squad-menu {
   position: fixed;
   z-index: 50;
   display: flex;
@@ -4820,16 +5024,15 @@ button.danger:hover:not(:disabled) {
   min-width: 12rem;
   max-height: calc(100vh / var(--ui-scale, 1) - 80px);
   overflow-y: auto;
-  padding: 4px;
+  padding: var(--space-1);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   background: var(--panel);
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
 }
 
-.squad-menu button,
-.settings-menu button {
-  padding: 6px 10px;
+.squad-menu button {
+  padding: var(--space-2) var(--space-3);
   border: 0;
   border-radius: 3px;
   background: transparent;
@@ -4837,14 +5040,11 @@ button.danger:hover:not(:disabled) {
 }
 
 .squad-menu button:hover,
-.squad-menu button:focus-visible,
-.settings-menu button:hover,
-.settings-menu button:focus-visible {
+.squad-menu button:focus-visible {
   background: var(--hover);
 }
 
-.squad-menu button:focus-visible,
-.settings-menu button:focus-visible {
+.squad-menu button:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
@@ -4854,7 +5054,7 @@ button.danger:hover:not(:disabled) {
 .drop-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .drop-chevron {
@@ -4875,7 +5075,7 @@ button.danger:hover:not(:disabled) {
 .drop-menu button {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-4);
   white-space: nowrap;
 }
 
@@ -4898,7 +5098,7 @@ button.danger:hover:not(:disabled) {
 .menu-separator {
   flex: none;
   height: 1px;
-  margin: 4px 0;
+  margin: var(--space-1) 0;
   background: var(--border);
 }
 
@@ -4907,20 +5107,26 @@ button.danger:hover:not(:disabled) {
   width: min(440px, 100%);
 }
 
-/* The settings menu: a heading over each list; a language with its flag and its own name, a currency with its sign
-   and its name, and a check after the one in use. */
-.settings-menu {
-  min-width: 13rem;
+/* Settings: four sections, each a small heading over rows of a label and its control. */
+.settings-dialog {
+  width: min(520px, 100%);
 }
 
-.settings-menu [role="group"] + [role="group"] {
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
+.settings-dialog .modal-body {
+  gap: var(--space-5);
+  overscroll-behavior: contain;
 }
 
-.settings-heading {
-  padding: 6px 10px 4px;
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-section h3 {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-size: var(--type-sm);
   font-weight: 600;
@@ -4928,43 +5134,40 @@ button.danger:hover:not(:disabled) {
   text-transform: uppercase;
 }
 
-.settings-menu button {
+.settings-row {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.settings-row > :last-child {
+  justify-self: start;
+}
+
+.settings-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+}
+
+.settings-row select {
+  min-height: 28px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.settings-usage {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
+  gap: var(--space-2);
 }
 
-/* A currency's sign, in a box as wide as a flag so that the names line up. */
-.currency-sign {
-  flex: none;
-  width: 21px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-/* App details at the foot of the settings menu: passive, muted small print. */
-.settings-details {
-  padding: 2px 10px 6px;
+.settings-about p {
+  margin: 0;
   color: var(--muted);
-  font-size: var(--type-sm);
-  white-space: normal;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
-}
-
-.settings-details p {
-  margin: 2px 0;
-}
-
-.settings-check {
-  width: 14px;
-  height: 14px;
-  margin-left: auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 /* A player's favoured or disliked clubs and people: one per line, at the end of the row. */
@@ -4978,7 +5181,7 @@ button.danger:hover:not(:disabled) {
 /* A club's affiliates: one per line, with its logo. */
 .club-ties {
   display: grid;
-  gap: 6px;
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -4986,7 +5189,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .national-squad {
-  margin-top: 8px;
+  margin-top: var(--space-2);
   font-size: var(--type-base);
 }
 
@@ -5001,7 +5204,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .national-squad[open] summary {
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 /* The links to the sections of a long profile: a row that stays at the top of the profile while it scrolls. */
@@ -5011,9 +5214,9 @@ button.danger:hover:not(:disabled) {
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin: -16px -16px 0;
-  padding: 8px 16px;
+  gap: var(--space-1);
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -5021,7 +5224,7 @@ button.danger:hover:not(:disabled) {
 .section-jump button {
   flex: none;
   min-height: 26px;
-  padding: 2px 10px;
+  padding: 2px var(--space-3);
   border-color: transparent;
   background: transparent;
   color: var(--muted);

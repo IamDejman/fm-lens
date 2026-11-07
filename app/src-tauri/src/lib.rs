@@ -213,11 +213,13 @@ impl Connection {
         let mut humans: Vec<u32> = staff.iter().filter(|member| member.is_human).map(|member| member.uid).collect();
         humans.sort_unstable();
         let save = save_of(&session, &humans);
-        let career = staff
-            .iter()
-            .filter(|member| member.is_human)
-            .min_by_key(|member| member.uid)
-            .map(|member| Career { uid: member.uid, manager: member.name.clone(), club: member.club.clone() });
+        let career =
+            staff.iter().filter(|member| member.is_human).min_by_key(|member| member.uid).map(|member| Career {
+                uid: member.uid,
+                manager: member.name.clone(),
+                club: member.club.clone(),
+                club_uid: member.club_uid,
+            });
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
         let frozen = Frozen::default();
@@ -1893,6 +1895,7 @@ struct SquadRow {
     morale: u8,
     injuries: usize,
     bans: usize,
+    unhappy: bool,
 }
 
 /// What a team-wide action does to every player of the team.
@@ -2276,6 +2279,7 @@ struct Career {
     uid: u32,
     manager: String,
     club: Option<String>,
+    club_uid: Option<u32>,
 }
 
 #[derive(Serialize)]
@@ -2823,6 +2827,15 @@ fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Re
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let index = SearchIndex::new(nation_summaries(connection.nations()));
     Ok(page(&index, &query, limit, |_| true, |_| {}))
+}
+
+/// Whether this build's layout places nations' details (see `nation_details`): without them the nations list opens no
+/// profile, as it would only repeat the row.
+#[tauri::command]
+fn nations_detailed(state: State<'_, AppState>) -> Result<bool, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    Ok(connection.session.places_nation_details())
 }
 
 /// The profile of the nation in the nations list with the row id `uid`; `None` where this build's layout does not place
@@ -3777,6 +3790,7 @@ fn club_squads(state: State<'_, AppState>, uid: u32) -> Result<Vec<TeamView>, Fa
                         morale: member.morale,
                         injuries: member.injuries,
                         bans: member.bans,
+                        unhappy: member.unhappy,
                     })
                 })
                 .collect(),
@@ -4198,6 +4212,7 @@ pub fn run() {
             staff_details,
             club_details,
             nation_details,
+            nations_detailed,
             list_nations,
             freeze_money,
             frozen_clubs,

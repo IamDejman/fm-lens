@@ -9,7 +9,7 @@ import { MassEditButton } from "./MassEditDialog";
 import { MoreMenu } from "./MoreMenu";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { countFilters, PlayerFilterBar, toPlayerFilter, type PlayerFilterFields } from "./PlayerFilters";
-import { PlayerProfile } from "./PlayerProfile";
+import { PlayerProfile, readPlayerTab, type PlayerTab } from "./PlayerProfile";
 import { PlayerTemplatesButton } from "./PlayerTemplates";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
@@ -36,6 +36,9 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
   const [order, setOrder] = useState<PlayerOrder | null>(() => restored("playerOrder", readOrder));
   useSnapshot("playerFields", () => fields);
   useSnapshot("playerOrder", () => order);
+  // The tab of the profile is kept here, so that the next player picked opens on the same one.
+  const [tab, setTab] = useState<PlayerTab>(() => restored("playerTab", readPlayerTab));
+  useSnapshot("playerTab", () => tab);
   // The players picked for a comparison. They are kept here, as the list is: every list stays mounted while another
   // view is shown (see `App`), so the set survives switching views.
   const comparison = useComparison();
@@ -65,7 +68,6 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         <PlayerFilterBar
           fields={fields}
           onChange={setFields}
-          active={filterCount}
           actions={
             <SavedFilterControls
               fields={fields}
@@ -80,7 +82,7 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         />
       }
       toolbarActions={(list) => (
-        <MoreMenu folded={list.besideProfile}>
+        <MoreMenu>
           <ExportButton list={list} filter={filter} order={order} />
           <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
           <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
@@ -108,6 +110,8 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
           <td className="col-name" title={p.fullName && p.fullName !== p.name ? `${p.name}\n${p.fullName}` : p.name}>
             <div className="name">{p.name}</div>
             {p.fullName && p.fullName !== p.name && <div className="sub">{p.fullName}</div>}
+            {/* Shown instead of the Club column beside an open profile. */}
+            <div className="sub row-club">{p.club ?? profileText.freeAgent}</div>
           </td>
           <td className="num col-age">{p.age ?? profileText.none}</td>
           <PositionsCell positions={p.positions} />
@@ -131,7 +135,14 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         </>
       )}
       profile={(p, panel) => (
-        <PlayerProfile player={p} version={panel.version} onClose={panel.onClose} comparison={comparison} />
+        <PlayerProfile
+          player={p}
+          version={panel.version}
+          tab={tab}
+          onTab={setTab}
+          onClose={panel.onClose}
+          comparison={comparison}
+        />
       )}
     />
   );

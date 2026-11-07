@@ -1,5 +1,13 @@
-import { useId, useRef, useState, type ReactNode } from "react";
-import { AttributeFilters, PLAYER_ATTRIBUTES, toAttributeBounds, type AttributeRow } from "./AttributeFilters";
+import { useId, type ReactNode } from "react";
+import {
+  attributeChips,
+  AttributeFilters,
+  PLAYER_ATTRIBUTES,
+  toAttributeBounds,
+  type AttributeRow,
+} from "./AttributeFilters";
+import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
+import { formatDate } from "./format";
 import { playerListText, POSITION_LABELS, type PositionKey } from "./labels";
 import type { FmDate, PlayerFilter } from "./types";
 
@@ -104,184 +112,197 @@ export function countFilters(filter: PlayerFilter | undefined): number {
 interface PlayerFilterBarProps {
   fields: PlayerFilterFields;
   onChange: (fields: PlayerFilterFields) => void;
-  /** How many filters are in effect, from `countFilters`. */
-  active: number;
-  /** More controls after Clear in the head of the bar, e.g. those of the saved filters. */
+  /** More controls at the end of the head of the bar, e.g. those of the saved filters. */
   actions?: ReactNode;
 }
 
-/** The filter bar of the player list: a button with the number of filters in effect, and the inputs behind it. */
-export function PlayerFilterBar({ fields, onChange, active, actions }: PlayerFilterBarProps) {
-  const [open, setOpen] = useState(false);
-  const toggle = useRef<HTMLButtonElement>(null);
+/** A chip for each filter in effect, as `countFilters` counts them: the two ends of the age range are one. */
+function playerChips(fields: PlayerFilterFields, onChange: (fields: PlayerFilterFields) => void): FilterChip[] {
+  const filter = toPlayerFilter(fields);
+  if (!filter) {
+    return [];
+  }
+  const chips: FilterChip[] = [];
+  const add = (key: string, label: string, cleared: Partial<PlayerFilterFields>) =>
+    chips.push({ key, label, remove: () => onChange({ ...fields, ...cleared }) });
+  const number = (value: number | undefined) => (value === undefined ? null : String(value));
+  const age = rangeText(filter.minAge, filter.maxAge);
+  const minCa = number(filter.minCurrentAbility);
+  const minPa = number(filter.minPotentialAbility);
+
+  if (filter.position) {
+    add("position", chipLabel(text.position, POSITION_LABELS[filter.position as PositionKey] ?? filter.position), {
+      position: "",
+    });
+  }
+  if (age !== null) {
+    add("age", chipLabel(text.age, age), { minAge: "", maxAge: "" });
+  }
+  if (minCa !== null) {
+    add("minCa", chipLabel(text.minCurrentAbility, minCa), { minCurrentAbility: "" });
+  }
+  if (minPa !== null) {
+    add("minPa", chipLabel(text.minPotentialAbility, minPa), { minPotentialAbility: "" });
+  }
+  if (filter.nation) {
+    add("nation", chipLabel(text.nation, filter.nation), { nation: "" });
+  }
+  if (filter.club) {
+    add("club", chipLabel(text.club, filter.club), { club: "" });
+  }
+  if (filter.freeAgents) {
+    add("freeAgents", text.freeAgentsOnly, { freeAgents: false });
+  }
+  if (filter.contractExpiresBy) {
+    add("contract", chipLabel(text.contractEndsBy, formatDate(filter.contractExpiresBy)), { contractExpiresBy: "" });
+  }
+  if (filter.transferListed) {
+    add("transferListed", text.transferListedOnly, { transferListed: false });
+  }
+  if (filter.loanListed) {
+    add("loanListed", text.loanListedOnly, { loanListed: false });
+  }
+  return [
+    ...chips,
+    ...attributeChips(fields.attributes, PLAYER_ATTRIBUTES, (attributes) => onChange({ ...fields, attributes })),
+  ];
+}
+
+/** The filter bar of the player list. */
+export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarProps) {
   const ageLabel = useId();
 
   const set = <K extends keyof PlayerFilterFields>(key: K, value: PlayerFilterFields[K]) =>
     onChange({ ...fields, [key]: value });
 
   return (
-    <div className="filter-bar">
-      <div className="filter-head">
-        <button
-          ref={toggle}
-          type="button"
-          className="filter-toggle"
-          aria-expanded={open}
-          aria-label={active > 0 ? text.toggleActive(active) : undefined}
-          onClick={() => setOpen(!open)}
-        >
-          {text.toggle}
-          {active > 0 && <span className="filter-count">{active}</span>}
-          <svg viewBox="0 0 20 20" aria-hidden="true">
-            <path d="m5 8 5 5 5-5" />
-          </svg>
-        </button>
-        {active > 0 && (
-          <button
-            type="button"
-            className="filter-clear"
-            onClick={() => {
-              onChange(NO_PLAYER_FILTERS);
-              // This button goes away with the filters: keep keyboard focus on the bar.
-              toggle.current?.focus();
-            }}
-          >
-            {text.clear}
-          </button>
-        )}
-        {actions}
+    <FilterBar chips={playerChips(fields, onChange)} onClear={() => onChange(NO_PLAYER_FILTERS)} actions={actions}>
+      <label className="filter-field">
+        <span>{text.position}</span>
+        <select value={fields.position} onChange={(e) => set("position", e.currentTarget.value)}>
+          <option value="">{text.any}</option>
+          {POSITION_ORDER.map((key) => (
+            <option key={key} value={key}>
+              {POSITION_LABELS[key]}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <div className="filter-field" role="group" aria-labelledby={ageLabel}>
+        <span id={ageLabel}>{text.age}</span>
+        <input
+          type="number"
+          min={AGE_RANGE.min}
+          max={AGE_RANGE.max}
+          step={1}
+          placeholder={text.minPlaceholder}
+          aria-label={text.minAge}
+          value={fields.minAge}
+          onChange={(e) => set("minAge", e.currentTarget.value)}
+        />
+        <span aria-hidden="true">–</span>
+        <input
+          type="number"
+          min={AGE_RANGE.min}
+          max={AGE_RANGE.max}
+          step={1}
+          placeholder={text.maxPlaceholder}
+          aria-label={text.maxAge}
+          value={fields.maxAge}
+          onChange={(e) => set("maxAge", e.currentTarget.value)}
+        />
       </div>
 
-      {open && (
-        <div className="filter-fields">
-          <label className="filter-field">
-            <span>{text.position}</span>
-            <select value={fields.position} onChange={(e) => set("position", e.currentTarget.value)}>
-              <option value="">{text.any}</option>
-              {POSITION_ORDER.map((key) => (
-                <option key={key} value={key}>
-                  {POSITION_LABELS[key]}
-                </option>
-              ))}
-            </select>
-          </label>
+      <label className="filter-field" title={text.minCurrentAbilityTitle}>
+        <span>{text.minCurrentAbility}</span>
+        <input
+          type="number"
+          min={ABILITY_RANGE.min}
+          max={ABILITY_RANGE.max}
+          step={1}
+          placeholder={text.abilityPlaceholder}
+          value={fields.minCurrentAbility}
+          onChange={(e) => set("minCurrentAbility", e.currentTarget.value)}
+        />
+      </label>
 
-          <div className="filter-field" role="group" aria-labelledby={ageLabel}>
-            <span id={ageLabel}>{text.age}</span>
-            <input
-              type="number"
-              min={AGE_RANGE.min}
-              max={AGE_RANGE.max}
-              step={1}
-              placeholder={text.minPlaceholder}
-              aria-label={text.minAge}
-              value={fields.minAge}
-              onChange={(e) => set("minAge", e.currentTarget.value)}
-            />
-            <span aria-hidden="true">–</span>
-            <input
-              type="number"
-              min={AGE_RANGE.min}
-              max={AGE_RANGE.max}
-              step={1}
-              placeholder={text.maxPlaceholder}
-              aria-label={text.maxAge}
-              value={fields.maxAge}
-              onChange={(e) => set("maxAge", e.currentTarget.value)}
-            />
-          </div>
+      <label className="filter-field" title={text.minPotentialAbilityTitle}>
+        <span>{text.minPotentialAbility}</span>
+        <input
+          type="number"
+          min={ABILITY_RANGE.min}
+          max={ABILITY_RANGE.max}
+          step={1}
+          placeholder={text.abilityPlaceholder}
+          value={fields.minPotentialAbility}
+          onChange={(e) => set("minPotentialAbility", e.currentTarget.value)}
+        />
+      </label>
 
-          <label className="filter-field" title={text.minCurrentAbilityTitle}>
-            <span>{text.minCurrentAbility}</span>
-            <input
-              type="number"
-              min={ABILITY_RANGE.min}
-              max={ABILITY_RANGE.max}
-              step={1}
-              placeholder={text.abilityPlaceholder}
-              value={fields.minCurrentAbility}
-              onChange={(e) => set("minCurrentAbility", e.currentTarget.value)}
-            />
-          </label>
+      <label className="filter-field">
+        <span>{text.nation}</span>
+        <input
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={fields.nation}
+          onChange={(e) => set("nation", e.currentTarget.value)}
+        />
+      </label>
 
-          <label className="filter-field" title={text.minPotentialAbilityTitle}>
-            <span>{text.minPotentialAbility}</span>
-            <input
-              type="number"
-              min={ABILITY_RANGE.min}
-              max={ABILITY_RANGE.max}
-              step={1}
-              placeholder={text.abilityPlaceholder}
-              value={fields.minPotentialAbility}
-              onChange={(e) => set("minPotentialAbility", e.currentTarget.value)}
-            />
-          </label>
+      <label className="filter-field">
+        <span>{text.club}</span>
+        <input
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={fields.club}
+          onChange={(e) => set("club", e.currentTarget.value)}
+        />
+      </label>
 
-          <label className="filter-field">
-            <span>{text.nation}</span>
-            <input
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={fields.nation}
-              onChange={(e) => set("nation", e.currentTarget.value)}
-            />
-          </label>
+      <label className="filter-field">
+        <input
+          type="checkbox"
+          checked={fields.freeAgents}
+          onChange={(e) => set("freeAgents", e.currentTarget.checked)}
+        />
+        <span>{text.freeAgentsOnly}</span>
+      </label>
 
-          <label className="filter-field">
-            <span>{text.club}</span>
-            <input
-              type="text"
-              autoComplete="off"
-              spellCheck={false}
-              value={fields.club}
-              onChange={(e) => set("club", e.currentTarget.value)}
-            />
-          </label>
+      <label className="filter-field">
+        <span>{text.contractEndsBy}</span>
+        <input
+          type="date"
+          value={fields.contractExpiresBy}
+          onChange={(e) => set("contractExpiresBy", e.currentTarget.value)}
+        />
+      </label>
 
-          <label className="filter-field">
-            <input
-              type="checkbox"
-              checked={fields.freeAgents}
-              onChange={(e) => set("freeAgents", e.currentTarget.checked)}
-            />
-            <span>{text.freeAgentsOnly}</span>
-          </label>
+      <label className="filter-field">
+        <input
+          type="checkbox"
+          checked={fields.transferListed}
+          onChange={(e) => set("transferListed", e.currentTarget.checked)}
+        />
+        <span>{text.transferListedOnly}</span>
+      </label>
 
-          <label className="filter-field">
-            <span>{text.contractEndsBy}</span>
-            <input
-              type="date"
-              value={fields.contractExpiresBy}
-              onChange={(e) => set("contractExpiresBy", e.currentTarget.value)}
-            />
-          </label>
+      <label className="filter-field">
+        <input
+          type="checkbox"
+          checked={fields.loanListed}
+          onChange={(e) => set("loanListed", e.currentTarget.checked)}
+        />
+        <span>{text.loanListedOnly}</span>
+      </label>
 
-          <label className="filter-field">
-            <input
-              type="checkbox"
-              checked={fields.transferListed}
-              onChange={(e) => set("transferListed", e.currentTarget.checked)}
-            />
-            <span>{text.transferListedOnly}</span>
-          </label>
-
-          <label className="filter-field">
-            <input
-              type="checkbox"
-              checked={fields.loanListed}
-              onChange={(e) => set("loanListed", e.currentTarget.checked)}
-            />
-            <span>{text.loanListedOnly}</span>
-          </label>
-
-          <AttributeFilters
-            rows={fields.attributes}
-            choices={PLAYER_ATTRIBUTES}
-            onChange={(rows) => set("attributes", rows)}
-          />
-        </div>
-      )}
-    </div>
+      <AttributeFilters
+        rows={fields.attributes}
+        choices={PLAYER_ATTRIBUTES}
+        onChange={(rows) => set("attributes", rows)}
+      />
+    </FilterBar>
   );
 }

@@ -11,7 +11,7 @@ import {
 import { listText, profileText, tieText } from "./labels";
 import { ClubLine } from "./MoveDialog";
 import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
-import { Fact } from "./ProfileParts";
+import { Fact, GroupHead } from "./ProfileParts";
 import type {
   ClubPage,
   Related,
@@ -139,8 +139,8 @@ function useListShown(hasEntries: boolean, uid: number): boolean {
 }
 
 /**
- * The Change button under a list of a profile, which opens `dialog` while the game can be written to. Focus goes back
- * to it once the dialog is gone.
+ * The Change button on the heading of a list of a profile, which opens `dialog` while the game can be written to. Focus
+ * goes back to it once the dialog is gone.
  */
 export function ListChange({
   title,
@@ -163,19 +163,17 @@ export function ListChange({
 
   return (
     <>
-      <div className="ties-foot">
-        <button
-          ref={button}
-          type="button"
-          className="heal-toggle"
-          aria-haspopup="dialog"
-          disabled={!editable}
-          title={editable ? title : readOnlyNote}
-          onClick={() => setOpen(true)}
-        >
-          {tieText.change}
-        </button>
-      </div>
+      <button
+        ref={button}
+        type="button"
+        className="heal-toggle"
+        aria-haspopup="dialog"
+        disabled={!editable}
+        title={editable ? title : readOnlyNote}
+        onClick={() => setOpen(true)}
+      >
+        {tieText.change}
+      </button>
       {open && dialog(() => setOpen(false))}
     </>
   );
@@ -221,7 +219,24 @@ export function PreferencesGroup({
   };
   return (
     <section className="profile-group">
-      <h3>{profileText.preferences}</h3>
+      <GroupHead title={profileText.preferences}>
+        <ListChange
+          title={listText.likesTitle}
+          dialog={(onClose) => (
+            <ValueListDialog
+              title={profileText.preferences}
+              who={person.name}
+              sections={sections()}
+              {...STRENGTHS}
+              inputLabel={listText.strengthOf}
+              save={(index, strength) => changePreference(person.uid, person.staff, index, strength)}
+              remove={(index) => removePreference(person.uid, person.staff, index)}
+              list={preferences}
+              onClose={onClose}
+            />
+          )}
+        />
+      </GroupHead>
       {preferences.length === 0 && <p className="note">{profileText.none}</p>}
       <dl className="stats">
         {PREFERENCE_KINDS.map((kind) => {
@@ -251,22 +266,6 @@ export function PreferencesGroup({
           );
         })}
       </dl>
-      <ListChange
-        title={listText.likesTitle}
-        dialog={(onClose) => (
-          <ValueListDialog
-            title={profileText.preferences}
-            who={person.name}
-            sections={sections()}
-            {...STRENGTHS}
-            inputLabel={listText.strengthOf}
-            save={(index, strength) => changePreference(person.uid, person.staff, index, strength)}
-            remove={(index) => removePreference(person.uid, person.staff, index)}
-            list={preferences}
-            onClose={onClose}
-          />
-        )}
-      />
     </section>
   );
 }
@@ -300,7 +299,24 @@ export function LanguagesGroup({
   ];
   return (
     <section className="profile-group">
-      <h3>{profileText.languages}</h3>
+      <GroupHead title={profileText.languages}>
+        <ListChange
+          title={listText.languagesTitle}
+          dialog={(onClose) => (
+            <ValueListDialog
+              title={profileText.languages}
+              who={person.name}
+              sections={sections()}
+              {...LEVELS}
+              inputLabel={listText.levelOf}
+              save={(index, level) => changeLanguage(person.uid, person.staff, index, level)}
+              remove={(index) => removeLanguage(person.uid, person.staff, index)}
+              list={languages}
+              onClose={onClose}
+            />
+          )}
+        />
+      </GroupHead>
       {languages.length === 0 && <p className="note">{profileText.none}</p>}
       <dl className="stats">
         {languages.map((language, index) => (
@@ -309,22 +325,6 @@ export function LanguagesGroup({
           </Fact>
         ))}
       </dl>
-      <ListChange
-        title={listText.languagesTitle}
-        dialog={(onClose) => (
-          <ValueListDialog
-            title={profileText.languages}
-            who={person.name}
-            sections={sections()}
-            {...LEVELS}
-            inputLabel={listText.levelOf}
-            save={(index, level) => changeLanguage(person.uid, person.staff, index, level)}
-            remove={(index) => removeLanguage(person.uid, person.staff, index)}
-            list={languages}
-            onClose={onClose}
-          />
-        )}
-      />
     </section>
   );
 }

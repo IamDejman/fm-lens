@@ -1,4 +1,4 @@
-import { Fragment, useContext, useEffect, useId, useState, type ReactNode } from "react";
+import { Fragment, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { EditableValue, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
 import { changeStaffJob, staffJobs } from "./editing";
@@ -17,11 +17,12 @@ import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
   attributeRow,
-  Born,
   ContractDates,
   Fact,
+  PersonalGroup,
   personalityRows,
   ProfileFrame,
+  ProfileTabs,
   RatingGroup,
   ReputationBars,
   useProfileDetails,
@@ -47,6 +48,14 @@ const FORMATION_FIELDS = ["formation.in_possession", "formation.out_of_possessio
 
 /** A formation id as the profile shows it: "-" for none. */
 const formationText = (field: string, id: number) => (id === 0 ? "-" : choiceLabel(field, id));
+
+/** The tabs of the profile, in their order. */
+const TABS = ["attributes", "contract", "career"] as const;
+
+export type StaffTab = (typeof TABS)[number];
+
+/** The tab kept from before the language was switched, or Attributes. */
+export const readStaffTab = (value: unknown): StaffTab => TABS.find((tab) => tab === value) ?? "attributes";
 
 /** The game stores these two as shown (1–20); every other attribute is stored as 0–100. */
 const STORED_AS_SHOWN = new Set<string>(["working_with_youngsters", "authority"]);
@@ -100,23 +109,34 @@ interface StaffProfileProps {
   member: StaffSummary;
   /** Changes when the game data is read again, so the profile is too. */
   version: number;
+  /** The tab on show; kept by the list, so the next person picked opens on it too. */
+  tab: StaffTab;
+  onTab: (tab: StaffTab) => void;
   onClose: () => void;
 }
 
 /** The profile of one member of staff. Mount it with `key={uid}` so a new person starts at the top. */
-export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
+export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProfileProps) {
   const loaded = useProfileDetails<StaffDetails>("staff_details", member.uid, version);
   const editing = useProfileEditing("staff", member.uid);
   const { gameActions } = useContext(EditorContext);
+  const base = useId();
+  const panel = useRef<HTMLDivElement>(null);
   const details = loaded?.details;
   const info: StaffSummary = details ?? member;
-  const vitals = [info.dateOfBirth && <Born dateOfBirth={info.dateOfBirth} age={info.age} />, `${profileText.id} ${info.uid}`];
+
+  // Another tab starts at its top, wherever the last one was scrolled to.
+  const select = (next: StaffTab) => {
+    onTab(next);
+    panel.current?.closest(".profile-body")?.scrollTo({ top: 0 });
+  };
 
   return (
     <ProfileFrame
       picture={<PersonFace uid={info.uid} name={info.name} size={PICTURE_SIZE.face} />}
       name={info.name}
-      fullName={info.fullName}
+      // The full name, the birth date and the ID are under Personal details on the Career tab.
+      fullName={null}
       badge={info.isHuman ? <HumanBadge /> : undefined}
       meta={dotted([
         info.job !== null && jobLabel(info.job),
@@ -129,13 +149,25 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
             </WithPicture>
           </EditableValue>
         ),
+        info.age !== null && profileText.age(info.age),
       ])}
-      vitals={vitals}
       currentAbility={info.currentAbility}
       potentialAbility={info.potentialAbility}
       loaded={loaded}
       onClose={onClose}
       editing={editing}
+      tabs={
+        details && (
+          <ProfileTabs
+            tabs={TABS}
+            tab={tab}
+            base={base}
+            label={profileText.staffTabsLabel}
+            names={profileText.staffTabs}
+            onSelect={select}
+          />
+        )
+      }
       actions={
         // Only while the profile is read, not edited: for someone with a club to leave who is not you, and for you
         // where the game can make you another club's manager, with a club or without.
@@ -151,69 +183,96 @@ export function StaffProfile({ member, version, onClose }: StaffProfileProps) {
         )
       }
     >
-      {details && <StaffBody details={details} canChangeJob={editing.stage === "view" && !info.isHuman} />}
+      {details && (
+        <div
+          ref={panel}
+          className="profile-panel"
+          role="tabpanel"
+          id={`${base}-panel`}
+          aria-labelledby={`${base}-${tab}`}
+        >
+          {tab === "attributes" && <AttributesTab details={details} />}
+          {tab === "contract" && (
+            <ContractTab details={details} canChangeJob={editing.stage === "view" && !info.isHuman} />
+          )}
+          {tab === "career" && <CareerTab details={details} />}
+        </div>
+      )}
     </ProfileFrame>
   );
 }
 
-function StaffBody({ details, canChangeJob }: { details: StaffDetails; canChangeJob: boolean }) {
-  const person = { uid: details.uid, staff: true, name: details.name };
+/** Attributes and personality, which all take 1 to 20 (one hint says it for all of them), and his formations. */
+function AttributesTab({ details }: { details: StaffDetails }) {
   return (
     <>
       <StaffFreeze uid={details.uid} />
-      {/* What only the user's own manager has comes first, where it is found. */}
+      <SharedRangeHint field="attribute.determination" />
+      <div className="profile-columns staff-attributes">
+        <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />
+        <div className="profile-stack">
+          <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
+          <RatingGroup title={profileText.medical} rows={attributeRows(details, MEDICAL)} />
+        </div>
+        <RatingGroup title={profileText.knowledge} rows={attributeRows(details, KNOWLEDGE)} />
+      </div>
+      <div className="profile-split">
+        <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
+        {details.formations !== null && (
+          <section className="profile-group">
+            <h3>{profileText.formations}</h3>
+            <dl className="stats">
+              {FORMATION_FIELDS.map((field, n) => (
+                <Fact key={field} label={fieldLabel("staff", field)}>
+                  <EditableValue field={field}>{formationText(field, details.formations?.[n] ?? 0)}</EditableValue>
+                </Fact>
+              ))}
+            </dl>
+          </section>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** What only the user's own manager has, first; then his contract and his qualifications. */
+function ContractTab({ details, canChangeJob }: { details: StaffDetails; canChangeJob: boolean }) {
+  return (
+    <>
       {details.isHuman && (details.unsackable !== null || details.registrationAnytime !== null) && (
         <ManagerGroup unsackable={details.unsackable} registrationAnytime={details.registrationAnytime} />
       )}
-      {/* Attributes and personality all take 1 to 20: one hint says it for all of them. */}
-      <SharedRangeHint field="attribute.determination" />
-      <div className="profile-pair">
-        <div className="profile-columns">
-          <RatingGroup title={profileText.coaching} rows={attributeRows(details, COACHING)} />
-          <div className="profile-stack">
-            <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
-            <RatingGroup title={profileText.medical} rows={attributeRows(details, MEDICAL)} />
-          </div>
-          <RatingGroup title={profileText.knowledge} rows={attributeRows(details, KNOWLEDGE)} />
-        </div>
+      {details.contract && <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />}
+      {details.coachingLicence !== null && (
+        <section className="profile-group">
+          <h3>{profileText.qualifications}</h3>
+          <dl className="stats">
+            <Fact label={profileText.coachingLicence}>
+              <EditableValue field="coaching_licence">{profileText.licenceName(details.coachingLicence)}</EditableValue>
+            </Fact>
+          </dl>
+        </section>
+      )}
+    </>
+  );
+}
 
-        <div className="profile-split">
-          <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
-          <div className="profile-stack">
-            {details.contract && (
-              <ContractGroup uid={details.uid} contract={details.contract} canChangeJob={canChangeJob} />
-            )}
-            {details.coachingLicence !== null && (
-              <section className="profile-group">
-                <h3>{profileText.qualifications}</h3>
-                <dl className="stats">
-                  <Fact label={profileText.coachingLicence}>
-                    <EditableValue field="coaching_licence">
-                      {profileText.licenceName(details.coachingLicence)}
-                    </EditableValue>
-                  </Fact>
-                </dl>
-              </section>
-            )}
-            {details.formations !== null && (
-              <section className="profile-group">
-                <h3>{profileText.formations}</h3>
-                <dl className="stats">
-                  {FORMATION_FIELDS.map((field, n) => (
-                    <Fact key={field} label={fieldLabel("staff", field)}>
-                      <EditableValue field={field}>{formationText(field, details.formations?.[n] ?? 0)}</EditableValue>
-                    </Fact>
-                  ))}
-                </dl>
-              </section>
-            )}
-            <section className="profile-group">
-              <h3>{profileText.reputation}</h3>
-              <ReputationBars reputation={details.reputation} />
-            </section>
-          </div>
-        </div>
-      </div>
+/** His reputation, the languages he speaks and the people and clubs he likes or dislikes. */
+function CareerTab({ details }: { details: StaffDetails }) {
+  const person = { uid: details.uid, staff: true, name: details.name };
+  return (
+    <>
+      <PersonalGroup
+        entity="staff"
+        name={details.name}
+        fullName={details.fullName}
+        dateOfBirth={details.dateOfBirth}
+        uid={details.uid}
+      />
+      <section className="profile-group">
+        <h3>{profileText.reputation}</h3>
+        <ReputationBars reputation={details.reputation} />
+      </section>
       <LanguagesGroup languages={details.languages} person={person} />
       <PreferencesGroup preferences={details.preferences} person={person} />
     </>
