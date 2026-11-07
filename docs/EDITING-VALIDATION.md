@@ -1290,3 +1290,18 @@ Not run: Remove unhappiness and Lift bans (no Arsenal player was unhappy or
 banned, so both were off), and saving, quitting and reloading an edited copy.
 Max tactics is a game action, checked in "Windows game actions" above. What
 Windows still lacks next to macOS is in `docs/internal/WINDOWS-PARITY-HANDOFF.md`.
+
+## Windows installer, one copy at a time and self-update (7 November 2026)
+
+Windows Server 2022 on the AWS g4dn.xlarge, signed in over RDP. FM was not running: none of this touches the game.
+
+The installer was the `fm-lens-windows-installer` artifact of #147's Validate run (42413779944), FM Lens 0.6.1 with
+the Windows updater (#146) and the one-copy guard (#147). Its zip matched the digest GitHub publishes for the
+artifact (`sha256:05226e32…2b607cd8`), and `FM Lens_0.6.1_x64-setup.exe` had the same SHA-256 on the Mac and on the
+box (`F85704E3…F1728ED4`).
+
+| Check | Result |
+|---|---|
+| Silent install, `/S`, over SSH as Administrator | Exit 0. `FM Lens.exe` and `uninstall.exe` in `%LOCALAPPDATA%\FM Lens`, a Start menu entry, and FM Lens 0.6.1 in the user's installed apps. No administrator prompt |
+| First run | The window opened on the connect screen with What's new for 0.6.1. `latest.json` (0.6.1) had no Windows entry yet, and the app showed no update notice or error |
+| One copy at a time | With the window minimized, a second `FM Lens.exe` exited in 0.05 s with code 0. One FM Lens process remained, and its window was restored and in front |
