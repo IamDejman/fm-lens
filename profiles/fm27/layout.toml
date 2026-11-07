@@ -185,8 +185,15 @@ potential_ability = 0xDC  # u16
 # personality, birth date and contract. Attributes, reputation and CA/PA stay put.
 person_block = 0x100
 person_block_shifts = [0x0, 0x340]
+# As on macOS 0x38 further (the person block's 0x30 and 8 more): his relations record, laid out as a player's,
+# FM's coaching qualification and the formations he prefers in and out of possession. Read on Steam 26340721:
+# Arteta has 12 favoured or disliked people and clubs and Guardiola 22; both hold the Continental Pro licence (1).
+relations = 0x178
+coaching_licence = 0x23C
+formations = [0xDF, 0xE3]
 
 # u8, raw 0..100, shown as (raw + 2) / 5
+
 [staff.attributes]
 attacking = 0x32
 defending = 0x33
@@ -272,12 +279,16 @@ players = 0x38
 captain = 0x88
 vice_captain = 0x90
 reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its senior team
+# The manager's object, as for a national team. Arsenal's senior team points at its human manager (staff id
+# 2002071616, his person block 0x340 further) on Steam 26340721.
+manager = 0x80
 
 # The game's allocator hands out blocks in size classes, without headers. Measured on
 # the buffers of the teams' player lists (probe `squads`): a list of n pointers sits in
 # the smallest of these blocks that holds 8 * n bytes, and the bytes after its end up to
 # the block's end are zero. Only sizes from just above the first value to the last one
 # are relied on; smaller and larger lists were not measured well enough.
+
 [heap]
 block_sizes = [144, 160, 192, 224, 256, 288, 320, 384, 448, 512]
 
@@ -299,11 +310,19 @@ finance = 0x150           # finance record pointer
 medical_staff = 0x60      # physios, sports scientists, the head of sports science, some fitness coaches
 coaching_staff = 0x78     # coaches, assistants, goalkeeping and fitness coaches, analysts, youth managers
 scouting_staff = 0x90     # scouts, the chief scout, recruitment analysts
+# As on macOS, checked on Steam 26340721 with Arsenal: its rivals (Tottenham 100, Manchester United 90, Chelsea 85,
+# Liverpool 75, West Ham 60), its link with Boreham Wood, and England as the country it plays in and its own.
+relations = 0x48          # the club's relations, laid out as a person's: code 5 to a club is a rivalry, 0-100
+links = 0x118             # list of pointers to its links with other clubs (affiliations)
+link_club = 0x08          # in a link: the other club
+plays_in = 0xE8           # nation pointer: where it plays when based abroad, else its own nation
+nation = 0xD8             # nation pointer
 
 # A club's stadium (db::STADIUM, 0xC0 bytes), which its senior team points at. Read on the Game Pass build with
 # Manchester United's Old Trafford: capacity 74,879, all of it seated, 74,310 in use, room to grow to 95,285; and
 # checked against all 30,536 stadiums of that save, whose seats never outnumber their capacity and whose expansion
 # ceiling is nearly always at or above it.
+
 [stadium]
 team_pointer = 0x78       # in the senior team: pointer to the stadium it plays at
 name = 0x40               # FM string pointer
@@ -337,3 +356,159 @@ corporate = 0x8A9         # u8 1..20, corporate facilities
 [nation]
 uid = 0x0C                # u32 (Argentina: 1649, as graphics packs map its flag)
 name = 0x18               # FM string pointer
+
+# A player on loan holds a second contract, a db::LOAN_CONTRACT, in this slot of his object (macOS 0x2F8, 0x40
+# further as his person block's fields are). Read on Steam 26340721: 1,343 players on loan, Thelo Aasgaard from
+# Rangers with a future fee of 5,583,707, Mark Shelton from York City with none (0xFFFFFFFF).
+[loan]
+slot = 0x338
+class = ".?AVLOAN_CONTRACT@db@@"
+future_fee = 0xC0
+
+# TRANSFER_MANAGER's records of the work permits players hold, as on macOS but 8 bytes sooner in the manager: a
+# (begin, end) of pointers to 0x18-byte records, sorted by player id, each the nation's pointer, the player's id
+# (+0x08), the year it was made (+0x10), the day his ESC slot began (+0x12) and flags (+0x16, bit 0 an ESC slot).
+# Read on Steam 26340721: 1,152 records; Gabriel and Bruno Guimaraes hold active permits for England. The manager is
+# found through the build profile's transfer_manager.
+[work_permit]
+class = ".?AVTRANSFER_MANAGER@@"
+records = 0x718
+person = 0x290           # u32 player id, in the person block (person block + 8)
+record_size = 0x18
+record_person = 0x08
+record_esc_since = 0x12
+record_flags = 0x16
+
+# Transfers agreed for a later day, laid out as on macOS: TRANSFER_MANAGER's offers and its dated records of them.
+# Read on Steam 26340721: 34 dated records, each naming a waiting offer (status 0x13), such as Andria Bartishvili's
+# move from Iberia 1999 Tbilisi to Arsenal on 1 July 2027.
+[future_transfer]
+offers = 0x20
+dated = 0x50
+dated_owner = 0x18       # what drop_dated_transfer takes, from the manager
+record_person = 0x00
+record_date = 0x08
+record_offer = 0x0C
+person_uid = 0x0C        # u32::MAX in a stand-in the game has not looked up yet
+person_index = 0x08
+offer_id = 0x5C
+offer_person = 0x38
+offer_to_team = 0x40
+offer_from_team = 0x50
+offer_status = 0x8D
+pending = 0x13
+
+# Competitions (db::COMP) as on macOS, except that their table's vector of pointers sits at +0x80, 8 bytes sooner, as
+# for awards and injury kinds. Read on Steam 26340721: 8,221 competitions; the Premier League (UID 11) is in England
+# and Europe with reputation 189. Its rule data (ACTUAL_COMP, at `actual`) holds two identical vectors of its 52 rules,
+# at +0x38 and +0x80; FM Lens reads the first.
+[competition]
+class = ".?AVCOMP@db@@"
+size = 0x190
+table_items = 0x80
+index = 0x08
+uid = 0x0C
+name = 0x40
+short_name = 0x48
+continent = 0x58
+nation = 0x60
+place_name = 0x18
+reputation = 0x188       # u16, 0..200
+women = 0xF9             # u8, nonzero for a women's competition
+actual = 0xB0
+rules = 0x38
+
+# The kinds of injury (db::INJURY), laid out as on macOS but for the table's vector at +0x80.
+[injury_kind]
+class = ".?AVINJURY@db@@"
+size = 0x78
+table_items = 0x80
+index = 0x08
+uid = 0x0C
+manager_class = ".?AVINJURY_MANAGER@@"
+
+# Awards (db::AWARD), laid out as on macOS but for the table's vector at +0x80.
+[award]
+class = ".?AVAWARD@db@@"
+size = 0xA0
+table_items = 0x80
+index = 0x08
+uid = 0x0C
+name = 0x30
+continent = 0x50
+competition = 0x58
+nation = 0x60
+goalkeepers_only = 0x7C  # u8, nonzero for a goalkeepers' award
+prestige = 0x80          # u16
+period = 0x86            # u8
+women = 0x8A             # u8, nonzero for a women's award
+recipients = 0x8D        # u8
+max_age = 0x93           # u8, 0 for none
+
+# Languages spoken, as on macOS 0x40 further in a player and 0x38 in a member of staff. Read on Steam 26340721:
+# Odegaard English 10, Spanish 5, Swedish 10, Danish 10, Dutch 4, as on macOS; Arteta French 5, English 10,
+# Catalan 10, Basque 5, Portuguese 2, Italian 2.
+[language]
+player = 0x378
+staff = 0x1F0
+language = 0x00
+level = 0x08
+name = 0x18
+
+# A match official (db::OFFICIAL), in the array the build profile places. MSVC gives the class a second base, whose
+# vtable sits at +0x138, so the index and UID come 0x10 later than on macOS. Read on Steam 26340721: 1,061
+# officials; Hyun-Chul Moon (South Korea), born 24 May 1989, CA/PA 200/200, reputation 9891.
+[official]
+size = 0x148
+first_name = 0x28
+last_name = 0x30
+common_name = 0x38
+nation = 0x40
+date_of_birth = 0x60
+current_ability = 0x11C
+potential_ability = 0x11E
+reputation = 0x120
+uid = 0x144
+
+# What a nation's object holds beyond its UID and name, as on macOS but 8 bytes sooner from the capital on, and its
+# competitive record (`container`) 8 bytes sooner but for the FIFA points. Read on Steam 26340721 with England: ENG,
+# Europe, London, 57,690,300 people, English 100%, FIFA ranking 4 with 1,922.83 points, founded 1863, joined FIFA
+# 1905; the senior team managed by Thomas Tuchel and captained by Harry Kane, the women's by Sarina Wiegman.
+[national]
+code = 0x28
+capital = 0xE8
+continent = 0xF0
+place_name = 0x18
+languages = 0x48
+entry_size = 0x10
+language_percent = 0x08
+population = 0x1E4
+dual_nationality = 0x1E9
+naturalisation = 0x1ED
+container = 0x108
+women_container = 0x110
+container_nation = 0x170
+teams = 0x18
+rivals = 0x48
+points = 0x274
+ranking = 0x568
+founded = 0x868
+joined_fifa = 0x864
+joined_continental = 0x866
+youth_rating = 0x86C
+game_importance = 0x87D
+attendance = 0x889
+style = 0x88A
+team_manager = 0x80
+team_id = 0x0C
+
+# A player's familiarity with his clubs and nations (team cohesion), laid out as on macOS. Read on Steam 26340721:
+# Arsenal's players have entries for the club, Gabriel and Saka 100, Rice 62; new signings have none yet.
+[cohesion]
+list = 0x18
+id = 0x00
+kind = 0x04
+value = 0x05
+flag = 0x06
+size = 0x08
+club_id = 0x08

@@ -13,6 +13,24 @@ current_date = 0x56AF378
 # class, 0xDAC0 before the players pair as in build 26227640.
 retirement_manager = 0x56F7D10
 
+# The (begin, end) pair of the match officials' array, with the other arrays: 1,061 db::OFFICIAL objects of 0x148
+# bytes on the Steam test save, Hyun-Chul Moon (South Korea) the best.
+officials = 0x5705848
+
+# The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: Gabriel's for England
+# is active on the Steam test save.
+transfer_manager = 0x56F3A18
+
+# The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902
+# awards and 8,084 competitions (721 women's) on the Steam test save, the World Golden Ball and FIFA World Cup first.
+awards = 0x57056D0
+competitions = 0x57056E8
+
+# The static pointers to the database table of the kinds of injury (136, a cold first) and to the injury manager
+# (INJURY_MANAGER), 8 bytes before the retirement manager's.
+injury_kinds = 0x5705710
+injury_manager = 0x56F7D08
+
 # game_plugin.dll as mapped in memory; these two values identify the build.
 [plugin]
 size_of_image = 0x1821C000

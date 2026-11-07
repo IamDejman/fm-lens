@@ -1093,3 +1093,29 @@ Release integration for 0.6.0 incorporates main through `ac0441e`. It removes
 0.5.11's file-timestamp-based restart lock from Session, connection responses,
 compatibility notices, reports and sample data; helper discovery replaces that
 blanket lock. Unknown-build, health and current-career guards remain in force.
+
+
+## Windows reads (7 November 2026)
+
+FM27 Steam build 26340721 on Windows Server 2022 (an AWS g4dn.xlarge), with
+`fmlens-probe` built from `feat/windows-offsets`. Save: a new Arsenal career at
+2 November 2026. Reads only; nothing was written to the game.
+
+| Read | Result |
+|---|---|
+| Officials | 1,061; Hyun-Chul Moon first, CA/PA 200/200 |
+| Competitions, awards, kinds of injury | 8,084 (721 women's), 3,902 and 136 |
+| Competition rules | The Premier League's 52 rules, from both copies |
+| Nation | England: ENG, London, FIFA ranking 4 (1,922.83 points), Thomas Tuchel |
+| Club relations, links, league, nation | Arsenal: Tottenham 100, Man Utd 90; Boreham Wood; England |
+| Staff likes, licence, formations | Arteta 12 and Guardiola 22 likes, both Continental Pro |
+| Team manager | Arsenal's senior team points at your manager |
+| Work permits, future transfers, loans | Gabriel's England permit active; 34 future transfers; 1,343 loans |
+| Languages | Odegaard and Arteta as on macOS; Gabriel French and Croatian |
+| Cohesion | Arsenal's players: Gabriel and Saka 100, Rice 62 |
+
+Future transfers and work permits first read none: MSVC vtables keep no offset
+to the player's identity block, so Windows now takes it from the layout. Still
+off on Windows: promises (none in this save to read), tactics, the human
+manager's flags, the game's own actions and the editor. These need the Windows
+bridge and its call RVAs.
