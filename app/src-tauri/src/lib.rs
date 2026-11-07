@@ -13,8 +13,8 @@ use fmlens_core::{
     InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
     MoveTerms, MovedManager, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange,
     PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate,
-    Preference, PreferenceKind, PreferenceSet, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS,
-    SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange,
+    Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet,
+    STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange,
     StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan,
     TransferredPlayer, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
@@ -3585,6 +3585,41 @@ fn change_preference(
     Ok(connection.log_preference(done))
 }
 
+/// What a like or dislike is pointed at: a club, a player or a member of staff.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum PreferenceTargetKind {
+    Club,
+    Player,
+    Staff,
+}
+
+/// Points the preference `index` of the player `uid`, or of the member of staff `uid` for `staff`, at the club,
+/// player or member of staff `target_uid`, keeping its strength. Logged and undone like any change.
+#[tauri::command]
+fn point_preference(
+    state: State<'_, AppState>,
+    uid: u32,
+    staff: bool,
+    index: usize,
+    target_kind: PreferenceTargetKind,
+    target_uid: u32,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let owner = person_ref(connection, uid, staff)?;
+    let target = match target_kind {
+        PreferenceTargetKind::Club => {
+            PreferenceTarget::Club(connection.clubs.get(target_uid).ok_or_else(|| not_found(Entity::Club, target_uid))?)
+        }
+        PreferenceTargetKind::Player => PreferenceTarget::Person(person_ref(connection, target_uid, false)?),
+        PreferenceTargetKind::Staff => PreferenceTarget::Person(person_ref(connection, target_uid, true)?),
+    };
+    let plan = connection.session.plan_preference_target(owner, index, target)?;
+    let done = connection.session.apply_preference(&plan)?;
+    Ok(connection.log_preference(done))
+}
+
 /// Takes the preference `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`.
 /// Logged and undone like any change.
 #[tauri::command]
@@ -4196,6 +4231,7 @@ pub fn run() {
             remove_tie,
             add_tie,
             change_preference,
+            point_preference,
             remove_preference,
             change_language,
             remove_language,

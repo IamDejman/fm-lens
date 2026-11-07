@@ -12,9 +12,9 @@
 //! allocates nothing: a tie is added only where the list's block has room (see [`HeapLayout`]), which most players'
 //! lists lack, so changing one of his ties is the way to give him another.
 //!
-//! A preference, favoured or disliked, can be given another strength or taken out, the human manager's too. Adding
-//! one, or pointing one at another club or person, waits until what the game keeps in the entry's bytes `0x08` and
-//! `0x0D` is known.
+//! A preference, favoured or disliked, can be given another strength, pointed at another club or person, or taken out,
+//! the human manager's too. Pointing one elsewhere writes only its target: the entry's bytes `0x08` and `0x0D`, which
+//! are not decoded, stay as the game left them. Adding one waits until they are known.
 //!
 //! [`HeapLayout`]: crate::profile::HeapLayout
 //! [`RelationLayout`]: crate::profile::RelationLayout
@@ -191,6 +191,14 @@ pub struct RelationSet {
     pub before: Option<Relation>,
     pub after: Option<Relation>,
     patches: Vec<Patch>,
+}
+
+/// Who or what a preference is pointed at: a club for a favoured or disliked club, a player or member of staff for a
+/// favoured or disliked person.
+#[derive(Debug, Clone, Copy)]
+pub enum PreferenceTarget<'a> {
+    Club(&'a ClubSummary),
+    Person(PersonRef<'a>),
 }
 
 /// A person whose lists the editor changes: a player, or a member of staff, the human manager included.
@@ -435,6 +443,58 @@ impl Session {
         let after = Preference { strength, ..before.clone() };
         let (entity, person) = (owner.entity(), owner.uid());
         Ok(PreferencePlan { entity, person, before, after: Some(after), patches: patches.0 })
+    }
+
+    /// Works out pointing the preference at `index` in the list of `owner` at `target`, a club for a club's and a
+    /// person for a person's, keeping its strength and the rest of the entry. Nothing is written.
+    pub fn plan_preference_target(
+        &self,
+        owner: PersonRef,
+        index: usize,
+        target: PreferenceTarget,
+    ) -> Result<PreferencePlan, MoveError> {
+        let r = &self.layout.relation;
+        let (list, before) = self.preference_in(owner, index)?;
+        let (address, target_uid, name) = self.preference_target(before.kind, target)?;
+        if matches!(target, PreferenceTarget::Person(person) if person.uid() == owner.uid()) {
+            return Err(MoveError::PreferenceTarget);
+        }
+        let taken = list.entries.iter().enumerate().any(|(other, entry)| {
+            other != index && self.preference_at(other, entry).is_some_and(|known| known.target == address)
+        });
+        if address == before.target || taken {
+            return Err(MoveError::SamePreference);
+        }
+        let mut patches = Patches::default();
+        let at = list.begin + index as u64 * r.size + r.target;
+        patches.push(at, before.target.to_le_bytes(), address.to_le_bytes());
+        let after = Preference { target: address, target_uid, name, ..before.clone() };
+        let (entity, person) = (owner.entity(), owner.uid());
+        Ok(PreferencePlan { entity, person, before, after: Some(after), patches: patches.0 })
+    }
+
+    /// The address a preference of `kind` keeps for `target`, checked, with its UID and, for a club, its name. A club
+    /// is its record; a person is his identity block, which holds the UID where a club's record does.
+    fn preference_target(
+        &self,
+        kind: PreferenceKind,
+        target: PreferenceTarget,
+    ) -> Result<(u64, u32, Option<String>), MoveError> {
+        let (p, st) = (&self.layout.player, &self.layout.staff);
+        let (address, uid, name) = match (kind.is_club(), target) {
+            (true, PreferenceTarget::Club(club)) => (club.address, club.uid, Some(club.name.clone())),
+            (false, PreferenceTarget::Person(PersonRef::Player(player))) => {
+                (player.address + p.identity() + player.shift, player.uid, None)
+            }
+            (false, PreferenceTarget::Person(PersonRef::Staff(member))) => {
+                (member.address + st.identity() + member.shift, member.uid, None)
+            }
+            _ => return Err(MoveError::PreferenceTarget),
+        };
+        if !is_user_pointer(address) || self.process.read_u32(address + self.layout.club.uid)? != uid {
+            return Err(MoveError::PreferenceTarget);
+        }
+        Ok((address, uid, name))
     }
 
     /// Works out taking the preference at `index` out of the list of `owner`: the entries after it move up one.

@@ -1214,6 +1214,17 @@ mod tests {
     const WINDOWS: &str = include_str!("../../../profiles/fm27/layout.toml");
     const MACOS: &str = include_str!("../../../profiles/fm27/layout-macos.toml");
 
+    /// A like or dislike keeps a person as his identity block and reads its UID where a club's record keeps one, so
+    /// pointing one at a player or member of staff needs both layouts to agree.
+    #[test]
+    fn a_persons_identity_block_holds_the_uid_where_a_club_does() {
+        for text in [WINDOWS, MACOS] {
+            let layout = parse::<Layout>(text);
+            assert_eq!(layout.player.uid - layout.player.identity(), layout.club.uid);
+            assert_eq!(layout.staff.uid - layout.staff.identity(), layout.club.uid);
+        }
+    }
+
     #[test]
     fn attribute_groups_cover_the_layout() {
         for text in [WINDOWS, MACOS] {

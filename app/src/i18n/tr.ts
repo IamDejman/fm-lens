@@ -149,6 +149,8 @@ const errors: ErrorTexts = {
     "Oyuncunun listesinde yer yok ve düzenleyici listeyi büyütemiyor; bunun yerine kayıtlardan birini değiştirin.",
   "relation.target": () => "Bu, bu kaydın alabileceği türde oyundaki bir ülke ya da kulüp değil.",
   "relation.same": () => "Oyuncuda bu zaten var.",
+  "preference.target": () => "Kulübün yerine bir kulüp, kişinin yerine başka bir kişi seç.",
+  "preference.same": () => "Bu zaten listede.",
   "relation.rule": (p) => `${p.rule} numaralı yerli kuralı, düzenleyicinin yazdığı kurallardan değil.`,
   "staff.you": () => "Bu sizsiniz, yönettiğiniz teknik direktör.",
   "staff.unemployed": () => "Bu personelin bir kulübü yok.",
@@ -1766,7 +1768,7 @@ export const tr: Strings = {
   },
 
   lists: {
-    likesTitle: "Kişileri ve kulüpleri ne kadar sevdiğini değiştir",
+    likesTitle: "Sevdiği ve sevmediği kişileri ve kulüpleri değiştir",
     strengthOf: (name) => `${name} için derece`,
     languagesTitle: "Her dili ne kadar iyi konuştuğunu değiştir",
     levelOf: (name) => `${name} seviyesi`,
@@ -1775,6 +1777,15 @@ export const tr: Strings = {
     daysOut: "Sahalardan uzak kalacağı gün",
     daysOf: (name) => `${name} için gün sayısı`,
     save: "Kaydet",
+    replace: "Değiştir",
+    replaceTitle: (name) => `${name} yerine başkasını seç`,
+    insteadOf: (name) => `${name} yerine`,
+    searchClubs: "Kulüp ara",
+    searchPeople: "Oyuncu ve personel ara",
+    searching: "Aranıyor…",
+    searchFailed: (reason) => `Arama yapılamadı: ${reason}`,
+    noMatch: (query) => (query === "" ? "Hiçbir şey bulunamadı." : `“${query}” aramasına uyan yok.`),
+    back: "Geri",
   },
 
   clauses: {

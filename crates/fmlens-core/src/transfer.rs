@@ -197,6 +197,11 @@ pub enum MoveError {
     WrongTarget,
     /// The player has that tie already.
     SameRelation,
+    /// The new club or person is not one of the game's own, or not of the kind the like or dislike takes, or is the
+    /// person himself.
+    PreferenceTarget,
+    /// The person already likes or dislikes that club or person.
+    SamePreference,
     /// A homegrown rule the editor does not write.
     UnknownRule {
         rule: u8,
@@ -324,6 +329,10 @@ impl fmt::Display for MoveError {
                 f.write_str("that is not a nation or club of the game, of the kind this tie takes")
             }
             MoveError::SameRelation => f.write_str("the player has that already"),
+            MoveError::PreferenceTarget => {
+                f.write_str("that is not a club or person of the game, of the kind this like or dislike takes")
+            }
+            MoveError::SamePreference => f.write_str("the person already likes or dislikes that one"),
             MoveError::UnknownRule { rule } => write!(f, "homegrown rule {rule} is not one the editor writes"),
             MoveError::NoTeam { index } => write!(f, "the club has no team number {index} that checks out"),
             MoveError::NotInTeam => f.write_str("the player does not play for this team"),
@@ -414,6 +423,8 @@ impl Coded for MoveError {
             MoveError::RelationsFull => "relation.noRoom",
             MoveError::WrongTarget => "relation.target",
             MoveError::SameRelation => "relation.same",
+            MoveError::PreferenceTarget => "preference.target",
+            MoveError::SamePreference => "preference.same",
             MoveError::UnknownRule { .. } => "relation.rule",
             MoveError::NoTeam { .. } => "squad.noTeam",
             MoveError::NotInTeam => "captain.notInTeam",
