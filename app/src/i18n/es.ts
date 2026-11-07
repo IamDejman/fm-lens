@@ -1413,6 +1413,13 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.6.1": [
+        "Un perfil del jugador nuevo: pestañas Atributos, Moral, Contrato, Médico y Trayectoria, e indicadores de estado bajo el nombre que las abren.",
+        "Ajustes se abre en su propia ventana desde el engranaje o con Cmd+,.",
+        "Todas las listas tienen Filtros, con una etiqueta que puedes quitar para cada filtro activo.",
+        "Los nombres de FM para los puestos del cuerpo técnico, Candidatos de cantera y Saturado, donde FM Lens mostraba números.",
+        "El diálogo de Fichaje te avisa cuando fichar a un jugador cancela un traspaso que ya tiene acordado.",
+      ],
       "0.6.0": [
         "Las actualizaciones de FM Lens siguen usando el asistente que ya se ejecuta en FM. Las funciones compatibles siguen funcionando sin reiniciar el juego.",
         "Un asistente antiguo puede no actualizar las pantallas de FM al instante o admitir una acción nueva. Se actualizará la próxima vez que inicies FM.",
