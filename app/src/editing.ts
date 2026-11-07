@@ -250,6 +250,21 @@ export const addTie = (uid: number, tie: TieKind, target: number, rule?: number)
 export const changePreference = (uid: number, staff: boolean, index: number, strength: number) =>
   call<LoggedChange>("change_preference", { uid, staff, index, strength });
 
+/** What a preference can be pointed at: a club, for a club one, or a player or member of staff, for a person one. */
+export type PreferenceTargetKind = "club" | "player" | "staff";
+
+/**
+ * Points the preference `index` of the player `uid`, or of the member of staff `uid` for `staff`, at the club, player
+ * or member of staff `targetUid`, keeping its strength.
+ */
+export const pointPreference = (
+  uid: number,
+  staff: boolean,
+  index: number,
+  targetKind: PreferenceTargetKind,
+  targetUid: number,
+) => call<LoggedChange>("point_preference", { uid, staff, index, targetKind, targetUid });
+
 /** Takes the preference `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
 export const removePreference = (uid: number, staff: boolean, index: number) =>
   call<LoggedChange>("remove_preference", { uid, staff, index });

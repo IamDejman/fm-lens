@@ -1,11 +1,31 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { changeLanguage, changePreference, removeLanguage, removePreference } from "./editing";
+import { call } from "./api";
+import {
+  changeLanguage,
+  changePreference,
+  pointPreference,
+  removeLanguage,
+  removePreference,
+  type PreferenceTargetKind,
+} from "./editing";
 import { listText, profileText, tieText } from "./labels";
-import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
+import { ClubLine } from "./MoveDialog";
+import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact } from "./ProfileParts";
-import type { Related, Language, PersonRef, Preference, PreferenceKind } from "./types";
+import type {
+  ClubPage,
+  Related,
+  Language,
+  PersonRef,
+  PlayerPage,
+  PlayerSummary,
+  Preference,
+  PreferenceKind,
+  StaffPage,
+  StaffSummary,
+} from "./types";
 import { EditorContext } from "./useProfileEditing";
-import { ValueListDialog, type ValueSection } from "./ValueListDialog";
+import { ValueListDialog, type Replacement, type ReplacementOption, type ValueSection } from "./ValueListDialog";
 
 /** The order the kinds of preference are listed in: clubs first, as FM's profile does. */
 const PREFERENCE_KINDS: readonly PreferenceKind[] = [
@@ -25,6 +45,9 @@ const isClub = (kind: PreferenceKind) =>
 const preferenceName = (preference: Preference) =>
   preference.name ?? String(preference.targetUid);
 
+/** How many clubs, or people, the search for another one lists. */
+const SEARCH_LIMIT = 8;
+
 /** A club's name with its logo, inline. */
 function ClubName({ uid, name }: { uid: number; name: string }) {
   return (
@@ -35,6 +58,72 @@ function ClubName({ uid, name }: { uid: number; name: string }) {
       {name}
     </WithPicture>
   );
+}
+
+/** A player or member of staff the search found: his face and name, and his club. */
+function PersonLine({ person }: { person: PlayerSummary | StaffSummary }) {
+  return (
+    <WithPicture picture={<PersonFace uid={person.uid} name={person.name} size={PICTURE_SIZE.rowFace} />}>
+      <span className="move-player-text">
+        <span className="move-club-name" title={person.name}>
+          {person.name}
+        </span>
+        {person.club !== null && <span className="move-player-detail">{person.club}</span>}
+      </span>
+    </WithPicture>
+  );
+}
+
+/**
+ * The search that points the preference `index` of `person` at another club or, for `club` false, another person: not
+ * one his list has already (`taken`), nor himself.
+ */
+function replacement(person: PersonRef, index: number, club: boolean, taken: ReadonlySet<number>): Replacement {
+  const option = (kind: PreferenceTargetKind, uid: number, label: ReactNode): ReplacementOption => ({
+    key: `${kind}:${uid}`,
+    label,
+    choose: () => pointPreference(person.uid, person.staff, index, kind, uid),
+  });
+  // Enough rows that the ones left out still leave a full list.
+  const limit = SEARCH_LIMIT + taken.size + 1;
+  const free = (uid: number) => !taken.has(uid) && (club || uid !== person.uid);
+  if (club) {
+    return {
+      label: listText.searchClubs,
+      search: async (query) => {
+        const page = await call<ClubPage>("search_clubs", { query, limit, filter: {} });
+        return page.rows
+          .filter((found) => free(found.uid))
+          .slice(0, SEARCH_LIMIT)
+          .map((found) =>
+            option("club", found.uid, <ClubLine uid={found.uid} name={found.name} women={found.women} />),
+          );
+      },
+    };
+  }
+  return {
+    label: listText.searchPeople,
+    search: async (query) => {
+      const [players, staff] = await Promise.all([
+        call<PlayerPage>("search_players", { query, limit }),
+        call<StaffPage>("search_staff", { query, limit }),
+      ]);
+      const found = [
+        players.rows.filter((p) => free(p.uid)).map((p) => option("player", p.uid, <PersonLine person={p} />)),
+        staff.rows.filter((s) => free(s.uid)).map((s) => option("staff", s.uid, <PersonLine person={s} />)),
+      ];
+      // Players and staff in turn, so that neither crowds the other out.
+      const options: ReplacementOption[] = [];
+      for (let at = 0; options.length < SEARCH_LIMIT && at < limit; at++) {
+        for (const list of found) {
+          if (at < list.length && options.length < SEARCH_LIMIT) {
+            options.push(list[at]);
+          }
+        }
+      }
+      return options;
+    },
+  };
 }
 
 /**
@@ -93,8 +182,8 @@ export function ListChange({
 }
 
 /**
- * The people and clubs a player or member of staff favours and dislikes, and the button that changes how strongly, or
- * takes one out; not there when he has none (see `useListShown`).
+ * The people and clubs a player or member of staff favours and dislikes, and the button that changes how strongly,
+ * points one at another club or person, or takes one out; not there when he has none (see `useListShown`).
  */
 export function PreferencesGroup({
   preferences,
@@ -107,22 +196,29 @@ export function PreferencesGroup({
   if (!shown) {
     return null;
   }
-  const sections = (): ValueSection[] =>
-    PREFERENCE_KINDS.map((kind) => ({
+  const sections = (): ValueSection[] => {
+    // What his list points at already, clubs and people apart: their UIDs can be the same.
+    const taken = (club: boolean) =>
+      new Set(preferences.filter((p) => isClub(p.kind) === club).map((p) => p.targetUid));
+    const takenBy = { club: taken(true), person: taken(false) };
+    return PREFERENCE_KINDS.map((kind) => ({
       key: kind,
       heading: profileText.preferenceKinds[kind],
       rows: preferences
         .filter((preference) => preference.kind === kind)
         .map((preference) => {
           const name = preferenceName(preference);
+          const club = isClub(kind);
           return {
             index: preference.index,
             name,
-            label: isClub(kind) ? <ClubName uid={preference.targetUid} name={name} /> : undefined,
+            label: club ? <ClubName uid={preference.targetUid} name={name} /> : undefined,
             value: preference.strength,
+            replace: replacement(person, preference.index, club, club ? takenBy.club : takenBy.person),
           };
         }),
     }));
+  };
   return (
     <section className="profile-group">
       <h3>{profileText.preferences}</h3>

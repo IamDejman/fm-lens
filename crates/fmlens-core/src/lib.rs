@@ -85,8 +85,8 @@ pub use profile::{
 };
 pub use promises::{Promise, PromiseClosed, PromisePlan};
 pub use relations::{
-    HOMEGROWN_RULES, MOST_STRENGTH, PersonRef, Preference, PreferenceKind, PreferencePlan, PreferenceSet, Related,
-    Relation, RelationPlan, RelationSet, Tie, TieTarget,
+    HOMEGROWN_RULES, MOST_STRENGTH, PersonRef, Preference, PreferenceKind, PreferencePlan, PreferenceSet,
+    PreferenceTarget, Related, Relation, RelationPlan, RelationSet, Tie, TieTarget,
 };
 pub use retirement::{PlannedRetirement, RetirementPlan, RetirementSet};
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};

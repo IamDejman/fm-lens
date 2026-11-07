@@ -158,3 +158,9 @@ kind 1, relation 3 (favoured club), strength 100, byte `+0x08` = 1. The list was
 full (`end == capacity`). Changing an existing entry in place would work like
 the player tie edits; adding one needs room in the allocator block, which this
 list lacks. What FM does with byte `+0x08` and byte `+0x0D` has not been traced.
+
+FM Lens lists these on the manager's profile and edits them as a member of
+staff's: strength, removal, and Replace, which points an entry at another club
+or person and writes only the target pointer. On 7 November Arsenal -> Chelsea
+showed in FM's My Profile ("Favourite Club Chelsea") at once and after a save
+and reload (see EDITING-VALIDATION.md, "Replace a like or dislike").

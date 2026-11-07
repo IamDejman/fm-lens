@@ -269,6 +269,8 @@ const errors: ErrorTexts = {
     "La lista del jugador no tiene sitio y el editor no puede ampliarla; cambia una de sus entradas en su lugar.",
   "relation.target": () => "No es un país ni un club del juego del tipo que admite esta entrada.",
   "relation.same": () => "El jugador ya tiene eso.",
+  "preference.target": () => "Elige un club en lugar de un club, y otra persona en lugar de una persona.",
+  "preference.same": () => "Eso ya está en la lista.",
   "relation.rule": (p) => `La regla de formación local ${p.rule} no es de las que escribe el editor.`,
   "staff.you": () => "Eres tú, el mánager que controlas.",
   "staff.unemployed": () => "Este miembro del personal no tiene club.",
@@ -1817,7 +1819,7 @@ export const es: Strings = {
   },
 
   lists: {
-    likesTitle: "Cambiar cuánto le gusta o disgusta cada persona y club",
+    likesTitle: "Cambiar las personas y los clubes que le gustan y disgustan",
     strengthOf: (name) => `Intensidad para ${name}`,
     languagesTitle: "Cambiar cómo de bien habla cada idioma",
     levelOf: (name) => `Nivel de ${name}`,
@@ -1826,6 +1828,15 @@ export const es: Strings = {
     daysOut: "Días de baja",
     daysOf: (name) => `Días de baja por ${name}`,
     save: "Guardar",
+    replace: "Sustituir",
+    replaceTitle: (name) => `Sustituir ${name}`,
+    insteadOf: (name) => `En lugar de ${name}`,
+    searchClubs: "Buscar clubes",
+    searchPeople: "Buscar jugadores y empleados",
+    searching: "Buscando…",
+    searchFailed: (reason) => `No se pudo buscar: ${reason}`,
+    noMatch: (query) => (query === "" ? "No se encontró nada." : `Nada coincide con «${query}».`),
+    back: "Atrás",
   },
 
   clauses: {
