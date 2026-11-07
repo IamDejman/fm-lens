@@ -206,7 +206,9 @@ FM Lens is released for macOS and Windows, from a Mac, to the public repository
 
    The disk image opens on a window with the app, an arrow and Applications. dmgbuild
    (fetched with `pipx`) lays it out from `scripts/dmg/settings.py`, on the background
-   `scripts/dmg/background.py` draws; run that again after changing the layout.
+   `scripts/dmg/background.py` draws; run that again after changing the layout. The Windows
+   installer shows the FM Lens icon, and on its first and last pages the wordmark that
+   `scripts/nsis/sidebar.py` draws.
 
 The updater key is `~/.tauri/fm-lens-updater.key` (or the file `FM_LENS_UPDATER_KEY`
 names); its public half is `plugins.updater.pubkey` in `app/src-tauri/tauri.conf.json`.
