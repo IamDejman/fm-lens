@@ -208,7 +208,7 @@ function App() {
     const check = () => {
       call<ConnectionInfo | null>("current_connection")
         .then((current) => {
-          if (idle && current?.writable && current.knownBuild && !current.editable) {
+          if (idle && current?.writable && current.knownBuild && !current.restartNeeded && !current.editable) {
             void reload();
           }
         })
@@ -266,7 +266,9 @@ function App() {
   const note =
     !connection || editable
       ? appText.noteEditable
-      : connection.writable
+      : connection.restartNeeded && connection.knownBuild
+        ? appText.noteRestartFm
+        : connection.writable
         ? connection.knownBuild ? appText.noteReloadRequired : appText.noteUnknownBuild
         : appText.noteReadOnly;
   const gameActions = connection?.gameActions ?? NO_GAME_ACTIONS;

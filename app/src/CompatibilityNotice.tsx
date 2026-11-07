@@ -16,6 +16,17 @@ export function CompatibilityNotice(props: {
   connection: ConnectionInfo;
 }) {
   const { connection } = props;
+  // Restarting FM comes first: the other notices wait until it runs the helper that came with this version.
+  if (connection.restartNeeded && connection.knownBuild) {
+    return (
+      <div className="compatibility-notice" role="status">
+        <div className="compatibility-text">
+          <strong>{text.restartTitle}</strong>
+          <p>{text.restartText}</p>
+        </div>
+      </div>
+    );
+  }
   const failed = connection.health.results.filter((result) => !result.passed).map((result) => result.check);
   const unknown = !connection.knownBuild;
   if (!unknown && failed.length === 0) {
