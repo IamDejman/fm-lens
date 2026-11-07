@@ -93,8 +93,8 @@ The app is `target/debug/bundle/macos/FM Lens.app`. Releases are built as
 FM Lens and [getfmlens.com](https://getfmlens.com) count use anonymously with
 [PostHog](https://posthog.com), to know how many people use them and which
 features matter. No names, no values you edit, no file paths and nothing you
-type are sent. PostHog works out the country from the connection and does not
-keep the IP address.
+type are sent. PostHog does not keep the IP address. For the app it keeps the
+country and city the connection came from; for the site, not even that.
 
 The app sends these events with a random install id, the app version, the macOS
 version and processor, and the app language:
