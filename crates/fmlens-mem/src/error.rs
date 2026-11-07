@@ -20,11 +20,11 @@ pub enum Error {
     /// the FM Lens bridge, the library that hands its memory over.
     #[cfg(target_os = "macos")]
     NoBridge { pid: u32 },
-    /// The bridge in the game did not hand its memory over, for `reason`.
-    #[cfg(target_os = "macos")]
+    /// The bridge in the game did not hand its memory over (macOS) or run a call (Windows), for `reason`.
+    #[cfg(any(target_os = "macos", windows))]
     Bridge { pid: u32, reason: &'static str },
     /// The running helper cannot run this program. Nothing ran; other operations remain usable.
-    #[cfg(target_os = "macos")]
+    #[cfg(any(target_os = "macos", windows))]
     BridgeUnsupported { pid: u32 },
     /// Reading target memory failed (unmapped, guarded or freed pages).
     Read { addr: u64, len: usize, code: u32 },
@@ -88,7 +88,11 @@ impl fmt::Display for Error {
             Error::Bridge { pid, reason } => {
                 write!(f, "the FM Lens bridge in the game (pid {pid}) did not hand it over: {reason}")
             }
-            #[cfg(target_os = "macos")]
+            #[cfg(windows)]
+            Error::Bridge { pid, reason } => {
+                write!(f, "the game (pid {pid}) did not make the change: {reason}")
+            }
+            #[cfg(any(target_os = "macos", windows))]
             Error::BridgeUnsupported { .. } => f.write_str(
                 "the helper running in FM cannot make this change; other FM Lens features are still available",
             ),

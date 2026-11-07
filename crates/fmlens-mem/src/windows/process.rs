@@ -110,6 +110,28 @@ impl Process {
         self.handle.0
     }
 
+    /// Has the game run `program` on its main thread through the bridge library (see [`super::bridge`]), for
+    /// the game plugin with `plugin` = (`SizeOfImage`, link timestamp). Refused on a process opened for
+    /// reading only, and for a program that names a function `allowed` refuses.
+    pub fn call(
+        &self,
+        plugin: (u32, u32),
+        program: &crate::call::Program,
+        allowed: impl Fn(u64) -> bool,
+    ) -> Result<crate::call::Outcome> {
+        if cfg!(feature = "read-only") || !self.writable {
+            return Err(Error::ReadOnly);
+        }
+        if let Some(reason) = crate::call::refusal(&program.steps, &allowed) {
+            return Err(Error::Bridge { pid: self.pid, reason });
+        }
+        // The place for a returned object is a hidden first argument on Windows, which no call needs yet.
+        if program.steps.iter().any(|step| step.indirect != crate::call::Arg::default()) {
+            return Err(Error::BridgeUnsupported { pid: self.pid });
+        }
+        super::bridge::call(self.pid, plugin, program)
+    }
+
     /// Full path of the process executable.
     pub fn image_path(&self) -> Result<PathBuf> {
         let mut buf = vec![0u16; 1024];
@@ -199,18 +221,16 @@ impl Process {
     }
 }
 
-#[cfg(test)]
+// Every test here writes, which the read-only build cannot.
+#[cfg(all(test, not(feature = "read-only")))]
 mod tests {
     use super::*;
 
-    #[cfg(not(feature = "read-only"))]
     static IN_THE_IMAGE: [u8; 8] = [0; 8];
     // Writable, but part of the module's image all the same.
-    #[cfg(not(feature = "read-only"))]
     static WRITABLE_IN_THE_IMAGE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
     #[test]
-    #[cfg(not(feature = "read-only"))]
     fn writes_heap_data_only() {
         let process = Process::open_read_write(std::process::id()).expect("open this process");
         let heap = vec![0u8; 64].into_boxed_slice();
