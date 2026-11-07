@@ -56,6 +56,8 @@ pub struct SquadMember {
     pub injuries: usize,
     /// How many current bans he has.
     pub bans: usize,
+    /// Whether he has a reason to be unhappy that lasts.
+    pub unhappy: bool,
 }
 
 /// Which way a player in a team's list is on loan.
@@ -300,6 +302,12 @@ impl Session {
             morale: buf[at(p.morale)],
             injuries: self.injury_count(player),
             bans: self.ban_count(player),
+            unhappy: is_user_pointer(contract)
+                .then(|| self.process.read_u64(contract + self.layout.contract.unhappiness).ok())
+                .flatten()
+                .is_some_and(|record| {
+                    crate::details::read_concerns(&self.process, record).iter().any(|concern| concern.ended.is_none())
+                }),
         })
     }
 }

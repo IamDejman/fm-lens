@@ -2,13 +2,16 @@
 // on a whole team (heal everyone, lift every ban, give everyone the best morale, rest everyone) and the captains. What it writes is
 // logged like any change, and undone from the Changes view, or at once from the line under the buttons.
 
-import { useContext, useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useContext, useEffect, useId, useMemo, useRef, useState, type Ref } from "react";
+import { createPortal } from "react-dom";
 import { Ability } from "./Ability";
 import { CaptainMenu } from "./CaptainMenu";
+import { DropMenu } from "./DropMenu";
 import { changeLog, clubSquads, setCaptain, teamAction, undoBatch, undoChange } from "./editing";
 import { describeError, formatNumber } from "./format";
 import { intlLocale } from "./i18n";
 import {
+  appText,
   fieldLabel,
   massEditText,
   positionLabel,
@@ -30,6 +33,7 @@ import type {
   SquadSort,
   TeamAction,
 } from "./types";
+import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
 
 /**
@@ -313,7 +317,6 @@ export function SquadTab({ clubUid, version, panel }: SquadTabProps) {
 
           <div className="squad-actions">
             <TeamActions team={team} editable={editable} busy={busy} onAction={(action) => void act(team, action)} />
-            <p className="note squad-hint">{text.hint}</p>
           </div>
 
           <ResultLine
@@ -414,14 +417,17 @@ interface TeamActionsProps {
 }
 
 /**
- * Heal all, Lift bans, Inspire all, Refresh all, Max cohesion, Max tactics (where FM can do it itself) and Max
- * attributes for the shown team. Heal all and Lift bans say how many players are injured or banned and wait until
- * somebody is; every one waits while the game cannot be written to, and says why.
+ * Heal all, Lift bans, Refresh all and Remove unhappiness for the shown team, and the rest under More: Max morale, Max
+ * tactics (where FM can do it itself), Max cohesion and Max attributes, which asks first. Heal all, Lift bans and Remove
+ * unhappiness say how many players they are for and wait until somebody is; every action waits while the game cannot be
+ * written to, and says why.
  */
 function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
   const { readOnlyNote, gameActions } = useContext(EditorContext);
+  const [asking, setAsking] = useState(false);
   const injured = team.players.filter((player) => player.injuries > 0).length;
   const banned = team.players.filter((player) => player.bans > 0).length;
+  const unhappy = team.players.filter((player) => player.unhappy).length;
   const empty = team.players.length === 0;
   // What a button's hover text says: why it waits, or else what it does.
   const hover = (does: string, waiting: string | null) => (!editable ? readOnlyNote : (waiting ?? does));
@@ -443,13 +449,6 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
         onPress={() => onAction("liftBans")}
       />
       <ActionButton
-        label={text.inspireAll}
-        title={hover(text.inspireAllTitle, empty ? text.empty : null)}
-        waiting={!editable || empty}
-        busy={busy}
-        onPress={() => onAction("inspire")}
-      />
-      <ActionButton
         label={text.refreshAll}
         title={hover(text.refreshAllTitle, empty ? text.empty : null)}
         waiting={!editable || empty}
@@ -457,29 +456,124 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
         onPress={() => onAction("refresh")}
       />
       <ActionButton
-        label={text.maxCohesion}
-        title={hover(text.maxCohesionTitle, empty ? text.empty : null)}
-        waiting={!editable || empty}
+        label={text.removeUnhappiness(unhappy)}
+        title={hover(text.removeUnhappinessTitle, unhappy === 0 ? text.unhappyNone : null)}
+        waiting={!editable || unhappy === 0}
         busy={busy}
-        onPress={() => onAction("maxCohesion")}
+        onPress={() => onAction("removeUnhappiness")}
       />
-      {gameActions.maxTactics && (
-        <ActionButton
-          label={text.maxTactics}
-          title={hover(text.maxTacticsTitle, empty ? text.empty : null)}
-          waiting={!editable || empty}
-          busy={busy}
-          onPress={() => onAction("maxTactics")}
+      <DropMenu
+        label={appText.more}
+        menuLabel={text.moreLabel}
+        className="squad-action"
+        title={!editable ? readOnlyNote : empty ? text.empty : undefined}
+        disabled={!editable || empty}
+        busy={busy}
+      >
+        {(close) => {
+          const pick = (action: TeamAction) => () => {
+            close();
+            onAction(action);
+          };
+          return (
+            <>
+              <button type="button" role="menuitem" tabIndex={-1} title={text.maxMoraleTitle} onClick={pick("maxMorale")}>
+                {text.maxMorale}
+              </button>
+              {gameActions.maxTactics && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  tabIndex={-1}
+                  title={text.maxTacticsTitle}
+                  onClick={pick("maxTactics")}
+                >
+                  {text.maxTactics}
+                </button>
+              )}
+              <button
+                type="button"
+                role="menuitem"
+                tabIndex={-1}
+                title={text.maxCohesionTitle}
+                onClick={pick("maxCohesion")}
+              >
+                {text.maxCohesion}
+                <span className="tag">{text.experimental}</span>
+              </button>
+              <div role="separator" className="menu-separator" />
+              <button
+                type="button"
+                role="menuitem"
+                tabIndex={-1}
+                title={text.maxAllTitle}
+                onClick={() => {
+                  close();
+                  setAsking(true);
+                }}
+              >
+                {text.maxAll}
+              </button>
+            </>
+          );
+        }}
+      </DropMenu>
+      {asking && (
+        <MaxAllDialog
+          count={team.players.length}
+          onConfirm={() => {
+            setAsking(false);
+            onAction("maxAttributes");
+          }}
+          onClose={() => setAsking(false)}
         />
       )}
-      <ActionButton
-        label={text.maxAll}
-        title={hover(text.maxAllTitle, empty ? text.empty : null)}
-        waiting={!editable || empty}
-        busy={busy}
-        onPress={() => onAction("maxAttributes")}
-      />
     </div>
+  );
+}
+
+interface MaxAllDialogProps {
+  /** How many players Max attributes is for. */
+  count: number;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+/** What Max attributes asks before it writes: whether to max every attribute of the team. */
+function MaxAllDialog({ count, onConfirm, onClose }: MaxAllDialogProps) {
+  const dialog = useRef<HTMLDivElement>(null);
+  const confirm = useRef<HTMLButtonElement>(null);
+  const title = useId();
+  useModal(dialog, true, onClose);
+
+  // Focus starts on the action, and goes back to where it was (the More button) once the dialog is gone.
+  useEffect(() => {
+    const before = document.activeElement;
+    confirm.current?.focus();
+    return () => {
+      if (before instanceof HTMLElement && before.isConnected) {
+        before.focus();
+      }
+    };
+  }, []);
+
+  return createPortal(
+    <div className="modal-backdrop">
+      <div ref={dialog} className="modal confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby={title} tabIndex={-1}>
+        <header className="modal-head">
+          <h2 id={title}>{text.maxAllAsk(count)}</h2>
+        </header>
+        <footer className="modal-foot">
+          <button ref={confirm} type="button" className="primary" onClick={onConfirm}>
+            {text.maxAllConfirm}
+          </button>
+          <button type="button" onClick={onClose}>
+            {text.cancel}
+          </button>
+        </footer>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
