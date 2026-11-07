@@ -1,11 +1,21 @@
-import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import {
+  Fragment,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput, SharedRangeHint } from "./EditControls";
 import { converts } from "./currency";
 import { describeError, formatDate, formatMoney, formatNumber } from "./format";
 import { isShortcut } from "./keys";
-import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
+import { fieldLabel, PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import { PanelResizer, PanelWidthButton, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
 import {
@@ -68,10 +78,13 @@ interface ProfileFrameProps {
   /** The line under the names; a profile with nothing to say there leaves it out. */
   meta?: ReactNode;
   /**
-   * The small print under that, e.g. the birth date: its parts, set apart by dots, each kept on one line. A part may
-   * hold an input, which takes the place of its value while the profile is edited.
+   * The small print under that, e.g. a club's ID: its parts, set apart by dots, each kept on one line. A part may hold
+   * an input, which takes the place of its value while the profile is edited.
    */
-  vitals: ReadonlyArray<ReactNode>;
+  vitals?: ReadonlyArray<ReactNode>;
+  /** A row across the header under the names and ratings: a player's status, such as an injury, each a button to the
+   * tab that has it. `actions` end the same row. */
+  status?: ReactNode;
   /** The abilities of a person, under the close button; inputs where they are while the person is edited. */
   currentAbility?: number;
   potentialAbility?: number;
@@ -79,7 +92,7 @@ interface ProfileFrameProps {
   side?: ReactNode;
   /** Buttons before Edit in the header: a player's Compare button. */
   headActions?: ReactNode;
-  /** Buttons in a row under the header, which is there only while it holds one: a player's Transfer and Release. */
+  /** Buttons at the end of the status row: a player's Transfer and Release. */
   actions?: ReactNode;
   /** Between the header and the body, so that it stays in view while the body scrolls: the tabs of a club. */
   tabs?: ReactNode;
@@ -102,11 +115,12 @@ interface ProfileFrameProps {
  * a new person starts at the top.
  */
 export function ProfileFrame(props: ProfileFrameProps) {
-  const { picture, name, fullName, badge, meta, vitals, currentAbility, potentialAbility } = props;
+  const { picture, name, fullName, badge, meta, vitals, status, currentAbility, potentialAbility } = props;
   const { side, headActions, actions, tabs, wide, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
   const panelWidth = usePanelWidth(wide ? "wide" : "profile");
+  const shownVitals = vitals?.filter(Boolean) ?? [];
   const body = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -143,56 +157,68 @@ export function ProfileFrame(props: ProfileFrameProps) {
         <PanelResizer panelWidth={panelWidth} />
         <header className="profile-head">
           {picture}
+          {/* The name with the buttons at its end, then what the person is with the abilities at the end of theirs. */}
           <div className="profile-id">
-            <h2>
-              {name}
-              {badge}
-            </h2>
-            {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
-            {meta !== undefined && <p className="profile-meta">{meta}</p>}
-            <p className="profile-vitals">
-              {/* The dot stays at the end of a line, with the part before it. */}
-              {vitals.filter(Boolean).map((part, i) => (
-                <Fragment key={i}>
-                  {i > 0 && " · "}
-                  <span className="vital">{part}</span>
-                </Fragment>
-              ))}
-            </p>
-          </div>
-          <div className="profile-side">
-            <div className="profile-actions">
-              {headActions}
-              {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
-              <PanelWidthButton panelWidth={panelWidth} />
-              <button
-                className="icon-button"
-                onClick={closeProfile}
-                aria-label={profileText.close}
-                title={profileText.close}
-              >
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="m5 5 10 10M15 5 5 15" />
-                </svg>
-              </button>
+            <div className="profile-title">
+              <h2>
+                {name}
+                {badge}
+              </h2>
+              <div className="profile-actions">
+                {headActions}
+                {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
+                <PanelWidthButton panelWidth={panelWidth} />
+                <button
+                  className="icon-button"
+                  onClick={closeProfile}
+                  aria-label={profileText.close}
+                  title={profileText.close}
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="m5 5 10 10M15 5 5 15" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            {side ??
-              (currentAbility !== undefined && potentialAbility !== undefined && (
-                <div className="profile-abilities">
-                  <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
-                  <EditableValue field="current_ability">
-                    <Ability value={currentAbility} />
-                  </EditableValue>
-                  <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
-                  <EditableValue field="potential_ability">
-                    <Ability value={potentialAbility} />
-                  </EditableValue>
-                </div>
-              ))}
+            <div className="profile-summary">
+              <div className="profile-lines">
+                {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
+                {meta !== undefined && <p className="profile-meta">{meta}</p>}
+                {shownVitals.length > 0 && (
+                  <p className="profile-vitals">
+                    {/* The dot stays at the end of a line, with the part before it. */}
+                    {shownVitals.map((part, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && " · "}
+                        <span className="vital">{part}</span>
+                      </Fragment>
+                    ))}
+                  </p>
+                )}
+              </div>
+              {side ??
+                (currentAbility !== undefined && potentialAbility !== undefined && (
+                  <div className="profile-abilities">
+                    <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
+                    <EditableValue field="current_ability">
+                      <Ability value={currentAbility} />
+                    </EditableValue>
+                    <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
+                    <EditableValue field="potential_ability">
+                      <Ability value={potentialAbility} />
+                    </EditableValue>
+                  </div>
+                ))}
+            </div>
           </div>
+          {/* The status, then what can be done to this person's career (transfer, release) at the end of its row. */}
+          {(status || actions) && (
+            <div className="profile-status-row">
+              {status}
+              {actions && <div className="profile-moves">{actions}</div>}
+            </div>
+          )}
         </header>
-        {/* What can be done to this person's career (transfer, release): a row of its own under the header. */}
-        {actions && <div className="profile-toolbar">{actions}</div>}
 
         {tabs}
 
@@ -236,7 +262,11 @@ function SectionJump({ body }: { body: RefObject<HTMLDivElement | null> }) {
       return;
     }
     const read = () => {
-      const found = Array.from(element.querySelectorAll<HTMLElement>(":scope > section.profile-group > h3"));
+      const found = Array.from(
+        element.querySelectorAll<HTMLElement>(
+          ":scope > section.profile-group > h3, :scope > section.profile-group > .group-head > h3",
+        ),
+      );
       setSections((old) =>
         old.length === found.length && old.every((entry, i) => entry.heading === found[i])
           ? old
@@ -266,11 +296,119 @@ function SectionJump({ body }: { body: RefObject<HTMLDivElement | null> }) {
         {profileText.top}
       </button>
       {sections.map(({ heading, label }) => (
-        <button key={label} type="button" onClick={() => go(heading.parentElement)}>
+        <button key={label} type="button" onClick={() => go(heading.closest("section"))}>
           {label}
         </button>
       ))}
     </nav>
+  );
+}
+
+interface ProfileTabsProps<T extends string> {
+  tabs: readonly T[];
+  tab: T;
+  /** The start of the ids of the tabs, which the panel they open names itself by (see `PanelIds`). */
+  base: string;
+  label: string;
+  names: Record<T, string>;
+  /** Why a tab can't be opened now, as its hover text; undefined while it can. */
+  locked?: (tab: T) => string | undefined;
+  onSelect: (tab: T) => void;
+  /** At the end of the row: a tool for the open tab. */
+  end?: ReactNode;
+}
+
+/** The tabs under the header of a profile. The arrow keys move between them, as in any tab list. */
+export function ProfileTabs<T extends string>({
+  tabs,
+  tab,
+  base,
+  label,
+  names,
+  locked,
+  onSelect,
+  end,
+}: ProfileTabsProps<T>) {
+  const buttons = useRef<Partial<Record<T, HTMLButtonElement | null>>>({});
+  const offered = tabs.filter((id) => locked?.(id) === undefined);
+
+  const keyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const at = offered.indexOf(tab);
+    const target =
+      event.key === "ArrowRight"
+        ? offered[(at + 1) % offered.length]
+        : event.key === "ArrowLeft"
+          ? offered[(at - 1 + offered.length) % offered.length]
+          : event.key === "Home"
+            ? offered[0]
+            : event.key === "End"
+              ? offered[offered.length - 1]
+              : undefined;
+    if (target !== undefined) {
+      event.preventDefault();
+      onSelect(target);
+      buttons.current[target]?.focus();
+    }
+  };
+
+  return (
+    <div className="profile-tabs">
+      <div className="profile-tablist" role="tablist" aria-label={label} onKeyDown={keyDown}>
+        {tabs.map((id) => {
+          const lockedTitle = locked?.(id);
+          return (
+            <button
+              key={id}
+              ref={(button) => {
+                buttons.current[id] = button;
+              }}
+              type="button"
+              role="tab"
+              id={`${base}-${id}`}
+              className="profile-tab"
+              aria-selected={id === tab}
+              aria-controls={`${base}-panel`}
+              // Only the tab that is open is a Tab stop; the arrow keys reach the others.
+              tabIndex={id === tab ? 0 : -1}
+              disabled={lockedTitle !== undefined}
+              title={lockedTitle}
+              onClick={() => onSelect(id)}
+            >
+              {names[id]}
+            </button>
+          );
+        })}
+      </div>
+      {end}
+    </div>
+  );
+}
+
+/**
+ * Whether the button that had focus has let it go: taken away, which leaves it on the page, or dimmed, which some
+ * browsers leave it on though it takes no keys. The group then gives it to what took the button's place.
+ */
+export const focusLost = () =>
+  document.activeElement === document.body || !!document.activeElement?.matches(":disabled");
+
+/** A group's heading, with what can be done to the whole group at its right. */
+export function GroupHead({
+  title,
+  headingRef,
+  children,
+}: {
+  title: ReactNode;
+  /** For a heading that takes focus when the button that had it is gone. */
+  headingRef?: RefObject<HTMLHeadingElement | null>;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="group-head">
+      <h3 ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
+        {title}
+      </h3>
+      {children}
+    </div>
   );
 }
 
@@ -397,6 +535,36 @@ export function Fact({ label, title, children }: { label: ReactNode; title?: str
       <dt>{label}</dt>
       <dd>{children}</dd>
     </div>
+  );
+}
+
+/**
+ * What the header of a person leaves out: the full name where it differs from the name, the birth date (an input while
+ * it can be edited), a player's height (likewise) and the ID.
+ */
+export function PersonalGroup(props: {
+  name: string;
+  fullName: string | null;
+  dateOfBirth: FmDate | null;
+  height?: ReactNode;
+  uid: number;
+  entity: "player" | "staff";
+}) {
+  const { name, fullName, dateOfBirth, height, uid, entity } = props;
+  return (
+    <section className="profile-group">
+      <h3>{profileText.personalDetails}</h3>
+      <dl className="stats">
+        {fullName && fullName !== name && <Fact label={profileText.fullNameLabel}>{fullName}</Fact>}
+        {dateOfBirth && (
+          <Fact label={fieldLabel(entity, "date_of_birth")}>
+            <EditableValue field="date_of_birth">{formatDate(dateOfBirth)}</EditableValue>
+          </Fact>
+        )}
+        {height && <Fact label={profileText.heightLabel}>{height}</Fact>}
+        <Fact label={profileText.uid}>{uid}</Fact>
+      </dl>
+    </section>
   );
 }
 

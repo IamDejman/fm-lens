@@ -1,13 +1,20 @@
 import { useId, useState } from "react";
 import { Ability } from "./Ability";
-import { AttributeFilters, readAttributeRows, STAFF_ATTRIBUTES, toAttributeBounds } from "./AttributeFilters";
+import {
+  attributeChips,
+  AttributeFilters,
+  readAttributeRows,
+  STAFF_ATTRIBUTES,
+  toAttributeBounds,
+} from "./AttributeFilters";
+import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
 import { formatDate } from "./format";
 import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
 import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { restored, useSnapshot } from "./restore";
-import { employerOf, HumanBadge, StaffProfile } from "./StaffProfile";
+import { employerOf, HumanBadge, readStaffTab, StaffProfile } from "./StaffProfile";
 import type { StaffFilter, StaffSummary } from "./types";
 
 const AGE_RANGE = { min: 0, max: 99 };
@@ -57,6 +64,9 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   useSnapshot("staffNation", () => nation);
   useSnapshot("staffClub", () => club);
   useSnapshot("staffAttributes", () => attributes);
+  // The tab of the profile is kept here, so that the next person picked opens on it too.
+  const [tab, setTab] = useState(() => restored("staffTab", readStaffTab));
+  useSnapshot("staffTab", () => tab);
   const bounds = toAttributeBounds(attributes);
   const minAgeValue = whole(minAge, AGE_RANGE);
   const maxAgeValue = whole(maxAge, AGE_RANGE);
@@ -90,6 +100,51 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
         };
   const ageLabel = useId();
 
+  // A chip for each filter in effect; the two ends of the age range are one.
+  const chips: FilterChip[] = [];
+  const add = (key: string, label: string, remove: () => void) => chips.push({ key, label, remove });
+  const age = rangeText(minAgeValue, maxAgeValue);
+  if (job !== "") {
+    add("job", chipLabel(filters.job, jobLabel(Number(job))), () => setJob(""));
+  }
+  if (unemployed) {
+    add("unemployed", filters.unemployedOnly, () => setUnemployed(false));
+  }
+  if (humanOnly) {
+    add("humanOnly", filters.humanOnly, () => setHumanOnly(false));
+  }
+  if (age !== null) {
+    add("age", chipLabel(filters.age, age), () => {
+      setMinAge("");
+      setMaxAge("");
+    });
+  }
+  if (minCa !== undefined) {
+    add("minCa", chipLabel(filters.minCurrentAbility, String(minCa)), () => setMinCurrentAbility(""));
+  }
+  if (minPa !== undefined) {
+    add("minPa", chipLabel(filters.minPotentialAbility, String(minPa)), () => setMinPotentialAbility(""));
+  }
+  if (nationValue !== undefined) {
+    add("nation", chipLabel(filters.nation, nationValue), () => setNation(""));
+  }
+  if (clubValue !== undefined) {
+    add("club", chipLabel(filters.club, clubValue), () => setClub(""));
+  }
+  chips.push(...attributeChips(attributes, STAFF_ATTRIBUTES, setAttributes));
+  const clearAll = () => {
+    setJob("");
+    setUnemployed(false);
+    setHumanOnly(false);
+    setMinAge("");
+    setMaxAge("");
+    setMinCurrentAbility("");
+    setMinPotentialAbility("");
+    setNation("");
+    setClub("");
+    setAttributes([]);
+  };
+
   return (
     <ListBrowser<StaffSummary>
       name="staff"
@@ -102,86 +157,84 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
       summary={staffListText.summary}
       empty={(query) => staffListText.empty(query, filter !== undefined)}
       filterBar={
-        <div className="filter-bar">
-          <div className="filter-fields">
-            <label className="filter-field">
-              <span>{filters.job}</span>
-              <select value={job} onChange={(e) => setJob(e.currentTarget.value)}>
-                <option value="">{filters.anyJob}</option>
-                {JOB_FILTER_OPTIONS.map(({ code, label }) => (
-                  <option key={code} value={code}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="filter-field">
-              <input type="checkbox" checked={unemployed} onChange={(e) => setUnemployed(e.currentTarget.checked)} />
-              <span>{filters.unemployedOnly}</span>
-            </label>
-            <label className="filter-field">
-              <input type="checkbox" checked={humanOnly} onChange={(e) => setHumanOnly(e.currentTarget.checked)} />
-              <span>{filters.humanOnly}</span>
-            </label>
-            <div className="filter-field" role="group" aria-labelledby={ageLabel}>
-              <span id={ageLabel}>{filters.age}</span>
-              <input
-                type="number"
-                min={AGE_RANGE.min}
-                max={AGE_RANGE.max}
-                step={1}
-                placeholder={filters.minPlaceholder}
-                aria-label={filters.minAge}
-                value={minAge}
-                onChange={(e) => setMinAge(e.currentTarget.value)}
-              />
-              <span aria-hidden="true">–</span>
-              <input
-                type="number"
-                min={AGE_RANGE.min}
-                max={AGE_RANGE.max}
-                step={1}
-                placeholder={filters.maxPlaceholder}
-                aria-label={filters.maxAge}
-                value={maxAge}
-                onChange={(e) => setMaxAge(e.currentTarget.value)}
-              />
-            </div>
-            <label className="filter-field" title={filters.minCurrentAbilityTitle}>
-              <span>{filters.minCurrentAbility}</span>
-              <input
-                type="number"
-                min={ABILITY_RANGE.min}
-                max={ABILITY_RANGE.max}
-                step={1}
-                placeholder={filters.abilityPlaceholder}
-                value={minCurrentAbility}
-                onChange={(e) => setMinCurrentAbility(e.currentTarget.value)}
-              />
-            </label>
-            <label className="filter-field" title={filters.minPotentialAbilityTitle}>
-              <span>{filters.minPotentialAbility}</span>
-              <input
-                type="number"
-                min={ABILITY_RANGE.min}
-                max={ABILITY_RANGE.max}
-                step={1}
-                placeholder={filters.abilityPlaceholder}
-                value={minPotentialAbility}
-                onChange={(e) => setMinPotentialAbility(e.currentTarget.value)}
-              />
-            </label>
-            <label className="filter-field">
-              <span>{filters.nation}</span>
-              <input value={nation} onChange={(e) => setNation(e.currentTarget.value)} spellCheck={false} />
-            </label>
-            <label className="filter-field">
-              <span>{filters.club}</span>
-              <input value={club} onChange={(e) => setClub(e.currentTarget.value)} spellCheck={false} />
-            </label>
-            <AttributeFilters rows={attributes} choices={STAFF_ATTRIBUTES} onChange={setAttributes} />
+        <FilterBar chips={chips} onClear={clearAll}>
+          <label className="filter-field">
+            <span>{filters.job}</span>
+            <select value={job} onChange={(e) => setJob(e.currentTarget.value)}>
+              <option value="">{filters.anyJob}</option>
+              {JOB_FILTER_OPTIONS.map(({ code, label }) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter-field">
+            <input type="checkbox" checked={unemployed} onChange={(e) => setUnemployed(e.currentTarget.checked)} />
+            <span>{filters.unemployedOnly}</span>
+          </label>
+          <label className="filter-field">
+            <input type="checkbox" checked={humanOnly} onChange={(e) => setHumanOnly(e.currentTarget.checked)} />
+            <span>{filters.humanOnly}</span>
+          </label>
+          <div className="filter-field" role="group" aria-labelledby={ageLabel}>
+            <span id={ageLabel}>{filters.age}</span>
+            <input
+              type="number"
+              min={AGE_RANGE.min}
+              max={AGE_RANGE.max}
+              step={1}
+              placeholder={filters.minPlaceholder}
+              aria-label={filters.minAge}
+              value={minAge}
+              onChange={(e) => setMinAge(e.currentTarget.value)}
+            />
+            <span aria-hidden="true">–</span>
+            <input
+              type="number"
+              min={AGE_RANGE.min}
+              max={AGE_RANGE.max}
+              step={1}
+              placeholder={filters.maxPlaceholder}
+              aria-label={filters.maxAge}
+              value={maxAge}
+              onChange={(e) => setMaxAge(e.currentTarget.value)}
+            />
           </div>
-        </div>
+          <label className="filter-field" title={filters.minCurrentAbilityTitle}>
+            <span>{filters.minCurrentAbility}</span>
+            <input
+              type="number"
+              min={ABILITY_RANGE.min}
+              max={ABILITY_RANGE.max}
+              step={1}
+              placeholder={filters.abilityPlaceholder}
+              value={minCurrentAbility}
+              onChange={(e) => setMinCurrentAbility(e.currentTarget.value)}
+            />
+          </label>
+          <label className="filter-field" title={filters.minPotentialAbilityTitle}>
+            <span>{filters.minPotentialAbility}</span>
+            <input
+              type="number"
+              min={ABILITY_RANGE.min}
+              max={ABILITY_RANGE.max}
+              step={1}
+              placeholder={filters.abilityPlaceholder}
+              value={minPotentialAbility}
+              onChange={(e) => setMinPotentialAbility(e.currentTarget.value)}
+            />
+          </label>
+          <label className="filter-field">
+            <span>{filters.nation}</span>
+            <input value={nation} onChange={(e) => setNation(e.currentTarget.value)} spellCheck={false} />
+          </label>
+          <label className="filter-field">
+            <span>{filters.club}</span>
+            <input value={club} onChange={(e) => setClub(e.currentTarget.value)} spellCheck={false} />
+          </label>
+          <AttributeFilters rows={attributes} choices={STAFF_ATTRIBUTES} onChange={setAttributes} />
+        </FilterBar>
       }
       toolbarActions={(list) => <MassEditButton entity="staff" filters={{ staffFilter: filter }} list={list} />}
       tableClass="staff-grid"
@@ -199,7 +252,9 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
         </>
       }
       cells={(s) => <StaffCells staff={s} />}
-      profile={(s, panel) => <StaffProfile member={s} version={panel.version} onClose={panel.onClose} />}
+      profile={(s, panel) => (
+        <StaffProfile member={s} version={panel.version} tab={tab} onTab={setTab} onClose={panel.onClose} />
+      )}
     />
   );
 }

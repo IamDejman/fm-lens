@@ -593,6 +593,10 @@ export const en = {
     potentialAbilityShort: "PA",
     /** Hover text of a potential ability that is set as a range (the game stores it as a negative number). */
     potentialRange: "Potential set as a range",
+    /** The group of what the header leaves out: the full name, the birth date, the height and the ID. */
+    personalDetails: "Personal details",
+    fullNameLabel: "Full name",
+    heightLabel: "Height",
 
     // Attributes
     technical: "Technical",
@@ -792,6 +796,21 @@ export const en = {
     // After the attributes, while the profile is read
     /** The button that opens Set all attributes and Freeze attributes. */
     tools: "Tools",
+    tabsLabel: "Player sections",
+    tabs: { attributes: "Attributes", mood: "Mood", contract: "Contract", medical: "Medical", career: "Career" },
+    /** The tabs of a member of staff's profile. */
+    staffTabsLabel: "Staff sections",
+    staffTabs: { attributes: "Attributes", contract: "Contract", career: "Career" },
+    statusLabel: "Status",
+    injured: "Injured",
+    banned: "Banned",
+    concerns: (count: number) => (count === 1 ? "1 concern" : `${format(count)} concerns`),
+    contractTo: (date: string) => `Contract to ${date}`,
+    moraleAndHappiness: "Morale and happiness",
+    fitness: "Fitness",
+    international: "International",
+    noPromises: "No promises",
+    noContract: "No contract",
     /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
     setAttributes: "Set all attributes to",
     setAttributesButton: "Apply",
@@ -906,6 +925,9 @@ export const en = {
       contractEndsBy: "Contract ends by",
       transferListedOnly: "Transfer listed only",
       loanListedOnly: "Loan listed only",
+      /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */
+      chips: "Filters in effect",
+      removeChip: (label: string) => `Remove ${label}`,
       /** Bounds on attributes, a row each, under the other filters; the staff list has them too. */
       attributes: {
         heading: "Attributes",
@@ -1024,11 +1046,11 @@ export const en = {
     finances: "Finances",
     balance: "Balance",
     transferBudget: "Transfer budget",
-    wageBudget: "Wage budget (spending)",
+    wageBudget: "Wage budget used",
     totalWageBudget: "Total wage budget",
     ticketPrice: "Average ticket price",
-    /** Under the labels of the two wage budgets, which are amounts per week. */
-    perWeek: "per week",
+    /** After the two wage budgets, which are amounts per week. */
+    perWeek: "p/w",
     /** Clubs outside the leagues being played have no finance record in memory. */
     noFinances: "FM only tracks money for clubs in playable leagues.",
     /** Freezing the club's money, while the game can be written to, and what that does. */
@@ -1225,8 +1247,6 @@ export const en = {
     },
     empty: (query: string) => (query === "" ? "No nations found." : `No nations match “${query}”.`),
     columns: { name: "Nation", uid: "ID" },
-    /** In the profile: what this list is, and what it does not read. */
-    note: "Only nations that players or staff in this save come from.",
     uid: "ID",
     noUid: "No ID",
     nation: "Nation",
@@ -1264,14 +1284,15 @@ export const en = {
   app: {
     /** The masthead's menu of the smaller lists: nations, competitions, awards, stadiums and officials. */
     lists: "Lists",
-    /** The settings menu at the right of the masthead: its name, and the headings of its two lists. */
+    /** The Settings window the gear at the right of the masthead opens: its name, its sections and its rows. */
     settingsLabel: "Settings",
+    general: "General",
     languageLabel: "Language",
     currencyLabel: "Currency",
-    appearanceLabel: "Appearance",
-    appearanceSystem: "System",
-    appearanceLight: "Light",
-    appearanceDark: "Dark",
+    theme: "Theme",
+    privacy: "Privacy",
+    about: "About",
+    done: "Done",
     /** The interface scale, separate from the window's own zoom. */
     zoomLabel: "Zoom",
     /** A switch: anonymous counts of launches and edits, sent to PostHog (see `usage.ts`). */
@@ -1328,10 +1349,8 @@ export const en = {
 
     // The status line and the busy texts beside it
     notConnected: "Not connected",
-    /** The status line once connected; the app version and game build are at the foot of Settings. */
+    /** The status line once connected; the app version and game build are under About in Settings. */
     connected: "Connected",
-    /** The name, for screen readers, of the app version and game build at the foot of the settings menu. */
-    detailsLabel: "App details",
     /** At the foot of the window: opens the Report a problem dialog (see `report`). */
     reportProblem: "Report a problem",
     /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */
@@ -2255,21 +2274,22 @@ export const en = {
     // The actions on the whole team
     /** The name of the group of buttons for assistive technology. */
     actionsLabel: "Actions on the whole team",
-    /** `injured` is how many of the team's players have an injury. */
-    healAll: (injured: number) => (injured === 0 ? "Heal all" : `Heal all (${format(injured)} injured)`),
+    /** Heal, Lift bans and Remove unhappiness carry how many players they are for; these name them after the count. */
+    healAll: "Heal",
+    injuredCount: (injured: number) => `${format(injured)} injured`,
     healAllTitle: "Heal everyone in this team",
-    /** Hover text of Heal all while nobody in the team is injured. */
+    /** Hover text of Heal while nobody in the team is injured. */
     healNone: "Nobody in this team is injured",
-    /** `banned` is how many of the team's players have a ban. */
-    liftAll: (banned: number) => (banned === 0 ? "Lift bans" : `Lift bans (${format(banned)} banned)`),
+    liftAll: "Lift bans",
+    bannedCount: (banned: number) => `${format(banned)} banned`,
     liftAllTitle: "Lift every ban in this team",
     /** Hover text of Lift bans while nobody in the team is banned. */
     liftNone: "Nobody in this team is banned",
-    refreshAll: "Refresh all",
+    refreshAll: "Refresh fitness",
     refreshAllTitle: "Full energy, full match sharpness and fully rested for everyone",
+    removeUnhappiness: "Remove unhappiness",
     /** `unhappy` is how many of the team's players have a reason to be unhappy that lasts. */
-    removeUnhappiness: (unhappy: number) =>
-      unhappy === 0 ? "Remove unhappiness" : `Remove unhappiness (${format(unhappy)} unhappy)`,
+    unhappyCount: (unhappy: number) => `${format(unhappy)} unhappy`,
     removeUnhappinessTitle: "Clear every reason to be unhappy in this team",
     /** Hover text of Remove unhappiness while nobody in the team is unhappy. */
     unhappyNone: "Nobody in this team is unhappy",

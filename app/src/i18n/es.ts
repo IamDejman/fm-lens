@@ -640,6 +640,9 @@ export const es: Strings = {
     potentialAbility: "Habilidad potencial",
     potentialAbilityShort: "HP",
     potentialRange: "Potencial fijado como un rango",
+    personalDetails: "Datos personales",
+    fullNameLabel: "Nombre completo",
+    heightLabel: "Altura",
 
     // Atributos
     technical: "Técnicos",
@@ -812,6 +815,20 @@ export const es: Strings = {
 
     // Sobre los atributos, mientras se lee el perfil
     tools: "Herramientas",
+    tabsLabel: "Secciones del jugador",
+    tabs: { attributes: "Atributos", mood: "Moral", contract: "Contrato", medical: "Médico", career: "Trayectoria" },
+    staffTabsLabel: "Secciones del empleado",
+    staffTabs: { attributes: "Atributos", contract: "Contrato", career: "Trayectoria" },
+    statusLabel: "Estado",
+    injured: "Lesionado",
+    banned: "Sancionado",
+    concerns: (count: number) => (count === 1 ? "1 queja" : `${format(count)} quejas`),
+    contractTo: (date: string) => `Contrato hasta ${date}`,
+    moraleAndHappiness: "Moral y felicidad",
+    fitness: "Forma física",
+    international: "Internacional",
+    noPromises: "Sin promesas",
+    noContract: "Sin contrato",
     setAttributes: "Poner todos los atributos en",
     setAttributesButton: "Aplicar",
     setAttributesDone: (count, level) =>
@@ -910,6 +927,8 @@ export const es: Strings = {
       contractEndsBy: "Contrato hasta",
       transferListedOnly: "Solo transferibles",
       loanListedOnly: "Solo cedibles",
+      chips: "Filtros activos",
+      removeChip: (label: string) => `Quitar ${label}`,
       attributes: {
         heading: "Atributos",
         attribute: "Atributo",
@@ -1008,10 +1027,10 @@ export const es: Strings = {
     finances: "Finanzas",
     balance: "Saldo",
     transferBudget: "Presupuesto de fichajes",
-    wageBudget: "Presupuesto salarial (gasto)",
+    wageBudget: "Presupuesto salarial usado",
     totalWageBudget: "Presupuesto salarial total",
     ticketPrice: "Precio medio de la entrada",
-    perWeek: "por semana",
+    perWeek: "/sem.",
     noFinances: "FM solo lleva las finanzas de los clubes de ligas jugables.",
     freeze: "Congelar el dinero",
     freezeNote: "El saldo no puede bajar mientras FM Lens esté conectado.",
@@ -1198,7 +1217,6 @@ export const es: Strings = {
     },
     empty: (query) => (query === "" ? "No se han encontrado países." : `Ningún país coincide con «${query}».`),
     columns: { name: "País", uid: "UID" },
-    note: "Solo los países de los jugadores y el personal de esta partida.",
     uid: "UID",
     noUid: "Sin UID",
     nation: "País",
@@ -1234,12 +1252,13 @@ export const es: Strings = {
   app: {
     lists: "Listas",
     settingsLabel: "Ajustes",
+    general: "General",
     languageLabel: "Idioma",
     currencyLabel: "Moneda",
-    appearanceLabel: "Apariencia",
-    appearanceSystem: "Sistema",
-    appearanceLight: "Claro",
-    appearanceDark: "Oscuro",
+    theme: "Tema",
+    privacy: "Privacidad",
+    about: "Acerca de",
+    done: "Listo",
     zoomLabel: "Zoom",
     usageLabel: "Compartir uso anónimo",
     appearance: "Apariencia",
@@ -1289,7 +1308,6 @@ export const es: Strings = {
 
     notConnected: "Sin conexión",
     connected: "Conectado",
-    detailsLabel: "Detalles de la app",
     reportProblem: "Informar de un problema",
     more: "Más",
     debugTag: "DEBUG",
@@ -2022,25 +2040,19 @@ export const es: Strings = {
 
     // Las acciones sobre todo el equipo
     actionsLabel: "Acciones sobre todo el equipo",
-    healAll: (injured) =>
-      injured === 0
-        ? "Curar a todos"
-        : `Curar a todos (${injured === 1 ? "1 lesionado" : `${format(injured)} lesionados`})`,
+    healAll: "Curar",
+    injuredCount: (injured) => (injured === 1 ? "1 lesionado" : `${format(injured)} lesionados`),
     healAllTitle: "Curar a todo el equipo",
     healNone: "Nadie en este equipo está lesionado",
-    liftAll: (banned) =>
-      banned === 0
-        ? "Levantar sanciones"
-        : `Levantar sanciones (${banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`})`,
+    liftAll: "Levantar sanciones",
+    bannedCount: (banned) => (banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`),
     liftAllTitle: "Levantar todas las sanciones del equipo",
     liftNone: "Nadie en este equipo está sancionado",
-    refreshAll: "Recuperar a todos",
+    refreshAll: "Recuperar físico",
     refreshAllTitle:
       "Energía y ritmo de competición al máximo, y todos totalmente descansados",
-    removeUnhappiness: (unhappy) =>
-      unhappy === 0
-        ? "Quitar descontento"
-        : `Quitar descontento (${unhappy === 1 ? "1 descontento" : `${format(unhappy)} descontentos`})`,
+    removeUnhappiness: "Quitar descontento",
+    unhappyCount: (unhappy) => (unhappy === 1 ? "1 descontento" : `${format(unhappy)} descontentos`),
     removeUnhappinessTitle: "Quitar todos los motivos de descontento del equipo",
     unhappyNone: "Nadie en este equipo está descontento",
     moreLabel: "Más acciones sobre todo el equipo",

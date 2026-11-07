@@ -194,10 +194,12 @@ together. The read-back checks that none of the offers waits any more and no
 record of them is left. Each cancel is logged in Changes; nothing undoes it.
 See recon/fm27-future-transfers.md.
 
-Checked in FM for a free agent (Round 1 below) and a club-to-club deal (Round 2
-below). Not yet checked: a loan agreed for a later day, the selling club's
-budget, FM's news of a cancelled club deal, a player with two pending deals, and
-a save and reload.
+Checked in FM for a free agent (Round 1 below), a club-to-club deal (Round 2
+below), and the selling club's budget, FM's news, a second deal for the same
+player and a save and reload (Live check below). A player has at most one
+pending deal: signing him for a later day replaces the one he has. Not yet
+checked: a loan agreed for a later day. None was pending in the copy, and FM
+Lens loans start at once.
 
 ## Human manager: unsackable flag (experimental, persistence tested)
 
@@ -530,16 +532,16 @@ probe only read.
 | Check | FM Lens | Probe | FM |
 |---|---|---|---|
 | Add injury, Declan Rice (28106491) | Logged, then Undone | Injury, then none | Medical shows the injury at once |
-| Grant work permit, Holger Quintero (2000521121) | Not granted -> Granted | Permit granted 2027-12-11 | Pending recheck after Continue |
+| Grant work permit, Holger Quintero (2000521121) | Not granted -> Granted | Permit granted 2027-12-11 | Revoked later; FM kept a permit (Rechecks below) |
 | Sign free agent, no terms, Yannik Keitel (91179656) | -> 1. FSV Mainz 05, then Undone | Mainz, FM's contract; then no club, no contract | Mainz, #6, to 30/6/2030 |
-| Sign with terms: Keitel, £5,000, end 30/06/2029 | -> 1. FSV Mainz 05 | £5,000, signed 2027-12-11, expires 2029-06-30 | Mainz; contract page still 30/6/2030 (page viewed before, recheck after Continue) |
+| Sign with terms: Keitel, £5,000, end 30/06/2029 | -> 1. FSV Mainz 05 | £5,000, signed 2027-12-11, expires 2029-06-30 | Mainz; contract page still 30/6/2030 (page viewed before); 30/6/2029 after Continue (Rechecks below) |
 | Loans (#19): White, Merino, Mosquera, Harriman-Annous | - | Clubs, starts, 2028-06-29, £55,000 / £98,000 / £30,000 / £2,304 | Squad > Loans: same clubs and dates, wage contribution £55K / £98K / £30K / £2.3K |
 | Loan start, Ethan Nwaneri (2000283271) to Brentford until 30/06/2028 | Arsenal -> Brentford | Loan 2027-12-11 to 2028-06-30, borrower pays £0 | Profile "On loan at Brentford", parent Arsenal |
-| Future transfer, Patrick Berg (53099570) to Rosenborg BK on 18/12/2027 | Joins 18 Dec 2027, then Undone | Still a free agent | "Transfer arranged, joining Rosenborg on 18/12/2027"; after Undo the badge still shows (recheck after Continue) |
-| Future transfer, Hugo González (67295025) to Getafe on 13/12/2027 | Joins 13 Dec 2027 | Still a free agent | Pending: Continue past 13 Dec |
-| Officials: Michael Oliver (103994) CA 180 -> 170, reputation 8,388 -> 8,600 | "2 changes applied" | CA/PA 170/180, rep 8600 | Pending recheck after Continue |
+| Future transfer, Patrick Berg (53099570) to Rosenborg BK on 18/12/2027 | Joins 18 Dec 2027, then Undone | Still a free agent | "Transfer arranged, joining Rosenborg on 18/12/2027"; after Undo the badge still shows; gone after Continue (Rechecks below) |
+| Future transfer, Hugo González (67295025) to Getafe on 13/12/2027 | Joins 13 Dec 2027 | Still a free agent | Getafe on 13 Dec, FM's contract to 30/6/2031 (Rechecks below) |
+| Officials: Michael Oliver (103994) CA 180 -> 170, reputation 8,388 -> 8,600 | "2 changes applied" | CA/PA 170/180, rep 8600 | Still 170 / 180 after Continue; FM's search has no officials (Rechecks below) |
 | End loan, Mikel Merino (67211760), Arsenal loan at Real Hispalis with a £22.5M mandatory future fee | "FM didn't make the change", nothing logged | Real Hispalis, own contract £77,000 to 2030-06-30, no loan | News: Real Hispalis sign Merino for £22,500,000. **Failed**: fixed in #30 |
-| Undo of the loan FM Lens started, Nwaneri | Undone | Arsenal, his own contract, no loan, at once | Pending recheck after Continue |
+| Undo of the loan FM Lens started, Nwaneri | Undone | Arsenal, his own contract, no loan, at once | Arsenal, no loan after Continue (Rechecks below) |
 
 Findings so far:
 
@@ -1094,6 +1096,54 @@ Release integration for 0.6.0 incorporates main through `ac0441e`. It removes
 compatibility notices, reports and sample data; helper discovery replaces that
 blanket lock. Unknown-build, health and current-career guards remain in force.
 
+## Live check: UI smoke pass and future transfers (7 November 2026)
+
+FM27 Steam build 26340721 ARM64. FM Lens 0.6.0 built from
+`fix/squad-unhappy-count` (#136), on `main` at 0ea16e7 (#127 to #134). Copy:
+`FM Lens Live 2026-11-07` (Arsenal, 11 Dec 2027 16:30). Continue was never
+pressed. The copy was saved once on purpose, for the save and reload; FM was
+then quit without saving. The main career's hash was checked before and after
+(OK).
+
+UI smoke pass:
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| What's new, Connect, Reload | 0.6.0 notes once; Connect; Reload reconnects after FM loads a save | - | - |
+| Players: list, Saka's tabs, Edit | All render; Edit shows the Min/Max hints | - | - |
+| Staff: list, Arteta's profile | Render; four jobs show as "Job 8", "Job 10", "Job 38" and "Job 66" | - | - |
+| Clubs: Arsenal's overview and squad | Render; a fourth squad tab is "Team 4"; Jaded. shows raw values, some negative (-14, -48) | - | - |
+| Lists: competitions, nations, officials; Changes | Render | - | - |
+| Saka's Mood | Unhappiness "Reason 570, Internal, since 7 Dec 2027": the reason has no name | - | - |
+| Squad Remove unhappiness, before #136 | Off with no count, though Saka has a concern | - | - |
+| The same with #136 | 12 players; pressing it made 17 changes and turned it off | - | - |
+
+Future transfers:
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| A loan agreed for a later day | - | 54 dated deals, all `FULL_TRANSFER_OFFER`; no loan to test | - |
+| Emiliano Martínez (14020367), Chelsea -> Galatasaray on 31 Dec 2027, offer 134: cancel | Cancel transfer, confirmed; the button goes | 53 deals, not his | Profile: the transfer-arranged badge gone, transfer listed left |
+| Chelsea's money around the cancel | - | Transfer budget 68,095,855 -> 60,146,760 at once; balance 219,763,571 unchanged | - |
+| FM's news of the cancel | - | - | No news item or message |
+| Rodrigo Piñeiro (78085122), free agent, to ATG on 5 Jan 2028 (offer 246): Sign for Danubio, joins 20 Jan 2028 | Signed; one Cancel transfer | One deal: Danubio, 20 Jan 2028, offer 381; ATG's gone | - |
+| Save in FM, load the copy again | Reload: connected, 11 Dec 2027; Piñeiro still has Cancel transfer | 53 deals; no Martínez; Piñeiro to Danubio only; Chelsea 60,146,760 | Martínez: transfer listed only |
+
+Findings:
+
+- Remove unhappiness on the squad screen never turned on: the squad rows left
+  out the unhappy flag. Fixed in #136 and checked above.
+- Still shown raw: staff jobs 8, 10, 38 and 66, unhappiness reason 570, the
+  fourth squad tab and jadedness.
+- The selling club's transfer budget fell by 7,949,095 when the deal was
+  cancelled; in Round 2 the buying club's rose. FM seems to move transfer
+  budgets when it agrees a deal, and the cancel reverses that. The fee was not
+  read, so this is not confirmed.
+- FM gives no news of a cancelled club deal.
+- Signing a player for a later day replaces his pending deal with no warning in
+  the Sign dialog.
+- The Sign dialog's empty Contract end shows today's real date, not the game's,
+  as its placeholder.
 
 ## Windows reads (7 November 2026)
 

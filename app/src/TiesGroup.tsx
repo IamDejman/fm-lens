@@ -9,7 +9,7 @@ import { addTie, changeTie, homegrownRules, listNations, removeTie } from "./edi
 import { describeError } from "./format";
 import { tieText as text } from "./labels";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
-import { Fact } from "./ProfileParts";
+import { Fact, GroupHead } from "./ProfileParts";
 import type { Nation, PlayerDetails, Tie, TieKind } from "./types";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
@@ -44,7 +44,7 @@ function TieLine({ tie, rule = true }: { tie: Tie; rule?: boolean }) {
   );
 }
 
-/** The group in the profile, and the button that opens the dialog while the game can be written to. */
+/** The group in the profile, with the button on its heading that opens the dialog while the game can be written to. */
 export function TiesGroup({ details }: { details: PlayerDetails }) {
   const { editable, readOnlyNote } = useContext(EditorContext);
   const [open, setOpen] = useState(false);
@@ -61,7 +61,19 @@ export function TiesGroup({ details }: { details: PlayerDetails }) {
 
   return (
     <section className="profile-group">
-      <h3>{text.heading}</h3>
+      <GroupHead title={text.heading}>
+        <button
+          ref={button}
+          type="button"
+          className="heal-toggle"
+          aria-haspopup="dialog"
+          disabled={!editable}
+          title={editable ? text.changeTitle : readOnlyNote}
+          onClick={() => setOpen(true)}
+        >
+          {text.change}
+        </button>
+      </GroupHead>
       <dl className="stats ties">
         {SECTIONS.map(({ kind, label }) => {
           const ties = details.ties.filter((tie) => tie.tie === kind);
@@ -82,19 +94,6 @@ export function TiesGroup({ details }: { details: PlayerDetails }) {
           );
         })}
       </dl>
-      <div className="ties-foot">
-        <button
-          ref={button}
-          type="button"
-          className="heal-toggle"
-          aria-haspopup="dialog"
-          disabled={!editable}
-          title={editable ? text.changeTitle : readOnlyNote}
-          onClick={() => setOpen(true)}
-        >
-          {text.change}
-        </button>
-      </div>
       {open && <TiesDialog details={details} onClose={() => setOpen(false)} />}
     </section>
   );
