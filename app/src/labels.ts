@@ -284,3 +284,5 @@ export function fieldLabel(entity: Entity, key: string): string {
       return key;
   }
 }
+
+export const listFeedbackText = strings.listFeedback;

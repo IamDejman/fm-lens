@@ -2108,5 +2108,7 @@ export const tr: Strings = {
     steamBuild: (id) => `derleme ${id}`,
   },
 
+  listFeedback: { failed: "Arama başarısız", searching: "Aranıyor…", retry: "Yeniden dene" },
+
   errors,
 };
