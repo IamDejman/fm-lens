@@ -17,9 +17,9 @@ import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
   attributeRow,
-  Born,
   ContractDates,
   Fact,
+  PersonalGroup,
   personalityRows,
   ProfileFrame,
   ProfileTabs,
@@ -50,7 +50,7 @@ const FORMATION_FIELDS = ["formation.in_possession", "formation.out_of_possessio
 const formationText = (field: string, id: number) => (id === 0 ? "-" : choiceLabel(field, id));
 
 /** The tabs of the profile, in their order. */
-const TABS = ["attributes", "contract", "personal"] as const;
+const TABS = ["attributes", "contract", "career"] as const;
 
 export type StaffTab = (typeof TABS)[number];
 
@@ -124,7 +124,6 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
   const panel = useRef<HTMLDivElement>(null);
   const details = loaded?.details;
   const info: StaffSummary = details ?? member;
-  const vitals = [info.dateOfBirth && <Born dateOfBirth={info.dateOfBirth} age={info.age} />, `${profileText.id} ${info.uid}`];
 
   // Another tab starts at its top, wherever the last one was scrolled to.
   const select = (next: StaffTab) => {
@@ -136,7 +135,8 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
     <ProfileFrame
       picture={<PersonFace uid={info.uid} name={info.name} size={PICTURE_SIZE.face} />}
       name={info.name}
-      fullName={info.fullName}
+      // The full name, the birth date and the ID are under Personal details on the Career tab.
+      fullName={null}
       badge={info.isHuman ? <HumanBadge /> : undefined}
       meta={dotted([
         info.job !== null && jobLabel(info.job),
@@ -149,8 +149,8 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
             </WithPicture>
           </EditableValue>
         ),
+        info.age !== null && profileText.age(info.age),
       ])}
-      vitals={vitals}
       currentAbility={info.currentAbility}
       potentialAbility={info.potentialAbility}
       loaded={loaded}
@@ -195,7 +195,7 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
           {tab === "contract" && (
             <ContractTab details={details} canChangeJob={editing.stage === "view" && !info.isHuman} />
           )}
-          {tab === "personal" && <PersonalTab details={details} />}
+          {tab === "career" && <CareerTab details={details} />}
         </div>
       )}
     </ProfileFrame>
@@ -258,10 +258,17 @@ function ContractTab({ details, canChangeJob }: { details: StaffDetails; canChan
 }
 
 /** His reputation, the languages he speaks and the people and clubs he likes or dislikes. */
-function PersonalTab({ details }: { details: StaffDetails }) {
+function CareerTab({ details }: { details: StaffDetails }) {
   const person = { uid: details.uid, staff: true, name: details.name };
   return (
     <>
+      <PersonalGroup
+        entity="staff"
+        name={details.name}
+        fullName={details.fullName}
+        dateOfBirth={details.dateOfBirth}
+        uid={details.uid}
+      />
       <section className="profile-group">
         <h3>{profileText.reputation}</h3>
         <ReputationBars reputation={details.reputation} />

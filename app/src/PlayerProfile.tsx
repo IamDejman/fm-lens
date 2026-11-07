@@ -6,7 +6,7 @@ import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
 import { keepPlaying, setWorkPermit, wholePercent } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
-import { ATTRIBUTE_LABELS, editText, fieldLabel, profileText, type AttributeKey } from "./labels";
+import { ATTRIBUTE_LABELS, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
 import { PromisesGroup } from "./PromisesGroup";
 import { MoveButton } from "./MoveDialog";
@@ -18,16 +18,17 @@ import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
-  Born,
   ContractDates,
   Fact,
   focusLost,
   GroupHead,
   LOWER_IS_BETTER,
+  PersonalGroup,
   personalityRows,
   ProfileFrame,
   ProfileTabs,
   RatingGroup,
+  RatingList,
   ReputationBars,
   useProfileDetails,
   WageFact,
@@ -80,13 +81,6 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
   const info = details ?? player;
   // A move FM agreed for him on a later day: its dialog shows the first one, and cancels all of them, as FM's editor.
   const agreed = details?.futureTransfers[0];
-  // The birth date and the height, like the nationality above them and the abilities, are inputs where they are shown
-  // while the player is edited.
-  const vitals = [
-    info.dateOfBirth && <Born dateOfBirth={info.dateOfBirth} age={info.age} />,
-    details && details.heightCm > 0 && <Height cm={details.heightCm} />,
-    `${profileText.uid} ${info.uid}`,
-  ];
 
   // Another tab starts at its top, wherever the last one was scrolled to.
   const select = (next: PlayerTab) => {
@@ -98,7 +92,8 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
     <ProfileFrame
       picture={<PersonFace uid={info.uid} name={info.name} size={PICTURE_SIZE.face} />}
       name={info.name}
-      fullName={info.fullName}
+      // The full name, the birth date, the height and the ID are under Personal details on the Career tab.
+      fullName={null}
       meta={
         <>
           {info.club === null ? (
@@ -118,9 +113,10 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
               </EditableValue>
             </>
           )}
+          {info.age !== null && ` · ${profileText.age(info.age)}`}
+          {info.positions.length > 0 && ` · ${positionLabel(info.positions[0])}`}
         </>
       }
-      vitals={vitals}
       status={details && <StatusChips details={details} onTab={select} />}
       currentAbility={info.currentAbility}
       potentialAbility={info.potentialAbility}
@@ -266,6 +262,7 @@ function StatusChips({ details, onTab }: { details: PlayerDetails; onTab: (tab: 
 function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; toolsOpen: boolean; tools: string }) {
   const goalkeeper = isGoalkeeper(details);
   const editingPositions = useEditableField("position.gk");
+  const editingTraits = useEditableField("trait.0");
   return (
     <>
       <AttributeActions uid={details.uid} open={toolsOpen} panel={tools} />
@@ -285,21 +282,23 @@ function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; 
         </div>
 
         <div className="profile-columns">
-          <div className="profile-stack">
-            <RatingGroup title={profileText.hidden} rows={attributeRows(details, HIDDEN)} />
-            <RatingGroup title={profileText.feet} rows={attributeRows(details, FEET)} />
-          </div>
-          <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
+          <RatingGroup title={profileText.hidden} rows={attributeRows(details, HIDDEN)} />
+          <section className="profile-group">
+            <h3>{profileText.personality}</h3>
+            <RatingList rows={personalityRows(details.personality)} />
+            {!editingTraits && <TraitTags traits={details.traits} />}
+          </section>
           <section className="profile-group">
             <h3>{profileText.positions}</h3>
             <PositionPitch ratings={details.positionRatings} />
+            <RatingList rows={attributeRows(details, FEET)} />
           </section>
         </div>
       </div>
 
       {editingPositions && <PositionRatings ratings={details.positionRatings} />}
 
-      <TraitsGroup traits={details.traits} />
+      {editingTraits && <TraitsEditor />}
     </>
   );
 }
@@ -369,6 +368,14 @@ function ContractTab({ details }: { details: PlayerDetails }) {
 function CareerTab({ details }: { details: PlayerDetails }) {
   return (
     <>
+      <PersonalGroup
+        entity="player"
+        name={details.name}
+        fullName={details.fullName}
+        dateOfBirth={details.dateOfBirth}
+        height={details.heightCm > 0 && <Height cm={details.heightCm} />}
+        uid={details.uid}
+      />
       <CareerGroups details={details} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} person={{ uid: details.uid, staff: false, name: details.name }} />
@@ -376,7 +383,7 @@ function CareerTab({ details }: { details: PlayerDetails }) {
   );
 }
 
-/** "178 cm" in the header; the number is an input while the player is edited. */
+/** "178 cm" under Personal details; the number is an input while the player is edited. */
 function Height({ cm }: { cm: number }) {
   if (!useEditableField("height")) {
     return profileText.height(cm);
@@ -643,31 +650,31 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
 /** The bits a player's traits are kept in: `trait.0` to `trait.63`. FMRTE's list names the first 62. */
 const TRAIT_BITS = Array.from({ length: 64 }, (_, bit) => bit);
 
-/**
- * His traits (preferred moves) by name; while he is edited, a checkbox for each, which writes its bit of the mask.
- */
-function TraitsGroup({ traits }: { traits: number[] }) {
-  const editing = useEditableField("trait.0");
+/** His traits (preferred moves) by name, under his personality. */
+function TraitTags({ traits }: { traits: number[] }) {
+  return traits.length === 0 ? (
+    <p className="note">{profileText.noTraits}</p>
+  ) : (
+    <ul className="tags" aria-label={profileText.traits}>
+      {traits.map((bit) => (
+        <li key={bit} className="tag">
+          {profileText.traitName(bit)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** While he is edited, a checkbox for each of his traits, which writes its bit of the mask: the width of the profile. */
+function TraitsEditor() {
   return (
     <section className="profile-group">
       <h3>{profileText.traits}</h3>
-      {editing ? (
-        <div className="tags traits-edit">
-          {TRAIT_BITS.map((bit) => (
-            <EditInput key={bit} field={`trait.${bit}`} />
-          ))}
-        </div>
-      ) : traits.length === 0 ? (
-        <p className="note">{profileText.noTraits}</p>
-      ) : (
-        <div className="tags">
-          {traits.map((bit) => (
-            <span key={bit} className="tag">
-              {profileText.traitName(bit)}
-            </span>
-          ))}
-        </div>
-      )}
+      <div className="tags traits-edit">
+        {TRAIT_BITS.map((bit) => (
+          <EditInput key={bit} field={`trait.${bit}`} />
+        ))}
+      </div>
     </section>
   );
 }

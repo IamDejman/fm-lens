@@ -211,7 +211,7 @@ export function SquadTab({ clubUid, version, panel }: SquadTabProps) {
     setBusy(false);
   }, [loaded]);
 
-  // A write can take the button that had focus out of play: Heal all once nobody is injured, Undo once it is done.
+  // A write can take the button that had focus out of play: Heal once nobody is injured, Undo once it is done.
   // Focus then goes to the line under the buttons, so that someone using the keyboard stays in the tab.
   useEffect(() => {
     if (busy || !refocus.current) {
@@ -417,10 +417,10 @@ interface TeamActionsProps {
 }
 
 /**
- * Heal all, Lift bans, Refresh all and Remove unhappiness for the shown team, and the rest under More: Max morale, Max
- * tactics (where FM can do it itself), Max cohesion and Max attributes, which asks first. Heal all, Lift bans and Remove
- * unhappiness say how many players they are for and wait until somebody is; every action waits while the game cannot be
- * written to, and says why.
+ * Heal, Lift bans, Refresh fitness and Remove unhappiness for the shown team, and the rest under More: Max morale, Max
+ * tactics (where FM can do it itself), Max cohesion and Max attributes, which asks first. Heal, Lift bans and Remove
+ * unhappiness show on a badge how many players they are for and wait until somebody is; every action waits while the
+ * game cannot be written to, and says why.
  */
 function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
   const { readOnlyNote, gameActions } = useContext(EditorContext);
@@ -435,14 +435,18 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
   return (
     <div className="squad-buttons" role="group" aria-label={text.actionsLabel}>
       <ActionButton
-        label={text.healAll(injured)}
+        label={text.healAll}
+        count={injured}
+        counted={text.injuredCount(injured)}
         title={hover(text.healAllTitle, injured === 0 ? text.healNone : null)}
         waiting={!editable || injured === 0}
         busy={busy}
         onPress={() => onAction("heal")}
       />
       <ActionButton
-        label={text.liftAll(banned)}
+        label={text.liftAll}
+        count={banned}
+        counted={text.bannedCount(banned)}
         title={hover(text.liftAllTitle, banned === 0 ? text.liftNone : null)}
         waiting={!editable || banned === 0}
         busy={busy}
@@ -456,7 +460,9 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
         onPress={() => onAction("refresh")}
       />
       <ActionButton
-        label={text.removeUnhappiness(unhappy)}
+        label={text.removeUnhappiness}
+        count={unhappy}
+        counted={text.unhappyCount(unhappy)}
         title={hover(text.removeUnhappinessTitle, unhappy === 0 ? text.unhappyNone : null)}
         waiting={!editable || unhappy === 0}
         busy={busy}
@@ -579,6 +585,10 @@ function MaxAllDialog({ count, onConfirm, onClose }: MaxAllDialogProps) {
 
 interface ActionButtonProps {
   label: string;
+  /** How many players it is for, on a badge after the label; none for an action on everyone. */
+  count?: number;
+  /** The count with what it counts, "5 injured", which the button's name ends with for assistive technology. */
+  counted?: string;
   /** Hover text. */
   title: string;
   /** Whether there is nothing it can do now: the button is disabled. */
@@ -592,7 +602,7 @@ interface ActionButtonProps {
  * One of the actions on the team. While a write is under way it is only dimmed (aria-disabled): a disabled button loses
  * focus.
  */
-function ActionButton({ label, title, waiting, busy, onPress }: ActionButtonProps) {
+function ActionButton({ label, count = 0, counted, title, waiting, busy, onPress }: ActionButtonProps) {
   return (
     <button
       type="button"
@@ -600,10 +610,12 @@ function ActionButton({ label, title, waiting, busy, onPress }: ActionButtonProp
       disabled={waiting}
       aria-disabled={busy || undefined}
       aria-busy={busy || undefined}
+      aria-label={count > 0 ? `${label} ${counted}` : undefined}
       title={title}
       onClick={() => !busy && onPress()}
     >
       {label}
+      {count > 0 && <span className="action-count">{formatNumber(count)}</span>}
     </button>
   );
 }

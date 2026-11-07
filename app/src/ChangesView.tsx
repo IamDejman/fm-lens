@@ -279,7 +279,11 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
       <section className="players changes">
         <div className="toolbar">
           <h2 className="view-title">{text.title}</h2>
-          {log.length > 0 && <span className="count">{text.count(log.length, undone)}</span>}
+          {log.length > 0 ? (
+            <span className="count">{text.count(log.length, undone)}</span>
+          ) : (
+            ready && <span className="count">{text.empty}</span>
+          )}
         </div>
         {problem && (
           <div className="banner" role="alert">
@@ -287,10 +291,9 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
           </div>
         )}
 
-        <div className="table-wrap" ref={tableWrap}>
-          {ready && log.length === 0 ? (
-            <p className="empty">{text.empty}</p>
-          ) : (
+        {/* No table until the rows are ready, and none for an empty log: the line beside the title says so. */}
+        {ready && log.length > 0 && (
+          <div className="table-wrap" ref={tableWrap}>
             <table className="grid changes-grid">
               <thead>
                 <tr>
@@ -302,49 +305,48 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
                 </tr>
               </thead>
               <tbody>
-                {ready &&
-                  pageOf(entries, shownPage).map((entry) => {
-                    if (entry.kind === "change") {
-                      return changeRow(entry.change, false);
-                    }
-                    const { batch } = entry;
-                    // Undefined while the mass edit is closed.
-                    const opened = open[batch.id];
-                    const batchPage = opened === undefined ? 0 : withinPages(opened, batch.changes.length);
-                    return (
-                      <Fragment key={`batch-${batch.id}`}>
-                        <BatchRow
-                          batch={batch}
-                          open={opened !== undefined}
-                          undoing={undoing}
-                          outcome={outcomes[batch.id]}
-                          onToggle={toggle}
-                          onUndo={undoWholeBatch}
-                        />
-                        {opened !== undefined && (
-                          <>
-                            {pageCount(batch.changes.length) > 1 && (
-                              <tr className="batch-pager">
-                                <td colSpan={COLUMNS}>
-                                  <Pager
-                                    label={text.batchPages}
-                                    page={batchPage}
-                                    total={batch.changes.length}
-                                    onPage={(next) => showBatchPage(batch.id, next)}
-                                  />
-                                </td>
-                              </tr>
-                            )}
-                            {pageOf(batch.changes, batchPage).map((change) => changeRow(change, true))}
-                          </>
-                        )}
-                      </Fragment>
-                    );
-                  })}
+                {pageOf(entries, shownPage).map((entry) => {
+                  if (entry.kind === "change") {
+                    return changeRow(entry.change, false);
+                  }
+                  const { batch } = entry;
+                  // Undefined while the mass edit is closed.
+                  const opened = open[batch.id];
+                  const batchPage = opened === undefined ? 0 : withinPages(opened, batch.changes.length);
+                  return (
+                    <Fragment key={`batch-${batch.id}`}>
+                      <BatchRow
+                        batch={batch}
+                        open={opened !== undefined}
+                        undoing={undoing}
+                        outcome={outcomes[batch.id]}
+                        onToggle={toggle}
+                        onUndo={undoWholeBatch}
+                      />
+                      {opened !== undefined && (
+                        <>
+                          {pageCount(batch.changes.length) > 1 && (
+                            <tr className="batch-pager">
+                              <td colSpan={COLUMNS}>
+                                <Pager
+                                  label={text.batchPages}
+                                  page={batchPage}
+                                  total={batch.changes.length}
+                                  onPage={(next) => showBatchPage(batch.id, next)}
+                                />
+                              </td>
+                            </tr>
+                          )}
+                          {pageOf(batch.changes, batchPage).map((change) => changeRow(change, true))}
+                        </>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
         {ready && pageCount(entries.length) > 1 && (
           <div className="pager-bar">
             <Pager label={text.pages} page={shownPage} total={entries.length} onPage={showPage} />

@@ -15,7 +15,7 @@ import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput, Shared
 import { converts } from "./currency";
 import { describeError, formatDate, formatMoney, formatNumber } from "./format";
 import { isShortcut } from "./keys";
-import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
+import { fieldLabel, PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import { PanelResizer, PanelWidthButton, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
 import {
@@ -78,12 +78,12 @@ interface ProfileFrameProps {
   /** The line under the names; a profile with nothing to say there leaves it out. */
   meta?: ReactNode;
   /**
-   * The small print under that, e.g. the birth date: its parts, set apart by dots, each kept on one line. A part may
-   * hold an input, which takes the place of its value while the profile is edited.
+   * The small print under that, e.g. a club's ID: its parts, set apart by dots, each kept on one line. A part may hold
+   * an input, which takes the place of its value while the profile is edited.
    */
-  vitals: ReadonlyArray<ReactNode>;
+  vitals?: ReadonlyArray<ReactNode>;
   /** A row across the header under the names and ratings: a player's status, such as an injury, each a button to the
-   * tab that has it. */
+   * tab that has it. `actions` end the same row. */
   status?: ReactNode;
   /** The abilities of a person, under the close button; inputs where they are while the person is edited. */
   currentAbility?: number;
@@ -92,7 +92,7 @@ interface ProfileFrameProps {
   side?: ReactNode;
   /** Buttons before Edit in the header: a player's Compare button. */
   headActions?: ReactNode;
-  /** Buttons in a row under the header, which is there only while it holds one: a player's Transfer and Release. */
+  /** Buttons at the end of the status row: a player's Transfer and Release. */
   actions?: ReactNode;
   /** Between the header and the body, so that it stays in view while the body scrolls: the tabs of a club. */
   tabs?: ReactNode;
@@ -120,6 +120,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
   const panelWidth = usePanelWidth(wide ? "wide" : "profile");
+  const shownVitals = vitals?.filter(Boolean) ?? [];
   const body = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,57 +157,68 @@ export function ProfileFrame(props: ProfileFrameProps) {
         <PanelResizer panelWidth={panelWidth} />
         <header className="profile-head">
           {picture}
+          {/* The name with the buttons at its end, then what the person is with the abilities at the end of theirs. */}
           <div className="profile-id">
-            <h2>
-              {name}
-              {badge}
-            </h2>
-            {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
-            {meta !== undefined && <p className="profile-meta">{meta}</p>}
-            <p className="profile-vitals">
-              {/* The dot stays at the end of a line, with the part before it. */}
-              {vitals.filter(Boolean).map((part, i) => (
-                <Fragment key={i}>
-                  {i > 0 && " · "}
-                  <span className="vital">{part}</span>
-                </Fragment>
-              ))}
-            </p>
-          </div>
-          <div className="profile-side">
-            <div className="profile-actions">
-              {headActions}
-              {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
-              <PanelWidthButton panelWidth={panelWidth} />
-              <button
-                className="icon-button"
-                onClick={closeProfile}
-                aria-label={profileText.close}
-                title={profileText.close}
-              >
-                <svg viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="m5 5 10 10M15 5 5 15" />
-                </svg>
-              </button>
+            <div className="profile-title">
+              <h2>
+                {name}
+                {badge}
+              </h2>
+              <div className="profile-actions">
+                {headActions}
+                {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
+                <PanelWidthButton panelWidth={panelWidth} />
+                <button
+                  className="icon-button"
+                  onClick={closeProfile}
+                  aria-label={profileText.close}
+                  title={profileText.close}
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="m5 5 10 10M15 5 5 15" />
+                  </svg>
+                </button>
+              </div>
             </div>
-            {side ??
-              (currentAbility !== undefined && potentialAbility !== undefined && (
-                <div className="profile-abilities">
-                  <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
-                  <EditableValue field="current_ability">
-                    <Ability value={currentAbility} />
-                  </EditableValue>
-                  <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
-                  <EditableValue field="potential_ability">
-                    <Ability value={potentialAbility} />
-                  </EditableValue>
-                </div>
-              ))}
+            <div className="profile-summary">
+              <div className="profile-lines">
+                {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
+                {meta !== undefined && <p className="profile-meta">{meta}</p>}
+                {shownVitals.length > 0 && (
+                  <p className="profile-vitals">
+                    {/* The dot stays at the end of a line, with the part before it. */}
+                    {shownVitals.map((part, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && " · "}
+                        <span className="vital">{part}</span>
+                      </Fragment>
+                    ))}
+                  </p>
+                )}
+              </div>
+              {side ??
+                (currentAbility !== undefined && potentialAbility !== undefined && (
+                  <div className="profile-abilities">
+                    <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
+                    <EditableValue field="current_ability">
+                      <Ability value={currentAbility} />
+                    </EditableValue>
+                    <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
+                    <EditableValue field="potential_ability">
+                      <Ability value={potentialAbility} />
+                    </EditableValue>
+                  </div>
+                ))}
+            </div>
           </div>
-          {status}
+          {/* The status, then what can be done to this person's career (transfer, release) at the end of its row. */}
+          {(status || actions) && (
+            <div className="profile-status-row">
+              {status}
+              {actions && <div className="profile-moves">{actions}</div>}
+            </div>
+          )}
         </header>
-        {/* What can be done to this person's career (transfer, release): a row of its own under the header. */}
-        {actions && <div className="profile-toolbar">{actions}</div>}
 
         {tabs}
 
@@ -523,6 +535,36 @@ export function Fact({ label, title, children }: { label: ReactNode; title?: str
       <dt>{label}</dt>
       <dd>{children}</dd>
     </div>
+  );
+}
+
+/**
+ * What the header of a person leaves out: the full name where it differs from the name, the birth date (an input while
+ * it can be edited), a player's height (likewise) and the ID.
+ */
+export function PersonalGroup(props: {
+  name: string;
+  fullName: string | null;
+  dateOfBirth: FmDate | null;
+  height?: ReactNode;
+  uid: number;
+  entity: "player" | "staff";
+}) {
+  const { name, fullName, dateOfBirth, height, uid, entity } = props;
+  return (
+    <section className="profile-group">
+      <h3>{profileText.personalDetails}</h3>
+      <dl className="stats">
+        {fullName && fullName !== name && <Fact label={profileText.fullNameLabel}>{fullName}</Fact>}
+        {dateOfBirth && (
+          <Fact label={fieldLabel(entity, "date_of_birth")}>
+            <EditableValue field="date_of_birth">{formatDate(dateOfBirth)}</EditableValue>
+          </Fact>
+        )}
+        {height && <Fact label={profileText.heightLabel}>{height}</Fact>}
+        <Fact label={profileText.uid}>{uid}</Fact>
+      </dl>
+    </section>
   );
 }
 

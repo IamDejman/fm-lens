@@ -1522,7 +1522,8 @@ input::placeholder {
   white-space: nowrap;
 }
 
-.grid tbody tr:nth-child(even) td {
+/* Counted without the detail open under a row, so the stripes stay put when it opens. */
+.grid tbody tr:nth-child(even of :not(.row-detail)) td {
   background: var(--zebra);
 }
 
@@ -1546,6 +1547,35 @@ input::placeholder {
 .grid tbody tr:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
+}
+
+/* A list whose rows open nothing. */
+.grid.static tbody tr {
+  cursor: default;
+}
+
+/* What a picked row holds besides its cells, under it, as a competition's rules: on the row's bar and a lighter tint
+ * so the two read as one, its facts in columns across the table. */
+.grid tbody tr.row-detail {
+  cursor: default;
+}
+
+.grid tbody tr.row-detail td,
+.grid tbody tr.row-detail:hover td {
+  height: auto;
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  box-shadow: inset 3px 0 0 var(--accent);
+  white-space: normal;
+}
+
+.row-detail .stats {
+  columns: 240px;
+  column-gap: var(--space-6);
+}
+
+.row-detail .stat {
+  break-inside: avoid;
 }
 
 /* With a profile open the table is narrow: drop Born and UID, then Nation, once they no longer fit. */
@@ -2112,10 +2142,11 @@ input::placeholder {
   user-select: none;
 }
 
-/* The head of a profile, as FM's: the name large, what he is under it, his abilities and the actions at the right. */
+/* The head of a profile, as FM's: the name large with the actions at its end, what he is under it with his abilities at
+   the end of that line, then his status. */
 .profile-head {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   gap: 0 var(--space-4);
   padding: var(--space-4) var(--space-4) var(--space-3);
@@ -2124,10 +2155,21 @@ input::placeholder {
 }
 
 .profile-id {
+  display: grid;
   grid-column: 2;
+  gap: var(--space-1);
+  min-width: 0;
 }
 
-.profile-id h2 {
+.profile-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.profile-title h2 {
+  flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: var(--type-3xl);
   font-stretch: 75%;
@@ -2140,10 +2182,6 @@ input::placeholder {
   margin: 0;
 }
 
-.profile-id .profile-meta {
-  margin-top: var(--space-2);
-}
-
 .profile-fullname,
 .profile-vitals {
   color: var(--muted);
@@ -2153,16 +2191,51 @@ input::placeholder {
   font-size: var(--type-base);
 }
 
-/* Across the whole header of a player, under his picture, names and ratings: his status, each chip a button to the tab
-   that has it, with a dot for how good the news is. */
-.status-chips {
+/* What the person is, with the abilities at the end of the line; in a narrow panel the abilities go under it. */
+.profile-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-1) var(--space-4);
+}
+
+.profile-lines {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.profile-summary > :last-child:not(.profile-lines) {
+  margin-left: auto;
+}
+
+/* Across the whole header, under the picture, names and ratings: a player's status, each chip a button to the tab that
+   has it, with a dot for how good the news is; then Transfer and Release at the end of the row. */
+.profile-status-row {
   display: flex;
   grid-column: 1 / -1;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
-  margin: var(--space-2) 0 0;
+  margin-top: var(--space-2);
+}
+
+.status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.profile-moves {
+  margin-left: auto;
+}
+
+.profile-moves button {
+  min-height: 24px;
+  padding: 1px var(--space-2);
+  font-size: var(--type-sm);
 }
 
 .status-chip {
@@ -2170,7 +2243,7 @@ input::placeholder {
   align-items: center;
   gap: var(--space-2);
   min-height: 24px;
-  padding: 1px var(--space-3);
+  padding: 1px var(--space-2);
   border-color: var(--border);
   border-radius: 999px;
   background: var(--raised);
@@ -2202,32 +2275,9 @@ input::placeholder {
   white-space: nowrap;
 }
 
-/* A profile with no line of its own under the names (a club) still wants air above its small print. */
-.profile-id :is(h2, .profile-fullname) + .profile-vitals {
-  margin-top: var(--space-2);
-}
-
-/* Under a profile's header: Transfer and Release, in one row that wraps when the panel is narrow. */
-.profile-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 1px solid var(--border);
-  background: var(--raised);
-}
-
-.profile-toolbar:empty {
-  display: none;
-}
-
-.profile-side {
-  display: flex;
-  grid-column: 3;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-2);
+/* A club's small print, under its short name. */
+.profile-fullname + .profile-vitals {
+  margin-top: var(--space-1);
 }
 
 .icon-button {
@@ -2257,13 +2307,15 @@ input::placeholder {
   stroke-linecap: round;
 }
 
-/* Current and potential ability, large, side by side: the two numbers a player reads first. */
+/* Current and potential ability, large, side by side, each after its label: the two numbers a player reads first. */
 .profile-abilities {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: auto auto;
+  display: flex;
   align-items: baseline;
-  gap: 0 var(--space-4);
+  gap: var(--space-1);
+}
+
+.profile-abilities abbr ~ abbr {
+  margin-left: var(--space-3);
 }
 
 .profile-abilities abbr,
@@ -2302,8 +2354,10 @@ input::placeholder {
   overflow-y: auto;
 }
 
+/* Groups stand 16px apart, side by side and one over the other; the two halves of a wide profile 32px (see
+   `.profile-pair`). */
 .profile-body > * + * {
-  margin-top: var(--space-5);
+  margin-top: var(--space-4);
 }
 
 .profile-body .banner {
@@ -2340,7 +2394,7 @@ input::placeholder {
 .profile-columns {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0 var(--space-3);
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -2356,7 +2410,7 @@ input::placeholder {
 .profile-split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 var(--space-4);
+  gap: var(--space-4);
   align-items: start;
 }
 
@@ -2369,7 +2423,7 @@ input::placeholder {
    side once the panel is made wide enough for both (see PanelResizer). */
 .profile-pair {
   display: grid;
-  gap: var(--space-5) var(--space-6);
+  gap: var(--space-4) var(--space-6);
   align-items: start;
 }
 
@@ -2516,8 +2570,9 @@ input::placeholder {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  margin-top: var(--space-3);
+  margin: var(--space-2) 0 0;
   padding: 0 var(--space-2);
+  list-style: none;
 }
 
 .tag.listed {
@@ -2651,11 +2706,16 @@ input::placeholder {
 .legend {
   display: grid;
   gap: 3px;
-  margin: var(--space-3) 0 0;
+  margin: var(--space-2) 0 0;
   padding: 0 var(--space-2);
   color: var(--muted);
   font-size: var(--type-sm);
   list-style: none;
+}
+
+/* A player's feet, under the key of his pitch. */
+.legend + .ratings {
+  margin-top: var(--space-2);
 }
 
 .legend li {
@@ -2753,6 +2813,21 @@ input::placeholder {
 .max-toggle,
 .squad-action {
   padding: var(--space-1) var(--space-3);
+}
+
+/* How many players an action on the team is for, after its label. */
+.action-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: var(--space-2);
+  padding: 0 var(--space-1);
+  border-radius: 9px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
 }
 
 /* Edit is a profile's main action: filled with violet until it is on, then pressed in; amber is left to the values it
@@ -4122,14 +4197,9 @@ button.danger:hover:not(:disabled) {
 
 /* Transferring a player */
 
-/* Transfer takes the room Release leaves: leaving to a club is the usual way out. */
 .move-actions {
   display: flex;
   gap: var(--space-2);
-}
-
-.move-actions .move-toggle {
-  flex: 1;
 }
 
 /* Narrower than the dialogs that hold tables: a club, a few inputs and a short list. */
