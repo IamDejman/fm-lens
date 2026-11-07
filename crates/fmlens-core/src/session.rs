@@ -122,6 +122,7 @@ pub struct Session {
     array_storage: [Option<u64>; 3],
     /// The class of the full club finance record, found the first time it is needed.
     finance_class: OnceLock<Option<u64>>,
+    pub(crate) refresh_support: crate::refresh::OptionalRefresh,
     /// The class of stadiums, found the first time it is needed.
     stadium_class: OnceLock<Option<u64>>,
     /// The vtable of the retirement manager, once its class name has been checked.
@@ -159,6 +160,7 @@ impl Session {
             arrays,
             array_storage,
             finance_class: OnceLock::new(),
+            refresh_support: crate::refresh::OptionalRefresh::default(),
             stadium_class: OnceLock::new(),
             retirement_class: OnceLock::new(),
             health: Mutex::new(None),

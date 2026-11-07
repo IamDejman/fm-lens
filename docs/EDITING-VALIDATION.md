@@ -1034,3 +1034,57 @@ FM keeps the Reason with the entry: Replace changes who a like points at, not
 why. The copy was saved once on purpose for the reload; FM was then quit without
 saving. The main career and `FM Lens Batch 2026-11-05` hashes were checked
 before and after (OK).
+
+## Helper compatibility across FM Lens updates (7 November 2026)
+
+Local branch: `codex/helper-update-compatibility`, based on `9bda48c` (0.5.10).
+This changes connection compatibility and optional refresh behavior, not field
+layouts or the game-memory write guard. No game process was running during
+validation. The installed FM Lens app, installed helper, Steam configuration
+and careers were left alone.
+
+The task-port request and game-call wire formats are unchanged. A new read-only
+capability request reports the helper's loaded game-plugin UUID, allowed
+functions, program limits and indirect-result support. The app caches successful
+discovery for that opened process and intersects it with its own build profile;
+it does not expand either allowlist. Game-action availability uses that
+intersection, and the complete program is checked again before dispatch. Errors
+during discovery are reported or leave game actions unavailable, and can be
+retried; they are not treated as an earlier helper.
+
+Earlier helpers drop the unknown request, producing the kernel's send-once
+notice. FM Lens then retains their original call protocol and their own
+allowlist checks. An explicitly unsupported call with zero executed steps gets
+a separate error instead of a blanket restart instruction. Only automatic
+screen refresh treats that error as an optional operation: it skips and remembers
+the refused function for that Session, independently of the other refresh
+function. Timeouts, wrong-build replies, partial execution, malformed replies,
+missing helpers, read-only handles and career/value guards are not swallowed.
+An old helper may leave FM's displayed value cached until FM refreshes it.
+Actions requiring functions absent from an old helper remain unsupported; for
+helpers predating discovery, that is established by their refusal when asked.
+The staged helper loads on the next normal FM launch.
+
+Native Mach IPC regression tests exercise an earlier helper dropping discovery,
+then accepting a call, refusing another and accepting the next, without restart
+or replay. Other tests cover discovery without any CALL message, function and
+UUID mismatches, program limits, malformed replies, optional refresh caching,
+preserved refresh errors, preflight before sending, and read-only refusal.
+The new helper also refuses discovery by another user and advertises no calls
+without a known game plugin.
+
+Checks: frontend production build (the existing large-chunk warning remains),
+formatting, workspace Clippy with warnings denied, workspace tests, separate
+no-default-features memory tests, separate app Clippy with warnings denied,
+probe/bridge build, Intel bridge compile check and native Tauri debug app bundle.
+Logs are local under `reports/helper-update-*.log`; the bundle is
+`target/debug/bundle/macos/FM Lens.app`, signed ad hoc, not installed or released.
+
+Still unverified: an actual companion update/relaunch with FM kept open, a
+copied-career Apply/Undo using an older helper, and live discovery with a new
+helper on ARM64 or Intel. For that follow-up, record the game fingerprint and
+copy's baseline, keep FM's PID unchanged while relaunching the updated companion,
+check normal reads and one bounded edit/undo, confirm an unavailable optional
+refresh does not invite repeating the edit, and complete the usual copied-career
+FM inspection/save/reload procedure. Do not restart the user's main career to
+test compatibility.
