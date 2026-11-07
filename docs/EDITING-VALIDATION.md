@@ -1260,3 +1260,33 @@ saved.
 
 Signing replaces a pending deal whether he joins today or on a later day, so
 the line shows for any signing of a player who has one.
+
+## Windows edits (7 November 2026)
+
+FM27 Steam build 26340721 on Windows Server 2022 (the AWS g4dn.xlarge). FM Lens
+0.6.0 built on the box from `fix/windows-icon` (#143, on `main` at 4a91fb7), the
+app itself, not a test harness. Save: the Arsenal career in `Ayo Elu - Arsenal.fm`, at 13 July
+2026. Continue was never pressed and the career was never saved: the save
+file's SHA-256 stayed `AF20CBAC…2CB747E5`, and FM kept responding after every
+step.
+
+| Edit | Result | Undo |
+|---|---|---|
+| Attributes and ability, Gabriel (19242094) | Finishing 8 -> 15, CA 174 -> 180, PA 176 -> 185; FM's profile showed Finishing 15 | Changes |
+| Contract, Gabriel | Wage £190,000 -> £250,000 p/w, expiry 30 Jun 2029 -> 2031; FM's header showed both | Changes |
+| Mass edit, two players named Timber | CA set to 150: 2 changes | "Undo this mass edit" |
+| Clone & templates | Saka copied onto Quinten Timber (37060952): 65 changes. Saka saved as a template (142 fields) | Changes |
+| Freeze money, Arsenal (602) | `frozen.json` held club 602; off cleared it. Holding the balance needs time to pass, so it was not watched | Turned off |
+| Squad: Heal | 3 changes | Changes |
+| Squad: Refresh fitness | 54 changes; energy and sharpness 100% | Changes |
+| Squad: Max morale | 24 changes; 20/20 | Changes |
+| Squad: Max cohesion (experimental) | 18 changes. Four new signings skipped: "FM hasn't set his familiarity with this club yet" | Changes |
+| Your manager, Ayo Elu (2002071616) | Unsackable No -> Yes; wage £281,250 -> £300,000 | Changes |
+
+Changes then read "173 changes · 173 undone", and Gabriel's list row showed CA
+174, PA 176 again.
+
+Not run: Remove unhappiness and Lift bans (no Arsenal player was unhappy or
+banned, so both were off), and saving, quitting and reloading an edited copy.
+Max tactics is a game action, checked in "Windows game actions" above. What
+Windows still lacks next to macOS is in `docs/internal/WINDOWS-PARITY-HANDOFF.md`.
