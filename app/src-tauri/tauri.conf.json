@@ -61,7 +61,8 @@
       "icons/fm-lens/32x32.png",
       "icons/fm-lens/128x128.png",
       "icons/fm-lens/128x128@2x.png",
-      "icons/fm-lens/icon.icns"
+      "icons/fm-lens/icon.icns",
+      "icons/fm-lens/icon.ico"
     ]
   },
   "plugins": {
