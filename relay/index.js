@@ -7,9 +7,10 @@
 // GITHUB_REPO (owner/name, IamDejman/fm-lens by default) and LIMIT_TABLE (fm-lens-report-relay by default).
 //
 // Screenshots and videos go straight from the app to the S3 bucket UPLOAD_BUCKET, never through the relay: the app asks
-// for upload addresses (POST /uploads), puts each file there, and sends the report with the files' keys, which the
-// issue links. The bucket serves `reports/` publicly (relay/setup-attachments.sh). Without UPLOAD_BUCKET, reports
-// without files work as before.
+// for upload addresses (POST /uploads), puts each file under the private `uploads/`, and sends the report with the
+// files' keys. Filing the report copies each file to `reports/`, which the bucket serves publicly and the issue links;
+// the bucket drops `uploads/` after a day, so a file no report names is never public (relay/setup-attachments.sh).
+// Without UPLOAD_BUCKET, reports without files work as before.
 
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
@@ -33,9 +34,9 @@ export const FILE_LIMITS = {
 /** How long an upload address works, in seconds. */
 const UPLOAD_EXPIRES = 15 * 60;
 
-/** A key the relay hands out: `reports/<day>/<uuid>.<ext>`. */
+/** A key the relay hands out for an upload: `uploads/<day>/<uuid>.<ext>`. */
 const KEY =
-  /^reports\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|gif|webp|mp4|mov)$/;
+  /^uploads\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|gif|webp|mp4|mov)$/;
 
 /** How many reports one address may send an hour, and all addresses together a day. */
 export const PER_ADDRESS_HOUR = 5;
@@ -128,6 +129,9 @@ export function readAttachments(input) {
 
 const isVideo = (key) => /\.(mp4|mov)$/.test(key);
 
+/** Where filing a report puts the upload at `key`, which the bucket serves. */
+const filedKey = (key) => key.replace(/^uploads\//, "reports/");
+
 /** Where the bucket serves `key`. */
 export function publicUrl(bucket, region, key) {
   return `https://${bucket}.s3.${region}.amazonaws.com/${encodePath(key)}`;
@@ -135,9 +139,9 @@ export function publicUrl(bucket, region, key) {
 
 /** The issue for `report`, laid out as GitHub lays out its own bug report form (.github/ISSUE_TEMPLATE/bug_report.yml). */
 export function issueFor(report, files = []) {
-  const firstLine = report.what.split("\n")[0].trim();
+  const firstLine = quiet(report.what.split("\n")[0].trim());
   const title = firstLine.length > 70 ? `${firstLine.slice(0, 69)}…` : firstLine;
-  const section = (label, value) => `### ${label}\n\n${value === "" ? "_No response_" : value}`;
+  const section = (label, value) => `### ${label}\n\n${value === "" ? "_No response_" : quiet(value)}`;
   const body = [
     section("FM Lens version", report.version),
     section("FM build", report.fmBuild),
@@ -149,6 +153,12 @@ export function issueFor(report, files = []) {
   ].join("\n\n");
   return { title, body, labels: ["bug"] };
 }
+
+/**
+ * `text` with its @mentions broken by a zero-width space, so a report, which anyone may send, can't have the relay's
+ * token notify people.
+ */
+export const quiet = (text) => text.replace(/@(?=[\w-])/g, "@\u200b");
 
 /** A screenshot shown in the issue, or a link to a video, which GitHub plays only from its own storage. */
 function fileLink(url, index) {
@@ -324,7 +334,7 @@ export function createRelay({ token, repo, limiter, uploads, fetch = globalThis.
       const credentials = uploads.credentials();
       return answer(200, {
         uploads: files.map((file) => {
-          const key = `reports/${day}/${randomUUID()}.${file.ext}`;
+          const key = `uploads/${day}/${randomUUID()}.${file.ext}`;
           const url = presign({
             method: "PUT",
             bucket: uploads.bucket,
@@ -348,22 +358,46 @@ export function createRelay({ token, repo, limiter, uploads, fetch = globalThis.
     if (refused) {
       return refused;
     }
-    // Each file must be in the bucket, as big as its kind may be at the most.
-    const files = keys.map((key) => publicUrl(uploads.bucket, uploads.region, key));
+    // Each file must be in the bucket, as big as its kind may be at the most. It is then copied where the bucket serves
+    // it, for the issue to link.
+    const signed = (method, key, headers) =>
+      presign({
+        method,
+        bucket: uploads.bucket,
+        region: uploads.region,
+        key,
+        headers,
+        credentials: uploads.credentials(),
+        expires: 60,
+      });
+    let files;
     try {
       const found = await Promise.all(
-        files.map(async (url) => {
-          const response = await fetch(url, {
-            method: "HEAD",
-            signal: AbortSignal.timeout(10_000),
-          });
-          const size = Number(response.headers.get("content-length"));
-          return response.ok && size <= FILE_LIMITS[isVideo(url) ? "video" : "image"].bytes;
+        keys.map(async (key) => {
+          const head = await fetch(signed("HEAD", key), { method: "HEAD", signal: AbortSignal.timeout(10_000) });
+          const size = Number(head.headers.get("content-length"));
+          return head.ok && size <= FILE_LIMITS[isVideo(key) ? "video" : "image"].bytes;
         }),
       );
+      // None is copied unless all may be, so that no file is public without its issue.
       if (found.includes(false)) {
         return answer(400, { error: "invalid" });
       }
+      files = await Promise.all(
+        keys.map(async (key) => {
+          const copySource = { "x-amz-copy-source": `/${uploads.bucket}/${encodePath(key)}` };
+          const copy = await fetch(signed("PUT", filedKey(key), copySource), {
+            method: "PUT",
+            headers: copySource,
+            signal: AbortSignal.timeout(30_000),
+          });
+          // S3 can answer a copy 200 and still say in the body that it failed.
+          if (!copy.ok || (await copy.text()).includes("<Error>")) {
+            throw new Error(`the bucket answered ${copy.status} to a copy`);
+          }
+          return publicUrl(uploads.bucket, uploads.region, filedKey(key));
+        }),
+      );
     } catch (err) {
       console.error(`The files could not be checked: ${err instanceof Error ? err.message : String(err)}`);
       return answer(502, { error: "notFiled" });
