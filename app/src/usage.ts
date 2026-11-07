@@ -9,8 +9,8 @@ import { locale } from "./i18n";
  * once "Share anonymous usage" is off in Settings. The README and the site list every event.
  */
 
-/** FM Lens's PostHog project key. It can only add events, so it is safe in the app. Empty sends nothing. */
-const POSTHOG_KEY: string = "";
+/** FM Lens's PostHog project key. It can only add events, so it is safe in the app. */
+const POSTHOG_KEY: string = "phc_xoND6FWuBkhD46EWt7tr89NnoUQ5yQoHm2QDMrVCjU2q";
 const CAPTURE_URL = "https://us.i.posthog.com/i/v0/e/";
 const SEND_TIMEOUT_MS = 10_000;
 
