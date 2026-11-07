@@ -16,6 +16,7 @@ import { applyEdits, readValues } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { editText, fieldLabel } from "./labels";
+import posthog from "./posthog";
 import type { EditField, Entity, FieldValues, FmDate, GameActions, InjuryKind, LoggedChange } from "./types";
 
 /** What the app tells the profiles about editing. */
@@ -394,6 +395,7 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
       // The game has changed: the lists, the profile and the change log read it again, whatever happens next.
       if (result.applied.length > 0) {
         onEdited();
+        posthog.capture("profile_edits_applied", { entity, applied_count: result.applied.length });
       }
       const problems = result.failed.map((failed) =>
         editText.refused(fieldLabel(entity, failed.field), describeError(failed.error)),

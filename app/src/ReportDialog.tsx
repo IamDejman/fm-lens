@@ -5,6 +5,7 @@
 import { type ClipboardEvent, type DragEvent, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { reportText as text } from "./labels";
+import posthog from "./posthog";
 import {
   ACCEPTED_FILES,
   type AttachProblem,
@@ -90,8 +91,12 @@ export function ReportDialog({ facts, onClose }: { facts: ReportFacts; onClose: 
     setProblem(null);
     const result = await sendReport(facts, what.trim(), files);
     setPhase(result);
-    // Not sent: back to the report, which is kept, to send again.
-    if (result !== "sent") {
+    if (result === "sent") {
+      posthog.capture("problem_report_submitted");
+      posthog.logger.info("problem report submitted");
+    } else {
+      posthog.logger.warn("problem report submission failed", { outcome: result });
+      // Not sent: back to the report, which is kept, to send again.
       field.current?.focus();
     }
   };
