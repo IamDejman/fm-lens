@@ -1999,6 +1999,8 @@ export const en = {
     signChooseClub: "Pick the club to sign him for.",
     sign: "Sign",
     signing: "Signing…",
+    /** Under the terms when he has a move FM agreed for a later day: signing him replaces it. */
+    replacesMove: (club: string, date: string) => `Replaces his move to ${club} on ${date}`,
   },
 
   /**

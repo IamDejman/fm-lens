@@ -1819,6 +1819,7 @@ export const es: Strings = {
     signChooseClub: "Elige el club que lo ficha.",
     sign: "Fichar",
     signing: "Fichando…",
+    replacesMove: (club, date) => `Reemplaza su fichaje por ${club} del ${date}`,
   },
 
   ties: {

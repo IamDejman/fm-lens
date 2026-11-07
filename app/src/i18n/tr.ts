@@ -1768,6 +1768,7 @@ export const tr: Strings = {
     signChooseClub: "İmzalayacağı kulübü seç.",
     sign: "İmzala",
     signing: "İmzalanıyor…",
+    replacesMove: (club, date) => `${club} ile ${date} tarihli anlaşmasının yerine geçer`,
   },
 
   ties: {
