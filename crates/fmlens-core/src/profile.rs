@@ -515,6 +515,10 @@ pub struct PlayerLayout {
     /// start the person block (on macOS it ends it).
     #[serde(default)]
     pub identity: Option<u64>,
+    /// The `ACTUAL_PERSON` the game's signing takes, when it does not start the person block (on Windows it follows
+    /// the person block's `PERSON`, which has no virtual-base pointer of its own).
+    #[serde(default)]
+    pub actual_person: Option<u64>,
     /// Shifts of the person block seen across player classes (player-coaches use 0xF8).
     pub person_block_shifts: Vec<u64>,
     pub height: u64,
@@ -555,6 +559,11 @@ impl PlayerLayout {
     /// Where the block that contracts and captaincies point at starts, before any shift.
     pub fn identity(&self) -> u64 {
         self.identity.unwrap_or(self.person_block)
+    }
+
+    /// Where the `ACTUAL_PERSON` the game's signing takes starts, before any shift.
+    pub fn actual_person(&self) -> u64 {
+        self.actual_person.unwrap_or(self.person_block)
     }
 
     /// One past the last byte of every direct player field, before any shift.
@@ -684,6 +693,10 @@ pub struct StaffLayout {
     /// block (on macOS it ends it).
     #[serde(default)]
     pub identity: Option<u64>,
+    /// The `ACTUAL_PERSON` the game's signing takes, when it does not start the person block (see
+    /// [`PlayerLayout::actual_person`]).
+    #[serde(default)]
+    pub actual_person: Option<u64>,
     /// Shifts of the person block seen across staff classes (the human manager uses 0x340).
     pub person_block_shifts: Vec<u64>,
     /// In the person block: the `i8` coaching licence (see [`crate::staff::licence_level`]); only in the layouts it
@@ -709,6 +722,11 @@ impl StaffLayout {
     /// Where the block that contracts point at starts, before any shift.
     pub fn identity(&self) -> u64 {
         self.identity.unwrap_or(self.person_block)
+    }
+
+    /// Where the `ACTUAL_PERSON` the game's signing takes starts, before any shift.
+    pub fn actual_person(&self) -> u64 {
+        self.actual_person.unwrap_or(self.person_block)
     }
 
     /// One past the last byte of every staff field, before any shift.
@@ -1056,6 +1074,9 @@ pub struct CallRvas {
     pub ref_copy: Option<u64>,
     /// `(object)`: gives back a reference to the object, destroying it with the last.
     pub ref_drop: Option<u64>,
+    /// `(slot*, slot*)`: makes the first {pointer, u32} slot hold what the second does, giving back its reference to
+    /// the object it held. For builds without `ref_drop`: an empty second slot gives the reference back.
+    pub ref_assign: Option<u64>,
     /// `(Value*, map*)`: makes the Value of a struct, moving the map's entries into it.
     pub struct_value: Option<u64>,
     /// The game's editor action that makes every player of a team fully familiar with its tactic: `(map*)`, the map
@@ -1087,6 +1108,7 @@ impl CallRvas {
             self.drop_dated_transfer,
             self.ref_copy,
             self.ref_drop,
+            self.ref_assign,
             self.struct_value,
             self.maximise_tactics,
         ]
@@ -1107,6 +1129,9 @@ pub struct HumanManagerLayout {
     pub person_shift: u64,
     /// The mangled class name a human manager's vtable resolves to.
     pub class: String,
+    /// Where in the object the vtable that names the class is: 0 on macOS, the person block on Windows.
+    #[serde(default)]
+    pub class_at: u64,
 }
 
 /// Identifies a build of the game plugin from its headers as mapped in memory.
@@ -1243,6 +1268,13 @@ mod tests {
         let (windows, mac): (Layout, Layout) = (parse(WINDOWS), parse(MACOS));
         assert_eq!(windows.player.identity(), windows.player.person_block);
         assert_eq!(windows.staff.identity(), windows.staff.person_block);
+        // MSVC puts the signing's ACTUAL_PERSON after the person block's PERSON; on macOS they start together.
+        assert_eq!(windows.player.actual_person(), windows.player.person_block + 0x28);
+        assert_eq!(windows.staff.actual_person(), windows.staff.person_block + 0x28);
+        assert_eq!(
+            (mac.player.actual_person(), mac.staff.actual_person()),
+            (mac.player.person_block, mac.staff.person_block)
+        );
 
         // The player's own fields sit 8 bytes earlier, the person's 0x40, the identity block 0x100 later.
         for (key, &offset) in &windows.player.attributes {
@@ -1407,13 +1439,24 @@ mod tests {
                 Some(HumanManagerLayout {
                     flags: 0x3FC,
                     person_shift: 0x340,
-                    class: "N2db16HUMAN_NON_PLAYERE".to_owned()
+                    class: "N2db16HUMAN_NON_PLAYERE".to_owned(),
+                    class_at: 0
                 })
             );
         }
+        let windows = PluginFingerprint::Pe { size_of_image: 0x1821_C000, link_timestamp: 0x6AE5_65AF };
+        assert_eq!(
+            profile_for(windows).expect("27.0.0 on Windows").human_manager,
+            Some(HumanManagerLayout {
+                flags: 0x3FC,
+                person_shift: 0x340,
+                class: ".?AVHUMAN_NON_PLAYER@db@@".to_owned(),
+                class_at: 0x440
+            })
+        );
         for text in BUILDS {
             let profile: BuildProfile = parse(text);
-            if !traced.contains(&profile.plugin) {
+            if !traced.contains(&profile.plugin) && profile.plugin != windows {
                 assert!(profile.human_manager.is_none(), "{}", profile.name);
             }
         }

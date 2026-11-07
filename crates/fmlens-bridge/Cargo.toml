@@ -1,6 +1,6 @@
 [package]
 name = "fmlens-bridge"
-description = "The library Football Manager loads on macOS to let FM Lens reach its memory"
+description = "The library Football Manager loads to let FM Lens reach its memory on macOS and run its functions"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -14,6 +14,10 @@ crate-type = ["cdylib"]
 fmlens-mem.workspace = true
 libc = "0.2.191"
 mach2 = "0.7.0"
+
+[target.'cfg(windows)'.dependencies]
+fmlens-mem.workspace = true
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging"] }
 
 [build-dependencies]
 toml = "1.1.8"

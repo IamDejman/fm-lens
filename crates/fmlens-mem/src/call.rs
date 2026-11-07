@@ -4,7 +4,8 @@
 //! finances. The editor has the game make those itself. It sends a short [`Step`] program to the
 //! bridge, which runs the steps one after another on the game's main thread, where the game's own
 //! screens run them, and answers with what each returned. The bridge runs only functions the build
-//! profiles of the running build name, checked by the game plugin's UUID.
+//! profiles of the running build name, checked by the game plugin's UUID on macOS and by its
+//! `SizeOfImage` and link timestamp on Windows.
 //!
 //! The types here are plain data, laid out the same in the editor and in the bridge.
 
@@ -47,7 +48,8 @@ impl Arg {
 
 /// One call of a function of the game plugin, with the arguments of the arm64 calling convention:
 /// `x0` to `x7`, the indirect result register `x8`, and four 8-byte stack slots. On x86_64 the bridge
-/// passes the same twelve arguments the System V way, six in registers and the rest on the stack.
+/// passes the same twelve arguments the System V way on macOS, six in registers and the rest on the
+/// stack, and the Windows way on Windows, four in registers and the rest on the stack.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Step {

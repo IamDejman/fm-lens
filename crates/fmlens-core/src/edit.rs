@@ -1293,7 +1293,7 @@ impl Session {
                     return Ok(None);
                 }
                 // The object's own class, not the list's guess that a shifted person is the human.
-                let class = crate::rtti::class_of(&self.process, &self.plugin, target.address);
+                let class = crate::rtti::class_of(&self.process, &self.plugin, target.address + layout.class_at);
                 human_manager_flags(Some(layout), target, class.as_deref()).map(|flags| target.address + flags)
             }
             (Place::NationalTeam(side), Entity::Nation) => {
@@ -1548,7 +1548,10 @@ mod tests {
         // The men's FIFA points, an f32 in the container held as its bits: England's 1,922.83 is in range, a negative
         // number or one past 3,000 is not, and the bytes written are the float's own.
         let points = key("points");
-        assert_eq!((points.place, points.offset, points.kind), (Place::NationalContainer(Side::Men), 0x378, Kind::F32));
+        assert_eq!(
+            (points.place, points.offset, points.kind),
+            (Place::NationalContainer(Side::Men), n.points, Kind::F32)
+        );
         let england = f32_bits(1922.83);
         assert!(points.takes(0) && points.takes(england) && points.takes(f32_bits(3000.0)));
         assert!(!points.takes(f32_bits(3000.01)) && !points.takes(f32_bits(-1.0)));
@@ -1561,13 +1564,16 @@ mod tests {
             let reputation = nations.iter().find(|f| f.key == key).expect(key);
             assert_eq!(
                 (reputation.place, reputation.offset, reputation.kind),
-                (Place::NationalTeam(side), 0xA8, Kind::U16)
+                (Place::NationalTeam(side), layout.team.reputation, Kind::U16)
             );
             assert!(reputation.takes(0) && reputation.takes(10_000) && !reputation.takes(10_001));
         }
         for (key, side) in [("youth_rating", Side::Men), ("women.youth_rating", Side::Women)] {
             let youth = nations.iter().find(|f| f.key == key).expect(key);
-            assert_eq!((youth.place, youth.offset, youth.kind), (Place::NationalContainer(side), 0x874, Kind::I16));
+            assert_eq!(
+                (youth.place, youth.offset, youth.kind),
+                (Place::NationalContainer(side), n.youth_rating, Kind::I16)
+            );
             // England's men have 135, its women 161.
             assert!(youth.takes(0) && youth.takes(135) && youth.takes(165) && !youth.takes(166) && !youth.takes(-1));
         }
@@ -1576,7 +1582,7 @@ mod tests {
             let importance = key(name);
             assert_eq!(
                 (importance.place, importance.offset, importance.kind),
-                (Place::NationalContainer(side), 0x885, Kind::I8)
+                (Place::NationalContainer(side), n.game_importance, Kind::I8)
             );
             assert!(importance.takes(0) && importance.takes(4) && !importance.takes(5) && !importance.takes(-1));
         }
@@ -1584,17 +1590,17 @@ mod tests {
             let attendance = key(name);
             assert_eq!(
                 (attendance.place, attendance.offset, attendance.kind),
-                (Place::NationalContainer(side), 0x891, Kind::U8)
+                (Place::NationalContainer(side), n.attendance, Kind::U8)
             );
             assert!(attendance.takes(0) && attendance.takes(16) && !attendance.takes(17));
         }
         // Style ratings, 0 to 20 (most nations 10), twelve bytes a side from Ndep to Nwid.
-        if n.style.is_some() {
+        if let Some(style) = n.style {
             for (prefix, side) in [("", Side::Men), ("women.", Side::Women)] {
                 let depth = key(&format!("{prefix}style.depth"));
                 let width = key(&format!("{prefix}style.width"));
-                assert_eq!((depth.place, depth.offset, depth.kind), (Place::NationalContainer(side), 0x892, Kind::I8));
-                assert_eq!((width.place, width.offset), (Place::NationalContainer(side), 0x89D));
+                assert_eq!((depth.place, depth.offset, depth.kind), (Place::NationalContainer(side), style, Kind::I8));
+                assert_eq!((width.place, width.offset), (Place::NationalContainer(side), style + 11));
                 assert!(depth.takes(0) && depth.takes(10) && depth.takes(20) && !depth.takes(21) && !depth.takes(-1));
             }
         }
@@ -1703,7 +1709,12 @@ mod tests {
 
     #[test]
     fn only_a_traced_human_manager_has_the_flags() {
-        let traced = HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".into() };
+        let traced = HumanManagerLayout {
+            flags: 0x3FC,
+            person_shift: 0x340,
+            class: "N2db16HUMAN_NON_PLAYERE".into(),
+            class_at: 0,
+        };
         let class = Some("N2db16HUMAN_NON_PLAYERE");
         let manager = Target { entity: Entity::Staff, uid: 7, address: 0x1000, shift: 0x340 };
         assert_eq!(human_manager_flags(Some(&traced), &manager, class), Some(0x3FC));
