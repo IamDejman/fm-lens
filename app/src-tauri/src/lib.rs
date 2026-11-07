@@ -2161,6 +2161,13 @@ fn can_self_update() -> bool {
         && app_bundle(&exe).is_some_and(|bundle| !bundle.to_string_lossy().contains("/AppTranslocation/"))
 }
 
+/// Whether this is a debug build. The colophon tags it DEBUG, so that it is never taken for a release: it cannot update
+/// itself (see `can_self_update`).
+#[tauri::command]
+fn debug_build() -> bool {
+    cfg!(debug_assertions)
+}
+
 /// The system the app runs on, for a problem report (see report.ts): "macOS 27.2, Apple Silicon". Elsewhere, or when
 /// macOS's version cannot be read, the system's and the processor's names.
 #[tauri::command]
@@ -4204,6 +4211,7 @@ pub fn run() {
             set_attributes,
             graphics_info,
             can_self_update,
+            debug_build,
             restart_app,
             system_version,
             bridge::bridge_status,
