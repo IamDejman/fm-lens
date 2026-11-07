@@ -809,6 +809,7 @@ export const es: Strings = {
     closePromiseTitle: "Terminar esta promesa sin que cuente en su contra",
 
     // Sobre los atributos, mientras se lee el perfil
+    tools: "Herramientas",
     setAttributes: "Poner todos los atributos en",
     setAttributesButton: "Aplicar",
     setAttributesDone: (count, level) =>
@@ -1181,7 +1182,8 @@ export const es: Strings = {
       capacity: "Aforo",
       minCapacity: "Aforo mínimo",
       maxCapacity: "Aforo máximo",
-      placeholder: "Mín.",
+      minPlaceholder: "Mín.",
+      maxPlaceholder: "Máx.",
     },
   },
 
@@ -1228,6 +1230,7 @@ export const es: Strings = {
   },
 
   app: {
+    lists: "Listas",
     settingsLabel: "Ajustes",
     languageLabel: "Idioma",
     currencyLabel: "Moneda",
@@ -1236,6 +1239,7 @@ export const es: Strings = {
     appearanceLight: "Claro",
     appearanceDark: "Oscuro",
     zoomLabel: "Zoom",
+    usageLabel: "Compartir uso anónimo",
     appearance: "Apariencia",
     themes: { system: "Sistema", light: "Claro", dark: "Oscuro" },
     tour: {
@@ -1252,7 +1256,7 @@ export const es: Strings = {
         },
         tabs: {
           title: "Secciones",
-          body: "Jugadores, personal, clubes, países y estadios.",
+          body: "Jugadores, personal y clubes. Países, estadios y más en Listas.",
         },
         search: {
           title: "Búsqueda y filtros",
@@ -1381,6 +1385,17 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.6.0": [
+        "Las actualizaciones de FM Lens siguen usando el asistente que ya se ejecuta en FM. Las funciones compatibles siguen funcionando sin reiniciar el juego.",
+        "Un asistente antiguo puede no actualizar las pantallas de FM al instante o admitir una acción nueva. Se actualizará la próxima vez que inicies FM.",
+        "Las acciones de la plantilla y las herramientas del perfil son más fáciles de encontrar.",
+      ],
+      "0.5.11": [
+        "Afinidades: cambia un club o una persona por otro.",
+        "Si FM estaba abierto mientras FM Lens se actualizaba, la edición queda desactivada hasta que reinicies FM desde Steam.",
+        "Los archivos de un informe son privados hasta que lo envías, y las exportaciones CSV ya no ejecutan fórmulas.",
+        "FM Lens ahora cuenta el uso de forma anónima, sin nombres ni valores de tu partida. Desactívalo en Ajustes.",
+      ],
       "0.5.10": [
         "En Mac con Intel, cada Aplicar y Deshacer completado pide a FM que actualice el registro editado y las pantallas abiertas sin pulsar Continuar.",
         "Reinicia FM una vez tras actualizar para cargar el nuevo asistente.",
@@ -2017,19 +2032,30 @@ export const es: Strings = {
         : `Levantar sanciones (${banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`})`,
     liftAllTitle: "Levantar todas las sanciones del equipo",
     liftNone: "Nadie en este equipo está sancionado",
-    inspireAll: "Motivar a todos",
-    inspireAllTitle: "Moral al máximo para todos",
     refreshAll: "Recuperar a todos",
     refreshAllTitle:
       "Energía y ritmo de competición al máximo, y todos totalmente descansados",
+    removeUnhappiness: (unhappy) =>
+      unhappy === 0
+        ? "Quitar descontento"
+        : `Quitar descontento (${unhappy === 1 ? "1 descontento" : `${format(unhappy)} descontentos`})`,
+    removeUnhappinessTitle: "Quitar todos los motivos de descontento del equipo",
+    unhappyNone: "Nadie en este equipo está descontento",
+    moreLabel: "Más acciones sobre todo el equipo",
+    maxMorale: "Moral al máximo",
+    maxMoraleTitle: "Moral al máximo para todos",
     maxCohesion: "Cohesión al máximo",
-    maxCohesionTitle: "Todos los jugadores totalmente familiarizados con el club (experimental)",
+    maxCohesionTitle: "Todos los jugadores totalmente familiarizados con el club",
+    experimental: "Experimental",
     maxTactics: "Táctica al máximo",
     maxTacticsTitle: "Todos los jugadores totalmente familiarizados con la táctica del equipo",
-    maxAll: "Atributos al máximo",
+    maxAll: "Atributos al máximo…",
     maxAllTitle:
       "Todos los atributos a 20 para todos (propensión a lesiones y juego sucio a 1)",
-    hint: "Incluye a los cedidos.",
+    maxAllAsk: (count) =>
+      `¿Todos los atributos al máximo para ${count === 1 ? "1 jugador" : `${format(count)} jugadores`}?`,
+    maxAllConfirm: "Atributos al máximo",
+    cancel: "Cancelar",
 
     // Lo que hizo una acción
     written: (count) =>

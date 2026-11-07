@@ -1,6 +1,7 @@
 #!/bin/sh
-# Sets up the bucket Report a problem puts screenshots and videos in, once: a bucket that serves `reports/` publicly,
-# takes uploads from the app (CORS), lets the relay's role put files there, and tells the relay its name. Run it with
+# Sets up the bucket Report a problem puts screenshots and videos in, once: a bucket that takes uploads from the app
+# (CORS) under the private `uploads/` and drops them after a day, serves `reports/`, where filing a report copies them,
+# publicly, lets the relay's role put and copy files there, and tells the relay its name. Run it with
 # AWS_PROFILE and AWS_REGION set for the relay's account; UPLOAD_BUCKET names the bucket (fm-lens-report-files-<account>
 # by default). Running it again changes nothing that is already set.
 set -eu
@@ -34,18 +35,20 @@ cat >"$dir/cors.json" <<EOF
 EOF
 aws s3api put-bucket-cors --bucket "$bucket" --cors-configuration "file://$dir/cors.json"
 
-# Uploads never finished are dropped after a day.
+# Uploads never finished, and uploads no report filed, are dropped after a day.
 cat >"$dir/lifecycle.json" <<EOF
 {"Rules":[{"ID":"AbortUploads","Status":"Enabled","Filter":{"Prefix":""},
-"AbortIncompleteMultipartUpload":{"DaysAfterInitiation":1}}]}
+"AbortIncompleteMultipartUpload":{"DaysAfterInitiation":1}},
+{"ID":"DropUnfiledUploads","Status":"Enabled","Filter":{"Prefix":"uploads/"},"Expiration":{"Days":1}}]}
 EOF
 aws s3api put-bucket-lifecycle-configuration --bucket "$bucket" --lifecycle-configuration "file://$dir/lifecycle.json"
 
-# The relay signs uploads with its own role.
+# The relay signs uploads with its own role, and checks and copies them to `reports/` when a report is filed.
 role="$(aws lambda get-function-configuration --function-name "$function" --query Role --output text)"
 cat >"$dir/role.json" <<EOF
 {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"s3:PutObject",
-"Resource":"arn:aws:s3:::$bucket/reports/*"}]}
+"Resource":["arn:aws:s3:::$bucket/uploads/*","arn:aws:s3:::$bucket/reports/*"]},
+{"Effect":"Allow","Action":"s3:GetObject","Resource":"arn:aws:s3:::$bucket/uploads/*"}]}
 EOF
 aws iam put-role-policy --role-name "${role##*/}" --policy-name fm-lens-report-uploads \
   --policy-document "file://$dir/role.json"

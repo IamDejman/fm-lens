@@ -9,6 +9,7 @@ import {
   issueFor,
   presign,
   publicUrl,
+  quiet,
   readAttachments,
   readFiles,
   readReport,
@@ -63,6 +64,14 @@ test("empty parts read as no response, and a long first line is cut for the titl
   const issue = issueFor(report);
   assert.equal(issue.title.length, 70);
   assert.match(issue.body, /### FM build\n\n_No response_/);
+});
+
+test("mentions in a report notify no one", () => {
+  const { report } = readReport({ ...REPORT, what: "@octocat says ask @org/team", changes: "mail me@example.com" });
+  const issue = issueFor(report);
+  assert.equal(/@[\w-]/.test(issue.title + issue.body), false);
+  assert.match(issue.body, /@​octocat says ask @​org\/team/);
+  assert.equal(quiet("a @ b"), "a @ b");
 });
 
 test("reports without what happened, with the wrong types, or too long are turned away", () => {
@@ -174,8 +183,9 @@ const UPLOADS = {
     sessionToken: "session",
   }),
 };
-const KEY = "reports/2026-11-06/0b7c2f4e-9d1a-4c3b-8e5f-1a2b3c4d5e6f.png";
-const VIDEO = "reports/2026-11-06/1b7c2f4e-9d1a-4c3b-8e5f-1a2b3c4d5e6f.mov";
+const KEY = "uploads/2026-11-06/0b7c2f4e-9d1a-4c3b-8e5f-1a2b3c4d5e6f.png";
+const VIDEO = "uploads/2026-11-06/1b7c2f4e-9d1a-4c3b-8e5f-1a2b3c4d5e6f.mov";
+const filed = (key) => publicUrl(UPLOADS.bucket, UPLOADS.region, key.replace("uploads/", "reports/"));
 
 test("presigning matches AWS's own example", () => {
   // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
@@ -219,6 +229,7 @@ test("only keys the relay hands out are linked", () => {
     keys: [KEY, VIDEO],
   });
   assert.equal(readAttachments({ attachments: ["../secret.png"] }).error, "invalid");
+  assert.equal(readAttachments({ attachments: [KEY.replace("uploads/", "reports/")] }).error, "invalid");
   assert.equal(readAttachments({ attachments: [`${KEY}?x`] }).error, "invalid");
   assert.equal(readAttachments({ attachments: [VIDEO, VIDEO.replace("1b", "2b")] }).error, "invalid");
 });
@@ -231,7 +242,7 @@ test("the relay hands out upload addresses signed for each file's type and size"
   );
   assert.equal(answer.status, 200);
   const [{ key, url }] = answer.json.uploads;
-  assert.match(key, /^reports\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.png$/);
+  assert.match(key, /^uploads\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.png$/);
   assert.ok(url.startsWith(`https://fm-lens-reports.s3.us-east-1.amazonaws.com/${key}?`));
   assert.match(url, /X-Amz-SignedHeaders=content-length%3Bcontent-type%3Bhost/);
   assert.match(url, /X-Amz-Security-Token=session/);
@@ -245,42 +256,68 @@ test("the relay hands out upload addresses signed for each file's type and size"
   assert.equal(off.status, 503);
 });
 
-/** GitHub, and the bucket answering HEAD with `size` for the files in `stored`. */
-function githubAndBucket(stored, size = 1000) {
+/**
+ * GitHub, and the bucket answering a signed HEAD with `size` for the uploads in `stored`, and a copy with `copyBody`.
+ */
+function githubAndBucket(stored, { size = 1000, copyBody = "<CopyObjectResult/>" } = {}) {
   const { fetch: issues, sent } = github();
+  const copies = [];
   const fetch = async (url, init) => {
     if (init.method === "HEAD") {
-      const found = stored.some((key) => url === publicUrl(UPLOADS.bucket, UPLOADS.region, key));
+      const found = stored.some((key) => url.startsWith(`${publicUrl(UPLOADS.bucket, UPLOADS.region, key)}?`));
       return new Response(null, {
         status: found ? 200 : 403,
         headers: { "content-length": String(size) },
       });
     }
+    if (init.method === "PUT") {
+      copies.push({ url, source: init.headers["x-amz-copy-source"] });
+      return new Response(copyBody, { status: 200 });
+    }
     return issues(url, init);
   };
-  return { fetch, sent };
+  return { fetch, sent, copies };
 }
 
-test("a report links its files: screenshots shown, a video as a link", async () => {
-  const { fetch, sent } = githubAndBucket([KEY, VIDEO]);
+test("a report copies its files where the bucket serves them and links them there", async () => {
+  const { fetch, sent, copies } = githubAndBucket([KEY, VIDEO]);
   const options = { token: "t", repo: "o/n", uploads: UPLOADS, fetch };
   const answer = await post(options, { ...REPORT, attachments: [KEY, VIDEO] });
   assert.equal(answer.status, 201);
-  const url = publicUrl(UPLOADS.bucket, UPLOADS.region, KEY);
+  assert.deepEqual(
+    copies.map((copy) => copy.source),
+    [`/${UPLOADS.bucket}/${KEY}`, `/${UPLOADS.bucket}/${VIDEO}`],
+  );
+  assert.ok(copies[0].url.startsWith(`${filed(KEY)}?`));
+  assert.match(copies[0].url, /X-Amz-SignedHeaders=host%3Bx-amz-copy-source/);
   assert.match(sent[0].issue.body, /### Files\n\n!\[Screenshot 1\]\(https:\/\/fm-lens-reports\.s3/);
-  assert.ok(sent[0].issue.body.includes(`![Screenshot 1](${url})`));
-  assert.match(sent[0].issue.body, /\[Video\]\(https:\/\/[^)]+\.mov\)/);
+  assert.ok(sent[0].issue.body.includes(`![Screenshot 1](${filed(KEY)})`));
+  assert.ok(sent[0].issue.body.includes(`[Video](${filed(VIDEO)})`));
+  assert.equal(sent[0].issue.body.includes("uploads/"), false);
+});
+
+test("a report isn't filed when a file can't be copied", async () => {
+  const failed = githubAndBucket([KEY], { copyBody: "<Error><Code>InternalError</Code></Error>" });
+  const options = { token: "t", repo: "o/n", uploads: UPLOADS, fetch: failed.fetch };
+  assert.equal((await post(options, { ...REPORT, attachments: [KEY] })).status, 502);
+  assert.equal(failed.sent.length, 0);
 });
 
 test("a report whose files aren't in the bucket, or are too big, isn't filed", async () => {
-  const missing = githubAndBucket([]);
+  const missing = githubAndBucket([KEY]);
   assert.equal(
-    (await post({ token: "t", repo: "o/n", uploads: UPLOADS, fetch: missing.fetch }, { ...REPORT, attachments: [KEY] }))
-      .status,
+    (
+      await post(
+        { token: "t", repo: "o/n", uploads: UPLOADS, fetch: missing.fetch },
+        { ...REPORT, attachments: [KEY, VIDEO] },
+      )
+    ).status,
     400,
   );
   assert.equal(missing.sent.length, 0);
-  const big = githubAndBucket([KEY], FILE_LIMITS.image.bytes + 1);
+  // The file that is there isn't made public either.
+  assert.equal(missing.copies.length, 0);
+  const big = githubAndBucket([KEY], { size: FILE_LIMITS.image.bytes + 1 });
   assert.equal(
     (await post({ token: "t", repo: "o/n", uploads: UPLOADS, fetch: big.fetch }, { ...REPORT, attachments: [KEY] }))
       .status,

@@ -196,8 +196,10 @@ pub fn set_up(places: &Places, from: &Path) -> Result<BridgeStatus, SetupError> 
         std::fs::read(&path).map_err(|_| SetupError::NoLibrary(path))
     };
     let (bridge, launcher) = (read(BRIDGE_FILE)?, read(LAUNCHER_FILE)?);
-    // New files in place of the old: a game still running keeps the library it loaded.
-    write_new(&places.bridge, &bridge, false)?;
+    // A running game keeps the library it loaded. Leave identical installed bytes alone.
+    if !std::fs::read(&places.bridge).is_ok_and(|now| now == bridge) {
+        write_new(&places.bridge, &bridge, false)?;
+    }
     write_new(&places.launcher, &launcher, true)?;
     keep_earlier(places, &launcher)?;
 

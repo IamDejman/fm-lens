@@ -1088,3 +1088,8 @@ check normal reads and one bounded edit/undo, confirm an unavailable optional
 refresh does not invite repeating the edit, and complete the usual copied-career
 FM inspection/save/reload procedure. Do not restart the user's main career to
 test compatibility.
+
+Release integration for 0.6.0 incorporates main through `ac0441e`. It removes
+0.5.11's file-timestamp-based restart lock from Session, connection responses,
+compatibility notices, reports and sample data; helper discovery replaces that
+blanket lock. Unknown-build, health and current-career guards remain in force.

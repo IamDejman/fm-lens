@@ -6,8 +6,9 @@ import { BridgeSetup } from "./BridgeSetup";
 import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
 import { CompatibilityNotice } from "./CompatibilityNotice";
+import { DropMenu } from "./DropMenu";
 import { forgetFieldTables } from "./fieldTables";
-import { describeBuild, describeError, formatDate } from "./format";
+import { describeBuild, describeError, formatDate, formatNumber } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
@@ -38,6 +39,7 @@ import { StaffBrowser } from "./StaffBrowser";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
+import { track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
@@ -68,6 +70,9 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "changes", label: changesText.nav },
 ];
 
+/** The views of the masthead's Lists menu; the rest are tabs of their own. */
+const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials"]);
+
 /** The view the window was in before the language was switched; the first one when there was no such switch. */
 const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
 
@@ -97,12 +102,15 @@ function App() {
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog } = useChangeLog();
+  // The changes of the session that stand, beside Changes.
+  const standing = log.filter((change) => change.undoneAt === null).length;
   const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
   const [reporting, setReporting] = useState(false);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   useEffect(() => {
+    trackOpened();
     // The browser preview stands in for the app with the version in package.json.
     (inTauri ? getVersion() : call<string>("app_version")).then(setVersion).catch(() => {});
     if (inTauri) {
@@ -141,6 +149,13 @@ function App() {
       void reloadLog();
       setConnection(connected);
       setRefrozen(again ?? null);
+      track("fm_connected", {
+        edition: connected.game.edition,
+        storefront: connected.game.storefront,
+        fm_build: connected.game.steamBuild ?? connected.game.packageVersion,
+        known_build: connected.knownBuild,
+        editable: connected.editable,
+      });
       setDataVersion((v) => v + 1);
     });
 
@@ -294,7 +309,10 @@ function App() {
   // With edits pending in the open profile, leaving for another view asks first.
   const show = (id: View) => {
     if (id !== view) {
-      askToLeave(() => setView(id));
+      askToLeave(() => {
+        setView(id);
+        track("tab_viewed", { tab: id });
+      });
     }
   };
 
@@ -329,20 +347,57 @@ function App() {
         {/* The sections only have something to show once connected. */}
         {connection && (
           <nav className="tabs" data-tour="tabs">
-            {VIEWS.map(({ id, label }, index) => (
-              <button
-                key={id}
-                type="button"
-                className={id === view ? "tab active" : "tab"}
-                aria-current={id === view ? "page" : undefined}
-                title={shortcutLabel(String(index + 1))}
-                aria-keyshortcuts={shortcutAria(String(index + 1))}
-                data-tour={id === "changes" ? "changes" : undefined}
-                onClick={() => show(id)}
-              >
-                {label}
-              </button>
-            ))}
+            {VIEWS.map(({ id, label }, index) =>
+              LISTS.has(id) ? (
+                // The lists are one menu, where the first of them would be.
+                id === "nations" && (
+                  <DropMenu
+                    key="lists"
+                    label={appText.lists}
+                    menuLabel={appText.lists}
+                    className={LISTS.has(view) ? "tab active" : "tab"}
+                    current={LISTS.has(view)}
+                  >
+                    {(close) =>
+                      VIEWS.map(
+                        (list, at) =>
+                          LISTS.has(list.id) && (
+                            <button
+                              key={list.id}
+                              type="button"
+                              role="menuitemradio"
+                              aria-checked={list.id === view}
+                              aria-keyshortcuts={shortcutAria(String(at + 1))}
+                              tabIndex={-1}
+                              onClick={() => {
+                                close();
+                                show(list.id);
+                              }}
+                            >
+                              {list.label}
+                              <kbd>{shortcutLabel(String(at + 1))}</kbd>
+                            </button>
+                          ),
+                      )
+                    }
+                  </DropMenu>
+                )
+              ) : (
+                <button
+                  key={id}
+                  type="button"
+                  className={id === view ? "tab active" : "tab"}
+                  aria-current={id === view ? "page" : undefined}
+                  title={shortcutLabel(String(index + 1))}
+                  aria-keyshortcuts={shortcutAria(String(index + 1))}
+                  data-tour={id === "changes" ? "changes" : undefined}
+                  onClick={() => show(id)}
+                >
+                  {label}
+                  {id === "changes" && standing > 0 && <span className="tab-count">{formatNumber(standing)}</span>}
+                </button>
+              ),
+            )}
           </nav>
         )}
         <div className="masthead-side">
