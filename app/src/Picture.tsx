@@ -65,13 +65,15 @@ interface PictureProps {
   label: string;
   /** What the box shows where there is no picture; nothing by default. */
   fallback?: ReactNode;
+  /** Whether the box goes too where there is no picture, so that no blank room is left before the words beside it. */
+  collapse?: boolean;
 }
 
 /**
  * A picture from the graphics packs in a box of a fixed size. Where there is none (the app has no packs, no pack has
  * this picture, or it cannot be read) the box shows `fallback`. The box is empty while the picture is on its way.
  */
-export function Picture({ kind, id, size, label, fallback }: PictureProps) {
+export function Picture({ kind, id, size, label, fallback, collapse = false }: PictureProps) {
   // The third argument lets it render without a window (on a server, in a test): the count does not need one.
   const retry = useSyncExternalStore(subscribe, currentGeneration, currentGeneration);
   const [, imageFailed] = useReducer((failures: number) => failures + 1, 0);
@@ -97,6 +99,9 @@ export function Picture({ kind, id, size, label, fallback }: PictureProps) {
         />
       </span>
     );
+  }
+  if (collapse) {
+    return null;
   }
   // The text beside a picture usually names it, so its stand-in is for the eye only; one with a label is an image.
   return (
@@ -214,17 +219,9 @@ interface NationFlagProps {
   label?: string;
 }
 
-/** A nation's flag; where no pack has it, an empty frame in its place: never a flag that is not the nation's. */
+/** A nation's flag; where no pack has it, nothing: never a flag that is not the nation's, and no blank room. */
 export function NationFlag({ uid, size = PICTURE_SIZE.flag, label = "" }: NationFlagProps) {
-  return (
-    <Picture
-      kind="flag"
-      id={uid}
-      size={size}
-      label={label}
-      fallback={uid === null ? null : <span className="picture-frame" />}
-    />
-  );
+  return <Picture kind="flag" id={uid} size={size} label={label} collapse />;
 }
 
 interface WithPictureProps {

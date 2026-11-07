@@ -787,7 +787,9 @@ export const en = {
     closePromise: "Close",
     closePromiseTitle: "End this promise without holding it against him",
 
-    // Above the attributes, while the profile is read
+    // After the attributes, while the profile is read
+    /** The button that opens Set all attributes and Freeze attributes. */
+    tools: "Tools",
     /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
     setAttributes: "Set all attributes to",
     setAttributesButton: "Apply",
@@ -1206,7 +1208,8 @@ export const en = {
       capacity: "Capacity",
       minCapacity: "Minimum capacity",
       maxCapacity: "Maximum capacity",
-      placeholder: "Min",
+      minPlaceholder: "Min",
+      maxPlaceholder: "Max",
     },
   },
 
@@ -1257,6 +1260,8 @@ export const en = {
 
   /** The app around the lists: the sidebar, the status line and the connect panel. */
   app: {
+    /** The masthead's menu of the smaller lists: nations, competitions, awards, stadiums and officials. */
+    lists: "Lists",
     /** The settings menu at the right of the masthead: its name, and the headings of its two lists. */
     settingsLabel: "Settings",
     languageLabel: "Language",
@@ -1286,7 +1291,7 @@ export const en = {
         },
         tabs: {
           title: "Sections",
-          body: "Players, staff, clubs, nations and stadiums.",
+          body: "Players, staff and clubs. Nations, stadiums and more under Lists.",
         },
         search: {
           title: "Search and filters",
@@ -2258,19 +2263,31 @@ export const en = {
     liftAllTitle: "Lift every ban in this team",
     /** Hover text of Lift bans while nobody in the team is banned. */
     liftNone: "Nobody in this team is banned",
-    inspireAll: "Inspire all",
-    inspireAllTitle: "Max everyone's morale and clear their reasons to be unhappy",
     refreshAll: "Refresh all",
     refreshAllTitle: "Full energy, full match sharpness and fully rested for everyone",
+    /** `unhappy` is how many of the team's players have a reason to be unhappy that lasts. */
+    removeUnhappiness: (unhappy: number) =>
+      unhappy === 0 ? "Remove unhappiness" : `Remove unhappiness (${format(unhappy)} unhappy)`,
+    removeUnhappinessTitle: "Clear every reason to be unhappy in this team",
+    /** Hover text of Remove unhappiness while nobody in the team is unhappy. */
+    unhappyNone: "Nobody in this team is unhappy",
+    /** The name of the More menu for assistive technology. */
+    moreLabel: "More actions on the whole team",
+    maxMorale: "Max morale",
+    maxMoraleTitle: "Everyone's morale to the top",
     maxCohesion: "Max cohesion",
-    maxCohesionTitle: "Every player fully familiar with the club (experimental)",
+    maxCohesionTitle: "Every player fully familiar with the club",
+    /** The tag of an action that may not hold in every save. */
+    experimental: "Experimental",
     maxTactics: "Max tactics",
     maxTacticsTitle: "Every player fully familiar with the team's tactic",
-    maxAll: "Max attributes",
+    maxAll: "Max attributes…",
     maxAllTitle:
       "Every attribute to 20 for everyone (injury proneness and dirtiness to 1)",
-    /** Beside the buttons: whom they cover, and where undoing is. */
-    hint: "Includes players out on loan.",
+    /** What Max attributes asks first. */
+    maxAllAsk: (count: number) => `Max every attribute of ${count === 1 ? "1 player" : `${format(count)} players`}?`,
+    maxAllConfirm: "Max attributes",
+    cancel: "Cancel",
 
     // What an action did, under the buttons
     /** `count` is how many values were written. */
