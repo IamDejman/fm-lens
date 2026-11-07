@@ -1293,7 +1293,7 @@ impl Session {
                     return Ok(None);
                 }
                 // The object's own class, not the list's guess that a shifted person is the human.
-                let class = crate::rtti::class_of(&self.process, &self.plugin, target.address);
+                let class = crate::rtti::class_of(&self.process, &self.plugin, target.address + layout.class_at);
                 human_manager_flags(Some(layout), target, class.as_deref()).map(|flags| target.address + flags)
             }
             (Place::NationalTeam(side), Entity::Nation) => {
@@ -1709,7 +1709,12 @@ mod tests {
 
     #[test]
     fn only_a_traced_human_manager_has_the_flags() {
-        let traced = HumanManagerLayout { flags: 0x3FC, person_shift: 0x340, class: "N2db16HUMAN_NON_PLAYERE".into() };
+        let traced = HumanManagerLayout {
+            flags: 0x3FC,
+            person_shift: 0x340,
+            class: "N2db16HUMAN_NON_PLAYERE".into(),
+            class_at: 0,
+        };
         let class = Some("N2db16HUMAN_NON_PLAYERE");
         let manager = Target { entity: Entity::Staff, uid: 7, address: 0x1000, shift: 0x340 };
         assert_eq!(human_manager_flags(Some(&traced), &manager, class), Some(0x3FC));

@@ -24,6 +24,9 @@ team = 0x130              # team pointer; the club hangs off the team
 # block in front of it, so every field from here on sits 0xF8 further for them.
 person_block = 0x288
 person_block_shifts = [0x0, 0xF8]
+# The ACTUAL_PERSON the game's signing takes: MSVC lays the person block out as PERSON, then ACTUAL_PERSON with its own
+# virtual-base pointer. ACTUAL_PLAYER's RTTI and virtual-base table give 0x288 and 0x2B0 (Steam 26340721).
+actual_person = 0x2B0
 
 height = 0x22E            # u16, centimetres
 # Live values, 0..10000 (100.00%). Checked against the game's own words on the test save:
@@ -185,6 +188,8 @@ potential_ability = 0xDC  # u16
 # personality, birth date and contract. Attributes, reputation and CA/PA stay put.
 person_block = 0x100
 person_block_shifts = [0x0, 0x340]
+# As for players, 0x28 into the person block (ACTUAL_NON_PLAYER's virtual-base table: 0x100, 0x128).
+actual_person = 0x128
 # As on macOS 0x38 further (the person block's 0x30 and 8 more): his relations record, laid out as a player's,
 # FM's coaching qualification and the formations he prefers in and out of possession. Read on Steam 26340721:
 # Arteta has 12 favoured or disliked people and clubs and Guardiola 22; both hold the Continental Pro licence (1).
@@ -512,3 +517,26 @@ value = 0x05
 flag = 0x06
 size = 0x08
 club_id = 0x08
+
+# STARTING_LOAN, what TRANSFER_MANAGER::start_loan takes, laid out as on macOS: the game's editor (0x29CD370 on Steam
+# 26340721) builds it the same way, 0x70 bytes with the player's identity block, the club's senior team, the start and
+# end dates and the build's defaults.
+[starting_loan]
+size = 0x70
+player = 0x18
+club = 0x20
+starts = 0x30
+ends = 0x34
+defaults = 0x58
+
+# A player's familiarity with his team's tactic, as on macOS but with his record at +0x100: six lists of 4-byte
+# entries 0x20 apart, one list of 16-byte entries at +0xC0 and the byte the game sets once it changes them at +0xDC.
+# The teams table's pointer to its (begin, end) is at +0x80, 8 bytes sooner. Read on Steam 26340721 (Arsenal: 459).
+[tactics]
+record = 0x100
+lists = [0x00, 0x20, 0x40, 0x60, 0x80, 0xA0]
+store = 0xC0
+store_value = 0x0E
+dirty = 0xDC
+team_id = 0x08
+teams = 0x80

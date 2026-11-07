@@ -1118,4 +1118,31 @@ Future transfers and work permits first read none: MSVC vtables keep no offset
 to the player's identity block, so Windows now takes it from the layout. Still
 off on Windows: promises (none in this save to read), tactics, the human
 manager's flags, the game's own actions and the editor. These need the Windows
-bridge and its call RVAs.
+bridge and its call RVAs. See the next section for the game's own actions.
+
+## Windows game actions (7 November 2026)
+
+Same machine and build, with the Windows bridge from `feat/windows-bridge`. Save:
+the Arsenal career at 13 July 2026, run by a test harness that calls the same
+`Session` methods as the app. Every action was undone or reversed in the same run,
+and the career was never saved: the save file's SHA-256 stayed
+`AF20CBAC…2CB747E5` throughout. FM kept responding and showed no error after each.
+
+| Action | Result |
+|---|---|
+| Refresh views and one player | Both ran |
+| Injury | An injury added to Gabriel, then healed |
+| Work permit | Gabriel's England permit revoked, then restored |
+| Loan | Gabriel loaned to Brentford for 60 days, then the loan ended early |
+| Free agent | A free agent signed for Brentford to 30 June 2030, then released |
+| Future transfer | Agreed and listed; cancelled one, then all |
+| Transfer | Dwayne Mason, Brentford to Fulham and back |
+| Tactics | Arsenal's 25 players raised from 50 to 100, then undone |
+| Manager move | Your manager to Brentford and back |
+
+The first free-agent signing stopped the game with an access violation in the
+signing function: on Windows its second argument is the player's
+`ACTUAL_PERSON`, 0x28 into the person block, not the block's start as on macOS.
+The layout now names that offset (`actual_person`) for players and staff.
+Moving your manager back leaves the manager it displaced without a job, as in
+the game.

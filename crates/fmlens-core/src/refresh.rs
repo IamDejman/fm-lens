@@ -24,7 +24,6 @@ impl OptionalRefresh {
         }
         match call() {
             Ok(()) => Ok(true),
-            #[cfg(target_os = "macos")]
             Err(MoveError::Memory(fmlens_mem::Error::BridgeUnsupported { .. })) => {
                 unsupported.push(function);
                 Ok(false)
@@ -33,6 +32,17 @@ impl OptionalRefresh {
         }
     }
 }
+
+/// The class of the game's UI object and its virtual slot that `entity_changed` fills: MSVC lays the slots out 8 bytes
+/// sooner than the Itanium C++ ABI.
+#[cfg(target_os = "macos")]
+const GAME_UI_CLASS: &str = "N11game_plugin7GAME_UIE";
+#[cfg(target_os = "macos")]
+const ENTITY_CHANGED_SLOT: u64 = 0xA0;
+#[cfg(windows)]
+const GAME_UI_CLASS: &str = ".?AVGAME_UI@game_plugin@@";
+#[cfg(windows)]
+const ENTITY_CHANGED_SLOT: u64 = 0x98;
 
 impl Session {
     /// Refresh entire active views after a contract change. FM's transfer UI uses the same rfui
@@ -47,8 +57,12 @@ impl Session {
         }
         // A reference vector is three pointers (begin/end/capacity), as initialized by 0x43FE850.
         // The zeroed scratch holds an empty vector, read synchronously by 0x2FC20 / 0x77DB60.
+        // The 16 bytes of options come after it in two registers on macOS; Windows passes them by address.
         let mut program = Program::new();
+        #[cfg(target_os = "macos")]
         program.push(Step::new(function, &[Arg::scratch(0), Arg::value(0), Arg::value(0)]));
+        #[cfg(windows)]
+        program.push(Step::new(function, &[Arg::scratch(0), Arg::scratch(0x20)]));
         self.refresh_support.run(function, || self.call_game(&program).map(|_| ()))
     }
 
@@ -68,13 +82,11 @@ impl Session {
         }
         self.check_uid(target).map_err(|_| MoveError::Moved { uid: target.uid })?;
         let ui = self.process.read_u64(self.plugin.base + slot)?;
-        if !is_user_pointer(ui)
-            || class_of(&self.process, &self.plugin, ui).as_deref() != Some("N11game_plugin7GAME_UIE")
-        {
+        if !is_user_pointer(ui) || class_of(&self.process, &self.plugin, ui).as_deref() != Some(GAME_UI_CLASS) {
             return Err(MoveError::CallUnavailable);
         }
         let table = self.process.read_u64(ui)?;
-        if self.process.read_u64(table + 0xA0)? != self.plugin.base + function {
+        if self.process.read_u64(table + ENTITY_CHANGED_SLOT)? != self.plugin.base + function {
             return Err(MoveError::CallUnavailable);
         }
         // Player and staff identities differ from their person blocks. Use the established layout, including
@@ -86,7 +98,11 @@ impl Session {
         let offset = match target.entity {
             Entity::Player => self.layout.player.at(self.layout.player.identity(), target.shift),
             Entity::Staff => self.layout.staff.at(self.layout.staff.identity(), target.shift),
+            #[cfg(target_os = "macos")]
             Entity::Official => self.process.read_u64(table - 0x18)?,
+            // MSVC's vtables keep no offset to the identity, and it has not been traced for officials.
+            #[cfg(windows)]
+            Entity::Official => return Ok(false),
             // Clubs and nations inherit IDENTITY directly: their primary vtables have the same reference getter
             // at +0x88 (0x11B3D1C) that the notifier uses through 0x1B23A8.
             Entity::Club | Entity::Nation => 0,
