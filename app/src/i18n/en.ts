@@ -574,6 +574,9 @@ export const en = {
     /** The handle on the left edge of the panel. */
     resize: "Resize the profile panel",
     resizeHint: "Drag to resize. Double-click to reset.",
+    /** The button beside Close that widens the panel as far as it goes, then gives it its usual width again. */
+    widen: "Widen panel",
+    usualWidth: "Reset panel width",
     /** Shown where a value is missing. */
     none: "-",
 

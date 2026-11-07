@@ -612,6 +612,8 @@ export const tr: Strings = {
     loading: "Profil yükleniyor…",
     resize: "Profil panelini boyutlandır",
     resizeHint: "Boyutu değiştirmek için sürükleyin. Sıfırlamak için çift tıklayın.",
+    widen: "Paneli genişlet",
+    usualWidth: "Panel genişliğini sıfırla",
     none: "-",
 
     // Header

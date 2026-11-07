@@ -450,7 +450,7 @@ function BatchRow({ batch, open, undoing, outcome, onToggle, onUndo }: BatchRowP
             {open ? text.hideChanges : text.showChanges}
           </button>
         </div>
-        {outcome !== undefined && <BatchOutcomeNote outcome={outcome} />}
+        <BatchOutcomeNote outcome={outcome} />
       </td>
     </tr>
   );
@@ -607,9 +607,12 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   );
 }
 
-/** What undoing a whole mass edit did: how many changes were taken back and which could not be, or why it failed. */
-function BatchOutcomeNote({ outcome }: { outcome: BatchOutcome }) {
-  if ("error" in outcome) {
+/**
+ * What undoing a whole mass edit did: how many changes were taken back and which could not be, or why it failed. Until
+ * then, an empty live region, so that what it did is read out.
+ */
+function BatchOutcomeNote({ outcome }: { outcome: BatchOutcome | undefined }) {
+  if (outcome !== undefined && "error" in outcome) {
     return (
       <span className="row-error" role="alert">
         {outcome.error}
@@ -617,14 +620,18 @@ function BatchOutcomeNote({ outcome }: { outcome: BatchOutcome }) {
     );
   }
   return (
-    <div className="row-note" role="status">
-      <p>{massEditText.undone(outcome.undone)}</p>
-      {outcome.problems.length > 0 && (
-        <ul className="edit-problems">
-          {outcome.problems.map((problem, index) => (
-            <li key={index}>{problem}</li>
-          ))}
-        </ul>
+    <div className="live-region" role="status">
+      {outcome !== undefined && (
+        <div className="row-note">
+          <p>{massEditText.undone(outcome.undone)}</p>
+          {outcome.problems.length > 0 && (
+            <ul className="edit-problems">
+              {outcome.problems.map((problem, index) => (
+                <li key={index}>{problem}</li>
+              ))}
+            </ul>
+          )}
+        </div>
       )}
     </div>
   );
