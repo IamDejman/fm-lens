@@ -114,7 +114,7 @@ See the latest entry in EDITING-VALIDATION.md.
 | --- | --- |
 | Launch in 1 second | Not benchmarked |
 | Load 550,000 players in under 3 seconds | Not benchmarked; current live evidence covers a 30,314-player career |
-| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits |
+| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits. Its Windows build was checked on 7 November for reads only; Windows edits are untested |
 | Updates within hours of patches | Maintenance aspiration, not a guarantee |
 | Offline companion | Verified with network denied against an already-running game; fresh Steam Offline Mode startup untested |
 | Updating FM Lens while FM stays open | Implemented: use the running helper's capabilities, retain the earlier call protocol, and skip only explicitly unsupported optional refresh calls. Native Mach IPC regression tests pass; a live copied-career update remains unverified. New helper functions become available after the next normal FM launch |

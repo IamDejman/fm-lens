@@ -484,8 +484,8 @@ impl Session {
         }
     }
 
-    /// What the game's work permit functions take: the transfer manager, the player's identity block (where his
-    /// vtable says his virtual base starts) and his club team.
+    /// What the game's work permit functions take: the transfer manager, the player's identity block and his club
+    /// team.
     fn permit_holder(&self, player: &PlayerSummary) -> Result<(u64, u64, u64), MoveError> {
         let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
         let manager = self.singleton(self.profile.as_ref().and_then(|p| p.transfer_manager), class)?;
@@ -494,9 +494,7 @@ impl Session {
         if !is_user_pointer(team) {
             return Err(MoveError::FreeAgent);
         }
-        let vtable = self.process.read_u64(object)?;
-        let identity = object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64);
-        Ok((manager, identity, team))
+        Ok((manager, self.identity_block(object)?, team))
     }
 
     /// The player's record for his club's country, as the game finds it, and for an ESC slot the day it began as the
@@ -1235,9 +1233,16 @@ impl Session {
     }
 
     /// The player object's identity block: where its vtable says its virtual base starts.
+    #[cfg(target_os = "macos")]
     fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
         let vtable = self.process.read_u64(object)?;
         Ok(object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64))
+    }
+
+    /// The player object's identity block. MSVC's vtables keep no offset to it, so the layout places it.
+    #[cfg(windows)]
+    fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
+        Ok(object + self.layout.player.identity())
     }
 }
 

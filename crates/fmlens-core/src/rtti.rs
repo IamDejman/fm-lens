@@ -6,7 +6,8 @@
 //! The macOS build follows the Itanium C++ ABI: a vtable is preceded by the offset to the top of the object and a
 //! pointer to the class's type info, whose second word points at the mangled name ("15GAME_COMP_STATS",
 //! "N2db4TEAME"). On Apple silicon the compiler may set the top bit of that pointer, for a name that is not unique.
-//! Windows builds keep MSVC's descriptors instead, which this module does not read: there it finds no class.
+//! Windows builds keep MSVC's descriptors instead: [`class_of`] reads those there, and names a class as MSVC mangles
+//! it (`.?AVOFFICIAL@db@@`); [`vtables`] and [`objects`] follow the Itanium layout only.
 
 use std::collections::HashMap;
 
@@ -60,6 +61,7 @@ pub fn vtables(process: &Process, plugin: &Module, class: &str) -> Vec<u64> {
 
 /// The mangled name of the class of the object at `object` (see [`mangled`]); `None` when its first word is not a
 /// vtable of `plugin`.
+#[cfg(target_os = "macos")]
 pub fn class_of(process: &Process, plugin: &Module, object: u64) -> Option<String> {
     let vtable = process.read_u64(object).ok()?;
     if !plugin.contains(vtable) {
@@ -73,6 +75,27 @@ pub fn class_of(process: &Process, plugin: &Module, object: u64) -> Option<Strin
     let bytes = process.read_bytes(name, 128).ok()?;
     let end = bytes.iter().position(|&b| b == 0)?;
     String::from_utf8(bytes[..end].to_vec()).ok()
+}
+
+/// The name MSVC keeps for the class of the object at `object`, e.g. `.?AVOFFICIAL@db@@`; `None` when its first word
+/// is not a vtable of `plugin`. On x64 a vtable is preceded by a pointer to its complete object locator: signature 1,
+/// the type descriptor's RVA at +12 and the locator's own at +20; the descriptor holds the name after a vtable pointer
+/// and a spare word.
+#[cfg(windows)]
+pub fn class_of(process: &Process, plugin: &Module, object: u64) -> Option<String> {
+    let vtable = process.read_u64(object).ok()?;
+    if !plugin.contains(vtable) {
+        return None;
+    }
+    let locator = process.read_u64(vtable - 8).ok().filter(|&at| plugin.contains(at))?;
+    let bytes = process.read_bytes(locator, 24).ok()?;
+    let word = |at: usize| u32::from_le_bytes(bytes[at..at + 4].try_into().expect("4 bytes"));
+    if word(0) != 1 || u64::from(word(20)) != locator - plugin.base {
+        return None;
+    }
+    let name = process.read_bytes(plugin.base + u64::from(word(12)) + 0x10, 128).ok()?;
+    let end = name.iter().position(|&b| b == 0)?;
+    String::from_utf8(name[..end].to_vec()).ok()
 }
 
 /// The objects on the game's heap whose first word is one of `vtables`, by vtable. One pass over every page of data
