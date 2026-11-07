@@ -1,28 +1,21 @@
-// A toolbar's less common actions, folded behind More while space is short.
+// A toolbar's less common actions, behind More.
 
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { appText } from "./labels";
 
 /**
- * Shows `children` as they are, or, while `folded`, behind a More button that opens them in a small panel. The actions
- * stay mounted either way, so a dialog one of them opened survives the fold. The panel stays open while that dialog is
- * up, so that focus can go back to the action when it closes; Escape or a click elsewhere closes it.
+ * A More button that opens `children` in a small panel. The actions stay mounted while it is closed, so a dialog one of
+ * them opened survives. The panel stays open while that dialog is up, so that focus can go back to the action when it
+ * closes; Escape or a click elsewhere closes it.
  */
-export function MoreMenu({ folded, children }: { folded: boolean; children: ReactNode }) {
+export function MoreMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  // Unfolding closes the panel, so that it does not spring open the next time the actions fold.
-  const [wasFolded, setWasFolded] = useState(folded);
-  if (wasFolded !== folded) {
-    setWasFolded(folded);
-    setOpen(false);
-  }
   const box = useRef<HTMLDivElement>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const panelId = useId();
-  const shown = !folded || open;
 
   useEffect(() => {
-    if (!folded || !open) {
+    if (!open) {
       return;
     }
     const onPointerDown = (event: PointerEvent) => {
@@ -35,15 +28,14 @@ export function MoreMenu({ folded, children }: { folded: boolean; children: Reac
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [folded, open]);
+  }, [open]);
 
   return (
     <div
       ref={box}
       className="more-menu"
-      data-folded={folded || undefined}
       onKeyDown={(event) => {
-        if (folded && open && event.key === "Escape") {
+        if (open && event.key === "Escape") {
           // An open profile closes on Escape too: this one is the panel's.
           event.stopPropagation();
           setOpen(false);
@@ -51,19 +43,17 @@ export function MoreMenu({ folded, children }: { folded: boolean; children: Reac
         }
       }}
     >
-      {folded && (
-        <button
-          ref={toggle}
-          type="button"
-          className="more-toggle"
-          aria-expanded={open}
-          aria-controls={panelId}
-          onClick={() => setOpen((value) => !value)}
-        >
-          {appText.more}
-        </button>
-      )}
-      <div id={panelId} className="more-panel" hidden={!shown}>
+      <button
+        ref={toggle}
+        type="button"
+        className="more-toggle"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {appText.more}
+      </button>
+      <div id={panelId} className="more-panel" hidden={!open}>
         {children}
       </div>
     </div>

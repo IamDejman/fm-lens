@@ -1,7 +1,9 @@
 import { useId, useState } from "react";
 import { ClubProfile, readTab, type ClubTab } from "./ClubProfile";
+import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
+import { formatNumber } from "./format";
 import { clubListText, profileText } from "./labels";
-import { ListBrowser } from "./ListBrowser";
+import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
@@ -32,7 +34,7 @@ function whole(input: string, range: { min: number; max: number }): number | und
 const readText = (value: unknown) => (typeof value === "string" ? value : "");
 
 /** The clubs table with the profile of the selected club beside it. */
-export function ClubBrowser({ version, active }: { version: number; active: boolean }) {
+export function ClubBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
   // It starts as it was before the language was switched, if it was (see `restore.ts`).
   const [kind, setKind] = useState<ClubKind>(() => restored("clubKind", readKind));
   const [minReputation, setMinReputation] = useState(() => restored("clubMinRep", readText));
@@ -47,6 +49,14 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
   // The tab of the club profile is kept here, so that the next club picked opens on the squad when this one did.
   const [tab, setTab] = useState<ClubTab>(() => restored("clubTab", readTab));
   useSnapshot("clubTab", () => tab);
+  // A club asked for from elsewhere (the user's own, from the top bar) opens on its squad.
+  const [revealed, setRevealed] = useState(reveal);
+  if (revealed !== reveal) {
+    setRevealed(reveal);
+    if (reveal) {
+      setTab("squad");
+    }
+  }
   const minRep = whole(minReputation, REPUTATION_RANGE);
   const maxRep = whole(maxReputation, REPUTATION_RANGE);
   const fromYear = whole(foundedFrom, YEAR_RANGE);
@@ -64,9 +74,45 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
   const reputationLabel = useId();
   const foundedLabel = useId();
 
+  // A chip for each filter in effect; the two ends of a range are one.
+  const chips: FilterChip[] = [];
+  const reputation = rangeText(minRep, maxRep, formatNumber);
+  const founded = rangeText(fromYear, toYear);
+  if (kind !== "all") {
+    chips.push({ key: "kind", label: kind === "men" ? filters.men : filters.women, remove: () => setKind("all") });
+  }
+  if (reputation !== null) {
+    chips.push({
+      key: "reputation",
+      label: chipLabel(filters.reputation, reputation),
+      remove: () => {
+        setMinReputation("");
+        setMaxReputation("");
+      },
+    });
+  }
+  if (founded !== null) {
+    chips.push({
+      key: "founded",
+      label: chipLabel(filters.founded, founded),
+      remove: () => {
+        setFoundedFrom("");
+        setFoundedTo("");
+      },
+    });
+  }
+  const clearAll = () => {
+    setKind("all");
+    setMinReputation("");
+    setMaxReputation("");
+    setFoundedFrom("");
+    setFoundedTo("");
+  };
+
   return (
     <ListBrowser<ClubSummary>
       name="clubs"
+      reveal={reveal}
       command="search_clubs"
       requestArgs={{ filter }}
       version={version}
@@ -75,66 +121,64 @@ export function ClubBrowser({ version, active }: { version: number; active: bool
       summary={clubListText.summary}
       empty={(query) => clubListText.empty(query, filter !== undefined)}
       filterBar={
-        <div className="filter-bar">
-          <div className="filter-fields">
-            <label className="filter-field">
-              <span>{filters.kind}</span>
-              <select aria-label={filters.kind} value={kind} onChange={(e) => setKind(e.currentTarget.value as ClubKind)}>
-                <option value="all">{filters.all}</option>
-                <option value="men">{filters.men}</option>
-                <option value="women">{filters.women}</option>
-              </select>
-            </label>
-            <div className="filter-field" role="group" aria-labelledby={reputationLabel}>
-              <span id={reputationLabel}>{filters.reputation}</span>
-              <input
-                type="number"
-                min={REPUTATION_RANGE.min}
-                max={REPUTATION_RANGE.max}
-                step={1}
-                placeholder={filters.minPlaceholder}
-                aria-label={filters.minReputation}
-                value={minReputation}
-                onChange={(e) => setMinReputation(e.currentTarget.value)}
-              />
-              <span aria-hidden="true">–</span>
-              <input
-                type="number"
-                min={REPUTATION_RANGE.min}
-                max={REPUTATION_RANGE.max}
-                step={1}
-                placeholder={filters.maxPlaceholder}
-                aria-label={filters.maxReputation}
-                value={maxReputation}
-                onChange={(e) => setMaxReputation(e.currentTarget.value)}
-              />
-            </div>
-            <div className="filter-field" role="group" aria-labelledby={foundedLabel}>
-              <span id={foundedLabel}>{filters.founded}</span>
-              <input
-                type="number"
-                min={YEAR_RANGE.min}
-                max={YEAR_RANGE.max}
-                step={1}
-                placeholder={filters.yearPlaceholder}
-                aria-label={filters.foundedFrom}
-                value={foundedFrom}
-                onChange={(e) => setFoundedFrom(e.currentTarget.value)}
-              />
-              <span aria-hidden="true">–</span>
-              <input
-                type="number"
-                min={YEAR_RANGE.min}
-                max={YEAR_RANGE.max}
-                step={1}
-                placeholder={filters.yearPlaceholder}
-                aria-label={filters.foundedTo}
-                value={foundedTo}
-                onChange={(e) => setFoundedTo(e.currentTarget.value)}
-              />
-            </div>
+        <FilterBar chips={chips} onClear={clearAll}>
+          <label className="filter-field">
+            <span>{filters.kind}</span>
+            <select aria-label={filters.kind} value={kind} onChange={(e) => setKind(e.currentTarget.value as ClubKind)}>
+              <option value="all">{filters.all}</option>
+              <option value="men">{filters.men}</option>
+              <option value="women">{filters.women}</option>
+            </select>
+          </label>
+          <div className="filter-field" role="group" aria-labelledby={reputationLabel}>
+            <span id={reputationLabel}>{filters.reputation}</span>
+            <input
+              type="number"
+              min={REPUTATION_RANGE.min}
+              max={REPUTATION_RANGE.max}
+              step={1}
+              placeholder={filters.minPlaceholder}
+              aria-label={filters.minReputation}
+              value={minReputation}
+              onChange={(e) => setMinReputation(e.currentTarget.value)}
+            />
+            <span aria-hidden="true">–</span>
+            <input
+              type="number"
+              min={REPUTATION_RANGE.min}
+              max={REPUTATION_RANGE.max}
+              step={1}
+              placeholder={filters.maxPlaceholder}
+              aria-label={filters.maxReputation}
+              value={maxReputation}
+              onChange={(e) => setMaxReputation(e.currentTarget.value)}
+            />
           </div>
-        </div>
+          <div className="filter-field" role="group" aria-labelledby={foundedLabel}>
+            <span id={foundedLabel}>{filters.founded}</span>
+            <input
+              type="number"
+              min={YEAR_RANGE.min}
+              max={YEAR_RANGE.max}
+              step={1}
+              placeholder={filters.yearPlaceholder}
+              aria-label={filters.foundedFrom}
+              value={foundedFrom}
+              onChange={(e) => setFoundedFrom(e.currentTarget.value)}
+            />
+            <span aria-hidden="true">–</span>
+            <input
+              type="number"
+              min={YEAR_RANGE.min}
+              max={YEAR_RANGE.max}
+              step={1}
+              placeholder={filters.yearPlaceholder}
+              aria-label={filters.foundedTo}
+              value={foundedTo}
+              onChange={(e) => setFoundedTo(e.currentTarget.value)}
+            />
+          </div>
+        </FilterBar>
       }
       toolbarActions={(list) => <MassEditButton entity="club" filters={{ clubFilter: filter }} list={list} />}
       tableClass="club-grid"

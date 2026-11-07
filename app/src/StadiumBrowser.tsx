@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
 import { formatNumber } from "./format";
 import { clubListText, clubProfileText, stadiumListText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
@@ -33,6 +34,13 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
   const filter: StadiumFilter | undefined =
     min === undefined && max === undefined ? undefined : { minCapacity: min, maxCapacity: max };
   const capacityLabel = useId();
+  const capacity = rangeText(min, max, formatNumber);
+  const clearAll = () => {
+    setMinCapacity("");
+    setMaxCapacity("");
+  };
+  const chips: FilterChip[] =
+    capacity === null ? [] : [{ key: "capacity", label: chipLabel(filters.capacity, capacity), remove: clearAll }];
 
   return (
     <ListBrowser<StadiumSummary>
@@ -45,34 +53,32 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
       summary={stadiumListText.summary}
       empty={(query) => stadiumListText.empty(query, filter !== undefined)}
       filterBar={
-        <div className="filter-bar">
-          <div className="filter-fields">
-            <div className="filter-field" role="group" aria-labelledby={capacityLabel}>
-              <span id={capacityLabel}>{filters.capacity}</span>
-              <input
-                type="number"
-                min={CAPACITY_RANGE.min}
-                max={CAPACITY_RANGE.max}
-                step={1}
-                placeholder={filters.minPlaceholder}
-                aria-label={filters.minCapacity}
-                value={minCapacity}
-                onChange={(e) => setMinCapacity(e.currentTarget.value)}
-              />
-              <span aria-hidden="true">–</span>
-              <input
-                type="number"
-                min={CAPACITY_RANGE.min}
-                max={CAPACITY_RANGE.max}
-                step={1}
-                placeholder={filters.maxPlaceholder}
-                aria-label={filters.maxCapacity}
-                value={maxCapacity}
-                onChange={(e) => setMaxCapacity(e.currentTarget.value)}
-              />
-            </div>
+        <FilterBar chips={chips} onClear={clearAll}>
+          <div className="filter-field" role="group" aria-labelledby={capacityLabel}>
+            <span id={capacityLabel}>{filters.capacity}</span>
+            <input
+              type="number"
+              min={CAPACITY_RANGE.min}
+              max={CAPACITY_RANGE.max}
+              step={1}
+              placeholder={filters.minPlaceholder}
+              aria-label={filters.minCapacity}
+              value={minCapacity}
+              onChange={(e) => setMinCapacity(e.currentTarget.value)}
+            />
+            <span aria-hidden="true">–</span>
+            <input
+              type="number"
+              min={CAPACITY_RANGE.min}
+              max={CAPACITY_RANGE.max}
+              step={1}
+              placeholder={filters.maxPlaceholder}
+              aria-label={filters.maxCapacity}
+              value={maxCapacity}
+              onChange={(e) => setMaxCapacity(e.currentTarget.value)}
+            />
           </div>
-        </div>
+        </FilterBar>
       }
       tableClass="stadium-grid"
       header={

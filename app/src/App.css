@@ -374,24 +374,39 @@ dd,
   font-size: var(--type-base);
 }
 
-/* The connected career, before its date: it gives way first when the masthead is short of room. */
-/* The connected career, which opens the user's own manager: quiet until pointed at. */
-.masthead .career {
+/* The connected career, before its date: the user's own manager, which opens their profile, and club, which opens its
+   squad, each quiet until pointed at. The manager gives way first when the masthead is short of room; the club keeps
+   its whole name. */
+.career {
+  display: flex;
   flex: 0 1 auto;
-  display: block;
+  align-items: center;
   min-width: 0;
+}
+
+.career-dot {
+  color: rgb(246 247 249 / 0.5);
+}
+
+.masthead .career button {
   min-height: 28px;
   padding: 4px 8px;
-  overflow: hidden;
   border-color: transparent;
   color: rgb(246 247 249 / 0.8);
   font-size: var(--type-base);
   font-weight: 600;
   white-space: nowrap;
+}
+
+.masthead .career .career-manager {
+  flex: 0 1 auto;
+  display: block;
+  min-width: 3rem;
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.masthead .career:hover:not(:disabled) {
+.masthead .career button:hover:not(:disabled) {
   border-color: rgb(246 247 249 / 0.35);
   background: rgb(246 247 249 / 0.08);
   color: rgb(246 247 249);
@@ -443,7 +458,7 @@ dd,
     padding: 0 10px;
   }
 
-  .masthead .career {
+  .masthead .career .career-manager {
     max-width: 9rem;
   }
 }
@@ -458,7 +473,7 @@ dd,
     min-height: 48px;
   }
 
-  .masthead .career {
+  .masthead .career .career-manager {
     max-width: none;
   }
 
@@ -1149,6 +1164,48 @@ input::placeholder {
   background: var(--hover);
 }
 
+/* The filters in effect in the head of the bar, a chip each: pressed, it takes its filter out. */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 18rem;
+  padding: 3px 7px 3px 10px;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  font-size: var(--type-base);
+}
+
+.filter-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-chip svg {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.filter-chip:hover:not(:disabled) svg {
+  stroke: var(--text);
+}
+
 /* The filters as a form: a grid of equal cells, as many to a row as fit, each a label over its control, so no field is
    left on a line of its own and every input is as wide as its cell. */
 .filter-fields {
@@ -1549,23 +1606,36 @@ input::placeholder {
   .player-grid .ability {
     min-width: 0;
   }
-
-  /* Beside an open profile the list is for picking the next player: name, positions and CA, the name with the room. */
-  .with-profile .player-grid :is(.col-age, .col-club, .col-pa) {
-    display: none;
-  }
-
-  .with-profile .player-grid .col-positions {
-    display: table-cell;
-    color: var(--muted);
-  }
-
-  .with-profile .player-grid td.col-name {
-    width: 62%;
-  }
 }
 
-/* The narrowest list, beside a profile in the smallest window: name and CA. */
+/* Beside an open profile the list is for picking the next player: the name with the club under it, then positions,
+   CA and PA. */
+.player-grid .col-name .row-club {
+  display: none;
+}
+
+.with-profile .player-grid .col-name .sub {
+  display: none;
+}
+
+.with-profile .player-grid .col-name .row-club {
+  display: block;
+}
+
+.with-profile .player-grid :is(.col-age, .col-nation, .col-club, .col-contract, .col-born, .col-uid) {
+  display: none;
+}
+
+.with-profile .player-grid .col-positions {
+  display: table-cell;
+  color: var(--muted);
+}
+
+.with-profile .player-grid td.col-name {
+  width: 62%;
+}
+
+/* The narrowest list, beside a profile in the smallest window: name, CA and PA. */
 @container (max-width: 320px) {
   .with-profile .player-grid .col-positions {
     display: none;
@@ -2273,6 +2343,15 @@ input::placeholder {
   align-items: start;
 }
 
+/* In a narrow profile a member of staff's attributes take two columns: Coaching beside Mental and Medical, Knowledge
+   under them. */
+@container profile (max-width: 640px) {
+  .profile-columns.staff-attributes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 16px;
+  }
+}
+
 .profile-split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2385,9 +2464,10 @@ input::placeholder {
   color: var(--text);
 }
 
-/* The unit of an amount, in small print under its label. */
-.stat dt .unit {
-  display: block;
+/* The unit of an amount, in small print after it. */
+.stat dd .unit {
+  margin-left: 3px;
+  color: var(--muted);
   font-size: var(--type-sm);
 }
 
@@ -3164,33 +3244,17 @@ button.danger:hover:not(:disabled) {
 /* Mass edit */
 
 /* The button at the end of a list's toolbar. */
-.toolbar .mass-edit-toggle,
-.toolbar .export-toggle {
+.toolbar > .mass-edit-toggle {
   margin-left: auto;
 }
 
-/* Export comes first in the player list's toolbar; Mass edit stays beside it. */
-.toolbar .export-toggle + .mass-edit-toggle {
-  margin-left: 0;
-}
-
-/* The player list's actions: in the toolbar as they are, or, beside an open profile, behind More (see MoreMenu). */
-.more-menu,
-.more-panel {
-  display: contents;
-}
-
-.more-panel[hidden] {
-  display: none;
-}
-
-.more-menu[data-folded] {
+/* The player list's less common actions, behind More (see MoreMenu). */
+.more-menu {
   position: relative;
-  display: block;
   margin-left: auto;
 }
 
-.more-menu[data-folded] .more-panel:not([hidden]) {
+.more-panel:not([hidden]) {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -3205,7 +3269,7 @@ button.danger:hover:not(:disabled) {
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
 }
 
-.more-menu[data-folded] .more-panel button {
+.more-panel button {
   margin: 0;
   padding: 6px 10px;
   border: 0;
@@ -3213,7 +3277,7 @@ button.danger:hover:not(:disabled) {
   text-align: left;
 }
 
-.more-menu[data-folded] .more-panel button:hover:not(:disabled) {
+.more-panel button:hover:not(:disabled) {
   background: var(--hover);
 }
 

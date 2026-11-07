@@ -339,6 +339,17 @@ function App() {
       setView("staff");
       setRevealStaff({ uid: career.uid, query: career.manager });
     });
+  // The user's own club, which opens on its squad.
+  const [revealClub, setRevealClub] = useState<Reveal | null>(null);
+  const openClub = ({ club, clubUid }: Career) => {
+    if (club !== null && clubUid !== null) {
+      askToLeave(() => {
+        setView("clubs");
+        setRevealClub({ uid: clubUid, query: club });
+      });
+    }
+  };
+  const career = connection?.career ?? null;
 
   return (
     <div className="app">
@@ -405,10 +416,22 @@ function App() {
             {busy}
           </span>
           {/* Which career is connected, as FM names a save by default: the manager and his club. */}
-          {connection?.career && (
-            <button type="button" className="career" onClick={() => connection.career && openManager(connection.career)}>
-              {[connection.career.manager, connection.career.club].filter(Boolean).join(" · ")}
-            </button>
+          {career && (
+            <span className="career">
+              <button type="button" className="career-manager" onClick={() => openManager(career)}>
+                {career.manager}
+              </button>
+              {career.club !== null && career.clubUid !== null && (
+                <>
+                  <span className="career-dot" aria-hidden="true">
+                    ·
+                  </span>
+                  <button type="button" className="career-club" onClick={() => openClub(career)}>
+                    {career.club}
+                  </button>
+                </>
+              )}
+            </span>
           )}
           {connection &&
             (connection.gameDate ? (
@@ -457,7 +480,7 @@ function App() {
             <div className="views">
               <PlayerBrowser version={dataVersion} active={view === "players"} />
               <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
-              <ClubBrowser version={dataVersion} active={view === "clubs"} />
+              <ClubBrowser version={dataVersion} active={view === "clubs"} reveal={revealClub} />
               <NationBrowser version={dataVersion} active={view === "nations"} />
               <CompetitionBrowser version={dataVersion} active={view === "competitions"} />
               <AwardBrowser version={dataVersion} active={view === "awards"} />
