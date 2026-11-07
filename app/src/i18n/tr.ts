@@ -1355,6 +1355,12 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.5.11": [
+        "Sevdikleri ve sevmedikleri: bir kulübü veya kişiyi başkasıyla değiştirin.",
+        "FM Lens güncellenirken FM açıksa, FM'i Steam'den yeniden başlatana kadar düzenleme kapalı kalır.",
+        "Rapor dosyaları siz raporu gönderene kadar gizli kalır ve CSV dışa aktarımları artık formül çalıştırmaz.",
+        "FM Lens artık kaydınızdan ad veya değer almadan anonim kullanımı sayar. Ayarlar'dan kapatabilirsiniz.",
+      ],
       "0.5.10": [
         "Intel Mac’lerde tamamlanan her Uygula ve Geri Al işleminden sonra FM’den düzenlenen kaydı ve açık ekranları Devam’a basmadan yenilemesi istenir.",
         "Yeni yardımcıyı yüklemek için güncellemeden sonra FM’yi bir kez yeniden başlatın.",

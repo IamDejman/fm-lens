@@ -1,5 +1,6 @@
 ## What's new
 
-- On Intel Macs, every successful Apply and Undo now asks FM to refresh the edited record and its active screens without pressing Continue. Other fields and panels have not all been checked.
-
-Restart FM once after updating to load the new helper.
+- Likes and dislikes: replace a club or person with another.
+- If FM was open while FM Lens updated, editing stays off until you restart FM from Steam, instead of failing edit by edit.
+- Report files stay private until you send the report, and CSV exports no longer run formulas in spreadsheets.
+- FM Lens now counts anonymous usage, with no names or values from your save. Turn it off in Settings.
