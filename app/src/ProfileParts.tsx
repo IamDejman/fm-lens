@@ -16,7 +16,7 @@ import { converts } from "./currency";
 import { describeError, formatDate, formatMoney, formatNumber } from "./format";
 import { isShortcut } from "./keys";
 import { PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
-import { PanelResizer, usePanelWidth } from "./PanelResizer";
+import { PanelResizer, PanelWidthButton, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
 import {
   AppliedFieldsContext,
@@ -146,6 +146,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
       <AppliedFieldsContext.Provider value={editing?.appliedFields ?? new Set<string>()}>
       <EditActivationContext.Provider value={loaded?.details !== undefined ? (editing?.activation ?? null) : null}>
       <section
+        ref={panelWidth.panel}
         className={["profile", editing?.stage === "edit" && "editing", wide && "wide"].filter(Boolean).join(" ")}
         role="complementary"
         aria-label={name}
@@ -176,6 +177,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
             <div className="profile-actions">
               {headActions}
               {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
+              <PanelWidthButton panelWidth={panelWidth} />
               <button
                 className="icon-button"
                 onClick={closeProfile}

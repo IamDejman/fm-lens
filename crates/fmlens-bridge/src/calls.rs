@@ -9,8 +9,9 @@ use std::ffi::{CStr, c_char, c_void};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
-use fmlens_mem::bridge::{CALL_START_MS, CallReply, CallRequest};
+use fmlens_mem::bridge::{CALL_START_MS, CallReply, CallRequest, CapabilitiesReply};
 use fmlens_mem::call::{Arg, MAX_STEPS, SCRATCH_SIZE, Status, Step, refusal};
+use mach2::message::mach_msg_header_t;
 
 // The functions each build lets the editor run, from the build profiles (see build.rs).
 include!(concat!(env!("OUT_DIR"), "/allowed.rs"));
@@ -34,6 +35,28 @@ pub fn answer(request: &CallRequest, same_user: bool) -> CallReply {
     let mut reply = CallReply::to(&request.header, Status::Done);
     let status = check(request, same_user).unwrap_or_else(|| run(request, &mut reply));
     reply.status = status as u32;
+    reply
+}
+
+/// Reports the running helper's allowlist without calling any game function or dispatching
+/// work to the main thread. Its version may differ from the companion's version.
+pub fn capabilities(header: &mach_msg_header_t, same_user: bool) -> CapabilitiesReply {
+    let mut reply = CapabilitiesReply::to(header, Status::Refused);
+    if !same_user {
+        return reply;
+    }
+    reply.status = Status::WrongBuild as u32;
+    let Some((_, uuid)) = game_plugin() else { return reply };
+    let Some((_, functions)) = ALLOWED.iter().find(|(build, _)| *build == uuid) else { return reply };
+    if functions.len() > reply.functions.len() {
+        return reply;
+    }
+    reply.plugin_uuid = uuid;
+    reply.count = functions.len() as u32;
+    reply.functions[..functions.len()].copy_from_slice(functions);
+    reply.status =
+        if cfg!(any(target_arch = "aarch64", target_arch = "x86_64")) { Status::Done } else { Status::Unsupported }
+            as u32;
     reply
 }
 
@@ -293,7 +316,20 @@ unsafe fn invoke(_: u64, _: &[u64; 8], _: u64, _: &[u64; 4]) -> u64 {
 
 #[cfg(all(test, any(target_arch = "aarch64", target_arch = "x86_64")))]
 mod tests {
-    use super::invoke;
+    use super::{capabilities, invoke};
+    use fmlens_mem::call::Status;
+    use mach2::message::mach_msg_header_t;
+
+    #[test]
+    fn discovery_never_advertises_calls_to_another_user_or_without_a_known_plugin() {
+        let header = mach_msg_header_t::default();
+        let refused = capabilities(&header, false);
+        assert_eq!(refused.status, Status::Refused as u32);
+        assert_eq!(refused.count, 0);
+        let no_game = capabilities(&header, true);
+        assert_eq!(no_game.status, Status::WrongBuild as u32);
+        assert_eq!(no_game.count, 0);
+    }
 
     /// Each argument is one hex digit of the answer, so one out of place changes it.
     extern "C" fn digits(

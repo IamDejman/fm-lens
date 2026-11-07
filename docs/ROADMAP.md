@@ -117,6 +117,7 @@ See the latest entry in EDITING-VALIDATION.md.
 | Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits |
 | Updates within hours of patches | Maintenance aspiration, not a guarantee |
 | Offline companion | Verified with network denied against an already-running game; fresh Steam Offline Mode startup untested |
+| Updating FM Lens while FM stays open | Implemented: use the running helper's capabilities, retain the earlier call protocol, and skip only explicitly unsupported optional refresh calls. Native Mach IPC regression tests pass; a live copied-career update remains unverified. New helper functions become available after the next normal FM launch |
 | Free scouting / trials / paid editing | Personal build has no licensing service or paywall; broader pricing/trial policy undecided |
 
 Do not mark a row Available just because upstream contains it or compilation passes.

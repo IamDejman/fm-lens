@@ -414,12 +414,13 @@ function TemplatesDialog({
                     {text.remove}
                   </button>
                 </div>
-                {template && (
-                  <p role="status">
-                    <strong>{template.name}</strong> ·{" "}
-                    {text.fieldCount(Object.keys(template.values).length)}
-                  </p>
-                )}
+                <p className="live-region" role="status">
+                  {template && (
+                    <>
+                      <strong>{template.name}</strong> · {text.fieldCount(Object.keys(template.values).length)}
+                    </>
+                  )}
+                </p>
                 <details>
                   <summary>{text.jsonHeading}</summary>
                   <label>
@@ -494,11 +495,12 @@ function TemplatesDialog({
               </button>
             </section>
           </fieldset>
+          {/* A live region that is always there, so that it is read out when the preview fills it. */}
+          <p className="mass-summary" role="status">
+            {preview && text.summary(preview.targets, preview.changes, preview.skippedCount, preview.unchanged)}
+          </p>
           {preview && (
             <section aria-label={text.previewLabel}>
-              <p role="status">
-                {text.summary(preview.targets, preview.changes, preview.skippedCount, preview.unchanged)}
-              </p>
               <div
                 className="mass-table-wrap"
                 tabIndex={0}
@@ -551,21 +553,25 @@ function TemplatesDialog({
               )}
             </section>
           )}
-          {report && (
-            <div role="status">
-              <p>{text.applied(report.applied)}</p>
-              {report.failed.length > 0 && (
-                <ul>
-                  {report.failed.slice(0, 100).map((entry, i) => (
-                    <li key={i}>
-                      {entry.name}: {describeError(entry.error)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-          {notice && <p role="status">{notice}</p>}
+          <div className="live-region" role="status">
+            {report && (
+              <>
+                <p>{text.applied(report.applied)}</p>
+                {report.failed.length > 0 && (
+                  <ul>
+                    {report.failed.slice(0, 100).map((entry, i) => (
+                      <li key={i}>
+                        {entry.name}: {describeError(entry.error)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
+          <p className="live-region" role="status">
+            {notice}
+          </p>
           {error && (
             <div className="banner" role="alert">
               {error}

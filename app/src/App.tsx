@@ -79,10 +79,10 @@ const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?
 /** The app's own football-lens symbol and wordmark. */
 function BrandMark() {
   return (
-    <span className="brand" data-tour="brand" title="FM Lens">
+    <h1 className="brand" data-tour="brand" title="FM Lens">
       <img className="brand-symbol" src={lensSymbol} alt="" width="40" height="40" />
       <span className="brand-word">FM Lens</span>
-    </span>
+    </h1>
   );
 }
 
@@ -223,7 +223,7 @@ function App() {
     const check = () => {
       call<ConnectionInfo | null>("current_connection")
         .then((current) => {
-          if (idle && current?.writable && current.knownBuild && !current.restartNeeded && !current.editable) {
+          if (idle && current?.writable && current.knownBuild && !current.editable) {
             void reload();
           }
         })
@@ -281,9 +281,7 @@ function App() {
   const note =
     !connection || editable
       ? appText.noteEditable
-      : connection.restartNeeded && connection.knownBuild
-        ? appText.noteRestartFm
-        : connection.writable
+      : connection.writable
         ? connection.knownBuild ? appText.noteReloadRequired : appText.noteUnknownBuild
         : appText.noteReadOnly;
   const gameActions = connection?.gameActions ?? NO_GAME_ACTIONS;
@@ -403,7 +401,9 @@ function App() {
           </nav>
         )}
         <div className="masthead-side">
-          {busy && <span className="busy">{busy}</span>}
+          <span className="busy live-region" role="status">
+            {busy}
+          </span>
           {/* Which career is connected, as FM names a save by default: the manager and his club. */}
           {connection?.career && (
             <button type="button" className="career" onClick={() => connection.career && openManager(connection.career)}>
@@ -441,11 +441,14 @@ function App() {
         </div>
       </header>
 
-      <div className="main">
-        {update && update.phase !== "ready" && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
-        {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
-        {connection && <CompatibilityNotice connection={connection} />}
-        {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
+      <main className="main">
+        {/* The notices share one live region that is always there, so that each is read out when it appears, alone. */}
+        <div className="live-region" role="status" aria-atomic="false">
+          {update && update.phase !== "ready" && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
+          {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
+          {connection && <CompatibilityNotice connection={connection} />}
+          {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
+        </div>
         {error && <div className="banner" role="alert">{error}</div>}
 
         {connection ? (
@@ -473,7 +476,7 @@ function App() {
             />
           )
         )}
-      </div>
+      </main>
 
       <footer className="colophon">
         <div className="colophon-main">

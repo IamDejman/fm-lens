@@ -127,7 +127,6 @@ const errors: ErrorTexts = {
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM has moved its data since FM Lens read it. Press Reload, then try again.",
-  "guard.restartGame": () => "FM Lens was updated while FM was open. Restart FM from Steam, then try again.",
   "guard.failed": (p) =>
     `${checkName(p.check)} look wrong in this FM version, so FM Lens won't change them.`,
   "move.changed": () => "FM has changed this since. Press Reload and try again.",
@@ -575,6 +574,9 @@ export const en = {
     /** The handle on the left edge of the panel. */
     resize: "Resize the profile panel",
     resizeHint: "Drag to resize. Double-click to reset.",
+    /** The button beside Close that widens the panel as far as it goes, then gives it its usual width again. */
+    widen: "Widen panel",
+    usualWidth: "Reset panel width",
     /** Shown where a value is missing. */
     none: "-",
 
@@ -1335,8 +1337,6 @@ export const en = {
     /** Read-only because the game is a version FM Lens was not checked with (see `compatibility`). */
     noteUnknownBuild: "Read-only: this FM version isn't supported yet",
     noteReloadRequired: "FM moved its data. Press Reload to edit again.",
-    /** FM still runs the helper from before FM Lens was updated (see `compatibility.restartTitle`). */
-    noteRestartFm: "Restart FM from Steam to edit",
 
     // The status line and the busy texts beside it
     notConnected: "Not connected",
@@ -1418,9 +1418,6 @@ export const en = {
     /** The headline for a version without a profile; `game` as the status line names it. */
     unknownBuild: (game: string) => `${game} is not supported yet`,
     unknownBuildText: "Values may be wrong, so editing is off.",
-    /** FM was open when FM Lens was updated, so it still runs the old helper: editing stays off until it restarts. */
-    restartTitle: "Restart FM to edit",
-    restartText: "FM Lens was updated while FM was open. Quit FM, then start it again from Steam.",
     /** Once Edit anyway was pressed. */
     allowedText: "Editing is on where checks passed. Back up your save.",
     /** The headline when checks did not pass on a version the editor knows, and what may help. */
@@ -1480,6 +1477,11 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.6.0": [
+        "FM Lens updates keep using the helper already running in FM. Supported features keep working without restarting the game.",
+        "An older helper may not refresh FM’s screens immediately or support a newly added action. It updates the next time you start FM.",
+        "Squad actions and profile tools are easier to find.",
+      ],
       "0.5.11": [
         "Likes and dislikes: replace a club or person with another.",
         "If FM was open while FM Lens updated, editing stays off until you restart FM from Steam.",
