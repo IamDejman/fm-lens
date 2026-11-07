@@ -1417,6 +1417,12 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.6.2": [
+        "FM Lens ya está en Windows. Descárgalo en getfmlens.com.",
+        "En Windows, las actualizaciones se descargan en segundo plano y se instalan al pulsar Reiniciar para actualizar.",
+        "En Windows, Buscar actualizaciones está en Ajustes, Acerca de.",
+        "Solo se ejecuta un FM Lens a la vez: al abrirlo de nuevo, su ventana pasa al frente.",
+      ],
       "0.6.1": [
         "Un perfil del jugador nuevo: pestañas Atributos, Moral, Contrato, Médico y Trayectoria, e indicadores de estado bajo el nombre que las abren.",
         "Ajustes se abre en su propia ventana desde el engranaje o con Cmd+,.",

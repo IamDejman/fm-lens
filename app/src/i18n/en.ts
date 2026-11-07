@@ -1502,6 +1502,12 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.6.2": [
+        "FM Lens is now on Windows. Download it from getfmlens.com.",
+        "On Windows, updates download in the background and install when you press Relaunch to update.",
+        "On Windows, Check for Updates is in Settings, About.",
+        "Only one FM Lens runs at a time: opening it again brings its window to the front.",
+      ],
       "0.6.1": [
         "A new player profile: tabs for Attributes, Mood, Contract, Medical and Career, and status chips under the name that open them.",
         "Settings opens in its own window from the gear or Cmd+,.",

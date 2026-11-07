@@ -5,7 +5,18 @@ export const RELEASES_PAGE = "https://github.com/IamDejman/fm-lens-releases/rele
 const API = "https://api.github.com/repos/IamDejman/fm-lens-releases/releases";
 const LATEST = `${API}/latest`;
 
-/** The latest release's version and its disk image, or null when GitHub cannot be reached. */
+/** The computer this page runs on: "windows", or "mac" for anything else, which gets the Mac download as before. */
+export function thisComputer() {
+  return /Windows/i.test(navigator.userAgentData?.platform ?? navigator.userAgent) ? "windows" : "mac";
+}
+
+/** A release's downloads: the Mac disk image and the Windows installer, each null when the release has none. */
+function downloadsOf(release) {
+  const url = (ending) => release.assets.find((asset) => asset.name.endsWith(ending))?.browser_download_url ?? null;
+  return { mac: url(".dmg"), windows: url("-setup.exe") };
+}
+
+/** The latest release's version and its downloads, or null when GitHub cannot be reached. */
 export async function latestRelease() {
   try {
     const response = await fetch(LATEST, { headers: { Accept: "application/vnd.github+json" } });
@@ -13,19 +24,15 @@ export async function latestRelease() {
       return null;
     }
     const release = await response.json();
-    const dmg = release.assets.find((asset) => asset.name.endsWith(".dmg"));
-    if (!dmg) {
-      return null;
-    }
-    return { version: release.tag_name.replace(/^v/, ""), url: dmg.browser_download_url };
+    return { version: release.tag_name.replace(/^v/, ""), downloads: downloadsOf(release) };
   } catch {
     return null;
   }
 }
 
 /**
- * The ten latest releases, newest first, with their notes as GitHub renders them and their disk image (null when it has
- * none), or null when GitHub cannot be reached.
+ * The ten latest releases, newest first, with their notes as GitHub renders them and their downloads, or null when
+ * GitHub cannot be reached.
  */
 export async function releaseNotes() {
   try {
@@ -40,7 +47,7 @@ export async function releaseNotes() {
         version: release.tag_name.replace(/^v/, ""),
         published: release.published_at,
         html: release.body_html ?? "",
-        download: release.assets.find((asset) => asset.name.endsWith(".dmg"))?.browser_download_url ?? null,
+        downloads: downloadsOf(release),
       }));
   } catch {
     return null;
