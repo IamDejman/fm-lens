@@ -2342,13 +2342,14 @@ fn page<T: Listed + Clone>(
     index: &SearchIndex<T>,
     query: &str,
     limit: usize,
+    offset: usize,
     keep: impl Fn(&T) -> bool,
     sort: impl FnOnce(&mut Vec<&T>),
 ) -> Page<T> {
     let mut hits = index.search(query);
     hits.retain(|item| keep(item));
     sort(&mut hits);
-    Page { total: hits.len(), rows: hits.into_iter().take(limit).cloned().collect() }
+    Page { total: hits.len(), rows: hits.into_iter().skip(offset).take(limit.min(200)).cloned().collect() }
 }
 
 /// What a command reports when it fails: a code the window says in its own language, the
@@ -2576,6 +2577,7 @@ fn search_players(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
 ) -> Result<Page<fmlens_core::PlayerSummary>, Failure> {
@@ -2586,6 +2588,7 @@ fn search_players(
         &connection.players,
         &query,
         limit,
+        offset.unwrap_or(0),
         |p| filter.matches(p),
         |hits| {
             if let Some(order) = order {
@@ -2601,12 +2604,13 @@ fn search_staff(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<StaffFilter>,
 ) -> Result<Page<fmlens_core::StaffSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(&connection.staff, &query, limit, |s| filter.matches(s), |_| {}))
+    Ok(page(&connection.staff, &query, limit, offset.unwrap_or(0), |s| filter.matches(s), |_| {}))
 }
 
 /// Clubs matching `query`, highest reputation first; at most `limit` rows.
@@ -2615,12 +2619,13 @@ fn search_clubs(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<ClubFilter>,
 ) -> Result<Page<fmlens_core::ClubSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(&connection.clubs, &query, limit, |c| filter.matches(c), |_| {}))
+    Ok(page(&connection.clubs, &query, limit, offset.unwrap_or(0), |c| filter.matches(c), |_| {}))
 }
 
 /// Writes the players `query` and `filter` select, in `order`, to a new file in the exports folder as `format`: what
@@ -2755,23 +2760,29 @@ fn search_stadiums(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<StadiumFilter>,
 ) -> Result<Page<StadiumSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.stadium_index();
-    Ok(page(index, &query, limit, |stadium| filter.matches(stadium), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |stadium| filter.matches(stadium), |_| {}))
 }
 
 /// Match officials matching `query` by name or UID, best current ability first; at most `limit` rows. Only reads
 /// memory.
 #[tauri::command]
-fn search_officials(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<OfficialSummary>, Failure> {
+fn search_officials(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+    offset: Option<usize>,
+) -> Result<Page<OfficialSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let index = connection.official_index()?;
-    Ok(page(index, &query, limit, |_| true, |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
 }
 
 /// Competitions matching `query` by name or UID, highest reputation first; at most `limit` rows. Only reads memory.
@@ -2780,11 +2791,12 @@ fn search_competitions(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
 ) -> Result<Page<CompetitionSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let index = connection.competition_index()?;
-    Ok(page(index, &query, limit, |_| true, |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
 }
 
 /// The rules of the competition with the UID `uid` that FM keeps as plain numbers and yes-or-no values; `None` where
@@ -2813,20 +2825,30 @@ fn competition_rules(state: State<'_, AppState>, uid: u32) -> Result<Option<Vec<
 /// Awards matching `query` by name, competition or UID, most prestigious first; at most `limit` rows. Only reads
 /// memory.
 #[tauri::command]
-fn search_awards(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<AwardSummary>, Failure> {
+fn search_awards(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+    offset: Option<usize>,
+) -> Result<Page<AwardSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let index = connection.award_index()?;
-    Ok(page(index, &query, limit, |_| true, |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
 }
 
 /// Nations of the players and staff in the lists, matching `query` by name; at most `limit` rows.
 #[tauri::command]
-fn search_nations(state: State<'_, AppState>, query: String, limit: usize) -> Result<Page<NationSummary>, Failure> {
+fn search_nations(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+    offset: Option<usize>,
+) -> Result<Page<NationSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let index = SearchIndex::new(nation_summaries(connection.nations()));
-    Ok(page(&index, &query, limit, |_| true, |_| {}))
+    Ok(page(&index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
 }
 
 /// Whether this build's layout places nations' details (see `nation_details`): without them the nations list opens no
@@ -4306,5 +4328,44 @@ mod tests {
         // Nobody is left to tell.
         assert!(!same_objects([(at(1, 0x1000), None)]));
         assert!(!same_objects([]));
+    }
+}
+
+#[cfg(test)]
+mod paging_tests {
+    use super::*;
+    #[derive(Clone)]
+    struct Item(u32);
+    impl Listed for Item {
+        fn uid(&self) -> u32 {
+            self.0
+        }
+        fn names(&self) -> String {
+            "same".into()
+        }
+        fn display_name(&self) -> &str {
+            "same"
+        }
+        fn rank(&self) -> i32 {
+            1
+        }
+    }
+    #[test]
+    fn pages_cover_tied_results_without_duplicates_and_keep_total() {
+        let index = SearchIndex::new((1..=451).rev().map(Item).collect());
+        let mut ids = Vec::new();
+        for offset in [0, 200, 400] {
+            let result = page(&index, "", 200, offset, |_| true, |_| {});
+            assert_eq!(result.total, 451);
+            assert!(result.rows.len() <= 200);
+            ids.extend(result.rows.iter().map(Listed::uid));
+        }
+        assert_eq!(ids, (1..=451).collect::<Vec<_>>());
+        assert!(page(&index, "", 200, usize::MAX, |_| true, |_| {}).rows.is_empty());
+        let filtered = page(&index, "", 200, 200, |i| i.0 % 2 == 0, |hits| hits.reverse());
+        assert_eq!(filtered.total, 225);
+        assert_eq!(filtered.rows.first().unwrap().0, 50);
+        assert_eq!(filtered.rows.last().unwrap().0, 2);
+        assert_eq!(page(&index, "", usize::MAX, 0, |_| true, |_| {}).rows.len(), 200);
     }
 }
