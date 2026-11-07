@@ -122,6 +122,8 @@ const errors: ErrorTexts = {
   "cohesion.changed": (p) => `FM has since changed his familiarity with the club to ${p.found}, so it was left alone.`,
   "tactics.changed": () => "FM has since changed his familiarity with the tactic, so it was left alone.",
   "list.missing": () => "That entry is no longer in the list. Press Reload and try again.",
+  "preference.target": () => "Pick a club in place of a club, and another person in place of a person.",
+  "preference.same": () => "That one is in the list already.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM has moved its data since FM Lens read it. Press Reload, then try again.",
@@ -2002,7 +2004,7 @@ export const en = {
 
   /** Changing a player's or member of staff's likes and dislikes, and languages: the button under each, and its dialog. */
   lists: {
-    likesTitle: "Change how strongly he likes or dislikes each person and club",
+    likesTitle: "Change the people and clubs he likes and dislikes",
     /** The strength input of a row, for assistive technology: `name` is the person's or club's. */
     strengthOf: (name: string) => `Strength for ${name}`,
     languagesTitle: "Change how well he speaks each language",
@@ -2016,6 +2018,18 @@ export const en = {
     /** The days input of a row, for assistive technology: `name` is the injury's. */
     daysOf: (name: string) => `Days out with ${name}`,
     save: "Save",
+    /** Points a like or dislike at another club or person. */
+    replace: "Replace",
+    replaceTitle: (name: string) => `Replace ${name}`,
+    /** Over the search that finds the club or person to put in place of `name`. */
+    insteadOf: (name: string) => `Instead of ${name}`,
+    searchClubs: "Search clubs",
+    searchPeople: "Search players and staff",
+    searching: "Searching…",
+    searchFailed: (reason: string) => `Couldn't search: ${reason}`,
+    noMatch: (query: string) => (query === "" ? "None found." : `Nothing matches “${query}”.`),
+    /** Leaves the search for the list. */
+    back: "Back",
   },
 
   /** Changing a contract's bonuses and clauses: the button under them in the profile, and the dialog it opens. */
