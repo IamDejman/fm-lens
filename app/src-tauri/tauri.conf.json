@@ -23,7 +23,17 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self'",
+        "img-src": "'self' blob: fmgfx: http://fmgfx.localhost",
+        "connect-src": "ipc: http://ipc.localhost https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws https://fm-lens-report-files-982408503112.s3.us-east-1.amazonaws.com",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-ancestors": "'none'"
+      }
     }
   },
   "bundle": {
