@@ -976,6 +976,9 @@ edits.
 | Transfer budget, Arsenal | £1.04M (portal tile) | £5M | £1.04M |
 | Work permit revoke, Gilberto Mora | Active work permit | No Work Permit, re-apply immediately | - |
 | Work permit grant, Mora | No Work Permit | Active work permit, until 30/6/2032 | - |
+| Clubs Mass edit, transfer budget (Arsenal of 12 clubs) | £1.04M | £7M | £1.04M (Undo this mass edit) |
+| Close promise, Nico Paz (playing time, due 23 Jan 2028) | Squad > Dynamics > Promises: 47 days, Acceptable | Pending Outcome, Succeeded | 47 days, Acceptable |
+| Staff formation in possession, Albert Stuivenberg | 4-2-3-1 DM AM Wide (29) | 4-4-2 Diamond Narrow (7) | 4-2-3-1 DM AM Wide |
 
 Max cohesion and permit grant needed a Continue before 0.5.8; with the refresh
 after every update both now show at once. Max tactics and Max cohesion gave
@@ -986,6 +989,7 @@ Undo, for the group and for each row. The refusal inside the editor after a
 career change (#95) is covered by its unit test; there is no way to reach it
 from the interface.
 
-Not covered: the Players and Clubs Mass edit screen (the team actions above go
-through the same queue and are logged as mass edits), closing a promise, and
-formation edits.
+The formation check also names three of FM's ids: 4 is 4-3-3 DM Wide, 7 is
+4-4-2 Diamond Narrow and 29 is 4-2-3-1 DM AM Wide. In the 11 other clubs of
+that mass edit FM Lens left the transfer budget alone, saying FM's record for
+it is missing or looks wrong.
