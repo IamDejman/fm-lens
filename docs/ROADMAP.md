@@ -72,8 +72,8 @@ generalized active-view refresh and cover only those observed fields. Other
 fields/screens remain unverified. On 7 November, on 0.5.8 with the general
 refresh, every edit checked showed in FM without Continue: Lift bans, Heal all,
 Refresh all, Inspire all, Max attributes, Max cohesion, Max tactics, a club's
-transfer budget, a Clubs Mass edit, closing a promise, a staff formation and a work permit revoke and grant, with their undos. Intel has
-no mapped notifier.
+transfer budget, a Clubs Mass edit, closing a promise, a staff formation and a work permit revoke and grant, with their undos. On Intel
+both refresh calls are mapped (recon/fm27-intel-refresh.md); an attribute and a contract end, with their undos, showed at once under Rosetta.
 See the latest entry in EDITING-VALIDATION.md.
 
 ## Delivery order
@@ -114,7 +114,7 @@ See the latest entry in EDITING-VALIDATION.md.
 | --- | --- |
 | Launch in 1 second | Not benchmarked |
 | Load 550,000 players in under 3 seconds | Not benchmarked; current live evidence covers a 30,314-player career |
-| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 November: reads, officials, the human manager's flags and work permits |
+| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits |
 | Updates within hours of patches | Maintenance aspiration, not a guarantee |
 | Offline companion | Verified with network denied against an already-running game; fresh Steam Offline Mode startup untested |
 | Free scouting / trials / paid editing | Personal build has no licensing service or paywall; broader pricing/trial policy undecided |
