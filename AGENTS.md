@@ -4,8 +4,10 @@
 
 FM Lens is a personal Football Manager companion. The delivered macOS app
 reads a running FM27 Steam career on Apple Silicon and can edit the fields
-that are already mapped. Unmapped editor features stay on the roadmap. Read
-README.md, docs/ROADMAP.md, docs/PERSONAL-SCOUT.md and
+that are already mapped. Unmapped editor features stay on the roadmap. The
+Windows build works on the test box but is not shipped yet; the goal is no gap
+between the two, and docs/internal/WINDOWS-PARITY-HANDOFF.md lists what is
+left. Read README.md, docs/ROADMAP.md, docs/PERSONAL-SCOUT.md and
 docs/EDITING-VALIDATION.md before making support or feature claims.
 Use docs/EDITOR-FIELDS.md for the mapped field catalog; it is not a validation
 certificate.
@@ -56,10 +58,17 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - Cut taglines, helper text and secondary labels. If a screen needs them to make
   sense, fix the layout. Retain text needed to explain a consequential setup
   action or resolve a real failure.
-- Keep user-facing text, release notes and the website included, short and
-  plain: what changed and what the reader does. Leave out internals, history
-  the reader does not need and filler. In docs/release-notes.md each paragraph
-  and list item is one line, because GitHub shows every line break there.
+- Keep user-facing text and the website short and plain: what changed and
+  what the reader does. Leave out internals, history the reader does not need
+  and filler.
+- Release notes are the exception: make them detailed and exciting, so people
+  want to update. Cover every user-visible change since the last release (read
+  `git log v<last>..origin/main` and each merged PR), grouped by what the player
+  gets, each saying what it does and why it is worth trying, in plain words and
+  without internals. Never use em dashes. In docs/release-notes.md each
+  paragraph and list item is one line, because GitHub shows every line break
+  there. The in-app What's new list (`update.changes` in en, es and tr) carries
+  the highlights.
 - Improve UX, DX and AX together without breaking existing behavior. Use the
   product name FM Lens consistently.
 
@@ -121,8 +130,10 @@ validated fields and the guarded memory layer for domain operations.
 - Distinguish available UI, inherited code, live verification and roadmap work.
   Code presence does not establish that an operation works on this user's save.
 - The verified target is FM27 Steam build 26340721, native ARM64, module UUID
-  F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. Intel and
-  Windows delivery are not locally verified.
+  F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. The Intel
+  half, checked under Rosetta, ships in the universal app. The Windows build was
+  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md)
+  but has no download yet.
 - Offline verification covered FM Lens with network access denied against an
   already-running game, not a fresh Steam Offline Mode launch.
 - Do not claim complete parity, complete transfer consistency, 550,000-player
