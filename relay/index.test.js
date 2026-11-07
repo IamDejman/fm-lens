@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PER_ADDRESS_HOUR, PER_DAY, createRelay, createTableLimiter, issueFor, readReport } from "./index.js";
+import {
+  FILE_LIMITS,
+  PER_ADDRESS_HOUR,
+  PER_DAY,
+  createRelay,
+  createTableLimiter,
+  issueFor,
+  presign,
+  publicUrl,
+  readAttachments,
+  readFiles,
+  readReport,
+} from "./index.js";
 
 const REPORT = {
   what: "Apply failed on a wage\nIt said the value didn't stick.",
@@ -151,4 +163,133 @@ test("the relay turns reports away when it can't count them", async () => {
   };
   assert.equal((await post({ token: "t", repo: "o/n", fetch, limiter }, REPORT)).status, 503);
   assert.equal(sent.length, 0);
+});
+
+const UPLOADS = {
+  bucket: "fm-lens-reports",
+  region: "us-east-1",
+  credentials: () => ({
+    accessKeyId: "AKID",
+    secretAccessKey: "secret",
+    sessionToken: "session",
+  }),
+};
+const KEY = "reports/2026-11-06/0b7c2f4e-9d1a-4c3b-8e5f-1a2b3c4d5e6f.png";
+const VIDEO = "reports/2026-11-06/1b7c2f4e-9d1a-4c3b-8e5f-1a2b3c4d5e6f.mov";
+
+test("presigning matches AWS's own example", () => {
+  // https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html
+  const url = presign({
+    method: "GET",
+    bucket: "examplebucket",
+    region: "us-east-1",
+    host: "examplebucket.s3.amazonaws.com",
+    key: "test.txt",
+    credentials: {
+      accessKeyId: "AKIAIOSFODNN7EXAMPLE",
+      secretAccessKey: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    },
+    expires: 86400,
+    now: new Date(Date.UTC(2013, 4, 24)),
+  });
+  assert.match(url, /X-Amz-Signature=aeeed9bbccd4d02ee5c0109b86d86835f995330da4c265957d157751f604d404$/);
+});
+
+test("files are turned away by type, count and size", () => {
+  const image = { type: "image/png", size: 1000 };
+  assert.deepEqual(readFiles({ files: [image] }).files, [{ ...image, ext: "png" }]);
+  assert.equal(readFiles({ files: [] }).error, "invalid");
+  assert.equal(readFiles({ files: [{ type: "text/html", size: 10 }] }).error, "invalid");
+  assert.equal(readFiles({ files: [{ type: "image/png", size: 0 }] }).error, "invalid");
+  assert.equal(readFiles({ files: Array(6).fill(image) }).error, "tooLarge");
+  assert.equal(
+    readFiles({
+      files: [{ type: "image/png", size: FILE_LIMITS.image.bytes + 1 }],
+    }).error,
+    "tooLarge",
+  );
+  const video = { type: "video/quicktime", size: 1000 };
+  assert.equal(readFiles({ files: [video, video] }).error, "tooLarge");
+  assert.equal(readFiles({ files: [...Array(5).fill(image), video] }).files.length, 6);
+});
+
+test("only keys the relay hands out are linked", () => {
+  assert.deepEqual(readAttachments({}), { keys: [] });
+  assert.deepEqual(readAttachments({ attachments: [KEY, VIDEO] }), {
+    keys: [KEY, VIDEO],
+  });
+  assert.equal(readAttachments({ attachments: ["../secret.png"] }).error, "invalid");
+  assert.equal(readAttachments({ attachments: [`${KEY}?x`] }).error, "invalid");
+  assert.equal(readAttachments({ attachments: [VIDEO, VIDEO.replace("1b", "2b")] }).error, "invalid");
+});
+
+test("the relay hands out upload addresses signed for each file's type and size", async () => {
+  const answer = await post(
+    { token: "t", repo: "o/n", uploads: UPLOADS, fetch: github().fetch },
+    { files: [{ type: "image/png", size: 1234 }] },
+    { path: "/uploads" },
+  );
+  assert.equal(answer.status, 200);
+  const [{ key, url }] = answer.json.uploads;
+  assert.match(key, /^reports\/\d{4}-\d{2}-\d{2}\/[0-9a-f-]{36}\.png$/);
+  assert.ok(url.startsWith(`https://fm-lens-reports.s3.us-east-1.amazonaws.com/${key}?`));
+  assert.match(url, /X-Amz-SignedHeaders=content-length%3Bcontent-type%3Bhost/);
+  assert.match(url, /X-Amz-Security-Token=session/);
+  const bad = await post({ token: "t", repo: "o/n", uploads: UPLOADS }, { files: [] }, { path: "/uploads" });
+  assert.equal(bad.status, 400);
+  const off = await post(
+    { token: "t", repo: "o/n" },
+    { files: [{ type: "image/png", size: 1 }] },
+    { path: "/uploads" },
+  );
+  assert.equal(off.status, 503);
+});
+
+/** GitHub, and the bucket answering HEAD with `size` for the files in `stored`. */
+function githubAndBucket(stored, size = 1000) {
+  const { fetch: issues, sent } = github();
+  const fetch = async (url, init) => {
+    if (init.method === "HEAD") {
+      const found = stored.some((key) => url === publicUrl(UPLOADS.bucket, UPLOADS.region, key));
+      return new Response(null, {
+        status: found ? 200 : 403,
+        headers: { "content-length": String(size) },
+      });
+    }
+    return issues(url, init);
+  };
+  return { fetch, sent };
+}
+
+test("a report links its files: screenshots shown, a video as a link", async () => {
+  const { fetch, sent } = githubAndBucket([KEY, VIDEO]);
+  const options = { token: "t", repo: "o/n", uploads: UPLOADS, fetch };
+  const answer = await post(options, { ...REPORT, attachments: [KEY, VIDEO] });
+  assert.equal(answer.status, 201);
+  const url = publicUrl(UPLOADS.bucket, UPLOADS.region, KEY);
+  assert.match(sent[0].issue.body, /### Files\n\n!\[Screenshot 1\]\(https:\/\/fm-lens-reports\.s3/);
+  assert.ok(sent[0].issue.body.includes(`![Screenshot 1](${url})`));
+  assert.match(sent[0].issue.body, /\[Video\]\(https:\/\/[^)]+\.mov\)/);
+});
+
+test("a report whose files aren't in the bucket, or are too big, isn't filed", async () => {
+  const missing = githubAndBucket([]);
+  assert.equal(
+    (await post({ token: "t", repo: "o/n", uploads: UPLOADS, fetch: missing.fetch }, { ...REPORT, attachments: [KEY] }))
+      .status,
+    400,
+  );
+  assert.equal(missing.sent.length, 0);
+  const big = githubAndBucket([KEY], FILE_LIMITS.image.bytes + 1);
+  assert.equal(
+    (await post({ token: "t", repo: "o/n", uploads: UPLOADS, fetch: big.fetch }, { ...REPORT, attachments: [KEY] }))
+      .status,
+    400,
+  );
+  const noBucket = githubAndBucket([KEY]);
+  assert.equal(
+    (await post({ token: "t", repo: "o/n", fetch: noBucket.fetch }, { ...REPORT, attachments: [KEY] })).status,
+    400,
+  );
+  assert.equal(issueFor(readReport(REPORT).report).body.includes("### Files"), false);
 });
