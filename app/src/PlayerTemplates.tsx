@@ -6,6 +6,7 @@ import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { fieldLabel, templatesText as text } from "./labels";
 import type { ListState } from "./ListBrowser";
+import posthog from "./posthog";
 import type {
   EditField,
   MassFilters,
@@ -251,7 +252,13 @@ function TemplatesDialog({
     setPreview(null);
     const next = await applyMassEdit(id);
     setReport(next);
-    if (next.applied > 0) onEdited();
+    if (next.applied > 0) {
+      onEdited();
+      posthog.capture("player_template_applied", {
+        applied_count: next.applied,
+        failed_count: next.failed.length,
+      });
+    }
   };
   const undo = async () => {
     if (!report) return;

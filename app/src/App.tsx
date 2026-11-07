@@ -43,6 +43,7 @@ import { injuryKinds } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol.png";
 import { askToLeave, EditorContext, NO_GAME_ACTIONS } from "./useProfileEditing";
+import posthog from "./posthog";
 import "./App.css";
 
 type View =
@@ -142,6 +143,8 @@ function App() {
       setConnection(connected);
       setRefrozen(again ?? null);
       setDataVersion((v) => v + 1);
+      posthog.capture("game_connection_established");
+      posthog.logger.info("game connection established");
     });
 
   const reload = useCallback(

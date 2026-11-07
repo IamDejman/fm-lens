@@ -4,6 +4,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { playerListText } from "./labels";
 import type { PlayerFilterFields } from "./PlayerFilters";
+import posthog from "./posthog";
 import { cleanName, isInEffect, MAX_NAME_LENGTH, MAX_SAVED, useSavedFilters } from "./savedFilters";
 import type { PlayerOrder } from "./types";
 
@@ -81,10 +82,11 @@ export function SavedFilterControls({ fields, order, filtered, onApply }: SavedF
   const begin = () => setAsked({ name: chosen ?? "", stage: "name" });
 
   /** Keeps the filters in effect under `name`; a new name when no more can be kept is told so. */
-  const keep = (name: string) => {
+  const keep = (name: string, action: "saved" | "replaced") => {
     if (save(name, fields, order)) {
       setChosen(name);
       setAsked(null);
+      posthog.capture("saved_filter_updated", { action });
     } else {
       setAsked({ name, stage: "full" });
     }
@@ -99,7 +101,7 @@ export function SavedFilterControls({ fields, order, filtered, onApply }: SavedF
     if (has(name)) {
       setAsked({ name, stage: "replace" });
     } else {
-      keep(name);
+      keep(name, "saved");
     }
   };
 
@@ -129,6 +131,7 @@ export function SavedFilterControls({ fields, order, filtered, onApply }: SavedF
     }
     remove(name);
     setChosen(null);
+    posthog.capture("saved_filter_updated", { action: "deleted" });
   };
 
   return (
@@ -149,7 +152,7 @@ export function SavedFilterControls({ fields, order, filtered, onApply }: SavedF
           >
             {text.cancel}
           </button>
-          <button type="button" className="danger" onClick={() => keep(form.name)}>
+          <button type="button" className="danger" onClick={() => keep(form.name, "replaced")}>
             {text.replace}
           </button>
         </div>

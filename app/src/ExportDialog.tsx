@@ -8,6 +8,7 @@ import { describeError } from "./format";
 import { locale } from "./i18n";
 import { exportText as text } from "./labels";
 import type { ListState } from "./ListBrowser";
+import posthog from "./posthog";
 import type { ExportFormat, ExportReport, PlayerFilter, PlayerOrder } from "./types";
 import { useModal } from "./useModal";
 
@@ -137,6 +138,11 @@ function ExportDialog({ scope, onClose }: { scope: ExportScope; onClose: () => v
       const done = await call<ExportReport>("export_players", args);
       if (alive.current) {
         setReport(done);
+        posthog.capture("player_export_completed", {
+          format,
+          player_count: done.players,
+          skipped_count: done.skipped,
+        });
       }
     } catch (e) {
       if (alive.current) {

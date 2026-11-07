@@ -2,6 +2,7 @@ import { useState } from "react";
 import { call } from "./api";
 import { describeError } from "./format";
 import { appText } from "./labels";
+import posthog from "./posthog";
 import type { BridgeInfo } from "./types";
 
 type Command = "set_up_bridge" | "remove_bridge";
@@ -22,7 +23,9 @@ export function BridgeSetup(props: { bridge: BridgeInfo; busy: boolean; onChange
     setWorking(true);
     setError(null);
     try {
-      onChange(await call<BridgeInfo>(command));
+      const updated = await call<BridgeInfo>(command);
+      onChange(updated);
+      posthog.capture("bridge_configuration_changed", { action: command });
     } catch (e) {
       setError(describeError(e));
       // Setting up can stop halfway, with the library installed and the launch option not set.

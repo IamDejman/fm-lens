@@ -21,6 +21,7 @@ import {
 import { undoFailureLines } from "./massDraft";
 import { ruleLabel } from "./TiesGroup";
 import type { Clause, EditField, Entity, LoggedChange, TieEnd } from "./types";
+import posthog from "./posthog";
 
 /**
  * This session's change log. `reload` reads it again; when several reads overlap, the answer to the last one asked
@@ -202,6 +203,7 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
     try {
       await undoChange(change.id);
       onUndone();
+      posthog.capture("change_undone", { undo_type: "single", change_count: 1 });
     } catch (e) {
       setFailures((old) => ({ ...old, [change.id]: describeError(e) }));
       // The log may be out of date, e.g. when the change was undone already.
@@ -224,6 +226,7 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
       setOutcomes((old) => ({ ...old, [batch]: { undone: done.undone, problems } }));
       if (done.undone > 0) {
         onUndone();
+        posthog.capture("change_undone", { undo_type: "batch", change_count: done.undone });
       } else {
         // The log may be out of date, e.g. when the changes were undone one by one already.
         reload();
