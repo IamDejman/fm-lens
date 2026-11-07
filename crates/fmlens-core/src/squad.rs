@@ -27,8 +27,8 @@ const NO_AGE_LIMIT: u8 = 100;
 pub struct ClubTeam {
     /// Where it is in the club's list of teams; 0 is the senior team.
     pub index: usize,
-    /// The game's code for the kind of team: 0 for the first team, 10 for under-21s and 12
-    /// for under-18s on the test save.
+    /// The game's code for the kind of team: 0 for the first team, 3 for a B team, 10 for
+    /// under-21s, 12 for under-18s and 22 for the human club's youth candidates.
     pub kind: u8,
     /// The oldest its players may be, e.g. 21; `None` for a team without a limit.
     pub age_limit: Option<u8>,
