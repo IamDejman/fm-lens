@@ -4196,9 +4196,24 @@ fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, Failu
     Ok(report)
 }
 
+/// Shows the main window in front of every other, restored if it was minimized.
+#[cfg(not(debug_assertions))]
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // One FM Lens at a time, as two would edit the same career: opening another copy, from anywhere, brings this one's
+    // window to the front instead. A development build may still run beside it.
+    #[cfg(not(debug_assertions))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _, _| show_main_window(app)));
+    builder
         // Opens the page of a new release in the browser (see app/src/update.ts).
         .plugin(tauri_plugin_opener::init())
         // Installs a newer FM Lens when the window opens (see app/src/update.ts).
