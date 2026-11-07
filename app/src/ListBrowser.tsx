@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { call } from "./api";
 import { describeError } from "./format";
 import { isShortcut, shortcutAria } from "./keys";
@@ -208,6 +208,9 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
     return () => window.removeEventListener("keydown", find);
   }, [active]);
 
+  // The count names the table for assistive technology.
+  const countId = useId();
+
   // The row Tab reaches in the table.
   const tabStop = page?.rows.some((row) => row.uid === selected?.uid) ? selected?.uid : page?.rows[0]?.uid;
 
@@ -236,7 +239,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               spellCheck={false}
             />
           </label>
-          <span className="count">{page ? summary(page.total, page.rows.length) : ""}</span>
+          <span className="count" id={countId}>{page ? summary(page.total, page.rows.length) : ""}</span>
           {toolbarActions?.({
             query,
             total: settled ? page.total : null,
@@ -248,7 +251,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
         {error && <div className="banner" role="alert">{error}</div>}
 
         <div className="table-wrap" ref={tableWrap} data-tour={active ? "list" : undefined}>
-          <table className={tableClass ? `grid ${tableClass}` : "grid"}>
+          {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
+          <table className={tableClass ? `grid ${tableClass}` : "grid"} role="grid" aria-labelledby={countId}>
             <thead>
               <tr>{header}</tr>
             </thead>
@@ -260,7 +264,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
                     key={row.uid}
                     ref={isSelected ? selectedRow : undefined}
                     className={isSelected ? "selected" : undefined}
-                    aria-current={isSelected ? "true" : undefined}
+                    aria-selected={isSelected}
                     // One row is a Tab stop, the selected one or else the first; the arrow keys reach the others.
                     tabIndex={row.uid === tabStop ? 0 : -1}
                     onClick={() => pick(row)}

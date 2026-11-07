@@ -18,7 +18,7 @@ const names = (list: string[]) =>
 export function FrozenNotice({ refrozen, onDismiss }: { refrozen: Refrozen; onDismiss: () => void }) {
   const again = refrozen.players.length + refrozen.clubs.length > 0;
   return (
-    <div className="frozen-notice" role="status">
+    <div className="frozen-notice">
       <div className="compatibility-text">
         <strong>{again ? text.title : text.waitingTitle}</strong>
         {refrozen.players.length > 0 && <p>{text.players(names(refrozen.players))}</p>}

@@ -625,6 +625,8 @@ export const es: Strings = {
     loading: "Cargando perfil…",
     resize: "Cambiar el ancho del panel del perfil",
     resizeHint: "Arrastra para cambiar el ancho. Doble clic para restablecerlo.",
+    widen: "Ensanchar panel",
+    usualWidth: "Restablecer el ancho del panel",
     none: "-",
 
     // Cabecera
