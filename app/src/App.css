@@ -75,6 +75,14 @@
   --type-3xl: 28px;
 
   --radius: 4px;
+  /* The spacing scale: every margin, padding and gap is one of these. Older rules still hold values off it (2, 3, 5,
+     6, 10, 14, 20px); move them on when the rule is touched. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
   --scroll: #b5bbca;
   --display: "Archivo Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
 
@@ -483,14 +491,11 @@ dd,
   }
 }
 
-/* The settings: a button with a gear and a chevron, outlined like the masthead's other buttons. The menu of the
-   languages and currencies hangs from it over the window, as the captain menu does from a squad row (see Club
-   squad). */
+/* The settings: a button with a gear, outlined like the masthead's other buttons, which opens the Settings window. */
 .settings-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 8px 5px 10px;
+  padding: 5px var(--space-2);
 }
 
 .settings-gear {
@@ -501,20 +506,6 @@ dd,
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.settings-chevron {
-  width: 12px;
-  height: 12px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.settings-toggle[aria-expanded="true"] .settings-chevron {
-  transform: rotate(180deg);
 }
 
 /* A flag, 3:2. A hairline of ink holds its edge where it is white (the Union Jack's) on a light page. */
@@ -529,9 +520,11 @@ dd,
 }
 
 /* A segmented switch: two or three buttons in one frame; the pressed one is the choice in effect. The mode switch of
-   the move dialog (see Moving a player) is one, and so is the switch between the teams of a squad (see Club squad). */
+   the move dialog (see Moving a player) is one, so is the switch between the teams of a squad (see Club squad), and so
+   are the language, theme and zoom of Settings. */
 .move-mode,
-.squad-teams {
+.squad-teams,
+.settings-switch {
   display: inline-flex;
   align-self: flex-start;
   overflow: hidden;
@@ -540,7 +533,8 @@ dd,
 }
 
 .move-mode button,
-.squad-teams button {
+.squad-teams button,
+.settings-switch button {
   min-width: 40px;
   min-height: 26px;
   padding: 3px 10px;
@@ -554,24 +548,28 @@ dd,
 }
 
 .move-mode button + button,
-.squad-teams button + button {
+.squad-teams button + button,
+.settings-switch button + button {
   border-left: 1px solid var(--border-strong);
 }
 
 .move-mode button:hover:not(:disabled, [aria-pressed="true"]),
-.squad-teams button:hover:not(:disabled, [aria-pressed="true"]) {
+.squad-teams button:hover:not(:disabled, [aria-pressed="true"]),
+.settings-switch button:hover:not(:disabled, [aria-pressed="true"]) {
   background: var(--hover);
   color: var(--text);
 }
 
 .move-mode button[aria-pressed="true"],
-.squad-teams button[aria-pressed="true"] {
+.squad-teams button[aria-pressed="true"],
+.settings-switch button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--on-accent);
 }
 
 .move-mode button:focus-visible,
-.squad-teams button:focus-visible {
+.squad-teams button:focus-visible,
+.settings-switch button:focus-visible {
   outline-offset: -2px;
 }
 
@@ -4943,9 +4941,8 @@ button.danger:hover:not(:disabled) {
   cursor: default;
 }
 
-/* A menu over the window: the captain menu of a squad row, and the settings menu under the masthead's gear. */
-.squad-menu,
-.settings-menu {
+/* A menu over the window: the captain menu of a squad row, and the menus that open from a button (see DropMenu). */
+.squad-menu {
   position: fixed;
   z-index: 50;
   display: flex;
@@ -4960,8 +4957,7 @@ button.danger:hover:not(:disabled) {
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
 }
 
-.squad-menu button,
-.settings-menu button {
+.squad-menu button {
   padding: 6px 10px;
   border: 0;
   border-radius: 3px;
@@ -4970,14 +4966,11 @@ button.danger:hover:not(:disabled) {
 }
 
 .squad-menu button:hover,
-.squad-menu button:focus-visible,
-.settings-menu button:hover,
-.settings-menu button:focus-visible {
+.squad-menu button:focus-visible {
   background: var(--hover);
 }
 
-.squad-menu button:focus-visible,
-.settings-menu button:focus-visible {
+.squad-menu button:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: -2px;
 }
@@ -5040,20 +5033,26 @@ button.danger:hover:not(:disabled) {
   width: min(440px, 100%);
 }
 
-/* The settings menu: a heading over each list; a language with its flag and its own name, a currency with its sign
-   and its name, and a check after the one in use. */
-.settings-menu {
-  min-width: 13rem;
+/* Settings: four sections, each a small heading over rows of a label and its control. */
+.settings-dialog {
+  width: min(520px, 100%);
 }
 
-.settings-menu [role="group"] + [role="group"] {
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
+.settings-dialog .modal-body {
+  gap: var(--space-5);
+  overscroll-behavior: contain;
 }
 
-.settings-heading {
-  padding: 6px 10px 4px;
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-section h3 {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-size: var(--type-sm);
   font-weight: 600;
@@ -5061,43 +5060,40 @@ button.danger:hover:not(:disabled) {
   text-transform: uppercase;
 }
 
-.settings-menu button {
+.settings-row {
+  display: grid;
+  grid-template-columns: 8rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.settings-row > :last-child {
+  justify-self: start;
+}
+
+.settings-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+}
+
+.settings-row select {
+  min-height: 28px;
+  padding: var(--space-1) var(--space-2);
+}
+
+.settings-usage {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
+  gap: var(--space-2);
 }
 
-/* A currency's sign, in a box as wide as a flag so that the names line up. */
-.currency-sign {
-  flex: none;
-  width: 21px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-/* App details at the foot of the settings menu: passive, muted small print. */
-.settings-details {
-  padding: 2px 10px 6px;
+.settings-about p {
+  margin: 0;
   color: var(--muted);
-  font-size: var(--type-sm);
-  white-space: normal;
+  font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
-}
-
-.settings-details p {
-  margin: 2px 0;
-}
-
-.settings-check {
-  width: 14px;
-  height: 14px;
-  margin-left: auto;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 /* A player's favoured or disliked clubs and people: one per line, at the end of the row. */

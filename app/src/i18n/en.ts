@@ -1282,14 +1282,15 @@ export const en = {
   app: {
     /** The masthead's menu of the smaller lists: nations, competitions, awards, stadiums and officials. */
     lists: "Lists",
-    /** The settings menu at the right of the masthead: its name, and the headings of its two lists. */
+    /** The Settings window the gear at the right of the masthead opens: its name, its sections and its rows. */
     settingsLabel: "Settings",
+    general: "General",
     languageLabel: "Language",
     currencyLabel: "Currency",
-    appearanceLabel: "Appearance",
-    appearanceSystem: "System",
-    appearanceLight: "Light",
-    appearanceDark: "Dark",
+    theme: "Theme",
+    privacy: "Privacy",
+    about: "About",
+    done: "Done",
     /** The interface scale, separate from the window's own zoom. */
     zoomLabel: "Zoom",
     /** A switch: anonymous counts of launches and edits, sent to PostHog (see `usage.ts`). */
@@ -1346,10 +1347,8 @@ export const en = {
 
     // The status line and the busy texts beside it
     notConnected: "Not connected",
-    /** The status line once connected; the app version and game build are at the foot of Settings. */
+    /** The status line once connected; the app version and game build are under About in Settings. */
     connected: "Connected",
-    /** The name, for screen readers, of the app version and game build at the foot of the settings menu. */
-    detailsLabel: "App details",
     /** At the foot of the window: opens the Report a problem dialog (see `report`). */
     reportProblem: "Report a problem",
     /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */

@@ -14,7 +14,7 @@ import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
 import { isShortcut, MAC, shortcutAria, shortcutLabel } from "./keys";
 import { ReportDialog } from "./ReportDialog";
-import { SettingsMenu } from "./SettingsMenu";
+import { Settings } from "./Settings";
 import {
   appText,
   awardListText,
@@ -447,7 +447,7 @@ function App() {
             </button>
           )}
           <span data-tour="settings">
-            <SettingsMenu
+            <Settings
               busy={busy !== null}
               details={[
                 `FM Lens${version ? ` ${version}` : ""}`,
