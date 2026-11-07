@@ -42,6 +42,7 @@ import type {
   ClubSummary,
   Contract,
   FmDate,
+  FutureTransfer,
   ManagerPreview,
   MovePreview,
   MoveTerms,
@@ -75,19 +76,22 @@ interface MoveButtonProps {
   contract: Contract | null;
   /** Whether the profile has been read: until then there is no contract for the dialog to start from. */
   ready: boolean;
+  /** A move FM agreed for him on a later day, which signing him replaces. */
+  agreed?: FutureTransfer;
 }
 
 /** The player and the contract the dialog was opened for: the profile behind it cannot change while it is up. */
 interface Opened {
   player: MovingPlayer;
   contract: Contract | null;
+  agreed?: FutureTransfer;
 }
 
 /**
  * The Transfer button of a player's profile, and the dialog it opens. The profile decides when the button
  * is there (see `PlayerProfile`).
  */
-export function MoveButton({ player, kind = "player", contract, ready }: MoveButtonProps) {
+export function MoveButton({ player, kind = "player", contract, ready, agreed }: MoveButtonProps) {
   const { onEdited } = useContext(EditorContext);
   const [opened, setOpened] = useState<Opened | null>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -119,7 +123,7 @@ export function MoveButton({ player, kind = "player", contract, ready }: MoveBut
                 ? text.signButtonTitle
                 : text.buttonTitle
         }
-        onClick={() => setOpened({ player, contract })}
+        onClick={() => setOpened({ player, contract, agreed })}
       >
         {kind === "manager" ? text.managerButton : player.club === null ? text.signButton : text.button}
       </button>
@@ -128,6 +132,7 @@ export function MoveButton({ player, kind = "player", contract, ready }: MoveBut
           player={opened.player}
           kind={kind}
           contract={opened.contract}
+          agreed={opened.agreed}
           onMoved={onEdited}
           onClose={() => setOpened(null)}
         />
@@ -522,12 +527,14 @@ interface MoveDialogProps {
   kind: Kind;
   /** His contract as it was when the dialog opened: the inputs start from it. Null when he has none. */
   contract: Contract | null;
+  /** A move FM agreed for him on a later day, which signing him replaces. */
+  agreed?: FutureTransfer;
   /** Called once the player has moved: the game has changed, so the lists and the profile read it again. */
   onMoved: () => void;
   onClose: () => void;
 }
 
-function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProps) {
+function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDialogProps) {
   // A member of staff moves in the departments he works in, keeping his job and his contract's terms: no fee, no
   // terms and no swap. The human manager neither: the game makes his contract.
   const staff = kind !== "player";
@@ -1210,6 +1217,8 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
                           className={inputClass(expiresVerdict)}
                           type="date"
                           value={expiresText}
+                          // Empty, WebKit would show today's real date as a placeholder, not the game's.
+                          data-empty={expiresText === "" || undefined}
                           readOnly={moving}
                           aria-invalid={expiresVerdict.status === "invalid" || undefined}
                           aria-describedby={expiresNote ? id("expires-note") : undefined}
@@ -1229,6 +1238,15 @@ function MoveDialog({ player, kind, contract, onMoved, onClose }: MoveDialogProp
                 </div>
               )}
             </section>
+          )}
+
+          {sign && agreed && (
+            <p className="move-note">
+              {text.replacesMove(
+                agreed.club ?? profileText.none,
+                agreed.joins ? formatDate(agreed.joins) : profileText.none,
+              )}
+            </p>
           )}
 
           <p className={`move-plan ${plan.tone}`} role="status">

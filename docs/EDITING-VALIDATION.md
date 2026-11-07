@@ -1141,9 +1141,9 @@ Findings:
   read, so this is not confirmed.
 - FM gives no news of a cancelled club deal.
 - Signing a player for a later day replaces his pending deal with no warning in
-  the Sign dialog.
+  the Sign dialog. Now warned; see "Sign dialog: a pending deal".
 - The Sign dialog's empty Contract end shows today's real date, not the game's,
-  as its placeholder.
+  as its placeholder. Now blank; same section.
 
 ## Windows reads (7 November 2026)
 
@@ -1243,3 +1243,19 @@ hover.
 | Saka's Medical | Jadedness "Jaded"; Edit shows 404 with Min -500, Max 1,000 |
 
 Unknown jobs, reasons and team kinds still show their number.
+
+## Sign dialog: a pending deal (7 November 2026)
+
+FM27 Steam build 26340721 ARM64. FM Lens 0.6.0 built from
+`feat/sign-replace-warning`, on `main` at a1364ef (#130). Same copy as the live
+check (Arsenal, 11 Dec 2027). Continue was never pressed and the copy was not
+saved.
+
+| Check | FM Lens | Probe |
+|---|---|---|
+| Jonathan Silva (14026625), free agent, to Negeri Sembilan on 26 Dec 2027: Sign for Danubio, joining today | Signed; Danubio, contract to 31 Dec 2028 | 54 -> 53 deals; his is gone |
+| Hugo González (67295025), free agent, to Getafe on 13 Dec 2027: open Sign, pick Danubio | "Replaces his move to Getafe on 13 Dec 2027" above the plan | - |
+| The same dialog's empty Contract end | Blank (before: 07/11/2026, the real date). Focused, WebKit shows its date fields and picker | - |
+
+Signing replaces a pending deal whether he joins today or on a later day, so
+the line shows for any signing of a player who has one.

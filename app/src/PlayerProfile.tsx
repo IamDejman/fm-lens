@@ -135,6 +135,7 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
               player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
               contract={details?.contract ?? null}
               ready={details !== undefined}
+              agreed={agreed}
             />
             {/* A loaned player is not released: where the game ends loans, his loan is ended instead. Which of the
                 two he has is in the details, so the button waits for them. */}
