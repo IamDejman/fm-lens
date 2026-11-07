@@ -980,6 +980,29 @@ function removePreference(uid: number, isStaff: boolean, index: number): LoggedC
   return logPreference(isStaff, uid, name, before, null, next);
 }
 
+/**
+ * `point_preference`: points a fixture person's preference at the club, player or member of staff `targetUid`,
+ * keeping its strength, with the real command's failures.
+ */
+function pointPreference(uid: number, isStaff: boolean, index: number, targetKind: string, targetUid: number): LoggedChange {
+  const [name, before] = preferenceAt(uid, isStaff, index);
+  const isClubKind = (kind: Preference["kind"]) => kind === "favouredClub" || kind === "dislikedClub";
+  const club = isClubKind(before.kind);
+  const target =
+    targetKind === "club"
+      ? clubs.find((c) => c.uid === targetUid)
+      : (targetKind === "staff" ? staff : players).find((p) => p.uid === targetUid);
+  if (target === undefined || (targetKind === "club") !== club || (!club && targetUid === uid)) {
+    throw failure("preference.target", "that is not a club or person of the game, of the kind this like or dislike takes");
+  }
+  const current = currentPreferences(isStaff, uid);
+  if (current.some((p) => isClubKind(p.kind) === club && p.targetUid === targetUid)) {
+    throw failure("preference.same", "the person already likes or dislikes that one");
+  }
+  const after = { ...before, targetUid, name: target.name };
+  return logPreference(isStaff, uid, name, before, after, current.map((p) => (p.index === index ? after : p)));
+}
+
 // Languages -------------------------------------------------------------------------------------------------------
 
 /** The languages changed through the editor, by "player:UID" or "staff:UID"; the others are the fixture's. */
@@ -3679,6 +3702,14 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return changePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.strength)) as T;
     case "remove_preference":
       return removePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
+    case "point_preference":
+      return pointPreference(
+        Number(args?.uid),
+        Boolean(args?.staff),
+        Number(args?.index),
+        String(args?.targetKind),
+        Number(args?.targetUid),
+      ) as T;
     case "change_language":
       return changeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.level)) as T;
     case "remove_language":
