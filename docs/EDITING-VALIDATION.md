@@ -1310,3 +1310,12 @@ Normal live-data native debug bundle from `codex/list-pagination`, FM27 Steam bu
 - Staff: 1–200 to 201–400 of 20,215. Clubs: 1–200 to 201–400 of 21,675; native club-page layout visually inspected.
 
 The remaining five entity lists were not exercised live in this follow-up; they use the same paging helper and frontend. Request-failure recovery and pending edits were not exercised live.
+
+
+## Search loading feedback (7 November 2026)
+
+Branch `codex/search-loading-feedback`, stacked on pagination `2826943` (#151). A result is current only when its command, query, filters/order, offset, data version and retry generation match the active request. Pending requests hide cached rows, counts and ranges, show Searching in the table area, and disable page controls; the selected profile is retained. Empty states appear only after a matching successful response. Failures are scoped to their request, expose Retry and do not restore stale rows. English, Spanish and Turkish include the feedback strings. The count announces completion; the table has a direct accessible label so WebKit preserves its name.
+
+Native verification used the real running Arsenal career (11 December 2027, 16:30), FM27 Steam 26340721 ARM64, module UUID F4540355-2186-39CB-9119-C706A6A35346, PID 2559. Temporary API instrumentation delayed Alex searches by 20 seconds and failed the first __retry_check__ query; these changes were removed before the final build/commit. Confirmed pending Alex has only table headers, Searching feedback and disabled page controls (where present), without old rows/count/range; feedback also remains visible without a pager. Haaland's open profile survives search changes. A newer Silva search returns 92 players and stays current after the delayed Alex request finishes. An injected failure has no stale rows, labels the grid Search failed and offers Retry; Retry completes with 0 players and the matching empty message. Visual inspection covered the loading screen. No game-data edit, Continue or save was used.
+
+Checks: frontend production build, native Tauri debug bundle, source detector (no findings) and diff checks passed. All 18 baseline career hashes remained unchanged. The existing Vite chunk-size warning remains. No Rust/domain code changed in this follow-up; earlier pagination Rust test evidence is recorded above.

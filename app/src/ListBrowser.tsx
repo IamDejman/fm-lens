@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { changesText as pagingText } from "./labels";
+import { changesText as pagingText, listFeedbackText as feedback } from "./labels";
 import { call } from "./api";
 import { describeError } from "./format";
 import { isShortcut, shortcutAria } from "./keys";
@@ -108,8 +108,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const [page, setPage] = useState<Page<Row> | null>(null);
   // The search text and arguments the rows on show were asked for: their total is the list's only while those are
   // the ones in the search box and the filters now.
-  const [shownFor, setShownFor] = useState<{ query: string; argsKey: string; offset: number } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [shownFor, setShownFor] = useState<{ query: string; argsKey: string; offset: number; requestKey: string } | null>(null);
+  const [failure, setFailure] = useState<{ requestKey: string; message: string } | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   useSnapshot(name, () => ({ query, selected: selected?.uid ?? null }));
   const searchInput = useRef<HTMLInputElement>(null);
@@ -121,6 +121,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const argsKey = JSON.stringify(requestArgs ?? {});
   const pageKey = JSON.stringify([query, argsKey]);
   const offset = position.key === pageKey ? position.offset : 0;
+  const requestKey = JSON.stringify([command, pageKey, offset, version, attempt]);
+  const error = failure?.requestKey === requestKey ? failure.message : null;
   useEffect(() => setPosition({ key: pageKey, offset: 0 }), [pageKey]);
   const goToPage = (next: number) => {
     setPosition({ key: pageKey, offset: next });
@@ -190,8 +192,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
             }
             setLoading(false);
             setPage(result);
-            setShownFor({ query, argsKey, offset });
-            setError(null);
+            setShownFor({ query, argsKey, offset, requestKey });
+            setFailure(null);
             // The open profile shows its row as read now: after an edit, the values written.
             setSelected((open) => (open === null ? null : (result.rows.find((row) => row.uid === open.uid) ?? open)));
             if (shownArgs.current !== `${argsKey}:${query}:${offset}`) {
@@ -213,7 +215,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
         } catch (e) {
           if (!cancelled) {
             setLoading(false);
-            setError(describeError(e));
+            setFailure({ requestKey, message: describeError(e) });
           }
         }
       },
@@ -223,7 +225,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [command, query, argsKey, version, active, offset, pageKey, attempt]);
+  }, [command, query, argsKey, version, active, offset, pageKey, attempt, requestKey]);
 
   useEffect(() => {
     if (!active) {
@@ -248,7 +250,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   // The row Tab reaches in the table.
   const tabStop = page?.rows.some((row) => row.uid === selected?.uid) ? selected?.uid : page?.rows[0]?.uid;
 
-  const settled = page !== null && shownFor !== null && shownFor.query === query && shownFor.argsKey === argsKey && shownFor.offset === offset && !loading;
+  const settled = page !== null && shownFor?.requestKey === requestKey && !loading;
+  const searching = !settled && error === null;
 
   // A hidden list has no profile open: its window-wide Escape handler must not fire.
   const showProfile = active && selected !== null && profile !== undefined;
@@ -273,28 +276,28 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               spellCheck={false}
             />
           </label>
-          <span className="count" id={countId}>{page ? summary(page.total, page.total) : ""}</span>
+          <span className="count" id={countId} role="status">{settled ? summary(page.total, page.total) : ""}</span>
           {toolbarActions?.({
             query,
             total: settled ? page.total : null,
-            shown: page?.rows.length ?? 0,
+            shown: settled ? page.rows.length : 0,
           })}
         </div>
         {filterBar}
-        {error && <div className="banner" role="alert">{error}</div>}
+        {error && <div className="banner" role="alert">{error} <button type="button" onClick={() => setAttempt((value) => value + 1)}>{feedback.retry}</button></div>}
 
-        <div className="table-wrap" aria-busy={loading} ref={tableWrap} data-tour={active ? "list" : undefined}>
+        <div className="table-wrap" aria-busy={searching} ref={tableWrap} data-tour={active ? "list" : undefined}>
           {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
           <table
             className={["grid", tableClass, !profile && !detail && "static"].filter(Boolean).join(" ")}
             role="grid"
-            aria-labelledby={countId}
+            aria-label={settled && page ? summary(page.total, page.total) : error ? feedback.failed : feedback.searching}
           >
             <thead>
               <tr ref={headRow}>{header}</tr>
             </thead>
             <tbody>
-              {page?.rows.map((row, index) => {
+              {settled && page?.rows.map((row, index) => {
                 const isSelected = row.uid === selected?.uid;
                 return (
                   <Fragment key={row.uid}>
@@ -345,19 +348,20 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               })}
             </tbody>
           </table>
-          {page && page.rows.length === 0 && <p className="empty">{empty(query)}</p>}
+          {searching && <p className="empty" role="status">{feedback.searching}</p>}
+          {settled && page && page.rows.length === 0 && <p className="empty">{empty(query)}</p>}
         </div>
         {page && page.total > ROW_LIMIT && (
           <div className="pager-bar">
             <div className="pager" role="group" aria-label={pagingText.pages}>
-              <button type="button" disabled={loading || (shownFor?.offset ?? 0) === 0}
+              <button type="button" disabled={!settled || (shownFor?.offset ?? 0) === 0}
                 onClick={() => goToPage(Math.max(0, (shownFor?.offset ?? 0) - ROW_LIMIT))}>
                 {pagingText.previous}
               </button>
               <span className="pager-range" role="status">
-                {pagingText.range((shownFor?.offset ?? 0) + 1, (shownFor?.offset ?? 0) + page.rows.length, page.total)}
+                {settled ? pagingText.range((shownFor?.offset ?? 0) + 1, (shownFor?.offset ?? 0) + page.rows.length, page.total) : ""}
               </span>
-              <button type="button" disabled={loading || (shownFor?.offset ?? 0) + page.rows.length >= page.total}
+              <button type="button" disabled={!settled || (shownFor?.offset ?? 0) + page.rows.length >= page.total}
                 onClick={() => goToPage((shownFor?.offset ?? 0) + ROW_LIMIT)}>
                 {pagingText.next}
               </button>

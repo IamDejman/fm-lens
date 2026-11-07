@@ -2415,6 +2415,8 @@ export const en = {
     steamBuild: (id: string) => `build ${id}`,
   },
 
+  listFeedback: { failed: "Search failed", searching: "Searching…", retry: "Retry" },
+
   errors,
 };
 
