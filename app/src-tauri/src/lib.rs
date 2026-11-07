@@ -2248,6 +2248,7 @@ fn windows_version_text(value: &str) -> Option<String> {
 }
 
 /// macOS's version, "27.2", from the file macOS keeps it in.
+#[cfg(not(windows))]
 fn macos_version() -> Option<String> {
     let plist = std::fs::read_to_string("/System/Library/CoreServices/SystemVersion.plist").ok()?;
     let (_, after) = plist.split_once("<key>ProductVersion</key>")?;
