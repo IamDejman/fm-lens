@@ -253,7 +253,8 @@ Pages. To look at it locally, run `python3 -m http.server 4321 --directory site`
 
 The files people download stay on the releases in fm-lens-releases. `site/release.js` asks
 GitHub's API for the latest release, so the home page shows its version and
-[getfmlens.com/download](https://getfmlens.com/download/) starts its disk image. A new
+[getfmlens.com/download](https://getfmlens.com/download/) starts its disk image, or its
+Windows installer for a visitor on Windows (`?for=mac` or `?for=windows` picks one). A new
 release needs no change to the site. Installed copies keep reading `latest.json` from
 fm-lens-releases, as above.
 
