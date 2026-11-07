@@ -1388,6 +1388,12 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.6.2": [
+        "FM Lens artık Windows'ta. getfmlens.com adresinden indirin.",
+        "Windows'ta güncellemeler arka planda iner ve Güncellemek için yeniden başlat'a bastığınızda kurulur.",
+        "Windows'ta Güncellemeleri Denetle, Ayarlar > Hakkında bölümündedir.",
+        "Aynı anda yalnızca bir FM Lens çalışır: yeniden açtığınızda penceresi öne gelir.",
+      ],
       "0.6.1": [
         "Yeni oyuncu profili: Özellikler, Moral, Sözleşme, Sağlık ve Kariyer sekmeleri ve adın altında bunları açan durum etiketleri.",
         "Ayarlar artık kendi penceresinde açılır: dişli simgesi veya Cmd+,.",
