@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { changesText as pagingText } from "./labels";
 import { call } from "./api";
 import { describeError } from "./format";
 import { isShortcut, shortcutAria } from "./keys";
@@ -48,12 +49,12 @@ interface ListBrowserProps<Row extends { uid: number }> {
    */
   name: string;
   /**
-   * The Rust command that searches, e.g. "search_players". It takes `{ query, limit, ...requestArgs }` and
+   * The Rust command that searches, e.g. "search_players". It takes `{ query, limit, offset, ...requestArgs }` and
    * returns a page.
    */
   command: string;
   /**
-   * Arguments for the command besides `query` and `limit`, e.g. `{ filter, order }`. They are compared by
+   * Arguments for the command besides `query`, `limit` and `offset`, e.g. `{ filter, order }`. They are compared by
    * value, so the list is asked again when they change however often the object is built anew.
    */
   requestArgs?: Record<string, unknown>;
@@ -100,11 +101,14 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   // as soon as the rows are there again.
   const [start] = useState(() => restored(name, readList));
   const [query, setQuery] = useState(start.query);
+  const [position, setPosition] = useState({ key: "", offset: 0 });
+  const [loading, setLoading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const wanted = useRef(start.selected);
   const [page, setPage] = useState<Page<Row> | null>(null);
   // The search text and arguments the rows on show were asked for: their total is the list's only while those are
   // the ones in the search box and the filters now.
-  const [shownFor, setShownFor] = useState<{ query: string; argsKey: string } | null>(null);
+  const [shownFor, setShownFor] = useState<{ query: string; argsKey: string; offset: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   useSnapshot(name, () => ({ query, selected: selected?.uid ?? null }));
@@ -115,13 +119,20 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
 
   // The arguments as JSON, which is how they reach the command: the effect below depends on their value.
   const argsKey = JSON.stringify(requestArgs ?? {});
+  const pageKey = JSON.stringify([query, argsKey]);
+  const offset = position.key === pageKey ? position.offset : 0;
+  useEffect(() => setPosition({ key: pageKey, offset: 0 }), [pageKey]);
+  const goToPage = (next: number) => {
+    setPosition({ key: pageKey, offset: next });
+    setAttempt((value) => value + 1);
+  };
   // The arguments of the rows on show, so a new sort or filter can start at the top.
   const shownArgs = useRef(argsKey);
 
   const closeProfile = useCallback(() => {
     // The panel unmounts with the focused control inside it; keep keyboard focus in the table. In a narrow window the
     // profile hides the list, so the row can take focus only once the profile is gone.
-    const row = document.activeElement?.closest(".profile") ? selectedRow.current : null;
+    const row = document.activeElement?.closest(".profile") ? (selectedRow.current ?? searchInput.current) : null;
     setSelected(null);
     if (row) {
       requestAnimationFrame(() => row.focus());
@@ -138,6 +149,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
       setSelected(row);
       return;
     }
+    setPosition({ key: "", offset: 0 });
     wanted.current = reveal.uid;
     setQuery(reveal.query);
     // Only a new request counts: the rows and search it finds are read as they are then.
@@ -162,6 +174,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
     // In particular, building the stadium index must not delay the first player search.
     if (!active) return;
     let cancelled = false;
+    setLoading(true);
     const args: Record<string, unknown> = JSON.parse(argsKey);
     // Typing in the search box or a filter waits a little, so a burst of keys makes one request.
     // A list nobody has touched yet loads at once.
@@ -169,16 +182,21 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
     const timer = setTimeout(
       async () => {
         try {
-          const result = await call<Page<Row>>(command, { ...args, query, limit: ROW_LIMIT });
+          const result = await call<Page<Row>>(command, { ...args, query, limit: ROW_LIMIT, offset });
           if (!cancelled) {
+            if (offset > 0 && offset >= result.total) {
+              setPosition({ key: pageKey, offset: Math.max(0, Math.floor((result.total - 1) / ROW_LIMIT) * ROW_LIMIT) });
+              return;
+            }
+            setLoading(false);
             setPage(result);
-            setShownFor({ query, argsKey });
+            setShownFor({ query, argsKey, offset });
             setError(null);
             // The open profile shows its row as read now: after an edit, the values written.
             setSelected((open) => (open === null ? null : (result.rows.find((row) => row.uid === open.uid) ?? open)));
-            if (shownArgs.current !== argsKey) {
+            if (shownArgs.current !== `${argsKey}:${query}:${offset}`) {
               // A new sort or filter starts at the top; reading the same list again keeps its place.
-              shownArgs.current = argsKey;
+              shownArgs.current = `${argsKey}:${query}:${offset}`;
               tableWrap.current?.scrollTo({ top: 0 });
             }
             // The first rows decide: the row that was selected before the language was switched is selected again if
@@ -194,6 +212,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
           }
         } catch (e) {
           if (!cancelled) {
+            setLoading(false);
             setError(describeError(e));
           }
         }
@@ -204,7 +223,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [command, query, argsKey, version, active]);
+  }, [command, query, argsKey, version, active, offset, pageKey, attempt]);
 
   useEffect(() => {
     if (!active) {
@@ -229,7 +248,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   // The row Tab reaches in the table.
   const tabStop = page?.rows.some((row) => row.uid === selected?.uid) ? selected?.uid : page?.rows[0]?.uid;
 
-  const settled = page !== null && shownFor !== null && shownFor.query === query && shownFor.argsKey === argsKey;
+  const settled = page !== null && shownFor !== null && shownFor.query === query && shownFor.argsKey === argsKey && shownFor.offset === offset && !loading;
 
   // A hidden list has no profile open: its window-wide Escape handler must not fire.
   const showProfile = active && selected !== null && profile !== undefined;
@@ -254,7 +273,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               spellCheck={false}
             />
           </label>
-          <span className="count" id={countId}>{page ? summary(page.total, page.rows.length) : ""}</span>
+          <span className="count" id={countId}>{page ? summary(page.total, page.total) : ""}</span>
           {toolbarActions?.({
             query,
             total: settled ? page.total : null,
@@ -264,7 +283,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
         {filterBar}
         {error && <div className="banner" role="alert">{error}</div>}
 
-        <div className="table-wrap" ref={tableWrap} data-tour={active ? "list" : undefined}>
+        <div className="table-wrap" aria-busy={loading} ref={tableWrap} data-tour={active ? "list" : undefined}>
           {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
           <table
             className={["grid", tableClass, !profile && !detail && "static"].filter(Boolean).join(" ")}
@@ -328,6 +347,23 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
           </table>
           {page && page.rows.length === 0 && <p className="empty">{empty(query)}</p>}
         </div>
+        {page && page.total > ROW_LIMIT && (
+          <div className="pager-bar">
+            <div className="pager" role="group" aria-label={pagingText.pages}>
+              <button type="button" disabled={loading || (shownFor?.offset ?? 0) === 0}
+                onClick={() => goToPage(Math.max(0, (shownFor?.offset ?? 0) - ROW_LIMIT))}>
+                {pagingText.previous}
+              </button>
+              <span className="pager-range" role="status">
+                {pagingText.range((shownFor?.offset ?? 0) + 1, (shownFor?.offset ?? 0) + page.rows.length, page.total)}
+              </span>
+              <button type="button" disabled={loading || (shownFor?.offset ?? 0) + page.rows.length >= page.total}
+                onClick={() => goToPage((shownFor?.offset ?? 0) + ROW_LIMIT)}>
+                {pagingText.next}
+              </button>
+            </div>
+          </div>
+        )}
         {footer}
       </section>
 

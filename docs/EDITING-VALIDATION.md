@@ -1290,3 +1290,23 @@ Not run: Remove unhappiness and Lift bans (no Arsenal player was unhappy or
 banned, so both were off), and saving, quitting and reloading an edited copy.
 Max tactics is a game action, checked in "Windows game actions" above. What
 Windows still lacks next to macOS is in `docs/internal/WINDOWS-PARITY-HANDOFF.md`.
+
+
+## Search result pagination (7 November 2026)
+
+Branch `codex/list-pagination`, based on main at `198d4e2`. All eight list search commands accept an optional offset (omitting it retains page one), filter and sort before slicing, and cap responses at 200 rows. SearchIndex resolves equal rank and name with UID; player column sorts retain this stable base order. The frontend uses Previous/Next and the existing translated range labels; it resets for search/filter/order changes, retains an open profile, keeps old rows on request failure, and permits retrying that page. A refresh beyond the shortened list clamps to the last page.
+
+Checks: production frontend build; app backend regression covering 451 equal-ranked/equal-named entries across three pages without gaps/duplicates, filtered reverse order, a short last page, out-of-range offsets and the response cap; preview interaction from 1–200 to 201–400 of 400 (200 rows each, no overlap), narrowed search and sort reset. No console errors/warnings in the exercised preview flows. The existing Vite chunk warning remains. All core/app library tests passed (99 core, 2 app), along with strict app Clippy with warnings denied and formatting/diff checks. Native interaction passed in an ad-hoc-signed Tauri debug bundle with the existing sample-data backend temporarily selected: Next showed 201–400 of 400, Previous restored 1–200 of 400, and Lukas Kowalski’s profile remained open on both pages. The pager was visually inspected beside the profile. The API adapter was restored afterward; no sample-mode change is included in source. Live-career paging, request-failure recovery and pending-edit consequences were not exercised natively. No FM connection or career edit was made.
+
+
+### Live-career paging follow-up (7 November 2026)
+
+Normal live-data native debug bundle from `codex/list-pagination`, FM27 Steam build 26340721 ARM64, module UUID F4540355-2186-39CB-9119-C706A6A35346, PID 2559. Loaded career: Ayodeji Eluwande / Arsenal, 11 December 2027, 16:30, matching FM's Portal. The read-only probe's 12 health checks passed. This was browsing only: no Apply, Undo, Continue, save or game restart. All 18 baseline career file hashes remained unchanged.
+
+- Players: 30,300 results. Next showed 201–400; page-one leader Erling Haaland was replaced in the list by page-two leader Pau Navarro, while Haaland's open profile remained.
+- Sorting by name from page two returned to 1–200 of 30,300.
+- Search from page two: Silva returned 92 matches, with no pager. Alex returned 531; Next twice showed 401–531 of 531 with Next disabled, preserving Haaland's profile.
+- Minimum age 20 applied from that last page returned to 1–200 of 426.
+- Staff: 1–200 to 201–400 of 20,215. Clubs: 1–200 to 201–400 of 21,675; native club-page layout visually inspected.
+
+The remaining five entity lists were not exercised live in this follow-up; they use the same paging helper and frontend. Request-failure recovery and pending edits were not exercised live.

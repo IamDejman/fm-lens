@@ -3138,7 +3138,7 @@ function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
 function bySearchRank(a: PlayerSummary, b: PlayerSummary): number {
   const x = fold(a.name);
   const y = fold(b.name);
-  return b.currentAbility - a.currentAbility || (x < y ? -1 : x > y ? 1 : 0);
+  return b.currentAbility - a.currentAbility || (x < y ? -1 : x > y ? 1 : 0) || a.uid - b.uid;
 }
 
 /**
@@ -3418,7 +3418,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .filter((p) => matchesPlayerFilter(p, filter))
         .sort(bySearchRank)
         .sort(playerComparator(order));
-      const page: PlayerPage = { total: hits.length, rows: hits.slice(0, limit) };
+      const page: PlayerPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
     case "search_clubs": {
@@ -3430,7 +3430,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
         .filter((c) => matchesClubFilter(c, filter))
         .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
-      const page: ClubPage = { total: hits.length, rows: hits.slice(0, limit) };
+      const page: ClubPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
     case "club_details": {
@@ -3450,7 +3450,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
         .filter((s) => matchesStaffFilter(s, filter))
         .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
-      const page: StaffPage = { total: hits.length, rows: hits.slice(0, limit) };
+      const page: StaffPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
     case "staff_details": {
@@ -3553,7 +3553,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         return named && capacityOk ? [row] : [];
       });
       rows.sort((a, b) => b.capacity - a.capacity || (a.name ?? a.club).localeCompare(b.name ?? b.club));
-      const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(0, limit) };
+      const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return stadiumPage as T;
     }
     case "search_officials": {
@@ -3562,7 +3562,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const rows = OFFICIALS.filter(
         (official) => query === "" || fold(official.name).includes(query) || String(official.uid) === String(args?.query ?? "").trim(),
       ).sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
-      const officialPage: OfficialPage = { total: rows.length, rows: rows.slice(0, limit) };
+      const officialPage: OfficialPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return officialPage as T;
     }
     case "search_competitions": {
@@ -3571,7 +3571,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const rows = COMPETITIONS.filter(
         (c) => query === "" || fold(c.name).includes(query) || String(c.uid) === String(args?.query ?? "").trim(),
       ).sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name));
-      const competitionPage: CompetitionPage = { total: rows.length, rows: rows.slice(0, limit) };
+      const competitionPage: CompetitionPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return competitionPage as T;
     }
     case "competition_rules": {
@@ -3591,7 +3591,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           fold(a.competition ?? "").includes(query) ||
           String(a.uid) === String(args?.query ?? "").trim(),
       ).sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name));
-      const awardPage: AwardPage = { total: rows.length, rows: rows.slice(0, limit) };
+      const awardPage: AwardPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return awardPage as T;
     }
     case "nations_detailed":
@@ -3609,7 +3609,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         name,
       })).filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim());
       rows.sort((a, b) => a.name.localeCompare(b.name));
-      const page: NationPage = { total: rows.length, rows: rows.slice(0, limit) };
+      const page: NationPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
     case "read_values":
