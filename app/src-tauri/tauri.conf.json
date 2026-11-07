@@ -54,7 +54,10 @@
           "Turkish",
           "Spanish"
         ],
-        "displayLanguageSelector": true
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/fm-lens/icon.ico",
+        "uninstallerIcon": "icons/fm-lens/icon.ico",
+        "sidebarImage": "../../scripts/nsis/sidebar.bmp"
       }
     },
     "icon": [
