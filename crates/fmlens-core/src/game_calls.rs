@@ -224,69 +224,76 @@ impl Session {
         if !cfg!(target_os = "macos") {
             return GameActions::default();
         }
+        // Resolve discovery once here, including a failed attempt. Otherwise a temporarily
+        // unresponsive helper would incur a timeout for every action in this list.
+        #[cfg(target_os = "macos")]
+        if self.process.bridge_capabilities().is_err() {
+            return GameActions::default();
+        }
+        let available = |function: Option<u64>| function.is_some_and(|rva| self.helper_supports(rva).unwrap_or(false));
         GameActions {
-            add_injury: calls.add_injury.is_some()
+            add_injury: available(calls.add_injury)
                 && profile.injury_manager.is_some()
                 && profile.injury_kinds.is_some()
                 && self.layout.injury_kind.is_some(),
-            work_permit: calls.set_work_permit.is_some()
-                && calls.find_work_permit.is_some()
-                && calls.remove_work_permit.is_some()
+            work_permit: available(calls.set_work_permit)
+                && available(calls.find_work_permit)
+                && available(calls.remove_work_permit)
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
-            start_loan: calls.start_loan.is_some()
+            start_loan: available(calls.start_loan)
                 && profile.transfer_manager.is_some()
                 && profile.starting_loan.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.starting_loan.is_some()
                 && self.layout.loan.is_some(),
-            sign_free_agent: calls.sign_free_agent.is_some()
-                && calls.map_new.is_some()
-                && calls.map_drop.is_some()
-                && calls.refs_drop.is_some()
+            sign_free_agent: available(calls.sign_free_agent)
+                && available(calls.map_new)
+                && available(calls.map_drop)
+                && available(calls.refs_drop)
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
-            transfer: calls.sign_free_agent.is_some()
-                && calls.map_new.is_some()
-                && calls.map_drop.is_some()
-                && calls.refs_drop.is_some()
-                && calls.map_insert.is_some()
+            transfer: available(calls.sign_free_agent)
+                && available(calls.map_new)
+                && available(calls.map_drop)
+                && available(calls.refs_drop)
+                && available(calls.map_insert)
                 && profile.editor.is_some()
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
-            end_loan: calls.end_contract.is_some()
+            end_loan: available(calls.end_contract)
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.loan.is_some(),
-            future_transfer: calls.sign_free_agent.is_some()
-                && calls.map_new.is_some()
-                && calls.map_drop.is_some()
-                && calls.refs_drop.is_some()
-                && calls.date_type.is_some()
-                && calls.date_value.is_some()
-                && calls.map_insert.is_some()
-                && calls.value_drop.is_some()
-                && calls.cancel_offer.is_some()
-                && calls.drop_dated_transfer.is_some()
-                && calls.ref_copy.is_some()
-                && calls.ref_drop.is_some()
+            future_transfer: available(calls.sign_free_agent)
+                && available(calls.map_new)
+                && available(calls.map_drop)
+                && available(calls.refs_drop)
+                && available(calls.date_type)
+                && available(calls.date_value)
+                && available(calls.map_insert)
+                && available(calls.value_drop)
+                && available(calls.cancel_offer)
+                && available(calls.drop_dated_transfer)
+                && available(calls.ref_copy)
+                && available(calls.ref_drop)
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.future_transfer.is_some(),
-            max_tactics: calls.maximise_tactics.is_some()
-                && calls.struct_value.is_some()
-                && calls.map_new.is_some()
-                && calls.map_insert.is_some()
-                && calls.map_drop.is_some()
+            max_tactics: available(calls.maximise_tactics)
+                && available(calls.struct_value)
+                && available(calls.map_new)
+                && available(calls.map_insert)
+                && available(calls.map_drop)
                 && profile.editor.as_ref().is_some_and(|editor| {
                     self.process.read_bytes(self.plugin.base + editor.enabled, 1).is_ok_and(|byte| byte[0] == 1)
                 })
                 && self.layout.tactics.is_some(),
-            move_manager: calls.sign_free_agent.is_some()
-                && calls.map_new.is_some()
-                && calls.map_insert.is_some()
-                && calls.map_drop.is_some()
-                && calls.refs_drop.is_some()
+            move_manager: available(calls.sign_free_agent)
+                && available(calls.map_new)
+                && available(calls.map_insert)
+                && available(calls.map_drop)
+                && available(calls.refs_drop)
                 && profile.transfer_manager.is_some()
                 && profile.editor.is_some()
                 && profile.human_manager.is_some()
@@ -318,7 +325,34 @@ impl Session {
 
     /// The function `pick` names in this build's profile.
     pub(crate) fn game_function(&self, pick: impl Fn(&CallRvas) -> Option<u64>) -> Result<u64, MoveError> {
-        self.profile.as_ref().and_then(|p| p.calls.as_ref()).and_then(pick).ok_or(MoveError::CallUnavailable)
+        let function =
+            self.profile.as_ref().and_then(|p| p.calls.as_ref()).and_then(pick).ok_or(MoveError::CallUnavailable)?;
+        if !self.helper_supports(function)? {
+            return Err(MoveError::CallUnavailable);
+        }
+        Ok(function)
+    }
+
+    /// Only narrows the build profile. Earlier helpers have no discovery message and
+    /// retain their original CALL allowlist, which still checks each complete program.
+    pub(crate) fn helper_supports(&self, function: u64) -> Result<bool, MoveError> {
+        #[cfg(target_os = "macos")]
+        {
+            let crate::profile::PluginFingerprint::MachO { uuid } = self.fingerprint else {
+                return Ok(false);
+            };
+            Ok(self.process.bridge_capabilities()?.is_none_or(|caps| {
+                caps.plugin_uuid == uuid
+                    && caps.max_steps > 0
+                    && caps.scratch_size >= fmlens_mem::call::SCRATCH_SIZE
+                    && caps.functions.contains(&function)
+            }))
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let _ = function;
+            Ok(false)
+        }
     }
 
     /// The object behind the static pointer at `slot`, when it is of `class`.

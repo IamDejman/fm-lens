@@ -362,7 +362,6 @@ impl Connection {
             editable: self.session.process.can_write() && self.session.writes_allowed(),
             writable: self.session.process.can_write(),
             known_build: self.session.known_build(),
-            restart_needed: self.session.restart_needed,
             health: Health::clone(&self.session.health()),
             career: self.career.clone(),
             game_actions: self.session.game_actions(),
@@ -2296,8 +2295,6 @@ struct ConnectionInfo {
     writable: bool,
     /// Whether the editor has a profile for this build of the game: one it was checked with.
     known_build: bool,
-    /// Whether the game must be started again from Steam before anything is written (see `bridge::restart_needed`).
-    restart_needed: bool,
     /// What the checks the editor makes before it writes found on this game.
     health: Health,
     /// The human manager and club of the loaded career.
@@ -2315,7 +2312,6 @@ struct ReloadInfo {
     editable: bool,
     writable: bool,
     known_build: bool,
-    restart_needed: bool,
     players: usize,
     staff: usize,
     clubs: usize,
@@ -2441,29 +2437,24 @@ fn inspect(pid: u32) -> DetectedGame {
 
 /// Inspect with read access first. Unknown builds and read-only binaries remain usable
 /// for scouting; only a fingerprinted build can acquire a writable handle.
-fn connect_session(pid: u32, app: &tauri::AppHandle) -> Result<Session, Failure> {
+fn connect_session(pid: u32) -> Result<Session, Failure> {
     let mut session = Session::connect(Process::open_read(pid)?, ArraySource::ProfileFirst)?;
     if session.known_build()
         && let Ok(process) = Process::open_read_write(pid)
     {
         session.process = process;
     }
-    session.restart_needed = bridge::restart_needed(app, &session.process);
     Ok(session)
 }
 
 /// Reads every player, member of staff and club, with editing only on a known build.
 #[tauri::command]
-async fn connect(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-    file: State<'_, FrozenFile>,
-) -> Result<ConnectionInfo, Failure> {
+async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
     let (mut connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let pid = find_game(None)?;
-        let mut connection = Connection::load(connect_session(pid, &app)?)?;
+        let mut connection = Connection::load(connect_session(pid)?)?;
         // Without a human manager the lists are not a career the user can recognise or should edit.
         if connection.career.is_none() {
             return Err(no_career());
@@ -2524,11 +2515,7 @@ fn allow_editing(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> 
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails. What is frozen
 /// stays frozen, unless the game has loaded another save: then what was frozen in that one before is frozen instead.
 #[tauri::command]
-async fn reload(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-    file: State<'_, FrozenFile>,
-) -> Result<ReloadInfo, Failure> {
+async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ReloadInfo, Failure> {
     let mut old = state.0.lock()?.take().ok_or_else(not_connected)?;
     // Kept apart while the game is read, so that a reload that fails loses no change.
     let log = std::mem::take(&mut old.log);
@@ -2537,7 +2524,7 @@ async fn reload(
         // A game that has quit says so plainly, rather than as whatever opening its process gives.
         let pid = find_game(Some(old.session.process.pid()))?;
         // Loading a different career replaces the arrays and cached class identities.
-        let session = connect_session(pid, &app)?;
+        let session = connect_session(pid)?;
         let mut connection = Connection::load(session)?;
         if connection.career.is_none() {
             return Err(no_career());
@@ -2567,7 +2554,6 @@ async fn reload(
         editable: connection.session.process.can_write() && connection.session.writes_allowed(),
         writable: connection.session.process.can_write(),
         known_build: connection.session.known_build(),
-        restart_needed: connection.session.restart_needed,
         players: connection.players.len(),
         staff: connection.staff.len(),
         clubs: connection.clubs.len(),
@@ -3054,7 +3040,8 @@ fn refresh_game_ui(state: State<'_, AppState>) -> Result<(), Failure> {
     let mut seen = Vec::new();
     let mut errors: Vec<String> = Vec::new();
     let mut note = |error: Failure| {
-        // The bridge in the game answers every call the same way: once it refuses, the rest would too.
+        // Unsupported optional refresh functions are skipped in core. A transport/protocol
+        // failure is still an error; stop this flush instead of repeating it for every entity.
         let refused = error.code == "memory.bridge";
         if !errors.contains(&error.message) {
             errors.push(error.message);
@@ -4158,7 +4145,8 @@ pub fn run() {
                 .map(PathBuf::from)
                 .or_else(|| app.path().document_dir().ok().map(|folder| folder.join("FM Lens").join("Exports")));
             app.manage(ExportsFolder(exports));
-            // macOS: after an update, the game is to load the bridge that came with this version.
+            // Stage the bundled helper for FM's next normal launch. A running game keeps
+            // serving through its existing helper; compatibility is discovered on connection.
             bridge::refresh(app.handle());
             // Frozen money and attributes: every little while, what the game took from them is put back.
             let handle = app.handle().clone();

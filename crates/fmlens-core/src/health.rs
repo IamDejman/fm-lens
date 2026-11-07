@@ -181,8 +181,6 @@ pub enum Lock {
     UnknownBuild,
     /// The game's entity storage was replaced after this session attached.
     CareerChanged,
-    /// The game was started before the app put a new bridge in place: it must be started again.
-    RestartGame,
     /// A check the change needs did not pass on this game.
     Failed(Check),
 }
@@ -192,14 +190,13 @@ impl Lock {
         match self {
             Lock::UnknownBuild => "guard.unknownBuild",
             Lock::CareerChanged => "guard.careerChanged",
-            Lock::RestartGame => "guard.restartGame",
             Lock::Failed(_) => "guard.failed",
         }
     }
 
     pub(crate) fn params(self) -> Vec<(&'static str, String)> {
         match self {
-            Lock::UnknownBuild | Lock::CareerChanged | Lock::RestartGame => Vec::new(),
+            Lock::UnknownBuild | Lock::CareerChanged => Vec::new(),
             Lock::Failed(check) => vec![("check", check.key().to_owned())],
         }
     }
@@ -212,7 +209,6 @@ impl fmt::Display for Lock {
                 f.write_str("the editor has not been checked with this version of the game, so it cannot write to it")
             }
             Lock::CareerChanged => f.write_str("FM replaced its career data. Reload FM Lens before editing again."),
-            Lock::RestartGame => f.write_str("FM Lens was updated while FM was open. Restart FM from Steam to edit."),
             Lock::Failed(check) => {
                 write!(f, "{check} did not check out in this version of the game, so the editor leaves them unchanged")
             }

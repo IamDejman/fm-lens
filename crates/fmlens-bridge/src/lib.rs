@@ -20,7 +20,9 @@ mod calls;
 
 use std::ffi::CString;
 
-use fmlens_mem::bridge::{CallReply, RECEIVE_WITH_AUDIT, REQUEST, Received, Reply, service_name};
+use fmlens_mem::bridge::{
+    CAPABILITIES, CallReply, CapabilitiesReply, RECEIVE_WITH_AUDIT, REQUEST, Received, Reply, Request, service_name,
+};
 use mach2::bootstrap::{bootstrap_check_in, bootstrap_port};
 use mach2::kern_return::KERN_SUCCESS;
 use mach2::mach_port::mach_port_deallocate;
@@ -115,6 +117,11 @@ fn serve(port: mach_port_t) {
                 // The editor has gone. Only its reply right is released. A copy of the task port
                 // that the kernel may hand back is left alone: releasing one too many would cut
                 // the game off from its own task.
+                unsafe { mach_port_deallocate(task, header.msgh_remote_port) };
+            }
+        } else if header.msgh_id == CAPABILITIES && header.msgh_size as usize == size_of::<Request>() {
+            let mut reply = Box::new(calls::capabilities(&header, same_user));
+            if !send(&mut reply.header, size_of::<CapabilitiesReply>()) {
                 unsafe { mach_port_deallocate(task, header.msgh_remote_port) };
             }
         } else if let Some(call) = received.call() {

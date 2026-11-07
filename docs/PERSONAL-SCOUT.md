@@ -163,6 +163,19 @@ the configured bridge is loaded.
 The existing `FM27Scout` bridge folder is retained as a stable internal path
 after the rename, avoiding another game restart just for branding.
 
+### Updating while FM is open
+
+FM Lens keeps using the helper already loaded in FM. Updates stage the bundled
+helper for the next normal FM launch; they do not require restarting FM to keep
+using supported features. Helpers with capability discovery advertise their
+function allowlist, so newly added actions they cannot perform stay unavailable.
+Earlier helpers continue using the existing request/call protocol and safely
+refuse unsupported actions individually. An unsupported automatic screen refresh
+is skipped; FM may show the previous value until its own next refresh. Timeouts,
+build mismatches and career guards remain errors. Native IPC regression tests
+cover this compatibility path; a live update during a copied-career editing
+session remains unverified (see EDITING-VALIDATION.md).
+
 ## Brand and desktop verification
 
 The chosen product name is **FM Lens**. Original transparent PNG logo masters

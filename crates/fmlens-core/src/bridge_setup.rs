@@ -17,7 +17,6 @@
 
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 
 use fmlens_mem::find_processes;
 
@@ -197,8 +196,7 @@ pub fn set_up(places: &Places, from: &Path) -> Result<BridgeStatus, SetupError> 
         std::fs::read(&path).map_err(|_| SetupError::NoLibrary(path))
     };
     let (bridge, launcher) = (read(BRIDGE_FILE)?, read(LAUNCHER_FILE)?);
-    // New files in place of the old: a game still running keeps the library it loaded. The same bridge stays as it
-    // is, so that a game started with it needs no restart (see `replaced_since`).
+    // A running game keeps the library it loaded. Leave identical installed bytes alone.
     if !std::fs::read(&places.bridge).is_ok_and(|now| now == bridge) {
         write_new(&places.bridge, &bridge, false)?;
     }
@@ -245,12 +243,6 @@ pub fn refresh(places: &Places, from: &Path) -> Result<bool, SetupError> {
         return Ok(false);
     }
     refresh_while(places, from, steam_running())
-}
-
-/// Whether the installed bridge was put in place after `started`: a game started before then still runs the bridge
-/// it loaded, which may not have what this version of the app needs, until it is started again.
-pub fn replaced_since(places: &Places, started: SystemTime) -> bool {
-    std::fs::metadata(&places.bridge).and_then(|meta| meta.modified()).is_ok_and(|modified| modified > started)
 }
 
 /// `refresh` once the bridge is installed, with Steam running or not.
@@ -809,37 +801,6 @@ mod tests {
         assert_eq!(mode & 0o777, 0o755);
         // Once they are the app's, nothing is written.
         assert!(!refresh(&places, &bundle).expect("refresh again"));
-        std::fs::remove_dir_all(&home).expect("clean up");
-    }
-
-    #[test]
-    fn a_game_started_before_the_bridge_was_replaced_must_restart() {
-        use std::time::Duration;
-
-        let home = std::env::temp_dir().join(format!("fmlens-restart-test-{}", std::process::id()));
-        let places = Places::of(&home);
-        let started = SystemTime::now() - Duration::from_secs(60);
-        // Nothing installed: nothing to restart for.
-        assert!(!replaced_since(&places, started));
-
-        std::fs::create_dir_all(places.bridge.parent().expect("folder")).expect("install folder");
-        write_new(&places.bridge, b"bridge", false).expect("library");
-        assert!(replaced_since(&places, started));
-        assert!(!replaced_since(&places, SystemTime::now() + Duration::from_secs(60)));
-
-        // Setting up again with the same bridge leaves it, and a game started with it, alone.
-        let bundle = home.join("bundle");
-        std::fs::create_dir_all(&bundle).expect("bundle folder");
-        std::fs::write(bundle.join(BRIDGE_FILE), b"bridge").expect("library");
-        std::fs::write(bundle.join(LAUNCHER_FILE), b"launcher").expect("launcher");
-        let file = std::fs::File::options().write(true).open(&places.bridge).expect("library");
-        file.set_modified(started - Duration::from_secs(60)).expect("time");
-        // It stops at Steam, which has no account in this folder.
-        let _ = set_up(&places, &bundle);
-        assert!(!replaced_since(&places, started));
-        std::fs::write(bundle.join(BRIDGE_FILE), b"new bridge").expect("library");
-        let _ = set_up(&places, &bundle);
-        assert!(replaced_since(&places, started));
         std::fs::remove_dir_all(&home).expect("clean up");
     }
 
