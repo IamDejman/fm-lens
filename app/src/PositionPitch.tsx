@@ -18,7 +18,7 @@ export function tierOf(rating: number): TierName {
 }
 
 const PITCH = { width: 150, height: 184 };
-const MARKER = { width: 34, height: 18 };
+const MARKER = { width: 44, height: 18 };
 
 /** Marker centres on the pitch; the attacking end is at the top. */
 const SPOTS: readonly (readonly [PositionKey, number, number])[] = [
@@ -42,7 +42,7 @@ const SPOTS: readonly (readonly [PositionKey, number, number])[] = [
 /** The positions in the order the pitch has them, front to back and left to right. */
 export const PITCH_ORDER: readonly PositionKey[] = SPOTS.map(([key]) => key);
 
-/** A portrait pitch with one marker per position, filled by how well the player can play there. */
+/** A portrait pitch with one marker per position, its rating beside its name, filled by how well he plays there. */
 export function PositionPitch({ ratings }: { ratings: Record<string, number> }) {
   const rating = (key: PositionKey): number => ratings[key] ?? 0;
   const best = SPOTS.map(([key]) => key)
@@ -81,7 +81,8 @@ export function PositionPitch({ ratings }: { ratings: Record<string, number> }) 
               <title>{profileText.positionTooltip(label, value, profileText.positionTiers[tier])}</title>
               <rect width={MARKER.width} height={MARKER.height} rx="5" />
               <text x={MARKER.width / 2} y={MARKER.height / 2}>
-                {label}
+                <tspan className="pitch-pos">{label}</tspan>
+                <tspan dx="3">{value}</tspan>
               </text>
             </g>
           );
@@ -101,8 +102,8 @@ export function PositionPitch({ ratings }: { ratings: Record<string, number> }) 
 }
 
 /**
- * Every position's rating, in the order of the pitch, with the colour of its band; while the player is edited, each is
- * an input where it is shown. The sweeper is left out: the game no longer plays one.
+ * While the player is edited, every position's rating as an input, in the order of the pitch, with the colour of its
+ * band; the pitch shows them otherwise. The sweeper is left out: the game no longer plays one.
  */
 export function PositionRatings({ ratings }: { ratings: Record<string, number> }) {
   return (

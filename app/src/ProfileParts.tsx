@@ -1,4 +1,14 @@
-import { Fragment, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import {
+  Fragment,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput, SharedRangeHint } from "./EditControls";
@@ -72,6 +82,9 @@ interface ProfileFrameProps {
    * hold an input, which takes the place of its value while the profile is edited.
    */
   vitals: ReadonlyArray<ReactNode>;
+  /** A row across the header under the names and ratings: a player's status, such as an injury, each a button to the
+   * tab that has it. */
+  status?: ReactNode;
   /** The abilities of a person, under the close button; inputs where they are while the person is edited. */
   currentAbility?: number;
   potentialAbility?: number;
@@ -102,7 +115,7 @@ interface ProfileFrameProps {
  * a new person starts at the top.
  */
 export function ProfileFrame(props: ProfileFrameProps) {
-  const { picture, name, fullName, badge, meta, vitals, currentAbility, potentialAbility } = props;
+  const { picture, name, fullName, badge, meta, vitals, status, currentAbility, potentialAbility } = props;
   const { side, headActions, actions, tabs, wide, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
@@ -190,6 +203,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
                 </div>
               ))}
           </div>
+          {status}
         </header>
         {/* What can be done to this person's career (transfer, release): a row of its own under the header. */}
         {actions && <div className="profile-toolbar">{actions}</div>}
@@ -236,7 +250,11 @@ function SectionJump({ body }: { body: RefObject<HTMLDivElement | null> }) {
       return;
     }
     const read = () => {
-      const found = Array.from(element.querySelectorAll<HTMLElement>(":scope > section.profile-group > h3"));
+      const found = Array.from(
+        element.querySelectorAll<HTMLElement>(
+          ":scope > section.profile-group > h3, :scope > section.profile-group > .group-head > h3",
+        ),
+      );
       setSections((old) =>
         old.length === found.length && old.every((entry, i) => entry.heading === found[i])
           ? old
@@ -266,11 +284,119 @@ function SectionJump({ body }: { body: RefObject<HTMLDivElement | null> }) {
         {profileText.top}
       </button>
       {sections.map(({ heading, label }) => (
-        <button key={label} type="button" onClick={() => go(heading.parentElement)}>
+        <button key={label} type="button" onClick={() => go(heading.closest("section"))}>
           {label}
         </button>
       ))}
     </nav>
+  );
+}
+
+interface ProfileTabsProps<T extends string> {
+  tabs: readonly T[];
+  tab: T;
+  /** The start of the ids of the tabs, which the panel they open names itself by (see `PanelIds`). */
+  base: string;
+  label: string;
+  names: Record<T, string>;
+  /** Why a tab can't be opened now, as its hover text; undefined while it can. */
+  locked?: (tab: T) => string | undefined;
+  onSelect: (tab: T) => void;
+  /** At the end of the row: a tool for the open tab. */
+  end?: ReactNode;
+}
+
+/** The tabs under the header of a profile. The arrow keys move between them, as in any tab list. */
+export function ProfileTabs<T extends string>({
+  tabs,
+  tab,
+  base,
+  label,
+  names,
+  locked,
+  onSelect,
+  end,
+}: ProfileTabsProps<T>) {
+  const buttons = useRef<Partial<Record<T, HTMLButtonElement | null>>>({});
+  const offered = tabs.filter((id) => locked?.(id) === undefined);
+
+  const keyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const at = offered.indexOf(tab);
+    const target =
+      event.key === "ArrowRight"
+        ? offered[(at + 1) % offered.length]
+        : event.key === "ArrowLeft"
+          ? offered[(at - 1 + offered.length) % offered.length]
+          : event.key === "Home"
+            ? offered[0]
+            : event.key === "End"
+              ? offered[offered.length - 1]
+              : undefined;
+    if (target !== undefined) {
+      event.preventDefault();
+      onSelect(target);
+      buttons.current[target]?.focus();
+    }
+  };
+
+  return (
+    <div className="profile-tabs">
+      <div className="profile-tablist" role="tablist" aria-label={label} onKeyDown={keyDown}>
+        {tabs.map((id) => {
+          const lockedTitle = locked?.(id);
+          return (
+            <button
+              key={id}
+              ref={(button) => {
+                buttons.current[id] = button;
+              }}
+              type="button"
+              role="tab"
+              id={`${base}-${id}`}
+              className="profile-tab"
+              aria-selected={id === tab}
+              aria-controls={`${base}-panel`}
+              // Only the tab that is open is a Tab stop; the arrow keys reach the others.
+              tabIndex={id === tab ? 0 : -1}
+              disabled={lockedTitle !== undefined}
+              title={lockedTitle}
+              onClick={() => onSelect(id)}
+            >
+              {names[id]}
+            </button>
+          );
+        })}
+      </div>
+      {end}
+    </div>
+  );
+}
+
+/**
+ * Whether the button that had focus has let it go: taken away, which leaves it on the page, or dimmed, which some
+ * browsers leave it on though it takes no keys. The group then gives it to what took the button's place.
+ */
+export const focusLost = () =>
+  document.activeElement === document.body || !!document.activeElement?.matches(":disabled");
+
+/** A group's heading, with what can be done to the whole group at its right. */
+export function GroupHead({
+  title,
+  headingRef,
+  children,
+}: {
+  title: ReactNode;
+  /** For a heading that takes focus when the button that had it is gone. */
+  headingRef?: RefObject<HTMLHeadingElement | null>;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="group-head">
+      <h3 ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
+        {title}
+      </h3>
+      {children}
+    </div>
   );
 }
 

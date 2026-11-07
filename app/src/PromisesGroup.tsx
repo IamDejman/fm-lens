@@ -18,7 +18,7 @@ function promiseDates({ made, due, closed }: PlayerPromise): string {
     .join(" · ");
 }
 
-/** The group, only there while he has a promise. Closing asks no question: it is logged, and undone from Changes. */
+/** The group, which says so when he has no promise. Closing asks no question: it is logged, and undone from Changes. */
 export function PromisesGroup({ uid, promises }: { uid: number; promises: PlayerPromise[] }) {
   const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
   const [closing, setClosing] = useState<number | null>(null);
@@ -46,10 +46,6 @@ export function PromisesGroup({ uid, promises }: { uid: number; promises: Player
     }
   }, [promises]);
 
-  if (promises.length === 0) {
-    return null;
-  }
-
   const close = async (index: number, promise: PlayerPromise) => {
     if (closing !== null) {
       return;
@@ -76,29 +72,33 @@ export function PromisesGroup({ uid, promises }: { uid: number; promises: Player
           {error}
         </p>
       )}
-      <ul ref={list} className="injury-list promise-list">
-        {promises.map((promise, index) => (
-          <li key={index} tabIndex={-1}>
-            <div>
-              <span className="injury-name">{profileText.promiseName(promise.id)}</span>
-              <span className="injury-dates">{promiseDates(promise)}</span>
-            </div>
-            {!promise.closed && (
-              <button
-                type="button"
-                className="heal-toggle"
-                disabled={!editable}
-                aria-disabled={closing === index || undefined}
-                aria-busy={closing === index || undefined}
-                title={editable ? profileText.closePromiseTitle : readOnlyNote}
-                onClick={() => void close(index, promise)}
-              >
-                {profileText.closePromise}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {promises.length === 0 ? (
+        <p className="injuries-none">{profileText.noPromises}</p>
+      ) : (
+        <ul ref={list} className="injury-list promise-list">
+          {promises.map((promise, index) => (
+            <li key={index} tabIndex={-1}>
+              <div>
+                <span className="injury-name">{profileText.promiseName(promise.id)}</span>
+                <span className="injury-dates">{promiseDates(promise)}</span>
+              </div>
+              {!promise.closed && (
+                <button
+                  type="button"
+                  className="heal-toggle"
+                  disabled={!editable}
+                  aria-disabled={closing === index || undefined}
+                  aria-busy={closing === index || undefined}
+                  title={editable ? profileText.closePromiseTitle : readOnlyNote}
+                  onClick={() => void close(index, promise)}
+                >
+                  {profileText.closePromise}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

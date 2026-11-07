@@ -10,7 +10,7 @@ import { toPounds, toShown } from "./currency";
 import { addReleaseClause, changeClause, removeClause } from "./editing";
 import { describeError, formatAmount, formatMoney, formatNumber } from "./format";
 import { clauseText as text, profileText } from "./labels";
-import { Fact } from "./ProfileParts";
+import { Fact, GroupHead } from "./ProfileParts";
 import type { Clause } from "./types";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
@@ -64,7 +64,7 @@ interface ClauseListProps {
   room: number;
 }
 
-/** The list in the profile, and the button that opens the dialog while the game can be written to. */
+/** The group in the profile, with the button on its heading that opens the dialog while the game can be written to. */
 export function ClauseList({ uid, name, clauses, room }: ClauseListProps) {
   const { editable, readOnlyNote } = useContext(EditorContext);
   const [open, setOpen] = useState(false);
@@ -80,9 +80,8 @@ export function ClauseList({ uid, name, clauses, room }: ClauseListProps) {
   }, [open]);
 
   return (
-    <div className="clauses">
-      <div className="injuries-head">
-        <h4>{profileText.clauses}</h4>
+    <section className="profile-group">
+      <GroupHead title={profileText.clauses}>
         <button
           ref={button}
           type="button"
@@ -94,7 +93,7 @@ export function ClauseList({ uid, name, clauses, room }: ClauseListProps) {
         >
           {text.change}
         </button>
-      </div>
+      </GroupHead>
       {clauses.length === 0 ? (
         <p className="note">{profileText.noClauses}</p>
       ) : (
@@ -107,7 +106,7 @@ export function ClauseList({ uid, name, clauses, room }: ClauseListProps) {
         </dl>
       )}
       {open && <ClauseDialog uid={uid} name={name} clauses={clauses} room={room} onClose={() => setOpen(false)} />}
-    </div>
+    </section>
   );
 }
 

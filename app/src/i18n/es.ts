@@ -812,6 +812,18 @@ export const es: Strings = {
 
     // Sobre los atributos, mientras se lee el perfil
     tools: "Herramientas",
+    tabsLabel: "Secciones del jugador",
+    tabs: { attributes: "Atributos", mood: "Moral", contract: "Contrato", medical: "Médico", career: "Trayectoria" },
+    statusLabel: "Estado",
+    injured: "Lesionado",
+    banned: "Sancionado",
+    concerns: (count: number) => (count === 1 ? "1 queja" : `${format(count)} quejas`),
+    contractTo: (date: string) => `Contrato hasta ${date}`,
+    moraleAndHappiness: "Moral y felicidad",
+    fitness: "Forma física",
+    international: "Internacional",
+    noPromises: "Sin promesas",
+    noContract: "Sin contrato",
     setAttributes: "Poner todos los atributos en",
     setAttributesButton: "Aplicar",
     setAttributesDone: (count, level) =>
