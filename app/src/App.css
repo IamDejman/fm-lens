@@ -1225,9 +1225,9 @@ input::placeholder {
   margin: 0;
 }
 
-/* After a player's attributes: Tools, which opens Set all attributes and the box that freezes them in a row, then what
-   the last write came to (in the box of a squad's, see Club squad) and what freezing does while it is on. */
-.attribute-buttons,
+/* Over a player's attributes: what Tools opens, Set all attributes and the box that freezes them in a row, then what the
+   last write came to (in the box of a squad's, see Club squad) and what freezing does while it is on. None of it takes
+   room while it is not there. */
 .attribute-tools {
   display: flex;
   flex-wrap: wrap;
@@ -1239,7 +1239,7 @@ input::placeholder {
   display: none;
 }
 
-.attribute-buttons .freeze-toggle {
+.attribute-tools .freeze-toggle {
   margin: 0;
 }
 
@@ -1274,8 +1274,16 @@ input::placeholder {
   outline-offset: 0;
 }
 
-.attribute-actions > :not(:first-child):not(:empty) {
-  margin: 8px 0 0;
+.profile-panel > .attribute-actions + * {
+  margin-top: 0;
+}
+
+.attribute-actions:has(> :not([hidden], :empty)) {
+  margin-bottom: 18px;
+}
+
+.attribute-actions > :not([hidden], :empty) ~ :not([hidden], :empty) {
+  margin-top: 8px;
 }
 
 .note.error {
@@ -2031,17 +2039,17 @@ input::placeholder {
 
 /* The head of a profile, as FM's: the name large, what he is under it, his abilities and the actions at the right. */
 .profile-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0 16px;
   padding: 14px 16px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--raised);
 }
 
 .profile-id {
-  flex: 1;
-  min-width: 0;
+  grid-column: 2;
 }
 
 .profile-id h2 {
@@ -2070,6 +2078,51 @@ input::placeholder {
   font-size: var(--type-base);
 }
 
+/* Across the whole header of a player, under his picture, names and ratings: his status, each chip a button to the tab
+   that has it, with a dot for how good the news is. */
+.status-chips {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 1px 10px;
+  border-color: var(--border);
+  border-radius: 999px;
+  background: var(--raised);
+  font-size: var(--type-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.status-chip[data-tone]::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+  content: "";
+}
+
+.status-chip[data-tone="good"] {
+  --tone: var(--tier-4);
+}
+
+.status-chip[data-tone="warn"] {
+  --tone: var(--tier-2);
+}
+
+.status-chip[data-tone="bad"] {
+  --tone: var(--danger);
+}
+
 .profile-vitals .vital {
   white-space: nowrap;
 }
@@ -2096,7 +2149,7 @@ input::placeholder {
 
 .profile-side {
   display: flex;
-  flex: none;
+  grid-column: 3;
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
@@ -2254,6 +2307,30 @@ input::placeholder {
   font-weight: 850;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+}
+
+/* A heading with the buttons for its group at its end, on the same divider. */
+.profile-group .group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 0 0 2px;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.profile-group .group-head h3 {
+  flex: 1 0 auto;
+  margin: 0;
+  padding-block: 3px;
+  border-bottom: 0;
+}
+
+.group-head button {
+  min-height: 24px;
+  padding: 1px 10px;
+  font-size: var(--type-sm);
 }
 
 /* Label and value rows: attributes, contract and career facts, reputation. */
@@ -2447,9 +2524,16 @@ input::placeholder {
   fill: var(--on-tier);
   font-size: 9px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   text-anchor: middle;
   dominant-baseline: central;
   pointer-events: none;
+}
+
+.pitch-pos {
+  font-size: 7.5px;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 .pos-natural {
@@ -2848,19 +2932,7 @@ h3 + .range-hint-line {
   margin-top: 4px;
 }
 
-/* The values of a player's Medical group side by side, not as rows across the whole panel. */
-.medical-values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 28px;
-}
-
-.medical-values .stat {
-  flex: none;
-  gap: 12px;
-}
-
-/* The position ratings under the pitch: as many cells to a row as fit, each value with the colour of its band. */
+/* The position ratings under the pitch while a player is edited: as many cells to a row as fit, each value with the colour of its band. */
 .position-ratings {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr));
@@ -4399,8 +4471,7 @@ button.danger:hover:not(:disabled) {
 
 /* Medical */
 
-/* The Medical group of a player's profile has its values side by side (see Editing); under them either no injuries,
-   which takes focus when the Heal button that had it is gone... */
+/* A group with nothing in it says so: no injuries, which takes focus when the Heal button that had it is gone... */
 .injuries-none {
   width: fit-content;
   margin: 8px 6px 0;
@@ -4409,25 +4480,12 @@ button.danger:hover:not(:disabled) {
 }
 
 .injuries-none:focus-visible,
-.injuries-head h4:focus-visible {
+.group-head h3:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 2px;
 }
 
-/* ...or the injuries: a heading with the Heal button at its end, then each injury with its dates in small print. */
-.injuries-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 12px;
-  padding-right: 6px;
-}
-
-.injuries-head h4 {
-  margin: 0;
-}
-
+/* ...or the injuries, each with its dates in small print. */
 .injury-list {
   margin: 6px 0 0;
   padding: 0 6px;
@@ -4457,8 +4515,7 @@ button.danger:hover:not(:disabled) {
   font-size: var(--type-sm);
 }
 
-/* Nationality and homegrown: each kind of tie a row of the group, its ties one under another, and the button that
-   opens the dialog at the group's foot. */
+/* Nationality and homegrown: each kind of tie a row of the group, its ties one under another. */
 .tie-list {
   margin: 0;
   padding: 0;
@@ -4467,13 +4524,6 @@ button.danger:hover:not(:disabled) {
 
 .tie-rule {
   color: var(--muted);
-}
-
-.ties-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-  padding-right: 6px;
 }
 
 /* The dialog: a row per tie, its nation and rule selects and Remove side by side, wrapping in a narrow window. */
@@ -4542,22 +4592,21 @@ button.danger:hover:not(:disabled) {
   font-size: var(--type-base);
 }
 
-/* ...and, for a player with none, the injuries the game can give him and the button that adds the one chosen. */
+/* For a player with no injury, on the heading: the injuries the game can give him and the button that adds the one
+   chosen. */
 .injury-add {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 8px 6px 0;
-}
-
-.injury-add select {
+  gap: 6px;
   min-width: 0;
-  max-width: 260px;
 }
 
-/* Grant or Revoke under a player's work permits. */
-.permit-action {
-  margin: 8px 6px 0;
+.group-head .injury-add select {
+  min-width: 0;
+  max-width: 200px;
+  min-height: 24px;
+  padding-block: 1px;
+  font-size: var(--type-sm);
 }
 
 /* Why Heal did not work, under the heading with the button. */
@@ -4574,9 +4623,29 @@ button.danger:hover:not(:disabled) {
 .profile-tabs {
   display: flex;
   flex: none;
-  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 8px;
   padding: 0 12px;
   border-bottom: 1px solid var(--border);
+}
+
+.profile-tablist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.profile-tabs .max-toggle {
+  min-height: 26px;
+  margin: 4px 0 4px auto;
+  padding: 2px 10px;
+}
+
+/* The tab on show in a player's profile: its groups one under another, like the body of a profile without tabs. */
+.profile-panel > * + * {
+  margin-top: 22px;
 }
 
 .profile-tab {

@@ -9,7 +9,7 @@ import { MassEditButton } from "./MassEditDialog";
 import { MoreMenu } from "./MoreMenu";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { countFilters, PlayerFilterBar, toPlayerFilter, type PlayerFilterFields } from "./PlayerFilters";
-import { PlayerProfile } from "./PlayerProfile";
+import { PlayerProfile, readPlayerTab, type PlayerTab } from "./PlayerProfile";
 import { PlayerTemplatesButton } from "./PlayerTemplates";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
@@ -36,6 +36,9 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
   const [order, setOrder] = useState<PlayerOrder | null>(() => restored("playerOrder", readOrder));
   useSnapshot("playerFields", () => fields);
   useSnapshot("playerOrder", () => order);
+  // The tab of the profile is kept here, so that the next player picked opens on the same one.
+  const [tab, setTab] = useState<PlayerTab>(() => restored("playerTab", readPlayerTab));
+  useSnapshot("playerTab", () => tab);
   // The players picked for a comparison. They are kept here, as the list is: every list stays mounted while another
   // view is shown (see `App`), so the set survives switching views.
   const comparison = useComparison();
@@ -131,7 +134,14 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
         </>
       )}
       profile={(p, panel) => (
-        <PlayerProfile player={p} version={panel.version} onClose={panel.onClose} comparison={comparison} />
+        <PlayerProfile
+          player={p}
+          version={panel.version}
+          tab={tab}
+          onTab={setTab}
+          onClose={panel.onClose}
+          comparison={comparison}
+        />
       )}
     />
   );

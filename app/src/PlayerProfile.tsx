@@ -1,13 +1,13 @@
-import { useContext, useEffect, useState } from "react";
-import { AttributeActions } from "./AttributeActions";
+import { useContext, useEffect, useId, useRef, useState } from "react";
+import { AttributeActions, ToolsToggle } from "./AttributeActions";
 import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
-import { keepPlaying, setWorkPermit } from "./editing";
+import { keepPlaying, setWorkPermit, wholePercent } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
-import { ATTRIBUTE_LABELS, editText, profileText, type AttributeKey } from "./labels";
-import { MedicalGroup } from "./MedicalGroup";
+import { ATTRIBUTE_LABELS, editText, fieldLabel, profileText, type AttributeKey } from "./labels";
+import { MedicalGroups, percentText } from "./MedicalGroup";
 import { PromisesGroup } from "./PromisesGroup";
 import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -21,9 +21,12 @@ import {
   Born,
   ContractDates,
   Fact,
+  focusLost,
+  GroupHead,
   LOWER_IS_BETTER,
   personalityRows,
   ProfileFrame,
+  ProfileTabs,
   RatingGroup,
   ReputationBars,
   useProfileDetails,
@@ -39,26 +42,40 @@ import type {
   LoanTerms,
   PlayerDetails,
   PlayerSummary,
-  WorkPermit,
 } from "./types";
 import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
+
+/** The tabs of a player's profile, in their order. */
+const TABS = ["attributes", "mood", "contract", "medical", "career"] as const;
+
+export type PlayerTab = (typeof TABS)[number];
+
+/** The tab kept from the last session, or Attributes. */
+export const readPlayerTab = (value: unknown): PlayerTab => TABS.find((tab) => tab === value) ?? "attributes";
 
 interface PlayerProfileProps {
   /** The row that was picked; its fields fill the header while the full profile loads. */
   player: PlayerSummary;
   /** Changes when the game data is read again, so the profile is too. */
   version: number;
+  /** The tab on show; kept by the list, so the next player picked opens on it too. */
+  tab: PlayerTab;
+  onTab: (tab: PlayerTab) => void;
   onClose: () => void;
   /** The players picked for a comparison: the header has the button that adds this player to it, or takes them out. */
   comparison: Comparison;
 }
 
 /** The profile of one player. Mount it with `key={uid}` so a new player starts at the top. */
-export function PlayerProfile({ player, version, onClose, comparison }: PlayerProfileProps) {
+export function PlayerProfile({ player, version, tab, onTab, onClose, comparison }: PlayerProfileProps) {
   const loaded = useProfileDetails<PlayerDetails>("player_details", player.uid, version);
   const editing = useProfileEditing("player", player.uid);
   const { gameActions } = useContext(EditorContext);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const base = useId();
+  const tools = useId();
+  const panel = useRef<HTMLDivElement>(null);
   const details = loaded?.details;
   const info = details ?? player;
   // A move FM agreed for him on a later day: its dialog shows the first one, and cancels all of them, as FM's editor.
@@ -70,6 +87,12 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
     details && details.heightCm > 0 && <Height cm={details.heightCm} />,
     `${profileText.uid} ${info.uid}`,
   ];
+
+  // Another tab starts at its top, wherever the last one was scrolled to.
+  const select = (next: PlayerTab) => {
+    onTab(next);
+    panel.current?.closest(".profile-body")?.scrollTo({ top: 0 });
+  };
 
   return (
     <ProfileFrame
@@ -98,6 +121,7 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
         </>
       }
       vitals={vitals}
+      status={details && <StatusChips details={details} onTab={select} />}
       currentAbility={info.currentAbility}
       potentialAbility={info.potentialAbility}
       loaded={loaded}
@@ -140,17 +164,112 @@ export function PlayerProfile({ player, version, onClose, comparison }: PlayerPr
           </div>
         )
       }
+      tabs={
+        details && (
+          <ProfileTabs
+            tabs={TABS}
+            tab={tab}
+            base={base}
+            label={profileText.tabsLabel}
+            names={profileText.tabs}
+            onSelect={select}
+            end={
+              tab === "attributes" &&
+              editing.stage === "view" && (
+                <ToolsToggle open={toolsOpen} controls={tools} onToggle={() => setToolsOpen((was) => !was)} />
+              )
+            }
+          />
+        )
+      }
     >
-      {details && <ProfileBody details={details} />}
+      {details && (
+        <div
+          ref={panel}
+          className="profile-panel"
+          role="tabpanel"
+          id={`${base}-panel`}
+          aria-labelledby={`${base}-${tab}`}
+        >
+          {tab === "attributes" && <AttributesTab details={details} toolsOpen={toolsOpen} tools={tools} />}
+          {tab === "mood" && <MoodTab details={details} />}
+          {tab === "contract" && <ContractTab details={details} />}
+          {tab === "medical" && <MedicalGroups details={details} />}
+          {tab === "career" && <CareerTab details={details} />}
+        </div>
+      )}
     </ProfileFrame>
   );
 }
 
-function ProfileBody({ details }: { details: PlayerDetails }) {
-  const person = { uid: details.uid, staff: false, name: details.name };
+/** A tone for a chip: how good the news is. */
+type Tone = "good" | "warn" | "bad" | undefined;
+
+/** Morale out of 20: very low or low are bad news, very high good. */
+const moraleTone = (morale: number): Tone =>
+  morale <= 5 ? "bad" : morale <= 9 ? "warn" : morale >= 15 ? "good" : undefined;
+
+/**
+ * Under the header: whether he is injured (or else his energy), banned, his morale, what makes him unhappy and when
+ * his contract ends. Each opens the tab that has it.
+ */
+function StatusChips({ details, onTab }: { details: PlayerDetails; onTab: (tab: PlayerTab) => void }) {
+  const concerns = details.contract?.concerns.filter((concern) => concern.ended === null).length ?? 0;
+  const expires = details.contract?.expires;
+  const chips: { key: string; text: string; tone: Tone; tab: PlayerTab }[] = [
+    details.injuries.length > 0
+      ? { key: "injured", text: profileText.injured, tone: "bad", tab: "medical" }
+      : {
+          key: "energy",
+          text: `${fieldLabel("player", "condition")} ${percentText(details.condition)}`,
+          tone: wholePercent(details.condition) >= 90 ? "good" : "warn",
+          tab: "medical",
+        },
+  ];
+  if (details.bans.length > 0) {
+    chips.push({ key: "banned", text: profileText.banned, tone: "bad", tab: "medical" });
+  }
+  chips.push({
+    key: "morale",
+    text: `${fieldLabel("player", "morale")} ${profileText.morale(details.morale)}`,
+    tone: moraleTone(details.morale),
+    tab: "mood",
+  });
+  if (concerns > 0) {
+    chips.push({ key: "concerns", text: profileText.concerns(concerns), tone: "bad", tab: "mood" });
+  }
+  if (expires) {
+    chips.push({
+      key: "contract",
+      text: profileText.contractTo(formatDate(expires)),
+      tone: undefined,
+      tab: "contract",
+    });
+  }
+  return (
+    <ul className="status-chips" aria-label={profileText.statusLabel}>
+      {chips.map((chip) => (
+        <li key={chip.key}>
+          <button type="button" className="status-chip" data-tone={chip.tone} onClick={() => onTab(chip.tab)}>
+            {chip.text}
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * His attributes, with Set all and Freeze above them while Tools is open, the positions he plays with their ratings on
+ * the pitch (inputs under it while he is edited) and his traits.
+ */
+function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; toolsOpen: boolean; tools: string }) {
   const goalkeeper = isGoalkeeper(details);
+  const editingPositions = useEditableField("position.gk");
   return (
     <>
+      <AttributeActions uid={details.uid} open={toolsOpen} panel={tools} />
+
       {/* Attributes, personality and position ratings all take 1 to 20: one hint says it for all of them. */}
       <SharedRangeHint field="attribute.determination" />
 
@@ -178,23 +297,81 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
         </div>
       </div>
 
-      <AttributeActions uid={details.uid} />
-
-      <PositionRatings ratings={details.positionRatings} />
-
-      <MedicalGroup details={details} />
+      {editingPositions && <PositionRatings ratings={details.positionRatings} />}
 
       <TraitsGroup traits={details.traits} />
+    </>
+  );
+}
 
-      {details.contract && <ContractGroup details={details} contract={details.contract} />}
+/** His morale and happiness, what makes him unhappy, the promises made to him, and whom and what he likes. */
+function MoodTab({ details }: { details: PlayerDetails }) {
+  const { contract } = details;
+  return (
+    <>
+      <section className="profile-group">
+        <h3>{profileText.moraleAndHappiness}</h3>
+        <dl className="stats">
+          <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
+            <EditableValue field="morale">{profileText.morale(details.morale)}</EditableValue>
+          </Fact>
+          {contract && (
+            <>
+              <Fact label={profileText.happiness} title={profileText.moodTitle}>
+                <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
+              </Fact>
+              <Fact label={profileText.playingTimeHappiness} title={profileText.moodTitle}>
+                <EditableValue field="contract.playing_time_happiness">
+                  {formatNumber(contract.playingTimeHappiness)}
+                </EditableValue>
+              </Fact>
+            </>
+          )}
+        </dl>
+      </section>
+      {contract && <ConcernList uid={details.uid} concerns={contract.concerns} />}
+      <PromisesGroup uid={details.uid} promises={details.promises} />
+      <PreferencesGroup
+        preferences={details.preferences}
+        person={{ uid: details.uid, staff: false, name: details.name }}
+      />
+    </>
+  );
+}
+
+/** His contract and its clauses, his asking price, any loan or agreed move, and his work permits. */
+function ContractTab({ details }: { details: PlayerDetails }) {
+  const { contract } = details;
+  return (
+    <>
+      {contract ? (
+        <ContractGroup details={details} contract={contract} />
+      ) : (
+        <section className="profile-group">
+          <h3>{profileText.contract}</h3>
+          <p className="note">{profileText.noContract}</p>
+          <dl className="stats">
+            <AskingPrice price={details.askingPrice} />
+          </dl>
+        </section>
+      )}
+      {contract && (
+        <ClauseList uid={details.uid} name={details.name} clauses={contract.clauses} room={details.clauseRoom} />
+      )}
       {details.loan && <LoanGroup loan={details.loan} />}
       {details.futureTransfers.length > 0 && <FutureTransferGroup transfers={details.futureTransfers} />}
       <WorkPermitGroup details={details} />
-      <CareerGroup details={details} />
-      <PromisesGroup uid={details.uid} promises={details.promises} />
+    </>
+  );
+}
+
+/** His international record, reputation and retirement; his nationality and homegrown status, and his languages. */
+function CareerTab({ details }: { details: PlayerDetails }) {
+  return (
+    <>
+      <CareerGroups details={details} />
       <TiesGroup details={details} />
-      <LanguagesGroup languages={details.languages} person={person} />
-      <PreferencesGroup preferences={details.preferences} person={person} />
+      <LanguagesGroup languages={details.languages} person={{ uid: details.uid, staff: false, name: details.name }} />
     </>
   );
 }
@@ -219,11 +396,10 @@ function attributeRows(details: PlayerDetails, keys: readonly AttributeKey[]): R
 }
 
 /**
- * The wage, squad status and number, whether he is on the transfer and the loan list, and the dates. While he is
- * edited each value is an input where it is shown, a list a checkbox.
+ * The wage, squad status and number, whether he is on the transfer and the loan list, his asking price, and the dates.
+ * While he is edited each value is an input where it is shown, a list a checkbox.
  */
 function ContractGroup({ details, contract }: { details: PlayerDetails; contract: Contract }) {
-  const uid = details.uid;
   const yesNo = (on: boolean) => (on ? editText.yes : editText.no);
   return (
     <section className="profile-group">
@@ -253,21 +429,21 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
             <Fact label={profileText.loyaltyBonus}>
               <EditableValue field="contract.loyalty_bonus">{formatMoney(contract.loyaltyBonus)}</EditableValue>
             </Fact>
-            <Fact label={profileText.happiness} title={profileText.moodTitle}>
-              <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
-            </Fact>
-            <Fact label={profileText.playingTimeHappiness} title={profileText.moodTitle}>
-              <EditableValue field="contract.playing_time_happiness">
-                {formatNumber(contract.playingTimeHappiness)}
-              </EditableValue>
-            </Fact>
+            <AskingPrice price={details.askingPrice} />
           </dl>
         </div>
         <ContractDates contract={contract} />
       </div>
-      <ClauseList uid={uid} name={details.name} clauses={contract.clauses} room={details.clauseRoom} />
-      <ConcernList uid={uid} concerns={contract.concerns} />
     </section>
+  );
+}
+
+/** What his club asks for him; an input while he is edited. */
+function AskingPrice({ price }: { price: number | null }) {
+  return (
+    <Fact label={profileText.askingPrice}>
+      <EditableValue field="asking_price">{price === null ? profileText.notSet : formatMoney(price)}</EditableValue>
+    </Fact>
   );
 }
 
@@ -320,20 +496,66 @@ function FutureTransferGroup({ transfers }: { transfers: FutureTransfer[] }) {
 
 /**
  * His work permits: for each nation, an active work permit or an ESC slot from a day. Where the game gives them itself
- * on this build, a player at a club has the button that has it give him one for his club's country, or take his away;
- * then the group is there even while he holds none.
+ * on this build, a player at a club has the button on the heading that has it give him one for his club's country
+ * (Grant), or take his away (Revoke); then the group is there even while he holds none. Logged like any change, and
+ * undone from Changes.
  */
 function WorkPermitGroup({ details }: { details: PlayerDetails }) {
-  const { gameActions } = useContext(EditorContext);
+  const { gameActions, editable, readOnlyNote, onEdited } = useContext(EditorContext);
   const permits = details.workPermits;
+  const granted = permits.length > 0;
   const changeable = gameActions.workPermit && details.club !== null;
-  if (permits.length === 0 && !changeable) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // The button stays busy until the profile has read the game again, which gives new permits.
+  useEffect(() => {
+    setBusy(false);
+  }, [permits]);
+
+  if (!granted && !changeable) {
     return null;
   }
+
+  const toggle = async () => {
+    // While it is under way the button is only dimmed (aria-disabled), not disabled: a disabled button loses focus.
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await setWorkPermit(details.uid, !granted);
+      onEdited();
+    } catch (e) {
+      setError(describeError(e));
+      setBusy(false);
+    }
+  };
+
   return (
     <section className="profile-group">
-      <h3>{profileText.workPermit}</h3>
-      {permits.length > 0 ? (
+      <GroupHead title={profileText.workPermit}>
+        {changeable && (
+          <button
+            type="button"
+            className="heal-toggle"
+            disabled={!editable}
+            aria-disabled={busy || undefined}
+            aria-busy={busy || undefined}
+            title={editable ? undefined : readOnlyNote}
+            onClick={() => void toggle()}
+          >
+            {granted ? profileText.revokePermit : profileText.grantPermit}
+          </button>
+        )}
+      </GroupHead>
+      {error !== null && (
+        <p className="heal-error" role="alert">
+          {error}
+        </p>
+      )}
+      {granted ? (
         <dl className="stats">
           {permits.map((permit, index) => (
             <Fact key={permit.nationUid ?? index} label={permit.nation ?? profileText.none}>
@@ -346,60 +568,7 @@ function WorkPermitGroup({ details }: { details: PlayerDetails }) {
       ) : (
         <p className="injuries-none">{profileText.permitNone}</p>
       )}
-      {changeable && <PermitToggle uid={details.uid} permits={permits} />}
     </section>
-  );
-}
-
-/** Grant while he holds no permit, Revoke while he holds one; logged like any change, and undone from Changes. */
-function PermitToggle({ uid, permits }: { uid: number; permits: readonly WorkPermit[] }) {
-  const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
-  const granted = permits.length > 0;
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // The button stays busy until the profile has read the game again, which gives new permits.
-  useEffect(() => {
-    setBusy(false);
-  }, [permits]);
-
-  const toggle = async () => {
-    // While it is under way the button is only dimmed (aria-disabled), not disabled: a disabled button loses focus.
-    if (busy) {
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      await setWorkPermit(uid, !granted);
-      onEdited();
-    } catch (e) {
-      setError(describeError(e));
-      setBusy(false);
-    }
-  };
-
-  return (
-    <>
-      <div className="permit-action">
-        <button
-          type="button"
-          className="heal-toggle"
-          disabled={!editable}
-          aria-disabled={busy || undefined}
-          aria-busy={busy || undefined}
-          title={editable ? undefined : readOnlyNote}
-          onClick={() => void toggle()}
-        >
-          {granted ? profileText.revokePermit : profileText.grantPermit}
-        </button>
-      </div>
-      {error !== null && (
-        <p className="heal-error" role="alert">
-          {error}
-        </p>
-      )}
-    </>
   );
 }
 
@@ -440,9 +609,8 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
   };
 
   return (
-    <div className="clauses">
-      <div className="injuries-head">
-        <h4>{profileText.unhappiness}</h4>
+    <section className="profile-group">
+      <GroupHead title={profileText.unhappiness}>
         <button
           type="button"
           className="heal-toggle"
@@ -453,7 +621,7 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
         >
           {removing ? profileText.removingUnhappiness : profileText.removeUnhappiness}
         </button>
-      </div>
+      </GroupHead>
       {lasting.length === 0 ? (
         <p className="note">{profileText.noUnhappiness}</p>
       ) : (
@@ -468,7 +636,7 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
         </dl>
       )}
       {error && <p className="banner" role="alert">{error}</p>}
-    </div>
+    </section>
   );
 }
 
@@ -504,13 +672,13 @@ function TraitsGroup({ traits }: { traits: number[] }) {
   );
 }
 
-/** International record, reputation and asking price, and the retirement the game plans for the player. */
-function CareerGroup({ details }: { details: PlayerDetails }) {
-  const { international, reputation, askingPrice } = details;
+/** His international record and reputation, and the retirement the game plans for him. */
+function CareerGroups({ details }: { details: PlayerDetails }) {
+  const { international, reputation } = details;
   return (
-    <section className="profile-group">
-      <h3>{profileText.career}</h3>
-      <div className="profile-split">
+    <>
+      <section className="profile-group">
+        <h3>{profileText.international}</h3>
         <dl className="stats">
           <Fact label={profileText.internationalCaps}>
             <EditableValue field="international.caps">{international.caps}</EditableValue>
@@ -524,19 +692,14 @@ function CareerGroup({ details }: { details: PlayerDetails }) {
           <Fact label={profileText.u21Goals}>
             <EditableValue field="international.u21_goals">{international.u21Goals}</EditableValue>
           </Fact>
-          <Fact label={profileText.askingPrice}>
-            <EditableValue field="asking_price">
-              {askingPrice === null ? profileText.notSet : formatMoney(askingPrice)}
-            </EditableValue>
-          </Fact>
         </dl>
-        <div>
-          <h4>{profileText.reputation}</h4>
-          <ReputationBars reputation={reputation} />
-        </div>
-      </div>
+      </section>
+      <section className="profile-group">
+        <h3>{profileText.reputation}</h3>
+        <ReputationBars reputation={reputation} />
+      </section>
       {details.retirementKnown && <RetirementPlan uid={details.uid} retires={details.retires} />}
-    </section>
+    </>
   );
 }
 
@@ -548,11 +711,22 @@ function RetirementPlan({ uid, retires }: { uid: number; retires: FmDate | null 
   const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
   const [keeping, setKeeping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const planned = retires !== null;
+  const none = useRef<HTMLParagraphElement>(null);
+  const wasPlanned = useRef(planned);
 
   // The button stays busy until the profile has read the game again.
   useEffect(() => {
     setKeeping(false);
   }, [retires]);
+
+  // Keeping him playing dims the button, which had focus: it goes to the line that says so.
+  useEffect(() => {
+    if (wasPlanned.current && !planned && focusLost()) {
+      none.current?.focus();
+    }
+    wasPlanned.current = planned;
+  }, [planned]);
 
   const keep = async () => {
     if (keeping) {
@@ -570,31 +744,30 @@ function RetirementPlan({ uid, retires }: { uid: number; retires: FmDate | null 
   };
 
   return (
-    <div className="clauses">
-      <div className="injuries-head">
-        <h4>{profileText.retirement}</h4>
-        {retires !== null && (
-          <button
-            type="button"
-            className="heal-toggle"
-            disabled={!editable}
-            aria-disabled={keeping || undefined}
-            aria-busy={keeping || undefined}
-            title={editable ? profileText.keepPlayingTitle : readOnlyNote}
-            onClick={() => void keep()}
-          >
-            {keeping ? profileText.keepingPlaying : profileText.keepPlaying}
-          </button>
-        )}
-      </div>
+    <section className="profile-group">
+      <GroupHead title={profileText.retirement}>
+        <button
+          type="button"
+          className="heal-toggle"
+          disabled={!editable || !planned}
+          aria-disabled={keeping || undefined}
+          aria-busy={keeping || undefined}
+          title={editable ? profileText.keepPlayingTitle : readOnlyNote}
+          onClick={() => void keep()}
+        >
+          {keeping ? profileText.keepingPlaying : profileText.keepPlaying}
+        </button>
+      </GroupHead>
       {retires === null ? (
-        <p className="note">{profileText.noRetirement}</p>
+        <p ref={none} tabIndex={-1} className="injuries-none">
+          {profileText.noRetirement}
+        </p>
       ) : (
         <dl className="stats">
           <Fact label={profileText.retires}>{formatDate(retires)}</Fact>
         </dl>
       )}
       {error && <p className="banner" role="alert">{error}</p>}
-    </div>
+    </section>
   );
 }
