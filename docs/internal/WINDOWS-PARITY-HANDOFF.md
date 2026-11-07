@@ -44,67 +44,58 @@ Remove unhappiness, Lift bans (nobody to use them on in the test save), and a sa
 
 ## 3. What Windows still lacks next to macOS
 
-In the order worth doing. Each item says where the Mac version lives and what done looks like.
+Status after the "Ship FM Lens for Windows" PR. Each item says what was done, or why it is left.
 
 ### 3.1 Ship it: a Windows download and updates
 
-1. **Build an installer.** `npm run release` uses `--no-bundle`, so Windows gets a bare exe. Add a Windows release
-   script (the counterpart of `scripts/release-mac.sh`) that builds the NSIS installer with the bridge DLL embedded,
-   on Windows: the Windows runner in CI or the test box.
-2. **Updater artifacts.** `createUpdaterArtifacts` is on only in `tauri.bridge.conf.json` (the Mac release config).
-   The Windows build needs signed updater files, and `latest.json` needs a `windows-x86_64` entry next to the
-   macOS ones. Sign with the same updater key (`docs/DEVELOPING.md`, "Releasing"), or no installed copy accepts the
-   update.
-3. **Updates inside the app.** `can_self_update` (`app/src-tauri/src/lib.rs`, around line 2160) is macOS-only, and
-   `app/src/update.ts` only knows the `.dmg`. On Windows the NSIS installer quits the app as it installs, so install
-   only when the user presses Relaunch, not in the background as on macOS.
-4. **Check for Updates.** On macOS it sits in the app menu (`app/src/appMenu.ts`, called from `App.tsx`). Windows
-   has no app menu: put it in Settings, About.
-5. **Code signing.** The Mac app is signed ad hoc, not notarized, so an unsigned Windows installer with clear
-   SmartScreen guidance ("More info", "Run anyway") is the like-for-like choice. Buying an Authenticode certificate is
-   the user's decision; ask, do not buy.
-6. **Release repo and site.** `IamDejman/fm-lens-releases` describes itself as a macOS companion. `site/release.js`
-   finds only the `.dmg`; `site/index.html`, `site/download` and `README.md` ("There is no Windows version") are
-   Mac-only. Update them in the same release that first ships the Windows download, not before.
-
-Done when: a tagged release carries the Windows installer and `latest.json` entry, a Windows copy of the previous
-version updates itself to it, and the site offers it.
+1. **Installer: done.** `npm run release:windows` builds the NSIS installer (current user, no administrator) with
+   the bridge DLL embedded. The `windows-checks` job in `.github/workflows/validate.yml` builds it on every run and
+   keeps it as the `fm-lens-windows-installer` artifact for 30 days.
+2. **Updater files: done.** `scripts/release.sh` (was `release-mac.sh`) takes the installer from the passing Validate
+   run of the commit it releases, signs it on the Mac with the same updater key (`tauri signer sign`; the key never
+   goes to GitHub) and adds `windows-x86_64` to `latest.json`.
+3. **Updates inside the app: done.** `can_self_update` is true on Windows when `uninstall.exe` sits beside the exe,
+   so only an installed copy updates itself. `app/src/update.ts` downloads in the background and runs the installer
+   only on Relaunch, as the installer closes the app.
+4. **Check for Updates: done.** Settings, About, on Windows only (macOS keeps it in the app menu).
+5. **Code signing: unsigned, with SmartScreen guidance** ("More info", "Run anyway"), like the ad hoc Mac app.
+   Buying an Authenticode certificate is the user's decision.
+6. **Release repo and site:** changed in the release that first ships the Windows download (see section 1).
 
 ### 3.2 Features that read nothing on Windows
 
-1. **Promises.** `profiles/fm27/layout.toml` has no `[promise]` section (the Mac one is in `layout-macos.toml`,
-   around line 346), so `Session::promises` returns none and the profile says "No promises" even when there are some.
-   Trace the Windows offsets on a save with an open promise. Until then show that promises are not available on
-   this platform instead of an empty list (`app/src/` PromisesGroup).
-2. **Refreshing an official.** `crates/fmlens-core/src/refresh.rs` (around line 102) returns false for officials on
-   Windows: MSVC vtables keep no offset to the identity block, and it has not been traced for officials as it was for
-   players and staff (`identity` in the layout).
+1. **Promises: left, shown as not available.** The Windows layout has no `[promise]` section, so `promises` is now
+   `null` there and the profile says "Not available on Windows yet" instead of "No promises". To close it, trace the
+   offsets on a save with an open promise and add `[promise]` to `profiles/fm27/layout.toml`; the app needs no change.
+2. **Refreshing an official: left.** `refresh.rs` still returns false for officials on Windows, as MSVC vtables keep
+   no offset to the identity block and it has not been traced for officials. Edits to officials still apply; FM's
+   open screens only show them once FM redraws. Tracing needs the running game on the test box.
 
-### 3.3 Small app gaps
+### 3.3 Small app gaps: done
 
-1. **System version.** `system_version` in `lib.rs` labels x86_64 as "Intel", so a Windows report reads "windows,
-   Intel". The report field is also named `macos` in `relay/index.js`, `app/src/report.ts` and
-   `.github/ISSUE_TEMPLATE/bug_report.yml`. Rename it to `system` across all three, keeping the relay accepting the
-   old name for older copies.
-2. **Old bridge DLLs.** The app writes its embedded bridge DLL to its data folder (`app/src-tauri/src/bridge.rs`,
-   around line 155) and never removes older versions.
-3. **Export to a blocked folder.** macOS explains a folder it may not write to; Windows (Controlled Folder Access)
-   gets the raw error (`lib.rs`, the export command, and the `export` strings in `app/src/i18n/en.ts`).
+1. **System version.** Reports read, for example, "Windows 11 Pro 24H2 (26100), x64" (`windows_version` in `lib.rs`,
+   from the registry). The relay and issue form label the field System. The field keeps its wire name `macos`, so
+   copies of every version and the deployed relay keep working in any order; renaming it would need both deployed
+   together for no gain to anyone. The relay's new label shows once `relay/deploy.sh` runs (live AWS, ask first).
+2. **Old bridge DLLs.** The app removes older `fmlens_bridge-*` files when it writes its own (`bridge.rs`, `tidy`).
+3. **Export to a blocked folder.** Windows explains Controlled Folder Access and how to allow FM Lens
+   (`export.blocked`).
 
 ### 3.4 Checks and build
 
-1. **CI.** `.github/workflows/validate.yml` runs on `macos-latest` only. Add a `windows-latest` job with the same
-   fmt, clippy and test steps and a release build of the app with the bridge.
-2. **Pinned profile tests.** `crates/fmlens-core/src/profile.rs` pins the Mac profiles' fingerprints and statics in
-   tests; add the same for `steam-26340721.toml` on Windows.
-3. **Development build.** There is no `tauri.windows.conf.json`, so `npm run tauri dev` on Windows runs without the
-   bridge DLL. `scripts/check-build.sh` assumes a Mac module UUID and no `.exe`; `scripts/scout` is zsh only.
-4. **Game Pass.** The Game Pass profile is minimal and untested.
+1. **CI: done.** `windows-checks` runs clippy, the workspace tests, the memory guard tests, the app's clippy and the
+   installer build. fmt and the relay tests stay on the Mac job: they do not depend on the platform.
+2. **Pinned profile test: done.** `steam_27_0_0_on_windows_finds_what_was_traced` in `profile.rs`.
+3. **Development build: done.** `tauri.windows.conf.json` builds the bridge before `npm run tauri dev`.
+   `scripts/check-build.sh` and `scripts/scout` stay Mac tools: they inspect the Mac game build and Mac app bundle,
+   and the Windows equivalents are `fmlens-probe health` and the profile test above.
+4. **Game Pass: left.** The test box has only the Steam copy, so nothing can be traced or tested. The Game Pass
+   profile stays minimal and untested.
 
-### 3.5 Docs
+### 3.5 Docs: done
 
-`docs/DEVELOPING.md` ("Releasing") says releases are macOS-only and mentions a notarize workflow that does not exist.
-`AGENTS.md` describes a Mac-only product in its scope, evidence and build sections. Update both with 3.1.
+`docs/DEVELOPING.md` covers the Windows installer, `scripts/release.sh` and Windows updates. `AGENTS.md` names the
+Windows bridge and CI job; its scope says Windows is shipped once the release is out.
 
 ## 4. How to work
 

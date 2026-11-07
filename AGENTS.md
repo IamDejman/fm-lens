@@ -78,7 +78,8 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - app/src-tauri/: Tauri commands, connections and desktop packaging.
 - crates/fmlens-mem/: process access and the final memory-write guard.
 - crates/fmlens-core/: FM decoding, layouts, validation and domain operations.
-- crates/fmlens-bridge/: macOS bridge library and Steam launcher.
+- crates/fmlens-bridge/: the bridge that runs the game's own functions: a macOS
+  library with its Steam launcher, and a Windows DLL the app embeds.
 - crates/fmlens-probe/: diagnostics; upstream mutation commands remain present
   but this build refuses game-memory writes.
 - profiles/fm27/: platform/build fingerprints and layouts.
@@ -225,6 +226,10 @@ the probe and therefore exercise the read-only memory feature. Run the separate
 no-default-features memory test and app Clippy check above, then build the desktop
 app separately through Tauri; do not package a workspace-unified read-only binary
 and call its editing path tested. Keep $HOME/.cargo/bin on PATH for Tauri too.
+
+CI (.github/workflows/validate.yml) runs these checks on macOS and, apart from
+fmt and the relay tests, on Windows, where it also builds the installer that
+scripts/release.sh publishes. A Windows change needs that job to pass.
 
 The Apple Silicon bundle is target/debug/bundle/macos/FM Lens.app. It is locally
 built and signed ad hoc, not a notarized public release. UI changes need a

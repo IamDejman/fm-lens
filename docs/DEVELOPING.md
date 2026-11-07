@@ -127,13 +127,22 @@ Visual Studio Build Tools with the C++ workload, and Node.js 20+ for the app.
 
 ```powershell
 cargo build --release -p fmlens-probe
-cd app; npm install; npm run tauri dev     # run the desktop app
+cd app; npm install; npm run tauri dev     # run the desktop app, with the bridge
 npm run release                            # build target\release\FM Lens.exe
+npm run release:windows                    # build the installer people download
 ```
 
 `npm run release` builds the bridge, then a stand-alone `FM Lens.exe` with the bridge
-inside, without an installer. It needs the WebView2 runtime, which Windows 10 and 11
-already have. To embed a bridge built elsewhere, set `FMLENS_BRIDGE_DLL` to its path.
+inside, without an installer. `npm run release:windows` builds the same app into
+`target\release\bundle\nsis\FM Lens_<version>_x64-setup.exe`, an installer for the
+current user that needs no administrator. Both need the WebView2 runtime, which Windows 10
+and 11 already have; the installer fetches it where it is missing. To embed a bridge built
+elsewhere, set `FMLENS_BRIDGE_DLL` to its path. `tauri.windows.conf.json` builds the bridge
+before `npm run tauri dev`, so the game's own actions work in development too.
+
+The installer is not signed with a code-signing certificate, as the Mac app is not
+notarized. Windows SmartScreen stops the first run of a downloaded copy until the user
+chooses **More info**, then **Run anyway**.
 
 On macOS: Xcode's command line tools, Rust stable with the Intel target as well
 (`rustup target add x86_64-apple-darwin`, for the bridge to load in Intel builds of the
@@ -171,21 +180,29 @@ macOS); `FMLENS_EXPORTS` names another folder. The columns and the JSON keys are
 
 ### Releasing
 
-FM Lens is released for macOS only, from a Mac, to the public repository
+FM Lens is released for macOS and Windows, from a Mac, to the public repository
 [IamDejman/fm-lens-releases](https://github.com/IamDejman/fm-lens-releases).
 
-1. **Bump the version** in three places, and commit the bump:
-   - `version` in the root `Cargo.toml` (`[workspace.package]`);
-   - `app/package.json`;
+1. **Bump the version** in these places, and commit the bump:
+   - `version` in the root `Cargo.toml` (`[workspace.package]`), and `Cargo.lock`;
+   - `app/package.json` and `app/package-lock.json`;
    - `app/src-tauri/tauri.conf.json`.
 2. **Write what is new** in `docs/release-notes.md`, its only section, and in short under
    `update.changes` in `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update
    themselves show that list once, after they relaunch as the new version.
-3. **Build and publish:** `scripts/release-mac.sh --publish`. It builds the universal app
-   with the bridge, signs the update with the updater key, and publishes the latest release
-   with `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download,
-   `FM-Lens-<version>-macos-universal.app.tar.gz` to update from, and `latest.json`.
-   Without `--publish` it only writes these files to `target/release-mac/<version>/`.
+3. **Merge to `main`** and wait for its Validate run: its Windows job builds the installer
+   (the `fm-lens-windows-installer` artifact).
+4. **Build and publish** from a clean checkout of `origin/main`:
+   `scripts/release.sh --publish`. It downloads that run's Windows installer, builds the
+   universal Mac app with the bridge, signs both updates with the updater key, tags the
+   commit `v<version>` and publishes the latest release with:
+   - `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download on a Mac, and
+     `FM-Lens-<version>-macos-universal.app.tar.gz` to update from;
+   - `FM-Lens-<version>-windows-x64-setup.exe` to download on Windows and to update from;
+   - `latest.json`, with `darwin-aarch64`, `darwin-x86_64` and `windows-x86_64`.
+
+   Without `--publish` it only writes these files to `target/release-files/<version>/`,
+   from any commit with a passing Validate run.
 
    The disk image opens on a window with the app, an arrow and Applications. dmgbuild
    (fetched with `pipx`) lays it out from `scripts/dmg/settings.py`, on the background
@@ -209,20 +226,23 @@ opens. At startup an app run from its bundle puts its bridge and launcher in pla
 of the installed ones where they differ (`bridge_setup::refresh`), so the game loads the new
 bridge the next time it starts.
 
-A macOS app that macOS runs from where it was downloaded (App Translocation) and development
+On Windows the app downloads the new installer in the background and checks its signature
+the same way, but runs it only when the user presses **Relaunch to update**: the installer
+closes the app, installs without questions (`/P`, for the current user, so no administrator)
+and starts the new version. Windows has no app menu, so **Check for Updates** sits in
+Settings, About.
+
+A macOS app that macOS runs from where it was downloaded (App Translocation), a Windows
+`FM Lens.exe` run outside its installed folder (no `uninstall.exe` beside it) and development
 builds cannot replace themselves (`can_self_update`): their notice names the new version and
 opens its release page. A debug build shows DEBUG beside its version at the foot of the window
 (`debug_build`), so it is never taken for the installed app. Offline, or before the first release, the check fails quietly and
 the app works as before. Versions up to 0.5.0 have no updater: install the next one by hand.
 
-The workflow signs the installer and the macOS archive with the private key in the
-repository's secrets `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`,
-and writes `latest.json` from the signatures. The maintainer keeps a copy of the key and its
-password outside the repository: a release signed with another key is refused by every
-installed copy, which would then have to be updated by hand once. The macOS archive is made
-after the app is notarized, so its build makes no updater files itself
-(`tauri.bridge.conf.json`); a local `npm run release` or `npm run release:mac` needs no
-key.
+The key never goes to GitHub: CI builds the Windows installer unsigned for updates, and
+`scripts/release.sh` signs it on the Mac (`tauri signer sign`) and writes `latest.json` from
+the signatures. Only `npm run release:mac` (`tauri.bridge.conf.json`) makes updater files
+itself, so it needs the key; `npm run release` and `npm run release:windows` do not.
 
 ### The website
 
