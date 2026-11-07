@@ -90,6 +90,8 @@ export interface ConnectionInfo {
   writable: boolean;
   /** Whether the editor has a profile for this build of the game: one it was checked with. */
   knownBuild: boolean;
+  /** FM was started before FM Lens put a new helper in place: nothing can be edited until FM is started again. */
+  restartNeeded: boolean;
   /** What the checks the editor makes before it writes found on this game. */
   health: Health;
   /** The human manager and club of the loaded career; connecting fails without one. */
@@ -130,6 +132,7 @@ export interface ReloadInfo {
   editable: boolean;
   writable: boolean;
   knownBuild: boolean;
+  restartNeeded: boolean;
   players: number;
   staff: number;
   clubs: number;

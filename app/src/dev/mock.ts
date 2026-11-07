@@ -3208,6 +3208,7 @@ let mockConnection: ConnectionInfo | null = null;
  * anyway. `?failedchecks` previews checks that did not pass: the attributes, the contracts and the in-game date.
  */
 const unknownBuild = new URLSearchParams(window.location.search).has("unknownbuild");
+const restartNeeded = new URLSearchParams(window.location.search).has("restart");
 const failedChecks = new URLSearchParams(window.location.search).has("failedchecks");
 /** `?writable` previews a game the app may write to, so Edit, Apply and Undo can be tried on the sample data. */
 const writable = new URLSearchParams(window.location.search).has("writable");
@@ -3347,9 +3348,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         clubs: clubs.length,
         gameDate: failedChecks ? null : gameDate,
         loadMs: 480,
-        editable: writable && !unknownBuild,
+        editable: writable && !unknownBuild && !restartNeeded,
         writable,
         knownBuild: !unknownBuild,
+        restartNeeded,
         health: mockHealth(),
         career: mockCareer(),
         gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, futureTransfer: true, maxTactics: true, moveManager: true },
@@ -3390,6 +3392,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         editable: mockConnection?.editable ?? false,
         writable: mockConnection?.writable ?? false,
         knownBuild: mockConnection?.knownBuild ?? !unknownBuild,
+        restartNeeded,
         players: players.length,
         staff: staff.length,
         clubs: clubs.length,
