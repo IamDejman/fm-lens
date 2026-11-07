@@ -69,6 +69,7 @@ export interface Career {
   uid: number;
   manager: string;
   club: string | null;
+  clubUid: number | null;
 }
 
 export interface ConnectionInfo {
