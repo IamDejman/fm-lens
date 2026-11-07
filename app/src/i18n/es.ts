@@ -1386,6 +1386,12 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.11": [
+        "Afinidades: cambia un club o una persona por otro.",
+        "Si FM estaba abierto mientras FM Lens se actualizaba, la edición queda desactivada hasta que reinicies FM desde Steam.",
+        "Los archivos de un informe son privados hasta que lo envías, y las exportaciones CSV ya no ejecutan fórmulas.",
+        "FM Lens ahora cuenta el uso de forma anónima, sin nombres ni valores de tu partida. Desactívalo en Ajustes.",
+      ],
       "0.5.10": [
         "En Mac con Intel, cada Aplicar y Deshacer completado pide a FM que actualice el registro editado y las pantallas abiertas sin pulsar Continuar.",
         "Reinicia FM una vez tras actualizar para cargar el nuevo asistente.",
