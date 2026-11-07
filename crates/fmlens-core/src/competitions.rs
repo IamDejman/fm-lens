@@ -379,6 +379,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(target_os = "macos")]
     fn the_macos_layout_places_the_rules() {
         let layout = crate::layout_for(27).expect("FM27 layout");
         if let Some(c) = layout.competition.as_ref() {
