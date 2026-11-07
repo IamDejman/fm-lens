@@ -1895,6 +1895,7 @@ struct SquadRow {
     morale: u8,
     injuries: usize,
     bans: usize,
+    unhappy: bool,
 }
 
 /// What a team-wide action does to every player of the team.
@@ -3789,6 +3790,7 @@ fn club_squads(state: State<'_, AppState>, uid: u32) -> Result<Vec<TeamView>, Fa
                         morale: member.morale,
                         injuries: member.injuries,
                         bans: member.bans,
+                        unhappy: member.unhappy,
                     })
                 })
                 .collect(),
