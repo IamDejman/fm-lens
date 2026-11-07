@@ -2155,15 +2155,20 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
 /// Whether this copy of the app can update itself from FM Lens's own releases (the updater's endpoint in
 /// tauri.conf.json): download a new version, check its signature and put it in place. The macOS app run from its
 /// bundle, unless macOS runs it from a read-only copy, as it does an app opened where it was downloaded (App
-/// Translocation). A development build, and Windows, which has no FM Lens release, open the release's page instead.
+/// Translocation), and the Windows app its installer put in place, which leaves its uninstaller beside it. A
+/// development build, and a bare FM Lens.exe, open the website's download page instead.
 #[tauri::command]
 fn can_self_update() -> bool {
     let Ok(exe) = std::env::current_exe() else {
         return false;
     };
-    !cfg!(debug_assertions)
-        && cfg!(target_os = "macos")
-        && app_bundle(&exe).is_some_and(|bundle| !bundle.to_string_lossy().contains("/AppTranslocation/"))
+    if cfg!(debug_assertions) {
+        false
+    } else if cfg!(target_os = "macos") {
+        app_bundle(&exe).is_some_and(|bundle| !bundle.to_string_lossy().contains("/AppTranslocation/"))
+    } else {
+        cfg!(windows) && exe.with_file_name("uninstall.exe").is_file()
+    }
 }
 
 /// Whether this is a debug build. The colophon tags it DEBUG, so that it is never taken for a release: it cannot update
@@ -2173,19 +2178,73 @@ fn debug_build() -> bool {
     cfg!(debug_assertions)
 }
 
-/// The system the app runs on, for a problem report (see report.ts): "macOS 27.2, Apple Silicon". Elsewhere, or when
-/// macOS's version cannot be read, the system's and the processor's names.
+/// The system the app runs on, for a problem report (see report.ts): "macOS 27.2, Apple Silicon" or "Windows 11 Pro
+/// 24H2 (26100), x64". When the system's version cannot be read, its name and the processor's.
 #[tauri::command]
 fn system_version() -> String {
-    let processor = match std::env::consts::ARCH {
-        "aarch64" => "Apple Silicon",
-        "x86_64" => "Intel",
-        other => other,
+    let processor = match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "aarch64") => "Apple Silicon",
+        ("macos", "x86_64") => "Intel",
+        (_, "x86_64") => "x64",
+        (_, "aarch64") => "Arm64",
+        (_, other) => other,
     };
-    match macos_version() {
-        Some(version) => format!("macOS {version}, {processor}"),
+    #[cfg(windows)]
+    let system = windows_version();
+    #[cfg(not(windows))]
+    let system = macos_version().map(|version| format!("macOS {version}"));
+    match system {
+        Some(system) => format!("{system}, {processor}"),
         None => format!("{}, {processor}", std::env::consts::OS),
     }
+}
+
+/// Windows's edition, release and build, "Windows 11 Pro 24H2 (26100)", from the registry.
+#[cfg(windows)]
+fn windows_version() -> Option<String> {
+    let name = windows_version_text("ProductName")?;
+    let build = windows_version_text("CurrentBuildNumber")?;
+    // Windows 11 still names itself Windows 10 there; its builds start at 22000.
+    let name = match name.strip_prefix("Windows 10") {
+        Some(edition) if build.parse::<u32>().is_ok_and(|number| number >= 22000) => format!("Windows 11{edition}"),
+        _ => name,
+    };
+    Some(match windows_version_text("DisplayVersion") {
+        Some(release) => format!("{name} {release} ({build})"),
+        None => format!("{name} ({build})"),
+    })
+}
+
+/// The text `value` of `HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion`; none when it is missing,
+/// empty or longer than 255 characters.
+#[cfg(windows)]
+fn windows_version_text(value: &str) -> Option<String> {
+    use windows_sys::Win32::System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW};
+
+    let wide = |text: &str| text.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let key = wide(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+    let value = wide(value);
+    let mut text = [0u16; 256];
+    let mut bytes = std::mem::size_of_val(&text) as u32;
+    // SAFETY: both names end in a nul, and `bytes` is the size of `text`, which RegGetValueW writes no further than.
+    let status = unsafe {
+        RegGetValueW(
+            HKEY_LOCAL_MACHINE,
+            key.as_ptr(),
+            value.as_ptr(),
+            RRF_RT_REG_SZ,
+            std::ptr::null_mut(),
+            text.as_mut_ptr().cast(),
+            &mut bytes,
+        )
+    };
+    if status != 0 {
+        return None;
+    }
+    let length = (bytes as usize / 2).min(text.len());
+    let text = String::from_utf16_lossy(&text[..length]);
+    let text = text.trim_end_matches('\0').trim();
+    (!text.is_empty()).then(|| text.to_owned())
 }
 
 /// macOS's version, "27.2", from the file macOS keeps it in.
@@ -2637,14 +2696,18 @@ async fn export_players(
     tauri::async_runtime::spawn_blocking(move || -> Result<ExportReport, Failure> {
         let folder = app.state::<ExportsFolder>().0.clone();
         let folder = folder.ok_or_else(|| Failure::new("export.noFolder", "There is no folder to export to."))?;
-        // macOS may ask the user before an app first writes to the Documents folder (see Info.plist): a no is said as
-        // such, with where to change it.
+        // macOS may ask the user before an app first writes to the Documents folder (see Info.plist), and Windows
+        // Security's Controlled folder access may block it: a no is said as such, with where to change it.
         let failed = |err: std::io::Error| {
-            if cfg!(target_os = "macos") && err.kind() == std::io::ErrorKind::PermissionDenied {
-                Failure::new("export.notAllowed", format!("FM Lens may not write to {}: {err}", folder.display()))
-                    .with("folder", folder.display())
-            } else {
-                Failure::new("export.failed", err.to_string()).with("reason", err)
+            let refused = match err.kind() {
+                std::io::ErrorKind::PermissionDenied if cfg!(target_os = "macos") => Some("export.notAllowed"),
+                std::io::ErrorKind::PermissionDenied if cfg!(windows) => Some("export.blocked"),
+                _ => None,
+            };
+            match refused {
+                Some(code) => Failure::new(code, format!("FM Lens may not write to {}: {err}", folder.display()))
+                    .with("folder", folder.display()),
+                None => Failure::new("export.failed", err.to_string()).with("reason", err),
             }
         };
         let state = app.state::<AppState>();

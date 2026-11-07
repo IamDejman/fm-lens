@@ -5175,6 +5175,10 @@ button.danger:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
+.settings-about button {
+  align-self: flex-start;
+}
+
 /* A player's favoured or disliked clubs and people: one per line, at the end of the row. */
 .preference-list {
   display: inline-flex;
