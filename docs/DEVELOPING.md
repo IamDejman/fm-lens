@@ -199,7 +199,8 @@ bridge the next time it starts.
 
 A macOS app that macOS runs from where it was downloaded (App Translocation) and development
 builds cannot replace themselves (`can_self_update`): their notice names the new version and
-opens its release page. Offline, or before the first release, the check fails quietly and
+opens its release page. A debug build shows DEBUG beside its version at the foot of the window
+(`debug_build`), so it is never taken for the installed app. Offline, or before the first release, the check fails quietly and
 the app works as before. Versions up to 0.5.0 have no updater: install the next one by hand.
 
 The workflow signs the installer and the macOS archive with the private key in the
