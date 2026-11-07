@@ -1379,6 +1379,10 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.5.10": [
+        "En Mac con Intel, cada Aplicar y Deshacer completado pide a FM que actualice el registro editado y las pantallas abiertas sin pulsar Continuar.",
+        "Reinicia FM una vez tras actualizar para cargar el nuevo asistente.",
+      ],
       "0.5.9": [
         "Informar de un problema admite capturas y un vídeo: adjúntalos, pégalos o suéltalos.",
         "Deshacer y cerrar una promesa se detienen si FM lo ha cambiado. Una táctica que FM Lens no sabe nombrar se queda como está.",
