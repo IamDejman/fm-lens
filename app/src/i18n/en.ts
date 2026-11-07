@@ -1463,6 +1463,12 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.11": [
+        "Likes and dislikes: replace a club or person with another.",
+        "If FM was open while FM Lens updated, editing stays off until you restart FM from Steam.",
+        "Report files stay private until you send the report, and CSV exports no longer run formulas.",
+        "FM Lens now counts anonymous usage, with no names or values from your save. Turn it off in Settings.",
+      ],
       "0.5.10": [
         "On Intel Macs, every successful Apply and Undo now asks FM to refresh the edited record and active screens without pressing Continue.",
         "Restart FM once after updating to load the new helper.",
