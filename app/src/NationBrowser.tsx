@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { call } from "./api";
 import { EditableValue } from "./EditControls";
 import { formatNumber, formatPercent } from "./format";
 import { NationFlag, WithPicture } from "./Picture";
@@ -22,7 +24,10 @@ import type {
 const text = nationListText;
 const columns = text.columns;
 
-/** The nations of the players and staff in the save, with the selected nation beside the table. */
+/**
+ * The nations of the players and staff in the save, with the selected nation beside the table where the build places
+ * nations' details: elsewhere a profile would only repeat the row, so none opens.
+ */
 export function NationBrowser({
   version,
   active,
@@ -30,6 +35,7 @@ export function NationBrowser({
   version: number;
   active: boolean;
 }) {
+  const detailed = useNationsDetailed(version, active);
   return (
     <ListBrowser<NationSummary>
       name="nations"
@@ -47,16 +53,39 @@ export function NationBrowser({
         </>
       }
       cells={(nation) => <NationCells nation={nation} />}
-      profile={(nation, panel) => (
-        <NationProfile
-          key={nation.uid}
-          nation={nation}
-          version={version}
-          onClose={panel.onClose}
-        />
-      )}
+      profile={
+        detailed
+          ? (nation, panel) => (
+              <NationProfile
+                key={nation.uid}
+                nation={nation}
+                version={version}
+                onClose={panel.onClose}
+              />
+            )
+          : undefined
+      }
     />
   );
+}
+
+/** Whether this build places nations' details, asked again when the game is read again; no until it says so. */
+function useNationsDetailed(version: number, active: boolean): boolean {
+  const [detailed, setDetailed] = useState(false);
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+    let current = true;
+    call<boolean>("nations_detailed").then(
+      (value) => current && setDetailed(value),
+      () => current && setDetailed(false),
+    );
+    return () => {
+      current = false;
+    };
+  }, [version, active]);
+  return detailed;
 }
 
 function NationCells({ nation }: { nation: NationSummary }) {
@@ -81,9 +110,9 @@ interface NationProfileProps {
 }
 
 /**
- * A nation's rules, FIFA standing, rivals and national teams, men's and women's; only its ID where the build does not
- * place them. Its rules, FIFA points, youth ratings, game importance, attendance, style and senior teams' reputations
- * can be edited where the row is the nation's own UID.
+ * A nation's rules, FIFA standing, rivals and national teams, men's and women's. Its rules, FIFA points, youth
+ * ratings, game importance, attendance, style and senior teams' reputations can be edited where the row is the
+ * nation's own UID.
  */
 function NationProfile({ nation, version, onClose }: NationProfileProps) {
   const loaded = useProfileDetails<NationDetails | null>(
@@ -111,7 +140,6 @@ function NationProfile({ nation, version, onClose }: NationProfileProps) {
       onClose={onClose}
       editing={editing}
     >
-      {loaded?.details === null && <p className="note">{text.note}</p>}
       {details && <NationBody details={details} />}
     </ProfileFrame>
   );

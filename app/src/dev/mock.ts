@@ -3594,6 +3594,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const awardPage: AwardPage = { total: rows.length, rows: rows.slice(0, limit) };
       return awardPage as T;
     }
+    case "nations_detailed":
+      return true as T;
     case "nation_details": {
       const index = Number(args?.uid) - 1000;
       return (index >= 0 && index < NATIONS.length ? nationDetails(index) : null) as T;
