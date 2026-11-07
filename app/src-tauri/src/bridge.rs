@@ -33,6 +33,7 @@ mod imp {
     use std::path::PathBuf;
 
     use fmlens_core::bridge_setup::{self, BRIDGE_FILE, BridgeStatus, LAUNCHER_FILE, Places};
+    use fmlens_mem::Process;
     use tauri::{AppHandle, Manager};
 
     use super::{BridgeAccount, BridgeInfo};
@@ -94,6 +95,13 @@ mod imp {
         bridge_setup::remove(&places).map(Into::into).map_err(|err| Failure::coded(&err))
     }
 
+    pub fn restart_needed(app: &AppHandle, game: &Process) -> bool {
+        let (Ok(places), Some(started)) = (places(app), game.started()) else {
+            return false;
+        };
+        bridge_setup::replaced_since(&places, started)
+    }
+
     /// The installed bridge and launcher become the ones in the app's bundle, where they differ (see
     /// `bridge_setup::refresh`). Only for the app run from its bundle: a development build leaves the installed ones
     /// alone. Failing only means the old ones stay, until the bridge is set up again.
@@ -128,6 +136,10 @@ mod imp {
     }
 
     pub fn refresh(_: &AppHandle) {}
+
+    pub fn restart_needed(_: &AppHandle, _: &fmlens_mem::Process) -> bool {
+        false
+    }
 }
 
 /// The bridge's state on macOS; `None` elsewhere, where the app needs no bridge.
@@ -157,4 +169,10 @@ pub async fn set_up_bridge(app: tauri::AppHandle) -> Result<BridgeInfo, Failure>
 #[tauri::command]
 pub async fn remove_bridge(app: tauri::AppHandle) -> Result<BridgeInfo, Failure> {
     tauri::async_runtime::spawn_blocking(move || imp::remove(&app)).await?
+}
+
+/// macOS: whether the game was started before the bridge installed now was put in place, so it still runs an older one
+/// and must be started again from Steam before anything is written. Never elsewhere.
+pub fn restart_needed(app: &tauri::AppHandle, game: &fmlens_mem::Process) -> bool {
+    imp::restart_needed(app, game)
 }

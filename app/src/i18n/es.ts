@@ -216,6 +216,7 @@ const errors: ErrorTexts = {
   "guard.unknownBuild": () =>
     "FM Lens no se ha probado con esta versión del juego. La edición seguirá desactivada hasta que se valide.",
   "guard.careerChanged": () => "FM ha movido sus datos desde que FM Lens los leyó. Pulsa Recargar datos y vuelve a intentarlo.",
+  "guard.restartGame": () => "FM Lens se actualizó con FM abierto. Reinicia FM desde Steam y vuelve a intentarlo.",
   "guard.failed": (p) =>
     `${checkName(p.check)}: no han superado las comprobaciones en esta versión del juego, así que FM Lens no ` +
     "los cambia.",
@@ -1280,6 +1281,7 @@ export const es: Strings = {
     noteReadOnly: "Solo lectura",
     noteUnknownBuild: "Solo lectura: esta versión de FM aún no es compatible",
     noteReloadRequired: "FM ha movido sus datos. Pulsa Recargar datos para editar.",
+    noteRestartFm: "Reinicia FM desde Steam para editar",
 
     notConnected: "Sin conexión",
     connected: "Conectado",
@@ -1340,6 +1342,8 @@ export const es: Strings = {
   compatibility: {
     unknownBuild: (game) => `FM Lens aún no se ha probado con ${game}`,
     unknownBuildText: "Los valores pueden estar mal, así que la edición está desactivada.",
+    restartTitle: "Reinicia FM para editar",
+    restartText: "FM Lens se actualizó con FM abierto. Cierra FM y vuelve a iniciarlo desde Steam.",
     allowedText:
       "La edición está activada donde pasaron las comprobaciones. Haz una copia de tu partida.",
     failedTitle: "Algunos datos parecen incorrectos",

@@ -128,6 +128,9 @@ pub struct Session {
     pub(crate) retirement_class: OnceLock<u64>,
     /// What the checks found: worked out the first time it is needed, and again by [`Session::recheck`].
     health: Mutex<Option<Arc<Health>>>,
+    /// The game still runs the bridge from before the app was updated (see `bridge_setup::replaced_since`), so nothing
+    /// may be written until it is started again. Set by the app, which knows where the bridge is installed.
+    pub restart_needed: bool,
 }
 
 impl Session {
@@ -162,6 +165,7 @@ impl Session {
             stadium_class: OnceLock::new(),
             retirement_class: OnceLock::new(),
             health: Mutex::new(None),
+            restart_needed: false,
         })
     }
 
@@ -172,7 +176,7 @@ impl Session {
 
     /// Only fingerprinted builds may be edited. Layout health alone cannot validate a new build.
     pub fn writes_allowed(&self) -> bool {
-        self.known_build() && self.current_career()
+        self.known_build() && !self.restart_needed && self.current_career()
     }
 
     /// Fails closed if FM has replaced its entity storage or can no longer be read.
@@ -196,11 +200,15 @@ impl Session {
         fresh
     }
 
-    /// Why nothing may be written now, if it may not: a build the editor has no profile for, or another career loaded
-    /// since the session attached, whose objects old addresses no longer belong to.
+    /// Why nothing may be written now, if it may not: a build the editor has no profile for, a game still running the
+    /// bridge from before the app was updated, or another career loaded since the session attached, whose objects old
+    /// addresses no longer belong to.
     pub(crate) fn session_lock(&self) -> Option<Lock> {
         if !self.known_build() {
             return Some(Lock::UnknownBuild);
+        }
+        if self.restart_needed {
+            return Some(Lock::RestartGame);
         }
         (!self.current_career()).then_some(Lock::CareerChanged)
     }

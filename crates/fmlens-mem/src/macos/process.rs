@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::os::unix::ffi::OsStringExt;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use mach2::kern_return::KERN_SUCCESS;
 use mach2::mach_port::{mach_port_deallocate, mach_port_mod_refs};
@@ -61,6 +61,19 @@ pub fn is_current_process_elevated() -> bool {
     unsafe { libc::geteuid() == 0 }
 }
 
+/// When the process `pid` started, as the system says.
+fn started(pid: u32) -> Option<SystemTime> {
+    let mut info = std::mem::MaybeUninit::<libc::proc_bsdinfo>::zeroed();
+    let size = std::mem::size_of::<libc::proc_bsdinfo>() as c_int;
+    let read = unsafe { libc::proc_pidinfo(pid as c_int, libc::PROC_PIDTBSDINFO, 0, info.as_mut_ptr().cast(), size) };
+    if read != size {
+        return None;
+    }
+    let info = unsafe { info.assume_init() };
+    let since = Duration::from_secs(info.pbi_start_tvsec) + Duration::from_micros(info.pbi_start_tvusec);
+    SystemTime::UNIX_EPOCH.checked_add(since)
+}
+
 /// How long the places of the modules are trusted before they are read again.
 const MODULES_FRESH: Duration = Duration::from_secs(30);
 
@@ -108,6 +121,11 @@ impl Process {
     /// Whether the process was opened for writing.
     pub fn can_write(&self) -> bool {
         self.writable
+    }
+
+    /// When the process started, as the system says.
+    pub fn started(&self) -> Option<SystemTime> {
+        started(self.pid)
     }
 
     pub(crate) fn task(&self) -> mach_port_t {
@@ -305,5 +323,13 @@ mod tests {
         let short: String = name.chars().take(32).collect();
         let found = find_processes(&short).expect("list processes");
         assert!(found.iter().any(|p| p.pid == std::process::id()));
+    }
+
+    #[test]
+    fn the_start_of_a_process_is_known() {
+        let at = started(std::process::id()).expect("start time");
+        let now = SystemTime::now();
+        assert!(at <= now && now.duration_since(at).expect("before now") < Duration::from_secs(3600));
+        assert_eq!(started(u32::MAX), None);
     }
 }
