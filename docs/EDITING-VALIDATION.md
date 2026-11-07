@@ -146,12 +146,17 @@ Reyes favours Raúl Jiménez), but no player's lists were compared with FM's own
 screens.
 
 Editing is limited to what the read already establishes: a strength from 1 to
-100 written over byte `0x0C` with its expected value, and removal as for a tie
-(the entries after it move up, the list end moves back and the freed entry is
-cleared). Both are logged in Changes and undone there. Adding an entry or
-pointing one at another target waits until an FM session establishes bytes
-`0x08` and `0x0D` and how a person target is stored. Both writes were checked
-in FM on 6 November (see Round 1 below).
+100 written over byte `0x0C` with its expected value, removal as for a tie (the
+entries after it move up, the list end moves back and the freed entry is
+cleared), and Replace, which writes only the 8-byte target pointer. A club
+target is the club's address; a person target is the person's identity block,
+which holds the UID at `+0x0C` as a club does. Replace keeps a club a club and a
+person a person, and refuses a target already in the list and the person
+himself. All three are logged in Changes and undone there. Strength and removal
+were checked in FM on 6 November (see Round 1 below), Replace on 7 November (see
+"Replace a like or dislike" below). FM's Reason column is stored with the entry,
+not worked out from the target: a replaced entry keeps its old reason. Adding an
+entry waits until bytes `0x08` and `0x0D` are understood.
 
 ## Languages (level and removal)
 
@@ -1010,3 +1015,22 @@ FM was quit without saving. The main career and the copy's hashes were checked
 before and after (OK). `FM Lens Validation 2026-11-04` was loaded once by
 mistake on the way, not edited or saved; its hash is unchanged.
 
+
+## Replace a like or dislike (7 November 2026)
+
+FM27 Steam build 26340721 ARM64, with the bridge and FM Lens built from
+`feat/preference-target`. Copy: `FM Lens Pref 2026-11-07` (a copy of `FM Lens
+Batch 2026-11-05`; Arsenal, 11 Dec 2027 16:30). Continue was never pressed.
+
+| Action | FM Lens | FM |
+|---|---|---|
+| Your favourite club, Arsenal -> Chelsea | Saved, in Changes | My Profile: "Favourite Club Chelsea" at once |
+| Saka, Ezri Konsa (60) -> Declan Rice | Saved | Favoured Personnel: Declan Rice, Reason "Team-mates" |
+| Saka, Ayodeji Eluwande (98) -> Albert Stuivenberg | Saved | Stuivenberg, Reason "Manager", the old entry's reason |
+| Undo of the Stuivenberg change | "Undone" | Ayodeji Eluwande back, Reason "Manager" |
+| Save in FM, quit, relaunch, load the copy | Probe: Saka favours Declan Rice (60) and Ayodeji Eluwande (98); no Konsa or Stuivenberg | Your profile: "Favourite Club Chelsea" |
+
+FM keeps the Reason with the entry: Replace changes who a like points at, not
+why. The copy was saved once on purpose for the reload; FM was then quit without
+saving. The main career and `FM Lens Batch 2026-11-05` hashes were checked
+before and after (OK).
