@@ -593,6 +593,10 @@ export const en = {
     potentialAbilityShort: "PA",
     /** Hover text of a potential ability that is set as a range (the game stores it as a negative number). */
     potentialRange: "Potential set as a range",
+    /** The group of what the header leaves out: the full name, the birth date, the height and the ID. */
+    personalDetails: "Personal details",
+    fullNameLabel: "Full name",
+    heightLabel: "Height",
 
     // Attributes
     technical: "Technical",
@@ -796,7 +800,7 @@ export const en = {
     tabs: { attributes: "Attributes", mood: "Mood", contract: "Contract", medical: "Medical", career: "Career" },
     /** The tabs of a member of staff's profile. */
     staffTabsLabel: "Staff sections",
-    staffTabs: { attributes: "Attributes", contract: "Contract", personal: "Personal" },
+    staffTabs: { attributes: "Attributes", contract: "Contract", career: "Career" },
     statusLabel: "Status",
     injured: "Injured",
     banned: "Banned",
@@ -1243,8 +1247,6 @@ export const en = {
     },
     empty: (query: string) => (query === "" ? "No nations found." : `No nations match “${query}”.`),
     columns: { name: "Nation", uid: "ID" },
-    /** In the profile: what this list is, and what it does not read. */
-    note: "Only nations that players or staff in this save come from.",
     uid: "ID",
     noUid: "No ID",
     nation: "Nation",
@@ -2272,21 +2274,22 @@ export const en = {
     // The actions on the whole team
     /** The name of the group of buttons for assistive technology. */
     actionsLabel: "Actions on the whole team",
-    /** `injured` is how many of the team's players have an injury. */
-    healAll: (injured: number) => (injured === 0 ? "Heal all" : `Heal all (${format(injured)} injured)`),
+    /** Heal, Lift bans and Remove unhappiness carry how many players they are for; these name them after the count. */
+    healAll: "Heal",
+    injuredCount: (injured: number) => `${format(injured)} injured`,
     healAllTitle: "Heal everyone in this team",
-    /** Hover text of Heal all while nobody in the team is injured. */
+    /** Hover text of Heal while nobody in the team is injured. */
     healNone: "Nobody in this team is injured",
-    /** `banned` is how many of the team's players have a ban. */
-    liftAll: (banned: number) => (banned === 0 ? "Lift bans" : `Lift bans (${format(banned)} banned)`),
+    liftAll: "Lift bans",
+    bannedCount: (banned: number) => `${format(banned)} banned`,
     liftAllTitle: "Lift every ban in this team",
     /** Hover text of Lift bans while nobody in the team is banned. */
     liftNone: "Nobody in this team is banned",
-    refreshAll: "Refresh all",
+    refreshAll: "Refresh fitness",
     refreshAllTitle: "Full energy, full match sharpness and fully rested for everyone",
+    removeUnhappiness: "Remove unhappiness",
     /** `unhappy` is how many of the team's players have a reason to be unhappy that lasts. */
-    removeUnhappiness: (unhappy: number) =>
-      unhappy === 0 ? "Remove unhappiness" : `Remove unhappiness (${format(unhappy)} unhappy)`,
+    unhappyCount: (unhappy: number) => `${format(unhappy)} unhappy`,
     removeUnhappinessTitle: "Clear every reason to be unhappy in this team",
     /** Hover text of Remove unhappiness while nobody in the team is unhappy. */
     unhappyNone: "Nobody in this team is unhappy",
