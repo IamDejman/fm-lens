@@ -1451,6 +1451,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.5.9": [
+        "Report a problem takes screenshots and a video: attach, paste or drop them.",
+        "Undo and closing a promise stop if FM has changed it since. A formation FM Lens can't name stays as it is.",
+      ],
       "0.5.8": [
         "On Apple Silicon, every successful Apply and Undo asks FM to refresh the edited record and active screens without pressing Continue.",
         "Restart FM once after updating to load the new helper.",
