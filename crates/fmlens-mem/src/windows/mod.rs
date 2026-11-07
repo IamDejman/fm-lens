@@ -1,5 +1,6 @@
 //! Windows: processes and modules from ToolHelp snapshots, memory through a process handle.
 
+pub mod bridge;
 mod handle;
 mod module;
 mod pe;

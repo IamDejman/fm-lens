@@ -17,8 +17,11 @@ not evidence that a manager is protected from dismissal.
 
 The profile `profiles/fm27/steam-26340721-macos-arm64.toml` carries these as
 `[human_manager]`. The Intel half of the same build has the same values, traced
-statically ([Intel notes](fm27-steam-26340721-macos-x86_64.md)); the Launch
-Preview and every Windows build leave the field unavailable.
+statically ([Intel notes](fm27-steam-26340721-macos-x86_64.md)). So does its
+Windows build (`steam-26340721.toml`), except that MSVC puts the vtable naming
+`.?AVHUMAN_NON_PLAYER@db@@` at the person block, `+0x440`, which the profile gives
+as `class_at`. The Launch Preview and the other Windows builds leave the field
+unavailable.
 
 ## Static trace (ARM64 slice of game_plugin)
 
