@@ -1905,7 +1905,9 @@ enum TeamAction {
     /// Lifts every current ban.
     LiftBans,
     /// Morale to the top.
-    Inspire,
+    MaxMorale,
+    /// Every reason to be unhappy gone, as the profile's Remove all does for one player.
+    RemoveUnhappiness,
     /// Energy and match sharpness to 100%.
     Refresh,
     /// Every attribute to its best: 20, or 1 where lower is better.
@@ -3923,8 +3925,9 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
             }
             return Ok(MassReport { batch, applied, failed: Vec::new() });
         }
-        // Morale at its best, and the reasons to be unhappy gone, as FMRTE's Inspire does.
-        TeamAction::Inspire => &[("morale", 20), ("contract.unhappiness", 0)],
+        TeamAction::MaxMorale => &[("morale", 20)],
+        // A player with no reason to be unhappy has no list: he is skipped.
+        TeamAction::RemoveUnhappiness => &[("contract.unhappiness", 0)],
         // Rested as the game rests a player: full energy and sharpness, and jadedness at its least.
         TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)],
         TeamAction::MaxAttributes => &[],

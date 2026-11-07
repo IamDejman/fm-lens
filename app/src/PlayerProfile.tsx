@@ -151,7 +151,6 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
   const goalkeeper = isGoalkeeper(details);
   return (
     <>
-      <AttributeActions uid={details.uid} />
       {/* Attributes, personality and position ratings all take 1 to 20: one hint says it for all of them. */}
       <SharedRangeHint field="attribute.determination" />
 
@@ -178,6 +177,8 @@ function ProfileBody({ details }: { details: PlayerDetails }) {
           </section>
         </div>
       </div>
+
+      <AttributeActions uid={details.uid} />
 
       <PositionRatings ratings={details.positionRatings} />
 
@@ -442,18 +443,16 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
     <div className="clauses">
       <div className="injuries-head">
         <h4>{profileText.unhappiness}</h4>
-        {lasting.length > 0 && (
-          <button
-            type="button"
-            className="heal-toggle"
-            disabled={!editable}
-            aria-disabled={removing || undefined}
-            title={profileText.removeUnhappinessTitle}
-            onClick={() => void remove()}
-          >
-            {removing ? profileText.removingUnhappiness : profileText.removeUnhappiness}
-          </button>
-        )}
+        <button
+          type="button"
+          className="heal-toggle"
+          disabled={!editable || lasting.length === 0}
+          aria-disabled={removing || undefined}
+          title={profileText.removeUnhappinessTitle}
+          onClick={() => void remove()}
+        >
+          {removing ? profileText.removingUnhappiness : profileText.removeUnhappiness}
+        </button>
       </div>
       {lasting.length === 0 ? (
         <p className="note">{profileText.noUnhappiness}</p>

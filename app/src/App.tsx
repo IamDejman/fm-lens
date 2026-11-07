@@ -6,8 +6,9 @@ import { BridgeSetup } from "./BridgeSetup";
 import { ChangesView, useChangeLog } from "./ChangesView";
 import { ClubBrowser } from "./ClubBrowser";
 import { CompatibilityNotice } from "./CompatibilityNotice";
+import { DropMenu } from "./DropMenu";
 import { forgetFieldTables } from "./fieldTables";
-import { describeBuild, describeError, formatDate } from "./format";
+import { describeBuild, describeError, formatDate, formatNumber } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
@@ -69,6 +70,9 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "changes", label: changesText.nav },
 ];
 
+/** The views of the masthead's Lists menu; the rest are tabs of their own. */
+const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials"]);
+
 /** The view the window was in before the language was switched; the first one when there was no such switch. */
 const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
 
@@ -98,6 +102,8 @@ function App() {
   const [view, setView] = useState<View>(() => restored("view", readView));
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog } = useChangeLog();
+  // The changes of the session that stand, beside Changes.
+  const standing = log.filter((change) => change.undoneAt === null).length;
   const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
@@ -343,20 +349,57 @@ function App() {
         {/* The sections only have something to show once connected. */}
         {connection && (
           <nav className="tabs" data-tour="tabs">
-            {VIEWS.map(({ id, label }, index) => (
-              <button
-                key={id}
-                type="button"
-                className={id === view ? "tab active" : "tab"}
-                aria-current={id === view ? "page" : undefined}
-                title={shortcutLabel(String(index + 1))}
-                aria-keyshortcuts={shortcutAria(String(index + 1))}
-                data-tour={id === "changes" ? "changes" : undefined}
-                onClick={() => show(id)}
-              >
-                {label}
-              </button>
-            ))}
+            {VIEWS.map(({ id, label }, index) =>
+              LISTS.has(id) ? (
+                // The lists are one menu, where the first of them would be.
+                id === "nations" && (
+                  <DropMenu
+                    key="lists"
+                    label={appText.lists}
+                    menuLabel={appText.lists}
+                    className={LISTS.has(view) ? "tab active" : "tab"}
+                    current={LISTS.has(view)}
+                  >
+                    {(close) =>
+                      VIEWS.map(
+                        (list, at) =>
+                          LISTS.has(list.id) && (
+                            <button
+                              key={list.id}
+                              type="button"
+                              role="menuitemradio"
+                              aria-checked={list.id === view}
+                              aria-keyshortcuts={shortcutAria(String(at + 1))}
+                              tabIndex={-1}
+                              onClick={() => {
+                                close();
+                                show(list.id);
+                              }}
+                            >
+                              {list.label}
+                              <kbd>{shortcutLabel(String(at + 1))}</kbd>
+                            </button>
+                          ),
+                      )
+                    }
+                  </DropMenu>
+                )
+              ) : (
+                <button
+                  key={id}
+                  type="button"
+                  className={id === view ? "tab active" : "tab"}
+                  aria-current={id === view ? "page" : undefined}
+                  title={shortcutLabel(String(index + 1))}
+                  aria-keyshortcuts={shortcutAria(String(index + 1))}
+                  data-tour={id === "changes" ? "changes" : undefined}
+                  onClick={() => show(id)}
+                >
+                  {label}
+                  {id === "changes" && standing > 0 && <span className="tab-count">{formatNumber(standing)}</span>}
+                </button>
+              ),
+            )}
           </nav>
         )}
         <div className="masthead-side">
