@@ -36,7 +36,7 @@ The "handler around 0x238DDBC-0x238DF40" in fm27-human-manager.md is analytics l
 
 Map keys (FourCC, high byte first): 'Ttea' 0x54746561 (target team ref), 'Pcjo' 0x6a6f5063 (job code), 'dref' 0x64726566, 'dreL' 0x6472654c (list of person refs), 'tick' 0x7469636b.
 Packed refs are type<<24 | id; a team is 0x18<<24 | id.
-Job codes: 16 and 17 Manager, 20 and 21 Assistant Coach.
+Job codes: 16 and 17 Manager, 20 and 21 Assistant Manager.
 
 ### 3.1 Move to a club
 

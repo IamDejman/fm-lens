@@ -278,7 +278,7 @@ enum Command {
     StaffJob {
         /// The member of staff's id.
         id: u32,
-        /// The new job's code: 2 coach, 12 physio, 14 scout, 20 assistant coach, 26 fitness coach, 34 goalkeeping coach,
+        /// The new job's code: 2 coach, 12 physio, 14 scout, 20 assistant manager, 26 fitness coach, 34 goalkeeping coach,
         /// 60 performance analyst, ...
         job: u8,
         /// Give him his old job back afterwards and check it.
