@@ -44,6 +44,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   signFreeAgent: false,
   transfer: false,
   endLoan: false,
+  release: false,
   futureTransfer: false,
   maxTactics: false,
   moveManager: false,
