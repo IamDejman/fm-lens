@@ -105,6 +105,9 @@ const errors: ErrorTexts = {
   "export.notAllowed": (p) =>
     `FM Lens can't save to ${p.folder}. Allow it in System Settings › Privacy & Security › Files & Folders, ` +
     "then export again.",
+  "export.blocked": (p) =>
+    `FM Lens can't save to ${p.folder}. If Windows Security blocks it, allow FM Lens under Ransomware protection › ` +
+    "Allow an app through Controlled folder access, then export again.",
   "export.openFailed": (p) => `Couldn't open it: ${p.reason}`,
   "session.noSuchProcess": () => "FM closed or restarted. Load a save and connect again.",
   // FM's main menu: no career to read yet.
@@ -820,6 +823,8 @@ export const en = {
     fitness: "Fitness",
     international: "International",
     noPromises: "No promises",
+    /** Where FM Lens cannot read promises yet. */
+    promisesUnavailable: "Not available on Windows yet",
     noContract: "No contract",
     /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
     setAttributes: "Set all attributes to",
@@ -1556,7 +1561,10 @@ export const en = {
     installFailed: (reason: string) => `Couldn't update: ${reason}. Download it instead.`,
     /** Hides the notice until the app starts again. */
     later: "Later",
-    /** In the app menu on macOS, under About FM Lens: looks for a newer version at once. */
+    /**
+     * In the app menu on macOS, under About FM Lens, and in Settings, About, on Windows: looks for a newer version at
+     * once.
+     */
     checkForUpdates: "Check for Updates…",
     checking: "Checking for updates…",
     upToDate: "FM Lens is up to date.",
@@ -1572,6 +1580,19 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.6.2": [
+        "FM Lens is now on Windows. Download it from getfmlens.com.",
+        "On Windows, updates download in the background and install when you press Relaunch to update.",
+        "On Windows, Check for Updates is in Settings, About.",
+        "Only one FM Lens runs at a time: opening it again brings its window to the front.",
+      ],
+      "0.6.1": [
+        "A new player profile: tabs for Attributes, Mood, Contract, Medical and Career, and status chips under the name that open them.",
+        "Settings opens in its own window from the gear or Cmd+,.",
+        "Every list has Filters, with a chip for each filter in effect that you can remove.",
+        "FM’s own names for staff jobs, Youth Candidates and jadedness, where FM Lens showed numbers.",
+        "The Sign dialog warns you when signing a player cancels a move he has agreed.",
+      ],
       "0.6.0": [
         "FM Lens updates keep using the helper already running in FM. Supported features keep working without restarting the game.",
         "An older helper may not refresh FM’s screens immediately or support a newly added action. It updates the next time you start FM.",

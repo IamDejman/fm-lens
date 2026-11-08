@@ -6,6 +6,14 @@
   <title>Release notes: FM Lens</title>
   <meta name="description" content="What is new in each version of FM Lens.">
   <link rel="canonical" href="https://getfmlens.com/releases/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://getfmlens.com/releases/">
+  <meta property="og:title" content="Release notes: FM Lens">
+  <meta property="og:description" content="What is new in each version of FM Lens.">
+  <meta property="og:image" content="https://getfmlens.com/images/social.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#251b37">
   <link rel="icon" type="image/png" sizes="64x64" href="../images/icon-64.png">
   <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
@@ -64,15 +72,26 @@
         // GitHub renders and sanitizes the release text it sends as HTML.
         body.innerHTML = release.html;
         article.append(heading, meta);
-        if (release.download) {
+        const files = document.createElement("div");
+        files.className = "release-files";
+        for (const [computer, name] of [["mac", "Mac"], ["windows", "Windows"]]) {
+          const url = release.downloads[computer];
+          if (!url) {
+            continue;
+          }
           const link = document.createElement("a");
           link.className = "button release-download";
-          link.href = release.download;
-          link.setAttribute("aria-label", `Download FM Lens ${release.version}`);
+          link.href = url;
+          link.setAttribute("aria-label", `Download FM Lens ${release.version} for ${name}`);
           link.innerHTML = DOWNLOAD_ICON;
-          link.append("Download");
-          link.addEventListener("click", () => track("download_started", { version: release.version, page: "releases" }));
-          article.append(link);
+          link.append(name);
+          link.addEventListener("click", () =>
+            track("download_started", { version: release.version, page: "releases", computer }),
+          );
+          files.append(link);
+        }
+        if (files.childElementCount > 0) {
+          article.append(files);
         }
         article.append(body);
         list.append(article);
