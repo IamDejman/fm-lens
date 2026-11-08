@@ -1482,6 +1482,14 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.0": [
+        "Transfer, Takas ve Serbest bırakma artık FM'in kendisiyle yapılıyor: bonservisi ve transfer geçmişiyle gerçek transferler.",
+        "Intel Mac'ler, FM'in içinde çalışan tüm işlemlere kavuşuyor.",
+        "Windows'ta bir oyuncuya verilen sözleri Moral sekmesinde görün ve kapatın.",
+        "Sözler, dizilişler ve mutsuzluk nedenleri için sayılar değil, FM'in kendi adları.",
+        "Tüm arama sonuçlarını görün ve her listeyi filtreleyin.",
+        "Dondurduklarınız uzun tatillerde de yerinde kalır.",
+      ],
       "0.6.2": [
         "FM Lens artık Windows'ta. getfmlens.com adresinden indirin.",
         "Windows'ta güncellemeler arka planda iner ve Güncellemek için yeniden başlat'a bastığınızda kurulur.",
