@@ -1753,6 +1753,30 @@ a window resize. Native evidence is macOS only; Windows interaction and an
 exhaustive window-size matrix were not exercised locally. Rust/domain code was
 unchanged by these fixes.
 
+
+### Cancellation retires the original signing Undo (8 November 2026)
+
+After a deferred free-agent signing was cancelled through Cancel transfer, the
+original Sign history row still offered Undo; the backend safely refused it
+because the offer no longer existed. Logging a confirmed cancellation now also
+marks the matching live signing history entry permanent. Matching uses the
+player UID and exact offer ID, excludes earlier careers and already-undone
+entries, and leaves the history intact. Both the UI and backend use the existing
+permanent-change guard, so stale clients also cannot execute its Undo. No domain
+call, transfer cancellation behavior, or game-memory write was changed.
+
+The preview command adapter mirrors this behavior using exact offer IDs. A Rust
+regression verifies the serialized permanent flag and preserves different offers,
+players, earlier careers, undone entries and normal field edits. An integration
+test signs two fixture free agents, cancels one, refreshes Changes, verifies that
+only the unrelated signing still offers Undo, and checks that the cancelled
+Sign's Undo is refused by the permanent guard.
+
+Local validation: frontend tests (17 checks), production frontend build, Rust
+formatting, desktop library tests and writable desktop Clippy passed. No new
+native FM signing/cancellation or save/reload test was performed for this
+history-only change. Native Intel and Windows interaction remain unverified.
+
 ### Exact wage entry (8 November 2026)
 
 Removed the frontend adjustment that replaced a typed wage with a formatter step,

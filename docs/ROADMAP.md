@@ -135,6 +135,12 @@ See the latest entry in EDITING-VALIDATION.md.
 
 Do not mark a row Available just because upstream contains it or compilation passes.
 
+
+- Cancelling a deferred signing retires the original Sign row's Undo by player
+  UID and offer ID. History remains visible; unrelated signing undos are kept.
+  Rust guard/serialization and preview Changes regression coverage added; no
+  new native transfer lifecycle validation is claimed.
+
 - Wage entry: preserve the typed amount instead of silently snapping to FM display
   steps; show a localized estimate of FM's rounded weekly display. Frontend
   regression coverage added. Native ARM64 Apply and fresh readback confirmed
