@@ -11,7 +11,7 @@ import { CURRENCIES, currency, setCurrency } from "./currency";
 import { currencyName, currencySymbolOf } from "./format";
 import { locale, setLocale, type Locale } from "./i18n";
 import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
-import { appText } from "./labels";
+import { appText, updateText } from "./labels";
 import { restored, useSnapshot } from "./restore";
 import { useModal } from "./useModal";
 import { askToLeave } from "./useProfileEditing";
@@ -67,8 +67,18 @@ const BUTTON_TITLE = `${appText.settingsLabel} (${shortcutLabel(",")})`;
 /**
  * The gear and the window it opens. While the app is `busy` neither opens, and an open window keeps the language and
  * the currency, which reload, as they are. `details` is what About shows: the app's version and the game's build.
+ * `onCheckForUpdates`, where given, adds Check for Updates to About (Windows, which has no app menu to put it in): it
+ * closes the window, and the notice under the masthead says what it found.
  */
-export function Settings({ busy, details }: { busy: boolean; details: ReactNode }) {
+export function Settings({
+  busy,
+  details,
+  onCheckForUpdates,
+}: {
+  busy: boolean;
+  details: ReactNode;
+  onCheckForUpdates?: () => void;
+}) {
   const [open, setOpen] = useState(() => restored("settings", (value) => value === true));
   // Set once another language or currency is on its way in, so that the window opens again after the reload.
   const reopen = useRef(false);
@@ -135,7 +145,15 @@ export function Settings({ busy, details }: { busy: boolean; details: ReactNode 
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
       </button>
-      {open && <SettingsDialog busy={busy} details={details} onReload={reload} onClose={close} />}
+      {open && (
+        <SettingsDialog
+          busy={busy}
+          details={details}
+          onCheckForUpdates={onCheckForUpdates}
+          onReload={reload}
+          onClose={close}
+        />
+      )}
     </>
   );
 }
@@ -143,12 +161,13 @@ export function Settings({ busy, details }: { busy: boolean; details: ReactNode 
 interface DialogProps {
   busy: boolean;
   details: ReactNode;
+  onCheckForUpdates?: () => void;
   /** Runs `apply`, which reloads the window, once leaving the open profile is settled. */
   onReload: (apply: () => void) => void;
   onClose: () => void;
 }
 
-function SettingsDialog({ busy, details, onReload, onClose }: DialogProps) {
+function SettingsDialog({ busy, details, onCheckForUpdates, onReload, onClose }: DialogProps) {
   const id = useId();
   const dialog = useRef<HTMLDivElement>(null);
   const [theme, updateTheme] = useState(appearance);
@@ -284,6 +303,17 @@ function SettingsDialog({ busy, details, onReload, onClose }: DialogProps) {
           <section className="settings-section settings-about" aria-labelledby={`${id}-about`}>
             <h3 id={`${id}-about`}>{appText.about}</h3>
             {details}
+            {onCheckForUpdates && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onCheckForUpdates();
+                }}
+              >
+                {updateText.checkForUpdates}
+              </button>
+            )}
           </section>
         </div>
 

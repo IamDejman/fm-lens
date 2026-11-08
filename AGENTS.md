@@ -2,12 +2,11 @@
 
 ## Product and current scope
 
-FM Lens is a personal Football Manager companion. The delivered macOS app
-reads a running FM27 Steam career on Apple Silicon and can edit the fields
-that are already mapped. Unmapped editor features stay on the roadmap. The
-Windows build works on the test box but is not shipped yet; the goal is no gap
-between the two, and docs/internal/WINDOWS-PARITY-HANDOFF.md lists what is
-left. Read README.md, docs/ROADMAP.md, docs/PERSONAL-SCOUT.md and
+FM Lens is a personal Football Manager companion. The delivered macOS and
+Windows apps read a running FM27 Steam career and can edit the fields that are
+already mapped. Unmapped editor features stay on the roadmap. Windows ships
+from 0.6.2; the goal is no gap between the two, and
+docs/internal/WINDOWS-PARITY-HANDOFF.md lists what is left. Read README.md, docs/ROADMAP.md, docs/PERSONAL-SCOUT.md and
 docs/EDITING-VALIDATION.md before making support or feature claims.
 Use docs/EDITOR-FIELDS.md for the mapped field catalog; it is not a validation
 certificate.
@@ -78,7 +77,8 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - app/src-tauri/: Tauri commands, connections and desktop packaging.
 - crates/fmlens-mem/: process access and the final memory-write guard.
 - crates/fmlens-core/: FM decoding, layouts, validation and domain operations.
-- crates/fmlens-bridge/: macOS bridge library and Steam launcher.
+- crates/fmlens-bridge/: the bridge that runs the game's own functions: a macOS
+  library with its Steam launcher, and a Windows DLL the app embeds.
 - crates/fmlens-probe/: diagnostics; upstream mutation commands remain present
   but this build refuses game-memory writes.
 - profiles/fm27/: platform/build fingerprints and layouts.
@@ -132,8 +132,8 @@ validated fields and the guarded memory layer for domain operations.
 - The verified target is FM27 Steam build 26340721, native ARM64, module UUID
   F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. The Intel
   half, checked under Rosetta, ships in the universal app. The Windows build was
-  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md)
-  but has no download yet.
+  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md),
+  on Windows Server 2022 only.
 - Offline verification covered FM Lens with network access denied against an
   already-running game, not a fresh Steam Offline Mode launch.
 - Do not claim complete parity, complete transfer consistency, 550,000-player
@@ -225,6 +225,10 @@ the probe and therefore exercise the read-only memory feature. Run the separate
 no-default-features memory test and app Clippy check above, then build the desktop
 app separately through Tauri; do not package a workspace-unified read-only binary
 and call its editing path tested. Keep $HOME/.cargo/bin on PATH for Tauri too.
+
+CI (.github/workflows/validate.yml) runs these checks on macOS and, apart from
+fmt and the relay tests, on Windows, where it also builds the installer that
+scripts/release.sh publishes. A Windows change needs that job to pass.
 
 The Apple Silicon bundle is target/debug/bundle/macos/FM Lens.app. It is locally
 built and signed ad hoc, not a notarized public release. UI changes need a
