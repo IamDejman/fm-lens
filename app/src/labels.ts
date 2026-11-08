@@ -84,6 +84,8 @@ export function nameNations(nations: readonly Nation[]): void {
 const CHOICE_NAMES = new Map<string, (code: number) => string>([
   ["contract.squad_status", profileText.squadStatusName],
   ["coaching_licence", profileText.licenceName],
+  ["formation.in_possession", profileText.formationName],
+  ["formation.out_of_possession", profileText.formationName],
   // A nation's people may hold another nationality as well (0), or may not (2).
   ["dual_nationality", (code) => (code === 0 ? strings.nationList.allowed : strings.nationList.notAllowed)],
   ["nation", (address) => NATION_NAMES.get(address) ?? editText.unknownNation],
