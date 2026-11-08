@@ -1,4 +1,5 @@
-use std::collections::BTreeMap;
+use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, HashMap};
 
 use fmlens_mem::{Module, Process, is_user_pointer};
 use serde::{Deserialize, Serialize};
@@ -148,20 +149,36 @@ pub struct Stadium {
     pub expansion: u32,
 }
 
-/// One senior-team stadium, keyed by the club that plays there. Read from the same layout as the club profile.
+/// A club whose senior team plays at a stadium.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StadiumClub {
+    pub uid: u32,
+    pub name: String,
+    pub women: bool,
+}
+
+/// One senior-team stadium, with every club whose senior team plays there. Read from the same layout as the club
+/// profile.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StadiumSummary {
-    /// The club's UID. A club has one senior stadium in this list.
+    /// Row id: the UID of the first of `clubs`. A club plays at one stadium, so no two rows share it.
     pub uid: u32,
-    pub club_uid: u32,
-    pub club: String,
-    pub women: bool,
+    /// Highest reputation first. Never empty.
+    pub clubs: Vec<StadiumClub>,
     pub name: Option<String>,
     pub capacity: u32,
     pub seating: u32,
     pub used: u32,
     pub expansion: u32,
+}
+
+impl StadiumSummary {
+    /// The club the row is named after when the stadium has no name of its own.
+    fn first_club(&self) -> &str {
+        self.clubs.first().map_or("", |club| club.name.as_str())
+    }
 }
 
 impl Listed for StadiumSummary {
@@ -170,14 +187,16 @@ impl Listed for StadiumSummary {
     }
 
     fn names(&self) -> String {
-        match &self.name {
-            Some(name) => format!("{name} {}", self.club),
-            None => self.club.clone(),
-        }
+        self.name
+            .iter()
+            .map(String::as_str)
+            .chain(self.clubs.iter().map(|club| club.name.as_str()))
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     fn display_name(&self) -> &str {
-        self.name.as_deref().unwrap_or(&self.club)
+        self.name.as_deref().unwrap_or_else(|| self.first_club())
     }
 
     fn rank(&self) -> i32 {
@@ -185,17 +204,20 @@ impl Listed for StadiumSummary {
     }
 }
 
-/// Bounds on a stadium's capacity. Unset fields match every stadium.
+/// Filters for the stadiums list. Unset fields match every stadium.
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct StadiumFilter {
+    /// `Some(true)` for the stadiums a women's club plays at, `Some(false)` for those a men's club plays at.
+    pub women: Option<bool>,
     pub min_capacity: Option<u32>,
     pub max_capacity: Option<u32>,
 }
 
 impl StadiumFilter {
     pub fn matches(&self, stadium: &StadiumSummary) -> bool {
-        self.min_capacity.is_none_or(|min| stadium.capacity >= min)
+        self.women.is_none_or(|women| stadium.clubs.iter().any(|club| club.women == women))
+            && self.min_capacity.is_none_or(|min| stadium.capacity >= min)
             && self.max_capacity.is_none_or(|max| stadium.capacity <= max)
     }
 }
@@ -226,36 +248,68 @@ pub(crate) fn club_stadium(process: &Process, layout: &Layout, club: u64) -> Opt
     stadium_looks_real(&bytes, s).then_some((stadium, bytes))
 }
 
-/// The senior stadium of each club the layout can read. Empty when this build has no stadium layout.
-/// Only reads memory.
+/// The senior stadiums the layout can read, each once with the clubs that play there. Empty when this build has no
+/// stadium layout. Only reads memory.
 pub fn read_stadiums<'a>(
     process: &Process,
     layout: &Layout,
     clubs: impl IntoIterator<Item = &'a ClubSummary>,
 ) -> Vec<StadiumSummary> {
-    if layout.stadium.is_none() {
+    let Some(s) = layout.stadium.as_ref() else {
         return Vec::new();
-    }
-    clubs.into_iter().filter_map(|club| stadium_summary(process, layout, club)).collect()
+    };
+    let found = clubs.into_iter().filter_map(|club| {
+        let (address, bytes) = club_stadium(process, layout, club.address)?;
+        Some((address, club, bytes))
+    });
+    group_by_stadium(found, |bytes| stadium_row(process, s, bytes))
 }
 
-fn stadium_summary(process: &Process, layout: &Layout, club: &ClubSummary) -> Option<StadiumSummary> {
-    let s = layout.stadium.as_ref()?;
-    let (_, bytes) = club_stadium(process, layout, club.address)?;
+/// One row per stadium address in `found`, which gives the stadium each club plays at with the stadium's bytes; the
+/// row is made by `row` from the bytes the first time the stadium is seen. Rows keep the order they were first seen in.
+fn group_by_stadium<'a, B>(
+    found: impl IntoIterator<Item = (u64, &'a ClubSummary, B)>,
+    row: impl Fn(&B) -> StadiumSummary,
+) -> Vec<StadiumSummary> {
+    let mut at: HashMap<u64, usize> = HashMap::new();
+    let mut rows: Vec<(StadiumSummary, Vec<&ClubSummary>)> = Vec::new();
+    for (address, club, bytes) in found {
+        match at.entry(address) {
+            Entry::Occupied(seen) => rows[*seen.get()].1.push(club),
+            Entry::Vacant(new) => {
+                new.insert(rows.len());
+                rows.push((row(&bytes), vec![club]));
+            }
+        }
+    }
+    rows.into_iter()
+        .map(|(mut row, mut tenants)| {
+            // Stable, and an unknown reputation goes last.
+            tenants.sort_by_key(|club| std::cmp::Reverse(club.reputation));
+            row.uid = tenants[0].uid;
+            row.clubs = tenants
+                .iter()
+                .map(|club| StadiumClub { uid: club.uid, name: club.name.clone(), women: club.women })
+                .collect();
+            row
+        })
+        .collect()
+}
+
+/// A stadium's row from its bytes, with no clubs yet.
+fn stadium_row(process: &Process, s: &StadiumLayout, bytes: &[u8]) -> StadiumSummary {
     let u32_at =
         |offset: u64| u32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"));
     let name = u64::from_le_bytes(bytes[s.name as usize..s.name as usize + 8].try_into().expect("8 bytes"));
-    Some(StadiumSummary {
-        uid: club.uid,
-        club_uid: club.uid,
-        club: club.name.clone(),
-        women: club.women,
+    StadiumSummary {
+        uid: 0,
+        clubs: Vec::new(),
         name: read_fm_string(process, name).filter(|name| !name.trim().is_empty()),
         capacity: u32_at(s.capacity),
         seating: u32_at(s.seating),
         used: u32_at(s.used),
         expansion: u32_at(s.expansion),
-    })
+    }
 }
 
 /// The class (vtable) of stadiums: the one the clubs' stadiums share, when nearly all of them share one. Only objects
@@ -428,9 +482,7 @@ mod tests {
     fn stadium(name: Option<&str>, capacity: u32) -> StadiumSummary {
         StadiumSummary {
             uid: 1,
-            club_uid: 1,
-            club: "Northbridge".to_owned(),
-            women: false,
+            clubs: vec![StadiumClub { uid: 1, name: "Northbridge".to_owned(), women: false }],
             name: name.map(str::to_owned),
             capacity,
             seating: capacity,
@@ -442,10 +494,40 @@ mod tests {
     #[test]
     fn stadium_filter_bounds_capacity() {
         let row = stadium(Some("Harbour Park"), 40_000);
-        assert!(StadiumFilter { min_capacity: Some(30_000), max_capacity: Some(50_000) }.matches(&row));
+        assert!(
+            StadiumFilter { min_capacity: Some(30_000), max_capacity: Some(50_000), ..StadiumFilter::default() }
+                .matches(&row)
+        );
         assert!(!StadiumFilter { min_capacity: Some(41_000), ..StadiumFilter::default() }.matches(&row));
         assert!(!StadiumFilter { max_capacity: Some(10_000), ..StadiumFilter::default() }.matches(&row));
         assert_eq!(row.names(), "Harbour Park Northbridge");
         assert_eq!(stadium(None, 12_000).display_name(), "Northbridge");
+    }
+
+    fn club(uid: u32, name: &str, women: bool, reputation: Option<u16>) -> ClubSummary {
+        ClubSummary { uid, name: name.to_owned(), short_name: None, women, reputation, founded: None, address: 0 }
+    }
+
+    #[test]
+    fn shared_stadiums_are_one_row_with_every_club() {
+        let (city, rovers, ladies, town) = (
+            club(10, "City", false, Some(6000)),
+            club(20, "Rovers", false, Some(7000)),
+            club(30, "City Women", true, None),
+            club(40, "Town", false, Some(3000)),
+        );
+        let found = [(0x100, &city, 40_000), (0x200, &town, 9_000), (0x100, &rovers, 40_000), (0x100, &ladies, 40_000)];
+        let rows = group_by_stadium(found, |&capacity| StadiumSummary { clubs: Vec::new(), ..stadium(None, capacity) });
+        assert_eq!(rows.len(), 2);
+        // The best-known club first; the row is named after it and takes its UID.
+        let shared = &rows[0];
+        assert_eq!(shared.clubs.iter().map(|c| c.uid).collect::<Vec<_>>(), [20, 10, 30]);
+        assert_eq!((shared.uid, shared.display_name()), (20, "Rovers"));
+        assert_eq!(shared.names(), "Rovers City City Women");
+        assert_eq!((rows[1].uid, rows[1].clubs.len()), (40, 1));
+        // A ground both kinds of club play at matches either kind.
+        assert!(StadiumFilter { women: Some(true), ..StadiumFilter::default() }.matches(shared));
+        assert!(StadiumFilter { women: Some(false), ..StadiumFilter::default() }.matches(shared));
+        assert!(!StadiumFilter { women: Some(true), ..StadiumFilter::default() }.matches(&rows[1]));
     }
 }

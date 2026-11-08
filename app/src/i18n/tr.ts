@@ -1096,8 +1096,29 @@ export const tr: Strings = {
     search: "Hakemleri isim veya UID ile ara",
     summary: (total, shown) =>
       total > shown ? `${format(total)} hakem · en iyi ${shown}` : `${format(total)} hakem`,
-    empty: (query) => (query === "" ? "FM'in bu sürümünde hakemler okunamadı." : `“${query}” aramasına uyan hakem yok.`),
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "FM'in bu sürümünde hakemler okunamadı.";
+      }
+      if (query === "") {
+        return "Bu filtrelere uyan hakem yok.";
+      }
+      return filtered
+        ? `“${query}” aramasına ve bu filtrelere uyan hakem yok.`
+        : `“${query}” aramasına uyan hakem yok.`;
+    },
     columns: { name: "İsim", nation: "Ülke", age: "Yaş", ca: "MY", pa: "PY", reputation: "İtibar", uid: "UID" },
+    filters: {
+      age: "Yaş",
+      minAge: "En düşük yaş",
+      maxAge: "En yüksek yaş",
+      minCurrentAbility: "Min MY",
+      minCurrentAbilityTitle: "En düşük mevcut yetenek",
+      minPotentialAbility: "Min PY",
+      minPotentialAbilityTitle: "En düşük potansiyel yetenek",
+      abilityPlaceholder: "1–200",
+      nation: "Ülke",
+    },
     reputation: "İtibar",
   },
 
@@ -1106,9 +1127,29 @@ export const tr: Strings = {
     search: "Turnuvaları isim veya UID ile ara",
     summary: (total, shown) =>
       total > shown ? `${format(total)} turnuva · itibarı en yüksek ${shown}` : `${format(total)} turnuva`,
-    empty: (query) =>
-      query === "" ? "FM'in bu sürümünde turnuvalar okunamadı." : `“${query}” aramasına uyan turnuva yok.`,
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "FM'in bu sürümünde turnuvalar okunamadı.";
+      }
+      if (query === "") {
+        return "Bu filtrelere uyan turnuva yok.";
+      }
+      return filtered
+        ? `“${query}” aramasına ve bu filtrelere uyan turnuva yok.`
+        : `“${query}” aramasına uyan turnuva yok.`;
+    },
     columns: { name: "İsim", nation: "Ülke", continent: "Kıta", reputation: "İtibar", uid: "UID" },
+    filters: {
+      kind: "Gösterilecek turnuvalar",
+      all: "Tümü",
+      men: "Erkek",
+      women: "Kadın",
+      nation: "Ülke",
+      continent: "Kıta",
+      reputation: "İtibar",
+      minReputation: "En düşük itibar",
+      maxReputation: "En yüksek itibar",
+    },
     shortName: "Kısa isim",
     reputation: "İtibar",
     women: "Kadın",
@@ -1141,8 +1182,30 @@ export const tr: Strings = {
     search: "Ödülleri isim, turnuva veya UID ile ara",
     summary: (total, shown) =>
       total > shown ? `${format(total)} ödül · prestiji en yüksek ${shown}` : `${format(total)} ödül`,
-    empty: (query) => (query === "" ? "FM'in bu sürümünde ödüller okunamadı." : `“${query}” aramasına uyan ödül yok.`),
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "FM'in bu sürümünde ödüller okunamadı.";
+      }
+      if (query === "") {
+        return "Bu filtrelere uyan ödül yok.";
+      }
+      return filtered
+        ? `“${query}” aramasına ve bu filtrelere uyan ödül yok.`
+        : `“${query}” aramasına uyan ödül yok.`;
+    },
     columns: { name: "İsim", competition: "Turnuva", nation: "Ülke", prestige: "Prestij", uid: "UID" },
+    filters: {
+      kind: "Gösterilecek ödüller",
+      all: "Tümü",
+      men: "Erkek",
+      women: "Kadın",
+      nation: "Ülke",
+      recipients: "Kime",
+      anyone: "Herkes",
+      prestige: "Prestij",
+      minPrestige: "En düşük prestij",
+      maxPrestige: "En yüksek prestij",
+    },
     competition: "Turnuva",
     prestige: "Prestij",
     period: "Veriliş sıklığı",
@@ -1189,7 +1252,13 @@ export const tr: Strings = {
       seating: "Oturmalı",
       expansion: "Büyüyebileceği",
     },
+    /** The clubs that play at a stadium, in its profile. */
+    clubs: "Kulüpler",
     filters: {
+      kind: "Gösterilecek stadyumlar",
+      all: "Tümü",
+      men: "Erkek",
+      women: "Kadın",
       capacity: "Kapasite",
       minCapacity: "En düşük kapasite",
       maxCapacity: "En yüksek kapasite",
@@ -1203,8 +1272,18 @@ export const tr: Strings = {
     search: "İsimle ülke ara",
     summary: (total, shown) =>
       total > shown ? `${format(total)} ülke · ilk ${shown} gösteriliyor` : `${format(total)} ülke`,
-    empty: (query) => (query === "" ? "Ülke bulunamadı." : `“${query}” aramasına uyan ülke yok.`),
-    columns: { name: "Ülke", uid: "UID" },
+    empty: (query, filtered) => {
+      if (query === "") {
+        return filtered ? "Bu filtrelere uyan ülke yok." : "Ülke bulunamadı.";
+      }
+      return filtered
+        ? `“${query}” aramasına ve bu filtrelere uyan ülke yok.`
+        : `“${query}” aramasına uyan ülke yok.`;
+    },
+    columns: { name: "Ülke", continent: "Kıta", uid: "UID" },
+    filters: {
+      continent: "Kıta",
+    },
     uid: "UID",
     noUid: "UID yok",
     nation: "Ülke",
