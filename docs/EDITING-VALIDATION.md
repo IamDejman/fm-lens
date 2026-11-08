@@ -1312,6 +1312,15 @@ box (`F85704E3…F1728ED4`). The update came from the published FM Lens 0.6.2 re
 | Installer art (#153) | The installer from #153's CI build (SHA-256 `D58A6409…FE813073`) showed the FM Lens icon in its title bar, page header and taskbar, and the FM Lens wordmark on its welcome and finish pages. FM Lens opened from Finish, with one entry in installed apps and one process |
 
 
+## Frontend interaction CI (8 November 2026)
+
+Branch `codex/frontend-interaction-ci`, based on main at `86c64b3`. Main already has a Windows runner with workspace Clippy/tests, writable-graph checks and an installer build. This follow-up adds `npm test` before the frontend build in both platform jobs. The test command type-checks its sources then runs Vitest/jsdom with React Testing Library and the preview's fixture command adapter; it never connects to FM.
+
+Four interaction tests cover: every section shortcut isolated behind a modal plus Tab wrapping and Escape; an earlier search resolving after the latest search without replacing its rows; Keep editing and explicit Discard when navigation encounters pending values; and Settings saving an open snapshot, then reopening from it in a fresh module load. The modal test first failed for keys 7–9 on main, so this branch includes the shared shortcut definition already implemented and natively verified in `codex/modal-shortcut-isolation` (#149). This is the same narrow fix, not a new modal implementation.
+
+Checks: all four tests and the production frontend build passed locally on macOS; the existing Vite chunk warning remains. Windows execution of the new tests requires the CI run and has not been claimed as a local Windows pass. No FM data was read or edited and no native UI was changed beyond that already verified shortcut fix. jsdom geometry/media shims are explicit in tests/setup.ts; these tests do not establish native rendering, performance, Windows bridge behaviour or edited-save persistence.
+
+
 ## Modal navigation shortcuts (7 November 2026)
 
 Branch `codex/modal-shortcut-isolation`, based on main at `06963d9`. Section navigation and modal shortcut interception now share the same nine section keys, so shortcuts 7, 8 and 9 are intercepted along with 1 through 6. Added frontend regression checks for all nine keys on Mac and Windows modifier conventions, including modified/composing input and preservation of ordinary editing shortcuts; CI runs them with `npm test`.
