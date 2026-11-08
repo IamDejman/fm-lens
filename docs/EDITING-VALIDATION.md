@@ -1475,6 +1475,148 @@ Findings:
 
 Hashes and timings are local under `reports/update-live-2026-11-08/`.
 
+## Disposable-career persistence: moves, clauses, templates and freezes (8 November 2026)
+
+FM27 Steam build 26340721, native ARM64, FM PID 2559 for the whole run (FM was
+never quit). FM Lens 0.6.2 ran as an isolated copy with its own data folder
+under ignored `reports/persistence-2026-11-08/`, where the probe readings for
+every stage also stay. The copy `FM Lens Persistence 2026-11-08.fm` was saved
+from the main career at 11 Dec 2027, Arsenal. The main career's hash
+(`3adeb4fd…`) matched before and after.
+
+Order: baseline probes; edits in FM Lens; freezes on; Save Game As; that save
+loaded in FM and FM Lens Reload; a 23-day holiday to Mon 3 Jan 2028; save and a
+second load; the human manager's Change club; one day; save and a third load.
+Every load was FM's own Load Game in the running process, not a quit and Steam
+relaunch. A successful game call or probe readback was not taken as
+consistency: each subject's linked records (club lists, history, registration,
+finances, staff lists, news) were checked on FM's screens as well.
+
+### Structural moves
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Jaidon Anthony (player 28112512) Brentford -> Everton, £12M fee | Applied | Everton, contract re-signed 2027-12-11, wage and expiry kept. Brentford balance -£21,631,777 -> -£9,631,777; Everton balance and transfer budget each -£12M | In Everton's squad as "Unr" (unregistered); #19 and registered after the holiday. Not in Everton's Transfers In. No 2027/28 Brentford row in his history and no fee anywhere (FM shows AI finances only as a band, "Rich") |
+| Rico Henry (29129073) and Kenny Tete (37039829), Brentford/Fulham swap | Applied | Each at the other club, contracts re-signed 2027-12-11, wages and expiries kept | Fulham lists 32 players, Henry in and Tete out. Henry's only 2027/28 row says Fulham, with his 15 Brentford apps; no transfer row or fee. After the holiday Henry #20, Tete #42 |
+| Fábio Carvalho (28122195) released by Brentford | Applied | No club, no contract | Free agent. His 2027/28 Brentford row (15 apps) is gone from his career history |
+| Mehmet Ali (staff 28111724) Brentford -> Bournemouth | Refused: Bournemouth's coaching list is full | Unchanged | - |
+| Mehmet Ali Brentford -> Everton | Applied | Everton coach, signed and joined 2027-12-11 | Everton Senior Squad coach, gone from Brentford's staff |
+| Kevin O'Connor (staff 5101541) Coach -> Scout | Refused: Brentford's scouting list is full (16) | Unchanged | - |
+| O'Connor Coach -> Performance Analyst | Applied | Performance Analyst | Brentford's staff list shows Performance Analyst |
+
+Every moved record read the same after the first load, the holiday and the
+second load, apart from live values (energy, reputation drift) and the game's
+own later changes: new squad numbers, and Tete made a player-coach during the
+holiday (his person block moved 0xf8).
+
+Findings:
+
+- A move, swap or release changes the pointers and contract; it is not FM's
+  transfer. FM keeps no transfer row, no Transfers In entry and no fee in any
+  history, though the fee does move between the balances. This season's
+  appearances follow the player to his new club's row (Henry) or vanish with a
+  release (Carvalho). History and statistics consistency is not provided.
+- Registration sorts itself out: Anthony stayed unregistered at Everton until the
+  game gave him #19 during the holiday.
+- Full staff lists are refused before anything is written.
+
+### Clauses
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Cristhian Mosquera (2000030816) wage rise after 40 league games, £78,000 -> £80,000 (kind 13) | Applied | 80000, condition 40 | "£80K p/w after 40 league games" |
+| Gilberto Mora (2000496104) wage rise after 25 games (£105,203, kind 13) removed | Applied | Gone, his other four unchanged | Gone |
+| Mora £150M release clause added (kind 0) | Applied (Jack Porter's list had no free slot) | Kind 0, 150000000 | £150M release clause beside his other clauses |
+
+All three read the same after the first load, the holiday and the second load.
+
+### Template on three players
+
+A template captured from Ethan Nwaneri (2000283271) was applied in one batch to
+three Arsenal youth players: Theo Julienne (2000407522), Josh Ogunnaike
+(2000407536) and Khari Ranson (2000407546, a goalkeeper).
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Apply to three players | One batch applied | All three read Nwaneri's CA/PA 140/160, every attribute, feet, personality and positions | Ranson matches Nwaneri on every attribute; his potential stars lag (3 against Nwaneri's 4.5 at the same PA) |
+| First load | - | Same | - |
+| 23-day holiday and second load | - | Copied attributes kept, plus normal growth. Each player's own positions came back beside the copied ones: Julienne DM 20, WBR 15; Ogunnaike DL 20, DC 14, WBL 16; Ranson GK 20 | Ranson is a goalkeeper again, with the copied keeper attributes of 1 to 4 |
+
+Finding: positions written by a template do not stay as written. Within the
+holiday the game put back most of each player's old positions (all of
+Ogunnaike's and Ranson's; Julienne's DM, and WBR one lower, but not DR), so each
+now has two sets. The game seems to keep natural positions somewhere FM Lens does
+not write. Attributes, feet and personality held.
+
+### Freezes over 23 days
+
+Frozen: Lionel Messi's attributes (player 7458500), Steve Wigley's attributes
+(staff 2005929) and Arsenal's money (club 602). Unfrozen controls: Junior
+Messias, Ross Barkley, Huw Jennings, Brentford and Fulham.
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Arsenal money, 23 days | Still ticked: "The balance can't go down while FM Lens is connected." | £212,329,659 -> £181,632,461 (-£30,697,198) | - |
+| Messi's attributes, 23 days | Still on | No attribute changed | - |
+| Wigley's attributes | Gone after the first FM Lens Reload, with no note | No attribute changed | - |
+
+The money freeze failed. What was established:
+
+- `hold_money` ignores every write error, so a refused hold leaves no trace.
+  Which guard refused it during the holiday (the career lock, the target check,
+  or a value conflict while FM was working out a day) is not established.
+- FM Lens reloads only when its window gets focus, so it stayed on stale data
+  for the whole holiday.
+- On focus, Reload compares the players' targets (UID, address, layout shift)
+  with the ones it had. Tete's person block had moved 0xf8 when he became a
+  player-coach, so Reload decided it was another game: it showed "Freezes from
+  last time are back on", froze Arsenal again at £181.6M and dropped undo for
+  all 215 changes in the log.
+
+The Messi result is inconclusive: no control lost an attribute in the 23 days
+either (Barkley's CA fell 133 -> 132 with the same attributes). The staff
+freeze is held in memory only, so any Reload drops it.
+
+Clubs' finances over the holiday, for reference: Brentford -£9,631,777 ->
+-£5,446,930, Fulham -£94,362,632 -> -£53,557,712, Everton £287,795,251 ->
+£277,998,905, Bournemouth £56,924,424 -> £52,420,817.
+
+### Human manager: Change club
+
+On Mon 3 Jan 2028, after the holiday, FM Lens's Change club moved Ayodeji
+Eluwande (staff 2002071958) from Arsenal to Brentford. FM needed a tactic
+(Brentford had "No Tactic Set"), introductions and captains before Continue,
+as for any new job.
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| Change club Arsenal -> Brentford | Preview "Arsenal -> Brentford / Keith Andrews loses his job / It can't be undone."; header then shows Brentford | Brentford, new contract £144,282 p/w, 2028-01-03 to 2030-06-30 (was £281,250 p/w at Arsenal). Reputation home 2881 -> 3000, current 7872 -> 7172, world 2486 -> 2687 | "Eluwande takes charge at Brentford"; the career now runs at Brentford. Wage budget £245K p/w over |
+| Keith Andrews (staff 103353) | "loses his job" | No club, no contract | Free agent; news "Andrews eyes Arsenal job". His staff history row "25- BRE Manager" stays open, with no end year |
+| Arsenal | - | No change from the move | Caretaker David Horseman. Kepa left the first-team list for the U21 list at once (28 -> 27 and 28 -> 29). Players' morale moved |
+| Brentford | - | - | U21 captain Callum Wilson -> Beau Redknapp |
+| One day later | - | Only Arsenal's balance moved. The U21 managers (James Marwood, Sam Saunders) unchanged | Job History lists only Arsenal 2027/28 and 2026/27; the biography says he moved on to Brentford |
+| Save and third load | Reload shows Brentford | Staff and clubs identical to the day before; both teams have the same players and captains, only live energy, sharpness and morale differ | Job History still has no Brentford row |
+
+Findings: the move holds and FM treats it as a real appointment (contract,
+reputation, caretaker, news, onboarding). Two history records are not
+consistent: the manager's Job History gains no Brentford row in a day or after
+a load, and Andrews' Brentford row stays open although he is a free agent.
+Whether FM adds the row later (at season end, say) was not checked.
+
+### Nits
+
+- After a refused job change (Scout, list full), the error stays under the field
+  when another job is picked, until Apply.
+- The staff freeze shows no note like the player and money freezes do, and is
+  not remembered across a Reload.
+- FM does not count FM Lens edits as unsaved: loading another save gives no
+  prompt, so unsaved edits are lost without a warning.
+- FM Lens shows stale values until its window gets focus.
+- "Freezes from last time are back on" stays after both freezes are turned off.
+
+After the run both freezes were turned off (the app's frozen list is empty) and
+the main career's hash still matched.
+
 ## Transfers, swaps and releases through the game (8 November 2026)
 
 FM27 Steam build 26340721, macOS arm64, with a helper built from this branch.
