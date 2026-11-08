@@ -290,7 +290,7 @@ One official at a time; none where the build's layout does not place officials.
 
 Some changes are not field writes: the game makes them itself through the
 bridge, or FM Lens edits a list. These include work permits, injuries, loans,
-free-agent signings, Max tactics, secondary nationalities and homegrown ties,
+transfers, swaps, releases, free-agent signings, Max tactics, secondary nationalities and homegrown ties,
 contract clauses and a planned retirement. ROADMAP.md lists each one and what
 has been checked in FM.
 
