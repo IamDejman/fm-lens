@@ -341,6 +341,8 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
  * made with a date, or none after a cancel. Before that, every 13th player at a club has a deal agreed with another.
  */
 const futureTransfers = new Map<number, FutureTransfer[]>();
+/** The exact offer associated with each deferred signing in the change log. */
+const signingOffers = new Map<number, number>();
 
 function futureTransfersOf(player: PlayerSummary): FutureTransfer[] {
   const fixture = (club: string): FutureTransfer => {
@@ -372,6 +374,12 @@ function cancelFutureTransfers(uid: number): LoggedChange[] {
   const name = players.find((p) => p.uid === uid)?.name ?? "";
   futureTransfers.set(uid, []);
   return agreed.map((transfer) => {
+    for (const entry of changes) {
+      if (entry.uid === uid && !entry.earlierGame && entry.undoneAt === null
+        && signingOffers.get(entry.id) === transfer.offer) {
+        entry.permanent = true;
+      }
+    }
     const logged: LoggedChange = {
       id: changes.length + 1,
       at: Date.now(),
@@ -2395,6 +2403,7 @@ function signFreeAgentLater(uid: number, clubUid: number, joins: number): Logged
     moved: { to: to.name, joins },
   };
   changes.push(logged);
+  signingOffers.set(logged.id, 900 + logged.id);
   futureTransfers.set(uid, [
     ...futureTransfersOf(player),
     { offer: 900 + logged.id, club: to.name, clubUid: to.uid, joins: dateFromNumber(joins) },
