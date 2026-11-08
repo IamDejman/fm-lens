@@ -1082,14 +1082,14 @@ probe/bridge build, Intel bridge compile check and native Tauri debug app bundle
 Logs are local under `reports/helper-update-*.log`; the bundle is
 `target/debug/bundle/macos/FM Lens.app`, signed ad hoc, not installed or released.
 
-Still unverified: an actual companion update/relaunch with FM kept open, a
-copied-career Apply/Undo using an older helper, and live discovery with a new
-helper on ARM64 or Intel. For that follow-up, record the game fingerprint and
-copy's baseline, keep FM's PID unchanged while relaunching the updated companion,
-check normal reads and one bounded edit/undo, confirm an unavailable optional
-refresh does not invite repeating the edit, and complete the usual copied-career
-FM inspection/save/reload procedure. Do not restart the user's main career to
-test compatibility.
+Verified live on 8 November 2026 (see "Live check: update and relaunch with FM
+open" below): an actual 0.6.1 to 0.6.2 update and relaunch with FM kept open,
+then reads and one bounded Apply/Undo through the helper FM had already loaded,
+which answers discovery, on ARM64. Still unverified live: a copied-career
+Apply/Undo using an older helper, an unavailable optional refresh (the loaded
+helper supports refresh, so that path could not be reached; the native tests
+above cover it), and discovery on Intel. Do not restart the user's main career
+to test compatibility.
 
 Release integration for 0.6.0 incorporates main through `ac0441e`. It removes
 0.5.11's file-timestamp-based restart lock from Session, connection responses,
@@ -1419,3 +1419,58 @@ Checks: clean npm install (zero reported vulnerabilities), TypeScript/Vite
 build, debug Tauri app packaging, Impeccable detector on App.tsx, and diff
 whitespace checks passed. This is local macOS UI evidence; Windows native
 execution and release-build performance were not measured.
+
+## Live check: update and relaunch with FM open (8 November 2026)
+
+FM27 Steam build 26340721 ARM64 (27.0.0, Apple silicon), game plugin UUID
+`F4540355-2186-39CB-9119-C706A6A35346`. FM ran as PID 2559 (started 7 November
+22:23:49) for the whole check and was never restarted. Copy: `FM Lens Live
+2026-11-07` (Arsenal, 11 Dec 2027 16:30), SHA-256 `e313122f…`, unchanged
+afterwards. The main career's hash (`3adeb4fd…`) matched before and after.
+Continue was never pressed.
+
+FM had loaded the helper installed at 21:50 on 7 November: SHA-256 `1f3cf31c…`,
+the release build made at 14:37 from the 0.6.0 preparation merge (`94812b9`), so
+it answers discovery.
+
+Update path: a copy of the installed FM Lens 0.6.1 bundle, run with its own data
+and exports folders (`FMLENS_DATA` and `FMLENS_EXPORTS` set with `launchctl
+setenv`, because the relaunch goes through `open -n` and keeps only launchd's
+environment). Its own updater found 0.6.2 on the release feed, installed it in
+the background and showed Relaunch to update. Pressing it started 0.6.2 at
+04:24:30 on the same data.
+
+Each launch refreshed the installed helper by writing a new file and renaming
+it: 0.6.1 replaced `1f3cf31c…` with its `977a6398…` at 04:17:45, and 0.6.2
+replaced that with `1f9dec63…` (launcher `4d301473…`) at 04:24:32. FM kept
+mapping its original file (inode 639157841) to the end.
+
+| Check | FM Lens | Probe | FM |
+|---|---|---|---|
+| 0.6.1 connects to the running FM | Connected | - | - |
+| Update, then Relaunch to update | 0.6.2 opens on the same data and shows its What's new | - | PID 2559 unchanged |
+| Reads after the relaunch | Connected: Ayodeji Eluwande, Arsenal, 11 Dec 2027, 30,300 players; Saka (28122642) Finishing 16 | 80 (16) | - |
+| Apply Finishing 16 -> 17 | "1 change applied.", no refresh warning; Changes 1 | 85 (17) | 17 with the improvement arrow, without Continue |
+| Save Game As `FM Lens Update 2026-11-08` | - | - | Saved (`f7c6040f…`) |
+| Undo | Undone at 04:29:43, no warning | 80 (16) | 16 at once |
+| Load `FM Lens Update 2026-11-08` in FM, without quitting | Reload: connected, 11 Dec 2027; Finishing 17 | Health passes; 85 (17) | Finishing 17 |
+
+Findings:
+
+- An update with FM open works: the relaunched companion connects to the helper
+  FM already loaded, then reads, applies and undoes without restarting FM. The
+  optional refresh after Apply and Undo ran (FM showed 17, then 16, without
+  Continue).
+- An unavailable optional refresh could not be reached live, because this
+  helper supports refresh. In code, core skips a refresh an older helper refuses
+  (`older_helpers_skip_only_the_refused_refresh_and_keep_other_calls_working`),
+  and `refresh_game_ui` reports any other refresh failure apart from the write
+  ("Changes applied, but FM's screen could not refresh"), so neither invites
+  applying the change again.
+- FM does not count FM Lens edits as unsaved: loading another save after the
+  Undo gave no prompt to save, though the game had changed since the save.
+- Debug and release builds share the bundle id `local.fm.lens`, so they share
+  WebKit storage; `FMLENS_DATA` does not separate it (for example, the What's
+  new seen version).
+
+Hashes and timings are local under `reports/update-live-2026-11-08/`.
