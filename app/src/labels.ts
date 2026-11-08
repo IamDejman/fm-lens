@@ -67,7 +67,7 @@ export function jobLabel(code: number | null): string {
     return label;
   }
   const coach = code > 1 && code % 2 === 1 ? JOB_LABELS[code - 1] : undefined;
-  return coach !== undefined ? profileText.playerCoach(coach) : profileText.unknownJob(code);
+  return coach !== undefined ? profileText.playerCoach(coach) : profileText.unknownJob;
 }
 
 /** The names of the nations a nation field can be set to, by address, once they have been read (see `fieldTable`). */

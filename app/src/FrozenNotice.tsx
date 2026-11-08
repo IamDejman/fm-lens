@@ -1,7 +1,7 @@
 // The notice under the masthead after connecting to a save in which attributes or clubs' money were frozen
 // before: what is frozen again, and what waits until FM Lens can write to this version of the game.
 
-import { appText } from "./labels";
+import { appText, profileText } from "./labels";
 import type { Refrozen } from "./types";
 
 const text = appText.refrozen;
@@ -9,10 +9,12 @@ const text = appText.refrozen;
 /** Most names the notice lists of each kind; it counts the rest. */
 const NAMES_SHOWN = 5;
 
-const names = (list: string[]) =>
-  list.length > NAMES_SHOWN
+const names = (all: string[]) => {
+  const list = all.map((name) => name || profileText.unknownName);
+  return list.length > NAMES_SHOWN
     ? `${list.slice(0, NAMES_SHOWN).join(", ")} ${text.more(list.length - NAMES_SHOWN)}`
     : list.join(", ");
+};
 
 /** What connecting froze again, by name, and how many wait; it stays until it is dismissed. */
 export function FrozenNotice({ refrozen, onDismiss }: { refrozen: Refrozen; onDismiss: () => void }) {

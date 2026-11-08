@@ -136,7 +136,7 @@ pub fn read_players(
         let full_name = read_fm_string(process, u64_at(p.full_name));
         let mut name_part = |offset| names.get(u64_at(offset), |entry| read_name_entry(process, entry));
         let (common, first, last) = (name_part(p.common_name), name_part(p.first_name), name_part(p.last_name));
-        let name = display_name(common, first, last, full_name.as_ref(), uid);
+        let name = display_name(common, first, last, full_name.as_ref());
 
         let team = u64_at(p.team);
         let club = clubs.get(team, |team| club_of_team(process, layout, team));
