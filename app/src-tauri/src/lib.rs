@@ -2066,7 +2066,7 @@ enum TeamAction {
     Refresh,
     /// Every attribute to its best: 20, or 1 where lower is better.
     MaxAttributes,
-    /// Every player fully familiar with the club, as the game's Max cohesion does; experimental. Only players the game
+    /// Every player fully familiar with the club, as the game's Max cohesion does. Only players the game
     /// has given a familiarity with the club already are raised.
     MaxCohesion,
     /// Every player fully familiar with the team's tactic, as the game's own editor does it.
