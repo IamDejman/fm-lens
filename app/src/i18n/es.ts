@@ -693,6 +693,7 @@ export const es: Strings = {
     contract: "Contrato",
     wage: "Salario semanal",
     converted: "Al cambio de FM",
+    fmShowsWage: (amount) => `FM muestra ${amount}`,
     signed: "Firmado",
     expires: "Vence",
     loan: "Cesión",
