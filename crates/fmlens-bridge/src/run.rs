@@ -179,6 +179,7 @@ mod tests {
         assert_eq!(result, 0x1234_5678_9ABC);
     }
 
+    #[cfg(not(windows))]
     #[repr(C)]
     struct Object {
         low: u64,
@@ -188,6 +189,7 @@ mod tests {
 
     /// Too big for registers, so every C ABI returns it through a place the caller passes. The twelve ordinary
     /// arguments are hex digits as above, split over the object's two halves.
+    #[cfg(not(windows))]
     extern "C" fn object(
         a: u64,
         b: u64,
