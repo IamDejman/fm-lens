@@ -1,6 +1,7 @@
-import { Fragment, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { changesText as pagingText, listFeedbackText as feedback } from "./labels";
 import { call } from "./api";
+import { layoutPixels, watchZoom } from "./appearance";
 import { describeError } from "./format";
 import { isShortcut, shortcutAria } from "./keys";
 import { isRecord, restored, useSnapshot } from "./restore";
@@ -9,11 +10,13 @@ import { askToLeave } from "./useProfileEditing";
 /** Rows shown at once; the best come first. */
 const ROW_LIMIT = 200;
 
-/** The search text and the UID of the selected row that a list saved; what is missing or wrong is the list's start. */
-function readList(value: unknown): { query: string; selected: number | null } {
+/** Saved search, page and selection; older or invalid snapshots fall back to the first page. */
+function readList(value: unknown): { query: string; selected: number | null; offset: number; argsKey: string | null } {
   const given = isRecord(value) ? value : {};
   return {
     query: typeof given.query === "string" ? given.query : "",
+    offset: Number.isSafeInteger(given.offset) && Number(given.offset) >= 0 && Number(given.offset) % ROW_LIMIT === 0 ? Number(given.offset) : 0,
+    argsKey: typeof given.argsKey === "string" ? given.argsKey : null,
     selected: typeof given.selected === "number" && Number.isInteger(given.selected) ? given.selected : null,
   };
 }
@@ -101,7 +104,8 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   // as soon as the rows are there again.
   const [start] = useState(() => restored(name, readList));
   const [query, setQuery] = useState(start.query);
-  const [position, setPosition] = useState({ key: "", offset: 0 });
+  const argsKey = JSON.stringify(requestArgs ?? {});
+  const [position, setPosition] = useState(() => ({ key: JSON.stringify([start.query, start.argsKey ?? argsKey]), offset: start.offset }));
   const [loading, setLoading] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const wanted = useRef(start.selected);
@@ -111,19 +115,34 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const [shownFor, setShownFor] = useState<{ query: string; argsKey: string; offset: number; requestKey: string } | null>(null);
   const [failure, setFailure] = useState<{ requestKey: string; message: string } | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
-  useSnapshot(name, () => ({ query, selected: selected?.uid ?? null }));
   const searchInput = useRef<HTMLInputElement>(null);
   const tableWrap = useRef<HTMLDivElement>(null);
   const selectedRow = useRef<HTMLTableRowElement>(null);
   const headRow = useRef<HTMLTableRowElement>(null);
+  const [availableWidth, setAvailableWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const box = tableWrap.current;
+    if (!box) return;
+    // WebKit container queries can retain the unscaled width under root CSS zoom.
+    const measure = () => setAvailableWidth(Math.floor(layoutPixels(box.getBoundingClientRect().width)));
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(box);
+    const unwatch = watchZoom(measure);
+    return () => { observer?.disconnect(); unwatch(); };
+  }, []);
+  const listWidth = availableWidth === null ? undefined
+    : availableWidth > 1200 ? "wide" : availableWidth > 960 ? "medium"
+    : availableWidth > 880 ? "compact" : availableWidth > 560 ? "narrow" : "small";
+
 
   // The arguments as JSON, which is how they reach the command: the effect below depends on their value.
-  const argsKey = JSON.stringify(requestArgs ?? {});
   const pageKey = JSON.stringify([query, argsKey]);
   const offset = position.key === pageKey ? position.offset : 0;
   const requestKey = JSON.stringify([command, pageKey, offset, version, attempt]);
   const error = failure?.requestKey === requestKey ? failure.message : null;
-  useEffect(() => setPosition({ key: pageKey, offset: 0 }), [pageKey]);
+  useSnapshot(name, () => ({ query, selected: selected?.uid ?? null, offset, argsKey }));
+  useEffect(() => setPosition((current) => current.key === pageKey ? current : { key: pageKey, offset: 0 }), [pageKey]);
   const goToPage = (next: number) => {
     setPosition({ key: pageKey, offset: next });
     setAttempt((value) => value + 1);
@@ -286,7 +305,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
         {filterBar}
         {error && <div className="banner" role="alert">{error} <button type="button" onClick={() => setAttempt((value) => value + 1)}>{feedback.retry}</button></div>}
 
-        <div className="table-wrap" aria-busy={searching} ref={tableWrap} data-tour={active ? "list" : undefined}>
+        <div className="table-wrap" data-list-width={listWidth} aria-busy={searching} ref={tableWrap} data-tour={active ? "list" : undefined}>
           {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
           <table
             className={["grid", tableClass, !profile && !detail && "static"].filter(Boolean).join(" ")}

@@ -63,10 +63,10 @@ fields do not inherit that evidence. Promises remain unavailable on Windows.
 | Clone a player profile onto other players | Implemented with selectable groups, filtered targets, optional UID restriction and preview. Live capture of 142 fields exercised; multi-target clone persistence unverified |
 | Reusable player templates | Available: versioned JSON, local library, import/export, destination validation, preview/apply/undo. One-field native batch and invalid-field rejection exercised; cross-save/build testing open |
 | Fast field interaction / dragging | Enabled, unverified for mapped fields. A displayed mapped value opens its focused input on click or Enter/Space, then uses the usual review/apply/undo path; mouse/keyboard activation, focus, pending guard, apply and undo exercised natively |
-| Remembered navigation, searches and profile selection | Available foundation; exercise tab/reload scenarios |
+| Remembered navigation, searches and profile selection | Available; later-page selection survives language/currency reloads, and unopened sections retain state through consecutive reloads. Fixture regressions and bounded native macOS checks recorded on 8 November; broader career/restart cases remain open |
 | Light/dark appearance | Available: System, Light and Dark selector with local persistence; native light/dark check performed. FM-inspired refinement (see FM-LENS-INTERFACE.md) has native light/dark checks at 125/150% zoom, including native confirmation of the filter overflow fix |
 | Currency selector | Available; broader locale checks remain |
-| Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent; native scaling/viewport regression checks required |
+| Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent. Player-column priorities follow measured zoom-adjusted width; native macOS readability checked at 100/125/150%, including an open profile and light/dark appearance (8 November). Wider window/platform coverage remains open |
 | Keyboard navigation | Available: ⌘1-⌘9 sections, ⌘F search, arrow keys in lists, Enter/Space opens, Escape closes, ⌘S applies edits (see DESIGN-STANDARDS.md) |
 | Guided first-run tour | Delivered: skippable introduction to navigation, search, settings and the editing boundary, then, once the game can be edited, a guided first edit (open, Edit, change, Apply, Changes) that follows what the user does |
 

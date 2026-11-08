@@ -1687,9 +1687,9 @@ the app's Changes list and, where FM shows it, in FM.
 | Feature | Result | Undo |
 |---|---|---|
 | Release through the game's call (Mariona Caldentey, Arsenal) | Pass. The dialog said it can't be undone; she became a free agent and Changes shows Arsenal to Free agent with no Undo | None, by design |
-| Max cohesion (experimental) | Pass. 18 familiarity changes; FM's Squad > Dynamics > Team Cohesion went from Average to "an extremely strong" bond | Undo restored all 18 |
-| Unsackable (experimental) | Applied, read back Yes. No sacking situation was set up, so the effect in FM is not observed | Undone |
-| Register squad any time (experimental) | Applied, read back Yes. July is inside a registration window, so the effect in FM is not observed | Undone |
+| Max cohesion | Pass. 18 familiarity changes; FM's Squad > Dynamics > Team Cohesion went from Average to "an extremely strong" bond | Undo restored all 18 |
+| Unsackable | Applied, read back Yes. No sacking situation was set up, so the effect in FM is not observed | Undone |
+| Register squad any time | Applied, read back Yes. July is inside a registration window, so the effect in FM is not observed | Undone |
 | Official edit, then refresh (Abdel Al-Rahman Salameh, reputation 985 to 1,000) | Pass. Applied and read back 1,000 through the new `identity = 0x138` refresh; no error | Undone |
 | Players, Staff, Clubs and Officials lists, 200-row pages (#158) | Pass. 25,027 players, 19,308 clubs and 1,061 officials load in 200-row pages | None needed |
 | Manager contract tab, freeze controls present (#161) | Pass. Tickboxes present, and the freeze holds across a day and a relaunch (see the freeze row) | None needed |
@@ -1717,3 +1717,38 @@ at the box's screen size; dragging the FM Lens window left clears it. The releas
 call shapes come from the editor's release branch at 0x29CE8BC (see
 `docs/recon/fm27-call-shapes.md`).
 
+## Four native audit fixes (8 November 2026)
+
+Baseline `eb1d33b`; branch `codex/native-audit-fixes`. The window snapshot now
+includes a validated page offset tied to the search/filter/sort arguments and
+carries forward unopened sections' saved state. Invalid inputs count as dirty
+drafts for navigation, Close and Done, while Apply stays disabled. The player
+table measures its zoom-adjusted width, drops secondary columns and reserves
+useful room for names instead of relying solely on WebKit container queries.
+
+Native verification used the ad-hoc-signed debug Tauri app with production Vite
+output, connected to the running Steam ARM64 career: PID 13579, build 26340721,
+module UUID F4540355-2186-39CB-9119-C706A6A35346. FM showed 8 December 2027,
+11:00; FM Lens named Ayodeji Eluwande / Arsenal.
+
+| Reproduction | Result |
+|---|---|
+| Players page two, Reijnders UID 37071126 open; English → Spanish → English | Range stayed 201–400 of 30,314 and the same profile stayed open |
+| GBP → EUR → GBP from that page/profile | Page and profile stayed open; GBP restored |
+| Staff search Arteta (3 results), return to Players, English → Spanish → English without reopening Staff | Returning to Staff retained Arteta and its 3 results |
+| Haaland UID 29179241, baseline CA 195, draft 1000; section shortcut, Close and Done | Each asked Discard 1 change?; Keep editing preserved 1000; Apply stayed disabled. Draft explicitly discarded without applying |
+| Player list at 150%, light; at 150%, dark with Haaland open; at 125%, dark; return to 100% System | Names remained readable; secondary columns yielded first; the open-profile list retained readable names and CA/PA. English, GBP, System and 100% restored |
+| Changes after the checks | No changes yet |
+
+All 23 baseline career hashes stayed unchanged. No Apply, Undo, freeze,
+transfer/release action, Continue or game save was used.
+
+Checks passed: clean npm install (zero reported vulnerabilities), TypeScript,
+14 fixture interaction tests plus 2 shortcut tests, production frontend build,
+debug Tauri packaging, targeted Impeccable detector (no findings), and diff
+whitespace checks. Regression coverage includes later and partial final pages,
+invalid/legacy offsets, query/filter resets, consecutive reloads with an unopened
+section, invalid-only drafts for navigation/Close/Done, and zoom changes without
+a window resize. Native evidence is macOS only; Windows interaction and an
+exhaustive window-size matrix were not exercised locally. Rust/domain code was
+unchanged by these fixes.
