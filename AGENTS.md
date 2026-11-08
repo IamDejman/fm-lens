@@ -108,7 +108,8 @@ validated fields and the guarded memory layer for domain operations.
   game changes instead of blindly restoring old bytes.
 - Every mutation, including undo, must pass the known-build and current-career
   guards. Replaced entity-array storage requires a fresh Session and cleared
-  previews/history; never reuse cached targets across careers.
+  previews. Retained history from a different game is display-only, marked
+  Earlier game with no Undo; never reuse cached targets across careers.
 - Editing verification includes inspection in FM, advancement where relevant,
   save, quit, reload and another inspection on the disposable career copy.
   Memory readback alone does not establish game correctness.
@@ -142,7 +143,8 @@ validated fields and the guarded memory layer for domain operations.
 
 ## Current editor boundaries
 
-- Mapped player/staff/club fields are enabled on the known Mac build. The field
+- Mapped player/staff/club fields are enabled on known builds. Windows has
+  bounded app edit/undo checks on Server 2022, not edited-save persistence. The field
   catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
@@ -156,21 +158,36 @@ validated fields and the guarded memory layer for domain operations.
 - Staff attribute freeze lasts for the connection. Its toggle has been exercised;
   long-term simulation behavior remains unverified. Do not describe it as a
   persistent cross-restart setting.
-- The read-only nation browser lists nations represented by loaded players/staff.
-  The stadium browser lists senior stadiums per club; shared stadiums can appear
-  under more than one club. Neither is a complete database scan or an entity
-  editor. Nation row IDs may be synthetic; never use them as mutation UIDs.
-- Nation profiles and officials are read-only. Max cohesion is experimental: it
-  raises existing club familiarity entries only.
-- Nation editing, competitions, awards, official editing, promises, youth-intake
-  lifecycle, complete contracts/loans and tactical familiarity still need mapping
-  or implementation. Unsackable and squad registration at any time are traced,
-  experimental bits of the manager's flags word for one build (FM27 Steam
-  26340721 ARM64). Registration changes outside the window were observed in
-  FM and kept through save/reload; dismissal protection is unverified. Club and national-team
-  moves go through the game's own action handlers; do not emulate them with raw
-  writes (see docs/recon/fm27-human-manager.md).
-  Windows offsets cannot be copied into the native ARM64 Mac layout.
+- The nation browser lists nations represented by loaded players/staff, not a
+  complete database scan. Guarded nation editing exists for mapped fields. On
+  ARM64, England's population, men's reputation and nationality rules passed
+  the 5 November save/quit/reload checks; not every nation field or platform
+  has that evidence. Synthetic nation row IDs must never be mutation UIDs;
+  mutation targets require the actual UID and current record.
+- The stadium browser lists senior stadiums per club; shared stadiums may
+  appear more than once. It is read-only. Competitions and awards are read-only;
+  their browsing/rules data do not establish editing support.
+- Officials have mapped CA/PA, reputation and birth-date edits. Readback after
+  Continue is recorded, but FM screen comparison and persistence are not fully
+  established; referee attribute names remain research.
+- Player promises can be read and an existing open promise closed with
+  conditional undo on macOS. Creation, broader edits and Windows mapping remain
+  research. Windows reports unavailable data rather than No promises.
+- Max cohesion and Max tactics have bounded ARM64 game/persistence checks,
+  not complete simulation validation. Cohesion raises existing club entries
+  only; tactics undo leaves some manager knowledge. See the roadmap.
+- Youth-intake lifecycle, complete contracts/loans, broader nation settings and
+  competition/award editing remain incomplete. Unsackable and squad registration
+  at any time are experimental manager flags. The registration flag and an
+  outside-window registration survived save/reload on ARM64; protection from
+  dismissal remains unverified. Club and national-team moves must use the
+  game's action handlers, never raw pointer writes. Club moves are implemented
+  with irreversible job side effects; national-team moves remain research
+  (see docs/recon/fm27-human-manager.md).
+- Future-transfer cancellation has bounded ARM64 game inspection and save/reload
+  evidence from 7 November, not comprehensive deal-type/finance consistency. It
+  has no Undo. Windows action and app-edit evidence is listed separately in
+  docs/EDITING-VALIDATION.md. Windows offsets cannot be copied into native ARM64.
 - Transfers and other structural actions require linked-record validation,
   including history, finances, registration and simulation boundaries. A changed
   club pointer is not proof of a consistent transfer.
