@@ -118,7 +118,7 @@ True start is 0x2d49334 (0x2d49300 is the tail of the previous function). Prolog
   the same register it called slot 0x230 on.
 - x2: destination team. 0 means leave the current club (derives the first team of the current club's [+0x18] vector).
 - w3: move kind / reason. Seen: 0, 1, 3, 4, 5, 6, 8, 9, 0xb..0xf, 0x10, 0x13. 0 may be rewritten to 0xc when slot 0x380
-  is non-null and 0xff35bc != 0.
+  is non-null and 0xff35bc != 0. 9 is a release, as the editor passes it (section 4).
 - w4: bool, 1 in most callers (nonzero builds an event/log record). w5: int, -1 = unspecified. w6, w7: bool flags.
 - stack u8 = 1 and stack u64 = 0 in the editor and staff paths (read at 0x2d49810 and 0x2d4ad64).
 - Returns bool success (0 on early exit).
@@ -290,13 +290,19 @@ goes back to the parent club, with the news FM writes for an ending loan. Unprov
 0x2e0a324 calls it too (0x2e0a670, kind 0) to clear an earlier loan. Undo: start the loan again with 0x2e0a324, to the
 same club until the same end date (the fees and clauses of the original are not restored).
 
-Release: the editor's PERSON_TERMINATE_CONTRACT handler (0x3461e0 -> 0x238eafc) makes the same call on the player's
-own contract: at 0x238eccc, `0x2d4b9dc(TM, P, identity.vt[0x3a0](), 0, 0, 1, 0, 0, 0, 0)`; in its other branch
-(0x238ee24) it follows with `0x2d4f79c(TM, identity, 1, 0, 0, 0, 0)`, which withdraws the player's pending offers. The
-callee empties the contract slot (0xcaa088 on the P+0x2F0 holder), writes the history record (0x1bfd354), the news
-and the squad lists (0x2b5b15c, 0x2b56e30). The editor pays nothing; the payoff the game books on a release elsewhere
-is 0x2619b40(0, identity, 1, 1), which appends a RELEASED_PLAYER_WAGES item (vtable 0x55c6b18) to the club's list at
-[club+0xb0] (medium confidence).
+Release: the editor's PERSON_TERMINATE_CONTRACT handler (0x3461e0 -> 0x238eafc) first ends any loan: at 0x238eccc,
+`0x2d4b9dc(TM, P, identity.vt[0x3a0](), 0, 0, 1, 0, 0, 0, 0)` on the loan contract. That callee empties the contract
+slot (0xcaa088 on the P+0x2F0 holder), prunes squad selection and affiliations (0x1bfd354; not a history writer), and
+writes the news and the squad lists (0x2b5b15c, 0x2b56e30). On a player's own contract it leaves him at his club with
+none, so it is not the release. The release is the branch at 0x238eddc: `0x2d4f79c(TM, identity, 1, 0, 0, 0, 0)`
+withdraws the offers made for him, then `0x2d49334(TM, identity, team, 9, 0, 0, 0, 1, [1, 0])` (section 2), with the
+team his contract is with, has him leave it for a release. He becomes a free agent.
+
+FM Lens makes the same two calls (`Session::release_through_game`; `withdraw_offers` and `leave_team` in `[calls]`,
+macOS arm64 only) after refusing a player on loan. Checked in FM on 8 November: the player is a Free Agent, the club's
+Transfers Out has no row for him, and his career has no row for the current season, as after the editor's release.
+The editor pays nothing; the payoff the game books on a release elsewhere is 0x2619b40(0, identity, 1, 1), which
+appends a RELEASED_PLAYER_WAGES item (vtable 0x55c6b18) to the club's list at [club+0xb0] (medium confidence).
 
 The call alone does not make him a free agent. Before it empties the slot, the callee keeps the club of the FULL
 contract in P+0x2F0 (0x2d4bd80 to 0x2d4be1c, at [sp+0x60]); after it, it sets the team at [P+0x128] to that club's
