@@ -1,4 +1,4 @@
-// How FM shows a weekly wage, and the wage to write so that FM shows the one typed. FM rounds a wage to a step that
+// An estimate of how FM shows a weekly wage, also used for explicit arrow-key steps. FM rounds a wage to a step that
 // grows with the amount (£300,000 and £310,000 both show as £300K), so a wage written as typed may look unchanged in
 // FM. Read from FM27's cash formatter (macOS arm64 build 26340721, game_plugin 0x42ca868 and 0x42c9e10).
 
@@ -60,18 +60,4 @@ export function nextFmWage(amount: number, up: boolean): number {
     return shown > amount ? shown : shown + stepOf(shown + 1);
   }
   return shown < amount ? shown : shown - stepOf(shown);
-}
-
-/**
- * The wage to write when `typed` replaces `was` (both as shown): `typed` if FM shows it as it is, else the nearest
- * one FM does, or, where that would look the same as `was` in FM, the next one in the direction of the change.
- * £300,000 raised to £310,000 is £325,000; £200,000 raised to £226,000 is £225,000.
- */
-export function wageFmShows(was: number, typed: number): number {
-  const nearest = fmShownWage(typed);
-  const before = fmShownWage(was);
-  if (typed === was || nearest === typed || nearest !== before) {
-    return nearest;
-  }
-  return typed > was ? before + stepOf(before + 1) : before - stepOf(before);
 }
