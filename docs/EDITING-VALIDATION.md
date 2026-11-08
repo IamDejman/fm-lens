@@ -1310,3 +1310,60 @@ box (`F85704E3…F1728ED4`). The update came from the published FM Lens 0.6.2 re
 | Install by hand | After uninstalling and clearing the stored language, the published `FM-Lens-0.6.2-windows-x64-setup.exe` (SHA-256 `C2ACAC91…84927495`, the release's digest) asked for a language, then showed the welcome page, the folder (`%LOCALAPPDATA%\FM Lens`) and Finish with Run FM Lens and a desktop shortcut ticked. It stored the language |
 | Update after an install by hand | The same installer run as the updater runs it asked nothing, and FM Lens reopened 2 s later |
 | Installer art (#153) | The installer from #153's CI build (SHA-256 `D58A6409…FE813073`) showed the FM Lens icon in its title bar, page header and taskbar, and the FM Lens wordmark on its welcome and finish pages. FM Lens opened from Finish, with one entry in installed apps and one process |
+
+## Runtime assets and deferred browsers (8 November 2026)
+
+Compared main `86c64b3` with the runtime-logo/deferred-browser change on this
+Apple Silicon Mac. Both used production Vite output embedded in an ad-hoc signed
+debug Tauri app. The original transparent logo master is unchanged; the runtime
+mark is a 120×120 PNG displayed at the existing 40×40 CSS-pixel size.
+
+| Build payload | Before | After |
+|---|---:|---:|
+| Runtime symbol PNG | 800.43 kB, 1254×1254 | 12.56 kB, 120×120 |
+| Main JavaScript entry | 683.91 kB | 430.32 kB |
+| Eager JavaScript, including module-preloaded shared code | 683.91 kB | 635.45 kB |
+| Secondary browsers loaded on first visit | None | Seven chunks, about 53.9 kB combined |
+
+The shared editing chunk is eagerly preloaded and included in the total above;
+the smaller entry alone is not the startup payload reduction. Players remains
+eager. Staff, clubs, nations, competitions, awards, stadiums and officials load
+on first visit and remain mounted afterward. The loading fallback is a busy
+status labelled for its section, translated in English, Spanish and Turkish.
+
+Temporary instrumentation posted timing samples only to a loopback collector.
+It measured webview navigation start to the connect panel's double-animation-frame
+paint, Connect click to the first player count's double-frame paint, and Staff
+click to the next double-frame paint. Samples used freshly launched companion
+processes against an already-running game, with ordinary OS/WebKit caches;
+these are not machine-reboot cold-cache or release-build benchmarks. Webview
+readiness excludes native process bootstrap. Staff paint can include the loading
+fallback, so it does not measure completion of every section's data retrieval
+or establish INP. Two comparable instrumented runs per version gave:
+
+| Native timing | Before, samples | After, samples |
+|---|---|---|
+| Webview ready | 631, 543 ms | 996, 357 ms |
+| Connect to player results | 9438, 3480 ms | 3483, 2540 ms |
+| First Staff click to paint | 221, 500 ms | 171, 94 ms |
+
+The samples are too few and variable to establish a reliable launch, connection
+or interaction speed improvement. The established improvement is payload size:
+98.4% less runtime-logo data and 7.1% less eager JavaScript. No backend connection
+or search behavior was changed. Local timing instrumentation, its temporary CSP
+override and loopback collector are not part of the shipped source.
+
+Native interaction used the running Steam ARM64 game, PID 2559, module UUID
+F4540355-2186-39CB-9119-C706A6A35346, build 26340721. FM showed Arsenal,
+11 December 2027, 16:30; FM Lens identified Ayodeji Eluwande. Players (30,300),
+staff (20,215), clubs (21,675), nations (227), competitions (8,084), awards
+(3,902), stadiums (19,234) and officials (1,166) rendered. Searching staff for
+Arteta, opening Mikel Arteta, switching to Clubs and returning retained both
+the query and profile. Changes showed No changes yet. The masthead mark was
+visually checked in the native app. No Apply, Undo, freeze or save was used;
+all 18 pre-recorded career-file hashes stayed unchanged.
+
+Checks: clean npm install (zero reported vulnerabilities), TypeScript/Vite
+build, debug Tauri app packaging, Impeccable detector on App.tsx, and diff
+whitespace checks passed. This is local macOS UI evidence; Windows native
+execution and release-build performance were not measured.
