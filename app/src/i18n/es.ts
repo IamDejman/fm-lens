@@ -1329,6 +1329,7 @@ export const es: Strings = {
     reload: "Recargar datos",
     detecting: "Buscando Football Manager…",
     connecting: "Cargando partida…",
+    loadingView: "Cargando…",
     reloading: "Cargando partida…",
 
     refrozen: {

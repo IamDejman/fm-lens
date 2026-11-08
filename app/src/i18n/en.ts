@@ -1381,6 +1381,7 @@ export const en = {
     reload: "Reload",
     detecting: "Looking for Football Manager…",
     connecting: "Loading save…",
+    loadingView: "Loading…",
     reloading: "Loading save…",
 
     /** The notice after connecting to a save in which something was frozen before (`FrozenNotice`). */

@@ -1303,6 +1303,7 @@ export const tr: Strings = {
     reload: "Verileri yeniden oku",
     detecting: "Football Manager aranıyor…",
     connecting: "Kayıt yükleniyor…",
+    loadingView: "Yükleniyor…",
     reloading: "Kayıt yükleniyor…",
 
     refrozen: {
