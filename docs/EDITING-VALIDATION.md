@@ -1753,6 +1753,7 @@ a window resize. Native evidence is macOS only; Windows interaction and an
 exhaustive window-size matrix were not exercised locally. Rust/domain code was
 unchanged by these fixes.
 
+
 ### Cancellation retires the original signing Undo (8 November 2026)
 
 After a deferred free-agent signing was cancelled through Cancel transfer, the
@@ -1775,3 +1776,48 @@ Local validation: frontend tests (17 checks), production frontend build, Rust
 formatting, desktop library tests and writable desktop Clippy passed. No new
 native FM signing/cancellation or save/reload test was performed for this
 history-only change. Native Intel and Windows interaction remain unverified.
+
+### Exact wage entry (8 November 2026)
+
+Removed the frontend adjustment that replaced a typed wage with a formatter step,
+including a direction-dependent adjustment based on the old wage. Typing £260,000
+now previews and submits 260000 GBP whether the old wage is £250,000, £275,000 or
+£300,000. Leaving the input does not rewrite it. Explicit arrow-key stepping remains.
+A localized notice gives an estimated FM weekly display when it differs; the
+formatter estimate comes from the ARM64 investigation above, not new Windows evidence.
+Existing whole-pound currency conversion and edit guards are unchanged.
+
+Frontend regression tests cover exact request values, unchanged/invalid entries,
+and typing followed by blur with an accessible display notice. No game writes or
+new native macOS/Windows persistence checks were performed for this change.
+
+Frontend verification: all 23 checks passed (21 Vitest cases and two keyboard
+tests). Two integration cases use the real profile editor hook, type 260000,
+click Apply, assert the `apply_edits` payload retains 260000, and verify the reread
+path. They run with MacIntel and Win32 navigator settings against a command stub;
+they are not native Intel or Windows tests. Production frontend and native ARM64
+Tauri compilation and bundle builds passed.
+
+### Native exact-wage Apply check (8 November 2026)
+
+Access became available and the updated debug macOS bundle was exercised through
+its native UI. The running Steam ARM64 game was PID 43238, game_plugin UUID
+F4540355-2186-39CB-9119-C706A6A35346, game date 8 Dec 2027. Before connecting,
+FM's Save Game As created `FM Lens Exact Wage 2026-11-08.fm` from the loaded
+`FM Lens Transfers 2026-11-08` career. No Continue was used.
+
+Bukayo Saka (28122642): opened Contract > Wage per week, baseline 300000; typed
+260000 and tabbed out. The input retained 260000 and the visible notice estimated
+FM's display as £250,000 p/w. Review showed £300,000 → £260,000. Clicked Apply;
+the app reported one change applied. Reopened the wage editor, which freshly
+reads the game: value 260000, No changes. Exited edit mode without further edits.
+Independent read-only probe `get player 28122642 contract.wage` returned 260000.
+
+SHA-256 of both the main `Ayodeji Eluwande - Arsenal.fm` and source
+`FM Lens Transfers 2026-11-08.fm` stayed
+3adeb4fdef1c5928a5f396e719c9216842282665af21e9e8a3b8e803bd956000.
+The disposable copy stayed
+57aa585fcaf39cb89c1e896e07326d305fa351d7c73be2d90cbdc3fc8170d8fe:
+the wage change remains in the running test career and was not saved to disk.
+This confirms exact native macOS Apply/readback, not save/reload persistence or
+native Windows behavior. FM's own displayed wage was not inspected in this check.

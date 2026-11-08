@@ -33,7 +33,7 @@ export function EditInput({ field, inFact = false, hint = true }: { field: strin
   if (!session || !input) {
     return null;
   }
-  const { field: spec, text, range, status, was, message, settled, stepped } = input;
+  const { field: spec, text, range, status, was, message, notice, stepped } = input;
   const label = fieldLabel(session.entity, field);
   const title = [message, status !== "same" && editText.was(valueText(spec, was))].filter(Boolean).join(" · ");
   const outline = status === "same" ? applied ? " applied" : "" : ` ${status}`;
@@ -108,12 +108,10 @@ export function EditInput({ field, inFact = false, hint = true }: { field: strin
       value={text}
       readOnly={session.busy}
       aria-label={label}
-      aria-describedby={hinted ? hintId : undefined}
+      aria-describedby={hinted || notice ? hintId : undefined}
       title={title || undefined}
       {...common}
       onChange={(e) => session.type(field, e.currentTarget.value)}
-      // Left, it shows the value Apply would write, where that is not the one typed.
-      onBlur={settled === null ? undefined : () => session.type(field, settled)}
       // ↑ and ↓ step a wage to the next one FM shows as it is, rather than by £1.
       onKeyDown={
         stepped === null || session.busy
@@ -147,13 +145,17 @@ export function EditInput({ field, inFact = false, hint = true }: { field: strin
     ) : (
       control
     );
-  if (!hinted) {
+  // Keep the wage input mounted while its display notice appears or disappears.
+  if (!hinted && spec.key !== "contract.wage") {
     return shown;
   }
   return (
     <span className="edit-ranged">
       {shown}
-      <RangeHint id={hintId} min={valueText(spec, range.min)} max={valueText(spec, range.max)} />
+      <span id={hintId}>
+        {hinted && <RangeHint min={valueText(spec, range.min)} max={valueText(spec, range.max)} />}
+        {notice && <span className="range-hint" role="status">{notice}</span>}
+      </span>
     </span>
   );
 }
