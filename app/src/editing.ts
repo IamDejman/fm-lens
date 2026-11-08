@@ -23,6 +23,7 @@ import type {
   MovePreview,
   MoveTerms,
   Nation,
+  ReleasePreview,
   Promise as PlayerPromise,
   TeamAction,
   TieKind,
@@ -201,7 +202,7 @@ export const planClubMove = (uid: number, club: number, terms: MoveTerms, fee?: 
  * Checks that the player `uid` can be released from his club, and names it. Nothing is written; when he cannot be
  * released, the error says why (a loan, a club a human manager runs, ...).
  */
-export const planRelease = (uid: number) => call<MovePreview["from"]>("plan_release", { uid });
+export const planRelease = (uid: number) => call<ReleasePreview>("plan_release", { uid });
 
 /**
  * Releases the player from his club, which leaves him a free agent: logged as a change of his `club` to 0, and undone
