@@ -518,7 +518,7 @@ mod tests {
             traits: Vec::new(),
             injuries: Vec::new(),
             bans: Vec::new(),
-            promises: Vec::new(),
+            promises: None,
             ties: Vec::new(),
             tie_room: 0,
             preferences: Vec::new(),

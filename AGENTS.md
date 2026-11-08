@@ -2,12 +2,11 @@
 
 ## Product and current scope
 
-FM Lens is a personal Football Manager companion. The delivered macOS app
-reads a running FM27 Steam career on Apple Silicon and can edit the fields
-that are already mapped. Unmapped editor features stay on the roadmap. The
-Windows build works on the test box but is not shipped yet; the goal is no gap
-between the two, and docs/internal/WINDOWS-PARITY-HANDOFF.md lists what is
-left. Read README.md, docs/ROADMAP.md, docs/PERSONAL-SCOUT.md and
+FM Lens is a personal Football Manager companion. The delivered macOS and
+Windows apps read a running FM27 Steam career and can edit the fields that are
+already mapped. Unmapped editor features stay on the roadmap. Windows ships
+from 0.6.2; the goal is no gap between the two, and
+docs/internal/WINDOWS-PARITY-HANDOFF.md lists what is left. Read README.md, docs/ROADMAP.md, docs/PERSONAL-SCOUT.md and
 docs/EDITING-VALIDATION.md before making support or feature claims.
 Use docs/EDITOR-FIELDS.md for the mapped field catalog; it is not a validation
 certificate.
@@ -78,7 +77,8 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - app/src-tauri/: Tauri commands, connections and desktop packaging.
 - crates/fmlens-mem/: process access and the final memory-write guard.
 - crates/fmlens-core/: FM decoding, layouts, validation and domain operations.
-- crates/fmlens-bridge/: macOS bridge library and Steam launcher.
+- crates/fmlens-bridge/: the bridge that runs the game's own functions: a macOS
+  library with its Steam launcher, and a Windows DLL the app embeds.
 - crates/fmlens-probe/: diagnostics; upstream mutation commands remain present
   but this build refuses game-memory writes.
 - profiles/fm27/: platform/build fingerprints and layouts.
@@ -108,7 +108,8 @@ validated fields and the guarded memory layer for domain operations.
   game changes instead of blindly restoring old bytes.
 - Every mutation, including undo, must pass the known-build and current-career
   guards. Replaced entity-array storage requires a fresh Session and cleared
-  previews/history; never reuse cached targets across careers.
+  previews. Retained history from a different game is display-only, marked
+  Earlier game with no Undo; never reuse cached targets across careers.
 - Editing verification includes inspection in FM, advancement where relevant,
   save, quit, reload and another inspection on the disposable career copy.
   Memory readback alone does not establish game correctness.
@@ -132,8 +133,8 @@ validated fields and the guarded memory layer for domain operations.
 - The verified target is FM27 Steam build 26340721, native ARM64, module UUID
   F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. The Intel
   half, checked under Rosetta, ships in the universal app. The Windows build was
-  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md)
-  but has no download yet.
+  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md),
+  on Windows Server 2022 only.
 - Offline verification covered FM Lens with network access denied against an
   already-running game, not a fresh Steam Offline Mode launch.
 - Do not claim complete parity, complete transfer consistency, 550,000-player
@@ -142,7 +143,8 @@ validated fields and the guarded memory layer for domain operations.
 
 ## Current editor boundaries
 
-- Mapped player/staff/club fields are enabled on the known Mac build. The field
+- Mapped player/staff/club fields are enabled on known builds. Windows has
+  bounded app edit/undo checks on Server 2022, not edited-save persistence. The field
   catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
@@ -156,21 +158,36 @@ validated fields and the guarded memory layer for domain operations.
 - Staff attribute freeze lasts for the connection. Its toggle has been exercised;
   long-term simulation behavior remains unverified. Do not describe it as a
   persistent cross-restart setting.
-- The read-only nation browser lists nations represented by loaded players/staff.
-  The stadium browser lists senior stadiums per club; shared stadiums can appear
-  under more than one club. Neither is a complete database scan or an entity
-  editor. Nation row IDs may be synthetic; never use them as mutation UIDs.
-- Nation profiles and officials are read-only. Max cohesion is experimental: it
-  raises existing club familiarity entries only.
-- Nation editing, competitions, awards, official editing, promises, youth-intake
-  lifecycle, complete contracts/loans and tactical familiarity still need mapping
-  or implementation. Unsackable and squad registration at any time are traced,
-  experimental bits of the manager's flags word for one build (FM27 Steam
-  26340721 ARM64). Registration changes outside the window were observed in
-  FM and kept through save/reload; dismissal protection is unverified. Club and national-team
-  moves go through the game's own action handlers; do not emulate them with raw
-  writes (see docs/recon/fm27-human-manager.md).
-  Windows offsets cannot be copied into the native ARM64 Mac layout.
+- The nation browser lists nations represented by loaded players/staff, not a
+  complete database scan. Guarded nation editing exists for mapped fields. On
+  ARM64, England's population, men's reputation and nationality rules passed
+  the 5 November save/quit/reload checks; not every nation field or platform
+  has that evidence. Synthetic nation row IDs must never be mutation UIDs;
+  mutation targets require the actual UID and current record.
+- The stadium browser lists senior stadiums per club; shared stadiums may
+  appear more than once. It is read-only. Competitions and awards are read-only;
+  their browsing/rules data do not establish editing support.
+- Officials have mapped CA/PA, reputation and birth-date edits. Readback after
+  Continue is recorded, but FM screen comparison and persistence are not fully
+  established; referee attribute names remain research.
+- Player promises can be read and an existing open promise closed with
+  conditional undo on macOS. Creation, broader edits and Windows mapping remain
+  research. Windows reports unavailable data rather than No promises.
+- Max cohesion and Max tactics have bounded ARM64 game/persistence checks,
+  not complete simulation validation. Cohesion raises existing club entries
+  only; tactics undo leaves some manager knowledge. See the roadmap.
+- Youth-intake lifecycle, complete contracts/loans, broader nation settings and
+  competition/award editing remain incomplete. Unsackable and squad registration
+  at any time are experimental manager flags. The registration flag and an
+  outside-window registration survived save/reload on ARM64; protection from
+  dismissal remains unverified. Club and national-team moves must use the
+  game's action handlers, never raw pointer writes. Club moves are implemented
+  with irreversible job side effects; national-team moves remain research
+  (see docs/recon/fm27-human-manager.md).
+- Future-transfer cancellation has bounded ARM64 game inspection and save/reload
+  evidence from 7 November, not comprehensive deal-type/finance consistency. It
+  has no Undo. Windows action and app-edit evidence is listed separately in
+  docs/EDITING-VALIDATION.md. Windows offsets cannot be copied into native ARM64.
 - Transfers and other structural actions require linked-record validation,
   including history, finances, registration and simulation boundaries. A changed
   club pointer is not proof of a consistent transfer.
@@ -225,6 +242,10 @@ the probe and therefore exercise the read-only memory feature. Run the separate
 no-default-features memory test and app Clippy check above, then build the desktop
 app separately through Tauri; do not package a workspace-unified read-only binary
 and call its editing path tested. Keep $HOME/.cargo/bin on PATH for Tauri too.
+
+CI (.github/workflows/validate.yml) runs these checks on macOS and, apart from
+fmt and the relay tests, on Windows, where it also builds the installer that
+scripts/release.sh publishes. A Windows change needs that job to pass.
 
 The Apple Silicon bundle is target/debug/bundle/macos/FM Lens.app. It is locally
 built and signed ad hoc, not a notarized public release. UI changes need a

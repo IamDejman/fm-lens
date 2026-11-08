@@ -1,4 +1,4 @@
-# dmgbuild settings for the FM Lens disk image (see scripts/release-mac.sh): the app and a link to Applications on the
+# dmgbuild settings for the FM Lens disk image (see scripts/release.sh): the app and a link to Applications on the
 # background background.py draws, with no toolbar or sidebar. The app's path and the background's come in as
 # -D app=... and -D background=...
 import os.path
