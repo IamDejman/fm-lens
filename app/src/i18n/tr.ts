@@ -680,6 +680,7 @@ export const tr: Strings = {
     contract: "Sözleşme",
     wage: "Haftalık maaş",
     converted: "FM'in kuruyla",
+    fmShowsWage: (amount) => `FM'de ${amount} görünür`,
     signed: "İmza tarihi",
     expires: "Bitiş tarihi",
     loan: "Kiralık",

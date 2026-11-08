@@ -79,3 +79,22 @@ test.each(['MacIntel', 'Win32'])('real editor Apply submits £260,000 and reread
   expect(stored).toBe(260000);
   expect(call).toHaveBeenLastCalledWith('read_values', { entity: 'player', uid: 123 });
 });
+
+test('the profile shows the figure FM shows under a wage FM rounds, and nothing under one it shows as is', async () => {
+  const { WageFact } = await import('../src/ProfileParts');
+  const { rerender } = render(<WageFact wage={260000} />);
+  expect(screen.getByText('£260,000')).toBeTruthy();
+  expect(screen.getByText('FM shows £250,000')).toBeTruthy();
+  rerender(<WageFact wage={250000} />);
+  expect(screen.queryByText(/FM shows/)).toBeNull();
+});
+
+test('the wage input keeps its own notice and drops the shown figure while editing', async () => {
+  const { WageFact } = await import('../src/ProfileParts');
+  render(<SessionContext.Provider value={{ entity: 'player', busy: false, has: () => true,
+    input: () => inputState(wage, 260000, undefined, undefined), type: () => {} }}>
+    <WageFact wage={260000} />
+  </SessionContext.Provider>);
+  expect(screen.getByRole('spinbutton')).toHaveProperty('value', '260000');
+  expect(screen.queryByText(/FM shows/)).toBeNull();
+});
