@@ -131,16 +131,19 @@ const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
   55: "Cláusula de rescisión activa por descenso",
 };
 
-/** Reasons to be unhappy, by the codes the game keeps them as (see `en.ts`). */
+/** Promises by FM's number for them (see `en.ts`). */
 const PROMISE_NAMES_ES: Partial<Record<number, string>> = {
   1: "Tiempo de juego",
   208: "Demarcación y rol preferidos",
 };
 
+/** Reasons to be unhappy, by the codes the game keeps them as (see `en.ts`). */
 const CONCERN_MOTIVES_ES: Partial<Record<number, string>> = {
   570: "Preocupado por el mal ambiente del vestuario",
   596: "Excluido de la lista de una competición",
+  652: "Quiere ser titular en más partidos",
   808: "Cree que un compañero ha recibido un trato injusto",
+  811: "Cree que un compañero tiene razón en que hay que arreglar el mal ambiente del vestuario",
   926: "No cree que un compañero merezca los minutos que quiere",
 };
 

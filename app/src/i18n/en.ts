@@ -194,17 +194,19 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   55: "Active relegation release clause",
 };
 
-/** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them. */
 /** Promises by FM's number for them, named as FM's screens word them. */
 const PROMISE_NAMES_EN: Partial<Record<number, string>> = {
   1: "Playing time",
   208: "Preferred position and role",
 };
 
+/** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them or FM's screens word them. */
 const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
   570: "Worried about the poor dressing room atmosphere",
   596: "Left out of a competition squad",
+  652: "Wants to start more games",
   808: "Thinks a teammate has been treated unfairly",
+  811: "Thinks a teammate is right that the poor dressing room atmosphere needs to be addressed",
   926: "Doesn't believe a teammate deserves the playing time he wants",
 };
 
