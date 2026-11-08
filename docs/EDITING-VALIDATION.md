@@ -1419,3 +1419,41 @@ Checks: clean npm install (zero reported vulnerabilities), TypeScript/Vite
 build, debug Tauri app packaging, Impeccable detector on App.tsx, and diff
 whitespace checks passed. This is local macOS UI evidence; Windows native
 execution and release-build performance were not measured.
+
+## Freezes held over a long holiday (8 November 2026)
+
+Branch `fix/freeze-hold`, debug bundle with its own data folder (`FMLENS_DATA`
+under ignored `reports/`). FM27 Steam build 26340721, ARM64, PID 2559, copy
+`FM Lens Persistence 2026-11-08` (Brentford, 4 January 2028). The main career's
+hash was checked unchanged.
+
+Frozen before the holiday: Brentford's money (balance -£5,446,930, wages about
+£1.89M a week), Virgil van Dijk (36, CA 159) and N'Golo Kanté (36, CA 144), and
+the staff member Florentino Pérez. FM's Go On Holiday ran to 4 February 2028
+(31 days, all offers rejected). FM autosaved to the copy twice on the way.
+
+| Check | Result |
+|---|---|
+| Brentford balance after 31 days | -£5,051,283 in FM Lens; FM's Finances: Overall Balance (£5.05M). Never below the floor |
+| Transfer budget | £641 -> £0. Not held: a money freeze holds the balance only |
+| van Dijk, Kanté, 47 attributes | No drops. van Dijk free kicks 12 -> 13 |
+| Unfrozen players aged 35+ with CA 120+ (127) | 59 lost at least one point, 117 points in all (Schär 18, Alaba 9, Koke 5) |
+| Pérez | Still frozen, listed in `frozen.json` with the players and the club |
+| App log | No refused writes, no re-read of the game |
+| Reload after the holiday | Freeze money still on, balance unchanged |
+
+Exports before and after are in the ignored `reports/freeze-hold-2026-11-08/`.
+
+### Same check on Intel FM with an older helper (8 November 2026)
+
+FM restarted under Rosetta (`arch -x86_64`, PID 1201) with the v0.5.9 x86_64
+helper, which predates helper discovery. Same debug bundle and data folder, same
+copy, loaded at 4 February 2028.
+
+| Check | Result |
+|---|---|
+| Connect | Intel build profile matched; banner listed van Dijk, Kanté, Pérez and Brentford's money as back on |
+| Brentford balance over 7 days (Go On Holiday to 11 February) | -£5,051,283 -> -£5,040,452. Never below the floor |
+| App log | Two `read the game again ... (same game: true)` lines during the holiday; freezes kept |
+| Refused hold logged | One line when the ARM64 FM was quit earlier: club 617 balance record missing |
+| Edit with the old helper | Training facilities 13 -> 14, Apply, then Undo: both applied, no error, FM and FM Lens stayed up |

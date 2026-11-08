@@ -171,8 +171,9 @@ to that graphics folder before starting the app.
 The app remembers what was frozen in each save in `frozen.json` in its data folder
 (`%APPDATA%\local.fm.lens` on Windows,
 `~/Library/Application Support/local.fm.lens` on macOS). A save is told
-apart by the storefront and the UIDs of its human managers. To test without touching that
-file, set `FMLENS_DATA` to another folder before starting the app.
+apart by the storefront and the UIDs of its human managers. A debug build uses
+`local.fm.lens.dev` instead, so it never shares that file with the installed app. To test
+without touching either, set `FMLENS_DATA` to another folder before starting the app.
 
 Exports go to `Documents\FM Lens\Exports` (`~/Documents/FM Lens/Exports` on
 macOS); `FMLENS_EXPORTS` names another folder. The columns and the JSON keys are in
