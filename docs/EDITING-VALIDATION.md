@@ -1674,3 +1674,39 @@ season: Iwobi's shows Fulham 2027/28 and no Everton row, and Bassey's ends at
 2026/27. An earlier release through the probe (Ermedin Demirović, Fulham) showed
 the same, as FM's editor does. In an earlier probe transfer the selling club's
 balance rose by about 84% of the fee; that split was not traced.
+
+## Four native audit fixes (8 November 2026)
+
+Baseline `eb1d33b`; branch `codex/native-audit-fixes`. The window snapshot now
+includes a validated page offset tied to the search/filter/sort arguments and
+carries forward unopened sections' saved state. Invalid inputs count as dirty
+drafts for navigation, Close and Done, while Apply stays disabled. The player
+table measures its zoom-adjusted width, drops secondary columns and reserves
+useful room for names instead of relying solely on WebKit container queries.
+
+Native verification used the ad-hoc-signed debug Tauri app with production Vite
+output, connected to the running Steam ARM64 career: PID 13579, build 26340721,
+module UUID F4540355-2186-39CB-9119-C706A6A35346. FM showed 8 December 2027,
+11:00; FM Lens named Ayodeji Eluwande / Arsenal.
+
+| Reproduction | Result |
+|---|---|
+| Players page two, Reijnders UID 37071126 open; English → Spanish → English | Range stayed 201–400 of 30,314 and the same profile stayed open |
+| GBP → EUR → GBP from that page/profile | Page and profile stayed open; GBP restored |
+| Staff search Arteta (3 results), return to Players, English → Spanish → English without reopening Staff | Returning to Staff retained Arteta and its 3 results |
+| Haaland UID 29179241, baseline CA 195, draft 1000; section shortcut, Close and Done | Each asked Discard 1 change?; Keep editing preserved 1000; Apply stayed disabled. Draft explicitly discarded without applying |
+| Player list at 150%, light; at 150%, dark with Haaland open; at 125%, dark; return to 100% System | Names remained readable; secondary columns yielded first; the open-profile list retained readable names and CA/PA. English, GBP, System and 100% restored |
+| Changes after the checks | No changes yet |
+
+All 23 baseline career hashes stayed unchanged. No Apply, Undo, freeze,
+transfer/release action, Continue or game save was used.
+
+Checks passed: clean npm install (zero reported vulnerabilities), TypeScript,
+14 fixture interaction tests plus 2 shortcut tests, production frontend build,
+debug Tauri packaging, targeted Impeccable detector (no findings), and diff
+whitespace checks. Regression coverage includes later and partial final pages,
+invalid/legacy offsets, query/filter resets, consecutive reloads with an unopened
+section, invalid-only drafts for navigation/Close/Done, and zoom changes without
+a window resize. Native evidence is macOS only; Windows interaction and an
+exhaustive window-size matrix were not exercised locally. Rust/domain code was
+unchanged by these fixes.

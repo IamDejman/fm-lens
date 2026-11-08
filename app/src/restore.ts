@@ -80,7 +80,8 @@ export function useSnapshot(name: string, take: () => unknown): void {
 /** Stores what the parts that are on screen hold, for the start after the reload that is about to happen. */
 export function saveSnapshot(): void {
   try {
-    const held: Record<string, unknown> = {};
+    // Deferred sections may still have unconsumed state from an earlier reload.
+    const held: Record<string, unknown> = { ...saved };
     for (const [name, take] of parts) {
       held[name] = take();
     }

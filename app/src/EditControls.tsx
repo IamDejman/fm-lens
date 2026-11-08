@@ -306,7 +306,7 @@ export function EditBar({ editing }: { editing: ProfileEditing }) {
         <div className="edit-footer" role="group" aria-label={editText.footer}>
           {confirming ? (
             <>
-              <span className="edit-count">{editText.confirmDiscard(changes.length)}</span>
+              <span className="edit-count">{editText.confirmDiscard(changes.length + invalid)}</span>
               <button type="button" ref={keepButton} onClick={editing.keepEditing}>
                 {editText.keepEditing}
               </button>
