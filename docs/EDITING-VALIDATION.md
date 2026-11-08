@@ -1674,3 +1674,31 @@ season: Iwobi's shows Fulham 2027/28 and no Everton row, and Bassey's ends at
 2026/27. An earlier release through the probe (Ermedin Demirović, Fulham) showed
 the same, as FM's editor does. In an earlier probe transfer the selling club's
 balance rose by about 84% of the fee; that split was not traced.
+
+## Windows: every feature on main (8 November 2026)
+
+FM27 Steam build 26340721 on the Windows test box (Windows Server 2022, g4dn.xlarge),
+FM Lens 0.6.2 built from `feat/windows-parity`, driven over RDP. Save: a copy of the
+Arsenal career at 13 July 2026, written with FM's Save As as
+`FM Lens Windows 2026-11-08`; the test save `Ayo Elu - Arsenal` kept its SHA-256
+`AF20CBAC…B747E5` before and after. Each action was made in the app, then checked in
+the app's Changes list and, where FM shows it, in FM.
+
+| Feature | Result | Undo |
+|---|---|---|
+| Release through the game's call (Mariona Caldentey, Arsenal) | Pass. The dialog said it can't be undone; she became a free agent and Changes shows Arsenal to Free agent with no Undo | None, by design |
+| Max cohesion (experimental) | Pass. 18 familiarity changes; FM's Squad > Dynamics > Team Cohesion went from Average to "an extremely strong" bond | Undo restored all 18 |
+| Unsackable (experimental) | Applied, read back Yes. No sacking situation was set up, so the effect in FM is not observed | Undone |
+| Register squad any time (experimental) | Applied, read back Yes. July is inside a registration window, so the effect in FM is not observed | Undone |
+| Official edit, then refresh (Abdel Al-Rahman Salameh, reputation 985 to 1,000) | Pass. Applied and read back 1,000 through the new `identity = 0x138` refresh; no error | Undone |
+| Players, Staff, Clubs and Officials lists, 200-row pages (#158) | Pass. 25,027 players, 19,308 clubs and 1,061 officials load in 200-row pages | None needed |
+| Manager contract tab, freeze controls present (#161) | Seen. The freeze tickbox is on the manager and club pages; holding across a reload was not run | None needed |
+| Remove unhappiness, Lift bans | Not run. The buttons are disabled: FM shows 0 unhappy players and nobody is banned in this save | None |
+| Promises | Not run. FM's Promises page says there are no outstanding promises, so there is nothing to trace; the `[promise]` layout is still missing | None |
+| List filters (#157), contract clause editing, Move and Swap (#162), save, quit and reload of an edited copy | Not run in this session | None |
+
+Notes. The NVIDIA "Control Panel is not found" toast sits over FM Lens's Apply button
+at the box's screen size; dragging the FM Lens window left clears it. The release
+call shapes come from the editor's release branch at 0x29CE8BC (see
+`docs/recon/fm27-call-shapes.md`).
+
