@@ -1,8 +1,8 @@
 # FM27: the human manager's unsackable flag
 
-Status: experimental. Implemented in the editor for one build only. The native
-copied-career checks listed under "Remaining gates" have not been run, so this is
-not evidence that a manager is protected from dismissal.
+Status: implemented for one build only. Apply, undo, stale-value refusal and
+save/reload are tested (gates 1 to 7 below). A real dismissal scenario has not been
+run, so this is not evidence that a manager is protected from being sacked.
 
 ## Build and class
 
@@ -86,9 +86,12 @@ Keep any output under the ignored `reports/` folder.
 The judge completed bounded apply/readback/undo, surrounding-byte preservation,
 intervening-editor-change refusal, advancement and full save/quit/reload persistence
 on 4 November 2026. FM displayed the changed Determination after reload. See
-../EDITING-VALIDATION.md for the exact scope. The following is the original gate
-list; the FM menu flag display, game-originated conflict and dismissal scenario
-remain unverified:
+../EDITING-VALIDATION.md for the exact scope. On 8 November the main build set both
+flags again on a copied career: with registration any time on, FM let you change a
+registration while its screen said the window was closed, and locked it again once
+the flag was off. Statically, FM also reads the unsackable bit as a cheat flag (it
+feeds the unlockables check). The original gate list follows; only the dismissal
+scenario (8) remains unverified:
 
 1. Compare the manager's existing stats in FM Lens with FM's own screens.
 2. Apply the flag, read it back, and check FM's own manager menu shows it.

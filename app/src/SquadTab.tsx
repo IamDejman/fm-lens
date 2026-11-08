@@ -506,7 +506,6 @@ function TeamActions({ team, editable, busy, onAction }: TeamActionsProps) {
                 onClick={pick("maxCohesion")}
               >
                 {text.maxCohesion}
-                <span className="tag">{text.experimental}</span>
               </button>
               <div role="separator" className="menu-separator" />
               <button
