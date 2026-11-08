@@ -1674,3 +1674,81 @@ season: Iwobi's shows Fulham 2027/28 and no Everton row, and Bassey's ends at
 2026/27. An earlier release through the probe (Ermedin Demirović, Fulham) showed
 the same, as FM's editor does. In an earlier probe transfer the selling club's
 balance rose by about 84% of the fee; that split was not traced.
+
+## Windows: every feature on main (8 November 2026)
+
+FM27 Steam build 26340721 on the Windows test box (Windows Server 2022, g4dn.xlarge),
+FM Lens 0.6.2 built from `feat/windows-parity`, driven over RDP. Save: a copy of the
+Arsenal career at 13 July 2026, written with FM's Save As as
+`FM Lens Windows 2026-11-08`; the test save `Ayo Elu - Arsenal` kept its SHA-256
+`AF20CBAC…B747E5` before and after. A second Save As, `FM Lens Persist Check`, was used for the relaunch test. Each action was made in the app, then checked in
+the app's Changes list and, where FM shows it, in FM.
+
+| Feature | Result | Undo |
+|---|---|---|
+| Release through the game's call (Mariona Caldentey, Arsenal) | Pass. The dialog said it can't be undone; she became a free agent and Changes shows Arsenal to Free agent with no Undo | None, by design |
+| Max cohesion | Pass. 18 familiarity changes; FM's Squad > Dynamics > Team Cohesion went from Average to "an extremely strong" bond | Undo restored all 18 |
+| Unsackable | Applied, read back Yes. No sacking situation was set up, so the effect in FM is not observed | Undone |
+| Register squad any time | Applied, read back Yes. July is inside a registration window, so the effect in FM is not observed | Undone |
+| Official edit, then refresh (Abdel Al-Rahman Salameh, reputation 985 to 1,000) | Pass. Applied and read back 1,000 through the new `identity = 0x138` refresh; no error | Undone |
+| Players, Staff, Clubs and Officials lists, 200-row pages (#158) | Pass. 25,027 players, 19,308 clubs and 1,061 officials load in 200-row pages | None needed |
+| Manager contract tab, freeze controls present (#161) | Pass. Tickboxes present, and the freeze holds across a day and a relaunch (see the freeze row) | None needed |
+| Promises | Not run. FM's Promises page says there are no outstanding promises, so there is nothing to trace; the `[promise]` layout is still missing | None |
+| List filters (#157) | Pass. Players "Free agents only" went 25,027 to 2,990; Clubs reputation 9,000 or more went 19,308 to 6 | None needed |
+| Contract edit (Declan Rice wage, squad number, transfer listed) | Pass. Wage read back £275,000 and survived the Save As and relaunch (typed 260,000, landed 275,000, cause not found). FM's Contract screen does not show squad number or listed status, so those are checked in the app only | Not undone: later replaced by the move |
+| Contract clauses (appearance fee, release clause) | Pass. FM's Contract screen showed $88K appearance fee and a $67M release clause. The dialog only offered a release clause when a slot was free; no sell-on option appeared | Not undone |
+| Move: Transfer (Rice, Arsenal to Man City, no fee) | Pass. FM shows Man City and squad number 14 | None, permanent |
+| Move: Loan, then End loan (Rice, Man City to Barcelona) | Pass. FM showed Man City with a loan icon plus Barcelona, then the Barcelona line went after End loan | None, permanent |
+| Move: Swap (Rice with Lamine Yamal) | Pass. FM shows Rice at Barcelona. The Yamal side was not opened in FM | None, permanent |
+| Move: future-dated Sign, then Cancel transfer (Caldentey, Arsenal, joins 20 Jul 2027) | Pass. FM showed the "Trn" badge and the app a Future transfer block; Cancel transfer returned her to free agent in FM | None, permanent |
+| Freeze attributes (Saka) and Freeze money (Arsenal) (#161) | Pass. Continue pressed once in the copy (13 to 14 Jul). Saka's Corners 5 and Finishing 20 and Arsenal's balance £329,887,681 held. Pre-season has no wage run on that day, so no natural drop was seen to block | Untick restores normal play |
+| Squad actions: Add injury, then Heal (Saka); Heal (3 injured players) | Pass. FM showed "Inj" and an abdominal strain, then healthy; Con hearts green after Heal | None needed |
+| Remove unhappiness | Pass. 4 changes made, then the button disabled. FM shows only "Average" in Dynamics, so not seen in FM | Undo restored all 4 |
+| Lift bans | Not run. The button is disabled: nobody is banned in this save | None |
+| Player attribute edit (Saka Corners 18 to 5, Finishing 14 to 20) | Pass. FM showed Corners 5 and Finishing 20; both survived the save and relaunch | Not undone |
+| Max attributes (24 players, 1,271 changes) | Pass. FM showed Saka at 20 across the board | Undo restored Saka's edited values in FM |
+| Max morale (23 changes) | Pass. Read back 20 of 20. FM shows morale as icons, so not checked in FM | Undo restored |
+| Max tactics (24 changes) | Pass in the app only. The copy has no tactic set up, so FM shows nothing to compare | Undo restored |
+| Staff attribute edit (manager Ayo Elu Attacking 5 to 17) | Pass. FM shows "Very Good" | Not undone |
+| Save As a new name, quit FM, relaunch through Steam, load the copy | Pass. Saved as `FM Lens Persist Check`. Steam started FM with no sign-in. After loading: Saka's Corners 5 and Finishing 20, Arsenal's balance £329,887,681 and Rice's £275,000 wage all held, and both freezes came back on | None needed |
+
+Notes. The NVIDIA "Control Panel is not found" toast sits over FM Lens's Apply button
+at the box's screen size; dragging the FM Lens window left clears it. The release
+call shapes come from the editor's release branch at 0x29CE8BC (see
+`docs/recon/fm27-call-shapes.md`).
+
+## Four native audit fixes (8 November 2026)
+
+Baseline `eb1d33b`; branch `codex/native-audit-fixes`. The window snapshot now
+includes a validated page offset tied to the search/filter/sort arguments and
+carries forward unopened sections' saved state. Invalid inputs count as dirty
+drafts for navigation, Close and Done, while Apply stays disabled. The player
+table measures its zoom-adjusted width, drops secondary columns and reserves
+useful room for names instead of relying solely on WebKit container queries.
+
+Native verification used the ad-hoc-signed debug Tauri app with production Vite
+output, connected to the running Steam ARM64 career: PID 13579, build 26340721,
+module UUID F4540355-2186-39CB-9119-C706A6A35346. FM showed 8 December 2027,
+11:00; FM Lens named Ayodeji Eluwande / Arsenal.
+
+| Reproduction | Result |
+|---|---|
+| Players page two, Reijnders UID 37071126 open; English → Spanish → English | Range stayed 201–400 of 30,314 and the same profile stayed open |
+| GBP → EUR → GBP from that page/profile | Page and profile stayed open; GBP restored |
+| Staff search Arteta (3 results), return to Players, English → Spanish → English without reopening Staff | Returning to Staff retained Arteta and its 3 results |
+| Haaland UID 29179241, baseline CA 195, draft 1000; section shortcut, Close and Done | Each asked Discard 1 change?; Keep editing preserved 1000; Apply stayed disabled. Draft explicitly discarded without applying |
+| Player list at 150%, light; at 150%, dark with Haaland open; at 125%, dark; return to 100% System | Names remained readable; secondary columns yielded first; the open-profile list retained readable names and CA/PA. English, GBP, System and 100% restored |
+| Changes after the checks | No changes yet |
+
+All 23 baseline career hashes stayed unchanged. No Apply, Undo, freeze,
+transfer/release action, Continue or game save was used.
+
+Checks passed: clean npm install (zero reported vulnerabilities), TypeScript,
+14 fixture interaction tests plus 2 shortcut tests, production frontend build,
+debug Tauri packaging, targeted Impeccable detector (no findings), and diff
+whitespace checks. Regression coverage includes later and partial final pages,
+invalid/legacy offsets, query/filter resets, consecutive reloads with an unopened
+section, invalid-only drafts for navigation/Close/Done, and zoom changes without
+a window resize. Native evidence is macOS only; Windows interaction and an
+exhaustive window-size matrix were not exercised locally. Rust/domain code was
+unchanged by these fixes.

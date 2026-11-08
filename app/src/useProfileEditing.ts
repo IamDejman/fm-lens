@@ -253,7 +253,8 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
   }, [editing, entity, applying, byKey, start, typed, refused, type]);
 
   // While changes are pending, picking another row or view asks first (see `askToLeave`).
-  const guarded = editing && (changes.length > 0 || applying);
+  const hasDraft = changes.length > 0 || invalid.length > 0;
+  const guarded = editing && (hasDraft || applying);
   useEffect(() => {
     if (!guarded) {
       return;
@@ -447,7 +448,7 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
     if (applying) {
       return;
     }
-    if (changes.length > 0) {
+    if (hasDraft) {
       setConfirm({});
     } else {
       stop(false);
@@ -464,7 +465,7 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
     if (applying) {
       return;
     }
-    if (editing && changes.length > 0) {
+    if (editing && hasDraft) {
       setConfirm({ then: close });
     } else {
       close();
