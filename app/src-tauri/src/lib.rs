@@ -790,6 +790,7 @@ impl Connection {
     /// the club he was to join (its UID; 0 when the game names none) to none, with that club and the day. Nothing
     /// undoes it.
     fn log_cancelled_transfer(&mut self, player: u32, cancelled: FutureTransfer) -> LoggedChange {
+        retire_cancelled_signing(&mut self.log, player, cancelled.offer);
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -1919,6 +1920,19 @@ struct LoggedChange {
     /// back `old`. The app is told only of a change nothing undoes, as `permanent: true`.
     #[serde(rename = "permanent", serialize_with = "serialize_permanent", skip_serializing_if = "is_undoable")]
     undo: Option<Undo>,
+}
+
+/// A cancelled offer can no longer be undone through its original Sign row. Keep the history,
+/// but retire only that offer's live signing undo; other players, offers and careers are untouched.
+fn retire_cancelled_signing(log: &mut [LoggedChange], player: u32, offer: u32) {
+    for entry in log {
+        if !entry.earlier_game
+            && entry.undone_at.is_none()
+            && matches!(&entry.undo, Some(Undo::SignedLater(agreed)) if agreed.player == player && agreed.offer == offer)
+        {
+            entry.undo = Some(Undo::Permanent);
+        }
+    }
 }
 
 /// Whether undoing a change can be tried: all but a [`Undo::Permanent`] one.
@@ -4644,6 +4658,43 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cancelling_an_offer_retires_only_its_active_signing_undo() {
+        let signing = |player, offer| LoggedChange {
+            id: 1,
+            at: 0,
+            name: "Test signing".to_owned(),
+            change: Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: 0, new: 617 },
+            undone_at: None,
+            earlier_game: false,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::SignedLater(AgreedSigning {
+                player,
+                club: 617,
+                joins: FmDate { year: 2028, month: 1, day: 1 },
+                offer,
+            })),
+        };
+        let mut earlier = signing(7, 42);
+        earlier.earlier_game = true;
+        let mut undone = signing(7, 42);
+        undone.undone_at = Some(1);
+        let mut field = signing(7, 42);
+        field.undo = None;
+        let mut log = vec![signing(7, 42), signing(7, 43), signing(8, 42), earlier, undone, field];
+        retire_cancelled_signing(&mut log, 7, 42);
+        assert!(!is_undoable(&log[0].undo));
+        assert!(log[0].undone_at.is_none(), "cancellation is not an Undo of the historical signing");
+        assert_eq!(serde_json::to_value(&log[0]).unwrap()["permanent"], true);
+        assert!(log[1..].iter().all(|entry| is_undoable(&entry.undo)));
+        retire_cancelled_signing(&mut log, 7, 42);
+        assert!(!is_undoable(&log[0].undo), "retiring an undo is idempotent");
+    }
 
     #[test]
     fn a_debug_build_keeps_its_own_identifier() {

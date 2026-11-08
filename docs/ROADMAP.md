@@ -134,3 +134,8 @@ See the latest entry in EDITING-VALIDATION.md.
 | Free scouting / trials / paid editing | Personal build has no licensing service or paywall; broader pricing/trial policy undecided |
 
 Do not mark a row Available just because upstream contains it or compilation passes.
+
+- Cancelling a deferred signing retires the original Sign row's Undo by player
+  UID and offer ID. History remains visible; unrelated signing undos are kept.
+  Rust guard/serialization and preview Changes regression coverage added; no
+  new native transfer lifecycle validation is claimed.
