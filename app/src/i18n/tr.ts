@@ -291,7 +291,9 @@ const PROMISE_NAMES_TR: Partial<Record<number, string>> = {
 const CONCERN_MOTIVES_TR: Partial<Record<number, string>> = {
   570: "Soyunma odasındaki kötü havadan endişeli",
   596: "Bir turnuvanın kadrosuna alınmadı",
+  652: "Daha fazla maça ilk on birde başlamak istiyor",
   808: "Bir takım arkadaşına haksızlık yapıldığını düşünüyor",
+  811: "Soyunma odasındaki kötü havanın düzeltilmesi gerektiği konusunda bir takım arkadaşının haklı olduğunu düşünüyor",
   926: "Bir takım arkadaşının istediği forma süresini hak etmediğini düşünüyor",
 };
 
