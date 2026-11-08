@@ -28,6 +28,14 @@ officials = 0x5C89240
 # slot 0x6E0) loads it at 0x2569424, where the arm64 half loads 0x56A49F8. Loaded in 985 places.
 transfer_manager = 0x5C5DE80
 
+# Database table pointers, traced through the static database constructor and typed tables.
+# Static mapping only; see docs/recon/fm27-steam-26340721-macos-x86_64.md.
+awards = 0x5C890C8
+competitions = 0x5C890E0
+injury_kinds = 0x5C89108
+# INJURY_MANAGER, loaded by the training-injury caller of add_injury.
+injury_manager = 0x5C5FEE0
+
 # game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
 [plugin]
 uuid = "0981AB31-AC3B-3D93-944F-47FE4B59CD9E"
@@ -67,3 +75,37 @@ find_work_permit = 0x30FC8E0
 # ("remove_work_permit") with the record at [manager + 0x720] of the place found: takes it out of the ESC slots at
 # +0x780 and the records at +0x720.
 remove_work_permit = 0x30D8D20
+
+# Intel twins of the ARM64 editor/training calls. Arguments follow the same scalar order,
+# with six System V registers then stack slots. Evidence and ABI audit are in the recon note.
+add_injury = 0x293F740
+start_loan = 0x312D0E0
+sign_free_agent = 0x3121760
+map_new = 0x48F4260
+map_drop = 0x48F4300
+refs_drop = 0x48FB750
+end_contract = 0x305C2E0
+withdraw_offers = 0x30608D0
+leave_team = 0x3059A20
+date_type = 0x47EC450
+date_value = 0x47EC640
+map_insert = 0x48F4910
+value_drop = 0x4900410
+cancel_offer = 0x3025BE0
+drop_dated_transfer = 0x1975560
+ref_copy = 0x7A20C0
+ref_drop = 0x5022660
+struct_value = 0x4900DF0
+maximise_tactics = 0x256C7C0
+
+# STARTING_LOAN builder at 0x2567D60: vtable and the 16 bytes copied to +0x58.
+[starting_loan]
+vtable = 0x5B771C0
+defaults = 0x5964E20
+
+# Value registry, integer type within it, team table and editor-enabled byte.
+[editor]
+value_types = 0x5CF1DC8
+integer_type = 0x28
+teams = 0x5C89160
+enabled = 0x5C89890

@@ -1492,7 +1492,7 @@ mod tests {
         assert_eq!(permits(arm64), (Some(0x56A_49F8), Some(0x2D8_5294), Some(0x2DD_D12C), Some(0x2DC_0210)));
         assert_eq!(permits(intel), (Some(0x5C5_DE80), Some(0x309_A010), Some(0x30F_C8E0), Some(0x30D_8D20)));
         let intel = profile_for(PluginFingerprint::MachO { uuid: intel }).and_then(|profile| profile.calls);
-        assert_eq!(intel.map(|calls| calls.all().len()), Some(5), "only the work permit and refresh calls on Intel");
+        assert_eq!(intel.map(|calls| calls.all().len()), Some(24), "the traced Intel game calls");
     }
 
     #[test]
@@ -1506,6 +1506,62 @@ mod tests {
         };
         assert_eq!(refresh(arm64), (Some(0x56D_48B8), Some(0x3_0B50), Some(0x2_FC20)));
         assert_eq!(refresh(intel), (Some(0x5C8_AC88), Some(0x3_08A0), Some(0x2_FA70)));
+    }
+
+    /// Static Intel twins of the ARM64 functions. This pins mapping, not live behavior.
+    #[test]
+    fn steam_27_0_0_on_intel_finds_what_was_traced() {
+        let uuid = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let profile = profile_for(PluginFingerprint::MachO { uuid }).expect("27.0.0 on Intel");
+        assert_eq!((profile.awards, profile.competitions), (Some(0x5C8_90C8), Some(0x5C8_90E0)));
+        assert_eq!((profile.injury_kinds, profile.injury_manager), (Some(0x5C8_9108), Some(0x5C5_FEE0)));
+        let editor = profile.editor.expect("Intel editor tables");
+        assert_eq!(
+            (editor.value_types, editor.integer_type, editor.teams, editor.enabled),
+            (0x5CF_1DC8, 0x28, 0x5C8_9160, 0x5C8_9890)
+        );
+        let loan = profile.starting_loan.expect("Intel starting loan");
+        assert_eq!((loan.vtable, loan.defaults), (0x5B7_71C0, 0x596_4E20));
+        let manager = profile.human_manager.expect("Intel human manager");
+        assert_eq!(
+            (manager.flags, manager.person_shift, manager.class.as_str()),
+            (0x3FC, 0x340, "N2db16HUMAN_NON_PLAYERE")
+        );
+        let calls = profile.calls.expect("Intel game actions");
+        assert_eq!(
+            calls,
+            CallRvas {
+                entity_changed: Some(0x3_08A0),
+                refresh_views: Some(0x2_FA70),
+                add_injury: Some(0x293_F740),
+                set_work_permit: Some(0x309_A010),
+                find_work_permit: Some(0x30F_C8E0),
+                remove_work_permit: Some(0x30D_8D20),
+                start_loan: Some(0x312_D0E0),
+                sign_free_agent: Some(0x312_1760),
+                map_new: Some(0x48F_4260),
+                map_drop: Some(0x48F_4300),
+                refs_drop: Some(0x48F_B750),
+                end_contract: Some(0x305_C2E0),
+                withdraw_offers: Some(0x306_08D0),
+                leave_team: Some(0x305_9A20),
+                date_type: Some(0x47E_C450),
+                date_value: Some(0x47E_C640),
+                map_insert: Some(0x48F_4910),
+                value_drop: Some(0x490_0410),
+                cancel_offer: Some(0x302_5BE0),
+                drop_dated_transfer: Some(0x197_5560),
+                ref_copy: Some(0x7A_20C0),
+                ref_drop: Some(0x502_2660),
+                ref_assign: None,
+                struct_value: Some(0x490_0DF0),
+                maximise_tactics: Some(0x256_C7C0),
+            }
+        );
+        assert_eq!(calls.all().len(), 24);
+        let arm: BuildProfile =
+            toml::from_str(include_str!("../../../profiles/fm27/steam-26340721-macos-arm64.toml")).unwrap();
+        assert_eq!(calls.all().len(), arm.calls.unwrap().all().len());
     }
 
     /// 27.0.0 on Windows: the statics and the game's own functions traced on the Steam test save (see
