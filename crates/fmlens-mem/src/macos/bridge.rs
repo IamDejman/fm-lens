@@ -82,7 +82,7 @@ pub struct CapabilitiesReply {
     pub status: u32,
     pub max_steps: u32,
     pub scratch_size: u32,
-    /// Bit 0: ARM64's indirect result register is supported. Other bits are reserved.
+    /// Bit 0: an indirect result is supported (ARM64's `x8`, System V's hidden `rdi`). Other bits are reserved.
     pub flags: u32,
     pub plugin_uuid: [u8; 16],
     pub count: u32,
@@ -97,7 +97,7 @@ impl CapabilitiesReply {
             status: status as u32,
             max_steps: MAX_STEPS as u32,
             scratch_size: SCRATCH_SIZE as u32,
-            flags: u32::from(cfg!(target_arch = "aarch64")),
+            flags: u32::from(cfg!(any(target_arch = "aarch64", target_arch = "x86_64"))),
             plugin_uuid: [0; 16],
             count: 0,
             reserved: 0,

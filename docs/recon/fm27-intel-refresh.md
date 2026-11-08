@@ -19,7 +19,7 @@ without Continue"). That needs three values, which the Intel profile lacked:
 
 The bridge's allowlist is built from the profiles (`crates/fmlens-bridge/build.rs`), so the two calls are allowed on
 the Intel build with no bridge change. Both take plain register arguments, which the bridge already passes the System V
-way on x86_64; neither returns an object indirectly, which the bridge refuses on Intel.
+way on x86_64; neither returns an object indirectly (the Intel bridge has since gained the hidden `rdi` result place; see the 8 November section of fm27-steam-26340721-macos-x86_64.md).
 
 ## entity_changed: GAME_UI's vtable
 
