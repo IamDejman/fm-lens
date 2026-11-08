@@ -1,3 +1,4 @@
+import { knownFormationName } from "../formationNames";
 // The Turkish text of the UI: the same shape as `en.ts` (a missing or extra key fails the build), worded the way the
 // Turkish edition of Football Manager words things. The comments in `en.ts` say what each string is for.
 //
@@ -805,7 +806,8 @@ export const tr: Strings = {
     liftBans: "Kaldır",
     liftBansTitle: "Tüm cezalarını kaldır",
     promises: "Sözler",
-    promiseName: (id) => `Söz ${id}`,
+    formationName: (id) => id === 0 ? "Yok" : knownFormationName(id) ?? `Diziliş ${id}`,
+    promiseName: (id) => id === 1 ? "Oynama süresi" : `Söz ${id}`,
     promiseMade: (date) => `Verildi: ${date}`,
     promiseDue: (date) => `Son tarih: ${date}`,
     promiseEnded: (date) => `Bitti: ${date}`,
@@ -1303,6 +1305,7 @@ export const tr: Strings = {
     reload: "Verileri yeniden oku",
     detecting: "Football Manager aranıyor…",
     connecting: "Kayıt yükleniyor…",
+    loadingView: "Yükleniyor…",
     reloading: "Kayıt yükleniyor…",
 
     refrozen: {
@@ -2118,6 +2121,8 @@ export const tr: Strings = {
     } satisfies Record<Storefront, string>,
     steamBuild: (id) => `derleme ${id}`,
   },
+
+  listFeedback: { failed: "Arama başarısız", searching: "Aranıyor…", retry: "Yeniden dene" },
 
   errors,
 };
