@@ -1,27 +1,139 @@
+import { useState } from "react";
+import {
+  chipLabel,
+  FilterBar,
+  type FilterChip,
+  KindField,
+  kindChip,
+  RangeField,
+  rangeText,
+  readKind,
+  readText,
+  whole,
+  womenOnly,
+} from "./FilterBar";
 import { formatNumber } from "./format";
 import { competitionListText, editText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
 import { Fact, useProfileDetails } from "./ProfileParts";
-import type { CompetitionRule, CompetitionSummary } from "./types";
+import { restored, useSnapshot } from "./restore";
+import type { CompetitionFilter, CompetitionRule, CompetitionSummary } from "./types";
 
 const text = competitionListText;
 const columns = text.columns;
+const filters = text.filters;
+const REPUTATION_RANGE = { min: 0, max: 200 };
 
 /**
  * The competitions, highest reputation first. A row holds all FM Lens knows of a competition but its short name and
  * its rules: those open under it, and the table keeps its whole width.
  */
 export function CompetitionBrowser({ version, active }: { version: number; active: boolean }) {
+  // The filters start as they were before the language was switched, if it was (see `restore.ts`).
+  const [kind, setKind] = useState(() => restored("competitionKind", readKind));
+  const [nation, setNation] = useState(() => restored("competitionNation", readText));
+  const [continent, setContinent] = useState(() => restored("competitionContinent", readText));
+  const [minReputation, setMinReputation] = useState(() => restored("competitionMinRep", readText));
+  const [maxReputation, setMaxReputation] = useState(() => restored("competitionMaxRep", readText));
+  useSnapshot("competitionKind", () => kind);
+  useSnapshot("competitionNation", () => nation);
+  useSnapshot("competitionContinent", () => continent);
+  useSnapshot("competitionMinRep", () => minReputation);
+  useSnapshot("competitionMaxRep", () => maxReputation);
+  const nationValue = nation.trim() || undefined;
+  const continentValue = continent.trim() || undefined;
+  const minRep = whole(minReputation, REPUTATION_RANGE);
+  const maxRep = whole(maxReputation, REPUTATION_RANGE);
+  const filter: CompetitionFilter | undefined =
+    kind === "all" &&
+    nationValue === undefined &&
+    continentValue === undefined &&
+    minRep === undefined &&
+    maxRep === undefined
+      ? undefined
+      : {
+          women: womenOnly(kind),
+          nation: nationValue,
+          continent: continentValue,
+          minReputation: minRep,
+          maxReputation: maxRep,
+        };
+
+  // A chip for each filter in effect; the two ends of the reputation range are one.
+  const chips: FilterChip[] = kindChip(kind, filters, () => setKind("all"));
+  const reputation = rangeText(minRep, maxRep);
+  if (nationValue !== undefined) {
+    chips.push({ key: "nation", label: chipLabel(filters.nation, nationValue), remove: () => setNation("") });
+  }
+  if (continentValue !== undefined) {
+    chips.push({
+      key: "continent",
+      label: chipLabel(filters.continent, continentValue),
+      remove: () => setContinent(""),
+    });
+  }
+  if (reputation !== null) {
+    chips.push({
+      key: "reputation",
+      label: chipLabel(filters.reputation, reputation),
+      remove: () => {
+        setMinReputation("");
+        setMaxReputation("");
+      },
+    });
+  }
+  const clearAll = () => {
+    setKind("all");
+    setNation("");
+    setContinent("");
+    setMinReputation("");
+    setMaxReputation("");
+  };
+
   return (
     <ListBrowser<CompetitionSummary>
       name="competitions"
       command="search_competitions"
+      requestArgs={{ filter }}
       version={version}
       active={active}
       placeholder={text.search}
       summary={text.summary}
-      empty={(query) => text.empty(query)}
+      empty={(query) => text.empty(query, filter !== undefined)}
+      filterBar={
+        <FilterBar chips={chips} onClear={clearAll}>
+          <KindField labels={filters} value={kind} onChange={setKind} />
+          <label className="filter-field">
+            <span>{filters.nation}</span>
+            <input
+              value={nation}
+              onChange={(e) => setNation(e.currentTarget.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+          <label className="filter-field">
+            <span>{filters.continent}</span>
+            <input
+              value={continent}
+              onChange={(e) => setContinent(e.currentTarget.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
+          <RangeField
+            label={filters.reputation}
+            minLabel={filters.minReputation}
+            maxLabel={filters.maxReputation}
+            range={REPUTATION_RANGE}
+            min={minReputation}
+            max={maxReputation}
+            onMin={setMinReputation}
+            onMax={setMaxReputation}
+          />
+        </FilterBar>
+      }
       tableClass="competition-grid"
       header={
         <>

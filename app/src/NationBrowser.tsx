@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { call } from "./api";
 import { EditableValue } from "./EditControls";
+import { chipLabel, FilterBar, readText } from "./FilterBar";
 import { formatNumber, formatPercent } from "./format";
 import { NationFlag, WithPicture } from "./Picture";
 import {
@@ -12,21 +13,25 @@ import {
 } from "./ProfileParts";
 import { ListBrowser } from "./ListBrowser";
 import { NATION_STYLE_LABELS, nationListText, profileText } from "./labels";
+import { restored, useSnapshot } from "./restore";
 import { useProfileEditing } from "./useProfileEditing";
 import type {
   NamedPerson,
   NationDetails,
   NationalTeam,
+  NationFilter,
   NationSummary,
   WomenFootball,
 } from "./types";
 
 const text = nationListText;
 const columns = text.columns;
+const filters = text.filters;
 
 /**
- * The nations of the players and staff in the save, with the selected nation beside the table where the build places
- * nations' details: elsewhere a profile would only repeat the row, so none opens.
+ * The nations of the players, staff and competitions in the save, with the selected nation beside the table where the
+ * build places nations' details: elsewhere a profile would only repeat the row, so none opens. Their continents are
+ * read, shown and filtered on only there too.
  */
 export function NationBrowser({
   version,
@@ -36,23 +41,58 @@ export function NationBrowser({
   active: boolean;
 }) {
   const detailed = useNationsDetailed(version, active);
+  // The filter starts as it was before the language was switched, if it was (see `restore.ts`).
+  const [continent, setContinent] = useState(() =>
+    restored("nationContinent", readText),
+  );
+  useSnapshot("nationContinent", () => continent);
+  const continentValue = (detailed && continent.trim()) || undefined;
+  const filter: NationFilter | undefined =
+    continentValue === undefined ? undefined : { continent: continentValue };
+  const chips =
+    continentValue === undefined
+      ? []
+      : [
+          {
+            key: "continent",
+            label: chipLabel(filters.continent, continentValue),
+            remove: () => setContinent(""),
+          },
+        ];
   return (
     <ListBrowser<NationSummary>
       name="nations"
       command="search_nations"
+      requestArgs={{ filter }}
       version={version}
       active={active}
       placeholder={text.search}
       summary={text.summary}
-      empty={(query) => text.empty(query)}
+      empty={(query) => text.empty(query, filter !== undefined)}
+      filterBar={
+        detailed ? (
+          <FilterBar chips={chips} onClear={() => setContinent("")}>
+            <label className="filter-field">
+              <span>{filters.continent}</span>
+              <input
+                value={continent}
+                onChange={(e) => setContinent(e.currentTarget.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+          </FilterBar>
+        ) : undefined
+      }
       tableClass="nation-grid"
       header={
         <>
           <th className="col-name">{columns.name}</th>
+          {detailed && <th className="col-continent">{columns.continent}</th>}
           <th className="num col-uid">{columns.uid}</th>
         </>
       }
-      cells={(nation) => <NationCells nation={nation} />}
+      cells={(nation) => <NationCells nation={nation} continent={detailed} />}
       profile={
         detailed
           ? (nation, panel) => (
@@ -88,7 +128,14 @@ function useNationsDetailed(version: number, active: boolean): boolean {
   return detailed;
 }
 
-function NationCells({ nation }: { nation: NationSummary }) {
+function NationCells({
+  nation,
+  continent,
+}: {
+  nation: NationSummary;
+  /** Whether the continent has a column. */
+  continent: boolean;
+}) {
   return (
     <>
       <td className="col-name">
@@ -96,6 +143,11 @@ function NationCells({ nation }: { nation: NationSummary }) {
           {nation.name}
         </WithPicture>
       </td>
+      {continent && (
+        <td className="col-continent">
+          {nation.continent ?? profileText.none}
+        </td>
+      )}
       <td className="num uid col-uid">
         {nation.nationUid === null ? profileText.none : nation.nationUid}
       </td>

@@ -6,17 +6,18 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlens_core::{
-    AddedInjury, AgreedSigning, ArraySource, AwardSummary, CaptainRole, CaptainSet, Change, Clause, ClauseSet,
-    ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionRule, CompetitionSummary, EditError,
-    EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE,
-    GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health,
-    Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
-    MoveTerms, MovedManager, Nation, NationDetails, NationSummary, OfficialSummary, Operation, Paid, PermitChange,
-    PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate,
-    Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet,
-    STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange,
-    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan,
-    TransferredPlayer, find_game, nation_summaries, nations, read_stadiums, sort_players,
+    AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSummary, CaptainRole, CaptainSet, Change, Clause,
+    ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionFilter, CompetitionRule,
+    CompetitionSummary, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate,
+    FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
+    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
+    MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSummary,
+    OfficialFilter, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
+    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
+    SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter,
+    StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer,
+    find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -1548,7 +1549,7 @@ impl Connection {
             Entity::Staff => self.staff.get(uid).map(|s| (s.target(), s.name.clone())),
             Entity::Club => self.clubs.get(uid).map(|c| (c.target(), c.name.clone())),
             Entity::Nation => {
-                let mut found = self.nations().into_iter().filter(|nation| nation.uid == Some(uid));
+                let mut found = self.known_nations().into_iter().filter(|nation| nation.uid == Some(uid));
                 match (found.next(), found.next()) {
                     (Some(nation), None) => nation.target().map(|target| (target, nation.name)),
                     _ => None,
@@ -1706,9 +1707,32 @@ impl Connection {
 
     /// The nations of the players and staff in the lists.
     fn nations(&self) -> Vec<Nation> {
+        nations(self.people_nations())
+    }
+
+    /// The (nation address, name, UID) of each player and member of staff in the lists.
+    fn people_nations(&self) -> impl Iterator<Item = (u64, Option<&str>, Option<u32>)> {
         let players = self.players.iter().map(|p| (p.nation_address, p.nation.as_deref(), p.nation_uid));
         let staff = self.staff.iter().map(|s| (s.nation_address, s.nation.as_deref(), s.nation_uid));
-        nations(players.chain(staff))
+        players.chain(staff)
+    }
+
+    /// The nations list: those of the people in the lists and those of the competitions, which reach the nations no
+    /// one in the save is from. Just the people's where the competitions cannot be read.
+    fn listed_nations(&mut self) -> Vec<Nation> {
+        // Read once; a nation's own fields are found among these too (see `target`).
+        let _ = self.competition_index();
+        self.known_nations()
+    }
+
+    /// The nations of the people in the lists, and of the competitions once they are read.
+    fn known_nations(&self) -> Vec<Nation> {
+        let competitions = self
+            .competitions
+            .iter()
+            .flat_map(|index| index.iter())
+            .map(|c| (c.nation_address, c.nation.as_deref(), c.nation_uid));
+        nations(self.people_nations().chain(competitions))
     }
 
     /// Keeps the list rows in step with `value`, just written to the field `change` names.
@@ -2882,11 +2906,13 @@ fn search_officials(
     query: String,
     limit: usize,
     offset: Option<usize>,
+    filter: Option<OfficialFilter>,
 ) -> Result<Page<OfficialSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let filter = filter.unwrap_or_default();
     let index = connection.official_index()?;
-    Ok(page(index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |official| filter.matches(official), |_| {}))
 }
 
 /// Competitions matching `query` by name or UID, highest reputation first; at most `limit` rows. Only reads memory.
@@ -2896,11 +2922,13 @@ fn search_competitions(
     query: String,
     limit: usize,
     offset: Option<usize>,
+    filter: Option<CompetitionFilter>,
 ) -> Result<Page<CompetitionSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let filter = filter.unwrap_or_default();
     let index = connection.competition_index()?;
-    Ok(page(index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |competition| filter.matches(competition), |_| {}))
 }
 
 /// The rules of the competition with the UID `uid` that FM keeps as plain numbers and yes-or-no values; `None` where
@@ -2934,25 +2962,33 @@ fn search_awards(
     query: String,
     limit: usize,
     offset: Option<usize>,
+    filter: Option<AwardFilter>,
 ) -> Result<Page<AwardSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let filter = filter.unwrap_or_default();
     let index = connection.award_index()?;
-    Ok(page(index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |award| filter.matches(award), |_| {}))
 }
 
-/// Nations of the players and staff in the lists, matching `query` by name; at most `limit` rows.
+/// The nations of the list (see `Connection::listed_nations`) matching `query` by name; at most `limit` rows.
 #[tauri::command]
 fn search_nations(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
     offset: Option<usize>,
+    filter: Option<NationFilter>,
 ) -> Result<Page<NationSummary>, Failure> {
-    let guard = state.0.lock()?;
-    let connection = guard.as_ref().ok_or_else(not_connected)?;
-    let index = SearchIndex::new(nation_summaries(connection.nations()));
-    Ok(page(&index, &query, limit, offset.unwrap_or(0), |_| true, |_| {}))
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let filter = filter.unwrap_or_default();
+    let nations = connection.listed_nations();
+    let mut rows = nation_summaries(nations.clone());
+    for (row, nation) in rows.iter_mut().zip(&nations) {
+        row.continent = connection.session.nation_continent(nation.address);
+    }
+    Ok(page(&SearchIndex::new(rows), &query, limit, offset.unwrap_or(0), |nation| filter.matches(nation), |_| {}))
 }
 
 /// Whether this build's layout places nations' details (see `nation_details`): without them the nations list opens no
@@ -2968,9 +3004,9 @@ fn nations_detailed(state: State<'_, AppState>) -> Result<bool, Failure> {
 /// nations' details. Only reads memory.
 #[tauri::command]
 fn nation_details(state: State<'_, AppState>, uid: u32) -> Result<Option<NationDetails>, Failure> {
-    let guard = state.0.lock()?;
-    let connection = guard.as_ref().ok_or_else(not_connected)?;
-    let nations = connection.nations();
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let nations = connection.listed_nations();
     // The list's row ids stand in for the nations whose own UID is missing or shared, so match by row.
     let rows = nation_summaries(nations.clone());
     let nation = rows

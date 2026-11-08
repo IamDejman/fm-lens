@@ -37,6 +37,9 @@ pub struct CompetitionSummary {
     /// Where the competition was when the list was read.
     #[serde(skip)]
     pub address: u64,
+    /// The nation object it belongs to, what a nation field holds; 0 for an international competition.
+    #[serde(skip)]
+    pub nation_address: u64,
 }
 
 /// A rule of a competition, as its loaded rule data holds it.
@@ -238,6 +241,7 @@ impl Session {
                 reputation: u16_at(c.reputation),
                 women: bytes[c.women as usize] != 0,
                 address: pointer,
+                nation_address: nation,
             });
         }
         Ok(competitions)
