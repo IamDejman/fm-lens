@@ -4,7 +4,7 @@ import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, show
 import { formatAmount, formatDate, formatNumber, formatPercent } from "./format";
 import { blankLabel, choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
-import { nextFmWage, wageFmShows } from "./wage";
+import { fmShownWage, nextFmWage } from "./wage";
 
 /** The field of a player's or staff member's wage, which FM shows rounded (see wage.ts). */
 const WAGE = "contract.wage";
@@ -116,11 +116,8 @@ export function judge(field: EditField, stored: number, text: string | undefined
   if (shown < min || shown > max || !offered) {
     return INVALID;
   }
-  // FM rounds the wage it shows, so a wage is written as one it shows as it is (see wage.ts), if that is in range.
-  const fitted = field.key === WAGE ? wageFmShows(was, shown) : shown;
-  const now = fitted >= min && fitted <= max ? fitted : shown;
-  const edit = editFor(field, stored, now);
-  return edit === null ? INVALID : { status: "changed", shown: now, edit };
+  const edit = editFor(field, stored, shown);
+  return edit === null ? INVALID : { status: "changed", shown, edit };
 }
 
 /** How one input stands. */
@@ -140,8 +137,8 @@ export interface InputState {
   was: number;
   /** Why it is invalid. */
   message: string | null;
-  /** What the input should hold once left, where Apply would write another value than typed (a wage: see wage.ts). */
-  settled: string | null;
+  /** An estimate of FM’s rounded weekly display; never changes the amount to write. */
+  notice: string | null;
   /** What ↑ and ↓ put in the input, for a wage: the next wages up and down that FM shows as they are (see wage.ts). */
   stepped: { up: string; down: string } | null;
 }
@@ -188,8 +185,9 @@ export function inputState(
     status: verdict.status === "invalid" || refusal !== undefined ? "invalid" : verdict.status,
     was,
     message: verdict.status === "invalid" ? invalidMessage(field, range) : (refusal ?? null),
-    settled: verdict.status === "changed" && typedValue !== null && typedValue !== verdict.shown
-      ? inputText(field, verdict.shown)
+    notice: field.key === WAGE && verdict.status === "changed" && typedValue !== null
+      && fmShownWage(typedValue) !== typedValue
+      ? editText.wageDisplay(valueText(field, fmShownWage(typedValue)))
       : null,
     stepped: field.key === WAGE ? steppedWage(field, typedValue ?? was, range) : null,
   };
