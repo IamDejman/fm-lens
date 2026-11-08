@@ -1575,6 +1575,7 @@ export const es: Strings = {
     least: (value) => `Mín.: ${value}`,
     most: (value) => `Máx.: ${value}`,
     invalidDate: (from, to) => `Introduce una fecha del ${from} al ${to}`,
+    wageDisplay: (amount) => `FM puede mostrar aproximadamente ${amount} por semana; se guardará el importe introducido.`,
     invalidMoney: (from, to) => `Introduce un importe entero de ${from} a ${to}`,
     invalidPercentage: (from, to) => `Introduce un porcentaje entero de ${from} a ${to}`,
     invalidDecimal: (from, to) => `Introduce un número con hasta dos decimales de ${from} a ${to}`,

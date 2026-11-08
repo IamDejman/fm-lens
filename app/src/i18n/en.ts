@@ -1678,6 +1678,7 @@ export const en = {
      * The same for an amount of money, in whole units of the chosen currency; `from` and `to` are the least and the
      * most it takes, as amounts are shown.
      */
+    wageDisplay: (amount: string) => `FM may display about ${amount} p/w; the entered amount will be saved.`,
     invalidMoney: (from: string, to: string) => `Enter a whole amount from ${from} to ${to}`,
     /** The same for a percentage, in whole percent; `from` and `to` are the least and the most it takes, as shown. */
     invalidPercentage: (from: string, to: string) => `Enter a whole percentage from ${from} to ${to}`,
