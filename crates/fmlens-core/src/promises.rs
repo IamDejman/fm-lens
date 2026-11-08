@@ -3,7 +3,7 @@
 //! The game keeps a promise as a record (`INTERACTION_PROMISE`, see [`PromiseLayout`]) that the game's promise manager,
 //! the person it was made to, the person who made it and its subject all list. A player's own list hangs off his person
 //! block, and holds the promises he made as well as those made to him; the editor shows those made to him that FM's
-//! Promises page lists. FM names promises in its language files only, so the editor shows FM's number for each.
+//! Promises page lists. The window names each by FM's number for it, as FM's own screens word it.
 //!
 //! Closing a promise does what the game does when one ends without being held against the player: it marks the record
 //! closed, with the status FM gives such an ending, and ends it today. The record stays in every list, so the game
@@ -28,7 +28,7 @@ const ENDED: u8 = 1;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Promise {
-    /// FM's number for the promise, e.g. 7; FM's own names are in its language files only.
+    /// FM's number for the promise, e.g. 208 for playing him in his preferred position and role.
     pub id: u16,
     /// FM's status code: 0 while open.
     pub status: u8,
@@ -165,14 +165,21 @@ impl Session {
 
 #[cfg(test)]
 mod tests {
+    use crate::profile::Layout;
+
+    const WINDOWS: &str = include_str!("../../../profiles/fm27/layout.toml");
+    const MACOS: &str = include_str!("../../../profiles/fm27/layout-macos.toml");
+
+    /// A promise record is 0x60 bytes and laid out the same on both systems; only where his list hangs in the
+    /// person block differs (0x320 in a player on the Mac, 0x360 on Windows).
     #[test]
-    fn the_macos_layout_places_promises_inside_the_record() {
-        let layout = crate::layout_for(27).expect("FM27 layout");
-        if let Some(l) = layout.promise.as_ref() {
-            // A promise record is 0x60 bytes; its list hangs 0xA8 into the person block (0x320 in a player).
+    fn both_layouts_place_promises_inside_the_record() {
+        for (text, list_in_player) in [(MACOS, 0x320), (WINDOWS, 0x360)] {
+            let layout: Layout = toml::from_str(text).expect("FM27 layout");
+            let l = layout.promise.as_ref().expect("promise layout");
             assert!(l.end() <= 0x60);
-            assert_eq!((l.list, l.person, l.due, l.closed, l.category, l.status), (0xA8, 0x20, 0x3C, 0x53, 0x55, 0x56));
-            assert_eq!(layout.player.person_block + l.list, 0x320);
+            assert_eq!((l.person, l.due, l.closed, l.category, l.status), (0x20, 0x3C, 0x53, 0x55, 0x56));
+            assert_eq!(layout.player.person_block + l.list, list_in_player);
         }
     }
 }
