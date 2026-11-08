@@ -134,3 +134,8 @@ See the latest entry in EDITING-VALIDATION.md.
 | Free scouting / trials / paid editing | Personal build has no licensing service or paywall; broader pricing/trial policy undecided |
 
 Do not mark a row Available just because upstream contains it or compilation passes.
+
+- Permit actions: Request permit accurately reflects FM's eligibility-gated call.
+  An unissued request shows a no-change status; actual errors remain errors.
+  Reproduced and verified with Havertz in the native ARM64 app. Per-player
+  eligibility prediction remains unmapped; this does not force permits.
