@@ -300,6 +300,7 @@ function StaffFreeze({ uid }: { uid: number }) {
           .then((staff) => setFrozen(staff.includes(uid)))
           .catch((err) => setError(describeError(err))).finally(() => setBusy(false));
       }} /> <span>{profileText.freezeAttributes}</span></label>
+    {frozen && <p className="note">{profileText.freezeAttributesNote}</p>}
     {error && <p className="note error" role="alert">{error}</p>}
   </div>;
 }
@@ -435,7 +436,16 @@ function JobChange({ uid, job }: { uid: number; job: number }) {
   return (
     <div className="job-change-form">
       <label htmlFor={selectId}>{profileText.newJob}</label>
-      <select id={selectId} value={picked} disabled={busy} onChange={(e) => setPicked(Number(e.currentTarget.value))}>
+      <select
+        id={selectId}
+        value={picked}
+        disabled={busy}
+        onChange={(e) => {
+          setPicked(Number(e.currentTarget.value));
+          // Why the game refused the job before is not why it may refuse this one.
+          setError(null);
+        }}
+      >
         {byName.map((code) => (
           <option key={code} value={code}>
             {jobLabel(code)}

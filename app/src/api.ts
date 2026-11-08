@@ -5,24 +5,29 @@ export const inTauri = "__TAURI_INTERNALS__" in window;
 
 type CommandWatcher = (command: string, args?: Record<string, unknown>) => void;
 
-let watcher: CommandWatcher | null = null;
+const watchers = new Set<CommandWatcher>();
 
-/** Hears every command that succeeded in the app. `usage.ts` counts edits with it. */
-export function watchCommands(next: CommandWatcher): void {
-  watcher = next;
+/**
+ * Hears every command that succeeded in the app: `usage.ts` counts edits with it. Returns what stops hearing them.
+ */
+export function watchCommands(next: CommandWatcher): () => void {
+  watchers.add(next);
+  return () => {
+    watchers.delete(next);
+  };
 }
 
 /** Calls a Rust command, or its fixture stand-in when the UI runs in a plain browser. */
 export async function call<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  if (inTauri) {
-    const result = await invoke<T>(command, args);
+  const result = inTauri
+    ? await invoke<T>(command, args)
+    : await import("./dev/mock").then(({ mockInvoke }) => mockInvoke<T>(command, args));
+  for (const watcher of watchers) {
     try {
-      watcher?.(command, args);
+      watcher(command, args);
     } catch {
-      // Counting never fails a command.
+      // Hearing a command never fails it.
     }
-    return result;
   }
-  const { mockInvoke } = await import("./dev/mock");
-  return mockInvoke<T>(command, args);
+  return result;
 }

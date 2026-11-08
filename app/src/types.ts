@@ -164,12 +164,13 @@ export interface ExportReport {
 }
 
 /**
- * What connecting froze again of what the app remembers as frozen in this save: the players' attributes and the
- * clubs' money, by name, and how many it left for later, still remembered (FM Lens cannot write to this version
- * of the game yet, or a check did not pass).
+ * What connecting froze again of what the app remembers as frozen in this save: the players' and staff's attributes
+ * and the clubs' money, by name, and how many it left for later, still remembered (FM Lens cannot write to this
+ * version of the game yet, or a check did not pass).
  */
 export interface Refrozen {
   players: string[];
+  staff: string[];
   clubs: string[];
   waiting: number;
 }

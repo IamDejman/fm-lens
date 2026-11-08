@@ -152,6 +152,9 @@ export interface ProfileEditing {
  */
 let leaveGuard: ((proceed: () => void) => void) | null = null;
 
+/** True while the profile being edited has changes pending. */
+export const changesPending = (): boolean => leaveGuard !== null;
+
 /** Runs `proceed`, unless the profile being edited has changes pending: it asks first. */
 export function askToLeave(proceed: () => void): void {
   if (leaveGuard === null) {
