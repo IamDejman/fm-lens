@@ -23,6 +23,10 @@ import type {
   CompetitionRule,
   CompetitionSummary,
   StadiumFilter,
+  OfficialFilter,
+  CompetitionFilter,
+  AwardFilter,
+  NationFilter,
   StadiumPage,
   StadiumSummary,
   BridgeInfo,
@@ -3523,49 +3527,80 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const query = fold(raw);
       const limit = Number(args?.limit ?? 200);
       const filter = (args?.filter ?? {}) as StadiumFilter;
-      const rows: StadiumSummary[] = clubs.flatMap((club) => {
+      // As in the game, a women's club often plays at its men's club's ground: one row each, its clubs best first.
+      const grounds = new Map<string, StadiumSummary>();
+      for (const club of [...clubs].sort((a, b) => (b.reputation ?? 0) - (a.reputation ?? 0))) {
         const stadium = clubDetails(club).stadium;
         if (!stadium) {
-          return [];
+          continue;
         }
-        const row: StadiumSummary = {
+        const tenant = { uid: club.uid, name: club.name, women: club.women };
+        const ground = grounds.get(stadium.name ?? String(club.uid));
+        if (ground) {
+          ground.clubs.push(tenant);
+          continue;
+        }
+        grounds.set(stadium.name ?? String(club.uid), {
           uid: club.uid,
-          clubUid: club.uid,
-          club: club.name,
-          women: club.women,
+          clubs: [tenant],
           name: stadium.name,
           capacity: stadium.capacity,
           seating: stadium.seating,
           used: stadium.used,
           expansion: stadium.expansion,
-        };
-        const haystack = fold(`${row.name ?? ""} ${row.club}`);
-        const words = query.split(/\s+/).filter(Boolean);
+        });
+      }
+      const words = query.split(/\s+/).filter(Boolean);
+      const rows = [...grounds.values()].filter((row) => {
+        const haystack = fold(`${row.name ?? ""} ${row.clubs.map((c) => c.name).join(" ")}`);
         const named = raw.trim() === String(row.uid) || words.every((word) => haystack.includes(word));
-        const capacityOk =
+        return (
+          named &&
+          (filter.women === undefined || row.clubs.some((c) => c.women === filter.women)) &&
           (filter.minCapacity === undefined || row.capacity >= filter.minCapacity) &&
-          (filter.maxCapacity === undefined || row.capacity <= filter.maxCapacity);
-        return named && capacityOk ? [row] : [];
+          (filter.maxCapacity === undefined || row.capacity <= filter.maxCapacity)
+        );
       });
-      rows.sort((a, b) => b.capacity - a.capacity || (a.name ?? a.club).localeCompare(b.name ?? b.club));
+      const label = (row: StadiumSummary) => row.name ?? row.clubs[0].name;
+      rows.sort((a, b) => b.capacity - a.capacity || label(a).localeCompare(label(b)));
       const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return stadiumPage as T;
     }
     case "search_officials": {
       const query = fold(String(args?.query ?? ""));
       const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as OfficialFilter;
       const rows = OFFICIALS.filter(
         (official) => query === "" || fold(official.name).includes(query) || String(official.uid) === String(args?.query ?? "").trim(),
-      ).sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
+      )
+        .filter(
+          (o) =>
+            (filter.minAge === undefined || (o.age !== null && o.age >= filter.minAge)) &&
+            (filter.maxAge === undefined || (o.age !== null && o.age <= filter.maxAge)) &&
+            (filter.minCurrentAbility === undefined || o.currentAbility >= filter.minCurrentAbility) &&
+            (filter.minPotentialAbility === undefined || o.potentialAbility >= filter.minPotentialAbility) &&
+            contains(o.nation, filter.nation),
+        )
+        .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
       const officialPage: OfficialPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return officialPage as T;
     }
     case "search_competitions": {
       const query = fold(String(args?.query ?? ""));
       const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as CompetitionFilter;
       const rows = COMPETITIONS.filter(
         (c) => query === "" || fold(c.name).includes(query) || String(c.uid) === String(args?.query ?? "").trim(),
-      ).sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name));
+      )
+        .filter(
+          (c) =>
+            (filter.women === undefined || c.women === filter.women) &&
+            contains(c.nation, filter.nation) &&
+            contains(c.continent, filter.continent) &&
+            (filter.minReputation === undefined || c.reputation >= filter.minReputation) &&
+            (filter.maxReputation === undefined || c.reputation <= filter.maxReputation),
+        )
+        .sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name));
       const competitionPage: CompetitionPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return competitionPage as T;
     }
@@ -3579,13 +3614,23 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "search_awards": {
       const query = fold(String(args?.query ?? ""));
       const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as AwardFilter;
       const rows = AWARDS.filter(
         (a) =>
           query === "" ||
           fold(a.name).includes(query) ||
           fold(a.competition ?? "").includes(query) ||
           String(a.uid) === String(args?.query ?? "").trim(),
-      ).sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name));
+      )
+        .filter(
+          (a) =>
+            (filter.women === undefined || a.women === filter.women) &&
+            contains(a.nation, filter.nation) &&
+            (filter.recipients === undefined || a.recipients === filter.recipients) &&
+            (filter.minPrestige === undefined || a.prestige >= filter.minPrestige) &&
+            (filter.maxPrestige === undefined || a.prestige <= filter.maxPrestige),
+        )
+        .sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name));
       const awardPage: AwardPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return awardPage as T;
     }
@@ -3598,11 +3643,15 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "search_nations": {
       const query = fold(String(args?.query ?? ""));
       const limit = Number(args?.limit ?? 200);
+      const filter = (args?.filter ?? {}) as NationFilter;
       const rows: NationSummary[] = NATIONS.map((name, index) => ({
         uid: 1000 + index,
         nationUid: 1000 + index,
         name,
-      })).filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim());
+        continent: continentOf(name),
+      }))
+        .filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim())
+        .filter((nation) => contains(nation.continent, filter.continent));
       rows.sort((a, b) => a.name.localeCompare(b.name));
       const page: NationPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;

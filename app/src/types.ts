@@ -358,13 +358,20 @@ export interface PlayerPage {
   rows: PlayerSummary[];
 }
 
-/** The stadium a club's senior team plays at, from the same fields as the club profile. */
-export interface StadiumSummary {
-  /** The club's UID. One senior stadium per club. */
+/** A club whose senior team plays at a stadium. */
+export interface StadiumClub {
   uid: number;
-  clubUid: number;
-  club: string;
+  name: string;
   women: boolean;
+}
+
+/** A senior-team stadium with the clubs that play there, from the same fields as the club profile. */
+export interface StadiumSummary {
+  /** Row id: the UID of the first of `clubs`. */
+  uid: number;
+  /** Highest reputation first. Never empty. */
+  /** Never empty. */
+  clubs: [StadiumClub, ...StadiumClub[]];
   name: string | null;
   capacity: number;
   seating: number;
@@ -380,17 +387,63 @@ export interface StadiumPage {
 
 /** Filters for `search_stadiums`. */
 export interface StadiumFilter {
+  /** true: stadiums a women's club plays at; false: those a men's club plays at. */
+  women?: boolean;
   minCapacity?: number;
   maxCapacity?: number;
 }
 
-/** A nation people in the loaded save belong to. Rankings, rules and kits are not part of this row. */
+/** A nation people in the loaded save or its competitions belong to. Rankings, rules and kits are not part of this row. */
 export interface NationSummary {
   /** Row id. The nation's own UID when that was read. */
   uid: number;
   /** The nation's own UID, for its flag. Null when `uid` is only a row id. */
   nationUid: number | null;
   name: string;
+  /** Null where this build does not place nations' details. */
+  continent: string | null;
+}
+
+/** Filters for `search_nations`. */
+export interface NationFilter {
+  /** Part of the continent's name; accents and case ignored. */
+  continent?: string;
+}
+
+/** Filters for `search_officials`. */
+export interface OfficialFilter {
+  minAge?: number;
+  maxAge?: number;
+  minCurrentAbility?: number;
+  minPotentialAbility?: number;
+  /** Part of the nation's name; accents and case ignored. */
+  nation?: string;
+}
+
+/** Filters for `search_competitions`. */
+export interface CompetitionFilter {
+  /** true: women's competitions only; false: men's only. */
+  women?: boolean;
+  /** Part of the nation's name; accents and case ignored. An international competition has none. */
+  nation?: string;
+  /** Part of the continent's name; accents and case ignored. */
+  continent?: string;
+  /** 0–200. */
+  minReputation?: number;
+  maxReputation?: number;
+}
+
+/** Filters for `search_awards`. */
+export interface AwardFilter {
+  /** true: women's awards only; false: men's only. */
+  women?: boolean;
+  /** Part of the nation's name; accents and case ignored. */
+  nation?: string;
+  /** Who gets it, by FM's code: 1 a player, 2 a manager, 7 a team of players. */
+  recipients?: number;
+  /** 0–20. */
+  minPrestige?: number;
+  maxPrestige?: number;
 }
 
 /** A match official, read-only. */

@@ -5,9 +5,11 @@ use std::sync::LazyLock;
 use serde::Deserialize;
 
 use crate::clubs::ClubSummary;
+use crate::competitions::{AwardSummary, CompetitionSummary};
 use crate::date::FmDate;
 use crate::details::{ATTRIBUTE_GROUPS, POSITIONS};
-use crate::players::{PLAYABLE_RATING, PlayerSummary};
+use crate::officials::OfficialSummary;
+use crate::players::{NationSummary, PLAYABLE_RATING, PlayerSummary};
 use crate::staff::{STAFF_ATTRIBUTE_GROUPS, StaffSummary};
 use crate::text::fold;
 
@@ -253,6 +255,92 @@ impl ClubFilter {
     }
 }
 
+/// Filters for the competitions list.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct CompetitionFilter {
+    /// `Some(true)` for women's competitions only, `Some(false)` for men's only.
+    pub women: Option<bool>,
+    /// Part of the nation's name, accents and case ignored. An international competition has no nation.
+    pub nation: Option<String>,
+    /// Part of the continent's name, accents and case ignored.
+    pub continent: Option<String>,
+    /// 0–200.
+    pub min_reputation: Option<u16>,
+    pub max_reputation: Option<u16>,
+}
+
+impl CompetitionFilter {
+    pub fn matches(&self, c: &CompetitionSummary) -> bool {
+        self.women.is_none_or(|women| c.women == women)
+            && contains(c.nation.as_deref(), self.nation.as_deref())
+            && contains(c.continent.as_deref(), self.continent.as_deref())
+            && self.min_reputation.is_none_or(|min| c.reputation >= min)
+            && self.max_reputation.is_none_or(|max| c.reputation <= max)
+    }
+}
+
+/// Filters for the awards list.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct AwardFilter {
+    /// `Some(true)` for women's awards only, `Some(false)` for men's only.
+    pub women: Option<bool>,
+    /// Part of the nation's name, accents and case ignored.
+    pub nation: Option<String>,
+    /// FM's code for who gets it (see [`AwardSummary::recipients`]).
+    pub recipients: Option<u8>,
+    /// 0–20.
+    pub min_prestige: Option<u8>,
+    pub max_prestige: Option<u8>,
+}
+
+impl AwardFilter {
+    pub fn matches(&self, a: &AwardSummary) -> bool {
+        self.women.is_none_or(|women| a.women == women)
+            && contains(a.nation.as_deref(), self.nation.as_deref())
+            && self.recipients.is_none_or(|code| a.recipients == code)
+            && self.min_prestige.is_none_or(|min| a.prestige >= min)
+            && self.max_prestige.is_none_or(|max| a.prestige <= max)
+    }
+}
+
+/// Filters for the match officials list.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct OfficialFilter {
+    pub min_age: Option<u16>,
+    pub max_age: Option<u16>,
+    pub min_current_ability: Option<u16>,
+    pub min_potential_ability: Option<u16>,
+    /// Part of the nation's name, accents and case ignored.
+    pub nation: Option<String>,
+}
+
+impl OfficialFilter {
+    pub fn matches(&self, o: &OfficialSummary) -> bool {
+        self.min_age.is_none_or(|min| o.age.is_some_and(|age| age >= min))
+            && self.max_age.is_none_or(|max| o.age.is_some_and(|age| age <= max))
+            && self.min_current_ability.is_none_or(|min| o.current_ability >= min)
+            && self.min_potential_ability.is_none_or(|min| o.potential_ability >= min)
+            && contains(o.nation.as_deref(), self.nation.as_deref())
+    }
+}
+
+/// Filters for the nations list.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct NationFilter {
+    /// Part of the continent's name, accents and case ignored. A nation whose continent was not read matches none.
+    pub continent: Option<String>,
+}
+
+impl NationFilter {
+    pub fn matches(&self, n: &NationSummary) -> bool {
+        contains(n.continent.as_deref(), self.continent.as_deref())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -449,5 +537,94 @@ mod tests {
         assert!(!ClubFilter { min_reputation: Some(1), ..ClubFilter::default() }.matches(&unknown));
         assert!(!ClubFilter { founded_from: Some(1900), ..ClubFilter::default() }.matches(&unknown));
         assert!(ClubFilter { women: Some(true), ..ClubFilter::default() }.matches(&unknown));
+    }
+
+    #[test]
+    fn competition_award_official_and_nation_filters() {
+        let league = CompetitionSummary {
+            uid: 1,
+            name: "Süper Lig".to_owned(),
+            short_name: None,
+            nation: Some("Türkiye".to_owned()),
+            nation_uid: None,
+            continent: Some("Europe".to_owned()),
+            reputation: 150,
+            women: false,
+            address: 0,
+            nation_address: 0,
+        };
+        let cup = CompetitionSummary { nation: None, continent: Some("Asia".to_owned()), ..league.clone() };
+        let filter = CompetitionFilter {
+            women: Some(false),
+            nation: Some("turkiye".to_owned()),
+            continent: Some("eur".to_owned()),
+            min_reputation: Some(100),
+            max_reputation: Some(150),
+        };
+        assert!(filter.matches(&league));
+        // An international competition has no nation to match.
+        assert!(!filter.matches(&cup));
+        assert!(!CompetitionFilter { women: Some(true), ..CompetitionFilter::default() }.matches(&league));
+        assert!(!CompetitionFilter { min_reputation: Some(151), ..CompetitionFilter::default() }.matches(&league));
+
+        let award = AwardSummary {
+            uid: 2,
+            name: "Player of the Year".to_owned(),
+            competition: None,
+            competition_uid: None,
+            nation: Some("España".to_owned()),
+            nation_uid: None,
+            continent: None,
+            prestige: 12,
+            period: 3,
+            women: true,
+            recipients: 1,
+            goalkeepers_only: false,
+            max_age: None,
+        };
+        let filter = AwardFilter {
+            women: Some(true),
+            nation: Some("espana".to_owned()),
+            recipients: Some(1),
+            min_prestige: Some(10),
+            max_prestige: Some(12),
+        };
+        assert!(filter.matches(&award));
+        assert!(!AwardFilter { recipients: Some(2), ..AwardFilter::default() }.matches(&award));
+        assert!(!AwardFilter { max_prestige: Some(11), ..AwardFilter::default() }.matches(&award));
+        assert!(!AwardFilter { women: Some(false), ..AwardFilter::default() }.matches(&award));
+
+        let referee = OfficialSummary {
+            uid: 3,
+            address: 0,
+            name: "Ref".to_owned(),
+            nation: Some("Italia".to_owned()),
+            nation_uid: None,
+            date_of_birth: None,
+            age: Some(40),
+            current_ability: 150,
+            potential_ability: 160,
+            reputation: 5000,
+        };
+        let filter = OfficialFilter {
+            min_age: Some(35),
+            max_age: Some(45),
+            min_current_ability: Some(150),
+            min_potential_ability: Some(160),
+            nation: Some("ital".to_owned()),
+        };
+        assert!(filter.matches(&referee));
+        assert!(!OfficialFilter { min_current_ability: Some(151), ..OfficialFilter::default() }.matches(&referee));
+        assert!(!OfficialFilter { max_age: Some(30), ..OfficialFilter::default() }.matches(&referee));
+        let unknown_age = OfficialSummary { age: None, ..referee.clone() };
+        assert!(!OfficialFilter { min_age: Some(20), ..OfficialFilter::default() }.matches(&unknown_age));
+
+        let nation =
+            NationSummary { uid: 4, nation_uid: None, name: "Japan".to_owned(), continent: Some("Asia".to_owned()) };
+        assert!(NationFilter { continent: Some("asia".to_owned()) }.matches(&nation));
+        assert!(!NationFilter { continent: Some("europe".to_owned()) }.matches(&nation));
+        let unread = NationSummary { continent: None, ..nation.clone() };
+        assert!(!NationFilter { continent: Some("asia".to_owned()) }.matches(&unread));
+        assert!(NationFilter::default().matches(&unread));
     }
 }
