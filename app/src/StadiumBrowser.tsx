@@ -1,46 +1,56 @@
-import { useId, useState } from "react";
-import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
+import { Fragment, useState } from "react";
+import {
+  chipLabel,
+  FilterBar,
+  type FilterChip,
+  KindField,
+  kindChip,
+  RangeField,
+  rangeText,
+  readKind,
+  readText,
+  whole,
+  womenOnly,
+} from "./FilterBar";
 import { formatNumber } from "./format";
 import { clubListText, clubProfileText, stadiumListText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact, ProfileFrame } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
-import type { StadiumFilter, StadiumSummary } from "./types";
+import type { StadiumClub, StadiumFilter, StadiumSummary } from "./types";
 
 const columns = stadiumListText.columns;
 const filters = stadiumListText.filters;
 const CAPACITY_RANGE = { min: 0, max: 300_000 };
 
-/** A whole number within `range`; nothing for an empty or unreadable input. */
-function whole(input: string, range: { min: number; max: number }): number | undefined {
-  if (input.trim() === "") {
-    return undefined;
-  }
-  const value = Number(input);
-  return Number.isFinite(value) ? Math.min(range.max, Math.max(range.min, Math.round(value))) : undefined;
-}
-
-const readText = (value: unknown) => (typeof value === "string" ? value : "");
-
-/** Senior stadiums, one per club, with the selected stadium beside the table. */
+/** Senior stadiums, one row each with every club that plays there, with the selected stadium beside the table. */
 export function StadiumBrowser({ version, active }: { version: number; active: boolean }) {
+  const [kind, setKind] = useState(() => restored("stadiumKind", readKind));
   const [minCapacity, setMinCapacity] = useState(() => restored("stadiumMin", readText));
   const [maxCapacity, setMaxCapacity] = useState(() => restored("stadiumMax", readText));
+  useSnapshot("stadiumKind", () => kind);
   useSnapshot("stadiumMin", () => minCapacity);
   useSnapshot("stadiumMax", () => maxCapacity);
   const min = whole(minCapacity, CAPACITY_RANGE);
   const max = whole(maxCapacity, CAPACITY_RANGE);
   const filter: StadiumFilter | undefined =
-    min === undefined && max === undefined ? undefined : { minCapacity: min, maxCapacity: max };
-  const capacityLabel = useId();
+    kind === "all" && min === undefined && max === undefined
+      ? undefined
+      : { women: womenOnly(kind), minCapacity: min, maxCapacity: max };
   const capacity = rangeText(min, max, formatNumber);
-  const clearAll = () => {
+  const clearCapacity = () => {
     setMinCapacity("");
     setMaxCapacity("");
   };
-  const chips: FilterChip[] =
-    capacity === null ? [] : [{ key: "capacity", label: chipLabel(filters.capacity, capacity), remove: clearAll }];
+  const clearAll = () => {
+    setKind("all");
+    clearCapacity();
+  };
+  const chips: FilterChip[] = kindChip(kind, filters, () => setKind("all"));
+  if (capacity !== null) {
+    chips.push({ key: "capacity", label: chipLabel(filters.capacity, capacity), remove: clearCapacity });
+  }
 
   return (
     <ListBrowser<StadiumSummary>
@@ -54,30 +64,17 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
       empty={(query) => stadiumListText.empty(query, filter !== undefined)}
       filterBar={
         <FilterBar chips={chips} onClear={clearAll}>
-          <div className="filter-field" role="group" aria-labelledby={capacityLabel}>
-            <span id={capacityLabel}>{filters.capacity}</span>
-            <input
-              type="number"
-              min={CAPACITY_RANGE.min}
-              max={CAPACITY_RANGE.max}
-              step={1}
-              placeholder={filters.minPlaceholder}
-              aria-label={filters.minCapacity}
-              value={minCapacity}
-              onChange={(e) => setMinCapacity(e.currentTarget.value)}
-            />
-            <span aria-hidden="true">–</span>
-            <input
-              type="number"
-              min={CAPACITY_RANGE.min}
-              max={CAPACITY_RANGE.max}
-              step={1}
-              placeholder={filters.maxPlaceholder}
-              aria-label={filters.maxCapacity}
-              value={maxCapacity}
-              onChange={(e) => setMaxCapacity(e.currentTarget.value)}
-            />
-          </div>
+          <KindField labels={filters} value={kind} onChange={setKind} />
+          <RangeField
+            label={filters.capacity}
+            minLabel={filters.minCapacity}
+            maxLabel={filters.maxCapacity}
+            range={CAPACITY_RANGE}
+            min={minCapacity}
+            max={maxCapacity}
+            onMin={setMinCapacity}
+            onMax={setMaxCapacity}
+          />
         </FilterBar>
       }
       tableClass="stadium-grid"
@@ -96,17 +93,34 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
   );
 }
 
+/** Clubs' names, a comma between them and a tag on each women's club. */
+function ClubNames({ clubs }: { clubs: readonly StadiumClub[] }) {
+  return clubs.map((club, index) => (
+    <Fragment key={club.uid}>
+      {index > 0 && ", "}
+      {club.name}
+      {club.women && <span className="tag women">{clubListText.women}</span>}
+    </Fragment>
+  ));
+}
+
 function StadiumCells({ stadium }: { stadium: StadiumSummary }) {
-  const name = stadium.name ?? stadium.club;
+  const [club, ...others] = stadium.clubs;
+  const name = stadium.name ?? club.name;
   return (
     <>
       <td className="col-name" title={name}>
         {name}
       </td>
-      <td className="col-club" title={stadium.club}>
-        <WithPicture picture={<ClubLogo uid={stadium.clubUid} name={stadium.club} size={PICTURE_SIZE.rowLogo} />}>
-          <span className="name-text">{stadium.club}</span>
-          {stadium.women && <span className="tag women">{clubListText.women}</span>}
+      <td className="col-club" title={stadium.clubs.map((tenant) => tenant.name).join(", ")}>
+        <WithPicture picture={<ClubLogo uid={club.uid} name={club.name} size={PICTURE_SIZE.rowLogo} />}>
+          <span className="name-text">{club.name}</span>
+          {club.women && <span className="tag women">{clubListText.women}</span>}
+          {others.length > 0 && (
+            <div className="sub">
+              <ClubNames clubs={others} />
+            </div>
+          )}
         </WithPicture>
       </td>
       <td className="num">{formatNumber(stadium.capacity)}</td>
@@ -117,17 +131,20 @@ function StadiumCells({ stadium }: { stadium: StadiumSummary }) {
 }
 
 function StadiumProfile({ stadium, onClose }: { stadium: StadiumSummary; onClose: () => void }) {
-  const name = stadium.name ?? stadium.club;
+  const [club] = stadium.clubs;
   return (
     <ProfileFrame
-      picture={<ClubLogo uid={stadium.clubUid} name={stadium.club} size={PICTURE_SIZE.clubLogo} />}
-      name={name}
-      fullName={stadium.name && stadium.name !== stadium.club ? stadium.club : null}
+      picture={<ClubLogo uid={club.uid} name={club.name} size={PICTURE_SIZE.clubLogo} />}
+      name={stadium.name ?? club.name}
+      fullName={null}
       vitals={[]}
       loaded={{ details: stadium }}
       onClose={onClose}
     >
       <dl className="stats">
+        <Fact label={stadium.clubs.length > 1 ? stadiumListText.clubs : columns.club}>
+          <ClubNames clubs={stadium.clubs} />
+        </Fact>
         <Fact label={clubProfileText.capacity}>{formatNumber(stadium.capacity)}</Fact>
         <Fact label={clubProfileText.seating}>{formatNumber(stadium.seating)}</Fact>
         <Fact label={clubProfileText.used} title={clubProfileText.usedTitle}>

@@ -220,6 +220,10 @@ pub struct NationSummary {
     /// The nation's own UID, for its flag. None when `uid` is only a row id.
     pub nation_uid: Option<u32>,
     pub name: String,
+    /// Read where the build places nations' details (see [`Session::nation_continent`]); none elsewhere.
+    ///
+    /// [`Session::nation_continent`]: crate::session::Session::nation_continent
+    pub continent: Option<String>,
 }
 
 impl crate::index::Listed for NationSummary {
@@ -252,7 +256,7 @@ pub fn nation_summaries(nations: impl IntoIterator<Item = Nation>) -> Vec<Nation
                 uid = uid.wrapping_add(1);
             }
         }
-        out.push(NationSummary { uid, nation_uid: nation.uid, name: nation.name });
+        out.push(NationSummary { uid, nation_uid: nation.uid, name: nation.name, continent: None });
     }
     out
 }

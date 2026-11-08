@@ -1137,8 +1137,29 @@ export const en = {
       const count = total === 1 ? "1 official" : `${format(total)} officials`;
       return total > shown ? `${count} · Top ${shown} by ability` : count;
     },
-    empty: (query: string) => (query === "" ? "Couldn't read any officials on this version of FM." : `No officials match “${query}”.`),
+    empty: (query: string, filtered: boolean) => {
+      if (query === "" && !filtered) {
+        return "Couldn't read any officials on this version of FM.";
+      }
+      if (query === "") {
+        return "No officials match these filters.";
+      }
+      return filtered
+        ? `No officials match “${query}” with these filters.`
+        : `No officials match “${query}”.`;
+    },
     columns: { name: "Name", nation: "Nation", age: "Age", ca: "CA", pa: "PA", reputation: "Reputation", uid: "ID" },
+    filters: {
+      age: "Age",
+      minAge: "Minimum age",
+      maxAge: "Maximum age",
+      minCurrentAbility: "Min CA",
+      minCurrentAbilityTitle: "Minimum current ability",
+      minPotentialAbility: "Min PA",
+      minPotentialAbilityTitle: "Minimum potential ability",
+      abilityPlaceholder: "1–200",
+      nation: "Nation",
+    },
     reputation: "Reputation",
   },
 
@@ -1149,9 +1170,29 @@ export const en = {
       const count = total === 1 ? "1 competition" : `${format(total)} competitions`;
       return total > shown ? `${count} · Top ${shown} by reputation` : count;
     },
-    empty: (query: string) =>
-      query === "" ? "Couldn't read any competitions on this version of FM." : `No competitions match “${query}”.`,
+    empty: (query: string, filtered: boolean) => {
+      if (query === "" && !filtered) {
+        return "Couldn't read any competitions on this version of FM.";
+      }
+      if (query === "") {
+        return "No competitions match these filters.";
+      }
+      return filtered
+        ? `No competitions match “${query}” with these filters.`
+        : `No competitions match “${query}”.`;
+    },
     columns: { name: "Name", nation: "Nation", continent: "Continent", reputation: "Reputation", uid: "ID" },
+    filters: {
+      kind: "Competitions to show",
+      all: "All",
+      men: "Men",
+      women: "Women",
+      nation: "Nation",
+      continent: "Continent",
+      reputation: "Reputation",
+      minReputation: "Minimum reputation",
+      maxReputation: "Maximum reputation",
+    },
     shortName: "Short name",
     reputation: "Reputation",
     /** The small tag on a women's competition. */
@@ -1188,9 +1229,30 @@ export const en = {
       const count = total === 1 ? "1 award" : `${format(total)} awards`;
       return total > shown ? `${count} · Top ${shown} by prestige` : count;
     },
-    empty: (query: string) =>
-      query === "" ? "Couldn't read any awards on this version of FM." : `No awards match “${query}”.`,
+    empty: (query: string, filtered: boolean) => {
+      if (query === "" && !filtered) {
+        return "Couldn't read any awards on this version of FM.";
+      }
+      if (query === "") {
+        return "No awards match these filters.";
+      }
+      return filtered
+        ? `No awards match “${query}” with these filters.`
+        : `No awards match “${query}”.`;
+    },
     columns: { name: "Name", competition: "Competition", nation: "Nation", prestige: "Prestige", uid: "ID" },
+    filters: {
+      kind: "Awards to show",
+      all: "All",
+      men: "Men",
+      women: "Women",
+      nation: "Nation",
+      recipients: "Given to",
+      anyone: "Anyone",
+      prestige: "Prestige",
+      minPrestige: "Minimum prestige",
+      maxPrestige: "Maximum prestige",
+    },
     competition: "Competition",
     prestige: "Prestige",
     /** How often it is given, by FM's code; null for the codes not named yet. */
@@ -1238,7 +1300,13 @@ export const en = {
       seating: "Seated",
       expansion: "Can grow to",
     },
+    /** The clubs that play at a stadium, in its profile. */
+    clubs: "Clubs",
     filters: {
+      kind: "Stadiums to show",
+      all: "All",
+      men: "Men",
+      women: "Women",
       capacity: "Capacity",
       minCapacity: "Minimum capacity",
       maxCapacity: "Maximum capacity",
@@ -1255,8 +1323,18 @@ export const en = {
       const count = total === 1 ? "1 nation" : `${format(total)} nations`;
       return total > shown ? `${count} · ${shown} shown` : count;
     },
-    empty: (query: string) => (query === "" ? "No nations found." : `No nations match “${query}”.`),
-    columns: { name: "Nation", uid: "ID" },
+    empty: (query: string, filtered: boolean) => {
+      if (query === "") {
+        return filtered ? "No nations match these filters." : "No nations found.";
+      }
+      return filtered
+        ? `No nations match “${query}” with these filters.`
+        : `No nations match “${query}”.`;
+    },
+    columns: { name: "Nation", continent: "Continent", uid: "ID" },
+    filters: {
+      continent: "Continent",
+    },
     uid: "ID",
     noUid: "No ID",
     nation: "Nation",
