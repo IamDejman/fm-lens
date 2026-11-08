@@ -93,15 +93,32 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
   );
 }
 
-/** Clubs' names, a comma between them and a tag on each women's club. */
+/**
+ * Clubs' names, a comma between them and a tag on each women's club. Each club is its own span, so a row wraps
+ * between clubs and never parts a club from its tag. The comma goes with the name, or after the tag, so a name cut
+ * short leaves no gap before it.
+ */
 function ClubNames({ clubs }: { clubs: readonly StadiumClub[] }) {
-  return clubs.map((club, index) => (
-    <Fragment key={club.uid}>
-      {index > 0 && ", "}
-      {club.name}
-      {club.women && <span className="tag women">{clubListText.women}</span>}
-    </Fragment>
-  ));
+  return clubs.map((club, index) => {
+    const comma = index < clubs.length - 1 ? "," : null;
+    return (
+      <Fragment key={club.uid}>
+        {index > 0 && " "}
+        <span className="club">
+          <span className="name-text">
+            {club.name}
+            {!club.women && comma}
+          </span>
+          {club.women && (
+            <>
+              <span className="tag women">{clubListText.women}</span>
+              {comma}
+            </>
+          )}
+        </span>
+      </Fragment>
+    );
+  });
 }
 
 /** A club's name for a cell's hover, which has no tags: "Club América (Women)". */
@@ -146,7 +163,7 @@ function StadiumProfile({ stadium, onClose }: { stadium: StadiumSummary; onClose
       loaded={{ details: stadium }}
       onClose={onClose}
     >
-      <dl className="stats">
+      <dl className="stats stadium-stats">
         <Fact label={stadium.clubs.length > 1 ? stadiumListText.clubs : columns.club}>
           <ClubNames clubs={stadium.clubs} />
         </Fact>
