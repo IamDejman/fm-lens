@@ -37,6 +37,9 @@ jobs:
       - name: Install frontend packages
         working-directory: app
         run: npm ci
+      - name: Test frontend interactions
+        working-directory: app
+        run: npm test
       - name: Build frontend
         working-directory: app
         run: npm run build
@@ -75,6 +78,9 @@ jobs:
       - name: Install frontend packages
         working-directory: app
         run: npm ci
+      - name: Test frontend interactions
+        working-directory: app
+        run: npm test
       - name: Build frontend
         working-directory: app
         run: npm run build

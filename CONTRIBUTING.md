@@ -13,11 +13,14 @@ Build the frontend before Rust checks because Tauri embeds its output:
 ```sh
 export PATH="$HOME/.cargo/bin:$PATH"
 npm --prefix app ci
+npm --prefix app test
 npm --prefix app run build
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 ```
+
+Frontend tests use jsdom and fixture commands, without FM or a browser installation. CI runs them on macOS and Windows. They cover modal isolation/focus, overlapping searches, pending-edit navigation and Settings restoration; native and live-game verification remain separate.
 
 Match additional checks to the change. Read-only changes must retain the final
 memory-write guard. Editing work needs a separate career copy and documented
