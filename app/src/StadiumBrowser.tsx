@@ -104,6 +104,9 @@ function ClubNames({ clubs }: { clubs: readonly StadiumClub[] }) {
   ));
 }
 
+/** A club's name for a cell's hover, which has no tags: "Club América (Women)". */
+const clubTitle = (club: StadiumClub) => (club.women ? `${club.name} (${clubListText.women})` : club.name);
+
 function StadiumCells({ stadium }: { stadium: StadiumSummary }) {
   const [club, ...others] = stadium.clubs;
   const name = stadium.name ?? club.name;
@@ -112,10 +115,12 @@ function StadiumCells({ stadium }: { stadium: StadiumSummary }) {
       <td className="col-name" title={name}>
         {name}
       </td>
-      <td className="col-club" title={stadium.clubs.map((tenant) => tenant.name).join(", ")}>
+      <td className="col-club" title={stadium.clubs.map(clubTitle).join(", ")}>
         <WithPicture picture={<ClubLogo uid={club.uid} name={club.name} size={PICTURE_SIZE.rowLogo} />}>
-          <span className="name-text">{club.name}</span>
-          {club.women && <span className="tag women">{clubListText.women}</span>}
+          <div className="club-line">
+            <span className="name-text">{club.name}</span>
+            {club.women && <span className="tag women">{clubListText.women}</span>}
+          </div>
           {others.length > 0 && (
             <div className="sub">
               <ClubNames clubs={others} />
