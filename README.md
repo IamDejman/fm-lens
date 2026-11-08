@@ -61,7 +61,6 @@ Questions and ideas go to [Discussions](https://github.com/IamDejman/fm-lens/dis
 - Moving, swapping and releasing players may not update every linked record,
   such as history and finances.
 - An unsackable manager has not been tested against a real sacking.
-- Promises are not available on Windows yet.
 
 Test results are in the [editing validation record](docs/EDITING-VALIDATION.md).
 

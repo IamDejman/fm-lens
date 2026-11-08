@@ -77,9 +77,9 @@ Status after the "Ship FM Lens for Windows" PR. Each item says what was done, or
 Release through the game's call is mapped on Windows (`withdraw_offers` 0xB17790, `leave_team` 0xB11110) and passed on
 the box. Evidence is in docs/EDITING-VALIDATION.md, "Windows: every feature on main".
 
-1. **Promises: left, shown as not available.** The Windows layout has no `[promise]` section, so `promises` is now
-   `null` there and the profile says "Not available on Windows yet" instead of "No promises". To close it, trace the
-   offsets on a save with an open promise and add `[promise]` to `profiles/fm27/layout.toml`; the app needs no change.
+1. **Promises: done (8 November).** The record is laid out as on the Mac; only the person block's list pointer
+   differs (`list = 0xD8`, player + 0x360). Traced on Jurriën Timber's preferred position promise on a copy career;
+   the Mood tab matched FM's Promises page, and Close and Undo were checked in FM.
 2. **Refreshing an official: done (8 November).** The layout's `[official] identity = 0x138` gives the identity block
    that MSVC vtables keep no offset to, and `refresh_entity` uses it. A reputation edit applied and read back on the box.
 
