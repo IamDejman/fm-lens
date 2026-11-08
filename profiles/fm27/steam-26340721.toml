@@ -55,6 +55,12 @@ find_work_permit = 0xBB10C0
 # TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), as the game's editor takes a permit away
 # after finding it.
 remove_work_permit = 0xB8F540
+# Releasing a player, as the game's editor does at 0x29CE8BC once it has ended any loan: TRANSFER_MANAGER::withdraw_offers
+# (manager, identity block, 1, 0, 0, 0, 0; the entry is a jump into the protected code) then TRANSFER_MANAGER::leave_team
+# (manager, identity block, the team his contract is with, 9 for a release, 0, 0, 0, 1, then a byte 1 and a qword 0 on
+# the stack, as the editor passes them at 0x29CE8C1 to 0x29CE8F2). He becomes a free agent.
+withdraw_offers = 0xB17790
+leave_team = 0xB11110
 # TRANSFER_MANAGER::start_loan: (manager, a STARTING_LOAN, 1), as the game's editor calls it from 0x29CD370.
 start_loan = 0xBDF080
 # TRANSFER_MANAGER::sign_free_agent: (manager, the player's ACTUAL_PERSON, 0x28 into his person block, the club team,

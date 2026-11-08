@@ -240,6 +240,9 @@ pub struct OfficialLayout {
     pub potential_ability: u64,
     pub reputation: u64,
     pub uid: u64,
+    /// Where the identity block starts, where the layout has to say (Windows: MSVC's vtables keep no offset to it).
+    #[serde(default)]
+    pub identity: Option<u64>,
 }
 
 /// A nation's facts, and the men's national team container it points at (which points back at it): the FIFA
@@ -1529,6 +1532,7 @@ mod tests {
             (calls.add_injury, calls.start_loan, calls.sign_free_agent, calls.maximise_tactics),
             (Some(0x2DA_8370), Some(0xBD_F080), Some(0xBD_6270), Some(0x31A_B350))
         );
-        assert_eq!(calls.all().len(), 22, "every call but ref_drop");
+        assert_eq!((calls.withdraw_offers, calls.leave_team), (Some(0xB1_7790), Some(0xB1_1110)));
+        assert_eq!(calls.all().len(), 24, "every call but ref_drop");
     }
 }
