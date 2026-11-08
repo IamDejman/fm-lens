@@ -872,10 +872,11 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   // For the human manager, the manager the club loses.
   const route = (made: MovePreview | ManagerPreview) => {
     const leaves = made.from?.name ?? from;
-    if (swap && partner !== null) {
-      return text.swapRoute(player.name, leaves, made.to.name, partner.name);
-    }
-    const lines = [text.route(leaves, made.to.name)];
+    const lines = [
+      swap && partner !== null
+        ? text.swapRoute(player.name, leaves, made.to.name, partner.name)
+        : text.route(leaves, made.to.name),
+    ];
     if (made.fee) {
       const amount = formatMoney(made.fee.fee);
       if ("permanent" in made && made.permanent) {

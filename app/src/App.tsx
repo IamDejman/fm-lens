@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { call, inTauri } from "./api";
 import { addCheckForUpdates } from "./appMenu";
 import { BridgeSetup } from "./BridgeSetup";
 import { ChangesView, useChangeLog } from "./ChangesView";
-import { ClubBrowser } from "./ClubBrowser";
 import { CompatibilityNotice } from "./CompatibilityNotice";
 import { DropMenu } from "./DropMenu";
 import { forgetFieldTables } from "./fieldTables";
@@ -12,7 +11,7 @@ import { describeBuild, describeError, formatDate, formatNumber } from "./format
 import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
-import { isShortcut, MAC, shortcutAria, shortcutLabel } from "./keys";
+import { isShortcut, MAC, SECTION_SHORTCUTS, shortcutAria, shortcutLabel } from "./keys";
 import { ReportDialog } from "./ReportDialog";
 import { Settings } from "./Settings";
 import {
@@ -28,14 +27,8 @@ import {
   staffListText,
   updateText,
 } from "./labels";
-import { NationBrowser } from "./NationBrowser";
-import { OfficialBrowser } from "./OfficialBrowser";
-import { AwardBrowser } from "./AwardBrowser";
-import { CompetitionBrowser } from "./CompetitionBrowser";
-import { StadiumBrowser } from "./StadiumBrowser";
 import { PlayerBrowser } from "./PlayerBrowser";
 import { restored, useSnapshot } from "./restore";
-import { StaffBrowser } from "./StaffBrowser";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
@@ -43,9 +36,17 @@ import { track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
-import lensSymbol from "./assets/brand/fm-lens-symbol.png";
+import lensSymbol from "./assets/brand/fm-lens-symbol-120.png";
 import { askToLeave, EditorContext, NO_GAME_ACTIONS } from "./useProfileEditing";
 import "./App.css";
+
+const StaffBrowser = lazy(() => import("./StaffBrowser").then((module) => ({ default: module.StaffBrowser })));
+const ClubBrowser = lazy(() => import("./ClubBrowser").then((module) => ({ default: module.ClubBrowser })));
+const NationBrowser = lazy(() => import("./NationBrowser").then((module) => ({ default: module.NationBrowser })));
+const CompetitionBrowser = lazy(() => import("./CompetitionBrowser").then((module) => ({ default: module.CompetitionBrowser })));
+const AwardBrowser = lazy(() => import("./AwardBrowser").then((module) => ({ default: module.AwardBrowser })));
+const StadiumBrowser = lazy(() => import("./StadiumBrowser").then((module) => ({ default: module.StadiumBrowser })));
+const OfficialBrowser = lazy(() => import("./OfficialBrowser").then((module) => ({ default: module.OfficialBrowser })));
 
 type View =
   | "players"
@@ -83,6 +84,21 @@ function BrandMark() {
       <img className="brand-symbol" src={lensSymbol} alt="" width="40" height="40" />
       <span className="brand-word">FM Lens</span>
     </h1>
+  );
+}
+
+/** Load a secondary list on first use, then retain its filters, selection and profile state. */
+function DeferredView({ active, label, children }: { active: boolean; label: string; children: ReactNode }) {
+  const [visited, setVisited] = useState(active);
+  // Record the first visit during render so switching away never unmounts the loaded list.
+  if (active && !visited) setVisited(true);
+  if (!active && !visited) return null;
+  return (
+    <Suspense fallback={active ? (
+      <div className="workspace" role="status" aria-label={label} aria-busy="true">{appText.loadingView}</div>
+    ) : null}>
+      {children}
+    </Suspense>
   );
 }
 
@@ -322,7 +338,7 @@ function App() {
       return;
     }
     const openSection = (event: KeyboardEvent) => {
-      const index = VIEWS.findIndex((_, i) => isShortcut(event, String(i + 1)));
+      const index = SECTION_SHORTCUTS.findIndex((key, i) => i < VIEWS.length && isShortcut(event, key));
       if (index >= 0) {
         event.preventDefault();
         show(VIEWS[index].id);
@@ -476,17 +492,31 @@ function App() {
         {error && <div className="banner" role="alert">{error}</div>}
 
         {connection ? (
-          // All the lists stay mounted, so each keeps its search and selection while another is shown.
+          // Visited lists stay mounted, so each keeps its search and selection while another is shown.
           <EditorContext.Provider value={editor}>
             <div className="views">
               <PlayerBrowser version={dataVersion} active={view === "players"} />
-              <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
-              <ClubBrowser version={dataVersion} active={view === "clubs"} reveal={revealClub} />
-              <NationBrowser version={dataVersion} active={view === "nations"} />
-              <CompetitionBrowser version={dataVersion} active={view === "competitions"} />
-              <AwardBrowser version={dataVersion} active={view === "awards"} />
-              <StadiumBrowser version={dataVersion} active={view === "stadiums"} />
-              <OfficialBrowser version={dataVersion} active={view === "officials"} />
+              <DeferredView active={view === "staff"} label={staffListText.nav}>
+                <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
+              </DeferredView>
+              <DeferredView active={view === "clubs"} label={clubListText.nav}>
+                <ClubBrowser version={dataVersion} active={view === "clubs"} reveal={revealClub} />
+              </DeferredView>
+              <DeferredView active={view === "nations"} label={nationListText.nav}>
+                <NationBrowser version={dataVersion} active={view === "nations"} />
+              </DeferredView>
+              <DeferredView active={view === "competitions"} label={competitionListText.nav}>
+                <CompetitionBrowser version={dataVersion} active={view === "competitions"} />
+              </DeferredView>
+              <DeferredView active={view === "awards"} label={awardListText.nav}>
+                <AwardBrowser version={dataVersion} active={view === "awards"} />
+              </DeferredView>
+              <DeferredView active={view === "stadiums"} label={stadiumListText.nav}>
+                <StadiumBrowser version={dataVersion} active={view === "stadiums"} />
+              </DeferredView>
+              <DeferredView active={view === "officials"} label={officialListText.nav}>
+                <OfficialBrowser version={dataVersion} active={view === "officials"} />
+              </DeferredView>
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
           </EditorContext.Provider>

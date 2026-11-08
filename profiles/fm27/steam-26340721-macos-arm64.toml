@@ -71,6 +71,12 @@ refs_drop = 0x43FE910
 # the player goes back to his club. On his own contract it leaves him at his club with none. See
 # docs/recon/fm27-call-shapes.md section 4.
 end_contract = 0x2D4B9DC
+# Releasing a player, as the game's editor does at 0x238EDDC once it has ended any loan: TRANSFER_MANAGER::withdraw_offers
+# (manager, the identity block, 1, 0, 0, 0, 0), then TRANSFER_MANAGER::leave_team (manager, the identity block, the team
+# his contract is with, 9 for a release, 0, 0, 0, 1, then a byte 1 and a qword 0 on the stack). He becomes a free agent.
+# See docs/recon/fm27-call-shapes.md section 4.
+withdraw_offers = 0x2D4F79C
+leave_team = 0x2D49334
 # The date term of a signing ('TrDt'), as the game's editor puts it in the terms map at 0x25D67C: the date type
 # (no arguments), the Value of a date (type, &Value, &raw date), the map's insert (map, key, &Value) and the Value's
 # destructor. A date after today has the game agree the signing for that day. See section 5.
