@@ -650,6 +650,8 @@ export const en = {
     wage: "Wage per week",
     /** The hover text of money the app shows in another currency than the pounds the game keeps. */
     converted: "Converted at FM's exchange rate",
+    /** Under a weekly wage FM rounds for display: the figure FM shows for it. */
+    fmShowsWage: (amount: string) => `FM shows ${amount}`,
     signed: "Signed",
     expires: "Expires",
     /** A loaned player's loan: the club he is on loan from, what the borrowing club pays, and its dates. */
