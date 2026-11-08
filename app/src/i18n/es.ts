@@ -1,3 +1,4 @@
+import { knownFormationName } from "../formationNames";
 // The Spanish text of the UI: the same shape as `en.ts` (a missing or extra key fails the build), in the football
 // Spanish of Spain, whose conventions the dates and numbers follow too (see `index.ts`). It speaks to the player as
 // "tú", as games in Spanish do. The comments in `en.ts` say what each string is for.
@@ -817,7 +818,8 @@ export const es: Strings = {
     liftBans: "Levantar",
     liftBansTitle: "Levantar todas sus sanciones",
     promises: "Promesas",
-    promiseName: (id) => `Promesa ${id}`,
+    formationName: (id) => id === 0 ? "Ninguna" : knownFormationName(id) ?? `Formación ${id}`,
+    promiseName: (id) => id === 1 ? "Tiempo de juego" : `Promesa ${id}`,
     promiseMade: (date) => `Hecha el ${date}`,
     promiseDue: (date) => `Vence el ${date}`,
     promiseEnded: (date) => `Terminó el ${date}`,
@@ -2172,6 +2174,8 @@ export const es: Strings = {
     },
     steamBuild: (id) => `(compilación ${id})`,
   },
+
+  listFeedback: { failed: "La búsqueda falló", searching: "Buscando…", retry: "Reintentar" },
 
   errors,
 };
