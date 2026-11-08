@@ -73,6 +73,7 @@ impl<T: Listed> SearchIndex<T> {
                 .cmp(&a_item.rank())
                 .then_with(|| self.sort_names[a].cmp(&self.sort_names[b]))
                 .then_with(|| a_item.display_name().cmp(b_item.display_name()))
+                .then_with(|| a_item.uid().cmp(&b_item.uid()))
         });
         hits.into_iter().map(|i| &self.items[i]).collect()
     }

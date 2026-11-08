@@ -1,3 +1,4 @@
+import { knownFormationName } from "../formationNames";
 // The English text of the UI, and the shape every language has: `tr.ts` and `es.ts` are typed `Strings`, which is
 // `typeof en`, so a key that one dictionary has and another lacks fails the build. A new language is a new file like
 // them, which `index.ts` then offers and `SettingsMenu.tsx` gives a flag.
@@ -799,7 +800,8 @@ export const en = {
     liftBansTitle: "Lift all his bans",
     /** The group of the promises made to a player; FM's own names for them are in its language files only. */
     promises: "Promises",
-    promiseName: (id: number) => `Promise ${id}`,
+    formationName: (id: number) => id === 0 ? "None" : knownFormationName(id) ?? `Formation ${id}`,
+    promiseName: (id: number) => id === 1 ? "Playing time" : `Promise ${id}`,
     promiseMade: (date: string) => `Made ${date}`,
     promiseDue: (date: string) => `Due ${date}`,
     promiseEnded: (date: string) => `Ended ${date}`,
@@ -1381,6 +1383,7 @@ export const en = {
     reload: "Reload",
     detecting: "Looking for Football Manager…",
     connecting: "Loading save…",
+    loadingView: "Loading…",
     reloading: "Loading save…",
 
     /** The notice after connecting to a save in which something was frozen before (`FrozenNotice`). */
@@ -2428,6 +2431,8 @@ export const en = {
     /** Steam's build id of the install, e.g. `"build 26227640`". */
     steamBuild: (id: string) => `build ${id}`,
   },
+
+  listFeedback: { failed: "Search failed", searching: "Searching…", retry: "Retry" },
 
   errors,
 };
