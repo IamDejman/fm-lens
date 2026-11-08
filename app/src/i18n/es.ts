@@ -131,11 +131,19 @@ const CLAUSE_NAMES_ES: Partial<Record<number, string>> = {
   55: "Cláusula de rescisión activa por descenso",
 };
 
+/** Promises by FM's number for them (see `en.ts`). */
+const PROMISE_NAMES_ES: Partial<Record<number, string>> = {
+  1: "Tiempo de juego",
+  208: "Demarcación y rol preferidos",
+};
+
 /** Reasons to be unhappy, by the codes the game keeps them as (see `en.ts`). */
 const CONCERN_MOTIVES_ES: Partial<Record<number, string>> = {
   570: "Preocupado por el mal ambiente del vestuario",
   596: "Excluido de la lista de una competición",
+  652: "Quiere ser titular en más partidos",
   808: "Cree que un compañero ha recibido un trato injusto",
+  811: "Cree que un compañero tiene razón en que hay que arreglar el mal ambiente del vestuario",
   926: "No cree que un compañero merezca los minutos que quiere",
 };
 
@@ -225,7 +233,7 @@ const errors: ErrorTexts = {
   "edit.outOfRange": (p) => `${p.value} no es un valor válido para ${field(p.field)}: admite de ${p.min} a ${p.max}.`,
   "edit.notADate": (p) => `${p.value} no es una fecha válida para ${field(p.field)}.`,
   "edit.notAChoice": (p) => `${p.value} no es uno de los valores que admite ${field(p.field)}.`,
-  "edit.taken": (p) => `El dorsal ${p.value} está ocupado: lo lleva ${p.name ?? `el jugador con UID ${p.uid}`}.`,
+  "edit.taken": (p) => `El dorsal ${p.value} está ocupado: lo lleva ${p.name ?? "otro jugador"}.`,
   "edit.unsupported": (p) => `${field(p.field)} no se puede cambiar así: ${UNSUPPORTED[p.reason] ?? p.reason}.`,
   "edit.moved": (p) => `Este ${recordNoun(p.entity)} ha cambiado de sitio en la memoria del juego; ${reload}.`,
   "edit.noRecord": (p) => `${field(p.field)} no se puede cambiar aquí: su registro falta o no supera la comprobación.`,
@@ -705,7 +713,7 @@ export const es: Strings = {
     revokePermit: "Retirar",
     joined: "Incorporación",
     squadStatus: "Estatus en la plantilla",
-    squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Estatus ${status}`,
+    squadStatusName: (status) => SQUAD_STATUSES[status] ?? "Estatus desconocido",
     qualifications: "Titulación",
     formations: "Formaciones",
     coachingLicence: "Licencia de entrenador",
@@ -761,22 +769,22 @@ export const es: Strings = {
     morale: (value) => `${value} / 20`,
     traits: "Características",
     noTraits: "Sin características",
-    traitName: (bit) => TRAIT_NAMES_ES[bit] ?? `Característica ${bit}`,
+    traitName: (bit) => TRAIT_NAMES_ES[bit] ?? "Característica desconocida",
     unhappiness: "Descontento",
     noUnhappiness: "Nada le hace estar descontento",
     removeUnhappiness: "Quitar todo",
     removingUnhappiness: "Quitando…",
     removeUnhappinessTitle: "Quita todos sus motivos de descontento.",
     concernSince: (date) => `desde el ${date}`,
-    concernKind: (kind) => (kind === 1 ? "Preocupado" : kind === 2 ? "Interno" : `Tipo ${kind}`),
-    concernMotive: (motive) => CONCERN_MOTIVES_ES[motive] ?? `Motivo ${motive}`,
+    concernKind: (kind) => (kind === 1 ? "Preocupado" : kind === 2 ? "Interno" : ""),
+    concernMotive: (motive) => CONCERN_MOTIVES_ES[motive] ?? "Motivo desconocido",
     clauses: "Primas y cláusulas",
     noClauses: "Sin primas ni cláusulas",
     loyaltyBonus: "Prima de fidelidad",
     happiness: "Felicidad",
     playingTimeHappiness: "Felicidad con los minutos",
     moodTitle: "De -100 a 100.",
-    clauseName: (kind) => CLAUSE_NAMES_ES[kind] ?? `Cláusula ${kind}`,
+    clauseName: (kind) => CLAUSE_NAMES_ES[kind] ?? "Cláusula desconocida",
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
         return null;
@@ -807,6 +815,10 @@ export const es: Strings = {
     jadednessTitle: (stored) => `Valor ${stored}. Saturado por encima de 400, totalmente descansado en -500.`,
     noInjuries: "Sin lesiones",
     unknownInjury: "Lesión desconocida",
+    unknownClub: "Club desconocido",
+    unknownNation: "País desconocido",
+    unknownPerson: "Persona desconocida",
+    unknownName: "Desconocido",
     injuryStarted: (date) => `Desde el ${date}`,
     injuryBack: (dates) => `Regreso previsto: ${dates}`,
     heal: "Curar",
@@ -819,8 +831,8 @@ export const es: Strings = {
     liftBans: "Levantar",
     liftBansTitle: "Levantar todas sus sanciones",
     promises: "Promesas",
-    formationName: (id) => id === 0 ? "Ninguna" : knownFormationName(id) ?? `Formación ${id}`,
-    promiseName: (id) => id === 1 ? "Tiempo de juego" : `Promesa ${id}`,
+    formationName: (id) => id === 0 ? "Ninguna" : knownFormationName(id) ?? "Formación desconocida",
+    promiseName: (id) => PROMISE_NAMES_ES[id] ?? "Promesa desconocida",
     promiseMade: (date) => `Hecha el ${date}`,
     promiseDue: (date) => `Vence el ${date}`,
     promiseEnded: (date) => `Terminó el ${date}`,
@@ -873,7 +885,7 @@ export const es: Strings = {
     knowledge: "Conocimientos",
     medical: "Médico",
     playerCoach: (job) => `${job} (jugador-entrenador)`,
-    unknownJob: (code) => `Puesto ${code}`,
+    unknownJob: "Puesto desconocido",
   },
 
   playerList: {
@@ -1621,7 +1633,7 @@ export const es: Strings = {
     healed: (count) => (count === 1 ? "1 lesión curada" : `${format(count)} lesiones curadas`),
     injuryAdded: "Lesión añadida",
     lifted: (count) => (count === 1 ? "1 sanción levantada" : `${format(count)} sanciones levantadas`),
-    promiseClosed: (id) => `Promesa ${id} cerrada`,
+    promiseClosed: (name) => `Promesa cerrada: ${name}`,
     keptPlaying: (date) => (date === null ? "Seguirá jugando" : `Retirada del ${date} evitada`),
     count: (total, undone) => {
       const count = changeCount(total);

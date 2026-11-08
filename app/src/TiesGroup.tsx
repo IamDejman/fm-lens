@@ -7,7 +7,7 @@ import { useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { addTie, changeTie, homegrownRules, listNations, removeTie } from "./editing";
 import { describeError } from "./format";
-import { tieText as text } from "./labels";
+import { profileText, tieText as text } from "./labels";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact, GroupHead } from "./ProfileParts";
 import type { Nation, PlayerDetails, Tie, TieKind } from "./types";
@@ -26,7 +26,8 @@ const SECTIONS: readonly { kind: TieKind; label: string }[] = [
   { kind: "trainedAtClub", label: text.trainedAtClub },
 ];
 
-const tieName = (tie: Tie) => tie.name ?? String(tie.targetUid);
+const tieName = (tie: Tie) =>
+  tie.name ?? (tie.tie === "trainedAtClub" ? profileText.unknownClub : profileText.unknownNation);
 
 /** A tie as one line: the flag or logo and the name, and for a training its rule unless `rule` is false. */
 function TieLine({ tie, rule = true }: { tie: Tie; rule?: boolean }) {

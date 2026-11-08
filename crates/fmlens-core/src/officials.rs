@@ -116,7 +116,7 @@ impl Session {
             officials.push(OfficialSummary {
                 uid,
                 address: pointer,
-                name: display_name(common, first, last, None, uid),
+                name: display_name(common, first, last, None),
                 nation: nations.get(nation, |nation| nation_name(&self.process, &self.layout, nation)),
                 nation_uid: nation_uid(&self.process, &self.layout, nation),
                 date_of_birth,

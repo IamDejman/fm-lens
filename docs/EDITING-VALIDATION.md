@@ -1693,7 +1693,7 @@ the app's Changes list and, where FM shows it, in FM.
 | Official edit, then refresh (Abdel Al-Rahman Salameh, reputation 985 to 1,000) | Pass. Applied and read back 1,000 through the new `identity = 0x138` refresh; no error | Undone |
 | Players, Staff, Clubs and Officials lists, 200-row pages (#158) | Pass. 25,027 players, 19,308 clubs and 1,061 officials load in 200-row pages | None needed |
 | Manager contract tab, freeze controls present (#161) | Pass. Tickboxes present, and the freeze holds across a day and a relaunch (see the freeze row) | None needed |
-| Promises | Not run. FM's Promises page says there are no outstanding promises, so there is nothing to trace; the `[promise]` layout is still missing | None |
+| Promises (Jurriën Timber, play him in his preferred position and role, made 1 Aug 2026, due 28 Jan 2027) | Pass. The promise was made in FM on a copy career, then the new `[promise]` layout traced from it. The Mood tab listed it as FM's Promises page did. Close: FM showed it Succeeded at once; memory read due 1 Aug 2026, closed 1, status 1 | Undo restored every field; FM showed it open again, 181 days left, Too Early To Judge |
 | List filters (#157) | Pass. Players "Free agents only" went 25,027 to 2,990; Clubs reputation 9,000 or more went 19,308 to 6 | None needed |
 | Contract edit (Declan Rice wage, squad number, transfer listed) | Pass. Wage read back £275,000 and survived the Save As and relaunch (typed 260,000, landed 275,000, cause not found). FM's Contract screen does not show squad number or listed status, so those are checked in the app only | Not undone: later replaced by the move |
 | Contract clauses (appearance fee, release clause) | Pass. FM's Contract screen showed $88K appearance fee and a $67M release clause. The dialog only offered a release clause when a slot was free; no sell-on option appeared | Not undone |
@@ -1849,3 +1849,40 @@ The isolated permit branch passed 19 frontend checks (17 Vitest and two keyboard
 cases), including three new permit UI cases covering declined requests, successful request/reread, stale
 feedback on player change, failed revoke, connection failure and read-only or
 unavailable actions. Production frontend and native ARM64 bundle builds passed.
+
+## More formation and concern names (8 November 2026)
+
+Display names only; nothing was edited in FM.
+
+Formations: FM27 on the Windows test machine, in the unsaved copy career
+(Arsenal, 1 Aug 2026). Each name is read from the holder's Head Coach tab,
+Coaching Info, Preferred Formations (up arrow in possession, down arrow out of
+possession). The formation dropdowns offer only named IDs now.
+
+| Value | Holder | FM shows |
+|---|---|---|
+| Formation 3 | Tim Waskett | 4-4-2 |
+| Formation 32 | Tim Waskett | 4-1-4-1 DM |
+| Formation 27 | Beverly Priestman | 4-3-2-1 DM AM Narrow |
+| Formation 33 | Beverly Priestman | 4-4-1-1 2DM |
+| Formation 35 | Antonio Conte | 5-2-3 DM Wide |
+| Formation 30 | Antonio Conte | 5-3-2 DM WB, as already named |
+| Formation 64 | Matty Moore | 5-2-1-2 DM AM |
+| Formation 62 | Daniel Hodges | 4-2-2-2 DM AM Narrow |
+| Formation 65 | Leah Grant | 3-2-5 DM 2AM Wide |
+
+Formation 35 is 5-2-3 DM Wide, not 5-2-2-1 DM AM as the flawed second-formation
+check in "Six features" read it.
+
+Unhappiness reasons: native macOS FM, process 43238, the running test career
+at 8 Dec 2027 (Arsenal). Not saved; Continue was not pressed.
+
+| Value | Holder | FM shows | FM Lens now |
+|---|---|---|---|
+| Reason 652 | Willian Pacho, his only open record | Discuss Concerns lists only "Wants to start more games"; Mood shows "(Minor Issue) Wants to start more games" | Wants to start more games |
+| Reason 811 | Declan Rice and William Saliba, their only open record | Negative on Mood: "Thinks Bukayo Saka is right in asserting that the poor dressing room atmosphere needs to be addressed". No Discuss Concerns entry for Rice | Thinks a teammate is right that the poor dressing room atmosphere needs to be addressed |
+
+Saka holds 570 (the dressing room atmosphere); 811 is the teammates backing him.
+FM names the teammate; FM Lens says "a teammate", as for 808 and 926. The
+Spanish and Turkish names are translations, not FM's own strings. Promises 2 and
+3 stay unnamed: no holder is at your club, and FM shows only your club's promises.

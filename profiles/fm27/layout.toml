@@ -256,6 +256,20 @@ started = 0x10            # date the ban began
 marker = 0x16             # u16, 0xFFFF for a ban
 matches = 0x1C            # u8, matches left to miss
 
+# A promise made to a person (INTERACTION_PROMISE, 0x60 bytes), laid out as on the Mac; only his list sits elsewhere in
+# the person block (0x360 in a player, as other player fields here sit 0x40 past the Mac's). Read on the Windows Steam
+# build, Arsenal, 1 Aug 2026: Jurriën Timber's list held the one promise FM's Promises page listed (preferred position,
+# made 1 Aug 2026, due 28 Jan 2027, category 1, open).
+[promise]
+list = 0xD8               # in the person block: pointer to the list (begin, end, capacity) of his promises
+person = 0x20             # pointer back at him
+made = 0x38               # date
+due = 0x3C                # date: due while open, ended once closed
+id = 0x4E                 # u16, FM's number for the promise
+closed = 0x53             # u8, bit 0
+category = 0x55           # u8, 0 for the promises FM's Promises page does not list
+status = 0x56             # u8, 0 while open; 1 ended without being held against him
+
 # The retirements the game has planned (FMRTE's "Retire Date"), which its retirement manager (RETIREMENT_MANAGER)
 # keeps. Read on the Game Pass save (6 September 2026), where the manager listed 27, among them Cristiano Ronaldo on
 # 30 June 2027 and Daniel Wass on 1 July 2027 as FMRTE shows; nothing but the manager's two lists points at an entry.

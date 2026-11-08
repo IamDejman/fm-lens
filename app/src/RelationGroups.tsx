@@ -43,7 +43,7 @@ const isClub = (kind: PreferenceKind) =>
   kind === "favouredClub" || kind === "dislikedClub";
 
 const preferenceName = (preference: Preference) =>
-  preference.name ?? String(preference.targetUid);
+  preference.name ?? (isClub(preference.kind) ? profileText.unknownClub : profileText.unknownPerson);
 
 /** How many clubs, or people, the search for another one lists. */
 const SEARCH_LIMIT = 8;
@@ -349,7 +349,7 @@ export function ClubTiesGroups({
                 label={
                   <ClubName
                     uid={rival.uid}
-                    name={rival.name ?? String(rival.uid)}
+                    name={rival.name ?? profileText.unknownClub}
                   />
                 }
               >
@@ -365,7 +365,7 @@ export function ClubTiesGroups({
           <ul className="club-ties">
             {links.map((link) => (
               <li key={link.uid}>
-                <ClubName uid={link.uid} name={link.name ?? String(link.uid)} />
+                <ClubName uid={link.uid} name={link.name ?? profileText.unknownClub} />
               </li>
             ))}
           </ul>
