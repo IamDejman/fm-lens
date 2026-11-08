@@ -74,12 +74,14 @@ Status after the "Ship FM Lens for Windows" PR. Each item says what was done, or
 
 ### 3.2 Features that read nothing on Windows
 
+Release through the game's call is mapped on Windows (`withdraw_offers` 0xB17790, `leave_team` 0xB11110) and passed on
+the box. Evidence is in docs/EDITING-VALIDATION.md, "Windows: every feature on main".
+
 1. **Promises: left, shown as not available.** The Windows layout has no `[promise]` section, so `promises` is now
    `null` there and the profile says "Not available on Windows yet" instead of "No promises". To close it, trace the
    offsets on a save with an open promise and add `[promise]` to `profiles/fm27/layout.toml`; the app needs no change.
-2. **Refreshing an official: left.** `refresh.rs` still returns false for officials on Windows, as MSVC vtables keep
-   no offset to the identity block and it has not been traced for officials. Edits to officials still apply; FM's
-   open screens only show them once FM redraws. Tracing needs the running game on the test box.
+2. **Refreshing an official: done (8 November).** The layout's `[official] identity = 0x138` gives the identity block
+   that MSVC vtables keep no offset to, and `refresh_entity` uses it. A reputation edit applied and read back on the box.
 
 ### 3.3 Small app gaps: done
 
