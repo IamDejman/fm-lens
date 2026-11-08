@@ -28,6 +28,8 @@ and edited-save quit/reload remain unverified. Unless a row names another
 platform, its in-game persistence evidence is from macOS ARM64; mapped Windows
 fields do not inherit that evidence. Promises remain unavailable on Windows.
 
+Intel action parity on `feat/intel-parity`: mapped, not yet tested live under Rosetta. All 24 ARM64 call keys, the injury and database statics, the editor tables and the STARTING_LOAN defaults now have Intel values, and the Intel bridge passes an indirect result place the System V way. An Intel helper rebuilt from this branch is required. The new actions switch on through profile and helper capability discovery, with no new Intel live or persistence evidence. See [the mapping and Rosetta handoff](recon/fm27-steam-26340721-macos-x86_64.md#intel-action-parity-mapping-8-november-2026).
+
 ## Feature matrix
 
 | Requested feature | Current status and remaining scope |
