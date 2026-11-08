@@ -1597,6 +1597,14 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.0": [
+        "Transfer, Swap and Release go through FM itself: real transfers, with fees and transfer history.",
+        "Intel Macs get every action that runs inside FM.",
+        "On Windows, see and close a player's promises in the Mood tab.",
+        "FM's own names for promises, formations and reasons for unhappiness, never numbers.",
+        "See every search result, and filter every list.",
+        "Freezes hold through long holidays.",
+      ],
       "0.6.2": [
         "FM Lens is now on Windows. Download it from getfmlens.com.",
         "On Windows, updates download in the background and install when you press Relaunch to update.",

@@ -1508,6 +1508,14 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.0": [
+        "Traspasar, Intercambiar y Rescindir pasan por el propio FM: traspasos reales, con su cantidad y su historial.",
+        "Los Mac con Intel tienen todas las acciones que se ejecutan dentro de FM.",
+        "En Windows, consulta y cierra las promesas de un jugador en la pestaña Moral.",
+        "Los nombres de FM para promesas, formaciones y motivos de descontento, nunca números.",
+        "Consulta todos los resultados de búsqueda y filtra todas las listas.",
+        "Lo que congelas se mantiene durante las vacaciones largas.",
+      ],
       "0.6.2": [
         "FM Lens ya está en Windows. Descárgalo en getfmlens.com.",
         "En Windows, las actualizaciones se descargan en segundo plano y se instalan al pulsar Reiniciar para actualizar.",
