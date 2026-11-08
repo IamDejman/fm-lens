@@ -334,6 +334,9 @@ const errors: ErrorTexts = {
   "export.notAllowed": (p) =>
     `FM Lens no puede escribir en ${p.folder}. Si macOS ha preguntado si puede usar tu carpeta Documentos, ` +
     "permítelo en Ajustes del Sistema › Privacidad y seguridad › Archivos y carpetas y vuelve a exportar.",
+  "export.blocked": (p) =>
+    `FM Lens no puede guardar en ${p.folder}. Si Seguridad de Windows lo bloquea, permite FM Lens en Protección ` +
+    "contra ransomware › Permitir una aplicación a través del acceso controlado a carpetas y vuelve a exportar.",
   "export.noFolder": () => "No hay ninguna carpeta a la que exportar.",
   "export.notExported": () => "Ese no es un archivo que haya exportado FM Lens.",
   "export.openFailed": (p) => `No se ha podido abrir: ${p.reason}`,
@@ -836,6 +839,7 @@ export const es: Strings = {
     fitness: "Forma física",
     international: "Internacional",
     noPromises: "Sin promesas",
+    promisesUnavailable: "Aún no disponible en Windows",
     noContract: "Sin contrato",
     setAttributes: "Poner todos los atributos en",
     setAttributesButton: "Aplicar",
@@ -1413,6 +1417,12 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.6.2": [
+        "FM Lens ya está en Windows. Descárgalo en getfmlens.com.",
+        "En Windows, las actualizaciones se descargan en segundo plano y se instalan al pulsar Reiniciar para actualizar.",
+        "En Windows, Buscar actualizaciones está en Ajustes, Acerca de.",
+        "Solo se ejecuta un FM Lens a la vez: al abrirlo de nuevo, su ventana pasa al frente.",
+      ],
       "0.6.1": [
         "Un perfil del jugador nuevo: pestañas Atributos, Moral, Contrato, Médico y Trayectoria, e indicadores de estado bajo el nombre que las abren.",
         "Ajustes se abre en su propia ventana desde el engranaje o con Cmd+,.",
