@@ -1597,47 +1597,21 @@ input::placeholder {
  * profile open the rules above take Nation too, at the end. The widths are estimates, worked out so that the
  * default window (a table about 1000px wide with no profile open) keeps Positions and Contract: tune by eye.
  */
-@container (max-width: 1200px) {
-  .player-grid :is(.col-born, .col-uid) {
-    display: none;
-  }
+/* Use measured, zoom-adjusted list width for the player table's column priorities. */
+.table-wrap[data-list-width]:not([data-list-width="wide"]) .player-grid :is(.col-born, .col-uid) {
+  display: none;
 }
-
-@container (max-width: 960px) {
-  .player-grid .col-contract {
-    display: none;
-  }
+.table-wrap:is([data-list-width="compact"], [data-list-width="narrow"], [data-list-width="small"]) .player-grid .col-contract {
+  display: none;
 }
-
-@container (max-width: 880px) {
-  .player-grid .col-positions {
-    display: none;
-  }
+.table-wrap:is([data-list-width="narrow"], [data-list-width="small"]) .player-grid .col-positions {
+  display: none;
 }
-
-/* Narrower still, as beside an open profile: one line a row. The second name goes, and names and clubs are cut
-   short (their whole text is in the cell's hover) rather than wrap or push CA and PA out of view. */
-@container (max-width: 560px) {
-  .player-grid .col-name .sub {
-    display: none;
-  }
-
-  .player-grid :is(th, td) {
-    padding-inline: var(--space-2);
-  }
-
-  .player-grid td.col-name {
-    width: 46%;
-  }
-
-  .player-grid td.col-club {
-    width: 30%;
-  }
-
-  .player-grid .ability {
-    min-width: 0;
-  }
-}
+.table-wrap[data-list-width="small"] .player-grid .col-name .sub { display: none; }
+.table-wrap[data-list-width="small"] .player-grid :is(th, td) { padding-inline: var(--space-2); }
+.table-wrap[data-list-width="small"] .player-grid td.col-name { width: 46%; }
+.table-wrap[data-list-width="small"] .player-grid td.col-club { width: 30%; }
+.table-wrap[data-list-width="small"] .player-grid .ability { min-width: 0; }
 
 /* Beside an open profile the list is for picking the next player: the name with the club under it, then positions,
    CA and PA. */
@@ -1912,6 +1886,7 @@ input::placeholder {
 }
 
 .player-grid td.col-name {
+  min-width: 160px;
   width: 24%;
 }
 
