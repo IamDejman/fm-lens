@@ -211,6 +211,18 @@ impl Session {
         self.layout.national.is_some()
     }
 
+    /// The name of the continent of the nation at `address`, as its profile reads it; `None` where the layout does
+    /// not place nations' details or the nation has none. Only reads memory.
+    pub fn nation_continent(&self, address: u64) -> Option<String> {
+        let n = self.layout.national.as_ref()?;
+        let continent =
+            is_user_pointer(address).then(|| self.process.read_u64(address + n.continent).ok()).flatten()?;
+        let name =
+            is_user_pointer(continent).then(|| self.process.read_u64(continent + n.place_name).ok()).flatten()?;
+        // FM's strings need not be 8-byte aligned, so only their range is checked.
+        (0x1_0000..0x7FFF_FFFF_0000).contains(&name).then(|| read_fm_string(&self.process, name)).flatten()
+    }
+
     /// The profile of `nation`; `None` where the layout does not place nations' details or the nation's object does
     /// not check out. Only reads memory.
     pub fn nation_details(

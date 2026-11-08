@@ -1112,9 +1112,29 @@ export const es: Strings = {
       const count = total === 1 ? "1 árbitro" : `${format(total)} árbitros`;
       return total > shown ? `${count} · los ${shown} de más calidad` : count;
     },
-    empty: (query) =>
-      query === "" ? "No se han podido leer los árbitros en esta versión de FM." : `Ningún árbitro coincide con «${query}».`,
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "No se han podido leer los árbitros en esta versión de FM.";
+      }
+      if (query === "") {
+        return "Ningún árbitro coincide con estos filtros.";
+      }
+      return filtered
+        ? `Ningún árbitro coincide con «${query}» con estos filtros.`
+        : `Ningún árbitro coincide con «${query}».`;
+    },
     columns: { name: "Nombre", nation: "País", age: "Edad", ca: "HA", pa: "HP", reputation: "Reputación", uid: "UID" },
+    filters: {
+      age: "Edad",
+      minAge: "Edad mínima",
+      maxAge: "Edad máxima",
+      minCurrentAbility: "HA mín.",
+      minCurrentAbilityTitle: "Habilidad actual mínima",
+      minPotentialAbility: "HP mín.",
+      minPotentialAbilityTitle: "Habilidad potencial mínima",
+      abilityPlaceholder: "1–200",
+      nation: "País",
+    },
     reputation: "Reputación",
   },
 
@@ -1125,11 +1145,29 @@ export const es: Strings = {
       const count = total === 1 ? "1 competición" : `${format(total)} competiciones`;
       return total > shown ? `${count} · las ${shown} de más reputación` : count;
     },
-    empty: (query) =>
-      query === ""
-        ? "No se han podido leer las competiciones en esta versión de FM."
-        : `Ninguna competición coincide con «${query}».`,
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "No se han podido leer las competiciones en esta versión de FM.";
+      }
+      if (query === "") {
+        return "Ninguna competición coincide con estos filtros.";
+      }
+      return filtered
+        ? `Ninguna competición coincide con «${query}» con estos filtros.`
+        : `Ninguna competición coincide con «${query}».`;
+    },
     columns: { name: "Nombre", nation: "País", continent: "Continente", reputation: "Reputación", uid: "UID" },
+    filters: {
+      kind: "Competiciones que mostrar",
+      all: "Todas",
+      men: "Masculino",
+      women: "Femenino",
+      nation: "País",
+      continent: "Continente",
+      reputation: "Reputación",
+      minReputation: "Reputación mínima",
+      maxReputation: "Reputación máxima",
+    },
     shortName: "Nombre corto",
     reputation: "Reputación",
     women: "Femenino",
@@ -1164,9 +1202,30 @@ export const es: Strings = {
       const count = total === 1 ? "1 premio" : `${format(total)} premios`;
       return total > shown ? `${count} · los ${shown} de más prestigio` : count;
     },
-    empty: (query) =>
-      query === "" ? "No se han podido leer los premios en esta versión de FM." : `Ningún premio coincide con «${query}».`,
+    empty: (query, filtered) => {
+      if (query === "" && !filtered) {
+        return "No se han podido leer los premios en esta versión de FM.";
+      }
+      if (query === "") {
+        return "Ningún premio coincide con estos filtros.";
+      }
+      return filtered
+        ? `Ningún premio coincide con «${query}» con estos filtros.`
+        : `Ningún premio coincide con «${query}».`;
+    },
     columns: { name: "Nombre", competition: "Competición", nation: "País", prestige: "Prestigio", uid: "UID" },
+    filters: {
+      kind: "Premios que mostrar",
+      all: "Todos",
+      men: "Masculino",
+      women: "Femenino",
+      nation: "País",
+      recipients: "Para",
+      anyone: "Cualquiera",
+      prestige: "Prestigio",
+      minPrestige: "Prestigio mínimo",
+      maxPrestige: "Prestigio máximo",
+    },
     competition: "Competición",
     prestige: "Prestigio",
     period: "Se entrega",
@@ -1213,7 +1272,13 @@ export const es: Strings = {
       seating: "Sentados",
       expansion: "Puede crecer hasta",
     },
+    /** The clubs that play at a stadium, in its profile. */
+    clubs: "Clubes",
     filters: {
+      kind: "Estadios que mostrar",
+      all: "Todos",
+      men: "Masculino",
+      women: "Femenino",
       capacity: "Aforo",
       minCapacity: "Aforo mínimo",
       maxCapacity: "Aforo máximo",
@@ -1229,8 +1294,18 @@ export const es: Strings = {
       const count = total === 1 ? "1 país" : `${format(total)} países`;
       return total > shown ? `${count} · se muestran los primeros ${shown}` : count;
     },
-    empty: (query) => (query === "" ? "No se han encontrado países." : `Ningún país coincide con «${query}».`),
-    columns: { name: "País", uid: "UID" },
+    empty: (query, filtered) => {
+      if (query === "") {
+        return filtered ? "Ningún país coincide con estos filtros." : "No se han encontrado países.";
+      }
+      return filtered
+        ? `Ningún país coincide con «${query}» con estos filtros.`
+        : `Ningún país coincide con «${query}».`;
+    },
+    columns: { name: "País", continent: "Continente", uid: "UID" },
+    filters: {
+      continent: "Continente",
+    },
     uid: "UID",
     noUid: "Sin UID",
     nation: "País",
