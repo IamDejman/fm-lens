@@ -507,8 +507,8 @@ export const en = {
     coaching_licence: "Coaching licence",
     "formation.in_possession": "In possession",
     "formation.out_of_possession": "Out of possession",
-    "manager.unsackable": "Unsackable (experimental)",
-    "manager.registration_anytime": "Register squad any time (experimental)",
+    "manager.unsackable": "Unsackable",
+    "manager.registration_anytime": "Register squad any time",
     // A player's ties, which the change log keeps as changes of the nation or club (see `ties`).
     "tie.nationality": "Secondary nationality",
     "tie.trainedInNation": "Trained in nation",
@@ -2415,7 +2415,6 @@ export const en = {
     maxCohesion: "Max cohesion",
     maxCohesionTitle: "Every player fully familiar with the club",
     /** The tag of an action that may not hold in every save. */
-    experimental: "Experimental",
     maxTactics: "Max tactics",
     maxTacticsTitle: "Every player fully familiar with the team's tactic",
     maxAll: "Max attributes…",
