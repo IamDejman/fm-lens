@@ -10,7 +10,7 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
 use fmlens_mem::bridge::{CALL_START_MS, CallReply, CallRequest, CapabilitiesReply};
-use fmlens_mem::call::{Arg, MAX_STEPS, SCRATCH_SIZE, Status, Step, refusal};
+use fmlens_mem::call::{MAX_STEPS, SCRATCH_SIZE, Status, Step, refusal};
 use mach2::message::mach_msg_header_t;
 
 // The functions each build lets the editor run, from the build profiles (see build.rs).
@@ -80,10 +80,7 @@ fn check(request: &CallRequest, same_user: bool) -> Option<Status> {
     if refusal(steps, |rva| allowed.contains(&rva)).is_some() {
         return Some(Status::NotAllowed);
     }
-    // On x86_64 the place for a returned object goes in as a hidden first argument, which no call on an Intel build
-    // needs yet: there the bridge passes plain arguments only.
-    let indirect = steps.iter().any(|step| step.indirect != Arg::default());
-    (cfg!(target_arch = "x86_64") && indirect).then_some(Status::Unsupported)
+    None
 }
 
 /// Where the game plugin is loaded and its `LC_UUID`, read from this process's own image list.
