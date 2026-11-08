@@ -505,21 +505,27 @@ function FutureTransferGroup({ transfers }: { transfers: FutureTransfer[] }) {
 /**
  * His work permits: for each nation, an active work permit or an ESC slot from a day. Where the game gives them itself
  * on this build, a player at a club has the button on the heading that has it give him one for his club's country
- * (Grant), or take his away (Revoke); then the group is there even while he holds none. Logged like any change, and
+ * (Request permit), or take his away (Revoke); then the group is there even while he holds none. Actual changes are logged and
  * undone from Changes.
  */
-function WorkPermitGroup({ details }: { details: PlayerDetails }) {
+export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid" | "club" | "workPermits"> }) {
   const { gameActions, editable, readOnlyNote, onEdited } = useContext(EditorContext);
   const permits = details.workPermits;
   const granted = permits.length > 0;
   const changeable = gameActions.workPermit && details.club !== null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notIssued, setNotIssued] = useState(false);
 
   // The button stays busy until the profile has read the game again, which gives new permits.
   useEffect(() => {
     setBusy(false);
   }, [permits]);
+
+  useEffect(() => {
+    setNotIssued(false);
+    setError(null);
+  }, [details.uid, granted]);
 
   if (!granted && !changeable) {
     return null;
@@ -532,11 +538,18 @@ function WorkPermitGroup({ details }: { details: PlayerDetails }) {
     }
     setBusy(true);
     setError(null);
+    setNotIssued(false);
     try {
       await setWorkPermit(details.uid, !granted);
       onEdited();
     } catch (e) {
-      setError(describeError(e));
+      // An unforced request can leave no record under FM's own rules. That is not a confirmed grant.
+      if (!granted && typeof e === "object" && e !== null && "code" in e && e.code === "call.declined") {
+        setNotIssued(true);
+        onEdited();
+      } else {
+        setError(describeError(e));
+      }
       setBusy(false);
     }
   };
@@ -554,10 +567,11 @@ function WorkPermitGroup({ details }: { details: PlayerDetails }) {
             title={editable ? undefined : readOnlyNote}
             onClick={() => void toggle()}
           >
-            {granted ? profileText.revokePermit : profileText.grantPermit}
+            {granted ? profileText.revokePermit : profileText.requestPermit}
           </button>
         )}
       </GroupHead>
+      {notIssued && <p className="injuries-none" role="status">{profileText.permitNotIssued}</p>}
       {error !== null && (
         <p className="heal-error" role="alert">
           {error}
@@ -573,7 +587,7 @@ function WorkPermitGroup({ details }: { details: PlayerDetails }) {
             </Fact>
           ))}
         </dl>
-      ) : (
+      ) : !notIssued && (
         <p className="injuries-none">{profileText.permitNone}</p>
       )}
     </section>

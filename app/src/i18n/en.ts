@@ -660,8 +660,9 @@ export const en = {
     permitActive: "Active",
     permitEsc: (date: string) => `ESC slot since ${date}`,
     permitNone: "None",
-    /** Has FM give him a work permit for his club's country, or take his away. */
-    grantPermit: "Grant",
+    /** Asks FM to issue a permit under its rules, or takes an existing one away. */
+    requestPermit: "Request permit",
+    permitNotIssued: "FM did not issue a permit. This player may not need one under the current rules.",
     revokePermit: "Revoke",
     joined: "Joined",
     squadStatus: "Squad status",
