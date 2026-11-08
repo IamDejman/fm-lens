@@ -100,9 +100,12 @@ impl Session {
             Entity::Staff => self.layout.staff.at(self.layout.staff.identity(), target.shift),
             #[cfg(target_os = "macos")]
             Entity::Official => self.process.read_u64(table - 0x18)?,
-            // MSVC's vtables keep no offset to the identity, and it has not been traced for officials.
+            // MSVC's vtables keep no offset to the identity, so the layout places it.
             #[cfg(windows)]
-            Entity::Official => return Ok(false),
+            Entity::Official => match self.layout.official.as_ref().and_then(|official| official.identity) {
+                Some(identity) => identity,
+                None => return Ok(false),
+            },
             // Clubs and nations inherit IDENTITY directly: their primary vtables have the same reference getter
             // at +0x88 (0x11B3D1C) that the notifier uses through 0x1B23A8.
             Entity::Club | Entity::Nation => 0,

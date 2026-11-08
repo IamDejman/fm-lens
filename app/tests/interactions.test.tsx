@@ -61,6 +61,8 @@ function PendingHarness() {
   return <><button onClick={() => edit.begin()}>Edit fixture</button>
     {edit.session && <input aria-label="Finishing" value={edit.session.input('attribute.finishing')?.text ?? ''} onChange={e => edit.session?.type('attribute.finishing', e.target.value)} />}
     <button onClick={() => askToLeave(() => setView('Other view'))}>Navigate</button>
+    <button onClick={edit.done}>Done fixture</button>
+    <button onClick={() => edit.guardClose(() => setView('Closed'))}>Close fixture</button>
     <p>{view}</p><p>{edit.confirming ? 'Confirm discard' : ''}</p><button onClick={edit.keepEditing}>Keep editing</button><button onClick={edit.confirmDiscard}>Discard fixture</button></>;
 }
 // Pending-navigation coverage uses the real editor hook and the same fixture command adapter as the preview.
@@ -92,4 +94,24 @@ test('settings snapshot records open state for window restoration', async () => 
   render(<RestoredSettings busy={false} details={<p>Restored version</p>} />);
   expect(within(screen.getByRole('dialog')).getByText('Restored version')).toBeTruthy();
   expect(sessionStorage.getItem('fmlens.restore')).toBeNull();
+});
+
+
+test.each(['Navigate', 'Done fixture', 'Close fixture'])('invalid-only draft is protected by %s', async action => {
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null }}><PendingHarness /></EditorContext.Provider>);
+  await userEvent.click(screen.getByRole('button', { name: 'Edit fixture' }));
+  const input = await screen.findByRole('textbox', { name: 'Finishing' });
+  await userEvent.clear(input);
+  await userEvent.type(input, '1000');
+  await userEvent.click(screen.getByRole('button', { name: action }));
+  await screen.findByText('Confirm discard');
+  expect(screen.queryByText('Other view')).toBeNull();
+  expect(screen.queryByText('Closed')).toBeNull();
+  await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+  expect(input).toHaveProperty('value', '1000');
+  await userEvent.click(screen.getByRole('button', { name: action }));
+  await userEvent.click(screen.getByRole('button', { name: 'Discard fixture' }));
+  if (action === 'Navigate') await screen.findByText('Other view');
+  else if (action === 'Close fixture') await screen.findByText('Closed');
+  else expect(screen.queryByRole('textbox', { name: 'Finishing' })).toBeNull();
 });
