@@ -1474,3 +1474,23 @@ Findings:
   new seen version).
 
 Hashes and timings are local under `reports/update-live-2026-11-08/`.
+
+## Transfers, swaps and releases through the game (8 November 2026)
+
+FM27 Steam build 26340721, macOS arm64, with a helper built from this branch.
+Save: a disposable copy of the Arsenal career at 8 December 2027, never saved
+over another; the main career's SHA-256 stayed `3ADEB4FD…BD956000`. Each action
+was made in a debug build of FM Lens, then checked in FM's own screens.
+
+| Action in FM Lens | FM shows |
+|---|---|
+| Move: Alex Iwobi, Fulham to Everton, £10M | Everton's Transfers In: Iwobi from Fulham, £10M. Fulham's Transfers Out: Iwobi to Everton, £10M. His contract to 30 June 2029 kept |
+| Swap: Iwobi (Everton) and Calvin Bassey (Fulham) | Everton: In Bassey £0, Out Iwobi £0. Fulham: In Iwobi £0, Out Bassey £0. Both contracts kept |
+| Release: Bassey from Everton | Free Agent, value £0. No Transfers Out row at Everton |
+
+The dialog said who pays whom and that it can't be undone; Changes listed all
+four with no Undo. Career history keeps no row for a club the player left this
+season: Iwobi's shows Fulham 2027/28 and no Everton row, and Bassey's ends at
+2026/27. An earlier release through the probe (Ermedin Demirović, Fulham) showed
+the same, as FM's editor does. In an earlier probe transfer the selling club's
+balance rose by about 84% of the fee; that split was not traced.

@@ -263,6 +263,9 @@ enum Command {
         /// With --restore, how many seconds to wait before bringing him back, to look at the game meanwhile.
         #[arg(long, default_value_t = 0)]
         hold: u64,
+        /// Have the game end his contract, as its editor does, instead of writing the release. Nothing undoes it.
+        #[arg(long, conflicts_with = "restore")]
+        game: bool,
     },
     /// Move a member of staff to another club in the running game, in the departments he works in.
     StaffMove {
@@ -918,7 +921,10 @@ fn run(cli: Cli) -> Result<()> {
         Command::Transfer { uid, club, fee } => {
             transfer_player(&connect(process, ArraySource::ProfileFirst)?, uid, club, fee)
         }
-        Command::Release { uid, restore, hold } => {
+        Command::Release { uid, game: true, .. } => {
+            release_through_game(&connect(process, ArraySource::ProfileFirst)?, uid)
+        }
+        Command::Release { uid, restore, hold, .. } => {
             release_player(&connect(process, ArraySource::ProfileFirst)?, uid, restore, hold)
         }
         Command::StaffMove { id, club, restore } => {
@@ -3032,6 +3038,22 @@ fn transfer_player(session: &Session, uid: u32, club: u32, fee: Option<i64>) -> 
     );
     println!("  after: wage {:?}, contract end {:?}", terms.0, terms.1);
     ensure!(now.club_uid == Some(club), "the player does not read as being at {}", to.name);
+    Ok(())
+}
+
+fn release_through_game(session: &Session, uid: u32) -> Result<()> {
+    let players = PlayerIndex::new(session.players()?);
+    let clubs = ClubIndex::new(session.clubs()?);
+    let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
+    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
+    let released = session.release_through_game(player, &human)?;
+    let name = |uid: u32| clubs.get(uid).map_or_else(|| uid.to_string(), |c| c.name.clone());
+    println!("{} (UID {uid}): the game ended his contract with {}", player.name, name(released.from_club));
+    println!(
+        "  now at {}, {}",
+        released.club_after.map_or_else(|| "no club".to_owned(), name),
+        if released.contract_left { "with a contract" } else { "with no contract" }
+    );
     Ok(())
 }
 
