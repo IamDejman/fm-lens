@@ -134,3 +134,9 @@ See the latest entry in EDITING-VALIDATION.md.
 | Free scouting / trials / paid editing | Personal build has no licensing service or paywall; broader pricing/trial policy undecided |
 
 Do not mark a row Available just because upstream contains it or compilation passes.
+
+- Wage entry: preserve the typed amount instead of silently snapping to FM display
+  steps; show a localized estimate of FM's rounded weekly display. Frontend
+  regression coverage added. Native ARM64 Apply and fresh readback confirmed
+  £260,000 exactly on a separate career copy; native Windows and persistence
+  checks remain pending.
