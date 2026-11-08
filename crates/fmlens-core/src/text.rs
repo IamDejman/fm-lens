@@ -20,13 +20,12 @@ impl Memo {
 }
 
 /// The name FM shows for a person: the common name if set, otherwise first and last
-/// name, otherwise the full name.
+/// name, otherwise the full name; a hyphen if he has none, never his UID.
 pub(crate) fn display_name(
     common: Option<String>,
     first: Option<String>,
     last: Option<String>,
     full: Option<&String>,
-    uid: u32,
 ) -> String {
     common
         .or_else(|| match (first, last) {
@@ -34,7 +33,7 @@ pub(crate) fn display_name(
             (first, last) => first.or(last),
         })
         .or_else(|| full.cloned())
-        .unwrap_or_else(|| format!("UID {uid}"))
+        .unwrap_or_else(|| "-".to_owned())
 }
 
 /// Reads an FM string: a `u32` byte length followed by UTF-8 text.

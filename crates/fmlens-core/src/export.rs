@@ -350,13 +350,13 @@ fn release_clause(contract: &Contract) -> Option<u32> {
 /// Yearly wage rise: 10%".
 fn clauses_text(contract: &Contract) -> String {
     let clause = |clause: &crate::Clause| {
-        let name = clause_name(clause.kind).map_or_else(|| format!("Clause {}", clause.kind), str::to_owned);
+        let name = clause_name(clause.kind).unwrap_or("Unknown clause");
         let condition = clause.condition.and_then(|value| condition_text(clause.kind, value));
         match (clause.amount, condition) {
             (Some(amount), Some(condition)) => format!("{name}: {amount} GBP, {condition}"),
             (Some(amount), None) => format!("{name}: {amount} GBP"),
             (None, Some(condition)) => format!("{name}: {condition}"),
-            (None, None) => name,
+            (None, None) => name.to_owned(),
         }
     };
     contract.clauses.iter().map(clause).collect::<Vec<_>>().join("; ")

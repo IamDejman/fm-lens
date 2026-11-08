@@ -201,7 +201,7 @@ pub fn read_staff(
         let full_name = read_fm_string(process, u64_at(at(s.full_name)));
         let mut name_part = |offset| names.get(u64_at(at(offset)), |entry| read_name_entry(process, entry));
         let (common, first, last) = (name_part(s.common_name), name_part(s.first_name), name_part(s.last_name));
-        let name = display_name(common, first, last, full_name.as_ref(), uid);
+        let name = display_name(common, first, last, full_name.as_ref());
         let date_of_birth = FmDate::from_raw(u16_at(at(s.date_of_birth)), u16_at(at(s.date_of_birth) + 2));
         // The human-manager class also holds an account placeholder with no person behind it.
         if shift != 0 && date_of_birth.is_none() {

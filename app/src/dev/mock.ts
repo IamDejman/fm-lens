@@ -814,7 +814,7 @@ function logTie(player: PlayerSummary, before: Tie | null, after: Tie | null, ti
   tieUndo.set(id, tiesOf(player));
   tiesSet.set(player.uid, ties);
   const kind = (before ?? after)!.tie;
-  const end = (tie: Tie | null) => tie && { name: tie.name ?? String(tie.targetUid), rule: tie.rule };
+  const end = (tie: Tie | null) => tie && { name: tie.name ?? "", rule: tie.rule };
   const logged: LoggedChange = {
     id,
     at: Date.now(),
@@ -949,7 +949,7 @@ function logPreference(
   const key = preferenceKey(isStaff, uid);
   preferenceUndo.set(id, [key, currentPreferences(isStaff, uid)]);
   preferencesSet.set(key, next);
-  const end = (p: Preference | null) => p && { name: p.name ?? String(p.targetUid), rule: null, value: p.strength };
+  const end = (p: Preference | null) => p && { name: p.name ?? "", rule: null, value: p.strength };
   const logged: LoggedChange = {
     id,
     at: Date.now(),

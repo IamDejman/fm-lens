@@ -1,5 +1,5 @@
 // Names checked in FM27 Steam 26340721: docs/recon/fm27-staff-extras.md
-// and docs/EDITING-VALIDATION.md (7 November). Unmapped IDs must stay explicit.
+// and docs/EDITING-VALIDATION.md (7 November). Unmapped IDs show as an unknown formation, never as a number.
 const NAMES: Readonly<Record<number, string>> = {
   4: "4-3-3 DM Wide",
   7: "4-4-2 Diamond Narrow",

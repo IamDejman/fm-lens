@@ -93,7 +93,7 @@ const errors: ErrorTexts = {
   "edit.outOfRange": (p) => `${field(p.field)} için ${p.value} geçersiz: ${p.min} ile ${p.max} arasında olmalı.`,
   "edit.notADate": (p) => `${p.value}, ${field(p.field)} için geçerli bir tarih değil.`,
   "edit.notAChoice": (p) => `${p.value}, ${field(p.field)} için seçilebilecek değerlerden biri değil.`,
-  "edit.taken": (p) => `${p.value} numaralı formayı takımda ${p.name ?? `${p.uid} kimlikli oyuncu`} giyiyor.`,
+  "edit.taken": (p) => `${p.value} numaralı formayı takımda ${p.name ?? "başka bir oyuncu"} giyiyor.`,
   "edit.unsupported": (p) => `${field(p.field)} bu şekilde değiştirilemez: ${UNSUPPORTED[p.reason] ?? p.reason}.`,
   "edit.moved": (p) => `Bu ${recordNoun(p.entity)} oyunun belleğinde yer değiştirmiş; ${reload}.`,
   "edit.noRecord": (p) => `${field(p.field)} burada değiştirilemez: kaydı yok ya da doğrulanamadı.`,
@@ -282,6 +282,11 @@ const TRAIT_NAMES_TR: readonly string[] = [
   "Topu savunmadan çıkarır",
   "Topu ayaklarıyla oynar"
 ];
+
+const PROMISE_NAMES_TR: Partial<Record<number, string>> = {
+  1: "Oynama süresi",
+  208: "Tercih ettiği mevki ve rol",
+};
 
 const CONCERN_MOTIVES_TR: Partial<Record<number, string>> = {
   570: "Soyunma odasındaki kötü havadan endişeli",
@@ -693,7 +698,7 @@ export const tr: Strings = {
     revokePermit: "Geri al",
     joined: "Katılım tarihi",
     squadStatus: "Forma süresi",
-    squadStatusName: (status) => SQUAD_STATUSES[status] ?? `Durum ${status}`,
+    squadStatusName: (status) => SQUAD_STATUSES[status] ?? "Bilinmeyen durum",
     qualifications: "Yeterlilikler",
     formations: "Dizilişler",
     coachingLicence: "Antrenörlük lisansı",
@@ -749,22 +754,22 @@ export const tr: Strings = {
     morale: (value) => `${value} / 20`,
     traits: "Özellikler",
     noTraits: "Özelliği yok",
-    traitName: (bit) => TRAIT_NAMES_TR[bit] ?? `Özellik ${bit}`,
+    traitName: (bit) => TRAIT_NAMES_TR[bit] ?? "Bilinmeyen özellik",
     unhappiness: "Mutsuzluk",
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
     removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır.",
     concernSince: (date) => `${date} tarihinden beri`,
-    concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : `Tür ${kind}`),
-    concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? `Neden ${motive}`,
+    concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : ""),
+    concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? "Bilinmeyen neden",
     clauses: "Primler ve maddeler",
     noClauses: "Prim ya da madde yok",
     loyaltyBonus: "Sadakat primi",
     happiness: "Mutluluk",
     playingTimeHappiness: "Forma süresi mutluluğu",
     moodTitle: "-100 ile 100 arasında.",
-    clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? `Madde ${kind}`,
+    clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? "Bilinmeyen madde",
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
         return null;
@@ -795,6 +800,10 @@ export const tr: Strings = {
     jadednessTitle: (stored) => `Değer ${stored}. 400 üstü yıpranmış, -500 tamamen dinlenmiş.`,
     noInjuries: "Sakatlığı yok",
     unknownInjury: "Bilinmeyen sakatlık",
+    unknownClub: "Bilinmeyen kulüp",
+    unknownNation: "Bilinmeyen ülke",
+    unknownPerson: "Bilinmeyen kişi",
+    unknownName: "Bilinmiyor",
     injuryStarted: (date) => `Başlangıç: ${date}`,
     injuryBack: (dates) => `Beklenen dönüş: ${dates}`,
     heal: "İyileştir",
@@ -807,8 +816,8 @@ export const tr: Strings = {
     liftBans: "Kaldır",
     liftBansTitle: "Tüm cezalarını kaldır",
     promises: "Sözler",
-    formationName: (id) => id === 0 ? "Yok" : knownFormationName(id) ?? `Diziliş ${id}`,
-    promiseName: (id) => id === 1 ? "Oynama süresi" : `Söz ${id}`,
+    formationName: (id) => id === 0 ? "Yok" : knownFormationName(id) ?? "Bilinmeyen diziliş",
+    promiseName: (id) => PROMISE_NAMES_TR[id] ?? "Bilinmeyen söz",
     promiseMade: (date) => `Verildi: ${date}`,
     promiseDue: (date) => `Son tarih: ${date}`,
     promiseEnded: (date) => `Bitti: ${date}`,
@@ -859,7 +868,7 @@ export const tr: Strings = {
     knowledge: "Bilgi",
     medical: "Sağlık",
     playerCoach: (job) => `${job} (oyuncu-antrenör)`,
-    unknownJob: (code) => `Görev ${code}`,
+    unknownJob: "Bilinmeyen görev",
   },
 
   playerList: {
@@ -1591,7 +1600,7 @@ export const tr: Strings = {
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
     injuryAdded: "Sakatlık eklendi",
     lifted: (count) => `${format(count)} ceza kaldırıldı`,
-    promiseClosed: (id) => `${id} numaralı söz kapatıldı`,
+    promiseClosed: (name) => `Söz kapatıldı: ${name}`,
     keptPlaying: (date) => (date === null ? "Oynamaya devam edecek" : `${date} tarihli emeklilik engellendi`),
     count: (total, undone) => {
       const count = changeCount(total);
