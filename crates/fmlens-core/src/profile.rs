@@ -1056,6 +1056,13 @@ pub struct CallRvas {
     /// calls on a player's own contract, which leaves him at his club with none. The kind only picks the news.
     /// Returns nothing.
     pub end_contract: Option<u64>,
+    /// `TRANSFER_MANAGER::withdraw_offers(manager, identity block, 1, 0, 0, 0, 0)`: withdraws the offers clubs have made
+    /// for the person, as the game's editor does before it releases a player. Returns nothing.
+    pub withdraw_offers: Option<u64>,
+    /// `TRANSFER_MANAGER::leave_team(manager, identity block, team, reason, 0, 0, 0, 1, [1, 0])`: has the person leave
+    /// the team that employs him. Reason 9 is a release, as the game's editor does it: he becomes a free agent.
+    /// Returns nothing.
+    pub leave_team: Option<u64>,
     /// The type of a date Value; takes nothing.
     pub date_type: Option<u64>,
     /// `(type, Value*, raw date*)`: makes the Value of the date, 16 bytes.
@@ -1100,6 +1107,8 @@ impl CallRvas {
             self.map_drop,
             self.refs_drop,
             self.end_contract,
+            self.withdraw_offers,
+            self.leave_team,
             self.date_type,
             self.date_value,
             self.map_insert,
