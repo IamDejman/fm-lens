@@ -12,8 +12,8 @@ import {
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput, SharedRangeHint } from "./EditControls";
-import { converts } from "./currency";
-import { describeError, formatDate, formatMoney, formatNumber } from "./format";
+import { converts, toShown } from "./currency";
+import { describeError, formatAmount, formatDate, formatMoney, formatNumber } from "./format";
 import { isShortcut } from "./keys";
 import { fieldLabel, PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
 import { PanelResizer, PanelWidthButton, usePanelWidth } from "./PanelResizer";
@@ -25,6 +25,7 @@ import {
   useEditableField,
   type ProfileEditing,
 } from "./useProfileEditing";
+import { fmShownWage } from "./wage";
 
 // What the player, staff and club profiles have in common: the panel frame, loading, rating rows and
 // the label/value blocks. The frame also holds what editing adds to a profile (see EditControls).
@@ -568,12 +569,26 @@ export function PersonalGroup(props: {
   );
 }
 
-/** The weekly wage, an input while it can be edited; in another currency than pounds, its hover text says so. */
+/**
+ * The weekly wage, an input while it can be edited; in another currency than pounds, its hover text says so. Where FM
+ * rounds it for display, the figure FM shows is under it.
+ */
 export function WageFact({ wage }: { wage: number }) {
+  const editing = useEditableField("contract.wage");
+  const shown = toShown(wage);
+  const fmShown = fmShownWage(shown);
+  const value = <EditableValue field="contract.wage">{formatMoney(wage)}</EditableValue>;
   return (
     <dl className="stats">
       <Fact label={profileText.wage} title={converts ? profileText.converted : undefined}>
-        <EditableValue field="contract.wage">{formatMoney(wage)}</EditableValue>
+        {editing || fmShown === shown ? (
+          value
+        ) : (
+          <span className="edit-ranged">
+            {value}
+            <span className="range-hint">{profileText.fmShowsWage(formatAmount(fmShown))}</span>
+          </span>
+        )}
       </Fact>
     </dl>
   );
