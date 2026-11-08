@@ -12,7 +12,7 @@ persistence on a copied career, but dismissal protection remains unverified.
 `manager.registration_anytime` (bit 8) passed the same apply/undo and
 save/reload checks; FM changed registration outside the window and kept the
 change through save/quit/reload.
-Both are experimental (see EDITING-VALIDATION.md). A missing record, unsupported build, changed career storage,
+See EDITING-VALIDATION.md. A missing record, unsupported build, changed career storage,
 failed layout check, stale value or invalid current/new value prevents a write.
 Fields use stored scales; the interface converts attributes and percentages.
 

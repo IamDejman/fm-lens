@@ -201,7 +201,7 @@ pending deal: signing him for a later day replaces the one he has. Not yet
 checked: a loan agreed for a later day. None was pending in the copy, and FM
 Lens loans start at once.
 
-## Human manager: unsackable flag (experimental, persistence tested)
+## Human manager: unsackable flag (persistence tested)
 
 Implemented `manager.unsackable` from a static trace of the ARM64 plugin of FM27
 Steam build 26340721 (see recon/fm27-human-manager.md): bit 1 of the `u32` at
