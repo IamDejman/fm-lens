@@ -24,6 +24,9 @@ use crate::transfer::{MoveError, MoveTerms, PointerList, TransferPlan};
 /// The cause the game's own training injuries give `add_injury`.
 const TRAINING_CAUSE: u64 = 3;
 
+/// The reason `leave_team` takes for a released contract, as the game's editor passes it.
+const RELEASED: u64 = 9;
+
 /// A kind of injury the game knows, as a choice for [`Session::add_injury`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +47,8 @@ pub struct GameActions {
     /// Transferring a player with a club to another, for a fee.
     pub transfer: bool,
     pub end_loan: bool,
+    /// Releasing a player from his contract, as the game's editor does it.
+    pub release: bool,
     /// Signing a free agent on a later day, and cancelling any transfer agreed for a later day.
     pub future_transfer: bool,
     /// Every player of a team fully familiar with its tactic, as the game's editor does it.
@@ -75,6 +80,16 @@ pub struct StartedLoan {
     pub from_club: u32,
     pub to_club: u32,
     pub ends: FmDate,
+}
+
+/// A contract the game ended: the player left the club `from_club`, and is at the club `club_after` now, if any, with a
+/// contract still or none.
+#[derive(Debug, Clone, Copy)]
+pub struct GameRelease {
+    pub player: u32,
+    pub from_club: u32,
+    pub club_after: Option<u32>,
+    pub contract_left: bool,
 }
 
 /// A loan the game ended: the player went back from the club he was loaned to, to his own. `starts`, `ends` and `wage`
@@ -264,6 +279,11 @@ impl Session {
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some(),
             end_loan: available(calls.end_contract)
+                && profile.transfer_manager.is_some()
+                && self.layout.work_permit.is_some()
+                && self.layout.loan.is_some(),
+            release: available(calls.withdraw_offers)
+                && available(calls.leave_team)
                 && profile.transfer_manager.is_some()
                 && self.layout.work_permit.is_some()
                 && self.layout.loan.is_some(),
@@ -1226,6 +1246,55 @@ impl Session {
             ends: terms.ends,
             wage: terms.wage,
             loan_listed,
+        })
+    }
+
+    /// Has the game release `player` from his contract, as its own editor does (at 0x238eddc): it withdraws the offers
+    /// made for him, then has him leave the team his contract is with, for a release. He becomes a free agent, and the
+    /// club gets no fee and no row in its transfer history, as with the editor. The checks of a release come first: a
+    /// player on loan is refused, so no loan needs ending. What the game leaves him as is read back.
+    pub fn release_through_game(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<GameRelease, MoveError> {
+        let withdraw = self.game_function(|calls| calls.withdraw_offers)?;
+        let leave = self.game_function(|calls| calls.leave_team)?;
+        let manager = self.transfer_manager()?;
+        let from_club = self.plan_release(player, human_clubs)?.from_club;
+        let object = self.player_object(player)?;
+        if self.loan_contract(object, 0).is_some() {
+            return Err(MoveError::OnLoan);
+        }
+        let identity = self.identity_block(object)?;
+        let (process, layout) = (&self.process, &self.layout);
+        let contract = process.read_u64(object + layout.player.contract)?;
+        let team = process.read_u64(contract + layout.contract.team)?;
+        let zero = Arg::value(0);
+        let mut program = Program::new();
+        program.push(Step::new(
+            withdraw,
+            &[Arg::value(manager), Arg::value(identity), Arg::value(1), zero, zero, zero, zero],
+        ));
+        program.push(Step::new(
+            leave,
+            &[
+                Arg::value(manager),
+                Arg::value(identity),
+                Arg::value(team),
+                Arg::value(RELEASED),
+                zero,
+                zero,
+                zero,
+                Arg::value(1),
+                // On the stack: a byte 1 and a qword 0, as the game's editor passes.
+                Arg::value(1),
+                zero,
+            ],
+        ));
+        self.call_game(&program)?;
+        let team = process.read_u64(object + layout.player.team)?;
+        Ok(GameRelease {
+            player: player.uid,
+            from_club,
+            club_after: crate::players::club_uid_of_team(process, layout, team),
+            contract_left: is_user_pointer(process.read_u64(object + layout.player.contract)?),
         })
     }
 

@@ -1,7 +1,8 @@
 // Releasing a player from his club, which leaves him a free agent: the button beside Transfer in the header of his
 // profile, and the dialog it opens. The dialog asks the game whether he can be released before it offers to, and
 // releases him: he leaves the club's teams and his contract, and a captaincy he held there is left empty. The release
-// is logged like any change, and one undo from the Changes view brings him back on his contract.
+// is logged like any change, and one undo from the Changes view brings him back on his contract. Where FM releases
+// players itself, as its editor does, it releases him instead, at your club too, and nothing undoes that.
 //
 // Ending a loan early is the same dialog: where the game ends loans itself on this version, a loaned player's profile
 // has End loan, which sends him back to his own club, and one undo starts the loan again.
@@ -20,7 +21,7 @@ import {
   releasePlayer,
 } from "./editing";
 import { describeError, formatDate } from "./format";
-import { cancelTransferText, endLoanText, profileText, releaseText } from "./labels";
+import { cancelTransferText, endLoanText, moveText, profileText, releaseText } from "./labels";
 import { ClubLine } from "./MoveDialog";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
@@ -41,7 +42,10 @@ interface ReleasingPlayer {
 const ENDINGS = {
   release: {
     text: { ...releaseText, act: releaseText.release, busy: releaseText.releasing },
-    plan: (uid: number) => planRelease(uid).then((club) => releaseText.ready(club.name)),
+    plan: (uid: number) =>
+      planRelease(uid).then((club) =>
+        club.permanent ? `${releaseText.ready(club.name)}\n${moveText.permanent}` : releaseText.ready(club.name),
+      ),
     make: releasePlayer,
   },
   endLoan: {

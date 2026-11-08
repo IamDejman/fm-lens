@@ -77,6 +77,7 @@ import type {
   MassReport,
   ManagerPreview,
   MovePreview,
+  ReleasePreview,
   MoveTerms,
   PlannedChange,
   SkippedField,
@@ -2397,8 +2398,11 @@ function signFreeAgentLater(uid: number, clubUid: number, joins: number): Logged
   return { ...logged };
 }
 
-/** `plan_release`: the checks of the real command that the fixtures can have, with its messages; names his club. */
-function planRelease(uid: number): MovePreview["from"] {
+/**
+ * `plan_release`: the checks of the real command that the fixtures can have, with its messages; names his club. The
+ * fixtures' game releases players itself, at your club too, and nothing undoes it.
+ */
+function planRelease(uid: number): ReleasePreview {
   const player = players.find((p) => p.uid === uid);
   if (!player) {
     throw notFound("player", uid);
@@ -2406,14 +2410,8 @@ function planRelease(uid: number): MovePreview["from"] {
   if (player.clubUid === null) {
     throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
   }
-  if (staff.some((s) => s.isHuman && s.clubUid === player.clubUid)) {
-    throw failure(
-      "move.humanClub",
-      "he plays for your club; transfer him in FM",
-    );
-  }
   const from = clubs.find((c) => c.uid === player.clubUid)!;
-  return { uid: from.uid, name: from.name };
+  return { uid: from.uid, name: from.name, permanent: true };
 }
 
 /** `release_player`: the fixture player leaves his club as a free agent, logged as a change of his `club` to 0. */
@@ -2421,10 +2419,6 @@ function releasePlayer(uid: number): LoggedChange {
   const from = planRelease(uid);
   const player = players.find((p) => p.uid === uid)!;
   const id = changes.length + 1;
-  moveUndo.set(id, {
-    row: { club: player.club, clubUid: player.clubUid, contractExpires: player.contractExpires },
-    written: written.get(`player:${uid}`),
-  });
   Object.assign(player, { club: null, clubUid: null, contractExpires: null });
   const logged: LoggedChange = {
     id,
@@ -2438,6 +2432,7 @@ function releasePlayer(uid: number): LoggedChange {
     undoneAt: null,
     batch: null,
     moved: { from: from.name },
+    permanent: true,
   };
   changes.push(logged);
   return { ...logged };
@@ -3362,7 +3357,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, futureTransfer: true, maxTactics: true, moveManager: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
