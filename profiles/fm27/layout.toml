@@ -463,8 +463,10 @@ name = 0x18
 # A match official (db::OFFICIAL), in the array the build profile places. MSVC gives the class a second base, whose
 # vtable sits at +0x138, so the index and UID come 0x10 later than on macOS. Read on Steam 26340721: 1,061
 # officials; Hyun-Chul Moon (South Korea), born 24 May 1989, CA/PA 200/200, reputation 9891.
+# That second vtable is the identity block, which MSVC's vtables keep no offset to: its UID sits 0xC in, at `uid`.
 [official]
 size = 0x148
+identity = 0x138
 first_name = 0x28
 last_name = 0x30
 common_name = 0x38
