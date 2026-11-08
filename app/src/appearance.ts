@@ -32,6 +32,12 @@ export function setAppearance(next: Appearance) {
   }
   apply();
 }
+const zoomWatchers = new Set<() => void>();
+/** Re-measure positioned/layout-dependent UI after a zoom preference changes. */
+export function watchZoom(watcher: () => void): () => void {
+  zoomWatchers.add(watcher);
+  return () => { zoomWatchers.delete(watcher); };
+}
 export function setZoom(next: number) {
   zoom = ZOOMS.find((value) => value === next) ?? 100;
   try {
@@ -40,6 +46,7 @@ export function setZoom(next: number) {
     /* Keep this session usable without storage. */
   }
   apply();
+  for (const watcher of zoomWatchers) watcher();
 }
 dark.addEventListener("change", apply);
 apply();
