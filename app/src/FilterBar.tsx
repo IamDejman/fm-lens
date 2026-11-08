@@ -1,7 +1,7 @@
 // The filter bar of a list: Filters, with how many are in effect, a chip for each that takes it out, Clear, and the
 // inputs behind Filters.
 
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { playerListText } from "./labels";
 
 const text = playerListText.filters;
@@ -25,6 +25,109 @@ export function rangeText(min: number | undefined, max: number | undefined, show
     return `≥ ${show(min)}`;
   }
   return max === undefined ? null : `≤ ${show(max)}`;
+}
+
+/** The least and most a number filter takes. */
+export interface NumberRange {
+  min: number;
+  max: number;
+}
+
+/** A whole number within `range`; nothing for an empty or unreadable input. */
+export function whole(input: string, range: NumberRange): number | undefined {
+  if (input.trim() === "") {
+    return undefined;
+  }
+  const value = Number(input);
+  return Number.isFinite(value) ? Math.min(range.max, Math.max(range.min, Math.round(value))) : undefined;
+}
+
+/** A text input saved before the language was switched; empty when there is none. */
+export const readText = (value: unknown) => (typeof value === "string" ? value : "");
+
+/** Which rows a list with men's and women's rows shows. */
+export type Kind = "all" | "men" | "women";
+
+/** A kind saved before the language was switched; all when there is none. */
+export const readKind = (value: unknown): Kind => (value === "men" || value === "women" ? value : "all");
+
+/** A kind as a filter takes it: `true` for women's rows only, `false` for men's only. */
+export const womenOnly = (kind: Kind) => (kind === "all" ? undefined : kind === "women");
+
+/** The words of a kind select: its name and the name of each choice. */
+export interface KindText {
+  kind: string;
+  all: string;
+  men: string;
+  women: string;
+}
+
+/** The chip of a kind other than all, in a list to spread into the chips. */
+export const kindChip = (kind: Kind, labels: KindText, remove: () => void): FilterChip[] =>
+  kind === "all" ? [] : [{ key: "kind", label: kind === "men" ? labels.men : labels.women, remove }];
+
+/** A select of all, men's or women's rows. */
+export function KindField({
+  labels,
+  value,
+  onChange,
+}: {
+  labels: KindText;
+  value: Kind;
+  onChange: (kind: Kind) => void;
+}) {
+  return (
+    <label className="filter-field">
+      <span>{labels.kind}</span>
+      <select aria-label={labels.kind} value={value} onChange={(e) => onChange(readKind(e.currentTarget.value))}>
+        <option value="all">{labels.all}</option>
+        <option value="men">{labels.men}</option>
+        <option value="women">{labels.women}</option>
+      </select>
+    </label>
+  );
+}
+
+interface RangeFieldProps {
+  label: string;
+  minLabel: string;
+  maxLabel: string;
+  range: NumberRange;
+  min: string;
+  max: string;
+  onMin: (value: string) => void;
+  onMax: (value: string) => void;
+}
+
+/** The two ends of a number filter under one name. */
+export function RangeField({ label, minLabel, maxLabel, range, min, max, onMin, onMax }: RangeFieldProps) {
+  const id = useId();
+  return (
+    <div className="filter-field" role="group" aria-labelledby={id}>
+      <span id={id}>{label}</span>
+      <input
+        type="number"
+        min={range.min}
+        max={range.max}
+        step={1}
+        placeholder={text.minPlaceholder}
+        aria-label={minLabel}
+        value={min}
+        onChange={(e) => onMin(e.currentTarget.value)}
+      />
+      <span aria-hidden="true">–</span>
+      <input
+        type="number"
+        min={range.min}
+        max={range.max}
+        step={1}
+        placeholder={text.maxPlaceholder}
+        aria-label={maxLabel}
+        value={max}
+        onChange={(e) => onMax(e.currentTarget.value)}
+      />
+    </div>
+  );
 }
 
 interface FilterBarProps {

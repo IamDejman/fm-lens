@@ -13,8 +13,9 @@ read-only. The probe is compiled with the memory crate's `read-only` feature, so
 that feature. There is no separate switch that turns editing on: connecting to
 a known build enables the mapped fields.
 
-The nation list covers nations represented by loaded players/staff; the stadium
-list covers senior stadiums per club. Neither is a complete database scan.
+The nation list covers nations represented by loaded players, staff and
+competitions; the stadium list covers senior stadiums with every club that plays
+at each. Neither is a complete database scan.
 Mapped nation fields and official fields can be edited where the build supports
 them; stadium browsing is read-only. On ARM64, England's population, men's
 reputation and nationality rules passed the bounded save/quit/reload checks in

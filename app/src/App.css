@@ -1688,6 +1688,56 @@ input::placeholder {
   width: 40%;
 }
 
+/*
+ * A ground's other clubs can run long ("Deportivo La Guaira, Metropolitanos de Caracas, ..."): the stadium and
+ * club columns keep their share of the width and cut the text short, the whole of it in the cell's hover, rather
+ * than push the capacities out of view.
+ */
+.stadium-grid td:is(.col-name, .col-club) {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stadium-grid .col-club .with-picture-text {
+  overflow: hidden;
+}
+
+/*
+ * A club's name gives way to its tag, so a women's club never reads as a men's one. The other clubs wrap a whole
+ * club at a time; only a club too long for a line of its own is cut short.
+ */
+.stadium-grid .col-club :is(.club-line, .club) {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.stadium-grid .col-club .sub {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-1);
+}
+
+.stadium-grid .col-club .club {
+  max-width: 100%;
+}
+
+.stadium-grid .col-club .name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stadium-grid .col-club .tag.women {
+  flex: none;
+}
+
+/* A ground's clubs can fill three lines of the profile: they wrap beside the label, never over it. */
+.stadium-stats .stat dt {
+  flex: none;
+}
+
 /* The awards list beside a profile: its name and competition, the nation being in the profile. */
 @container (max-width: 760px) {
   .with-profile .award-grid .col-nation {
