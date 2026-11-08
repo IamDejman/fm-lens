@@ -347,12 +347,7 @@ impl Session {
             let crate::profile::PluginFingerprint::MachO { uuid } = self.fingerprint else {
                 return Ok(false);
             };
-            Ok(self.process.bridge_capabilities()?.is_none_or(|caps| {
-                caps.plugin_uuid == uuid
-                    && caps.max_steps > 0
-                    && caps.scratch_size >= fmlens_mem::call::SCRATCH_SIZE
-                    && caps.functions.contains(&function)
-            }))
+            Ok(listed(self.process.bridge_capabilities()?, uuid, function))
         }
         #[cfg(windows)]
         {
@@ -1261,9 +1256,38 @@ impl Session {
     }
 }
 
+/// Whether the helper can call `function` in the plugin `uuid`, going by the functions it lists. A helper too old to
+/// list them is tried, and the call is refused as a whole if it cannot run it.
+#[cfg(target_os = "macos")]
+fn listed(caps: Option<&fmlens_mem::bridge::Capabilities>, uuid: [u8; 16], function: u64) -> bool {
+    caps.is_none_or(|caps| {
+        caps.plugin_uuid == uuid
+            && caps.max_steps > 0
+            && caps.scratch_size >= fmlens_mem::call::SCRATCH_SIZE
+            && caps.functions.contains(&function)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A helper that does not list the view refresh skips it: the edit stands and nothing is reported.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_helper_without_the_refresh_function_skips_it() {
+        let caps = fmlens_mem::bridge::Capabilities {
+            plugin_uuid: [7; 16],
+            functions: vec![0x100],
+            indirect: true,
+            max_steps: 12,
+            scratch_size: fmlens_mem::call::SCRATCH_SIZE,
+        };
+        assert!(listed(Some(&caps), [7; 16], 0x100));
+        assert!(!listed(Some(&caps), [7; 16], 0x200), "not listed");
+        assert!(!listed(Some(&caps), [8; 16], 0x100), "another build of FM");
+        assert!(listed(None, [7; 16], 0x200), "a helper too old to list its functions is tried");
+    }
 
     #[test]
     fn the_terms_keys_are_spelt_as_the_game_reads_them() {

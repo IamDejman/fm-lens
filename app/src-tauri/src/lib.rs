@@ -20,7 +20,7 @@ use fmlens_core::{
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 /// The environment variable that names the graphics folder to read packs from, instead of
 /// `Documents\Sports Interactive\Football Manager 27\graphics` on Windows and
@@ -30,6 +30,9 @@ const GRAPHICS_FOLDER: &str = "FMLENS_GRAPHICS";
 /// The environment variable that names the folder the app keeps its own files in, instead of its data folder
 /// (`%APPDATA%\local.fm.lens` on Windows): for now, what was frozen in each save.
 const DATA_FOLDER: &str = "FMLENS_DATA";
+
+/// The identifier of a debug build, so that it keeps its files apart from the installed app's (see `context`).
+const DEBUG_IDENTIFIER: &str = "local.fm.lens.dev";
 
 /// The file in that folder that remembers what was frozen in each save (see `Remembered`).
 const FROZEN_FILE: &str = "frozen.json";
@@ -70,6 +73,13 @@ struct Connection {
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
 const FREEZE_EVERY: Duration = Duration::from_secs(2);
 
+/// How long the hold of frozen values waits after failing to read the game again before it tries once more.
+const READ_AGAIN_RETRY: Duration = Duration::from_secs(30);
+
+/// The event that tells the window the game was read again without it (see `read_again_for_freezes`), with what a
+/// Reload returns.
+const READ_AGAIN_EVENT: &str = "game-read-again";
+
 /// The attributes of a player that are at their best at 1, not at 20.
 const LOWER_IS_BETTER: [&str; 2] = ["attribute.injury_proneness", "attribute.dirtiness"];
 
@@ -82,13 +92,22 @@ struct Frozen {
     /// The players whose attributes are frozen, with the worst each attribute may be, as stored: what it was when it
     /// was frozen, or better once he improved. Worse is lower, or higher where lower is better.
     attributes: BTreeMap<u32, BTreeMap<String, i64>>,
-    /// Staff freezes last for this connection; stored on the staff's own attribute scales.
+    /// The members of staff whose attributes are frozen, held the same way on the staff's own attribute scales.
     staff_attributes: BTreeMap<u32, BTreeMap<String, i64>>,
+    /// The holds the editor's checks refused, as logged: each is logged once.
+    refused: BTreeSet<String>,
 }
 
 impl Frozen {
     fn is_empty(&self) -> bool {
         self.money.is_empty() && self.attributes.is_empty() && self.staff_attributes.is_empty()
+    }
+
+    /// What a connection just made holds of `old`, the one before it: in the same game all of it, at what it was held
+    /// at (a balance the club earned since, an attribute that improved), not at what the game holds now; in another
+    /// game none of it, and the file freezes that save's afresh.
+    fn carry_over(old: &mut Frozen, same_game: bool) -> Option<Frozen> {
+        same_game.then(|| std::mem::take(old))
     }
 
     /// A value the editor just wrote to a frozen field becomes what it is held at, so it is not taken back as if the
@@ -120,11 +139,14 @@ struct RememberedSave {
     players: BTreeSet<u32>,
     /// The clubs whose money is frozen.
     clubs: BTreeSet<u32>,
+    /// The members of staff whose attributes are frozen. Files from before staff freezes were remembered have none.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    staff: BTreeSet<u32>,
 }
 
 impl RememberedSave {
     fn is_empty(&self) -> bool {
-        self.players.is_empty() && self.clubs.is_empty()
+        self.players.is_empty() && self.clubs.is_empty() && self.staff.is_empty()
     }
 }
 
@@ -172,6 +194,8 @@ struct Refrozen {
     players: Vec<String>,
     /// The clubs whose money is frozen again, by name.
     clubs: Vec<String>,
+    /// The members of staff whose attributes are frozen again, by name.
+    staff: Vec<String>,
     /// How many are left for later, still remembered: the editor has no profile for this version of the game, or a
     /// check did not pass.
     waiting: usize,
@@ -179,7 +203,7 @@ struct Refrozen {
 
 impl Refrozen {
     fn is_empty(&self) -> bool {
-        self.players.is_empty() && self.clubs.is_empty() && self.waiting == 0
+        self.players.is_empty() && self.clubs.is_empty() && self.staff.is_empty() && self.waiting == 0
     }
 }
 
@@ -271,6 +295,19 @@ impl Connection {
         self.log = log;
     }
 
+    /// Takes over what is frozen from `old`, the connection read before this one, just made, and says whether it read
+    /// the same game: there what was frozen stays frozen, at what it was held at. After another save was loaded, what
+    /// was frozen in that one before is frozen again instead.
+    fn take_frozen(&mut self, old: &mut Connection, path: Option<&Path>) -> (Option<Refrozen>, bool) {
+        let same_game = self.same_game_as(old);
+        if let Some(frozen) = Frozen::carry_over(&mut old.frozen, same_game) {
+            self.frozen = frozen;
+            return (None, true);
+        }
+        let refrozen = self.restore_frozen(path);
+        ((!refrozen.is_empty()).then_some(refrozen), false)
+    }
+
     /// Freezes again what was frozen in this save before, as the file at `path` remembers it: the attributes of its
     /// players and the money of its clubs, each held from what it is now. Only on a build the editor has a profile
     /// for and only where its checks let it write: on any other, after an update of the game say, nothing is frozen,
@@ -284,11 +321,12 @@ impl Connection {
         let Some(entry) = remembered.saves.get_mut(&save) else {
             return refrozen;
         };
-        let count = entry.players.len() + entry.clubs.len();
+        let count = entry.players.len() + entry.clubs.len() + entry.staff.len();
         entry.players.retain(|&uid| self.players.get(uid).is_some());
         entry.clubs.retain(|&uid| self.clubs.get(uid).is_some());
-        let (players, clubs) = (entry.players.clone(), entry.clubs.clone());
-        if players.len() + clubs.len() < count {
+        entry.staff.retain(|&uid| self.staff.get(uid).is_some());
+        let (players, clubs, staff) = (entry.players.clone(), entry.clubs.clone(), entry.staff.clone());
+        if players.len() + clubs.len() + staff.len() < count {
             remembered.saves.retain(|_, save| !save.is_empty());
             let _ = remembered.write(path);
         }
@@ -302,6 +340,12 @@ impl Connection {
         for uid in clubs {
             match safe.then(|| self.freeze_club(uid)) {
                 Some(Ok(())) => refrozen.clubs.push(self.club_name(uid)),
+                _ => refrozen.waiting += 1,
+            }
+        }
+        for uid in staff {
+            match safe.then(|| self.freeze_staff(uid)) {
+                Some(Ok(())) => refrozen.staff.push(self.staff_name(uid)),
                 _ => refrozen.waiting += 1,
             }
         }
@@ -348,6 +392,57 @@ impl Connection {
         let balance = self.session.read_field(&target, &field)?;
         self.frozen.money.insert(uid, balance);
         Ok(())
+    }
+
+    /// Freezes the attributes of the member of staff `uid` at what they are now (see `hold_staff_attributes`).
+    /// Refused while they may not be written, or one of them holds what the editor would not write.
+    fn freeze_staff(&mut self, uid: u32) -> Result<(), Failure> {
+        if !self.session.process.can_write() {
+            return Err(Failure::new("memory.readOnly", "This connection cannot write to the game."));
+        }
+        let target = self.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?.target();
+        let fields = self.staff_attribute_fields();
+        for field in &fields {
+            if let Some(lock) = self.session.field_lock(field) {
+                return Err(EditError::Locked { field: field.key.clone(), lock }.into());
+            }
+        }
+        let values = self.session.read_fields(&target, &fields)?;
+        let mut held = BTreeMap::new();
+        for (field, value) in fields.into_iter().zip(values) {
+            let value = value.filter(|value| field.takes(*value)).ok_or_else(|| {
+                Failure::new("freeze.invalid", format!("Cannot freeze {}: its current value is invalid.", field.key))
+            })?;
+            held.insert(field.key, value);
+        }
+        self.frozen.staff_attributes.insert(uid, held);
+        Ok(())
+    }
+
+    fn staff_name(&self, uid: u32) -> String {
+        self.staff.get(uid).map_or_else(|| uid.to_string(), |member| member.name.clone())
+    }
+
+    /// Whether FM has moved its lists since this connection read them (it does at times as the game goes on, and on
+    /// loading a save): the editor then writes nothing until the game is read again.
+    fn stale(&self) -> bool {
+        self.session.known_build() && self.session.process.can_write() && !self.session.current_career()
+    }
+
+    /// What the window learns of a connection just read again; `refrozen` as `read_again` gave it.
+    fn reload_info(&self, refrozen: Option<Refrozen>) -> ReloadInfo {
+        ReloadInfo {
+            editable: self.session.process.can_write() && self.session.writes_allowed(),
+            writable: self.session.process.can_write(),
+            known_build: self.session.known_build(),
+            players: self.players.len(),
+            staff: self.staff.len(),
+            clubs: self.clubs.len(),
+            game_date: self.session.game_date(),
+            health: Health::clone(&self.session.health()),
+            career: self.career.clone(),
+            refrozen,
+        }
     }
 
     /// What the window shows about the connection; `load_ms` is how long reading took.
@@ -1565,10 +1660,11 @@ impl Connection {
             match self.session.read_field(&target, &field) {
                 Ok(now) if now < *floor => {
                     // Only while the game still holds what was read: a day it is working out is left to it.
-                    let _ = self.session.write_field_if(&target, &field, now, *floor);
+                    let held = self.session.write_field_if(&target, &field, now, *floor);
+                    log_refused(&mut self.frozen.refused, &target, held.err());
                 }
                 Ok(now) => *floor = now,
-                Err(_) => {}
+                Err(err) => log_refused(&mut self.frozen.refused, &target, Some(err)),
             }
         }
     }
@@ -1582,8 +1678,12 @@ impl Connection {
             let Some(target) = self.players.get(uid).map(|player| player.target()) else {
                 continue;
             };
-            let Ok(values) = self.session.read_fields(&target, &fields) else {
-                continue;
+            let values = match self.session.read_fields(&target, &fields) {
+                Ok(values) => values,
+                Err(err) => {
+                    log_refused(&mut self.frozen.refused, &target, Some(err));
+                    continue;
+                }
             };
             for (field, now) in fields.iter().zip(values) {
                 let (Some(now), Some(limit)) = (now, held.get_mut(&field.key)) else {
@@ -1592,7 +1692,8 @@ impl Connection {
                 let worse = if LOWER_IS_BETTER.contains(&field.key.as_str()) { now > *limit } else { now < *limit };
                 if worse {
                     // Only while the game still holds what was read: a day it is working out is left to it.
-                    let _ = self.session.write_field_if(&target, field, now, *limit);
+                    let written = self.session.write_field_if(&target, field, now, *limit);
+                    log_refused(&mut self.frozen.refused, &target, written.err());
                 } else {
                     *limit = now;
                 }
@@ -1606,29 +1707,35 @@ impl Connection {
         fields.filter(|field| field.key.starts_with("attribute.")).collect()
     }
 
+    /// The attributes of staff the editor can change.
+    fn staff_attribute_fields(&self) -> Vec<Field> {
+        let fields = self.session.fields(Entity::Staff).into_iter();
+        fields.filter(|field| field.key.starts_with("attribute.")).collect()
+    }
+
     fn hold_staff_attributes(&mut self) {
         if self.frozen.staff_attributes.is_empty() {
             return;
         }
-        let fields: Vec<_> = self
-            .session
-            .fields(Entity::Staff)
-            .into_iter()
-            .filter(|field| field.key.starts_with("attribute."))
-            .collect();
+        let fields = self.staff_attribute_fields();
         for (&uid, held) in self.frozen.staff_attributes.iter_mut() {
             let Some(target) = self.staff.get(uid).map(|staff| staff.target()) else {
                 continue;
             };
-            let Ok(values) = self.session.read_fields(&target, &fields) else {
-                continue;
+            let values = match self.session.read_fields(&target, &fields) {
+                Ok(values) => values,
+                Err(err) => {
+                    log_refused(&mut self.frozen.refused, &target, Some(err));
+                    continue;
+                }
             };
             for (field, now) in fields.iter().zip(values) {
                 let (Some(now), Some(limit)) = (now, held.get_mut(&field.key)) else {
                     continue;
                 };
                 if now < *limit {
-                    let _ = self.session.write_field_if(&target, field, now, *limit);
+                    let written = self.session.write_field_if(&target, field, now, *limit);
+                    log_refused(&mut self.frozen.refused, &target, written.err());
                 } else {
                     *limit = now;
                 }
@@ -2104,19 +2211,33 @@ fn now_ms() -> u64 {
 #[derive(Default)]
 struct AppState(Mutex<Option<Connection>>, Mutex<Vec<LoggedChange>>);
 
+/// Logs, once each, the holds of frozen values the editor refused, and why. A conflict is not one: the game was
+/// working out a day, and the next look puts the value back.
+fn log_refused(logged: &mut BTreeSet<String>, target: &Target, err: Option<EditError>) {
+    let Some(err) = err.filter(|err| !matches!(err, EditError::Conflict { .. })) else {
+        return;
+    };
+    let line = format!("FM Lens could not hold the {} with id {}: {err}", target.entity, target.uid);
+    if logged.insert(line.clone()) {
+        eprintln!("{line}");
+    }
+}
+
 /// Whether a game read again holds the same objects: `players` gives each player read before, at the address he had
-/// then and the one he has now if he is still there. Loading a save makes every object afresh; playing on only adds
-/// some players and removes others, so all those still there must be where they were, and some must be there.
+/// then and the one he has now if he is still there. Loading a save makes every object afresh; playing on adds some
+/// players, removes others and gives a few of those still there a new place (one who becomes a player-coach, say), so
+/// nearly all of them must be where they were, and some must be there.
 fn same_objects(players: impl IntoIterator<Item = (Target, Option<Target>)>) -> bool {
-    let mut kept = false;
+    let (mut kept, mut moved) = (0_usize, 0_usize);
     for (then, now) in players {
         match now {
-            Some(now) if now == then => kept = true,
-            Some(_) => return false,
+            Some(now) if now == then => kept += 1,
+            Some(_) => moved += 1,
             None => {}
         }
     }
-    kept
+    // Fewer than one in ten moved.
+    kept > 0 && moved * 10 < kept + moved
 }
 
 /// The pictures of the user's graphics packs, once the packs have been read.
@@ -2370,7 +2491,7 @@ struct ConnectionInfo {
     refrozen: Option<Refrozen>,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ReloadInfo {
     editable: bool,
@@ -2577,6 +2698,42 @@ fn allow_editing(state: State<'_, AppState>) -> Result<ConnectionInfo, Failure> 
     Ok(connection.info(0))
 }
 
+/// Reads again the game of the process `pid`, as connecting does.
+fn load_again(pid: u32) -> Result<Connection, Failure> {
+    // A game that has quit says so plainly, rather than as whatever opening its process gives.
+    let pid = find_game(Some(pid))?;
+    // Loading a different career replaces the arrays and cached class identities.
+    let connection = Connection::load(connect_session(pid)?)?;
+    if connection.career.is_none() {
+        return Err(no_career());
+    }
+    Ok(connection)
+}
+
+/// Reads the game again once FM has moved its lists, which stops every write, so that what is frozen stays held: as
+/// Reload does, without waiting for the window, which is told as it is of a Reload. Left alone when the connection
+/// was read again or let go meanwhile.
+fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failure> {
+    let path = app.state::<FrozenFile>().0.clone();
+    let mut connection = load_again(pid)?;
+    let state = app.state::<AppState>();
+    let mut guard = state.0.lock()?;
+    let Some(old) = guard.as_mut().filter(|old| old.session.process.pid() == pid && old.stale()) else {
+        return Ok(());
+    };
+    let (refrozen, same_game) = connection.take_frozen(old, path.as_deref());
+    connection.carry_log(std::mem::take(&mut old.log), same_game);
+    eprintln!("FM Lens read the game again after FM moved its lists (same game: {same_game}).");
+    connection.hold_frozen();
+    let info = connection.reload_info(refrozen);
+    *guard = Some(connection);
+    drop(guard);
+    if let Err(err) = app.emit(READ_AGAIN_EVENT, info) {
+        eprintln!("FM Lens could not tell the window the game was read again: {err}");
+    }
+    Ok(())
+}
+
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails. What is frozen
 /// stays frozen, unless the game has loaded another save: then what was frozen in that one before is frozen instead.
 #[tauri::command]
@@ -2586,21 +2743,9 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     let log = std::mem::take(&mut old.log);
     let path = file.0.clone();
     let loaded = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
-        // A game that has quit says so plainly, rather than as whatever opening its process gives.
-        let pid = find_game(Some(old.session.process.pid()))?;
-        // Loading a different career replaces the arrays and cached class identities.
-        let session = connect_session(pid)?;
-        let mut connection = Connection::load(session)?;
-        if connection.career.is_none() {
-            return Err(no_career());
-        }
-        // The game has only moved on (its lists may have grown elsewhere in memory): what was frozen stays frozen.
-        if connection.same_game_as(&old) {
-            connection.frozen = old.frozen;
-            return Ok((connection, None, true));
-        }
-        let refrozen = connection.restore_frozen(path.as_deref());
-        Ok((connection, (!refrozen.is_empty()).then_some(refrozen), false))
+        let mut connection = load_again(old.session.process.pid())?;
+        let (refrozen, same_game) = connection.take_frozen(&mut old, path.as_deref());
+        Ok((connection, refrozen, same_game))
     })
     .await
     .map_err(Failure::from)
@@ -2615,18 +2760,7 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     };
     // Old addresses must never be used to undo changes in another game: there they are only listed.
     connection.carry_log(log, same_game);
-    let info = ReloadInfo {
-        editable: connection.session.process.can_write() && connection.session.writes_allowed(),
-        writable: connection.session.process.can_write(),
-        known_build: connection.session.known_build(),
-        players: connection.players.len(),
-        staff: connection.staff.len(),
-        clubs: connection.clubs.len(),
-        game_date: connection.session.game_date(),
-        health: Health::clone(&connection.session.health()),
-        career: connection.career.clone(),
-        refrozen,
-    };
+    let info = connection.reload_info(refrozen);
     *state.0.lock()? = Some(connection);
     Ok(info)
 }
@@ -3017,38 +3151,29 @@ fn frozen_players(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
     Ok(guard.as_ref().map(|connection| connection.frozen.attributes.keys().copied().collect()).unwrap_or_default())
 }
 
+/// Freezes the attributes of the member of staff `uid`, or unfreezes them, as `freeze_attributes` does for a player.
+/// The app remembers it for this save. Returns the staff frozen now.
 #[tauri::command]
-fn freeze_staff_attributes(state: State<'_, AppState>, uid: u32, frozen: bool) -> Result<Vec<u32>, Failure> {
+fn freeze_staff_attributes(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    uid: u32,
+    frozen: bool,
+) -> Result<Vec<u32>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     if frozen {
-        if !connection.session.process.can_write() {
-            return Err(Failure::new("memory.readOnly", "This connection cannot write to the game."));
-        }
-        let target = connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?.target();
-        let fields: Vec<_> = connection
-            .session
-            .fields(Entity::Staff)
-            .into_iter()
-            .filter(|field| field.key.starts_with("attribute."))
-            .collect();
-        for field in &fields {
-            if let Some(lock) = connection.session.field_lock(field) {
-                return Err(EditError::Locked { field: field.key.clone(), lock }.into());
-            }
-        }
-        let values = connection.session.read_fields(&target, &fields)?;
-        let mut held = BTreeMap::new();
-        for (field, value) in fields.into_iter().zip(values) {
-            let value = value.filter(|value| field.takes(*value)).ok_or_else(|| {
-                Failure::new("freeze.invalid", format!("Cannot freeze {}: its current value is invalid.", field.key))
-            })?;
-            held.insert(field.key, value);
-        }
-        connection.frozen.staff_attributes.insert(uid, held);
+        connection.freeze_staff(uid)?;
     } else {
         connection.frozen.staff_attributes.remove(&uid);
     }
+    connection.remember(file.0.as_deref(), |save| {
+        if frozen {
+            save.staff.insert(uid);
+        } else {
+            save.staff.remove(&uid);
+        }
+    });
     Ok(connection.frozen.staff_attributes.keys().copied().collect())
 }
 
@@ -4228,6 +4353,16 @@ fn show_main_window(app: &tauri::AppHandle) {
     }
 }
 
+/// The app's config. A debug build takes its own identifier, and with it its own data folder: what it freezes is
+/// never put back by the installed app, nor the other way round.
+fn context() -> tauri::Context {
+    let mut context = tauri::generate_context!();
+    if cfg!(debug_assertions) {
+        context.config_mut().identifier = DEBUG_IDENTIFIER.into();
+    }
+    context
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -4263,17 +4398,31 @@ pub fn run() {
             // Stage the bundled helper for FM's next normal launch. A running game keeps
             // serving through its existing helper; compatibility is discovered on connection.
             bridge::refresh(app.handle());
-            // Frozen money and attributes: every little while, what the game took from them is put back.
+            // Frozen money and attributes: every little while, what the game took from them is put back. Once FM has
+            // moved its lists, which stops every write, the game is read again first.
             let handle = app.handle().clone();
             std::thread::spawn(move || {
+                let mut next_read = Instant::now();
                 loop {
                     std::thread::sleep(FREEZE_EVERY);
                     let state = handle.state::<AppState>();
-                    if let Ok(mut guard) = state.0.lock()
-                        && let Some(connection) = guard.as_mut()
-                        && !connection.frozen.is_empty()
+                    let stale = match state.0.lock().as_deref_mut() {
+                        Ok(Some(connection)) if !connection.frozen.is_empty() => {
+                            if connection.stale() {
+                                Some(connection.session.process.pid())
+                            } else {
+                                connection.hold_frozen();
+                                None
+                            }
+                        }
+                        _ => None,
+                    };
+                    if let Some(pid) = stale
+                        && Instant::now() >= next_read
+                        && let Err(err) = read_again_for_freezes(&handle, pid)
                     {
-                        connection.hold_frozen();
+                        eprintln!("FM Lens could not read the game again to hold what is frozen: {}", err.message);
+                        next_read = Instant::now() + READ_AGAIN_RETRY;
                     }
                 }
             });
@@ -4386,13 +4535,18 @@ pub fn run() {
             bridge::set_up_bridge,
             bridge::remove_bridge
         ])
-        .run(tauri::generate_context!())
+        .run(context())
         .expect("error while running tauri application");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_debug_build_keeps_its_own_identifier() {
+        assert_eq!(context().config().identifier, DEBUG_IDENTIFIER);
+    }
 
     fn at(uid: u32, address: u64) -> Target {
         Target { entity: Entity::Player, uid, address, shift: 0 }
@@ -4407,6 +4561,57 @@ mod tests {
         // Nobody is left to tell.
         assert!(!same_objects([(at(1, 0x1000), None)]));
         assert!(!same_objects([]));
+    }
+
+    #[test]
+    fn a_game_that_played_on_may_give_a_few_players_a_new_place() {
+        // One of fifty became a player-coach, which gives him a new block: still the same game.
+        let kept = (1..50).map(|uid| (at(uid, u64::from(uid) << 12), Some(at(uid, u64::from(uid) << 12))));
+        let coach = Target { shift: 0xf8, ..at(50, 50 << 12) };
+        assert!(same_objects(kept.clone().chain([(at(50, 50 << 12), Some(coach))])));
+        // Every one of them somewhere else: a save was loaded.
+        let afresh = (1..50).map(|uid| (at(uid, u64::from(uid) << 12), Some(at(uid, u64::from(uid) << 20))));
+        assert!(!same_objects(afresh));
+        // One in ten moved is too many to be only the game playing on.
+        let tenth = (1..10).map(|uid| (at(uid, u64::from(uid)), Some(at(uid, u64::from(uid)))));
+        assert!(!same_objects(tenth.chain([(at(10, 10), Some(at(10, 0x9000)))])));
+    }
+
+    #[test]
+    fn reading_the_same_game_again_keeps_the_floors() {
+        let held = || {
+            let mut frozen = Frozen::default();
+            // Frozen at -£5,446,930, then the club earned more: that is the floor now.
+            frozen.money.insert(617, -5_051_283);
+            frozen.attributes.insert(7, BTreeMap::from([("attributes.free_kicks".to_owned(), 13)]));
+            frozen.staff_attributes.insert(9, BTreeMap::from([("attributes.coaching".to_owned(), 15)]));
+            frozen.refused.insert("club 617".to_owned());
+            frozen
+        };
+        let mut old = held();
+        let carried = Frozen::carry_over(&mut old, true).expect("the same game keeps what is frozen");
+        assert_eq!(carried.money, held().money);
+        assert_eq!(carried.attributes, held().attributes);
+        assert_eq!(carried.staff_attributes, held().staff_attributes);
+        assert_eq!(carried.refused, held().refused, "a refusal already logged is not logged again");
+        assert!(old.is_empty());
+        // Another save: nothing carries over, and the file freezes that save's afresh.
+        assert!(Frozen::carry_over(&mut held(), false).is_none());
+    }
+
+    #[test]
+    fn staff_freezes_are_remembered_and_older_files_still_read() {
+        // A file from before staff freezes were remembered.
+        let older: Remembered = serde_json::from_str(r#"{"saves":{"Steam:7":{"players":[1],"clubs":[2]}}}"#).unwrap();
+        let save = &older.saves["Steam:7"];
+        assert!(save.staff.is_empty() && !save.is_empty());
+        // A save with only a member of staff frozen is kept, and written with him.
+        let mut remembered = Remembered::default();
+        remembered.saves.entry("Steam:7".to_owned()).or_default().staff.insert(3);
+        remembered.saves.retain(|_, save| !save.is_empty());
+        let json = serde_json::to_string(&remembered).unwrap();
+        let read: Remembered = serde_json::from_str(&json).unwrap();
+        assert_eq!(read.saves["Steam:7"].staff, BTreeSet::from([3]));
     }
 }
 

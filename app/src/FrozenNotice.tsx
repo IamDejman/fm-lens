@@ -1,4 +1,4 @@
-// The notice under the masthead after connecting to a save in which players' attributes or clubs' money were frozen
+// The notice under the masthead after connecting to a save in which attributes or clubs' money were frozen
 // before: what is frozen again, and what waits until FM Lens can write to this version of the game.
 
 import { appText } from "./labels";
@@ -16,12 +16,13 @@ const names = (list: string[]) =>
 
 /** What connecting froze again, by name, and how many wait; it stays until it is dismissed. */
 export function FrozenNotice({ refrozen, onDismiss }: { refrozen: Refrozen; onDismiss: () => void }) {
-  const again = refrozen.players.length + refrozen.clubs.length > 0;
+  const people = [...refrozen.players, ...refrozen.staff];
+  const again = people.length + refrozen.clubs.length > 0;
   return (
     <div className="frozen-notice">
       <div className="compatibility-text">
         <strong>{again ? text.title : text.waitingTitle}</strong>
-        {refrozen.players.length > 0 && <p>{text.players(names(refrozen.players))}</p>}
+        {people.length > 0 && <p>{text.players(names(people))}</p>}
         {refrozen.clubs.length > 0 && <p>{text.clubs(names(refrozen.clubs))}</p>}
         {refrozen.waiting > 0 && <p>{text.waiting(refrozen.waiting)}</p>}
       </div>

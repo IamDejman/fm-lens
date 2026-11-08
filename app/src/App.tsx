@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { call, inTauri } from "./api";
+import { listen } from "@tauri-apps/api/event";
+import { call, inTauri, watchCommands } from "./api";
 import { addCheckForUpdates } from "./appMenu";
 import { BridgeSetup } from "./BridgeSetup";
 import { ChangesView, useChangeLog } from "./ChangesView";
@@ -35,9 +36,9 @@ import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
 import { track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds } from "./editing";
-import type { BridgeInfo, Career, ConnectionInfo, Detection, InjuryKind, Refrozen, ReloadInfo } from "./types";
+import type { BridgeInfo, Career, ConnectionInfo, Detection, FmDate, InjuryKind, Refrozen, ReloadInfo } from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol-120.png";
-import { askToLeave, EditorContext, NO_GAME_ACTIONS } from "./useProfileEditing";
+import { askToLeave, changesPending, EditorContext, NO_GAME_ACTIONS } from "./useProfileEditing";
 import "./App.css";
 
 const StaffBrowser = lazy(() => import("./StaffBrowser").then((module) => ({ default: module.StaffBrowser })));
@@ -75,6 +76,14 @@ const VIEWS: { id: View; label: string }[] = [
 const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials"]);
 
 /** The view the window was in before the language was switched; the first one when there was no such switch. */
+/** How often the app looks at the game: FM may have closed, moved its lists or moved on a day. */
+const CHECK_EVERY_MS = 5000;
+
+/** The commands that turn a freeze on or off. */
+const FREEZE_COMMANDS: ReadonlySet<string> = new Set(["freeze_attributes", "freeze_money", "freeze_staff_attributes"]);
+
+const dayKey = ({ year, month, day }: FmDate) => `${year}-${month}-${day}`;
+
 const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
 
 /** The app's own football-lens symbol and wordmark. */
@@ -175,17 +184,24 @@ function App() {
       setDataVersion((v) => v + 1);
     });
 
+  // The game was read again, by Reload or by the app itself: the lists, the open profile and the log follow.
+  const readAgain = useCallback(
+    ({ refrozen: again, ...reloaded }: ReloadInfo) => {
+      setConnection((c) => c && { ...c, ...reloaded });
+      if (again) {
+        setRefrozen(again);
+      }
+      setDataVersion((v) => v + 1);
+      void reloadLog();
+    },
+    [reloadLog],
+  );
+
   const reload = useCallback(
     () =>
       run(appText.reloading, async () => {
         try {
-          const { refrozen: again, ...reloaded } = await call<ReloadInfo>("reload");
-          setConnection((c) => c && { ...c, ...reloaded });
-          if (again) {
-            setRefrozen(again);
-          }
-          setDataVersion((v) => v + 1);
-          void reloadLog();
+          readAgain(await call<ReloadInfo>("reload"));
         } catch (e) {
           // The Rust side drops the connection when reading fails (e.g. the game was closed).
           setConnection(null);
@@ -193,7 +209,42 @@ function App() {
           throw e;
         }
       }),
-    [run, reloadLog, detect],
+    [run, readAgain, detect],
+  );
+
+  // To keep what is frozen held, the Rust side reads the game again by itself once FM has moved its lists.
+  useEffect(() => {
+    if (!inTauri) {
+      return;
+    }
+    let stop: (() => void) | null = null;
+    let gone = false;
+    listen<ReloadInfo>("game-read-again", (event) => readAgain(event.payload))
+      .then((unlisten) => {
+        if (gone) {
+          unlisten();
+        } else {
+          stop = unlisten;
+        }
+      })
+      .catch(() => {
+        // The next check, or Reload, brings the window up to date instead.
+      });
+    return () => {
+      gone = true;
+      stop?.();
+    };
+  }, [readAgain]);
+
+  // Turning a freeze off leaves the notice of what came back on out of date.
+  useEffect(
+    () =>
+      watchCommands((command, args) => {
+        if (FREEZE_COMMANDS.has(command) && args?.frozen === false) {
+          setRefrozen(null);
+        }
+      }),
+    [],
   );
 
   // At startup: the Rust side keeps its connection, lists and change log when the window is reloaded (that is how a
@@ -226,21 +277,33 @@ function App() {
     };
   }, [detect, reloadLog]);
 
-  // FM may have been closed or restarted while the app was in the background. On coming back, the app checks, and
-  // says so and offers to connect again rather than showing a game that has gone. FM may also have moved its lists (on
-  // loading a save, and at times as the game goes on), which turns editing off: the app then reads the game again, as
-  // Reload does, rather than leaving that to be found at the next Apply.
+  // FM may have been closed or restarted meanwhile. Every few seconds, and on coming back to the window, the app
+  // checks, and says so and offers to connect again rather than showing a game that has gone. FM may also have moved
+  // its lists (on loading a save, and at times as the game goes on), which turns editing off: the app then reads the
+  // game again, as Reload does, rather than leaving that to be found at the next Apply. Once the game has moved on a
+  // day, the lists and the open profile read it again, unless changes are pending there.
   const attached = connection !== null;
   const idle = busy === null;
+  const day = connection?.gameDate ? dayKey(connection.gameDate) : null;
   useEffect(() => {
     if (!attached) {
       return;
     }
-    const check = () => {
+    // Reading the game again takes a few seconds and stops editing meanwhile, so the app does it on coming back to
+    // the window. While anything is frozen, the Rust side reads it again by itself.
+    const check = (focused: boolean) => {
       call<ConnectionInfo | null>("current_connection")
         .then((current) => {
-          if (idle && current?.writable && current.knownBuild && !current.editable) {
-            void reload();
+          if (!idle || !current) {
+            return;
+          }
+          if (current.writable && current.knownBuild && !current.editable) {
+            if (focused) {
+              void reload();
+            }
+          } else if (current.gameDate && dayKey(current.gameDate) !== day && !changesPending()) {
+            setConnection((c) => c && { ...c, gameDate: current.gameDate });
+            setDataVersion((v) => v + 1);
           }
         })
         .catch((e: unknown) => {
@@ -250,9 +313,14 @@ function App() {
           setError(describeError(e));
         });
     };
-    window.addEventListener("focus", check);
-    return () => window.removeEventListener("focus", check);
-  }, [attached, idle, detect, reload]);
+    const onFocus = () => check(true);
+    const timer = window.setInterval(() => check(false), CHECK_EVERY_MS);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [attached, idle, day, detect, reload]);
 
   // Until connected, the app keeps looking for the game, so starting FM27 or loading a save shows up on its own.
   useEffect(() => {

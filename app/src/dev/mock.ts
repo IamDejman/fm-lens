@@ -3207,6 +3207,9 @@ const frozenMoney = new Set<number>();
 /** The players whose attributes are frozen in this page, likewise. */
 const frozenAttributes = new Set<number>();
 
+/** The members of staff whose attributes are frozen in this page, likewise. */
+const frozenStaff = new Set<number>();
+
 /** The fixture connection, once `connect` has been called in this page. */
 let mockConnection: ConnectionInfo | null = null;
 
@@ -3375,7 +3378,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         frozenAttributes.add(player.uid);
       }
       frozenMoney.add(clubs[0].uid);
-      const again: Refrozen = { players: players.slice(0, 2).map((p) => p.name), clubs: [clubs[0].name], waiting: 1 };
+      const again: Refrozen = {
+        players: players.slice(0, 2).map((p) => p.name),
+        staff: [],
+        clubs: [clubs[0].name],
+        waiting: 1,
+      };
       return { ...info, refrozen: again } as T;
     }
     case "graphics_info":
@@ -3493,6 +3501,17 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "frozen_players":
       return [...frozenAttributes] as T;
+    case "freeze_staff_attributes": {
+      const uid = Number(args?.uid);
+      if (args?.frozen) {
+        frozenStaff.add(uid);
+      } else {
+        frozenStaff.delete(uid);
+      }
+      return [...frozenStaff] as T;
+    }
+    case "frozen_staff":
+      return [...frozenStaff] as T;
     case "export_players": {
       // Nothing is written in a browser: the report names the file a real export would have.
       const selected = selectTargets("player", String(args?.query ?? ""), {
