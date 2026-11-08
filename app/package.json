@@ -6,14 +6,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "tsc -p tsconfig.tests.json && node --test tests/*.test.mjs && vitest run",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
     "release": "cargo build --release -p fmlens-bridge && tauri build --no-bundle",
     "bridge": "cargo build --release -p fmlens-bridge --target aarch64-apple-darwin && cargo build --release -p fmlens-bridge --target x86_64-apple-darwin && mkdir -p ../target/universal-apple-darwin/release && lipo -create -output ../target/universal-apple-darwin/release/libfmlens_bridge.dylib ../target/aarch64-apple-darwin/release/libfmlens_bridge.dylib ../target/x86_64-apple-darwin/release/libfmlens_bridge.dylib && lipo -create -output ../target/universal-apple-darwin/release/fmlens-launch ../target/aarch64-apple-darwin/release/fmlens-launch ../target/x86_64-apple-darwin/release/fmlens-launch && codesign --force --sign - ../target/universal-apple-darwin/release/libfmlens_bridge.dylib ../target/universal-apple-darwin/release/fmlens-launch",
     "release:mac": "npm run bridge && tauri build --target universal-apple-darwin --bundles app --config src-tauri/tauri.bridge.conf.json",
-    "release:windows": "cargo build --release -p fmlens-bridge && tauri build --bundles nsis",
-    "test": "tsc -p tsconfig.tests.json && vitest run"
+    "release:windows": "cargo build --release -p fmlens-bridge && tauri build --bundles nsis"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
