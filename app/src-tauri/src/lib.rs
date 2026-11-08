@@ -421,7 +421,7 @@ impl Connection {
     }
 
     fn staff_name(&self, uid: u32) -> String {
-        self.staff.get(uid).map_or_else(|| uid.to_string(), |member| member.name.clone())
+        self.staff.get(uid).map(|member| member.name.clone()).unwrap_or_default()
     }
 
     /// Whether FM has moved its lists since this connection read them (it does at times as the game goes on, and on
@@ -945,7 +945,7 @@ impl Connection {
         self.name_preferences(&mut named);
         let end = |preference: Option<&Preference>| {
             preference.map(|preference| TieEnd {
-                name: preference.name.clone().unwrap_or_else(|| preference.target_uid.to_string()),
+                name: preference.name.clone().unwrap_or_default(),
                 rule: None,
                 value: Some(i64::from(preference.strength)),
             })
@@ -1154,7 +1154,7 @@ impl Connection {
         };
         let end = |relation: &Option<fmlens_core::Relation>| {
             relation.as_ref().map(|relation| TieEnd {
-                name: relation.name.clone().unwrap_or_else(|| relation.target_uid.to_string()),
+                name: relation.name.clone().unwrap_or_default(),
                 rule: relation.rule,
                 value: None,
             })
@@ -1339,7 +1339,7 @@ impl Connection {
     }
 
     fn player_name(&self, uid: u32) -> String {
-        self.players.get(uid).map_or_else(|| uid.to_string(), |player| player.name.clone())
+        self.players.get(uid).map(|player| player.name.clone()).unwrap_or_default()
     }
 
     /// `failure` with the name of the player it names by UID, for the window to say who.
@@ -1404,7 +1404,7 @@ impl Connection {
     }
 
     fn club_name(&self, uid: u32) -> String {
-        self.clubs.get(uid).map_or_else(|| uid.to_string(), |club| club.name.clone())
+        self.clubs.get(uid).map(|club| club.name.clone()).unwrap_or_default()
     }
 
     /// Logs a move just written, as a change of the player's `club` from one club UID to the

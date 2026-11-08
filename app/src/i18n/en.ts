@@ -92,7 +92,7 @@ const errors: ErrorTexts = {
   "edit.outOfRange": (p) => `${field(p.field)} must be from ${p.min} to ${p.max}. You entered ${p.value}.`,
   "edit.notADate": (p) => `${field(p.field)}: ${p.value} isn't a valid date.`,
   "edit.notAChoice": (p) => `${field(p.field)} can't be ${p.value}.`,
-  "edit.taken": (p) => `${p.name ?? `The player with ID ${p.uid}`} already wears number ${p.value}.`,
+  "edit.taken": (p) => `${p.name ?? "Another player"} already wears number ${p.value}.`,
   "edit.unsupported": (p) => `Can't change ${field(p.field)} that way: ${p.reason}.`,
   "edit.noRecord": (p) => `Can't change ${field(p.field)}: FM's record for it is missing or looks wrong.`,
   "edit.unset": (p) => `${field(p.field)} isn't set in FM, so it wasn't changed.`,
@@ -195,6 +195,12 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
 };
 
 /** Reasons to be unhappy, by the codes the game keeps them as; named as FMRTE names them. */
+/** Promises by FM's number for them, named as FM's screens word them. */
+const PROMISE_NAMES_EN: Partial<Record<number, string>> = {
+  1: "Playing time",
+  208: "Preferred position and role",
+};
+
 const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
   570: "Worried about the poor dressing room atmosphere",
   596: "Left out of a competition squad",
@@ -666,7 +672,7 @@ export const en = {
     revokePermit: "Revoke",
     joined: "Joined",
     squadStatus: "Squad status",
-    squadStatusName: (status: number) => SQUAD_STATUSES[status] ?? `Status ${status}`,
+    squadStatusName: (status: number) => SQUAD_STATUSES[status] ?? "Unknown status",
     /** A member of staff's coaching licence: 0 none, 1 to 8 FM's levels. */
     qualifications: "Qualifications",
     formations: "Formations",
@@ -730,7 +736,7 @@ export const en = {
     /** A player's traits (preferred moves): the heading, none, and each one's name by its bit. */
     traits: "Traits",
     noTraits: "No traits",
-    traitName: (bit: number) => TRAIT_NAMES_EN[bit] ?? `Trait ${bit}`,
+    traitName: (bit: number) => TRAIT_NAMES_EN[bit] ?? "Unknown trait",
     /** A player's reasons to be unhappy, as FMRTE lists them, and the button that removes them all. */
     unhappiness: "Unhappiness",
     noUnhappiness: "Nothing makes him unhappy",
@@ -738,8 +744,8 @@ export const en = {
     removingUnhappiness: "Removing…",
     removeUnhappinessTitle: "Clears every reason he's unhappy.",
     concernSince: (date: string) => `since ${date}`,
-    concernKind: (kind: number) => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : `Type ${kind}`),
-    concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? `Reason ${motive}`,
+    concernKind: (kind: number): string => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : ""),
+    concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? "Unknown reason",
     /** A contract's clauses and bonuses: the heading, and what each kind the game has is called. */
     clauses: "Bonuses and clauses",
     noClauses: "No bonuses or clauses",
@@ -748,7 +754,7 @@ export const en = {
     playingTimeHappiness: "Playing time happiness",
     moodTitle: "From -100 to 100.",
     /** The name of a clause or bonus by its kind; a kind the app does not know yet by its number. */
-    clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? `Clause ${kind}`,
+    clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? "Unknown clause",
     /** What a clause depends on, by kind; null where what it means is not known. */
     clauseCondition: (kind: number, value: number): string | null => {
       if (RELEASE_CLAUSES.has(kind)) {
@@ -783,6 +789,11 @@ export const en = {
     noInjuries: "No injuries",
     /** The name of an injury the game gave none for. */
     unknownInjury: "Unknown injury",
+    unknownClub: "Unknown club",
+    unknownNation: "Unknown nation",
+    unknownPerson: "Unknown person",
+    /** A name the game's lists do not have; the editor never shows a UID in its place. */
+    unknownName: "Unknown",
     /** Under the name of an injury: when it began, and when he is expected back (`dates`: one date, or a range). */
     injuryStarted: (date: string) => `Started ${date}`,
     injuryBack: (dates: string) => `Expected back ${dates}`,
@@ -801,8 +812,8 @@ export const en = {
     liftBansTitle: "Lift all his bans",
     /** The group of the promises made to a player; FM's own names for them are in its language files only. */
     promises: "Promises",
-    formationName: (id: number) => id === 0 ? "None" : knownFormationName(id) ?? `Formation ${id}`,
-    promiseName: (id: number) => id === 1 ? "Playing time" : `Promise ${id}`,
+    formationName: (id: number) => id === 0 ? "None" : knownFormationName(id) ?? "Unknown formation",
+    promiseName: (id: number) => PROMISE_NAMES_EN[id] ?? "Unknown promise",
     promiseMade: (date: string) => `Made ${date}`,
     promiseDue: (date: string) => `Due ${date}`,
     promiseEnded: (date: string) => `Ended ${date}`,
@@ -862,7 +873,7 @@ export const en = {
     medical: "Medical",
     /** A coaching job held by someone who still plays. */
     playerCoach: (job: string) => `${job} (player-coach)`,
-    unknownJob: (code: number) => `Job ${code}`,
+    unknownJob: "Unknown job",
   },
 
   /** The player list: search, filter bar and columns. */
@@ -1746,7 +1757,7 @@ export const en = {
     /** The same for lifting bans: `count` is how many bans the player had. */
     lifted: (count: number) => (count === 1 ? "Lifted 1 ban" : `Lifted ${format(count)} bans`),
     /** What closing a promise changed, in the place of its values: `id` is FM's number for it. */
-    promiseClosed: (id: number) => `Closed promise ${id}`,
+    promiseClosed: (name: string) => `Closed promise: ${name}`,
     /** What keeping a player from retiring changed: the date he was to retire on, or none when only his traits changed. */
     keptPlaying: (date: string | null) => (date === null ? "Will play on" : `Retirement on ${date} prevented`),
     /** The line beside the title; `undone` of the `total` changes were undone. */

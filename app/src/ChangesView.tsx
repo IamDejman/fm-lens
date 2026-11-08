@@ -487,7 +487,7 @@ function captaincyNotes({ captaincy, field }: LoggedChange): string[] {
     notes.push(teamLabel({ index: captaincy.team, kind: captaincy.kind, ageLimit: captaincy.ageLimit }));
   }
   if (captaincy.swapped) {
-    notes.push(swapNote(field === "captain" ? "captain" : "viceCaptain", captaincy.from));
+    notes.push(swapNote(field === "captain" ? "captain" : "viceCaptain", captaincy.from === null ? null : named(captaincy.from)));
   }
   return notes;
 }
@@ -500,11 +500,16 @@ function tieEnd(end: TieEnd | null): string {
   if (end === null) {
     return profileText.none;
   }
+  const name = named(end.name);
   if (end.rule !== null) {
-    return `${end.name} · ${ruleLabel(end.rule)}`;
+    return `${name} · ${ruleLabel(end.rule)}`;
   }
-  return end.value === undefined ? end.name : `${end.name} · ${formatNumber(end.value)}`;
+  return end.value === undefined ? name : `${name} · ${formatNumber(end.value)}`;
 }
+
+/** A name the log has; a plain word where the game's lists had none, and `absent` where there is nobody. */
+const named = (name: string | null | undefined, absent: string = profileText.none) =>
+  name === null || name === undefined ? absent : name || profileText.unknownName;
 
 /** One side of a change to a contract clause: its name, what it depends on and its amount; "None" for no clause. */
 function clauseEnd(clause: Clause | null): string {
@@ -533,10 +538,10 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // later day is logged with the club he was to join, which goes to none.
   const value = change.moved
     ? change.field === "future_transfer"
-      ? valueChange(change.moved.to ?? profileText.none, profileText.none)
-      : valueChange(change.moved.from ?? profileText.freeAgent, change.moved.to ?? profileText.freeAgent)
+      ? valueChange(named(change.moved.to, profileText.none), profileText.none)
+      : valueChange(named(change.moved.from, profileText.freeAgent), named(change.moved.to, profileText.freeAgent))
     : change.captaincy
-      ? valueChange(change.captaincy.from ?? profileText.none, change.captaincy.to)
+      ? valueChange(named(change.captaincy.from, profileText.none), named(change.captaincy.to))
       : change.tie
         ? valueChange(tieEnd(change.tie.from), tieEnd(change.tie.to))
       : change.clause
@@ -550,7 +555,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
         : change.field === "bans"
           ? text.lifted(change.old)
           : change.field === "promise"
-            ? text.promiseClosed(change.old)
+            ? text.promiseClosed(profileText.promiseName(change.old))
           : change.field === "retirement"
             ? text.keptPlaying(change.old === 0 ? null : formatDate(dateFromNumber(change.old)))
           : change.field === "contract.job"
@@ -564,7 +569,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       </td>
       <td className="col-person">
         <div className="name">
-          {change.name}
+          {named(change.name)}
           <span className="tag kind">{text.kinds[change.entity]}</span>
         </div>
         <div className="sub uid">
@@ -574,7 +579,7 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
       <td>{label}</td>
       <td className="change-value" title={storedNote}>
         {value}
-        {change.moved?.with !== undefined && <div className="sub">{text.swappedWith(change.moved.with)}</div>}
+        {change.moved?.with !== undefined && <div className="sub">{text.swappedWith(named(change.moved.with))}</div>}
         {change.moved?.fee !== undefined && <div className="sub">{text.fee(formatMoney(change.moved.fee))}</div>}
         {change.moved?.joins !== undefined && (
           <div className="sub">{text.joins(formatDate(dateFromNumber(change.moved.joins)))}</div>

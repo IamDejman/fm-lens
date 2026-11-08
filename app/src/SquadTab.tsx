@@ -382,11 +382,11 @@ function TeamSummary({ teams, team, onTeam }: TeamSummaryProps) {
   ]
     .filter(Boolean)
     .join(" · ");
-  // A captain the team's list does not have (the game may name one who has left) is told by his UID.
+  // A captain the team's list does not have (the game may name one who has left).
   const nameOf = (uid: number | null) =>
     uid === null
       ? profileText.none
-      : (team.players.find((player) => player.uid === uid)?.name ?? `${profileText.uid} ${uid}`);
+      : (team.players.find((player) => player.uid === uid)?.name ?? profileText.unknownPerson);
 
   return (
     <div className="squad-summary">
