@@ -2174,5 +2174,7 @@ export const es: Strings = {
     steamBuild: (id) => `(compilación ${id})`,
   },
 
+  listFeedback: { failed: "La búsqueda falló", searching: "Buscando…", retry: "Reintentar" },
+
   errors,
 };

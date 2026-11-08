@@ -32,7 +32,7 @@ fields do not inherit that evidence. Promises remain unavailable on Windows.
 
 | Requested feature | Current status and remaining scope |
 | --- | --- |
-| Live player, staff and club search | Available; broaden behavioral and scale checks |
+| Live player, staff and club search | Available; all eight searchable lists use 200-row pages with Previous/Next and a range. Search/filter/sort changes return to page one. Backend page boundaries, fixture preview and native sample-data paging/profile retention checked; live player/staff/club paging, profile retention, search/sort/filter resets and a partial final player page checked on 7 November; large-career performance benchmarks remain open |
 | Advanced player search | Available: age, CA/PA, position, nationality, club, attributes, contract expiry, free agents, transfer/loan listing; extend against mapped fields |
 | Staff and club filters | Available for decoded values: staff job, unemployment, human managers only, age, nation, club, CA/PA and attributes; club gender, reputation and founded year |
 | Nations, stadiums, competitions, awards and officials search | Available: searchable nations represented by players/staff, senior stadiums per club with capacity filters, match officials (name/UID; Steam build 26340721, macOS arm64 and Intel, from a static in its build profile), and Competitions and Awards sections (#21) read through the game's own database tables: 8,084 competitions and 3,902 awards, about 0.1 s each, checked on macOS arm64 |
