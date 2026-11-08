@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FM Lens: Football Manager 27 companion for Mac</title>
-  <meta name="description" content="A free Mac companion for Football Manager 27. Search, compare and edit players, staff and clubs in your loaded career while FM runs.">
+  <title>FM Lens: Football Manager 27 companion for Mac and Windows</title>
+  <meta name="description" content="A free companion for Football Manager 27 on Mac and Windows. Search, compare and edit players, staff and clubs in your loaded career while FM runs.">
   <link rel="canonical" href="https://getfmlens.com/">
   <meta name="theme-color" content="#251b37">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://getfmlens.com/">
-  <meta property="og:title" content="FM Lens: Football Manager 27 companion for Mac">
+  <meta property="og:title" content="FM Lens: Football Manager 27 companion for Mac and Windows">
   <meta property="og:description" content="Search, compare and edit players, staff and clubs in your loaded FM27 career while you play. Free and open source.">
   <meta property="og:image" content="https://getfmlens.com/images/social.png">
   <meta property="og:image:width" content="1280">
@@ -27,7 +27,7 @@
     "name": "FM Lens",
     "url": "https://getfmlens.com/",
     "applicationCategory": "GameApplication",
-    "operatingSystem": "macOS",
+    "operatingSystem": "macOS, Windows",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
     "license": "https://www.gnu.org/licenses/gpl-3.0.html"
   }
@@ -49,15 +49,19 @@
 
     <div class="hero">
       <div class="wrap">
-        <h1>FM Lens is a free Mac companion for Football Manager 27.</h1>
+        <h1>FM Lens is a free companion for Football Manager 27 on Mac and Windows.</h1>
         <p class="lead">It reads the career you have loaded and lets you search, compare and edit players, staff and
           clubs while FM runs.</p>
         <div class="get">
-          <a class="button" href="/download/">
+          <a class="button" href="/download/?for=mac">
             <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>
             Download for Mac
           </a>
-          <p id="release-line">For Apple Silicon and Intel Macs.</p>
+          <a class="button" id="windows" href="/download/?for=windows">
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>
+            Download for Windows
+          </a>
+          <p id="release-line">For Apple Silicon and Intel Macs, and Windows 10 and 11.</p>
         </div>
         <div class="shot">
           <img src="images/fm-lens-1280.webp"
@@ -106,12 +110,12 @@
       <h2 id="start">Get started</h2>
       <ol class="steps">
         <li>
-          <p>Open the disk image and drag <strong>FM Lens</strong> onto <strong>Applications</strong>. The first time,
-            macOS cannot check the app: open <strong>System Settings › Privacy &amp; Security</strong> and choose
-            <strong>Open Anyway</strong>.</p>
-        </li>
-        <li>
-          <p>Save and quit FM, quit Steam, then choose <strong>Set up</strong> in FM Lens.</p>
+          <p>On a Mac, open the disk image and drag <strong>FM Lens</strong> onto <strong>Applications</strong>. The
+            first time, macOS cannot check the app: open <strong>System Settings › Privacy &amp; Security</strong> and
+            choose <strong>Open Anyway</strong>. Then save and quit FM, quit Steam, and choose <strong>Set up</strong>
+            in FM Lens.</p>
+          <p>On Windows, run the installer. If Windows protected your PC, choose <strong>More info</strong>, then
+            <strong>Run anyway</strong>.</p>
         </li>
         <li>
           <p>Start FM from Steam, load a copy of your save and choose <strong>Connect</strong>.</p>
@@ -130,11 +134,16 @@
   </footer>
 
   <script type="module">
-    import { latestRelease } from "./release.js";
+    import { latestRelease, thisComputer } from "./release.js";
 
+    if (thisComputer() === "windows") {
+      const windows = document.getElementById("windows");
+      windows.parentElement.prepend(windows);
+    }
     const release = await latestRelease();
     if (release) {
-      document.getElementById("release-line").textContent = `Version ${release.version}, for Apple Silicon and Intel Macs.`;
+      document.getElementById("release-line").textContent =
+        `Version ${release.version}, for Apple Silicon and Intel Macs, and Windows 10 and 11.`;
     }
   </script>
 </body>

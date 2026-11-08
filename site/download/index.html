@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Download FM Lens</title>
-  <meta name="description" content="Download the latest FM Lens for Mac.">
+  <meta name="description" content="Download the latest FM Lens for Mac or Windows.">
   <link rel="canonical" href="https://getfmlens.com/download/">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://getfmlens.com/download/">
   <meta property="og:title" content="Download FM Lens">
-  <meta property="og:description" content="Download the latest FM Lens for Mac.">
+  <meta property="og:description" content="Download the latest FM Lens for Mac and Windows.">
   <meta property="og:image" content="https://getfmlens.com/images/social.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
@@ -35,30 +35,37 @@
       <h1 id="title">Downloading FM Lens</h1>
       <p id="status" role="status">Your download starts in a moment. If it does not,
         <a id="fallback" href="https://github.com/IamDejman/fm-lens-releases/releases/latest">download it from GitHub</a>.</p>
-      <p>Open the disk image and drag <strong>FM Lens</strong> onto <strong>Applications</strong>. The first time, macOS
-        cannot check the app: open <strong>System Settings › Privacy &amp; Security</strong> and choose
-        <strong>Open Anyway</strong>.</p>
+      <p id="mac">On a Mac, open the disk image and drag <strong>FM Lens</strong> onto <strong>Applications</strong>.
+        The first time, macOS cannot check the app: open <strong>System Settings › Privacy &amp; Security</strong> and
+        choose <strong>Open Anyway</strong>.</p>
+      <p id="windows">On Windows, run the installer. If Windows protected your PC, choose <strong>More info</strong>,
+        then <strong>Run anyway</strong>.</p>
       <p><a href="/#start">How to get started</a></p>
     </div>
   </main>
 
   <script type="module">
     import { track } from "../analytics.js";
-    import { latestRelease, RELEASES_PAGE } from "../release.js";
+    import { latestRelease, RELEASES_PAGE, thisComputer } from "../release.js";
 
+    // The home page names the computer; a link without it gets the download for this one.
+    const asked = new URLSearchParams(location.search).get("for");
+    const computer = asked === "mac" || asked === "windows" ? asked : thisComputer();
+    document.getElementById(computer === "windows" ? "mac" : "windows").hidden = true;
     const release = await latestRelease();
-    const fallback = document.getElementById("fallback");
-    if (release) {
+    const url = release?.downloads[computer];
+    if (url) {
       document.getElementById("title").textContent = `Downloading FM Lens ${release.version}`;
-      fallback.href = release.url;
-      track("download_started", { version: release.version, page: "download" });
-      window.location.assign(release.url);
+      document.getElementById("fallback").href = url;
+      track("download_started", { version: release.version, page: "download", computer });
+      window.location.assign(url);
     } else {
-      document.getElementById("status").innerHTML = "";
-      document.getElementById("status").append(
-        "GitHub could not be reached from here. ",
+      const status = document.getElementById("status");
+      status.innerHTML = "";
+      status.append(
+        release ? "This release has no download for this computer. " : "GitHub could not be reached from here. ",
         Object.assign(document.createElement("a"), { href: RELEASES_PAGE, textContent: "Open the latest release" }),
-        " and choose the file that ends in .dmg.",
+        computer === "windows" ? " and choose the file that ends in -setup.exe." : " and choose the file that ends in .dmg.",
       );
     }
   </script>

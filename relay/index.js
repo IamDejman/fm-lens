@@ -75,7 +75,7 @@ export function senderOf(address) {
 }
 
 /**
- * The report in `input`, or why it is turned away. `what` is required; `version`, `fmBuild` and `macos` are one line
+ * The report in `input`, or why it is turned away. `what` is required; `version`, `fmBuild` and `macos` (the system) are one line
  * each, and `changes` lists what the user changed before it happened.
  */
 export function readReport(input) {
@@ -96,13 +96,14 @@ export function readReport(input) {
     what: text("what", LIMITS.what, true),
     version: text("version", LIMITS.line),
     fmBuild: text("fmBuild", LIMITS.line),
-    macos: text("macos", LIMITS.line),
+    // Sent as `macos` by every version, from when FM Lens ran on macOS only.
+    system: text("macos", LIMITS.line),
     changes: text("changes", LIMITS.changes),
   };
   if (Object.values(report).some((value) => value === undefined) || report.what === "") {
     return { error: "invalid" };
   }
-  for (const key of ["version", "fmBuild", "macos"]) {
+  for (const key of ["version", "fmBuild", "system"]) {
     if (/[\r\n]/.test(report[key])) {
       return { error: "invalid" };
     }
@@ -174,7 +175,7 @@ export function issueFor(report, files = []) {
   const body = [
     section("FM Lens version", report.version),
     section("FM build", report.fmBuild),
-    section("macOS", report.macos),
+    section("System", report.system),
     section("What happened", report.what),
     section("What you changed in FM Lens before it happened", report.changes),
     ...(files.length > 0 ? [section("Files", files.map(fileLink).join("\n\n"))] : []),
