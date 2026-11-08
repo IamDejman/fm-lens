@@ -204,6 +204,10 @@ const errors: ErrorTexts = {
   "export.notAllowed": (p) =>
     `FM Lens ${p.folder} klasörüne yazamıyor. macOS, Belgeler klasörünü kullanıp kullanamayacağını sorduysa ` +
     "Sistem Ayarları › Gizlilik ve Güvenlik › Dosyalar ve Klasörler'den izin verin, sonra yeniden dışa aktarın.",
+  "export.blocked": (p) =>
+    `FM Lens ${p.folder} klasörüne kaydedemiyor. Windows Güvenliği engelliyorsa Fidye yazılımına karşı koruma › ` +
+    "Denetimli klasör erişimi aracılığıyla bir uygulamaya izin ver bölümünden FM Lens'e izin verin, sonra yeniden " +
+    "dışa aktarın.",
   "export.noFolder": () => "Dışa aktarılacak bir klasör yok.",
   "export.notExported": () => "Bu, FM Lens'ün dışa aktardığı bir dosya değil.",
   "export.openFailed": (p) => `Açılamadı: ${p.reason}`,
@@ -823,6 +827,7 @@ export const tr: Strings = {
     fitness: "Kondisyon",
     international: "Milli takım",
     noPromises: "Söz yok",
+    promisesUnavailable: "Windows'ta henüz kullanılamıyor",
     noContract: "Sözleşmesi yok",
     setAttributes: "Bütün özellikleri şuna ayarla:",
     setAttributesButton: "Uygula",
@@ -1462,6 +1467,19 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.6.2": [
+        "FM Lens artık Windows'ta. getfmlens.com adresinden indirin.",
+        "Windows'ta güncellemeler arka planda iner ve Güncellemek için yeniden başlat'a bastığınızda kurulur.",
+        "Windows'ta Güncellemeleri Denetle, Ayarlar > Hakkında bölümündedir.",
+        "Aynı anda yalnızca bir FM Lens çalışır: yeniden açtığınızda penceresi öne gelir.",
+      ],
+      "0.6.1": [
+        "Yeni oyuncu profili: Özellikler, Moral, Sözleşme, Sağlık ve Kariyer sekmeleri ve adın altında bunları açan durum etiketleri.",
+        "Ayarlar artık kendi penceresinde açılır: dişli simgesi veya Cmd+,.",
+        "Her listede Filtreler var; etkin her filtre kaldırabileceğiniz bir etiket olarak görünür.",
+        "FM Lens’in sayı gösterdiği yerlerde FM’nin kendi adları: personel görevleri, Altyapı adayları ve Yıpranmış.",
+        "İmza penceresi, bir oyuncuyu imzalamak anlaşılmış bir transferini iptal edecekse sizi uyarır.",
+      ],
       "0.6.0": [
         "FM Lens güncellemeleri, FM içinde çalışan yardımcıyı kullanmaya devam eder. Desteklenen özellikler oyunu yeniden başlatmadan çalışır.",
         "Eski bir yardımcı FM ekranlarını hemen yenileyemeyebilir veya yeni bir işlemi desteklemeyebilir. FM’yi bir sonraki başlatışınızda güncellenir.",

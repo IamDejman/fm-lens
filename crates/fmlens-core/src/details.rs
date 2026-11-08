@@ -120,8 +120,9 @@ pub struct PlayerDetails {
     pub injuries: Vec<Injury>,
     /// Current bans (see [`crate::Session::bans`]).
     pub bans: Vec<Ban>,
-    /// The promises made to him, open and recently closed (see [`crate::Session::promises`]).
-    pub promises: Vec<Promise>,
+    /// The promises made to him, open and recently closed (see [`crate::Session::promises`]); none where the layout does
+    /// not place them (Windows, where they have not been traced).
+    pub promises: Option<Vec<Promise>>,
     /// Secondary nationalities and homegrown status (see [`crate::Session::relations`]), and how many more his list
     /// has room for.
     pub ties: Vec<Relation>,
@@ -338,7 +339,7 @@ pub fn read_player_details(
         // The session reads them, as they hang off a record of their own.
         injuries: Vec::new(),
         bans: Vec::new(),
-        promises: Vec::new(),
+        promises: None,
         ties: Vec::new(),
         tie_room: 0,
         preferences: Vec::new(),

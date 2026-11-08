@@ -702,8 +702,11 @@ export interface PlayerDetails extends PlayerSummary {
   injuries: Injury[];
   /** His current bans; empty when he has none. */
   bans: Ban[];
-  /** The promises made to him, open and recently closed; FM drops a closed one 31 days after it ends. */
-  promises: Promise[];
+  /**
+   * The promises made to him, open and recently closed; FM drops a closed one 31 days after it ends. Null where the editor
+   * cannot read them (Windows, so far).
+   */
+  promises: Promise[] | null;
   /** His secondary nationalities, and the nations and clubs he was trained in (his homegrown status). */
   ties: Tie[];
   /** How many more ties his list has room for: the game sizes it to what it holds, and the editor allocates nothing. */
