@@ -1291,6 +1291,26 @@ banned, so both were off), and saving, quitting and reloading an edited copy.
 Max tactics is a game action, checked in "Windows game actions" above. What
 Windows still lacks next to macOS is in `docs/internal/WINDOWS-PARITY-HANDOFF.md`.
 
+## Windows installer, one copy at a time and self-update (7 November 2026)
+
+Windows Server 2022 on the AWS g4dn.xlarge, signed in over RDP. FM was not running: none of this touches the game.
+
+The installer was the `fm-lens-windows-installer` artifact of #147's Validate run (42413779944), FM Lens 0.6.1 with
+the Windows updater (#146) and the one-copy guard (#147). Its zip matched the digest GitHub publishes for the
+artifact (`sha256:05226e32…2b607cd8`), and `FM Lens_0.6.1_x64-setup.exe` had the same SHA-256 on the Mac and on the
+box (`F85704E3…F1728ED4`). The update came from the published FM Lens 0.6.2 release.
+
+| Check | Result |
+|---|---|
+| Silent install, `/S`, over SSH as Administrator | Exit 0. `FM Lens.exe` and `uninstall.exe` in `%LOCALAPPDATA%\FM Lens`, a Start menu entry, and FM Lens 0.6.1 in the user's installed apps. No administrator prompt |
+| First run | The window opened on the connect screen with What's new for 0.6.1. `latest.json` (0.6.1) had no Windows entry yet, and the app showed no update notice or error |
+| One copy at a time | With the window minimized, a second `FM Lens.exe` exited in 0.05 s with code 0. One FM Lens process remained, and its window was restored and in front |
+| Update to the published 0.6.2 | With 0.6.2 published (#150), Settings, About, Check for Updates in the open 0.6.1 window downloaded it, and the colophon showed Relaunch to update. Relaunch closed FM Lens and started the installer the updater runs (`/P /R /UPDATE`) |
+| Installer language on that update | The installer first asked for a language: the silent 0.6.1 install had stored none. After OK, FM Lens 0.6.2 opened 2 s later with What's new for 0.6.2. `FM Lens.exe` was 0.6.2, FM Lens 0.6.2 was the one entry in installed apps, one FM Lens process ran, and the desktop and Start menu shortcuts still opened it |
+| Install by hand | After uninstalling and clearing the stored language, the published `FM-Lens-0.6.2-windows-x64-setup.exe` (SHA-256 `C2ACAC91…84927495`, the release's digest) asked for a language, then showed the welcome page, the folder (`%LOCALAPPDATA%\FM Lens`) and Finish with Run FM Lens and a desktop shortcut ticked. It stored the language |
+| Update after an install by hand | The same installer run as the updater runs it asked nothing, and FM Lens reopened 2 s later |
+| Installer art (#153) | The installer from #153's CI build (SHA-256 `D58A6409…FE813073`) showed the FM Lens icon in its title bar, page header and taskbar, and the FM Lens wordmark on its welcome and finish pages. FM Lens opened from Finish, with one entry in installed apps and one process |
+
 
 ## Modal navigation shortcuts (7 November 2026)
 

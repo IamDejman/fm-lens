@@ -18,8 +18,11 @@ function promiseDates({ made, due, closed }: PlayerPromise): string {
     .join(" · ");
 }
 
-/** The group, which says so when he has no promise. Closing asks no question: it is logged, and undone from Changes. */
-export function PromisesGroup({ uid, promises }: { uid: number; promises: PlayerPromise[] }) {
+/**
+ * The group, which says so when he has no promise, or when the editor cannot read them (`promises` null). Closing asks
+ * no question: it is logged, and undone from Changes.
+ */
+export function PromisesGroup({ uid, promises }: { uid: number; promises: PlayerPromise[] | null }) {
   const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
   const [closing, setClosing] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,7 +75,9 @@ export function PromisesGroup({ uid, promises }: { uid: number; promises: Player
           {error}
         </p>
       )}
-      {promises.length === 0 ? (
+      {promises === null ? (
+        <p className="injuries-none">{profileText.promisesUnavailable}</p>
+      ) : promises.length === 0 ? (
         <p className="injuries-none">{profileText.noPromises}</p>
       ) : (
         <ul ref={list} className="injury-list promise-list">

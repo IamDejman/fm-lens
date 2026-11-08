@@ -197,6 +197,7 @@ export async function sendReport(facts: ReportFacts, what: string, files: Attach
       what,
       version: facts.version ?? "",
       fmBuild: describeGame(facts),
+      // The relay's name for the system, from when FM Lens ran on macOS only.
       macos: await systemVersion(),
       changes: describeChanges(facts.log),
       ...(files.length > 0 ? { attachments: await upload(files) } : {}),

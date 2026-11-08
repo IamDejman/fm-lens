@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy: FM Lens</title>
+  <meta name="description" content="What FM Lens and getfmlens.com send, and how to turn it off.">
+  <link rel="canonical" href="https://getfmlens.com/privacy/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://getfmlens.com/privacy/">
+  <meta property="og:title" content="Privacy: FM Lens">
+  <meta property="og:description" content="What FM Lens and getfmlens.com send, and how to turn it off.">
+  <meta property="og:image" content="https://getfmlens.com/images/social.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#251b37">
+  <link rel="icon" type="image/png" sizes="64x64" href="../images/icon-64.png">
+  <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+  <script type="module" src="../analytics.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="masthead">
+    <div class="wrap bar">
+      <a class="brand" href="/" aria-label="FM Lens home">
+        <img src="../images/symbol.png" alt="" width="40" height="40">
+        <span translate="no">FM Lens</span>
+      </a>
+      <nav aria-label="Elsewhere">
+        <a href="/releases/">Release notes</a>
+        <a href="https://github.com/IamDejman/fm-lens">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <div class="message policy">
+      <h1>Privacy</h1>
+      <p>FM Lens and this site count use anonymously with PostHog, to see how many people use them and which
+        features matter. No names, no values you edit, no file paths and nothing you type are sent. PostHog does not
+        keep your IP address.</p>
+
+      <h2>The app</h2>
+      <p>The app sends these events with a random install id, the app version, your macOS or Windows version and
+        processor, and the app language. PostHog keeps the country and city.</p>
+      <ul>
+        <li><code translate="no">app_opened</code></li>
+        <li><code translate="no">fm_connected</code>: FM's version and store</li>
+        <li><code translate="no">tab_viewed</code>: the section, such as Players</li>
+        <li><code translate="no">edit_applied</code>: the kind of edit, such as <code translate="no">move_player</code> or
+          <code translate="no">contract.wage</code>, never the value</li>
+        <li><code translate="no">change_undone</code>, <code translate="no">players_exported</code>, <code translate="no">report_sent</code></li>
+      </ul>
+      <p>To stop it, turn off <strong>Share anonymous usage</strong> in Settings.</p>
+
+      <h2>This site</h2>
+      <p>The site counts page views and downloads started, without cookies or stored ids. It does not keep your
+        country or city.</p>
+
+      <h2>Questions</h2>
+      <p><a href="https://github.com/IamDejman/fm-lens/issues">Open an issue on GitHub</a>.</p>
+    </div>
+  </main>
+</body>
+</html>

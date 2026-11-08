@@ -449,6 +449,7 @@ function App() {
           <span data-tour="settings">
             <Settings
               busy={busy !== null}
+              onCheckForUpdates={inTauri && !MAC ? () => void checkNow() : undefined}
               details={[
                 `FM Lens${version ? ` ${version}` : ""}`,
                 connection
