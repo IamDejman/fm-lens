@@ -439,11 +439,17 @@ footer a {
   grid-row: 1 / span 3;
 }
 
-.release-download {
+.release-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   align-self: start;
   justify-self: start;
-  min-height: 44px;
   margin-bottom: 24px;
+}
+
+.release-download {
+  min-height: 44px;
   padding: 0 20px;
   font-size: 1rem;
 }

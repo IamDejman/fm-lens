@@ -150,7 +150,8 @@ mod imp {
     #[cfg(not(windows))]
     pub fn refresh(_: &AppHandle) {}
 
-    /// The library `bytes` in `folder`, under a name of its own content, written there unless it already is.
+    /// The library `bytes` in `folder`, under a name of its own content, written there unless it already is. The
+    /// libraries earlier versions of the app left there go (see `tidy`).
     #[cfg(all(windows, fmlens_bridge))]
     fn place(folder: &std::path::Path, bytes: &[u8]) -> Option<std::path::PathBuf> {
         use std::hash::{DefaultHasher, Hash, Hasher};
@@ -158,14 +159,29 @@ mod imp {
         let mut hasher = DefaultHasher::new();
         bytes.hash(&mut hasher);
         let path = folder.join(format!("fmlens_bridge-{:016x}.dll", hasher.finish()));
-        if std::fs::read(&path).is_ok_and(|on_disk| on_disk == bytes) {
-            return Some(path);
+        if !std::fs::read(&path).is_ok_and(|on_disk| on_disk == bytes) {
+            std::fs::create_dir_all(folder).ok()?;
+            let partial = folder.join(format!("fmlens_bridge-{}.partial", std::process::id()));
+            std::fs::write(&partial, bytes).ok()?;
+            std::fs::rename(&partial, &path).ok()?;
         }
-        std::fs::create_dir_all(folder).ok()?;
-        let partial = folder.join(format!("fmlens_bridge-{}.partial", std::process::id()));
-        std::fs::write(&partial, bytes).ok()?;
-        std::fs::rename(&partial, &path).ok()?;
+        tidy(folder, &path);
         Some(path)
+    }
+
+    /// Removes every other bridge library, or part-written one, in `folder` but `keep`. One the game still has loaded
+    /// cannot be removed, and stays until a later start.
+    #[cfg(all(windows, fmlens_bridge))]
+    fn tidy(folder: &std::path::Path, keep: &std::path::Path) {
+        let Ok(entries) = std::fs::read_dir(folder) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path != keep && entry.file_name().to_string_lossy().starts_with("fmlens_bridge-") {
+                let _ = std::fs::remove_file(path);
+            }
+        }
     }
 }
 

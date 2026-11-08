@@ -12,7 +12,7 @@ import { describeBuild, describeError, formatDate, formatNumber } from "./format
 import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
-import { isShortcut, MAC, shortcutAria, shortcutLabel } from "./keys";
+import { isShortcut, MAC, SECTION_SHORTCUTS, shortcutAria, shortcutLabel } from "./keys";
 import { ReportDialog } from "./ReportDialog";
 import { Settings } from "./Settings";
 import {
@@ -322,7 +322,7 @@ function App() {
       return;
     }
     const openSection = (event: KeyboardEvent) => {
-      const index = VIEWS.findIndex((_, i) => isShortcut(event, String(i + 1)));
+      const index = SECTION_SHORTCUTS.findIndex((key, i) => i < VIEWS.length && isShortcut(event, key));
       if (index >= 0) {
         event.preventDefault();
         show(VIEWS[index].id);
@@ -449,6 +449,7 @@ function App() {
           <span data-tour="settings">
             <Settings
               busy={busy !== null}
+              onCheckForUpdates={inTauri && !MAC ? () => void checkNow() : undefined}
               details={[
                 `FM Lens${version ? ` ${version}` : ""}`,
                 connection
