@@ -1752,3 +1752,31 @@ section, invalid-only drafts for navigation/Close/Done, and zoom changes without
 a window resize. Native evidence is macOS only; Windows interaction and an
 exhaustive window-size matrix were not exercised locally. Rust/domain code was
 unchanged by these fixes.
+
+### Permit request feedback (8 November 2026)
+
+Reproduced the reported native UI behavior for Kai Havertz (91151081), at R. Madrid
+in the running `FM Lens Exact Wage 2026-11-08` test career, game date 8 Dec 2027.
+Same supported Steam ARM64 process 43238 and UUID
+F4540355-2186-39CB-9119-C706A6A35346. The old UI offered Grant with no permit
+record; clicking it returned “FM didn't make the change.”
+
+The backend intentionally invokes FM's unforced permit function, which may make
+no record under its rules. A club and an empty permit list do not prove a player
+needs one. No traced per-player eligibility query is exposed, so the frontend now
+labels the action Request permit rather than promising a grant. On the structured
+`call.declined` result from a request, it refreshes the profile and reports that FM
+did not issue a permit and the player may not need one. This is a no-change
+status, not success or an assertion that the player is exempt. Other failures,
+including failed revocation, remain errors. No backend force flag was changed.
+
+Rebuilt, signed and relaunched the native debug app. Havertz's Request permit
+showed the new status after the live call; no Revoke button or successful Changes
+entry appeared. The screenshot was inspected at the native window size. No
+Continue or save was used. Main and test save SHA-256 hashes stayed unchanged. Existing unsaved changes in
+the running test copy were preserved. Native Intel and Windows were not exercised.
+
+The isolated permit branch passed 19 frontend checks (17 Vitest and two keyboard
+cases), including three new permit UI cases covering declined requests, successful request/reread, stale
+feedback on player change, failed revoke, connection failure and read-only or
+unavailable actions. Production frontend and native ARM64 bundle builds passed.
