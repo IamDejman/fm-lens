@@ -1006,7 +1006,7 @@ export interface LoggedChange {
   earlierGame?: boolean;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
-  /** Set for a change nothing undoes: a transfer agreed for a later day FM cancelled (`cancel_future_transfers`). */
+  /** Set when Undo is unavailable: a cancelled future transfer, or the original signing whose offer was cancelled. */
   permanent?: boolean;
   // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0 (adding
   // one, `add_injury`, from 0 to 1), granting or taking away a work permit (`set_work_permit`) as one of his field
