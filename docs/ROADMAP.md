@@ -135,6 +135,12 @@ See the latest entry in EDITING-VALIDATION.md.
 
 Do not mark a row Available just because upstream contains it or compilation passes.
 
+- Wage entry: preserve the typed amount instead of silently snapping to FM display
+  steps; show a localized estimate of FM's rounded weekly display. Frontend
+  regression coverage added. Native ARM64 Apply and fresh readback confirmed
+  £260,000 exactly on a separate career copy; native Windows and persistence
+  checks remain pending.
+
 - Permit actions: Request permit accurately reflects FM's eligibility-gated call.
   An unissued request shows a no-change status; actual errors remain errors.
   Reproduced and verified with Havertz in the native ARM64 app. Per-player
