@@ -1321,6 +1321,13 @@ Four interaction tests cover: every section shortcut isolated behind a modal plu
 Checks: all four tests and the production frontend build passed locally on macOS; the existing Vite chunk warning remains. Windows execution of the new tests requires the CI run and has not been claimed as a local Windows pass. No FM data was read or edited and no native UI was changed beyond that already verified shortcut fix. jsdom geometry/media shims are explicit in tests/setup.ts; these tests do not establish native rendering, performance, Windows bridge behaviour or edited-save persistence.
 
 
+## Modal navigation shortcuts (7 November 2026)
+
+Branch `codex/modal-shortcut-isolation`, based on main at `06963d9`. Section navigation and modal shortcut interception now share the same nine section keys, so shortcuts 7, 8 and 9 are intercepted along with 1 through 6. Added frontend regression checks for all nine keys on Mac and Windows modifier conventions, including modified/composing input and preservation of ordinary editing shortcuts; CI runs them with `npm test`.
+
+Checks: both frontend shortcut tests, production frontend build and `git diff --check` passed. The existing large-chunk warning remains. Native verification then passed in the ad-hoc-signed Tauri debug app: connect sample data, open Lukas Kowalski, open Settings with Cmd+comma, press Cmd+1 through Cmd+9, observing Settings and its focus after each key. Escape returned to the same player profile; Cmd+9 then opened Changes normally. For this check only, the API adapter used the existing sample-data backend inside the native WKWebView; that temporary change was restored before committing. No FM process, career, game-memory write or installed app was involved. This verifies native keyboard/modal handling, not live-game editing or pending-edit consequences.
+
+
 ## Search result pagination (7 November 2026)
 
 Branch `codex/list-pagination`, based on main at `198d4e2`. All eight list search commands accept an optional offset (omitting it retains page one), filter and sort before slicing, and cap responses at 200 rows. SearchIndex resolves equal rank and name with UID; player column sorts retain this stable base order. The frontend uses Previous/Next and the existing translated range labels; it resets for search/filter/order changes, retains an open profile, keeps old rows on request failure, and permits retrying that page. A refresh beyond the shortened list clamps to the last page.
