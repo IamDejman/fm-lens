@@ -14,9 +14,11 @@ export function isShortcut(event: KeyboardEvent, key: string): boolean {
   );
 }
 
+export const SECTION_SHORTCUTS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
+
 /** Whether `event` is one of the app's shortcuts, which a dialog keeps from what is behind it. */
 export function isAppShortcut(event: KeyboardEvent): boolean {
-  return ["1", "2", "3", "4", "5", "6", "f", "s", ","].some((key) => isShortcut(event, key));
+  return [...SECTION_SHORTCUTS, "f", "s", ","].some((key) => isShortcut(event, key));
 }
 
 /** The shortcut as the platform writes it: "⌘1", "Ctrl+1". */

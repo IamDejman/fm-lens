@@ -3,6 +3,7 @@
 Created with the built-in imagegen tool. Both PNG masters have genuine transparent backgrounds. Native icon sizes are derived with the Tauri icon utility.
 
 - Symbol: `app/src/assets/brand/fm-lens-symbol.png`
+- Runtime symbol: `app/src/assets/brand/fm-lens-symbol-120.png` (120×120 transparent derivative for the 40 CSS-pixel masthead, up to 3× density). Regenerate with `magick app/src/assets/brand/fm-lens-symbol.png -resize 120x120 -strip -define png:compression-level=9 app/src/assets/brand/fm-lens-symbol-120.png`; keep the master unchanged.
 - Wordmark: `app/src/assets/brand/fm-lens-logo.png`
 
 ## Symbol prompt

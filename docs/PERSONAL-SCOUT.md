@@ -1,7 +1,7 @@
 # FM Lens
 
-Personal macOS scouting milestone, derived from the upstream editor the README
-credits, at commit `5fdb1e3`.
+FM27 Steam companion for macOS and Windows, derived from the upstream editor
+the README credits, at commit `5fdb1e3`.
 The project retains its GPL-3.0-or-later license and upstream attribution.
 
 ## Scope
@@ -13,10 +13,28 @@ read-only. The probe is compiled with the memory crate's `read-only` feature, so
 that feature. There is no separate switch that turns editing on: connecting to
 a known build enables the mapped fields.
 
-Nations represented by loaded players, staff and competitions, and senior
-stadiums with every club that plays at each, have separate read-only lists. These
-do not establish complete nation/stadium database coverage or expose nation rules. Staff and club filters cover additional decoded
-values; a skippable first-run introduction covers navigation and settings.
+The nation list covers nations represented by loaded players, staff and
+competitions; the stadium list covers senior stadiums with every club that plays
+at each. Neither is a complete database scan.
+Mapped nation fields and official fields can be edited where the build supports
+them; stadium browsing is read-only. On ARM64, England's population, men's
+reputation and nationality rules passed the bounded save/quit/reload checks in
+[the validation record](EDITING-VALIDATION.md#nation-editing-5-november-2026).
+Other nation fields and official edits have narrower evidence; see the roadmap.
+Staff and club filters cover additional decoded values.
+
+## Platforms and evidence
+
+FM Lens ships a universal Mac app and, from 0.6.2, a Windows installer. The
+verified game build is FM27 Steam 26340721. ARM64 has the broadest local
+validation; Intel checks used Rosetta and cover selected reads/actions.
+Windows app edits and undo were exercised on Windows Server 2022, including
+attributes, contracts, mass edits, templates, squad actions and manager fields.
+Windows installer and self-update checks are recorded separately. Windows
+edited-save persistence and Windows 10/11 execution remain unverified; promises
+are unavailable on Windows. See the dated Windows entries in
+[EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026).
+Availability on a platform does not certify every mapped field.
 
 Upstream update installation is disabled so it cannot replace this build.
 
@@ -25,7 +43,7 @@ refuses writes because it is compiled with `read-only`. The desktop app is not,
 so a known build can be edited. Neither one is an OS-enforced read-only port.
 Bridge client identity hardening remains a separate engineering task.
 
-## Build
+## Local Apple Silicon build
 
 Requirements: Xcode command-line tools, Rust stable, Node.js and npm.
 
@@ -39,12 +57,15 @@ npm run tauri -- build --debug --bundles app --config src-tauri/tauri.scout.conf
 
 The Apple Silicon app is `target/debug/bundle/macos/FM Lens.app`.
 This is a local development build, signed ad hoc, not a notarized release.
-It is intended for the native Apple Silicon game; the bundled bridge is not universal.
+This debug build targets the native Apple Silicon game; release builds package
+both Mac architectures. Windows builds and release packaging are described in
+[DEVELOPING.md](DEVELOPING.md#releasing).
 
-## Connect
+## Connect on macOS
 
-The game must start with the bridge loaded. Attaching it to an already running
-career is not supported.
+On macOS, FM must start with the helper loaded; adding it to an already-running
+game is not supported. Windows needs no Steam launch-option setup: install the
+app, start FM, load a career copy and Connect.
 
 1. Save your current career in FM. Quit FM, then quit Steam.
 2. Open FM Lens and select **Set up the bridge**, or run:
@@ -135,7 +156,12 @@ compile alone does not establish that live data is correct.
 The Changes tab exposes applied history and conditional undo. Single edits carry
 the value observed when editing began; bulk edits carry their previewed values.
 Unknown fingerprints and changed career storage refuse mutations, including undo.
-Reload creates a fresh Session and discards unsafe history and previews.
+Reload creates a fresh Session and clears previews. While FM Lens remains
+running, Changes retains its log through Reload and FM restarts. Changes from
+a closed game or a loaded save are listed as Earlier game with Undo disabled;
+history retention does not authorize reuse of old targets. A companion quit is
+not covered by this in-memory history. See the 7 November refresh checks in
+[EDITING-VALIDATION.md](EDITING-VALIDATION.md#edits-show-without-continue-7-november-2026).
 
 Clone & templates can capture selected ability, attribute, personality, position
 and trait groups. Templates use versioned JSON, a local library and destination
@@ -176,7 +202,7 @@ build mismatches and career guards remain errors. Native IPC regression tests
 cover this compatibility path; a live update during a copied-career editing
 session remains unverified (see EDITING-VALIDATION.md).
 
-## Brand and desktop verification
+## Brand and desktop verification (4 November 2026)
 
 The chosen product name is **FM Lens**. Original transparent PNG logo masters
 and generated macOS icons are in the repository; see `docs/brand/FM-LENS.md`

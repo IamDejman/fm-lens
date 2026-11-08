@@ -67,8 +67,8 @@ pub use filter::{
 };
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use game_calls::{
-    AddedInjury, AgreedSigning, EndedLoan, FutureTransfer, GameActions, InjuryKind, MANAGER_JOB, ManagerPlan,
-    MovedManager, PermitChange, SignedPlayer, StartedLoan, TransferredPlayer,
+    AddedInjury, AgreedSigning, EndedLoan, FutureTransfer, GameActions, GameRelease, InjuryKind, MANAGER_JOB,
+    ManagerPlan, MovedManager, PermitChange, SignedPlayer, StartedLoan, TransferredPlayer,
 };
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};

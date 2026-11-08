@@ -9,11 +9,11 @@ use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSummary, CaptainRole, CaptainSet, Change, Clause,
     ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionFilter, CompetitionRule,
     CompetitionSummary, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate,
-    FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES,
-    Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB,
-    MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSummary, OfficialFilter,
-    OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter,
-    PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
+    FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
+    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
+    MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSummary,
+    OfficialFilter, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
     PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
     SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter,
     StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer,
@@ -1191,30 +1191,44 @@ impl Connection {
         Ok(Some(self.session.plan_fee(buyer, seller, fee)?))
     }
 
-    /// Works out moving the player `uid` to the club `club` on the contract `terms`: written by FM Lens, or, from a
-    /// club a human manager runs, made by the game itself where it can.
+    /// Works out moving the player `uid` to the club `club` on the contract `terms`: a transfer the game makes itself,
+    /// with its history and fee, where it can; else written by FM Lens.
     fn plan_move(&self, uid: u32, club: u32, terms: MoveTerms) -> Result<MoveRoute, Failure> {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
         let to = self.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
-        match self.session.plan_club_move(player, to, terms, &self.human_clubs) {
-            Err(MoveError::HumanClub) if self.session.game_actions().transfer => {
-                Ok(MoveRoute::Game(self.session.plan_transfer(player, to, terms)?))
-            }
-            planned => Ok(MoveRoute::Write(planned?)),
+        if self.session.game_actions().transfer {
+            return Ok(MoveRoute::Game(self.session.plan_transfer(player, to, terms)?));
         }
+        Ok(MoveRoute::Write(self.session.plan_club_move(player, to, terms, &self.human_clubs)?))
     }
 
-    /// Works out releasing the player `uid` from his club.
+    /// Works out releasing the player `uid` from his club. Where the game releases players itself, it does so at your
+    /// club too, as its editor does; FM Lens writes no release there.
     fn plan_release(&self, uid: u32) -> Result<MovePlan, Failure> {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
-        Ok(self.session.plan_release(player, &self.human_clubs)?)
+        let human_clubs: &[u32] = if self.session.game_actions().release { &[] } else { &self.human_clubs };
+        Ok(self.session.plan_release(player, human_clubs)?)
     }
 
-    /// Works out the players `uid` and `other` swapping clubs.
-    fn plan_swap(&self, uid: u32, other: u32) -> Result<MovePlan, Failure> {
+    /// Works out the players `uid` and `other` swapping clubs: two transfers the game makes itself, without a fee,
+    /// where it can; else written by FM Lens.
+    fn plan_swap(&self, uid: u32, other: u32) -> Result<SwapRoute, Failure> {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
         let partner = self.players.get(other).ok_or_else(|| not_found(Entity::Player, other))?;
-        Ok(self.session.plan_club_swap(player, partner, &self.human_clubs)?)
+        if !self.session.game_actions().transfer {
+            return Ok(SwapRoute::Write(self.session.plan_club_swap(player, partner, &self.human_clubs)?));
+        }
+        let club_of = |player: &PlayerSummary| -> Result<&fmlens_core::ClubSummary, Failure> {
+            let uid = player.club_uid.ok_or(MoveError::FreeAgent)?;
+            self.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))
+        };
+        let first = self.session.plan_transfer(player, club_of(partner)?, MoveTerms::default())?;
+        let second = self.session.plan_transfer(partner, club_of(player)?, MoveTerms::default())?;
+        let leg = |plan: &TransferPlan| (plan.player, plan.from_club, plan.to_club);
+        if let Some(uid) = stale_swap_row(leg(&first), leg(&second)) {
+            return Err(MoveError::Moved { uid }.into());
+        }
+        Ok(SwapRoute::Game(first, second))
     }
 
     /// What the list row of the player `uid` says about his club and contract end now.
@@ -1350,28 +1364,35 @@ impl Connection {
     /// move.
     fn log_release(&mut self, done: ClubMove) -> LoggedChange {
         let rows = vec![self.row_before(done.player)];
-        self.players.update(done.player, |player| {
+        let (player, from_club) = (done.player, done.from_club);
+        self.log_left_club(player, from_club, Undo::Move(LoggedMove { done, rows, paid: Vec::new() }))
+    }
+
+    /// Logs a release the game made, as one FM Lens writes is logged. Nothing undoes it.
+    fn log_game_release(&mut self, released: GameRelease) -> LoggedChange {
+        self.log_left_club(released.player, released.from_club, Undo::Permanent)
+    }
+
+    /// Logs the player `player` leaving the club `from_club` as a free agent, as a change of his `club` from its UID
+    /// to 0, undone by `undo`, and brings his list row up to date: no club and no contract.
+    fn log_left_club(&mut self, player: u32, from_club: u32, undo: Undo) -> LoggedChange {
+        self.players.update(player, |player| {
             player.club = None;
             player.club_uid = None;
             player.contract_expires = None;
         });
-        let change = Change {
-            entity: Entity::Player,
-            uid: done.player,
-            field: "club".to_owned(),
-            old: i64::from(done.from_club),
-            new: 0,
-        };
+        let change =
+            Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: i64::from(from_club), new: 0 };
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
-            name: self.player_name(done.player),
+            name: self.player_name(player),
             change,
             undone_at: None,
             earlier_game: false,
             batch: None,
             moved: Some(MovedClubs {
-                from: Some(self.club_name(done.from_club)),
+                from: Some(self.club_name(from_club)),
                 to: None,
                 with: None,
                 fee: None,
@@ -1380,7 +1401,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
-            undo: Some(Undo::Move(LoggedMove { done, rows, paid: Vec::new() })),
+            undo: Some(undo),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
@@ -2007,6 +2028,25 @@ enum MoveRoute {
     Game(TransferPlan),
 }
 
+/// Of the two transfers of a swap, each `(player, club he leaves, club he joins)`, the player whose list row named a club
+/// the game no longer has him at: each joins the club the other's row names, which must be the one the other leaves.
+fn stale_swap_row(first: (u32, u32, u32), second: (u32, u32, u32)) -> Option<u32> {
+    if first.2 != second.1 {
+        Some(second.0)
+    } else if second.2 != first.1 {
+        Some(first.0)
+    } else {
+        None
+    }
+}
+
+/// How two players swap clubs: written by FM Lens, or as two transfers the game makes itself, the first player's
+/// first.
+enum SwapRoute {
+    Write(MovePlan),
+    Game(TransferPlan, TransferPlan),
+}
+
 impl MoveRoute {
     /// The UIDs of the club the player leaves and the club he joins.
     fn clubs(&self) -> (u32, u32) {
@@ -2426,13 +2466,14 @@ fn page<T: Listed + Clone>(
     index: &SearchIndex<T>,
     query: &str,
     limit: usize,
+    offset: usize,
     keep: impl Fn(&T) -> bool,
     sort: impl FnOnce(&mut Vec<&T>),
 ) -> Page<T> {
     let mut hits = index.search(query);
     hits.retain(|item| keep(item));
     sort(&mut hits);
-    Page { total: hits.len(), rows: hits.into_iter().take(limit).cloned().collect() }
+    Page { total: hits.len(), rows: hits.into_iter().skip(offset).take(limit.min(200)).cloned().collect() }
 }
 
 /// What a command reports when it fails: a code the window says in its own language, the
@@ -2660,6 +2701,7 @@ fn search_players(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
 ) -> Result<Page<fmlens_core::PlayerSummary>, Failure> {
@@ -2670,6 +2712,7 @@ fn search_players(
         &connection.players,
         &query,
         limit,
+        offset.unwrap_or(0),
         |p| filter.matches(p),
         |hits| {
             if let Some(order) = order {
@@ -2685,12 +2728,13 @@ fn search_staff(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<StaffFilter>,
 ) -> Result<Page<fmlens_core::StaffSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(&connection.staff, &query, limit, |s| filter.matches(s), |_| {}))
+    Ok(page(&connection.staff, &query, limit, offset.unwrap_or(0), |s| filter.matches(s), |_| {}))
 }
 
 /// Clubs matching `query`, highest reputation first; at most `limit` rows.
@@ -2699,12 +2743,13 @@ fn search_clubs(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<ClubFilter>,
 ) -> Result<Page<fmlens_core::ClubSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(&connection.clubs, &query, limit, |c| filter.matches(c), |_| {}))
+    Ok(page(&connection.clubs, &query, limit, offset.unwrap_or(0), |c| filter.matches(c), |_| {}))
 }
 
 /// Writes the players `query` and `filter` select, in `order`, to a new file in the exports folder as `format`: what
@@ -2843,13 +2888,14 @@ fn search_stadiums(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<StadiumFilter>,
 ) -> Result<Page<StadiumSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.stadium_index();
-    Ok(page(index, &query, limit, |stadium| filter.matches(stadium), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |stadium| filter.matches(stadium), |_| {}))
 }
 
 /// Match officials matching `query` by name or UID, best current ability first; at most `limit` rows. Only reads
@@ -2859,13 +2905,14 @@ fn search_officials(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<OfficialFilter>,
 ) -> Result<Page<OfficialSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.official_index()?;
-    Ok(page(index, &query, limit, |official| filter.matches(official), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |official| filter.matches(official), |_| {}))
 }
 
 /// Competitions matching `query` by name or UID, highest reputation first; at most `limit` rows. Only reads memory.
@@ -2874,13 +2921,14 @@ fn search_competitions(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<CompetitionFilter>,
 ) -> Result<Page<CompetitionSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.competition_index()?;
-    Ok(page(index, &query, limit, |competition| filter.matches(competition), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |competition| filter.matches(competition), |_| {}))
 }
 
 /// The rules of the competition with the UID `uid` that FM keeps as plain numbers and yes-or-no values; `None` where
@@ -2913,13 +2961,14 @@ fn search_awards(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<AwardFilter>,
 ) -> Result<Page<AwardSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.award_index()?;
-    Ok(page(index, &query, limit, |award| filter.matches(award), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |award| filter.matches(award), |_| {}))
 }
 
 /// The nations of the list (see `Connection::listed_nations`) matching `query` by name; at most `limit` rows.
@@ -2928,6 +2977,7 @@ fn search_nations(
     state: State<'_, AppState>,
     query: String,
     limit: usize,
+    offset: Option<usize>,
     filter: Option<NationFilter>,
 ) -> Result<Page<NationSummary>, Failure> {
     let mut guard = state.0.lock()?;
@@ -2938,7 +2988,7 @@ fn search_nations(
     for (row, nation) in rows.iter_mut().zip(&nations) {
         row.continent = connection.session.nation_continent(nation.address);
     }
-    Ok(page(&SearchIndex::new(rows), &query, limit, |nation| filter.matches(nation), |_| {}))
+    Ok(page(&SearchIndex::new(rows), &query, limit, offset.unwrap_or(0), |nation| filter.matches(nation), |_| {}))
 }
 
 /// Whether this build's layout places nations' details (see `nation_details`): without them the nations list opens no
@@ -3244,9 +3294,9 @@ fn plan_club_move(
 }
 
 /// Moves the player `uid` to the senior team of the club `club` on the contract `terms`, the club paying his old
-/// one `fee` pounds if given, worked out again from the game as it is now, and logs the move. When the fee cannot be
-/// paid, the player is moved back. From a club a human manager runs the game makes the transfer itself, which nothing
-/// undoes.
+/// one `fee` pounds if given, worked out again from the game as it is now, and logs the move. Where it can, the game
+/// makes the transfer itself, with its history and fee, which nothing undoes. Else FM Lens writes it, and when the fee
+/// cannot be paid, the player is moved back.
 #[tauri::command]
 fn move_player(
     state: State<'_, AppState>,
@@ -3319,22 +3369,42 @@ fn write_terms(connection: &mut Connection, target: &Target, terms: MoveTerms) -
     Ok(())
 }
 
+/// From `plan_release`: the club the player leaves, and whether the game releases him itself, which nothing undoes.
+#[derive(Serialize)]
+struct ReleasePreview {
+    #[serde(flatten)]
+    from: ClubName,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    permanent: bool,
+}
+
 /// Checks that the player `uid` can be released from his club, and names it; the error says why he cannot. Nothing is
 /// written.
 #[tauri::command]
-fn plan_release(state: State<'_, AppState>, uid: u32) -> Result<ClubName, Failure> {
+fn plan_release(state: State<'_, AppState>, uid: u32) -> Result<ReleasePreview, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let plan = connection.plan_release(uid)?;
-    Ok(ClubName { uid: plan.from_club, name: connection.club_name(plan.from_club) })
+    Ok(ReleasePreview {
+        from: ClubName { uid: plan.from_club, name: connection.club_name(plan.from_club) },
+        permanent: connection.session.game_actions().release,
+    })
 }
 
 /// Releases the player `uid` from his club, worked out again from the game as it is now, and logs it: he becomes a
-/// free agent.
+/// free agent. Where it can, the game releases him itself, as its editor does, which nothing undoes.
 #[tauri::command]
 fn release_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
+    if connection.session.game_actions().release {
+        let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+        let released = connection.session.release_through_game(player, &[])?;
+        if released.club_after.is_some() {
+            return Err(MoveError::CallDeclined.into());
+        }
+        return Ok(connection.log_game_release(released));
+    }
     let plan = connection.plan_release(uid)?;
     let done = connection.session.apply_club_move(&plan)?;
     Ok(connection.log_release(done))
@@ -3430,26 +3500,32 @@ fn staff_jobs() -> Vec<u8> {
 fn plan_club_swap(state: State<'_, AppState>, uid: u32, other: u32) -> Result<MovePreview, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
-    let plan = connection.plan_swap(uid, other)?;
+    let (from, to, permanent) = match connection.plan_swap(uid, other)? {
+        SwapRoute::Write(plan) => (plan.from_club, plan.to_club, false),
+        SwapRoute::Game(first, _) => (first.from_club, first.to_club, true),
+    };
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
-    Ok(MovePreview {
-        from: Some(name(plan.from_club)),
-        to: name(plan.to_club),
-        fee: None,
-        displaced: None,
-        permanent: false,
-    })
+    Ok(MovePreview { from: Some(name(from)), to: name(to), fee: None, displaced: None, permanent })
 }
 
 /// Swaps the clubs of the players `uid` and `other`, worked out again from the game as it is
-/// now; each keeps his contract's terms. Logged as one change of `uid`'s club.
+/// now; each keeps his contract's terms. Written by FM Lens, it is logged as one change of `uid`'s club. Made by the
+/// game, it is two transfers, each logged as his own change, which nothing undoes: when the second fails, the first
+/// stands.
 #[tauri::command]
 fn swap_players(state: State<'_, AppState>, uid: u32, other: u32) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let plan = connection.plan_swap(uid, other)?;
-    let done = connection.session.apply_club_move(&plan)?;
-    Ok(connection.log_move(done, MoveTerms::default(), Vec::new(), None))
+    match connection.plan_swap(uid, other)? {
+        SwapRoute::Write(plan) => {
+            let done = connection.session.apply_club_move(&plan)?;
+            Ok(connection.log_move(done, MoveTerms::default(), Vec::new(), None))
+        }
+        SwapRoute::Game(first, second) => {
+            transfer_player(connection, &first, MoveTerms::default(), None)?;
+            transfer_player(connection, &second, MoveTerms::default(), None)
+        }
+    }
 }
 
 /// Closes the open promise at `index` in the promises of the player `uid`, as FM ends one that is not held against
@@ -4433,5 +4509,62 @@ mod tests {
         // Nobody is left to tell.
         assert!(!same_objects([(at(1, 0x1000), None)]));
         assert!(!same_objects([]));
+    }
+
+    #[test]
+    fn a_swap_sends_each_player_to_the_club_the_other_leaves() {
+        // Player 1 leaves club 10 for 20, player 2 leaves 20 for 10.
+        assert_eq!(stale_swap_row((1, 10, 20), (2, 20, 10)), None);
+        // Player 2's row named club 20, but the game has him at 30.
+        assert_eq!(stale_swap_row((1, 10, 20), (2, 30, 10)), Some(2));
+        // Player 1's row named club 10, but the game has him at 40.
+        assert_eq!(stale_swap_row((1, 40, 20), (2, 20, 10)), Some(1));
+    }
+
+    #[test]
+    fn a_release_preview_names_the_club_and_says_when_nothing_undoes_it() {
+        let preview = |permanent| ReleasePreview { from: ClubName { uid: 7, name: "Fulham".to_owned() }, permanent };
+        let json = |permanent| serde_json::to_value(preview(permanent)).expect("a preview serializes");
+        assert_eq!(json(true), serde_json::json!({ "uid": 7, "name": "Fulham", "permanent": true }));
+        assert_eq!(json(false), serde_json::json!({ "uid": 7, "name": "Fulham" }));
+    }
+}
+
+#[cfg(test)]
+mod paging_tests {
+    use super::*;
+    #[derive(Clone)]
+    struct Item(u32);
+    impl Listed for Item {
+        fn uid(&self) -> u32 {
+            self.0
+        }
+        fn names(&self) -> String {
+            "same".into()
+        }
+        fn display_name(&self) -> &str {
+            "same"
+        }
+        fn rank(&self) -> i32 {
+            1
+        }
+    }
+    #[test]
+    fn pages_cover_tied_results_without_duplicates_and_keep_total() {
+        let index = SearchIndex::new((1..=451).rev().map(Item).collect());
+        let mut ids = Vec::new();
+        for offset in [0, 200, 400] {
+            let result = page(&index, "", 200, offset, |_| true, |_| {});
+            assert_eq!(result.total, 451);
+            assert!(result.rows.len() <= 200);
+            ids.extend(result.rows.iter().map(Listed::uid));
+        }
+        assert_eq!(ids, (1..=451).collect::<Vec<_>>());
+        assert!(page(&index, "", 200, usize::MAX, |_| true, |_| {}).rows.is_empty());
+        let filtered = page(&index, "", 200, 200, |i| i.0 % 2 == 0, |hits| hits.reverse());
+        assert_eq!(filtered.total, 225);
+        assert_eq!(filtered.rows.first().unwrap().0, 50);
+        assert_eq!(filtered.rows.last().unwrap().0, 2);
+        assert_eq!(page(&index, "", usize::MAX, 0, |_| true, |_| {}).rows.len(), 200);
     }
 }
