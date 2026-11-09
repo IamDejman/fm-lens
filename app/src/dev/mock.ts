@@ -521,6 +521,15 @@ const permitsSet = new Map<number, boolean>();
 /** What each permit change replaced, by change ID: undefined when the player had the fixture's permits. */
 const permitUndo = new Map<number, boolean | undefined>();
 
+/** `work_permit_needed`: every fifth player at a club needs none under FM's rules, as a player from its country. */
+function workPermitNeeded(uid: number): boolean | null {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  return player.club ? player.uid % 5 !== 0 : null;
+}
+
 /** `set_work_permit`: the fixture player is given an English work permit, or has his taken away. */
 function setWorkPermit(uid: number, granted: boolean): LoggedChange {
   const player = players.find((p) => p.uid === uid);
@@ -532,7 +541,7 @@ function setWorkPermit(uid: number, granted: boolean): LoggedChange {
   }
   const [held] = workPermitsOf(player);
   const was = held !== undefined;
-  if (was === granted) {
+  if (was === granted || (granted && !workPermitNeeded(uid))) {
     throw failure("call.declined", "the game did not make the change");
   }
   const logged: LoggedChange = {
@@ -3739,6 +3748,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return addInjury(Number(args?.uid), Number(args?.kind)) as T;
     case "set_work_permit":
       return setWorkPermit(Number(args?.uid), Boolean(args?.granted)) as T;
+    case "work_permit_needed":
+      return workPermitNeeded(Number(args?.uid)) as T;
     case "start_loan":
       return startLoan(Number(args?.uid), Number(args?.club), Number(args?.ends)) as T;
     case "plan_end_loan":

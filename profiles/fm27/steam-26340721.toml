@@ -91,6 +91,11 @@ ref_assign = 0x7C7570
 # map holds the team's reference in.
 struct_value = 0x9FA000
 maximise_tactics = 0x31AB350
+# What set_work_permit asks before it gives a permit, unforced: the rules of the club's nation (rules root, the
+# nation, the club's women's byte), then whether they say the player needs a permit (rules, identity block, club
+# team, 1, 0, 6, 0, no date*, no date*, null), a bool. Both only read; FM's own screens ask the second too.
+work_permit_rules = 0x182B490
+needs_work_permit = 0x240C760
 
 # What a STARTING_LOAN (layout.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58.
 [starting_loan]
@@ -123,3 +128,10 @@ link_timestamp = 0x6AE565AF
 players = 0x57057D0
 staff = 0x5705818
 clubs = 0x5705988
+
+# What needs_work_permit takes, as set_work_permit reads it: the byte that is 1 while work permits are in force
+# (otherwise it gives none), the static pointer to the rules root, and the date it passes for none (1 Jan 1900).
+[work_permit_check]
+enabled = 0x570135A
+rules = 0x570B280
+no_date = 0x4AFD81C
