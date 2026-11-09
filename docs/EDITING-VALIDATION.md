@@ -2099,3 +2099,55 @@ the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## Young signings join the senior squad (9 November 2026)
+
+A 20-year-old signed through Sign went to the U21s. The game's own signing
+makes the contract with the senior team (contract team and senior team both
+the first team) but lists the player in the U21 list and has him play for the
+U21. Seen on Windows with Malick Diop (2000399932): Arsenal's U21 list went from
+23 to 24 and the senior list stayed at 25. Passing the team id (`Ttea`) does
+not change this: it only replaces the destination team, which is already the
+senior team. After Sign and Transfer, FM Lens now moves the player to the
+senior team: off every youth list of the club that holds him, onto the senior
+list, and his team set to the senior team. The move is best effort: when the
+lists are not as expected the signing stands and he stays where the game put
+him. Sign later is unchanged: the game makes that signing on its day.
+
+The first build of this fix still left Eloi Tost in the U21s under Rosetta.
+After a load most squad lists are exactly full (capacity equal to length), and
+there the bytes past Arsenal's senior list were not zero, so FM Lens found no
+spare slot and stopped. The game itself had just doubled the U21 list's block
+to take him (28 to 56 slots). Now, when the senior list is full, the two lists
+exchange blocks: the senior list takes the U21 block with the new player added,
+and the U21 list takes the old senior block, which still fits it. Both blocks
+stay the game's own and keep their capacities. FM Lens first empties the U21
+list, then writes both blocks and headers, so neither list ever holds a player
+twice or a slot the other list owns. When the senior list is full and the youth
+list has not grown enough to take it, the player stays in the U21s as before.
+
+Packaged release builds of `fix/sign-senior-squad` (bbbd117), driven through
+the accessibility API (UI Automation on Windows). Test copies only, never
+saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Sign a young free agent | Pass. Eloi Tost (2000498391, 20) to Arsenal: plays for the first team, senior list 29 to 30, U21 list stays 28; contract to 30 Jun 2029 | Pass. Eloi Tost (2000498391, 20) to Arsenal: plays for the first team, senior list 29 to 30, U21 list stays 28; contract to 30 Jun 2029 | Pass. Malick Diop (2000399932, 20) to Arsenal: plays for the first team, senior list 26 to 27, U21 list stays 23 |
+| Sign with the senior list full | Pass. Gellert and Bili filled the senior block (32 of 32). Abo El Nay then plays for the first team: the senior list took the block the game had grown for the U21s (33 of 56) and the U21 list took the old senior block (28 of 32); FM kept running | Pass. Fabian Gellert (2000419798, 19) and Bili (2000328858, 20) filled the senior block (32 of 32). Rayan Abo El Nay (2000386337, 20) then plays for the first team: the senior list took the block the game had grown for the U21s (33 of 56) and the U21 list took the old senior block (28 of 32); FM kept running | Not reached: Arsenal's senior list had room (26 of 37) |
+| Undo | Pass. All four undone, newest first ("Undone at 20:02:27" to "20:02:39"); free agents again, no contract; lists back to 29 and 28 | Pass. All four undone, newest first ("Undone at 19:34:50" to "19:35:19"); free agents again, no contract; lists back to 29 and 28 | Pass. "Undone at 19:22:57"; free agent, no contract; lists back to 26, 23 and 8 |
+| Transfer a young player | Pass. Jesse Middleton (2000378586, 19) Brighton to Arsenal: plays for the first team, senior list 29 to 30, U21 list stays 28; Brighton U21 list 36 to 35, no Brighton list holds him | Pass. Jesse Middleton (2000378586, 19) Brighton to Arsenal: plays for the first team, senior list 29 to 30, U21 list stays 28; no Brighton list holds him (35, 35 and 19) | Pass. Jesse Middleton (2000378586, 18) Brighton to Arsenal: plays for the first team, senior list 26 to 27, U21 list stays 23; Brighton U21 list 37 to 36, no Brighton list holds him |
+| Sign an older free agent | Pass. Patrick Berg (53099570, 30) to the first team, senior list 30 to 31; Undo ("Undone at 20:04:03") returned him to free agent, list back to 30 | Pass. Patrick Berg (53099570, 30) to the first team, senior list 30 to 31; Undo ("Undone at 19:37:36") returned him to free agent, list back to 30 | Pass. Solly March (29090530, 31) to the first team, senior list 27 to 28; Undo ("Undone at 19:28:18") returned him to free agent, list back to 27 |
+
+Mac: FM27 native on Apple Silicon (FM process 57334, code type ARM64) and under Rosetta (FM
+process 52451, code type X86-64 translated), each with the branch bridge
+injected and the test FM Lens build run the same way. Test copy `FM Lens
+Permit 2026-11-09` (Arsenal, 8 Dec 2027), opened through Load Game and quit
+without saving between runs. Arsenal's lists on load: senior 29 and U21 28, both exactly full.
+Team lists read with the probe's `teams 602`, list headers at team + 0x38.
+
+Windows: FM27 on the test machine (FM process 7016) with the Windows build of
+the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
+2026).
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows.
+The released 0.7.0 bridge was restored on the Mac afterwards.

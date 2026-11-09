@@ -19,7 +19,9 @@ use crate::rtti::class_of;
 use crate::session::Session;
 use crate::staff::{StaffIndex, StaffSummary};
 use crate::text::read_fm_string;
-use crate::transfer::{MoveError, MoveTerms, PLAYER_JOB, PointerList, TransferPlan};
+use crate::transfer::{
+    MoveError, MoveTerms, PLAYER_JOB, Patches, PointerList, TransferPlan, exchange_patches, removal_patches,
+};
 
 /// The cause the game's own training injuries give `add_injury`.
 const TRAINING_CAUSE: u64 = 3;
@@ -790,6 +792,8 @@ impl Session {
         self.check_terms(terms, self.game_date())?;
         let signed = self.run_signing(object, player.shift, senior, None, None)?;
         let expires = self.joined(object, player.shift, club, signed)?;
+        // He has signed either way; a failed move leaves him in the squad the game chose.
+        let _ = self.join_senior_squad(object, player.shift, club, senior);
         Ok(SignedPlayer { player: player.uid, club: club.uid, expires })
     }
 
@@ -813,6 +817,8 @@ impl Session {
         })?;
         let moved = self.run_signing(object, shift, senior, None, Some(amount))?;
         let expires = self.joined(object, shift, club, moved)?;
+        // He has moved either way; a failed move leaves him in the squad the game chose.
+        let _ = self.join_senior_squad(object, shift, club, senior);
         Ok(TransferredPlayer { player: player.uid, from_club, to_club, fee, expires })
     }
 
@@ -831,6 +837,77 @@ impl Session {
         }
         let date = process.read_bytes(contract + layout.contract.expires, 4)?;
         Ok(FmDate::from_raw(u16::from_le_bytes([date[0], date[1]]), u16::from_le_bytes([date[2], date[3]])))
+    }
+
+    /// The game puts a young player it signs in a youth team of `club`, though his contract is with `senior`. He
+    /// moves to the senior team's squad instead: off every youth list that holds him, onto the senior list. Nothing
+    /// is written when he already plays for `senior`, or when the lists are not as expected.
+    fn join_senior_squad(&self, object: u64, shift: u64, club: &ClubSummary, senior: u64) -> Result<(), MoveError> {
+        let (process, layout) = (&self.process, &self.layout);
+        let team_at = object + layout.player.at(layout.player.team, shift);
+        let team = process.read_u64(team_at)?;
+        if team == senior || !is_user_pointer(team) || process.read_u64(team + layout.team.club)? != club.address {
+            return Ok(());
+        }
+        let mut teams = PointerList::read(process, club.address + layout.club.teams)?
+            .ok_or(MoveError::NotListed)?
+            .elements(process)?;
+        teams.sort_unstable();
+        teams.dedup();
+        if !teams.contains(&team) {
+            return Err(MoveError::NotListed);
+        }
+        let mut patches = Patches::default();
+        // The list of the team he plays for, where he is in it, and its players.
+        let mut held = None;
+        for &youth in teams.iter().filter(|&&t| t != senior) {
+            let Some(list) = PointerList::read(process, youth + layout.team.players)? else {
+                continue;
+            };
+            let elements = list.elements(process)?;
+            let found: Vec<usize> = (0..elements.len()).filter(|&j| elements[j] == object).collect();
+            match found[..] {
+                [] => {}
+                [index] if youth == team => held = Some((list, index, elements)),
+                [index] => removal_patches(&list, index, &elements, &mut patches),
+                _ => return Err(MoveError::NotListed),
+            }
+        }
+        let list = PointerList::read(process, senior + layout.team.players)?.ok_or(MoveError::NoRoom { players: 0 })?;
+        let squad = list.elements(process)?;
+        let joins = !squad.contains(&object);
+        let full = joins && list.len() + 1 > list.room(process, &layout.heap)?;
+        let mut emptied = Patches::default();
+        match held {
+            Some((youth, index, mut elements)) if full => {
+                // The senior list is full. The game has just grown his youth list's block for him: the two lists
+                // exchange blocks.
+                elements.remove(index);
+                let block = |l: &PointerList| process.read_bytes(l.begin_address(), 8 * l.slots() as usize);
+                emptied = exchange_patches(
+                    (&list, &block(&list)?, &[squad, vec![object]].concat()),
+                    (&youth, &block(&youth)?, &elements),
+                    &mut patches,
+                )
+                .ok_or(MoveError::NoRoom { players: list.len() })?;
+            }
+            held => {
+                if let Some((youth, index, elements)) = held {
+                    removal_patches(&youth, index, &elements, &mut patches);
+                }
+                if full {
+                    return Err(MoveError::NoRoom { players: list.len() });
+                }
+                if joins {
+                    self.append_patches(&list, object, &mut patches)?;
+                }
+            }
+        }
+        patches.push(team_at, team.to_le_bytes(), senior.to_le_bytes());
+        self.apply_patches(&emptied.0)?;
+        self.apply_patches(&patches.0).inspect_err(|_| {
+            let _ = self.undo_patches(&emptied.0);
+        })
     }
 
     /// Has the game agree to sign the free agent `player` for the senior team of `club` on `joins`, a day after

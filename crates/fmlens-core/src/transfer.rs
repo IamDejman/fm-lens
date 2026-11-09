@@ -533,6 +533,11 @@ impl PointerList {
         (self.end - self.begin) / 8
     }
 
+    /// How many pointers it has room for: its capacity.
+    pub(crate) fn slots(&self) -> u64 {
+        (self.capacity - self.begin) / 8
+    }
+
     /// Where its first pointer is.
     pub(crate) fn begin_address(&self) -> u64 {
         self.begin
@@ -564,6 +569,46 @@ pub(crate) fn removal_patches(list: &PointerList, index: usize, elements: &[u64]
     patches.push(list.begin + index as u64 * 8, bytes(&elements[index..last]), bytes(&elements[index + 1..]));
     patches.push(list.header + 8, list.end.to_le_bytes(), (list.end - 8).to_le_bytes());
     patches.push(list.begin + last as u64 * 8, elements[last].to_le_bytes(), 0u64.to_le_bytes());
+}
+
+/// The full list `full` is to hold `full_after` and `other` is to hold `other_after`: the two lists exchange blocks,
+/// each kept with its own capacity, so `full` takes the room the game made in `other`'s. `full_block` and
+/// `other_block` are their blocks up to the capacity as memory holds them now. The patches returned empty `other`
+/// and are written first; `patches` then fill each block and point the lists at them, so that neither list ever
+/// holds a pointer it should not. `None` when either list does not fit the other's block.
+pub(crate) fn exchange_patches(
+    (full, full_block, full_after): (&PointerList, &[u8], &[u64]),
+    (other, other_block, other_after): (&PointerList, &[u8], &[u64]),
+    patches: &mut Patches,
+) -> Option<Patches> {
+    if full_after.len() as u64 > other.slots() || other_after.len() as u64 > full.slots() {
+        return None;
+    }
+    let header = |begin: u64, len: usize, capacity: u64| {
+        [begin, begin + 8 * len as u64, capacity].map(u64::to_le_bytes).concat()
+    };
+    // Each block is written up to the longer of its old and new lists; the slots its list gave up are cleared.
+    let fill = |list: &PointerList, block: &[u8], after: &[u64], patches: &mut Patches| {
+        let before = &block[..8 * (list.len() as usize).max(after.len())];
+        let mut bytes: Vec<u8> = after.iter().flat_map(|e| e.to_le_bytes()).collect();
+        bytes.resize(before.len(), 0);
+        patches.push(list.begin, before, bytes);
+    };
+    let mut emptied = Patches::default();
+    emptied.push(other.header + 8, other.end.to_le_bytes(), other.begin.to_le_bytes());
+    fill(other, other_block, full_after, patches);
+    patches.push(
+        full.header,
+        header(full.begin, full.len() as usize, full.capacity),
+        header(other.begin, full_after.len(), other.capacity),
+    );
+    fill(full, full_block, other_after, patches);
+    patches.push(
+        other.header,
+        header(other.begin, 0, other.capacity),
+        header(full.begin, other_after.len(), full.capacity),
+    );
+    Some(emptied)
 }
 
 /// Collects the patches of a move, leaving out the ones that would change nothing.
@@ -1162,6 +1207,35 @@ mod tests {
         patches.push(0x10, [1u8], [1u8]);
         patches.push(0x20, [1u8], [2u8]);
         assert_eq!(patches.0, [Patch { address: 0x20, before: vec![1], after: vec![2] }]);
+    }
+
+    #[test]
+    fn a_full_list_takes_the_block_the_game_grew_for_another() {
+        let words = |w: &[u64]| w.iter().flat_map(|e| e.to_le_bytes()).collect::<Vec<u8>>();
+        let header = |begin: u64, len: u64, slots: u64| words(&[begin, begin + 8 * len, begin + 8 * slots]);
+        // The senior list is full at 2; the youth list holds 3 (the signing last) in a block of 6.
+        let senior = PointerList { header: 0x100, begin: 0x1000, end: 0x1010, capacity: 0x1010 };
+        let youth = PointerList { header: 0x200, begin: 0x2000, end: 0x2018, capacity: 0x2030 };
+        let (senior_block, youth_block) = (words(&[1, 2]), words(&[3, 4, 9, 0, 0, 0]));
+        let mut patches = Patches::default();
+        let emptied =
+            exchange_patches((&senior, &senior_block, &[1, 2, 9]), (&youth, &youth_block, &[3, 4]), &mut patches)
+                .unwrap();
+        assert_eq!(emptied.0, [Patch { address: 0x208, before: words(&[0x2018]), after: words(&[0x2000]) }]);
+        assert_eq!(
+            patches.0,
+            [
+                Patch { address: 0x2000, before: words(&[3, 4, 9]), after: words(&[1, 2, 9]) },
+                Patch { address: 0x100, before: header(0x1000, 2, 2), after: header(0x2000, 3, 6) },
+                Patch { address: 0x1000, before: words(&[1, 2]), after: words(&[3, 4]) },
+                Patch { address: 0x200, before: header(0x2000, 0, 6), after: header(0x1000, 2, 2) },
+            ]
+        );
+        // The youth list's players do not fit the senior list's block.
+        assert!(
+            exchange_patches((&senior, &senior_block, &[1, 2, 9]), (&youth, &youth_block, &[3, 4, 5]), &mut patches)
+                .is_none()
+        );
     }
 
     #[test]
