@@ -6,6 +6,7 @@ import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { fieldLabel, templatesText as text } from "./labels";
 import type { ListState } from "./ListBrowser";
+import { useDialogReturn } from "./MoreMenu";
 import type {
   EditField,
   MassFilters,
@@ -71,6 +72,7 @@ export function PlayerTemplatesButton({
   const { editable } = useContext(EditorContext);
   const [scope, setScope] = useState<Scope | null>(null);
   const button = useRef<HTMLButtonElement>(null);
+  useDialogReturn(scope !== null, button);
   if (!editable) return null;
   return (
     <>
@@ -88,13 +90,7 @@ export function PlayerTemplatesButton({
         {text.button}
       </button>
       {scope && (
-        <TemplatesDialog
-          scope={scope}
-          onClose={() => {
-            setScope(null);
-            button.current?.focus();
-          }}
-        />
+        <TemplatesDialog scope={scope} onClose={() => setScope(null)} />
       )}
     </>
   );
@@ -114,7 +110,9 @@ function TemplatesDialog({
   const title = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // What Save, Delete or a load did, under their buttons; what Undo did, with the result at the foot.
   const [notice, setNotice] = useState<string | null>(null);
+  const [undone, setUndone] = useState<string | null>(null);
   const [library, setLibrary] = useState(loadLibrary);
   const [template, setTemplate] = useState<PlayerTemplate | null>(null);
   const [name, setName] = useState("");
@@ -180,6 +178,7 @@ function TemplatesDialog({
     setBusy(true);
     setError(null);
     setNotice(null);
+    setUndone(null);
     try {
       await task();
     } catch (e) {
@@ -206,7 +205,10 @@ function TemplatesDialog({
     const next = [...library, value];
     localStorage.setItem(STORAGE, JSON.stringify(next));
     setLibrary(next);
-    choose(value);
+    // Only the name is new: what was previewed or applied, and its Undo, still stand.
+    setTemplate(value);
+    setName(value.name);
+    setJson(JSON.stringify(value, null, 2));
     setNotice(text.savedNotice);
   };
   const importJson = async (raw: string) => {
@@ -257,7 +259,7 @@ function TemplatesDialog({
     if (!report) return;
     const next = await undoBatch(report.batch);
     if (next.undone > 0) onEdited();
-    setNotice(text.undone(next.undone));
+    setUndone(text.undone(next.undone));
     if (next.failed.length)
       throw new Error(
         next.failed.map((entry) => describeError(entry.error)).join("\n"),
@@ -265,6 +267,8 @@ function TemplatesDialog({
     setReport(null);
   };
   const byKey = new Map(fields.map((field) => [field.key, field]));
+  // The saved template in use, for the picker: none while it is a copy or an import not saved yet.
+  const chosen = template ? library.indexOf(template) : -1;
 
   return createPortal(
     <div className="modal-backdrop">
@@ -362,7 +366,7 @@ function TemplatesDialog({
                 <label>
                   {text.library}
                   <select
-                    value=""
+                    value={chosen < 0 ? "" : chosen}
                     onChange={(e) => {
                       const value = library[Number(e.target.value)];
                       if (value) choose(value);
@@ -414,6 +418,9 @@ function TemplatesDialog({
                     {text.remove}
                   </button>
                 </div>
+                <p className="live-region template-notice" role="status">
+                  {notice}
+                </p>
                 <p className="live-region" role="status">
                   {template && (
                     <>
@@ -570,7 +577,7 @@ function TemplatesDialog({
             )}
           </div>
           <p className="live-region" role="status">
-            {notice}
+            {undone}
           </p>
           {error && (
             <div className="banner" role="alert">

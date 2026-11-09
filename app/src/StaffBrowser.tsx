@@ -12,9 +12,9 @@ import { formatDate } from "./format";
 import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
 import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
-import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
+import { NationFlag, WithPicture } from "./Picture";
 import { restored, useSnapshot } from "./restore";
-import { employerOf, HumanBadge, readStaffTab, StaffProfile } from "./StaffProfile";
+import { EmployerPicture, employerOf, HumanBadge, jobOf, readStaffTab, StaffProfile } from "./StaffProfile";
 import type { StaffFilter, StaffSummary } from "./types";
 
 const AGE_RANGE = { min: 0, max: 99 };
@@ -260,6 +260,8 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
 }
 
 function StaffCells({ staff: s }: { staff: StaffSummary }) {
+  const job = jobOf(s);
+  const employer = employerOf(s);
   return (
     <>
       <td className="col-name">
@@ -271,12 +273,12 @@ function StaffCells({ staff: s }: { staff: StaffSummary }) {
       </td>
       <td className="num col-age">{s.age ?? profileText.none}</td>
       {/* A long job or club is cut short with an ellipsis (see App.css); the hover text has all of it. */}
-      <td className="col-job" title={s.job === null ? undefined : jobLabel(s.job)}>
-        {jobLabel(s.job)}
+      <td className="col-job" title={job === null ? undefined : jobLabel(job)}>
+        {jobLabel(job)}
       </td>
-      <td className="col-club" title={s.club ?? undefined}>
-        <WithPicture picture={<ClubLogo uid={s.clubUid} name={s.club} size={PICTURE_SIZE.rowLogo} />}>
-          {employerOf(s) ?? <span className="muted">{profileText.none}</span>}
+      <td className="col-club" title={typeof employer === "string" ? employer : undefined}>
+        <WithPicture picture={<EmployerPicture member={s} />}>
+          {employer ?? <span className="muted">{profileText.none}</span>}
         </WithPicture>
       </td>
       <td className="col-nation">

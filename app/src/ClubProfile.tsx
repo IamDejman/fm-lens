@@ -246,8 +246,14 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
             </Fact>
             <Fact label={text.transferBudget}>
               <EditableValue field="finance.transfer_budget">
-                {/* FM stores -1 when the board has not set a transfer budget. */}
-                {finances.transferBudget < 0 ? profileText.notSet : formatMoney(finances.transferBudget)}
+                {/* FM stores -1 when the board has not set a transfer budget; below that the club has overspent. */}
+                {finances.transferBudget === -1 ? (
+                  profileText.notSet
+                ) : (
+                  <span className={finances.transferBudget < 0 ? "negative" : undefined}>
+                    {formatMoney(finances.transferBudget)}
+                  </span>
+                )}
               </EditableValue>
             </Fact>
             <Fact label={text.wageBudget}>

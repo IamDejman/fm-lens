@@ -8,6 +8,7 @@ use crate::clubs::ClubSummary;
 use crate::competitions::{AwardSummary, CompetitionSummary};
 use crate::date::FmDate;
 use crate::details::{ATTRIBUTE_GROUPS, POSITIONS};
+use crate::game_calls::MANAGER_JOB;
 use crate::officials::OfficialSummary;
 use crate::players::{NationSummary, PLAYABLE_RATING, PlayerSummary};
 use crate::staff::{STAFF_ATTRIBUTE_GROUPS, StaffSummary};
@@ -218,15 +219,17 @@ pub struct StaffFilter {
 
 impl StaffFilter {
     pub fn matches(&self, s: &StaffSummary) -> bool {
-        self.job.is_none_or(|job| s.job.is_some_and(|code| code == job || code == job + 1))
-            && (!self.unemployed || s.job.is_none())
+        self.job.is_none_or(|job| {
+            s.job.is_some_and(|code| code == job || code == job + 1) || (job == MANAGER_JOB && s.national.is_some())
+        }) && (!self.unemployed || (s.job.is_none() && s.national.is_none()))
             && (!self.human_only || s.is_human)
             && self.min_age.is_none_or(|min| s.age.is_some_and(|age| age >= min))
             && self.max_age.is_none_or(|max| s.age.is_some_and(|age| age <= max))
             && self.min_current_ability.is_none_or(|min| s.current_ability >= min)
             && self.min_potential_ability.is_none_or(|min| s.potential_ability >= min)
             && contains(s.nation.as_deref(), self.nation.as_deref())
-            && contains(s.club.as_deref(), self.club.as_deref())
+            && (contains(s.club.as_deref(), self.club.as_deref())
+                || s.national.as_ref().is_some_and(|job| contains(Some(&job.nation), self.club.as_deref())))
             && self.attributes.iter().all(|bound| bound.holds(&STAFF_ATTRIBUTES, &s.attributes))
     }
 }
@@ -462,6 +465,7 @@ mod tests {
             club: club.map(str::to_owned),
             club_uid: None,
             job,
+            national: None,
             current_ability: ca,
             potential_ability: ca as i16 + 10,
             is_human: false,
@@ -491,6 +495,25 @@ mod tests {
         assert!(!StaffFilter { min_age: Some(20), ..StaffFilter::default() }.matches(&unknown));
         assert!(StaffFilter { unemployed: true, ..StaffFilter::default() }.matches(&unknown));
         assert!(!StaffFilter { nation: Some("spain".to_owned()), ..StaffFilter::default() }.matches(&unknown));
+    }
+
+    #[test]
+    fn a_national_team_manager_is_a_manager_not_unemployed() {
+        let national = StaffSummary {
+            national: Some(crate::national::NationalJob {
+                nation: "Türkiye".to_owned(),
+                nation_uid: None,
+                age_limit: None,
+                women: false,
+            }),
+            ..staff(Some(52), 150, Some("Italy"), None, None)
+        };
+        assert!(!StaffFilter { unemployed: true, ..StaffFilter::default() }.matches(&national));
+        assert!(StaffFilter { job: Some(MANAGER_JOB), ..StaffFilter::default() }.matches(&national));
+        assert!(!StaffFilter { job: Some(2), ..StaffFilter::default() }.matches(&national));
+        // The team is the employer the club filter searches.
+        assert!(StaffFilter { club: Some("turkiye".to_owned()), ..StaffFilter::default() }.matches(&national));
+        assert!(!StaffFilter { club: Some("italy".to_owned()), ..StaffFilter::default() }.matches(&national));
     }
 
     #[test]

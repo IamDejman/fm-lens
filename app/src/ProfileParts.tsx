@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -110,6 +111,13 @@ interface ProfileFrameProps {
   children?: ReactNode;
 }
 
+/** Gives a cut line its whole text as hover text, and takes it away again once the line fits. */
+function showCutText(event: ReactMouseEvent<HTMLElement>) {
+  const line = event.currentTarget;
+  if (line.scrollHeight > line.clientHeight + 1) line.title = line.textContent ?? "";
+  else line.removeAttribute("title");
+}
+
 /**
  * The panel beside a list: header with the abilities (or another summary, as `side`) and a close
  * button, and a scrolling body that shows the loading state or error. Mount it with `key={uid}` so
@@ -161,8 +169,9 @@ export function ProfileFrame(props: ProfileFrameProps) {
           {/* The name with the buttons at its end, then what the person is with the abilities at the end of theirs. */}
           <div className="profile-id">
             <div className="profile-title">
-              <h2>
-                {name}
+              {/* One line, cut short when it is too long: the hover text has all of it. */}
+              <h2 title={name}>
+                <span className="profile-name">{name}</span>
                 {badge}
               </h2>
               <div className="profile-actions">
@@ -183,8 +192,16 @@ export function ProfileFrame(props: ProfileFrameProps) {
             </div>
             <div className="profile-summary">
               <div className="profile-lines">
-                {fullName && fullName !== name && <p className="profile-fullname">{fullName}</p>}
-                {meta !== undefined && <p className="profile-meta">{meta}</p>}
+                {fullName && fullName !== name && (
+                  <p className="profile-fullname" title={fullName}>
+                    {fullName}
+                  </p>
+                )}
+                {meta !== undefined && (
+                  <p className="profile-meta" onMouseEnter={showCutText}>
+                    {meta}
+                  </p>
+                )}
                 {shownVitals.length > 0 && (
                   <p className="profile-vitals">
                     {/* The dot stays at the end of a line, with the part before it. */}

@@ -77,7 +77,7 @@ pub use languages::{LEAST_LEVEL, Language, LanguagePlan, LanguageSet, MOST_LEVEL
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan, Lifted};
-pub use national::{NationDetails, NationLanguage, NationalTeam, Person, WomenFootball};
+pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
 pub use officials::OfficialSummary;
 pub use players::{
     Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations, read_players,

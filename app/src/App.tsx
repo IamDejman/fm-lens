@@ -128,7 +128,7 @@ function App() {
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog } = useChangeLog();
   // The changes of the session that stand, beside Changes.
-  const standing = log.filter((change) => change.undoneAt === null).length;
+  const standing = log.filter((change) => change.undoneAt === null && !change.earlierGame).length;
   const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
@@ -389,9 +389,27 @@ function App() {
     };
   }, [gameActions]);
   const gameDate = connection?.gameDate ?? null;
+  // A player asked for from elsewhere (a row of a club's squad): the player list finds him by his ID.
+  const [revealPlayer, setRevealPlayer] = useState<Reveal | null>(null);
+  const openPlayer = useCallback(
+    (uid: number) =>
+      askToLeave(() => {
+        setView("players");
+        setRevealPlayer({ uid, query: String(uid) });
+      }),
+    [],
+  );
   const editor = useMemo(
-    () => ({ editable, readOnlyNote: note, onEdited: edited, gameActions, injuryKinds: loadInjuryKinds, gameDate }),
-    [editable, note, edited, gameActions, loadInjuryKinds, gameDate],
+    () => ({
+      editable,
+      readOnlyNote: note,
+      onEdited: edited,
+      gameActions,
+      injuryKinds: loadInjuryKinds,
+      gameDate,
+      openPlayer,
+    }),
+    [editable, note, edited, gameActions, loadInjuryKinds, gameDate, openPlayer],
   );
 
   // With edits pending in the open profile, leaving for another view asks first.
@@ -567,7 +585,7 @@ function App() {
           // Visited lists stay mounted, so each keeps its search and selection while another is shown.
           <EditorContext.Provider value={editor}>
             <div className="views">
-              <PlayerBrowser version={dataVersion} active={view === "players"} />
+              <PlayerBrowser version={dataVersion} active={view === "players"} reveal={revealPlayer} />
               <DeferredView active={view === "staff"} label={staffListText.nav}>
                 <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
               </DeferredView>

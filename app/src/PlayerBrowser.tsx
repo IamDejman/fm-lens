@@ -4,11 +4,17 @@ import { ComparisonTray } from "./Comparison";
 import { ExportButton } from "./ExportDialog";
 import { formatDate } from "./format";
 import { playerListText, positionLabel, profileText } from "./labels";
-import { ListBrowser } from "./ListBrowser";
+import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { MoreMenu } from "./MoreMenu";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
-import { countFilters, PlayerFilterBar, toPlayerFilter, type PlayerFilterFields } from "./PlayerFilters";
+import {
+  countFilters,
+  NO_PLAYER_FILTERS,
+  PlayerFilterBar,
+  toPlayerFilter,
+  type PlayerFilterFields,
+} from "./PlayerFilters";
 import { PlayerProfile, readPlayerTab, type PlayerTab } from "./PlayerProfile";
 import { PlayerTemplatesButton } from "./PlayerTemplates";
 import { restored, useSnapshot } from "./restore";
@@ -29,9 +35,17 @@ const FIRST_ASCENDING: ReadonlySet<PlayerSort> = new Set<PlayerSort>(["name", "n
 const POSITIONS_SHOWN = 3;
 
 /** The players table with the profile of the selected player beside it. */
-export function PlayerBrowser({ version, active }: { version: number; active: boolean }) {
+export function PlayerBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
   // The filters and the sort start as they were before the language was switched, if it was (see `restore.ts`).
   const [fields, setFields] = useState<PlayerFilterFields>(() => restored("playerFields", readFields));
+  // A player asked for from elsewhere is found whatever the filters were: they are cleared for him.
+  const [revealed, setRevealed] = useState(reveal);
+  if (revealed !== reveal) {
+    setRevealed(reveal);
+    if (reveal) {
+      setFields(NO_PLAYER_FILTERS);
+    }
+  }
   // Null until a header is clicked: no order is asked for, and the search answers with the best current ability first.
   const [order, setOrder] = useState<PlayerOrder | null>(() => restored("playerOrder", readOrder));
   useSnapshot("playerFields", () => fields);
@@ -59,6 +73,7 @@ export function PlayerBrowser({ version, active }: { version: number; active: bo
       requestArgs={{ filter, order: order ?? undefined }}
       version={version}
       active={active}
+      reveal={reveal}
       placeholder={text.search}
       summary={(total, shown) =>
         text.summary(total, shown, order && { by: text.sortNames[order.by], ascending: order.ascending })

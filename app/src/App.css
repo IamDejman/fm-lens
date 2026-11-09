@@ -2182,6 +2182,8 @@ input::placeholder {
 .profile-id {
   display: grid;
   grid-column: 2;
+  /* No wider than the header, whatever the length of the name. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-1);
   min-width: 0;
 }
@@ -2193,14 +2195,26 @@ input::placeholder {
 }
 
 .profile-title h2 {
+  display: flex;
   flex: 1;
+  align-items: center;
   min-width: 0;
   margin: 0;
   font-size: var(--type-3xl);
   font-stretch: 75%;
   font-weight: 850;
   line-height: 1.05;
-  overflow-wrap: anywhere;
+}
+
+/* The name keeps to one line, cut short with an ellipsis, so that a long one does not push the tabs down. The room
+   above and under it is for the letters that reach past so tight a line. */
+.profile-name {
+  min-width: 0;
+  margin-block: -3px;
+  padding-block: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .profile-id p {
@@ -2222,6 +2236,30 @@ input::placeholder {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-1) var(--space-4);
+  /* Always two lines tall, which is all its text takes (see below): the tabs are at the same place for every person,
+     read or edited. */
+  min-height: 2lh;
+}
+
+/* The full name keeps to one line. What the person is takes two lines at most, one under a full name; the hover text
+   has what is cut. While it is edited it holds inputs, which are never cut off. */
+.profile-fullname {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile:not(.editing) .profile-meta {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.profile:not(.editing) .profile-fullname + .profile-meta {
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
 }
 
 .profile-lines {
@@ -2238,22 +2276,31 @@ input::placeholder {
 .profile-status-row {
   display: flex;
   grid-column: 1 / -1;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
 
+/* The chips keep to one line and scroll sideways when there are more than fit, so the tabs under them stay put. The
+   room around them is for the focus ring, which the scrolling would cut off. */
 .status-chips {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 1 auto;
   gap: var(--space-2);
-  margin: 0;
-  padding: 0;
+  min-width: 0;
+  margin: -3px;
+  padding: 3px;
+  overflow-x: auto;
   list-style: none;
+  scrollbar-width: none;
+}
+
+.status-chips li {
+  flex: none;
 }
 
 .profile-moves {
+  flex: none;
   margin-left: auto;
 }
 
@@ -2905,6 +2952,8 @@ input::placeholder {
 
 /* The profile that is being edited has a highlighter rule under its head: what changes waits to be applied. */
 .profile.editing .profile-head {
+  /* The rule is thicker than the line it replaces: the padding gives that up, so the tabs stay where they are. */
+  padding-bottom: calc(var(--space-3) - 3px);
   border-bottom: 4px solid var(--pending-soft);
 }
 
@@ -3138,33 +3187,57 @@ h3 + .range-hint-line {
 /* In the header, the inputs take the place of the values they change: the abilities stay big, and the nationality,
    the birth date and the height sit in their lines. */
 .profile-abilities .edit-input {
+  width: calc(var(--digits, 2) * 1ch + 0.5rem);
+  padding: 0 2px;
   font-size: var(--type-2xl);
   font-stretch: 82%;
   font-weight: 850;
-  line-height: 1.1;
+  line-height: 1;
 }
 
+.profile-abilities .edit-ranged {
+  padding: 0;
+}
+
+/* The least and the most are not shown under the abilities, only read out: the line stays as tall as it is read. */
+.profile-abilities .range-hint:not([role]) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* They are no taller than the line they sit in, so the header is as tall edited as read. */
 .profile-meta .edit-input,
 .profile-vitals .edit-input {
-  padding-block: 1px;
+  padding-block: 0;
   font-size: var(--type-base);
+  line-height: 1.2;
 }
 
-/* The list of nations is as wide as its longest name; in the header it keeps to the line it is on. */
+/* The list of nations is as wide as its longest name; in the header it is as wide as the nation chosen, without the
+   arrow, so the line wraps no sooner than it does when read. */
 .profile-meta select.edit-input {
   max-width: 9rem;
+  padding-inline: 2px;
+  font-weight: inherit;
+  appearance: none;
+  field-sizing: content;
+  cursor: pointer;
+}
+
+/* The inputs are a little wider than what they replace: the gap before the abilities makes up for it. */
+.profile.editing .profile-summary {
+  column-gap: var(--space-2);
 }
 
 .edit-with-unit {
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-1);
-}
-
-/* An input in a line of small print or under the abilities wants a little air around it. */
-.profile.editing .profile-meta,
-.profile.editing .profile-vitals {
-  line-height: 2;
 }
 
 /* The bar under the body of a profile: what Apply said, the list of changes and the footer with the buttons. */
@@ -5111,9 +5184,24 @@ button.danger:hover:not(:disabled) {
   border-top: 1px solid var(--border);
 }
 
-/* The players are read, not picked: no row is a link. The cells are tighter than a list's: there are more of them. */
-.squad-grid tbody tr {
+/* A row opens the player in the player list. The cells are tighter than a list's: there are more of them. */
+.squad-grid .col-actions {
   cursor: default;
+}
+
+/* His name is the row's link for the keyboard: a button that reads as the name it is. */
+.squad-grid button.name {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  color: inherit;
+  text-align: left;
+}
+
+.squad-grid button.name:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
 }
 
 .squad-grid :is(th, td) {

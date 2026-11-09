@@ -35,6 +35,8 @@ export interface EditorState {
   injuryKinds: () => Promise<InjuryKind[]>;
   /** The in-game date, when it could be read. */
   gameDate: FmDate | null;
+  /** Shows the player with this UID in the player list, his profile open (a row of a squad does this). */
+  openPlayer: (uid: number) => void;
 }
 
 export const NO_GAME_ACTIONS: GameActions = {
@@ -57,6 +59,7 @@ export const EditorContext = createContext<EditorState>({
   gameActions: NO_GAME_ACTIONS,
   injuryKinds: () => Promise.resolve([]),
   gameDate: null,
+  openPlayer: () => {},
 });
 
 /** The inputs of the profile being edited (header and body), for the components that draw them. */

@@ -235,7 +235,17 @@ impl Connection {
         // out from is one of them.
         session.recheck();
         let players = PlayerIndex::new(session.players()?);
-        let staff = session.staff()?;
+        let mut staff = session.staff()?;
+        // A national team's manager has no club contract: the teams say who manages them.
+        let national = session.national_managers(
+            players
+                .iter()
+                .map(|p| (p.nation_address, p.nation.as_deref(), p.nation_uid))
+                .chain(staff.iter().map(|s| (s.nation_address, s.nation.as_deref(), s.nation_uid))),
+        );
+        for member in &mut staff {
+            member.national = national.get(&member.address).cloned();
+        }
         let human_clubs = staff.iter().filter(|member| member.is_human).filter_map(|member| member.club_uid).collect();
         let mut humans: Vec<u32> = staff.iter().filter(|member| member.is_human).map(|member| member.uid).collect();
         humans.sort_unstable();
@@ -2940,7 +2950,22 @@ fn search_staff(
     Ok(page(&connection.staff, &query, limit, offset.unwrap_or(0), |s| filter.matches(s), |_| {}))
 }
 
-/// Clubs matching `query`, highest reputation first; at most `limit` rows.
+/// The person a list of clubs is picked for.
+#[derive(Debug, Clone, Copy, Deserialize)]
+struct PickedFor {
+    uid: u32,
+    staff: bool,
+}
+
+/// Whether the clubs of the women's game come first in a list picked for a person at a women's club (or managing a
+/// women's national team) and `women` says so; the men's come first for everyone else, a person with no club included.
+fn own_side_first(hits: &mut [&fmlens_core::ClubSummary], women: bool) {
+    // A stable sort: each side stays in the order it was found in, highest reputation first.
+    hits.sort_by_key(|club| club.women != women);
+}
+
+/// Clubs matching `query`, highest reputation first; at most `limit` rows. With `picked_for`, a picker's list for
+/// that person: the clubs of their own side of the game (men's or women's) before the others.
 #[tauri::command]
 fn search_clubs(
     state: State<'_, AppState>,
@@ -2948,11 +2973,32 @@ fn search_clubs(
     limit: usize,
     offset: Option<usize>,
     filter: Option<ClubFilter>,
+    picked_for: Option<PickedFor>,
 ) -> Result<Page<fmlens_core::ClubSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(&connection.clubs, &query, limit, offset.unwrap_or(0), |c| filter.matches(c), |_| {}))
+    let women = picked_for.map(|person| {
+        let (club, national) = if person.staff {
+            let member = connection.staff.get(person.uid);
+            (member.and_then(|s| s.club_uid), member.and_then(|s| s.national.as_ref()).map(|job| job.women))
+        } else {
+            (connection.players.get(person.uid).and_then(|p| p.club_uid), None)
+        };
+        club.and_then(|uid| connection.clubs.get(uid)).map(|club| club.women).or(national).unwrap_or(false)
+    });
+    Ok(page(
+        &connection.clubs,
+        &query,
+        limit,
+        offset.unwrap_or(0),
+        |c| filter.matches(c),
+        |hits| {
+            if let Some(women) = women {
+                own_side_first(hits, women);
+            }
+        },
+    ))
 }
 
 /// Writes the players `query` and `filter` select, in `order`, to a new file in the exports folder as `format`: what
@@ -4738,6 +4784,28 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_picker_lists_the_person_s_side_of_the_game_first() {
+        let club = |uid: u32, women: bool, reputation: u16| fmlens_core::ClubSummary {
+            uid,
+            name: format!("Club {uid}"),
+            short_name: None,
+            women,
+            reputation: Some(reputation),
+            founded: None,
+            address: 0,
+        };
+        // As the search finds them: highest reputation first, the women's clubs on a scale of their own.
+        let found = [club(1, true, 9000), club(2, false, 8000), club(3, true, 7000), club(4, false, 6000)];
+        let order = |women: bool| {
+            let mut hits: Vec<&fmlens_core::ClubSummary> = found.iter().collect();
+            own_side_first(&mut hits, women);
+            hits.iter().map(|club| club.uid).collect::<Vec<_>>()
+        };
+        assert_eq!(order(false), [2, 4, 1, 3]);
+        assert_eq!(order(true), [1, 3, 2, 4]);
+    }
 
     #[test]
     fn cancelling_an_offer_retires_only_its_active_signing_undo() {
