@@ -1886,3 +1886,50 @@ Saka holds 570 (the dressing room atmosphere); 811 is the teammates backing him.
 FM names the teammate; FM Lens says "a teammate", as for 808 and 926. The
 Spanish and Turkish names are translations, not FM's own strings. Promises 2 and
 3 stay unnamed: no holder is at your club, and FM shows only your club's promises.
+
+## Not needed work permits (9 November 2026)
+
+FM Lens now asks FM's own rules whether a player needs a permit for his club's
+country, the same check FM makes before it gives one. Where FM says no, the
+Work permit section shows "Not needed" and offers no Request permit button.
+Where FM Lens cannot ask (an unsupported build, a national team, player-coaches
+and players with no club team), the section behaves as before.
+
+Packaged release builds of `fix/permit-eligibility` (a28881f), driven through
+the accessibility API. Test copies only, never saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Kai Havertz, Germany | Pass. At R. Madrid: "Not needed", no button | Pass. Same | Pass. At Arsenal: "Not needed", no button |
+| Riccardo Calafiori, Arsenal: Revoke | Pass. Request permit appears | Pass. Same | Pass, with Merino at Arsenal |
+| Then Request permit | Pass. England, Active; both rows in Changes offer Undo | Pass. Same | Pass |
+| Guillaume Trani, free agent: Sign for R. Madrid joining 20 Dec 2027, then Cancel transfer | Pass. Changes shows the Club row and the Future transfer row, both "-" with no Undo | Pass. Same | Pass, with Mariona Caldentey signing for Arsenal, joining 15 Aug 2026 |
+
+Mac: FM process 5862 (native) and 7858 (`arch -x86_64`), each with the bridge
+injected at launch, test copy `FM Lens Permit 2026-11-09` (Arsenal, 8 Dec 2027).
+Windows: FM27 on the test machine, unsaved Arsenal career at 1 Aug 2026, with the
+Windows build of the same commit.
+
+The last row is the live check for "Cancellation retires the original signing
+Undo" above, which had only been tested against fixtures.
+
+Scans (a throwaway example binary calling the same check, not committed):
+
+| Where | Players | Needs | Not needed | Couldn't ask |
+|---|---|---|---|---|
+| Windows: Arsenal, Chelsea, Man City, Liverpool, Tottenham, Brentford, Fulham, Everton, plus Havertz | 701 | 169 | 530 | 2 |
+| Apple Silicon: Arsenal | 55 | 17 | 38 | 0 |
+| Apple Silicon: whole database | 30,314 | 868 | 25,318 | 4,128 player-coaches |
+
+In the Windows and Arsenal scans, every player FM said needs a permit already
+held one. Many foreign players at
+English clubs come back not needed (Havertz and Frimpong at Arsenal on Windows,
+Saliba on the Mac), which matches FM giving them none when asked.
+
+Found on the way, not changed: in this Mac save Mikel Merino is on loan from
+Arsenal at Real Hispalis and holds an England permit. Revoke is offered but
+fails safely with "FM didn't make the change", because FM Lens looks for a
+permit for his current club's country (Spain). Nothing is written or logged.
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
+on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
