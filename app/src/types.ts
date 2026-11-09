@@ -1006,6 +1006,15 @@ export interface LoggedChange {
   earlierGame?: boolean;
   /** The mass edit it was part of (see `undo_batch`); null for an edit made in a profile. */
   batch: number | null;
+  /** For a change a squad's team action made (`team_action`): the action, and the club and team it was done to. */
+  team?: {
+    action: TeamAction;
+    club: string;
+    /** Where the team is in the club's list of teams, and its kind and age limit, to name it by like a `ClubTeam`. */
+    team: number;
+    kind: number;
+    ageLimit: number | null;
+  };
   /** Set when Undo is unavailable: a cancelled future transfer, or the original signing whose offer was cancelled. */
   permanent?: boolean;
   // Healing (`heal_player`) is logged as a change of the player's field "injuries" from how many he had to 0 (adding
