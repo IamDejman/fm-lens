@@ -274,7 +274,12 @@ export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarPr
 
       <label className="filter-field">
         <span>{text.contractEndsBy}</span>
-        <DateInput value={fields.contractExpiresBy} onChange={(value) => set("contractExpiresBy", value)} />
+        <DateInput
+          // The label holds the calendar too: the field is named by its own words alone.
+          aria-label={text.contractEndsBy}
+          value={fields.contractExpiresBy}
+          onChange={(value) => set("contractExpiresBy", value)}
+        />
       </label>
 
       <label className="filter-field">

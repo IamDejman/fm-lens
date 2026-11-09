@@ -4495,19 +4495,6 @@ button.danger:hover:not(:disabled) {
   font-variant-numeric: tabular-nums;
 }
 
-/* The browser's date input, only there for its calendar, which opens under the field. */
-.date-field > .date-picker {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-
 .date-pick {
   position: absolute;
   inset-block: 1px;
@@ -4541,6 +4528,109 @@ button.danger:hover:not(:disabled) {
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+/* The calendar of a date field, drawn over the window under its field (DateCalendar places it). */
+.date-calendar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.25);
+  color: var(--text);
+  font-size: var(--type-sm);
+  font-weight: 400;
+  line-height: 1.3;
+  text-align: center;
+  cursor: default;
+}
+
+.date-calendar-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.date-calendar-month {
+  flex: 1;
+  font-size: var(--type-base);
+  font-weight: 650;
+}
+
+/* Six weeks tall whatever the month, so that it does not move as the months go by. */
+.date-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 2rem);
+  grid-template-rows: repeat(7, 1.75rem);
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.date-weekday {
+  align-self: center;
+  color: var(--muted);
+  font-size: var(--type-xs);
+}
+
+.date-day,
+.date-step {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  font-size: var(--type-sm);
+  font-weight: 400;
+}
+
+.date-step {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--muted);
+}
+
+.date-step svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.date-day:hover:not(:disabled),
+.date-step:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* The day of the game. */
+.date-day[aria-current="date"] {
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+  font-weight: 650;
+}
+
+/* The date of the field. */
+.date-day[aria-pressed="true"],
+.date-day[aria-pressed="true"]:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 650;
+}
+
+.date-day:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
 }
 
 /* In the filters a date is as wide as its column, like the inputs beside it. */
