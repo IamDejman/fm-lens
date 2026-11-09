@@ -2011,7 +2011,7 @@ pressed.
 
 | Check | Apple Silicon | Intel (Rosetta) | Windows |
 |---|---|---|---|
-| Connect at FM's main menu, no save loaded | Pass. "No save is loaded in FM. Load one, then connect."; `fm_connect_failed` with code `session.playersNotFound` (07:51 UTC) | Pass. Same message; the same event and code (10:17 UTC) | Not run: FM was in the unsaved test career, and quitting it to the main menu would lose it |
+| Connect at FM's main menu, no save loaded | Pass. "No save is loaded in FM. Load one, then connect."; `fm_connect_failed` with code `session.playersNotFound` (07:51 UTC) | Pass. Same message; the same event and code (10:17 UTC) | Pass. Same message; the same event and code (10:48 UTC) |
 | Connect with a save loaded | Pass. Connected, 30,314 players; `fm_connected` (08:09 UTC) | Pass. Same; `fm_connected` (10:27 UTC) | Pass. Connected; `app_opened` and `fm_connected` (07:31-07:32 UTC) |
 
 The event carries the code alone, never the message or its parameters. Connect
@@ -2023,8 +2023,10 @@ each with the bridge injected at launch, and FM Lens 50559 (native) and 2800
 (`arch -x86_64`), test copy `FM Lens Permit 2026-11-09` (Arsenal, 8 Dec 2027).
 Launching FM through `nohup` drops `DYLD_INSERT_LIBRARIES` (SIP strips it for
 system binaries), so FM started without the bridge; `arch -e` keeps it.
-Windows: FM27 on the test machine, unsaved Arsenal career, with the Windows
-build of the same commit.
+Windows: FM27 on the test machine (FM process 7016) with the Windows build of
+the same commit. Connected first in an unsaved Arsenal career; then FM's Quit to
+Start Screen, answering No to saving, and FM Lens restarted (6248) before
+pressing Connect.
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
