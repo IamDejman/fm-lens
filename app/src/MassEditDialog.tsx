@@ -19,6 +19,7 @@ import { fieldTable } from "./fieldTables";
 import { currencySymbol, describeError } from "./format";
 import { changesText, editText, fieldLabel, massEditText as text, profileText, valueChange } from "./labels";
 import type { ListState } from "./ListBrowser";
+import { useDialogReturn } from "./MoreMenu";
 import {
   groupFields,
   inputRange,
@@ -63,16 +64,7 @@ export function MassEditButton({ entity, filters, list }: MassEditButtonProps) {
   const { editable } = useContext(EditorContext);
   const [scope, setScope] = useState<MassScope | null>(null);
   const button = useRef<HTMLButtonElement>(null);
-  const wasOpen = useRef(false);
-
-  // Once the dialog is gone, focus goes back to the button that opened it. Doing it earlier, with the dialog still
-  // up, would only make the dialog take focus back.
-  useEffect(() => {
-    if (wasOpen.current && scope === null) {
-      button.current?.focus();
-    }
-    wasOpen.current = scope !== null;
-  }, [scope]);
+  useDialogReturn(scope !== null, button);
 
   if (!editable) {
     return null;

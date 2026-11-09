@@ -868,6 +868,8 @@ export const tr: Strings = {
     applyJob: "Uygula",
     cancelJob: "Vazgeç",
     unemployed: "İşsiz",
+    nationalTeam: (nation, ageLimit, women) =>
+      `${nation}${women ? " Kadın" : ""}${ageLimit === null ? "" : ` U${ageLimit}`}`,
     coaching: "Antrenörlük",
     knowledge: "Bilgi",
     medical: "Sağlık",

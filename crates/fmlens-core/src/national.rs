@@ -7,7 +7,7 @@
 //! [`NationalLayout`]: crate::profile::NationalLayout
 //! [`RelationLayout`]: crate::profile::RelationLayout
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use fmlens_mem::{Process, is_user_pointer};
 use serde::Serialize;
@@ -144,6 +144,19 @@ pub struct Person {
     pub name: String,
 }
 
+/// The national team a member of staff manages.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NationalJob {
+    pub nation: String,
+    /// The nation's UID, e.g. for its flag.
+    pub nation_uid: Option<u32>,
+    /// The oldest the team's players may be; `None` for the senior team.
+    pub age_limit: Option<u8>,
+    /// One of the women's national teams.
+    pub women: bool,
+}
+
 /// Which of a nation's two containers: the men's national teams or the women's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
@@ -209,6 +222,76 @@ impl Session {
     /// nation.
     pub fn places_nation_details(&self) -> bool {
         self.layout.national.is_some()
+    }
+
+    /// The national team each manager manages, by the address of the manager's object, over `nations` (address, name
+    /// and UID; a nation given twice is read once). A national team's manager has no club contract, so the staff list
+    /// reads no job for him. Someone with several teams gets the senior one, the men's first. Empty where the layout
+    /// does not place nations' details; a nation that cannot be read is left out. Only reads memory.
+    pub fn national_managers<'a>(
+        &self,
+        nations: impl IntoIterator<Item = (u64, Option<&'a str>, Option<u32>)>,
+    ) -> HashMap<u64, NationalJob> {
+        let mut managers: HashMap<u64, NationalJob> = HashMap::new();
+        let Some(n) = self.layout.national.as_ref() else {
+            return managers;
+        };
+        let t = &self.layout.team;
+        let mut seen = HashSet::new();
+        for (nation, name, nation_uid) in nations {
+            let Some(name) = name else {
+                continue;
+            };
+            if !is_user_pointer(nation) || !seen.insert(nation) {
+                continue;
+            }
+            for side in [Side::Men, Side::Women] {
+                let Some(container) = container(&self.process, &self.layout, nation, side) else {
+                    continue;
+                };
+                let Some(teams) = PointerList::read_up_to(&self.process, container + n.teams, MOST_TEAMS)
+                    .ok()
+                    .flatten()
+                    .and_then(|list| list.elements(&self.process).ok())
+                else {
+                    continue;
+                };
+                for team in teams {
+                    if !is_user_pointer(team) || self.process.read_u64(team + t.club).ok() != Some(container) {
+                        continue;
+                    }
+                    let (Ok(manager), Ok(kind), Ok(age_limit)) = (
+                        self.process.read_u64(team + n.team_manager),
+                        self.process.read_u32(team + t.kind),
+                        self.process.read_bytes(team + t.age_limit, 1),
+                    ) else {
+                        continue;
+                    };
+                    let age_limit = age_limit[0];
+                    if !is_user_pointer(manager) {
+                        continue;
+                    }
+                    let job = NationalJob {
+                        nation: name.to_owned(),
+                        nation_uid,
+                        age_limit: (kind != SENIOR && age_limit != NO_AGE_LIMIT && age_limit < 100)
+                            .then_some(age_limit),
+                        women: side == Side::Women,
+                    };
+                    match managers.entry(manager) {
+                        std::collections::hash_map::Entry::Vacant(slot) => {
+                            slot.insert(job);
+                        }
+                        std::collections::hash_map::Entry::Occupied(mut slot) => {
+                            if job.age_limit.is_none() && slot.get().age_limit.is_some() {
+                                slot.insert(job);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        managers
     }
 
     /// The name of the continent of the nation at `address`, as its profile reads it; `None` where the layout does
