@@ -43,6 +43,20 @@ impl Session {
         (owner == address + p.identity() + shift).then_some(loan)
     }
 
+    /// The team of the club `player` is on loan from, if he is on loan. Only reads memory.
+    pub(crate) fn parent_team(&self, player: &PlayerSummary) -> Option<u64> {
+        self.loan_contract(player.address, player.shift)?;
+        self.contract_team(player)
+    }
+
+    /// The team his own contract is with: the parent club's while he is on loan.
+    fn contract_team(&self, player: &PlayerSummary) -> Option<u64> {
+        let p = &self.layout.player;
+        let contract = self.process.read_u64(player.address + p.at(p.contract, player.shift)).ok()?;
+        let team = is_user_pointer(contract).then(|| self.process.read_u64(contract + self.layout.contract.team).ok());
+        team.flatten().filter(|&team| is_user_pointer(team))
+    }
+
     /// The terms of the loan `player` is on, if he is on one. Only reads memory.
     pub fn loan(&self, player: &PlayerSummary) -> Option<LoanTerms> {
         let loan = self.loan_contract(player.address, player.shift)?;
@@ -50,11 +64,7 @@ impl Session {
         let bytes = self.process.read_bytes(loan, c.end() as usize).ok()?;
         let u16_at = |at: u64| u16::from_le_bytes([bytes[at as usize], bytes[at as usize + 1]]);
         let date = |at: u64| FmDate::from_raw(u16_at(at), u16_at(at + 2));
-        // His own contract is with the parent club's team.
-        let p = &self.layout.player;
-        let contract = self.process.read_u64(player.address + p.at(p.contract, player.shift)).unwrap_or(0);
-        let team = is_user_pointer(contract).then(|| self.process.read_u64(contract + c.team).ok()).flatten();
-        let team = team.filter(|&team| is_user_pointer(team)).unwrap_or(0);
+        let team = self.contract_team(player).unwrap_or(0);
         Some(LoanTerms {
             parent: (team != 0).then(|| club_of_team(&self.process, &self.layout, team)).flatten(),
             parent_uid: club_uid_of_team(&self.process, &self.layout, team),
