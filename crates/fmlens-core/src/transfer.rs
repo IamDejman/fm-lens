@@ -39,7 +39,7 @@ use crate::session::Session;
 use crate::staff::job_name;
 
 /// The job code of a player's contract.
-const PLAYER_JOB: u8 = 1;
+pub(crate) const PLAYER_JOB: u8 = 1;
 
 /// The squad number of a player without one.
 const NO_SQUAD_NUMBER: u8 = 255;
