@@ -850,7 +850,7 @@ export const tr: Strings = {
     setAttributesDone: (count, level) =>
       count === 0
         ? "Bütün özellikleri zaten bu değerde"
-        : `${changes(count)} yazıldı. Sakatlık eğilimi ve sertlik ${21 - level} oldu.`,
+        : `${changes(count)} yazıldı. Sakatlık eğilimi ve sertlik ${21 - level}${level === 20 ? ", MY ve PY 200" : ""} oldu.`,
     setAttributesUndone: (count) => (count === 0 ? "Hiçbir şey geri alınmadı" : `${changes(count)} geri alındı`),
     undoSetAttributes: "Geri al",
     undoSetAttributesTitle: "Eski özelliklerini geri getir",
@@ -2149,7 +2149,7 @@ export const tr: Strings = {
     maxTacticsTitle: "Bütün oyuncular takımın taktiğine tamamen alışkın",
     maxAll: "Özellikleri tamamla…",
     maxAllTitle:
-      "Herkesin bütün özellikleri 20 (sakatlık eğilimi ve sertlik 1)",
+      "Herkesin bütün özellikleri 20, MY ve PY 200 (sakatlık eğilimi ve sertlik 1)",
     maxAllAsk: (count) => `${format(count)} oyuncunun bütün özellikleri tamamlansın mı?`,
     maxAllConfirm: "Özellikleri tamamla",
     cancel: "İptal",

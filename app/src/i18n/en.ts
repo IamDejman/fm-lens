@@ -852,7 +852,7 @@ export const en = {
     setAttributesDone: (count: number, level: number) =>
       count === 0
         ? "Every attribute has that value already"
-        : `${changeCount(count)} made. Injury proneness and dirtiness set to ${21 - level}.`,
+        : `${changeCount(count)} made. Injury proneness and dirtiness set to ${21 - level}${level === 20 ? ", CA and PA to 200" : ""}.`,
     setAttributesUndone: (count: number) => (count === 0 ? "Nothing was undone" : `Undid ${changeCount(count)}`),
     undoSetAttributes: "Undo",
     undoSetAttributesTitle: "Put his old attributes back",
@@ -2447,7 +2447,7 @@ export const en = {
     maxTacticsTitle: "Every player fully familiar with the team's tactic",
     maxAll: "Max attributes…",
     maxAllTitle:
-      "Every attribute to 20 for everyone (injury proneness and dirtiness to 1)",
+      "Every attribute to 20 and CA and PA to 200 for everyone (injury proneness and dirtiness to 1)",
     /** What Max attributes asks first. */
     maxAllAsk: (count: number) => `Max every attribute of ${count === 1 ? "1 player" : `${format(count)} players`}?`,
     maxAllConfirm: "Max attributes",
