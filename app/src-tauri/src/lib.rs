@@ -472,6 +472,13 @@ impl Connection {
         self.next_id - 1
     }
 
+    /// Marks the changes of `batch` as made by the team action `done`.
+    fn name_batch(&mut self, batch: u32, done: &TeamDone) {
+        for logged in self.log.iter_mut().filter(|logged| logged.batch == Some(batch)) {
+            logged.team = Some(done.clone());
+        }
+    }
+
     /// The players, staff or clubs a search and its filter select, as edit targets with names.
     fn select(&self, entity: Entity, query: &str, filters: Filters) -> Vec<(Target, String)> {
         match entity {
@@ -506,6 +513,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch,
             moved: None,
             captaincy: None,
@@ -571,6 +579,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: Some(captaincy),
@@ -599,6 +608,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch,
             moved: None,
             captaincy: None,
@@ -621,6 +631,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -656,6 +667,7 @@ impl Connection {
             },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs {
                 from: Some(self.club_name(started.from_club)),
@@ -695,6 +707,7 @@ impl Connection {
             },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs {
                 from: Some(self.club_name(ended.from_club)),
@@ -734,6 +747,7 @@ impl Connection {
             },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs { from: None, to: Some(to), with: None, fee: None, joins: None }),
             captaincy: None,
@@ -768,6 +782,7 @@ impl Connection {
             },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs {
                 from: Some(from),
@@ -804,6 +819,7 @@ impl Connection {
             },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs {
                 from: None,
@@ -839,6 +855,7 @@ impl Connection {
             },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs {
                 from: None,
@@ -873,6 +890,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -901,6 +919,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch,
             moved: None,
             captaincy: None,
@@ -968,6 +987,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -1008,6 +1028,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -1044,6 +1065,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -1073,6 +1095,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch,
             moved: None,
             captaincy: None,
@@ -1102,6 +1125,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch,
             moved: None,
             captaincy: None,
@@ -1131,6 +1155,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -1174,6 +1199,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -1204,6 +1230,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,
@@ -1264,6 +1291,7 @@ impl Connection {
             change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: moved.then_some(MovedClubs { from: Some(from), to: Some(to), with: None, fee: None, joins: None }),
             captaincy: None,
@@ -1391,6 +1419,7 @@ impl Connection {
             },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs { from, to: Some(to), with: None, fee: None, joins: None }),
             captaincy: None,
@@ -1443,6 +1472,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs { from: Some(from), to: Some(to), with, fee, joins: None }),
             captaincy: None,
@@ -1486,6 +1516,7 @@ impl Connection {
             change,
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: Some(MovedClubs {
                 from: Some(self.club_name(from_club)),
@@ -1902,6 +1933,9 @@ struct LoggedChange {
     earlier_game: bool,
     /// The mass edit it was part of, if any.
     batch: Option<u32>,
+    /// For a change a team action made: the action and the team.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    team: Option<TeamDone>,
     /// For a move to another club, logged as a change of the field `club` from one club UID
     /// to the other: the clubs' names.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2065,7 +2099,7 @@ struct SquadRow {
 }
 
 /// What a team-wide action does to every player of the team.
-#[derive(Clone, Copy, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 enum TeamAction {
     /// Heals every current injury.
@@ -2085,6 +2119,18 @@ enum TeamAction {
     MaxCohesion,
     /// Every player fully familiar with the team's tactic, as the game's own editor does it.
     MaxTactics,
+}
+
+/// A team action as the log keeps it, for the Changes view to name its changes by.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TeamDone {
+    action: TeamAction,
+    club: String,
+    /// Where the team is in its club's list of teams, and its kind and age limit, to name it by (see `TeamView`).
+    team: usize,
+    kind: u8,
+    age_limit: Option<u8>,
 }
 
 #[derive(Clone, Serialize)]
@@ -4164,20 +4210,34 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?.clone();
-    let members = connection
+    let found = connection
         .session
         .club_teams(&summary, &connection.players)?
         .into_iter()
         .find(|found| found.index == team)
-        .ok_or(MoveError::NoTeam { index: team })?
-        .players;
+        .ok_or(MoveError::NoTeam { index: team })?;
     // Healing and lifting bans change the players' records: refused once, not once for every player.
     if matches!(action, TeamAction::Heal | TeamAction::LiftBans)
         && let Some(lock) = connection.session.structure_lock()
     {
         return Err(MoveError::Locked(lock).into());
     }
+    let done = TeamDone { action, club: summary.name.clone(), team, kind: found.kind, age_limit: found.age_limit };
     let batch = connection.fresh_id();
+    let report = act_on_team(connection, &summary, team, &found.players, action, batch);
+    connection.name_batch(batch, &done);
+    report
+}
+
+/// Does `action` to `members`, the players of the team `team` of the club `summary`, logging the changes as `batch`.
+fn act_on_team(
+    connection: &mut Connection,
+    summary: &fmlens_core::ClubSummary,
+    team: usize,
+    members: &[fmlens_core::SquadMember],
+    action: TeamAction,
+    batch: u32,
+) -> Result<MassReport, Failure> {
     let values: &[(&str, i64)] = match action {
         TeamAction::Heal => {
             let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
@@ -4230,14 +4290,14 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
         }
         TeamAction::MaxCohesion => {
             let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
-            for member in &members {
+            for member in members {
                 let Some(player) = connection.players.get(member.uid) else {
                     continue;
                 };
                 let name = player.name.clone();
                 let raised = connection
                     .session
-                    .plan_cohesion(player, &summary)
+                    .plan_cohesion(player, summary)
                     .and_then(|plan| plan.map(|plan| connection.session.apply_cohesion(&plan)).transpose());
                 match raised {
                     Ok(Some(done)) => {
@@ -4256,7 +4316,7 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
             return Ok(report);
         }
         TeamAction::MaxTactics => {
-            let raised = connection.session.maximise_tactics(&summary, team, &connection.players)?;
+            let raised = connection.session.maximise_tactics(summary, team, &connection.players)?;
             let applied = raised.len();
             for done in raised {
                 connection.log_tactics(done, Some(batch));
@@ -4679,6 +4739,7 @@ mod tests {
             change: Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: 0, new: 617 },
             undone_at: None,
             earlier_game: false,
+            team: None,
             batch: None,
             moved: None,
             captaincy: None,

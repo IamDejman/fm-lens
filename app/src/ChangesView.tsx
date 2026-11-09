@@ -14,13 +14,14 @@ import {
   jobLabel,
   massEditText,
   profileText,
+  squadText,
   swapNote,
   teamLabel,
   valueChange,
 } from "./labels";
 import { undoFailureLines } from "./massDraft";
 import { ruleLabel } from "./TiesGroup";
-import type { Clause, EditField, Entity, LoggedChange, TieEnd } from "./types";
+import type { Clause, EditField, Entity, LoggedChange, TeamAction, TieEnd } from "./types";
 
 /**
  * This session's change log. `reload` reads it again; when several reads overlap, the answer to the last one asked
@@ -110,6 +111,8 @@ interface Batch {
   earlierGame: boolean;
   /** The names of the fields it changed, each once, in the order they were written. */
   fields: string[];
+  /** For a squad's team action: what it was, and the team. */
+  team: LoggedChange["team"];
 }
 
 /** A row of the list: a change that was made on its own, or a whole mass edit. */
@@ -136,6 +139,7 @@ function entriesOf(log: readonly LoggedChange[]): Entry[] {
         remaining: 0,
         earlierGame: change.earlierGame === true,
         fields: [],
+        team: change.team,
       };
       batches.set(change.batch, batch);
       entries.push({ kind: "batch", batch });
@@ -414,10 +418,23 @@ interface BatchRowProps {
   onUndo: (batch: number) => void;
 }
 
+/** The team actions by the names the squad screen gives them. */
+const teamActionNames: Record<TeamAction, string> = {
+  heal: squadText.healAll,
+  liftBans: squadText.liftAll,
+  maxMorale: squadText.maxMorale,
+  removeUnhappiness: squadText.removeUnhappiness,
+  refresh: squadText.refreshAll,
+  maxAttributes: squadText.maxAllConfirm,
+  maxCohesion: squadText.maxCohesion,
+  maxTactics: squadText.maxTactics,
+};
+
 /** A mass edit as one row: what it changed, how much of it is still in place, its Undo and the toggle for its changes. */
 function BatchRow({ batch, open, undoing, outcome, onToggle, onUndo }: BatchRowProps) {
   // The newest change gives the time: the mass edit is as old as its last write.
   const newest = batch.changes[0];
+  const { team } = batch;
 
   return (
     <tr className={batch.remaining === 0 ? "batch-row undone" : "batch-row"}>
@@ -425,11 +442,21 @@ function BatchRow({ batch, open, undoing, outcome, onToggle, onUndo }: BatchRowP
         {formatTime(newest.at)}
       </td>
       <td className="col-person col-batch" colSpan={3}>
-        <div className="name">
-          {batch.fields.join(", ")}
-          <span className="tag kind">{text.kinds[batch.entity]}</span>
-          <span className="tag batch">{text.batch}</span>
-        </div>
+        {team === undefined ? (
+          <div className="name">
+            {batch.fields.join(", ")}
+            <span className="tag kind">{text.kinds[batch.entity]}</span>
+            <span className="tag batch">{text.batch}</span>
+          </div>
+        ) : (
+          <div className="name">
+            {teamActionNames[team.action]}
+            <span className="tag kind">{team.club}</span>
+            {team.team !== 0 && (
+              <span className="tag kind">{teamLabel({ index: team.team, kind: team.kind, ageLimit: team.ageLimit })}</span>
+            )}
+          </div>
+        )}
         <div className="sub">{text.batchCount(batch.changes.length, batch.remaining)}</div>
       </td>
       <td className="col-status">
@@ -445,7 +472,7 @@ function BatchRow({ batch, open, undoing, outcome, onToggle, onUndo }: BatchRowP
                 title={text.undoBatchTitle(batch.remaining)}
                 onClick={() => onUndo(batch.id)}
               >
-                {text.undoBatch}
+                {team === undefined ? text.undoBatch : text.undoAll}
               </button>
             ))}
           <button type="button" className="batch-toggle" aria-expanded={open} onClick={() => onToggle(batch.id)}>
