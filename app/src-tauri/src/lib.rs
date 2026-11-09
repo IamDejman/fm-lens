@@ -3729,6 +3729,16 @@ fn set_work_permit(state: State<'_, AppState>, uid: u32, granted: bool) -> Resul
     Ok(connection.log_game_change(uid, "work_permit", old, new, Undo::Permit(change)))
 }
 
+/// Whether the game's rules say the player `uid` needs a work permit to play for his club, as the game asks before it
+/// gives one; null where it cannot be asked. Nothing is written.
+#[tauri::command]
+fn work_permit_needed(state: State<'_, AppState>, uid: u32) -> Result<Option<bool>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    Ok(connection.session.needs_work_permit(player)?)
+}
+
 /// Has the game loan the player `uid` to the senior team of the club `club` from today until `ends` (a number like
 /// 20270630). Logged as a change of his `loan` from his club to that one, and undone by ending the loan.
 #[tauri::command]
@@ -4616,6 +4626,7 @@ pub fn run() {
             injury_kinds,
             add_injury,
             set_work_permit,
+            work_permit_needed,
             start_loan,
             plan_end_loan,
             end_loan,

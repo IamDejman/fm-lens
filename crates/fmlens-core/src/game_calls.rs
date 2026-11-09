@@ -505,6 +505,66 @@ impl Session {
         }
     }
 
+    /// Whether the game's rules say `player` needs a work permit to play for his club, asked as the game asks before it
+    /// gives one: where they say he does not, it gives him none. Only reads. None where this build, the bridge FM
+    /// loaded, or his team (a nation's) does not let it be asked.
+    pub fn needs_work_permit(&self, player: &PlayerSummary) -> Result<Option<bool>, MoveError> {
+        let check = self.profile.as_ref().and_then(|p| p.work_permit_check.as_ref());
+        let (Some(check), Some(national)) = (check, self.layout.team.national) else {
+            return Ok(None);
+        };
+        let functions =
+            (self.game_function(|calls| calls.work_permit_rules), self.game_function(|calls| calls.needs_work_permit));
+        let (rules_of, needs) = match functions {
+            (Ok(rules_of), Ok(needs)) => (rules_of, needs),
+            (Err(MoveError::CallUnavailable), _) | (_, Err(MoveError::CallUnavailable)) => return Ok(None),
+            (Err(e), _) | (_, Err(e)) => return Err(e),
+        };
+        let (_, identity, team) = self.permit_holder(player)?;
+        let base = self.plugin.base;
+        // With work permits switched off the game gives none.
+        if self.process.read_bytes(base + check.enabled, 1)?[0] != 1 {
+            return Ok(Some(false));
+        }
+        if self.process.read_bytes(team + national, 1)?[0] != 0 {
+            return Ok(None);
+        }
+        let club = self.process.read_u64(team + self.layout.team.club)?;
+        let Some(nation) = self.layout.club.nation.filter(|_| is_user_pointer(club)) else {
+            return Ok(None);
+        };
+        let nation = self.process.read_u64(club + nation)?;
+        let women = self.process.read_bytes(club + self.layout.club.women, 1)?[0] & 1;
+        let root = self.process.read_u64(base + check.rules)?;
+        let mut program = Program::new();
+        program.push(Step::new(rules_of, &[Arg::value(root), Arg::value(nation), Arg::value(u64::from(women))]));
+        let rules = self.call_game(&program)?.results.first().copied().unwrap_or(0);
+        // Without rules the game gives none; with them it asks, which must not be done of none.
+        if !is_user_pointer(rules) {
+            return Ok(Some(false));
+        }
+        let none = base + check.no_date;
+        let mut program = Program::new();
+        program.push(Step::new(
+            needs,
+            &[
+                Arg::value(rules),
+                Arg::value(identity),
+                Arg::value(team),
+                Arg::value(1),
+                Arg::value(0),
+                Arg::value(6),
+                Arg::value(0),
+                Arg::value(none),
+                Arg::value(none),
+                Arg::value(0),
+            ],
+        ));
+        // A bool.
+        let needed = self.call_game(&program)?.results.first().copied().unwrap_or(0) & 1 == 1;
+        Ok(Some(needed))
+    }
+
     /// What the game's work permit functions take: the transfer manager, the player's identity block and his club
     /// team.
     fn permit_holder(&self, player: &PlayerSummary) -> Result<(u64, u64, u64), MoveError> {
