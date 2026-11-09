@@ -28,6 +28,7 @@ interface DateInputProps extends Omit<
 export function DateInput(props: DateInputProps) {
   const { value, min, max, onChange, onBlur, onMouseDown, readOnly, disabled, ...rest } = props;
   const [draft, setDraft] = useState(() => ({ text: dateText(value, layout), value }));
+  const field = useRef<HTMLInputElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   // A value that is not the one typed here came from outside (the calendar, a reset): show it.
   if (draft.value !== value) {
@@ -54,6 +55,7 @@ export function DateInput(props: DateInputProps) {
     <span className="date-field">
       <input
         {...rest}
+        ref={field}
         type="text"
         inputMode="numeric"
         autoComplete="off"
@@ -94,6 +96,13 @@ export function DateInput(props: DateInputProps) {
             min={min}
             max={max}
             onChange={(e) => onChange(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              // The calendar is for picking: a date typed while it is open goes to the field that reads it right.
+              if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+                field.current?.focus();
+                field.current?.select();
+              }
+            }}
           />
           <button
             type="button"
@@ -102,6 +111,8 @@ export function DateInput(props: DateInputProps) {
             disabled={readOnly || disabled}
             onClick={() => {
               try {
+                // WebKit closes its calendar only when the date input loses focus, so it has to hold it.
+                picker.current?.focus();
                 picker.current?.showPicker();
               } catch {
                 // No calendar to show: the date can still be typed.
