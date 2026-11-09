@@ -19,7 +19,7 @@ use crate::rtti::class_of;
 use crate::session::Session;
 use crate::staff::{StaffIndex, StaffSummary};
 use crate::text::read_fm_string;
-use crate::transfer::{MoveError, MoveTerms, PointerList, TransferPlan};
+use crate::transfer::{MoveError, MoveTerms, PLAYER_JOB, PointerList, TransferPlan};
 
 /// The cause the game's own training injuries give `add_injury`.
 const TRAINING_CAUSE: u64 = 3;
@@ -199,6 +199,8 @@ const DATE_VALUE: usize = 0x50;
 /// The key of a transfer's fee in its terms map, 'TrFe', and where its integer Value sits in the scratch memory.
 const TRANSFER_FEE: u64 = 0x5472_4665;
 const FEE_VALUE: usize = 0x60;
+/// Where a player-coach's job term, a player's, sits in the scratch memory as an integer Value.
+const PLAYER_JOB_VALUE: usize = 0x70;
 
 /// Where cancelling puts the offer in the scratch memory: as read, and the copy that holds a reference through the call.
 /// Each slot is a pointer and a u32. An empty slot follows, for giving the reference back where a build has no ref_drop.
@@ -1206,18 +1208,23 @@ impl Session {
         }
         if let Some(fee) = fee {
             let map_insert = self.game_function(|calls| calls.map_insert)?;
-            let editor = self.profile.as_ref().and_then(|p| p.editor.as_ref()).ok_or(MoveError::CallUnavailable)?;
-            let types = self.process.read_u64(self.plugin.base + editor.value_types)?;
-            if !is_user_pointer(types) {
-                return Err(MoveError::CallUnavailable);
-            }
             // The fee, as the game's editor adds it: an integer Value (the type registry's entry, then the number),
             // which holds nothing to free.
-            program.write_u64(FEE_VALUE, types + editor.integer_type);
+            program.write_u64(FEE_VALUE, self.integer_type()?);
             program.write_u64(FEE_VALUE + 8, u64::from(fee as u32));
             program.push(Step::new(
                 map_insert,
                 &[Arg::scratch(TERMS_MAP), Arg::value(TRANSFER_FEE), Arg::scratch(FEE_VALUE)],
+            ));
+        }
+        if shift != 0 {
+            // Without a job the game gives a player-coach a staff job, so he is signed with a player's.
+            let map_insert = self.game_function(|calls| calls.map_insert)?;
+            program.write_u64(PLAYER_JOB_VALUE, self.integer_type()?);
+            program.write_u64(PLAYER_JOB_VALUE + 8, u64::from(PLAYER_JOB));
+            program.push(Step::new(
+                map_insert,
+                &[Arg::scratch(TERMS_MAP), Arg::value(JOB_TERM), Arg::scratch(PLAYER_JOB_VALUE)],
             ));
         }
         let signing = program.push(Step::new(
@@ -1235,6 +1242,16 @@ impl Session {
         program.push(Step::new(map_drop, &[Arg::scratch(TERMS_MAP)]).cleanup());
         let outcome = self.call_game(&program)?;
         Ok(outcome.results.get(signing).is_some_and(|&result| result as u8 != 0))
+    }
+
+    /// The type registry's entry for an integer Value, which the game's editor builds terms with.
+    fn integer_type(&self) -> Result<u64, MoveError> {
+        let editor = self.profile.as_ref().and_then(|p| p.editor.as_ref()).ok_or(MoveError::CallUnavailable)?;
+        let types = self.process.read_u64(self.plugin.base + editor.value_types)?;
+        if !is_user_pointer(types) {
+            return Err(MoveError::CallUnavailable);
+        }
+        Ok(types + editor.integer_type)
     }
 
     /// The transfer manager, which the build profile points at.
