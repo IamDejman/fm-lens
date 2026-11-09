@@ -2030,3 +2030,33 @@ pressing Connect.
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## Max attributes raises CA and PA (9 November 2026)
+
+Max attributes set every attribute to 20 but left current and potential
+ability where they were, so FM showed the old CA and PA and could fit the
+attributes back down to them. Max attributes for a team, and the profile's
+Set all attributes to 20, now also set CA and PA to 200 in the same batch, so
+one undo puts them back. Set all attributes to any other value leaves CA and
+PA alone.
+
+Packaged release builds of `fix/max-attributes-ability` (b24e895), driven
+through the accessibility API (UI Automation on Windows). Test copies only,
+never saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Max attributes, Arsenal first team | Pass. 1,594 changes; all 29 players CA 200, PA 200 (Saka was 186/188) | Pass. 1,594 changes; all 29 at 200/200 | Pass. 1,374 changes; all 25 at 200/200 (Rice was 182/184) |
+| Changes row | Pass. "Max attributes", ARSENAL, Undo all; rows include Current ability 137 → 200 and Potential ability 160 → 200 (Gilberto Mora) | Pass. Same row | Pass. "1,374 changes made" with Undo |
+| Undo | Pass. Undo all; every player's CA and PA back to the values before | Pass. Same | Pass. "Undid 1,374 changes"; every CA and PA back |
+| Profile, Set all attributes to 20 | Pass. Saka: "55 changes made. Injury proneness and dirtiness set to 1, CA and PA to 200."; header 200/200; Undo back to 186/188 | - | - |
+
+Mac: FM Lens and FM native, then both under `arch -x86_64` (translated), each
+FM with the bridge injected at launch, test copy `FM Lens Permit 2026-11-09`
+(Arsenal, 8 Dec 2027). Windows: FM27 on the test machine was at its main
+menu, so the test loaded `Lens Test` (a copy of the main save, Arsenal, 13 Jul
+2026) with the Windows build of the same commit.
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
+on Windows (`Lens Test` too). The released 0.7.0 bridge was restored on the
+Mac afterwards.
