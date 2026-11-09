@@ -1572,6 +1572,8 @@ export const tr: Strings = {
     least: (value) => `En az: ${value}`,
     most: (value) => `En çok: ${value}`,
     invalidDate: (from, to) => `${from} ile ${to} arasında bir tarih girin`,
+    dateParts: { day: "gg", month: "aa", year: "yyyy" },
+    pickDate: "Takvim",
     wageDisplay: (amount) => `FM haftalık yaklaşık ${amount} gösterebilir; girilen tutar kaydedilir.`,
     invalidMoney: (from, to) => `${from} ile ${to} arasında tam bir tutar girin`,
     invalidPercentage: (from, to) => `${from} ile ${to} arasında tam sayı bir yüzde girin`,

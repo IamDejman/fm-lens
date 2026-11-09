@@ -32,6 +32,7 @@ import {
   swapPlayers,
 } from "./editing";
 import { toPounds, toShown } from "./currency";
+import { DateInput } from "./DateInput";
 import { currencySymbol, describeError, formatAmount, formatDate, formatMoney } from "./format";
 import { clubListText, editText, fieldLabel, moveText as text, positionLabel, profileText } from "./labels";
 import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -1142,15 +1143,14 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
               <div className="move-terms">
                 <div className="move-term">
                   <label htmlFor={id("loan-ends")}>{fieldLabel("player", "loan.ends")}</label>
-                  <input
+                  <DateInput
                     id={id("loan-ends")}
                     className={loanEnds === null ? "move-input invalid" : "move-input"}
-                    type="date"
                     value={loanEndsText}
                     min={gameDate ? dayAfter(gameDate) : undefined}
                     readOnly={moving}
                     aria-invalid={loanEnds === null || undefined}
-                    onChange={(e) => setLoanEndsText(e.currentTarget.value)}
+                    onChange={setLoanEndsText}
                   />
                 </div>
               </div>
@@ -1167,15 +1167,14 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
                   {dated && today !== null && (
                     <div className="move-term">
                       <label htmlFor={id("joins")}>{fieldLabel("player", "transfer.joins")}</label>
-                      <input
+                      <DateInput
                         id={id("joins")}
                         className={joins === null ? "move-input invalid" : "move-input"}
-                        type="date"
                         value={joinsText}
                         min={isoFromNumber(today)}
                         readOnly={moving}
                         aria-invalid={joins === null || undefined}
-                        onChange={(e) => setJoinsText(e.currentTarget.value)}
+                        onChange={setJoinsText}
                       />
                     </div>
                   )}
@@ -1213,17 +1212,14 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
 
                       <div className="move-term">
                         <label htmlFor={id("expires")}>{fieldLabel("player", "contract.expires")}</label>
-                        <input
+                        <DateInput
                           id={id("expires")}
                           className={inputClass(expiresVerdict)}
-                          type="date"
                           value={expiresText}
-                          // Empty, WebKit would show today's real date as a placeholder, not the game's.
-                          data-empty={expiresText === "" || undefined}
                           readOnly={moving}
                           aria-invalid={expiresVerdict.status === "invalid" || undefined}
                           aria-describedby={expiresNote ? id("expires-note") : undefined}
-                          onChange={(e) => setExpiresText(e.currentTarget.value)}
+                          onChange={setExpiresText}
                         />
                         {expiresNote && (
                           <p
