@@ -1966,3 +1966,35 @@ build of the same commit.
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## Team actions named in Changes (9 November 2026)
+
+A squad action showed in Changes as a mass edit: Lift bans read "Bans",
+"Player", "Mass edit" with "Undo mass edit". The log now keeps the action and
+the team, so the row is named after the action, tagged with the club (and the
+team when it is not the first team), and its button is "Undo all". Mass edits
+from the Mass edit dialog are unchanged.
+
+Packaged release builds of `fix/team-action-label` (849c20d), driven through
+the accessibility API. Test copies only, never saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Action | Lift bans, Arsenal first team (Hincapié, Saliba, Gabriel) | Same | Heal, Arsenal first team (Bruno Guimarães) |
+| Changes row | Pass. "Lift bans", ARSENAL, "3 changes · 3 not undone", Undo all | Pass. Same | Pass. "Heal", ARSENAL, "1 change · 1 not undone", Undo all |
+| Rows under it | Each player, Bans, "Lifted 1 ban", Undo | Pass. Same | Injuries, "Healed 1 injury", Undo |
+| Undo all | Pass. All undone; squad shows "Lift bans 3 banned" again | Pass. Same | Pass. All undone |
+| Other team | Pass. Refresh fitness on U21: "Refresh fitness", ARSENAL, U21 (69 changes), undone | - | - |
+
+Nobody in the Windows test career is banned (1 Aug 2026, preseason), so Heal
+took the place of Lift bans there; both go through the same team action and
+the same Changes row.
+
+Mac: FM process 27073 (native) and 28356 (`arch -x86_64`, X86-64 translated),
+each with the bridge injected at launch, and FM Lens 27903 (native) and 28655
+(`arch -x86_64`), test copy `FM Lens Permit 2026-11-09` (Arsenal, 8 Dec 2027).
+Windows: FM27 on the test machine, unsaved Arsenal career, with the Windows
+build of the same commit.
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
+on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
