@@ -6,6 +6,7 @@ import {
   toAttributeBounds,
   type AttributeRow,
 } from "./AttributeFilters";
+import { DateInput } from "./DateInput";
 import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
 import { formatDate } from "./format";
 import { playerListText, POSITION_LABELS, type PositionKey } from "./labels";
@@ -273,11 +274,7 @@ export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarPr
 
       <label className="filter-field">
         <span>{text.contractEndsBy}</span>
-        <input
-          type="date"
-          value={fields.contractExpiresBy}
-          onChange={(e) => set("contractExpiresBy", e.currentTarget.value)}
-        />
+        <DateInput value={fields.contractExpiresBy} onChange={(value) => set("contractExpiresBy", value)} />
       </label>
 
       <label className="filter-field">

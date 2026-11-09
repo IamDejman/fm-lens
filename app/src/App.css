@@ -3015,11 +3015,9 @@ input::placeholder {
   opacity: 0.6;
 }
 
-/* A date: the browser sizes its fields and its calendar button (no --digits), and the date reads from the left. */
-.edit-input[type="date"] {
-  width: auto;
+/* A date reads from the left (see .date-field for its width). */
+.date-field > .edit-input {
   text-align: left;
-  appearance: auto;
 }
 
 /* A choice from a list: the select is as wide as its longest entry, and the name reads from the left. */
@@ -3615,11 +3613,6 @@ button.danger:hover:not(:disabled) {
   appearance: none;
 }
 
-/* A date: the browser sizes its fields and its calendar button. */
-.mass-input[type="date"] {
-  width: auto;
-  appearance: auto;
-}
 
 /* A value that cannot be applied. */
 .mass-input.invalid {
@@ -4445,7 +4438,7 @@ button.danger:hover:not(:disabled) {
 }
 
 /* The wage input is wide enough for ten million, and has no spin buttons, which would eat the room of the digits; the
-   arrow keys still step the value. A date input is as wide as the browser makes it. */
+   arrow keys still step the value. */
 .move-input[type="number"] {
   width: 9rem;
   appearance: textfield;
@@ -4487,9 +4480,76 @@ button.danger:hover:not(:disabled) {
   opacity: 0.6;
 }
 
-/* An empty date input shows nothing: WebKit would fill in today's real date, not the game's. */
-.move-input[type="date"][data-empty]:not(:focus) {
-  -webkit-text-fill-color: transparent;
+/* A date: typed as text (DateInput), as wide as a whole date and the calendar button at its end. */
+.date-field {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.date-field > input[type="text"] {
+  width: calc(10ch + 3.25rem);
+  min-width: 0;
+  padding-inline-end: 1.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The browser's date input, only there for its calendar, which opens under the field. */
+.date-field > .date-picker {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.date-pick {
+  position: absolute;
+  inset-block: 1px;
+  inset-inline-end: 1px;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted);
+}
+
+.date-pick:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.date-pick:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: -2px;
+}
+
+.date-pick svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* In the filters a date is as wide as its column, like the inputs beside it. */
+.filter-field > .date-field {
+  display: flex;
+}
+
+.filter-field > .date-field > input[type="text"] {
+  width: 100%;
 }
 
 /* Under an input: the value it started from once changed, or why it cannot be sent. */
