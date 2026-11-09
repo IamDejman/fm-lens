@@ -81,6 +81,7 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
   const info = details ?? player;
   // A move FM agreed for him on a later day: its dialog shows the first one, and cancels all of them, as FM's editor.
   const agreed = details?.futureTransfers[0];
+  const playerCoach = details?.contract?.playerCoach === true;
 
   // Another tab starts at its top, wherever the last one was scrolled to.
   const select = (next: PlayerTab) => {
@@ -126,21 +127,25 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
       headActions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
       actions={
         // Only while the profile is read, not edited: for a player who has a club to leave, or a free agent where the
-        // game signs them. The Transfer dialog starts from his contract, so its button waits for the details.
+        // game signs them. The Transfer dialog starts from his contract, so its button waits for the details. A
+        // player-coach works as staff too, so he is not moved or released.
         editing.editable &&
         editing.stage === "view" &&
         (info.club !== null || gameActions.signFreeAgent) && (
           <div className="move-actions">
-            <MoveButton
-              player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
-              contract={details?.contract ?? null}
-              ready={details !== undefined}
-              agreed={agreed}
-            />
+            {!playerCoach && (
+              <MoveButton
+                player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
+                contract={details?.contract ?? null}
+                ready={details !== undefined}
+                agreed={agreed}
+              />
+            )}
             {/* A loaned player is not released: where the game ends loans, his loan is ended instead. Which of the
                 two he has is in the details, so the button waits for them. */}
             {info.club !== null &&
               details !== undefined &&
+              !playerCoach &&
               (details.loan ? (
                 gameActions.endLoan && (
                   <EndLoanButton player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }} />

@@ -510,6 +510,7 @@ mod tests {
                     Clause { index: 1, kind: 3, amount: None, condition: Some(10) },
                 ],
                 concerns: Vec::new(),
+                player_coach: false,
             }),
             condition: 10_000,
             match_sharpness: 10_000,
