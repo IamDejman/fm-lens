@@ -90,7 +90,7 @@ export function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function isFailure(value: unknown): value is Failure {
+export function isFailure(value: unknown): value is Failure {
   return typeof value === "object" && value !== null && "code" in value && "params" in value && "message" in value;
 }
 
