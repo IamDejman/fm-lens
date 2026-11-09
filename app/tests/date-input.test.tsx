@@ -5,6 +5,11 @@ import { useState } from 'react';
 import { DateInput } from '../src/DateInput';
 import { dateLayout, dateText, isoFromDateText, typedDateText, type DateLayout } from '../src/dateEntry';
 
+// jsdom has no calendar: say there is one, so that the button that opens it is drawn.
+vi.hoisted(() => {
+  HTMLInputElement.prototype.showPicker = () => {};
+});
+
 const dayFirst: DateLayout = { order: ['day', 'month', 'year'], separator: '/' };
 const monthFirst: DateLayout = { order: ['month', 'day', 'year'], separator: '/' };
 
@@ -104,4 +109,19 @@ test('a part can be deleted and typed again, a short date is filled out on leavi
   expect(onValue).toHaveBeenLastCalledWith('2028-09-03');
   await user.click(screen.getByRole('button', { name: 'Reset' }));
   expect(input.value).toBe('02/01/2029');
+});
+
+test('the open calendar holds focus so that it closes on leaving, and a date typed there goes to the field', async () => {
+  const user = userEvent.setup();
+  const onValue = vi.fn();
+  const { container } = render(<Field start="2027-12-08" onValue={onValue} />);
+  const input = screen.getByLabelText<HTMLInputElement>('Joins');
+  const picker = container.querySelector<HTMLInputElement>('.date-picker');
+  await user.click(screen.getByRole('button', { name: 'Calendar' }));
+  expect(document.activeElement).toBe(picker);
+  await user.keyboard('2');
+  expect(document.activeElement).toBe(input);
+  await user.keyboard('0072028');
+  expect(input.value).toBe('20/07/2028');
+  expect(onValue).toHaveBeenLastCalledWith('2028-07-20');
 });
