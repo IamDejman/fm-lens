@@ -1699,6 +1699,9 @@ export const en = {
     most: (value: string) => `Max: ${value}`,
     /** The same for a date input; `from` and `to` are the earliest and the latest date it takes, as dates are shown. */
     invalidDate: (from: string, to: string) => `Enter a date from ${from} to ${to}`,
+    /** A date input: the letters that stand for its parts while it is empty, and the name of its calendar button. */
+    dateParts: { day: "dd", month: "mm", year: "yyyy" },
+    pickDate: "Calendar",
     /**
      * The same for an amount of money, in whole units of the chosen currency; `from` and `to` are the least and the
      * most it takes, as amounts are shown.
