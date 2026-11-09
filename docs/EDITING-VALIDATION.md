@@ -1926,10 +1926,43 @@ held one. Many foreign players at
 English clubs come back not needed (Havertz and Frimpong at Arsenal on Windows,
 Saliba on the Mac), which matches FM giving them none when asked.
 
-Found on the way, not changed: in this Mac save Mikel Merino is on loan from
-Arsenal at Real Hispalis and holds an England permit. Revoke is offered but
-fails safely with "FM didn't make the change", because FM Lens looks for a
-permit for his current club's country (Spain). Nothing is written or logged.
+Found on the way: in this Mac save Mikel Merino is on loan from Arsenal at
+Real Hispalis and holds an England permit. Revoke was offered but failed safely
+with "FM didn't make the change", because FM Lens looked for a permit for his
+current club's country (Spain). Nothing was written or logged. Fixed in the
+next section.
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
+on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## Revoke for loaned-out players (9 November 2026)
+
+FM keeps one permit per player per country. For a player on loan, the Work
+permit section can show a permit for the country of the club he is on loan
+from, but Revoke looked only for one for his current club's country, found
+nothing and failed with "FM didn't make the change". Revoke now falls back to
+the permit for his parent club's country when there is none for his current
+club's, and Undo gives that permit back to the same country.
+
+Packaged release builds of `fix/permit-revoke-loan` (0fbfa96), driven through
+the accessibility API. Test copies only, never saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Player | Mikel Merino, at Real Hispalis from Arsenal | Same | Pape Matar Sarr, at Juventus from Tottenham |
+| Before | England, Active, Revoke offered | Same | Same |
+| Revoke | Pass. Section shows "Not needed"; Changes: Work permit, Active → None, with Undo | Pass. Same | Pass. Same |
+| Undo | Pass. "Undone"; England, Active, Revoke offered again | Pass. Same | Pass. Same; a memory scan also shows the England permit back |
+
+"Not needed" after Revoke is FM's own answer for the loan club's country (a
+Spanish player in Spain, a Senegalese player under Italy's rules), from the
+check added in the section above.
+
+Mac: FM process 18309 (native) and 22026 (`arch -x86_64`, X86-64 translated),
+each with the bridge injected at launch, and FM Lens 21044 (native) and 22545
+(`arch -x86_64`), test copy `FM Lens Permit 2026-11-09` (Arsenal, 8 Dec 2027).
+Windows: FM27 on the test machine, unsaved Arsenal career, with the Windows
+build of the same commit.
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
