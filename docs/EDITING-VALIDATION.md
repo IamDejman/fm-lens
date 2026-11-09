@@ -2151,3 +2151,50 @@ the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows.
 The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## Typed dates read right in the Mac app (9 November 2026)
+
+Typing `20072028` into Joins in Sign gave 28/12/2027 on the Mac. The Mac app
+runs in WebKit, whose date input never moves on from the day to the month
+after two digits, so every digit landed in the day and the rest of the date
+came from what was there before. The Windows app runs in Chromium, which moves
+on by itself. The native control cannot be changed, so every date in FM Lens
+(Sign, Transfer, Loan, the contract filter, the date fields in Edit and Mass
+edit) is now a text field typed in the order of the app's language
+(`dd/mm/yyyy`, `dd.mm.yyyy` in Turkish): digits fill day, month and year and
+the separators write themselves. The click that enters the field selects the
+whole date, so typing replaces it. The browser's calendar stays behind a button
+in the field.
+
+The first build left the calendar open on the Mac after a day was picked or
+another field was clicked: WebKit closes its calendar only when the date input
+loses focus, and the hidden input never had it. The hidden input now takes
+focus before the calendar opens, and a digit typed while it has focus moves to
+the text field.
+
+Packaged release builds of `fix/sign-joins-date` (57feaa6), driven through the
+accessibility API and clicks (UI Automation and clicks on Windows). Test copies
+only, never saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Click Joins and type `20072028` | Pass. Reads 20/07/2028 | Pass. Reads 20/07/2028 | Pass. Reads 20/07/2028 |
+| Calendar button | Pass. Opens on July 2028 with 20 marked; picking 21 writes 21/07/2028 | Pass. Opens on July 2028 with 20 marked; picking 21 writes 21/07/2028 | Pass. Opens on July 2028 with 20 selected; picking 21 writes 21/07/2028 and closes it |
+| Calendar closes on leaving | Pass. Clicking back into the field closes it | Pass. Clicking back into the field closes it | Pass. Clicking back into the field closes it |
+| Type `20072028` with the calendar open | Pass. The field reads 20/07/2028 and the calendar closes | Pass. The field reads 20/07/2028 and the calendar closes | Not the same: Chromium's calendar holds the keyboard, so the digits change nothing; a click in the field closes it and typing works |
+| Sign with Joins and Contract end typed | Pass. Patrick Berg (53099570, 30), Joins `08122027`, Contract end `30062029`: Arsenal, "Contract to 30 Jun 2029" | Pass. Patrick Berg (53099570, 30), Joins `08122027`, Contract end `30062029`: Arsenal, "Contract to 30 Jun 2029" | Pass. Solly March (29090530, 31), Joins `13072026`, Contract end `30062029`: Arsenal, "Contract to 30 Jun 2029" |
+| Undo | Pass. "Undone at 22:02:03"; free agent again | Pass. "Undone at 22:09:30"; free agent again | Pass. "Undone at 22:20:45"; free agent again |
+
+Mac: FM27 native on Apple Silicon (FM process 71253, code type ARM64) and under
+Rosetta (FM process 75525, code type X86-64 translated), each with the branch
+bridge injected and the test FM Lens build run the same way. Test copy `FM Lens
+Permit 2026-11-09` (Arsenal, 8 Dec 2027), opened through Load Game and quit
+without saving between runs.
+
+Windows: FM27 on the test machine (FM process 7016) with the Windows build of
+the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
+2026). The build of the first commit (0ec9f54) passed the same typing, calendar,
+Sign and Undo checks there before the rebuild.
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows.
+The released 0.7.0 bridge was restored on the Mac afterwards.
