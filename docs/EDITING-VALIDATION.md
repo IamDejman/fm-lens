@@ -2060,3 +2060,42 @@ menu, so the test loaded `Lens Test` (a copy of the main save, Arsenal, 13 Jul
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows (`Lens Test` too). The released 0.7.0 bridge was restored on the
 Mac afterwards.
+
+## Free-agent player-coaches signed (9 November 2026)
+
+Sign was offered for free agents who can also coach (their person block sits
+0xF8 further into the object), then failed. FM Lens now reads and patches them
+at the shifted offsets, and the signing's terms carry a player's job. Without
+that job the game gave them a staff job: the first attempt made Pedro (a
+free-agent player-coach) Arsenal's Assistant Manager, and FM Lens reported that
+FM didn't make the change. Players who hold a coaching job at a club (job code
+odd and above 1) no longer show Transfer or Release, since the game moves them
+as staff. Players with the same object layout but a player's contract keep
+Transfer and Release.
+
+Packaged release builds of `fix/player-coach-sign` (2b0168d), driven through
+the accessibility API (UI Automation on Windows). Test copies only, never
+saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Sign a free-agent player-coach | Pass. Alan Browne (52064763) to Arsenal; contract to 30 Jun 2028, £44,934 a week, staff list job "Player" | Pass. Alan Browne (52064763) to Arsenal; contract to 30 Jun 2028, £44,934 a week, staff list job "Player" | Pass. Simon Mignolet (8167246) to Arsenal; club Arsenal, contract to 30 Jun 2027, staff list job "Player" |
+| Undo | Pass. "Undone at 15:46:51"; free agent, no contract, no staff job | Pass. "Undone at 15:58:06"; free agent, no contract, no staff job | Pass. "Undone at 15:17:40"; free agent, no contract, no staff job |
+| Sign later | Pass. Joins 28 Dec 2027; Contract tab shows Future transfer, Arsenal, 28 Dec 2027 | Pass. Joins 28 Dec 2027; Contract tab shows Future transfer, Arsenal, 28 Dec 2027; Changes row "Joins 28 Dec 2027" | Pass. Joins 20 Aug 2026; Contract tab shows Future transfer, Arsenal, 20 Aug 2026; Changes row "Joins 20 Aug 2026" |
+| Cancel transfer | Pass. Future transfer gone, Sign back, still a free agent | Pass. Future transfer gone, Sign back, still a free agent | Pass. Future transfer gone, Sign back, still a free agent |
+| Club player-coach | Pass. Nicky Clark (61005136, Queen Of The South manager): no Transfer, no Release | Pass. Nicky Clark (61005136, Queen Of The South manager): no Transfer, no Release | Pass. Jay Spearing (28000443, Liverpool coach): no Transfer, no Release |
+| Same layout, player's contract: Transfer, Release | Pass. Paul Ifill (109160) Greytown AFC to Arsenal, contract to 30 Jun 2028; then Release, free agent, no contract | Pass. Paul Ifill (109160) Greytown AFC to Arsenal, contract to 30 Jun 2028; then Release, free agent, no contract | Pass. Paul Ifill (109160) Greytown AFC to Arsenal, contract to 30 Jun 2028; then Release, free agent, no contract |
+
+Mac: FM27 native on Apple Silicon (FM process 21066) and under Rosetta (FM
+process 27871, code type X86-64 translated), each with the branch bridge
+injected and the test FM Lens build run the same way. Test copy `FM Lens
+Permit 2026-11-09` (Arsenal, 8 Dec 2027), opened through Load Game and quit
+without saving between runs.
+
+Windows: FM27 on the test machine (FM process 7016) with the Windows build of
+the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
+2026). The probe's `player` command reported "person block shifted by 0xf8
+(player-coach)" for each player above.
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
+on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.

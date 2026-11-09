@@ -195,6 +195,9 @@ pub struct Contract {
     pub clauses: Vec<Clause>,
     /// His reasons to be unhappy, over ones too, in the order the game keeps them.
     pub concerns: Vec<Concern>,
+    /// A player-coach's contract: he works as staff too, and does not move.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub player_coach: bool,
 }
 
 /// One of a player's reasons to be unhappy, as FMRTE lists them.
@@ -363,6 +366,7 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
     let date_at = |offset: u64| FmDate::from_raw(u16_at(offset), u16_at(offset + 2));
     let listing = buf[c.listing as usize];
     let squad_number = buf[c.squad_number as usize];
+    let job = buf[c.job as usize];
     Some(Contract {
         wage: i32::from_le_bytes(buf[c.wage as usize..c.wage as usize + 4].try_into().expect("4 bytes")),
         signed: date_at(c.signed),
@@ -382,6 +386,8 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
             process,
             u64::from_le_bytes(buf[c.unhappiness as usize..c.unhappiness as usize + 8].try_into().expect("8 bytes")),
         ),
+        // A coaching job's code plus one.
+        player_coach: job > 1 && job % 2 == 1,
     })
 }
 
