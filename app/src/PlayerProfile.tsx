@@ -4,7 +4,7 @@ import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
-import { keepPlaying, setWorkPermit, wholePercent } from "./editing";
+import { keepPlaying, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { ATTRIBUTE_LABELS, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
@@ -505,8 +505,9 @@ function FutureTransferGroup({ transfers }: { transfers: FutureTransfer[] }) {
 /**
  * His work permits: for each nation, an active work permit or an ESC slot from a day. Where the game gives them itself
  * on this build, a player at a club has the button on the heading that has it give him one for his club's country
- * (Request permit), or take his away (Revoke); then the group is there even while he holds none. Actual changes are logged and
- * undone from Changes.
+ * (Request permit), or take his away (Revoke); then the group is there even while he holds none. Request permit waits
+ * for FM's rules, and gives way to "Not needed" where they say he needs none, as FM would then give none; where FM
+ * Lens cannot ask, it is offered as before. Actual changes are logged and undone from Changes.
  */
 export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid" | "club" | "workPermits"> }) {
   const { gameActions, editable, readOnlyNote, onEdited } = useContext(EditorContext);
@@ -516,6 +517,35 @@ export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notIssued, setNotIssued] = useState(false);
+  const asking = changeable && !granted;
+  // What FM's rules last said of a player: null where FM Lens cannot ask.
+  const [answered, setAnswered] = useState<{ uid: number; needed: boolean | null } | null>(null);
+  // Undefined until FM answers for this player.
+  const needed = asking && answered?.uid === details.uid ? answered.needed : undefined;
+
+  // Asked again each time the profile reads the game, which gives new permits; the last answer stands meanwhile.
+  useEffect(() => {
+    if (!asking) {
+      return;
+    }
+    let current = true;
+    const uid = details.uid;
+    workPermitNeeded(uid).then(
+      (answer) => {
+        if (current) {
+          setAnswered({ uid, needed: answer });
+        }
+      },
+      () => {
+        if (current) {
+          setAnswered({ uid, needed: null });
+        }
+      },
+    );
+    return () => {
+      current = false;
+    };
+  }, [details.uid, asking, permits]);
 
   // The button stays busy until the profile has read the game again, which gives new permits.
   useEffect(() => {
@@ -557,7 +587,7 @@ export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid
   return (
     <section className="profile-group">
       <GroupHead title={profileText.workPermit}>
-        {changeable && (
+        {changeable && (granted || (needed !== undefined && needed !== false)) && (
           <button
             type="button"
             className="heal-toggle"
@@ -588,7 +618,7 @@ export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid
           ))}
         </dl>
       ) : !notIssued && (
-        <p className="injuries-none">{profileText.permitNone}</p>
+        <p className="injuries-none">{needed === false ? profileText.permitNotNeeded : profileText.permitNone}</p>
       )}
     </section>
   );

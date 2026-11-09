@@ -301,6 +301,7 @@ reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its se
 # The manager's object, as for a national team. Arsenal's senior team points at its human manager (staff id
 # 2002071616, his person block 0x340 further) on Steam 26340721.
 manager = 0x80
+national = 0x2F           # u8: 0 for a club's team, else a nation's (set_work_permit reads it)
 
 # The game's allocator hands out blocks in size classes, without headers. Measured on
 # the buffers of the teams' player lists (probe `squads`): a list of n pointers sits in

@@ -696,6 +696,7 @@ export const tr: Strings = {
     permitActive: "Aktif",
     permitEsc: (date: string) => `${date} tarihinden beri ESC kontenjanı`,
     permitNone: "Yok",
+    permitNotNeeded: "Gerekmiyor",
     requestPermit: "İzin talep et",
     permitNotIssued: "FM izin vermedi. Mevcut kurallara göre bu oyuncunun izne ihtiyacı olmayabilir.",
     revokePermit: "Geri al",

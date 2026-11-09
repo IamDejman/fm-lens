@@ -709,6 +709,7 @@ export const es: Strings = {
     permitActive: "Activo",
     permitEsc: (date: string) => `Plaza ESC desde el ${date}`,
     permitNone: "Ninguno",
+    permitNotNeeded: "No necesario",
     requestPermit: "Solicitar permiso",
     permitNotIssued: "FM no ha concedido un permiso. Es posible que este jugador no lo necesite según las reglas actuales.",
     revokePermit: "Retirar",

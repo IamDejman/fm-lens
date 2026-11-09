@@ -779,6 +779,9 @@ pub struct TeamLayout {
     /// Pointer to the object of the team's manager, null for none; where it has been traced.
     #[serde(default)]
     pub manager: Option<u64>,
+    /// `u8`: 0 for a club's team, otherwise a nation's, whose `club` then points to the nation's teams.
+    #[serde(default)]
+    pub national: Option<u64>,
 }
 
 impl TeamLayout {
@@ -997,6 +1000,20 @@ pub struct BuildProfile {
     /// The GAME_UI singleton, only where its entity-notification call is traced.
     #[serde(default)]
     pub game_ui: Option<u64>,
+    /// What asking whether a player needs a work permit takes, on the builds where it has been traced.
+    #[serde(default)]
+    pub work_permit_check: Option<WorkPermitCheckRvas>,
+}
+
+/// RVAs in the game plugin of what [`CallRvas::needs_work_permit`] takes: the byte that is 1 while work permits are
+/// in force (otherwise the game gives none), the static pointer [`CallRvas::work_permit_rules`] takes first, and the
+/// date the game passes for none (1 January 1900).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorkPermitCheckRvas {
+    pub enabled: u64,
+    pub rules: u64,
+    pub no_date: u64,
 }
 
 /// RVAs in the game plugin of the static pointers to the registry of the game's Value types (an integer Value is the
@@ -1092,6 +1109,13 @@ pub struct CallRvas {
     /// The game's editor action that makes every player of a team fully familiar with its tactic: `(map*)`, the map
     /// holding under 'dref' a struct whose own map holds the team's reference under 'dref'. Returns nothing.
     pub maximise_tactics: Option<u64>,
+    /// `(rules root, nation, women's)`: the work permit rules of the nation, for its men's or women's football, or
+    /// the game's default ones. Only reads.
+    pub work_permit_rules: Option<u64>,
+    /// `(rules, identity block, club team, 1, 0, 6, 0, no date*, no date*, null)`: whether the rules say the player
+    /// needs a work permit to play for the team, as a bool. The game asks it before it gives a permit, and its screens
+    /// ask it too. Only reads.
+    pub needs_work_permit: Option<u64>,
 }
 
 impl CallRvas {
@@ -1123,6 +1147,8 @@ impl CallRvas {
             self.ref_assign,
             self.struct_value,
             self.maximise_tactics,
+            self.work_permit_rules,
+            self.needs_work_permit,
         ]
         .into_iter()
         .flatten()
@@ -1495,7 +1521,7 @@ mod tests {
         assert_eq!(permits(arm64), (Some(0x56A_49F8), Some(0x2D8_5294), Some(0x2DD_D12C), Some(0x2DC_0210)));
         assert_eq!(permits(intel), (Some(0x5C5_DE80), Some(0x309_A010), Some(0x30F_C8E0), Some(0x30D_8D20)));
         let intel = profile_for(PluginFingerprint::MachO { uuid: intel }).and_then(|profile| profile.calls);
-        assert_eq!(intel.map(|calls| calls.all().len()), Some(24), "the traced Intel game calls");
+        assert_eq!(intel.map(|calls| calls.all().len()), Some(26), "the traced Intel game calls");
     }
 
     #[test]
@@ -1559,9 +1585,11 @@ mod tests {
                 ref_assign: None,
                 struct_value: Some(0x490_0DF0),
                 maximise_tactics: Some(0x256_C7C0),
+                work_permit_rules: Some(0x471_8EB0),
+                needs_work_permit: Some(0x1DD_B6B0),
             }
         );
-        assert_eq!(calls.all().len(), 24);
+        assert_eq!(calls.all().len(), 26);
         let arm: BuildProfile =
             toml::from_str(include_str!("../../../profiles/fm27/steam-26340721-macos-arm64.toml")).unwrap();
         assert_eq!(calls.all().len(), arm.calls.unwrap().all().len());
@@ -1589,6 +1617,29 @@ mod tests {
             (Some(0x2DA_8370), Some(0xBD_F080), Some(0xBD_6270), Some(0x31A_B350))
         );
         assert_eq!((calls.withdraw_offers, calls.leave_team), (Some(0xB1_7790), Some(0xB1_1110)));
-        assert_eq!(calls.all().len(), 24, "every call but ref_drop");
+        assert_eq!(calls.all().len(), 26, "every call but ref_drop");
+    }
+
+    /// What asking whether a player needs a work permit takes, as each build's set_work_permit reads it.
+    #[test]
+    fn steam_27_0_0_asks_for_work_permits_as_the_game_does() {
+        let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let windows = PluginFingerprint::Pe { size_of_image: 0x1821_C000, link_timestamp: 0x6AE5_65AF };
+        let check = |fingerprint| {
+            let profile = profile_for(fingerprint).expect("27.0.0");
+            let calls = profile.calls.unwrap_or_default();
+            let rvas = profile.work_permit_check.expect("the work permit check");
+            (calls.work_permit_rules, calls.needs_work_permit, rvas.enabled, rvas.rules, rvas.no_date)
+        };
+        assert_eq!(
+            check(PluginFingerprint::MachO { uuid: arm64 }),
+            (Some(0x422_4DF4), Some(0x1C3_2B9C), 0x56D_499A, 0x56D_57D0, 0x52E_FDF0)
+        );
+        assert_eq!(
+            check(PluginFingerprint::MachO { uuid: intel }),
+            (Some(0x471_8EB0), Some(0x1DD_B6B0), 0x5C8_AD6A, 0x5C8_BBD8, 0x58B_A950)
+        );
+        assert_eq!(check(windows), (Some(0x182_B490), Some(0x240_C760), 0x570_135A, 0x570_B280, 0x4AF_D81C));
     }
 }
