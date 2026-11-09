@@ -864,7 +864,7 @@ export const es: Strings = {
       count === 0
         ? "Todos sus atributos ya tienen ese valor"
         : `${count === 1 ? "1 cambio escrito" : `${format(count)} cambios escritos`}. La propensión a lesiones y el ` +
-          `juego sucio quedan en ${21 - level}.`,
+          `juego sucio quedan en ${21 - level}${level === 20 ? "; HA y HP, en 200" : ""}.`,
     setAttributesUndone: (count) =>
       count === 0 ? "No se ha deshecho nada" : count === 1 ? "1 cambio deshecho" : `${format(count)} cambios deshechos`,
     undoSetAttributes: "Deshacer",
@@ -2194,7 +2194,7 @@ export const es: Strings = {
     maxTacticsTitle: "Todos los jugadores totalmente familiarizados con la táctica del equipo",
     maxAll: "Atributos al máximo…",
     maxAllTitle:
-      "Todos los atributos a 20 para todos (propensión a lesiones y juego sucio a 1)",
+      "Todos los atributos a 20 y HA y HP a 200 para todos (propensión a lesiones y juego sucio a 1)",
     maxAllAsk: (count) =>
       `¿Todos los atributos al máximo para ${count === 1 ? "1 jugador" : `${format(count)} jugadores`}?`,
     maxAllConfirm: "Atributos al máximo",
