@@ -2,6 +2,7 @@
 // profile.
 
 import { useContext, useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
+import { DateInput } from "./DateInput";
 import { valueText, type Pending } from "./editDraft";
 import { isoFromNumber, isStoredFiner } from "./editing";
 import { currencySymbol } from "./format";
@@ -18,7 +19,7 @@ import {
 /**
  * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
  * input, with the sign of the chosen currency before it for an amount of money and the percent sign after it for a percentage, or a
- * date input (`YYYY-MM-DD`, with the calendar of the browser) for a date. A field that holds a code from a list is a
+ * date typed as text (`DateInput`, with the calendar of the browser behind a button) for a date. A field that holds a code from a list is a
  * select of its choices, and a yes-or-no a checkbox with the name of the field, or with Yes or No `inFact`, where the
  * label beside it names the field. A number that may be left empty says "none" while it is. A changed input is
  * outlined in the accent colour and says what it was; one that cannot be applied is outlined as an error. A number
@@ -83,7 +84,7 @@ export function EditInput({ field, inFact = false, hint = true }: { field: strin
   }
 
   const date = spec.kind === "date";
-  // A date input's calendar keeps to its range on its own.
+  // A date's calendar keeps to its range on its own.
   const hinted = hint && !date;
   // A float such as FIFA points is typed to two decimal places; its range is in hundredths.
   const unit = spec.kind === "f32" ? 100 : 1;
@@ -94,16 +95,28 @@ export function EditInput({ field, inFact = false, hint = true }: { field: strin
   // As wide as the longest value it takes, a minus sign included; an input that may be empty has room for its hint.
   const widest = (value: number) => (unit === 1 ? String(value) : (value / unit).toFixed(2)).length;
   const digits = Math.max(widest(range.min), widest(range.max), blank?.length ?? 0);
-  const control = (
+  const control = date ? (
+    <DateInput
+      className={`edit-input${outline}`}
+      min={isoFromNumber(range.min)}
+      max={isoFromNumber(range.max)}
+      value={text}
+      readOnly={session.busy}
+      aria-label={label}
+      aria-describedby={notice ? hintId : undefined}
+      title={title || undefined}
+      {...common}
+      onChange={(value) => session.type(field, value)}
+    />
+  ) : (
     <input
-      type={date ? "date" : clearable ? "text" : "number"}
+      type={clearable ? "text" : "number"}
       inputMode={clearable ? "numeric" : undefined}
       className={`edit-input${outline}`}
-      // A date input is as wide as the browser makes it.
-      style={date ? undefined : ({ "--digits": digits } as CSSProperties)}
-      min={date ? isoFromNumber(range.min) : range.min / unit}
-      max={date ? isoFromNumber(range.max) : range.max / unit}
-      step={date ? undefined : 1 / unit}
+      style={{ "--digits": digits } as CSSProperties}
+      min={range.min / unit}
+      max={range.max / unit}
+      step={1 / unit}
       placeholder={blank}
       value={text}
       readOnly={session.busy}
