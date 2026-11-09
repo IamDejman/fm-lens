@@ -195,8 +195,6 @@ export function DateCalendar({ value, today, min, max, anchor, toggle, onPick, o
       className="date-step"
       tabIndex={-1}
       aria-label={label}
-      // Focus stays on the day, so that the keys go on working.
-      onMouseDown={(event) => event.preventDefault()}
       onClick={() => move(addMonths(cursor, months))}
     >
       <svg viewBox="0 0 10 10" aria-hidden="true">
@@ -214,6 +212,8 @@ export function DateCalendar({ value, today, min, max, anchor, toggle, onPick, o
       onKeyDown={keyDown}
       // Inside a label a click would go to the label's input.
       onClick={(event) => event.preventDefault()}
+      // A press anywhere in it leaves focus on the day, so that the keys go on working.
+      onMouseDown={(event) => event.preventDefault()}
     >
       <span className="date-calendar-head">
         {step(editText.previousYear, -12, "M5 2L2 5l3 3M8.5 2l-3 3 3 3")}
@@ -232,6 +232,8 @@ export function DateCalendar({ value, today, min, max, anchor, toggle, onPick, o
         ))}
         {Array.from({ length: days }, (_, i) => {
           const iso = `${cursor.slice(0, 8)}${String(i + 1).padStart(2, "0")}`;
+          // A day out of range stays a button that can be pressed: a disabled one would take focus from the calendar.
+          const out = (!!min && iso < min) || (!!max && iso > max);
           return (
             <button
               key={iso}
@@ -243,8 +245,12 @@ export function DateCalendar({ value, today, min, max, anchor, toggle, onPick, o
               aria-label={dayName.format(time(iso))}
               aria-pressed={iso === value}
               aria-current={iso === today ? "date" : undefined}
-              disabled={(!!min && iso < min) || (!!max && iso > max)}
-              onClick={() => onPick(iso)}
+              aria-disabled={out || undefined}
+              onClick={() => {
+                if (!out) {
+                  onPick(iso);
+                }
+              }}
             >
               {i + 1}
             </button>

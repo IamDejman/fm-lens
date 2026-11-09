@@ -4608,7 +4608,11 @@ button.danger:hover:not(:disabled) {
   stroke-linejoin: round;
 }
 
-.date-day:hover:not(:disabled),
+.date-day[aria-disabled="true"] {
+  opacity: 0.45;
+}
+
+.date-day:hover:not([aria-disabled="true"]),
 .date-step:hover {
   background: var(--hover);
   color: var(--text);

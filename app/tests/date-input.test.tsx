@@ -184,6 +184,13 @@ test('the keys move through the calendar, Escape closes it, and a date typed the
   await user.keyboard('1122029');
   expect(input.value).toBe('31/12/2029');
   expect(onValue).toHaveBeenLastCalledWith('2029-12-31');
+  // A press on the calendar that is on no day leaves the keys with it.
+  await user.click(button);
+  await user.click(screen.getByText('December 2029'));
+  expect(focused()).toBe('Monday 31 December 2029');
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(button);
   // A press elsewhere closes it.
   await user.click(button);
   await user.click(input);
