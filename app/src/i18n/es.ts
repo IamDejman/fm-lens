@@ -1672,6 +1672,7 @@ export const es: Strings = {
     showChanges: "Mostrar cambios",
     hideChanges: "Ocultar cambios",
     undoBatch: "Deshacer edición masiva",
+    undoAll: "Deshacer todo",
     undoBatchTitle: (remaining) =>
       "Volver a escribir en el juego los valores anteriores de esta edición masiva " +
       (remaining === 1 ? "(1 aún vigente)" : `(${format(remaining)} aún vigentes)`),

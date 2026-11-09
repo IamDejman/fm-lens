@@ -1640,6 +1640,7 @@ export const tr: Strings = {
     showChanges: "Değişiklikleri göster",
     hideChanges: "Değişiklikleri gizle",
     undoBatch: "Toplu düzenlemeyi geri al",
+    undoAll: "Tümünü geri al",
     undoBatchTitle: (remaining) =>
       `Bu toplu düzenlemenin eski değerlerini oyuna geri yaz (${changes(remaining)} hâlâ yerinde)`,
 

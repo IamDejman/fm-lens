@@ -1809,6 +1809,8 @@ export const en = {
     hideChanges: "Hide changes",
     /** Undoes the whole mass edit. */
     undoBatch: "Undo mass edit",
+    /** Undoes a whole team action from a squad. */
+    undoAll: "Undo all",
     /** Hover text of Undo mass edit; `remaining` is how many of its changes are not undone yet. */
     undoBatchTitle: (remaining: number) =>
       `Put back the old values (${format(remaining)} still changed)`,
