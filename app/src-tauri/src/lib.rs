@@ -83,6 +83,8 @@ const READ_AGAIN_EVENT: &str = "game-read-again";
 
 /// The attributes of a player that are at their best at 1, not at 20.
 const LOWER_IS_BETTER: [&str; 2] = ["attribute.injury_proneness", "attribute.dirtiness"];
+/// What Max attributes raises to 200 with the attributes.
+const ABILITY: [&str; 2] = ["current_ability", "potential_ability"];
 
 /// What the app keeps from getting worse while it is connected (see `Connection::hold_frozen`).
 #[derive(Default)]
@@ -1797,16 +1799,23 @@ impl Connection {
         }
     }
 
-    /// Every attribute of a player at its best: 20, or 1 where lower is better.
     /// Every attribute at `level` (1 to 20); where lower is better (injury proneness, dirtiness) at the same quality the
-    /// other way round, 21 - `level`. At 20 this is every attribute at its best.
+    /// other way round, 21 - `level`. At 20 this is every attribute at its best, with current and potential ability at
+    /// 200: left at his old ability, the game would fit the attributes back down to it.
     fn attributes_at(&self, level: i64) -> Vec<(Field, Operation)> {
-        self.attribute_fields()
+        self.session
+            .fields(Entity::Player)
             .into_iter()
-            .map(|field| {
-                let shown = if LOWER_IS_BETTER.contains(&field.key.as_str()) { 21 - level } else { level };
+            .filter_map(|field| {
+                let shown = if field.key.starts_with("attribute.") {
+                    if LOWER_IS_BETTER.contains(&field.key.as_str()) { 21 - level } else { level }
+                } else if level == 20 && ABILITY.contains(&field.key.as_str()) {
+                    200
+                } else {
+                    return None;
+                };
                 let value = field.scale.stored(shown);
-                (field, Operation::Set { value })
+                Some((field, Operation::Set { value }))
             })
             .collect()
     }
@@ -4348,7 +4357,7 @@ fn act_on_team(
 }
 
 /// Sets every attribute of the player `uid` to `level` (1 to 20), and injury proneness and dirtiness, where lower is
-/// better, to 21 - `level`: at 20, what Max attributes does for a team. The changes are logged as one batch, which
+/// better, to 21 - `level`; at 20 also his current and potential ability to 200: what Max attributes does for a team. The changes are logged as one batch, which
 /// `undo_batch` undoes.
 #[tauri::command]
 fn set_attributes(state: State<'_, AppState>, uid: u32, level: i64) -> Result<MassReport, Failure> {
