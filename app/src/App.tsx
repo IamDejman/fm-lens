@@ -8,7 +8,7 @@ import { ChangesView, useChangeLog } from "./ChangesView";
 import { CompatibilityNotice } from "./CompatibilityNotice";
 import { DropMenu } from "./DropMenu";
 import { forgetFieldTables } from "./fieldTables";
-import { describeBuild, describeError, formatDate, formatNumber } from "./format";
+import { describeBuild, describeError, formatDate, formatNumber, isFailure } from "./format";
 import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
@@ -168,7 +168,11 @@ function App() {
 
   const connect = () =>
     run(appText.connecting, async () => {
-      const { refrozen: again, ...connected } = await call<ConnectionInfo>("connect");
+      const { refrozen: again, ...connected } = await call<ConnectionInfo>("connect").catch((e: unknown) => {
+        // Only the failure's code, such as `session.noCareer`: its message and parameters can hold paths.
+        track("fm_connect_failed", { code: isFailure(e) ? e.code : "unknown" });
+        throw e;
+      });
       // A new connection lists the changes of the game before, and its field tables may differ.
       forgetFieldTables();
       void reloadLog();

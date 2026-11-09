@@ -103,6 +103,8 @@ or Windows version and processor, and the app language:
 
 - `app_opened`: the app started.
 - `fm_connected`: FM Lens connected to FM, with FM's version and store.
+- `fm_connect_failed`: connecting to FM failed, with the kind of failure (such
+  as `session.noCareer`), never its message.
 - `tab_viewed`: a section opened, such as Players.
 - `edit_applied`: an edit went into FM, with its kind (`move_player`, or the
   field changed, such as `contract.wage`), never the value.
