@@ -393,12 +393,19 @@ impl Session {
 
     /// `player`'s object, checked to still be his, and not a player-coach's.
     fn player_object(&self, player: &PlayerSummary) -> Result<u64, MoveError> {
+        let object = self.person_object(player)?;
+        if player.shift != 0 {
+            return Err(MoveError::PlayerCoach);
+        }
+        Ok(object)
+    }
+
+    /// `player`'s object, checked to still be his: a player-coach's too, whose fields from the person block on are
+    /// read with his shift.
+    fn person_object(&self, player: &PlayerSummary) -> Result<u64, MoveError> {
         let p = &self.layout.player;
         if self.process.read_u32(player.address + p.at(p.uid, player.shift))? != player.uid {
             return Err(MoveError::Moved { uid: player.uid });
-        }
-        if player.shift != 0 {
-            return Err(MoveError::PlayerCoach);
         }
         Ok(player.address)
     }
@@ -582,7 +589,7 @@ impl Session {
         if !is_user_pointer(team) {
             return Err(MoveError::FreeAgent);
         }
-        Ok((manager, self.identity_block(object)?, team))
+        Ok((manager, self.identity_block(object, 0)?, team))
     }
 
     /// The team whose country the player's permit is for, his record there as [`Session::club_permit`] reads it, and
@@ -753,7 +760,7 @@ impl Session {
         put(0x3C, &[0xFF; 0x0D]);
         put(o.defaults, &process.read_bytes(self.plugin.base + rvas.defaults, 16)?);
         put(0x6F, &[0xFF]);
-        put(o.player, &self.identity_block(object)?.to_le_bytes());
+        put(o.player, &self.identity_block(object, 0)?.to_le_bytes());
         put(o.club, &senior.to_le_bytes());
         put(o.starts, &packed_date(starts.filter(|&day| day <= today).unwrap_or(today)).to_le_bytes());
         put(o.ends, &packed_date(ends).to_le_bytes());
@@ -779,8 +786,8 @@ impl Session {
     ) -> Result<SignedPlayer, MoveError> {
         let (object, senior) = self.signing_target(player, club)?;
         self.check_terms(terms, self.game_date())?;
-        let signed = self.run_signing(object, senior, None, None)?;
-        let expires = self.joined(object, club, signed)?;
+        let signed = self.run_signing(object, player.shift, senior, None, None)?;
+        let expires = self.joined(object, player.shift, club, signed)?;
         Ok(SignedPlayer { player: player.uid, club: club.uid, expires })
     }
 
@@ -795,28 +802,28 @@ impl Session {
         terms: MoveTerms,
         fee: i64,
     ) -> Result<TransferredPlayer, MoveError> {
-        let TransferPlan { from_club, to_club, object, senior, .. } = self.plan_transfer(player, club, terms)?;
+        let TransferPlan { from_club, to_club, object, shift, senior, .. } = self.plan_transfer(player, club, terms)?;
         let amount = i32::try_from(fee).ok().filter(|&amount| amount >= 0).ok_or(MoveError::OutOfRange {
             field: "transfer.fee",
             value: fee,
             min: 0,
             max: i64::from(i32::MAX),
         })?;
-        let moved = self.run_signing(object, senior, None, Some(amount))?;
-        let expires = self.joined(object, club, moved)?;
+        let moved = self.run_signing(object, shift, senior, None, Some(amount))?;
+        let expires = self.joined(object, shift, club, moved)?;
         Ok(TransferredPlayer { player: player.uid, from_club, to_club, fee, expires })
     }
 
-    /// Checks that the player `object` plays for `club` now, after the game said whether he `joined`, and reads the end
-    /// of the contract he has.
-    fn joined(&self, object: u64, club: &ClubSummary, joined: bool) -> Result<Option<FmDate>, MoveError> {
+    /// Checks that the player `object`, his person block shifted by `shift`, plays for `club` now, after the game said
+    /// whether he `joined`, and reads the end of the contract he has.
+    fn joined(&self, object: u64, shift: u64, club: &ClubSummary, joined: bool) -> Result<Option<FmDate>, MoveError> {
         let (process, layout) = (&self.process, &self.layout);
         let p = &layout.player;
-        let team = process.read_u64(object + p.team)?;
+        let team = process.read_u64(object + p.at(p.team, shift))?;
         if !joined || !is_user_pointer(team) || process.read_u64(team + layout.team.club)? != club.address {
             return Err(MoveError::CallDeclined);
         }
-        let contract = process.read_u64(object + p.contract)?;
+        let contract = process.read_u64(object + p.at(p.contract, shift))?;
         if !is_user_pointer(contract) {
             return Ok(None);
         }
@@ -847,17 +854,20 @@ impl Session {
             });
         }
         let before = self.dated_offers(manager, f)?;
-        let signed = self.run_signing(object, senior, Some(joins), None)?;
+        let signed = self.run_signing(object, player.shift, senior, Some(joins), None)?;
         // One new dated record, for an offer that names him and waits for its day; and he has not joined yet.
         let added: Vec<u32> = self.dated_offers(manager, f)?.into_iter().filter(|id| !before.contains(id)).collect();
         let [offer] = added[..] else {
             return Err(MoveError::CallDeclined);
         };
         let names_him = match self.pending_offer(manager, f, offer)? {
-            Some(found) => self.process.read_u64(found + f.offer_person)? == self.identity_block(object)?,
+            Some(found) => {
+                self.process.read_u64(found + f.offer_person)? == self.identity_block(object, player.shift)?
+            }
             None => false,
         };
-        if !signed || !names_him || is_user_pointer(self.process.read_u64(object + self.layout.player.team)?) {
+        let p = &self.layout.player;
+        if !signed || !names_him || is_user_pointer(self.process.read_u64(object + p.at(p.team, player.shift))?) {
             return Err(MoveError::CallDeclined);
         }
         Ok(AgreedSigning { player: player.uid, club: club.uid, joins, offer })
@@ -868,7 +878,7 @@ impl Session {
     pub fn cancel_signing(&self, player: &PlayerSummary, offer: u32) -> Result<(), MoveError> {
         let f = self.layout.future_transfer.as_ref().ok_or(MoveError::CallUnavailable)?;
         let manager = self.transfer_manager()?;
-        let identity = self.identity_block(self.player_object(player)?)?;
+        let identity = self.identity_block(self.person_object(player)?, player.shift)?;
         let found = self.pending_offer(manager, f, offer)?.ok_or(MoveError::NotPending)?;
         if !self.names(self.process.read_u64(found + f.offer_person)?, identity, f)? {
             return Err(MoveError::NotPending);
@@ -936,7 +946,7 @@ impl Session {
     fn pending_transfers(&self, player: &PlayerSummary) -> Result<(u64, Vec<PendingTransfer>), MoveError> {
         let f = self.layout.future_transfer.as_ref().ok_or(MoveError::CallUnavailable)?;
         let manager = self.transfer_manager()?;
-        let identity = self.identity_block(self.player_object(player)?)?;
+        let identity = self.identity_block(self.person_object(player)?, player.shift)?;
         let (process, layout) = (&self.process, &self.layout);
         let Some(records) = PointerList::read_up_to(process, manager + f.dated, LONGEST_OFFERS)? else {
             return Ok((identity, Vec::new()));
@@ -1142,14 +1152,14 @@ impl Session {
         Ok((member.address, self.senior_team(club)?))
     }
 
-    /// `player`'s object and the senior team of `club`, checked for a signing: he is a free agent, and the club is
-    /// still the club.
+    /// `player`'s object and the senior team of `club`, checked for a signing: he is a free agent (a player-coach
+    /// with no job too), and the club is still the club.
     fn signing_target(&self, player: &PlayerSummary, club: &ClubSummary) -> Result<(u64, u64), MoveError> {
-        let object = self.player_object(player)?;
+        let object = self.person_object(player)?;
         let (process, layout) = (&self.process, &self.layout);
         let p = &layout.player;
-        if is_user_pointer(process.read_u64(object + p.team)?)
-            || is_user_pointer(process.read_u64(object + p.contract)?)
+        if is_user_pointer(process.read_u64(object + p.at(p.team, player.shift))?)
+            || is_user_pointer(process.read_u64(object + p.at(p.contract, player.shift))?)
         {
             return Err(MoveError::HasClub);
         }
@@ -1159,11 +1169,13 @@ impl Session {
         Ok((object, self.senior_team(club)?))
     }
 
-    /// Has the game sign the player `object` for the team `senior`, on `joins` when given (the date term of the terms
-    /// map), else today, for `fee` pounds when given (its fee term). Says whether the game says he signed.
+    /// Has the game sign the player `object`, his person block shifted by `shift`, for the team `senior`, on `joins`
+    /// when given (the date term of the terms map), else today, for `fee` pounds when given (its fee term). Says
+    /// whether the game says he signed.
     fn run_signing(
         &self,
         object: u64,
+        shift: u64,
         senior: u64,
         joins: Option<FmDate>,
         fee: Option<i32>,
@@ -1212,7 +1224,7 @@ impl Session {
             function,
             &[
                 Arg::value(manager),
-                Arg::value(object + self.layout.player.actual_person()),
+                Arg::value(object + self.layout.player.at(self.layout.player.actual_person(), shift)),
                 Arg::value(senior),
                 Arg::scratch(TERMS_MAP),
                 Arg::scratch(REFERENCES),
@@ -1345,13 +1357,14 @@ impl Session {
         let leave = self.game_function(|calls| calls.leave_team)?;
         let manager = self.transfer_manager()?;
         let from_club = self.plan_release(player, human_clubs)?.from_club;
-        let object = self.player_object(player)?;
-        if self.loan_contract(object, 0).is_some() {
+        let (object, shift) = (self.person_object(player)?, player.shift);
+        if self.loan_contract(object, shift).is_some() {
             return Err(MoveError::OnLoan);
         }
-        let identity = self.identity_block(object)?;
+        let identity = self.identity_block(object, shift)?;
         let (process, layout) = (&self.process, &self.layout);
-        let contract = process.read_u64(object + layout.player.contract)?;
+        let p = &layout.player;
+        let contract = process.read_u64(object + p.at(p.contract, shift))?;
         let team = process.read_u64(contract + layout.contract.team)?;
         let zero = Arg::value(0);
         let mut program = Program::new();
@@ -1376,12 +1389,12 @@ impl Session {
             ],
         ));
         self.call_game(&program)?;
-        let team = process.read_u64(object + layout.player.team)?;
+        let team = process.read_u64(object + p.at(p.team, shift))?;
         Ok(GameRelease {
             player: player.uid,
             from_club,
             club_after: crate::players::club_uid_of_team(process, layout, team),
-            contract_left: is_user_pointer(process.read_u64(object + layout.player.contract)?),
+            contract_left: is_user_pointer(process.read_u64(object + p.at(p.contract, shift))?),
         })
     }
 
@@ -1398,17 +1411,18 @@ impl Session {
         Ok(senior)
     }
 
-    /// The player object's identity block: where its vtable says its virtual base starts.
+    /// The player object's identity block: where its vtable says its virtual base starts, whatever his `shift`.
     #[cfg(target_os = "macos")]
-    fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
+    fn identity_block(&self, object: u64, _shift: u64) -> Result<u64, MoveError> {
         let vtable = self.process.read_u64(object)?;
         Ok(object.wrapping_add_signed(self.process.read_u64(vtable - 0x18)? as i64))
     }
 
-    /// The player object's identity block. MSVC's vtables keep no offset to it, so the layout places it.
+    /// The player object's identity block, his person block shifted by `shift`. MSVC's vtables keep no offset to it,
+    /// so the layout places it.
     #[cfg(windows)]
-    fn identity_block(&self, object: u64) -> Result<u64, MoveError> {
-        Ok(object + self.layout.player.identity())
+    fn identity_block(&self, object: u64, shift: u64) -> Result<u64, MoveError> {
+        Ok(object + self.layout.player.at(self.layout.player.identity(), shift))
     }
 }
 

@@ -650,6 +650,8 @@ export interface Contract {
   clauses: Clause[];
   /** His reasons to be unhappy, over ones too (`ended` set), in the order the game keeps them. */
   concerns: Concern[];
+  /** A player-coach's contract: he works as staff too, and does not move. */
+  playerCoach?: boolean;
 }
 
 /** One of a player's reasons to be unhappy. */

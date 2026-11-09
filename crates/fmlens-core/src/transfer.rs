@@ -96,6 +96,8 @@ pub struct TransferPlan {
     pub from_club: u32,
     pub to_club: u32,
     pub(crate) object: u64,
+    /// How far his person block is shifted: a player-coach's is.
+    pub(crate) shift: u64,
     pub(crate) senior: u64,
 }
 
@@ -116,6 +118,8 @@ pub struct ClubMove {
 struct Departure {
     uid: u32,
     object: u64,
+    /// How far his person block is shifted: a player-coach's is.
+    shift: u64,
     team: u64,
     contract: u64,
     employer: u64,
@@ -631,6 +635,7 @@ impl Session {
             from_club: leaving.club_uid,
             to_club: joining.club_uid,
             object: leaving.object,
+            shift: leaving.shift,
             senior: joining.senior,
         })
     }
@@ -647,8 +652,9 @@ impl Session {
             removal_patches(list, *index, elements, &mut patches);
         }
         // Only once no list holds him: the game may follow a listed player to his contract.
-        patches.push(leaving.object + p.team, leaving.team.to_le_bytes(), 0u64.to_le_bytes());
-        patches.push(leaving.object + p.contract, leaving.contract.to_le_bytes(), 0u64.to_le_bytes());
+        patches.push(leaving.object + p.at(p.team, leaving.shift), leaving.team.to_le_bytes(), 0u64.to_le_bytes());
+        let contract = leaving.object + p.at(p.contract, leaving.shift);
+        patches.push(contract, leaving.contract.to_le_bytes(), 0u64.to_le_bytes());
         Ok(MovePlan { player: leaving.uid, from_club: leaving.club_uid, to_club: 0, other: None, patches: patches.0 })
     }
 
@@ -711,10 +717,7 @@ impl Session {
         if process.read_u32(object + p.at(p.uid, player.shift))? != player.uid {
             return Err(MoveError::Moved { uid: player.uid });
         }
-        if player.shift != 0 {
-            return Err(MoveError::PlayerCoach);
-        }
-        let team = process.read_u64(object + p.team)?;
+        let team = process.read_u64(object + p.at(p.team, player.shift))?;
         let contract = process.read_u64(object + p.at(p.contract, player.shift))?;
         if !is_user_pointer(team) || !is_user_pointer(contract) {
             return Err(MoveError::FreeAgent);
@@ -726,7 +729,12 @@ impl Session {
             |offset: u64| u64::from_le_bytes(record[offset as usize..offset as usize + 8].try_into().expect("8 bytes"));
         let byte = |offset: u64| record[offset as usize];
         let employer = word(c.team);
-        if word(c.owner) != object + p.identity()
+        // A player-coach whose contract is a player's only plays, and moves like any player; one who works as staff
+        // too does not move.
+        if player.shift != 0 && byte(c.job) != PLAYER_JOB {
+            return Err(MoveError::PlayerCoach);
+        }
+        if word(c.owner) != object + p.at(p.identity(), player.shift)
             || byte(c.job) != PLAYER_JOB
             || word(c.senior_team) != employer
             || !is_user_pointer(employer)
@@ -774,6 +782,7 @@ impl Session {
         Ok(Departure {
             uid: player.uid,
             object,
+            shift: player.shift,
             team,
             contract,
             employer,
@@ -788,7 +797,8 @@ impl Session {
     /// Each captaincy the player `leaving` describes holds in his club's teams is left empty.
     fn captaincy_patches(&self, leaving: &Departure, patches: &mut Patches) -> Result<(), MoveError> {
         let t = &self.layout.team;
-        let block = leaving.object + self.layout.player.identity();
+        let p = &self.layout.player;
+        let block = leaving.object + p.at(p.identity(), leaving.shift);
         for &team in &leaving.teams {
             for offset in [t.captain, t.vice_captain] {
                 if self.process.read_u64(team + offset)? == block {
@@ -847,7 +857,7 @@ impl Session {
     /// `terms`, with no squad number, and off the transfer and loan lists.
     fn contract_patches(&self, leaving: &Departure, senior: u64, terms: MoveTerms, patches: &mut Patches) {
         let (p, c) = (&self.layout.player, &self.layout.contract);
-        let Departure { object, team, contract, employer, ref record, .. } = *leaving;
+        let Departure { object, shift, team, contract, employer, ref record, .. } = *leaving;
         for offset in [c.team, c.senior_team] {
             patches.push(contract + offset, employer.to_le_bytes(), senior.to_le_bytes());
         }
@@ -874,7 +884,7 @@ impl Session {
         let byte = |offset: u64| record[offset as usize];
         patches.push(contract + c.squad_number, [byte(c.squad_number)], [NO_SQUAD_NUMBER]);
         patches.push(contract + c.listing, [byte(c.listing)], [byte(c.listing) & !LISTED]);
-        patches.push(object + p.team, team.to_le_bytes(), senior.to_le_bytes());
+        patches.push(object + p.at(p.team, shift), team.to_le_bytes(), senior.to_le_bytes());
     }
 
     /// Writes a planned move. Every write lands only on the bytes the plan found, and is
