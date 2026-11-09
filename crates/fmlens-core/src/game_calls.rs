@@ -211,6 +211,9 @@ const CANCEL_LEAVING: u64 = 0;
 /// The longest list of offers the editor reads.
 const LONGEST_OFFERS: u64 = 1 << 20;
 
+/// A player's work permit record, and for an ESC slot the day it began as the game keeps it.
+type PermitRecord = (u64, Option<u32>);
+
 /// A work permit for his club's country the game gave a player or took away.
 #[derive(Debug, Clone, Copy)]
 pub struct PermitChange {
@@ -222,6 +225,8 @@ pub struct PermitChange {
     /// For an ESC slot he held, the day it began as the game keeps it: the 4 bytes at the record's
     /// `record_esc_since`. None for a work permit or nothing.
     pub was_esc: Option<u32>,
+    /// Whether it was for the country of the club he is on loan from rather than his club's.
+    pub parent: bool,
 }
 
 impl PermitChange {
@@ -468,10 +473,11 @@ impl Session {
     }
 
     /// Has the game give `player` a work permit for his club's country, or take his away, as its own editor does: it
-    /// makes him a record without an ESC slot, where its rules say he needs one, or removes his record.
+    /// makes him a record without an ESC slot, where its rules say he needs one, or removes his record. A player on
+    /// loan without one there has the one for his parent club's country taken away, where he holds it.
     pub fn set_work_permit(&self, player: &PlayerSummary, grant: bool) -> Result<PermitChange, MoveError> {
-        let (manager, identity, team) = self.permit_holder(player)?;
-        let held = self.club_permit(manager, identity, team)?;
+        let (manager, identity, club_team) = self.permit_holder(player)?;
+        let (team, held, parent) = self.held_permit(player, manager, identity, club_team)?;
         match (grant, held) {
             (true, None) => {
                 self.give_permit(manager, identity, team, false, false)?;
@@ -481,14 +487,15 @@ impl Session {
             _ => return Err(MoveError::CallDeclined),
         }
         let was_esc = held.and_then(|(_, esc)| esc);
-        Ok(PermitChange { player: player.uid, granted: grant, was_granted: held.is_some(), was_esc })
+        Ok(PermitChange { player: player.uid, granted: grant, was_granted: held.is_some(), was_esc, parent })
     }
 
     /// Undoes `change`: a permit given is taken away again, and one taken away given back, as an ESC slot from the day
     /// it began where it was one.
     pub fn undo_work_permit(&self, player: &PlayerSummary, change: &PermitChange) -> Result<(), MoveError> {
         let w = self.layout.work_permit.as_ref().ok_or(MoveError::CallUnavailable)?;
-        let (manager, identity, team) = self.permit_holder(player)?;
+        let (manager, identity, club_team) = self.permit_holder(player)?;
+        let team = if change.parent { self.parent_team(player).ok_or(MoveError::CallDeclined)? } else { club_team };
         match (change.was_granted, self.club_permit(manager, identity, team)?) {
             (true, None) => {
                 match (self.give_permit(manager, identity, team, true, change.was_esc.is_some())?, change.was_esc) {
@@ -576,6 +583,26 @@ impl Session {
             return Err(MoveError::FreeAgent);
         }
         Ok((manager, self.identity_block(object)?, team))
+    }
+
+    /// The team whose country the player's permit is for, his record there as [`Session::club_permit`] reads it, and
+    /// whether it is his parent club's team: his club team, or for a player on loan who holds no permit for that
+    /// country, the parent club's where he holds one for its country. The profile shows both.
+    fn held_permit(
+        &self,
+        player: &PlayerSummary,
+        manager: u64,
+        identity: u64,
+        team: u64,
+    ) -> Result<(u64, Option<PermitRecord>, bool), MoveError> {
+        let held = self.club_permit(manager, identity, team)?;
+        if held.is_none()
+            && let Some(parent) = self.parent_team(player).filter(|&parent| parent != team)
+            && let Some(found) = self.club_permit(manager, identity, parent)?
+        {
+            return Ok((parent, Some(found), true));
+        }
+        Ok((team, held, false))
     }
 
     /// The player's record for his club's country, as the game finds it, and for an ESC slot the day it began as the
@@ -1435,8 +1462,13 @@ mod tests {
     #[test]
     fn a_revoked_esc_slot_keeps_the_day_it_began() {
         let since = FmDate { year: 2027, month: 2, day: 3 };
-        let change =
-            PermitChange { player: 12_092_701, granted: false, was_granted: true, was_esc: Some(packed_date(since)) };
+        let change = PermitChange {
+            player: 12_092_701,
+            granted: false,
+            was_granted: true,
+            was_esc: Some(packed_date(since)),
+            parent: false,
+        };
         assert_eq!(change.esc_since(), Some(since));
         assert_eq!(PermitChange { was_esc: None, ..change }.esc_since(), None);
         // The game's unset day, 1 January 1900.
