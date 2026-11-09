@@ -336,6 +336,8 @@ export const addInjury = (uid: number, kind: number) => call<LoggedChange>("add_
 /** Has the game grant the player a work permit for his club's country, or take it away. */
 export const setWorkPermit = (uid: number, granted: boolean) =>
   call<LoggedChange>("set_work_permit", { uid, granted });
+/** Whether FM's rules say the player needs a work permit for his club; null where FM Lens cannot ask. */
+export const workPermitNeeded = (uid: number) => call<boolean | null>("work_permit_needed", { uid });
 
 /** Has the game loan the player to the senior team of `club` from today until `ends` (a number like 20270630). */
 export const startLoan = (uid: number, club: number, ends: number) =>
