@@ -187,7 +187,9 @@ FM Lens is released for macOS and Windows, from a Mac, to the public repository
 1. **Bump the version** in these places, and commit the bump:
    - `version` in the root `Cargo.toml` (`[workspace.package]`), and `Cargo.lock`;
    - `app/package.json` and `app/package-lock.json`;
-   - `app/src-tauri/tauri.conf.json`.
+   - `app/src-tauri/tauri.conf.json`;
+   - `VERSION` in `site/release.js`: the download the site offers when GitHub's API does not
+     answer it. A test fails while it names another version.
 2. **Write what is new** in `docs/release-notes.md`, its only section, and in short under
    `update.changes` in `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update
    themselves show that list once, after they relaunch as the new version.
@@ -269,8 +271,8 @@ Report a problem sends its report to `relay/`, an AWS Lambda function
 fine-grained GitHub token (Issues: read and write, on this repository only), set as the
 function's `GITHUB_TOKEN`; without one it answers 503. It keeps no reports, only counts in
 the DynamoDB table `fm-lens-report-relay`, which the function may update and which drops
-them once they are old: 5 an hour and 10 a day from one sender (an IPv4 address, or an IPv6 /64 network), 100 a
-day in all. Screenshots and videos (up to 5 images
+them once they are old: 5 an hour and 10 a day from one sender (an IPv4 address, or an IPv6 /64 network), 200 an
+hour and 1,000 a day in all. Screenshots and videos (up to 5 images
 of 10 MB and one MP4 or MOV video of 50 MB) never pass through it: the app asks it for presigned upload addresses
 (`POST /uploads`, counted like reports), puts each file under the private `uploads/` of the S3 bucket named by the
 function's `UPLOAD_BUCKET`, and sends the report with the files' keys; the relay checks each is there, copies it to
