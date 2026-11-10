@@ -25,6 +25,15 @@ const SAMPLES: u64 = 2_000;
 /// Fewer objects than this tell nothing: the check does not pass.
 const LEAST_SAMPLED: u64 = 50;
 
+/// The latest year anyone in a new FM27 career is born in. Youth players born later arrive as a long career goes on,
+/// so past it the in-game year is the limit.
+const LATEST_BIRTH: u16 = 2020;
+
+/// Whether someone can be born in `year` by the in-game `date`, where it is read.
+fn plausible_birth(year: u16, date: Option<FmDate>) -> bool {
+    (1900..=date.map_or(LATEST_BIRTH, |date| date.year.max(LATEST_BIRTH))).contains(&year)
+}
+
 /// What the editor checks before it writes, and what each check keeps from being written when it does not pass.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -384,7 +393,7 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     let p = &layout.player;
     let attribute = |player: &SampledPlayer, key: &str| p.attributes.get(key).map(|&at| player.u8(layout, at));
     for player in &players {
-        let born = player.date(layout, p.date_of_birth).is_some_and(|born| (1900..=2020).contains(&born.year));
+        let born = player.date(layout, p.date_of_birth).is_some_and(|born| plausible_birth(born.year, date));
         let height = (140..=220).contains(&player.u16(layout, p.height));
         let ability = (1..=200).contains(&player.u16(layout, p.current_ability));
         let potential = player.u16(layout, p.potential_ability) as i16;
@@ -462,7 +471,7 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     let signature = gaps.iter().all(|gap| gap.is_some_and(|gap| gap >= GAP));
 
     let (date_holds, date_note) = date_fits(date, &signed);
-    let staff = check_staff(session);
+    let staff = check_staff(session, date);
     let clubs = check_clubs(session);
     let nations = check_nations(session, &players);
     let officials = check_officials(session);
@@ -580,7 +589,7 @@ fn days_between(from: FmDate, to: FmDate) -> i64 {
 }
 
 /// Members of staff: birth dates, abilities, attributes and ratings in range, and contracts that point back at them.
-fn check_staff(session: &Session) -> CheckResult {
+fn check_staff(session: &Session, date: Option<FmDate>) -> CheckResult {
     let mut tally = Tally::default();
     let mut contracts = Tally::default();
     // Goalkeeping by goalkeeping coaches and by other coaches, physiotherapy by physios and by coaches, judging
@@ -610,7 +619,7 @@ fn check_staff(session: &Session) -> CheckResult {
         let at = |offset: u64| s.at(offset, shift) as usize;
         let u16_at = |offset: u64| u16::from_le_bytes([bytes[at(offset)], bytes[at(offset) + 1]]);
         let born = FmDate::from_raw(u16_at(s.date_of_birth), u16_at(s.date_of_birth + 2));
-        let born = born.is_none_or(|born| (1900..=2020).contains(&born.year));
+        let born = born.is_none_or(|born| plausible_birth(born.year, date));
         let ability = u16_at(s.current_ability) <= 200 && (-200..=200).contains(&(u16_at(s.potential_ability) as i16));
         let reputation = [s.home_reputation, s.current_reputation, s.world_reputation]
             .iter()
@@ -816,6 +825,20 @@ mod tests {
 
     fn date(year: u16, month: u8, day: u8) -> FmDate {
         FmDate { year, month, day }
+    }
+
+    #[test]
+    fn youth_players_born_late_in_a_long_career_are_plausible() {
+        // The date not read: no one born after 2020, the latest in a new career.
+        assert!(plausible_birth(2011, None));
+        assert!(!plausible_birth(2023, None));
+        assert!(!plausible_birth(1899, None));
+        // No one born after the in-game date.
+        assert!(plausible_birth(2011, Some(date(2026, 7, 1))));
+        assert!(!plausible_birth(2027, Some(date(2026, 7, 1))));
+        // Twenty seasons in, the youth intake was born after 2020.
+        assert!(plausible_birth(2031, Some(date(2046, 3, 1))));
+        assert!(!plausible_birth(2047, Some(date(2046, 3, 1))));
     }
 
     #[test]
