@@ -3302,7 +3302,7 @@ function mockHealth(): Health {
   return {
     results: CHECKS.map((check) => {
       const passed = !(failedChecks && FAILING.includes(check)) && !(check === "gameDate" && gameDate === null);
-      return { check, passed, fit: passed ? 2000 : 640, sampled: 2000 };
+      return { check, passed, fit: passed ? 2000 : 640, sampled: 2000, note: "" };
     }),
   };
 }

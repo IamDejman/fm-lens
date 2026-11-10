@@ -1,5 +1,5 @@
 // A problem report: what the user writes in Report a problem, sent with what FM Lens knows (its version, the FM build,
-// the Mac and the changes written while it has been open) to the report relay (relay/), which files it as an issue in
+// the checks on the game that did not pass, the Mac and the changes written while it has been open) to the report relay (relay/), which files it as an issue in
 // the fm-lens repository. Nothing leaves the app until the user presses Send. The facts are written in English, as the
 // issues are. Screenshots and videos go straight to the relay's bucket, at addresses the relay hands out, and the issue
 // links them.
@@ -106,6 +106,17 @@ function describeGame({ connection, detected }: ReportFacts): string {
   return build ? `${build}, ${state}` : state;
 }
 
+/**
+ * The checks on the game that did not pass, which leave what they cover read-only, one a line:
+ * "players: 1840 of 2000 fit; 1960 of 1990 within their potential, 40 of them at it".
+ */
+export function describeChecks(connection: Pick<ConnectionInfo, "health"> | null): string {
+  return (connection?.health.results ?? [])
+    .filter((result) => !result.passed)
+    .map(({ check, fit, sampled, note }) => `${check}: ${fit} of ${sampled} fit${note === "" ? "" : `; ${note}`}`)
+    .join("\n");
+}
+
 /** "Erling Haaland (player 7458500): ability.potential 195 → 200, undone" */
 function describeChange(change: LoggedChange): string {
   const notes = [
@@ -197,6 +208,7 @@ export async function sendReport(facts: ReportFacts, what: string, files: Attach
       what,
       version: facts.version ?? "",
       fmBuild: describeGame(facts),
+      checks: describeChecks(facts.connection),
       // The relay's name for the system, from when FM Lens ran on macOS only.
       macos: await systemVersion(),
       changes: describeChanges(facts.log),

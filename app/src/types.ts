@@ -206,6 +206,8 @@ export interface CheckResult {
   passed: boolean;
   fit: number;
   sampled: number;
+  /** What else it measured, in a few words, in English: for problem reports. */
+  note: string;
 }
 
 /** What the checks found on the running game, every check in a fixed order. */
