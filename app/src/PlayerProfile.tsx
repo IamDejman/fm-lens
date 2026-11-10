@@ -356,6 +356,7 @@ function ContractTab({ details }: { details: PlayerDetails }) {
           <h3>{profileText.contract}</h3>
           <p className="note">{profileText.noContract}</p>
           <dl className="stats">
+            <TransferValue value={details.transferValue} />
             <AskingPrice price={details.askingPrice} />
           </dl>
         </section>
@@ -442,12 +443,22 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
             <Fact label={profileText.loyaltyBonus}>
               <EditableValue field="contract.loyalty_bonus">{formatMoney(contract.loyaltyBonus)}</EditableValue>
             </Fact>
+            <TransferValue value={details.transferValue} />
             <AskingPrice price={details.askingPrice} />
           </dl>
         </div>
         <ContractDates contract={contract} />
       </div>
     </section>
+  );
+}
+
+/** FM's stored base valuation, kept distinct from the club's editable asking price. */
+function TransferValue({ value }: { value: PlayerDetails["transferValue"] }) {
+  return (
+    <Fact label={profileText.transferValue}>
+      {value == null ? profileText.transferUnavailable : formatMoney(value)}
+    </Fact>
   );
 }
 

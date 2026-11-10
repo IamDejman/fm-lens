@@ -739,6 +739,8 @@ export const es: Strings = {
     internationalGoals: "Goles internacionales",
     u21Caps: "Partidos sub-21",
     u21Goals: "Goles sub-21",
+    transferValue: "Valor base de traspaso",
+    transferUnavailable: "No disponible",
     askingPrice: "Precio de venta",
     notSet: "Sin fijar",
     reputation: "Reputación",

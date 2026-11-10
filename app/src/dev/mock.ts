@@ -234,6 +234,7 @@ function details(player: PlayerSummary): PlayerDetails {
   return withWritten("player", {
     ...player,
     heightCm: Math.round(168 + next() * 26),
+    transferValue: player.clubUid ? player.currentAbility * 250_000 : 0,
     askingPrice: next() < 0.2 ? Math.round(next() * 40) * 1_000_000 : null,
     reputation: { home: Math.round(next() * 10000), current: Math.round(next() * 10000), world: Math.round(next() * 10000) },
     international: { caps: Math.round(next() * 90), goals: Math.round(next() * 30), u21Caps: Math.round(next() * 20), u21Goals: Math.round(next() * 8) },

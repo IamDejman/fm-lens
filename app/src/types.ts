@@ -695,6 +695,8 @@ export interface PlayerDetails extends PlayerSummary {
   heightCm: number;
   /** Pounds; null when the club has not set one. */
   askingPrice: number | null;
+  /** Stored base valuation in pounds; null if unmapped, invalid or not calculated. */
+  transferValue: number | null;
   reputation: Reputation;
   international: International;
   /** gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr → 1–20 */

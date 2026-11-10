@@ -726,6 +726,8 @@ export const tr: Strings = {
     internationalGoals: "Milli gol",
     u21Caps: "U21 maç",
     u21Goals: "U21 gol",
+    transferValue: "Temel transfer değeri",
+    transferUnavailable: "Kullanılamıyor",
     askingPrice: "İstenen bedel",
     notSet: "Belirlenmedi",
     reputation: "İtibar",

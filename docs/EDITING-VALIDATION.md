@@ -2412,3 +2412,34 @@ of the main save, Arsenal, 28 Jul 2026), saved only as the new file
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The installed bridge was restored on the Mac afterwards.
+
+## Base transfer valuation (10 November 2026)
+
+FM Lens previously read only the asking price, not a player's transfer valuation.
+The Contract tab now has a read-only Base transfer value alongside Asking price.
+It reads the stored base value in pounds, not the manager-specific scouting range.
+A missing mapping, negative value or FM's 300,000,000 marker returns unavailable;
+a player without a team has a zero valuation, matching the game's getter.
+The field is not added to the editor or template whitelist.
+
+Static evidence on Steam 26385295 (27.0.1): ARM64's range getter at `0xD55D2C`
+reads `player+0x22C` at `0xD55DBC`, after checking the team at `+0x128`.
+Its caller at `0x2D3ED98` publishes the results as `min_player_value` and
+`max_player_value`. The Intel counterpart reads `+0x22C` at `0xE04909`, also
+after checking the team at `+0x128`. Windows' valuation consumer at `0xBA2150`
+reads `+0x234` at `0xBA2197`, after checking `+0x130`, and handles 300,000,000
+separately. The two platform layouts now map those fields. The optional offset
+keeps external layouts without a mapping compatible and unavailable.
+
+Read-only live checks: FM process 26049, ARM64 UUID
+`2A2D0ED6-324E-3D0D-A27D-10AEDBD0E270`, started through Steam with the installed
+bridge. Explicitly selected `FM-Lens-27.0.1-2026-11-10` in Load Game, Arsenal,
+8 December 2027. Saka (28122642) reads 137,779,209, asking price unset; FM's
+profile shows a £100M to £138M range. Messi (7458500) reads 2,585,359, asking
+price unset. The base value is not presented as an exact reproduction of that
+FM range. No edits, Continue or saves were performed. Intel and Windows live
+valuation checks remain pending.
+
+The main career SHA-256 before the check was
+`3ADEB4FDEF1C5928A5F396E719C9216842282665AF21E9E8A3B8E803BD956000`.
+Local diagnostics and binary scratch are ignored under `reports/transfer-value/`.

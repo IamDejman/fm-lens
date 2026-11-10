@@ -2543,6 +2543,10 @@ fn player(session: &Session, uid: u32) -> Result<()> {
     let i = &d.international;
     println!("  international  {} caps, {} goals; U21 {} caps, {} goals", i.caps, i.goals, i.u21_caps, i.u21_goals);
     println!("  asking price   {}", d.asking_price.map_or_else(|| "not set".to_owned(), |p| format!("£{p}")));
+    println!(
+        "  base value     {}",
+        d.transfer_value.map_or_else(|| "unavailable".to_owned(), |value| format!("£{value}"))
+    );
     if summary.shift != 0 {
         println!("  layout         person block shifted by {:#x} (player-coach)", summary.shift);
     }
