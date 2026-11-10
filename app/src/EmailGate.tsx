@@ -1,23 +1,19 @@
 // The email FM Lens asks for before it opens, once on each computer. Kit (kit.com) keeps the list and sends the
-// emails: the address goes straight to FM Lens's form in Kit and nowhere else, as on the website's download page.
+// emails: the address goes to FM Lens's relay (relay/), which adds it to FM Lens's form in Kit and keeps nothing.
 
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { type FormEvent, useState } from "react";
-import { inTauri } from "./api";
 import { appText } from "./labels";
+import { RELAY } from "./report";
 
 const text = appText.email;
 
-/** Kit, and FM Lens's form in it: the same form the website uses. It can only add an address. */
-const KIT = "https://app.kit.com/";
-const SUBSCRIBE_URL = `${KIT}forms/10172074/subscriptions`;
 const SEND_TIMEOUT_MS = 15_000;
 
 /** Set once this computer gave an address, so the app asks once. */
 const GIVEN_KEY = "fmlens.email";
 
-/** What Kit answers: "success", "quarantined" with the page where it checks the visitor is a person, or "failed". */
-type Answer = { status?: string; url?: string };
+/** What the relay answers: `subscribed`, or why not, "invalid" for an address it or Kit turns down. */
+type Answer = { subscribed?: boolean; error?: string };
 
 /** Whether this computer gave an address before. Without storage the app asks at every start. */
 export function emailGiven(): boolean {
@@ -37,12 +33,10 @@ function remember(): void {
 }
 
 async function subscribe(email: string): Promise<Answer> {
-  const body = new FormData();
-  body.set("email_address", email);
-  const response = await fetch(SUBSCRIBE_URL, {
+  const response = await fetch(`${RELAY}/subscribe`, {
     method: "POST",
-    headers: { Accept: "application/json" },
-    body,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
     signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
   });
   return (await response.json()) as Answer;
@@ -60,16 +54,12 @@ export function EmailGate({ onGiven }: { onGiven: () => void }) {
     setProblem(null);
     try {
       const answer = await subscribe(email);
-      if (answer.status === "success" || answer.status === "quarantined") {
-        // Kit holds some addresses until its own page has checked the visitor: the browser opens it, the app goes on.
-        if (answer.status === "quarantined" && inTauri && answer.url?.startsWith(KIT)) {
-          openUrl(answer.url).catch(() => {});
-        }
+      if (answer.subscribed) {
         remember();
         onGiven();
         return;
       }
-      setProblem(text.refused);
+      setProblem(answer.error === "invalid" ? text.refused : text.failed);
     } catch {
       setProblem(text.failed);
     }

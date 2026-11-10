@@ -9,8 +9,7 @@
     {
       "identifier": "opener:allow-open-url",
       "allow": [
-        { "url": "https://getfmlens.com/*" },
-        { "url": "https://app.kit.com/*" }
+        { "url": "https://getfmlens.com/*" }
       ]
     }
   ]
