@@ -4,7 +4,7 @@
 // answer, the site offers the latest downloads at the addresses that always lead to them, without a version.
 
 const REPO = "https://github.com/IamDejman/fm-lens-releases/releases";
-export const RELEASES_PAGE = `${REPO}/latest`;
+const RELEASES_PAGE = `${REPO}/latest`;
 const API = "https://api.github.com/repos/IamDejman/fm-lens-releases/releases";
 const LATEST = `${API}/latest`;
 
