@@ -2470,3 +2470,16 @@ Packaged-app check on Apple Silicon (debug bundle, same FM process and copy,
 beside Asking price Not set. His share card's Value reads £137.8m. In the same
 app, Copy image put a 1080x1350 PNG on the clipboard and Copy caption copied
 the caption. Read only: no edits, Continue or saves.
+
+## Birth years in long careers (10 November 2026)
+
+The players and staff checks took a birth year after 2020 as a misread, so a long
+career, whose youth players are born later, would have turned players' details
+and staff read-only. The limit is now the in-game year when the date is read,
+and 2020 when it is not. Problem reports now list the checks that did not pass,
+with their counts and notes, in a "Checks that did not pass" section.
+
+Read-only check on Apple Silicon (FM process 26049, Steam 26385295, the
+`FM-Lens-27.0.1-2026-11-10` copy, 8 December 2027): `fmlens-probe health` with
+this change passes all 12 checks, players 2,000 of 2,000 and staff 2,000 of
+2,000. No edits, Continue or saves. Intel and Windows checks remain pending.
