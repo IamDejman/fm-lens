@@ -1,7 +1,7 @@
 // The report relay: Report a problem in FM Lens posts here, and the relay files the report as an issue in the
 // fm-lens repository with its own GitHub token, so nobody leaves the app. It keeps nothing: a report is checked,
-// sent on to GitHub and forgotten. Each sender may send a few reports an hour and a day, and all of them together a
-// hundred a day.
+// sent on to GitHub and forgotten. Each sender may send a few reports an hour and a day, and all of them together two
+// hundred an hour and a thousand a day.
 //
 // It runs as an AWS Lambda function behind a function URL (relay/deploy.sh), and counts reports in a DynamoDB table
 // that every instance shares. Environment: GITHUB_TOKEN (a fine-grained token that may write issues in GITHUB_REPO),
@@ -40,12 +40,13 @@ const KEY =
   /^uploads\/\d{4}-\d{2}-\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(png|jpg|gif|webp|mp4|mov)$/;
 
 /**
- * How many reports one sender may send an hour and a day, and all senders together a day: no sender can use up the
- * day's reports alone.
+ * How many reports one sender may send an hour and a day, and all senders together an hour and a day: no sender can
+ * use up the day's reports alone, and the hour's stay well under the 500 issues an hour GitHub lets one token open.
  */
 export const PER_ADDRESS_HOUR = 5;
 export const PER_ADDRESS_DAY = 10;
-export const PER_DAY = 100;
+export const PER_HOUR = 200;
+export const PER_DAY = 1000;
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -258,7 +259,7 @@ export function presign({
 }
 
 /**
- * Counts reports in the DynamoDB table `table`, by sender for each clock hour and day and in all for each day, so every
+ * Counts reports in the DynamoDB table `table`, by sender and in all for each clock hour and day, so every
  * instance of the function sees the same counts. `update` sends one UpdateItem request; each count adds one only while
  * it is under its limit, and DynamoDB drops it a window after its own ends (the table's TTL is on `expires`).
  */
@@ -294,6 +295,7 @@ export function createTableLimiter({ table, update, now = Date.now }) {
       return (
         (await count(`${prefix}address#${address}#${hour}`, PER_ADDRESS_HOUR, (hour + 2) * HOUR)) &&
         (await count(`${prefix}address#${address}#day#${day}`, PER_ADDRESS_DAY, (day + 2) * DAY)) &&
+        (await count(`${prefix}hour#${hour}`, PER_HOUR, (hour + 2) * HOUR)) &&
         (await count(`${prefix}day#${day}`, PER_DAY, (day + 2) * DAY))
       );
     },

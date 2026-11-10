@@ -5,6 +5,7 @@ import {
   PER_ADDRESS_DAY,
   PER_ADDRESS_HOUR,
   PER_DAY,
+  PER_HOUR,
   createRelay,
   createTableLimiter,
   issueFor,
@@ -168,7 +169,7 @@ function table() {
   return { update, items };
 }
 
-test("the table counts by sender for the hour and the day, and in all for the day", async () => {
+test("the table counts by sender and in all, for the hour and the day", async () => {
   let now = Date.UTC(2026, 10, 6, 12);
   const { update, items } = table();
   const limiter = createTableLimiter({ table: "t", update, now: () => now });
@@ -193,10 +194,22 @@ test("the table counts by sender for the hour and the day, and in all for the da
   assert.equal(await limiter.allow("c"), false);
   assert.equal(await limiter.allow("d"), true);
 
-  for (let i = 0; items.get(`day#${Math.floor(now / 86_400_000)}`).reports < PER_DAY; i++) {
-    await limiter.allow(`address-${i}`);
+  // All senders together fill the hour first, and over the hours the day.
+  const inHour = () => items.get(`hour#${Math.floor(now / 3_600_000)}`)?.reports ?? 0;
+  for (let i = 0; inHour() < PER_HOUR; i++) {
+    await limiter.allow(`hour-${i}`);
   }
   assert.equal(await limiter.allow("another"), false);
+  now += 60 * 60 * 1000;
+  assert.equal(await limiter.allow("another"), true);
+  for (let i = 0; items.get(`day#${Math.floor(now / 86_400_000)}`).reports < PER_DAY; i++) {
+    if (inHour() >= PER_HOUR) {
+      now += 60 * 60 * 1000;
+    }
+    await limiter.allow(`address-${i}`);
+  }
+  now += 60 * 60 * 1000;
+  assert.equal(await limiter.allow("one more"), false);
 });
 
 test("the relay turns reports away when it can't count them", async () => {
