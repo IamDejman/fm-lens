@@ -2510,5 +2510,11 @@ longer talks to Kit, so Kit's reCAPTCHA page never comes up.
   to Connect.
 
 After all three, Kit still holds one record for the address, inactive and
-created at 23:17 UTC: sending an address Kit already has adds no duplicate. The
-Mac flag was removed afterwards, as it was before the checks.
+created at 23:17 UTC: sending an address Kit already has adds no duplicate.
+
+Confirmation: a second new address, sent from the Apple Silicon app at 23:32
+UTC, got Kit's "Confirm your email for FM Lens" email within a minute. After its
+link was clicked, Kit lists it as active. Sending it again from the Intel app
+went straight to Connect and left it active, still one record on the form.
+
+The Mac flag was removed afterwards, as it was before the checks.
