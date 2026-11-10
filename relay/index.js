@@ -16,7 +16,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
 /** The longest each part of a report may be, in characters, and the request as a whole, in bytes. */
-export const LIMITS = { what: 5000, line: 200, changes: 8000, request: 20_000 };
+export const LIMITS = { what: 5000, line: 200, checks: 2000, changes: 8000, request: 20_000 };
 
 /** The files a report may carry: their types, with the extension each is kept under, and how many and how big. */
 export const FILES = {
@@ -77,7 +77,7 @@ export function senderOf(address) {
 
 /**
  * The report in `input`, or why it is turned away. `what` is required; `version`, `fmBuild` and `macos` (the system) are one line
- * each, and `changes` lists what the user changed before it happened.
+ * each, `checks` lists the checks on the game that did not pass, and `changes` what the user changed before it happened.
  */
 export function readReport(input) {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
@@ -99,6 +99,7 @@ export function readReport(input) {
     fmBuild: text("fmBuild", LIMITS.line),
     // Sent as `macos` by every version, from when FM Lens ran on macOS only.
     system: text("macos", LIMITS.line),
+    checks: text("checks", LIMITS.checks),
     changes: text("changes", LIMITS.changes),
   };
   if (Object.values(report).some((value) => value === undefined) || report.what === "") {
@@ -176,6 +177,7 @@ export function issueFor(report, files = []) {
   const body = [
     section("FM Lens version", report.version),
     section("FM build", report.fmBuild),
+    ...(report.checks ? [section("Checks that did not pass", report.checks)] : []),
     section("System", report.system),
     section("What happened", report.what),
     section("What you changed in FM Lens before it happened", report.changes),
