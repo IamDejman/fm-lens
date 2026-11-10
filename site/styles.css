@@ -361,8 +361,7 @@ h2 {
   margin: 0;
 }
 
-/* The email signup: a field and its button on one line, what happened under them. It stays hidden until
-   signup.js has a form to send to. */
+/* The email a download asks for: a field and its button on one line, what happened under them. */
 [hidden] {
   display: none !important;
 }

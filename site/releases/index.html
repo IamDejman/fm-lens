@@ -42,7 +42,7 @@
   </main>
 
   <script type="module">
-    import { track } from "../analytics.js";
+    import "../analytics.js";
     import { releaseNotes, RELEASES_PAGE } from "../release.js";
 
     const DOWNLOAD_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>';
@@ -75,19 +75,16 @@
         const files = document.createElement("div");
         files.className = "release-files";
         for (const [computer, name] of [["mac", "Mac"], ["windows", "Windows"]]) {
-          const url = release.downloads[computer];
-          if (!url) {
+          if (!release.downloads[computer]) {
             continue;
           }
           const link = document.createElement("a");
           link.className = "button release-download";
-          link.href = url;
+          // The download page asks for an email address, then starts this version's download.
+          link.href = `/download/?for=${computer}&version=${release.version}`;
           link.setAttribute("aria-label", `Download FM Lens ${release.version} for ${name}`);
           link.innerHTML = DOWNLOAD_ICON;
           link.append(name);
-          link.addEventListener("click", () =>
-            track("download_started", { version: release.version, page: "releases", computer }),
-          );
           files.append(link);
         }
         if (files.childElementCount > 0) {
