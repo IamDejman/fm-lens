@@ -1486,6 +1486,7 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.2": ["Windows'ta Transfer, Takas ve Kiralama artık LoadLibraryW hatası vermiyor."],
       "0.7.1": [
         "Genç transferler U21'e değil, A takımınıza katılır.",
         "Tarihleri rakamlarla yazın ya da oyunun tarihini izleyen yeni takvimden seçin.",

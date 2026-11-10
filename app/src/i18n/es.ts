@@ -1512,6 +1512,7 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.2": ["En Windows, Traspasar, Intercambiar y Ceder ya no fallan con un error de LoadLibraryW."],
       "0.7.1": [
         "Los fichajes jóvenes se unen a tu primer equipo, no al sub-21.",
         "Escribe las fechas con dígitos o elígelas en un calendario nuevo que sigue la fecha del juego.",
