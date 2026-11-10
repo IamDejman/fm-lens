@@ -1,24 +1,18 @@
 // The latest FM Lens release. The files stay on GitHub Releases in IamDejman/fm-lens-releases, the same place installed
 // copies update from; this site only points at them, so a new release needs no change here. It asks GitHub which
-// release is the latest, and GitHub answers an address only 60 times an hour, so when it does not answer the site
-// offers the release named here.
-
-/**
- * The release offered when GitHub does not answer: one that is published, whose files stay where they are. It need not
- * be the latest, as a copy of FM Lens updates itself when it opens.
- */
-export const VERSION = "0.7.1";
+// release is the latest, to name its version. GitHub answers one address only 60 times an hour, so when it does not
+// answer, the site offers the latest downloads at the addresses that always lead to them, without a version.
 
 const REPO = "https://github.com/IamDejman/fm-lens-releases/releases";
 export const RELEASES_PAGE = `${REPO}/latest`;
 const API = "https://api.github.com/repos/IamDejman/fm-lens-releases/releases";
 const LATEST = `${API}/latest`;
 
-/** The release named here, with its downloads where every release keeps them. */
-function knownRelease() {
-  const file = (ending) => `${REPO}/download/v${VERSION}/FM-Lens-${VERSION}-${ending}`;
-  return { version: VERSION, downloads: { mac: file("macos-universal.dmg"), windows: file("windows-x64-setup.exe") } };
-}
+/** The latest release's downloads, by the names every release also carries them under (scripts/release.sh). */
+const LATEST_DOWNLOADS = {
+  mac: `${RELEASES_PAGE}/download/FM-Lens-macos-universal.dmg`,
+  windows: `${RELEASES_PAGE}/download/FM-Lens-windows-x64-setup.exe`,
+};
 
 /** The computer this page runs on: "windows", or "mac" for anything else, which gets the Mac download as before. */
 export function thisComputer() {
@@ -31,17 +25,17 @@ function downloadsOf(release) {
   return { mac: url(".dmg"), windows: url("-setup.exe") };
 }
 
-/** The latest release's version and its downloads, or the release named here when GitHub does not answer. */
+/** The latest release's version and its downloads. The version is null when GitHub does not answer. */
 export async function latestRelease() {
   try {
     const response = await fetch(LATEST, { headers: { Accept: "application/vnd.github+json" } });
     if (!response.ok) {
-      return knownRelease();
+      return { version: null, downloads: LATEST_DOWNLOADS };
     }
     const release = await response.json();
     return { version: release.tag_name.replace(/^v/, ""), downloads: downloadsOf(release) };
   } catch {
-    return knownRelease();
+    return { version: null, downloads: LATEST_DOWNLOADS };
   }
 }
 
