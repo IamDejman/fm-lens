@@ -53,7 +53,7 @@
     const computer = asked === "mac" || asked === "windows" ? asked : thisComputer();
     document.getElementById(computer === "windows" ? "mac" : "windows").hidden = true;
     const release = await latestRelease();
-    const url = release?.downloads[computer];
+    const url = release.downloads[computer];
     if (url) {
       document.getElementById("title").textContent = `Downloading FM Lens ${release.version}`;
       document.getElementById("fallback").href = url;
@@ -63,7 +63,7 @@
       const status = document.getElementById("status");
       status.innerHTML = "";
       status.append(
-        release ? "This release has no download for this computer. " : "GitHub could not be reached from here. ",
+        "This release has no download for this computer. ",
         Object.assign(document.createElement("a"), { href: RELEASES_PAGE, textContent: "Open the latest release" }),
         computer === "windows" ? " and choose the file that ends in -setup.exe." : " and choose the file that ends in .dmg.",
       );
