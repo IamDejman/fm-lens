@@ -272,6 +272,10 @@ FM Lens's form in [Kit](https://kit.com), which keeps the list, confirms each ad
 sends the emails; the form's id is the `FORM` constant there. The files on fm-lens-releases
 stay public, and installed copies update without it.
 
+The app asks for an email address too, before it opens for the first time on a computer
+(`app/src/EmailGate.tsx`), and sends it to the same form. In the browser preview, type any
+address once, or set `fmlens.email` to `given` in the page's local storage.
+
 ### The report relay
 
 Report a problem sends its report to `relay/`, an AWS Lambda function

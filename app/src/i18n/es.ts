@@ -1438,6 +1438,15 @@ export const es: Strings = {
       dismiss: "Cerrar",
     },
 
+    email: {
+      title: "Introduce tu correo para usar FM Lens",
+      intro: "FM Lens te escribe cuando hay novedades.",
+      button: "Continuar",
+      sending: "Comprobando…",
+      refused: "No ha funcionado. Revisa la dirección e inténtalo de nuevo.",
+      failed: "No ha funcionado. Revisa tu conexión e inténtalo de nuevo.",
+    },
+
     connect: {
       title: "Conectar con Football Manager 27",
       intro: "Carga una partida en FM y conecta.",

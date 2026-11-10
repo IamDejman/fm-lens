@@ -1414,6 +1414,15 @@ export const tr: Strings = {
       dismiss: "Kapat",
     },
 
+    email: {
+      title: "FM Lens'i kullanmak için e-posta adresinizi girin",
+      intro: "FM Lens, güncellemeleri e-postayla bildirir.",
+      button: "Devam",
+      sending: "Denetleniyor…",
+      refused: "Olmadı. Adresi denetleyip yeniden deneyin.",
+      failed: "Olmadı. Bağlantınızı denetleyip yeniden deneyin.",
+    },
+
     connect: {
       title: "Football Manager 27'ye bağlan",
       intro: "FM'de bir kayıt yükleyin, ardından bağlanın.",
