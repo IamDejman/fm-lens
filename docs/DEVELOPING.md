@@ -187,9 +187,7 @@ FM Lens is released for macOS and Windows, from a Mac, to the public repository
 1. **Bump the version** in these places, and commit the bump:
    - `version` in the root `Cargo.toml` (`[workspace.package]`), and `Cargo.lock`;
    - `app/package.json` and `app/package-lock.json`;
-   - `app/src-tauri/tauri.conf.json`;
-   - `VERSION` in `site/release.js`: the download the site offers when GitHub's API does not
-     answer it. A test fails while it names another version.
+   - `app/src-tauri/tauri.conf.json`.
 2. **Write what is new** in `docs/release-notes.md`, its only section, and in short under
    `update.changes` in `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update
    themselves show that list once, after they relaunch as the new version.
@@ -202,7 +200,14 @@ FM Lens is released for macOS and Windows, from a Mac, to the public repository
    - `FM-Lens-<version>-macos-universal.dmg` and `.zip` to download on a Mac, and
      `FM-Lens-<version>-macos-universal.app.tar.gz` to update from;
    - `FM-Lens-<version>-windows-x64-setup.exe` to download on Windows and to update from;
-   - `latest.json`, with `darwin-aarch64`, `darwin-x86_64` and `windows-x86_64`.
+   - `latest.json`, with `darwin-aarch64`, `darwin-x86_64` and `windows-x86_64`;
+   - `FM-Lens-macos-universal.dmg` and `FM-Lens-windows-x64-setup.exe`, the two downloads
+     again without the version: `releases/latest/download/<name>` always leads to them.
+
+   Releases cannot be changed once published, so 0.7.1 has no such files. Once the first
+   release that has them is out, merge
+   [#188](https://github.com/IamDejman/fm-lens/pull/188): the site then offers them when
+   GitHub's API does not answer it, where until then it offers 0.7.1.
 
    Without `--publish` it only writes these files to `target/release-files/<version>/`,
    from any commit with a passing Validate run.

@@ -4,19 +4,15 @@ import { test } from "node:test";
 
 const source = readFileSync(new URL("../../site/release.js", import.meta.url), "utf8");
 const { VERSION, latestRelease } = await import(`data:text/javascript,${encodeURIComponent(source)}`);
-const app = JSON.parse(readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8")).version;
+const script = readFileSync(new URL("../../scripts/release.sh", import.meta.url), "utf8");
 const files = "https://github.com/IamDejman/fm-lens-releases/releases/download";
-
-test("the site names the app's version for when GitHub does not answer", () => {
-  assert.equal(VERSION, app);
-});
 
 test("the site offers the version it names when GitHub refuses or cannot be reached", async (t) => {
   const known = {
-    version: app,
+    version: VERSION,
     downloads: {
-      mac: `${files}/v${app}/FM-Lens-${app}-macos-universal.dmg`,
-      windows: `${files}/v${app}/FM-Lens-${app}-windows-x64-setup.exe`,
+      mac: `${files}/v${VERSION}/FM-Lens-${VERSION}-macos-universal.dmg`,
+      windows: `${files}/v${VERSION}/FM-Lens-${VERSION}-windows-x64-setup.exe`,
     },
   };
   t.mock.method(globalThis, "fetch", async () => ({ ok: false, status: 403 }));
@@ -25,6 +21,13 @@ test("the site offers the version it names when GitHub refuses or cannot be reac
     throw new TypeError("Failed to fetch");
   });
   assert.deepEqual(await latestRelease(), known);
+});
+
+test("every release also carries its downloads under names without the version", () => {
+  for (const name of ["FM-Lens-macos-universal.dmg", "FM-Lens-windows-x64-setup.exe"]) {
+    assert.ok(script.includes(`="${name}"`), `scripts/release.sh names ${name}`);
+  }
+  assert.ok(script.includes('"$OUT/$MAC_LATEST" "$OUT/$WINDOWS_LATEST"\n'), "scripts/release.sh publishes them");
 });
 
 test("the site offers GitHub's latest release when it answers", async (t) => {
