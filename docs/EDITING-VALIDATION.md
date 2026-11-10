@@ -2483,3 +2483,8 @@ Read-only check on Apple Silicon (FM process 26049, Steam 26385295, the
 `FM-Lens-27.0.1-2026-11-10` copy, 8 December 2027): `fmlens-probe health` with
 this change passes all 12 checks, players 2,000 of 2,000 and staff 2,000 of
 2,000. No edits, Continue or saves. Intel and Windows checks remain pending.
+
+The editor wrote birth dates up to 2020-12-31 only. It now writes them up to the
+game's date when that is later, for players and officials. `fmlens-probe fields`
+on the same copy shows `date_of_birth` from 1940-01-01 to 2027-12-08, the
+in-game date. A write in the packaged app, and Intel and Windows, remain pending.
