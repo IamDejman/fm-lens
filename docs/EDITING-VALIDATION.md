@@ -2198,3 +2198,50 @@ Sign and Undo checks there before the rebuild.
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows.
 The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## Calendar follows the game date (10 November 2026)
+
+The calendar of a date field was the browser's own, and it had three faults.
+An empty field, such as "Contract ends by" in Filters, opened on the
+real-world day instead of the game date. On Windows, Chromium's calendar kept
+every key, so a date typed while it was open went nowhere. On the Mac it needed
+a hidden input to hold focus while it was open, and screen readers could not
+see that input.
+
+FM Lens now draws the calendar itself. It opens on the field's date, or else
+on the game date, with the game day ringed. Arrow keys and Page Up/Down move
+through it, Escape closes it without closing the dialog behind it, and a digit
+sends focus to the text field so the typed date lands there. Every day and
+step is a labelled button. A press on the month, a weekday or a day out of
+range first moved focus out of the calendar, so the keys stopped working and
+Escape closed the dialog; any press inside now leaves focus on the day.
+
+Packaged release builds, driven through the accessibility API and clicks (UI
+Automation and clicks on Windows). Windows ran `fix/date-calendar` (1db332b).
+The Mac ran 9acce12, the next branch on top of it, which leaves the calendar
+files as they are. Test copies only, never saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Empty "Contract ends by" opens on the game date | Pass. December 2027 (game date 8 Dec 2027) | Pass. December 2027 (game date 8 Dec 2027) | Pass. July 2026 with 13 ringed (game date 13 Jul 2026) |
+| Type `30062029` with the calendar open | Pass. The field reads 30/06/2029 and the calendar closes; 18,500 players | Pass. The field reads 30/06/2029 and the calendar closes; 18,500 players | Pass, after a press on the month label. "Contract ends by: 30 Jun 2029"; 19,409 players |
+| Reopen | Pass. Opens on June 2029 | Pass. Opens on June 2029 | Pass. Opens on June 2029 |
+| Arrow keys | Pass. Right then Return writes 01/07/2029 | Pass. Right then Return writes 01/07/2029 | Not run |
+| Escape | Pass. Closes only the calendar; filter cleared, 30,314 players | Pass. Closes only the calendar; filter cleared, 30,314 players | Pass, after a press on the month label, in Filters and in Sign: the calendar closes and the dialog stays |
+| Sign dialog | Pass. Joins starts on 08/12/2027 | Pass. Joins starts on 08/12/2027 | Pass. Solly March (29090530, 31) to Arsenal: Joins opens on July 2026; 14 writes 14/07/2026, 13 writes it back; `30062029` typed into Contract end with its calendar open; "Contract to 30 Jun 2029"; Undo ("Undone at 23:19:54"), free agent again |
+| Screen readers | Pass. A group named Calendar, each day a named control | Pass. A group named Calendar, each day a named control | Pass. A window named Calendar with labelled buttons |
+
+Mac: FM27 native on Apple Silicon (FM process 38718, code type ARM64) and under
+Rosetta (FM process 83781, code type X86-64 translated), each with the branch
+bridge injected and the test FM Lens build run the same way. Test copy `FM Lens
+Permit 2026-11-09` (Arsenal, 8 Dec 2027), opened through Load Game and quit
+without saving between runs. The build of the first commit (e9c1653) also
+passed on Apple Silicon a Sign with both dates typed (Patrick Berg, "Contract
+to 30 Jun 2029", Undo at 22:48:47) and Date of birth in Edit opening on the
+player's month.
+
+Windows: FM27 on the test machine (FM process 7016) with the Windows build of
+1db332b, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul 2026).
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows.
+The released 0.7.0 bridge was restored on the Mac afterwards.
