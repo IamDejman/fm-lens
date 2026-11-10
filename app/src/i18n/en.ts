@@ -1603,6 +1603,14 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.1": [
+        "Young signings join your senior squad, not the U21s.",
+        "Type dates as digits, or pick them from a new calendar that follows the game's date.",
+        "Work permit reads Not needed where FM would give none.",
+        "Max attributes raises CA and PA to 200.",
+        "Changes names squad actions, like Lift bans.",
+        "In a profile, Edit reads Done while you edit.",
+      ],
       "0.7.0": [
         "Transfer, Swap and Release go through FM itself: real transfers, with fees and transfer history.",
         "Intel Macs get every action that runs inside FM.",
