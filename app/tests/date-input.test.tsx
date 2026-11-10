@@ -1,14 +1,11 @@
 import { expect, test, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DateInput } from '../src/DateInput';
+import { EditorContext, NO_GAME_ACTIONS } from '../src/useProfileEditing';
+import { useModal } from '../src/useModal';
 import { dateLayout, dateText, isoFromDateText, typedDateText, type DateLayout } from '../src/dateEntry';
-
-// jsdom has no calendar: say there is one, so that the button that opens it is drawn.
-vi.hoisted(() => {
-  HTMLInputElement.prototype.showPicker = () => {};
-});
 
 const dayFirst: DateLayout = { order: ['day', 'month', 'year'], separator: '/' };
 const monthFirst: DateLayout = { order: ['month', 'day', 'year'], separator: '/' };
@@ -111,17 +108,114 @@ test('a part can be deleted and typed again, a short date is filled out on leavi
   expect(input.value).toBe('02/01/2029');
 });
 
-test('the open calendar holds focus so that it closes on leaving, and a date typed there goes to the field', async () => {
+/** The field in a game that is on 8 December 2027. */
+function InGame({ start, onValue }: { start: string; onValue: (value: string) => void }) {
+  const editor = {
+    editable: true,
+    readOnlyNote: '',
+    onEdited: () => {},
+    gameActions: NO_GAME_ACTIONS,
+    injuryKinds: () => Promise.resolve([]),
+    gameDate: { year: 2027, month: 12, day: 8 },
+  };
+  return (
+    <EditorContext.Provider value={editor}>
+      <Field start={start} onValue={onValue} />
+    </EditorContext.Provider>
+  );
+}
+
+test('the calendar of an empty field opens on the day of the game, and a picked day is written', async () => {
   const user = userEvent.setup();
   const onValue = vi.fn();
-  const { container } = render(<Field start="2027-12-08" onValue={onValue} />);
+  render(<InGame start="" onValue={onValue} />);
   const input = screen.getByLabelText<HTMLInputElement>('Joins');
-  const picker = container.querySelector<HTMLInputElement>('.date-picker');
-  await user.click(screen.getByRole('button', { name: 'Calendar' }));
-  expect(document.activeElement).toBe(picker);
-  await user.keyboard('2');
+  const button = screen.getByRole('button', { name: 'Calendar' });
+  await user.click(button);
+  expect(button.getAttribute('aria-expanded')).toBe('true');
+  const calendar = screen.getByRole('dialog', { name: 'Calendar' });
+  expect(calendar.textContent).toContain('December 2027');
+  const gameDay = screen.getByRole('button', { name: /\b8 December 2027$/ });
+  expect(gameDay.getAttribute('aria-current')).toBe('date');
+  expect(document.activeElement).toBe(gameDay);
+  // The first of December 2027 is a Wednesday, the third day of a week that starts on Monday.
+  expect(screen.getByRole('button', { name: /\b1 December 2027$/ }).style.gridColumnStart).toBe('3');
+  await user.click(screen.getByRole('button', { name: 'Next month' }));
+  expect(calendar.textContent).toContain('January 2028');
+  await user.click(screen.getByRole('button', { name: /\b20 January 2028$/ }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(input.value).toBe('20/01/2028');
+  expect(onValue).toHaveBeenLastCalledWith('2028-01-20');
   expect(document.activeElement).toBe(input);
-  await user.keyboard('0072028');
+});
+
+test('the keys move through the calendar, Escape closes it, and a date typed there goes to the field', async () => {
+  const user = userEvent.setup();
+  const onValue = vi.fn();
+  render(<InGame start="2028-07-20" onValue={onValue} />);
+  const input = screen.getByLabelText<HTMLInputElement>('Joins');
+  const button = screen.getByRole('button', { name: 'Calendar' });
+  // The weekday's punctuation differs between runtimes.
+  const focused = () => document.activeElement?.getAttribute('aria-label')?.replace(',', '');
+  await user.click(button);
+  expect(focused()).toBe('Thursday 20 July 2028');
+  expect(document.activeElement?.getAttribute('aria-pressed')).toBe('true');
+  await user.keyboard('{ArrowRight}');
+  expect(focused()).toBe('Friday 21 July 2028');
+  await user.keyboard('{ArrowDown}{ArrowDown}');
+  expect(focused()).toBe('Friday 4 August 2028');
+  await user.keyboard('{PageUp}{ArrowLeft}');
+  expect(focused()).toBe('Monday 3 July 2028');
+  await user.keyboard('{Shift>}{PageDown}{/Shift}');
+  expect(focused()).toBe('Tuesday 3 July 2029');
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(button);
   expect(input.value).toBe('20/07/2028');
-  expect(onValue).toHaveBeenLastCalledWith('2028-07-20');
+  await user.keyboard('{Enter}');
+  await user.keyboard('{ArrowRight}{Enter}');
+  expect(input.value).toBe('21/07/2028');
+  expect(onValue).toHaveBeenLastCalledWith('2028-07-21');
+  // With the calendar open, a typed date is the field's.
+  await user.click(button);
+  await user.keyboard('3');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(input);
+  await user.keyboard('1122029');
+  expect(input.value).toBe('31/12/2029');
+  expect(onValue).toHaveBeenLastCalledWith('2029-12-31');
+  // A press on the calendar that is on no day leaves the keys with it.
+  await user.click(button);
+  await user.click(screen.getByText('December 2029'));
+  expect(focused()).toBe('Monday 31 December 2029');
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(button);
+  // A press elsewhere closes it.
+  await user.click(button);
+  await user.click(input);
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+function Dialog({ onClose }: { onClose: () => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useModal(box, true, onClose);
+  return (
+    <div ref={box} role="dialog" aria-label="Sign">
+      <InGame start="" onValue={() => {}} />
+    </div>
+  );
+}
+
+test('in a dialog, Escape closes the calendar first and the dialog next', async () => {
+  const user = userEvent.setup();
+  const onClose = vi.fn();
+  render(<Dialog onClose={onClose} />);
+  await user.click(screen.getByRole('button', { name: 'Calendar' }));
+  expect(screen.getByRole('dialog', { name: 'Calendar' })).toBeTruthy();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog', { name: 'Calendar' })).toBeNull();
+  expect(onClose).not.toHaveBeenCalled();
+  await user.keyboard('{Escape}');
+  expect(onClose).toHaveBeenCalledTimes(1);
 });
