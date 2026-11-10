@@ -28,7 +28,7 @@ records cannot be imported through a template.
 | `potential_ability` | i16 | plain | 1–200 |
 | `height` | u16 | plain | 140–220 |
 | `nation` | pointer | plain | 65536–140737488355327 |
-| `date_of_birth` | date | plain | 1940-01-01–2020-12-31 |
+| `date_of_birth` | date | plain | 1940-01-01–2020-12-31, or to the game date once later |
 | `asking_price` | i32 | plain | 0–2000000000 |
 | `reputation.home` | u16 | plain | 0–10000 |
 | `reputation.current` | u16 | plain | 0–10000 |
@@ -284,7 +284,7 @@ One official at a time; none where the build's layout does not place officials.
 | `current_ability` | u16 | plain | 1–200 |
 | `potential_ability` | u16 | plain | 1–200 |
 | `reputation` | u16 | plain | 0–10000 |
-| `date_of_birth` | date | plain | 1940-01-01–2020-12-31 |
+| `date_of_birth` | date | plain | 1940-01-01–2020-12-31, or to the game date once later |
 
 ## Changes made through the game
 
