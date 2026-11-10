@@ -2341,3 +2341,73 @@ the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## FM27 27.0.1 (10 November 2026)
+
+FM27 27.0.1 (Steam build 26385295) moved every address FM Lens uses. The three
+new profiles are in `profiles/fm27/`; how they were made is in
+[recon/fm27-steam-26385295.md](recon/fm27-steam-26385295.md). This is the run
+of [PATCH-VALIDATION.md](PATCH-VALIDATION.md) on that build.
+
+Packaged FM Lens 0.7.2 built from `feat/fm27-27.0.1-profiles` (0cfebf8), driven
+through the accessibility API (UI Automation on Windows). Every edit was read
+back with `fmlens-probe` of the same commit. Test copies only.
+
+Read checks (`scripts/check-build.sh`): 15 of 15 on Apple Silicon
+(`reports/build-check/2A2D0ED6-324E-3D0D-A27D-10AEDBD0E270-20261110-181122`) and
+15 of 15 under Rosetta
+(`reports/build-check/94CDDC80-8474-327A-85E0-E4FF95DC6893-20261110-184925`).
+On Windows `fmlens-probe health` named the build "FM27 Steam build 26385295
+(27.0.1)" and passed 12 of 12; `info` gave game_plugin.dll size `0x17cb9000`,
+timestamp `0x6ae8b5a4`.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass. UUID 2A2D0ED6, Arsenal, 8 Dec 2027 | Pass. UUID 94CDDC80, Arsenal, 8 Dec 2027 | Pass. 25,025 players, Ayo Elu, Arsenal, 28 Jul 2026 |
+| Player attribute | Pass. Bukayo Saka Heading 9 to 12 (stored 46 to 60) | Pass. Saka Heading 12 to 14 (stored 70) | Pass. Saka Heading 9 to 12 (stored 45 to 60) |
+| Contract wage | Pass. Saka 300,000 to 310,000 | Pass. Saka 310,000 to 320,000 | Pass. Saka 300,000 to 310,000 |
+| Add injury, then Heal | Pass. Abdominal strain from 8 Dec 2027, back 26 to 30 Dec; Heal: none | Pass. Injury added; Heal: none | Pass. Abdominal strain from 28 Jul 2026, back 16 to 21 Aug; Heal: none |
+| Work permit Revoke, then Request | Pass. Gabriel: none, then "England: active" | Pass. Gabriel: none, then "England: active" | Pass. Gabriel: none, then "England: active" |
+| Loan, then End loan | Pass. Ethan Nwaneri to Barcelona, 8 Dec 2027 to 30 Jun 2028; back at Arsenal | Pass. Nwaneri to Barcelona; back at Arsenal | Pass. Saka to Barcelona, 28 Jul 2026 to 30 Jun 2027; back at Arsenal |
+| Transfer club to club | Pass. Paul Ifill, Greytown AFC to Arsenal, 1,000 a week to 30 Jun 2028 | Pass. Ifill, Arsenal to Barcelona | Pass. Ifill, Greytown AFC to Arsenal, 1,000 a week to 30 Jun 2028 |
+| Release | Pass. Ifill a free agent, no contract | Pass. Ifill a free agent | Pass. Ifill a free agent, no contract |
+| Sign later, then Cancel transfer | Pass. Arsenal on 20 Dec 2027 (offer 366); cancelled | Pass. Arsenal on 20 Dec 2027 (offer 366); cancelled | Pass. Arsenal on 10 Aug 2026 (offer 1388, 44 to 45 future transfers); cancelled, 44 again |
+| Sign now | Pass. Ifill at Arsenal | Pass. Ifill at Arsenal | Pass. Ifill at Arsenal, 1,000 a week to 30 Jun 2028 |
+| Club balance | Pass. Arsenal 190,798,094 to 200,000,000 | Pass. Arsenal 199,934,557 to 210,000,000 | Pass. Arsenal 334,756,885 to 340,000,000 |
+| Max tactics | Pass. First team, 30 changes | Pass. U21 (team 28112), 28 changes, values at 10000 | Pass. First team (team 459), 25 changes, values at 10000 |
+| Lift bans, Heal, Refresh fitness, Remove unhappiness | Pass. Bans 3 to 0; 17 unhappy cleared | Pass. Neilor Oldoni's ban lifted; Heal 1 change | Pass. Heal 1 change, Refresh fitness 54, Remove unhappiness 4; no Arsenal ban to lift |
+| Staff attribute | Pass. Nicolas Jover Fitness 3 to 6 (stored 15 to 30) | Pass. Jover Fitness 6 to 8 (stored 40) | Pass. Jover Fitness 3 to 6 (stored 15 to 30) |
+| Nation field | Pass. England youth rating 135 to 140 | Pass. England youth rating 135 to 140 | Pass. England youth rating 135 to 140 |
+| Undo in Changes | Pass. Youth rating back to 135, "135 changes · 1 undone" | Pass. Back to 135, "179 changes · 1 undone" | Pass. Back to 135, "42 changes · 1 undone" |
+| FM shows it | Pass. Heading 12 on Saka's profile at once; news "Paul Ifill deal falls through"; 30-man squad with Nwaneri back | Pass. Heading 14 and £325K p/w on Saka's profile | Pass. Inbox: "Paul Ifill deal falls through", "Gabriel granted work permit" |
+| FM kept running | Pass | Pass | Pass. `fm` responding after every action |
+| Saved under a new name, reloaded | Pass. Saved as `FM-Lens-27.0.1-2026-11-10` | Pass. That save loaded: Heading 12, wage 310,000, Jover Fitness 6, balance 200,000,000, youth rating 135, Ifill at Arsenal | Not run. Nothing was saved on Windows |
+
+On Windows seven of the 26 functions FM Lens has the game run are protected, so
+their place in the file could not be compared with 27.0.0 (see the recon note).
+Each ran here in the game: `add_injury` (Add injury), `remove_work_permit`
+(Revoke), `withdraw_offers` (Release, Transfer), `start_loan` (Loan),
+`date_value` and `map_insert` (Sign later), `maximise_tactics` (Max tactics).
+
+Notes:
+
+- Max tactics reports only the players it changed. On the Rosetta run Arsenal's
+  first team was already at the maximum in the loaded save and read "No changes
+  made", so the check used the U21 team.
+- FM rounds the wage in a profile's header: 310,000 shows as £300K p/w and
+  320,000 as £325K p/w. The stored wage is the one set.
+- `fmlens-probe injuries 602` stops at Gabriel on this build as it did on
+  27.0.0. FM Lens itself lists and heals injuries.
+
+Mac: FM27 27.0.1 native on Apple Silicon (FM process 98125, FM Lens 98521) in
+the test copy `FM Lens Permit 2026-11-09` (Arsenal, 8 Dec 2027), saved only as
+the new file `FM-Lens-27.0.1-2026-11-10`. Then under Rosetta (FM process 1006,
+started with `arch -x86_64` and the packaged universal bridge) in that new
+save, quit without saving.
+
+Windows: FM27 27.0.1 on the test machine (FM process 5016, FM Lens 4168) with
+the installer CI built from the same commit, in `FM Lens Persist Check` (a copy
+of the main save, Arsenal, 28 Jul 2026). Not saved.
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
+on Windows. The installed bridge was restored on the Mac afterwards.
