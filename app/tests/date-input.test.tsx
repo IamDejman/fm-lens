@@ -117,6 +117,7 @@ function InGame({ start, onValue }: { start: string; onValue: (value: string) =>
     gameActions: NO_GAME_ACTIONS,
     injuryKinds: () => Promise.resolve([]),
     gameDate: { year: 2027, month: 12, day: 8 },
+    openPlayer: () => {},
   };
   return (
     <EditorContext.Provider value={editor}>
