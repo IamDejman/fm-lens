@@ -1757,7 +1757,6 @@ export const es: Strings = {
     close: "Cerrar",
     age: (age: number) => `${age} años`,
     value: "Valor",
-    notForSale: "No está en venta",
     wage: "Salario",
     perWeek: "/sem.",
     footer: "Descubierto con FM Lens · getfmlens.com",

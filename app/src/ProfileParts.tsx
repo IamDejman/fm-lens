@@ -94,6 +94,8 @@ interface ProfileFrameProps {
   side?: ReactNode;
   /** Buttons before Edit in the header: a player's Compare button. */
   headActions?: ReactNode;
+  /** Icon buttons, before the panel width and close buttons. */
+  headIcons?: ReactNode;
   /** Buttons at the end of the status row: a player's Transfer and Release. */
   actions?: ReactNode;
   /** Between the header and the body, so that it stays in view while the body scrolls: the tabs of a club. */
@@ -125,7 +127,7 @@ function showCutText(event: ReactMouseEvent<HTMLElement>) {
  */
 export function ProfileFrame(props: ProfileFrameProps) {
   const { picture, name, fullName, badge, meta, vitals, status, currentAbility, potentialAbility } = props;
-  const { side, headActions, actions, tabs, wide, loaded, onClose, editing, children } = props;
+  const { side, headActions, headIcons, actions, tabs, wide, loaded, onClose, editing, children } = props;
   const closeProfile = editing ? () => editing.guardClose(onClose) : onClose;
   const onEscape = editing ? () => editing.escape(onClose) : onClose;
   const panelWidth = usePanelWidth(wide ? "wide" : "profile");
@@ -177,6 +179,7 @@ export function ProfileFrame(props: ProfileFrameProps) {
               <div className="profile-actions">
                 {headActions}
                 {editing && <EditButton editing={editing} ready={loaded?.details !== undefined} />}
+                {headIcons}
                 <PanelWidthButton panelWidth={panelWidth} />
                 <button
                   className="icon-button"

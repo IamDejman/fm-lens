@@ -60,13 +60,16 @@ export function ShareButton({ details }: { details: PlayerDetails | undefined })
       <button
         ref={button}
         type="button"
-        className="share-toggle"
+        className="icon-button"
         aria-haspopup="dialog"
+        aria-label={text.button}
         disabled={details === undefined}
         title={text.buttonTitle}
         onClick={() => details && setSubject({ details, gameDate })}
       >
-        {text.button}
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path strokeLinejoin="round" d="M10 12.5V3M6.5 6.5 10 3l3.5 3.5M7 9H5v8h10V9h-2" />
+        </svg>
       </button>
       {subject && <ShareDialog subject={subject} onClose={() => setSubject(null)} />}
     </>
