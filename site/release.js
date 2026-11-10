@@ -25,15 +25,19 @@ function downloadsOf(release) {
   return { mac: url(".dmg"), windows: url("-setup.exe") };
 }
 
-/** The latest release's version and its downloads. The version is null when GitHub does not answer. */
-export async function latestRelease() {
+/**
+ * A release's version and its downloads: the one with that version, or the latest without one. The version is null
+ * and the downloads are the latest when GitHub does not answer.
+ */
+export async function release(version) {
+  const asked = /^\d+\.\d+\.\d+$/.test(version ?? "") ? `${API}/tags/v${version}` : LATEST;
   try {
-    const response = await fetch(LATEST, { headers: { Accept: "application/vnd.github+json" } });
+    const response = await fetch(asked, { headers: { Accept: "application/vnd.github+json" } });
     if (!response.ok) {
       return { version: null, downloads: LATEST_DOWNLOADS };
     }
-    const release = await response.json();
-    return { version: release.tag_name.replace(/^v/, ""), downloads: downloadsOf(release) };
+    const found = await response.json();
+    return { version: found.tag_name.replace(/^v/, ""), downloads: downloadsOf(found) };
   } catch {
     return { version: null, downloads: LATEST_DOWNLOADS };
   }
