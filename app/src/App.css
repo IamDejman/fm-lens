@@ -2902,7 +2902,7 @@ input::placeholder {
   text-align: center;
 }
 
-/* Edit is a profile's main action: filled with violet until it is on, then pressed in; amber is left to the values it
+/* Edit is a profile's main action: filled with violet until it is on, then outlined and reading Done; amber is left to the values it
    leaves to apply. */
 .edit-toggle {
   border-color: var(--accent);
@@ -2920,8 +2920,21 @@ input::placeholder {
   cursor: progress;
 }
 
-.edit-toggle[aria-pressed="true"],
-.edit-toggle[aria-pressed="true"]:hover:not(:disabled) {
+/* While editing the button reads Done. Both labels share one cell, so the wider one sets the width. */
+.edit-toggle {
+  display: inline-grid;
+}
+
+.edit-toggle > span {
+  grid-area: 1 / 1;
+}
+
+.edit-toggle > span[aria-hidden="true"] {
+  visibility: hidden;
+}
+
+.edit-toggle.editing,
+.edit-toggle.editing:hover:not(:disabled) {
   border-color: var(--text);
   background: var(--raised);
   color: var(--text);

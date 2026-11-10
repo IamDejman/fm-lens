@@ -8,6 +8,7 @@ import { Settings } from '../src/Settings';
 import { askToLeave, EditorContext, NO_GAME_ACTIONS, useProfileEditing } from '../src/useProfileEditing';
 import { saveSnapshot } from '../src/restore';
 import { mockInvoke } from '../src/dev/mock';
+import { EditButton } from '../src/EditControls';
 import { call } from '../src/api';
 vi.mock('../src/api', () => ({ inTauri: false, call: vi.fn(), watchCommands: vi.fn() }));
 beforeEach(() => { vi.mocked(call).mockImplementation(mockInvoke); });
@@ -65,6 +66,22 @@ function PendingHarness() {
     <button onClick={() => edit.guardClose(() => setView('Closed'))}>Close fixture</button>
     <p>{view}</p><p>{edit.confirming ? 'Confirm discard' : ''}</p><button onClick={edit.keepEditing}>Keep editing</button><button onClick={edit.confirmDiscard}>Discard fixture</button></>;
 }
+function ToggleHarness() {
+  const edit = useProfileEditing('player', 1009102);
+  return <EditButton editing={edit} ready />;
+}
+test('the profile toggle reads Done while editing', async () => {
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {} }}><ToggleHarness /></EditorContext.Provider>);
+  const toggle = screen.getByRole('button', { name: 'Edit' });
+  expect(toggle.getAttribute('title')).toBe('Edit this profile');
+  await userEvent.click(toggle);
+  await screen.findByRole('button', { name: 'Done' });
+  expect(toggle.hasAttribute('aria-pressed')).toBe(false);
+  expect(toggle.hasAttribute('title')).toBe(false);
+  await userEvent.click(toggle);
+  await screen.findByRole('button', { name: 'Edit' });
+});
+
 // Pending-navigation coverage uses the real editor hook and the same fixture command adapter as the preview.
 test('pending navigation requires an explicit discard', async () => {
   render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {} }}><PendingHarness /></EditorContext.Provider>);
