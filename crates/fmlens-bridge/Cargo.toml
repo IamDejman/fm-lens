@@ -20,6 +20,7 @@ fmlens-mem.workspace = true
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_LibraryLoader", "Win32_UI_WindowsAndMessaging"] }
 
 [build-dependencies]
+static_vcruntime = "3.0.0"
 toml = "1.1.8"
 
 # How Steam starts the game with the bridge; see src/launch.rs.
