@@ -55,9 +55,11 @@
     const release = await latestRelease();
     const url = release.downloads[computer];
     if (url) {
-      document.getElementById("title").textContent = `Downloading FM Lens ${release.version}`;
+      if (release.version) {
+        document.getElementById("title").textContent = `Downloading FM Lens ${release.version}`;
+      }
       document.getElementById("fallback").href = url;
-      track("download_started", { version: release.version, page: "download", computer });
+      track("download_started", { version: release.version ?? "latest", page: "download", computer });
       window.location.assign(url);
     } else {
       const status = document.getElementById("status");

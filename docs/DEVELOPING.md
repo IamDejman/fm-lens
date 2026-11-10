@@ -204,10 +204,8 @@ FM Lens is released for macOS and Windows, from a Mac, to the public repository
    - `FM-Lens-macos-universal.dmg` and `FM-Lens-windows-x64-setup.exe`, the two downloads
      again without the version: `releases/latest/download/<name>` always leads to them.
 
-   Releases cannot be changed once published, so 0.7.1 has no such files. Once the first
-   release that has them is out, merge
-   [#188](https://github.com/IamDejman/fm-lens/pull/188): the site then offers them when
-   GitHub's API does not answer it, where until then it offers 0.7.1.
+   The site offers those two when GitHub's API does not answer it, so it needs no change
+   for a release.
 
    Without `--publish` it only writes these files to `target/release-files/<version>/`,
    from any commit with a passing Validate run.
