@@ -137,6 +137,7 @@
         </li>
       </ol>
     </section>
+
   </main>
 
   <footer>
@@ -149,13 +150,13 @@
   </footer>
 
   <script type="module">
-    import { latestRelease, thisComputer } from "./release.js";
+    import { release as releaseOf, thisComputer } from "./release.js";
 
     if (thisComputer() === "windows") {
       const windows = document.getElementById("windows");
       windows.parentElement.prepend(windows);
     }
-    const release = await latestRelease();
+    const release = await releaseOf();
     if (release.version) {
       document.getElementById("release-line").textContent =
         `Version ${release.version}, for Apple Silicon and Intel Macs, and Windows 10 and 11.`;
