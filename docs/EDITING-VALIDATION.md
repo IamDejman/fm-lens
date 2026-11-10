@@ -2443,3 +2443,9 @@ valuation checks remain pending.
 The main career SHA-256 before the check was
 `3ADEB4FDEF1C5928A5F396E719C9216842282665AF21E9E8A3B8E803BD956000`.
 Local diagnostics and binary scratch are ignored under `reports/transfer-value/`.
+
+Packaged-app check on Apple Silicon (debug bundle, same FM process and copy,
+8 December 2027): Saka's Contract tab shows Base transfer value £137,779,209
+beside Asking price Not set. His share card's Value reads £137.8m. In the same
+app, Copy image put a 1080x1350 PNG on the clipboard and Copy caption copied
+the caption. Read only: no edits, Continue or saves.
