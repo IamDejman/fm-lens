@@ -1,10 +1,12 @@
-# Sends PostHog the download counts of FM Lens every hour (scripts/report-downloads.sh), for the "FM Lens growth"
-# dashboard. It can also be started by hand.
+# Sends PostHog the download counts of FM Lens every 15 minutes (scripts/report-downloads.sh), for the "FM Lens
+# growth" dashboard. It can also be started by hand.
 name: Report downloads
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    # GitHub drops scheduled runs when it is busy (it ran 1 of 11 hourly runs on 2026-11-10), so this asks often and
+    # off the quarter hours. The counts are running totals, so any run that gets through updates the dashboard.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions:
