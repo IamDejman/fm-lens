@@ -1523,6 +1523,14 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.4": [
+        "Comparte una tarjeta de cualquier jugador desde su perfil: una Publicación o una Historia, para copiar o guardar.",
+        "La pestaña Contrato muestra el valor base de traspaso del jugador.",
+        "Las partidas largas siguen editables: los jugadores nacidos después de 2020 ya no bloquean jugadores ni personal.",
+        "Pon una fecha de nacimiento hasta la fecha del juego.",
+        "Informar de un problema envía las comprobaciones que no pasaron.",
+        "FM Lens pide tu correo una vez en cada ordenador.",
+      ],
       "0.7.3": ["Funciona con FM27 27.0.1, el primer parche del juego: vuelven todas las ediciones y acciones."],
       "0.7.2": ["En Windows, Traspasar, Intercambiar y Ceder ya no fallan con un error de LoadLibraryW."],
       "0.7.1": [
