@@ -83,7 +83,18 @@ test("reports without what happened, with the wrong types, or too long are turne
   assert.deepEqual(readReport({ ...REPORT, version: 5 }), { error: "invalid" });
   assert.deepEqual(readReport({ ...REPORT, macos: "a\nb" }), { error: "invalid" });
   assert.deepEqual(readReport({ ...REPORT, what: "x".repeat(5001) }), { error: "invalid" });
+  assert.deepEqual(readReport({ ...REPORT, checks: "x".repeat(2001) }), { error: "invalid" });
   assert.deepEqual(readReport([REPORT]), { error: "invalid" });
+});
+
+test("the checks that did not pass get a section after the build, only when there are some", () => {
+  const checks = "players: 1840 of 2000 fit; 1960 of 1990 within their potential, 40 of them at it\nstaff: 1990 of 2000 fit";
+  const { report } = readReport({ ...REPORT, checks });
+  assert.match(
+    issueFor(report).body,
+    /### FM build\n\nFM27 Steam 26340721, editing on\n\n### Checks that did not pass\n\nplayers: 1840 of 2000 fit; .+\nstaff: 1990/,
+  );
+  assert.doesNotMatch(issueFor(readReport(REPORT).report).body, /Checks that did not pass/);
 });
 
 test("the relay files a report in the repository with its token", async () => {
