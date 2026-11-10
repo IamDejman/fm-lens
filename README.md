@@ -115,7 +115,15 @@ or Windows version and processor, and the app language:
 To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
 nothing.
 
-The site counts page views and downloads started, without cookies or stored ids.
+Before it opens for the first time on a computer, the app asks for an email
+address. It goes to [Kit](https://kit.com), which keeps the list and sends the
+emails about FM Lens, and never to PostHog. Every email has a link to
+unsubscribe.
+
+The site counts page views, downloads started and email signups, without cookies
+or stored ids. A download from the site asks for an email address, which goes to
+[Kit](https://kit.com), which keeps the list and sends the emails, and never to
+PostHog.
 
 ## Security
 

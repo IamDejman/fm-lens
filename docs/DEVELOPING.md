@@ -262,9 +262,19 @@ Pages. To look at it locally, run `python3 -m http.server 4321 --directory site`
 The files people download stay on the releases in fm-lens-releases. `site/release.js` asks
 GitHub's API for the latest release, so the home page shows its version and
 [getfmlens.com/download](https://getfmlens.com/download/) starts its disk image, or its
-Windows installer for a visitor on Windows (`?for=mac` or `?for=windows` picks one). A new
-release needs no change to the site. Installed copies keep reading `latest.json` from
+Windows installer for a visitor on Windows (`?for=mac` or `?for=windows` picks one,
+`?version=0.7.3` an older release). A new release needs no change to the site. Installed copies keep reading `latest.json` from
 fm-lens-releases, as above.
+
+The download page asks for an email address before it starts a download, once in each
+browser; every download button on the site leads there. `site/signup.js` sends the address to
+FM Lens's form in [Kit](https://kit.com), which keeps the list, confirms each address and
+sends the emails; the form's id is the `FORM` constant there. The files on fm-lens-releases
+stay public, and installed copies update without it.
+
+The app asks for an email address too, before it opens for the first time on a computer
+(`app/src/EmailGate.tsx`), and sends it to the same form. In the browser preview, type any
+address once, or set `fmlens.email` to `given` in the page's local storage.
 
 ### The report relay
 
