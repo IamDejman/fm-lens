@@ -37,6 +37,7 @@
   --accent-hover: #6f25b0;
   --link: #6f25b0;
   --focus: #2457c5;
+  --field: #ffffff;
   /* FM's bands for a 1-20 value: 1-5, 6-10, 11-15, 16-20. */
   --band-1: #b3402f;
   --band-2: #8f5d0e;
@@ -55,6 +56,7 @@
     --rule: #2c3044;
     --link: #d29cf0;
     --focus: #8fb1ff;
+    --field: #1b1e2e;
     --band-1: #e8775f;
     --band-2: #dca244;
     --band-3: #a8c45e;
@@ -357,6 +359,60 @@ h2 {
 
 .steps p {
   margin: 0;
+}
+
+/* The email signup: a field and its button on one line, what happened under them. It stays hidden until
+   signup.js has a form to send to. */
+[hidden] {
+  display: none !important;
+}
+
+.signup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  max-width: 34rem;
+}
+
+.message .signup {
+  margin-top: 32px;
+}
+
+.signup label,
+.signup [role="status"] {
+  flex: 1 0 100%;
+  margin: 0;
+}
+
+.signup [role="status"]:empty {
+  display: none;
+}
+
+.signup input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+}
+
+.signup input::placeholder {
+  color: var(--muted);
+}
+
+.signup button {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.signup button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* The foot: where the source, the issues and the releases are. */

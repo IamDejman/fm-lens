@@ -137,6 +137,16 @@
         </li>
       </ol>
     </section>
+
+    <section class="part" aria-labelledby="news" hidden>
+      <h2 id="news">Email updates</h2>
+      <form class="signup" data-page="home">
+        <input name="email_address" type="email" autocomplete="email" spellcheck="false" required
+          aria-label="Email address" placeholder="you@example.com">
+        <button class="button" type="submit">Sign up</button>
+        <p role="status"></p>
+      </form>
+    </section>
   </main>
 
   <footer>
@@ -148,6 +158,7 @@
     </div>
   </footer>
 
+  <script type="module" src="signup.js"></script>
   <script type="module">
     import { latestRelease, thisComputer } from "./release.js";
 

@@ -266,6 +266,11 @@ Windows installer for a visitor on Windows (`?for=mac` or `?for=windows` picks o
 release needs no change to the site. Installed copies keep reading `latest.json` from
 fm-lens-releases, as above.
 
+The home and download pages offer email updates. `site/signup.js` sends the address to FM
+Lens's form in [Kit](https://kit.com), which keeps the list, confirms each address and sends
+the emails; the form's id is the `FORM` constant there, and with it empty no page shows the
+signup.
+
 ### The report relay
 
 Report a problem sends its report to `relay/`, an AWS Lambda function
