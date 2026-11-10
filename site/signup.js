@@ -1,10 +1,11 @@
-// The email a download asks for. Kit (kit.com) keeps the list and sends the emails: an address goes from the download
-// page straight to FM Lens's form in Kit and nowhere else. PostHog only counts that a signup happened.
+// The email a download asks for. Kit (kit.com) keeps the list and sends the emails. The address goes to FM Lens's report
+// relay (relay/index.js, POST /subscribe), which adds it to FM Lens's form in Kit with Kit's API and keeps no copy, so a
+// visitor never meets Kit's check that they are a person. PostHog only counts that a signup happened.
 
 import { track } from "./analytics.js";
 
-/** The id of FM Lens's form in Kit. It can only add an address, so it is safe in a page. */
-const FORM = "10172074";
+/** FM Lens's report relay, as in app/src/report.ts. */
+const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws";
 
 /** Where this browser keeps that it gave an address, so the download page asks once. */
 const GIVEN = "fmlens-email-given";
@@ -31,17 +32,17 @@ function remember() {
   }
 }
 
-/** Sends the form's address to Kit as Kit's own form script does, and gives what Kit answered. */
+/** Sends the form's address to the relay, and gives what it answered: `subscribed`, or why not. */
 async function subscribe(form) {
-  const response = await fetch(`https://app.kit.com/forms/${FORM}/subscriptions`, {
+  const response = await fetch(`${RELAY}/subscribe`, {
     method: "POST",
-    headers: { Accept: "application/json" },
-    body: new FormData(form),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: form.querySelector("input").value }),
   });
   return response.json();
 }
 
-/** Asks for an address with the page's form. Resolves once Kit has taken one. */
+/** Asks for an address with the page's form. Resolves once the relay has taken one. */
 export function askForEmail(form) {
   const status = form.querySelector("[role=status]");
   const button = form.querySelector("button");
@@ -54,20 +55,18 @@ export function askForEmail(form) {
       status.textContent = "";
       try {
         const answer = await subscribe(form);
-        if (answer.status === "success") {
+        if (answer.subscribed) {
           remember();
           track("signup_sent", { page: form.dataset.page });
           resolve();
           return;
         }
-        if (answer.status === "quarantined" && answer.url) {
-          // Kit wants to check the visitor is a person: its own page asks, then finishes the signup.
-          remember();
-          window.location.assign(answer.url);
-          return;
+        if (answer.error === "invalid") {
+          status.textContent = SAID.refused;
+          form.querySelector("input").focus();
+        } else {
+          status.textContent = SAID.failed;
         }
-        status.textContent = SAID.refused;
-        form.querySelector("input").focus();
       } catch {
         status.textContent = SAID.failed;
       }
