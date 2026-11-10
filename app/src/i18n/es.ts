@@ -1512,6 +1512,7 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.3": ["Funciona con FM27 27.0.1, el primer parche del juego: vuelven todas las ediciones y acciones."],
       "0.7.2": ["En Windows, Traspasar, Intercambiar y Ceder ya no fallan con un error de LoadLibraryW."],
       "0.7.1": [
         "Los fichajes jóvenes se unen a tu primer equipo, no al sub-21.",
