@@ -2245,3 +2245,69 @@ Windows: FM27 on the test machine (FM process 7016) with the Windows build of
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows.
 The released 0.7.0 bridge was restored on the Mac afterwards.
+
+## Ten list, profile and dialog fixes (10 November 2026)
+
+1. Finances: a club's Finances section was hidden when its transfer budget was
+   negative, because any negative budget read as "not set". FM makes the
+   budget negative when a club overspends. Only FM's -1 now reads as not set,
+   and a negative budget shows in red.
+2. Staff: the manager of a national team with no club job read "Unemployed".
+   He is now a Manager at that team in the list, the profile and the job
+   filters.
+3. Club pickers listed women's clubs first. They now list the clubs of the
+   person's side of the game first.
+4. More stayed open after Export, Mass edit and Clone & templates. It now
+   closes once the dialog an action opened is gone, and focus goes back to
+   More.
+5. Templates: Save removed the Undo of a clone. Save now keeps the preview,
+   the result and its Undo.
+6. Templates: the picker reset after a template was loaded. It now shows the
+   template in use.
+7. Templates: the first Save gave no confirmation. Save and Delete now confirm
+   under their buttons.
+8. Squad: a click on a row did nothing. A click on a row, or on the name, now
+   opens the player in the player list with the filters cleared.
+9. Changes: the count included entries from an earlier game, which can no
+   longer be undone. It now leaves them out.
+10. Profile header: a long name or summary wrapped and pushed the tabs down.
+    The name stays on one line, the summary is always two lines and the status
+    chips scroll, so the tabs no longer move between people or when editing.
+
+Packaged release builds of `fix/ui-ten` (9acce12), driven through the
+accessibility API and clicks (UI Automation and clicks on Windows). Test copies
+only, never saved; Continue was not pressed.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| 1. Finances with a negative transfer budget | Pass. Arsenal: Finances shown, transfer budget -£2,097,590 in red | Pass. Arsenal after a Release of Patrick Berg: -£92,646 in red; in the second copy -£2,097,590, where FM shows "(£2.09M)" | Pass. Brighton: budget set to £0, then Carlos Baleba released; after Reload the transfer budget reads -£527,069 in red and Finances is shown |
+| 2. National-team managers | Pass. Thomas Tuchel, 54: Manager, England. Carlo Ancelotti, 68: Manager, Brazil | Pass. Thomas Tuchel, 54: Manager, England | Pass. Thomas Tuchel: Manager, England. Carlo Ancelotti: Manager, Brazil |
+| 3. Club picker order | Pass. Men's clubs first (Blu-neri Milano, R. Madrid, Barcelona, Arsenal 9,019); no women's club in the first 8 | Pass. Men's clubs first (Blu-neri Milano, R. Madrid, Barcelona, Arsenal 9,019) | Pass. Arsenal 8,950 first, no women's club in the first 8; Brighton & Hove Albion 7,050 before its women's club 6,750 |
+| 4. More closes | Pass. Closed after Export, Mass edit and Clone & templates | Pass. Closed after Export, Mass edit and Clone & templates | Pass. Closed after Export, Mass edit and Clone & templates |
+| 5. Save keeps the clone's Undo | Pass. "67 changes applied." and Undo still there after Save; Undo: "Undid 67 changes." | Pass. "67 changes applied." and Undo still there after Save; Undo: "Undid 67 changes." | Pass. "61 changes applied." and Undo still there after Save; Undo: "Undid 61 changes." |
+| 6. Picker keeps the template | Pass. Still on the saved template after reopening | Pass. Still on the saved template after reopening | Pass. Shows the saved template, and stays on it when chosen in a reopened dialog |
+| 7. Save and Delete confirm | Pass. "Template saved."; "Template deleted." | Pass. "Template saved."; "Template deleted." | Pass. "Template saved."; "Template deleted." |
+| 8. Squad row opens the player | Pass. Bukayo Saka by name, Nico Paz by row; each opened in Players | Pass. Declan Rice by name, Nico Paz by row; each opened in Players | Pass. Declan Rice by row, Bukayo Saka by name; each opened in Players |
+| 9. Changes count without earlier games | Pass. "Changes 1" before; after FM loaded another game: "Changes" with no count, entries read "Earlier game" ("68 changes · 67 undone") | Pass. "Changes 4" before; after: "Changes" with no count, entries read "Earlier game" ("71 changes · 67 undone") | Pass. "Changes 3" before; after: "Changes" with no count, entries read "Earlier game" ("64 changes · 61 undone") |
+| 10. Profile header | Pass. Alex Oxlade-Chamberlain: name on one line, tabs at the same height in view and edit | Pass. Alex Oxlade-Chamberlain: name on one line, tabs at the same height in view and edit | Pass. Alex Oxlade-Chamberlain: name on one line, tabs at the same height (Y 338) in view and edit |
+
+How the two rare states were reached. Negative budget: FM Lens never writes a
+budget below zero, FM does, so the budget was set to £0 and a contracted player
+released through FM Lens; the Mac copy `FM Lens Exact Wage 2026-11-08` already
+has Arsenal at -£2,097,590. Earlier game: FM Lens stayed open while FM loaded
+another game without saving, then Reload.
+
+Mac: FM27 native on Apple Silicon (FM processes 38718 then 39658, code type
+ARM64) and under Rosetta (FM processes 83781 then 38386, code type X86-64
+translated), each with the branch bridge injected and the test FM Lens build
+run the same way. Test copy `FM Lens Permit 2026-11-09` (Arsenal, 8 Dec 2027),
+then `FM Lens Exact Wage 2026-11-08` for checks 1 and 9, both opened through
+Load Game and quit without saving.
+
+Windows: FM27 on the test machine (FM process 7016) with the Windows build of
+the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
+2026), loaded again through Load Game without saving for check 9.
+
+The bridge is the same as in 1db332b. Main career SHA-256 stayed
+3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows. The released
+0.7.0 bridge was restored on the Mac afterwards.
