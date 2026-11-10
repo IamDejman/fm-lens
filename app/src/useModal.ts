@@ -53,6 +53,10 @@ export function useModal(box: RefObject<HTMLElement | null>, canClose: boolean, 
       if (!dialog || event.isComposing) {
         return;
       }
+      if (event.key === "Escape" && event.target instanceof Element && event.target.closest(".date-calendar")) {
+        // A calendar open in the dialog closes first: this Escape is its own.
+        return;
+      }
       if (event.key === "Escape") {
         event.stopPropagation();
         event.preventDefault();

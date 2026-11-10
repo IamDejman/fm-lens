@@ -1,12 +1,13 @@
-import { useRef, useState, type InputHTMLAttributes } from "react";
+import { useContext, useRef, useState, type InputHTMLAttributes } from "react";
+import { DateCalendar } from "./DateCalendar";
 import { dateLayout, dateText, isoFromDateText, typedDateText } from "./dateEntry";
-import { numberFromIso } from "./editing";
+import { isoFromNumber, numberFromDate } from "./editing";
 import { intlLocale } from "./i18n";
 import { editText } from "./labels";
+import { EditorContext } from "./useProfileEditing";
 
 const layout = dateLayout(intlLocale);
 const hint = layout.order.map((part) => editText.dateParts[part]).join(layout.separator);
-const canPick = typeof HTMLInputElement !== "undefined" && "showPicker" in HTMLInputElement.prototype;
 
 interface DateInputProps extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -14,7 +15,7 @@ interface DateInputProps extends Omit<
 > {
   /** `YYYY-MM-DD`, or what was typed while that is no date yet; "" for none. */
   value: string;
-  /** The earliest and the latest day of the calendar, `YYYY-MM-DD`. */
+  /** The earliest and the latest day the calendar lets be picked, `YYYY-MM-DD`. */
   min?: string;
   max?: string;
   /** The `YYYY-MM-DD` of what was typed or picked; the text itself while it is no whole, real date; "" when empty. */
@@ -22,14 +23,18 @@ interface DateInputProps extends Omit<
 }
 
 /**
- * A date typed as text in the order of the language, the same in the Mac and the Windows app, with the browser's
- * calendar behind a button. The other props are those of the text input.
+ * A date typed as text in the order of the language, the same in the Mac and the Windows app, with a calendar behind
+ * a button, which opens on the date of the field or else on the day of the game. The other props are those of the text
+ * input.
  */
 export function DateInput(props: DateInputProps) {
   const { value, min, max, onChange, onBlur, onMouseDown, readOnly, disabled, ...rest } = props;
   const [draft, setDraft] = useState(() => ({ text: dateText(value, layout), value }));
+  const { gameDate } = useContext(EditorContext);
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
   const field = useRef<HTMLInputElement>(null);
-  const picker = useRef<HTMLInputElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
   // A value that is not the one typed here came from outside (the calendar, a reset): show it.
   if (draft.value !== value) {
     setDraft({ text: dateText(value, layout), value });
@@ -51,8 +56,16 @@ export function DateInput(props: DateInputProps) {
     onChange(typed);
   };
 
+  const canPick = !readOnly && !disabled;
+  /** Focus goes to the field with its date selected, so that what is typed next replaces it. */
+  const toField = () => {
+    setOpen(false);
+    field.current?.focus();
+    field.current?.select();
+  };
+
   return (
-    <span className="date-field">
+    <span ref={box} className="date-field">
       <input
         {...rest}
         ref={field}
@@ -84,46 +97,40 @@ export function DateInput(props: DateInputProps) {
           onBlur?.(e);
         }}
       />
-      {canPick && (
-        <>
-          <input
-            ref={picker}
-            className="date-picker"
-            type="date"
-            tabIndex={-1}
-            aria-hidden="true"
-            value={numberFromIso(value) !== null ? value : ""}
-            min={min}
-            max={max}
-            onChange={(e) => onChange(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              // The calendar is for picking: a date typed while it is open goes to the field that reads it right.
-              if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
-                field.current?.focus();
-                field.current?.select();
-              }
-            }}
-          />
-          <button
-            type="button"
-            className="date-pick"
-            aria-label={editText.pickDate}
-            disabled={readOnly || disabled}
-            onClick={() => {
-              try {
-                // WebKit closes its calendar only when the date input loses focus, so it has to hold it.
-                picker.current?.focus();
-                picker.current?.showPicker();
-              } catch {
-                // No calendar to show: the date can still be typed.
-              }
-            }}
-          >
-            <svg viewBox="0 0 20 20" aria-hidden="true">
-              <path d="M4 5.5h12v10.5H4zM4 9h12M7 3.5v3M13 3.5v3" />
-            </svg>
-          </button>
-        </>
+      <button
+        ref={toggle}
+        type="button"
+        className="date-pick"
+        aria-label={editText.pickDate}
+        aria-haspopup="dialog"
+        aria-expanded={open && canPick}
+        disabled={!canPick}
+        onClick={() => setOpen(!open)}
+      >
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M4 5.5h12v10.5H4zM4 9h12M7 3.5v3M13 3.5v3" />
+        </svg>
+      </button>
+      {open && canPick && (
+        <DateCalendar
+          value={value}
+          today={gameDate ? isoFromNumber(numberFromDate(gameDate)) : ""}
+          min={min}
+          max={max}
+          anchor={box}
+          toggle={toggle}
+          onPick={(iso) => {
+            onChange(iso);
+            toField();
+          }}
+          onType={toField}
+          onClose={(back) => {
+            setOpen(false);
+            if (back) {
+              toggle.current?.focus();
+            }
+          }}
+        />
       )}
     </span>
   );
