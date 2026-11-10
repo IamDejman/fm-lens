@@ -156,8 +156,10 @@
       windows.parentElement.prepend(windows);
     }
     const release = await latestRelease();
-    document.getElementById("release-line").textContent =
-      `Version ${release.version}, for Apple Silicon and Intel Macs, and Windows 10 and 11.`;
+    if (release.version) {
+      document.getElementById("release-line").textContent =
+        `Version ${release.version}, for Apple Silicon and Intel Macs, and Windows 10 and 11.`;
+    }
   </script>
 </body>
 </html>
