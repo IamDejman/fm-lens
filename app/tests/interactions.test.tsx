@@ -67,7 +67,7 @@ function PendingHarness() {
 }
 // Pending-navigation coverage uses the real editor hook and the same fixture command adapter as the preview.
 test('pending navigation requires an explicit discard', async () => {
-  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null }}><PendingHarness /></EditorContext.Provider>);
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {} }}><PendingHarness /></EditorContext.Provider>);
   await userEvent.click(screen.getByRole('button', { name: 'Edit fixture' }));
   await screen.findByRole('textbox', { name: 'Finishing' });
   await userEvent.clear(screen.getByRole('textbox', { name: 'Finishing' }));
@@ -98,7 +98,7 @@ test('settings snapshot records open state for window restoration', async () => 
 
 
 test.each(['Navigate', 'Done fixture', 'Close fixture'])('invalid-only draft is protected by %s', async action => {
-  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null }}><PendingHarness /></EditorContext.Provider>);
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {} }}><PendingHarness /></EditorContext.Provider>);
   await userEvent.click(screen.getByRole('button', { name: 'Edit fixture' }));
   const input = await screen.findByRole('textbox', { name: 'Finishing' });
   await userEvent.clear(input);

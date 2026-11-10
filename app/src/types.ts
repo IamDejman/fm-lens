@@ -282,10 +282,23 @@ export interface StaffSummary {
   clubUid: number | null;
   /** FM job code from the contract; see `jobLabel` in labels.ts. */
   job: number | null;
+  /** The national team they manage: a job with no club contract, so `job` and `club` say nothing of it. */
+  national: NationalJob | null;
   currentAbility: number;
   potentialAbility: number;
   /** The manager the user controls in this save. */
   isHuman: boolean;
+}
+
+/** A national team, as its manager's row names it. */
+export interface NationalJob {
+  nation: string;
+  /** The nation's UID, for its flag (see pictures.ts). */
+  nationUid: number | null;
+  /** The oldest its players may be; null for the senior team. */
+  ageLimit: number | null;
+  /** One of the women's national teams. */
+  women: boolean;
 }
 
 export interface StaffPage {

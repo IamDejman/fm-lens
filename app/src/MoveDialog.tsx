@@ -685,7 +685,13 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     };
     const timer = setTimeout(
       () => {
-        call<ClubPage>("search_clubs", { query, limit: RESULT_LIMIT, filter: {} }).then(
+        // His own side of the game first: a man moves to a men's club, a woman to a women's.
+        call<ClubPage>("search_clubs", {
+          query,
+          limit: RESULT_LIMIT,
+          filter: {},
+          pickedFor: { uid: player.uid, staff },
+        }).then(
           (page) => answer({ query, page }),
           (e) => answer({ query, error: describeError(e) }),
         );

@@ -1,5 +1,6 @@
 // What the inputs of an edit session hold and what Apply would write. No React here: the components only draw it.
 
+import { toShown } from "./currency";
 import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
 import { formatAmount, formatDate, formatNumber, formatPercent } from "./format";
 import { blankLabel, choiceLabel, editText, profileText } from "./labels";
@@ -79,8 +80,10 @@ export function valueText(field: EditField | undefined, shown: number): string {
     case "flag":
       return shown === 0 ? editText.no : editText.yes;
     case "i32":
-      // FM stores a negative transfer budget when the board has not set one.
-      return field.key === "finance.transfer_budget" && shown < 0 ? profileText.notSet : formatAmount(shown);
+      // FM stores -1 for a transfer budget the board has not set; below that the club has overspent.
+      return field.key === "finance.transfer_budget" && shown < 0 && shown >= Math.min(toShown(-1), -1)
+        ? profileText.notSet
+        : formatAmount(shown);
     default:
       return field?.choices ? choiceLabel(field.key, shown) : formatNumber(shown);
   }

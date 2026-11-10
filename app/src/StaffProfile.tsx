@@ -69,21 +69,55 @@ export function HumanBadge() {
   );
 }
 
+/** FM's job code for a manager: the job of a national team's manager too, whose contract is not a club's. */
+const MANAGER_JOB = 16;
+
+/** The job of a member of staff: the one in the club contract, or Manager for the manager of a national team. */
+export function jobOf(member: StaffSummary): number | null {
+  return member.job ?? (member.national !== null ? MANAGER_JOB : null);
+}
+
+/** The name of the national team a member of staff manages, when they have no club. */
+const nationalTeamOf = (member: StaffSummary): string | null =>
+  member.club === null && member.national !== null
+    ? profileText.nationalTeam(member.national.nation, member.national.ageLimit, member.national.women)
+    : null;
+
 /**
- * Where a member of staff works: the club, "Unemployed" when they have no job at all, and nothing
- * when they have a job at a team whose club is unknown.
+ * Where a member of staff works: the club, the national team they manage, "Unemployed" when they have no job at all,
+ * and nothing when they have a job at a team whose club is unknown.
  */
 export function employerOf(member: StaffSummary): ReactNode {
   if (member.club !== null) {
     return member.club;
   }
+  const national = nationalTeamOf(member);
+  if (national !== null) {
+    return national;
+  }
   return member.job === null ? <span className="muted">{profileText.unemployed}</span> : null;
 }
 
-/** `employerOf` for a line of text: the club comes with its logo. */
+/** The picture beside `employerOf` in a list: the club's logo, or the flag of the national team. */
+export function EmployerPicture({ member }: { member: StaffSummary }) {
+  return member.club === null && member.national !== null ? (
+    <NationFlag uid={member.national.nationUid} />
+  ) : (
+    <ClubLogo uid={member.clubUid} name={member.club} size={PICTURE_SIZE.rowLogo} />
+  );
+}
+
+/** `employerOf` for a line of text: the club comes with its logo, the national team with its flag. */
 function employerLine(member: StaffSummary): ReactNode {
   if (member.club === null) {
-    return employerOf(member);
+    const national = nationalTeamOf(member);
+    return national === null ? (
+      employerOf(member)
+    ) : (
+      <WithPicture inline picture={<NationFlag uid={member.national?.nationUid ?? null} />}>
+        {national}
+      </WithPicture>
+    );
   }
   return (
     <WithPicture inline picture={<ClubLogo uid={member.clubUid} name={member.club} size={PICTURE_SIZE.textLogo} />}>
@@ -139,7 +173,7 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
       fullName={null}
       badge={info.isHuman ? <HumanBadge /> : undefined}
       meta={dotted([
-        info.job !== null && jobLabel(info.job),
+        jobOf(info) !== null && jobLabel(jobOf(info)),
         employerLine(info),
         // An input where it is shown while the member of staff is edited, like the abilities.
         info.nation && (
@@ -319,9 +353,6 @@ interface ContractGroupProps {
   /** Whether the job may be changed now: the profile is read, not edited, and it is not yours. */
   canChangeJob: boolean;
 }
-
-/** The job code of a manager, whose label heads what only the user's own manager has. */
-const MANAGER_JOB = 16;
 
 interface ManagerGroupProps {
   unsackable: boolean | null;

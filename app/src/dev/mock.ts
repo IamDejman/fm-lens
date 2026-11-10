@@ -1291,7 +1291,7 @@ const staff: StaffSummary[] = (() => {
   return Array.from({ length: 120 }, (_, i) => {
     const born: FmDate = { year: 1955 + Math.floor(next() * 40), month: 1 + Math.floor(next() * 12), day: 1 + Math.floor(next() * 28) };
     const ca = Math.round(40 + next() * 140);
-    const employed = i === 0 || next() < 0.85;
+    const employed = i !== 1 && (i === 0 || next() < 0.85);
     return {
       uid: 2_000_000 + i * 53,
       name: `${pick(FIRST)} ${pick(LAST)}`,
@@ -1300,6 +1300,8 @@ const staff: StaffSummary[] = (() => {
       age: ageOn(born, GAME_DATE),
       ...withUids(pick(NATIONS), employed ? pick(CLUBS) : null),
       job: i === 0 ? 16 : employed ? pick(JOBS) : null,
+      // One manager of a national team: no club contract, so no job code and no club.
+      national: i === 1 ? { nation: "England", nationUid: null, ageLimit: 21, women: false } : null,
       currentAbility: ca,
       potentialAbility: Math.min(200, ca + Math.round(next() * 30)),
       isHuman: i === 0,
@@ -3455,6 +3457,13 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
         .filter((c) => matchesClubFilter(c, filter))
         .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
+      // A picker lists the person's own side of the game first.
+      const pickedFor = args?.pickedFor as { uid: number; staff: boolean } | undefined;
+      if (pickedFor) {
+        const clubUid = (pickedFor.staff ? staff : players).find((p) => p.uid === pickedFor.uid)?.clubUid;
+        const women = clubs.find((c) => c.uid === clubUid)?.women ?? false;
+        hits.sort((a, b) => Number(a.women !== women) - Number(b.women !== women));
+      }
       const page: ClubPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }

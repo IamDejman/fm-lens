@@ -883,6 +883,8 @@ export const es: Strings = {
     applyJob: "Aplicar",
     cancelJob: "Cancelar",
     unemployed: "Sin empleo",
+    nationalTeam: (nation, ageLimit, women) =>
+      `${nation}${women ? " femenina" : ""}${ageLimit === null ? "" : ` sub-${ageLimit}`}`,
     coaching: "Entrenamiento",
     knowledge: "Conocimientos",
     medical: "Médico",

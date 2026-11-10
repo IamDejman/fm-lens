@@ -8,6 +8,7 @@ import { describeError } from "./format";
 import { locale } from "./i18n";
 import { exportText as text } from "./labels";
 import type { ListState } from "./ListBrowser";
+import { useDialogReturn } from "./MoreMenu";
 import type { ExportFormat, ExportReport, PlayerFilter, PlayerOrder } from "./types";
 import { useModal } from "./useModal";
 
@@ -54,15 +55,7 @@ interface ExportButtonProps {
 export function ExportButton({ list, filter, order }: ExportButtonProps) {
   const [scope, setScope] = useState<ExportScope | null>(null);
   const button = useRef<HTMLButtonElement>(null);
-  const wasOpen = useRef(false);
-
-  // Once the dialog is gone, focus goes back to the button that opened it.
-  useEffect(() => {
-    if (wasOpen.current && scope === null) {
-      button.current?.focus();
-    }
-    wasOpen.current = scope !== null;
-  }, [scope]);
+  useDialogReturn(scope !== null, button);
 
   // The total is null while the list is still asking for the search and filters it shows.
   const { total } = list;
