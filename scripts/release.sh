@@ -5,7 +5,8 @@
 #   copies update from.
 # - Windows: takes the installer the Windows job of .github/workflows/validate.yml built from this same commit, which
 #   people download and installed copies update from.
-# It signs both updates with the updater key and writes latest.json, which tells installed copies they are there.
+# It signs both updates with the updater key and writes latest.json, which tells installed copies they are there. The
+# two downloads are there twice: with the version in their names, and without it for the site's links to the latest.
 #
 # Usage: scripts/release.sh [--publish]
 # --publish needs a clean checkout of origin/main. It tags the commit v<version> in IamDejman/fm-lens and uploads those
@@ -98,6 +99,13 @@ VERSION="$VERSION" \
 ' > "$OUT/latest.json"
 rm "$OUT/$WINDOWS.sig"
 
+# The downloads again under names without the version, which releases/latest/download/<name> always leads to, so the
+# site can offer the latest release without asking GitHub which one it is.
+MAC_LATEST="FM-Lens-macos-universal.dmg"
+WINDOWS_LATEST="FM-Lens-windows-x64-setup.exe"
+cp "$OUT/$MAC.dmg" "$OUT/$MAC_LATEST"
+cp "$OUT/$WINDOWS" "$OUT/$WINDOWS_LATEST"
+
 echo "Release files in $OUT:"
 ls -1 "$OUT"
 
@@ -111,5 +119,6 @@ if $PUBLISH; then
       --description "Releases of FM Lens, the Football Manager 27 companion for macOS and Windows"
   gh release create "v$VERSION" --repo "$REPO" --latest --title "FM Lens $VERSION" \
     --notes-file "$ROOT/docs/release-notes.md" \
-    "$OUT/$MAC.dmg" "$OUT/$MAC.zip" "$OUT/$MAC.app.tar.gz" "$OUT/$WINDOWS" "$OUT/latest.json"
+    "$OUT/$MAC.dmg" "$OUT/$MAC.zip" "$OUT/$MAC.app.tar.gz" "$OUT/$WINDOWS" "$OUT/latest.json" \
+    "$OUT/$MAC_LATEST" "$OUT/$WINDOWS_LATEST"
 fi

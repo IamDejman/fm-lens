@@ -1,8 +1,12 @@
 // The latest FM Lens release. The files stay on GitHub Releases in IamDejman/fm-lens-releases, the same place installed
-// copies update from; this site only points at them. It asks GitHub which release is the latest, and GitHub answers an
-// address only 60 times an hour, so when it does not answer the site offers the release named here.
+// copies update from; this site only points at them, so a new release needs no change here. It asks GitHub which
+// release is the latest, and GitHub answers an address only 60 times an hour, so when it does not answer the site
+// offers the release named here.
 
-/** The release offered when GitHub does not answer. Set with the app's version (docs/DEVELOPING.md, Releasing). */
+/**
+ * The release offered when GitHub does not answer: one that is published, whose files stay where they are. It need not
+ * be the latest, as a copy of FM Lens updates itself when it opens.
+ */
 export const VERSION = "0.7.1";
 
 const REPO = "https://github.com/IamDejman/fm-lens-releases/releases";
