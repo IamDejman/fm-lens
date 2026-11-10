@@ -159,8 +159,7 @@ pub struct CheckResult {
     pub passed: bool,
     pub fit: u64,
     pub sampled: u64,
-    /// What else it measured, in a few words, for the probe.
-    #[serde(skip)]
+    /// What else it measured, in a few words, for the probe and problem reports.
     pub note: String,
 }
 
