@@ -15,6 +15,7 @@ import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } 
 import { PositionPitch, PositionRatings } from "./PositionPitch";
 import { CancelTransferButton, EndLoanButton, ReleaseButton } from "./ReleaseDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
+import { ShareButton } from "./ShareDialog";
 import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
@@ -124,7 +125,12 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
       loaded={loaded}
       onClose={onClose}
       editing={editing}
-      headActions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
+      headActions={
+        <>
+          <ShareButton details={details} />
+          <CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />
+        </>
+      }
       actions={
         // Only while the profile is read, not edited: for a player who has a club to leave, or a free agent where the
         // game signs them. The Transfer dialog starts from his contract, so its button waits for the details. A
