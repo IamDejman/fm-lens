@@ -1,9 +1,20 @@
 // The latest FM Lens release. The files stay on GitHub Releases in IamDejman/fm-lens-releases, the same place installed
-// copies update from; this site only points at them, so a new release needs no change here.
+// copies update from; this site only points at them. It asks GitHub which release is the latest, and GitHub answers an
+// address only 60 times an hour, so when it does not answer the site offers the release named here.
 
-export const RELEASES_PAGE = "https://github.com/IamDejman/fm-lens-releases/releases/latest";
+/** The release offered when GitHub does not answer. Set with the app's version (docs/DEVELOPING.md, Releasing). */
+export const VERSION = "0.7.1";
+
+const REPO = "https://github.com/IamDejman/fm-lens-releases/releases";
+export const RELEASES_PAGE = `${REPO}/latest`;
 const API = "https://api.github.com/repos/IamDejman/fm-lens-releases/releases";
 const LATEST = `${API}/latest`;
+
+/** The release named here, with its downloads where every release keeps them. */
+function knownRelease() {
+  const file = (ending) => `${REPO}/download/v${VERSION}/FM-Lens-${VERSION}-${ending}`;
+  return { version: VERSION, downloads: { mac: file("macos-universal.dmg"), windows: file("windows-x64-setup.exe") } };
+}
 
 /** The computer this page runs on: "windows", or "mac" for anything else, which gets the Mac download as before. */
 export function thisComputer() {
@@ -16,17 +27,17 @@ function downloadsOf(release) {
   return { mac: url(".dmg"), windows: url("-setup.exe") };
 }
 
-/** The latest release's version and its downloads, or null when GitHub cannot be reached. */
+/** The latest release's version and its downloads, or the release named here when GitHub does not answer. */
 export async function latestRelease() {
   try {
     const response = await fetch(LATEST, { headers: { Accept: "application/vnd.github+json" } });
     if (!response.ok) {
-      return null;
+      return knownRelease();
     }
     const release = await response.json();
     return { version: release.tag_name.replace(/^v/, ""), downloads: downloadsOf(release) };
   } catch {
-    return null;
+    return knownRelease();
   }
 }
 
