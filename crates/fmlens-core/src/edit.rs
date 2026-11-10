@@ -433,6 +433,15 @@ fn player_mood_fields(layout: &Layout) -> [Field; 4] {
     ]
 }
 
+/// The birth dates the editor writes before the game's date is known. Youth players born later arrive as a long career
+/// goes on, so once the game is past 2020 its date is the latest (see [`Session::fields`]).
+const BIRTH_DATES: RangeInclusive<i64> = 19400101..=20201231;
+
+/// The latest birth date the editor writes on `today`, the game's date, where it is read.
+fn latest_birth(today: Option<FmDate>) -> i64 {
+    today.map_or(*BIRTH_DATES.end(), |today| today.to_number().max(*BIRTH_DATES.end()))
+}
+
 /// The squad number of a player without one.
 pub(crate) const NO_SQUAD_NUMBER: i64 = 255;
 
@@ -447,8 +456,8 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         field("potential_ability", p.potential_ability, Kind::I16, 1..=200).plausible(-200..=200),
         field("height", p.height, Kind::U16, 140..=220).plausible(100..=250),
         field("nation", p.nation, Kind::Pointer, POINTERS).single(),
-        // Any birth date from 1940 to 2020; the game works out the age from it.
-        field("date_of_birth", p.date_of_birth, Kind::Date, 19400101..=20201231).plausible(19000101..=21001231),
+        // Any birth date from 1940 to 2020, or to the game's date later on; the game works out the age from it.
+        field("date_of_birth", p.date_of_birth, Kind::Date, BIRTH_DATES).plausible(19000101..=21001231),
         // Pounds; -1 is none set.
         field("asking_price", p.asking_price, Kind::I32, 0..=2_000_000_000)
             .plausible(-1..=i64::from(i32::MAX))
@@ -689,7 +698,7 @@ fn official_fields(layout: &Layout) -> Vec<Field> {
         field("current_ability", o.current_ability, Kind::U16, 1..=200).plausible(0..=200),
         field("potential_ability", o.potential_ability, Kind::U16, 1..=200).plausible(0..=200),
         field("reputation", o.reputation, Kind::U16, 0..=10_000),
-        field("date_of_birth", o.date_of_birth, Kind::Date, 19400101..=20201231).plausible(19000101..=21001231),
+        field("date_of_birth", o.date_of_birth, Kind::Date, BIRTH_DATES).plausible(19000101..=21001231),
     ]
 }
 
@@ -1000,7 +1009,12 @@ impl From<fmlens_mem::Error> for EditError {
 impl Session {
     /// The fields of `entity` the editor can change.
     pub fn fields(&self, entity: Entity) -> Vec<Field> {
-        fields(&self.layout, entity)
+        let mut out = fields(&self.layout, entity);
+        let latest = latest_birth(self.game_date());
+        for field in out.iter_mut().filter(|field| field.key == "date_of_birth") {
+            field.max = latest;
+        }
+        out
     }
 
     /// The field of `entity` called `key`.
@@ -1323,6 +1337,14 @@ mod tests {
         assert!(!conflicts(7, 7, 10));
         assert!(!conflicts(7, 10, 10));
         assert!(conflicts(7, 8, 10));
+    }
+
+    #[test]
+    fn birth_dates_run_to_the_game_date_in_a_long_career() {
+        assert_eq!(latest_birth(None), 20201231);
+        assert_eq!(latest_birth(FmDate::from_number(20260701)), 20260701);
+        assert_eq!(latest_birth(FmDate::from_number(20460315)), 20460315);
+        assert_eq!(latest_birth(FmDate::from_number(20190101)), 20201231);
     }
 
     #[test]
