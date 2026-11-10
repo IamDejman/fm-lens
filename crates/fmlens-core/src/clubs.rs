@@ -432,6 +432,7 @@ fn f32_at(bytes: &[u8], offset: u64) -> f32 {
 /// Whether the bytes of a finance record (from its start to [`ClubFinanceLayout::end`])
 /// look like a real club's full record. The smaller finance class ends long before the
 /// budget fields, so what is read there belongs to something else and looks wrong.
+/// The transfer budget is not checked: a club that has overspent has a real negative one.
 pub(crate) fn finances_look_real(bytes: &[u8], f: &ClubFinanceLayout) -> bool {
     let i32_at =
         |offset: u64| i32::from_le_bytes(bytes[offset as usize..offset as usize + 4].try_into().expect("4 bytes"));
@@ -439,7 +440,6 @@ pub(crate) fn finances_look_real(bytes: &[u8], f: &ClubFinanceLayout) -> bool {
     ticket_price.is_finite()
         && (1.0..=1000.0).contains(&ticket_price)
         && (1..=20).contains(&bytes[f.corporate as usize])
-        && i32_at(f.transfer_budget) >= -1
         && i32_at(f.wage_budget) >= 0
         && i32_at(f.total_wage_budget) >= 0
 }
@@ -489,6 +489,32 @@ mod tests {
             used: 0,
             expansion: capacity + 1000,
         }
+    }
+
+    #[test]
+    fn overspent_transfer_budget_is_a_real_finance_record() {
+        let f = ClubFinanceLayout {
+            balance: 8,
+            transfer_budget: 12,
+            total_wage_budget: 16,
+            wage_budget: 20,
+            ticket_price: 24,
+            corporate: 28,
+        };
+        let record = |transfer_budget: i32, wage_budget: i32| {
+            let mut bytes = vec![0u8; f.end() as usize];
+            bytes[12..16].copy_from_slice(&transfer_budget.to_le_bytes());
+            bytes[16..20].copy_from_slice(&2_000_000i32.to_le_bytes());
+            bytes[20..24].copy_from_slice(&wage_budget.to_le_bytes());
+            bytes[24..28].copy_from_slice(&35.0f32.to_le_bytes());
+            bytes[28] = 12;
+            bytes
+        };
+        assert!(finances_look_real(&record(40_000_000, 1_500_000), &f));
+        // No budget set by the board, and a club that has spent more than its budget.
+        assert!(finances_look_real(&record(-1, 1_500_000), &f));
+        assert!(finances_look_real(&record(-12_500_000, 1_500_000), &f));
+        assert!(!finances_look_real(&record(40_000_000, -5), &f));
     }
 
     #[test]

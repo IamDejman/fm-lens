@@ -9,6 +9,7 @@ use crate::details::{Attribute, PERSONALITY, Reputation};
 use crate::filter::attribute_keys;
 use crate::index::{Listed, SearchIndex};
 use crate::languages::Language;
+use crate::national::NationalJob;
 use crate::players::{club_of_team, club_uid_of_team, nation_name, nation_uid};
 use crate::profile::{Layout, StaffLayout};
 use crate::relations::Preference;
@@ -105,6 +106,11 @@ pub struct StaffSummary {
     pub club_uid: Option<u32>,
     /// FM job code from the contract; see [`job_name`].
     pub job: Option<u8>,
+    /// The national team they manage (see [`Session::national_managers`]): a job with no club contract. `None` until
+    /// the lists are loaded with the nations.
+    ///
+    /// [`Session::national_managers`]: crate::session::Session::national_managers
+    pub national: Option<NationalJob>,
     pub current_ability: u16,
     pub potential_ability: i16,
     /// The manager the player controls in this save.
@@ -235,6 +241,7 @@ pub fn read_staff(
             club,
             club_uid,
             job,
+            national: None,
             current_ability: u16_at(at(s.current_ability)),
             potential_ability: u16_at(at(s.potential_ability)) as i16,
             is_human: shift != 0,

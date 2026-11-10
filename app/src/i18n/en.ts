@@ -873,6 +873,9 @@ export const en = {
     applyJob: "Apply",
     cancelJob: "Cancel",
     unemployed: "Unemployed",
+    /** A national team, as the employer of its manager: "England", "England U21", "England Women". */
+    nationalTeam: (nation: string, ageLimit: number | null, women: boolean) =>
+      `${nation}${women ? " Women" : ""}${ageLimit === null ? "" : ` U${ageLimit}`}`,
     coaching: "Coaching",
     knowledge: "Knowledge",
     medical: "Medical",

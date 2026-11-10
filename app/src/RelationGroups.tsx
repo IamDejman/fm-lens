@@ -91,7 +91,12 @@ function replacement(person: PersonRef, index: number, club: boolean, taken: Rea
     return {
       label: listText.searchClubs,
       search: async (query) => {
-        const page = await call<ClubPage>("search_clubs", { query, limit, filter: {} });
+        const page = await call<ClubPage>("search_clubs", {
+          query,
+          limit,
+          filter: {},
+          pickedFor: { uid: person.uid, staff: person.staff },
+        });
         return page.rows
           .filter((found) => free(found.uid))
           .slice(0, SEARCH_LIMIT)

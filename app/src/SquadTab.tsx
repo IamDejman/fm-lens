@@ -698,16 +698,31 @@ interface SquadRowProps {
   onCaptain: (role: CaptainRole) => void;
 }
 
-/** One player: his tags and badge by his name, his values, and the menu that makes him captain. */
+/**
+ * One player: his tags and badge by his name, his values, and the menu that makes him captain. A click on the row
+ * opens his profile in the player list, and so does his name, which the keyboard reaches.
+ */
 function SquadRow({ player, role, editable, busy, onCaptain }: SquadRowProps) {
+  const { openPlayer } = useContext(EditorContext);
   const positions = player.positions.map(positionLabel);
   const fullName = player.fullName !== null && player.fullName !== player.name ? player.fullName : null;
   return (
     // A player who does not play for the team is told apart by his tag, and dimmed.
-    <tr className={player.playsHere ? undefined : "away"}>
+    <tr
+      className={player.playsHere ? undefined : "away"}
+      onClick={(event) => {
+        // The captain menu at the end of the row is its own, and so is what it opens outside the row.
+        const target = event.target;
+        if (target instanceof Element && event.currentTarget.contains(target) && !target.closest(".col-actions")) {
+          openPlayer(player.uid);
+        }
+      }}
+    >
       <td className="col-name" title={fullName === null ? player.name : `${player.name}\n${fullName}`}>
         <div className="squad-name">
-          <span className="name">{player.name}</span>
+          <button type="button" className="name">
+            {player.name}
+          </button>
           {role !== null && (
             <abbr className={`role-badge ${role}`} title={fieldLabel("club", ROLE_FIELD[role])}>
               {role === "captain" ? text.captainShort : text.viceCaptainShort}
