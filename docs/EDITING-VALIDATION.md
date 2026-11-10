@@ -2381,7 +2381,7 @@ timestamp `0x6ae8b5a4`.
 | Undo in Changes | Pass. Youth rating back to 135, "135 changes · 1 undone" | Pass. Back to 135, "179 changes · 1 undone" | Pass. Back to 135, "42 changes · 1 undone" |
 | FM shows it | Pass. Heading 12 on Saka's profile at once; news "Paul Ifill deal falls through"; 30-man squad with Nwaneri back | Pass. Heading 14 and £325K p/w on Saka's profile | Pass. Inbox: "Paul Ifill deal falls through", "Gabriel granted work permit" |
 | FM kept running | Pass | Pass | Pass. `fm` responding after every action |
-| Saved under a new name, reloaded | Pass. Saved as `FM-Lens-27.0.1-2026-11-10` | Pass. That save loaded: Heading 12, wage 310,000, Jover Fitness 6, balance 200,000,000, youth rating 135, Ifill at Arsenal | Not run. Nothing was saved on Windows |
+| Saved under a new name, reloaded | Pass. Saved as `FM-Lens-27.0.1-2026-11-10` | Pass. That save loaded: Heading 12, wage 310,000, Jover Fitness 6, balance 200,000,000, youth rating 135, Ifill at Arsenal | Pass. Saved as `FM-Lens-27.0.1-Windows`, FM quit and started again (process 7140), that save loaded: Heading 12, wage 310,000, Jover Fitness 6, balance 340,000,000, youth rating 135, Ifill at Arsenal, Gabriel's permit active, tactics at 10000, 44 future transfers |
 
 On Windows seven of the 26 functions FM Lens has the game run are protected, so
 their place in the file could not be compared with 27.0.0 (see the recon note).
@@ -2407,7 +2407,8 @@ save, quit without saving.
 
 Windows: FM27 27.0.1 on the test machine (FM process 5016, FM Lens 4168) with
 the installer CI built from the same commit, in `FM Lens Persist Check` (a copy
-of the main save, Arsenal, 28 Jul 2026). Not saved.
+of the main save, Arsenal, 28 Jul 2026), saved only as the new file
+`FM-Lens-27.0.1-Windows`. No other save changed.
 
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The installed bridge was restored on the Mac afterwards.
