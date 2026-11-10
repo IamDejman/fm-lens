@@ -247,7 +247,10 @@ export function ActivatableValue({ field, children }: { field: string; children:
   );
 }
 
-/** The Edit button in the header of a profile. It stays while editing, pressed, and then ends the editing like Done. */
+/**
+ * The Edit button in the header of a profile. While editing it reads Done and ends the editing, like Done in the
+ * footer. Both labels are always laid out, one of them unseen, so the button keeps its width.
+ */
 export function EditButton({ editing, ready }: { editing: ProfileEditing; ready: boolean }) {
   if (!editing.editable) {
     return null;
@@ -257,15 +260,15 @@ export function EditButton({ editing, ready }: { editing: ProfileEditing; ready:
     <button
       ref={editing.editButton}
       type="button"
-      className="edit-toggle"
+      className={active ? "edit-toggle editing" : "edit-toggle"}
       data-tour="edit"
-      aria-pressed={active}
       aria-busy={editing.stage === "loading" || undefined}
       disabled={!ready}
-      title={editText.editTitle}
+      title={active ? undefined : editText.editTitle}
       onClick={active ? editing.done : () => editing.begin()}
     >
-      {editText.edit}
+      <span aria-hidden={active || undefined}>{editText.edit}</span>
+      <span aria-hidden={!active || undefined}>{editText.done}</span>
     </button>
   );
 }
