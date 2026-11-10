@@ -2458,8 +2458,7 @@ bridge. Explicitly selected `FM-Lens-27.0.1-2026-11-10` in Load Game, Arsenal,
 8 December 2027. Saka (28122642) reads 137,779,209, asking price unset; FM's
 profile shows a £100M to £138M range. Messi (7458500) reads 2,585,359, asking
 price unset. The base value is not presented as an exact reproduction of that
-FM range. No edits, Continue or saves were performed. Intel and Windows live
-valuation checks remain pending.
+FM range. No edits, Continue or saves were performed.
 
 The main career SHA-256 before the check was
 `3ADEB4FDEF1C5928A5F396E719C9216842282665AF21E9E8A3B8E803BD956000`.
@@ -2470,6 +2469,21 @@ Packaged-app check on Apple Silicon (debug bundle, same FM process and copy,
 beside Asking price Not set. His share card's Value reads £137.8m. In the same
 app, Copy image put a 1080x1350 PNG on the clipboard and Copy caption copied
 the caption. Read only: no edits, Continue or saves.
+
+Windows (installer `FM Lens_0.7.3_x64-setup.exe` from PR 202's CI, FM27 27.0.1,
+`FM-Lens-27.0.1-Windows`, 28 July 2026): Saka's Contract tab shows Base transfer
+value £121,323,339 and his share card's Value reads £121.3m. Copy image put a
+1080x1350 PNG on the clipboard, and Save PNG wrote
+`bukayo-saka-post-2026-07-28.png` (148,168 bytes) to `Documents\FM Lens\Exports`.
+Read only.
+
+Intel (Rosetta: FM started with `arch -x86_64` and the bridge, the debug bundle
+also under `arch -x86_64`, the same `FM-Lens-27.0.1-2026-11-10` copy): profile
+"FM27 Steam build 26385295 (27.0.1, macOS, Intel)". Saka's Base transfer value
+reads £137,779,209, as on Apple Silicon. Copy image put a 1080x1350 PNG on the
+clipboard, byte for byte the Apple Silicon card; Save PNG wrote
+`bukayo-saka-post-2027-12-08.png` to `~/Documents/FM Lens/Exports` (removed
+afterwards); Copy caption copied the caption.
 
 ## Birth years in long careers (10 November 2026)
 
@@ -2482,12 +2496,47 @@ with their counts and notes, in a "Checks that did not pass" section.
 Read-only check on Apple Silicon (FM process 26049, Steam 26385295, the
 `FM-Lens-27.0.1-2026-11-10` copy, 8 December 2027): `fmlens-probe health` with
 this change passes all 12 checks, players 2,000 of 2,000 and staff 2,000 of
-2,000. No edits, Continue or saves. Intel and Windows checks remain pending.
+2,000. No edits, Continue or saves. On Windows (the session above) the packaged
+app connected with no read-only banner. Intel (the Rosetta session above):
+`fmlens-probe health` passes all 12 checks, players and staff 2,000 of 2,000,
+and the app connected with no read-only banner.
 
 The editor wrote birth dates up to 2020-12-31 only. It now writes them up to the
 game's date when that is later, for players and officials. `fmlens-probe fields`
 on the same copy shows `date_of_birth` from 1940-01-01 to 2027-12-08, the
-in-game date. A write in the packaged app, and Intel and Windows, remain pending.
+in-game date.
+
+Packaged-app writes on Saka (born 2001-09-05), in each test copy:
+
+- Apple Silicon (debug bundle, 8 December 2027): 15/06/2028 is marked invalid.
+  15/06/2025 applies, the probe reads 2025-06-15 back, and health passes all 12
+  checks with it. Undo in Changes restores 2001-09-05.
+- Windows (installer above, 28 July 2026): 15/06/2028 is marked invalid.
+  15/06/2025 applies ("1 change applied.", age 1), and a reload shows no warning
+  banner. Undo in Changes restores age 24.
+- Intel (Rosetta session above, 8 December 2027): 15/06/2028 is marked invalid.
+  15/06/2025 applies ("1 change applied.", age 2), the probe reads 2025-06-15
+  back, health passes all 12 checks with it, and a reload shows no warning
+  banner. Undo in Changes restores 2001-09-05.
+
+No test copy was saved, and the main careers' SHA-256 did not change.
+
+## Email before first use (10 November 2026)
+
+FM Lens asks for an email address once on each computer before it opens, and
+sends it to the Kit form the website uses (`app/src/EmailGate.tsx`).
+
+- Apple Silicon (debug bundle): the screen shows at first start. Kit refuses
+  `fmlens-check@localhost`; the screen says "That did not work. Check the
+  address and try again." and stays.
+- Windows (installer above, on an AWS address): Kit quarantined the same address
+  and answered with its reCAPTCHA page. The app opened that page in the browser
+  and went on to Connect. Kit holds a quarantined address until the page is
+  completed; it was not completed here. To show the screen again, the stored
+  flag was removed from WebView2's storage.
+- Intel (Rosetta session above): with the stored flag removed, the screen shows
+  at start. Kit refuses `fmlens-check@localhost`, as on Apple Silicon, and the
+  screen stays. The flag was left removed, as it was before the checks.
 
 ## Email through FM Lens's relay (11 November 2026)
 
