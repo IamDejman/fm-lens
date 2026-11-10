@@ -1512,6 +1512,14 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.1": [
+        "Los fichajes jóvenes se unen a tu primer equipo, no al sub-21.",
+        "Escribe las fechas con dígitos o elígelas en un calendario nuevo que sigue la fecha del juego.",
+        "Permiso de trabajo indica No necesario cuando FM no daría ninguno.",
+        "Atributos al máximo sube la HA y la HP a 200.",
+        "Cambios nombra las acciones de plantilla, como Levantar sanciones.",
+        "En un perfil, Editar pasa a Hecho mientras editas.",
+      ],
       "0.7.0": [
         "Traspasar, Intercambiar y Rescindir pasan por el propio FM: traspasos reales, con su cantidad y su historial.",
         "Los Mac con Intel tienen todas las acciones que se ejecutan dentro de FM.",

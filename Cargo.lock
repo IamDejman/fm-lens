@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "fmlens-app"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "fmlens-core",
  "fmlens-mem",
@@ -1117,7 +1117,7 @@ dependencies = [
 
 [[package]]
 name = "fmlens-bridge"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "fmlens-mem",
  "libc",
@@ -1128,7 +1128,7 @@ dependencies = [
 
 [[package]]
 name = "fmlens-core"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "fmlens-mem",
  "memchr",
@@ -1140,7 +1140,7 @@ dependencies = [
 
 [[package]]
 name = "fmlens-mem"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "libc",
  "mach2",
@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "fmlens-probe"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "anyhow",
  "clap",
