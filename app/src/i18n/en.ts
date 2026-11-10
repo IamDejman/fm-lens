@@ -1603,6 +1603,7 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.2": ["On Windows, Transfer, Swap and Loan no longer fail with a LoadLibraryW error."],
       "0.7.1": [
         "Young signings join your senior squad, not the U21s.",
         "Type dates as digits, or pick them from a new calendar that follows the game's date.",
