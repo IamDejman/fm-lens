@@ -1510,11 +1510,11 @@ export const en = {
       title: "Enter your email to use FM Lens",
       intro: "FM Lens emails you about updates.",
       button: "Continue",
-      /** On the button while Kit answers. */
+      /** On the button while the address is sent. */
       sending: "Checking…",
-      /** Kit did not take the address. */
+      /** The relay or Kit turned the address down. */
       refused: "That did not work. Check the address and try again.",
-      /** Kit could not be reached. */
+      /** The address could not be sent, or Kit could not take it now. */
       failed: "That did not work. Check your connection and try again.",
     },
 

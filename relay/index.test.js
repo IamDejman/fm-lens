@@ -6,6 +6,7 @@ import {
   PER_ADDRESS_HOUR,
   PER_DAY,
   PER_HOUR,
+  SUBSCRIBE_LIMITS,
   createRelay,
   createTableLimiter,
   issueFor,
@@ -14,6 +15,7 @@ import {
   quiet,
   readAttachments,
   readFiles,
+  readEmail,
   readReport,
   senderOf,
 } from "./index.js";
@@ -389,4 +391,106 @@ test("a report whose files aren't in the bucket, or are too big, isn't filed", a
     400,
   );
   assert.equal(issueFor(readReport(REPORT).report).body.includes("### Files"), false);
+});
+
+const KIT = { key: "kit-key", form: "10172074" };
+
+/** A stand-in for Kit that records what it is sent and answers each request with the next of `statuses`. */
+function kit(...statuses) {
+  const sent = [];
+  const fetch = async (url, init) => {
+    sent.push({ url, init, body: JSON.parse(init.body) });
+    return new Response("{}", { status: statuses[sent.length - 1] ?? 201 });
+  };
+  return { fetch, sent };
+}
+
+const subscribe = (options, body, more) => post({ kit: KIT, ...options }, body, { path: "/subscribe", ...more });
+
+test("an address is made an inactive subscriber, then added to the form for Kit's double opt-in", async () => {
+  const { fetch, sent } = kit(201, 201);
+  // The report token isn't needed.
+  const answer = await subscribe({ fetch }, { email: "  fan@example.com " });
+  assert.deepEqual(answer, { status: 200, json: { subscribed: true }, cors: "*" });
+  assert.deepEqual(
+    sent.map(({ url, body }) => [url, body]),
+    [
+      ["https://api.kit.com/v4/subscribers", { email_address: "fan@example.com", state: "inactive" }],
+      ["https://api.kit.com/v4/forms/10172074/subscribers", { email_address: "fan@example.com" }],
+    ],
+  );
+  assert.equal(sent[0].init.headers["X-Kit-Api-Key"], "kit-key");
+  // Kit answers 200 for an address it has already.
+  assert.equal((await subscribe({ fetch: kit(200, 200).fetch }, { email: "fan@example.com" })).status, 200);
+});
+
+test("addresses that can't be one are turned away before Kit is asked", async () => {
+  for (const email of ["", "fan", "fan@example", "fan @example.com", "a@b@example.com", "fan@example.c0m", `${"a".repeat(250)}@example.com`]) {
+    assert.deepEqual(readEmail({ email }), { error: "invalid" }, email);
+  }
+  assert.deepEqual(readEmail({ email: "first.last+fm@mail.example.co.uk" }), { email: "first.last+fm@mail.example.co.uk" });
+  const { fetch, sent } = kit();
+  assert.deepEqual((await subscribe({ fetch }, { email: "fan@example" })).json, { error: "invalid" });
+  assert.equal((await subscribe({ fetch }, { email: 42 })).status, 400);
+  assert.equal((await subscribe({ fetch }, "not json")).status, 400);
+  assert.equal(sent.length, 0);
+});
+
+test("an address Kit turns down is invalid, and the form isn't asked", async () => {
+  const { fetch, sent } = kit(422);
+  assert.deepEqual(await subscribe({ fetch }, { email: "fan@example.com" }), {
+    status: 400,
+    json: { error: "invalid" },
+    cors: "*",
+  });
+  assert.equal(sent.length, 1);
+});
+
+test("Kit out of reach, failing or refusing the key is told apart from a bad address, and the log keeps no address", async () => {
+  const logged = [];
+  const error = console.error;
+  console.error = (line) => logged.push(line);
+  try {
+    const offline = async () => {
+      throw new Error("offline");
+    };
+    for (const fetch of [offline, kit(500).fetch, kit(401).fetch, kit(201, 404).fetch, kit(201, 503).fetch]) {
+      assert.deepEqual((await subscribe({ fetch }, { email: "fan@example.com" })).json, { error: "notSubscribed" });
+    }
+  } finally {
+    console.error = error;
+  }
+  assert.equal(logged.length, 5);
+  assert.equal(logged.some((line) => line.includes("fan@example.com")), false);
+});
+
+test("subscribing counts by sender and in all, apart from reports", async () => {
+  const { fetch } = kit();
+  const limiter = createTableLimiter({ table: "t", update: table().update });
+  for (let i = 0; i < SUBSCRIBE_LIMITS.addressHour; i++) {
+    assert.equal((await subscribe({ fetch, limiter }, { email: `fan${i}@example.com` })).status, 200);
+  }
+  assert.deepEqual((await subscribe({ fetch, limiter }, { email: "fan@example.com" })).json, { error: "tooMany" });
+  assert.equal((await subscribe({ fetch, limiter }, { email: "fan@example.com" }, { sourceIp: "198.51.100.4" })).status, 200);
+  // Reports from the same sender still go through.
+  const reports = { token: "t", repo: "o/n", fetch: github().fetch, limiter };
+  assert.equal((await post(reports, REPORT)).status, 201);
+
+  let now = Date.UTC(2026, 10, 10, 12);
+  const all = createTableLimiter({ table: "t", update: table().update, now: () => now });
+  for (let i = 0; i < SUBSCRIBE_LIMITS.hour; i++) {
+    assert.equal(await all.allow(`sender-${i}`, "subscribe"), true);
+  }
+  assert.equal(await all.allow("one more", "subscribe"), false);
+  assert.equal(await all.allow("one more"), true);
+  now += 60 * 60 * 1000;
+  assert.equal(await all.allow("one more", "subscribe"), true);
+});
+
+test("the relay can't subscribe without Kit's key, and reports don't need it", async () => {
+  const { fetch, sent } = kit();
+  assert.equal((await post({ fetch }, { email: "fan@example.com" }, { path: "/subscribe" })).status, 503);
+  assert.equal((await subscribe({ fetch, kit: { form: "1" } }, { email: "fan@example.com" })).status, 503);
+  assert.equal(sent.length, 0);
+  assert.equal((await post({ token: "t", repo: "o/n", fetch: github().fetch }, REPORT)).status, 201);
 });

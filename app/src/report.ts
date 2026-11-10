@@ -9,7 +9,7 @@ import { track } from "./usage";
 import type { ConnectionInfo, GameInfo, LoggedChange, Storefront } from "./types";
 
 /** The report relay's address (see docs/DEVELOPING.md, The report relay). */
-const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws";
+export const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws";
 
 /** The most the relay takes for the changes, in characters: the oldest are left out past it. */
 const MAX_CHANGES = 8000;
