@@ -6,6 +6,10 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 fn main() {
+    // Windows: the library brings its own C++ runtime, as the app that carries it does, so that it loads on a PC
+    // without Microsoft's Visual C++ Redistributable. The app's build checks it (app/src-tauri/build.rs).
+    static_vcruntime::metabuild();
+
     let profiles = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../profiles/fm27");
     println!("cargo:rerun-if-changed={}", profiles.display());
     let mut paths: Vec<_> = std::fs::read_dir(&profiles)
