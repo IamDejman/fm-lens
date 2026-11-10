@@ -12,6 +12,10 @@
 // files' keys. Filing the report copies each file to `reports/`, which the bucket serves publicly and the issue links;
 // the bucket drops `uploads/` after a day, so a file no report names is never public (relay/setup-attachments.sh).
 // Without UPLOAD_BUCKET, reports without files work as before.
+//
+// The app's email screen posts here too (POST /subscribe): the relay checks the address and adds it to FM Lens's form in
+// Kit with its own API key (KIT_API_KEY; KIT_FORM, 10172074 by default), so the app never meets Kit's form or its
+// check that the visitor is a person. Kit keeps the list and sends the emails; the relay keeps no address.
 
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
@@ -47,6 +51,9 @@ export const PER_ADDRESS_HOUR = 5;
 export const PER_ADDRESS_DAY = 10;
 export const PER_HOUR = 200;
 export const PER_DAY = 1000;
+
+/** How many addresses one sender may subscribe an hour and a day, and all senders together. */
+export const SUBSCRIBE_LIMITS = { addressHour: 5, addressDay: 10, hour: 500, day: 3000 };
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -160,6 +167,21 @@ export function readAttachments(input) {
 }
 
 const isVideo = (key) => /\.(mp4|mov)$/.test(key);
+
+/** The longest address there may be, in characters (RFC 5321). */
+const MAX_EMAIL = 254;
+
+/** One address: no spaces, one @, and a domain with a dot and a top-level part of letters. */
+const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[a-z]{2,}$/i;
+
+/** The address in `input` (`{ email }`), trimmed, or why it is turned away. */
+export function readEmail(input) {
+  const email = typeof input?.email === "string" ? input.email.trim() : "";
+  if (email.length > MAX_EMAIL || !EMAIL.test(email)) {
+    return { error: "invalid" };
+  }
+  return { email };
+}
 
 /** Where filing a report puts the upload at `key`, which the bucket serves. */
 const filedKey = (key) => key.replace(/^uploads\//, "reports/");
@@ -288,17 +310,24 @@ export function createTableLimiter({ table, update, now = Date.now }) {
     }
   };
   return {
-    /** Counts one report from `address`, or with `what` "uploads", one request for upload addresses. */
+    /**
+     * Counts one report from `address`, or with `what` "uploads", one request for upload addresses, or with
+     * "subscribe", one address to subscribe (`SUBSCRIBE_LIMITS`).
+     */
     async allow(address, what = "report") {
       const at = now();
       const hour = Math.floor(at / HOUR);
       const day = Math.floor(at / DAY);
-      const prefix = what === "uploads" ? "uploads#" : "";
+      const prefix = what === "report" ? "" : `${what}#`;
+      const max =
+        what === "subscribe"
+          ? SUBSCRIBE_LIMITS
+          : { addressHour: PER_ADDRESS_HOUR, addressDay: PER_ADDRESS_DAY, hour: PER_HOUR, day: PER_DAY };
       return (
-        (await count(`${prefix}address#${address}#${hour}`, PER_ADDRESS_HOUR, (hour + 2) * HOUR)) &&
-        (await count(`${prefix}address#${address}#day#${day}`, PER_ADDRESS_DAY, (day + 2) * DAY)) &&
-        (await count(`${prefix}hour#${hour}`, PER_HOUR, (hour + 2) * HOUR)) &&
-        (await count(`${prefix}day#${day}`, PER_DAY, (day + 2) * DAY))
+        (await count(`${prefix}address#${address}#${hour}`, max.addressHour, (hour + 2) * HOUR)) &&
+        (await count(`${prefix}address#${address}#day#${day}`, max.addressDay, (day + 2) * DAY)) &&
+        (await count(`${prefix}hour#${hour}`, max.hour, (hour + 2) * HOUR)) &&
+        (await count(`${prefix}day#${day}`, max.day, (day + 2) * DAY))
       );
     },
   };
@@ -316,11 +345,39 @@ function answer(statusCode, body) {
 }
 
 /**
- * The relay's handler for function URL requests. `token` and `repo` name where issues go, and `limiter` counts reports;
- * `fetch` is swapped in by the tests. Reports are counted by the address AWS saw the request come from, which a sender
- * can't set, an IPv6 one by its network (`senderOf`).
+ * Adds `email` to the form `kit.form` in Kit with the API key `kit.key`, as Kit's own form does: the subscriber is made
+ * inactive, and the form's double opt-in email makes them active once they confirm. Gives "ok", "invalid" when Kit
+ * turns the address down, or throws when Kit can't be reached or answers anything else.
  */
-export function createRelay({ token, repo, limiter, uploads, fetch = globalThis.fetch }) {
+async function addToKit(kit, email, fetch) {
+  const send = (path, body) =>
+    fetch(`https://api.kit.com/v4/${path}`, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Kit-Api-Key": kit.key },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
+  for (const [path, body] of [
+    ["subscribers", { email_address: email, state: "inactive" }],
+    [`forms/${kit.form}/subscribers`, { email_address: email }],
+  ]) {
+    const response = await send(path, body);
+    if (response.status === 422) {
+      return "invalid";
+    }
+    if (!response.ok) {
+      throw new Error(`Kit answered ${response.status} at ${path.split("/")[0]}`);
+    }
+  }
+  return "ok";
+}
+
+/**
+ * The relay's handler for function URL requests. `token` and `repo` name where issues go, `kit` (`{ key, form }`) where
+ * addresses go, and `limiter` counts requests; `fetch` is swapped in by the tests. Requests are counted by the address
+ * AWS saw them come from, which a sender can't set, an IPv6 one by its network (`senderOf`).
+ */
+export function createRelay({ token, repo, limiter, uploads, kit, fetch = globalThis.fetch }) {
   return async (event) => {
     const method = event.requestContext?.http?.method ?? "";
     const path = event.rawPath ?? "/";
@@ -330,10 +387,11 @@ export function createRelay({ token, repo, limiter, uploads, fetch = globalThis.
     if (method === "GET" && path === "/health") {
       return answer(200, { ok: true });
     }
-    if (method !== "POST" || (path !== "/report" && path !== "/uploads")) {
+    if (method !== "POST" || !["/report", "/uploads", "/subscribe"].includes(path)) {
       return answer(404, { error: "notFound" });
     }
-    if (!token || (path === "/uploads" && !uploads)) {
+    const ready = path === "/subscribe" ? Boolean(kit?.key) : Boolean(token) && (path !== "/uploads" || Boolean(uploads));
+    if (!ready) {
       return answer(503, { error: "unavailable" });
     }
     const raw = event.isBase64Encoded ? Buffer.from(event.body ?? "", "base64").toString("utf8") : (event.body ?? "");
@@ -355,6 +413,26 @@ export function createRelay({ token, repo, limiter, uploads, fetch = globalThis.
         return answer(503, { error: "unavailable" });
       }
     };
+
+    if (path === "/subscribe") {
+      const { email, error } = readEmail(input);
+      if (error) {
+        return answer(400, { error });
+      }
+      const refused = await allow("subscribe");
+      if (refused) {
+        return refused;
+      }
+      try {
+        return (await addToKit(kit, email, fetch)) === "ok"
+          ? answer(200, { subscribed: true })
+          : answer(400, { error: "invalid" });
+      } catch (err) {
+        // Never the address: the log keeps none.
+        console.error(`Kit did not take an address: ${err instanceof Error ? err.message : String(err)}`);
+        return answer(502, { error: "notSubscribed" });
+      }
+    }
 
     if (path === "/uploads") {
       const { files, error } = readFiles(input);
@@ -472,6 +550,7 @@ export async function handler(event) {
     relay = createRelay({
       token: process.env.GITHUB_TOKEN,
       repo: process.env.GITHUB_REPO || "IamDejman/fm-lens",
+      kit: process.env.KIT_API_KEY ? { key: process.env.KIT_API_KEY, form: process.env.KIT_FORM || "10172074" } : undefined,
       uploads: process.env.UPLOAD_BUCKET
         ? {
             bucket: process.env.UPLOAD_BUCKET,

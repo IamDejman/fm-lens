@@ -16,8 +16,7 @@ import { call, inTauri } from "./api";
 import { describeError } from "./format";
 import { MAC } from "./keys";
 
-/** The website's release notes and download pages: with Kit's check of an email address (EmailGate.tsx), the only
- * pages the app opens (see capabilities/default.json). */
+/** The website's release notes and download pages: the only pages the app opens (see capabilities/default.json). */
 const RELEASES_PAGE = "https://getfmlens.com/releases/";
 const DOWNLOAD_PAGE = "https://getfmlens.com/download/";
 

@@ -273,8 +273,10 @@ sends the emails; the form's id is the `FORM` constant there. The files on fm-le
 stay public, and installed copies update without it.
 
 The app asks for an email address too, before it opens for the first time on a computer
-(`app/src/EmailGate.tsx`), and sends it to the same form. In the browser preview, type any
-address once, or set `fmlens.email` to `given` in the page's local storage.
+(`app/src/EmailGate.tsx`), and sends it to the report relay's `POST /subscribe` (below), which
+adds it to the same form with Kit's API, so the app never meets Kit's check that the visitor is
+a person. In the browser preview, type any address once, or set `fmlens.email` to `given` in
+the page's local storage.
 
 ### The report relay
 
@@ -294,7 +296,17 @@ function's `UPLOAD_BUCKET`, and sends the report with the files' keys; the relay
 one. `relay/setup-attachments.sh` sets the bucket, its CORS and lifecycle, the role's permission to put, read and copy
 files and `UPLOAD_BUCKET` up; run it again before deploying a relay that needs a change there. Without it, reports
 without files work as before. `node --test` in `relay/` runs its
-tests, and CI runs them too. To send new code, run `relay/deploy.sh` with `AWS_PROFILE` and
+tests, and CI runs them too.
+
+The app's email screen posts `{ email }` to the same function (`POST /subscribe`). The relay checks it looks like an
+address, counts it apart from reports (5 an hour and 10 a day from one sender, 500 an hour and 3,000 a day in all) and
+adds it to FM Lens's form in Kit with Kit's v4 API: an inactive subscriber first, then the form, whose double opt-in
+email makes them active once they confirm. Kit's API key (Settings, Developer, a v4 key) is the function's
+`KIT_API_KEY`, and `KIT_FORM` names another form than 10172074; without the key it answers 503. It answers
+`{ "subscribed": true }`, 400 `invalid` for an address it or Kit turns down, and 502 when Kit can't take it now, and it
+logs no address.
+
+To send new code, run `relay/deploy.sh` with `AWS_PROFILE` and
 `AWS_REGION` set for the account the function is in. The app's content security policy (`security.csp` in
 `app/src-tauri/tauri.conf.json`) names the relay and the bucket, as it names every address the window may reach: a new
 relay, bucket or service goes there too, or the app cannot reach it.
