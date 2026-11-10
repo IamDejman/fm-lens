@@ -41,9 +41,17 @@
       <p id="windows">On Windows, run the installer. If Windows protected your PC, choose <strong>More info</strong>,
         then <strong>Run anyway</strong>.</p>
       <p><a href="/#start">How to get started</a></p>
+      <form class="signup" data-page="download" hidden>
+        <label for="email">Get an email when FM Lens updates</label>
+        <input name="email_address" type="email" autocomplete="email" spellcheck="false" required
+          id="email" placeholder="you@example.com">
+        <button class="button" type="submit">Sign up</button>
+        <p role="status"></p>
+      </form>
     </div>
   </main>
 
+  <script type="module" src="../signup.js"></script>
   <script type="module">
     import { track } from "../analytics.js";
     import { latestRelease, RELEASES_PAGE, thisComputer } from "../release.js";

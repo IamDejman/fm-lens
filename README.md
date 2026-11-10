@@ -113,7 +113,9 @@ or Windows version and processor, and the app language:
 To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
 nothing.
 
-The site counts page views and downloads started, without cookies or stored ids.
+The site counts page views, downloads started and email signups, without cookies
+or stored ids. An address given for email updates goes to [Kit](https://kit.com),
+which keeps the list and sends the emails, and never to PostHog.
 
 ## Security
 
