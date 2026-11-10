@@ -1497,6 +1497,14 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.4": [
+        "Herhangi bir oyuncunun kartını profilinden paylaşın: Gönderi veya Hikâye olarak kopyalayın ya da kaydedin.",
+        "Sözleşme sekmesi oyuncunun temel transfer değerini gösterir.",
+        "Uzun kariyerler düzenlenebilir kalır: 2020'den sonra doğan oyuncular artık oyuncuları ve personeli kilitlemiyor.",
+        "Doğum tarihini oyunun tarihine kadar girebilirsiniz.",
+        "Sorun bildir, geçmeyen kontrolleri de gönderir.",
+        "FM Lens her bilgisayarda e-posta adresinizi bir kez ister.",
+      ],
       "0.7.3": ["FM27 27.0.1 ile, oyunun ilk yamasıyla çalışır: tüm düzenlemeler ve işlemler geri geldi."],
       "0.7.2": ["Windows'ta Transfer, Takas ve Kiralama artık LoadLibraryW hatası vermiyor."],
       "0.7.1": [

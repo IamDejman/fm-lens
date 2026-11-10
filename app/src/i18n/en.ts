@@ -1619,6 +1619,14 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.4": [
+        "Share a card of any player from the profile: a Post or a Story, to copy or save.",
+        "The Contract tab shows a player's base transfer value.",
+        "Long careers stay editable: players born after 2020 no longer lock players and staff.",
+        "Set a date of birth up to the game's date.",
+        "Report a problem sends the checks that did not pass.",
+        "FM Lens asks for your email once on each computer.",
+      ],
       "0.7.3": ["Works with FM27 27.0.1, the game's first patch: every edit and action is back."],
       "0.7.2": ["On Windows, Transfer, Swap and Loan no longer fail with a LoadLibraryW error."],
       "0.7.1": [
