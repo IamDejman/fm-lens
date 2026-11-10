@@ -1486,6 +1486,14 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.1": [
+        "Genç transferler U21'e değil, A takımınıza katılır.",
+        "Tarihleri rakamlarla yazın ya da oyunun tarihini izleyen yeni takvimden seçin.",
+        "FM'in izin vermeyeceği yerde Çalışma izni, Gerekmiyor yazar.",
+        "Özellikleri tamamla, MY ve PY'yi 200'e çıkarır.",
+        "Değişiklikler, Cezaları kaldır gibi kadro işlemlerini adıyla gösterir.",
+        "Profilde Düzenle, siz düzenlerken Bitti olur.",
+      ],
       "0.7.0": [
         "Transfer, Takas ve Serbest bırakma artık FM'in kendisiyle yapılıyor: bonservisi ve transfer geçmişiyle gerçek transferler.",
         "Intel Mac'ler, FM'in içinde çalışan tüm işlemlere kavuşuyor.",
