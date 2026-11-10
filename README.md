@@ -108,6 +108,8 @@ or Windows version and processor, and the app language:
 - `tab_viewed`: a section opened, such as Players.
 - `edit_applied`: an edit went into FM, with its kind (`move_player`, or the
   field changed, such as `contract.wage`), never the value.
+- `card_exported`: a player's share card was copied or saved, with its size
+  and whether it shows CA and PA.
 - `change_undone`, `players_exported` and `report_sent`.
 
 To stop it, turn off **Share anonymous usage** in Settings. Debug builds send

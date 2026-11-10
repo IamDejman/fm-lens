@@ -44,6 +44,7 @@ morale = 0x264            # u8, 1..20
 # u64, in the person, 0x40 earlier as on Windows: Messi reads bits 7 10 16 17 19 20 49 51, as FMRTE shows them.
 traits = 0x308
 injuries = 0xF0           # pointer to the injury record; null for a player who was never injured
+transfer_value = 0x22C    # i32, base valuation in pounds; 300,000,000 is the unvalued marker
 asking_price = 0x230      # i32, pounds; -1 when not set
 home_reputation = 0x256   # u16
 current_reputation = 0x258
