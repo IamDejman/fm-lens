@@ -2488,3 +2488,27 @@ The editor wrote birth dates up to 2020-12-31 only. It now writes them up to the
 game's date when that is later, for players and officials. `fmlens-probe fields`
 on the same copy shows `date_of_birth` from 1940-01-01 to 2027-12-08, the
 in-game date. A write in the packaged app, and Intel and Windows, remain pending.
+
+## Email through FM Lens's relay (11 November 2026)
+
+The email screen now posts the address to the relay's `POST /subscribe`, which
+adds it to Kit form 10172074 with Kit's API (`relay/index.js`). The app no
+longer talks to Kit, so Kit's reCAPTCHA page never comes up.
+
+- Windows (installer from this branch's CI run, on an AWS address, where Kit
+  quarantined the old form post): with the stored flag removed from WebView2's
+  storage, the screen shows at start. The user's own address went through and
+  the app went straight to Connect, with no browser page. Kit lists the address
+  as inactive, added to form 10172074 at 23:17 UTC, so Kit's confirmation email
+  goes out as before.
+- Apple Silicon (debug bundle from this branch): with the stored flag removed,
+  the screen shows at start. `fmlens-check@localhost` is refused by the relay;
+  the screen says "That did not work. Check the address and try again." and
+  stays. The same address as on Windows then went straight to Connect.
+- Intel (the same bundle under `arch -x86_64`, translated): with the flag
+  removed again, the screen shows at start, and the same address went straight
+  to Connect.
+
+After all three, Kit still holds one record for the address, inactive and
+created at 23:17 UTC: sending an address Kit already has adds no duplicate. The
+Mac flag was removed afterwards, as it was before the checks.
