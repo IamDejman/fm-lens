@@ -1898,7 +1898,6 @@ export const en = {
     // On the card
     age: (age: number) => `Age ${age}`,
     value: "Value",
-    notForSale: "Not for sale",
     wage: "Wage",
     perWeek: "p/w",
     footer: "Scouted with FM Lens · getfmlens.com",

@@ -1715,7 +1715,6 @@ export const tr: Strings = {
     close: "Kapat",
     age: (age: number) => `${age} yaşında`,
     value: "Değer",
-    notForSale: "Satılık değil",
     wage: "Maaş",
     perWeek: "/hafta",
     footer: "FM Lens ile keşfedildi · getfmlens.com",

@@ -125,12 +125,8 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
       loaded={loaded}
       onClose={onClose}
       editing={editing}
-      headActions={
-        <>
-          <ShareButton details={details} />
-          <CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />
-        </>
-      }
+      headActions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
+      headIcons={<ShareButton details={details} />}
       actions={
         // Only while the profile is read, not edited: for a player who has a club to leave, or a free agent where the
         // game signs them. The Transfer dialog starts from his contract, so its button waits for the details. A
