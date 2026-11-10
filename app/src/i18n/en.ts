@@ -25,6 +25,7 @@ import type {
   Storefront,
 } from "../types";
 import { fieldName } from "./fieldNames";
+import type { CardFormat } from "../shareCard";
 import { PERCENT_CLAUSES, RELEASE_CLAUSES } from "../clauseKinds";
 
 const numbers = new Intl.NumberFormat("en-GB");
@@ -1873,6 +1874,36 @@ export const en = {
     show: "Show in folder",
     showTitle: "Show the file in its folder",
     close: "Close",
+  },
+
+  /** Sharing a card of a player: the button in his profile and the dialog it opens. */
+  share: {
+    button: "Share",
+    buttonTitle: "Share a card of this player",
+    title: "Share card",
+    formatLabel: "Size",
+    formats: { post: "Post", story: "Story" } satisfies Record<CardFormat, string>,
+    showAbility: "Show CA and PA",
+    preview: (name: string) => `Card of ${name}`,
+    drawFailed: "Could not draw the card.",
+    copyImage: "Copy image",
+    copied: "Image copied",
+    copyFailed: "Could not copy to the clipboard.",
+    save: "Save PNG",
+    saved: (file: string) => `Saved ${file}`,
+    show: "Show in folder",
+    copyCaption: "Copy caption",
+    captionCopied: "Caption copied",
+    close: "Close",
+    // On the card
+    age: (age: number) => `Age ${age}`,
+    value: "Value",
+    notForSale: "Not for sale",
+    wage: "Wage",
+    perWeek: "p/w",
+    footer: "Scouted with FM Lens · getfmlens.com",
+    /** The caption, before "#FM27" and the link; `young` for players up to 21. */
+    caption: (young: boolean): string => (young ? "Found this wonderkid in my FM27 save" : "Found this player in my FM27 save"),
   },
 
   /** Mass editing: the button in the toolbar of a list and the dialog it opens. */

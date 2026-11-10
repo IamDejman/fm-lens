@@ -163,6 +163,13 @@ export interface ExportReport {
   skipped: number;
 }
 
+/** Where a share card was saved: the file, and its name and folder apart. */
+export interface SavedCard {
+  path: string;
+  file: string;
+  folder: string;
+}
+
 /**
  * What connecting froze again of what the app remembers as frozen in this save: the players' and staff's attributes
  * and the clubs' money, by name, and how many it left for later, still remembered (FM Lens cannot write to this

@@ -70,6 +70,7 @@ import type {
   EditField,
   Entity,
   ExportReport,
+  SavedCard,
   FieldEdit,
   FieldValues,
   LoggedChange,
@@ -3550,6 +3551,13 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const file = `${stem}.${args?.format === "json" ? "json" : "csv"}`;
       const report: ExportReport = { path: `${folder}\\${file}`, file, folder, players: selected.length, skipped: 0 };
       return report as T;
+    }
+    case "save_card": {
+      // Nothing is written in a browser: the answer names the file the app would have saved.
+      const folder = "C:\\Users\\you\\Documents\\FM Lens\\Exports";
+      const file = `${String(args?.stem ?? "player")}.png`;
+      const saved: SavedCard = { path: `${folder}\\${file}`, file, folder };
+      return saved as T;
     }
     case "open_export":
     case "show_export":

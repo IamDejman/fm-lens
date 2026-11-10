@@ -165,6 +165,9 @@ export const massEditText = strings.massEdit;
 /** Exporting players to a file: the button and the dialog. */
 export const exportText = strings.export;
 
+/** Sharing a card of a player: the button, the dialog and the card. */
+export const shareText = strings.share;
+
 /** Comparing players: the button in a profile, the tray under the player list and the dialog. */
 export const comparisonText = strings.comparison;
 
