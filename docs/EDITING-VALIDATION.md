@@ -2311,3 +2311,33 @@ the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
 The bridge is the same as in 1db332b. Main career SHA-256 stayed
 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5 on Windows. The released
 0.7.0 bridge was restored on the Mac afterwards.
+
+## Edit reads Done while editing (10 November 2026)
+
+In edit mode the toggle in a profile's header still read "Edit". It now reads
+"Done" and ends the editing, like Done in the footer. Both labels are always
+laid out, one of them unseen, so the button keeps its width and nothing beside
+it moves.
+
+Packaged release builds of `fix/edit-done` (74ef806), driven through the
+accessibility API (UI Automation on Windows). Test copies only, never saved;
+Continue was not pressed. Nothing was applied.
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Edit reads Done while editing | Pass. Declan Rice: "Edit", then "Done" with Discard, Apply and Done in the footer | Pass. Declan Rice: "Edit", then "Done" with Discard, Apply and Done in the footer | Pass. Kylian Mbappé: "Edit", then "Done" with Discard, Apply and Done in the footer |
+| Done ends the editing | Pass. Reads "Edit" again, footer gone | Pass. Reads "Edit" again, footer gone | Pass. Reads "Edit" again, footer gone |
+| Nothing moves | Pass. Button, Compare and the tabs in the same place in both states | Pass. Button, Compare and the tabs in the same place in both states | Pass. Button at 1087, 218 in both states; Compare at 999, tabs at Y 338 |
+
+Mac: FM27 native on Apple Silicon (FM process 58420, code type ARM64) and under
+Rosetta (FM process 56808, code type X86-64 translated), each with the branch
+bridge injected and the test FM Lens build run the same way. Test copy `FM Lens
+Permit 2026-11-09` (Arsenal, 8 Dec 2027), opened through Load Game and quit
+without saving.
+
+Windows: FM27 on the test machine (FM process 7016) with the Windows build of
+the same commit, in `Lens Test` (a copy of the main save, Arsenal, 13 Jul
+2026).
+
+Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
+on Windows. The released 0.7.0 bridge was restored on the Mac afterwards.
