@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { call, inTauri, watchCommands } from "./api";
 import { addCheckForUpdates } from "./appMenu";
 import { BridgeSetup } from "./BridgeSetup";
+import { EmailGate, emailGiven } from "./EmailGate";
 import { ChangesView, useChangeLog } from "./ChangesView";
 import { CompatibilityNotice } from "./CompatibilityNotice";
 import { DropMenu } from "./DropMenu";
@@ -134,6 +135,7 @@ function App() {
   const [debugBuild, setDebugBuild] = useState(false);
   const [reporting, setReporting] = useState(false);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
+  const [emailAsked, setEmailAsked] = useState(() => !emailGiven());
   useEffect(() => {
     trackOpened();
     // The browser preview stands in for the app with the version in package.json.
@@ -456,6 +458,18 @@ function App() {
     }
   };
   const career = connection?.career ?? null;
+
+  // Before anything else, once on each computer. The app is mounted behind it, so it still updates itself.
+  if (emailAsked) {
+    return (
+      <div className="app">
+        <header className="masthead">
+          <BrandMark />
+        </header>
+        <EmailGate onGiven={() => setEmailAsked(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="app">

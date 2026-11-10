@@ -6,7 +6,7 @@
 # - windows_downloads: the Windows installers, which installed copies on Windows also download to update;
 # - mac_updates: the .app.tar.gz files installed copies on macOS update from;
 # - update_checks: latest.json, which every copy reads when it opens, to look for an update.
-# .github/workflows/downloads.yml runs it every hour.
+# .github/workflows/downloads.yml runs it every 15 minutes.
 #
 # Usage: scripts/report-downloads.sh [--dry-run]
 # --dry-run prints the event instead of sending it.

@@ -10,7 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://getfmlens.com/">
   <meta property="og:title" content="FM Lens: Football Manager 27 companion for Mac and Windows">
-  <meta property="og:description" content="Search, compare and edit players, staff and clubs in your loaded FM27 career while you play. Free and open source.">
+  <meta property="og:description" content="Search, compare and edit players, staff and clubs in your loaded FM27 career while you play. Free for Mac and Windows.">
   <meta property="og:image" content="https://getfmlens.com/images/social.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
@@ -137,6 +137,7 @@
         </li>
       </ol>
     </section>
+
   </main>
 
   <footer>
@@ -149,13 +150,13 @@
   </footer>
 
   <script type="module">
-    import { latestRelease, thisComputer } from "./release.js";
+    import { release as releaseOf, thisComputer } from "./release.js";
 
     if (thisComputer() === "windows") {
       const windows = document.getElementById("windows");
       windows.parentElement.prepend(windows);
     }
-    const release = await latestRelease();
+    const release = await releaseOf();
     if (release.version) {
       document.getElementById("release-line").textContent =
         `Version ${release.version}, for Apple Silicon and Intel Macs, and Windows 10 and 11.`;

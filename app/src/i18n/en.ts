@@ -1505,6 +1505,19 @@ export const en = {
     },
 
     /** The panel shown while not connected. */
+    /** The screen in place of the app until the user has given an email address (see EmailGate.tsx). */
+    email: {
+      title: "Enter your email to use FM Lens",
+      intro: "FM Lens emails you about updates.",
+      button: "Continue",
+      /** On the button while Kit answers. */
+      sending: "Checking…",
+      /** Kit did not take the address. */
+      refused: "That did not work. Check the address and try again.",
+      /** Kit could not be reached. */
+      failed: "That did not work. Check your connection and try again.",
+    },
+
     connect: {
       title: "Connect to Football Manager 27",
       intro: "Load a save in FM, then connect.",

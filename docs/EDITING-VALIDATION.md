@@ -2413,6 +2413,27 @@ of the main save, Arsenal, 28 Jul 2026), saved only as the new file
 Main career SHA-256 stayed 3ADEB4FD...BD956000 on Mac and AF20CBAC...2CB747E5
 on Windows. The installed bridge was restored on the Mac afterwards.
 
+### The published 0.7.3
+
+The same checks in short, with the files users download: FM Lens 0.7.3 from
+`fm-lens-releases` (tag `v0.7.3`, 3b77b0b), which differs from the build above
+only in its version, notes and translations.
+
+| | Apple Silicon | Rosetta | Windows |
+|---|---|---|---|
+| Build | `FM-Lens-0.7.3-macos-universal.zip`, bridge SHA-256 D1CD89AD...72D3B2DB | The same app, started with `arch -x86_64` | `FM-Lens-0.7.3-windows-x64-setup.exe` |
+| Processes | FM 15956, FM Lens 16283 | FM 16659 and FM Lens 17919, both translated | FM 7140, FM Lens 4576 |
+| Connects | Pass. 30,314 players, 8 Dec 2027, no read-only notice | Pass. The same | Pass. 28 Jul 2026, no read-only notice |
+| Attribute edit | Pass. Jover Fitness 6 to 9, probe read 45 (9) | Pass. Jover Fitness 6 to 9, probe read 45 (9) | Pass. Saka Heading to 13, shown after Reload |
+| Game action | Pass. Saka: abdominal strain added (back 26 to 30 Dec 2027), then healed | Pass. The same | Pass. Saka: abdominal strain added (back 16 to 21 Aug 2026), then healed |
+| FM afterwards | Running, quit without saving | Running, quit without saving | Running, not saved |
+
+Mac: both runs loaded `FM-Lens-27.0.1-2026-11-10` and saved nothing. That file
+kept its size and date, every career kept its SHA-256, and the installed bridge
+was not changed. Windows: the session that loaded `FM-Lens-27.0.1-Windows`.
+
+Game Pass on 27.0.1 has no profile yet, so FM Lens is read-only there.
+
 ## Base transfer valuation (10 November 2026)
 
 FM Lens previously read only the asking price, not a player's transfer valuation.
