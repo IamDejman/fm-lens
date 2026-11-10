@@ -488,6 +488,7 @@ mod tests {
             summary,
             height_cm: 178,
             asking_price: None,
+            transfer_value: None,
             reputation: Reputation { home: 8000, current: 7600, world: 7400 },
             international: International { caps: 50, goals: 12, u21_caps: 10, u21_goals: 3 },
             position_ratings: POSITIONS.iter().map(|&key| (key, if key == "amr" { 20 } else { 10 })).collect(),

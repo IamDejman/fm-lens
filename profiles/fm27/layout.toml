@@ -54,6 +54,7 @@ traits = 0x348
 # starts with the list (begin, end, capacity) of his current injuries; a player who has got
 # over his injuries keeps the record with an empty list.
 injuries = 0xF8
+transfer_value = 0x234    # i32, base valuation; 300,000,000 is the unvalued marker
 asking_price = 0x238      # i32, pounds; -1 when not set
 home_reputation = 0x25E   # u16
 current_reputation = 0x260

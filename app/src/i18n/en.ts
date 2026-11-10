@@ -702,6 +702,8 @@ export const en = {
     internationalGoals: "International goals",
     u21Caps: "U21 caps",
     u21Goals: "U21 goals",
+    transferValue: "Base transfer value",
+    transferUnavailable: "Unavailable",
     askingPrice: "Asking price",
     notSet: "Not set",
     reputation: "Reputation",
