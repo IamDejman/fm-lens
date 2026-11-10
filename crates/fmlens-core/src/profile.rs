@@ -1250,10 +1250,13 @@ const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/gamepass-0.9.2409.0.toml"),
     include_str!("../../../profiles/fm27/steam-26227640.toml"),
     include_str!("../../../profiles/fm27/steam-26340721.toml"),
+    include_str!("../../../profiles/fm27/steam-26385295.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-arm64.toml"),
     include_str!("../../../profiles/fm27/steam-26340721-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26340721-macos-arm64.toml"),
+    include_str!("../../../profiles/fm27/steam-26385295-macos-x86_64.toml"),
+    include_str!("../../../profiles/fm27/steam-26385295-macos-arm64.toml"),
 ];
 
 /// The built-in object layout for `edition`, if there is one.
@@ -1469,9 +1472,12 @@ mod tests {
     fn only_the_traced_builds_know_the_human_manager() {
         let arm64 = [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
         let intel = [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
-        let traced = [arm64, intel].map(|uuid| PluginFingerprint::MachO { uuid });
+        // 27.0.1 carries the layout across.
+        let arm64_1 = [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
+        let intel_1 = [0x94, 0xCD, 0xDC, 0x80, 0x84, 0x74, 0x32, 0x7A, 0x85, 0xE0, 0xE4, 0xFF, 0x95, 0xDC, 0x68, 0x93];
+        let traced = [arm64, intel, arm64_1, intel_1].map(|uuid| PluginFingerprint::MachO { uuid });
         for plugin in &traced {
-            let profile = profile_for(*plugin).expect("27.0.0 on macOS");
+            let profile = profile_for(*plugin).expect("27.0.0 or 27.0.1 on macOS");
             assert_eq!(
                 profile.human_manager,
                 Some(HumanManagerLayout {
@@ -1492,12 +1498,70 @@ mod tests {
                 class_at: 0x440
             })
         );
+        let windows_1 = PluginFingerprint::Pe { size_of_image: 0x17CB_9000, link_timestamp: 0x6AE8_B5A4 };
+        assert_eq!(
+            profile_for(windows_1).expect("27.0.1 on Windows").human_manager,
+            profile_for(windows).expect("27.0.0 on Windows").human_manager
+        );
         for text in BUILDS {
             let profile: BuildProfile = parse(text);
-            if !traced.contains(&profile.plugin) && profile.plugin != windows {
+            if !traced.contains(&profile.plugin) && profile.plugin != windows && profile.plugin != windows_1 {
                 assert!(profile.human_manager.is_none(), "{}", profile.name);
             }
         }
+    }
+
+    /// 27.0.1 (Steam build 26385295) moved every static and every function; its macOS profiles carry 27.0.0's values
+    /// across, the block of table pointers moved as one.
+    #[test]
+    fn steam_27_0_1_on_macos_carries_27_0_0_across() {
+        let old_arm64 =
+            [0xF4, 0x54, 0x03, 0x55, 0x21, 0x86, 0x39, 0xCB, 0x91, 0x19, 0xC7, 0x06, 0xA6, 0xA3, 0x53, 0x46];
+        let old_intel =
+            [0x09, 0x81, 0xAB, 0x31, 0xAC, 0x3B, 0x3D, 0x93, 0x94, 0x4F, 0x47, 0xFE, 0x4B, 0x59, 0xCD, 0x9E];
+        let arm64 = [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
+        let intel = [0x94, 0xCD, 0xDC, 0x80, 0x84, 0x74, 0x32, 0x7A, 0x85, 0xE0, 0xE4, 0xFF, 0x95, 0xDC, 0x68, 0x93];
+        let profile = |uuid| profile_for(PluginFingerprint::MachO { uuid }).expect("27.0.0 or 27.0.1 on macOS");
+        for (new, old, moved, date) in
+            [(arm64, old_arm64, 0x9_C038, 0x574_DDB8), (intel, old_intel, 0x7_A020, 0x5CE_3700)]
+        {
+            let (new, old) = (profile(new), profile(old));
+            assert_eq!(new.storefront, Storefront::Steam);
+            assert_eq!(new.current_date, Some(date));
+            assert_eq!(
+                (new.arrays.players, new.arrays.staff, new.arrays.clubs),
+                (old.arrays.players + moved, old.arrays.staff + moved, old.arrays.clubs + moved)
+            );
+            assert_eq!(new.officials, old.officials.map(|rva| rva + moved));
+            assert_eq!(new.awards, old.awards.map(|rva| rva + moved));
+            assert_eq!(new.competitions, old.competitions.map(|rva| rva + moved));
+            assert_eq!(new.injury_kinds, old.injury_kinds.map(|rva| rva + moved));
+            assert_eq!(new.human_manager, old.human_manager);
+            assert_eq!(new.work_permit_check.is_some(), old.work_permit_check.is_some());
+            let count = |calls: Option<CallRvas>| calls.map(|calls| calls.all().len());
+            assert_eq!(count(new.calls), count(old.calls));
+        }
+    }
+
+    /// 27.0.1 on Windows: another DLL (size and link time), every static in the block of table pointers 0x11B040 further.
+    #[test]
+    fn steam_27_0_1_on_windows_carries_27_0_0_across() {
+        let old = PluginFingerprint::Pe { size_of_image: 0x1821_C000, link_timestamp: 0x6AE5_65AF };
+        let new = PluginFingerprint::Pe { size_of_image: 0x17CB_9000, link_timestamp: 0x6AE8_B5A4 };
+        let (old, new) = (profile_for(old).expect("27.0.0"), profile_for(new).expect("27.0.1"));
+        let moved = 0x11_B040;
+        assert_eq!(new.storefront, Storefront::Steam);
+        assert_eq!(new.current_date, old.current_date.map(|rva| rva + moved));
+        assert_eq!(
+            (new.arrays.players, new.arrays.staff, new.arrays.clubs),
+            (old.arrays.players + moved, old.arrays.staff + moved, old.arrays.clubs + moved)
+        );
+        assert_eq!(new.officials, old.officials.map(|rva| rva + moved));
+        assert_eq!(new.transfer_manager, old.transfer_manager.map(|rva| rva + moved));
+        assert_eq!(new.retirement_manager, Some(new.arrays.players - 0xDAC0));
+        let calls = new.calls.expect("27.0.1's calls");
+        assert_eq!((calls.withdraw_offers, calls.leave_team), (Some(0xB3_3630), Some(0xB2_CFB0)));
+        assert_eq!(calls.all().len(), old.calls.expect("27.0.0's calls").all().len());
     }
 
     #[test]

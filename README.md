@@ -15,8 +15,8 @@ after that.
 ## What you need
 
 - A Mac with Apple Silicon or Intel, or a PC with 64-bit Windows 10 or 11.
-- Football Manager 27 from Steam, version 27.0.0 (build 26340721). Other builds
-  open read-only.
+- Football Manager 27 from Steam, version 27.0.1 (build 26385295) or 27.0.0
+  (build 26340721). Other builds open read-only.
 - A copy of your save to edit.
 
 ## Getting started
