@@ -4,7 +4,7 @@
 import { track } from "./analytics.js";
 
 /** The id of FM Lens's form in Kit. It can only add an address, so it is safe in a page. Empty, no page offers the signup. */
-const FORM = "";
+const FORM = "10172074";
 
 const SAID = {
   sent: "Check your inbox to confirm.",
