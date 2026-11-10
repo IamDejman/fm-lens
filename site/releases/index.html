@@ -43,19 +43,14 @@
 
   <script type="module">
     import "../analytics.js";
-    import { releaseNotes, RELEASES_PAGE } from "../release.js";
+    import { releaseNotes } from "../release.js";
 
     const DOWNLOAD_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>';
     const status = document.getElementById("status");
     const list = document.getElementById("releases");
     const releases = await releaseNotes();
     if (!releases) {
-      status.textContent = "";
-      status.append(
-        "GitHub could not be reached from here. ",
-        Object.assign(document.createElement("a"), { href: RELEASES_PAGE.replace(/\/latest$/, ""), textContent: "Read the release notes on GitHub" }),
-        ".",
-      );
+      status.textContent = "The release notes could not be loaded. Try again in a moment.";
     } else {
       status.remove();
       const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
