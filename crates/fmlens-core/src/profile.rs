@@ -526,6 +526,9 @@ pub struct PlayerLayout {
     pub person_block_shifts: Vec<u64>,
     pub height: u64,
     pub asking_price: u64,
+    /// Stored base valuation in pounds; separate from asking price and the manager-specific range.
+    #[serde(default)]
+    pub transfer_value: Option<u64>,
     pub home_reputation: u64,
     pub current_reputation: u64,
     pub world_reputation: u64,
@@ -584,6 +587,7 @@ impl PlayerLayout {
             self.team + 8,
             self.height + 2,
             self.asking_price + 4,
+            self.transfer_value.map_or(0, |offset| offset + 4),
             self.world_reputation + 2,
             self.international_goals + 2,
             self.u21_goals + 1,

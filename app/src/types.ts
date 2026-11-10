@@ -163,6 +163,13 @@ export interface ExportReport {
   skipped: number;
 }
 
+/** Where a share card was saved: the file, and its name and folder apart. */
+export interface SavedCard {
+  path: string;
+  file: string;
+  folder: string;
+}
+
 /**
  * What connecting froze again of what the app remembers as frozen in this save: the players' and staff's attributes
  * and the clubs' money, by name, and how many it left for later, still remembered (FM Lens cannot write to this
@@ -695,6 +702,8 @@ export interface PlayerDetails extends PlayerSummary {
   heightCm: number;
   /** Pounds; null when the club has not set one. */
   askingPrice: number | null;
+  /** Stored base valuation in pounds; null if unmapped, invalid or not calculated. */
+  transferValue: number | null;
   reputation: Reputation;
   international: International;
   /** gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr → 1–20 */

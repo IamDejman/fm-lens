@@ -15,6 +15,7 @@ import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } 
 import { PositionPitch, PositionRatings } from "./PositionPitch";
 import { CancelTransferButton, EndLoanButton, ReleaseButton } from "./ReleaseDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
+import { ShareButton } from "./ShareDialog";
 import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
@@ -125,6 +126,7 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
       onClose={onClose}
       editing={editing}
       headActions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
+      headIcons={<ShareButton details={details} />}
       actions={
         // Only while the profile is read, not edited: for a player who has a club to leave, or a free agent where the
         // game signs them. The Transfer dialog starts from his contract, so its button waits for the details. A
@@ -356,6 +358,7 @@ function ContractTab({ details }: { details: PlayerDetails }) {
           <h3>{profileText.contract}</h3>
           <p className="note">{profileText.noContract}</p>
           <dl className="stats">
+            <TransferValue value={details.transferValue} />
             <AskingPrice price={details.askingPrice} />
           </dl>
         </section>
@@ -442,12 +445,22 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
             <Fact label={profileText.loyaltyBonus}>
               <EditableValue field="contract.loyalty_bonus">{formatMoney(contract.loyaltyBonus)}</EditableValue>
             </Fact>
+            <TransferValue value={details.transferValue} />
             <AskingPrice price={details.askingPrice} />
           </dl>
         </div>
         <ContractDates contract={contract} />
       </div>
     </section>
+  );
+}
+
+/** FM's stored base valuation, kept distinct from the club's editable asking price. */
+function TransferValue({ value }: { value: PlayerDetails["transferValue"] }) {
+  return (
+    <Fact label={profileText.transferValue}>
+      {value == null ? profileText.transferUnavailable : formatMoney(value)}
+    </Fact>
   );
 }
 

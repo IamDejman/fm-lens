@@ -100,6 +100,8 @@ pub struct PlayerDetails {
     pub height_cm: u16,
     /// Asking price in pounds, when the club has set one.
     pub asking_price: Option<i32>,
+    /// Stored base valuation, not the club asking price or a scouting estimate.
+    pub transfer_value: Option<i32>,
     pub reputation: Reputation,
     pub international: International,
     /// Position ratings (1–20) by [`POSITIONS`] key; the summary's `positions` lists the playable ones.
@@ -143,6 +145,17 @@ pub struct PlayerDetails {
     pub work_permits: Vec<crate::work_permits::WorkPermit>,
     /// The transfers the game agreed for him on a later day (see [`crate::Session::future_transfers`]).
     pub future_transfers: Vec<crate::game_calls::FutureTransfer>,
+}
+
+/// The range getter treats 300 million specially and may compute a value instead.
+/// Do not present that marker as a price or infer a transfer status from it.
+fn transfer_value(raw: i32, has_team: bool) -> Option<i32> {
+    match raw {
+        _ if !has_team => Some(0),
+        300_000_000 => None,
+        0.. => Some(raw),
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -316,6 +329,7 @@ pub fn read_player_details(
         summary: player.clone(),
         height_cm: u16_at(p.height),
         asking_price: (asking_price >= 0).then_some(asking_price),
+        transfer_value: p.transfer_value.and_then(|offset| transfer_value(u32_at(offset) as i32, u64_at(p.team) != 0)),
         reputation: Reputation {
             home: u16_at(p.home_reputation),
             current: u16_at(p.current_reputation),
@@ -394,6 +408,16 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn valuation_is_not_an_asking_price_or_a_sentinel_amount() {
+        assert_eq!(transfer_value(85_000_000, true), Some(85_000_000));
+        assert_eq!(transfer_value(300_000_000, true), None);
+        assert_eq!(transfer_value(-1, true), None);
+        assert_eq!(transfer_value(i32::MIN, true), None);
+        assert_eq!(transfer_value(0, true), Some(0));
+        assert_eq!(transfer_value(300_000_000, false), Some(0));
+    }
 
     #[test]
     fn attribute_scale() {

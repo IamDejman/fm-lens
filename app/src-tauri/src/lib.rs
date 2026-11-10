@@ -3015,20 +3015,7 @@ async fn export_players(
     tauri::async_runtime::spawn_blocking(move || -> Result<ExportReport, Failure> {
         let folder = app.state::<ExportsFolder>().0.clone();
         let folder = folder.ok_or_else(|| Failure::new("export.noFolder", "There is no folder to export to."))?;
-        // macOS may ask the user before an app first writes to the Documents folder (see Info.plist), and Windows
-        // Security's Controlled folder access may block it: a no is said as such, with where to change it.
-        let failed = |err: std::io::Error| {
-            let refused = match err.kind() {
-                std::io::ErrorKind::PermissionDenied if cfg!(target_os = "macos") => Some("export.notAllowed"),
-                std::io::ErrorKind::PermissionDenied if cfg!(windows) => Some("export.blocked"),
-                _ => None,
-            };
-            match refused {
-                Some(code) => Failure::new(code, format!("FM Lens may not write to {}: {err}", folder.display()))
-                    .with("folder", folder.display()),
-                None => Failure::new("export.failed", err.to_string()).with("reason", err),
-            }
-        };
+        let failed = |err: std::io::Error| write_failure(&folder, err);
         let state = app.state::<AppState>();
         let guard = state.0.lock()?;
         let connection = guard.as_ref().ok_or_else(not_connected)?;
@@ -3054,6 +3041,22 @@ async fn export_players(
     .await?
 }
 
+/// Why a file could not be written to the exports `folder`. macOS may ask the user before an app first writes to the
+/// Documents folder (see Info.plist), and Windows Security's Controlled folder access may block it: a no is said as
+/// such, with where to change it.
+fn write_failure(folder: &Path, err: std::io::Error) -> Failure {
+    let refused = match err.kind() {
+        std::io::ErrorKind::PermissionDenied if cfg!(target_os = "macos") => Some("export.notAllowed"),
+        std::io::ErrorKind::PermissionDenied if cfg!(windows) => Some("export.blocked"),
+        _ => None,
+    };
+    match refused {
+        Some(code) => Failure::new(code, format!("FM Lens may not write to {}: {err}", folder.display()))
+            .with("folder", folder.display()),
+        None => Failure::new("export.failed", err.to_string()).with("reason", err),
+    }
+}
+
 /// A new file for an export in `folder`, named after the in-game date: the first of "players-2027-01-02.json",
 /// "players-2027-01-02-2.json", ... that is not there yet.
 fn new_export_file(folder: &Path, date: Option<FmDate>, extension: &str) -> std::io::Result<(PathBuf, std::fs::File)> {
@@ -3061,6 +3064,11 @@ fn new_export_file(folder: &Path, date: Option<FmDate>, extension: &str) -> std:
         || "players".to_owned(),
         |date| format!("players-{:04}-{:02}-{:02}", date.year, date.month, date.day),
     );
+    new_file(folder, &stem, extension)
+}
+
+/// The first of "{stem}.{extension}", "{stem}-2.{extension}", ... in `folder` that is not there yet, created.
+fn new_file(folder: &Path, stem: &str, extension: &str) -> std::io::Result<(PathBuf, std::fs::File)> {
     for n in 1.. {
         let name = if n == 1 { format!("{stem}.{extension}") } else { format!("{stem}-{n}.{extension}") };
         let path = folder.join(name);
@@ -3071,6 +3079,58 @@ fn new_export_file(folder: &Path, date: Option<FmDate>, extension: &str) -> std:
         }
     }
     unreachable!("the loop returns")
+}
+
+/// Where a share card was saved.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SavedCard {
+    /// The file, and its name and folder apart.
+    path: PathBuf,
+    file: String,
+    folder: PathBuf,
+}
+
+/// The largest card saved: a 1080 x 1920 PNG is well under 10 MB.
+const MAX_CARD_BYTES: usize = 32 << 20;
+
+/// Saves the PNG of a player's share card to the exports folder. The body of the call is the file as it is, and the
+/// `Card-Stem` header names it ("lamine-yamal-post-2026-07-18"); a number is added when the name is taken.
+#[tauri::command]
+async fn save_card(app: tauri::AppHandle, request: tauri::ipc::Request<'_>) -> Result<SavedCard, Failure> {
+    let not_png = || Failure::new("card.notPng", "The card was not sent as a PNG.");
+    let tauri::ipc::InvokeBody::Raw(png) = request.body() else {
+        return Err(not_png());
+    };
+    if !png.starts_with(b"\x89PNG\r\n\x1a\n") || png.len() > MAX_CARD_BYTES {
+        return Err(not_png());
+    }
+    let stem = request.headers().get("card-stem").and_then(|value| value.to_str().ok());
+    let stem = stem.filter(|stem| card_stem_ok(stem)).unwrap_or("card").to_owned();
+    let png = png.clone();
+    tauri::async_runtime::spawn_blocking(move || -> Result<SavedCard, Failure> {
+        let folder = app.state::<ExportsFolder>().0.clone();
+        let folder = folder.ok_or_else(|| Failure::new("export.noFolder", "There is no folder to export to."))?;
+        std::fs::create_dir_all(&folder).map_err(|err| write_failure(&folder, err))?;
+        let (path, mut file) = new_file(&folder, &stem, "png").map_err(|err| write_failure(&folder, err))?;
+        if let Err(err) = std::io::Write::write_all(&mut file, &png) {
+            drop(file);
+            // Half a card is no card.
+            let _ = std::fs::remove_file(&path);
+            return Err(write_failure(&folder, err));
+        }
+        let file = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+        Ok(SavedCard { path, file, folder })
+    })
+    .await?
+}
+
+/// Whether `stem` is a name the app gives a card: lower-case ASCII letters, digits and hyphens, so it can never
+/// leave the exports folder or be a name Windows keeps for itself.
+fn card_stem_ok(stem: &str) -> bool {
+    (1..=96).contains(&stem.len())
+        && stem.contains('-')
+        && stem.bytes().all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
 }
 
 /// `path`, when it is a file an export wrote: the only files the app opens or shows.
@@ -4699,6 +4759,7 @@ pub fn run() {
             export_players,
             open_export,
             show_export,
+            save_card,
             player_details,
             staff_details,
             club_details,
@@ -4784,6 +4845,27 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_card_keeps_only_the_names_the_app_gives_it() {
+        assert!(card_stem_ok("lamine-yamal-post-2026-07-18"));
+        assert!(card_stem_ok("player-story"));
+        for stem in ["", "con", "../secret-post", "Lamine-post", "a/b-post", "a\\b-post", "name-post.png"] {
+            assert!(!card_stem_ok(stem), "{stem}");
+        }
+        assert!(!card_stem_ok(&"a-".repeat(49)));
+    }
+
+    #[test]
+    fn a_new_file_never_replaces_one() {
+        let folder = std::env::temp_dir().join(format!("fmlens-new-file-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        let (first, _) = new_file(&folder, "card-post", "png").unwrap();
+        let (second, _) = new_file(&folder, "card-post", "png").unwrap();
+        std::fs::remove_dir_all(&folder).unwrap();
+        assert_eq!(first.file_name().unwrap(), "card-post.png");
+        assert_eq!(second.file_name().unwrap(), "card-post-2.png");
+    }
 
     #[test]
     fn a_picker_lists_the_person_s_side_of_the_game_first() {
