@@ -116,13 +116,11 @@ To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
 nothing.
 
 Before it opens for the first time on a computer, the app asks for an email
-address, and so does a download from the site. FM Lens's own server keeps it on
-FM Lens's email list, on Amazon Web Services, and FM Lens emails it from
-getfmlens.com with Amazon SES. It never goes to PostHog. Every email has a link
-to unsubscribe.
+address. FM Lens's own server keeps it on FM Lens's email list, on Amazon Web
+Services, and FM Lens emails it from getfmlens.com with Amazon SES. It never goes
+to PostHog. Every email has a link to unsubscribe.
 
-The site counts page views, downloads started and email signups, without cookies
-or stored ids.
+The site counts page views and downloads started, without cookies or stored ids.
 
 ## Security
 

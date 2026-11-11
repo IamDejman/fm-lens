@@ -33,13 +33,6 @@
   <main id="main" class="wrap">
     <div class="message">
       <h1 id="title">Download FM Lens</h1>
-      <form class="signup" data-page="download" hidden>
-        <label for="email">Enter your email to download. FM Lens emails you about updates.</label>
-        <input name="email" type="email" autocomplete="email" spellcheck="false" required
-          id="email" placeholder="you@example.com">
-        <button class="button" type="submit">Download</button>
-        <p role="status"></p>
-      </form>
       <div id="started" hidden>
         <p id="status" role="status">Your download starts in a moment.</p>
         <p id="mac">On a Mac, open the disk image and drag <strong>FM Lens</strong> onto <strong>Applications</strong>.
@@ -55,7 +48,6 @@
   <script type="module">
     import { track } from "../analytics.js";
     import { release as releaseOf, thisComputer } from "../release.js";
-    import { askForEmail, emailGiven } from "../signup.js";
 
     // The home page names the computer and the releases page a version; a link without them gets the latest download
     // for this computer.
@@ -63,14 +55,6 @@
     const asked = query.get("for");
     const computer = asked === "mac" || asked === "windows" ? asked : thisComputer();
     document.getElementById(computer === "windows" ? "mac" : "windows").hidden = true;
-
-    // A download asks for an email address first, once in each browser.
-    const form = document.querySelector("form.signup");
-    if (!emailGiven()) {
-      form.hidden = false;
-      await askForEmail(form);
-      form.hidden = true;
-    }
 
     const release = await releaseOf(query.get("version"));
     const url = release.downloads[computer];
