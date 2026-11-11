@@ -30,8 +30,10 @@ verified game build is FM27 Steam 26340721. ARM64 has the broadest local
 validation; Intel checks used Rosetta and cover selected reads/actions.
 Windows app edits and undo were exercised on Windows Server 2022, including
 attributes, contracts, mass edits, templates, squad actions and manager fields.
-Windows installer and self-update checks are recorded separately. Windows
-edited-save persistence and Windows 10/11 execution remain unverified. See the dated Windows entries in
+Windows installer and self-update checks are recorded separately. An edited
+copy survived save, quit and reload on Windows on 8 and 10 November for the
+values those entries name, not for every mapped field. Windows 10/11 execution
+remains unverified. See the dated Windows entries in
 [EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026).
 Availability on a platform does not certify every mapped field.
 
