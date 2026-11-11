@@ -23,6 +23,9 @@ const changes = (count: number) => `${format(count)} değişiklik`;
 const changeCount = (count: number) => (count === 0 ? "Değişiklik yok" : changes(count));
 
 /** "12 değere dokunulmadı": the ending is on the noun, so the same words do for one and for many. */
+const toFreeze = (frozen: boolean, count: number) =>
+  frozen ? `${format(count)} dondurulacak` : `${format(count)} için dondurma kaldırılacak`;
+
 const valuesLeftAlone = (count: number) => `${format(count)} değere dokunulmadı`;
 
 /** What each list holds, as the sentences need it: the noun itself, "of the" (genitive) and "in" (locative). */
@@ -1776,6 +1779,10 @@ export const tr: Strings = {
       "Önce aramayı veya filtreleri daraltın.",
     loadingFields: "Alanlar okunuyor…",
     fieldsFailed: (reason) => `Alanlar okunamadı: ${reason}`,
+    toFreeze,
+    frozenCount: (frozen, count) =>
+      frozen ? `${format(count)} donduruldu` : `${format(count)} için dondurma kaldırıldı`,
+    freezeFailed: (count, reason) => `${format(count)} dondurulamadı: ${reason}`,
 
     // The fields to change
     groups: {
@@ -1835,12 +1842,13 @@ export const tr: Strings = {
       const affected = preview.targets - preview.unchanged;
       return [
         preview.changes === 0
-          ? "Değişiklik yok"
+          ? !preview.freeze?.count && "Değişiklik yok"
           : affected === preview.targets
             ? `${format(preview.targets)} ${noun.plain} için ${changes(preview.changes)}`
             : `${format(preview.targets)} ${noun.of} ${format(affected)} tanesi için ${changes(preview.changes)}`,
         preview.unchanged > 0 && `${format(preview.unchanged)} ${noun.in} bu değerler zaten var`,
         preview.skippedCount > 0 && valuesLeftAlone(preview.skippedCount),
+        !!preview.freeze?.count && toFreeze(preview.freeze.frozen, preview.freeze.count),
       ]
         .filter(Boolean)
         .join(" · ");

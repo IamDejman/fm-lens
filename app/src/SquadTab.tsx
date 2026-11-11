@@ -285,7 +285,7 @@ export function SquadTab({ clubUid, version, panel }: SquadTabProps) {
         problems: [],
         undo: async () => {
           await undoChange(change.id);
-          return { undone: 1, failed: [] };
+          return { undone: 1, failed: [], freeze: null };
         },
       };
     });

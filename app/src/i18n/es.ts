@@ -28,6 +28,8 @@ const changes = (count: number) => (count === 1 ? "1 cambio" : `${format(count)}
 const changeCount = (count: number) => (count === 0 ? "Ningún cambio" : changes(count));
 
 /** "1 valor sin tocar", "12 valores sin tocar". */
+const toFreeze = (frozen: boolean, count: number) => `${format(count)} por ${frozen ? "congelar" : "descongelar"}`;
+
 const valuesLeftAlone = (count: number) =>
   count === 1 ? "1 valor sin tocar" : `${format(count)} valores sin tocar`;
 
@@ -1820,6 +1822,10 @@ export const es: Strings = {
       `(${format(limit)}). Acota antes la búsqueda o los filtros.`,
     loadingFields: "Leyendo los campos…",
     fieldsFailed: (reason) => `No se han podido leer los campos: ${reason}`,
+    toFreeze,
+    frozenCount: (frozen, count) =>
+      `${format(count)} ${frozen ? "congelado" : "descongelado"}${count === 1 ? "" : "s"}`,
+    freezeFailed: (count, reason) => `No se han podido congelar ${format(count)}: ${reason}`,
 
     // Los campos que cambiar
     groups: {
@@ -1872,7 +1878,7 @@ export const es: Strings = {
     summary: (entity, preview) =>
       [
         preview.changes === 0
-          ? "Ningún cambio"
+          ? !preview.freeze?.count && "Ningún cambio"
           : `${changes(preview.changes)} en ${format(preview.targets - preview.unchanged)} de ` +
             entityCount(entity, preview.targets),
         preview.unchanged > 0 &&
@@ -1880,6 +1886,7 @@ export const es: Strings = {
             ? "1 ya tiene estos valores"
             : `${format(preview.unchanged)} ya tienen estos valores`),
         preview.skippedCount > 0 && valuesLeftAlone(preview.skippedCount),
+        !!preview.freeze?.count && toFreeze(preview.freeze.frozen, preview.freeze.count),
       ]
         .filter(Boolean)
         .join(" · "),

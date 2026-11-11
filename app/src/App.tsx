@@ -37,7 +37,7 @@ import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
 import { track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
-import { injuryKinds } from "./editing";
+import { injuryKinds, massFreeze } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, FmDate, InjuryKind, Refrozen, ReloadInfo } from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol-120.png";
 import { askToLeave, changesPending, EditorContext, NO_GAME_ACTIONS } from "./useProfileEditing";
@@ -82,7 +82,11 @@ const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "
 const CHECK_EVERY_MS = 5000;
 
 /** The commands that turn a freeze on or off. */
-const FREEZE_COMMANDS: ReadonlySet<string> = new Set(["freeze_attributes", "freeze_money", "freeze_staff_attributes"]);
+const FREEZE_COMMANDS: ReadonlySet<string> = new Set([
+  "freeze_attributes",
+  "freeze_money",
+  "freeze_staff_attributes",
+]);
 
 const dayKey = ({ year, month, day }: FmDate) => `${year}-${month}-${day}`;
 
@@ -247,8 +251,8 @@ function App() {
   // Turning a freeze off leaves the notice of what came back on out of date.
   useEffect(
     () =>
-      watchCommands((command, args) => {
-        if (FREEZE_COMMANDS.has(command) && args?.frozen === false) {
+      watchCommands((command, args, result) => {
+        if ((FREEZE_COMMANDS.has(command) && args?.frozen === false) || massFreeze(command, result) === false) {
           setRefrozen(null);
         }
       }),

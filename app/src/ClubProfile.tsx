@@ -1,6 +1,6 @@
 import { useContext, useEffect, useId, useState } from "react";
 import { EditableValue } from "./EditControls";
-import { freezeMoney, frozenClubs } from "./editing";
+import { freezeMoney, frozenClubs, watchMassFreeze } from "./editing";
 import { converts, inCurrency } from "./currency";
 import { describeError, formatMoney, formatNumber } from "./format";
 import {
@@ -320,11 +320,15 @@ function FreezeMoney({ club }: { club: number }) {
 
   useEffect(() => {
     let alive = true;
-    frozenClubs()
-      .then((clubs) => alive && setFrozen(clubs.includes(club)))
-      .catch(() => alive && setFrozen(false));
+    const read = () =>
+      frozenClubs()
+        .then((clubs) => alive && setFrozen(clubs.includes(club)))
+        .catch(() => alive && setFrozen(false));
+    void read();
+    const stop = watchMassFreeze(() => void read());
     return () => {
       alive = false;
+      stop();
     };
   }, [club]);
 

@@ -99,6 +99,26 @@ struct Frozen {
     staff_attributes: BTreeMap<u32, BTreeMap<String, i64>>,
     /// The holds the editor's checks refused, as logged: each is logged once.
     refused: BTreeSet<String>,
+    /// What each mass edit froze or unfroze, by its batch, for `undo_batch` to take back with its values.
+    batches: BTreeMap<u32, BatchFreeze>,
+}
+
+/// A freeze or an unfreeze of several at once, as a mass edit plans it, makes it and undoes it.
+struct BatchFreeze {
+    entity: Entity,
+    /// Whether they are frozen by it, or unfrozen.
+    frozen: bool,
+    /// The players, staff or clubs it changes: not those that are frozen, or not, already.
+    uids: Vec<u32>,
+}
+
+/// What `Connection::freeze_all` did.
+struct Froze {
+    /// Those it froze or unfroze.
+    done: Vec<u32>,
+    /// How many could not be frozen, and why the first of them was refused.
+    failed: usize,
+    error: Option<Failure>,
 }
 
 impl Frozen {
@@ -225,6 +245,8 @@ struct PendingMass {
     id: u32,
     entity: Entity,
     planned: Vec<Planned>,
+    /// The freeze or unfreeze to make with it, when its freeze box was changed.
+    freeze: Option<BatchFreeze>,
 }
 
 impl Connection {
@@ -375,6 +397,72 @@ impl Connection {
         change(remembered.saves.entry(save.clone()).or_default());
         remembered.saves.retain(|_, save| !save.is_empty());
         let _ = remembered.write(path);
+    }
+
+    /// Whether the attributes of the player or member of staff `uid`, or the money of the club `uid`, are frozen.
+    fn is_frozen(&self, entity: Entity, uid: u32) -> bool {
+        match entity {
+            Entity::Player => self.frozen.attributes.contains_key(&uid),
+            Entity::Staff => self.frozen.staff_attributes.contains_key(&uid),
+            Entity::Club => self.frozen.money.contains_key(&uid),
+            Entity::Nation | Entity::Official => false,
+        }
+    }
+
+    /// Ends the freeze of the attributes of the player or member of staff `uid`, or of the money of the club `uid`.
+    fn unfreeze(&mut self, entity: Entity, uid: u32) {
+        match entity {
+            Entity::Player => drop(self.frozen.attributes.remove(&uid)),
+            Entity::Staff => drop(self.frozen.staff_attributes.remove(&uid)),
+            Entity::Club => drop(self.frozen.money.remove(&uid)),
+            Entity::Nation | Entity::Official => {}
+        }
+    }
+
+    /// Freezes the attributes of the player or member of staff `uid`, or the money of the club `uid`, at what they are
+    /// now.
+    fn freeze(&mut self, entity: Entity, uid: u32) -> Result<(), Failure> {
+        match entity {
+            Entity::Player => self.freeze_player(uid),
+            Entity::Staff => self.freeze_staff(uid),
+            Entity::Club => self.freeze_club(uid),
+            Entity::Nation | Entity::Official => Ok(()),
+        }
+    }
+
+    /// Freezes `uids` together, or unfreezes them, and has the file at `path` remember it for this save. Those that
+    /// are that way already are left as they are, and one that cannot be frozen does not stop the rest.
+    fn freeze_all(&mut self, path: Option<&Path>, entity: Entity, uids: &[u32], frozen: bool) -> Froze {
+        let mut froze = Froze { done: Vec::new(), failed: 0, error: None };
+        for &uid in uids {
+            if self.is_frozen(entity, uid) == frozen {
+                continue;
+            }
+            if !frozen {
+                self.unfreeze(entity, uid);
+            } else if let Err(err) = self.freeze(entity, uid) {
+                froze.failed += 1;
+                froze.error.get_or_insert(err);
+                continue;
+            }
+            froze.done.push(uid);
+        }
+        self.remember(path, |save| {
+            let kept = match entity {
+                Entity::Player => &mut save.players,
+                Entity::Staff => &mut save.staff,
+                Entity::Club => &mut save.clubs,
+                Entity::Nation | Entity::Official => return,
+            };
+            if frozen {
+                kept.extend(&froze.done);
+            } else {
+                for uid in &froze.done {
+                    kept.remove(uid);
+                }
+            }
+        });
+        froze
     }
 
     /// Freezes the attributes of the player `uid` at what they are now (see `hold_attributes`). Refused while the
@@ -543,7 +631,7 @@ impl Connection {
     fn write_planned(&mut self, entity: Entity, planned: Vec<Planned>, batch: u32) -> MassReport {
         let fields: BTreeMap<String, Field> =
             self.session.fields(entity).into_iter().map(|field| (field.key.clone(), field)).collect();
-        let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+        let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
         let sets_morale: Vec<u32> =
             planned.iter().filter(|planned| planned.field == "morale").map(|planned| planned.uid).collect();
         for planned in planned {
@@ -2387,6 +2475,27 @@ struct MassPreview {
     /// How many values are left alone, and the first of them with the reason.
     skipped_count: usize,
     skipped: Vec<Skipped>,
+    /// How many it would freeze or unfreeze, when its freeze box was changed.
+    freeze: Option<FreezeCount>,
+}
+
+/// How many a mass edit freezes (`frozen`) or unfreezes.
+#[derive(Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FreezeCount {
+    frozen: bool,
+    count: usize,
+}
+
+/// What a mass edit froze (`frozen`) or unfroze.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FreezeReport {
+    frozen: bool,
+    count: usize,
+    /// How many could not be frozen, and why the first of them was refused.
+    failed: usize,
+    error: Option<Failure>,
 }
 
 #[derive(Serialize)]
@@ -2396,6 +2505,8 @@ struct MassReport {
     batch: u32,
     applied: usize,
     failed: Vec<MassFailure>,
+    /// What it froze or unfroze, when its freeze box was changed.
+    freeze: Option<FreezeReport>,
 }
 
 #[derive(Serialize)]
@@ -2413,6 +2524,8 @@ struct BatchUndo {
     undone: usize,
     /// Changes the game has changed since, which were left as they are.
     failed: Vec<BatchUndoFailure>,
+    /// What was frozen again (`frozen`) or unfrozen, when the mass edit had unfrozen or frozen it.
+    freeze: Option<FreezeCount>,
 }
 
 #[derive(Serialize)]
@@ -3537,6 +3650,31 @@ fn frozen_staff(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
         .unwrap_or_default())
 }
 
+/// How much of what a list selects is frozen: its players' or staff's attributes, or its clubs' money.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SelectionFreeze {
+    /// How many the search and the filter select.
+    selected: usize,
+    /// How many of them are frozen now.
+    frozen: usize,
+}
+
+/// How much of what `query` and the entity's filter select is frozen: what the freeze box of a mass edit starts from.
+#[tauri::command]
+fn frozen_selection(
+    state: State<'_, AppState>,
+    entity: Entity,
+    query: String,
+    filters: Filters,
+) -> Result<SelectionFreeze, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let targets = connection.select(entity, &query, filters);
+    let frozen = targets.iter().filter(|(target, _)| connection.is_frozen(entity, target.uid)).count();
+    Ok(SelectionFreeze { selected: targets.len(), frozen })
+}
+
 /// The fields of players or of staff that the editor can change.
 #[tauri::command]
 fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>, Failure> {
@@ -4491,7 +4629,7 @@ fn act_on_team(
 ) -> Result<MassReport, Failure> {
     let values: &[(&str, i64)] = match action {
         TeamAction::Heal => {
-            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
             for member in members.iter().filter(|member| member.injuries > 0) {
                 let Some(player) = connection.players.get(member.uid) else {
                     continue;
@@ -4514,7 +4652,7 @@ fn act_on_team(
             return Ok(report);
         }
         TeamAction::LiftBans => {
-            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
             for member in members.iter().filter(|member| member.bans > 0) {
                 let Some(player) = connection.players.get(member.uid) else {
                     continue;
@@ -4540,7 +4678,7 @@ fn act_on_team(
             return Ok(report);
         }
         TeamAction::MaxCohesion => {
-            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
             for member in members {
                 let Some(player) = connection.players.get(member.uid) else {
                     continue;
@@ -4572,10 +4710,10 @@ fn act_on_team(
             for done in raised {
                 connection.log_tactics(done, Some(batch));
             }
-            return Ok(MassReport { batch, applied, failed: Vec::new() });
+            return Ok(MassReport { batch, applied, failed: Vec::new(), freeze: None });
         }
         TeamAction::RemoveUnhappiness => {
-            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
             for member in members.iter().filter(|member| member.unhappy) {
                 let Some(player) = connection.players.get(member.uid) else {
                     continue;
@@ -4647,8 +4785,16 @@ fn set_attributes(state: State<'_, AppState>, uid: u32, level: i64) -> Result<Ma
     Ok(report)
 }
 
+/// The refusal of a mass edit of `count`, more than one takes.
+fn too_many(count: usize) -> Failure {
+    let message = format!("{count} match. Narrow the search or the filters to {MASS_LIMIT} or fewer for a mass edit.");
+    Failure::new("mass.tooMany", message).with("count", count).with("limit", MASS_LIMIT)
+}
+
 /// Works out a mass edit: `operations` applied to every player, member of staff or club
-/// that `query` and the entity's filter select, from the values the game holds now.
+/// that `query` and the entity's filter select, from the values the game holds now, and
+/// with `freeze` their attributes or money frozen (true) or unfrozen, as `freeze_attributes`,
+/// `freeze_staff_attributes` and `freeze_money` do for one. A freeze needs no operations.
 /// Nothing is written; the plan waits for `apply_mass_edit` with the preview's id.
 #[tauri::command]
 fn plan_mass_edit(
@@ -4657,36 +4803,44 @@ fn plan_mass_edit(
     query: String,
     filters: Filters,
     operations: Vec<MassOperation>,
+    freeze: Option<bool>,
 ) -> Result<MassPreview, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    if operations.is_empty() {
+    if operations.is_empty() && freeze.is_none() {
         return Err(Failure::new("mass.noOperations", "Choose at least one field to change."));
     }
     let targets = connection.select(entity, &query, filters);
     if targets.len() > MASS_LIMIT {
-        let message = format!(
-            "{} match. Narrow the search or the filters to {MASS_LIMIT} or fewer for a mass edit.",
-            targets.len()
-        );
-        return Err(Failure::new("mass.tooMany", message).with("count", targets.len()).with("limit", MASS_LIMIT));
+        return Err(too_many(targets.len()));
     }
     let operations = operations
         .into_iter()
         .map(|op| Ok((connection.session.field(entity, &op.field)?, op.operation)))
         .collect::<Result<Vec<_>, EditError>>()?;
-    let plan = connection.session.plan_mass_edit(&targets, &operations)?;
+    // Without operations nobody "already has these values": the plan is the freeze alone.
+    let (planned, unchanged, skipped) = if operations.is_empty() {
+        (Vec::new(), 0, Vec::new())
+    } else {
+        let plan = connection.session.plan_mass_edit(&targets, &operations)?;
+        (plan.planned, plan.unchanged, plan.skipped)
+    };
+    let freeze = freeze.map(|frozen| {
+        let uids = targets.iter().map(|(target, _)| target.uid);
+        BatchFreeze { entity, frozen, uids: uids.filter(|&uid| connection.is_frozen(entity, uid) != frozen).collect() }
+    });
     let id = connection.fresh_id();
     let preview = MassPreview {
         id,
         targets: targets.len(),
-        unchanged: plan.unchanged,
-        changes: plan.planned.len(),
-        rows: plan.planned.iter().take(PREVIEW_ROWS).cloned().collect(),
-        skipped_count: plan.skipped.len(),
-        skipped: plan.skipped.into_iter().take(PREVIEW_ROWS).collect(),
+        unchanged,
+        changes: planned.len(),
+        rows: planned.iter().take(PREVIEW_ROWS).cloned().collect(),
+        skipped_count: skipped.len(),
+        skipped: skipped.into_iter().take(PREVIEW_ROWS).collect(),
+        freeze: freeze.as_ref().map(|freeze| FreezeCount { frozen: freeze.frozen, count: freeze.uids.len() }),
     };
-    connection.mass = Some(PendingMass { id, entity, planned: plan.planned });
+    connection.mass = Some(PendingMass { id, entity, planned, freeze });
     Ok(preview)
 }
 
@@ -4759,15 +4913,18 @@ fn plan_player_template(
         rows: plan.planned.iter().take(PREVIEW_ROWS).cloned().collect(),
         skipped_count: plan.skipped.len(),
         skipped: plan.skipped.into_iter().take(PREVIEW_ROWS).collect(),
+        freeze: None,
     };
-    connection.mass = Some(PendingMass { id, entity: Entity::Player, planned: plan.planned });
+    connection.mass = Some(PendingMass { id, entity: Entity::Player, planned: plan.planned, freeze: None });
     Ok(preview)
 }
 
 /// Writes the mass edit previewed as `id`, exactly as it was shown: each change only while
 /// the game still holds the value it was planned from. The changes are logged as one batch.
+/// Its freeze comes after them, so that what is frozen is held at the values just written; one
+/// that cannot be frozen does not stop the rest. The app remembers what is frozen for this save.
 #[tauri::command]
-fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, Failure> {
+fn apply_mass_edit(state: State<'_, AppState>, file: State<'_, FrozenFile>, id: u32) -> Result<MassReport, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let pending = match connection.mass.take() {
@@ -4778,13 +4935,27 @@ fn apply_mass_edit(state: State<'_, AppState>, id: u32) -> Result<MassReport, Fa
         }
     };
     let batch = connection.fresh_id();
-    Ok(connection.write_planned(pending.entity, pending.planned, batch))
+    let mut report = connection.write_planned(pending.entity, pending.planned, batch);
+    if let Some(wanted) = pending.freeze {
+        let froze = connection.freeze_all(file.0.as_deref(), wanted.entity, &wanted.uids, wanted.frozen);
+        report.freeze = Some(FreezeReport {
+            frozen: wanted.frozen,
+            count: froze.done.len(),
+            failed: froze.failed,
+            error: froze.error,
+        });
+        if !froze.done.is_empty() {
+            connection.frozen.batches.insert(batch, BatchFreeze { uids: froze.done, ..wanted });
+        }
+    }
+    Ok(report)
 }
 
 /// Undoes every change of the mass edit `batch` that is not undone yet, newest first.
-/// Changes the game has changed since are left as they are and reported.
+/// Changes the game has changed since are left as they are and reported. What the mass
+/// edit froze is unfrozen, and what it unfroze is frozen again at what it is now.
 #[tauri::command]
-fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, Failure> {
+fn undo_batch(state: State<'_, AppState>, file: State<'_, FrozenFile>, batch: u32) -> Result<BatchUndo, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let ids: Vec<usize> = connection
@@ -4794,12 +4965,16 @@ fn undo_batch(state: State<'_, AppState>, batch: u32) -> Result<BatchUndo, Failu
         .filter(|logged| logged.batch == Some(batch) && logged.undone_at.is_none() && !logged.earlier_game)
         .map(|logged| logged.id)
         .collect();
-    let mut report = BatchUndo { undone: 0, failed: Vec::new() };
+    let mut report = BatchUndo { undone: 0, failed: Vec::new(), freeze: None };
     for id in ids {
         match connection.undo(id) {
             Ok(_) => report.undone += 1,
             Err(error) => report.failed.push(BatchUndoFailure { id, error }),
         }
+    }
+    if let Some(made) = connection.frozen.batches.remove(&batch) {
+        let back = connection.freeze_all(file.0.as_deref(), made.entity, &made.uids, !made.frozen);
+        report.freeze = Some(FreezeCount { frozen: !made.frozen, count: back.done.len() });
     }
     Ok(report)
 }
@@ -4932,6 +5107,7 @@ pub fn run() {
             frozen_players,
             freeze_staff_attributes,
             frozen_staff,
+            frozen_selection,
             edit_fields,
             read_values,
             apply_edits,
