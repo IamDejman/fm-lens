@@ -21,10 +21,15 @@ Windows 10 or 11 themselves.
 | #150 | Release 0.6.2: the site and README offer the Windows download |
 | #153 | The FM Lens icon and wordmark in the installer |
 
-Checked in the running game on Windows, each undone, the save never written: every read above, every game action
-above, and the app's direct edits (attributes and CA/PA, contract, mass edit, clone and templates, freeze money,
-Heal, Refresh fitness, Max morale, Max cohesion, your manager's unsackable flag and wage). Not checked on Windows:
-Remove unhappiness, Lift bans (nobody to use them on in the test save), and a save, quit and reload of an edited copy.
+Checked in the running game on Windows on 7 November, each undone, the save never written: every read above, every
+game action above, and the app's direct edits (attributes and CA/PA, contract, mass edit, clone and templates, freeze
+money, Heal, Refresh fitness, Max morale, Max cohesion, your manager's unsackable flag and wage).
+
+Since then (`docs/EDITING-VALIDATION.md`, "Windows: every feature on main" and "FM27 27.0.1"): Remove unhappiness with
+its undo, and a save, quit and reload of an edited copy, twice. On 8 November a player's attributes and a contract
+wage held. On 10 November, on 27.0.1 (build 26385295), a player attribute, a contract wage, a staff attribute, a club
+balance, Max tactics and a free-agent signing held. Not checked on Windows: Lift bans (nobody to use it on in the test
+saves) and a save and reload of the other edits.
 
 ## 2. The Windows test box
 
