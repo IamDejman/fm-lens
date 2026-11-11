@@ -1,8 +1,10 @@
 # FM Lens feature status and roadmap
 
 Baseline: 4 November 2026; support summaries reconciled 8 November 2026 against
-dated evidence through Windows installer checks (#153). This records the
-requested FM Live Editor-style scope.
+dated evidence through Windows installer checks (#153). On 11 November 2026 the
+platform evidence, the club money row and the editions row were brought up to
+the 8 to 10 November entries in EDITING-VALIDATION.md; the other rows were not
+rechecked. This records the requested FM Live Editor-style scope.
 It is not a claim that all features are implemented or achievable without
 further data-layout and game-behavior research.
 
@@ -23,12 +25,15 @@ further data-layout and game-behavior research.
 Windows ships from 0.6.2. The Windows reads, game actions and bounded app
 edit/undo checks are recorded in EDITING-VALIDATION.md and
 [the Windows handoff](internal/WINDOWS-PARITY-HANDOFF.md). Those checks used
-Windows Server 2022 and did not save the edited career. Windows 10/11 execution
-and edited-save quit/reload remain unverified. Unless a row names another
-platform, its in-game persistence evidence is from macOS ARM64; mapped Windows
-fields do not inherit that evidence.
+Windows Server 2022. Two of them saved an edited copy, quit FM and loaded it
+again: on 8 November (build 26340721) a player's attributes and a contract wage
+held, and on 10 November (27.0.1, build 26385295) a player attribute, a contract
+wage, a staff attribute, a club balance, Max tactics and a free-agent signing
+held. Other Windows edits have no save and reload, and Windows 10/11 execution
+remains unverified. Unless a row names another platform, its in-game persistence
+evidence is from macOS ARM64; mapped Windows fields do not inherit that evidence.
 
-Intel action parity on `feat/intel-parity`: mapped, not yet tested live under Rosetta. All 24 ARM64 call keys, the injury and database statics, the editor tables and the STARTING_LOAN defaults now have Intel values, and the Intel bridge passes an indirect result place the System V way. An Intel helper rebuilt from this branch is required. The new actions switch on through profile and helper capability discovery, with no new Intel live or persistence evidence. See [the mapping and Rosetta handoff](recon/fm27-steam-26340721-macos-x86_64.md#intel-action-parity-mapping-8-november-2026).
+Intel action parity (#164): all 24 ARM64 call keys, the injury and database statics, the editor tables and the STARTING_LOAN defaults have Intel values, and the Intel bridge passes an indirect result place the System V way. The actions switch on through profile and helper capability discovery. Run under Rosetta in the packaged app on 9 and 10 November: Add injury and Heal, work permit Revoke and Request, Loan and End loan, Transfer, Release, Sign, Sign later and Cancel transfer, Max tactics, Max attributes and Lift bans, with their undos where they have one (the 9 November entries and the FM27 27.0.1 entry in EDITING-VALIDATION.md). No Rosetta run saved an edited career, so Intel has no edited-save persistence of its own; on 10 November it loaded the copy edited and saved on Apple Silicon and read those edits back. See [the mapping and Rosetta handoff](recon/fm27-steam-26340721-macos-x86_64.md#intel-action-parity-mapping-8-november-2026).
 
 ## Feature matrix
 
@@ -48,7 +53,7 @@ Intel action parity on `feat/intel-parity`: mapped, not yet tested live under Ro
 | Player attribute freeze | Enabled. Held over a 31-day holiday (8 November): two frozen players lost nothing while 59 of 127 unfrozen players aged 35+ lost points. A club money freeze held the balance over the same holiday and a Reload, but not the transfer budget (see EDITING-VALIDATION.md) |
 | Staff fields and roles | Partial. Checked in FM: contract wage and a Tactical change survived save, quit and reload. Unverified: other attributes, CA/PA, personality, reputation and contract expiry. A job change and a club move held through two loads and a 23-day holiday (8 November); a full staff list is refused. The coaching licence is editable (#17), its levels named as FM's Coaching tab names them (#35); an edit not yet checked in FM. His preferred formations in and out of possession, the two FM's profile shows, are shown and editable, mapped on macOS and Windows, offered as ids the game uses for each; Seven IDs now use names checked in FM; the others retain explicit Formation N labels (FM's 4, 7 and 29 are 4-3-3 DM Wide, 4-4-2 Diamond Narrow and 4-2-3-1 DM AM Wide). Both checked in FM: on 0.5.8 an edit and its undo show on FM's profile at once (a day later before). Likes and dislikes (staff +0x140, the player relation format) and languages are shown, with the same edits as for players, Replace included, mapped on macOS and Windows; language edits unverified |
 | Staff freeze, coaching licences, knowledge, tendencies, preferred formations, relations | Attribute freeze implemented; toggle exercised. Remembered with the save's other freezes: held over a 31-day holiday and back on after FM restarted (8 November). Coaching licence editable (see above). Preferred formations editable (see above). Knowledge, tendencies and relations remain research |
-| Club budgets, facilities and stadium capacity editing | Enabled. Checked in FM: transfer budget and youth recruitment survived save, quit and reload. Unverified: other balances, budgets, facilities and capacities |
+| Club budgets, facilities and stadium capacity editing | Enabled. Checked in FM: transfer budget and youth recruitment survived save, quit and reload. A balance edit survived save, quit and reload on 27.0.1 (10 November): Arsenal's £200,000,000 saved on Apple Silicon and read back under Rosetta, and £340,000,000 on Windows; read back from memory, not compared with FM's Finances screen. The wage budgets as read match FM's Finances screen, but an edit to them is unverified, as are the other facilities and the stadium capacities |
 | Club income, kits, relations, affiliations, ownership, benefactor, staff allowances, vision, supporters, tactical values | Partial / research: supporter values; rivals (club +0x48, strongest first) and affiliated clubs (club +0x118) shown read-only, mapped on macOS and Windows, probe-checked on Arsenal and Man City. Kits, ownership, vision and allowances not found (recon/fm27-club-extras.md) |
 | Youth-intake preview and editing | Missing / research: pre-intake visibility, CA/PA, height, feet and record lifecycle |
 | Player promises | Partial, macOS and Windows layouts. The profile lists the promises made to a player that FM's Promises page lists, by the names FM's screens give them (playing time, ID 1; preferred position and role, ID 208), or Unknown promise for IDs not yet mapped, never a number, with when each was made and is due or ended. An open one can be closed: it ends today without being held against him, FM shows it succeeded at once on 0.5.8 (the next day before), and drops it 31 days later; undone from Changes. Checked against FM on 6 November, and on Windows on 8 November (see EDITING-VALIDATION.md). Making, editing and naming promises remain research |
@@ -127,7 +132,7 @@ See the latest entry in EDITING-VALIDATION.md.
 | --- | --- |
 | Launch in 1 second | Not benchmarked |
 | Load 550,000 players in under 3 seconds | Not benchmarked; current live evidence covers a 30,314-player career |
-| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits. Its Windows build was checked on 7 November on a test career: reads, the game's own actions through the Windows bridge, and the app's direct edits (attributes, contract, mass edit, clone and templates, freeze money, squad actions, your manager), each undone. FM Lens 0.6.2 is the first Windows download: on 7 November its installer, one copy at a time and a self-update from 0.6.1 to 0.6.2 were checked on Windows Server 2022. Not yet on Windows: Game Pass, a save-and-reload test, and Windows 10 and 11 themselves; see docs/internal/WINDOWS-PARITY-HANDOFF.md |
+| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits. Its Windows build was checked on 7 November on a test career: reads, the game's own actions through the Windows bridge, and the app's direct edits (attributes, contract, mass edit, clone and templates, freeze money, squad actions, your manager), each undone. FM Lens 0.6.2 is the first Windows download: on 7 November its installer, one copy at a time and a self-update from 0.6.1 to 0.6.2 were checked on Windows Server 2022. FM27 27.0.1 (Steam build 26385295) has its own three profiles, checked on 10 November on Apple Silicon, under Rosetta and on Windows, with an edited copy saved and loaded again on Apple Silicon and Windows (see Platform evidence). Not yet on Windows: Game Pass, which has no 27.0.1 profile and is read-only there, and Windows 10 and 11 themselves; see docs/internal/WINDOWS-PARITY-HANDOFF.md |
 | Updates within hours of patches | Maintenance aspiration, not a guarantee |
 | Offline companion | Verified with network denied against an already-running game; fresh Steam Offline Mode startup untested |
 | Updating FM Lens while FM stays open | Implemented: use the running helper's capabilities, retain the earlier call protocol, and skip only explicitly unsupported optional refresh calls. Native Mach IPC regression tests pass; a live copied-career update remains unverified. New helper functions become available after the next normal FM launch |
