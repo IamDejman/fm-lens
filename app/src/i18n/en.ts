@@ -1629,8 +1629,7 @@ export const en = {
     changes: {
       "0.7.5": [
         "Club profiles have a Staff tab: everyone on the staff, by job, with CA and PA.",
-        "Ask for a feature from the Wishlist at the foot of the window, without leaving the app.",
-        "No email to confirm your address: FM Lens keeps its own email list now.",
+        "Ask for a feature from the Wishlist at the foot of the window.",
       ],
       "0.7.4": [
         "Share a card of any player from the profile: a Post or a Story, to copy or save.",
