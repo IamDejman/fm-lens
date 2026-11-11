@@ -145,7 +145,7 @@ validated fields and the guarded memory layer for domain operations.
 
 - Mapped player/staff/club fields are enabled on known builds. Windows has
   bounded app edit/undo checks on Server 2022, not edited-save persistence. The field
-  catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
+  catalog lists 169 player, 42 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
@@ -155,9 +155,11 @@ validated fields and the guarded memory layer for domain operations.
   addresses or allow imported identity, nationality, contract or club fields.
   Resolve against the destination layout; preview and use conditional batch
   apply/undo. The library lives locally, not in the repository.
-- Staff attribute freeze lasts for the connection. Its toggle has been exercised;
-  long-term simulation behavior remains unverified. Do not describe it as a
-  persistent cross-restart setting.
+- Staff attribute freeze is remembered for the save with the other freezes and
+  turned back on when FM Lens reconnects to it. It holds only while FM Lens is
+  connected. It stayed on through a 31-day holiday and an FM restart (8
+  November); no check has shown it stopping a real staff decline. Do not
+  describe it as stored in the save or as holding without FM Lens.
 - The nation browser lists nations represented by loaded players/staff, not a
   complete database scan. Guarded nation editing exists for mapped fields. On
   ARM64, England's population, men's reputation and nationality rules passed
