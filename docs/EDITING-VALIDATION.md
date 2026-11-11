@@ -2821,3 +2821,29 @@ changes), happiness 90 for Rice (morale 11 to 18 came with it), Max tactics
 
 Not yet run: Max morale past the first Continue, the packaged app under
 Rosetta, and Windows past the first day.
+
+## Freeze all in Mass edit (11 November 2026)
+
+Mass edit's freeze box, applied with the edit (#235). Packaged builds: the
+universal Mac app with native arm64 FM on a copy of the career (17 December
+2027), and a Windows release build with FM 27.0.1 on the test career
+(11 December 2027). The list was a search for "Saka": 18 players.
+
+| Step | Apple Silicon | Windows |
+|---|---|---|
+| Tick the box, no field filled in | "18 to freeze", Apply on with no preview | The same |
+| Apply | "18 frozen"; `frozen.json` held the 18 under the save; Bukayo Saka's profile box was ticked | "18 frozen"; `frozen.json` held the 18 |
+| Undo this mass edit | Not run here | "18 unfrozen"; the list in `frozen.json` was empty |
+| Open again, untick, Apply | The box opened ticked; "18 to unfreeze", then "18 unfrozen"; the list was empty | Not run |
+| Undo of that unfreeze | "18 frozen"; `frozen.json` held the 18 again | Not run |
+| Tick the box and set Current ability to 150, Preview | "18 changes for 18 of 18 players · 18 to freeze"; Apply stays off until the preview | The same |
+| Apply | "18 changes applied", "18 frozen"; the list read 150 and Changes counted 18 | The same |
+| Undo this mass edit | "Undid 18 changes", "18 unfrozen"; Saka read 186 again; `frozen.json` was empty | The same; the list read its old values |
+
+After Apply or Undo the dialog shows what was done and takes no further edit
+until it is opened again, as it did before the freeze box. Nothing was left
+frozen and no edit was left standing; neither career was saved.
+
+Not run: the packaged app under Rosetta; staff and clubs in the packaged app
+(both were run in the browser preview); a Continue with a mass freeze on. The
+hold itself is the profiles' freeze, followed over a holiday on 8 November.
