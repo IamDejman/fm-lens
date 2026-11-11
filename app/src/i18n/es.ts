@@ -1528,6 +1528,9 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.6": [
+        "La pestaña Personal muestra el personal de cada equipo: primer equipo, sub-21, sub-18.",
+      ],
       "0.7.5": [
         "Los perfiles de club tienen una pestaña Personal: todo el personal, por puesto, con HA y HP.",
         "Pide una función desde la Lista de deseos, al pie de la ventana.",
