@@ -14,10 +14,15 @@
 // Without UPLOAD_BUCKET, reports without files work as before.
 //
 // The app's email screen and the site's download page post here too (POST /subscribe): the relay checks the address and
-// adds it to FM Lens's form in Kit with its own API key (KIT_API_KEY; KIT_FORM, 10172074 by default), so neither meets
-// Kit's form or its check that the visitor is a person. Kit keeps the list and sends the emails; the relay keeps no address.
+// keeps it in the DynamoDB table SUBSCRIBERS_TABLE (fm-lens-subscribers by default), with a token for its unsubscribe
+// link. POST /unsubscribe with an address and its token takes it off the list: the link in every email
+// (getfmlens.com/unsubscribe) and email apps' own unsubscribe button (List-Unsubscribe) both post here.
+// scripts/send-email.mjs sends the emails, from getfmlens.com with Amazon SES.
+//
+// Every 15 minutes an EventBridge schedule runs the function with `{ "job": "report-counts" }` (relay/setup-email.sh),
+// which sends PostHog the download counts of FM Lens's releases and how many addresses are on the list.
 
-import { createHash, createHmac, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 
 /** The longest each part of a report may be, in characters, and the request as a whole, in bytes. */
 export const LIMITS = { what: 5000, line: 200, checks: 2000, changes: 8000, request: 20_000 };
@@ -345,40 +350,183 @@ function answer(statusCode, body) {
 }
 
 /**
- * Adds `email` to the form `kit.form` in Kit with the API key `kit.key` as an active subscriber, with no email to
- * confirm first. Gives "ok", "invalid" when Kit turns the address down, or throws when Kit can't be reached or answers
- * anything else.
+ * The list of addresses in the DynamoDB table `table`, one row for each `email`: its `status` ("active", "unsubscribed",
+ * or "bounced" or "complained" once SES won't send to it), its `token`, a random secret its unsubscribe link carries,
+ * and when it was `subscribed` and `unsubscribed`. `update` sends one UpdateItem request and `scan` one Scan request.
  */
-async function addToKit(kit, email, fetch) {
-  const send = (path, body) =>
-    fetch(`https://api.kit.com/v4/${path}`, {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Kit-Api-Key": kit.key },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
-    });
-  for (const [path, body] of [
-    ["subscribers", { email_address: email, state: "active" }],
-    [`forms/${kit.form}/subscribers`, { email_address: email }],
-  ]) {
-    const response = await send(path, body);
-    if (response.status === 422) {
-      return "invalid";
-    }
-    if (!response.ok) {
-      throw new Error(`Kit answered ${response.status} at ${path.split("/")[0]}`);
-    }
-  }
-  return "ok";
+export function createSubscribers({
+  table,
+  update,
+  scan,
+  now = () => new Date(),
+  newToken = () => randomBytes(16).toString("hex"),
+}) {
+  const names = { "#status": "status", "#token": "token" };
+  return {
+    /** Puts `email` on the list, or back on it with the token it had. */
+    async add(email) {
+      await update({
+        TableName: table,
+        Key: { email: { S: email } },
+        UpdateExpression:
+          "SET #status = :active, #token = if_not_exists(#token, :token), subscribed = if_not_exists(subscribed, :now) REMOVE unsubscribed",
+        ExpressionAttributeNames: names,
+        ExpressionAttributeValues: {
+          ":active": { S: "active" },
+          ":token": { S: newToken() },
+          ":now": { S: now().toISOString() },
+        },
+      });
+    },
+    /** Takes `email` off the list when `token` is its token. Gives whether it was. */
+    async remove(email, token) {
+      try {
+        await update({
+          TableName: table,
+          Key: { email: { S: email } },
+          UpdateExpression: "SET #status = :unsubscribed, unsubscribed = :now",
+          ConditionExpression: "#token = :token",
+          ExpressionAttributeNames: names,
+          ExpressionAttributeValues: {
+            ":unsubscribed": { S: "unsubscribed" },
+            ":token": { S: token },
+            ":now": { S: now().toISOString() },
+          },
+        });
+        return true;
+      } catch (err) {
+        if (err instanceof Error && err.name === "ConditionalCheckFailedException") {
+          return false;
+        }
+        throw err;
+      }
+    },
+    /** How many addresses are on the list. */
+    async count() {
+      let count = 0;
+      let start;
+      do {
+        const page = await scan({
+          TableName: table,
+          Select: "COUNT",
+          FilterExpression: "#status = :active",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: { ":active": { S: "active" } },
+          ...(start ? { ExclusiveStartKey: start } : {}),
+        });
+        count += page.Count;
+        start = page.LastEvaluatedKey;
+      } while (start);
+      return count;
+    },
+  };
+}
+
+/** An unsubscribe link's token: what `createSubscribers` makes. */
+const TOKEN = /^[0-9a-f]{32}$/;
+
+/** Where FM Lens's releases are, and so their download counts. */
+const RELEASES = "IamDejman/fm-lens-releases";
+
+/** PostHog's address for one event, and the project's public key, the one the app and the site send with. */
+const CAPTURE_URL = "https://us.i.posthog.com/i/v0/e/";
+const POSTHOG_KEY = "phc_xoND6FWuBkhD46EWt7tr89NnoUQ5yQoHm2QDMrVCjU2q";
+
+/**
+ * The download counts over all of `releases` (newest first, as GitHub lists them), as the "FM Lens growth" dashboard
+ * reads them:
+ * - mac_downloads: the disk images and zips people download;
+ * - windows_downloads: the Windows installers, which installed copies on Windows also download to update;
+ * - mac_updates: the .app.tar.gz files installed copies on macOS update from;
+ * - update_checks: latest.json, which every copy reads when it opens, to look for an update.
+ */
+export function downloadCounts(releases) {
+  const total = (pattern) =>
+    releases
+      .flatMap((release) => release.assets ?? [])
+      .filter((asset) => pattern.test(asset.name))
+      .reduce((sum, asset) => sum + asset.download_count, 0);
+  return {
+    mac_downloads: total(/\.(dmg|zip)$/),
+    windows_downloads: total(/-setup\.exe$/),
+    mac_updates: total(/\.app\.tar\.gz$/),
+    update_checks: total(/^latest\.json$/),
+    latest_version: releases[0]?.tag_name ?? null,
+  };
 }
 
 /**
- * The relay's handler for function URL requests. `token` and `repo` name where issues go, `kit` (`{ key, form }`) where
- * addresses go, and `limiter` counts requests; `fetch` is swapped in by the tests. Requests are counted by the address
- * AWS saw them come from, which a sender can't set, an IPv6 one by its network (`senderOf`).
+ * Sends PostHog the download counts (`release_downloads`) and how many addresses are on the list (`email_subscribers`),
+ * each as soon as it is known, so one failing doesn't hold back the other. Throws if either fails, after both are tried.
  */
-export function createRelay({ token, repo, limiter, uploads, kit, fetch = globalThis.fetch }) {
+async function reportCounts({ token, subscribers, fetch }) {
+  const capture = async (event, distinctId, properties) => {
+    const response = await fetch(CAPTURE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: POSTHOG_KEY,
+        event,
+        distinct_id: distinctId,
+        timestamp: new Date().toISOString(),
+        properties: { ...properties, $process_person_profile: false, $geoip_disable: true },
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      throw new Error(`PostHog answered ${response.status} to ${event}`);
+    }
+    return properties;
+  };
+  const downloads = async () => {
+    const releases = [];
+    for (let page = 1; ; page++) {
+      const response = await fetch(`https://api.github.com/repos/${RELEASES}/releases?per_page=100&page=${page}`, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "User-Agent": "fm-lens-report-relay",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) {
+        throw new Error(`GitHub answered ${response.status} for the releases`);
+      }
+      const batch = await response.json();
+      releases.push(...batch);
+      if (batch.length < 100) {
+        return capture("release_downloads", "github-releases", downloadCounts(releases));
+      }
+    }
+  };
+  const list = async () => capture("email_subscribers", "fm-lens-list", { subscribers: await subscribers.count() });
+  const [sent, failed] = [[], []];
+  for (const result of await Promise.allSettled([downloads(), list()])) {
+    if (result.status === "fulfilled") {
+      sent.push(result.value);
+    } else {
+      failed.push(result.reason instanceof Error ? result.reason.message : String(result.reason));
+    }
+  }
+  if (failed.length > 0) {
+    throw new Error(`The counts were not all sent: ${failed.join("; ")}`);
+  }
+  return Object.assign({}, ...sent);
+}
+
+/**
+ * The relay's handler for function URL requests, and for the schedule's `{ "job": "report-counts" }`. `token` and `repo`
+ * name where issues go, `subscribers` (`createSubscribers`) is the list, and `limiter` counts requests; `fetch` is
+ * swapped in by the tests. Requests are counted by the address AWS saw them come from, which a sender can't set, an IPv6
+ * one by its network (`senderOf`).
+ */
+export function createRelay({ token, repo, limiter, uploads, subscribers, fetch = globalThis.fetch }) {
   return async (event) => {
+    // Only the schedule sends `job`: a function URL request's event is made by AWS, with the request's body as a string.
+    if (event.job === "report-counts") {
+      return reportCounts({ token, subscribers, fetch });
+    }
     const method = event.requestContext?.http?.method ?? "";
     const path = event.rawPath ?? "/";
     if (method === "OPTIONS") {
@@ -387,12 +535,33 @@ export function createRelay({ token, repo, limiter, uploads, kit, fetch = global
     if (method === "GET" && path === "/health") {
       return answer(200, { ok: true });
     }
-    if (method !== "POST" || !["/report", "/uploads", "/subscribe"].includes(path)) {
+    if (method !== "POST" || !["/report", "/uploads", "/subscribe", "/unsubscribe"].includes(path)) {
       return answer(404, { error: "notFound" });
     }
-    const ready = path === "/subscribe" ? Boolean(kit?.key) : Boolean(token) && (path !== "/uploads" || Boolean(uploads));
+    const list = path === "/subscribe" || path === "/unsubscribe";
+    const ready = list ? Boolean(subscribers) : Boolean(token) && (path !== "/uploads" || Boolean(uploads));
     if (!ready) {
       return answer(503, { error: "unavailable" });
+    }
+
+    // The address and its token come in the link, so the site's unsubscribe page and email apps' unsubscribe button,
+    // which posts `List-Unsubscribe=One-Click`, send the same request. Without the token nobody can take an address off.
+    if (path === "/unsubscribe") {
+      const query = new URLSearchParams(event.rawQueryString ?? "");
+      const { email, error } = readEmail({ email: query.get("email") });
+      const secret = query.get("token") ?? "";
+      if (error || !TOKEN.test(secret)) {
+        return answer(400, { error: "invalid" });
+      }
+      try {
+        return (await subscribers.remove(email.toLowerCase(), secret))
+          ? answer(200, { unsubscribed: true })
+          : answer(400, { error: "invalid" });
+      } catch (err) {
+        // Never the address: the log keeps none.
+        console.error(`An address could not be taken off the list: ${err instanceof Error ? err.message : String(err)}`);
+        return answer(502, { error: "notUnsubscribed" });
+      }
     }
     const raw = event.isBase64Encoded ? Buffer.from(event.body ?? "", "base64").toString("utf8") : (event.body ?? "");
     if (Buffer.byteLength(raw, "utf8") > LIMITS.request) {
@@ -424,12 +593,11 @@ export function createRelay({ token, repo, limiter, uploads, kit, fetch = global
         return refused;
       }
       try {
-        return (await addToKit(kit, email, fetch)) === "ok"
-          ? answer(200, { subscribed: true })
-          : answer(400, { error: "invalid" });
+        await subscribers.add(email.toLowerCase());
+        return answer(200, { subscribed: true });
       } catch (err) {
         // Never the address: the log keeps none.
-        console.error(`Kit did not take an address: ${err instanceof Error ? err.message : String(err)}`);
+        console.error(`An address could not be put on the list: ${err instanceof Error ? err.message : String(err)}`);
         return answer(502, { error: "notSubscribed" });
       }
     }
@@ -545,12 +713,16 @@ let relay;
 /** The Lambda entry point. The AWS SDK comes with Lambda's Node.js runtime, so it is loaded only there. */
 export async function handler(event) {
   if (!relay) {
-    const { DynamoDBClient, UpdateItemCommand } = await import("@aws-sdk/client-dynamodb");
+    const { DynamoDBClient, ScanCommand, UpdateItemCommand } = await import("@aws-sdk/client-dynamodb");
     const client = new DynamoDBClient({});
     relay = createRelay({
       token: process.env.GITHUB_TOKEN,
       repo: process.env.GITHUB_REPO || "IamDejman/fm-lens",
-      kit: process.env.KIT_API_KEY ? { key: process.env.KIT_API_KEY, form: process.env.KIT_FORM || "10172074" } : undefined,
+      subscribers: createSubscribers({
+        table: process.env.SUBSCRIBERS_TABLE || "fm-lens-subscribers",
+        update: (input) => client.send(new UpdateItemCommand(input)),
+        scan: (input) => client.send(new ScanCommand(input)),
+      }),
       uploads: process.env.UPLOAD_BUCKET
         ? {
             bucket: process.env.UPLOAD_BUCKET,

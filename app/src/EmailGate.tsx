@@ -1,5 +1,5 @@
-// The email FM Lens asks for before it opens, once on each computer. Kit (kit.com) keeps the list and sends the
-// emails: the address goes to FM Lens's relay (relay/), which adds it to FM Lens's form in Kit and keeps nothing.
+// The email FM Lens asks for before it opens, once on each computer: the address goes to FM Lens's relay (relay/),
+// which keeps FM Lens's email list.
 
 import { type FormEvent, useState } from "react";
 import { appText } from "./labels";
@@ -12,7 +12,7 @@ const SEND_TIMEOUT_MS = 15_000;
 /** Set once this computer gave an address, so the app asks once. */
 const GIVEN_KEY = "fmlens.email";
 
-/** What the relay answers: `subscribed`, or why not, "invalid" for an address it or Kit turns down. */
+/** What the relay answers: `subscribed`, or why not, "invalid" for an address it turns down. */
 type Answer = { subscribed?: boolean; error?: string };
 
 /** Whether this computer gave an address before. Without storage the app asks at every start. */
@@ -42,7 +42,7 @@ async function subscribe(email: string): Promise<Answer> {
   return (await response.json()) as Answer;
 }
 
-/** The screen in place of the app until Kit has taken an address. */
+/** The screen in place of the app until the relay has taken an address. */
 export function EmailGate({ onGiven }: { onGiven: () => void }) {
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);

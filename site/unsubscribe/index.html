@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unsubscribe: FM Lens</title>
+  <!-- The link carries the address, so this page sends no analytics, isn't indexed and passes on no referrer. -->
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#251b37">
+  <link rel="icon" type="image/png" sizes="64x64" href="../images/icon-64.png">
+  <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="masthead">
+    <div class="wrap bar">
+      <a class="brand" href="/" aria-label="FM Lens home">
+        <img src="../images/symbol.png" alt="" width="40" height="40">
+        <span translate="no">FM Lens</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <div class="message">
+      <h1 id="title">Unsubscribe</h1>
+      <form class="signup" hidden>
+        <p>Stop FM Lens emails to <strong id="address" class="address"></strong>?</p>
+        <button class="button" type="submit">Unsubscribe</button>
+        <p role="status"></p>
+      </form>
+      <p id="said" class="address" role="status"></p>
+    </div>
+  </main>
+
+  <script type="module">
+    // The link in every email (scripts/send-email.mjs) brings the address and its token. The relay takes the address
+    // off the list only with its token (relay/index.js, POST /unsubscribe).
+    const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws";
+    const query = new URLSearchParams(location.search);
+    const email = query.get("email") ?? "";
+    const token = query.get("token") ?? "";
+    // Keeps the address out of the browser's history.
+    history.replaceState(null, "", location.pathname);
+
+    const form = document.querySelector("form.signup");
+    const say = (text) => {
+      document.getElementById("said").textContent = text;
+    };
+
+    if (!email || !token) {
+      say("This link is not complete. Use the Unsubscribe link in the email.");
+    } else {
+      document.getElementById("address").textContent = email;
+      form.hidden = false;
+      const button = form.querySelector("button");
+      const status = form.querySelector("[role=status]");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        button.disabled = true;
+        status.textContent = "";
+        try {
+          const params = new URLSearchParams({ email, token });
+          const response = await fetch(`${RELAY}/unsubscribe?${params}`, { method: "POST" });
+          if (response.ok) {
+            form.hidden = true;
+            document.getElementById("title").textContent = "Unsubscribed";
+            say(`FM Lens will not email ${email} again.`);
+            return;
+          }
+          status.textContent = response.status === 400
+            ? "This link does not work. Use the Unsubscribe link in the latest email."
+            : "That did not work. Try again in a minute.";
+        } catch {
+          status.textContent = "That did not work. Check your connection and try again.";
+        }
+        button.disabled = false;
+      });
+    }
+  </script>
+</body>
+</html>

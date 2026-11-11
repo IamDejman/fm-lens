@@ -268,10 +268,9 @@ fm-lens-releases, as above.
 
 The download page asks for an email address before it starts a download, once in each
 browser; every download button on the site leads there. `site/signup.js` sends the address to
-the report relay's `POST /subscribe` (below), which adds it to FM Lens's form in
-[Kit](https://kit.com) with Kit's API, so a visitor never meets Kit's check that they are a
-person. Kit keeps the list, confirms each address and sends the emails. The files on
-fm-lens-releases stay public, and installed copies update without it.
+the report relay's `POST /subscribe` (below), which keeps FM Lens's email list. The files on
+fm-lens-releases stay public, and installed copies update without it. The link at the foot of every email opens
+`site/unsubscribe/`, which sends no analytics, as its address carries the email address.
 
 The app asks for an email address too, before it opens for the first time on a computer
 (`app/src/EmailGate.tsx`), and sends it to the same `POST /subscribe`. In the browser preview,
@@ -297,13 +296,45 @@ files and `UPLOAD_BUCKET` up; run it again before deploying a relay that needs a
 without files work as before. `node --test` in `relay/` runs its
 tests, and CI runs them too.
 
+### The email list
+
 The app's email screen and the site's download page post `{ email }` to the same function (`POST /subscribe`). The
 relay checks it looks like an address, counts it apart from reports (5 an hour and 10 a day from one sender, 500 an
-hour and 3,000 a day in all) and adds it to FM Lens's form in Kit with Kit's v4 API: an active subscriber first, then
-the form, with no email to confirm (the form's "Send incentive email" is off). Kit's API key (Settings, Developer, a v4 key)
-is the function's `KIT_API_KEY`, and `KIT_FORM` names another form than 10172074; without the key it answers 503. It
-answers `{ "subscribed": true }`, 400 `invalid` for an address it or Kit turns down, and 502 when Kit can't take it
-now, and it logs no address.
+hour and 3,000 a day in all) and puts it, in lower case, on the list: the DynamoDB table `fm-lens-subscribers`
+(`SUBSCRIBERS_TABLE`), one row for each address with its `status` (`active`, `unsubscribed`, `bounced` or
+`complained`), a random `token` for its unsubscribe link, and when it was `subscribed` and `unsubscribed`. There is no
+email to confirm. It answers `{ "subscribed": true }`, 400 `invalid` for an address it turns down, and 502 when the
+table can't take it now, and it logs no address. Giving an address again puts it back on the list.
+
+`POST /unsubscribe?email=…&token=…` takes an address off the list when the token is its own, and answers
+`{ "unsubscribed": true }`, or 400 `invalid` for any other token. The unsubscribe page posts it, and so do email apps'
+own unsubscribe buttons, from the `List-Unsubscribe` headers of every email.
+
+`scripts/send-email.mjs` sends an email to everyone on the list from `news@getfmlens.com`, with Amazon SES in
+eu-west-1, where the account may send to anyone. Run it with `AWS_PROFILE` set for the relay's account: with only the
+email file it sends nothing and prints the email and how many it would go to, `--test <address>` sends it to one
+address, and `--send` to everyone. The email file is plain text, the subject on the first line, a blank line, then
+paragraphs. It skips the addresses SES won't send to after a bounce or a complaint and marks them so on the list, and
+keeps who it sent to in `<email file>.sent`, so running it again after it stops sends only to the rest.
+
+`relay/setup-email.sh` sets all this up once: the table (recoverable for 35 days), the role's permission to update and
+count it, getfmlens.com in SES with its configuration set `fm-lens`, and the schedule below. It prints the DNS records
+getfmlens.com needs at Namecheap: three DKIM CNAMEs and DMARC. The domain's MX and SPF stay on Namecheap's email
+forwarding, which takes no other MX record, so bounces go to SES's own domain and DMARC passes on the DKIM signature.
+
+### Counts for the dashboard
+
+Every 15 minutes the EventBridge schedule `fm-lens-counts` runs the relay with `{ "job": "report-counts" }`. It sends
+PostHog the download counts over every release in fm-lens-releases (`release_downloads`: `mac_downloads`, the disk
+images and zips; `windows_downloads`, the installers, which installed copies on Windows also download to update;
+`mac_updates`, the `.app.tar.gz` files; `update_checks`, `latest.json`, which every copy reads when it opens; and
+`latest_version`) and how many addresses are on the list (`email_subscribers`: `subscribers`), for the "FM Lens growth"
+dashboard. To run it now:
+
+```sh
+aws lambda invoke --function-name fm-lens-report-relay --cli-binary-format raw-in-base64-out \
+  --payload '{"job":"report-counts"}' /dev/stdout
+```
 
 To send new code, run `relay/deploy.sh` with `AWS_PROFILE` and
 `AWS_REGION` set for the account the function is in. The app's content security policy (`security.csp` in
