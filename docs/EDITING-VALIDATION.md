@@ -2672,9 +2672,58 @@ first team made 18 changes and Undo brought all 18 back; on Søren Yılmaz's Moo
 tab it logged "Reasons to be unhappy 2 → 0" and the list read "Nothing makes
 him unhappy".
 
-Not yet run: the write itself on a live game, and the packaged app on Apple
-Silicon, Rosetta and Windows.
+### Happiness that went back after Continue
 
-Also found: a write to `contract.happiness` can read back lower after Continue.
-The game holds happiness inside a band set by the worst lasting reason, or by
-morale when there is none. FM Lens does not change that; end the reasons first.
+The game does not keep a contract's happiness as written. It puts it inside a
+band, set by the worst reason to be unhappy that lasts, or by morale when no
+reason counts (macOS arm64 build 26385295, the function at 0x2028BFC):
+
+| What holds it | Happiness |
+|---|---|
+| Worst lasting reason of kind 1 | -40 to -20 |
+| Kind 2 | -60 to -40 |
+| Kind 3 or 4 | -80 to -60 |
+| Kind 5 | -100 to -80 |
+| Kind 6, 99 or 100 | -100 |
+| Any other kind | Left where it is |
+| No reason that counts, morale 18 to 20 | 80 to 100 |
+| Morale 15 to 17 | 60 to 80 |
+| Morale 13 or 14 | 40 to 60 |
+| Morale 11 or 12 | 20 to 40 |
+| Morale 10 or less | -20 to 20 |
+
+A reason being talked over with the manager (status 19 or 20) does not count,
+nor do the motives 0, 900 to 930, 1100, 1104 and 1106.
+
+An edit of happiness now takes with it what the game would use to put it back.
+Lasting reasons that hold it in another band end, as Remove unhappiness ends
+them, and morale moves to the nearest value whose band takes the new happiness,
+unless the same edit sets morale. Each shows as a change of its own in Changes
+and can be undone. A mass edit of happiness does the same per player, inside its
+batch. A happiness under -20 stays only while a reason holds it there.
+
+Remove unhappiness now also ends the reasons on a loan contract, as the game's
+own action does.
+
+Checked without writing, on the running career (10 December 2027): of 49 Arsenal
+players read, every one at the club with no reason that counts sits inside his
+morale's band. Morale 20 reads 80 to 100, Merino at 15 reads 80, Gabriel at 14
+reads 40, Rice at 11 reads 20 (his reason is at status 19), and morale 10 or less
+reads 5 to 20. Ben White, out on loan, does not fit (morale 17, happiness 40).
+Unit tests cover the bands, the reasons left out and the morale chosen.
+
+### Other edits that can look reversed
+
+- Manager support: the game reused its score for seven days, like the
+  atmosphere. A mood edit now resets both dates.
+- Cohesion: written values hold. On 5 November the 26 raised to 100 still read
+  100 after Continue. On the running career 22 players read 99 and 4 read 98,
+  none 100: the game takes a point off now and then, and nothing went back to
+  what it was before.
+- Tactics: written values hold. On the running career 551 entries read exactly
+  9944, which fits 10000 from Max tactics lowered by 56 since. The low entries
+  beside them (544, 600, 656) are new: the game starts one when a tactic's
+  settings change. Max tactics raises those when pressed again.
+
+Not yet run: any write followed by Continue with this build, and the packaged
+app on Apple Silicon, Rosetta and Windows.
