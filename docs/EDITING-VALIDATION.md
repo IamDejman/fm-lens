@@ -2578,3 +2578,36 @@ auto-confirms signups. Deployed to `fm-lens-report-relay` at 00:27 UTC.
   `{ "subscribed": true }`. Kit lists it as Confirmed, with no email sent.
 - An address Kit already held as unconfirmed, sent again, turned Confirmed: the
   signups waiting on the old confirmation email were confirmed this way.
+
+## The published 0.7.4 (11 November 2026)
+
+FM Lens 0.7.4 from `fm-lens-releases` (tag `v0.7.4`, db0d43f), checked with the
+files users get. `latest.json` names 0.7.4 for `darwin-aarch64`,
+`darwin-x86_64` and `windows-x86_64`.
+
+| | Apple Silicon | Rosetta | Windows |
+|---|---|---|---|
+| Build | The installed 0.7.3, updated through `latest.json` | The same app, started with `arch -x86_64`, X86-64 (translated) | The installed 0.7.3, updated through `latest.json` |
+| Update | Pass. Updated itself to 0.7.4 | - | Pass. Found 0.7.4, Relaunch to update installed it |
+| Email screen | Shown, as the stored flag was removed after the relay checks. The user's address went on to What's new | Not shown. Straight to Connect | Not shown. The address was already saved |
+| What's new | Pass. 0.7.4 | - | Pass. All six lines, in English |
+| Connects | Not run, FM was not open | Not run | Pass. 25,025 players, no read-only notice |
+
+`FM-Lens-0.7.4-macos-universal.zip` from the release holds an app with x86_64
+and arm64, reports 0.7.4, includes `libfmlens_bridge.dylib` and is signed ad hoc.
+
+Windows: FM was running the test career from earlier checks. On connect FM Lens
+put back a freeze left from an earlier session ("Freezes from last time are back
+on: Money: Arsenal"). No edits were made and the career was not saved.
+
+## Site signup through the relay (11 November 2026)
+
+The download page's form now posts the address to the relay's `POST /subscribe`
+(`site/signup.js`) instead of Kit's form, so visitors no longer reach Kit's
+reCAPTCHA page.
+
+Checked on a local copy of `site/` with analytics turned off, against the live
+relay: an address the relay refuses shows the error and starts no download, and
+a real address goes through. Kit still holds one active record for it. On
+getfmlens.com after the deploy, `signup.js` no longer names `app.kit.com`, and
+the relay answers the page's preflight with 204.
