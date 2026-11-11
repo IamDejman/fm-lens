@@ -16,7 +16,7 @@ use fmlens_core::{
     PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
     PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
     SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter,
-    StaffIndex, StaffPlan, StartedLoan, Target, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer,
+    StaffIndex, StaffPlan, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer,
     find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -1280,7 +1280,8 @@ impl Connection {
     /// brings his list row up to date.
     fn log_staff(&mut self, done: StaffChange) -> LoggedChange {
         let row = self.staff.get(done.member);
-        let (club, club_uid, job) = row.map_or((None, None, None), |s| (s.club.clone(), s.club_uid, s.job));
+        let (club, club_uid, staff_team, job) =
+            row.map_or((None, None, None, None), |s| (s.club.clone(), s.club_uid, s.team, s.job));
         let name = row.map_or_else(String::new, |s| s.name.clone());
         let moved = done.from_club != done.to_club;
         let (from, to) = (self.club_name(done.from_club), self.club_name(done.to_club));
@@ -1288,6 +1289,7 @@ impl Connection {
             if moved {
                 member.club = Some(to.clone());
                 member.club_uid = Some(done.to_club);
+                member.team = Some(TeamId::SENIOR);
             }
             member.job = Some(done.job.1);
         });
@@ -1309,7 +1311,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
-            undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, job })),
+            undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, team: staff_team, job })),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
@@ -1403,6 +1405,7 @@ impl Connection {
         self.staff.update(moved.member, |member| {
             member.club = Some(to.clone());
             member.club_uid = Some(moved.to_club);
+            member.team = Some(TeamId::SENIOR);
             member.job = Some(MANAGER_JOB);
         });
         // His club is the one a human manages now, and the career's.
@@ -1415,6 +1418,7 @@ impl Connection {
             self.staff.update(uid, |member| {
                 member.club = None;
                 member.club_uid = None;
+                member.team = None;
                 member.job = None;
             });
         }
@@ -1600,6 +1604,7 @@ impl Connection {
                 self.staff.update(logged.done.member, |member| {
                     member.club = logged.club;
                     member.club_uid = logged.club_uid;
+                    member.team = logged.team;
                     member.job = logged.job;
                 });
             }
@@ -2041,6 +2046,7 @@ struct LoggedStaff {
     done: StaffChange,
     club: Option<String>,
     club_uid: Option<u32>,
+    team: Option<TeamId>,
     job: Option<u8>,
 }
 
