@@ -1712,6 +1712,15 @@ export const en = {
     } as Record<string, readonly string[]>,
   },
 
+  /** Asking for a star on GitHub: once, after some edits (see StarNotice.tsx), and in Settings, About. */
+  star: {
+    ask: "FM Lens is free and open source, and it will stay that way. A star on GitHub encourages me.",
+    /** Opens FM Lens's repository on GitHub, where the user stars it. */
+    button: "Star on GitHub",
+    /** Hides the ask for good. */
+    notNow: "Not now",
+  },
+
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
   edit: {
     /** The tooltip on a value FM Lens wrote and read back. */

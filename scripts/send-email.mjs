@@ -23,6 +23,9 @@ const LIST_REGION = "us-east-1";
 const SES_REGION = "eu-west-1";
 /** The report relay, as in app/src/report.ts: email apps' unsubscribe button posts to it. */
 const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.aws";
+/** Every email's footer asks for a star, as the app does once. */
+const REPOSITORY = "https://github.com/IamDejman/fm-lens";
+const FREE = "FM Lens is free and open source, and it will stay that way.";
 /** How many emails are sent at once: SES lets this account send 14 a second. */
 const AT_ONCE = 5;
 
@@ -58,12 +61,13 @@ function readEmailFile(file) {
 function emailFor({ subject, paragraphs }, to, token) {
   const query = `email=${encodeURIComponent(to)}&token=${token}`;
   const unsubscribe = `https://getfmlens.com/unsubscribe/?${query}`;
-  const text = `${paragraphs.join("\n\n")}\n\n--\nUnsubscribe: ${unsubscribe}\n`;
+  const text = `${paragraphs.join("\n\n")}\n\n--\n${FREE} A star on GitHub encourages me: ${REPOSITORY}\nUnsubscribe: ${unsubscribe}\n`;
   const html = [
     '<!doctype html><html><body style="margin:0;padding:24px;background:#ffffff">',
     '<div style="max-width:560px;margin:0 auto;font:16px/1.55 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d1d1f">',
     ...paragraphs.map((paragraph) => `<p>${linked(escape(paragraph)).replace(/\n/g, "<br>")}</p>`),
-    `<p style="margin-top:32px;font-size:13px"><a href="${escape(unsubscribe)}" style="color:#6e6e73">Unsubscribe</a></p>`,
+    `<p style="margin-top:32px;font-size:13px;color:#6e6e73">${FREE} A <a href="${REPOSITORY}" style="color:#6e6e73">star on GitHub</a> encourages me.</p>`,
+    `<p style="font-size:13px"><a href="${escape(unsubscribe)}" style="color:#6e6e73">Unsubscribe</a></p>`,
     "</div></body></html>",
   ].join("\n");
   const utf8 = (Data) => ({ Data, Charset: "UTF-8" });

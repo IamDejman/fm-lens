@@ -35,3 +35,5 @@ FM Lens 0.7.4 lets you show off what you find in your save. Turn any player into
 ### Updating
 
 - Open FM Lens and it fetches 0.7.4 by itself. Press Relaunch to update when it appears, or download 0.7.4 from getfmlens.com.
+
+FM Lens is free and open source, and it will stay that way. A [star on GitHub](https://github.com/IamDejman/fm-lens) encourages me.
