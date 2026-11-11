@@ -289,6 +289,11 @@ export interface StaffSummary {
   club: string | null;
   /** The employer's UID, for its logo (see pictures.ts). */
   clubUid: number | null;
+  /**
+   * Which of the employer's teams the contract is with, as `ClubTeam` gives it: 0 is the senior team. Named by
+   * `teamLabel` in labels.ts; null without a club.
+   */
+  team: { index: number; kind: number; ageLimit: number | null } | null;
   /** FM job code from the contract; see `jobLabel` in labels.ts. */
   job: number | null;
   /** The national team they manage: a job with no club contract, so `job` and `club` say nothing of it. */

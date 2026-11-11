@@ -1,12 +1,13 @@
-// The Staff tab of a club's profile: everyone whose contract is with one of its teams, the manager and the coaches
-// first, then recruitment, the medical staff and the board, the best of each job first. A row opens the member of
-// staff in the staff list.
+// The Staff tab of a club's profile: everyone whose contract is with one of its teams, a team at a time, with the
+// Squad tab's switch between the teams. The manager and the coaches come first, then recruitment, the medical staff
+// and the board, the best of each job first. A row opens the member of staff in the staff list.
 
-import { useContext, useMemo } from "react";
+import { useContext, useMemo, useState } from "react";
 import { Ability } from "./Ability";
-import { clubProfileText as text, jobLabel, profileText, staffListText } from "./labels";
+import { clubProfileText as text, jobLabel, profileText, staffListText, teamLabel, type TeamId } from "./labels";
 import { NationFlag, WithPicture } from "./Picture";
 import { useProfileDetails, type PanelIds } from "./ProfileParts";
+import { TeamSwitch } from "./SquadTab";
 import { HumanBadge } from "./StaffProfile";
 import type { StaffSummary } from "./types";
 import { EditorContext } from "./useProfileEditing";
@@ -31,6 +32,25 @@ export function staffInOrder(staff: readonly StaffSummary[]): StaffSummary[] {
   );
 }
 
+const SENIOR_TEAM: TeamId = { index: 0 };
+
+/** The team a member of staff works for; one whose team the game does not name goes with the senior team. */
+function teamOf(member: StaffSummary): TeamId {
+  return member.team ?? SENIOR_TEAM;
+}
+
+/** The teams the staff work for, in the club's order: the senior team first. */
+function staffTeams(staff: readonly StaffSummary[]): TeamId[] {
+  const teams = new Map<number, TeamId>();
+  for (const member of staff) {
+    const team = teamOf(member);
+    if (!teams.has(team.index)) {
+      teams.set(team.index, team);
+    }
+  }
+  return [...teams.values()].sort((a, b) => a.index - b.index);
+}
+
 interface ClubStaffTabProps {
   clubUid: number;
   /** For the table's name. */
@@ -43,7 +63,14 @@ interface ClubStaffTabProps {
 export function ClubStaffTab({ clubUid, clubName, version, panel }: ClubStaffTabProps) {
   const loaded = useProfileDetails<StaffSummary[]>("club_staff", clubUid, version);
   const details = loaded?.details;
-  const staff = useMemo(() => details && staffInOrder(details), [details]);
+  const teams = useMemo(() => details && staffTeams(details), [details]);
+  const [teamIndex, setTeamIndex] = useState(0);
+  const team = teams?.find((candidate) => candidate.index === teamIndex) ?? teams?.[0];
+  const shown = team?.index;
+  const staff = useMemo(
+    () => details && staffInOrder(details.filter((member) => teamOf(member).index === shown)),
+    [details, shown],
+  );
 
   return (
     <div
@@ -63,10 +90,15 @@ export function ClubStaffTab({ clubUid, clubName, version, panel }: ClubStaffTab
           {loaded.error}
         </div>
       )}
-      {staff?.length === 0 && <p className="empty">{text.noStaff}</p>}
-      {staff !== undefined && staff.length > 0 && (
+      {details?.length === 0 && <p className="empty">{text.noStaff}</p>}
+      {teams !== undefined && team !== undefined && (
+        <div className="squad-summary">
+          <TeamSwitch teams={teams} team={team.index} onTeam={setTeamIndex} />
+        </div>
+      )}
+      {team !== undefined && staff !== undefined && staff.length > 0 && (
         <div className="squad-table-wrap">
-          <table className="grid squad-grid" aria-label={text.staffTableLabel(clubName)}>
+          <table className="grid squad-grid" aria-label={text.staffTableLabel(clubName, teamLabel(team))}>
             <thead>
               <tr>
                 <th className="col-name">{columns.name}</th>

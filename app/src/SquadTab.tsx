@@ -20,6 +20,7 @@ import {
   squadText as text,
   swapNote,
   teamLabel,
+  type TeamId,
 } from "./labels";
 import { undoFailureLines } from "./massDraft";
 import { percentText } from "./MedicalGroup";
@@ -390,20 +391,35 @@ function TeamSummary({ teams, team, onTeam }: TeamSummaryProps) {
 
   return (
     <div className="squad-summary">
-      <div className="squad-teams" role="group" aria-label={text.teamsLabel}>
-        {teams.map((candidate) => (
-          <button
-            key={candidate.index}
-            type="button"
-            aria-pressed={candidate.index === team.index}
-            onClick={() => onTeam(candidate.index)}
-          >
-            {teamLabel(candidate)}
-          </button>
-        ))}
-      </div>
+      <TeamSwitch teams={teams} team={team.index} onTeam={onTeam} />
       <p className="squad-count">{summary}</p>
       <p className="squad-captains">{text.captains(nameOf(team.captain), nameOf(team.viceCaptain))}</p>
+    </div>
+  );
+}
+
+/** The switch between a club's teams, `team` pressed; the Staff tab has it too. */
+export function TeamSwitch({
+  teams,
+  team,
+  onTeam,
+}: {
+  teams: readonly TeamId[];
+  team: number;
+  onTeam: (index: number) => void;
+}) {
+  return (
+    <div className="squad-teams" role="group" aria-label={text.teamsLabel}>
+      {teams.map((candidate) => (
+        <button
+          key={candidate.index}
+          type="button"
+          aria-pressed={candidate.index === team}
+          onClick={() => onTeam(candidate.index)}
+        >
+          {teamLabel(candidate)}
+        </button>
+      ))}
     </div>
   );
 }
