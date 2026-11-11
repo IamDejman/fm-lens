@@ -23,8 +23,11 @@ further data-layout and game-behavior research.
 Windows ships from 0.6.2. The Windows reads, game actions and bounded app
 edit/undo checks are recorded in EDITING-VALIDATION.md and
 [the Windows handoff](internal/WINDOWS-PARITY-HANDOFF.md). Those checks used
-Windows Server 2022 and did not save the edited career. Windows 10/11 execution
-and edited-save quit/reload remain unverified. Unless a row names another
+Windows Server 2022; Windows 10/11 execution remains unverified. An edited copy
+survived save, quit and reload there on 8 and 10 November for the values those
+entries name (attributes, a wage, a club balance and, on 27.0.1, a staff
+attribute, a nation rating, a signing, a work permit and Max tactics), not for
+every mapped field. Unless a row names another
 platform, its in-game persistence evidence is from macOS ARM64; mapped Windows
 fields do not inherit that evidence.
 
@@ -127,7 +130,7 @@ See the latest entry in EDITING-VALIDATION.md.
 | --- | --- |
 | Launch in 1 second | Not benchmarked |
 | Load 550,000 players in under 3 seconds | Not benchmarked; current live evidence covers a 30,314-player career |
-| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits. Its Windows build was checked on 7 November on a test career: reads, the game's own actions through the Windows bridge, and the app's direct edits (attributes, contract, mass edit, clone and templates, freeze money, squad actions, your manager), each undone. FM Lens 0.6.2 is the first Windows download: on 7 November its installer, one copy at a time and a self-update from 0.6.1 to 0.6.2 were checked on Windows Server 2022. Not yet on Windows: Game Pass, a save-and-reload test, and Windows 10 and 11 themselves; see docs/internal/WINDOWS-PARITY-HANDOFF.md |
+| Every Windows and Mac edition | Not established. The broadest evidence is native Apple Silicon on FM27 Steam build 26340721; 27.0.1 (Steam build 26385295) passed the PATCH-VALIDATION.md run on Apple Silicon, under Rosetta and on Windows on 10 November. The Intel half was checked under Rosetta: reads, officials, the human manager's flags, work permits and refresh after edits on 6 and 7 November; a money freeze over a holiday and a facility edit with its undo on 8 November; direct edits and the game's own actions on 9 and 10 November (see Platform evidence). No Intel-edited career has been saved and reloaded. The Windows build was checked on Windows Server 2022. On 7 November, on a test career: reads, the game's own actions through the Windows bridge, and the app's direct edits (attributes, contract, mass edit, clone and templates, freeze money, squad actions, your manager), each undone; and for 0.6.2, the first Windows download, its installer, one copy at a time and a self-update from 0.6.1. On 8 November: the app's features then on main, bar Lift bans, with two attributes, a club balance, a wage and both freezes holding through save, quit, a Steam relaunch and reload. On 10 November: the 27.0.1 run, with its own save, quit and reload. Not yet on Windows: Game Pass (27.0.1 has no Game Pass profile, so FM Lens is read-only there), Windows 10 and 11 themselves, and persistence for the fields those two reloads did not cover; see docs/internal/WINDOWS-PARITY-HANDOFF.md |
 | Updates within hours of patches | Maintenance aspiration, not a guarantee |
 | Offline companion | Verified with network denied against an already-running game; fresh Steam Offline Mode startup untested |
 | Updating FM Lens while FM stays open | Implemented: use the running helper's capabilities, retain the earlier call protocol, and skip only explicitly unsupported optional refresh calls. Native Mach IPC regression tests pass; a live copied-career update remains unverified. New helper functions become available after the next normal FM launch |
