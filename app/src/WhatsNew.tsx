@@ -13,6 +13,15 @@ const VERSION_KEY = "fm-lens.version";
  * update from a first start. */
 const TOUR_KEY = "fmlens.tour";
 
+/** Whether an earlier version ran on this computer. Only true before `useWhatsNew` records this one, in an effect. */
+export function ranBefore(): boolean {
+  try {
+    return window.localStorage.getItem(VERSION_KEY) !== null || window.localStorage.getItem(TOUR_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The version whose changes to show, once: the one running, when another version ran on this computer before and this
  * one lists what it brought. A first start shows nothing, and neither does a window without storage, where the notice

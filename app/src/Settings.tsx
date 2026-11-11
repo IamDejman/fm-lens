@@ -1,8 +1,9 @@
 // Settings: the gear at the right of the masthead, or ⌘, (Ctrl+, off a Mac), opens a window of them in four parts.
 // General holds the language, each with its flag and its own name, and the currency money is shown in; Appearance the
-// theme and the zoom; Privacy the switch for anonymous usage; About the app's version and the game's build. Theme, zoom
-// and usage apply at once. Another language or currency reloads the window (see `setLocale` and `setCurrency`), which
-// the app survives connected, and the window comes back with Settings open (see restore.ts).
+// theme and the zoom; Privacy the switch for anonymous usage; About the app's version, the game's build and a link to
+// star FM Lens on GitHub. Theme, zoom and usage apply at once. Another language or currency reloads the window (see
+// `setLocale` and `setCurrency`), which the app survives connected, and the window comes back with Settings open (see
+// restore.ts).
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -11,8 +12,9 @@ import { CURRENCIES, currency, setCurrency } from "./currency";
 import { currencyName, currencySymbolOf } from "./format";
 import { locale, setLocale, type Locale } from "./i18n";
 import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
-import { appText, updateText } from "./labels";
+import { appText, starText, updateText } from "./labels";
 import { restored, useSnapshot } from "./restore";
+import { openRepository } from "./StarNotice";
 import { useModal } from "./useModal";
 import { askToLeave } from "./useProfileEditing";
 import { setUsageOn, usageOn } from "./usage";
@@ -314,6 +316,9 @@ function SettingsDialog({ busy, details, onCheckForUpdates, onReload, onClose }:
                 {updateText.checkForUpdates}
               </button>
             )}
+            <button type="button" onClick={() => openRepository("settings")}>
+              {starText.button}
+            </button>
           </section>
         </div>
 

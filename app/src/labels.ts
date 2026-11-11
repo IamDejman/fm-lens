@@ -147,6 +147,9 @@ export const appText = strings.app;
 /** New versions: the notice under the masthead and Check for updates at the foot of the window. */
 export const updateText = strings.update;
 
+/** Asking for a star on GitHub. */
+export const starText = strings.star;
+
 /** A version of the game the editor was not checked with, or whose data did not check out: the notice about it. */
 export const compatibilityText = strings.compatibility;
 

@@ -1590,6 +1590,12 @@ export const tr: Strings = {
     },
   },
 
+  star: {
+    ask: "FM Lens ücretsiz ve açık kaynak, hep öyle kalacak. GitHub'da bir yıldız beni cesaretlendirir.",
+    button: "GitHub'da yıldız ver",
+    notNow: "Şimdi değil",
+  },
+
   edit: {
     appliedTitle: "Uygulandı",
     unknownNation: "Bilinmeyen ülke",

@@ -1616,6 +1616,12 @@ export const es: Strings = {
     },
   },
 
+  star: {
+    ask: "FM Lens es gratis y de código abierto, y lo seguirá siendo. Una estrella en GitHub me anima.",
+    button: "Dar una estrella en GitHub",
+    notNow: "Ahora no",
+  },
+
   edit: {
     appliedTitle: "Aplicado",
     unknownNation: "País desconocido",
