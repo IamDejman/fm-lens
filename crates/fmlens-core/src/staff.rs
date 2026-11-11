@@ -13,6 +13,7 @@ use crate::national::NationalJob;
 use crate::players::{club_of_team, club_uid_of_team, nation_name, nation_uid};
 use crate::profile::{Layout, StaffLayout};
 use crate::relations::Preference;
+use crate::squad::{TeamId, team_id};
 use crate::text::{Memo, display_name, is_name_like, read_fm_string, read_name_entry};
 
 /// Staff attributes grouped the way FM shows them.
@@ -104,6 +105,8 @@ pub struct StaffSummary {
     pub club: Option<String>,
     /// The employer's UID, e.g. for its logo.
     pub club_uid: Option<u32>,
+    /// Which of the employer's teams the contract is with: the first team, the U21s...
+    pub team: Option<TeamId>,
     /// FM job code from the contract; see [`job_name`].
     pub job: Option<u8>,
     /// The national team they manage (see [`Session::national_managers`]): a job with no club contract. `None` until
@@ -176,6 +179,7 @@ pub fn read_staff(
     let mut names = Memo::default();
     let mut clubs = Memo::default();
     let mut club_uids: HashMap<u64, Option<u32>> = HashMap::new();
+    let mut teams: HashMap<u64, Option<TeamId>> = HashMap::new();
     let mut nations = Memo::default();
     let mut nation_uids: HashMap<u64, Option<u32>> = HashMap::new();
 
@@ -218,15 +222,16 @@ pub fn read_staff(
         let nation_uid = *nation_uids.entry(nation_ptr).or_insert_with(|| nation_uid(process, layout, nation_ptr));
 
         let contract_ptr = u64_at(at(s.contract));
-        let (job, club, club_uid) = if is_user_pointer(contract_ptr)
+        let (job, club, club_uid, team) = if is_user_pointer(contract_ptr)
             && process.read_into(contract_ptr, &mut contract).is_ok()
         {
             let team = u64::from_le_bytes(contract[c.team as usize..c.team as usize + 8].try_into().expect("8 bytes"));
             let club = clubs.get(team, |team| club_of_team(process, layout, team));
             let club_uid = *club_uids.entry(team).or_insert_with(|| club_uid_of_team(process, layout, team));
-            (Some(contract[c.job as usize]), club.clone(), club.and(club_uid))
+            let team = club.as_ref().and(*teams.entry(team).or_insert_with(|| team_id(process, layout, team)));
+            (Some(contract[c.job as usize]), club.clone(), club.and(club_uid), team)
         } else {
-            (None, None, None)
+            (None, None, None, None)
         };
 
         staff.push(StaffSummary {
@@ -240,6 +245,7 @@ pub fn read_staff(
             nation_address: nation_ptr,
             club,
             club_uid,
+            team,
             job,
             national: None,
             current_ability: u16_at(at(s.current_ability)),

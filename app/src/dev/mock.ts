@@ -1287,6 +1287,10 @@ const STAFF_ATTRIBUTES = [
 ];
 const STAFF_RATINGS = ["working_with_youngsters", "authority"];
 
+/** The teams of a fixture club's staff, as `fixtureTeams` lists them: most work for the first team. */
+const SENIOR_TEAM = { index: 0, kind: 0, ageLimit: null };
+const STAFF_TEAMS = [SENIOR_TEAM, SENIOR_TEAM, SENIOR_TEAM, { index: 1, kind: 10, ageLimit: 21 }, { index: 2, kind: 12, ageLimit: 18 }];
+
 const staff: StaffSummary[] = (() => {
   const next = random(1984);
   const pick = <T,>(items: T[]) => items[Math.floor(next() * items.length)];
@@ -1301,6 +1305,7 @@ const staff: StaffSummary[] = (() => {
       dateOfBirth: born,
       age: ageOn(born, GAME_DATE),
       ...withUids(pick(NATIONS), employed ? pick(CLUBS) : null),
+      team: i === 0 ? SENIOR_TEAM : employed ? STAFF_TEAMS[i % STAFF_TEAMS.length] : null,
       job: i === 0 ? 16 : employed ? pick(JOBS) : null,
       // One manager of a national team: no club contract, so no job code and no club.
       national: i === 1 ? { nation: "England", nationUid: null, ageLimit: 21, women: false } : null,
@@ -1893,7 +1898,7 @@ const STAFF_JOBS = [2, 20, 22, 26, 34, 60, 64, 12, 40, 48, 50, 14, 44, 58];
 const MANAGER_JOB = 16;
 
 /** What a member of staff's move or new job changed, by the change's id: his list row as it was. */
-const staffUndo = new Map<number, Pick<StaffSummary, "club" | "clubUid" | "job">>();
+const staffUndo = new Map<number, Pick<StaffSummary, "club" | "clubUid" | "team" | "job">>();
 
 /** The member of staff `uid`, checked as the real commands check him before a move or a new job. */
 function movableStaff(uid: number): StaffSummary {
@@ -1949,10 +1954,12 @@ function moveManager(uid: number, clubUid: number): LoggedChange {
   if (sitting) {
     sitting.club = null;
     sitting.clubUid = null;
+    sitting.team = null;
     sitting.job = null;
   }
   member.club = preview.to.name;
   member.clubUid = preview.to.uid;
+  member.team = SENIOR_TEAM;
   member.job = MANAGER_JOB;
   const logged = logStaff(member, "club", preview.from?.uid ?? 0, preview.to.uid, {
     ...(preview.from && { from: preview.from.name }),
@@ -2003,9 +2010,10 @@ function logStaff(member: StaffSummary, field: string, old: number, value: numbe
 function moveStaff(uid: number, clubUid: number): LoggedChange {
   const preview = planStaffMove(uid, clubUid);
   const member = staff.find((s) => s.uid === uid)!;
-  staffUndo.set(changes.length + 1, { club: member.club, clubUid: member.clubUid, job: member.job });
+  staffUndo.set(changes.length + 1, { club: member.club, clubUid: member.clubUid, team: member.team, job: member.job });
   member.club = preview.to.name;
   member.clubUid = preview.to.uid;
+  member.team = SENIOR_TEAM;
   return logStaff(member, "club", preview.from.uid, preview.to.uid, { from: preview.from.name, to: preview.to.name });
 }
 
@@ -2016,7 +2024,7 @@ function changeStaffJob(uid: number, job: number): LoggedChange {
       throw failure("staff.job", `job ${code} is not one the editor gives or takes away`, { job: code ?? 0 });
     }
   }
-  staffUndo.set(changes.length + 1, { club: member.club, clubUid: member.clubUid, job: member.job });
+  staffUndo.set(changes.length + 1, { club: member.club, clubUid: member.clubUid, team: member.team, job: member.job });
   const old = member.job!;
   member.job = job;
   return logStaff(member, "contract.job", old, job);

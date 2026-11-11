@@ -1076,7 +1076,7 @@ export const en = {
     staffLoading: "Loading staff…",
     noStaff: "This club has no staff.",
     /** The name of the staff table for assistive technology. */
-    staffTableLabel: (club: string) => `Staff of ${club}`,
+    staffTableLabel: (club: string, team: string) => `Staff of ${club}, ${team}`,
 
     facilities: "Facilities",
 

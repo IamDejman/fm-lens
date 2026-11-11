@@ -6,12 +6,12 @@
 //! captain and vice-captain are pointers to the person blocks of two of its players; making a
 //! player captain writes that pointer as a [`Patch`], undone like a move.
 
-use fmlens_mem::is_user_pointer;
+use fmlens_mem::{Process, is_user_pointer};
 use serde::{Deserialize, Serialize};
 
 use crate::clubs::ClubSummary;
 use crate::players::{PlayerIndex, PlayerSummary};
-use crate::profile::TeamLayout;
+use crate::profile::{Layout, TeamLayout};
 use crate::session::Session;
 use crate::transfer::{MoveError, Patch, Patches, PointerList};
 
@@ -20,6 +20,20 @@ const MOST_TEAMS: u64 = 16;
 
 /// The age limit of a team without one.
 const NO_AGE_LIMIT: u8 = 100;
+
+/// What names one of a club's teams: its place in the club's list, its kind and its age limit (see [`ClubTeam`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TeamId {
+    pub index: usize,
+    pub kind: u8,
+    pub age_limit: Option<u8>,
+}
+
+impl TeamId {
+    /// A club's senior team, which a move puts a member of staff in.
+    pub const SENIOR: TeamId = TeamId { index: 0, kind: 0, age_limit: None };
+}
 
 /// One of a club's teams, with its players.
 #[derive(Debug, Clone, Serialize)]
@@ -130,6 +144,23 @@ pub struct CaptainSet {
     pub new: u32,
     pub swapped: bool,
     patches: Vec<Patch>,
+}
+
+/// Names `team` by its place in its club's list of teams; `None` when the club does not list it.
+pub(crate) fn team_id(process: &Process, layout: &Layout, team: u64) -> Option<TeamId> {
+    if !is_user_pointer(team) {
+        return None;
+    }
+    let t = &layout.team;
+    let bytes = process.read_bytes(team, t.end() as usize).ok()?;
+    let club = u64::from_le_bytes(bytes[t.club as usize..t.club as usize + 8].try_into().expect("8 bytes"));
+    if !is_user_pointer(club) {
+        return None;
+    }
+    let teams = PointerList::read(process, club + layout.club.teams).ok()??;
+    let index = teams.elements(process).ok()?.into_iter().position(|other| other == team)?;
+    let age_limit = bytes[t.age_limit as usize];
+    Some(TeamId { index, kind: bytes[t.kind as usize], age_limit: (age_limit != NO_AGE_LIMIT).then_some(age_limit) })
 }
 
 impl Session {

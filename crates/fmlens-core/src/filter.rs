@@ -464,6 +464,7 @@ mod tests {
             nation_address: 0,
             club: club.map(str::to_owned),
             club_uid: None,
+            team: None,
             job,
             national: None,
             current_ability: ca,

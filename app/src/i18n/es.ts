@@ -1050,7 +1050,7 @@ export const es: Strings = {
     staffLocked: "Termina de editar para abrir el personal",
     staffLoading: "Cargando personal…",
     noStaff: "Este club no tiene personal.",
-    staffTableLabel: (club) => `Personal de ${club}`,
+    staffTableLabel: (club, team) => `Personal de ${club}, ${team}`,
 
     facilities: "Instalaciones",
 
