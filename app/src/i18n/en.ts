@@ -1477,7 +1477,7 @@ export const en = {
     connected: "Connected",
     /** At the foot of the window: opens the Report a problem dialog (see `report`). */
     reportProblem: "Report a problem",
-    /** Beside it: opens the wishlist on GitHub, where you ask for features and vote for others'. */
+    /** Beside it: opens the wishlist, where you ask for what FM Lens should do next. */
     wishlist: "Wishlist",
     /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */
     more: "More",
@@ -2410,6 +2410,14 @@ export const en = {
     close: "Close",
     tooMany: "Too many reports from here. Try again in an hour.",
     failed: "Couldn't send it. Try again later.",
+  },
+  /** The wishlist: Report a problem's window, for asking what FM Lens should do next. */
+  wish: {
+    title: "Wishlist",
+    what: "What should FM Lens do next?",
+    /** Wishes are filed where anyone can read them, with the app's version. */
+    sentWith: "Posted publicly, with your FM Lens version.",
+    tooMany: "Too many from here. Try again in an hour.",
   },
 
   /** Releasing a player from their club, which leaves them a free agent: the button beside Transfer and its dialog. */

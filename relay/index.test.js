@@ -20,6 +20,7 @@ import {
   readEmail,
   readReport,
   senderOf,
+  wishFor,
 } from "./index.js";
 
 const REPORT = {
@@ -120,6 +121,30 @@ test("the relay says so when GitHub doesn't file it, or when it has no token", a
   const { fetch, sent } = github();
   assert.equal((await post({ token: undefined, repo: "o/n", fetch }, REPORT)).status, 503);
   assert.equal(sent.length, 0);
+});
+
+test("a wish becomes a feature request laid out like its form, with no mentions", () => {
+  const { report } = readReport({ what: "Edit stadiums\nCapacity and name, @someone", version: "0.7.5" });
+  const issue = wishFor(report);
+  assert.equal(issue.title, "Edit stadiums");
+  assert.deepEqual(issue.labels, ["enhancement"]);
+  assert.match(issue.body, /^### What you would like\n\nEdit stadiums\nCapacity and name, @\u200bsomeone\n\n### FM Lens version\n\n0\.7\.5\n\n/);
+  assert.match(issue.body, /_Sent from the wishlist in FM Lens\._$/);
+  assert.doesNotMatch(issue.body, /What happened/);
+});
+
+test("the relay files a wish, counted apart from reports", async () => {
+  const { fetch, sent } = github();
+  const limiter = createTableLimiter({ table: "t", update: table().update });
+  const options = { token: "t", repo: "o/n", fetch, limiter };
+  const wish = { what: "Edit stadiums", version: "0.7.5" };
+  for (let i = 0; i < PER_ADDRESS_HOUR; i++) {
+    assert.equal((await post(options, REPORT)).status, 201);
+  }
+  assert.equal((await post(options, REPORT)).status, 429);
+  assert.deepEqual(await post(options, wish, { path: "/wish" }), { status: 201, json: { sent: true }, cors: "*" });
+  assert.deepEqual(sent.at(-1).issue.labels, ["enhancement"]);
+  assert.equal((await post(options, { what: "" }, { path: "/wish" })).status, 400);
 });
 
 test("bad requests are turned away before GitHub is asked", async () => {
