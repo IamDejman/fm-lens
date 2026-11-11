@@ -1065,12 +1065,18 @@ export const en = {
     reputationShort: "REP",
     reputationTitle: "Reputation",
 
-    // The tabs under the header: what the club has, and its squad (see `squad`).
+    // The tabs under the header: what the club has, its squad (see `squad`) and its staff.
     /** The name of the tabs for assistive technology. */
     tabsLabel: "Club sections",
-    tabs: { overview: "Overview", squad: "Squad" },
+    tabs: { overview: "Overview", squad: "Squad", staff: "Staff" },
     /** Hover text of the Squad tab while the club is edited: its values are on the Overview. */
     squadLocked: "Finish editing to open the squad",
+    /** The same for the Staff tab. */
+    staffLocked: "Finish editing to open the staff",
+    staffLoading: "Loading staff…",
+    noStaff: "This club has no staff.",
+    /** The name of the staff table for assistive technology. */
+    staffTableLabel: (club: string) => `Staff of ${club}`,
 
     facilities: "Facilities",
 
@@ -1471,6 +1477,8 @@ export const en = {
     connected: "Connected",
     /** At the foot of the window: opens the Report a problem dialog (see `report`). */
     reportProblem: "Report a problem",
+    /** Beside it: opens the wishlist on GitHub, where you ask for features and vote for others'. */
+    wishlist: "Wishlist",
     /** Beside an open profile, the button that holds a list's less common actions (Export, Mass edit, ...). */
     more: "More",
     /** Beside the version in a debug build, which cannot update itself: never a release. */
