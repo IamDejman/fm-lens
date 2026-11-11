@@ -1032,8 +1032,12 @@ export const tr: Strings = {
 
     // The tabs under the header
     tabsLabel: "Kulüp bölümleri",
-    tabs: { overview: "Genel", squad: "Kadro" },
+    tabs: { overview: "Genel", squad: "Kadro", staff: "Personel" },
     squadLocked: "Kadroyu açmak için düzenlemeyi bitirin",
+    staffLocked: "Personeli açmak için düzenlemeyi bitirin",
+    staffLoading: "Personel okunuyor…",
+    noStaff: "Bu kulübün personeli yok.",
+    staffTableLabel: (club) => `${club} personeli`,
 
     facilities: "Tesisler",
 
@@ -1394,6 +1398,7 @@ export const tr: Strings = {
     notConnected: "Bağlı değil",
     connected: "Bağlı",
     reportProblem: "Sorun bildir",
+    wishlist: "İstek listesi",
     more: "Daha fazla",
     debugTag: "DEBUG",
     previewTag: "tarayıcı önizlemesi · örnek veriler",

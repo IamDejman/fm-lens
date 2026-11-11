@@ -4296,6 +4296,16 @@ fn club_squads(state: State<'_, AppState>, uid: u32) -> Result<Vec<TeamView>, Fa
         .collect())
 }
 
+/// The staff of the club `uid`: everyone whose contract is with one of its teams. The window puts
+/// them in order. Only reads what the staff list already holds.
+#[tauri::command]
+fn club_staff(state: State<'_, AppState>, uid: u32) -> Result<Vec<fmlens_core::StaffSummary>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    connection.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?;
+    Ok(connection.staff.iter().filter(|member| member.club_uid == Some(uid)).cloned().collect())
+}
+
 /// Makes the player `uid` the captain or vice-captain of the team `team` of the club `club`;
 /// he must play for that team. When he held the other role, the two captains swap.
 #[tauri::command]
@@ -4826,6 +4836,7 @@ pub fn run() {
             add_release_clause,
             homegrown_rules,
             club_squads,
+            club_staff,
             set_captain,
             team_action,
             set_attributes,
