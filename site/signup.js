@@ -1,6 +1,5 @@
-// The email a download asks for. Kit (kit.com) keeps the list and sends the emails. The address goes to FM Lens's report
-// relay (relay/index.js, POST /subscribe), which adds it to FM Lens's form in Kit with Kit's API and keeps no copy, so a
-// visitor never meets Kit's check that they are a person. PostHog only counts that a signup happened.
+// The email a download asks for. The address goes to FM Lens's report relay (relay/index.js, POST /subscribe), which
+// keeps FM Lens's email list. PostHog only counts that a signup happened.
 
 import { track } from "./analytics.js";
 
