@@ -1877,6 +1877,7 @@ export const es: Strings = {
     earlierGame: "Partida anterior",
     undo: "Deshacer",
     undoTitle: (label) => `Volver a escribir en el juego el valor anterior de ${label}`,
+    undoLaterFirst: (label) => `${label} se volvió a cambiar después. Deshaz primero el cambio posterior.`,
     batch: "Edición masiva",
     batchCount: (total, remaining) =>
       remaining === 0 ? `${changes(total)} · todos deshechos` : `${changes(total)} · ${format(remaining)} sin deshacer`,

@@ -80,12 +80,16 @@ export function formatDateTime(ms: number): string {
  * The message of a failed call in the language of the window. A Rust command fails with a code, the values its
  * message names and an English message (see `Failure`): the dictionary words the codes it knows (`errors` in
  * i18n/en.ts), with the numbers and dates written the language's way, and any other code keeps the English message.
+ * The values of a field come as the game stores them: `shown`, where the caller knows the field, writes one as the
+ * app shows it (see `describeFieldError` in editDraft.ts).
  */
-export function describeError(error: unknown): string {
+export function describeError(error: unknown, shown?: (stored: number) => string): string {
   if (isFailure(error)) {
     const say = strings.errors[error.code];
     // The Rust side words its messages as clauses ("the player is on loan; ..."); here they stand on their own.
-    return say ? say(readableParams(error.params)) : error.message.charAt(0).toUpperCase() + error.message.slice(1);
+    return say
+      ? say(readableParams(error.params, shown))
+      : error.message.charAt(0).toUpperCase() + error.message.slice(1);
   }
   return error instanceof Error ? error.message : String(error);
 }
@@ -97,6 +101,9 @@ export function isFailure(value: unknown): value is Failure {
 /** The parameters of a failure that are amounts or field values, rather than ids. */
 const VALUE_PARAMS = ["value", "min", "max", "wrote", "read", "expected", "found", "count", "limit", "players"];
 
+/** Those of them that are values of the field the failure names, as the game stores them. */
+const FIELD_VALUE_PARAMS: ReadonlySet<string> = new Set(["value", "min", "max", "wrote", "read", "expected", "found"]);
+
 /** The fields the game stores as 0–10000 for 0–100% (see `EditField.scale`), which the app shows as percentages. */
 const PERCENT_FIELDS: ReadonlySet<string> = new Set(["condition", "match_sharpness"]);
 
@@ -104,15 +111,20 @@ const PERCENT_FIELDS: ReadonlySet<string> = new Set(["condition", "match_sharpne
  * A failure's parameters as a sentence shows them: amounts with the language's separators, the values of a date field
  * (stored as numbers like 20290630) as dates, and those of a percentage as percentages: the game may have changed
  * them since they were written, and "Energy is now 95%, not 100%" says more than "now 9512, not 10000". Field keys
- * stay keys; the dictionary names them.
+ * stay keys; the dictionary names them. With `shown`, the values of the field are written by it instead: it knows the
+ * field, so an attribute stored as 50 reads 10, as the app shows it.
  */
-function readableParams(params: Record<string, string>): Record<string, string> {
+function readableParams(params: Record<string, string>, shown?: (stored: number) => string): Record<string, string> {
   const readable = { ...params };
   const dates = params.field?.endsWith("expires") ?? false;
   const percent = params.field !== undefined && PERCENT_FIELDS.has(params.field);
   for (const key of VALUE_PARAMS) {
     const value = Number(params[key]);
     if (params[key] === undefined || !Number.isFinite(value)) {
+      continue;
+    }
+    if (shown !== undefined && FIELD_VALUE_PARAMS.has(key)) {
+      readable[key] = shown(value);
       continue;
     }
     const year = Math.floor(value / 10_000);

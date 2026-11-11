@@ -6,7 +6,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { clauseLine } from "./ClauseList";
 import { valueText } from "./editDraft";
 import { changeLog, dateFromNumber, isStoredFiner, shownValue, undoBatch, undoChange } from "./editing";
-import { fieldTable } from "./fieldTables";
+import { fieldIndex, fieldIndexKey } from "./fieldTables";
 import { describeError, formatDate, formatDateTime, formatMoney, formatNumber, formatTime } from "./format";
 import {
   changesText as text,
@@ -19,7 +19,7 @@ import {
   teamLabel,
   valueChange,
 } from "./labels";
-import { undoFailureLines } from "./massDraft";
+import { undoFailureLines, undoFailureText } from "./massDraft";
 import { ruleLabel } from "./TiesGroup";
 import type { Clause, EditField, Entity, LoggedChange, TeamAction, TieEnd } from "./types";
 
@@ -60,11 +60,10 @@ function useFieldIndex(): { fields: ReadonlyMap<string, EditField> | null; error
 
   useEffect(() => {
     let cancelled = false;
-    const entities = ["player", "staff", "club", "nation", "official"] as const;
-    Promise.all(entities.map(fieldTable)).then(
-      (tables) => {
+    fieldIndex().then(
+      (index) => {
         if (!cancelled) {
-          setFields(new Map(tables.flat().map((field) => [`${field.entity}:${field.key}`, field] as const)));
+          setFields(index);
         }
       },
       (e) => {
@@ -207,7 +206,8 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
       await undoChange(change.id);
       onUndone();
     } catch (e) {
-      setFailures((old) => ({ ...old, [change.id]: describeError(e) }));
+      const field = fields?.get(fieldIndexKey(change.entity, change.field));
+      setFailures((old) => ({ ...old, [change.id]: undoFailureText(change, e, log, field) }));
       // The log may be out of date, e.g. when the change was undone already.
       reload();
     } finally {
@@ -224,7 +224,7 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
     });
     try {
       const done = await undoBatch(batch);
-      const problems = undoFailureLines(done.failed, log);
+      const problems = undoFailureLines(done.failed, log, fields);
       setOutcomes((old) => ({ ...old, [batch]: { undone: done.undone, problems } }));
       if (done.undone > 0) {
         onUndone();
@@ -270,7 +270,7 @@ export function ChangesView({ log, error, reload, onUndone }: ChangesViewProps) 
     <ChangeRow
       key={change.id}
       change={change}
-      field={fields?.get(`${change.entity}:${change.field}`)}
+      field={fields?.get(fieldIndexKey(change.entity, change.field))}
       failure={failures[change.id]}
       undoing={undoing}
       onUndo={undo}
