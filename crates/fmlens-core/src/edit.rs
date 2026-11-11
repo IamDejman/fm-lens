@@ -425,8 +425,8 @@ fn player_mood_fields(layout: &Layout) -> [Field; 4] {
             .in_record(Place::Contract),
         mood("contract.happiness", c.happiness),
         mood("contract.playing_time_happiness", c.playing_time_happiness),
-        // How many reasons to be unhappy his record lists: only ever set to none, as FMRTE's "Remove all" does. The
-        // entries stay where they are, so an undo lists them again.
+        // How many reasons to be unhappy his record lists. The editor no longer writes it: it ends the reasons as the
+        // game does (`Session::plan_end_concerns`). It stays so that a list emptied before can be listed again.
         Field::new(Entity::Player, "contract.unhappiness", 0, Kind::U32, 0..=0)
             .plausible(0..=crate::details::MOST_CONCERNS as i64)
             .in_record(Place::Concerns),
@@ -1163,6 +1163,10 @@ impl Session {
             // Best effort: put back what was there.
             let _ = self.process.write_bytes(address, &old_bytes);
             return Err(EditError::NotApplied { field: field.key.clone(), wrote: value, read });
+        }
+        // The game reuses the scores it keeps of a squad's mood for a week: have it work them out from this.
+        if target.entity == Entity::Player && crate::mood::MOOD_FIELDS.contains(&field.key.as_str()) {
+            self.recheck_squad_mood(target.address);
         }
         Ok(change)
     }
