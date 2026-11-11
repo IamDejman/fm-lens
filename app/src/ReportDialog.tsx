@@ -1,10 +1,10 @@
-// Report a problem: the dialog the button at the foot of the window opens. The user says what happened, and Send hands
-// it to the report relay with what the app knows (see report.ts), with any screenshots and videos attached, pasted or
-// dropped on the dialog. The user never leaves the app.
+// Report a problem and the wishlist: the dialog the buttons at the foot of the window open. The user says what happened,
+// or what FM Lens should do next, and Send hands it to the report relay (see report.ts), a problem with what the app
+// knows, with any screenshots and videos attached, pasted or dropped on the dialog. The user never leaves the app.
 
 import { type ClipboardEvent, type DragEvent, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { reportText as text } from "./labels";
+import { reportText, wishText } from "./labels";
 import {
   ACCEPTED_FILES,
   type AttachProblem,
@@ -13,6 +13,7 @@ import {
   type SendResult,
   attach,
   sendReport,
+  sendWish,
 } from "./report";
 import { useModal } from "./useModal";
 
@@ -24,7 +25,19 @@ type Phase = "writing" | "sending" | SendResult;
 /** A file to send, with the preview of an image. */
 type Shown = Attachment & { preview?: string };
 
-export function ReportDialog({ facts, onClose }: { facts: ReportFacts; onClose: () => void }) {
+/** What the dialog sends: a problem, filed as a bug, or a wish, filed as a feature request. */
+export type ReportKind = "problem" | "wish";
+
+export function ReportDialog({
+  kind = "problem",
+  facts,
+  onClose,
+}: {
+  kind?: ReportKind;
+  facts: ReportFacts;
+  onClose: () => void;
+}) {
+  const text = kind === "wish" ? { ...reportText, ...wishText } : reportText;
   const id = useId();
   const dialog = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLTextAreaElement>(null);
@@ -88,7 +101,7 @@ export function ReportDialog({ facts, onClose }: { facts: ReportFacts; onClose: 
     }
     setPhase("sending");
     setProblem(null);
-    const result = await sendReport(facts, what.trim(), files);
+    const result = await (kind === "wish" ? sendWish : sendReport)(facts, what.trim(), files);
     setPhase(result);
     // Not sent: back to the report, which is kept, to send again.
     if (result !== "sent") {

@@ -1,8 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Wishlist
-    url: https://github.com/IamDejman/fm-lens/discussions/categories/ideas
-    about: Ask for something new, or vote for what others asked for.
   - name: Question
     url: https://github.com/IamDejman/fm-lens/discussions/categories/q-a
     about: Ask how to do something in FM Lens.

@@ -2175,6 +2175,12 @@ export const es: Strings = {
     tooMany: "Demasiados informes desde aquí. Vuelve a intentarlo en una hora.",
     failed: "No se pudo enviar. Inténtalo más tarde.",
   },
+  wish: {
+    title: "Lista de deseos",
+    what: "¿Qué debería hacer FM Lens a continuación?",
+    sentWith: "Se publica, con tu versión de FM Lens.",
+    tooMany: "Demasiados desde aquí. Vuelve a intentarlo en una hora.",
+  },
 
   release: {
     button: "Rescindir",
