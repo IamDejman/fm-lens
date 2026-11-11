@@ -1502,6 +1502,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.5": [
+        "Kulüp profillerinde Personel sekmesi var: tüm personel, göreve göre, MY ve PY ile.",
+        "Pencerenin altındaki İstek listesi ile özellik isteyin.",
+      ],
       "0.7.4": [
         "Herhangi bir oyuncunun kartını profilinden paylaşın: Gönderi veya Hikâye olarak kopyalayın ya da kaydedin.",
         "Sözleşme sekmesi oyuncunun temel transfer değerini gösterir.",
