@@ -12,7 +12,7 @@ import {
   type RefObject,
 } from "react";
 import { inputState, summarize, type InputState, type Pending, type Typed } from "./editDraft";
-import { applyEdits, readValues } from "./editing";
+import { applyEdits, profileKey, readValues } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { editText, fieldLabel } from "./labels";
@@ -78,7 +78,18 @@ export interface EditSession {
 
 /** The inputs of the profile around the reader; null while it is not being edited. */
 export const SessionContext = createContext<EditSession | null>(null);
-export const AppliedFieldsContext = createContext<ReadonlySet<string>>(new Set());
+
+const NO_FIELDS: ReadonlySet<string> = new Set();
+
+/** The fields of the profile around the reader that are marked as applied. */
+export const AppliedFieldsContext = createContext<ReadonlySet<string>>(NO_FIELDS);
+
+/**
+ * The fields with a change of this session that stands, by profile, from the change log (see `standingFields`). A
+ * profile marks its own as applied, so the marks add up over several Applies, are there again when the profile is
+ * opened again, and go when the change is undone. Empty where no log is given.
+ */
+export const StandingFieldsContext = createContext<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
 
 export const useEditSession = () => useContext(SessionContext);
 
@@ -190,7 +201,8 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
   const [confirm, setConfirm] = useState<{ then?: () => void } | null>(null);
   const [applying, setApplying] = useState(false);
   const [report, setReport] = useState<Report | null>(null);
-  const [appliedFields, setAppliedFields] = useState<ReadonlySet<string>>(new Set());
+  // From the change log, not from what this Apply wrote: the marks outlive the Apply and the profile.
+  const appliedFields = useContext(StandingFieldsContext).get(profileKey(entity, uid)) ?? NO_FIELDS;
   const alive = useRef(true);
   const editButton = useRef<HTMLButtonElement>(null);
   // The fields whose values may open their inputs, from a read made only to know which; never the edit's baseline.
@@ -424,7 +436,6 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
       const refusedKeys = Object.keys(refusals);
       // The inputs show the game's values again; the ones the game refused keep what was typed.
       setStart((old) => values ?? withWritten(old, result.applied));
-      setAppliedFields(new Set(result.applied.filter((change) => values?.[change.field] === change.new).map((change) => change.field)));
       setTyped((old) => only(old, refusedKeys));
       setRefused(refusals);
       setReport({ applied: result.applied.length, problems });

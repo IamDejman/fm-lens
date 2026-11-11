@@ -37,10 +37,10 @@ import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
 import { track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
-import { injuryKinds, massFreeze } from "./editing";
+import { injuryKinds, massFreeze, standingFields, stands } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, FmDate, InjuryKind, Refrozen, ReloadInfo } from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol-120.png";
-import { askToLeave, changesPending, EditorContext, NO_GAME_ACTIONS } from "./useProfileEditing";
+import { askToLeave, changesPending, EditorContext, NO_GAME_ACTIONS, StandingFieldsContext } from "./useProfileEditing";
 import "./App.css";
 
 const StaffBrowser = lazy(() => import("./StaffBrowser").then((module) => ({ default: module.StaffBrowser })));
@@ -134,7 +134,9 @@ function App() {
   useSnapshot("view", () => view);
   const { log, error: logError, reload: reloadLog } = useChangeLog();
   // The changes of the session that stand, beside Changes.
-  const standing = log.filter((change) => change.undoneAt === null && !change.earlierGame).length;
+  const standing = log.filter(stands).length;
+  // Their fields, by profile: a profile marks them as applied.
+  const standingByProfile = useMemo(() => standingFields(log), [log]);
   const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
@@ -615,6 +617,7 @@ function App() {
         {connection ? (
           // Visited lists stay mounted, so each keeps its search and selection while another is shown.
           <EditorContext.Provider value={editor}>
+            <StandingFieldsContext.Provider value={standingByProfile}>
             <div className="views">
               <PlayerBrowser version={dataVersion} active={view === "players"} reveal={revealPlayer} />
               <DeferredView active={view === "staff"} label={staffListText.nav}>
@@ -640,6 +643,7 @@ function App() {
               </DeferredView>
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
+            </StandingFieldsContext.Provider>
           </EditorContext.Provider>
         ) : (
           checked && (
