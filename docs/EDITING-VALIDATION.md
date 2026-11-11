@@ -2611,3 +2611,31 @@ relay: an address the relay refuses shows the error and starts no download, and
 a real address goes through. Kit still holds one active record for it. On
 getfmlens.com after the deploy, `signup.js` no longer names `app.kit.com`, and
 the relay answers the page's preflight with 204.
+
+## Inspire on a player's profile (11 November 2026)
+
+The Mood tab's Morale and happiness heading has an Inspire button: morale to 20
+and the player's reasons to be unhappy cleared, in one press. It is the old
+squad button Inspire all for one player. That button was split on 7 November
+into Max morale and Remove unhappiness, so the 7 November entry's "Inspire all"
+row is evidence for both of those.
+
+Inspire sends the two edits through `apply_edits`, each over the value the
+profile read, so the build and career guards, stale-value refusal, the Changes
+rows and Undo are the ones every field edit has. Only what is short is sent:
+no morale edit at 20, no unhappiness edit for a player with nothing lasting.
+No Rust changed.
+
+Not checked in FM. No game was available: this ran in a Linux container.
+
+| Check | Result |
+|---|---|
+| `npm --prefix app run build` | Pass |
+| `npm --prefix app test` | Pass, 66 tests; `tests/inspire.test.tsx` covers what is sent, when the button waits and a refused write |
+| Browser preview, sample data (`?writable`), Kerem Yılmaz | Morale 8 to 20 and his one lasting reason cleared (his list of two, one already over, went to none), the button dimmed and focus on the heading. Changes: "Morale 8 → 20" and "Reasons to be unhappy 2 → 0", each with Undo |
+| Undo, same preview | Morale back to 8 and Inspire on again. The unhappiness undo is refused there: the sample data cannot put its made-up list back (`dev/mock.ts`), as with Remove all |
+| Rust checks | Not run. `fmlens-core` builds for macOS and Windows only, so its tests do not run on Linux |
+
+Still to do on a career copy, on each platform: press Inspire on an unhappy
+player, look at FM's Happiness panel and Dynamics, undo both rows from Changes,
+then save, quit and reload.

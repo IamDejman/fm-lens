@@ -779,6 +779,8 @@ export const es: Strings = {
     removeUnhappiness: "Quitar todo",
     removingUnhappiness: "Quitando…",
     removeUnhappinessTitle: "Quita todos sus motivos de descontento.",
+    inspire: "Motivar",
+    inspireTitle: "Moral al máximo y sin motivos de descontento",
     concernSince: (date) => `desde el ${date}`,
     concernKind: (kind) => (kind === 1 ? "Preocupado" : kind === 2 ? "Interno" : ""),
     concernMotive: (motive) => CONCERN_MOTIVES_ES[motive] ?? "Motivo desconocido",
