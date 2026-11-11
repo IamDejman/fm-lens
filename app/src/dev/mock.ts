@@ -3834,6 +3834,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return [...HOMEGROWN_RULES] as T;
     case "club_squads":
       return clubSquads(Number(args?.uid)) as T;
+    case "club_staff":
+      return staff.filter((s) => s.clubUid === Number(args?.uid)) as T;
     case "set_captain":
       return setCaptain(Number(args?.club), Number(args?.team), args?.role as CaptainRole, Number(args?.uid)) as T;
     case "team_action":

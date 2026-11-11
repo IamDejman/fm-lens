@@ -39,7 +39,9 @@ Intel; other fields and panels have not all been verified.
 choose **Remove the helper** in FM Lens.
 
 Found a problem? [Open an issue](https://github.com/IamDejman/fm-lens/issues/new/choose).
-Questions and ideas go to [Discussions](https://github.com/IamDejman/fm-lens/discussions).
+Questions go to [Q&A](https://github.com/IamDejman/fm-lens/discussions/categories/q-a). Ask for what FM Lens
+should do next, and vote for what others asked for, on the
+[wishlist](https://github.com/IamDejman/fm-lens/discussions/categories/ideas).
 
 ## What it does
 
@@ -113,6 +115,7 @@ or Windows version and processor, and the app language:
 - `change_undone`, `players_exported` and `report_sent`.
 - `star_asked`, `star_clicked` and `star_declined`: the ask for a star on GitHub
   was shown, followed or turned down.
+- `wishlist_opened`: the wishlist on GitHub was opened.
 
 To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
 nothing.
