@@ -1,11 +1,13 @@
 // A star on GitHub, asked for once: after this computer's 20th edit, a notice under the masthead says FM Lens is free
-// and open source and asks for a star. Starring or Not now ends the ask for good. Settings, About keeps the link.
+// and open source and asks for a star. Someone who used an earlier version has likely made those edits already, so
+// their first edit in this one brings it. Starring or Not now ends the ask for good. Settings, About keeps the link.
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
 import { watchCommands } from "./api";
 import { starText } from "./labels";
 import { EDITS, track } from "./usage";
+import { ranBefore } from "./WhatsNew";
 
 const text = starText;
 
@@ -36,6 +38,21 @@ function answered(): boolean {
   }
 }
 
+/**
+ * Starts the count the first time this version runs: at 0 on a new install, and one edit short of the ask where an
+ * earlier version ran, whose edits were never counted. It runs while the app first renders, before `useWhatsNew`
+ * records this version.
+ */
+function startCount(): void {
+  try {
+    if (localStorage.getItem(EDITS_KEY) === null) {
+      localStorage.setItem(EDITS_KEY, String(ranBefore() ? ASK_AFTER - 1 : 0));
+    }
+  } catch {
+    // Without storage there is no ask.
+  }
+}
+
 function editCount(): number {
   try {
     return Number(localStorage.getItem(EDITS_KEY)) || 0;
@@ -46,7 +63,10 @@ function editCount(): number {
 
 /** Whether to ask now, and what answers it: `starred` opens GitHub, and either way the ask is over. */
 export function useStarAsk(): { asking: boolean; answer: (starred: boolean) => void } {
-  const [asking, setAsking] = useState(() => !answered() && editCount() >= ASK_AFTER);
+  const [asking, setAsking] = useState(() => {
+    startCount();
+    return !answered() && editCount() >= ASK_AFTER;
+  });
 
   useEffect(
     () =>

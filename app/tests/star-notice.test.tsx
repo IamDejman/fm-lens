@@ -35,6 +35,23 @@ test('asks for a star after the 20th edit, and not before', async () => {
   expect(screen.getByRole('button', STAR)).toBeTruthy();
 });
 
+test('someone who ran an earlier version is asked after their first edit in this one', async () => {
+  localStorage.setItem('fm-lens.version', '0.7.4');
+  render(<Host />);
+  expect(screen.queryByRole('button', STAR)).toBeNull();
+  await edit(1);
+  expect(screen.getByRole('button', STAR)).toBeTruthy();
+});
+
+test('a new install is not given a head start on a later launch', async () => {
+  const { unmount } = render(<Host />);
+  unmount();
+  localStorage.setItem('fm-lens.version', '0.7.5');
+  render(<Host />);
+  await edit(1);
+  expect(screen.queryByRole('button', STAR)).toBeNull();
+});
+
 test('Star on GitHub opens the repository and ends the ask for good', async () => {
   localStorage.setItem('fmlens.edits', '20');
   const { unmount } = render(<Host />);
