@@ -8,16 +8,16 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSummary, CaptainRole, CaptainSet, Change, Clause,
     ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionFilter, CompetitionRule,
-    CompetitionSummary, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, FmDate,
-    FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
-    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
-    MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSummary,
-    OfficialFilter, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
-    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
-    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
-    SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails, StaffFilter,
-    StaffIndex, StaffPlan, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer,
-    find_game, nation_summaries, nations, read_stadiums, sort_players,
+    CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
+    Field, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts,
+    GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted,
+    Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter,
+    NationSummary, OfficialFilter, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned,
+    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
+    PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex,
+    Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails,
+    StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan,
+    TransferredPlayer, find_game, nation_summaries, nations, read_stadiums, sort_players,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -944,6 +944,37 @@ impl Connection {
         logged
     }
 
+    /// Logs reasons to be unhappy just ended, as a change of the player's `contract.unhappiness` from how many lasted
+    /// to none.
+    fn log_concerns(&mut self, done: ConcernsEnded, batch: Option<u32>) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Player,
+            uid: done.player,
+            field: "contract.unhappiness".to_owned(),
+            old: done.concerns as i64,
+            new: 0,
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.player_name(done.player),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            undo: Some(Undo::Concerns(done)),
+        };
+        self.pending_contract_refresh = true;
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Names the people and clubs of `preferences` the game's records leave unnamed, from the lists read at connect.
     fn name_preferences(&self, preferences: &mut [Preference]) {
         for preference in preferences.iter_mut().filter(|preference| preference.name.is_none()) {
@@ -1591,6 +1622,7 @@ impl Connection {
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
             Some(Undo::Injury(injury)) => self.session.undo_injury(&injury)?,
             Some(Undo::Lift(lifted)) => self.session.undo_lift_bans(&lifted)?,
+            Some(Undo::Concerns(ended)) => self.session.undo_end_concerns(&ended)?,
             Some(Undo::Promise(closed)) => self.session.undo_close_promise(&closed)?,
             Some(Undo::Cohesion(cohered)) => self.session.undo_cohesion(&cohered)?,
             Some(Undo::Tactics(raised)) => self.session.undo_tactics(&raised)?,
@@ -2011,6 +2043,8 @@ enum Undo {
     /// One injury made longer or shorter, or taken out of the list.
     Injury(InjurySet),
     Lift(Lifted),
+    /// Reasons to be unhappy ended today, as the game ends them.
+    Concerns(ConcernsEnded),
     Promise(PromiseClosed),
     Cohesion(Cohered),
     Retirement(RetirementSet),
@@ -4018,6 +4052,19 @@ fn lift_bans(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failu
     Ok(connection.log_lift(done, None))
 }
 
+/// Ends today every reason to be unhappy of the player `uid` that lasts, as the game's own "Remove unhappiness" does,
+/// and logs it as one change of his `contract.unhappiness` to none. The reasons stay listed as over, which keeps the
+/// game from raising them again the next day.
+#[tauri::command]
+fn remove_unhappiness(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let plan = connection.session.plan_end_concerns(player)?;
+    let done = connection.session.apply_end_concerns(&plan)?;
+    Ok(connection.log_concerns(done, None))
+}
+
 /// Keeps the player `uid` from retiring: the retirement the game has planned for him is taken out of its plans, and he
 /// gets the trait "Will play football as long as possible" in place of "Will retire at top". Logged as one change of
 /// his `retirement` to none, and undone as one.
@@ -4454,9 +4501,33 @@ fn act_on_team(
             }
             return Ok(MassReport { batch, applied, failed: Vec::new() });
         }
+        TeamAction::RemoveUnhappiness => {
+            let mut report = MassReport { batch, applied: 0, failed: Vec::new() };
+            for member in members.iter().filter(|member| member.unhappy) {
+                let Some(player) = connection.players.get(member.uid) else {
+                    continue;
+                };
+                let name = player.name.clone();
+                let ended = connection
+                    .session
+                    .plan_end_concerns(player)
+                    .and_then(|plan| connection.session.apply_end_concerns(&plan));
+                match ended {
+                    Ok(done) => {
+                        connection.log_concerns(done, Some(batch));
+                        report.applied += 1;
+                    }
+                    Err(err) => report.failed.push(MassFailure {
+                        uid: member.uid,
+                        name,
+                        field: "contract.unhappiness".to_owned(),
+                        error: err.into(),
+                    }),
+                }
+            }
+            return Ok(report);
+        }
         TeamAction::MaxMorale => &[("morale", 20)],
-        // A player with no reason to be unhappy has no list: he is skipped.
-        TeamAction::RemoveUnhappiness => &[("contract.unhappiness", 0)],
         // Rested as the game rests a player: full energy and sharpness, and jadedness at its least.
         TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)],
         TeamAction::MaxAttributes => &[],
@@ -4814,6 +4885,7 @@ pub fn run() {
             staff_jobs,
             heal_player,
             lift_bans,
+            remove_unhappiness,
             close_promise,
             injury_kinds,
             add_injury,

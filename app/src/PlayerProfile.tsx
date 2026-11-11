@@ -3,8 +3,7 @@ import { AttributeActions, ToolsToggle } from "./AttributeActions";
 import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
-import { call } from "./api";
-import { keepPlaying, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
+import { keepPlaying, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { ATTRIBUTE_LABELS, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
@@ -36,7 +35,6 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type {
-  ApplyReport,
   Concern,
   Contract,
   FmDate,
@@ -643,8 +641,8 @@ export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid
 }
 
 /**
- * The reasons to be unhappy that last, by name, with the button that removes them all (FMRTE's "Remove all"): the
- * count of the player's list goes to none, and an undo in Changes lists them again.
+ * The reasons to be unhappy that last, by name, with the button that removes them all: each ends today, as the game's
+ * own "Remove unhappiness" ends them, and an undo in Changes has them last again.
  */
 function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
   const { editable, onEdited } = useContext(EditorContext);
@@ -663,14 +661,7 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
     setRemoving(true);
     setError(null);
     try {
-      const report = await call<ApplyReport>("apply_edits", {
-        entity: "player",
-        uid,
-        edits: [{ field: "contract.unhappiness", expected: concerns.length, value: 0 }],
-      });
-      if (report.failed.length > 0) {
-        throw report.failed[0].error;
-      }
+      await removeUnhappiness(uid);
       onEdited();
     } catch (e) {
       setError(describeError(e));

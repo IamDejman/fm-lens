@@ -2611,3 +2611,70 @@ relay: an address the relay refuses shows the error and starts no download, and
 a real address goes through. Kit still holds one active record for it. On
 getfmlens.com after the deploy, `signup.js` no longer names `app.kit.com`, and
 the relay answers the page's preflight with 204.
+
+## Unhappiness that came back after Continue (11 November 2026)
+
+Report: Remove unhappiness and Max morale on Arsenal, then Continue, and FM's
+"Squad unhappy with club situation" came again the next day, with the same
+players unhappy and their morale down. Two causes, both in how the game keeps
+this state, read from `game_plugin` (macOS arm64, Steam build 26385295; the
+record offsets are the same in the Windows `game_plugin.dll`).
+
+**Reasons were deleted, not ended.** A contract's record of reasons to be
+unhappy (`[contract+0x30]`) is a `u8` count, a ring of ten pointer slots from
++8, and at +0x58 the slot of the oldest. An entry is 28 bytes: the date it began
+at +0, the date it ended at +4 (1 January 1900 while it lasts), the reason at
++0x16 and its kind at +0x18. Entries sit 28 bytes apart, so one may be aligned
+to four bytes only. The game's own Remove unhappiness writes today's date, as
+the game holds it with its flags, over the ended date of each entry that lasts,
+and leaves the entry listed. An ended entry is what stops the game from raising
+the same reason again: it waits 10 days after the last one of its kind ended,
+or 30, 90 or 120 by reason. FM Lens set the count to 0, which left nothing to
+wait on.
+
+**The atmosphere score is reused for seven days.** A team's dynamics record
+(`[[team+0xA0]+0xC8]`, with the team back at +0x40) keeps the dressing room
+atmosphere at +0xCB with the date it was worked out at +0xA8, and the support
+for the manager at +0xCE with its date at +0xAC. FM's Dynamics screen works the
+score out afresh; the game's own logic reuses it until it is seven days old.
+Under -40 the squad complains (reasons 570 and 571). Arsenal on 10 December
+2027 held -62, worked out on 7 December, so the complaint kept coming whatever
+the players' morale now was.
+
+The fix:
+
+- Remove unhappiness, on a player's Mood tab and as a team action, ends each
+  lasting reason with today's date as the game does. Undo has them last again.
+- A write to morale, happiness, playing time happiness or unhappiness resets
+  the two dates of every team of the player's club, so the game works the
+  scores out again from how the players feel now. A record that does not point
+  back at its team, or whose date is not a day of this year or the last, is
+  left alone.
+- Reasons are read through the ring, so a list that has wrapped reads in order.
+
+Checked without writing, on the running career (native macOS FM, 10 December
+2027): `fmlens-probe concerns UID` reports what the plan would end and the
+dates of the squad's scores.
+
+| Player | Entries | Plan | Arsenal first team |
+|---|---|---|---|
+| Bukayo Saka | 1, since 10 Dec 2027, reason 570 | Ends 1 | Atmosphere and support both worked out 7 Dec 2027 |
+| David Raya | 1, since 10 Dec 2027, reason 811 | Ends 1 | The same |
+| Declan Rice | 1, since 10 Dec 2027, reason 811 | Ends 1 | The same |
+| Martin Ødegaard | 1, since 10 Dec 2027, reason 811 | Ends 1 | The same |
+| Tommy Setford | No record | Nothing to end | The same |
+
+Saka's and Raya's entries are at addresses aligned to four bytes; the first
+build of the plan skipped them and the check caught it.
+
+In the browser preview's sample data: Remove unhappiness on Northbridge FC's
+first team made 18 changes and Undo brought all 18 back; on Søren Yılmaz's Mood
+tab it logged "Reasons to be unhappy 2 → 0" and the list read "Nothing makes
+him unhappy".
+
+Not yet run: the write itself on a live game, and the packaged app on Apple
+Silicon, Rosetta and Windows.
+
+Also found: a write to `contract.happiness` can read back lower after Continue.
+The game holds happiness inside a band set by the worst lasting reason, or by
+morale when there is none. FM Lens does not change that; end the reasons first.

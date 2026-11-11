@@ -151,8 +151,9 @@ loyalty_bonus = 0x38      # i32, pounds per week
 happiness = 0x5A          # i8
 playing_time_happiness = 0x5C # i8
 # Pointer to the record of the player's reasons to be unhappy (FMRTE's "Unhappiness"), null for a player who never had
-# one: a u64 count, then that many pointers to 28-byte entries (start and end date, what it is about, the motive at
-# +0x16, the type at +0x18: 1 concerned, 2 internal). An entry stays listed, with an end date, after it is over.
+# one: a u8 count, then a ring of ten pointers to 28-byte entries and at +0x58 the slot of the oldest (start and end
+# date, what it is about, the motive at +0x16, the type at +0x18: 1 concerned, 2 internal). An entry stays listed,
+# with an end date, after it is over.
 # Thibaut Courtois: 1 entry from 17 August 2026, motive 0x39E ("doesn't believe Dean Huijsen deserves the playing
 # time he wants"); Malick Yalcouyé: left out of the UEFA Conference League squad from 4 September (0x254, internal).
 unhappiness = 0x30
@@ -303,6 +304,18 @@ reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its se
 # 2002071616, his person block 0x340 further) on Steam 26340721.
 manager = 0x80
 national = 0x2F           # u8: 0 for a club's team, else a nation's (set_work_permit reads it)
+
+# A team's dynamics record, from the game's code (docs/EDITING-VALIDATION.md). A team points at a holder, which points
+# at the record; the record points back at its team. It keeps the dressing room atmosphere (i8 at 0xCB) and the support
+# for the manager (i8 at 0xCE), each with the date the game worked it out. The game's own logic, such as the squad
+# complaining about the atmosphere, reuses a score for seven days after its date; FM's Dynamics screen does not.
+# Arsenal, 10 Dec 2027: atmosphere -62, worked out on 7 Dec.
+[dynamics]
+holder = 0xA0             # in a team: pointer to the holder
+record = 0xC8             # in the holder: pointer to the record
+team = 0x40               # in the record: pointer back at the team
+atmosphere_date = 0xA8    # date the atmosphere score was worked out; 1 Jan 1900 before the first time
+support_date = 0xAC       # date the support score was worked out
 
 # The game's allocator hands out blocks in size classes, without headers. Measured on
 # the buffers of the teams' player lists (probe `squads`): a list of n pointers sits in

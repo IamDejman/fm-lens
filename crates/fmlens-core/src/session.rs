@@ -252,12 +252,18 @@ impl Session {
 
     /// The in-game date where the build places it, when it looks like a real date.
     pub(crate) fn read_game_date(&self) -> Option<FmDate> {
+        let raw = self.raw_game_date()?;
+        FmDate::from_raw(raw as u16, (raw >> 16) as u16).filter(|date| (2000..=2200).contains(&date.year))
+    }
+
+    /// The in-game date as the game holds it: the day of the year under flags that change through the day, then the
+    /// year. The game stamps its own records with this.
+    pub(crate) fn raw_game_date(&self) -> Option<u32> {
         let rva = match self.profile.as_ref().and_then(|profile| profile.current_date) {
             Some(rva) => rva,
             None => self.arrays.players.as_ref()?.pair_rva + self.layout.cluster.current_date,
         };
-        let raw = self.process.read_u32(self.plugin.base + rva).ok()?;
-        FmDate::from_raw(raw as u16, (raw >> 16) as u16).filter(|date| (2000..=2200).contains(&date.year))
+        self.process.read_u32(self.plugin.base + rva).ok()
     }
 
     /// Reads every player, with ages on the current in-game date. Only reads memory.

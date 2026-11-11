@@ -1605,8 +1605,13 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
           } else if (name === "playing_time_happiness") {
             contract.playingTimeHappiness = value;
           } else if (name === "unhappiness") {
-            // Only ever set to none; an undo puts the count back, which the made-up list cannot follow.
-            contract.concerns = value === 0 ? [] : contract.concerns;
+            // Set to none, the reasons that last end today; an undo has the ones that ended today last again.
+            const today = numberFromDate(GAME_DATE);
+            contract.concerns = contract.concerns.map((concern) =>
+              value === 0
+                ? { ...concern, ended: concern.ended ?? GAME_DATE }
+                : { ...concern, ended: concern.ended && numberFromDate(concern.ended) === today ? null : concern.ended },
+            );
           }
         }
         break;
@@ -1737,8 +1742,13 @@ function currentValues(entity: Entity, uid: number): FieldValues {
             return contract?.happiness;
           case "playing_time_happiness":
             return contract?.playingTimeHappiness;
-          case "unhappiness":
-            return contract && contract.concerns.length > 0 ? contract.concerns.length : undefined;
+          case "unhappiness": {
+            // None that last reads as nothing to remove, unless some ended today: those an undo can have last again.
+            const lasting = contract?.concerns.filter((concern) => concern.ended === null).length ?? 0;
+            const today = numberFromDate(GAME_DATE);
+            const endedToday = contract?.concerns.some((c) => c.ended && numberFromDate(c.ended) === today) ?? false;
+            return lasting > 0 || endedToday ? lasting : undefined;
+          }
         }
         return undefined;
       }
@@ -2631,6 +2641,22 @@ function liftBans(uid: number, batch: number | null = null): LoggedChange {
     batch,
   };
   changes.push(logged);
+  return { ...logged };
+}
+
+/** `remove_unhappiness`: the fixture player's reasons to be unhappy that last end today, logged as one change. */
+function removeUnhappiness(uid: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const report: MassReport = { batch: 0, applied: 0, failed: [] };
+  setValues(player, [["contract.unhappiness", 0]], report);
+  const logged = changes[changes.length - 1];
+  if (report.applied === 0 || !logged) {
+    throw failure("list.missing", "the list holds nothing at number 0", { index: 0 });
+  }
+  logged.batch = null;
   return { ...logged };
 }
 
@@ -3792,6 +3818,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return signFreeAgentLater(Number(args?.uid), Number(args?.club), Number(args?.joins)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
+    case "remove_unhappiness":
+      return removeUnhappiness(Number(args?.uid)) as T;
     case "close_promise":
       return closePromise(Number(args?.uid), Number(args?.index), args?.promise as PlayerPromise | undefined) as T;
     case "change_clause":
