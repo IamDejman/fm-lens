@@ -2,7 +2,7 @@
 
 For the next agent. The goal, in the user's words: "all that is on mac is what windows should have too. No disparity."
 Read this, then `AGENTS.md` and `CLAUDE.md`, then the Windows sections of `docs/EDITING-VALIDATION.md` ("Windows
-reads", "Windows game actions", "Windows edits").
+reads", "Windows game actions", "Windows edits", "Windows: every feature on main" and "FM27 27.0.1").
 
 ## 1. Where things stand (7 November 2026)
 
@@ -23,8 +23,22 @@ Windows 10 or 11 themselves.
 
 Checked in the running game on Windows, each undone, the save never written: every read above, every game action
 above, and the app's direct edits (attributes and CA/PA, contract, mass edit, clone and templates, freeze money,
-Heal, Refresh fitness, Max morale, Max cohesion, your manager's unsackable flag and wage). Not checked on Windows:
-Remove unhappiness, Lift bans (nobody to use them on in the test save), and a save, quit and reload of an edited copy.
+Heal, Refresh fitness, Max morale, Max cohesion, your manager's unsackable flag and wage). Not checked on Windows by
+7 November: Remove unhappiness, Lift bans (nobody to use them on in the test save), and a save, quit and reload of an
+edited copy.
+
+Since then, on the same box:
+
+- **8 November, build 26340721.** FM Lens 0.6.2 from `feat/windows-parity` ran every feature on main in a copy of the
+  test career ("Windows: every feature on main"). Remove unhappiness passed, with its undo. A second copy,
+  `FM Lens Persist Check`, was saved with Save As, FM quit and relaunched through Steam, and that copy loaded: two
+  player attributes, a contract wage and a club balance held, and both freezes came back on.
+- **10 November, FM27 27.0.1 (Steam build 26385295).** The build has a Windows profile and passed the
+  `docs/PATCH-VALIDATION.md` run ("FM27 27.0.1"): `fmlens-probe health` 12 of 12, a bounded set of edits and game
+  actions, then a Save As to `FM-Lens-27.0.1-Windows`, an FM quit and restart and a reload. A player and a staff
+  attribute, a wage, a club balance, a signing, a work permit and Max tactics held.
+- **Still not checked on Windows:** Lift bans (nobody is banned in the test saves), persistence of the other mapped
+  fields, Windows 10 and 11 themselves, and Game Pass (section 3.4).
 
 ## 2. The Windows test box
 
@@ -44,7 +58,8 @@ Remove unhappiness, Lift bans (nobody to use them on in the test save), and a sa
   `type.ps1` drive the mouse and keyboard, `hash.ps1` prints the save's SHA-256 and whether FM responds.
 - The test save is `Documents\Sports Interactive\Football Manager 27\games\Ayo Elu - Arsenal.fm`, SHA-256
   `AF20CBAC52DE4D850B20029437F92675EEC7AEA83BC65C0611105E6E2CB747E5`. Check it is unchanged after every test. Never
-  press Continue (Space in FM) or save during a test.
+  press Continue (Space in FM) or save in it: the persistence runs of 8 and 10 November worked in copies made with
+  FM's Save As and saved only those.
 - Clicks sent to FM or FM Lens over SSH sometimes drop, mostly the first after a pause: take a screenshot after
   each one and retry.
 
@@ -97,7 +112,8 @@ the box. Evidence is in docs/EDITING-VALIDATION.md, "Windows: every feature on m
 
 1. **CI: done.** `windows-checks` runs clippy, the workspace tests, the memory guard tests, the app's clippy and the
    installer build. fmt and the relay tests stay on the Mac job: they do not depend on the platform.
-2. **Pinned profile test: done.** `steam_27_0_0_on_windows_finds_what_was_traced` in `profile.rs`.
+2. **Pinned profile test: done.** `steam_27_0_0_on_windows_finds_what_was_traced` in `profile.rs`, and
+   `steam_27_0_1_on_windows_carries_27_0_0_across` for 27.0.1.
 3. **Development build: done.** `tauri.windows.conf.json` builds the bridge before `npm run tauri dev`.
    `scripts/check-build.sh` and `scripts/scout` stay Mac tools: they inspect the Mac game build and Mac app bundle,
    and the Windows equivalents are `fmlens-probe health` and the profile test above.
