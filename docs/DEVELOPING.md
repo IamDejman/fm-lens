@@ -299,8 +299,8 @@ tests, and CI runs them too.
 
 The app's email screen and the site's download page post `{ email }` to the same function (`POST /subscribe`). The
 relay checks it looks like an address, counts it apart from reports (5 an hour and 10 a day from one sender, 500 an
-hour and 3,000 a day in all) and adds it to FM Lens's form in Kit with Kit's v4 API: an inactive subscriber first, then
-the form, whose double opt-in email makes them active once they confirm. Kit's API key (Settings, Developer, a v4 key)
+hour and 3,000 a day in all) and adds it to FM Lens's form in Kit with Kit's v4 API: an active subscriber first, then
+the form, with no email to confirm (the form's "Send incentive email" is off). Kit's API key (Settings, Developer, a v4 key)
 is the function's `KIT_API_KEY`, and `KIT_FORM` names another form than 10172074; without the key it answers 503. It
 answers `{ "subscribed": true }`, 400 `invalid` for an address it or Kit turns down, and 502 when Kit can't take it
 now, and it logs no address.
