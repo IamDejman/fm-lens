@@ -2800,7 +2800,7 @@ function undoCaptain(entry: LoggedChange): void {
 function teamAction(clubUid: number, index: number, action: TeamAction): MassReport {
   const team = fixtureTeam(clubUid, index);
   const batch = nextMassId++;
-  const report: MassReport = { batch, applied: 0, failed: [] };
+  const report: MassReport = { batch, applied: 0, failed: [], freeze: null };
   if (action === "heal") {
     for (const player of team.players.filter((p) => p.injuries > 0)) {
       healPlayer(player.uid, batch);
@@ -2960,8 +2960,34 @@ function selectTargets(entity: Entity, query: string, filters: MassFilters): { u
 }
 
 /** The mass edit last previewed, until it is applied or replaced. */
-let pendingMass: { id: number; entity: Entity; planned: PlannedChange[] } | null = null;
+let pendingMass: { id: number; entity: Entity; planned: PlannedChange[]; freeze: MassFreeze | null } | null = null;
 let nextMassId = 1;
+
+/** Those a mass edit freezes (`frozen`) or unfreezes: not those that are that way already. */
+interface MassFreeze {
+  entity: Entity;
+  frozen: boolean;
+  uids: number[];
+}
+
+/** What each mass edit froze or unfroze, by its batch, for its undo. */
+const massFreezes = new Map<number, MassFreeze>();
+
+/** What is frozen of a kind of entity: the attributes of players or staff, the money of clubs. */
+const frozenSet = (entity: Entity) =>
+  entity === "player" ? frozenAttributes : entity === "staff" ? frozenStaff : frozenMoney;
+
+/** Freezes or unfreezes what `freeze` names. */
+function makeFreeze({ entity, frozen, uids }: MassFreeze) {
+  const held = frozenSet(entity);
+  for (const uid of uids) {
+    if (frozen) {
+      held.add(uid);
+    } else {
+      held.delete(uid);
+    }
+  }
+}
 
 /** What an operation turns `old` into, as the real one does: added and scaled values stay within the field's range. */
 function operate(field: EditField, operation: MassOperationKind, old: number): number {
@@ -2977,8 +3003,14 @@ function operate(field: EditField, operation: MassOperationKind, old: number): n
 }
 
 /** `plan_mass_edit`, with the real command's checks and messages. */
-function planMass(entity: Entity, query: string, filters: MassFilters, operations: MassOperation[]): MassPreview {
-  if (operations.length === 0) {
+function planMass(
+  entity: Entity,
+  query: string,
+  filters: MassFilters,
+  operations: MassOperation[],
+  wanted: boolean | null,
+): MassPreview {
+  if (operations.length === 0 && wanted === null) {
     throw failure("mass.noOperations", "Choose at least one field to change.");
   }
   const targets = selectTargets(entity, query, filters);
@@ -3022,28 +3054,35 @@ function planMass(entity: Entity, query: string, filters: MassFilters, operation
     }
     unchanged += changed ? 0 : 1;
   }
+  const held = frozenSet(entity);
+  const freeze: MassFreeze | null =
+    wanted === null
+      ? null
+      : { entity, frozen: wanted, uids: targets.map(({ uid }) => uid).filter((uid) => held.has(uid) !== wanted) };
   const id = nextMassId++;
-  pendingMass = { id, entity, planned };
+  pendingMass = { id, entity, planned, freeze };
   return {
     id,
     targets: targets.length,
-    unchanged,
+    // Without operations nobody "already has these values": the plan is the freeze alone.
+    unchanged: ops.length === 0 ? 0 : unchanged,
     changes: planned.length,
     rows: planned.slice(0, PREVIEW_ROWS),
     skippedCount: skipped.length,
     skipped: skipped.slice(0, PREVIEW_ROWS),
+    freeze: freeze && { frozen: freeze.frozen, count: freeze.uids.length },
   };
 }
 
-/** `apply_mass_edit`: the previewed changes, each only while the value is still the one previewed. */
+/** `apply_mass_edit`: the previewed changes, each only while the value is still the one previewed, then its freeze. */
 function applyMass(id: number): MassReport {
   if (!pendingMass || pendingMass.id !== id) {
     throw failure("mass.outOfDate", "This preview is out of date. Preview the mass edit again.");
   }
-  const { entity, planned } = pendingMass;
+  const { entity, planned, freeze } = pendingMass;
   pendingMass = null;
   const batch = nextMassId++;
-  const report: MassReport = { batch, applied: 0, failed: [] };
+  const report: MassReport = { batch, applied: 0, failed: [], freeze: null };
   for (const change of planned) {
     const found = currentValues(entity, change.uid)[change.field];
     if (found !== change.old) {
@@ -3056,12 +3095,19 @@ function applyMass(id: number): MassReport {
     changes.push({ ...change, id: changes.length + 1, at: Date.now(), entity, undoneAt: null, batch });
     report.applied++;
   }
+  if (freeze) {
+    makeFreeze(freeze);
+    report.freeze = { frozen: freeze.frozen, count: freeze.uids.length, failed: 0, error: null };
+    if (freeze.uids.length > 0) {
+      massFreezes.set(batch, freeze);
+    }
+  }
   return report;
 }
 
-/** `undo_batch`: every change of the batch not undone yet, newest first. */
+/** `undo_batch`: every change of the batch not undone yet, newest first, and what it froze or unfroze. */
 function undoMassBatch(batch: number): BatchUndo {
-  const report: BatchUndo = { undone: 0, failed: [] };
+  const report: BatchUndo = { undone: 0, failed: [], freeze: null };
   for (const entry of [...changes].reverse()) {
     if (entry.batch !== batch || entry.undoneAt !== null || entry.earlierGame) {
       continue;
@@ -3073,6 +3119,12 @@ function undoMassBatch(batch: number): BatchUndo {
       // `undoChange` fails the way the real command does, with a failure.
       report.failed.push({ id: entry.id, error: e as Failure });
     }
+  }
+  const made = massFreezes.get(batch);
+  if (made) {
+    massFreezes.delete(batch);
+    makeFreeze({ ...made, frozen: !made.frozen });
+    report.freeze = { frozen: !made.frozen, count: made.uids.length };
   }
   return report;
 }
@@ -3548,23 +3600,11 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "frozen_staff":
       return [...frozenStaff] as T;
-    case "frozen_selection":
-    case "freeze_selection": {
+    case "frozen_selection": {
       const entity = args?.entity as Entity;
-      const held = entity === "player" ? frozenAttributes : entity === "staff" ? frozenStaff : frozenMoney;
-      const uids = selectTargets(entity, String(args?.query ?? ""), (args?.filters ?? {}) as MassFilters).map(
-        (target) => target.uid,
-      );
-      if (command === "freeze_selection") {
-        for (const uid of uids) {
-          if (args?.frozen) {
-            held.add(uid);
-          } else {
-            held.delete(uid);
-          }
-        }
-      }
-      return { selected: uids.length, frozen: uids.filter((uid) => held.has(uid)).length, error: null } as T;
+      const held = frozenSet(entity);
+      const targets = selectTargets(entity, String(args?.query ?? ""), (args?.filters ?? {}) as MassFilters);
+      return { selected: targets.length, frozen: targets.filter(({ uid }) => held.has(uid)).length } as T;
     }
     case "export_players": {
       // Nothing is written in a browser: the report names the file a real export would have.
@@ -3595,7 +3635,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       if (!player) {
         throw notFound("player", uid);
       }
-      const report: MassReport = { batch: nextMassId++, applied: 0, failed: [] };
+      const report: MassReport = { batch: nextMassId++, applied: 0, failed: [], freeze: null };
       setValues(player, ATTRIBUTES.map((key) => attributeAt(key, level)), report);
       return report as T;
     }
@@ -3753,6 +3793,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         String(args?.query ?? ""),
         (args?.filters ?? {}) as MassFilters,
         (args?.operations ?? []) as MassOperation[],
+        (args?.freeze ?? null) as boolean | null,
       ) as T;
     case "apply_mass_edit":
       return applyMass(Number(args?.id)) as T;

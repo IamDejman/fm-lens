@@ -1274,8 +1274,12 @@ export interface SelectionFreeze {
   selected: number;
   /** How many of them are frozen now. */
   frozen: number;
-  /** Why the first that could not be frozen was refused, when one was. */
-  error: Failure | null;
+}
+
+/** How many a mass edit freezes (`frozen`) or unfreezes: the attributes of players or staff, the money of clubs. */
+export interface FreezeCount {
+  frozen: boolean;
+  count: number;
 }
 
 /** A change a mass edit would write: as stored. */
@@ -1314,6 +1318,8 @@ export interface MassPreview {
   skippedCount: number;
   /** The first 500 of them. */
   skipped: SkippedField[];
+  /** How many it would freeze or unfreeze, when its freeze box was changed. */
+  freeze: FreezeCount | null;
 }
 
 /** From `apply_mass_edit`. */
@@ -1323,6 +1329,8 @@ export interface MassReport {
   applied: number;
   /** Changes not written, e.g. because the game changed the value after the preview. */
   failed: { uid: number; name: string; field: string; error: Failure }[];
+  /** What it froze or unfroze, how many could not be frozen, and why the first of them was refused. */
+  freeze: (FreezeCount & { failed: number; error: Failure | null }) | null;
 }
 
 /** From `undo_batch`. */
@@ -1330,6 +1338,8 @@ export interface BatchUndo {
   undone: number;
   /** Changes the game has changed since, left as they are. */
   failed: { id: number; error: Failure }[];
+  /** What was frozen again or unfrozen, when the mass edit had unfrozen or frozen it. */
+  freeze: FreezeCount | null;
 }
 
 /** How many pictures of each kind the graphics packs hold. */

@@ -39,6 +39,9 @@ const changeCount = (count: number) =>
   count === 0 ? "No changes" : count === 1 ? "1 change" : `${format(count)} changes`;
 
 /** "1 value left alone", "12 values left alone". */
+/** "58 to freeze": how many a mass edit would freeze, or unfreeze. */
+const toFreeze = (frozen: boolean, count: number) => `${format(count)} to ${frozen ? "freeze" : "unfreeze"}`;
+
 const valuesLeftAlone = (count: number) =>
   count === 1 ? "1 value left alone" : `${format(count)} values left alone`;
 
@@ -1973,7 +1976,11 @@ export const en = {
       "Narrow your search or filters.",
     loadingFields: "Loading fields…",
     fieldsFailed: (reason: string) => `Couldn't load the fields: ${reason}`,
-    /** Under the dialog after its freeze box left some of the list unfrozen; `count` is how many. */
+    /** Beside the fields while the freeze box alone was changed: what Apply would do. */
+    toFreeze,
+    /** What an Apply or an Undo froze, or unfroze. */
+    frozenCount: (frozen: boolean, count: number) => `${format(count)} ${frozen ? "frozen" : "unfrozen"}`,
+    /** After an Apply that left some of the list unfrozen; `count` is how many. */
     freezeFailed: (count: number, reason: string) => `${format(count)} couldn't be frozen: ${reason}`,
 
     // The fields to change
@@ -2039,11 +2046,11 @@ export const en = {
     previewing: "Previewing…",
     /** Beside Preview while it cannot be pressed. */
     previewBlocked: "Fill in every field to preview",
-    /** "312 changes for 140 of 237 players · 97 already have these values · 12 values left alone". */
+    /** "312 changes for 140 of 237 players · 97 already have these values · 12 values left alone · 58 to freeze". */
     summary: (entity: MassEntity, preview: MassPreview) =>
       [
         preview.changes === 0
-          ? "No changes"
+          ? !preview.freeze?.count && "No changes"
           : `${changeCount(preview.changes)} for ${format(preview.targets - preview.unchanged)} of ` +
             entityCount[entity](preview.targets),
         preview.unchanged > 0 &&
@@ -2051,6 +2058,7 @@ export const en = {
             ? "1 already has these values"
             : `${format(preview.unchanged)} already have these values`),
         preview.skippedCount > 0 && valuesLeftAlone(preview.skippedCount),
+        !!preview.freeze?.count && toFreeze(preview.freeze.frozen, preview.freeze.count),
       ]
         .filter(Boolean)
         .join(" · "),

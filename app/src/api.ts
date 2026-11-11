@@ -3,12 +3,13 @@ import { invoke } from "@tauri-apps/api/core";
 /** True inside the Tauri app; false in a plain browser, where fixtures stand in for the game. */
 export const inTauri = "__TAURI_INTERNALS__" in window;
 
-type CommandWatcher = (command: string, args?: Record<string, unknown>) => void;
+type CommandWatcher = (command: string, args: Record<string, unknown> | undefined, result: unknown) => void;
 
 const watchers = new Set<CommandWatcher>();
 
 /**
- * Hears every command that succeeded in the app: `usage.ts` counts edits with it. Returns what stops hearing them.
+ * Hears every command that succeeded in the app, with what it was asked and what it answered: `usage.ts` counts
+ * edits with it. Returns what stops hearing them.
  */
 export function watchCommands(next: CommandWatcher): () => void {
   watchers.add(next);
@@ -24,7 +25,7 @@ export async function call<T>(command: string, args?: Record<string, unknown>): 
     : await import("./dev/mock").then(({ mockInvoke }) => mockInvoke<T>(command, args));
   for (const watcher of watchers) {
     try {
-      watcher(command, args);
+      watcher(command, args, result);
     } catch {
       // Hearing a command never fails it.
     }
