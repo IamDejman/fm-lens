@@ -1630,6 +1630,11 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.7": [
+        "Remove unhappiness lasts: the reasons stay gone after you Continue.",
+        "A happiness edit holds: morale moves with it.",
+        "Mass edit can freeze or unfreeze everything in the list.",
+      ],
       "0.7.6": [
         "The Staff tab shows each team's own staff: first team, U21, U18.",
       ],

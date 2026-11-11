@@ -1530,6 +1530,11 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.7": [
+        "Quitar descontento dura: los motivos no vuelven al pulsar Continuar.",
+        "Un cambio de felicidad se mantiene: la moral se ajusta con él.",
+        "La edición masiva puede congelar o descongelar toda la lista.",
+      ],
       "0.7.6": [
         "La pestaña Personal muestra el personal de cada equipo: primer equipo, sub-21, sub-18.",
       ],

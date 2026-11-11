@@ -1505,6 +1505,11 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.7": [
+        "Mutsuzluğu kaldır kalıcı: nedenler Devam’dan sonra geri gelmez.",
+        "Mutluluk düzenlemesi yerinde kalır: moral de onunla ayarlanır.",
+        "Toplu düzenleme listedeki her şeyi dondurabilir ya da dondurmayı kaldırabilir.",
+      ],
       "0.7.6": [
         "Personel sekmesi her takımın kendi personelini gösterir: A takımı, U21, U18.",
       ],
