@@ -407,7 +407,7 @@ function kit(...statuses) {
 
 const subscribe = (options, body, more) => post({ kit: KIT, ...options }, body, { path: "/subscribe", ...more });
 
-test("an address is made an inactive subscriber, then added to the form for Kit's double opt-in", async () => {
+test("an address is made an active subscriber, then added to the form, with nothing to confirm", async () => {
   const { fetch, sent } = kit(201, 201);
   // The report token isn't needed.
   const answer = await subscribe({ fetch }, { email: "  fan@example.com " });
@@ -415,7 +415,7 @@ test("an address is made an inactive subscriber, then added to the form for Kit'
   assert.deepEqual(
     sent.map(({ url, body }) => [url, body]),
     [
-      ["https://api.kit.com/v4/subscribers", { email_address: "fan@example.com", state: "inactive" }],
+      ["https://api.kit.com/v4/subscribers", { email_address: "fan@example.com", state: "active" }],
       ["https://api.kit.com/v4/forms/10172074/subscribers", { email_address: "fan@example.com" }],
     ],
   );
