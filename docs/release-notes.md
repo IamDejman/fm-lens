@@ -1,6 +1,6 @@
 ## What's new
 
-FM Lens 0.7.5 opens up every club's backroom and gives you a direct line to what gets built next. See who runs a club from the manager down to the board, and ask for the next feature without leaving the app.
+FM Lens 0.7.5 opens up every club's backroom and gives you a direct line to what gets built next. See who runs a club from the manager down to the board, and ask for the next feature from the Wishlist.
 
 ### A club's staff
 
