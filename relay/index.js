@@ -13,9 +13,9 @@
 // the bucket drops `uploads/` after a day, so a file no report names is never public (relay/setup-attachments.sh).
 // Without UPLOAD_BUCKET, reports without files work as before.
 //
-// The app's email screen posts here too (POST /subscribe): the relay checks the address and adds it to FM Lens's form in
-// Kit with its own API key (KIT_API_KEY; KIT_FORM, 10172074 by default), so the app never meets Kit's form or its
-// check that the visitor is a person. Kit keeps the list and sends the emails; the relay keeps no address.
+// The app's email screen and the site's download page post here too (POST /subscribe): the relay checks the address and
+// adds it to FM Lens's form in Kit with its own API key (KIT_API_KEY; KIT_FORM, 10172074 by default), so neither meets
+// Kit's form or its check that the visitor is a person. Kit keeps the list and sends the emails; the relay keeps no address.
 
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
