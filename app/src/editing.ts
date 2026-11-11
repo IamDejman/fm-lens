@@ -67,6 +67,33 @@ export const changeLog = () => call<LoggedChange[]>("change_log");
 /** Writes back the old value of a logged change; fails if the game has changed the value since. */
 export const undoChange = (id: number) => call<LoggedChange>("undo_change", { id });
 
+/** Whether a logged change stands: written to the game that is loaded, and not undone. */
+export const stands = (change: LoggedChange) => change.undoneAt === null && change.earlierGame !== true;
+
+/** What a profile's standing fields are kept under: `player:1009102`. */
+export const profileKey = (entity: Entity, uid: number) => `${entity}:${uid}`;
+
+/**
+ * The fields with a change in `log` that stands, by profile (see `profileKey`): what the profiles mark as applied.
+ * A field stays in while any change to it stands, and goes once they are all undone.
+ */
+export function standingFields(log: readonly LoggedChange[]): ReadonlyMap<string, ReadonlySet<string>> {
+  const byProfile = new Map<string, Set<string>>();
+  for (const change of log) {
+    if (!stands(change)) {
+      continue;
+    }
+    const key = profileKey(change.entity, change.uid);
+    const fields = byProfile.get(key);
+    if (fields === undefined) {
+      byProfile.set(key, new Set([change.field]));
+    } else {
+      fields.add(change.field);
+    }
+  }
+  return byProfile;
+}
+
 /** The whole percentage the game shows (0–100) for a stored one (0–10000), for a profile that has no field table. */
 export const wholePercent = (stored: number): number => Math.floor((stored + 50) / 100);
 
