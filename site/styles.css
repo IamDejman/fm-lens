@@ -191,11 +191,27 @@ h2 {
 .bar nav a {
   color: var(--on-strip-muted);
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .bar nav a:hover {
   color: var(--on-strip);
   box-shadow: inset 0 -2px 0 #c86ee6;
+}
+
+.bar nav .star svg {
+  width: 1em;
+  height: 1em;
+  margin-right: 6px;
+  vertical-align: -0.125em;
+  fill: currentColor;
+}
+
+/* A phone has room for "Star" beside Release notes, not for the whole label. */
+@media (max-width: 420px) {
+  .bar nav .star-where {
+    display: none;
+  }
 }
 
 /* The hero: what FM Lens is, the download, and the app itself breaking out of the masthead onto the page. */

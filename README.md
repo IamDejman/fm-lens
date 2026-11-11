@@ -111,6 +111,8 @@ or Windows version and processor, and the app language:
 - `card_exported`: a player's share card was copied or saved, with its size
   and whether it shows CA and PA.
 - `change_undone`, `players_exported` and `report_sent`.
+- `star_asked`, `star_clicked` and `star_declined`: the ask for a star on GitHub
+  was shown, followed or turned down.
 
 To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
 nothing.

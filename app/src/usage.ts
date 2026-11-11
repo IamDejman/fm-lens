@@ -21,7 +21,7 @@ const INSTALL_KEY = "fm-lens.installId";
 const OPENED_KEY = "fm-lens.opened";
 
 /** The commands that change the game, counted as `edit_applied`. Reads and plans are not counted. */
-const EDITS = new Set([
+export const EDITS = new Set([
   "add_injury",
   "add_release_clause",
   "add_tie",

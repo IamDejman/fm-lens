@@ -188,9 +188,10 @@ FM Lens is released for macOS and Windows, from a Mac, to the public repository
    - `version` in the root `Cargo.toml` (`[workspace.package]`), and `Cargo.lock`;
    - `app/package.json` and `app/package-lock.json`;
    - `app/src-tauri/tauri.conf.json`.
-2. **Write what is new** in `docs/release-notes.md`, its only section, and in short under
-   `update.changes` in `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update
-   themselves show that list once, after they relaunch as the new version.
+2. **Write what is new** in `docs/release-notes.md`, its only section, keeping its last
+   line, which asks for a star on GitHub, and in short under `update.changes` in
+   `app/src/i18n/en.ts`, `es.ts` and `tr.ts`: copies that update themselves show that list
+   once, after they relaunch as the new version.
 3. **Merge to `main`** and wait for its Validate run: its Windows job builds the installer
    (the `fm-lens-windows-installer` artifact).
 4. **Build and publish** from a clean checkout of `origin/main`:

@@ -16,6 +16,7 @@ import { GuidedTour } from "./GuidedTour";
 import { isShortcut, MAC, SECTION_SHORTCUTS, shortcutAria, shortcutLabel } from "./keys";
 import { ReportDialog } from "./ReportDialog";
 import { Settings } from "./Settings";
+import { StarNotice, useStarAsk } from "./StarNotice";
 import {
   appText,
   awardListText,
@@ -135,6 +136,7 @@ function App() {
   const [debugBuild, setDebugBuild] = useState(false);
   const [reporting, setReporting] = useState(false);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
+  const { asking: askingStar, answer: answerStar } = useStarAsk();
   const [emailAsked, setEmailAsked] = useState(() => !emailGiven());
   useEffect(() => {
     trackOpened();
@@ -590,6 +592,7 @@ function App() {
         <div className="live-region" role="status" aria-atomic="false">
           {update && update.phase !== "ready" && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
           {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
+          {askingStar && <StarNotice onAnswer={answerStar} />}
           {connection && <CompatibilityNotice connection={connection} />}
           {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
         </div>
