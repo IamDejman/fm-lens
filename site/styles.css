@@ -452,6 +452,11 @@ footer a {
   margin: 0 0 16px;
 }
 
+/* An email address can be wider than a phone. */
+.message .address {
+  overflow-wrap: anywhere;
+}
+
 .message.intro {
   padding-bottom: 8px;
 }

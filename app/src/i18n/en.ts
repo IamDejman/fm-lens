@@ -1512,9 +1512,9 @@ export const en = {
       button: "Continue",
       /** On the button while the address is sent. */
       sending: "Checking…",
-      /** The relay or Kit turned the address down. */
+      /** The relay turned the address down. */
       refused: "That did not work. Check the address and try again.",
-      /** The address could not be sent, or Kit could not take it now. */
+      /** The address could not be sent, or the relay could not take it now. */
       failed: "That did not work. Check your connection and try again.",
     },
 

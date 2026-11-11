@@ -8,7 +8,9 @@ import {
   PER_HOUR,
   SUBSCRIBE_LIMITS,
   createRelay,
+  createSubscribers,
   createTableLimiter,
+  downloadCounts,
   issueFor,
   presign,
   publicUrl,
@@ -393,85 +395,103 @@ test("a report whose files aren't in the bucket, or are too big, isn't filed", a
   assert.equal(issueFor(readReport(REPORT).report).body.includes("### Files"), false);
 });
 
-const KIT = { key: "kit-key", form: "10172074" };
-
-/** A stand-in for Kit that records what it is sent and answers each request with the next of `statuses`. */
-function kit(...statuses) {
-  const sent = [];
-  const fetch = async (url, init) => {
-    sent.push({ url, init, body: JSON.parse(init.body) });
-    return new Response("{}", { status: statuses[sent.length - 1] ?? 201 });
+/** A stand-in for the list: the addresses on it, by address, and a switch to make every request fail. */
+function list() {
+  const rows = new Map();
+  const state = { down: false };
+  const subscribers = {
+    async add(email) {
+      if (state.down) {
+        throw new Error("throttled");
+      }
+      rows.set(email, { status: "active", token: rows.get(email)?.token ?? "0".repeat(32) });
+    },
+    async remove(email, token) {
+      if (state.down) {
+        throw new Error("throttled");
+      }
+      const row = rows.get(email);
+      if (row?.token !== token) {
+        return false;
+      }
+      row.status = "unsubscribed";
+      return true;
+    },
+    async count() {
+      return [...rows.values()].filter((row) => row.status === "active").length;
+    },
   };
-  return { fetch, sent };
+  return { subscribers, rows, state };
 }
 
-const subscribe = (options, body, more) => post({ kit: KIT, ...options }, body, { path: "/subscribe", ...more });
+const subscribe = (options, body, more) => post(options, body, { path: "/subscribe", ...more });
 
-test("an address is made an active subscriber, then added to the form, with nothing to confirm", async () => {
-  const { fetch, sent } = kit(201, 201);
+/** Posts the relay an unsubscribe link's query, with the body email apps send. */
+async function unsubscribe(options, query) {
+  const relay = createRelay({ limiter: createTableLimiter({ table: "t", update: table().update }), ...options });
+  const response = await relay({
+    rawPath: "/unsubscribe",
+    rawQueryString: query,
+    requestContext: { http: { method: "POST", sourceIp: "203.0.113.9" } },
+    body: "List-Unsubscribe=One-Click",
+    isBase64Encoded: false,
+  });
+  return { status: response.statusCode, json: JSON.parse(response.body) };
+}
+
+const TOKEN = "0".repeat(32);
+
+test("an address goes on the list in lower case, once however often it is given", async () => {
+  const { subscribers, rows } = list();
   // The report token isn't needed.
-  const answer = await subscribe({ fetch }, { email: "  fan@example.com " });
+  const answer = await subscribe({ subscribers }, { email: "  Fan@Example.com " });
   assert.deepEqual(answer, { status: 200, json: { subscribed: true }, cors: "*" });
-  assert.deepEqual(
-    sent.map(({ url, body }) => [url, body]),
-    [
-      ["https://api.kit.com/v4/subscribers", { email_address: "fan@example.com", state: "active" }],
-      ["https://api.kit.com/v4/forms/10172074/subscribers", { email_address: "fan@example.com" }],
-    ],
-  );
-  assert.equal(sent[0].init.headers["X-Kit-Api-Key"], "kit-key");
-  // Kit answers 200 for an address it has already.
-  assert.equal((await subscribe({ fetch: kit(200, 200).fetch }, { email: "fan@example.com" })).status, 200);
+  assert.equal((await subscribe({ subscribers }, { email: "fan@example.com" })).status, 200);
+  assert.deepEqual([...rows.keys()], ["fan@example.com"]);
 });
 
-test("addresses that can't be one are turned away before Kit is asked", async () => {
+test("addresses that can't be one are turned away before the list is asked", async () => {
   for (const email of ["", "fan", "fan@example", "fan @example.com", "a@b@example.com", "fan@example.c0m", `${"a".repeat(250)}@example.com`]) {
     assert.deepEqual(readEmail({ email }), { error: "invalid" }, email);
   }
   assert.deepEqual(readEmail({ email: "first.last+fm@mail.example.co.uk" }), { email: "first.last+fm@mail.example.co.uk" });
-  const { fetch, sent } = kit();
-  assert.deepEqual((await subscribe({ fetch }, { email: "fan@example" })).json, { error: "invalid" });
-  assert.equal((await subscribe({ fetch }, { email: 42 })).status, 400);
-  assert.equal((await subscribe({ fetch }, "not json")).status, 400);
-  assert.equal(sent.length, 0);
+  const { subscribers, rows } = list();
+  assert.deepEqual((await subscribe({ subscribers }, { email: "fan@example" })).json, { error: "invalid" });
+  assert.equal((await subscribe({ subscribers }, { email: 42 })).status, 400);
+  assert.equal((await subscribe({ subscribers }, "not json")).status, 400);
+  assert.equal(rows.size, 0);
 });
 
-test("an address Kit turns down is invalid, and the form isn't asked", async () => {
-  const { fetch, sent } = kit(422);
-  assert.deepEqual(await subscribe({ fetch }, { email: "fan@example.com" }), {
-    status: 400,
-    json: { error: "invalid" },
-    cors: "*",
-  });
-  assert.equal(sent.length, 1);
-});
-
-test("Kit out of reach, failing or refusing the key is told apart from a bad address, and the log keeps no address", async () => {
+test("a list out of reach is told apart from a bad address, and the log keeps no address", async () => {
+  const { subscribers, state } = list();
+  state.down = true;
   const logged = [];
   const error = console.error;
   console.error = (line) => logged.push(line);
   try {
-    const offline = async () => {
-      throw new Error("offline");
-    };
-    for (const fetch of [offline, kit(500).fetch, kit(401).fetch, kit(201, 404).fetch, kit(201, 503).fetch]) {
-      assert.deepEqual((await subscribe({ fetch }, { email: "fan@example.com" })).json, { error: "notSubscribed" });
-    }
+    assert.deepEqual((await subscribe({ subscribers }, { email: "fan@example.com" })).json, { error: "notSubscribed" });
+    assert.deepEqual(await unsubscribe({ subscribers }, `email=fan%40example.com&token=${TOKEN}`), {
+      status: 502,
+      json: { error: "notUnsubscribed" },
+    });
   } finally {
     console.error = error;
   }
-  assert.equal(logged.length, 5);
+  assert.equal(logged.length, 2);
   assert.equal(logged.some((line) => line.includes("fan@example.com")), false);
 });
 
 test("subscribing counts by sender and in all, apart from reports", async () => {
-  const { fetch } = kit();
+  const { subscribers } = list();
   const limiter = createTableLimiter({ table: "t", update: table().update });
   for (let i = 0; i < SUBSCRIBE_LIMITS.addressHour; i++) {
-    assert.equal((await subscribe({ fetch, limiter }, { email: `fan${i}@example.com` })).status, 200);
+    assert.equal((await subscribe({ subscribers, limiter }, { email: `fan${i}@example.com` })).status, 200);
   }
-  assert.deepEqual((await subscribe({ fetch, limiter }, { email: "fan@example.com" })).json, { error: "tooMany" });
-  assert.equal((await subscribe({ fetch, limiter }, { email: "fan@example.com" }, { sourceIp: "198.51.100.4" })).status, 200);
+  assert.deepEqual((await subscribe({ subscribers, limiter }, { email: "fan@example.com" })).json, { error: "tooMany" });
+  assert.equal(
+    (await subscribe({ subscribers, limiter }, { email: "fan@example.com" }, { sourceIp: "198.51.100.4" })).status,
+    200,
+  );
   // Reports from the same sender still go through.
   const reports = { token: "t", repo: "o/n", fetch: github().fetch, limiter };
   assert.equal((await post(reports, REPORT)).status, 201);
@@ -487,10 +507,169 @@ test("subscribing counts by sender and in all, apart from reports", async () => 
   assert.equal(await all.allow("one more", "subscribe"), true);
 });
 
-test("the relay can't subscribe without Kit's key, and reports don't need it", async () => {
-  const { fetch, sent } = kit();
-  assert.equal((await post({ fetch }, { email: "fan@example.com" }, { path: "/subscribe" })).status, 503);
-  assert.equal((await subscribe({ fetch, kit: { form: "1" } }, { email: "fan@example.com" })).status, 503);
-  assert.equal(sent.length, 0);
+test("the relay can't take addresses without the list, and reports don't need it", async () => {
+  assert.equal((await post({}, { email: "fan@example.com" }, { path: "/subscribe" })).status, 503);
+  assert.equal((await unsubscribe({}, `email=fan%40example.com&token=${TOKEN}`)).status, 503);
   assert.equal((await post({ token: "t", repo: "o/n", fetch: github().fetch }, REPORT)).status, 201);
+});
+
+test("an unsubscribe link takes its address off the list, and only with its token", async () => {
+  const { subscribers, rows } = list();
+  await subscribe({ subscribers }, { email: "fan@example.com" });
+  await subscribe({ subscribers }, { email: "other@example.com" });
+  const wrong = "f".repeat(32);
+  for (const query of [
+    `email=fan%40example.com&token=${wrong}`,
+    `email=fan%40example.com&token=${TOKEN.slice(1)}`,
+    `email=fan%40example.com`,
+    `token=${TOKEN}`,
+    `email=fan&token=${TOKEN}`,
+    "",
+  ]) {
+    assert.deepEqual(await unsubscribe({ subscribers }, query), { status: 400, json: { error: "invalid" } }, query);
+  }
+  assert.equal(rows.get("fan@example.com").status, "active");
+  assert.deepEqual(await unsubscribe({ subscribers }, `email=Fan%40Example.com&token=${TOKEN}`), {
+    status: 200,
+    json: { unsubscribed: true },
+  });
+  assert.equal(rows.get("fan@example.com").status, "unsubscribed");
+  assert.equal(rows.get("other@example.com").status, "active");
+  // Signing up again puts it back.
+  await subscribe({ subscribers }, { email: "fan@example.com" });
+  assert.equal(rows.get("fan@example.com").status, "active");
+});
+
+test("the list keeps a token for each address, needs it to take one off, and counts those on it", async () => {
+  const sent = [];
+  const conditionFailed = Object.assign(new Error("The conditional request failed"), {
+    name: "ConditionalCheckFailedException",
+  });
+  let fail = null;
+  const pages = [
+    { Count: 2, LastEvaluatedKey: { email: { S: "b@example.com" } } },
+    { Count: 1 },
+  ];
+  const listed = createSubscribers({
+    table: "fm-lens-subscribers",
+    update: async (input) => {
+      sent.push(input);
+      if (fail) {
+        throw fail;
+      }
+    },
+    scan: async (input) => {
+      sent.push(input);
+      return pages.shift();
+    },
+    now: () => new Date(Date.UTC(2026, 10, 11, 9)),
+    newToken: () => "a".repeat(32),
+  });
+
+  await listed.add("fan@example.com");
+  assert.deepEqual(sent.pop(), {
+    TableName: "fm-lens-subscribers",
+    Key: { email: { S: "fan@example.com" } },
+    UpdateExpression:
+      "SET #status = :active, #token = if_not_exists(#token, :token), subscribed = if_not_exists(subscribed, :now) REMOVE unsubscribed",
+    ExpressionAttributeNames: { "#status": "status", "#token": "token" },
+    ExpressionAttributeValues: {
+      ":active": { S: "active" },
+      ":token": { S: "a".repeat(32) },
+      ":now": { S: "2026-11-11T09:00:00.000Z" },
+    },
+  });
+
+  assert.equal(await listed.remove("fan@example.com", TOKEN), true);
+  const removed = sent.pop();
+  assert.equal(removed.ConditionExpression, "#token = :token");
+  assert.deepEqual(removed.ExpressionAttributeValues[":token"], { S: TOKEN });
+  fail = conditionFailed;
+  assert.equal(await listed.remove("fan@example.com", TOKEN), false);
+  fail = new Error("throttled");
+  await assert.rejects(listed.remove("fan@example.com", TOKEN), /throttled/);
+
+  assert.equal(await listed.count(), 3);
+  assert.deepEqual(
+    sent.slice(-2).map((input) => input.ExclusiveStartKey),
+    [undefined, { email: { S: "b@example.com" } }],
+  );
+});
+
+/** A stand-in for GitHub's releases, a hundred to a page, and PostHog, which records the events it is sent. */
+function counts({ releases, github = 200, posthog = 200 }) {
+  const events = [];
+  const fetch = async (url, init) => {
+    if (url.startsWith("https://api.github.com/")) {
+      const page = Number(new URL(url).searchParams.get("page"));
+      const batch = releases.slice((page - 1) * 100, page * 100);
+      return new Response(JSON.stringify(batch), { status: github });
+    }
+    events.push(JSON.parse(init.body));
+    return new Response("{}", { status: posthog });
+  };
+  return { fetch, events };
+}
+
+const RELEASE = (tag, assets) => ({
+  tag_name: tag,
+  assets: Object.entries(assets).map(([name, download_count]) => ({ name, download_count })),
+});
+
+test("the counts are summed over every release and file kind", () => {
+  const releases = [
+    RELEASE("v0.7.4", {
+      "FM.Lens_0.7.4_aarch64.dmg": 3,
+      "FM.Lens_0.7.4_x64-setup.exe": 5,
+      "FM.Lens_aarch64.app.tar.gz": 2,
+      "latest.json": 20,
+      "FM.Lens_0.7.4_x64-setup.exe.sig": 9,
+    }),
+    RELEASE("v0.7.3", { "FM.Lens_0.7.3_universal.dmg": 8, "FM.Lens_0.7.3.zip": 1, "latest.json": 30 }),
+  ];
+  assert.deepEqual(downloadCounts(releases), {
+    mac_downloads: 12,
+    windows_downloads: 5,
+    mac_updates: 2,
+    update_checks: 50,
+    latest_version: "v0.7.4",
+  });
+  assert.equal(downloadCounts([]).latest_version, null);
+});
+
+test("the schedule's job sends PostHog the download counts over every page, and the list's size", async () => {
+  const releases = Array.from({ length: 150 }, (_, i) => RELEASE(`v0.${150 - i}`, { "latest.json": 1, "a.dmg": 2 }));
+  const { fetch, events } = counts({ releases });
+  const { subscribers } = list();
+  await subscribers.add("fan@example.com");
+  await subscribers.add("other@example.com");
+  const relay = createRelay({ subscribers, fetch, token: "t", limiter: {} });
+  assert.deepEqual(await relay({ job: "report-counts" }), {
+    mac_downloads: 300,
+    windows_downloads: 0,
+    mac_updates: 0,
+    update_checks: 150,
+    latest_version: "v0.150",
+    subscribers: 2,
+  });
+  const byName = Object.fromEntries(events.map((event) => [event.event, event]));
+  assert.equal(byName.release_downloads.distinct_id, "github-releases");
+  assert.equal(byName.release_downloads.properties.update_checks, 150);
+  assert.equal(byName.email_subscribers.properties.subscribers, 2);
+  assert.ok(events.every((event) => event.api_key.startsWith("phc_") && event.properties.$process_person_profile === false));
+});
+
+test("the job still sends the list's size when GitHub fails, and says what failed", async () => {
+  const { fetch, events } = counts({ releases: [], github: 502 });
+  const relay = createRelay({ subscribers: list().subscribers, fetch, limiter: {} });
+  await assert.rejects(relay({ job: "report-counts" }), /GitHub answered 502/);
+  assert.deepEqual(
+    events.map((event) => event.event),
+    ["email_subscribers"],
+  );
+  const offline = counts({ releases: [], posthog: 500 });
+  await assert.rejects(
+    createRelay({ subscribers: list().subscribers, fetch: offline.fetch, limiter: {} })({ job: "report-counts" }),
+    /PostHog answered 500/,
+  );
 });
