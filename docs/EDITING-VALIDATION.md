@@ -2567,3 +2567,14 @@ link was clicked, Kit lists it as active. Sending it again from the Intel app
 went straight to Connect and left it active, still one record on the form.
 
 The Mac flag was removed afterwards, as it was before the checks.
+
+## Signups confirmed without an email (11 November 2026)
+
+The relay now adds each address to Kit as active, and the form's "Send
+confirmation email" (Kit, Newsletter site, Sign Up Form) is off, so Kit
+auto-confirms signups. Deployed to `fm-lens-report-relay` at 00:27 UTC.
+
+- A new address sent to the deployed relay's `POST /subscribe` answered
+  `{ "subscribed": true }`. Kit lists it as Confirmed, with no email sent.
+- An address Kit already held as unconfirmed, sent again, turned Confirmed: the
+  signups waiting on the old confirmation email were confirmed this way.
