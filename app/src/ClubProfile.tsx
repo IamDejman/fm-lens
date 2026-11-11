@@ -23,6 +23,7 @@ import {
   type PanelIds,
   type RatingRow,
 } from "./ProfileParts";
+import { ClubStaffTab } from "./ClubStaffTab";
 import { ClubTiesGroups } from "./RelationGroups";
 import { SquadTab } from "./SquadTab";
 import type { ClubDetails, ClubSummary, Finances, Stadium } from "./types";
@@ -30,13 +31,16 @@ import { EditorContext, useProfileEditing } from "./useProfileEditing";
 
 const text = clubProfileText;
 
-/** The tabs of the profile: what the club has, and its squad. */
-export type ClubTab = "overview" | "squad";
+/** The tabs of the profile: what the club has, its squad and its staff. */
+export type ClubTab = "overview" | "squad" | "staff";
 
-const TABS: readonly ClubTab[] = ["overview", "squad"];
+const TABS: readonly ClubTab[] = ["overview", "squad", "staff"];
+
+/** Why a tab cannot be opened while the club is edited: its values are on the Overview. */
+const LOCKED: Record<Exclude<ClubTab, "overview">, string> = { squad: text.squadLocked, staff: text.staffLocked };
 
 /** The tab saved before the language was switched; the overview when there is none. */
-export const readTab = (value: unknown): ClubTab => (value === "squad" ? "squad" : "overview");
+export const readTab = (value: unknown): ClubTab => TABS.find((tab) => tab === value) ?? "overview";
 
 interface ClubProfileProps {
   /** The row that was picked; its fields fill the header while the full profile loads. */
@@ -58,8 +62,8 @@ export function ClubProfile({ club, version, tab, onTab, onClose }: ClubProfileP
   const info: ClubSummary = details ?? club;
   const vitals = [info.founded !== null && text.founded(info.founded), `${profileText.uid} ${info.uid}`];
 
-  // The club is edited on the Overview, which has its inputs: editing starts there, and the Squad tab is not offered
-  // until it is done.
+  // The club is edited on the Overview, which has its inputs: editing starts there, and the Squad and Staff tabs are not
+  // offered until it is done.
   const locked = editing.stage !== "view";
   useEffect(() => {
     if (locked) {
@@ -94,8 +98,8 @@ export function ClubProfile({ club, version, tab, onTab, onClose }: ClubProfileP
             base={base}
             label={text.tabsLabel}
             names={text.tabs}
-            // The Squad tab is out of reach while the club is edited.
-            locked={(id) => (locked && id === "squad" ? text.squadLocked : undefined)}
+            // The Squad and Staff tabs are out of reach while the club is edited.
+            locked={(id) => (locked && id !== "overview" ? LOCKED[id] : undefined)}
             onSelect={onTab}
           />
         )
@@ -108,6 +112,8 @@ export function ClubProfile({ club, version, tab, onTab, onClose }: ClubProfileP
       {details &&
         (shown === "squad" ? (
           <SquadTab clubUid={club.uid} version={version} panel={panel} />
+        ) : shown === "staff" ? (
+          <ClubStaffTab clubUid={club.uid} clubName={info.name} version={version} panel={panel} />
         ) : (
           <ClubBody details={details} panel={panel} />
         ))}

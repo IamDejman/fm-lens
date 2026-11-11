@@ -1045,8 +1045,12 @@ export const es: Strings = {
     reputationTitle: "Reputación",
 
     tabsLabel: "Secciones del club",
-    tabs: { overview: "Resumen", squad: "Plantilla" },
+    tabs: { overview: "Resumen", squad: "Plantilla", staff: "Personal" },
     squadLocked: "Termina de editar para abrir la plantilla",
+    staffLocked: "Termina de editar para abrir el personal",
+    staffLoading: "Cargando personal…",
+    noStaff: "Este club no tiene personal.",
+    staffTableLabel: (club) => `Personal de ${club}`,
 
     facilities: "Instalaciones",
 
@@ -1417,6 +1421,7 @@ export const es: Strings = {
     notConnected: "Sin conexión",
     connected: "Conectado",
     reportProblem: "Informar de un problema",
+    wishlist: "Lista de deseos",
     more: "Más",
     debugTag: "DEBUG",
     previewTag: "vista previa en el navegador · datos de ejemplo",

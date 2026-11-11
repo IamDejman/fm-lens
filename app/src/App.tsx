@@ -16,7 +16,7 @@ import { GuidedTour } from "./GuidedTour";
 import { isShortcut, MAC, SECTION_SHORTCUTS, shortcutAria, shortcutLabel } from "./keys";
 import { ReportDialog } from "./ReportDialog";
 import { Settings } from "./Settings";
-import { StarNotice, useStarAsk } from "./StarNotice";
+import { openWishlist, StarNotice, useStarAsk } from "./StarNotice";
 import {
   appText,
   awardListText,
@@ -403,6 +403,16 @@ function App() {
       }),
     [],
   );
+  // A member of staff asked for from elsewhere: a row of a club's staff, or your manager from the top bar.
+  const [revealStaff, setRevealStaff] = useState<Reveal | null>(null);
+  const openStaff = useCallback(
+    (uid: number) =>
+      askToLeave(() => {
+        setView("staff");
+        setRevealStaff({ uid, query: String(uid) });
+      }),
+    [],
+  );
   const editor = useMemo(
     () => ({
       editable,
@@ -412,8 +422,9 @@ function App() {
       injuryKinds: loadInjuryKinds,
       gameDate,
       openPlayer,
+      openStaff,
     }),
-    [editable, note, edited, gameActions, loadInjuryKinds, gameDate, openPlayer],
+    [editable, note, edited, gameActions, loadInjuryKinds, gameDate, openPlayer, openStaff],
   );
 
   // With edits pending in the open profile, leaving for another view asks first.
@@ -443,7 +454,6 @@ function App() {
   }, [connection, view]);
 
   // The user's own manager, whose profile holds what only he has (unsackable, registration at any time).
-  const [revealStaff, setRevealStaff] = useState<Reveal | null>(null);
   const openManager = (career: Career) =>
     askToLeave(() => {
       setView("staff");
@@ -654,6 +664,9 @@ function App() {
           {!inTauri && <span className="tag">{appText.previewTag}</span>}
           <button type="button" className="colophon-report" onClick={() => setReporting(true)}>
             {appText.reportProblem}
+          </button>
+          <button type="button" className="colophon-wishlist" onClick={openWishlist}>
+            {appText.wishlist}
           </button>
           {reporting && (
             <ReportDialog

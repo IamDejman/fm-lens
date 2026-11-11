@@ -145,6 +145,15 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
     setAttributes([]);
   };
 
+  // A member of staff asked for from elsewhere is found whatever the filters were: they are cleared for them.
+  const [revealed, setRevealed] = useState(reveal);
+  if (revealed !== reveal) {
+    setRevealed(reveal);
+    if (reveal) {
+      clearAll();
+    }
+  }
+
   return (
     <ListBrowser<StaffSummary>
       name="staff"

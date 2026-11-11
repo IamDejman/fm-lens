@@ -37,6 +37,8 @@ export interface EditorState {
   gameDate: FmDate | null;
   /** Shows the player with this UID in the player list, his profile open (a row of a squad does this). */
   openPlayer: (uid: number) => void;
+  /** Shows the member of staff with this UID in the staff list, their profile open (a row of a club's staff does this). */
+  openStaff: (uid: number) => void;
 }
 
 export const NO_GAME_ACTIONS: GameActions = {
@@ -60,6 +62,7 @@ export const EditorContext = createContext<EditorState>({
   injuryKinds: () => Promise.resolve([]),
   gameDate: null,
   openPlayer: () => {},
+  openStaff: () => {},
 });
 
 /** The inputs of the profile being edited (header and body), for the components that draw them. */
