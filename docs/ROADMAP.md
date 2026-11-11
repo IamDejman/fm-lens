@@ -34,9 +34,11 @@ held. Other Windows edits have no save and reload, and Windows 10/11 execution
 remains unverified. Unless a row names another platform, its in-game persistence
 evidence is from macOS ARM64; mapped Windows fields do not inherit that evidence.
 
-FM27 27.0.1 (Steam build 26385295) has its own profiles. Its run of
-PATCH-VALIDATION.md on 10 November covered Apple Silicon, Rosetta and Windows;
-the rows below keep the build their evidence came from.
+FM27 27.0.1 (Steam build 26385295) has profiles for Apple Silicon, Intel and
+Windows. On 10 November it passed the PATCH-VALIDATION.md run on all three: read
+checks, a bounded set of edits and game actions, and a save reloaded on the Mac
+and on Windows. Rows that name build 26340721 (27.0.0) say where their evidence
+came from; it was not repeated field by field on 27.0.1.
 
 Intel action parity (#164): all 24 ARM64 call keys, the injury and database statics, the editor tables and the STARTING_LOAN defaults have Intel values, and the Intel bridge passes an indirect result place the System V way. The actions switch on through profile and helper capability discovery. Run under Rosetta in the packaged app on 9 and 10 November: Add injury and Heal, work permit Revoke and Request, Loan and End loan, Transfer, Release, Sign, Sign later and Cancel transfer, Max tactics, Max attributes and Lift bans, with their undos where they have one (the 9 November entries and the FM27 27.0.1 entry in EDITING-VALIDATION.md). No Rosetta run saved an edited career, so Intel has no edited-save persistence of its own; on 10 November it loaded the copy edited and saved on Apple Silicon and read those edits back. See [the mapping and Rosetta handoff](recon/fm27-steam-26340721-macos-x86_64.md#intel-action-parity-mapping-8-november-2026).
 
