@@ -144,7 +144,10 @@ validated fields and the guarded memory layer for domain operations.
 ## Current editor boundaries
 
 - Mapped player/staff/club fields are enabled on known builds. Windows has
-  bounded app edit/undo checks on Server 2022, not edited-save persistence. The field
+  bounded app edit/undo checks on Server 2022. An edited copy was saved and
+  held after a quit and reload there twice (8 and 10 November): a player's
+  attributes, contract wages, a staff attribute, a club balance, Max tactics
+  and a free-agent signing, not the other fields. The field
   catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
