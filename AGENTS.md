@@ -165,9 +165,10 @@ validated fields and the guarded memory layer for domain operations.
   Resolve against the destination layout; preview and use conditional batch
   apply/undo. The library lives locally, not in the repository.
 - Staff attribute freeze is remembered for the save with the player and money
-  freezes, and holds only while FM Lens is connected. It stayed on over a 31-day
-  holiday and came back on after FM restarted (8 November); its effect on
-  long-term staff development remains unverified. Do not describe any freeze as
+  freezes, and turned back on when FM Lens reconnects to that save. It holds
+  only while FM Lens is connected. It stayed on over a 31-day holiday and came
+  back on after FM restarted (8 November); no check has shown it stopping a
+  real staff decline. Do not describe any freeze as stored in the save or as
   holding while FM Lens is closed.
 - The nation browser lists nations represented by loaded players, staff and
   competitions, not a complete database scan. Guarded nation editing exists for
