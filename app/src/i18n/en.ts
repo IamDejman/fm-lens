@@ -2034,6 +2034,8 @@ export const en = {
     undo: "Undo",
     /** Hover text of Undo; `label` is the field's name. */
     undoTitle: (label: string) => `Put ${label} back to its old value`,
+    /** Why an Undo was refused: a newer change to the same field still stands; `label` is the field's name. */
+    undoLaterFirst: (label: string) => `${label} was changed again after this. Undo the later change first.`,
     /** The small tag after the fields a mass edit changed: a mass edit is one row of the list. */
     batch: "Mass edit",
     /** Under those fields: how many changes the mass edit made, and how many of them are not undone. */
