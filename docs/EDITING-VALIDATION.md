@@ -2725,5 +2725,68 @@ Unit tests cover the bands, the reasons left out and the morale chosen.
   beside them (544, 600, 656) are new: the game starts one when a tactic's
   settings change. Max tactics raises those when pressed again.
 
-Not yet run: any write followed by Continue with this build, and the packaged
-app on Apple Silicon, Rosetta and Windows.
+### Write, Continue and a week on (Apple Silicon, 11 November 2026)
+
+The packaged universal build of this branch (0.7.6), native arm64 FM, on a copy
+of the career saved as `FMLensMoodTest` (10 December 2027). The main career's
+hash matched its baseline before and after.
+
+Edits, all through the app: Remove unhappiness on Arsenal's first team (10
+changes), happiness 100 for Raya (morale 11 to 18 came with it) and 60 for Rice
+(morale 11 to 13), Max cohesion (29) and Max tactics (29). As a control, Saliba
+got happiness 100 with morale 12 set in the same edit, which the band does not
+allow. Dael Fry at Birmingham got happiness 100: his reasons ended and his
+morale went from 8 to 18.
+
+Morale / happiness, read with the probe:
+
+| Player | Before | Edited | First Continue | Next day | A week on |
+|---|---|---|---|---|---|
+| Raya | 11 / 20 | 18 / 100 | 18 / 100 | 15 / 100 | 13 / 60 |
+| Rice | 11 / 20 | 13 / 60 | 13 / 45 | 10 / 45 | 15 / 70 |
+| Saliba (control) | 11 / 20 | 12 / 100 | 12 / 40 | 9 / 40 | 13 / 60 |
+| Saka | 20 / 80 | 20 / 80 | 20 / 83 | 17 / 83 | 16 / 100 |
+| Gabriel | 14 / 40 | 14 / 40 | 14 / 50 | 11 / 50 | 13 / 80 |
+| Timber | 11 / 20 | 11 / 20 | 11 / 24 | 9 / 24 | 13 / 60 |
+
+- Remove unhappiness held. A week on (18 December) all ten reasons were still
+  ended and no player had a new complaint about the atmosphere. FM's Dynamics
+  read Managerial Support "Very good", Team Cohesion "Excellent" and Club
+  Atmosphere "Good", with one issue: Pacho wanted to start more games (a new
+  reason from 15 December).
+- The scores were worked out again: both dates read unset after the edit,
+  10 December by the end of that day and 15 December a week on.
+- Happiness stayed where the band allows it and went back where it does not:
+  Raya kept 100, Rice moved inside 40 to 60, and the control Saliba fell to 40.
+- Happiness is not a value the game leaves alone after that. It applies the
+  band when it next changes a player's happiness, not daily, and training,
+  selection and matches change it for every player. After the Spurs match the
+  unedited Pacho went from 65 to -40, Meslier from 80 to 35 and Merino from 80
+  to 40. So an edited happiness is where the player starts, as with morale.
+- Cohesion read 100 through the match day and 99 a week on (98 for a few).
+  Tactics entries read 10000, then 9944 for all but the first of each group
+  after the match, and 9916 and 9776 a week on: the game takes multiples of 28
+  off.
+
+The same save loaded again with nothing edited, as a baseline:
+
+- After one Continue Saka's happiness fell from 80 to -40, held there by his
+  reason, and a day on his morale was 8, down from 20. All ten reasons were
+  still open and both scores still dated 7 December.
+- Morale fell overnight without any edit, from 17.1 to 14.2 on average over the
+  first team (17.3 to 14.7 in the edited run). The fall is the game's own.
+- Remove unhappiness (10 changes) and Max morale (28) on that baseline, then
+  one Continue: FM's Dynamics read Club Atmosphere "Excellent", "no unhappy
+  players at the club" and no issues, and every morale still read 20.
+- An edit pressed before Reload, with FM Lens still holding the other save, was
+  refused for every player ("FM has moved its data since FM Lens read it. Press
+  Reload, then try again.") and wrote nothing.
+
+The band above is one of two. A byte the game keeps at 0x5770988 (this build)
+picks the other when it reads 1 to 3: morale 15 to 17 then allows 60 to 100,
+11 to 14 allows 40 to 100, 6 to 10 allows 20 to 80, 4 or 5 allows -20 to 60 and
+less allows -20 to 40. This save uses the table above, which the control
+confirms, and edits are worked out for it. What sets the byte is not known.
+
+Not yet run: Max morale past the first Continue, and the packaged app under
+Rosetta and on Windows.
