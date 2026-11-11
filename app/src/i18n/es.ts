@@ -1528,6 +1528,11 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.5": [
+        "Los perfiles de club tienen una pestaña Personal: todo el personal, por puesto, con HA y HP.",
+        "Pide una función desde la Lista de deseos, al pie de la ventana, sin salir de la app.",
+        "Ya no hay correo para confirmar tu dirección: FM Lens tiene ahora su propia lista de correo.",
+      ],
       "0.7.4": [
         "Comparte una tarjeta de cualquier jugador desde su perfil: una Publicación o una Historia, para copiar o guardar.",
         "La pestaña Contrato muestra el valor base de traspaso del jugador.",
