@@ -16,9 +16,8 @@ FM Lens 0.7.5 opens up every club's backroom and gives you a direct line to what
 
 ### Your email
 
-- Your address now stays on FM Lens's own list, and FM Lens sends its emails from getfmlens.com. No mailing service in between.
-- No email to confirm it: the address is on the list as soon as you press Continue.
-- FM Lens asks for it once, in the app. The download page on getfmlens.com no longer asks.
+- Signing up no longer sends an email to confirm your address.
+- Only the app asks for your email, once. The download page no longer does.
 
 ### A star on GitHub
 
