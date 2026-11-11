@@ -345,9 +345,9 @@ function answer(statusCode, body) {
 }
 
 /**
- * Adds `email` to the form `kit.form` in Kit with the API key `kit.key`, as Kit's own form does: the subscriber is made
- * inactive, and the form's double opt-in email makes them active once they confirm. Gives "ok", "invalid" when Kit
- * turns the address down, or throws when Kit can't be reached or answers anything else.
+ * Adds `email` to the form `kit.form` in Kit with the API key `kit.key` as an active subscriber, with no email to
+ * confirm first. Gives "ok", "invalid" when Kit turns the address down, or throws when Kit can't be reached or answers
+ * anything else.
  */
 async function addToKit(kit, email, fetch) {
   const send = (path, body) =>
@@ -358,7 +358,7 @@ async function addToKit(kit, email, fetch) {
       signal: AbortSignal.timeout(10_000),
     });
   for (const [path, body] of [
-    ["subscribers", { email_address: email, state: "inactive" }],
+    ["subscribers", { email_address: email, state: "active" }],
     [`forms/${kit.form}/subscribers`, { email_address: email }],
   ]) {
     const response = await send(path, body);
