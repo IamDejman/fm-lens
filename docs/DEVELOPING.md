@@ -266,15 +266,12 @@ Windows installer for a visitor on Windows (`?for=mac` or `?for=windows` picks o
 `?version=0.7.3` an older release). A new release needs no change to the site. Installed copies keep reading `latest.json` from
 fm-lens-releases, as above.
 
-The download page asks for an email address before it starts a download, once in each
-browser; every download button on the site leads there. `site/signup.js` sends the address to
-the report relay's `POST /subscribe` (below), which keeps FM Lens's email list. The files on
-fm-lens-releases stay public, and installed copies update without it. The link at the foot of every email opens
-`site/unsubscribe/`, which sends no analytics, as its address carries the email address.
-
-The app asks for an email address too, before it opens for the first time on a computer
-(`app/src/EmailGate.tsx`), and sends it to the same `POST /subscribe`. In the browser preview,
-type any address once, or set `fmlens.email` to `given` in the page's local storage.
+The app asks for an email address before it opens for the first time on a computer
+(`app/src/EmailGate.tsx`), and sends it to the report relay's `POST /subscribe` (below), which
+keeps FM Lens's email list. The site's downloads don't ask, so nobody is asked twice: the browser
+and the app can't tell each other an address was given. In the browser preview, type any address
+once, or set `fmlens.email` to `given` in the page's local storage. The link at the foot of every
+email opens `site/unsubscribe/`, which sends no analytics, as its address carries the email address.
 
 ### The report relay
 

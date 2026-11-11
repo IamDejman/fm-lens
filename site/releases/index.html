@@ -75,7 +75,7 @@
           }
           const link = document.createElement("a");
           link.className = "button release-download";
-          // The download page asks for an email address, then starts this version's download.
+          // The download page starts this version's download.
           link.href = `/download/?for=${computer}&version=${release.version}`;
           link.setAttribute("aria-label", `Download FM Lens ${release.version} for ${name}`);
           link.innerHTML = DOWNLOAD_ICON;
