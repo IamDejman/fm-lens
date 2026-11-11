@@ -1,5 +1,6 @@
 // The report relay: Report a problem in FM Lens posts here, and the relay files the report as an issue in the
-// fm-lens repository with its own GitHub token, so nobody leaves the app. It keeps nothing: a report is checked,
+// fm-lens repository with its own GitHub token, so nobody leaves the app. The app's wishlist posts here too
+// (POST /wish), and a wish becomes a feature request. It keeps nothing: a report is checked,
 // sent on to GitHub and forgotten. Each sender may send a few reports an hour and a day, and all of them together two
 // hundred an hour and a thousand a day.
 //
@@ -196,11 +197,18 @@ export function publicUrl(bucket, region, key) {
   return `https://${bucket}.s3.${region}.amazonaws.com/${encodePath(key)}`;
 }
 
+/** An issue's title: the first line of `what`, cut at 70 characters. */
+function titleOf(what) {
+  const firstLine = quiet(what.split("\n")[0].trim());
+  return firstLine.length > 70 ? `${firstLine.slice(0, 69)}…` : firstLine;
+}
+
+/** A part of an issue as GitHub's issue forms lay it out. */
+const section = (label, value) => `### ${label}\n\n${value === "" ? "_No response_" : quiet(value)}`;
+
 /** The issue for `report`, laid out as GitHub lays out its own bug report form (.github/ISSUE_TEMPLATE/bug_report.yml). */
 export function issueFor(report, files = []) {
-  const firstLine = quiet(report.what.split("\n")[0].trim());
-  const title = firstLine.length > 70 ? `${firstLine.slice(0, 69)}…` : firstLine;
-  const section = (label, value) => `### ${label}\n\n${value === "" ? "_No response_" : quiet(value)}`;
+  const title = titleOf(report.what);
   const body = [
     section("FM Lens version", report.version),
     section("FM build", report.fmBuild),
@@ -212,6 +220,20 @@ export function issueFor(report, files = []) {
     "_Sent from Report a problem in FM Lens._",
   ].join("\n\n");
   return { title, body, labels: ["bug"] };
+}
+
+/**
+ * The issue for a wish from the app's wishlist (`readReport` reads it: `what` and the app's `version`), laid out as
+ * GitHub lays out the feature request form (.github/ISSUE_TEMPLATE/feature_request.yml).
+ */
+export function wishFor(wish, files = []) {
+  const body = [
+    section("What you would like", wish.what),
+    section("FM Lens version", wish.version),
+    ...(files.length > 0 ? [section("Files", files.map(fileLink).join("\n\n"))] : []),
+    "_Sent from the wishlist in FM Lens._",
+  ].join("\n\n");
+  return { title: titleOf(wish.what), body, labels: ["enhancement"] };
 }
 
 /**
@@ -316,8 +338,9 @@ export function createTableLimiter({ table, update, now = Date.now }) {
   };
   return {
     /**
-     * Counts one report from `address`, or with `what` "uploads", one request for upload addresses, or with
-     * "subscribe", one address to subscribe (`SUBSCRIBE_LIMITS`).
+     * Counts one report from `address`, or with `what` "wish", one wish, or "uploads", one request for upload
+     * addresses, or "subscribe", one address to subscribe (`SUBSCRIBE_LIMITS`). Reports and wishes together stay
+     * under the 500 issues an hour GitHub lets one token open.
      */
     async allow(address, what = "report") {
       const at = now();
@@ -535,7 +558,7 @@ export function createRelay({ token, repo, limiter, uploads, subscribers, fetch 
     if (method === "GET" && path === "/health") {
       return answer(200, { ok: true });
     }
-    if (method !== "POST" || !["/report", "/uploads", "/subscribe", "/unsubscribe"].includes(path)) {
+    if (method !== "POST" || !["/report", "/wish", "/uploads", "/subscribe", "/unsubscribe"].includes(path)) {
       return answer(404, { error: "notFound" });
     }
     const list = path === "/subscribe" || path === "/unsubscribe";
@@ -635,7 +658,9 @@ export function createRelay({ token, repo, limiter, uploads, subscribers, fetch 
     if (error || filesError || (keys.length > 0 && !uploads)) {
       return answer(400, { error: error ?? filesError ?? "invalid" });
     }
-    const refused = await allow("report");
+    // Wishes are counted apart from reports, so that one never uses up the other.
+    const wish = path === "/wish";
+    const refused = await allow(wish ? "wish" : "report");
     if (refused) {
       return refused;
     }
@@ -693,7 +718,7 @@ export function createRelay({ token, repo, limiter, uploads, subscribers, fetch 
           "User-Agent": "fm-lens-report-relay",
           "X-GitHub-Api-Version": "2022-11-28",
         },
-        body: JSON.stringify(issueFor(report, files)),
+        body: JSON.stringify(wish ? wishFor(report, files) : issueFor(report, files)),
         signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) {

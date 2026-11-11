@@ -1,7 +1,6 @@
 // A star on GitHub, asked for once: after this computer's 20th edit, a notice under the masthead says FM Lens is free
 // and open source and asks for a star. Someone who used an earlier version has likely made those edits already, so
 // their first edit in this one brings it. Starring or Not now ends the ask for good. Settings, About keeps the link.
-// The wishlist, at the foot of the window, is on GitHub too.
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useState } from "react";
@@ -15,9 +14,6 @@ const text = starText;
 /** FM Lens's repository, where it is starred (allowed in capabilities/default.json). */
 const REPOSITORY = "https://github.com/IamDejman/fm-lens";
 
-/** The repository's Ideas: anyone asks for what FM Lens should do next there, and votes for what others asked for. */
-const WISHLIST = `${REPOSITORY}/discussions/categories/ideas`;
-
 /** How many edits this computer has made, counted up to the ask. */
 const EDITS_KEY = "fmlens.edits";
 /** Set once the ask is answered, starred or not: it never comes back. */
@@ -29,14 +25,6 @@ const ASK_AFTER = 20;
 export function openRepository(from: "notice" | "settings"): void {
   track("star_clicked", { from });
   openUrl(REPOSITORY).catch(() => {
-    // Nothing to fall back on: the button stays where it is.
-  });
-}
-
-/** Opens the wishlist on GitHub. */
-export function openWishlist(): void {
-  track("wishlist_opened");
-  openUrl(WISHLIST).catch(() => {
     // Nothing to fall back on: the button stays where it is.
   });
 }

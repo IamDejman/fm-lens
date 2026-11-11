@@ -1,13 +1,9 @@
 import { expect, test, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { ClubStaffTab } from '../src/ClubStaffTab';
-import { openWishlist } from '../src/StarNotice';
 import type { StaffSummary } from '../src/types';
 import { EditorContext, NO_GAME_ACTIONS } from '../src/useProfileEditing';
-
-vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn(async () => {}) }));
 
 function member(uid: number, name: string, job: number | null, currentAbility: number): StaffSummary {
   return {
@@ -80,9 +76,4 @@ test('a row opens the member of staff in the staff list', async () => {
 test('a club without staff says so', async () => {
   renderTab(vi.fn(), 501);
   expect(await screen.findByText('This club has no staff.')).toBeTruthy();
-});
-
-test('Wishlist opens the Ideas on GitHub', () => {
-  openWishlist();
-  expect(openUrl).toHaveBeenCalledWith('https://github.com/IamDejman/fm-lens/discussions/categories/ideas');
 });
