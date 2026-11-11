@@ -1037,7 +1037,7 @@ export const tr: Strings = {
     staffLocked: "Personeli açmak için düzenlemeyi bitirin",
     staffLoading: "Personel okunuyor…",
     noStaff: "Bu kulübün personeli yok.",
-    staffTableLabel: (club) => `${club} personeli`,
+    staffTableLabel: (club, team) => `${club} ${team} personeli`,
 
     facilities: "Tesisler",
 
