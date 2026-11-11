@@ -2129,6 +2129,12 @@ export const tr: Strings = {
     tooMany: "Buradan çok fazla rapor gönderildi. Bir saat sonra yeniden dene.",
     failed: "Gönderilemedi. Daha sonra yeniden dene.",
   },
+  wish: {
+    title: "İstek listesi",
+    what: "FM Lens bundan sonra ne yapsın?",
+    sentWith: "Herkese açık paylaşılır; FM Lens sürümün de eklenir.",
+    tooMany: "Buradan çok fazla gönderildi. Bir saat sonra yeniden dene.",
+  },
 
   release: {
     button: "Serbest bırak",

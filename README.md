@@ -40,8 +40,8 @@ choose **Remove the helper** in FM Lens.
 
 Found a problem? [Open an issue](https://github.com/IamDejman/fm-lens/issues/new/choose).
 Questions go to [Q&A](https://github.com/IamDejman/fm-lens/discussions/categories/q-a). Ask for what FM Lens
-should do next, and vote for what others asked for, on the
-[wishlist](https://github.com/IamDejman/fm-lens/discussions/categories/ideas).
+should do next with **Wishlist** at the foot of the app, or in a
+[feature request](https://github.com/IamDejman/fm-lens/issues/new?template=feature_request.yml).
 
 ## What it does
 
@@ -112,10 +112,9 @@ or Windows version and processor, and the app language:
   field changed, such as `contract.wage`), never the value.
 - `card_exported`: a player's share card was copied or saved, with its size
   and whether it shows CA and PA.
-- `change_undone`, `players_exported` and `report_sent`.
+- `change_undone`, `players_exported`, `report_sent` and `wish_sent`.
 - `star_asked`, `star_clicked` and `star_declined`: the ask for a star on GitHub
   was shown, followed or turned down.
-- `wishlist_opened`: the wishlist on GitHub was opened.
 
 To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
 nothing.

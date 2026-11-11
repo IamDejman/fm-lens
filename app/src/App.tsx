@@ -14,9 +14,9 @@ import { FrozenNotice } from "./FrozenNotice";
 import { useGraphics } from "./GraphicsStatus";
 import { GuidedTour } from "./GuidedTour";
 import { isShortcut, MAC, SECTION_SHORTCUTS, shortcutAria, shortcutLabel } from "./keys";
-import { ReportDialog } from "./ReportDialog";
+import { ReportDialog, type ReportKind } from "./ReportDialog";
 import { Settings } from "./Settings";
-import { openWishlist, StarNotice, useStarAsk } from "./StarNotice";
+import { StarNotice, useStarAsk } from "./StarNotice";
 import {
   appText,
   awardListText,
@@ -134,7 +134,7 @@ function App() {
   const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
-  const [reporting, setReporting] = useState(false);
+  const [reporting, setReporting] = useState<ReportKind | null>(null);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   const { asking: askingStar, answer: answerStar } = useStarAsk();
   const [emailAsked, setEmailAsked] = useState(() => !emailGiven());
@@ -662,16 +662,17 @@ function App() {
             </span>
           </span>
           {!inTauri && <span className="tag">{appText.previewTag}</span>}
-          <button type="button" className="colophon-report" onClick={() => setReporting(true)}>
+          <button type="button" className="colophon-report" onClick={() => setReporting("problem")}>
             {appText.reportProblem}
           </button>
-          <button type="button" className="colophon-wishlist" onClick={openWishlist}>
+          <button type="button" className="colophon-wishlist" onClick={() => setReporting("wish")}>
             {appText.wishlist}
           </button>
           {reporting && (
             <ReportDialog
+              kind={reporting}
               facts={{ version, connection, detected: detection?.games[0]?.info ?? null, log }}
-              onClose={() => setReporting(false)}
+              onClose={() => setReporting(null)}
             />
           )}
           {update?.phase === "ready" && (

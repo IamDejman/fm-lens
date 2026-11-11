@@ -1,6 +1,7 @@
 // A problem report: what the user writes in Report a problem, sent with what FM Lens knows (its version, the FM build,
 // the checks on the game that did not pass, the Mac and the changes written while it has been open) to the report relay (relay/), which files it as an issue in
-// the fm-lens repository. Nothing leaves the app until the user presses Send. The facts are written in English, as the
+// the fm-lens repository. A wish from the wishlist goes the same way with only the version, as a feature request.
+// Nothing leaves the app until the user presses Send. The facts are written in English, as the
 // issues are. Screenshots and videos go straight to the relay's bucket, at addresses the relay hands out, and the issue
 // links them.
 
@@ -198,13 +199,36 @@ async function upload(files: Attachment[]): Promise<string[]> {
   return uploads.map(({ key }) => key);
 }
 
-/** Sends `what` and `files` with `facts` to the relay. The browser preview sends nothing and says it was sent. */
-export async function sendReport(facts: ReportFacts, what: string, files: Attachment[] = []): Promise<SendResult> {
+/** Posts `body` to the relay at `path`, with `files` put in its bucket first. The browser preview sends nothing. */
+async function post(path: "/report" | "/wish", body: () => Promise<object>, files: Attachment[]): Promise<SendResult> {
   if (!inTauri) {
     return "sent";
   }
   try {
-    const report = {
+    const sent = {
+      ...(await body()),
+      ...(files.length > 0 ? { attachments: await upload(files) } : {}),
+    };
+    const response = await fetch(`${RELAY}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sent),
+      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+    });
+    if (response.ok) {
+      return "sent";
+    }
+    return response.status === 429 ? "tooMany" : "failed";
+  } catch (err) {
+    return err instanceof TooMany ? "tooMany" : "failed";
+  }
+}
+
+/** Sends `what` and `files` with `facts` to the relay, which files them as a bug. */
+export async function sendReport(facts: ReportFacts, what: string, files: Attachment[] = []): Promise<SendResult> {
+  const result = await post(
+    "/report",
+    async () => ({
       what,
       version: facts.version ?? "",
       fmBuild: describeGame(facts),
@@ -212,20 +236,20 @@ export async function sendReport(facts: ReportFacts, what: string, files: Attach
       // The relay's name for the system, from when FM Lens ran on macOS only.
       macos: await systemVersion(),
       changes: describeChanges(facts.log),
-      ...(files.length > 0 ? { attachments: await upload(files) } : {}),
-    };
-    const response = await fetch(`${RELAY}/report`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(report),
-      signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
-    });
-    if (response.ok) {
-      track("report_sent", { attachments: files.length });
-      return "sent";
-    }
-    return response.status === 429 ? "tooMany" : "failed";
-  } catch (err) {
-    return err instanceof TooMany ? "tooMany" : "failed";
+    }),
+    files,
+  );
+  if (result === "sent" && inTauri) {
+    track("report_sent", { attachments: files.length });
   }
+  return result;
+}
+
+/** Sends a wish, `what` and `files`, to the relay with FM Lens's version, which files it as a feature request. */
+export async function sendWish(facts: ReportFacts, what: string, files: Attachment[] = []): Promise<SendResult> {
+  const result = await post("/wish", async () => ({ what, version: facts.version ?? "" }), files);
+  if (result === "sent" && inTauri) {
+    track("wish_sent", { attachments: files.length });
+  }
+  return result;
 }
