@@ -130,8 +130,12 @@ validated fields and the guarded memory layer for domain operations.
 
 - Distinguish available UI, inherited code, live verification and roadmap work.
   Code presence does not establish that an operation works on this user's save.
-- The verified target is FM27 Steam build 26340721, native ARM64, module UUID
-  F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. The Intel
+- The verified target is FM27 Steam build 26340721 (27.0.0), native ARM64,
+  module UUID F4540355-2186-39CB-9119-C706A6A35346. Build 26385295 (27.0.1,
+  ARM64 module UUID 2A2D0ED6-324E-3D0D-A27D-10AEDBD0E270) passed the
+  docs/PATCH-VALIDATION.md run on ARM64, under Rosetta and on Windows on
+  10 November; the deeper evidence is from 27.0.0 unless an entry names
+  27.0.1. Reinspect after game updates. The Intel
   half, checked under Rosetta, ships in the universal app. The Windows build was
   checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md),
   on Windows Server 2022 only.
