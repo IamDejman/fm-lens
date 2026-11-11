@@ -2175,9 +2175,11 @@ fn concern_record(session: &Session, player: &fmlens_core::PlayerSummary) -> Opt
     let contract =
         process.read_u64(player.address + pl.at(pl.contract, player.shift)).ok().filter(|&p| is_user_pointer(p))?;
     let record = process.read_u64(contract + 0x30).ok().filter(|&p| is_user_pointer(p))?;
-    let count = process.read_u64(record).ok()?;
-    let list = (0..count.min(16))
-        .filter_map(|i| process.read_u64(record + 8 + 8 * i).ok())
+    // A u8 count, ten slots used as a ring, and at +0x58 the slot of the oldest entry.
+    let count = u64::from(process.read_bytes(record, 1).ok()?[0]);
+    let head = u64::from(process.read_bytes(record + 0x58, 1).ok()?[0]);
+    let list = (0..count.min(10))
+        .filter_map(|i| process.read_u64(record + 8 + 8 * ((head + i) % 10)).ok())
         .filter_map(|entry| process.read_bytes(entry, 28).ok())
         .collect();
     Some((count, record + 8, list))
@@ -2208,6 +2210,16 @@ fn concerns(session: &Session, uid: Option<u32>) -> Result<()> {
                 }
             }
             None => println!("{} (UID {uid}): no record", player.name),
+        }
+        // What ending them the game's way would write, and the scores of his squad's mood it would reset.
+        match session.plan_end_concerns(player) {
+            Ok(plan) => println!("  ending them would end {} that last", plan.concerns),
+            Err(err) => println!("  nothing to end: {err}"),
+        }
+        let day =
+            |date: Option<fmlens_core::FmDate>| date.map_or_else(|| "-".to_owned(), |d| d.to_number().to_string());
+        for (team, atmosphere, support) in session.squad_mood_dates(player) {
+            println!("  team {team:#x}: atmosphere worked out {}, support {}", day(atmosphere), day(support));
         }
         return Ok(());
     }

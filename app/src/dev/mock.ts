@@ -1605,8 +1605,13 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
           } else if (name === "playing_time_happiness") {
             contract.playingTimeHappiness = value;
           } else if (name === "unhappiness") {
-            // Only ever set to none; an undo puts the count back, which the made-up list cannot follow.
-            contract.concerns = value === 0 ? [] : contract.concerns;
+            // Set to none, the reasons that last end today; an undo has the ones that ended today last again.
+            const today = numberFromDate(GAME_DATE);
+            contract.concerns = contract.concerns.map((concern) =>
+              value === 0
+                ? { ...concern, ended: concern.ended ?? GAME_DATE }
+                : { ...concern, ended: concern.ended && numberFromDate(concern.ended) === today ? null : concern.ended },
+            );
           }
         }
         break;
@@ -1737,8 +1742,13 @@ function currentValues(entity: Entity, uid: number): FieldValues {
             return contract?.happiness;
           case "playing_time_happiness":
             return contract?.playingTimeHappiness;
-          case "unhappiness":
-            return contract && contract.concerns.length > 0 ? contract.concerns.length : undefined;
+          case "unhappiness": {
+            // None that last reads as nothing to remove, unless some ended today: those an undo can have last again.
+            const lasting = contract?.concerns.filter((concern) => concern.ended === null).length ?? 0;
+            const today = numberFromDate(GAME_DATE);
+            const endedToday = contract?.concerns.some((c) => c.ended && numberFromDate(c.ended) === today) ?? false;
+            return lasting > 0 || endedToday ? lasting : undefined;
+          }
         }
         return undefined;
       }
@@ -1836,6 +1846,23 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
   const name =
     entity === "nation" ? nationName(uid) : entity === "official" ? officialOf(uid).name : profileOf(entity, uid).name;
   const report: ApplyReport = { applied: [], failed: [] };
+  const write = (field: string, old: number, value: number) => {
+    writeValue(entity, uid, field, value);
+    const logged: LoggedChange = {
+      id: changes.length + 1,
+      at: Date.now(),
+      name,
+      entity,
+      uid,
+      field,
+      old,
+      new: value,
+      undoneAt: null,
+      batch: null,
+    };
+    changes.push(logged);
+    report.applied.push({ ...logged });
+  };
   for (const edit of edits) {
     const field = fieldTable(entity).find((f) => f.key === edit.field);
     if (!field) {
@@ -1870,23 +1897,34 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
     if (old === edit.value) {
       continue;
     }
-    writeValue(entity, uid, field.key, edit.value);
-    const logged: LoggedChange = {
-      id: changes.length + 1,
-      at: Date.now(),
-      name,
-      entity,
-      uid,
-      field: field.key,
-      old,
-      new: edit.value,
-      undoneAt: null,
-      batch: null,
+    write(field.key, old, edit.value);
+  }
+  // Like the real command, a happiness his morale does not allow moves his morale with it, unless the edit set it.
+  const held = entity === "player" ? report.applied.find((change) => change.field === "contract.happiness") : undefined;
+  const morale: number | undefined = currentValues(entity, uid)["morale"];
+  if (held && morale !== undefined && !edits.some((edit) => edit.field === "morale")) {
+    const allows = (level: number) => {
+      const [low, high] = moraleBand(level);
+      const happiness = Math.max(held.new, -20);
+      return happiness >= low && happiness <= high;
     };
-    changes.push(logged);
-    report.applied.push({ ...logged });
+    const nearest = Array.from({ length: 20 }, (_, i) => i + 1)
+      .filter(allows)
+      .sort((a, b) => Math.abs(a - morale) - Math.abs(b - morale) || a - b)[0];
+    if (!allows(morale) && nearest !== undefined) {
+      write("morale", morale, nearest);
+    }
   }
   return report;
+}
+
+/** The happiness the game allows a player no reason to be unhappy holds elsewhere, by his morale. */
+function moraleBand(morale: number): [number, number] {
+  if (morale >= 18) return [80, 100];
+  if (morale >= 15) return [60, 80];
+  if (morale >= 13) return [40, 60];
+  if (morale >= 11) return [20, 40];
+  return [-20, 20];
 }
 
 /** `undo_change`: writes the old value back unless the value has changed since. */
@@ -2631,6 +2669,22 @@ function liftBans(uid: number, batch: number | null = null): LoggedChange {
     batch,
   };
   changes.push(logged);
+  return { ...logged };
+}
+
+/** `remove_unhappiness`: the fixture player's reasons to be unhappy that last end today, logged as one change. */
+function removeUnhappiness(uid: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const report: MassReport = { batch: 0, applied: 0, failed: [], freeze: null };
+  setValues(player, [["contract.unhappiness", 0]], report);
+  const logged = changes[changes.length - 1];
+  if (report.applied === 0 || !logged) {
+    throw failure("list.missing", "the list holds nothing at number 0", { index: 0 });
+  }
+  logged.batch = null;
   return { ...logged };
 }
 
@@ -3851,6 +3905,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return signFreeAgentLater(Number(args?.uid), Number(args?.club), Number(args?.joins)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
+    case "remove_unhappiness":
+      return removeUnhappiness(Number(args?.uid)) as T;
     case "close_promise":
       return closePromise(Number(args?.uid), Number(args?.index), args?.promise as PlayerPromise | undefined) as T;
     case "change_clause":

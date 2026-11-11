@@ -226,29 +226,59 @@ pub struct Concern {
     pub kind: u8,
 }
 
-/// The most entries a record of reasons to be unhappy is believed to hold; the test save's longest held 6.
-pub(crate) const MOST_CONCERNS: u64 = 64;
+/// The most entries a record of reasons to be unhappy holds: the game keeps them in a ring of ten.
+pub(crate) const MOST_CONCERNS: u64 = 10;
+
+/// The bytes of one reason to be unhappy, and where the date it ended is in them.
+pub(crate) const CONCERN_SIZE: usize = 28;
+pub(crate) const CONCERN_ENDED: usize = 4;
+
+/// Where the record keeps which slot of its ring holds the oldest entry: a `u8` after the ten slots.
+const CONCERNS_HEAD: u64 = 8 + 8 * MOST_CONCERNS;
+
+/// The entries of the record of reasons to be unhappy `record` points at, oldest first; none when there is no
+/// record or it does not look like one. The record is a `u8` count, ten pointer slots from +8 used as a ring, and
+/// the slot of the oldest entry.
+pub(crate) fn concern_entries(process: &Process, record: u64) -> Vec<u64> {
+    if !is_user_pointer(record) {
+        return Vec::new();
+    }
+    let Ok(bytes) = process.read_bytes(record, CONCERNS_HEAD as usize + 1) else {
+        return Vec::new();
+    };
+    let (count, head) = (u64::from(bytes[0]), u64::from(bytes[CONCERNS_HEAD as usize]));
+    if count > MOST_CONCERNS || head >= MOST_CONCERNS {
+        return Vec::new();
+    }
+    (0..count)
+        .map(|i| 8 + 8 * ((head + i) % MOST_CONCERNS) as usize)
+        .map(|at| u64::from_le_bytes(bytes[at..at + 8].try_into().expect("8 bytes")))
+        .filter(|&entry| is_concern_pointer(entry))
+        .collect()
+}
+
+/// Whether `entry` could point at a reason to be unhappy. The game packs them 28 bytes apart, so one is aligned to
+/// four bytes, not the eight of [`is_user_pointer`].
+fn is_concern_pointer(entry: u64) -> bool {
+    entry.is_multiple_of(4) && is_user_pointer(entry & !7)
+}
 
 /// The reasons to be unhappy listed in the record `record` points at; none when there is no record or it does not
 /// look like one.
 pub(crate) fn read_concerns(process: &Process, record: u64) -> Vec<Concern> {
-    if !is_user_pointer(record) {
-        return Vec::new();
-    }
-    let Ok(count) = process.read_u64(record) else {
-        return Vec::new();
-    };
-    if count > MOST_CONCERNS {
-        return Vec::new();
-    }
-    (0..count)
-        .filter_map(|i| process.read_u64(record + 8 + 8 * i).ok())
-        .filter_map(|entry| process.read_bytes(entry, 28).ok())
+    concern_entries(process, record)
+        .into_iter()
+        .filter_map(|entry| process.read_bytes(entry, CONCERN_SIZE).ok())
         .map(|e| {
             let date = |at: usize| {
                 FmDate::from_raw(u16::from_le_bytes([e[at], e[at + 1]]), u16::from_le_bytes([e[at + 2], e[at + 3]]))
             };
-            Concern { started: date(0), ended: date(4), motive: u16::from_le_bytes([e[0x16], e[0x17]]), kind: e[0x18] }
+            Concern {
+                started: date(0),
+                ended: date(CONCERN_ENDED),
+                motive: u16::from_le_bytes([e[0x16], e[0x17]]),
+                kind: e[0x18],
+            }
         })
         .collect()
 }
@@ -408,6 +438,16 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Entries sit 28 bytes apart, so half of them are not aligned to eight bytes: Bukayo Saka's was at ...8f64.
+    #[test]
+    fn a_concern_may_sit_on_a_four_byte_boundary() {
+        assert!(is_concern_pointer(0x7b_d8f9_7620));
+        assert!(is_concern_pointer(0x7b_d8f9_8f64));
+        assert!(!is_concern_pointer(0x7b_d8f9_8f62));
+        assert!(!is_concern_pointer(0));
+        assert!(!is_concern_pointer(4));
+    }
 
     #[test]
     fn valuation_is_not_an_asking_price_or_a_sentinel_amount() {

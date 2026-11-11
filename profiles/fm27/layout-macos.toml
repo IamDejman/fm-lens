@@ -460,6 +460,18 @@ reputation = 0xA8         # Tottenham: 7650
 manager = 0x80
 national = 0x2F           # u8: 0 for a club's team, else a nation's (set_work_permit reads it)
 
+# A team's dynamics record, from the game's code (docs/EDITING-VALIDATION.md). A team points at a holder, which points
+# at the record; the record points back at its team. It keeps the dressing room atmosphere (i8 at 0xCB) and the support
+# for the manager (i8 at 0xCE), each with the date the game worked it out. The game's own logic, such as the squad
+# complaining about the atmosphere, reuses a score for seven days after its date; FM's Dynamics screen does not.
+# Arsenal, 10 Dec 2027: atmosphere -62, worked out on 7 Dec.
+[dynamics]
+holder = 0xA0             # in a team: pointer to the holder
+record = 0xC8             # in the holder: pointer to the record
+team = 0x40               # in the record: pointer back at the team
+atmosphere_date = 0xA8    # date the atmosphere score was worked out; 1 Jan 1900 before the first time
+support_date = 0xAC       # date the support score was worked out
+
 # The game brings its own allocator to macOS: it carves the chunks it gets from malloc into
 # blocks of the same size classes as on Windows (blocks of 8 bytes too, which malloc never
 # hands out). Measured natively with probe `squads`: 837 of the 853 team lists of 145 to

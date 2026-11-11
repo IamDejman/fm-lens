@@ -43,6 +43,9 @@ pub struct Layout {
     /// A promise made to a person; only in the layouts it has been checked in.
     #[serde(default)]
     pub promise: Option<PromiseLayout>,
+    /// A team's dynamics record; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub dynamics: Option<DynamicsLayout>,
     /// A match official; only in the layouts it has been checked in.
     #[serde(default)]
     pub official: Option<OfficialLayout>,
@@ -473,6 +476,19 @@ impl PromiseLayout {
     }
 }
 
+/// A team's dynamics record, which keeps the dressing room atmosphere and the support for the manager as scores from
+/// -100 to 100, each with the date the game worked it out. A team points at a `holder`, which points at the `record`;
+/// the record points back at its `team`. The game's own logic reuses a score for seven days after its date.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DynamicsLayout {
+    pub holder: u64,
+    pub record: u64,
+    pub team: u64,
+    pub atmosphere_date: u64,
+    pub support_date: u64,
+}
+
 /// One current ban of a player. The record a player's `injuries` pointer leads to holds,
 /// after his list of current injuries, the list `(begin, end, capacity)` of his current
 /// absences: his bans, and others such as a call-up. Each is a 32-byte entry, and a ban
@@ -636,7 +652,8 @@ pub struct ContractLayout {
     /// `i8` each: how happy the player is, and how happy with his playing time, as FMRTE shows them.
     pub happiness: u64,
     pub playing_time_happiness: u64,
-    /// Pointer to the record of his reasons to be unhappy: a `u64` count, then that many pointers to 28-byte entries.
+    /// Pointer to the record of his reasons to be unhappy: a `u8` count, then a ring of ten pointers to 28-byte
+    /// entries and the slot of the oldest (see `details::concern_entries`).
     pub unhappiness: u64,
 }
 

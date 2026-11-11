@@ -25,6 +25,7 @@ mod languages;
 mod loans;
 mod mass;
 mod medical;
+mod mood;
 mod national;
 mod officials;
 mod players;
@@ -77,6 +78,7 @@ pub use languages::{LEAST_LEVEL, Language, LanguagePlan, LanguageSet, MOST_LEVEL
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan, Lifted};
+pub use mood::{ConcernsEnded, ConcernsPlan, HappinessHold};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
 pub use officials::OfficialSummary;
 pub use players::{

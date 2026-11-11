@@ -2611,3 +2611,213 @@ relay: an address the relay refuses shows the error and starts no download, and
 a real address goes through. Kit still holds one active record for it. On
 getfmlens.com after the deploy, `signup.js` no longer names `app.kit.com`, and
 the relay answers the page's preflight with 204.
+
+## Unhappiness that came back after Continue (11 November 2026)
+
+Report: Remove unhappiness and Max morale on Arsenal, then Continue, and FM's
+"Squad unhappy with club situation" came again the next day, with the same
+players unhappy and their morale down. Two causes, both in how the game keeps
+this state, read from `game_plugin` (macOS arm64, Steam build 26385295; the
+record offsets are the same in the Windows `game_plugin.dll`).
+
+**Reasons were deleted, not ended.** A contract's record of reasons to be
+unhappy (`[contract+0x30]`) is a `u8` count, a ring of ten pointer slots from
++8, and at +0x58 the slot of the oldest. An entry is 28 bytes: the date it began
+at +0, the date it ended at +4 (1 January 1900 while it lasts), the reason at
++0x16 and its kind at +0x18. Entries sit 28 bytes apart, so one may be aligned
+to four bytes only. The game's own Remove unhappiness writes today's date, as
+the game holds it with its flags, over the ended date of each entry that lasts,
+and leaves the entry listed. An ended entry is what stops the game from raising
+the same reason again: it waits 10 days after the last one of its kind ended,
+or 30, 90 or 120 by reason. FM Lens set the count to 0, which left nothing to
+wait on.
+
+**The atmosphere score is reused for seven days.** A team's dynamics record
+(`[[team+0xA0]+0xC8]`, with the team back at +0x40) keeps the dressing room
+atmosphere at +0xCB with the date it was worked out at +0xA8, and the support
+for the manager at +0xCE with its date at +0xAC. FM's Dynamics screen works the
+score out afresh; the game's own logic reuses it until it is seven days old.
+Under -40 the squad complains (reasons 570 and 571). Arsenal on 10 December
+2027 held -62, worked out on 7 December, so the complaint kept coming whatever
+the players' morale now was.
+
+The fix:
+
+- Remove unhappiness, on a player's Mood tab and as a team action, ends each
+  lasting reason with today's date as the game does. Undo has them last again.
+- A write to morale, happiness, playing time happiness or unhappiness resets
+  the two dates of every team of the player's club, so the game works the
+  scores out again from how the players feel now. A record that does not point
+  back at its team, or whose date is not a day of this year or the last, is
+  left alone.
+- Reasons are read through the ring, so a list that has wrapped reads in order.
+
+Checked without writing, on the running career (native macOS FM, 10 December
+2027): `fmlens-probe concerns UID` reports what the plan would end and the
+dates of the squad's scores.
+
+| Player | Entries | Plan | Arsenal first team |
+|---|---|---|---|
+| Bukayo Saka | 1, since 10 Dec 2027, reason 570 | Ends 1 | Atmosphere and support both worked out 7 Dec 2027 |
+| David Raya | 1, since 10 Dec 2027, reason 811 | Ends 1 | The same |
+| Declan Rice | 1, since 10 Dec 2027, reason 811 | Ends 1 | The same |
+| Martin Ødegaard | 1, since 10 Dec 2027, reason 811 | Ends 1 | The same |
+| Tommy Setford | No record | Nothing to end | The same |
+
+Saka's and Raya's entries are at addresses aligned to four bytes; the first
+build of the plan skipped them and the check caught it.
+
+In the browser preview's sample data: Remove unhappiness on Northbridge FC's
+first team made 18 changes and Undo brought all 18 back; on Søren Yılmaz's Mood
+tab it logged "Reasons to be unhappy 2 → 0" and the list read "Nothing makes
+him unhappy".
+
+### Happiness that went back after Continue
+
+The game does not keep a contract's happiness as written. It puts it inside a
+band, set by the worst reason to be unhappy that lasts, or by morale when no
+reason counts (macOS arm64 build 26385295, the function at 0x2028BFC):
+
+| What holds it | Happiness |
+|---|---|
+| Worst lasting reason of kind 1 | -40 to -20 |
+| Kind 2 | -60 to -40 |
+| Kind 3 or 4 | -80 to -60 |
+| Kind 5 | -100 to -80 |
+| Kind 6, 99 or 100 | -100 |
+| Any other kind | Left where it is |
+| No reason that counts, morale 18 to 20 | 80 to 100 |
+| Morale 15 to 17 | 60 to 80 |
+| Morale 13 or 14 | 40 to 60 |
+| Morale 11 or 12 | 20 to 40 |
+| Morale 10 or less | -20 to 20 |
+
+A reason being talked over with the manager (status 19 or 20) does not count,
+nor do the motives 0, 900 to 930, 1100, 1104 and 1106.
+
+An edit of happiness now takes with it what the game would use to put it back.
+Lasting reasons that hold it in another band end, as Remove unhappiness ends
+them, and morale moves to the nearest value whose band takes the new happiness,
+unless the same edit sets morale. Each shows as a change of its own in Changes
+and can be undone. A mass edit of happiness does the same per player, inside its
+batch. A happiness under -20 stays only while a reason holds it there.
+
+Remove unhappiness now also ends the reasons on a loan contract, as the game's
+own action does.
+
+Checked without writing, on the running career (10 December 2027): of 49 Arsenal
+players read, every one at the club with no reason that counts sits inside his
+morale's band. Morale 20 reads 80 to 100, Merino at 15 reads 80, Gabriel at 14
+reads 40, Rice at 11 reads 20 (his reason is at status 19), and morale 10 or less
+reads 5 to 20. Ben White, out on loan, does not fit (morale 17, happiness 40).
+Unit tests cover the bands, the reasons left out and the morale chosen.
+
+### Other edits that can look reversed
+
+- Manager support: the game reused its score for seven days, like the
+  atmosphere. A mood edit now resets both dates.
+- Cohesion: written values hold. On 5 November the 26 raised to 100 still read
+  100 after Continue. On the running career 22 players read 99 and 4 read 98,
+  none 100: the game takes a point off now and then, and nothing went back to
+  what it was before.
+- Tactics: written values hold. On the running career 551 entries read exactly
+  9944, which fits 10000 from Max tactics lowered by 56 since. The low entries
+  beside them (544, 600, 656) are new: the game starts one when a tactic's
+  settings change. Max tactics raises those when pressed again.
+
+### Write, Continue and a week on (Apple Silicon, 11 November 2026)
+
+The packaged universal build of this branch (0.7.6), native arm64 FM, on a copy
+of the career saved as `FMLensMoodTest` (10 December 2027). The main career's
+hash matched its baseline before and after.
+
+Edits, all through the app: Remove unhappiness on Arsenal's first team (10
+changes), happiness 100 for Raya (morale 11 to 18 came with it) and 60 for Rice
+(morale 11 to 13), Max cohesion (29) and Max tactics (29). As a control, Saliba
+got happiness 100 with morale 12 set in the same edit, which the band does not
+allow. Dael Fry at Birmingham got happiness 100: his reasons ended and his
+morale went from 8 to 18.
+
+Morale / happiness, read with the probe:
+
+| Player | Before | Edited | First Continue | Next day | A week on |
+|---|---|---|---|---|---|
+| Raya | 11 / 20 | 18 / 100 | 18 / 100 | 15 / 100 | 13 / 60 |
+| Rice | 11 / 20 | 13 / 60 | 13 / 45 | 10 / 45 | 15 / 70 |
+| Saliba (control) | 11 / 20 | 12 / 100 | 12 / 40 | 9 / 40 | 13 / 60 |
+| Saka | 20 / 80 | 20 / 80 | 20 / 83 | 17 / 83 | 16 / 100 |
+| Gabriel | 14 / 40 | 14 / 40 | 14 / 50 | 11 / 50 | 13 / 80 |
+| Timber | 11 / 20 | 11 / 20 | 11 / 24 | 9 / 24 | 13 / 60 |
+
+- Remove unhappiness held. A week on (18 December) all ten reasons were still
+  ended and no player had a new complaint about the atmosphere. FM's Dynamics
+  read Managerial Support "Very good", Team Cohesion "Excellent" and Club
+  Atmosphere "Good", with one issue: Pacho wanted to start more games (a new
+  reason from 15 December).
+- The scores were worked out again: both dates read unset after the edit,
+  10 December by the end of that day and 15 December a week on.
+- Happiness stayed where the band allows it and went back where it does not:
+  Raya kept 100, Rice moved inside 40 to 60, and the control Saliba fell to 40.
+- Happiness is not a value the game leaves alone after that. It applies the
+  band when it next changes a player's happiness, not daily, and training,
+  selection and matches change it for every player. After the Spurs match the
+  unedited Pacho went from 65 to -40, Meslier from 80 to 35 and Merino from 80
+  to 40. So an edited happiness is where the player starts, as with morale.
+- Cohesion read 100 through the match day and 99 a week on (98 for a few).
+  Tactics entries read 10000, then 9944 for all but the first of each group
+  after the match, and 9916 and 9776 a week on: the game takes multiples of 28
+  off.
+
+The same save loaded again with nothing edited, as a baseline:
+
+- After one Continue Saka's happiness fell from 80 to -40, held there by his
+  reason, and a day on his morale was 8, down from 20. All ten reasons were
+  still open and both scores still dated 7 December.
+- Morale fell overnight without any edit, from 17.1 to 14.2 on average over the
+  first team (17.3 to 14.7 in the edited run). The fall is the game's own.
+- Remove unhappiness (10 changes) and Max morale (28) on that baseline, then
+  one Continue: FM's Dynamics read Club Atmosphere "Excellent", "no unhappy
+  players at the club" and no issues, and every morale still read 20.
+- An edit pressed before Reload, with FM Lens still holding the other save, was
+  refused for every player ("FM has moved its data since FM Lens read it. Press
+  Reload, then try again.") and wrote nothing.
+
+The band above is one of two. A byte the game keeps at 0x5770988 (this build)
+picks the other when it reads 1 to 3: morale 15 to 17 then allows 60 to 100,
+11 to 14 allows 40 to 100, 6 to 10 allows 20 to 80, 4 or 5 allows -20 to 60 and
+less allows -20 to 40. This save uses the table above, which the control
+confirms, and edits are worked out for it. What sets the byte is not known.
+
+### Write, Continue and a day on (Windows, 11 November 2026)
+
+The packaged Windows build of this branch, FM 27.0.1, on the same unedited
+`FMLensMoodTest` save (10 December 2027).
+
+Edits, all through the app: Remove unhappiness on Arsenal's first team (10
+changes), happiness 90 for Rice (morale 11 to 18 came with it), Max tactics
+(29) and Max cohesion (29).
+
+| Player | Before | Edited | First Continue | Next day |
+|---|---|---|---|---|
+| Rice | 11 / 20 | 18 / 90 | 18 / 80 | 15 / 80 |
+| Raya | 11 / 20 | 11 / 20 | 11 / 23 | 10 / 23 |
+| Saka | 20 / 80 | 20 / 80 | 20 / 83 | 17 / 83 |
+| Gabriel | 14 / 40 | 14 / 40 | 14 / 45 | 12 / 45 |
+| Timber | 11 / 20 | 11 / 20 | 11 / 24 | 8 / 24 |
+
+- Remove unhappiness held. All ten reasons read ended on 10 December and none
+  was open or new a day on. FM's Dynamics on 11 December read Head Coach
+  Support "Very good", Team Cohesion "Excellent" and Club Atmosphere "Good",
+  with "no unhappy players at the club", no issues and 0 unhappy players.
+- The scores were worked out again: both dates read unset after the edit, the
+  atmosphere 10 December after the first Continue and the support score
+  10 December a day on. The `[dynamics]` offsets in the Windows layout are
+  right.
+- Rice's happiness moved from 90 to 80, the top of what morale 18 allows, and
+  stayed there. Morale fell overnight from 17.2 to 14.6 on average, the game's
+  own fall seen on the Mac.
+- Cohesion read 100 for all 48 pairs a day on. Tactics entries read 10000,
+  then 9972 a day on.
+
+Not yet run: Max morale past the first Continue, the packaged app under
+Rosetta, and Windows past the first day.
