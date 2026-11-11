@@ -2788,5 +2788,36 @@ picks the other when it reads 1 to 3: morale 15 to 17 then allows 60 to 100,
 less allows -20 to 40. This save uses the table above, which the control
 confirms, and edits are worked out for it. What sets the byte is not known.
 
-Not yet run: Max morale past the first Continue, and the packaged app under
-Rosetta and on Windows.
+### Write, Continue and a day on (Windows, 11 November 2026)
+
+The packaged Windows build of this branch, FM 27.0.1, on the same unedited
+`FMLensMoodTest` save (10 December 2027).
+
+Edits, all through the app: Remove unhappiness on Arsenal's first team (10
+changes), happiness 90 for Rice (morale 11 to 18 came with it), Max tactics
+(29) and Max cohesion (29).
+
+| Player | Before | Edited | First Continue | Next day |
+|---|---|---|---|---|
+| Rice | 11 / 20 | 18 / 90 | 18 / 80 | 15 / 80 |
+| Raya | 11 / 20 | 11 / 20 | 11 / 23 | 10 / 23 |
+| Saka | 20 / 80 | 20 / 80 | 20 / 83 | 17 / 83 |
+| Gabriel | 14 / 40 | 14 / 40 | 14 / 45 | 12 / 45 |
+| Timber | 11 / 20 | 11 / 20 | 11 / 24 | 8 / 24 |
+
+- Remove unhappiness held. All ten reasons read ended on 10 December and none
+  was open or new a day on. FM's Dynamics on 11 December read Head Coach
+  Support "Very good", Team Cohesion "Excellent" and Club Atmosphere "Good",
+  with "no unhappy players at the club", no issues and 0 unhappy players.
+- The scores were worked out again: both dates read unset after the edit, the
+  atmosphere 10 December after the first Continue and the support score
+  10 December a day on. The `[dynamics]` offsets in the Windows layout are
+  right.
+- Rice's happiness moved from 90 to 80, the top of what morale 18 allows, and
+  stayed there. Morale fell overnight from 17.2 to 14.6 on average, the game's
+  own fall seen on the Mac.
+- Cohesion read 100 for all 48 pairs a day on. Tactics entries read 10000,
+  then 9972 a day on.
+
+Not yet run: Max morale past the first Continue, the packaged app under
+Rosetta, and Windows past the first day.
