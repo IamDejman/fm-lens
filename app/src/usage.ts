@@ -38,6 +38,7 @@ export const EDITS = new Set([
   "end_loan",
   "freeze_attributes",
   "freeze_money",
+  "freeze_selection",
   "freeze_staff_attributes",
   "heal_player",
   "keep_playing",

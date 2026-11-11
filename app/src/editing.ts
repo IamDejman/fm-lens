@@ -1,6 +1,6 @@
 // Editing: the Rust commands that change the game, and how stored values are shown.
 
-import { call } from "./api";
+import { call, watchCommands } from "./api";
 import { converts, toPounds, toShown } from "./currency";
 import type {
   ApplyReport,
@@ -15,6 +15,7 @@ import type {
   FutureTransfer,
   InjuryKind,
   LoggedChange,
+  MassEntity,
   MassFilters,
   MassOperation,
   MassPreview,
@@ -25,6 +26,7 @@ import type {
   Nation,
   ReleasePreview,
   Promise as PlayerPromise,
+  SelectionFreeze,
   TeamAction,
   TieKind,
 } from "./types";
@@ -43,6 +45,25 @@ export const freezeAttributes = (uid: number, frozen: boolean) => call<number[]>
 
 /** The players whose attributes are frozen: while the app is connected, they do not get worse. */
 export const frozenPlayers = () => call<number[]>("frozen_players");
+
+/** How much of what `query` and the entity's filter in `filters` select is frozen. */
+export const frozenSelection = (entity: MassEntity, query: string, filters: MassFilters) =>
+  call<SelectionFreeze>("frozen_selection", { entity, query, filters });
+
+/**
+ * Freezes everything `query` and the entity's filter in `filters` select, or unfreezes it: the attributes of players
+ * or staff, the money of clubs. What cannot be frozen does not stop the rest.
+ */
+export const freezeSelection = (entity: MassEntity, query: string, filters: MassFilters, frozen: boolean) =>
+  call<SelectionFreeze>("freeze_selection", { entity, query, filters, frozen });
+
+/** Hears a mass freeze, after which a profile's freeze box reads again what is frozen. Returns what stops hearing. */
+export const watchMassFreeze = (next: () => void) =>
+  watchCommands((command) => {
+    if (command === "freeze_selection") {
+      next();
+    }
+  });
 
 /**
  * Sets every attribute of the player `uid` to its best: 20, and 1 for injury proneness and dirtiness. The changes are

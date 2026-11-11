@@ -3548,6 +3548,24 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "frozen_staff":
       return [...frozenStaff] as T;
+    case "frozen_selection":
+    case "freeze_selection": {
+      const entity = args?.entity as Entity;
+      const held = entity === "player" ? frozenAttributes : entity === "staff" ? frozenStaff : frozenMoney;
+      const uids = selectTargets(entity, String(args?.query ?? ""), (args?.filters ?? {}) as MassFilters).map(
+        (target) => target.uid,
+      );
+      if (command === "freeze_selection") {
+        for (const uid of uids) {
+          if (args?.frozen) {
+            held.add(uid);
+          } else {
+            held.delete(uid);
+          }
+        }
+      }
+      return { selected: uids.length, frozen: uids.filter((uid) => held.has(uid)).length, error: null } as T;
+    }
     case "export_players": {
       // Nothing is written in a browser: the report names the file a real export would have.
       const selected = selectTargets("player", String(args?.query ?? ""), {

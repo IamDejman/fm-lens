@@ -1268,6 +1268,16 @@ export interface MassFilters {
   clubFilter?: ClubFilter;
 }
 
+/** How much of what a list selects is frozen: its players' or staff's attributes, or its clubs' money. */
+export interface SelectionFreeze {
+  /** How many the search and the filter select. */
+  selected: number;
+  /** How many of them are frozen now. */
+  frozen: number;
+  /** Why the first that could not be frozen was refused, when one was. */
+  error: Failure | null;
+}
+
 /** A change a mass edit would write: as stored. */
 export interface PlannedChange {
   uid: number;

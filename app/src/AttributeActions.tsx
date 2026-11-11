@@ -3,7 +3,7 @@
 
 import { useContext, useEffect, useRef, useState } from "react";
 import { Chevron } from "./DropMenu";
-import { changeLog, freezeAttributes, frozenPlayers, setAttributes, undoBatch } from "./editing";
+import { changeLog, freezeAttributes, frozenPlayers, setAttributes, undoBatch, watchMassFreeze } from "./editing";
 import { describeError } from "./format";
 import { fieldLabel, massEditText, profileText } from "./labels";
 import { undoFailureLines } from "./massDraft";
@@ -77,11 +77,15 @@ export function AttributeActions({ uid, open, panel }: { uid: number; open: bool
 
   useEffect(() => {
     let current = true;
-    frozenPlayers()
-      .then((players) => current && setFrozen(players.includes(uid)))
-      .catch(() => current && setFrozen(false));
+    const read = () =>
+      frozenPlayers()
+        .then((players) => current && setFrozen(players.includes(uid)))
+        .catch(() => current && setFrozen(false));
+    void read();
+    const stop = watchMassFreeze(() => void read());
     return () => {
       current = false;
+      stop();
     };
   }, [uid]);
 

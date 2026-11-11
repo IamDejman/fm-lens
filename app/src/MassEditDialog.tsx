@@ -9,6 +9,8 @@ import { valueText } from "./editDraft";
 import {
   applyMassEdit,
   changeLog,
+  freezeSelection,
+  frozenSelection,
   isoFromNumber,
   isStoredFiner,
   planMassEdit,
@@ -17,7 +19,15 @@ import {
 } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { currencySymbol, describeError } from "./format";
-import { changesText, editText, fieldLabel, massEditText as text, profileText, valueChange } from "./labels";
+import {
+  changesText,
+  clubProfileText,
+  editText,
+  fieldLabel,
+  massEditText as text,
+  profileText,
+  valueChange,
+} from "./labels";
 import type { ListState } from "./ListBrowser";
 import { useDialogReturn } from "./MoreMenu";
 import {
@@ -32,7 +42,15 @@ import {
   type OperationKind,
   type RowVerdict,
 } from "./massDraft";
-import type { EditField, LoggedChange, MassEntity, MassFilters, MassPreview, MassReport } from "./types";
+import type {
+  EditField,
+  LoggedChange,
+  MassEntity,
+  MassFilters,
+  MassPreview,
+  MassReport,
+  SelectionFreeze,
+} from "./types";
 import { useModal } from "./useModal";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 
@@ -98,7 +116,7 @@ export function MassEditButton({ entity, filters, list }: MassEditButtonProps) {
 }
 
 /** What a call is under way for, while one is. */
-type Busy = "preview" | "apply" | "undo";
+type Busy = "preview" | "apply" | "undo" | "freeze";
 
 /** What the dialog says about the undo: how many changes were taken back, and the ones that could not be. */
 interface UndoOutcome {
@@ -137,6 +155,8 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
   const [report, setReport] = useState<MassReport | null>(null);
   const [undone, setUndone] = useState<UndoOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // How much of the list is frozen; null until the app has said.
+  const [freeze, setFreeze] = useState<SelectionFreeze | null>(null);
 
   // Nothing to change, or more than one mass edit takes: the dialog only says so.
   const blocked = scope.total === 0 || scope.total > MASS_LIMIT;
@@ -152,6 +172,25 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       alive.current = false;
     };
   }, []);
+
+  // What of the list is frozen already. Without an answer the freeze box is not offered.
+  useEffect(() => {
+    if (blocked) {
+      return;
+    }
+    let cancelled = false;
+    frozenSelection(entity, scope.query, scope.filters).then(
+      (now) => {
+        if (!cancelled) {
+          setFreeze(now);
+        }
+      },
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [blocked, entity, scope]);
 
   // The field table of the list's kind of entity, without the fields a mass edit may not change (`mass: false`, such as
   // a squad number, which is changed one player at a time): one row to start with, for its first field.
@@ -350,6 +389,21 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       }
     });
 
+  // The freeze box: ticked while everything in the list is frozen, and in between while only some of it is. Ticking
+  // it freezes the rest; unticking it unfreezes all of it.
+  const allFrozen = freeze !== null && freeze.selected > 0 && freeze.frozen === freeze.selected;
+  const someFrozen = freeze !== null && freeze.frozen > 0 && !allFrozen;
+  const toggleFreeze = () =>
+    run("freeze", async () => {
+      const now = await freezeSelection(entity, scope.query, scope.filters, !allFrozen);
+      if (alive.current) {
+        setFreeze(now);
+        if (now.error !== null) {
+          setError(text.freezeFailed(now.selected - now.frozen, describeError(now.error)));
+        }
+      }
+    });
+
   const canUndo = report !== null && report.applied > 0 && (undone === null || undone.problems.length > 0);
   const scopeText =
     scope.total === 0
@@ -382,9 +436,28 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       >
         <header className="modal-head">
           <h2 id={titleId}>{text.title[entity]}</h2>
-          <p id={scopeId} className={scope.total > MASS_LIMIT ? "mass-scope warn" : "mass-scope"}>
-            {scopeText}
-          </p>
+          <div className="mass-scope-row">
+            <p id={scopeId} className={scope.total > MASS_LIMIT ? "mass-scope warn" : "mass-scope"}>
+              {scopeText}
+            </p>
+            {freeze !== null && (
+              // Not disabled while a call runs, which would drop its focus: `run` takes one call at a time.
+              <label className="freeze-toggle">
+                <input
+                  ref={(box) => {
+                    if (box) {
+                      box.indeterminate = someFrozen;
+                    }
+                  }}
+                  type="checkbox"
+                  checked={allFrozen}
+                  aria-disabled={busy !== null || undefined}
+                  onChange={() => void toggleFreeze()}
+                />
+                <span>{entity === "club" ? clubProfileText.freeze : profileText.freezeAttributes}</span>
+              </label>
+            )}
+          </div>
         </header>
 
         <div className="modal-body">

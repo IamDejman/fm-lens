@@ -377,6 +377,26 @@ impl Connection {
         let _ = remembered.write(path);
     }
 
+    /// Whether the attributes of the player or member of staff `uid`, or the money of the club `uid`, are frozen.
+    fn is_frozen(&self, entity: Entity, uid: u32) -> bool {
+        match entity {
+            Entity::Player => self.frozen.attributes.contains_key(&uid),
+            Entity::Staff => self.frozen.staff_attributes.contains_key(&uid),
+            Entity::Club => self.frozen.money.contains_key(&uid),
+            Entity::Nation | Entity::Official => false,
+        }
+    }
+
+    /// Ends the freeze of the attributes of the player or member of staff `uid`, or of the money of the club `uid`.
+    fn unfreeze(&mut self, entity: Entity, uid: u32) {
+        match entity {
+            Entity::Player => drop(self.frozen.attributes.remove(&uid)),
+            Entity::Staff => drop(self.frozen.staff_attributes.remove(&uid)),
+            Entity::Club => drop(self.frozen.money.remove(&uid)),
+            Entity::Nation | Entity::Official => {}
+        }
+    }
+
     /// Freezes the attributes of the player `uid` at what they are now (see `hold_attributes`). Refused while the
     /// attributes may not be written.
     fn freeze_player(&mut self, uid: u32) -> Result<(), Failure> {
@@ -3443,6 +3463,90 @@ fn frozen_staff(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
         .unwrap_or_default())
 }
 
+/// How much of what a list selects is frozen: its players' or staff's attributes, or its clubs' money.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SelectionFreeze {
+    /// How many the search and the filter select.
+    selected: usize,
+    /// How many of them are frozen now.
+    frozen: usize,
+    /// Why the first that could not be frozen was refused, when one was.
+    error: Option<Failure>,
+}
+
+/// How much of what `query` and the entity's filter select is frozen (see `freeze_selection`).
+#[tauri::command]
+fn frozen_selection(
+    state: State<'_, AppState>,
+    entity: Entity,
+    query: String,
+    filters: Filters,
+) -> Result<SelectionFreeze, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let targets = connection.select(entity, &query, filters);
+    let frozen = targets.iter().filter(|(target, _)| connection.is_frozen(entity, target.uid)).count();
+    Ok(SelectionFreeze { selected: targets.len(), frozen, error: None })
+}
+
+/// Freezes everything `query` and the entity's filter select, or unfreezes it: the attributes of players or staff and
+/// the money of clubs, as `freeze_attributes`, `freeze_staff_attributes` and `freeze_money` do for one. What is frozen
+/// already stays held at what it is held at. One that cannot be frozen does not stop the rest: the first reason comes
+/// back with the count. The app remembers what is frozen for this save.
+#[tauri::command]
+fn freeze_selection(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    entity: Entity,
+    query: String,
+    filters: Filters,
+    frozen: bool,
+) -> Result<SelectionFreeze, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let uids: Vec<u32> = connection.select(entity, &query, filters).into_iter().map(|(target, _)| target.uid).collect();
+    if uids.len() > MASS_LIMIT {
+        return Err(too_many(uids.len()));
+    }
+    let mut error = None;
+    for &uid in &uids {
+        if !frozen {
+            connection.unfreeze(entity, uid);
+            continue;
+        }
+        if connection.is_frozen(entity, uid) {
+            continue;
+        }
+        let done = match entity {
+            Entity::Player => connection.freeze_player(uid),
+            Entity::Staff => connection.freeze_staff(uid),
+            Entity::Club => connection.freeze_club(uid),
+            Entity::Nation | Entity::Official => Ok(()),
+        };
+        if let Err(err) = done {
+            error.get_or_insert(err);
+        }
+    }
+    let held: Vec<u32> = uids.iter().copied().filter(|&uid| connection.is_frozen(entity, uid)).collect();
+    connection.remember(file.0.as_deref(), |save| {
+        let kept = match entity {
+            Entity::Player => &mut save.players,
+            Entity::Staff => &mut save.staff,
+            Entity::Club => &mut save.clubs,
+            Entity::Nation | Entity::Official => return,
+        };
+        if frozen {
+            kept.extend(&held);
+        } else {
+            for uid in &uids {
+                kept.remove(uid);
+            }
+        }
+    });
+    Ok(SelectionFreeze { selected: uids.len(), frozen: held.len(), error })
+}
+
 /// The fields of players or of staff that the editor can change.
 #[tauri::command]
 fn edit_fields(state: State<'_, AppState>, entity: Entity) -> Result<Vec<Field>, Failure> {
@@ -4503,6 +4607,12 @@ fn set_attributes(state: State<'_, AppState>, uid: u32, level: i64) -> Result<Ma
     Ok(report)
 }
 
+/// The refusal of a mass edit or a mass freeze of `count`, more than one takes.
+fn too_many(count: usize) -> Failure {
+    let message = format!("{count} match. Narrow the search or the filters to {MASS_LIMIT} or fewer for a mass edit.");
+    Failure::new("mass.tooMany", message).with("count", count).with("limit", MASS_LIMIT)
+}
+
 /// Works out a mass edit: `operations` applied to every player, member of staff or club
 /// that `query` and the entity's filter select, from the values the game holds now.
 /// Nothing is written; the plan waits for `apply_mass_edit` with the preview's id.
@@ -4521,11 +4631,7 @@ fn plan_mass_edit(
     }
     let targets = connection.select(entity, &query, filters);
     if targets.len() > MASS_LIMIT {
-        let message = format!(
-            "{} match. Narrow the search or the filters to {MASS_LIMIT} or fewer for a mass edit.",
-            targets.len()
-        );
-        return Err(Failure::new("mass.tooMany", message).with("count", targets.len()).with("limit", MASS_LIMIT));
+        return Err(too_many(targets.len()));
     }
     let operations = operations
         .into_iter()
@@ -4788,6 +4894,8 @@ pub fn run() {
             frozen_players,
             freeze_staff_attributes,
             frozen_staff,
+            frozen_selection,
+            freeze_selection,
             edit_fields,
             read_values,
             apply_edits,

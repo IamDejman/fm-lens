@@ -82,7 +82,12 @@ const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "
 const CHECK_EVERY_MS = 5000;
 
 /** The commands that turn a freeze on or off. */
-const FREEZE_COMMANDS: ReadonlySet<string> = new Set(["freeze_attributes", "freeze_money", "freeze_staff_attributes"]);
+const FREEZE_COMMANDS: ReadonlySet<string> = new Set([
+  "freeze_attributes",
+  "freeze_money",
+  "freeze_selection",
+  "freeze_staff_attributes",
+]);
 
 const dayKey = ({ year, month, day }: FmDate) => `${year}-${month}-${day}`;
 

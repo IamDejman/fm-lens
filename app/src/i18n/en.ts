@@ -1973,6 +1973,8 @@ export const en = {
       "Narrow your search or filters.",
     loadingFields: "Loading fields…",
     fieldsFailed: (reason: string) => `Couldn't load the fields: ${reason}`,
+    /** Under the dialog after its freeze box left some of the list unfrozen; `count` is how many. */
+    freezeFailed: (count: number, reason: string) => `${format(count)} couldn't be frozen: ${reason}`,
 
     // The fields to change
     /** The groups of the field select, in the order the dialog lists them. */

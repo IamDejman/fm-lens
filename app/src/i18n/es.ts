@@ -1820,6 +1820,7 @@ export const es: Strings = {
       `(${format(limit)}). Acota antes la búsqueda o los filtros.`,
     loadingFields: "Leyendo los campos…",
     fieldsFailed: (reason) => `No se han podido leer los campos: ${reason}`,
+    freezeFailed: (count, reason) => `No se han podido congelar ${format(count)}: ${reason}`,
 
     // Los campos que cambiar
     groups: {

@@ -1,7 +1,7 @@
 import { Fragment, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { EditableValue, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
-import { changeStaffJob, staffJobs } from "./editing";
+import { changeStaffJob, staffJobs, watchMassFreeze } from "./editing";
 import { describeError } from "./format";
 import {
   choiceLabel,
@@ -320,9 +320,11 @@ function StaffFreeze({ uid }: { uid: number }) {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    call<number[]>("frozen_staff").then((staff) => { if (active) setFrozen(staff.includes(uid)); })
+    const read = () => call<number[]>("frozen_staff").then((staff) => { if (active) setFrozen(staff.includes(uid)); })
       .catch((err) => { if (active) setError(describeError(err)); });
-    return () => { active = false; };
+    void read();
+    const stop = watchMassFreeze(() => void read());
+    return () => { active = false; stop(); };
   }, [uid]);
   if (!editable) return null;
   return <div className="attribute-actions">

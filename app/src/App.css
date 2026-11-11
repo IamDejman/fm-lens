@@ -3694,6 +3694,19 @@ button.danger:hover:not(:disabled) {
   color: var(--danger);
 }
 
+/* What the dialog applies to, and at the end of the row the box that freezes all of it. */
+.mass-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+}
+
+.mass-scope-row .freeze-toggle {
+  margin: 0;
+}
+
 /* The fields to change: a fieldset only to switch all its controls off together while a call runs. */
 .mass-fields {
   min-width: 0;

@@ -1776,6 +1776,7 @@ export const tr: Strings = {
       "Önce aramayı veya filtreleri daraltın.",
     loadingFields: "Alanlar okunuyor…",
     fieldsFailed: (reason) => `Alanlar okunamadı: ${reason}`,
+    freezeFailed: (count, reason) => `${format(count)} dondurulamadı: ${reason}`,
 
     // The fields to change
     groups: {
