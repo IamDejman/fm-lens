@@ -130,11 +130,17 @@ validated fields and the guarded memory layer for domain operations.
 
 - Distinguish available UI, inherited code, live verification and roadmap work.
   Code presence does not establish that an operation works on this user's save.
-- The verified target is FM27 Steam build 26340721, native ARM64, module UUID
-  F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. The Intel
-  half, checked under Rosetta, ships in the universal app. The Windows build was
-  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md),
-  on Windows Server 2022 only.
+- The verified target is FM27 27.0.1, Steam build 26385295: native ARM64 module
+  UUID 2A2D0ED6-324E-3D0D-A27D-10AEDBD0E270, Intel
+  94CDDC80-8474-327A-85E0-E4FF95DC6893. It passed the docs/PATCH-VALIDATION.md
+  run on 10 November on Apple Silicon, under Rosetta and on the Windows test
+  box (Windows Server 2022 only); see the FM27 27.0.1 entry in
+  docs/EDITING-VALIDATION.md. Most field, in-game and persistence evidence is
+  from 27.0.0, build 26340721 (ARM64 UUID
+  F4540355-2186-39CB-9119-C706A6A35346), whose profiles remain. The object
+  layouts are unchanged in 27.0.1, but evidence dated before 10 November was
+  not rerun there. Reinspect after game updates. The Intel half ships in the
+  universal app.
 - Offline verification covered FM Lens with network access denied against an
   already-running game, not a fresh Steam Offline Mode launch.
 - Do not claim complete parity, complete transfer consistency, 550,000-player
