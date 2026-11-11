@@ -145,7 +145,7 @@ validated fields and the guarded memory layer for domain operations.
 
 - Mapped player/staff/club fields are enabled on known builds. Windows has
   bounded app edit/undo checks on Server 2022, not edited-save persistence. The field
-  catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
+  catalog lists 169 player, 42 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after

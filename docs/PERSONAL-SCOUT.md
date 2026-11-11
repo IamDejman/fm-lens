@@ -168,7 +168,7 @@ field validation, then preview/apply/undo through the bulk editor. Identity and
 contract fields are excluded. Staff attribute freezes last for the connection.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
-See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 167 player, 39 staff and 14 club
+See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 169 player, 42 staff and 14 club
 field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
 behavioral evidence and outstanding checks.
 
