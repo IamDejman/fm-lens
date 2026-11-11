@@ -26,13 +26,17 @@ Staff and club filters cover additional decoded values.
 ## Platforms and evidence
 
 FM Lens ships a universal Mac app and, from 0.6.2, a Windows installer. The
-verified game build is FM27 Steam 26340721. ARM64 has the broadest local
-validation; Intel checks used Rosetta and cover selected reads/actions.
-Windows app edits and undo were exercised on Windows Server 2022, including
-attributes, contracts, mass edits, templates, squad actions and manager fields.
-Windows installer and self-update checks are recorded separately. Windows
-edited-save persistence and Windows 10/11 execution remain unverified. See the dated Windows entries in
-[EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026).
+verified game builds are FM27 Steam 26340721 (27.0.0), where most checks ran,
+and 26385295 (27.0.1), which passed the patch run on 10 November. ARM64 has
+the broadest local validation; Intel checks used Rosetta and cover selected
+reads/actions. Windows app edits and undo were exercised on Windows Server
+2022, including attributes, contracts, mass edits, templates, squad actions and
+manager fields. Windows installer and self-update checks are recorded
+separately. A few Windows edits held through save, quit, relaunch and reload (8
+and 10 November); most Windows fields have no such check, and Windows 10/11
+execution remains unverified. See the dated Windows entries in
+[EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026),
+"Windows: every feature on main" and "FM27 27.0.1".
 Availability on a platform does not certify every mapped field.
 
 Upstream update installation is disabled so it cannot replace this build.

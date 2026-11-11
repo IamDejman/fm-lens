@@ -130,11 +130,15 @@ validated fields and the guarded memory layer for domain operations.
 
 - Distinguish available UI, inherited code, live verification and roadmap work.
   Code presence does not establish that an operation works on this user's save.
-- The verified target is FM27 Steam build 26340721, native ARM64, module UUID
-  F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. The Intel
-  half, checked under Rosetta, ships in the universal app. The Windows build was
-  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md),
-  on Windows Server 2022 only.
+- The verified targets are FM27 Steam 27.0.0 (build 26340721) and 27.0.1 (build
+  26385295). Most in-game evidence is from 27.0.0 on native ARM64, module UUID
+  F4540355-2186-39CB-9119-C706A6A35346. 27.0.1 (ARM64 module UUID
+  2A2D0ED6-324E-3D0D-A27D-10AEDBD0E270) passed the docs/PATCH-VALIDATION.md run
+  on 10 November on ARM64, Intel under Rosetta and Windows: a bounded set of
+  reads, edits, game actions and a save and reload, not every field. Reinspect
+  after game updates. The Intel half, checked under Rosetta, ships in the
+  universal app. The Windows builds were checked on the test box (the Windows
+  sections of docs/EDITING-VALIDATION.md), on Windows Server 2022 only.
 - Offline verification covered FM Lens with network access denied against an
   already-running game, not a fresh Steam Offline Mode launch.
 - Do not claim complete parity, complete transfer consistency, 550,000-player
@@ -144,9 +148,12 @@ validated fields and the guarded memory layer for domain operations.
 ## Current editor boundaries
 
 - Mapped player/staff/club fields are enabled on known builds. Windows has
-  bounded app edit/undo checks on Server 2022, not edited-save persistence. The field
-  catalog lists 169 player, 42 staff and 14 club definitions. This does not mean
-  every field has passed an in-game persistence test.
+  bounded app edit/undo checks on Server 2022. A few Windows edits also held
+  through Save As, an FM quit, relaunch and reload (8 and 10 November: player
+  and staff attributes, a contract wage, a club balance, a signing, a work
+  permit and Max tactics); other Windows fields have no persistence evidence.
+  The field catalog lists 169 player, 42 staff and 14 club definitions. This
+  does not mean every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
   reloading the edited copy. See the validation document for the exact sequence.

@@ -23,10 +23,19 @@ further data-layout and game-behavior research.
 Windows ships from 0.6.2. The Windows reads, game actions and bounded app
 edit/undo checks are recorded in EDITING-VALIDATION.md and
 [the Windows handoff](internal/WINDOWS-PARITY-HANDOFF.md). Those checks used
-Windows Server 2022 and did not save the edited career. Windows 10/11 execution
-and edited-save quit/reload remain unverified. Unless a row names another
-platform, its in-game persistence evidence is from macOS ARM64; mapped Windows
-fields do not inherit that evidence.
+Windows Server 2022; Windows 10/11 execution remains unverified. A few edits
+held through Save As, an FM quit, relaunch and reload there: on 8 November
+(27.0.0) two player attributes, a contract wage and a club balance, and on 10
+November (27.0.1) a player and a staff attribute, a wage, a club balance, a
+signing, a work permit and Max tactics. Unless a row names another platform,
+its in-game persistence evidence is from macOS ARM64; mapped Windows fields do
+not inherit that evidence.
+
+FM27 27.0.1 (Steam build 26385295) has profiles for Apple Silicon, Intel and
+Windows. On 10 November it passed the PATCH-VALIDATION.md run on all three: read
+checks, a bounded set of edits and game actions, and a save reloaded on the Mac
+and on Windows. Rows that name build 26340721 (27.0.0) say where their evidence
+came from; it was not repeated field by field on 27.0.1.
 
 Intel action parity on `feat/intel-parity`: mapped, not yet tested live under Rosetta. All 24 ARM64 call keys, the injury and database statics, the editor tables and the STARTING_LOAN defaults now have Intel values, and the Intel bridge passes an indirect result place the System V way. An Intel helper rebuilt from this branch is required. The new actions switch on through profile and helper capability discovery, with no new Intel live or persistence evidence. See [the mapping and Rosetta handoff](recon/fm27-steam-26340721-macos-x86_64.md#intel-action-parity-mapping-8-november-2026).
 
@@ -127,7 +136,7 @@ See the latest entry in EDITING-VALIDATION.md.
 | --- | --- |
 | Launch in 1 second | Not benchmarked |
 | Load 550,000 players in under 3 seconds | Not benchmarked; current live evidence covers a 30,314-player career |
-| Every Windows and Mac edition | Not established; native Apple Silicon, FM27 Steam build 26340721 is the verified target. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits. Its Windows build was checked on 7 November on a test career: reads, the game's own actions through the Windows bridge, and the app's direct edits (attributes, contract, mass edit, clone and templates, freeze money, squad actions, your manager), each undone. FM Lens 0.6.2 is the first Windows download: on 7 November its installer, one copy at a time and a self-update from 0.6.1 to 0.6.2 were checked on Windows Server 2022. Not yet on Windows: Game Pass, a save-and-reload test, and Windows 10 and 11 themselves; see docs/internal/WINDOWS-PARITY-HANDOFF.md |
+| Every Windows and Mac edition | Not established. FM27 Steam builds 26340721 (27.0.0) and 26385295 (27.0.1) are the verified targets, with most evidence from 27.0.0 on native Apple Silicon. Its Intel half was checked under Rosetta on 6 and 7 November: reads, officials, the human manager's flags, work permits and refresh after edits. Its Windows build was checked on 7 November on a test career: reads, the game's own actions through the Windows bridge, and the app's direct edits (attributes, contract, mass edit, clone and templates, freeze money, squad actions, your manager), each undone; on 8 November a few edits also held through Save As, an FM quit, relaunch and reload. 27.0.1 passed the PATCH-VALIDATION.md run on Apple Silicon, Rosetta and Windows on 10 November, with a save reloaded on the Mac and on Windows. FM Lens 0.6.2 is the first Windows download: on 7 November its installer, one copy at a time and a self-update from 0.6.1 to 0.6.2 were checked on Windows Server 2022. Not yet on Windows: Game Pass, and Windows 10 and 11 themselves; see docs/internal/WINDOWS-PARITY-HANDOFF.md |
 | Updates within hours of patches | Maintenance aspiration, not a guarantee |
 | Offline companion | Verified with network denied against an already-running game; fresh Steam Offline Mode startup untested |
 | Updating FM Lens while FM stays open | Implemented: use the running helper's capabilities, retain the earlier call protocol, and skip only explicitly unsupported optional refresh calls. Native Mach IPC regression tests pass; a live copied-career update remains unverified. New helper functions become available after the next normal FM launch |
