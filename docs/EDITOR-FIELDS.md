@@ -5,9 +5,12 @@ passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
 The current FM27 Apple Silicon layout defines 169 player fields, 40 staff fields,
 14 club fields, 12 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
-flags word, located only on FM27 Steam build 26340721 (ARM64) for an object of
-class `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
-missing. `manager.unsackable` (bit 1) passed bounded apply/undo and save/reload
+flags word, located only on FM27 Steam builds 26340721 (27.0.0) and 26385295
+(27.0.1), on macOS ARM64, macOS Intel and Windows, for an object of class
+`db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
+missing. The checks below ran on build 26340721, ARM64; Windows has apply,
+readback and undo only, and no check of either flag is recorded on 27.0.1.
+`manager.unsackable` (bit 1) passed bounded apply/undo and save/reload
 persistence on a copied career, but dismissal protection remains unverified.
 `manager.registration_anytime` (bit 8) passed the same apply/undo and
 save/reload checks; FM changed registration outside the window and kept the
@@ -291,13 +294,18 @@ One official at a time; none where the build's layout does not place officials.
 Some changes are not field writes: the game makes them itself through the
 bridge, or FM Lens edits a list. These include work permits, injuries, loans,
 transfers, swaps, releases, free-agent signings, Max tactics, secondary nationalities and homegrown ties,
-contract clauses and a planned retirement. ROADMAP.md lists each one and what
-has been checked in FM.
+contract clauses and a planned retirement. They also include a person's likes
+and dislikes (change a strength, remove one, or point one at another club or
+person), a language's level or removal, closing an open promise, cancelling a
+future transfer, and your manager's Change club, which has no Undo. ROADMAP.md
+lists each one and what has been checked in FM.
 
 ## Unsupported systems
 
-Competition and award editing, promises and youth-intake records do not yet
-have validated editing layouts in this fork. Complete transfers, other future
-transfers, manager relations and moves, language editing, ownership, kits and
-competition rule behavior also remain research work. These cannot be enabled by
-adding inputs or reusing a Windows offset on macOS.
+Competition and award editing, making or editing a promise and youth-intake
+records do not yet have validated editing layouts in this fork. Moving your
+manager to a national team or out of a job, adding a like, dislike or language,
+instalments and buy-backs, ownership, kits and competition rule behavior also
+remain research work. These cannot be enabled by adding inputs or reusing a
+Windows offset on macOS. Transfers are made, but not every linked record
+(history, finances, registration) is verified; see ROADMAP.md.
