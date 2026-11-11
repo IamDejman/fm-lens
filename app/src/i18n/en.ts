@@ -1627,6 +1627,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.6": [
+        "The Staff tab shows each team's own staff: first team, U21, U18.",
+      ],
       "0.7.5": [
         "Club profiles have a Staff tab: everyone on the staff, by job, with CA and PA.",
         "Ask for a feature from the Wishlist at the foot of the window.",

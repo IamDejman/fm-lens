@@ -1502,6 +1502,9 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.6": [
+        "Personel sekmesi her takımın kendi personelini gösterir: A takımı, U21, U18.",
+      ],
       "0.7.5": [
         "Kulüp profillerinde Personel sekmesi var: tüm personel, göreve göre, MY ve PY ile.",
         "Pencerenin altındaki İstek listesi ile özellik isteyin.",
