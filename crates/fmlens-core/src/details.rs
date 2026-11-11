@@ -123,15 +123,15 @@ pub struct PlayerDetails {
     /// Current bans (see [`crate::Session::bans`]).
     pub bans: Vec<Ban>,
     /// The promises made to him, open and recently closed (see [`crate::Session::promises`]); none where the layout does
-    /// not place them (Windows, where they have not been traced).
+    /// not place them.
     pub promises: Option<Vec<Promise>>,
     /// Secondary nationalities and homegrown status (see [`crate::Session::relations`]), and how many more his list
     /// has room for.
     pub ties: Vec<Relation>,
     pub tie_room: usize,
-    /// The people and clubs he favours and dislikes (see [`crate::Session::preferences`]). Read-only.
+    /// The people and clubs he favours and dislikes (see [`crate::Session::preferences`]).
     pub preferences: Vec<Preference>,
-    /// The languages he speaks besides, usually, his native one (see [`crate::Session::player_languages`]). Read-only.
+    /// The languages he speaks besides, usually, his native one (see [`crate::Session::player_languages`]).
     pub languages: Vec<Language>,
     /// Whether the editor can read the retirements the game has planned (see
     /// [`crate::Session::planned_retirement`]), and the date he retires on when the game has planned it.

@@ -25,13 +25,16 @@ Staff and club filters cover additional decoded values.
 
 ## Platforms and evidence
 
-FM Lens ships a universal Mac app and, from 0.6.2, a Windows installer. The
-verified game build is FM27 Steam 26340721. ARM64 has the broadest local
-validation; Intel checks used Rosetta and cover selected reads/actions.
+FM Lens ships a universal Mac app and, from 0.6.2, a Windows installer. Most
+evidence is from FM27 Steam build 26340721 (27.0.0); build 26385295 (27.0.1) has
+its own profiles and passed the patch-validation run on 10 November. ARM64 has
+the broadest local validation; Intel checks used Rosetta and cover selected
+reads/actions.
 Windows app edits and undo were exercised on Windows Server 2022, including
 attributes, contracts, mass edits, templates, squad actions and manager fields.
-Windows installer and self-update checks are recorded separately. Windows
-edited-save persistence and Windows 10/11 execution remain unverified. See the dated Windows entries in
+Windows installer and self-update checks are recorded separately. A few Windows
+edits held through save, quit and reload on 8 and 10 November; Windows 10/11
+execution remains unverified. See the dated Windows entries in
 [EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026).
 Availability on a platform does not certify every mapped field.
 
@@ -165,10 +168,11 @@ not covered by this in-memory history. See the 7 November refresh checks in
 Clone & templates can capture selected ability, attribute, personality, position
 and trait groups. Templates use versioned JSON, a local library and destination
 field validation, then preview/apply/undo through the bulk editor. Identity and
-contract fields are excluded. Staff attribute freezes last for the connection.
+contract fields are excluded. Player, staff and money freezes are remembered for
+the save and hold only while FM Lens is connected.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
-See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 167 player, 39 staff and 14 club
+See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 169 player, 42 staff and 14 club
 field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
 behavioral evidence and outstanding checks.
 

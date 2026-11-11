@@ -26,6 +26,10 @@ above, and the app's direct edits (attributes and CA/PA, contract, mass edit, cl
 Heal, Refresh fitness, Max morale, Max cohesion, your manager's unsackable flag and wage). Not checked on Windows:
 Remove unhappiness, Lift bans (nobody to use them on in the test save), and a save, quit and reload of an edited copy.
 
+Since then (8 and 10 November, "Windows: every feature on main" and "FM27 27.0.1" in `docs/EDITING-VALIDATION.md`):
+Remove unhappiness ran and undid, and an edited copy was saved, FM quit and the copy reloaded with the checked edits
+held, on 27.0.0 and on 27.0.1. Lift bans is still not run on Windows: nobody was banned in either save.
+
 ## 2. The Windows test box
 
 - AWS `i-0b8af2b9b13815f9f`, g4dn.xlarge, `eu-central-1`, profile `footballadder`. About $0.84 an hour while

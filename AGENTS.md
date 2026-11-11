@@ -130,11 +130,13 @@ validated fields and the guarded memory layer for domain operations.
 
 - Distinguish available UI, inherited code, live verification and roadmap work.
   Code presence does not establish that an operation works on this user's save.
-- The verified target is FM27 Steam build 26340721, native ARM64, module UUID
-  F4540355-2186-39CB-9119-C706A6A35346. Reinspect after game updates. The Intel
-  half, checked under Rosetta, ships in the universal app. The Windows build was
-  checked on the test box (the Windows sections of docs/EDITING-VALIDATION.md),
-  on Windows Server 2022 only.
+- Most evidence is from FM27 Steam build 26340721 (27.0.0), native ARM64, module
+  UUID F4540355-2186-39CB-9119-C706A6A35346. Build 26385295 (27.0.1) has its own
+  profiles and passed the docs/PATCH-VALIDATION.md run on 10 November on Apple
+  Silicon, under Rosetta and on Windows; the deeper checks were not repeated on
+  it. Reinspect after game updates. The Intel half, checked under Rosetta, ships
+  in the universal app. The Windows build was checked on the test box (the
+  Windows sections of docs/EDITING-VALIDATION.md), on Windows Server 2022 only.
 - Offline verification covered FM Lens with network access denied against an
   already-running game, not a fresh Steam Offline Mode launch.
 - Do not claim complete parity, complete transfer consistency, 550,000-player
@@ -144,9 +146,12 @@ validated fields and the guarded memory layer for domain operations.
 ## Current editor boundaries
 
 - Mapped player/staff/club fields are enabled on known builds. Windows has
-  bounded app edit/undo checks on Server 2022, not edited-save persistence. The field
-  catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
-  every field has passed an in-game persistence test.
+  bounded app edit/undo checks on Server 2022. A few edits held through save,
+  quit and reload there on 8 and 10 November (attributes, a wage, a club
+  balance, a staff attribute, a nation's youth rating, a work permit); the rest
+  have no Windows persistence evidence. The field catalog lists 169 player, 42
+  staff and 14 club definitions. This does not mean every field has passed an
+  in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
   reloading the edited copy. See the validation document for the exact sequence.
@@ -155,24 +160,27 @@ validated fields and the guarded memory layer for domain operations.
   addresses or allow imported identity, nationality, contract or club fields.
   Resolve against the destination layout; preview and use conditional batch
   apply/undo. The library lives locally, not in the repository.
-- Staff attribute freeze lasts for the connection. Its toggle has been exercised;
-  long-term simulation behavior remains unverified. Do not describe it as a
-  persistent cross-restart setting.
-- The nation browser lists nations represented by loaded players/staff, not a
-  complete database scan. Guarded nation editing exists for mapped fields. On
-  ARM64, England's population, men's reputation and nationality rules passed
-  the 5 November save/quit/reload checks; not every nation field or platform
-  has that evidence. Synthetic nation row IDs must never be mutation UIDs;
+- Staff attribute freeze is remembered for the save with the player and money
+  freezes, and holds only while FM Lens is connected. It stayed on over a 31-day
+  holiday and came back on after FM restarted (8 November); its effect on
+  long-term staff development remains unverified. Do not describe any freeze as
+  holding while FM Lens is closed.
+- The nation browser lists nations represented by loaded players, staff and
+  competitions, not a complete database scan. Guarded nation editing exists for
+  mapped fields. On ARM64, England's population, men's reputation and
+  nationality rules passed the 5 November save/quit/reload checks; not every
+  nation field or platform has that evidence. Synthetic nation row IDs must never be mutation UIDs;
   mutation targets require the actual UID and current record.
-- The stadium browser lists senior stadiums per club; shared stadiums may
-  appear more than once. It is read-only. Competitions and awards are read-only;
+- The stadium browser lists senior stadiums, one row per ground with every club
+  that plays there. It is read-only. Competitions and awards are read-only;
   their browsing/rules data do not establish editing support.
 - Officials have mapped CA/PA, reputation and birth-date edits. Readback after
   Continue is recorded, but FM screen comparison and persistence are not fully
   established; referee attribute names remain research.
 - Player promises can be read and an existing open promise closed with
-  conditional undo on macOS. Creation, broader edits and Windows mapping remain
-  research. Windows reports unavailable data rather than No promises.
+  conditional undo on macOS and Windows (Windows checked on 8 November).
+  Creation and broader edits remain research. A build whose layout does not
+  place promises reports unavailable data rather than No promises.
 - Max cohesion and Max tactics have bounded ARM64 game/persistence checks,
   not complete simulation validation. Cohesion raises existing club entries
   only; tactics undo leaves some manager knowledge. See the roadmap.
