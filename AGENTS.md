@@ -154,7 +154,7 @@ validated fields and the guarded memory layer for domain operations.
   held after a quit and reload there twice (8 and 10 November): a player's
   attributes, contract wages, a staff attribute, a club balance, Max tactics
   and a free-agent signing, not the other fields. The field
-  catalog lists 167 player, 39 staff and 14 club definitions. This does not mean
+  catalog lists 169 player, 42 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
@@ -187,12 +187,12 @@ validated fields and the guarded memory layer for domain operations.
   only; tactics undo leaves some manager knowledge. See the roadmap.
 - Youth-intake lifecycle, complete contracts/loans, broader nation settings and
   competition/award editing remain incomplete. Unsackable and squad registration
-  at any time are experimental manager flags. The registration flag and an
-  outside-window registration survived save/reload on ARM64; protection from
-  dismissal remains unverified. Club and national-team moves must use the
-  game's action handlers, never raw pointer writes. Club moves are implemented
-  with irreversible job side effects; national-team moves remain research
-  (see docs/recon/fm27-human-manager.md).
+  at any time are manager flags, shown without an experimental label. The
+  registration flag and an outside-window registration survived save/reload on
+  ARM64; protection from dismissal remains unverified. Club and national-team
+  moves must use the game's action handlers, never raw pointer writes. Club
+  moves are implemented with irreversible job side effects; national-team moves
+  and leaving a job remain research (see docs/recon/fm27-manager-moves.md).
 - Future-transfer cancellation has bounded ARM64 game inspection and save/reload
   evidence from 7 November, not comprehensive deal-type/finance consistency. It
   has no Undo. Windows action and app-edit evidence is listed separately in
