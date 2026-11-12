@@ -1633,6 +1633,11 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.8": [
+        "Works with FM27's 12 November update on Steam.",
+        "Sort every list, and filter players by wage, value, height and personality.",
+        "Edit staff birth dates, and every attribute on a player's profile.",
+      ],
       "0.7.7": [
         "Remove unhappiness lasts: the reasons stay gone after you Continue.",
         "A happiness edit holds: morale moves with it.",

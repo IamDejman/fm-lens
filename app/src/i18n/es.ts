@@ -1530,6 +1530,11 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.8": [
+        "Funciona con la actualización de FM27 del 12 de noviembre en Steam.",
+        "Ordena cualquier lista y filtra jugadores por salario, valor, altura y personalidad.",
+        "Edita la fecha de nacimiento de los empleados y todos los atributos de un jugador.",
+      ],
       "0.7.7": [
         "Quitar descontento dura: los motivos no vuelven al pulsar Continuar.",
         "Un cambio de felicidad se mantiene: la moral se ajusta con él.",

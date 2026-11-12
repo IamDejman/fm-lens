@@ -103,8 +103,8 @@ impl Session {
         languages
     }
 
-    /// The nation the club whose team is `team` is in, as the game finds it for most clubs: the one it plays in when
-    /// based abroad, else its own. None for a person without a club, or where the layout does not place them.
+    /// The own nation of the club whose team is `team`, else the one whose league it plays in. None for a person
+    /// without a club, or where the layout does not place them.
     fn club_country(&self, team: u64) -> Option<u64> {
         let c = &self.layout.club;
         let (plays_in, nation) = (c.plays_in?, c.nation?);
