@@ -15,6 +15,7 @@ import { PositionPitch, PositionRatings } from "./PositionPitch";
 import { CancelTransferButton, EndLoanButton, ReleaseButton } from "./ReleaseDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ShareButton } from "./ShareDialog";
+import { SuggestedAbility } from "./SuggestedAbility";
 import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
@@ -81,6 +82,8 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
   // A move FM agreed for him on a later day: its dialog shows the first one, and cancels all of them, as FM's editor.
   const agreed = details?.futureTransfers[0];
   const playerCoach = details?.contract?.playerCoach === true;
+  // While he is edited, the ability that fits what is typed takes the place of the moves, under the abilities.
+  const suggestion = editing.stage === "edit" && details && <SuggestedAbility details={details} />;
 
   // Another tab starts at its top, wherever the last one was scrolled to.
   const select = (next: PlayerTab) => {
@@ -126,6 +129,7 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
       headActions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
       headIcons={<ShareButton details={details} />}
       actions={
+        suggestion ||
         // Only while the profile is read, not edited: for a player who has a club to leave, or a free agent where the
         // game signs them. The Transfer dialog starts from his contract, so its button waits for the details. A
         // player-coach works as staff too, so he is not moved or released.

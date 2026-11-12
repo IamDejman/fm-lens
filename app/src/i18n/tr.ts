@@ -650,6 +650,7 @@ export const tr: Strings = {
     potentialAbility: "Potansiyel yetenek",
     potentialAbilityShort: "PY",
     potentialRange: "Potansiyel bir aralık olarak belirlenmiş",
+    suggestedAbility: (value) => `Önerilen MY ${value}`,
     personalDetails: "Kişisel bilgiler",
     fullNameLabel: "Tam ad",
     heightLabel: "Boy",
