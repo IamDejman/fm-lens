@@ -89,7 +89,13 @@ pub fn read_clubs(
             continue;
         };
         let info = u64_at(c.info);
-        let nation_address = c.nation.map(u64_at).filter(|&nation| is_user_pointer(nation)).unwrap_or(0);
+        // `plays_in` holds the club's own nation (Cardiff City: Wales), `nation` the one whose league it plays in.
+        let nation_address = [c.plays_in, c.nation]
+            .into_iter()
+            .flatten()
+            .map(u64_at)
+            .find(|&nation| is_user_pointer(nation))
+            .unwrap_or(0);
         let nation = nations.get(nation_address, |nation| nation_name(process, layout, nation));
         let nation_uid =
             *nation_uids.entry(nation_address).or_insert_with(|| nation_uid(process, layout, nation_address));
