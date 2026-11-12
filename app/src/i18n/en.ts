@@ -1880,6 +1880,15 @@ export const en = {
     notNow: "Not now",
   },
 
+  /** Support FM Lens: at the foot of the window, in Settings and under Help, and the window it opens. */
+  support: {
+    button: "Support FM Lens",
+    /** The window's title, over Ko-fi's panel. */
+    title: "Say thanks",
+    /** Opens the Ko-fi page in the browser, for a payment the window cannot show. */
+    browser: "Open in browser",
+  },
+
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
   edit: {
     /** The tooltip on a value FM Lens wrote and read back. */

@@ -157,6 +157,9 @@ export const updateText = strings.update;
 /** Asking for a star on GitHub. */
 export const starText = strings.star;
 
+/** Support FM Lens: the button and the window it opens. */
+export const supportText = strings.support;
+
 /** A version of the game the editor was not checked with, or whose data did not check out: the notice about it. */
 export const compatibilityText = strings.compatibility;
 

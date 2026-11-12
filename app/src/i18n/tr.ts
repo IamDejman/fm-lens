@@ -1743,6 +1743,12 @@ export const tr: Strings = {
     notNow: "Şimdi değil",
   },
 
+  support: {
+    button: "FM Lens'i destekle",
+    title: "Teşekkür et",
+    browser: "Tarayıcıda aç",
+  },
+
   edit: {
     appliedTitle: "Uygulandı",
     unknownNation: "Bilinmeyen ülke",

@@ -1768,6 +1768,12 @@ export const es: Strings = {
     notNow: "Ahora no",
   },
 
+  support: {
+    button: "Apoyar FM Lens",
+    title: "Da las gracias",
+    browser: "Abrir en el navegador",
+  },
+
   edit: {
     appliedTitle: "Aplicado",
     unknownNation: "País desconocido",

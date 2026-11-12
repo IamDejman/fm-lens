@@ -25,6 +25,7 @@
     "security": {
       "csp": {
         "default-src": "'self'",
+        "frame-src": "https://ko-fi.com",
         "script-src": "'self'",
         "style-src": "'self'",
         "img-src": "'self' blob: fmgfx: http://fmgfx.localhost",
