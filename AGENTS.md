@@ -154,7 +154,7 @@ validated fields and the guarded memory layer for domain operations.
   held after a quit and reload there twice (8 and 10 November): a player's
   attributes, contract wages, a staff attribute, a club balance, Max tactics
   and a free-agent signing, not the other fields. The field
-  catalog lists 169 player, 42 staff and 14 club definitions. This does not mean
+  catalog lists 169 player, 43 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
