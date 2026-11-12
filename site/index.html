@@ -3,17 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FM Lens: Football Manager 27 companion for Mac and Windows</title>
-  <meta name="description" content="A free companion for Football Manager 27 on Mac and Windows. Search, compare and edit players, staff and clubs in your loaded career while FM runs.">
+  <title>FM Lens: free Football Manager 27 editor for Mac and Windows</title>
+  <meta name="description" content="FM Lens is a free live editor for Football Manager 27 (FM27) on Mac and Windows. Search, compare and edit players, staff and clubs in your career while FM runs.">
   <link rel="canonical" href="https://getfmlens.com/">
   <meta name="theme-color" content="#251b37">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="FM Lens">
   <meta property="og:url" content="https://getfmlens.com/">
-  <meta property="og:title" content="FM Lens: Football Manager 27 companion for Mac and Windows">
+  <meta property="og:title" content="FM Lens: free Football Manager 27 editor for Mac and Windows">
   <meta property="og:description" content="Search, compare and edit players, staff and clubs in your loaded FM27 career while you play. Free for Mac and Windows.">
   <meta property="og:image" content="https://getfmlens.com/images/social.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="FM Lens showing a list of players beside one player's profile">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/png" sizes="64x64" href="images/icon-64.png">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
@@ -23,13 +25,33 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "FM Lens",
-    "url": "https://getfmlens.com/",
-    "applicationCategory": "GameApplication",
-    "operatingSystem": "macOS, Windows",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
-    "license": "https://www.gnu.org/licenses/gpl-3.0.html"
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://getfmlens.com/#site",
+        "name": "FM Lens",
+        "alternateName": ["FMLens", "getfmlens"],
+        "url": "https://getfmlens.com/"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://getfmlens.com/#app",
+        "name": "FM Lens",
+        "alternateName": ["FMLens", "FM Lens for Football Manager 27"],
+        "description": "A free live editor and companion for Football Manager 27 (FM27) on Mac and Windows. Search, compare and edit players, staff and clubs in your loaded career while FM runs.",
+        "url": "https://getfmlens.com/",
+        "downloadUrl": "https://getfmlens.com/download/",
+        "releaseNotes": "https://getfmlens.com/releases/",
+        "image": "https://getfmlens.com/images/social.png",
+        "screenshot": "https://getfmlens.com/images/fm-lens-1920.webp",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "macOS, Windows",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "sameAs": ["https://github.com/IamDejman/fm-lens", "https://github.com/IamDejman/fm-lens-releases"]
+      }
+    ]
   }
   </script>
 </head>
@@ -49,7 +71,7 @@
 
     <div class="hero">
       <div class="wrap">
-        <h1>FM Lens is a free companion for Football Manager 27 on Mac and Windows.</h1>
+        <h1>FM Lens is a free live editor and companion for Football Manager 27 on Mac and Windows.</h1>
         <p class="lead">It reads the career you have loaded and lets you search, compare and edit players, staff and
           clubs while FM runs.</p>
         <div class="get">
