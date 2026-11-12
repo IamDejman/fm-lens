@@ -2848,3 +2848,70 @@ frozen and no edit was left standing; neither career was saved.
 Not run: the packaged app under Rosetta; staff and clubs in the packaged app
 (both were run in the browser preview); a Continue with a mass freeze on. The
 hold itself is the profiles' freeze, followed over a holiday on 8 November.
+
+## FM27 Steam build 26577676 (12 November 2026)
+
+Steam updated FM27 on 12 November to build 26577676, still 27.0.1. game_plugin
+was rebuilt on every platform, so FM Lens opened the build read-only, but
+nothing FM Lens uses moved. The three new profiles are in `profiles/fm27/`; how
+they were made is in
+[recon/fm27-steam-26577676.md](recon/fm27-steam-26577676.md). This is the run
+of [PATCH-VALIDATION.md](PATCH-VALIDATION.md) on that build.
+
+Packaged FM Lens 0.7.7 built from `Iamdejman/steam-26577676` (1ad76c0), driven
+through the accessibility API (UI Automation on Windows). Every edit was read
+back with `fmlens-probe` of the same commit. Test copies only.
+
+Read checks (`scripts/check-build.sh`): 15 of 15 on Apple Silicon
+(`reports/build-check/A8550B47-FDE0-3D0D-A6CB-1B63DEE8DA19-20261112-123753`).
+On Windows `fmlens-probe health` named the build "FM27 Steam build 26577676
+(27.0.1)" and passed 12 of 12; `info` gave game_plugin.dll size `0x185fa000`,
+timestamp `0x6af38e5c`; the script's 14 steps, run through PowerShell, passed,
+and the arrays sit where the profile says (players `+0x5820810` 25,025, staff
+`+0x5820858` 14,178, clubs `+0x58209c8` 19,311).
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass. UUID A8550B47, Arsenal, 10 Dec 2027 | Not run yet | Pass. 25,025 players, Ayo Elu, Arsenal, 28 Jul 2026 |
+| Player attribute | Pass. Bukayo Saka Heading 9 to 12 (stored 60) | Not run yet | Pass. Saka Heading 12 to 13 (stored 60 to 65) |
+| Contract wage | Pass. Saka 300,000 to 310,000 | Not run yet | Pass. Saka 310,000 to 320,000 |
+| Add injury, then Heal | Not run yet | Not run yet | Pass. Abdominal strain from 28 Jul 2026, back 16 to 21 Aug; Heal: none |
+| Work permit Revoke, then Request | Not run yet | Not run yet | Pass. Gabriel: none, then "England: active" |
+| Loan, then End loan | Not run yet | Not run yet | Pass. Saka to Barcelona, 28 Jul 2026 to 30 Jun 2027; back at Arsenal |
+| Transfer club to club | Not run yet | Not run yet | Pass. Paul Ifill, Arsenal to Barcelona, 1,000 a week to 30 Jun 2028 |
+| Release | Not run yet | Not run yet | Pass. Ifill a free agent, no contract |
+| Sign later, then Cancel transfer | Not run yet | Not run yet | Pass. Arsenal on 10 Aug 2026 (offer 1388, 44 to 45 future transfers); cancelled, 44 again |
+| Sign now | Not run yet | Not run yet | Pass. Ifill at Arsenal, 20,665 a week to 30 Jun 2027 |
+| Club balance | Pass. Arsenal 190,893,135 to 200,000,000 | Not run yet | Pass. Arsenal 340,000,000 to 350,000,000 |
+| Max tactics | Not run yet | Not run yet | Pass. U21 (team 25631), 23 changes, values at 10000 |
+| Lift bans, Heal, Refresh fitness, Remove unhappiness | Not run yet | Not run yet | Pass. U21: Refresh fitness 63 changes, Remove unhappiness 1, Heal 1; no ban to lift |
+| Staff attribute | Pass. Nicolas Jover Fitness 3 to 6 (stored 30) | Not run yet | Pass. Jover Fitness 6 to 7 (stored 30 to 35) |
+| Nation field | Pass. England reputation 9,238 to 9,300 | Not run yet | Pass. England youth rating 135 to 140 |
+| Undo in Changes | Pass. Arsenal's balance back to 190,893,135 | Not run yet | Pass. Youth rating back to 135, "104 changes · 1 undone" |
+| FM shows it | Not run yet | Not run yet | Pass. News on the Portal: "Paul Ifill deal falls through" |
+| FM kept running | Pass | Not run yet | Pass. `fm` responding after the last edit and after the save |
+| Saved under a new name, reloaded | Not run yet | Not run yet | Pass. Saved as `FM-Lens-26577676-Windows`, FM quit and started again (process 5008), that save loaded: Heading 13, wage 320,000, Jover Fitness 7, balance 350,000,000, youth rating 135, Ifill at Arsenal on 20,665 a week, Gabriel's permit active, U21 tactics at 10000, 44 future transfers |
+
+Notes:
+
+- Max tactics reports only the players it changed. On Windows Arsenal's first
+  team was at the maximum already in the loaded save and read "No changes
+  made", so the check used the U21 team.
+- On Windows FM Lens loads its bridge into the running game, so FM did not need
+  a restart to take edits. After the restart FM Lens connected to the new
+  process and one more edit applied (Saka Heading 13 to 14, not saved).
+- On the Mac FM loads the bridge when Steam starts it. The game was started
+  before this build of FM Lens was installed, so it still held the bridge of
+  0.7.7, which does not know the build: the edits above applied with the notice
+  that FM's screen could not refresh. The actions the game runs need the new
+  bridge and a restart of FM; they are the rows marked "Not run yet".
+
+Mac: FM27 build 26577676 native on Apple Silicon (FM process 53471) in the test
+copy `FMLensTacticsTest-2026-11-11` (Arsenal, 10 Dec 2027), not saved.
+
+Windows: FM27 build 26577676 on the test machine (FM process 5528, then 5008;
+FM Lens 7696) with the installer built there from the same commit, in
+`FM-Lens-27.0.1-Windows` (Arsenal, 28 Jul 2026), saved only as the new file
+`FM-Lens-26577676-Windows`. No other save changed.
+
+Main career SHA-256 stayed AF20CBAC...2CB747E5 on Windows.
