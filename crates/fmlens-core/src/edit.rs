@@ -754,11 +754,23 @@ impl PlayerSummary {
             "nation" => self.nation_address = value as u64,
             "contract.transfer_listed" => self.transfer_listed = value != 0,
             "contract.loan_listed" => self.loan_listed = value != 0,
+            "contract.wage" => self.wage = Some(value as i32),
+            "height" => self.height_cm = value as u16,
             _ => {
                 let position = field.strip_prefix("position.").and_then(|key| POSITIONS.iter().position(|&k| k == key));
                 if let Some(i) = position {
                     self.position_ratings[i] = value as u8;
                     self.positions = crate::players::natural_positions(&self.position_ratings);
+                }
+                let rating =
+                    field.strip_prefix("personality.").and_then(|key| PERSONALITY.iter().position(|&k| k == key));
+                if let Some(i) = rating {
+                    self.personality[i] = value as u8;
+                }
+                // A trait is one bit of the mask.
+                if let Some(bit) = field.strip_prefix("trait.").and_then(|n| n.parse::<u32>().ok()).filter(|&n| n < 64)
+                {
+                    self.traits = if value != 0 { self.traits | 1 << bit } else { self.traits & !(1 << bit) };
                 }
             }
         }
@@ -1826,9 +1838,24 @@ mod tests {
             attributes: vec![10; crate::ATTRIBUTE_GROUPS.iter().map(|(_, keys)| keys.len()).sum()],
             transfer_listed: false,
             loan_listed: false,
+            height_cm: 180,
+            wage: Some(1_000),
+            transfer_value: None,
+            personality: [10; 8],
+            traits: 0b100,
             address: 0,
             shift: 0,
         };
+        // What the list's filters read follows too.
+        player.note_change("contract.wage", 25_000);
+        player.note_change("height", 191);
+        player.note_change("personality.ambition", 17);
+        player.note_change("trait.7", 1);
+        player.note_change("trait.2", 0);
+        player.note_change("trait.64", 1);
+        assert_eq!((player.wage, player.height_cm), (Some(25_000), 191));
+        assert_eq!(player.personality[PERSONALITY.iter().position(|&key| key == "ambition").unwrap()], 17);
+        assert_eq!(player.traits, 1 << 7);
         player.note_change("current_ability", 130);
         player.note_change("potential_ability", 160);
         player.note_change("position.dc", 19);

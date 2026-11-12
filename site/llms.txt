@@ -1,0 +1,37 @@
+# FM Lens
+
+> FM Lens is a free, open source live editor (real-time editor) and companion for Football Manager 27 (FM27) on Mac and Windows. It reads the career you have loaded and lets you search, compare and edit players, staff and clubs while FM runs.
+
+- Price: free. License: GPL-3.0.
+- Runs on Apple Silicon and Intel Macs, and on Windows 10 and 11.
+- Needs Football Manager 27 from Steam.
+- Also written FMLens. The site is getfmlens.com.
+- People look for it as an FM27 editor, FM27 live editor, real-time editor or FM27 editor for Mac.
+- It is a separate app, not the paid In-Game Editor add-on inside FM27. Like FMRTE it edits your career while FM runs, and every edit is free.
+- Not affiliated with or endorsed by Sports Interactive or SEGA.
+
+## What it does
+
+- Find anyone: search and filter players, staff and clubs, plus competitions, awards, officials, nations and stadiums.
+- Edit your save: attributes, CA and PA, positions, traits, personality and contracts, plus club money and facilities.
+- Real transfers: transfer, swap or release players through FM itself, with fees and transfer history.
+- Squad actions: heal, lift bans, refresh fitness, and max morale, cohesion and tactics for the whole team.
+- Game actions: add injuries, start and end loans, sign free agents and request work permits, all done by FM.
+- Keep players happy: see and close promises, and clear reasons for unhappiness.
+- Freezes: fix a player's attributes or your club's money, even through long holidays.
+- Templates: copy a player's profile onto others, with a preview first.
+- Review every change: edits go into FM when you press Apply, and Changes lists each one, with Undo where FM allows it.
+- Works offline and updates itself.
+
+## Pages
+
+- [Home](https://getfmlens.com/): what FM Lens does and how to get started
+- [Download](https://getfmlens.com/download/): the latest version for Mac or Windows
+- [Release notes](https://getfmlens.com/releases/): what is new in each version
+- [Privacy](https://getfmlens.com/privacy/): what the site and the app send
+
+## Source
+
+- [Source code](https://github.com/IamDejman/fm-lens): the app, under GPL-3.0
+- [Releases](https://github.com/IamDejman/fm-lens-releases): every version's files
+- [Wishlist](https://github.com/IamDejman/fm-lens/issues/new?template=feature_request.yml): ask for what it should do next

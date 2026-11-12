@@ -2849,6 +2849,75 @@ Not run: the packaged app under Rosetta; staff and clubs in the packaged app
 (both were run in the browser preview); a Continue with a mass freeze on. The
 hold itself is the profiles' freeze, followed over a holiday on 8 November.
 
+## Sorting, more filters and every attribute (12 November 2026)
+
+Read-only work, from an audit of the search and viewing features. No game was
+running: this was written and checked on a Linux machine, so nothing here is
+live evidence. The native checks at the end are still owed.
+
+What changed:
+
+- Every list sorts by its column headers, not only the players'. Without a
+  click a search still answers best first.
+- Player filter: upper bounds on CA and PA, ranges on height, weekly wage and
+  the stored base value, bounds on the eight personality ratings (in the
+  attribute rows) and one trait. The list rows now keep these values. They are
+  read from the same offsets, and in the same reads, as the profile's: no new
+  mapping. A row follows an edit to wage, height, personality or a trait, and
+  reads its contract and value again after a transfer, swap, signing, release
+  or the undo of one. What FM changes itself shows after Reload, as before.
+- Staff and officials: CA and PA ranges; officials also a reputation range.
+- Clubs: a Nation column, filter and sort, from the club's own nation pointer
+  (`club.nation`, already used for languages and work permits).
+- Stadiums: the owner, shown when the stadium's owner field (`stadium.owner`,
+  +0x90 in both layouts, never read before) points at a club FM Lens read. A
+  club's profile shows it only when it is another club. Anything else, a
+  council's ground included, shows no owner.
+- A player's profile shows every attribute: the group of his own kind first and
+  the other kind's under Physical, so an outfielder's goalkeeping attributes
+  and a keeper's outfield ones can be seen and edited one at a time.
+
+Checks that ran:
+
+- `cargo fmt --all --check`.
+- `cargo clippy --locked --target x86_64-pc-windows-gnu --workspace
+  --all-targets -- -D warnings`, and the same for `-p fmlens-core -p
+  fmlens-probe` with `--target aarch64-apple-darwin`. Type checks only: nothing
+  was linked for macOS.
+- `cargo test --locked --target x86_64-pc-windows-gnu -p fmlens-core -p
+  fmlens-probe` under Wine: 112 core tests, with new ones for the ranges, the
+  personality and trait filters, every list's sort, the club nation filter, the
+  owner lookup and the row following edits. `-p fmlens-mem
+  --no-default-features`: 6 tests.
+- `npm test` in `app/`: 75 tests in 15 files, 7 of them new
+  (`tests/list-filters.test.tsx`), and `npm run build`.
+- The browser preview on sample data in Chromium, at 1440x900 light and
+  820x700 dark: the player filters, a profile, all eight lists sorted by a
+  header, a club's and a stadium's profile. No console errors. Sample data is
+  not live proof.
+
+Not run: the desktop app crate's own tests (they do not link with a Linux
+cross toolchain; CI runs them), the macOS build, and anything against FM.
+
+Still to check natively, on a career copy, on macOS and Windows:
+
+- A club's Nation against FM for a few clubs, one based abroad among them
+  (Monaco, Swansea), since the layout also has `plays_in`.
+- A stadium's Owner against FM for a ground a club owns, one it rents and a
+  shared one.
+- The wage, value, height, personality and trait filters against the profiles
+  of the players they list. Loading the player list makes no more reads of the
+  game than before (the values come from the bytes each row already read), and
+  the club list a few per nation; confirm neither is slower on a large career.
+- A row's wage after a transfer and after its undo.
+
+Gaps from the same audit that need mapping against a running game, so were
+not attempted: a complete nation list and a complete stadium list (their
+tables' addresses), club income, spending, debt, sponsorship and ownership,
+bids, interest, instalments and buy-backs, FM's own value range, a release
+clause's condition, clause kinds outside the named table, and a second
+editor's check of hidden values.
+
 ## Staff birth date (12 November 2026)
 
 A member of staff's birth date is editable, the human manager's too. No game
@@ -2872,8 +2941,11 @@ are staff. A member of staff with no birth date is left as he is.
 | `npm run build` and `npm test` | Pass (7 and 66 tests) |
 | Browser preview on sample data (`?writable`), a scout born 20 October 1965 | Career tab: the date is an input in Edit. 01/01/1919 read "1 invalid" with Apply off. 08/03/1938 applied: the profile read 8 Mar 1938, the header's age went from 60 to 88, and Changes listed "Date of birth 20 Oct 1965 → 8 Mar 1938" with Undo |
 
-Not run: the unit tests themselves and the app crate's checks, which need
-macOS or Windows (CI runs them). Nothing in FM on any platform: the date on
-FM's staff profile, an undo, a stale-value refusal, a Continue, and a save,
-quit and reload on a career copy; the human manager's own date; a member of
-staff born before 1940.
+The unit tests and the app crate's checks need macOS or Windows, so the
+Validate workflow was run on the branch at 6f75d25 (run 43177012159): both
+`macos-checks` and `windows-checks` passed, the workspace tests and the
+Windows installer build among them.
+
+Not run: anything in FM on any platform: the date on FM's staff profile, an
+undo, a stale-value refusal, a Continue, and a save, quit and reload on a
+career copy; the human manager's own date; a member of staff born before 1940.

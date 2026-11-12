@@ -1,7 +1,13 @@
 import { useId, useState } from "react";
 import { chipLabel, rangeText, type FilterChip } from "./FilterBar";
-import { ATTRIBUTE_LABELS, playerListText, profileText, STAFF_ATTRIBUTE_LABELS } from "./labels";
-import { FEET, GOALKEEPING, HIDDEN, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
+import {
+  ATTRIBUTE_LABELS,
+  PERSONALITY_LABELS,
+  playerListText,
+  profileText,
+  STAFF_ATTRIBUTE_LABELS,
+} from "./labels";
+import { FEET, GOALKEEPING, HIDDEN, MENTAL, PERSONALITY, PHYSICAL, TECHNICAL } from "./playerAttributes";
 import { isRecord } from "./restore";
 import type { AttributeBound } from "./types";
 
@@ -20,7 +26,13 @@ export interface AttributeChoices {
   labels: Readonly<Record<string, string>>;
 }
 
-/** A player's attributes as the profile groups them; first touch and passing only once, under Technical. */
+/** Before the key of a personality rating in a row: the rows bound attributes and personality ratings alike. */
+export const PERSONALITY_PREFIX = "personality.";
+
+/**
+ * A player's attributes as the profile groups them, first touch and passing only once, under Technical; then his
+ * personality ratings, which run from 1 to 20 too.
+ */
 export const PLAYER_ATTRIBUTES: AttributeChoices = {
   groups: [
     { label: profileText.technical, keys: TECHNICAL },
@@ -29,8 +41,12 @@ export const PLAYER_ATTRIBUTES: AttributeChoices = {
     { label: profileText.goalkeeping, keys: GOALKEEPING.filter((key) => !TECHNICAL.includes(key)) },
     { label: profileText.hidden, keys: HIDDEN },
     { label: profileText.feet, keys: FEET },
+    { label: profileText.personality, keys: PERSONALITY.map((key) => `${PERSONALITY_PREFIX}${key}`) },
   ],
-  labels: ATTRIBUTE_LABELS,
+  labels: {
+    ...ATTRIBUTE_LABELS,
+    ...Object.fromEntries(PERSONALITY.map((key) => [`${PERSONALITY_PREFIX}${key}`, PERSONALITY_LABELS[key]])),
+  },
 };
 
 /** A member of staff's attributes as the profile groups them. */
