@@ -1498,6 +1498,7 @@ export const tr: Strings = {
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
     later: "Sonra",
     checkForUpdates: "Güncellemeleri Denetle…",
+    check: "Güncellemeleri denetle",
     checking: "Güncellemeler denetleniyor…",
     upToDate: "FM Lens güncel.",
     checkFailed: "Güncellemeler denetlenemedi.",

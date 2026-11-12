@@ -683,9 +683,18 @@ function App() {
               onClose={() => setReporting(null)}
             />
           )}
-          {update?.phase === "ready" && (
+          {update?.phase === "ready" ? (
             <button type="button" className="relaunch" onClick={() => relaunch(update.version)}>
               {updateText.relaunch}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="colophon-update"
+              disabled={update?.phase === "checking"}
+              onClick={() => void checkNow()}
+            >
+              {updateText.check}
             </button>
           )}
         </div>
