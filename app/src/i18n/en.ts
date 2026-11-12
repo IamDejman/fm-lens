@@ -617,6 +617,8 @@ export const en = {
     potentialAbilityShort: "PA",
     /** Hover text of a potential ability that is set as a range (the game stores it as a negative number). */
     potentialRange: "Potential set as a range",
+    /** While a player is edited: the button that puts the current ability that fits his attributes in the input. */
+    suggestedAbility: (value: number) => `Suggested CA ${value}`,
     /** The group of what the header leaves out: the full name, the birth date, the height and the ID. */
     personalDetails: "Personal details",
     fullNameLabel: "Full name",
