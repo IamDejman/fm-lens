@@ -3814,6 +3814,11 @@ fn nation(session: &Session, uid: u32) -> Result<()> {
     print_national_teams("team", &d.teams);
     if let Some(women) = &d.women {
         println!(
+            "  women ranking  {} ({} points)",
+            or_dash(women.ranking.map(|r| r.to_string())),
+            or_dash(women.points.map(|p| format!("{p:.2}")))
+        );
+        println!(
             "  women          joined FIFA {}, continental {}, youth rating {}",
             year(women.joined_fifa),
             year(women.joined_continental),

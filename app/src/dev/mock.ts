@@ -1404,6 +1404,7 @@ function fieldTable(entity: Entity): EditField[] {
       { ...field("women.attendance", "u8", 0, 16), mass: false },
       ...NATION_STYLE.map((key) => ({ ...field(`women.style.${key}`, "i8", 0, 20), mass: false })),
       { ...field("points", "f32", 0, floatBits(3000)), mass: false },
+      { ...field("women.points", "f32", 0, floatBits(3000)), mass: false },
       { ...field("population", "u32", 1, 2_000_000_000), mass: false },
       { ...field("dual_nationality", "u8", 0, 2), choices: [0, 2], mass: false },
       { ...field("naturalisation", "u8", 0, 50), blank: 255, mass: false },
@@ -4150,6 +4151,8 @@ function nationDetails(index: number): NationDetails | null {
       .map((rival, i) => ({ uid: 1000 + NATIONS.indexOf(rival), name: rival, strength: 100 - i * 15 })),
     teams: [team(null, 0, 8_500 - index * 300, older), team(21, 266, 6_000 - index * 200, younger)],
     women: {
+      ranking: index + 2,
+      points: 2105.4 - index * 31.7,
       joinedFifa: 1970 + index * 4,
       joinedContinental: 1972 + index * 4,
       youthRating: 155 - index * 11,
@@ -4236,6 +4239,9 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
   if (values.points !== undefined) {
     d.points = floatOfBits(values.points);
   }
+  if (values["women.points"] !== undefined && women) {
+    women.points = floatOfBits(values["women.points"]);
+  }
   if (values.population !== undefined) {
     d.population = values.population;
   }
@@ -4307,6 +4313,9 @@ function nationValues(uid: number): FieldValues {
   }
   // FM keeps the points of an unranked nation too; the profile shows none.
   values.points = floatBits(d.points ?? 0);
+  if (d.women) {
+    values["women.points"] = floatBits(d.women.points ?? 0);
+  }
   if (d.population !== null) {
     values.population = d.population;
   }

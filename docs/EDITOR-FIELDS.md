@@ -4,7 +4,7 @@ This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
 The current FM27 layouts, macOS and Windows alike, define 169 player fields, 42 staff fields,
-14 club fields, 36 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
+14 club fields, 37 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam builds 26340721 (27.0.0) and 26385295
 (27.0.1), on macOS ARM64, macOS Intel and Windows, for an object of class
 `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
@@ -287,7 +287,7 @@ One nation at a time; none where the build's layout does not place nations.
 | `style.tempo`, `women.style.tempo` | i8 | plain | 0–20 |
 | `style.playmaker`, `women.style.playmaker` | i8 | plain | 0–20 |
 | `style.width`, `women.style.width` | i8 | plain | 0–20 |
-| `points` (men's FIFA points) | f32, typed to two decimals | plain | 0.00–3000.00 |
+| `points`, `women.points` (men's and women's FIFA points) | f32, typed to two decimals | plain | 0.00–3000.00 |
 | `population` | u32 | plain | 1–2000000000 |
 | `dual_nationality` | u8 | plain | 0 or 2 |
 | `naturalisation` | u8 | plain | 1–99, or 255 (never) |

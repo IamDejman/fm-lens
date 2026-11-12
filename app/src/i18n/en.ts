@@ -587,6 +587,7 @@ export const en = {
     "women.game_importance": "Women's game importance",
     "women.attendance": "Women's attendance",
     points: "FIFA points",
+    "women.points": "Women's FIFA points",
   },
 
   profile: {
