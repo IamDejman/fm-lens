@@ -1422,8 +1422,8 @@ export const en = {
     done: "Done",
     /** The interface scale, separate from the window's own zoom. */
     zoomLabel: "Zoom",
-    /** A switch: anonymous counts of launches and edits, sent to PostHog (see `usage.ts`). */
-    usageLabel: "Share anonymous usage",
+    /** A switch: anonymous counts of launches and edits (`usage.ts`) and recordings of the window (`replay.ts`). */
+    usageLabel: "Share usage and recordings of this window",
     appearance: "Appearance",
     themes: { system: "System", light: "Light", dark: "Dark" },
     /** Shown once, until it is skipped or finished. It introduces browsing, settings and the editing boundary. */
@@ -1630,6 +1630,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.8": [
+        "FM Lens now records how its window is used, to find what is hard to use. What you type and your manager’s name are hidden. Turn it off in Settings.",
+      ],
       "0.7.7": [
         "Remove unhappiness lasts: the reasons stay gone after you Continue.",
         "A happiness edit holds: morale moves with it.",

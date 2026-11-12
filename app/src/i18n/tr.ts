@@ -1352,7 +1352,7 @@ export const tr: Strings = {
     about: "Hakkında",
     done: "Tamam",
     zoomLabel: "Yakınlaştırma",
-    usageLabel: "Anonim kullanım verisi paylaş",
+    usageLabel: "Kullanımı ve bu pencerenin kayıtlarını paylaş",
     appearance: "Görünüm",
     themes: { system: "Sistem", light: "Açık", dark: "Koyu" },
     tour: {
@@ -1505,6 +1505,9 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.8": [
+        "FM Lens artık penceresinin nasıl kullanıldığını kaydediyor: neyin zor olduğunu görmek için. Yazdıklarınız ve teknik direktörünüzün adı gizlenir. Ayarlar'dan kapatabilirsiniz.",
+      ],
       "0.7.7": [
         "Mutsuzluğu kaldır kalıcı: nedenler Devam’dan sonra geri gelmez.",
         "Mutluluk düzenlemesi yerinde kalır: moral de onunla ayarlanır.",

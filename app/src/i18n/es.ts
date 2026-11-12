@@ -1374,7 +1374,7 @@ export const es: Strings = {
     about: "Acerca de",
     done: "Listo",
     zoomLabel: "Zoom",
-    usageLabel: "Compartir uso anónimo",
+    usageLabel: "Compartir uso y grabaciones de esta ventana",
     appearance: "Apariencia",
     themes: { system: "Sistema", light: "Claro", dark: "Oscuro" },
     tour: {
@@ -1530,6 +1530,9 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.8": [
+        "FM Lens ahora graba cómo se usa su ventana, para ver qué resulta difícil. Lo que escribes y el nombre de tu mánager quedan ocultos. Desactívalo en Ajustes.",
+      ],
       "0.7.7": [
         "Quitar descontento dura: los motivos no vuelven al pulsar Continuar.",
         "Un cambio de felicidad se mantiene: la moral se ajusta con él.",

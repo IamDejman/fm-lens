@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { call, inTauri, watchCommands } from "./api";
@@ -35,6 +35,7 @@ import { restored, useSnapshot } from "./restore";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
+import { hideManager } from "./replay";
 import { track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds, massFreeze, standingFields, stands } from "./editing";
@@ -476,6 +477,9 @@ function App() {
     }
   };
   const career = connection?.career ?? null;
+  const manager = career?.manager ?? null;
+  // A layout effect, so the name is masked before the recorder is told of the header that shows it.
+  useLayoutEffect(() => hideManager(manager), [manager]);
 
   // Before anything else, once on each computer. The app is mounted behind it, so it still updates itself.
   if (emailAsked) {
