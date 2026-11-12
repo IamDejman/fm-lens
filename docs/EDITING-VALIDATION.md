@@ -2867,8 +2867,10 @@ What changed:
   reads its contract and value again after a transfer, swap, signing, release
   or the undo of one. What FM changes itself shows after Reload, as before.
 - Staff and officials: CA and PA ranges; officials also a reputation range.
-- Clubs: a Nation column, filter and sort, from the club's own nation pointer
-  (`club.nation`, already used for languages and work permits).
+- Clubs: a Nation column, filter and sort, from the club's own nation pointer.
+  First written against `club.nation`, which is the nation whose league the
+  club plays in; corrected for 0.7.8 to `club.plays_in` (see "0.7.8 on the
+  Mac" below).
 - Stadiums: the owner, shown when the stadium's owner field (`stadium.owner`,
   +0x90 in both layouts, never read before) points at a club FM Lens read. A
   club's profile shows it only when it is another club. Anything else, a
@@ -3036,3 +3038,57 @@ saved. No other save changed.
 
 Main career SHA-256 stayed 23472DA3...6192BEF4 on Mac and AF20CBAC...2CB747E5
 on Windows.
+
+## 0.7.8 on the Mac (12 November 2026)
+
+The FM checks owed by PR 244 (sorting, filters, club Nation, stadium owner,
+every attribute), PR 246 (staff birth date) and PR 239 (applied marks), run
+before the 0.7.8 release. Packaged FM Lens 0.7.8 built from
+`Iamdejman/release-v0.7.8`, first at 6d53fb0, then at e4cd6d4 once the Nation
+column was fixed (below), driven through the accessibility API. Every edit was
+read back with `fmlens-probe` of the same commit. FM27 Steam build 26577676,
+test copy `FM-Lens-26577676-2026-11-12` (Arsenal, 10 Dec 2027), never saved.
+
+What the run found: on 6d53fb0 the clubs' Nation column showed the nation
+whose league a club plays in, not its own. Swansea City read England where FM
+shows Wales; Cardiff City and Wrexham read England, FC Vaduz Switzerland and
+Derry City Republic of Ireland. The column read `club.nation` (+0xD8). The
+club's own nation is `club.plays_in` (+0xE8), set for every club sampled.
+e4cd6d4 has the column, its filter and its sort read `plays_in`, falling back
+to `nation` where it is not a pointer. The local-language mark on a person's
+languages uses the same order. Work permits keep reading `nation`, since the
+league's nation is the one that issues them.
+
+| Pointer | Offset | Cardiff City | Read by |
+|---|---|---|---|
+| `club.plays_in` | +0xE8 | Wales | Nation column, filter and sort; local languages |
+| `club.nation` | +0xD8 | England | Work permits; the fallback for the above |
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass | Pass. "macOS, Intel", 12 of 12 health checks | Not run |
+| Staff birth date (PR 246) | Pass. Nicolas Jover (staff 48030808) 5 Aug 1981 to 5 Aug 1979: FM Lens age 48, probe 1979-08-05. FM's staff profile read "48 years old (5/8/1979)" and his biography "born 5 August 1979". Undo: FM read "46 years old (5/8/1981)" | Pass. The same edit: FM Lens age 48, probe 1979-08-05; Undo: probe 1981-08-05 (age 46) | Not run |
+| Sort by header (PR 244) | Pass. CA: the first click puts CA 1 players first, the second Haaland 195, Mbappé 192, Yamal 187 | Pass. The same | Not run |
+| Player filters (PR 244) | Pass. Height 200 and over: 132 players. With wage 50,000 and over: 5, Courtois (200 cm, 56,455 a week by the probe), Milinković-Savić 202, Lucca 201, Burn 201, Jaouen | Pass. The same 132, then 5 | Not run |
+| Club Nation (PR 244) | Fail on 6d53fb0 (above). Pass on e4cd6d4: Cardiff City, Swansea City and Wrexham Wales, FC Vaduz Liechtenstein, Derry City Northern Ireland, Monaco France, Arsenal England. FM's own screen: Swansea WAL, Monaco FRA | Pass on e4cd6d4. The same values; filter Wales: 229 clubs; sort: Afghanistan first, Zimbabwe first reversed | Not run |
+| Stadium owner (PR 244) | Pass. Arsenal Women's profile: Emirates Stadium, owner Arsenal; the Stadiums list the same | Not run | Not run |
+| Goalkeeping attribute on an outfielder (PR 244) | Pass. Bukayo Saka Handling 1 to 15, read back 15 | Pass. Saka Handling 15 and Reflexes 14, read back | Not run |
+| Applied marks (PR 239) | Pass. Handling and Reflexes both marked after two Applies, and still after closing and reopening the profile. Undo of Handling cleared only its mark (Reflexes 14 stayed marked); Undo of Reflexes: probe Handling 1, Reflexes 2 | Pass. Both marked after reopening; Undo put Handling back to 1 (Reflexes 14), then Reflexes to 2 | Not run |
+
+Notes:
+
+- The first click on a numeric header such as CA sorts lowest first, so the
+  list opens on CA 1 players; the second click puts the best first. Left as
+  it is for 0.7.8.
+- Berwick Rangers, in the Scottish league, reads England on e4cd6d4; not
+  looked at in FM. FM's own screen was looked at for Swansea and Monaco only.
+- Not run: a stadium a club rents or shares, the wage, value, personality and
+  trait filters against profiles, a row's wage after a transfer, the human
+  manager's birth date, and Windows. The 0.7.8 release went ahead on the Mac
+  checks alone.
+
+Mac: Apple Silicon FM process 76714, then 81062 (FM Lens 76638, then 81027);
+Rosetta FM 82569 started with `arch -x86_64` and the packaged universal
+bridge, FM Lens 82602 with `arch -x86_64`. Every game was quit without saving.
+The test copy stayed 89,343,966 bytes from 14:31, and the main career SHA-256
+stayed 23472DA3...6192BEF4.
