@@ -57,9 +57,9 @@ test('a saved filter keeps the new fields and drops what is not one', () => {
   });
   expect(kept).toMatchObject({ maxCurrentAbility: '150', minHeight: '185', maxWage: '50000', minValue: '1000000', trait: '7' });
   expect(kept.attributes.map((row) => row.key)).toEqual([`${PERSONALITY_PREFIX}ambition`, '']);
-  expect(readFields({ trait: '63', maxWage: 'lots' })).toMatchObject({ trait: '', maxWage: '' });
+  expect(readFields({ trait: '62', maxWage: 'lots' })).toMatchObject({ trait: '', maxWage: '' });
   // Every trait the select offers has a name in this language.
-  expect(TRAIT_CHOICES.filter((bit) => profileText.traitName(bit) === profileText.traitName(63))).toEqual([]);
+  expect(TRAIT_CHOICES.filter((bit) => profileText.traitName(bit) === profileText.traitName(62))).toEqual([]);
   expect(readListOrder({ by: 'name', ascending: true }, ['name', 'nation'])).toEqual({ by: 'name', ascending: true });
   expect(readListOrder({ by: 'wage', ascending: true }, ['name', 'nation'])).toBeNull();
 });

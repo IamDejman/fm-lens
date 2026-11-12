@@ -212,6 +212,9 @@ const TRAIT_NAMES_ES: readonly string[] = [
   "Recorta hacia dentro desde la banda derecha",
   "Centra pronto",
   "Saca el balón jugado desde la defensa",
+  // Bits 61 and 62 are no trait in FM27: the game shows nothing for them.
+  "",
+  "",
   "Juega el balón con los pies",
 ];
 
@@ -776,7 +779,16 @@ export const es: Strings = {
     morale: (value) => `${value} / 20`,
     traits: "Características",
     noTraits: "Sin características",
-    traitName: (bit) => TRAIT_NAMES_ES[bit] ?? "Característica desconocida",
+    traitName: (bit) => TRAIT_NAMES_ES[bit] || "Característica desconocida",
+    traitGroups: {
+      movement: "Movimiento",
+      passing: "Pase",
+      finishing: "Definición",
+      discipline: "Disciplina",
+      defending: "Defensa",
+      technique: "Técnica",
+      career: "Carrera",
+    },
     unhappiness: "Descontento",
     noUnhappiness: "Nada le hace estar descontento",
     removeUnhappiness: "Quitar todo",

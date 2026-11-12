@@ -283,6 +283,9 @@ const TRAIT_NAMES_TR: readonly string[] = [
   "Sağ kanattan içeri kat eder",
   "Erken orta yapar",
   "Topu savunmadan çıkarır",
+  // Bits 61 and 62 are no trait in FM27: the game shows nothing for them.
+  "",
+  "",
   "Topu ayaklarıyla oynar"
 ];
 
@@ -764,7 +767,16 @@ export const tr: Strings = {
     morale: (value) => `${value} / 20`,
     traits: "Özellikler",
     noTraits: "Özelliği yok",
-    traitName: (bit) => TRAIT_NAMES_TR[bit] ?? "Bilinmeyen özellik",
+    traitName: (bit) => TRAIT_NAMES_TR[bit] || "Bilinmeyen özellik",
+    traitGroups: {
+      movement: "Hareket",
+      passing: "Pas",
+      finishing: "Bitiricilik",
+      discipline: "Disiplin",
+      defending: "Savunma",
+      technique: "Teknik",
+      career: "Kariyer",
+    },
     unhappiness: "Mutsuzluk",
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",

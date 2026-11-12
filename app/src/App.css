@@ -2694,6 +2694,11 @@ input::placeholder {
   list-style: none;
 }
 
+/* A long trait breaks onto a second line rather than run over the column beside it. */
+.tags .tag {
+  white-space: normal;
+}
+
 .tag.listed {
   border-color: var(--text);
   color: var(--text);
@@ -3135,6 +3140,39 @@ select.edit-input {
   max-width: 100%;
   text-align: left;
   appearance: auto;
+}
+
+/* The traits while a player is edited: a group under its name, its traits a checklist in columns of one width. */
+.trait-group {
+  margin-top: var(--space-3);
+  padding: 0 var(--space-2);
+}
+
+.profile-group .trait-group h4 {
+  margin: 0 0 var(--space-1);
+  padding: 0;
+  border: 0;
+}
+
+.trait-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 2px var(--space-3);
+}
+
+/* A trait is a line of the list, not a pill: only one that is changed, applied or refused is outlined. */
+.trait-list .edit-flag {
+  display: flex;
+  min-width: 0;
+}
+
+.trait-list .edit-flag:not(.changed, .invalid, .applied) {
+  border-color: transparent;
+  background: none;
+}
+
+.trait-list .edit-flag:not(.changed, .invalid, .applied):hover {
+  background: var(--field);
 }
 
 /* A yes-or-no: a checkbox in a pill like a tag, with the name of the field. The pill is outlined as an input is. */

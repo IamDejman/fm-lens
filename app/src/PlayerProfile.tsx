@@ -717,16 +717,38 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
   );
 }
 
-/** The bits a player's traits are kept in: `trait.0` to `trait.63`. FMRTE's list names the first 62. */
-const TRAIT_BITS = Array.from({ length: 64 }, (_, bit) => bit);
+/**
+ * A player's traits in the groups FM27 trains them in (Development, Training, Start New Trait Training), each trait
+ * by its bit of the mask (`trait.0` to `trait.63`; 61 and 62 are no trait in FM27) and in the game's order. The game
+ * trains no keeper's trait and neither of the two about retiring: those stand under Technique and Career here.
+ */
+const TRAIT_GROUPS: readonly { id: keyof typeof profileText.traitGroups; bits: readonly number[] }[] = [
+  { id: "movement", bits: [0, 1, 2, 3, 4, 5, 13, 18, 19, 20, 27, 31, 33, 39, 40, 51, 52, 54, 57, 58] },
+  { id: "passing", bits: [6, 7, 22, 24, 25, 26, 30, 43, 47, 59] },
+  { id: "finishing", bits: [8, 9, 10, 12, 21, 23, 36, 42, 45, 56] },
+  { id: "discipline", bits: [16, 17, 41] },
+  { id: "defending", bits: [15, 37, 38] },
+  { id: "technique", bits: [11, 14, 28, 29, 32, 34, 35, 44, 46, 50, 53, 55, 60, 63] },
+  { id: "career", bits: [48, 49] },
+];
+
+/** Where each trait stands in that order, by its bit: the traits a player has are listed in it too. */
+const TRAIT_RANK = new Map(TRAIT_GROUPS.flatMap((group) => group.bits).map((bit, rank) => [bit, rank]));
+
+/** Sorts traits into that order; one that is in no group comes after those that are. */
+function byTraitRank(a: number, b: number): number {
+  return (TRAIT_RANK.get(a) ?? a + 64) - (TRAIT_RANK.get(b) ?? b + 64);
+}
 
 /** His traits (preferred moves) by name, under his personality. */
 function TraitTags({ traits }: { traits: number[] }) {
-  return traits.length === 0 ? (
+  // A bit the game shows nothing for is not listed here either.
+  const named = traits.filter((bit) => TRAIT_RANK.has(bit)).sort(byTraitRank);
+  return named.length === 0 ? (
     <p className="note">{profileText.noTraits}</p>
   ) : (
     <ul className="tags" aria-label={profileText.traits}>
-      {traits.map((bit) => (
+      {named.map((bit) => (
         <li key={bit} className="tag">
           {profileText.traitName(bit)}
         </li>
@@ -735,16 +757,25 @@ function TraitTags({ traits }: { traits: number[] }) {
   );
 }
 
-/** While he is edited, a checkbox for each of his traits, which writes its bit of the mask: the width of the profile. */
+/**
+ * While he is edited, a checkbox for each trait, which writes its bit of the mask: the width of the profile, a group
+ * under its name, its traits in columns.
+ */
 function TraitsEditor() {
+  const id = useId();
   return (
     <section className="profile-group">
       <h3>{profileText.traits}</h3>
-      <div className="tags traits-edit">
-        {TRAIT_BITS.map((bit) => (
-          <EditInput key={bit} field={`trait.${bit}`} />
-        ))}
-      </div>
+      {TRAIT_GROUPS.map((group) => (
+        <div key={group.id} className="trait-group" role="group" aria-labelledby={`${id}-${group.id}`}>
+          <h4 id={`${id}-${group.id}`}>{profileText.traitGroups[group.id]}</h4>
+          <div className="trait-list">
+            {group.bits.map((bit) => (
+              <EditInput key={bit} field={`trait.${bit}`} />
+            ))}
+          </div>
+        </div>
+      ))}
     </section>
   );
 }
