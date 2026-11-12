@@ -1,7 +1,7 @@
 {
   "name": "fmlens-app",
   "private": true,
-  "version": "0.7.9",
+  "version": "0.7.10",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {

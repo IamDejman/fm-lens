@@ -1621,6 +1621,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.10": [
+        "Bir oyuncunun özelliklerini yükseltin, MY de onlarla yükselir: değişiklikler kalır.",
+        "Teşekkür et: FM Lens'i destekle, Ko-fi'yi uygulamanın içinde açar.",
+      ],
       "0.7.9": [
         "Dondurma artık mevcut yeteneği de tutar: dondurulan oyuncu gerilemez.",
         "Bir oyuncuyu düzenlerken FM Lens, özelliklerine uyan MY'yi önerir.",
