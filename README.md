@@ -45,7 +45,7 @@ should do next with **Wishlist** at the foot of the app, or in a
 
 ## What it does
 
-- Search and filter players, staff and clubs. Browse nations, stadiums,
+- Search, filter and sort players, staff and clubs. Browse nations, stadiums,
   competitions, awards and match officials.
 - Edit attributes, CA and PA, positions, traits, personality, reputation,
   happiness and contracts, and club balances, budgets, facilities and stadiums.
