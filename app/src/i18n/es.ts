@@ -638,6 +638,7 @@ export const es: Strings = {
     "women.game_importance": "Importancia del juego femenino",
     "women.attendance": "Asistencia femenina",
     points: "Puntos FIFA",
+    "women.points": "Puntos FIFA femeninos",
   },
 
   profile: {

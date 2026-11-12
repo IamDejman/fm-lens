@@ -626,6 +626,7 @@ export const tr: Strings = {
     "women.game_importance": "Kadın futbolunda oyunun önemi",
     "women.attendance": "Kadın futbolunda seyirci ilgisi",
     points: "FIFA puanı",
+    "women.points": "Kadın FIFA puanı",
   },
 
   profile: {
