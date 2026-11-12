@@ -849,7 +849,7 @@ export const tr: Strings = {
     fitness: "Kondisyon",
     international: "Milli takım",
     noPromises: "Söz yok",
-    promisesUnavailable: "Windows'ta henüz kullanılamıyor",
+    promisesUnavailable: "FM'in bu sürümünde kullanılamıyor",
     noContract: "Sözleşmesi yok",
     setAttributes: "Bütün özellikleri şuna ayarla:",
     setAttributesButton: "Uygula",

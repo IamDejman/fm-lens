@@ -848,8 +848,8 @@ export const en = {
     fitness: "Fitness",
     international: "International",
     noPromises: "No promises",
-    /** Where FM Lens cannot read promises yet. */
-    promisesUnavailable: "Not available on Windows yet",
+    /** Where the layout of this build does not place promises. */
+    promisesUnavailable: "Not available on this version of FM",
     noContract: "No contract",
     /** Sets every attribute of the player to one value at once: the words before the value, and the button. */
     setAttributes: "Set all attributes to",

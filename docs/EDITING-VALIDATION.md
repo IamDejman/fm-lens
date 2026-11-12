@@ -60,7 +60,8 @@ remain unverified. Templates are revalidated against each destination layout.
 - Staff attribute freeze could be enabled and disabled for Pep Guardiola in the
   native profile. It was left disabled. This verifies the control and command;
   natural attribute decline, long-term holding and restart behavior were not
-  tested. Staff freezes are connection-local.
+  tested. Staff freezes were connection-local then; they are now remembered
+  with the save (see "Freezes held over a long holiday" below).
 - Light and dark appearance rendered in the native app. A 125% zoom check found
   viewport/anchor scaling errors; layout coordinates and viewport heights were
   corrected. The rebuilt app was checked again at 125%: the footer stayed

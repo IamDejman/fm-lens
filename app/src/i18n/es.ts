@@ -862,7 +862,7 @@ export const es: Strings = {
     fitness: "Forma física",
     international: "Internacional",
     noPromises: "Sin promesas",
-    promisesUnavailable: "Aún no disponible en Windows",
+    promisesUnavailable: "No disponible en esta versión de FM",
     noContract: "Sin contrato",
     setAttributes: "Poner todos los atributos en",
     setAttributesButton: "Aplicar",
