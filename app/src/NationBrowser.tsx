@@ -14,12 +14,14 @@ import {
 import { ListBrowser } from "./ListBrowser";
 import { NATION_STYLE_LABELS, nationListText, profileText } from "./labels";
 import { restored, useSnapshot } from "./restore";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import { useProfileEditing } from "./useProfileEditing";
 import type {
   NamedPerson,
   NationDetails,
   NationalTeam,
   NationFilter,
+  NationSort,
   NationSummary,
   WomenFootball,
 } from "./types";
@@ -27,6 +29,13 @@ import type {
 const text = nationListText;
 const columns = text.columns;
 const filters = text.filters;
+
+/** The columns the list sorts by. Until one is clicked the search answers by name. */
+const SORT: SortStart<NationSort> = {
+  sorts: ["name", "continent"],
+  start: { by: "name", ascending: true },
+  firstAscending: ["name", "continent"],
+};
 
 /**
  * The nations of the players, staff and competitions in the save, with the selected nation beside the table where the
@@ -46,6 +55,9 @@ export function NationBrowser({
     restored("nationContinent", readText),
   );
   useSnapshot("nationContinent", () => continent);
+  const sort = useListSort("nationOrder", SORT);
+  // The continent is a column only where the build reads it: a sort by it kept from elsewhere asks for nothing.
+  const order = sort.order?.by === "continent" && !detailed ? undefined : (sort.order ?? undefined);
   const continentValue = (detailed && continent.trim()) || undefined;
   const filter: NationFilter | undefined =
     continentValue === undefined ? undefined : { continent: continentValue };
@@ -63,7 +75,7 @@ export function NationBrowser({
     <ListBrowser<NationSummary>
       name="nations"
       command="search_nations"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order }}
       version={version}
       active={active}
       placeholder={text.search}
@@ -87,8 +99,8 @@ export function NationBrowser({
       tableClass="nation-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
-          {detailed && <th className="col-continent">{columns.continent}</th>}
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
+          {detailed && <SortHeader by="continent" sort={sort} label={columns.continent} className="col-continent" />}
           <th className="num col-uid">{columns.uid}</th>
         </>
       }

@@ -1,7 +1,7 @@
 // The attributes of a player in the order FM lists them, by group, and who counts as a goalkeeper: what the profile
 // of a player and the comparison of players share, so that the two group and order the same way.
 
-import type { AttributeKey } from "./labels";
+import type { AttributeKey, PersonalityKey } from "./labels";
 import type { PlayerDetails } from "./types";
 
 export const TECHNICAL: readonly AttributeKey[] = [
@@ -24,6 +24,10 @@ export const HIDDEN: readonly AttributeKey[] = [
   "consistency", "dirtiness", "important_matches", "injury_proneness", "versatility",
 ];
 export const FEET: readonly AttributeKey[] = ["left_foot", "right_foot"];
+/** The personality ratings, in the order the game keeps them. */
+export const PERSONALITY: readonly PersonalityKey[] = [
+  "adaptability", "ambition", "loyalty", "pressure", "professionalism", "sportsmanship", "temperament", "controversy",
+];
 
 /** A player counts as a goalkeeper from this rating at gk; the panel then shows Goalkeeping instead of Technical. */
 export const GOALKEEPER_RATING = 15;

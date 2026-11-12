@@ -1262,6 +1262,17 @@ input::placeholder {
   grid-column: 1 / -1;
 }
 
+/* Money has many digits: its two ends take two cells, where the form has two. */
+.filter-field.wide {
+  grid-column: span 2;
+}
+
+@container (max-width: 400px) {
+  .filter-field.wide {
+    grid-column: auto;
+  }
+}
+
 /* A yes-or-no: the box and its words on one line, level with the inputs beside it. */
 .filter-field:has(> input[type="checkbox"]) {
   display: flex;
@@ -1870,6 +1881,17 @@ input::placeholder {
 .award-grid .col-name .tag.women {
   flex: none;
   margin-left: 0;
+}
+
+/* A club's nation in one line; it is the first column to go where the list is narrow. */
+.club-grid td.col-nation {
+  white-space: nowrap;
+}
+
+@container (max-width: 560px) {
+  .club-grid .col-nation {
+    display: none;
+  }
 }
 
 @container (max-width: 420px) {

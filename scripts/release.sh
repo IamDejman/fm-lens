@@ -121,4 +121,8 @@ if $PUBLISH; then
     --notes-file "$ROOT/docs/release-notes.md" \
     "$OUT/$MAC.dmg" "$OUT/$MAC.zip" "$OUT/$MAC.app.tar.gz" "$OUT/$WINDOWS" "$OUT/latest.json" \
     "$OUT/$MAC_LATEST" "$OUT/$WINDOWS_LATEST"
+  # The site's release notes are written in when it is published (scripts/build-site.mjs), so publish it again with
+  # this release. Until it is, the release notes page fetches this release's notes in the browser.
+  gh workflow run site.yml --repo IamDejman/fm-lens --ref main ||
+    echo "The site was not published again. Run: gh workflow run site.yml --repo IamDejman/fm-lens --ref main" >&2
 fi

@@ -2493,6 +2493,7 @@ impl PlayerFilterArgs {
             transfer_listed: self.transfer_listed,
             loan_listed: self.loan_listed,
             attributes,
+            ..PlayerFilter::default()
         };
         let by = match self.sort.as_deref() {
             None => return Ok((filter, None)),

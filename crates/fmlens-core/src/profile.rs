@@ -868,6 +868,8 @@ impl ClubLayout {
             self.medical_staff + 24,
             self.coaching_staff + 24,
             self.scouting_staff + 24,
+            self.plays_in.map_or(0, |offset| offset + 8),
+            self.nation.map_or(0, |offset| offset + 8),
         ]
         .into_iter()
         .max()
