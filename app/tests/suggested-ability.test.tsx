@@ -122,31 +122,51 @@ const type = async (label: string, value: string) => {
 };
 const held = (label: string) => (screen.getByRole('textbox', { name: label }) as HTMLInputElement).value;
 
-test('the button follows what is typed, and puts the ability in the input', async () => {
+test('raising an attribute raises the ability with it, and typing it back puts the ability back', async () => {
   const { ability, attributes } = player('st');
   render(<Editing potential={190} />);
   expect(screen.queryByRole('button')).toBeNull();
   await type('attribute.finishing', '20');
   const suggested = ability + Math.round((20 - attributes.finishing) * 1.5);
-  await userEvent.click(screen.getByRole('button', { name: `Suggested CA ${suggested}` }));
   expect(held('current_ability')).toBe(String(suggested));
   expect(held('potential_ability')).toBe('190');
   expect(screen.queryByRole('button')).toBeNull();
-  // Typed back, the ability he had is the suggestion again.
   await type('attribute.finishing', String(Math.floor(attributes.finishing + 0.4)));
-  expect(screen.getByRole('button', { name: `Suggested CA ${ability}` })).toBeTruthy();
+  expect(held('current_ability')).toBe(String(ability));
+  expect(screen.queryByRole('button')).toBeNull();
 });
 
-test('a potential below the suggestion is raised to it, one set as a range is left', async () => {
+test('a lower suggestion waits for its button, and puts the ability in the input', async () => {
+  const { ability } = player('st');
+  render(<Editing potential={190} />);
+  await type('attribute.finishing', '5');
+  expect(held('current_ability')).toBe(String(ability));
+  await userEvent.click(screen.getByRole('button'));
+  expect(Number(held('current_ability'))).toBeLessThan(ability);
+  expect(screen.queryByRole('button')).toBeNull();
+});
+
+test('an ability typed in is left as typed', async () => {
+  const { ability, attributes } = player('st');
+  render(<Editing potential={190} />);
+  await type('current_ability', '150');
+  await type('attribute.finishing', '20');
+  expect(held('current_ability')).toBe('150');
+  const suggested = ability + Math.round((20 - attributes.finishing) * 1.5);
+  expect(screen.getByRole('button', { name: `Suggested CA ${suggested}` })).toBeTruthy();
+});
+
+test('a potential below the ability is raised with it, one set as a range is left', async () => {
   const { ability } = player('st');
   const first = render(<Editing potential={ability} />);
   await type('attribute.finishing', '20');
-  await userEvent.click(screen.getByRole('button'));
-  expect(held('potential_ability')).toBe(held('current_ability'));
   expect(Number(held('current_ability'))).toBeGreaterThan(ability);
+  expect(held('potential_ability')).toBe(held('current_ability'));
+  await type('attribute.finishing', '19');
+  expect(held('potential_ability')).toBe(held('current_ability'));
   first.unmount();
   render(<Editing potential={-9} />);
   await type('attribute.finishing', '20');
-  await userEvent.click(screen.getByRole('button'));
+  expect(Number(held('current_ability'))).toBeGreaterThan(ability);
   expect(held('potential_ability')).toBe('-9');
 });
