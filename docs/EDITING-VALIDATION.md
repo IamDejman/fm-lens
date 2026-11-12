@@ -2917,3 +2917,35 @@ tables' addresses), club income, spending, debt, sponsorship and ownership,
 bids, interest, instalments and buy-backs, FM's own value range, a release
 clause's condition, clause kinds outside the named table, and a second
 editor's check of hidden values.
+
+## Staff birth date (12 November 2026)
+
+A member of staff's birth date is editable, the human manager's too. No game
+was run for this change: it is enabled, unverified.
+
+Why the layout is taken as mapped: the staff record's `date_of_birth` is the
+date the staff list already reads ages from and the staff health check already
+tests, and it sits at the same place in the person record as a player's, 0x58
+into it on macOS and 0x88 on Windows (a unit test holds both layouts to that).
+A player's birth date at that place is an edit already in use. The human
+manager's is 0x340 further, like his other person fields.
+
+The editor writes 1 January 1920 to 31 December 2020, or to the game's date
+once that is later: as for players, but from 1920, since chairmen and owners
+are staff. A member of staff with no birth date is left as he is.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for a Windows and an Apple Silicon target, from Linux | Pass. This type-checks the new test; it does not run it |
+| `cargo fmt --all --check` | Pass |
+| `npm run build` and `npm test` | Pass (7 and 66 tests) |
+| Browser preview on sample data (`?writable`), a scout born 20 October 1965 | Career tab: the date is an input in Edit. 01/01/1919 read "1 invalid" with Apply off. 08/03/1938 applied: the profile read 8 Mar 1938, the header's age went from 60 to 88, and Changes listed "Date of birth 20 Oct 1965 → 8 Mar 1938" with Undo |
+
+The unit tests and the app crate's checks need macOS or Windows, so the
+Validate workflow was run on the branch at 6f75d25 (run 43177012159): both
+`macos-checks` and `windows-checks` passed, the workspace tests and the
+Windows installer build among them.
+
+Not run: anything in FM on any platform: the date on FM's staff profile, an
+undo, a stale-value refusal, a Continue, and a save, quit and reload on a
+career copy; the human manager's own date; a member of staff born before 1940.

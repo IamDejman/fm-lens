@@ -2132,6 +2132,9 @@ impl Connection {
             }),
             Entity::Staff => self.staff.update(change.uid, |s| {
                 s.note_change(&change.field, value);
+                if change.field == "date_of_birth" {
+                    s.note_birth(today);
+                }
                 if let Some(nation) = nation {
                     (s.nation, s.nation_uid) = (Some(nation.name), nation.uid);
                 }
