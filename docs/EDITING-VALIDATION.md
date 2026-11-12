@@ -2849,6 +2849,38 @@ Not run: the packaged app under Rosetta; staff and clubs in the packaged app
 (both were run in the browser preview); a Continue with a mass freeze on. The
 hold itself is the profiles' freeze, followed over a holiday on 8 November.
 
+## A freeze holds current ability too (12 November 2026)
+
+Feedback on 0.7.7: "the freeze does not work for all". A frozen player kept
+every attribute, but his current ability still fell, so FM showed him
+declining. The freeze now holds current ability with the attributes
+(`held_fields` in `app/src-tauri/src/lib.rs`).
+
+Windows only, on a holiday from 28 July 2026, with a release build of this
+branch as `FM Lens Ability.exe`. Players were frozen with Mass edit's freeze
+box, the list exported before and after each holiday, and the 47 visible
+attributes and CA compared by player.
+
+| Run | Build | Holiday | Frozen | Not frozen |
+|---|---|---|---|---|
+| 1 | 0.7.7 | 28 Jul to 27 Aug 2026, aged 34+ | 1,004: no attribute point lost; CA down for 690 (mean -0.83, worst -3) | 731: 308 lost 695 points; CA down for 615 |
+| 2 | This fix | 27 Aug to 26 Sep 2026, aged 34+ | 1,011: no point lost; CA down for none, up for 2 | 766: 498 lost 1,011 points; CA down for 644 (mean -0.87) |
+| 3 | This fix | 26 Sep 2026 to 14 Apr 2027 (200 days), aged 32+ | 1,861: no point lost; CA down for none, up for 47 (+1 or +2) | 1,072: 1,055 lost 7,286 points; CA down for 1,022 (mean -4.91, worst -10) |
+
+In run 3 the unfrozen players lost pace (831 of them), stamina (848), agility
+(800), strength (786) and acceleration (750). A frozen player's attributes
+still rise: a gain is kept as the new held value.
+
+Not held, as before: position ratings (a few fell, `rating_dm` for 7 frozen
+players), reputation and the hidden values.
+
+After run 3, Mass edit unfroze the 1,872 frozen players still in the list
+("1,872 unfrozen"). `frozen.json` kept 73 players who had left the players'
+list by then (retired): the list cannot reach them, so they stay in the file.
+
+Not run: the Mac, either architecture; a full season. The career was moved on
+by the holiday's own autosaves and is a test career.
+
 ## Sorting, more filters and every attribute (12 November 2026)
 
 Read-only work, from an audit of the search and viewing features. No game was

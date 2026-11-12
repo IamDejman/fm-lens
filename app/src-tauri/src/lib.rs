@@ -87,14 +87,27 @@ const LOWER_IS_BETTER: [&str; 2] = ["attribute.injury_proneness", "attribute.dir
 /// What Max attributes raises to 200 with the attributes.
 const ABILITY: [&str; 2] = ["current_ability", "potential_ability"];
 
+/// What falls as a player's attributes do, so a freeze of his attributes holds it with them.
+const CURRENT_ABILITY: &str = "current_ability";
+
+/// Of a player's `fields`, what a freeze holds: the attributes the editor can change, then his current ability, which
+/// the game lowers as it lowers them. The attributes come first, for the check they share.
+fn held_fields(fields: Vec<Field>) -> Vec<Field> {
+    let (mut held, rest): (Vec<Field>, Vec<Field>) =
+        fields.into_iter().partition(|field| field.key.starts_with("attribute."));
+    held.extend(rest.into_iter().find(|field| field.key == CURRENT_ABILITY));
+    held
+}
+
 /// What the app keeps from getting worse while it is connected (see `Connection::hold_frozen`).
 #[derive(Default)]
 struct Frozen {
     /// The clubs whose money is frozen, with the least their balance may be: what it was when it was frozen, or more
     /// once the club earned more.
     money: BTreeMap<u32, i64>,
-    /// The players whose attributes are frozen, with the worst each attribute may be, as stored: what it was when it
-    /// was frozen, or better once he improved. Worse is lower, or higher where lower is better.
+    /// The players whose attributes are frozen, with the worst each attribute and his current ability may be, as
+    /// stored: what it was when it was frozen, or better once he improved. Worse is lower, or higher where lower is
+    /// better.
     attributes: BTreeMap<u32, BTreeMap<String, i64>>,
     /// The members of staff whose attributes are frozen, held the same way on the staff's own attribute scales.
     staff_attributes: BTreeMap<u32, BTreeMap<String, i64>>,
@@ -466,17 +479,19 @@ impl Connection {
         froze
     }
 
-    /// Freezes the attributes of the player `uid` at what they are now (see `hold_attributes`). Refused while the
-    /// attributes may not be written.
+    /// Freezes the attributes of the player `uid`, and his current ability, at what they are now (see
+    /// `hold_attributes`). Refused while the attributes may not be written.
     fn freeze_player(&mut self, uid: u32) -> Result<(), Failure> {
         let target = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?.target();
-        let fields = self.attribute_fields();
-        // They share one check: what holds for the first holds for all.
+        let mut fields = self.held_fields();
+        // The attributes share one check: what holds for the first holds for all.
         if let Some(field) = fields.first()
             && let Some(lock) = self.session.field_lock(field)
         {
             return Err(EditError::Locked { field: field.key.clone(), lock }.into());
         }
+        // His current ability has its own: where that fails he is frozen without it.
+        fields.retain(|field| field.key != CURRENT_ABILITY || self.session.field_lock(field).is_none());
         let values = self.session.read_fields(&target, &fields)?;
         let held = fields.into_iter().zip(values).filter_map(|(field, value)| Some((field.key, value?))).collect();
         self.frozen.attributes.insert(uid, held);
@@ -1919,9 +1934,9 @@ impl Connection {
         .ok_or_else(|| not_found(entity, uid))
     }
 
-    /// Keeps the balance of every frozen club and the attributes of every frozen player from getting worse: what the
-    /// game took is put back, and what it gave raises what they are held at. These writes are not logged; unfreezing
-    /// ends them.
+    /// Keeps the balance of every frozen club and the attributes and current ability of every frozen player from
+    /// getting worse: what the game took is put back, and what it gave raises what they are held at. These writes are
+    /// not logged; unfreezing ends them.
     fn hold_frozen(&mut self) {
         self.hold_money();
         self.hold_attributes();
@@ -1952,7 +1967,7 @@ impl Connection {
         if self.frozen.attributes.is_empty() {
             return;
         }
-        let fields = self.attribute_fields();
+        let fields = self.held_fields();
         for (&uid, held) in self.frozen.attributes.iter_mut() {
             let Some(target) = self.players.get(uid).map(|player| player.target()) else {
                 continue;
@@ -1980,10 +1995,9 @@ impl Connection {
         }
     }
 
-    /// The attributes of players the editor can change.
-    fn attribute_fields(&self) -> Vec<Field> {
-        let fields = self.session.fields(Entity::Player).into_iter();
-        fields.filter(|field| field.key.starts_with("attribute.")).collect()
+    /// What a frozen player is held at (see `held_fields`).
+    fn held_fields(&self) -> Vec<Field> {
+        held_fields(self.session.fields(Entity::Player))
     }
 
     /// The attributes of staff the editor can change.
@@ -5384,6 +5398,20 @@ mod tests {
         assert!(old.is_empty());
         // Another save: nothing carries over, and the file freezes that save's afresh.
         assert!(Frozen::carry_over(&mut held(), false).is_none());
+    }
+
+    #[test]
+    fn a_frozen_player_keeps_his_current_ability_with_his_attributes() {
+        let layout = fmlens_core::layout_for(27).expect("a layout for FM27");
+        let held = held_fields(fmlens_core::fields(&layout, Entity::Player));
+        let keys: Vec<&str> = held.iter().map(|field| field.key.as_str()).collect();
+        // The attributes first, for the check they share, then the ability the game lowers with them.
+        assert!(keys.first().is_some_and(|key| key.starts_with("attribute.")));
+        assert_eq!(keys.last(), Some(&CURRENT_ABILITY));
+        assert_eq!(keys.iter().filter(|key| !key.starts_with("attribute.")).count(), 1);
+        assert!(keys.contains(&"attribute.pace") && keys.contains(&"attribute.injury_proneness"));
+        // Higher is better for it, as for most attributes.
+        assert!(!LOWER_IS_BETTER.contains(&CURRENT_ABILITY));
     }
 
     #[test]
