@@ -20,13 +20,20 @@ export const ATTRIBUTE_LABELS = strings.attributes;
 
 export type AttributeKey = keyof Strings["attributes"];
 
+/** What each attribute of a player measures, for the box over its row. */
+export const ATTRIBUTE_NOTES: Record<AttributeKey, string> = strings.attributeNotes;
+
 export const STAFF_ATTRIBUTE_LABELS = strings.staffAttributes;
 
 export type StaffAttributeKey = keyof Strings["staffAttributes"];
 
+export const STAFF_ATTRIBUTE_NOTES: Record<StaffAttributeKey, string> = strings.staffAttributeNotes;
+
 export const PERSONALITY_LABELS = strings.personality;
 
 export type PersonalityKey = keyof Strings["personality"];
+
+export const PERSONALITY_NOTES: Record<PersonalityKey, string> = strings.personalityNotes;
 
 export const POSITION_LABELS = strings.positions;
 

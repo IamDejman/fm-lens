@@ -344,6 +344,70 @@ export const en = {
     right_foot: "Right Foot",
   },
 
+  /** What each attribute of a player measures: the box over its row. */
+  attributeNotes: {
+    // Technical
+    corners: "How well the player delivers corners.",
+    crossing: "How accurately the player crosses the ball from wide areas.",
+    dribbling: "How well the player keeps the ball under control while running with it.",
+    finishing: "How well the player turns a chance into a goal.",
+    first_touch: "How cleanly the player controls the ball when receiving it.",
+    free_kicks: "How good the player's free kicks are, whether a shot or a delivery.",
+    heading: "How accurately the player heads the ball, at goal or to a team-mate.",
+    long_shots: "How dangerous the player's shots from outside the box are.",
+    long_throws: "How far and how flat the player can throw the ball in.",
+    marking: "How tightly the player tracks an opponent and keeps them quiet.",
+    passing: "How accurately the player passes the ball, short and long.",
+    penalty_taking: "How reliable the player is from the penalty spot.",
+    tackling: "How cleanly the player wins the ball without giving away a foul.",
+    technique: "How refined the player is on the ball. It makes the harder passes, shots and touches come off.",
+    // Mental
+    aggression: "How readily the player goes into challenges.",
+    anticipation: "How early the player reads what is about to happen.",
+    bravery: "How willing the player is to risk getting hurt to win the ball.",
+    composure: "How calm the player stays under pressure, on the ball or in front of goal.",
+    concentration: "How long the player stays focused, above all late in a match.",
+    decisions: "How often the player picks the right option.",
+    determination: "How hard the player keeps pushing to win, even when behind.",
+    flair: "How likely the player is to try something unexpected.",
+    leadership: "How well the player lifts and organises team-mates. It matters most in a captain.",
+    off_the_ball: "How well the player finds space when the team has the ball.",
+    positioning: "How well the player covers space when the other team has the ball.",
+    teamwork: "How closely the player follows team instructions and works for others.",
+    vision: "How many passing options the player sees, the hard ones too.",
+    work_rate: "How much running the player puts in over a whole match.",
+    // Physical
+    acceleration: "How quickly the player reaches top speed.",
+    agility: "How quickly the player turns, starts and stops.",
+    balance: "How well the player stays upright, on the ball and in challenges.",
+    jumping_reach: "The highest point the player can reach when jumping. Height counts too.",
+    natural_fitness: "How well the player keeps fit between matches and with age.",
+    pace: "How fast the player runs at top speed.",
+    stamina: "How long the player keeps up a high tempo before tiring.",
+    strength: "How well the player holds off opponents and pushes past them.",
+    // Goalkeeping
+    aerial_reach: "How high the keeper can reach to catch or punch the ball.",
+    command_of_area: "How well the keeper takes charge of the box and claims balls played into it.",
+    communication: "How well the keeper organises the defence.",
+    eccentricity: "How often the keeper does something unexpected, like dribbling out or going up for a corner.",
+    handling: "How securely the keeper holds the ball instead of spilling it.",
+    kicking: "How far and how accurately the keeper kicks the ball.",
+    one_on_ones: "How well the keeper does when facing an attacker alone.",
+    punching: "How often the keeper punches the ball instead of catching it.",
+    reflexes: "How quickly the keeper reacts to a shot.",
+    rushing_out: "How often the keeper comes off the line to meet through balls and attackers.",
+    throwing: "How far and how accurately the keeper throws the ball.",
+    // Hidden
+    consistency: "How often the player performs at their usual level.",
+    dirtiness: "How often the player fouls and bends the rules.",
+    important_matches: "How well the player performs in big matches.",
+    injury_proneness: "How easily the player picks up injuries.",
+    versatility: "How quickly the player learns a new position or role.",
+    // Feet
+    left_foot: "How good the player is with the left foot.",
+    right_foot: "How good the player is with the right foot.",
+  },
+
   staffAttributes: {
     // Coaching
     attacking: "Attacking",
@@ -372,6 +436,35 @@ export const en = {
     sports_science: "Sports Science",
   },
 
+  /** What each attribute of a member of staff measures: the box over its row. */
+  staffAttributeNotes: {
+    // Coaching
+    attacking: "Ability to coach attacking play.",
+    defending: "Ability to coach defending.",
+    fitness: "Ability to coach fitness: strength, speed and stamina.",
+    goalkeeping: "Ability to coach goalkeepers.",
+    possession: "Ability to coach play on the ball: passing and keeping it.",
+    set_pieces: "Ability to coach corners, free kicks and throw-ins.",
+    tactical: "Ability to coach team shape and tactics.",
+    technical: "Ability to coach ball skills.",
+    working_with_youngsters: "Ability to coach young players and bring them on.",
+    // Mental
+    authority: "Ability to keep discipline.",
+    determination: "Drive to succeed. It rubs off on the players.",
+    motivating: "Ability to lift the players, in training and before matches.",
+    people_management: "Ability to handle players and keep them happy.",
+    // Knowledge
+    data_analysis: "Ability to read match and player data.",
+    judging_ability: "Accuracy in judging how good a player is now.",
+    judging_potential: "Accuracy in judging how good a player can become.",
+    judging_staff: "Accuracy in judging how good other staff are.",
+    negotiating: "Ability to strike good deals on transfers and contracts.",
+    tactical_knowledge: "Knowledge of tactics and formations.",
+    // Medical
+    physiotherapy: "Ability to treat and prevent injuries.",
+    sports_science: "Ability to manage fitness and injury risk.",
+  },
+
   personality: {
     adaptability: "Adaptability",
     ambition: "Ambition",
@@ -381,6 +474,18 @@ export const en = {
     sportsmanship: "Sportsmanship",
     temperament: "Temperament",
     controversy: "Controversy",
+  },
+
+  /** What each personality rating measures, for players and staff alike: the box over its row. */
+  personalityNotes: {
+    adaptability: "How quickly they settle in a new country.",
+    ambition: "How much they want to reach the top, and to move on for it.",
+    loyalty: "How attached they are to their club.",
+    pressure: "How well they cope with pressure.",
+    professionalism: "How seriously they take training and the job.",
+    sportsmanship: "How much they value fair play.",
+    temperament: "How well they keep calm when things go wrong.",
+    controversy: "How likely they are to stir up trouble in the media.",
   },
 
   /** The abbreviations of the positions: the same in every language. */
