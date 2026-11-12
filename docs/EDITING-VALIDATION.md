@@ -3186,3 +3186,61 @@ wording: "Hits free kick with power", "Likes to beat opponent repeatedly" and
 Not run: the packaged app with these changes on any platform (the list and
 the tags were checked in the browser preview); the Spanish and Turkish names
 against FM in those languages.
+
+## List columns, saved filters and search speed (13 November 2026)
+
+Read-only work on the lists, on top of Sorting, more filters and every
+attribute above. Nothing here was run against a game: it was written in a
+Linux container with no FM, so every check is on code and on the browser
+preview's sample data.
+
+What changed:
+
+- Players filter by several positions at once and by a current-reputation
+  range.
+- The player list shows Value and Wage. Columns, under More, chooses the
+  columns and up to eight attribute columns; Value, Wage, Reputation and an
+  attribute column sort the list. A value or wage that is not known sorts last
+  either way.
+- Staff, clubs, nations, stadiums, competitions, awards and officials keep
+  saved filters, as the player list did. A player filter saved with one
+  position still reads as that position.
+- The search index works its best-first order out once, and again after an
+  edit, in place of sorting every hit on every request. A filter's nation, club
+  or continent text is folded once per request, and a column sort compares
+  each text by its place among the others.
+
+The row's value, wage and reputation are the bytes the list already read, at
+the offsets the profile uses; the reputation is `player.current_reputation`.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core -p fmlens-mem -p fmlens-probe`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 121 core tests, 5 memory tests |
+| `cargo clippy --all-targets -- -D warnings`, `x86_64-pc-windows-gnu`: core, mem, probe and app | Pass |
+| `cargo clippy --all-targets -- -D warnings`, `aarch64-apple-darwin`: core, mem and probe | Pass |
+| `npm test` | Pass. 95 tests, 5 of them new in `tests/list-columns.test.tsx` |
+| `npm run build` | Pass |
+| Browser preview, sample data, 1280 x 860: two positions with a reputation range, Columns with two attribute columns sorted by one, and a club filter saved and shown as the one in effect | Looked right in screenshots |
+
+Not run: the app crate's own Rust tests, which do not link in that container;
+any macOS build of the app crate; the Tauri bundle; and every native check.
+Still to do on a career copy, on each platform: compare Value, Wage and a
+reputation filter with FM's screens for a few players, sort the player list by
+Value, Wage and an attribute column, and save, reload and apply a filter on
+each list.
+
+Speed, on made-up players, with the repository's `SearchIndex` built for
+release in the same container. It leaves out reading the game on Connect.
+
+| | 30,314 players, before | after | 550,000 players, before | after |
+|---|---|---|---|---|
+| Page with no search or filter | 6 ms | under 0.1 ms | 220 ms | 0.3 ms |
+| Name search | 1 ms | 0.7 ms | 15 ms | 12 ms |
+| Age, CA, position and two attribute filters | 6 ms | 0.2 ms | 237 ms | 6 ms |
+| Nation filter | 16 ms | 1.3 ms | 476 ms | 53 ms |
+| Sorted by name | 27 ms | 17 ms | 989 ms | 480 ms |
+| First search after Connect or an edit | - | 7 ms | - | 186 ms |
+

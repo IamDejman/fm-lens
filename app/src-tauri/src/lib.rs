@@ -3239,9 +3239,26 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     Ok(info)
 }
 
+/// A row of the player list: the player, and the attributes the list was asked to show beside him.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PlayerRow {
+    #[serde(flatten)]
+    player: fmlens_core::PlayerSummary,
+    /// As FM shows them (1–20), by key; an attribute the layout does not place is left out.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    attribute_values: BTreeMap<String, u8>,
+}
+
+/// The most attribute columns a page of players carries.
+const MOST_ATTRIBUTE_COLUMNS: usize = 12;
+
 /// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
 /// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
-/// your club's players who play them.
+/// your club's players who play them. `attributes` are the keys of the attributes to send with each row, for the
+/// list's attribute columns.
+// The window names each argument, so they stay arguments.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn search_players(
     state: State<'_, AppState>,
@@ -3251,7 +3268,8 @@ fn search_players(
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
     best: Option<BestFor>,
-) -> Result<RankedPage<fmlens_core::PlayerSummary>, Failure> {
+    attributes: Option<Vec<String>>,
+) -> Result<RankedPage<PlayerRow>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
@@ -3261,7 +3279,7 @@ fn search_players(
         |p| best.player(p),
         |p| best.plays(p) && p.club_uid.is_some_and(|club| connection.human_clubs.contains(&club)),
     );
-    let page = ranked_page(
+    let found = ranked_page(
         &connection.players,
         &query,
         limit,
@@ -3274,7 +3292,26 @@ fn search_players(
         },
         |p| best.player(p),
     );
-    Ok(RankedPage { yours, ..page })
+    let columns: Vec<(String, usize)> = attributes
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|key| fmlens_core::player_attribute(&key).map(|place| (key, place)))
+        .take(MOST_ATTRIBUTE_COLUMNS)
+        .collect();
+    let rows = found
+        .rows
+        .into_iter()
+        .map(|Ranked { row: player, fit }| {
+            let attribute_values = columns
+                .iter()
+                .filter_map(|(key, place)| {
+                    player.attributes.get(*place).filter(|&&value| value > 0).map(|&value| (key.clone(), value))
+                })
+                .collect();
+            Ranked { row: PlayerRow { player, attribute_values }, fit }
+        })
+        .collect();
+    Ok(RankedPage { total: found.total, rows, yours })
 }
 
 /// Staff matching `query`, the human manager first, then by current ability, or in `order`; at most `limit` rows.

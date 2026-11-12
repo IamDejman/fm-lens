@@ -5,7 +5,7 @@ import { knownFormationName } from "../formationNames";
 // Turkish has no plural after a number ("3 değişiklik"), and its case endings follow the word they end, not a
 // number, so the sentences are built to put an ending on a noun ("oyuncunun"), never on a figure.
 
-import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerSort, SquadSort, Storefront } from "../types";
+import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerColumnSort, SquadSort, Storefront } from "../types";
 import { PERCENT_CLAUSES, RELEASE_CLAUSES } from "../clauseKinds";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
@@ -1028,8 +1028,11 @@ export const tr: Strings = {
       born: "Doğum",
       currentAbility: "MY",
       potentialAbility: "PY",
+      value: "Değer",
+      wage: "Maaş",
+      reputation: "İtibar",
       uid: "UID",
-    } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
+    } satisfies Record<PlayerColumnSort | "positions" | "born" | "uid", string>,
     sortBy: (by) => `Sırala: ${by}`,
     // Said as "sıralama: …" and "Sırala: …", so they stand as plain nouns.
     sortNames: {
@@ -1040,7 +1043,18 @@ export const tr: Strings = {
       nation: "uyruk",
       club: "kulüp",
       contractExpires: "sözleşme bitişi",
-    } satisfies Record<PlayerSort, string>,
+      value: "değer",
+      wage: "maaş",
+      reputation: "itibar",
+    } satisfies Record<PlayerColumnSort, string>,
+    columnChooser: {
+      button: "Sütunlar",
+      title: "Sütunlar",
+      attributes: "Özellik sütunları",
+      full: (max) => `En çok ${max} özellik sütunu.`,
+      reset: "Sıfırla",
+      done: "Tamam",
+    },
     filters: {
       toggle: "Filtreler",
       toggleActive: (count) => `Filtreler, ${count} etkin`,
@@ -1071,6 +1085,9 @@ export const tr: Strings = {
       value: "Temel değer",
       minValue: "En düşük değer",
       maxValue: "En yüksek değer",
+      reputation: "İtibar",
+      minReputation: "En düşük itibar",
+      maxReputation: "En yüksek itibar",
       trait: "Özellik",
       chips: "Etkin filtreler",
       removeChip: (label: string) => `Kaldır: ${label}`,

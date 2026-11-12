@@ -1444,6 +1444,47 @@ input::placeholder {
   color: var(--text);
 }
 
+/* The positions a player may play, a toggle each, across the filter panel. */
+.filter-field.filter-positions[role="group"] {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: var(--space-1);
+}
+
+.filter-field.filter-positions[role="group"] > span:first-child {
+  flex-basis: 100%;
+}
+
+.position-toggle {
+  min-width: 3rem;
+  min-height: 30px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.position-toggle:hover:not([aria-pressed="true"]) {
+  border-color: var(--accent);
+}
+
+.position-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 650;
+}
+
+.position-toggle[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}
+
 .bound-remove {
   width: 30px;
   padding: 0;
@@ -1645,6 +1686,23 @@ input::placeholder {
 .table-wrap:is([data-list-width="narrow"], [data-list-width="small"]) .player-grid .col-positions {
   display: none;
 }
+/* Value, Wage and Reputation go with Contract; an attribute's column holds two digits, and goes with Positions. */
+.table-wrap:is([data-list-width="compact"], [data-list-width="narrow"], [data-list-width="small"]) .player-grid :is(.col-value, .col-wage, .col-rep) {
+  display: none;
+}
+.table-wrap:is([data-list-width="narrow"], [data-list-width="small"]) .player-grid .col-attribute {
+  display: none;
+}
+.player-grid :is(.col-value, .col-wage) {
+  white-space: nowrap;
+}
+/* With many columns chosen the table scrolls sideways sooner than it cuts a nation or a club down to nothing. */
+.table-wrap:is([data-list-width="wide"], [data-list-width="medium"]) .player-grid td.col-nation {
+  min-width: 110px;
+}
+.table-wrap:is([data-list-width="wide"], [data-list-width="medium"]) .player-grid td.col-club {
+  min-width: 140px;
+}
 .table-wrap[data-list-width="small"] .player-grid .col-name .sub { display: none; }
 .table-wrap[data-list-width="small"] .player-grid :is(th, td) { padding-inline: var(--space-2); }
 .table-wrap[data-list-width="small"] .player-grid td.col-name { width: 46%; }
@@ -1665,7 +1723,7 @@ input::placeholder {
   display: block;
 }
 
-.with-profile .player-grid :is(.col-age, .col-nation, .col-club, .col-contract, .col-born, .col-uid) {
+.with-profile .player-grid :is(.col-age, .col-nation, .col-club, .col-contract, .col-born, .col-uid, .col-value, .col-wage, .col-rep, .col-attribute) {
   display: none;
 }
 
@@ -3588,6 +3646,57 @@ button.danger:hover:not(:disabled) {
 /* The export dialog is narrower than a mass edit's: a choice of three formats, and what a file holds. */
 .modal.export-dialog {
   width: min(620px, 100%);
+}
+
+/* Choosing the player list's columns: a checkbox each, in as many columns as fit. */
+.modal.columns-dialog {
+  width: min(680px, 100%);
+}
+
+.columns-dialog h3 {
+  margin: 0;
+  font-size: var(--type-base);
+}
+
+.column-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.column-group legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--muted);
+}
+
+.column-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.column-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.column-choice input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.column-choice:has(input:disabled) {
+  color: var(--muted);
+  cursor: default;
+}
+
+.columns-dialog .note:empty {
+  display: none;
 }
 
 .export-formats {

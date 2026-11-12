@@ -144,8 +144,8 @@ test('a stadium names the club that owns it', async () => {
 });
 
 test("a player's profile has the attributes of both kinds of player", async () => {
-  const keeper = (await mockInvoke<PlayerPage>('search_players', { query: '', limit: 1, filter: { position: 'gk' } })).rows[0];
-  const striker = (await mockInvoke<PlayerPage>('search_players', { query: '', limit: 1, filter: { position: 'st' } })).rows[0];
+  const keeper = (await mockInvoke<PlayerPage>('search_players', { query: '', limit: 1, filter: { positions: ['gk'] } })).rows[0];
+  const striker = (await mockInvoke<PlayerPage>('search_players', { query: '', limit: 1, filter: { positions: ['st'] } })).rows[0];
   render(<PlayerBrowser version={0} active reveal={null} />);
   for (const [player, own, other, attribute] of [
     [striker, 'Technical', 'Goalkeeping', 'Handling'],
@@ -196,7 +196,7 @@ test('picking what the players are best for ranks them by fit, and a header sort
 test('the sample search keeps to the positions of a recipe and scores as the game search does', async () => {
   const best = { weights: [{ key: 'finishing', weight: 3 }, { key: 'pace', weight: 1 }], positions: ['st'] };
   const page = await mockInvoke<PlayerPage>('search_players', { query: '', limit: 200, best });
-  const strikers = await mockInvoke<PlayerPage>('search_players', { query: '', limit: 200, filter: { position: 'st' } });
+  const strikers = await mockInvoke<PlayerPage>('search_players', { query: '', limit: 200, filter: { positions: ['st'] } });
   expect(page.total).toBe(strikers.total);
   const [first] = page.rows;
   const [finishing, pace] = first.fit!.values;
