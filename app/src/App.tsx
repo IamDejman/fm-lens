@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNo
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { call, inTauri, watchCommands } from "./api";
-import { addCheckForUpdates } from "./appMenu";
+import { addMenuItems } from "./appMenu";
 import { BridgeSetup } from "./BridgeSetup";
 import { EmailGate, emailGiven } from "./EmailGate";
 import { ChangesView, useChangeLog } from "./ChangesView";
@@ -17,6 +17,7 @@ import { isShortcut, MAC, SECTION_SHORTCUTS, shortcutAria, shortcutLabel } from 
 import { ReportDialog, type ReportKind } from "./ReportDialog";
 import { Settings } from "./Settings";
 import { StarNotice, useStarAsk } from "./StarNotice";
+import { SupportDialog, type SupportSource } from "./SupportDialog";
 import {
   appText,
   awardListText,
@@ -28,6 +29,7 @@ import {
   playerListText,
   stadiumListText,
   staffListText,
+  supportText,
   updateText,
 } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
@@ -141,6 +143,11 @@ function App() {
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
   const [reporting, setReporting] = useState<ReportKind | null>(null);
+  const [supporting, setSupporting] = useState(false);
+  const support = useCallback((from: SupportSource) => {
+    track("support_opened", { from });
+    setSupporting(true);
+  }, []);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   const { asking: askingStar, answer: answerStar } = useStarAsk();
   const [emailAsked, setEmailAsked] = useState(() => !emailGiven());
@@ -155,9 +162,14 @@ function App() {
   useEffect(() => {
     if (inTauri && MAC) {
       // Without it the app menu stays as it was: the checks every four hours carry on.
-      addCheckForUpdates(updateText.checkForUpdates, () => void checkNow()).catch(() => {});
+      addMenuItems({
+        check: updateText.checkForUpdates,
+        onCheck: () => void checkNow(),
+        support: supportText.button,
+        onSupport: () => support("menu"),
+      }).catch(() => {});
     }
-  }, [checkNow]);
+  }, [checkNow, support]);
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
     setBusy(label);
@@ -588,6 +600,7 @@ function App() {
             <Settings
               busy={busy !== null}
               onCheckForUpdates={inTauri && !MAC ? () => void checkNow() : undefined}
+              onSupport={() => support("settings")}
               details={[
                 `FM Lens${version ? ` ${version}` : ""}`,
                 connection
@@ -676,6 +689,10 @@ function App() {
           <button type="button" className="colophon-wishlist" onClick={() => setReporting("wish")}>
             {appText.wishlist}
           </button>
+          <button type="button" className="colophon-support" onClick={() => support("footer")}>
+            {supportText.button}
+          </button>
+          {supporting && <SupportDialog onClose={() => setSupporting(false)} />}
           {reporting && (
             <ReportDialog
               kind={reporting}
