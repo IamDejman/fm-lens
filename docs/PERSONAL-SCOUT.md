@@ -170,7 +170,8 @@ not covered by this in-memory history. See the 7 November refresh checks in
 Clone & templates can capture selected ability, attribute, personality, position
 and trait groups. Templates use versioned JSON, a local library and destination
 field validation, then preview/apply/undo through the bulk editor. Identity and
-contract fields are excluded. Staff attribute freezes last for the connection.
+contract fields are excluded. Player, staff and money freezes are remembered for
+the save and hold only while FM Lens is connected.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
 See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 169 player, 42 staff and 14 club

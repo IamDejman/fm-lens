@@ -164,24 +164,27 @@ validated fields and the guarded memory layer for domain operations.
   addresses or allow imported identity, nationality, contract or club fields.
   Resolve against the destination layout; preview and use conditional batch
   apply/undo. The library lives locally, not in the repository.
-- Staff attribute freeze lasts for the connection. Its toggle has been exercised;
-  long-term simulation behavior remains unverified. Do not describe it as a
-  persistent cross-restart setting.
-- The nation browser lists nations represented by loaded players/staff, not a
-  complete database scan. Guarded nation editing exists for mapped fields. On
-  ARM64, England's population, men's reputation and nationality rules passed
-  the 5 November save/quit/reload checks; not every nation field or platform
-  has that evidence. Synthetic nation row IDs must never be mutation UIDs;
+- Staff attribute freeze is remembered for the save with the player and money
+  freezes, and holds only while FM Lens is connected. It stayed on over a 31-day
+  holiday and came back on after FM restarted (8 November); its effect on
+  long-term staff development remains unverified. Do not describe any freeze as
+  holding while FM Lens is closed.
+- The nation browser lists nations represented by loaded players, staff and
+  competitions, not a complete database scan. Guarded nation editing exists for
+  mapped fields. On ARM64, England's population, men's reputation and
+  nationality rules passed the 5 November save/quit/reload checks; not every
+  nation field or platform has that evidence. Synthetic nation row IDs must never be mutation UIDs;
   mutation targets require the actual UID and current record.
-- The stadium browser lists senior stadiums per club; shared stadiums may
-  appear more than once. It is read-only. Competitions and awards are read-only;
+- The stadium browser lists senior stadiums, one row per ground with every club
+  that plays there. It is read-only. Competitions and awards are read-only;
   their browsing/rules data do not establish editing support.
 - Officials have mapped CA/PA, reputation and birth-date edits. Readback after
   Continue is recorded, but FM screen comparison and persistence are not fully
   established; referee attribute names remain research.
 - Player promises can be read and an existing open promise closed with
-  conditional undo on macOS. Creation, broader edits and Windows mapping remain
-  research. Windows reports unavailable data rather than No promises.
+  conditional undo on macOS and Windows (Windows checked on 8 November).
+  Creation and broader edits remain research. A build whose layout does not
+  place promises reports unavailable data rather than No promises.
 - Max cohesion and Max tactics have bounded ARM64 game/persistence checks,
   not complete simulation validation. Cohesion raises existing club entries
   only; tactics undo leaves some manager knowledge. See the roadmap.
