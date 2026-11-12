@@ -20,7 +20,7 @@ import type {
   MassEntity,
   MassOperationKind,
   MassPreview,
-  PlayerSort,
+  PlayerColumnSort,
   SquadSort,
   Storefront,
 } from "../types";
@@ -1047,8 +1047,11 @@ export const en = {
       born: "Born",
       currentAbility: "CA",
       potentialAbility: "PA",
+      value: "Value",
+      wage: "Wage",
+      reputation: "Reputation",
       uid: "ID",
-    } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
+    } satisfies Record<PlayerColumnSort | "positions" | "born" | "uid", string>,
     /** Hover text of a column header that sorts the list; `by` is a name from `sortNames`. */
     sortBy: (by: string) => `Sort by ${by}`,
     /** The name of each sortable column, as the summary line and the hover text of a header say it. */
@@ -1060,7 +1063,20 @@ export const en = {
       nation: "nation",
       club: "club",
       contractExpires: "contract end",
-    } satisfies Record<PlayerSort, string>,
+      value: "value",
+      wage: "wage",
+      reputation: "reputation",
+    } satisfies Record<PlayerColumnSort, string>,
+    /** Choosing which columns the list shows, from More. */
+    columnChooser: {
+      button: "Columns",
+      title: "Columns",
+      attributes: "Attribute columns",
+      /** Under the attributes once `max` of them are columns. */
+      full: (max: number) => `Up to ${max} attribute columns.`,
+      reset: "Reset",
+      done: "Done",
+    },
     filters: {
       /** The button that shows or hides the filters. */
       toggle: "Filters",
@@ -1097,6 +1113,9 @@ export const en = {
       value: "Base value",
       minValue: "Minimum value",
       maxValue: "Maximum value",
+      reputation: "Reputation",
+      minReputation: "Minimum reputation",
+      maxReputation: "Maximum reputation",
       /** The select of the trait a player must have. */
       trait: "Trait",
       /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */

@@ -14,15 +14,18 @@ import {
 import { ListBrowser } from "./ListBrowser";
 import { NATION_STYLE_LABELS, nationListText, profileText } from "./labels";
 import { restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import { useProfileEditing } from "./useProfileEditing";
 import type {
+  ListOrder,
   NamedPerson,
   NationDetails,
-  NationalTeam,
   NationFilter,
   NationSort,
   NationSummary,
+  NationalTeam,
   WomenFootball,
 } from "./types";
 
@@ -36,6 +39,12 @@ const SORT: SortStart<NationSort> = {
   start: { by: "name", ascending: true },
   firstAscending: ["name", "continent"],
 };
+
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = { continent: "" };
+type NationFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<NationFields, NationSort>("nations", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
 
 /**
  * The nations of the players, staff and competitions in the save, with the selected nation beside the table where the
@@ -56,6 +65,12 @@ export function NationBrowser({
   );
   useSnapshot("nationContinent", () => continent);
   const sort = useListSort("nationOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: NationFields = { continent };
+  const applySaved = (saved: NationFields, order: ListOrder<NationSort> | null) => {
+    setContinent(saved.continent);
+    sort.set(order);
+  };
   // The continent is a column only where the build reads it: a sort by it kept from elsewhere asks for nothing.
   const order = sort.order?.by === "continent" && !detailed ? undefined : (sort.order ?? undefined);
   const continentValue = (detailed && continent.trim()) || undefined;
@@ -83,7 +98,19 @@ export function NationBrowser({
       empty={(query) => text.empty(query, filter !== undefined)}
       filterBar={
         detailed ? (
-          <FilterBar chips={chips} onClear={() => setContinent("")}>
+          <FilterBar
+            chips={chips}
+            onClear={() => setContinent("")}
+            actions={
+              <SavedFilterControls
+                kind={SAVED}
+                fields={fields}
+                order={sort.order}
+                filtered={chips.length > 0}
+                onApply={applySaved}
+              />
+            }
+          >
             <label className="filter-field">
               <span>{filters.continent}</span>
               <input
