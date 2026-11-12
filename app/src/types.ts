@@ -225,6 +225,10 @@ export interface ClubSummary {
   /** 0–10000. */
   reputation: number | null;
   founded: number | null;
+  /** The nation the club is from; null where the build does not place it. */
+  nation: string | null;
+  /** The nation's UID, for its flag (see pictures.ts). */
+  nationUid: number | null;
 }
 
 export interface ClubPage {
@@ -273,6 +277,8 @@ export interface Stadium {
   used: number;
   /** The most it can be expanded to. */
   expansion: number;
+  /** The club that owns it; null when no club of the save does. */
+  owner: StadiumClub | null;
 }
 
 /** A manager, coach, scout, director or other non-playing person. */
@@ -406,6 +412,8 @@ export interface StadiumSummary {
   /** The capacity in use when the game limits it; 0 when it does not. */
   used: number;
   expansion: number;
+  /** The club that owns it; null when no club of the save does. */
+  owner: StadiumClub | null;
 }
 
 export interface StadiumPage {
@@ -443,7 +451,12 @@ export interface OfficialFilter {
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
+  maxCurrentAbility?: number;
   minPotentialAbility?: number;
+  maxPotentialAbility?: number;
+  /** 0–10000. */
+  minReputation?: number;
+  maxReputation?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
 }
@@ -574,7 +587,18 @@ export interface PlayerFilter {
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
+  maxCurrentAbility?: number;
   minPotentialAbility?: number;
+  maxPotentialAbility?: number;
+  /** Centimetres. A player whose height is not set keeps to no bound. */
+  minHeight?: number;
+  maxHeight?: number;
+  /** Pounds per week. A player without a contract keeps to no bound. */
+  minWage?: number;
+  maxWage?: number;
+  /** Pounds, the stored base valuation. A player the game has not valued keeps to no bound. */
+  minValue?: number;
+  maxValue?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
   /** Part of the club's name; accents and case ignored. */
@@ -590,6 +614,10 @@ export interface PlayerFilter {
   loanListed?: boolean;
   /** Bounds on attributes, every one of which must hold. */
   attributes?: AttributeBound[];
+  /** Bounds on personality ratings, by their key ("ambition"), every one of which must hold. */
+  personality?: AttributeBound[];
+  /** Trait bits (0 to 63): only players who have every one of them. */
+  traits?: number[];
 }
 
 export type PlayerSort =
@@ -607,6 +635,21 @@ export interface PlayerOrder {
   ascending: boolean;
 }
 
+/** How a list is sorted: by one of its columns, upwards or downwards. Without one, a search answers best first. */
+export interface ListOrder<Sort extends string> {
+  by: Sort;
+  ascending: boolean;
+}
+
+/** The columns each of the other lists can be sorted by, as its search command takes them. */
+export type StaffSort = "name" | "age" | "club" | "nation" | "currentAbility" | "potentialAbility";
+export type ClubSort = "name" | "nation" | "reputation" | "founded";
+export type StadiumSort = "name" | "capacity" | "seating" | "expansion";
+export type NationSort = "name" | "continent";
+export type OfficialSort = "name" | "age" | "nation" | "reputation" | "currentAbility" | "potentialAbility";
+export type CompetitionSort = "name" | "nation" | "continent" | "reputation";
+export type AwardSort = "name" | "competition" | "nation" | "prestige";
+
 /** Filters for `search_staff`. */
 export interface StaffFilter {
   /** Job code (see `jobLabel`); its player-coach variant matches too. */
@@ -618,7 +661,9 @@ export interface StaffFilter {
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
+  maxCurrentAbility?: number;
   minPotentialAbility?: number;
+  maxPotentialAbility?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
   /** Part of the employer's name; accents and case ignored. */
@@ -637,6 +682,8 @@ export interface ClubFilter {
   /** A club with no founded year keeps to no bound. */
   foundedFrom?: number;
   foundedTo?: number;
+  /** Part of the name of the nation the club is from; accents and case ignored. */
+  nation?: string;
 }
 
 /** An attribute as stored (`raw`, 0–100) and as FM shows it (`value`, 1–20). */

@@ -19,7 +19,8 @@ import { PlayerProfile, readPlayerTab, type PlayerTab } from "./PlayerProfile";
 import { PlayerTemplatesButton } from "./PlayerTemplates";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
-import { readFields, readOrder } from "./savedFilters";
+import { PLAYER_SORTS, readFields } from "./savedFilters";
+import { SortHeader, useListSort } from "./SortHeader";
 import type { PlayerOrder, PlayerSort, PlayerSummary } from "./types";
 import { useComparison } from "./useComparison";
 
@@ -29,7 +30,7 @@ const text = playerListText;
 const DEFAULT_ORDER: PlayerOrder = { by: "currentAbility", ascending: false };
 
 /** The columns whose first click sorts from A to Z or from the earliest date; the numbers start with the highest. */
-const FIRST_ASCENDING: ReadonlySet<PlayerSort> = new Set<PlayerSort>(["name", "nation", "club", "contractExpires"]);
+const FIRST_ASCENDING: readonly PlayerSort[] = ["name", "nation", "club", "contractExpires"];
 
 /** How many positions a row shows before the ellipsis; its hover text has all of them. */
 const POSITIONS_SHOWN = 3;
@@ -46,10 +47,10 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
       setFields(NO_PLAYER_FILTERS);
     }
   }
-  // Null until a header is clicked: no order is asked for, and the search answers with the best current ability first.
-  const [order, setOrder] = useState<PlayerOrder | null>(() => restored("playerOrder", readOrder));
+  // No order is asked for until a header is clicked: the search answers with the best current ability first.
+  const sort = useListSort("playerOrder", { sorts: PLAYER_SORTS, start: DEFAULT_ORDER, firstAscending: FIRST_ASCENDING });
+  const { order } = sort;
   useSnapshot("playerFields", () => fields);
-  useSnapshot("playerOrder", () => order);
   // The tab of the profile is kept here, so that the next player picked opens on the same one.
   const [tab, setTab] = useState<PlayerTab>(() => restored("playerTab", readPlayerTab));
   useSnapshot("playerTab", () => tab);
@@ -59,11 +60,8 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
 
   const filter = toPlayerFilter(fields);
   const filterCount = countFilters(filter);
-  const sorted = order ?? DEFAULT_ORDER;
-  const sortBy = (by: PlayerSort) =>
-    setOrder({ by, ascending: sorted.by === by ? !sorted.ascending : FIRST_ASCENDING.has(by) });
   const sortHeader = (by: PlayerSort, className?: string) => (
-    <SortHeader by={by} order={sorted} onSort={sortBy} className={className} />
+    <SortHeader by={by} sort={sort} label={text.columns[by]} name={text.sortNames[by]} className={className} />
   );
 
   return (
@@ -90,7 +88,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
               filtered={filterCount > 0}
               onApply={(savedFields, savedOrder) => {
                 setFields(savedFields);
-                setOrder(savedOrder);
+                sort.set(savedOrder);
               }}
             />
           }
@@ -160,30 +158,6 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
         />
       )}
     />
-  );
-}
-
-interface SortHeaderProps {
-  /** The column; it is also what the list is sorted by. */
-  by: PlayerSort;
-  /** How the list is sorted now. */
-  order: PlayerOrder;
-  onSort: (by: PlayerSort) => void;
-  className?: string;
-}
-
-/** A column header that sorts the list; the sorted column shows an arrow and says which way in `aria-sort`. */
-function SortHeader({ by, order, onSort, className }: SortHeaderProps) {
-  const direction = order.by !== by ? undefined : order.ascending ? "ascending" : "descending";
-  return (
-    <th className={className} aria-sort={direction}>
-      <button type="button" className="sort" title={text.sortBy(text.sortNames[by])} onClick={() => onSort(by)}>
-        {text.columns[by]}
-        <svg className="sort-arrow" viewBox="0 0 10 10" aria-hidden="true">
-          <path d="M5 8.5v-7M2 4.5l3-3 3 3" />
-        </svg>
-      </button>
-    </th>
   );
 }
 

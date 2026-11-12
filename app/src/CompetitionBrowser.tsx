@@ -18,12 +18,20 @@ import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
 import { Fact, useProfileDetails } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
-import type { CompetitionFilter, CompetitionRule, CompetitionSummary } from "./types";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
+import type { CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary } from "./types";
 
 const text = competitionListText;
 const columns = text.columns;
 const filters = text.filters;
 const REPUTATION_RANGE = { min: 0, max: 200 };
+
+/** The columns the list sorts by. Until one is clicked the search answers with the highest reputation first. */
+const SORT: SortStart<CompetitionSort> = {
+  sorts: ["name", "nation", "continent", "reputation"],
+  start: { by: "reputation", ascending: false },
+  firstAscending: ["name", "nation", "continent"],
+};
 
 /**
  * The competitions, highest reputation first. A row holds all FM Lens knows of a competition but its short name and
@@ -41,6 +49,7 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
   useSnapshot("competitionContinent", () => continent);
   useSnapshot("competitionMinRep", () => minReputation);
   useSnapshot("competitionMaxRep", () => maxReputation);
+  const sort = useListSort("competitionOrder", SORT);
   const nationValue = nation.trim() || undefined;
   const continentValue = continent.trim() || undefined;
   const minRep = whole(minReputation, REPUTATION_RANGE);
@@ -95,7 +104,7 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
     <ListBrowser<CompetitionSummary>
       name="competitions"
       command="search_competitions"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order: sort.order ?? undefined }}
       version={version}
       active={active}
       placeholder={text.search}
@@ -137,10 +146,10 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
       tableClass="competition-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
-          <th className="col-nation">{columns.nation}</th>
-          <th className="col-continent">{columns.continent}</th>
-          <th className="num col-rep">{columns.reputation}</th>
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
+          <SortHeader by="nation" sort={sort} label={columns.nation} className="col-nation" />
+          <SortHeader by="continent" sort={sort} label={columns.continent} className="col-continent" />
+          <SortHeader by="reputation" sort={sort} label={columns.reputation} className="num col-rep" />
           <th className="num col-uid">{columns.uid}</th>
         </>
       }

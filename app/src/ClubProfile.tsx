@@ -128,7 +128,7 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
       <div className="profile-stack">
         <Facilities facilities={details.facilities} />
         <FinancesGroup club={details.uid} finances={details.finances} />
-        <StadiumGroup stadium={details.stadium} />
+        <StadiumGroup club={details.uid} stadium={details.stadium} />
       </div>
       <div className="profile-stack">
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
@@ -281,8 +281,11 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
   );
 }
 
-/** The stadium the senior team plays at: its name, and its capacities, inputs while the club is edited. */
-function StadiumGroup({ stadium }: { stadium: Stadium | null }) {
+/**
+ * The stadium the senior team plays at: its name, and its capacities, inputs while the club is edited; and its owner
+ * where that is another club.
+ */
+function StadiumGroup({ club, stadium }: { club: number; stadium: Stadium | null }) {
   return (
     <section className="profile-group">
       <h3>{stadium?.name ? `${text.stadium} · ${stadium.name}` : text.stadium}</h3>
@@ -300,6 +303,7 @@ function StadiumGroup({ stadium }: { stadium: Stadium | null }) {
           <Fact label={text.expansion}>
             <EditableValue field="stadium.expansion">{formatNumber(stadium.expansion)}</EditableValue>
           </Fact>
+          {stadium.owner && stadium.owner.uid !== club && <Fact label={text.owner}>{stadium.owner.name}</Fact>}
         </dl>
       ) : (
         <p className="note">{text.noStadium}</p>

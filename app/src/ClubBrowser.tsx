@@ -2,16 +2,26 @@ import { useId, useState } from "react";
 import { ClubProfile, readTab, type ClubTab } from "./ClubProfile";
 import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
 import { formatNumber } from "./format";
-import { clubListText, profileText } from "./labels";
+import { clubListText, playerListText, profileText } from "./labels";
 import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
-import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
+import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
-import type { ClubFilter, ClubSummary } from "./types";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
+import type { ClubFilter, ClubSort, ClubSummary } from "./types";
 
 const columns = clubListText.columns;
 const filters = clubListText.filters;
+/** What the players list calls a nation: the column and the filter here say the same. */
+const nationLabel = playerListText.columns.nation;
+
+/** The columns the list sorts by. Until one is clicked the search answers with the highest reputation first. */
+const SORT: SortStart<ClubSort> = {
+  sorts: ["name", "nation", "reputation", "founded"],
+  start: { by: "reputation", ascending: false },
+  firstAscending: ["name", "nation", "founded"],
+};
 
 /** Which clubs the list shows. */
 type ClubKind = "all" | "men" | "women";
@@ -41,6 +51,9 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
   const [maxReputation, setMaxReputation] = useState(() => restored("clubMaxRep", readText));
   const [foundedFrom, setFoundedFrom] = useState(() => restored("clubFoundedFrom", readText));
   const [foundedTo, setFoundedTo] = useState(() => restored("clubFoundedTo", readText));
+  const [nation, setNation] = useState(() => restored("clubNation", readText));
+  useSnapshot("clubNation", () => nation);
+  const sort = useListSort("clubOrder", SORT);
   useSnapshot("clubKind", () => kind);
   useSnapshot("clubMinRep", () => minReputation);
   useSnapshot("clubMaxRep", () => maxReputation);
@@ -61,8 +74,14 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
   const maxRep = whole(maxReputation, REPUTATION_RANGE);
   const fromYear = whole(foundedFrom, YEAR_RANGE);
   const toYear = whole(foundedTo, YEAR_RANGE);
+  const nationValue = nation.trim() || undefined;
   const filter: ClubFilter | undefined =
-    kind === "all" && minRep === undefined && maxRep === undefined && fromYear === undefined && toYear === undefined
+    kind === "all" &&
+    minRep === undefined &&
+    maxRep === undefined &&
+    fromYear === undefined &&
+    toYear === undefined &&
+    nationValue === undefined
       ? undefined
       : {
           women: kind === "all" ? undefined : kind === "women",
@@ -70,6 +89,7 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
           maxReputation: maxRep,
           foundedFrom: fromYear,
           foundedTo: toYear,
+          nation: nationValue,
         };
   const reputationLabel = useId();
   const foundedLabel = useId();
@@ -101,12 +121,16 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
       },
     });
   }
+  if (nationValue !== undefined) {
+    chips.push({ key: "nation", label: chipLabel(nationLabel, nationValue), remove: () => setNation("") });
+  }
   const clearAll = () => {
     setKind("all");
     setMinReputation("");
     setMaxReputation("");
     setFoundedFrom("");
     setFoundedTo("");
+    setNation("");
   };
 
   return (
@@ -114,7 +138,7 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
       name="clubs"
       reveal={reveal}
       command="search_clubs"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order: sort.order ?? undefined }}
       version={version}
       active={active}
       placeholder={clubListText.search}
@@ -178,15 +202,25 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
               onChange={(e) => setFoundedTo(e.currentTarget.value)}
             />
           </div>
+          <label className="filter-field">
+            <span>{nationLabel}</span>
+            <input
+              value={nation}
+              onChange={(e) => setNation(e.currentTarget.value)}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </label>
         </FilterBar>
       }
       toolbarActions={(list) => <MassEditButton entity="club" filters={{ clubFilter: filter }} list={list} />}
       tableClass="club-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
-          <th className="num col-rep">{columns.reputation}</th>
-          <th className="num col-founded">{columns.founded}</th>
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
+          <SortHeader by="nation" sort={sort} label={nationLabel} className="col-nation" />
+          <SortHeader by="reputation" sort={sort} label={columns.reputation} className="num col-rep" />
+          <SortHeader by="founded" sort={sort} label={columns.founded} className="num col-founded" />
           <th className="num col-uid">{columns.uid}</th>
         </>
       }
@@ -209,6 +243,9 @@ function ClubCells({ club: c }: { club: ClubSummary }) {
           </div>
           {c.shortName && c.shortName !== c.name && <div className="sub">{c.shortName}</div>}
         </WithPicture>
+      </td>
+      <td className="col-nation" title={c.nation ?? undefined}>
+        <WithPicture picture={<NationFlag uid={c.nationUid} />}>{c.nation ?? profileText.none}</WithPicture>
       </td>
       <td className="num col-rep">
         <ReputationMeter value={c.reputation} />

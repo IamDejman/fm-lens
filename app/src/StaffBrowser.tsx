@@ -7,15 +7,16 @@ import {
   STAFF_ATTRIBUTES,
   toAttributeBounds,
 } from "./AttributeFilters";
-import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
+import { chipLabel, FilterBar, RangeField, rangeText, type FilterChip } from "./FilterBar";
 import { formatDate } from "./format";
-import { JOB_FILTER_OPTIONS, jobLabel, profileText, staffListText } from "./labels";
+import { JOB_FILTER_OPTIONS, jobLabel, playerListText, profileText, staffListText } from "./labels";
 import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { NationFlag, WithPicture } from "./Picture";
 import { restored, useSnapshot } from "./restore";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import { EmployerPicture, employerOf, HumanBadge, jobOf, readStaffTab, StaffProfile } from "./StaffProfile";
-import type { StaffFilter, StaffSummary } from "./types";
+import type { StaffFilter, StaffSort, StaffSummary } from "./types";
 
 const AGE_RANGE = { min: 0, max: 99 };
 const ABILITY_RANGE = { min: 1, max: 200 };
@@ -33,6 +34,15 @@ const readText = (value: unknown) => (typeof value === "string" ? value : "");
 
 const columns = staffListText.columns;
 const filters = staffListText.filters;
+/** The words every list's ability range shares. */
+const shared = playerListText.filters;
+
+/** The columns the list sorts by. Until one is clicked the search answers with your manager, then the best first. */
+const SORT: SortStart<StaffSort> = {
+  sorts: ["name", "age", "club", "nation", "currentAbility", "potentialAbility"],
+  start: { by: "currentAbility", ascending: false },
+  firstAscending: ["name", "club", "nation"],
+};
 
 /** The job filter saved before the language was switched: a job the select offers, or "" for any. */
 const readJob = (value: unknown) =>
@@ -48,7 +58,9 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   const [minAge, setMinAge] = useState(() => restored("staffMinAge", readText));
   const [maxAge, setMaxAge] = useState(() => restored("staffMaxAge", readText));
   const [minCurrentAbility, setMinCurrentAbility] = useState(() => restored("staffMinCa", readText));
+  const [maxCurrentAbility, setMaxCurrentAbility] = useState(() => restored("staffMaxCa", readText));
   const [minPotentialAbility, setMinPotentialAbility] = useState(() => restored("staffMinPa", readText));
+  const [maxPotentialAbility, setMaxPotentialAbility] = useState(() => restored("staffMaxPa", readText));
   const [nation, setNation] = useState(() => restored("staffNation", readText));
   const [club, setClub] = useState(() => restored("staffClub", readText));
   const [attributes, setAttributes] = useState(() =>
@@ -60,7 +72,10 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   useSnapshot("staffMinAge", () => minAge);
   useSnapshot("staffMaxAge", () => maxAge);
   useSnapshot("staffMinCa", () => minCurrentAbility);
+  useSnapshot("staffMaxCa", () => maxCurrentAbility);
   useSnapshot("staffMinPa", () => minPotentialAbility);
+  useSnapshot("staffMaxPa", () => maxPotentialAbility);
+  const sort = useListSort("staffOrder", SORT);
   useSnapshot("staffNation", () => nation);
   useSnapshot("staffClub", () => club);
   useSnapshot("staffAttributes", () => attributes);
@@ -71,7 +86,9 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   const minAgeValue = whole(minAge, AGE_RANGE);
   const maxAgeValue = whole(maxAge, AGE_RANGE);
   const minCa = whole(minCurrentAbility, ABILITY_RANGE);
+  const maxCa = whole(maxCurrentAbility, ABILITY_RANGE);
   const minPa = whole(minPotentialAbility, ABILITY_RANGE);
+  const maxPa = whole(maxPotentialAbility, ABILITY_RANGE);
   const nationValue = nation.trim() || undefined;
   const clubValue = club.trim() || undefined;
   const filter: StaffFilter | undefined =
@@ -81,7 +98,9 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
     minAgeValue === undefined &&
     maxAgeValue === undefined &&
     minCa === undefined &&
+    maxCa === undefined &&
     minPa === undefined &&
+    maxPa === undefined &&
     nationValue === undefined &&
     clubValue === undefined &&
     bounds === undefined
@@ -93,7 +112,9 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
           minAge: minAgeValue,
           maxAge: maxAgeValue,
           minCurrentAbility: minCa,
+          maxCurrentAbility: maxCa,
           minPotentialAbility: minPa,
+          maxPotentialAbility: maxPa,
           nation: nationValue,
           club: clubValue,
           attributes: bounds,
@@ -119,11 +140,19 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
       setMaxAge("");
     });
   }
-  if (minCa !== undefined) {
-    add("minCa", chipLabel(filters.minCurrentAbility, String(minCa)), () => setMinCurrentAbility(""));
+  const ability = rangeText(minCa, maxCa);
+  const potential = rangeText(minPa, maxPa);
+  if (ability !== null) {
+    add("ability", chipLabel(columns.currentAbility, ability), () => {
+      setMinCurrentAbility("");
+      setMaxCurrentAbility("");
+    });
   }
-  if (minPa !== undefined) {
-    add("minPa", chipLabel(filters.minPotentialAbility, String(minPa)), () => setMinPotentialAbility(""));
+  if (potential !== null) {
+    add("potential", chipLabel(columns.potentialAbility, potential), () => {
+      setMinPotentialAbility("");
+      setMaxPotentialAbility("");
+    });
   }
   if (nationValue !== undefined) {
     add("nation", chipLabel(filters.nation, nationValue), () => setNation(""));
@@ -139,7 +168,9 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
     setMinAge("");
     setMaxAge("");
     setMinCurrentAbility("");
+    setMaxCurrentAbility("");
     setMinPotentialAbility("");
+    setMaxPotentialAbility("");
     setNation("");
     setClub("");
     setAttributes([]);
@@ -159,7 +190,7 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
       name="staff"
       reveal={reveal}
       command="search_staff"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order: sort.order ?? undefined }}
       version={version}
       active={active}
       placeholder={staffListText.search}
@@ -210,30 +241,26 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
               onChange={(e) => setMaxAge(e.currentTarget.value)}
             />
           </div>
-          <label className="filter-field" title={filters.minCurrentAbilityTitle}>
-            <span>{filters.minCurrentAbility}</span>
-            <input
-              type="number"
-              min={ABILITY_RANGE.min}
-              max={ABILITY_RANGE.max}
-              step={1}
-              placeholder={filters.abilityPlaceholder}
-              value={minCurrentAbility}
-              onChange={(e) => setMinCurrentAbility(e.currentTarget.value)}
-            />
-          </label>
-          <label className="filter-field" title={filters.minPotentialAbilityTitle}>
-            <span>{filters.minPotentialAbility}</span>
-            <input
-              type="number"
-              min={ABILITY_RANGE.min}
-              max={ABILITY_RANGE.max}
-              step={1}
-              placeholder={filters.abilityPlaceholder}
-              value={minPotentialAbility}
-              onChange={(e) => setMinPotentialAbility(e.currentTarget.value)}
-            />
-          </label>
+          <RangeField
+            label={columns.currentAbility}
+            minLabel={shared.minCurrentAbilityTitle}
+            maxLabel={shared.maxCurrentAbilityTitle}
+            range={ABILITY_RANGE}
+            min={minCurrentAbility}
+            max={maxCurrentAbility}
+            onMin={setMinCurrentAbility}
+            onMax={setMaxCurrentAbility}
+          />
+          <RangeField
+            label={columns.potentialAbility}
+            minLabel={shared.minPotentialAbilityTitle}
+            maxLabel={shared.maxPotentialAbilityTitle}
+            range={ABILITY_RANGE}
+            min={minPotentialAbility}
+            max={maxPotentialAbility}
+            onMin={setMinPotentialAbility}
+            onMax={setMaxPotentialAbility}
+          />
           <label className="filter-field">
             <span>{filters.nation}</span>
             <input value={nation} onChange={(e) => setNation(e.currentTarget.value)} spellCheck={false} />
@@ -249,14 +276,26 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
       tableClass="staff-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
-          <th className="num col-age">{columns.age}</th>
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
+          <SortHeader by="age" sort={sort} label={columns.age} className="num col-age" />
           <th className="col-job">{columns.job}</th>
-          <th className="col-club">{columns.club}</th>
-          <th className="col-nation">{columns.nation}</th>
+          <SortHeader by="club" sort={sort} label={columns.club} className="col-club" />
+          <SortHeader by="nation" sort={sort} label={columns.nation} className="col-nation" />
           <th className="col-born">{columns.born}</th>
-          <th className="num col-ca">{columns.currentAbility}</th>
-          <th className="num col-pa">{columns.potentialAbility}</th>
+          <SortHeader
+            by="currentAbility"
+            sort={sort}
+            label={columns.currentAbility}
+            name={playerListText.sortNames.currentAbility}
+            className="num col-ca"
+          />
+          <SortHeader
+            by="potentialAbility"
+            sort={sort}
+            label={columns.potentialAbility}
+            name={playerListText.sortNames.potentialAbility}
+            className="num col-pa"
+          />
           <th className="num col-uid">{columns.id}</th>
         </>
       }

@@ -16,7 +16,8 @@ import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput, Shared
 import { converts, toShown } from "./currency";
 import { describeError, formatAmount, formatDate, formatMoney, formatNumber } from "./format";
 import { isShortcut } from "./keys";
-import { fieldLabel, PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
+import { fieldLabel, PERSONALITY_LABELS, profileText } from "./labels";
+import { PERSONALITY } from "./playerAttributes";
 import { PanelResizer, PanelWidthButton, usePanelWidth } from "./PanelResizer";
 import type { Attribute, FmDate, Reputation } from "./types";
 import {
@@ -459,10 +460,6 @@ export interface RatingRow {
 
 /** Ratings where a low value is the good one. */
 export const LOWER_IS_BETTER = new Set<string>(["injury_proneness", "dirtiness", "controversy"]);
-
-const PERSONALITY: PersonalityKey[] = [
-  "adaptability", "ambition", "loyalty", "pressure", "professionalism", "sportsmanship", "temperament", "controversy",
-];
 
 /** An attribute as FM shows it (1–20), with the value as stored in the hover text. */
 export function attributeRow(
