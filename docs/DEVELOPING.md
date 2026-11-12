@@ -256,9 +256,21 @@ itself, so it needs the key; `npm run release` and `npm run release:windows` do 
 ### The website
 
 [getfmlens.com](https://getfmlens.com) is the static site in `site/`: plain HTML and CSS
-with the app's Archivo typeface, no build step. `.github/workflows/site.yml` publishes it to
-GitHub Pages when `site/` changes on `main`; the domain's DNS at Namecheap points at GitHub
-Pages. To look at it locally, run `python3 -m http.server 4321 --directory site`.
+with the app's Archivo typeface. `.github/workflows/site.yml` publishes it to GitHub Pages
+when `site/` changes on `main`; the domain's DNS at Namecheap points at GitHub Pages. To look
+at it locally, run `python3 -m http.server 4321 --directory site`.
+
+What is published is `site/` as `scripts/build-site.mjs` builds it: the release notes are
+written into `releases/index.html`, so search engines and readers without scripts get them,
+and each page's last change into `sitemap.xml`. `scripts/release.sh --publish` starts the
+workflow again after a release, so the published notes include it; until then the page
+fetches the newer notes in the browser, as it does unbuilt. To see the built site, run
+`node scripts/build-site.mjs _site` and serve `_site` instead.
+
+`site/llms.txt` tells AI assistants what FM Lens is, in the words of the home page: change
+it when the home page's description or its list of features changes. `site/robots.txt`
+lets every crawler read every page; `site/unsubscribe/` stays out of search with its own
+`noindex`, which a crawler kept out by `robots.txt` would never read.
 
 The files people download stay on the releases in fm-lens-releases. `site/release.js` asks
 GitHub's API for the latest release, so the home page shows its version and

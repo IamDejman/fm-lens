@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Release notes: FM Lens</title>
-  <meta name="description" content="What is new in each version of FM Lens.">
+  <meta name="description" content="What is new in each version of FM Lens, the free Football Manager 27 editor for Mac and Windows.">
   <link rel="canonical" href="https://getfmlens.com/releases/">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="FM Lens">
   <meta property="og:url" content="https://getfmlens.com/releases/">
   <meta property="og:title" content="Release notes: FM Lens">
-  <meta property="og:description" content="What is new in each version of FM Lens.">
+  <meta property="og:description" content="What is new in each version of FM Lens, the free Football Manager 27 editor for Mac and Windows.">
   <meta property="og:image" content="https://getfmlens.com/images/social.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
@@ -43,53 +44,22 @@
 
   <script type="module">
     import "../analytics.js";
-    import { releaseNotes } from "../release.js";
+    import { releaseNotes, releaseNotesHtml } from "../release.js";
 
-    const DOWNLOAD_ICON = '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>';
+    // The published page already holds the notes (scripts/build-site.mjs), with the newest version they had then.
     const status = document.getElementById("status");
     const list = document.getElementById("releases");
     const releases = await releaseNotes();
-    if (!releases) {
+    if (!releases && !list.dataset.latest) {
       status.textContent = "The release notes could not be loaded. Try again in a moment.";
     } else {
-      status.remove();
-      const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
-      for (const release of releases) {
-        const article = document.createElement("article");
-        const heading = document.createElement("h2");
-        heading.id = `v${release.version}`;
-        heading.textContent = `FM Lens ${release.version}`;
-        const meta = document.createElement("p");
-        meta.className = "release-date";
-        meta.textContent = date.format(new Date(release.published));
-        const body = document.createElement("div");
-        body.className = "release-body";
-        // GitHub renders and sanitizes the release text it sends as HTML.
-        body.innerHTML = release.html;
-        article.append(heading, meta);
-        const files = document.createElement("div");
-        files.className = "release-files";
-        for (const [computer, name] of [["mac", "Mac"], ["windows", "Windows"]]) {
-          if (!release.downloads[computer]) {
-            continue;
-          }
-          const link = document.createElement("a");
-          link.className = "button release-download";
-          // The download page starts this version's download.
-          link.href = `/download/?for=${computer}&version=${release.version}`;
-          link.setAttribute("aria-label", `Download FM Lens ${release.version} for ${name}`);
-          link.innerHTML = DOWNLOAD_ICON;
-          link.append(name);
-          files.append(link);
-        }
-        if (files.childElementCount > 0) {
-          article.append(files);
-        }
-        article.append(body);
-        list.append(article);
+      status?.remove();
+      if (releases?.length > 0 && releases[0].version !== list.dataset.latest) {
+        list.innerHTML = releaseNotesHtml(releases);
+        list.dataset.latest = releases[0].version;
+        // The app links to a version's notes (#v0.5.6); they are only here once the list is.
+        document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
       }
-      // The app links to a version's notes (#v0.5.6); they are only here once the list is.
-      document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
     }
   </script>
 </body>
