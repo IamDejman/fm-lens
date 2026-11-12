@@ -1646,6 +1646,12 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.9": [
+        "Congelar mantiene también la habilidad actual: un jugador congelado deja de decaer.",
+        "Al editar un jugador, FM Lens sugiere la HA que valen sus atributos.",
+        "Pasa el puntero por un atributo para ver qué significa.",
+        "Las características llevan los nombres de FM27 y van en sus grupos.",
+      ],
       "0.7.8": [
         "Funciona con la actualización de FM27 del 12 de noviembre en Steam.",
         "Ordena cualquier lista y filtra jugadores por salario, valor, altura y personalidad.",

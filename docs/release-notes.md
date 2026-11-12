@@ -1,46 +1,45 @@
 ## What's new
 
-FM Lens 0.7.8 works with the Football Manager 27 update Steam installed on 12 November, so you can edit your save again on Mac and Windows. It also sorts every list, finds players by much more than CA and PA, shows every attribute on a player's profile, and lets you change a member of staff's birth date.
+FM Lens 0.7.9 makes a freeze hold. A frozen player now keeps his current ability as well as his attributes, so the game stops showing him in decline. It also suggests the CA that fits the attributes you type, explains every attribute where you see it, names and groups traits the way FM27 does, and puts Check for updates at the foot of the window.
 
-### Ready for FM27's 12 November update
+### A freeze that holds
 
-- Steam updated FM27 on 12 November (still version 27.0.1). FM Lens 0.7.7 could only read that version. 0.7.8 edits it again on Apple Silicon Macs, Intel Macs and Windows.
-- Every edit and game action was tried on the new version on all three: attributes, contracts, injuries, work permits, loans, transfers, releases, signings, club money, tactics, squad actions, staff, nations, Undo, and a save reloaded in FM.
-- Loans and work permits got a safety check. Before it starts a loan or asks whether a player needs a work permit, FM Lens checks the values it takes from the game. If a future FM update moves them, it refuses instead of writing something wrong.
+- You told us the freeze did not work for everyone. You were right: a frozen player kept every attribute, but FM still lowered his current ability, so the game showed him declining anyway.
+- A freeze now holds current ability beside the attributes. Nothing a frozen player has can drop.
+- It was tried over 200 game days on Windows. Of 1,861 frozen players aged 32 and over, none lost an attribute point and none lost CA. Of 1,072 left unfrozen, 1,022 lost CA.
+- Gains still count. When a frozen player improves, the better value becomes the one that is held.
+- Players you froze before are covered too: open FM Lens with your save and they are held from where they stand.
 
-### Sort and filter everything
+### Suggested CA
 
-- All eight lists sort by their column headers: players, staff, clubs, nations, competitions, awards, stadiums and officials. Click a header again to flip the order. Without a click, a search still shows the best first.
-- Find players by CA and PA ranges, height, weekly wage and value.
-- Filter by personality: the eight personality ratings sit with the attribute filters, so you can look for a model professional or rule out a temperamental one. You can require a trait too.
-- Saved filters keep all the new fields.
-- Staff and officials get CA and PA ranges, and officials a reputation range.
-- Clubs have a Nation column you can filter and sort by.
+- Editing attributes or positions could leave a player's current ability far from what his attributes are worth. While you edit a player, his profile now shows the CA that fits what you typed.
+- One click fills it in. A potential below it is raised to match, and a potential set as a range is left alone.
+- The suggestion was fitted to 30,282 players and lands within about 2 points of the game's own number, and within 4 for 19 players in 20.
+- It is worked out inside FM Lens and never touches the game. A player you have not changed is suggested the CA he already has, so the button only shows once an edit moves it.
 
-### Every attribute on the profile
+### Every attribute explained
 
-- A player's profile now shows every attribute. His own group comes first, and the other one sits under Physical.
-- So you can see and edit an outfielder's goalkeeping attributes, or a keeper's outfield ones, one at a time. Want a striker who can go in goal? Go ahead.
+- Rest the pointer on any attribute and a short box over the row says what it measures. No more guessing what Anticipation or Eccentricity does.
+- It works on player and staff profiles, while you view and while you edit, and on the row names when you compare players.
+- Keyboard users get it too: move the focus into a row and the box shows.
+- The box replaces the old hover text, which only repeated the stored value. The three ratings where lower is better still say so.
+- The explanations come in English, Spanish and Turkish.
 
-### Stadium owners
+### Traits as FM27 has them
 
-- A stadium shows which club owns it.
-- A club's profile names the owner of its ground when that is another club.
+- The "Unknown trait" some players showed has its name: Plays ball with feet. FM27 keeps it in a different place than FM Lens expected, and each of the last five trait slots was set alone on a player and read in the game to find it.
+- Two slots FM27 shows nothing for are no longer offered in the edit list or the filter, and no longer listed on a profile.
+- The edit list was one run of 62 checkboxes. It now stands in the groups FM trains traits in, in the game's order: Movement, Passing, Finishing, Discipline, Defending and Technique, with the two traits about retiring under Career.
+- A player's own traits are listed in the same order, and a long trait wraps instead of running over the positions beside it.
+- Three English names now match FM27's wording: Hits free kick with power, Likes to beat opponent repeatedly, and Likes to switch ball to wide areas.
 
-### Staff birth dates
+### Check for updates, where you can find it
 
-- Change a member of staff's birth date on the Career tab in Edit, your own manager's too.
-- It is in staff Mass edit as well, as it is for players.
-- Dates go back to 1920, since chairmen and owners are staff too. The age in the list and on the profile follows the edit, and Undo puts it back.
-
-### Green marks that stay
-
-- The green mark on a field you changed now stays as long as the change stands in Changes.
-- Apply a few times and every field you changed stays marked. Close the profile, open it again, and the marks are still there.
-- Mass edits and templates mark their fields the same way, and an Undo clears only its own marks.
+- Check for updates sits at the foot of the window beside Wishlist, on Mac and Windows. Before, it was only in the Mac app menu and in Settings, About, on Windows.
+- The notice under the masthead says what it found, and Relaunch to update takes its place once a newer version is ready.
 
 ### Updating
 
-- Open FM Lens and it fetches 0.7.8 by itself. Press Relaunch to update when it appears, or download 0.7.8 from getfmlens.com.
+- Open FM Lens and it fetches 0.7.9 by itself. Press Relaunch to update when it appears, or download 0.7.9 from getfmlens.com.
 
 FM Lens is free and open source, and it will stay that way. A [star on GitHub](https://github.com/IamDejman/fm-lens) encourages me.

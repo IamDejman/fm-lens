@@ -1621,6 +1621,12 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.9": [
+        "Dondurma artık mevcut yeteneği de tutar: dondurulan oyuncu gerilemez.",
+        "Bir oyuncuyu düzenlerken FM Lens, özelliklerine uyan MY'yi önerir.",
+        "Bir özelliğin ne anlama geldiğini görmek için imleci üzerine getirin.",
+        "Oyuncu davranışları FM27'deki adları ve gruplarıyla gelir.",
+      ],
       "0.7.8": [
         "FM27'nin 12 Kasım Steam güncellemesiyle çalışır.",
         "Her listeyi sıralayın, oyuncuları maaşa, değere, boya ve kişiliğe göre filtreleyin.",
