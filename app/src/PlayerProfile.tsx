@@ -261,9 +261,14 @@ function StatusChips({ details, onTab }: { details: PlayerDetails; onTab: (tab: 
   );
 }
 
+/** The attributes the main group of a player's kind leaves out: a keeper's outfield ones, the others' goalkeeping. */
+const OUTFIELD_ONLY = TECHNICAL.filter((key) => !GOALKEEPING.includes(key));
+const GOALKEEPING_ONLY = GOALKEEPING.filter((key) => !TECHNICAL.includes(key));
+
 /**
  * His attributes, with Set all and Freeze above them while Tools is open, the positions he plays with their ratings on
- * the pitch (inputs under it while he is edited) and his traits.
+ * the pitch (inputs under it while he is edited) and his traits. Every attribute is there: the group of his own kind
+ * first, as FM has it, and the other kind's under Physical.
  */
 function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; toolsOpen: boolean; tools: string }) {
   const goalkeeper = isGoalkeeper(details);
@@ -284,7 +289,14 @@ function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; 
             <RatingGroup title={profileText.technical} rows={attributeRows(details, TECHNICAL)} />
           )}
           <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
-          <RatingGroup title={profileText.physical} rows={attributeRows(details, PHYSICAL)} />
+          <div className="profile-stack">
+            <RatingGroup title={profileText.physical} rows={attributeRows(details, PHYSICAL)} />
+            {goalkeeper ? (
+              <RatingGroup title={profileText.technical} rows={attributeRows(details, OUTFIELD_ONLY)} />
+            ) : (
+              <RatingGroup title={profileText.goalkeeping} rows={attributeRows(details, GOALKEEPING_ONLY)} />
+            )}
+          </div>
         </div>
 
         <div className="profile-columns">

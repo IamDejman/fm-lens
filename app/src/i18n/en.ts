@@ -956,18 +956,29 @@ export const en = {
       /** The hint in an empty age input. */
       minPlaceholder: "Min",
       maxPlaceholder: "Max",
-      minCurrentAbility: "Min CA",
       minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
       minPotentialAbilityTitle: "Minimum potential ability",
-      /** The hint in an empty ability input: what it accepts. */
-      abilityPlaceholder: "1–200",
       nation: "Nation",
       club: "Club",
       freeAgentsOnly: "Free agents only",
       contractEndsBy: "Contract ends by",
       transferListedOnly: "Transfer listed only",
       loanListedOnly: "Loan listed only",
+      maxCurrentAbilityTitle: "Maximum current ability",
+      maxPotentialAbilityTitle: "Maximum potential ability",
+      height: "Height (cm)",
+      minHeight: "Minimum height",
+      maxHeight: "Maximum height",
+      /** A week, in the currency on show. */
+      wage: "Wage p/w",
+      minWage: "Minimum wage",
+      maxWage: "Maximum wage",
+      /** The stored base transfer value the Contract tab shows. */
+      value: "Base value",
+      minValue: "Minimum value",
+      maxValue: "Maximum value",
+      /** The select of the trait a player must have. */
+      trait: "Trait",
       /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */
       chips: "Filters in effect",
       removeChip: (label: string) => `Remove ${label}`,
@@ -1049,11 +1060,6 @@ export const en = {
       maxAge: "Maximum age",
       minPlaceholder: "Min",
       maxPlaceholder: "Max",
-      minCurrentAbility: "Min CA",
-      minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
-      minPotentialAbilityTitle: "Minimum potential ability",
-      abilityPlaceholder: "1–200",
       nation: "Nation",
       club: "Club",
     },
@@ -1115,6 +1121,8 @@ export const en = {
     usedAll: "All of it",
     usedTitle: "How much of the capacity FM lets in. 0 means all of it.",
     expansion: "Can grow to",
+    /** The club that owns the stadium, shown when it is another club. */
+    owner: "Owner",
     /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
     noStadium: "Couldn't read this club's stadium.",
 
@@ -1192,11 +1200,6 @@ export const en = {
       age: "Age",
       minAge: "Minimum age",
       maxAge: "Maximum age",
-      minCurrentAbility: "Min CA",
-      minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
-      minPotentialAbilityTitle: "Minimum potential ability",
-      abilityPlaceholder: "1–200",
       nation: "Nation",
     },
     reputation: "Reputation",

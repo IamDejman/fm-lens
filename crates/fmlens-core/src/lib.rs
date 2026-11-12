@@ -50,7 +50,7 @@ pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
 pub use clubs::{
     ClubDetails, ClubIndex, ClubSummary, Finances, SUPPORTER_MIX, SUPPORTER_TRAITS, StadiumClub, StadiumFilter,
-    StadiumSummary, read_club_details, read_clubs, read_stadiums,
+    StadiumSummary, read_club_details, read_clubs, read_stadiums, stadium_owner,
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
@@ -63,8 +63,9 @@ pub use details::{
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};
 pub use filter::{
-    AttributeBound, AwardFilter, ClubFilter, CompetitionFilter, NationFilter, OfficialFilter, PlayerFilter,
-    PlayerOrder, PlayerSort, StaffFilter, sort_players,
+    AttributeBound, AwardFilter, AwardSort, ClubFilter, ClubSort, CompetitionFilter, CompetitionSort, NationFilter,
+    NationSort, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, SortColumn, SortKey,
+    StadiumSort, StaffFilter, StaffSort, sort_players, sort_rows,
 };
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use game_calls::{

@@ -3,12 +3,13 @@ import { Ability } from "./Ability";
 import { EditableValue } from "./EditControls";
 import { chipLabel, FilterBar, type FilterChip, RangeField, rangeText, readText, whole } from "./FilterBar";
 import { formatNumber } from "./format";
-import { officialListText, profileText } from "./labels";
+import { clubListText, officialListText, playerListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
 import { Born, Fact, ProfileFrame, ReputationMeter } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
-import type { OfficialFilter, OfficialSummary } from "./types";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
+import type { OfficialFilter, OfficialSort, OfficialSummary } from "./types";
 import { useProfileEditing } from "./useProfileEditing";
 
 const text = officialListText;
@@ -16,6 +17,17 @@ const columns = text.columns;
 const filters = text.filters;
 const AGE_RANGE = { min: 0, max: 99 };
 const ABILITY_RANGE = { min: 1, max: 200 };
+const REPUTATION_RANGE = { min: 0, max: 10000 };
+/** The words every list's ability and reputation ranges share. */
+const shared = playerListText.filters;
+const reputationText = clubListText.filters;
+
+/** The columns the list sorts by. Until one is clicked the search answers with the best first. */
+const SORT: SortStart<OfficialSort> = {
+  sorts: ["name", "age", "nation", "reputation", "currentAbility", "potentialAbility"],
+  start: { by: "currentAbility", ascending: false },
+  firstAscending: ["name", "nation"],
+};
 
 /** The match officials, best first, with the selected official beside the table. */
 export function OfficialBrowser({
@@ -29,32 +41,45 @@ export function OfficialBrowser({
   const [minAge, setMinAge] = useState(() => restored("officialMinAge", readText));
   const [maxAge, setMaxAge] = useState(() => restored("officialMaxAge", readText));
   const [minCurrentAbility, setMinCurrentAbility] = useState(() => restored("officialMinCa", readText));
+  const [maxCurrentAbility, setMaxCurrentAbility] = useState(() => restored("officialMaxCa", readText));
   const [minPotentialAbility, setMinPotentialAbility] = useState(() => restored("officialMinPa", readText));
+  const [maxPotentialAbility, setMaxPotentialAbility] = useState(() => restored("officialMaxPa", readText));
+  const [minReputation, setMinReputation] = useState(() => restored("officialMinRep", readText));
+  const [maxReputation, setMaxReputation] = useState(() => restored("officialMaxRep", readText));
   const [nation, setNation] = useState(() => restored("officialNation", readText));
   useSnapshot("officialMinAge", () => minAge);
   useSnapshot("officialMaxAge", () => maxAge);
   useSnapshot("officialMinCa", () => minCurrentAbility);
+  useSnapshot("officialMaxCa", () => maxCurrentAbility);
   useSnapshot("officialMinPa", () => minPotentialAbility);
+  useSnapshot("officialMaxPa", () => maxPotentialAbility);
+  useSnapshot("officialMinRep", () => minReputation);
+  useSnapshot("officialMaxRep", () => maxReputation);
   useSnapshot("officialNation", () => nation);
+  const sort = useListSort("officialOrder", SORT);
   const minAgeValue = whole(minAge, AGE_RANGE);
   const maxAgeValue = whole(maxAge, AGE_RANGE);
   const minCa = whole(minCurrentAbility, ABILITY_RANGE);
+  const maxCa = whole(maxCurrentAbility, ABILITY_RANGE);
   const minPa = whole(minPotentialAbility, ABILITY_RANGE);
+  const maxPa = whole(maxPotentialAbility, ABILITY_RANGE);
+  const minRep = whole(minReputation, REPUTATION_RANGE);
+  const maxRep = whole(maxReputation, REPUTATION_RANGE);
   const nationValue = nation.trim() || undefined;
-  const filter: OfficialFilter | undefined =
-    minAgeValue === undefined &&
-    maxAgeValue === undefined &&
-    minCa === undefined &&
-    minPa === undefined &&
-    nationValue === undefined
-      ? undefined
-      : {
-          minAge: minAgeValue,
-          maxAge: maxAgeValue,
-          minCurrentAbility: minCa,
-          minPotentialAbility: minPa,
-          nation: nationValue,
-        };
+  const values = [minAgeValue, maxAgeValue, minCa, maxCa, minPa, maxPa, minRep, maxRep, nationValue];
+  const filter: OfficialFilter | undefined = values.every((value) => value === undefined)
+    ? undefined
+    : {
+        minAge: minAgeValue,
+        maxAge: maxAgeValue,
+        minCurrentAbility: minCa,
+        maxCurrentAbility: maxCa,
+        minPotentialAbility: minPa,
+        maxPotentialAbility: maxPa,
+        minReputation: minRep,
+        maxReputation: maxRep,
+        nation: nationValue,
+      };
 
   // A chip for each filter in effect; the two ends of the age range are one.
   const chips: FilterChip[] = [];
@@ -66,11 +91,26 @@ export function OfficialBrowser({
       setMaxAge("");
     });
   }
-  if (minCa !== undefined) {
-    add("minCa", chipLabel(filters.minCurrentAbility, String(minCa)), () => setMinCurrentAbility(""));
+  const ability = rangeText(minCa, maxCa);
+  const potential = rangeText(minPa, maxPa);
+  const reputation = rangeText(minRep, maxRep, formatNumber);
+  if (ability !== null) {
+    add("ability", chipLabel(columns.ca, ability), () => {
+      setMinCurrentAbility("");
+      setMaxCurrentAbility("");
+    });
   }
-  if (minPa !== undefined) {
-    add("minPa", chipLabel(filters.minPotentialAbility, String(minPa)), () => setMinPotentialAbility(""));
+  if (potential !== null) {
+    add("potential", chipLabel(columns.pa, potential), () => {
+      setMinPotentialAbility("");
+      setMaxPotentialAbility("");
+    });
+  }
+  if (reputation !== null) {
+    add("reputation", chipLabel(columns.reputation, reputation), () => {
+      setMinReputation("");
+      setMaxReputation("");
+    });
   }
   if (nationValue !== undefined) {
     add("nation", chipLabel(filters.nation, nationValue), () => setNation(""));
@@ -79,7 +119,11 @@ export function OfficialBrowser({
     setMinAge("");
     setMaxAge("");
     setMinCurrentAbility("");
+    setMaxCurrentAbility("");
     setMinPotentialAbility("");
+    setMaxPotentialAbility("");
+    setMinReputation("");
+    setMaxReputation("");
     setNation("");
   };
 
@@ -87,7 +131,7 @@ export function OfficialBrowser({
     <ListBrowser<OfficialSummary>
       name="officials"
       command="search_officials"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order: sort.order ?? undefined }}
       version={version}
       active={active}
       placeholder={text.search}
@@ -105,30 +149,36 @@ export function OfficialBrowser({
             onMin={setMinAge}
             onMax={setMaxAge}
           />
-          <label className="filter-field" title={filters.minCurrentAbilityTitle}>
-            <span>{filters.minCurrentAbility}</span>
-            <input
-              type="number"
-              min={ABILITY_RANGE.min}
-              max={ABILITY_RANGE.max}
-              step={1}
-              placeholder={filters.abilityPlaceholder}
-              value={minCurrentAbility}
-              onChange={(e) => setMinCurrentAbility(e.currentTarget.value)}
-            />
-          </label>
-          <label className="filter-field" title={filters.minPotentialAbilityTitle}>
-            <span>{filters.minPotentialAbility}</span>
-            <input
-              type="number"
-              min={ABILITY_RANGE.min}
-              max={ABILITY_RANGE.max}
-              step={1}
-              placeholder={filters.abilityPlaceholder}
-              value={minPotentialAbility}
-              onChange={(e) => setMinPotentialAbility(e.currentTarget.value)}
-            />
-          </label>
+          <RangeField
+            label={columns.ca}
+            minLabel={shared.minCurrentAbilityTitle}
+            maxLabel={shared.maxCurrentAbilityTitle}
+            range={ABILITY_RANGE}
+            min={minCurrentAbility}
+            max={maxCurrentAbility}
+            onMin={setMinCurrentAbility}
+            onMax={setMaxCurrentAbility}
+          />
+          <RangeField
+            label={columns.pa}
+            minLabel={shared.minPotentialAbilityTitle}
+            maxLabel={shared.maxPotentialAbilityTitle}
+            range={ABILITY_RANGE}
+            min={minPotentialAbility}
+            max={maxPotentialAbility}
+            onMin={setMinPotentialAbility}
+            onMax={setMaxPotentialAbility}
+          />
+          <RangeField
+            label={columns.reputation}
+            minLabel={reputationText.minReputation}
+            maxLabel={reputationText.maxReputation}
+            range={REPUTATION_RANGE}
+            min={minReputation}
+            max={maxReputation}
+            onMin={setMinReputation}
+            onMax={setMaxReputation}
+          />
           <label className="filter-field">
             <span>{filters.nation}</span>
             <input
@@ -143,12 +193,24 @@ export function OfficialBrowser({
       tableClass="official-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
-          <th className="num col-age">{columns.age}</th>
-          <th className="col-nation">{columns.nation}</th>
-          <th className="num col-rep">{columns.reputation}</th>
-          <th className="num col-ca">{columns.ca}</th>
-          <th className="num col-pa">{columns.pa}</th>
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
+          <SortHeader by="age" sort={sort} label={columns.age} className="num col-age" />
+          <SortHeader by="nation" sort={sort} label={columns.nation} className="col-nation" />
+          <SortHeader by="reputation" sort={sort} label={columns.reputation} className="num col-rep" />
+          <SortHeader
+            by="currentAbility"
+            sort={sort}
+            label={columns.ca}
+            name={playerListText.sortNames.currentAbility}
+            className="num col-ca"
+          />
+          <SortHeader
+            by="potentialAbility"
+            sort={sort}
+            label={columns.pa}
+            name={playerListText.sortNames.potentialAbility}
+            className="num col-pa"
+          />
           <th className="num col-uid">{columns.uid}</th>
         </>
       }

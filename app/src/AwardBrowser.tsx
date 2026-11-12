@@ -17,7 +17,8 @@ import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
 import { Fact, ProfileFrame } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
-import type { AwardFilter, AwardSummary } from "./types";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
+import type { AwardFilter, AwardSort, AwardSummary } from "./types";
 
 const text = awardListText;
 const columns = text.columns;
@@ -25,6 +26,13 @@ const filters = text.filters;
 const PRESTIGE_RANGE = { min: 0, max: 20 };
 /** FM's codes for who gets an award that the given-to select offers: a player, a manager, a team of players. */
 const RECIPIENTS = [1, 2, 7];
+
+/** The columns the list sorts by. Until one is clicked the search answers with the most prestigious first. */
+const SORT: SortStart<AwardSort> = {
+  sorts: ["name", "competition", "nation", "prestige"],
+  start: { by: "prestige", ascending: false },
+  firstAscending: ["name", "competition", "nation"],
+};
 
 /** The given-to filter saved before the language was switched: a code the select offers, or "" for anyone. */
 const readRecipients = (value: unknown) =>
@@ -44,6 +52,7 @@ export function AwardBrowser({ version, active }: { version: number; active: boo
   useSnapshot("awardRecipients", () => recipients);
   useSnapshot("awardMinPrestige", () => minPrestige);
   useSnapshot("awardMaxPrestige", () => maxPrestige);
+  const sort = useListSort("awardOrder", SORT);
   const nationValue = nation.trim() || undefined;
   const minValue = whole(minPrestige, PRESTIGE_RANGE);
   const maxValue = whole(maxPrestige, PRESTIGE_RANGE);
@@ -93,7 +102,7 @@ export function AwardBrowser({ version, active }: { version: number; active: boo
     <ListBrowser<AwardSummary>
       name="awards"
       command="search_awards"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order: sort.order ?? undefined }}
       version={version}
       active={active}
       placeholder={text.search}
@@ -137,10 +146,10 @@ export function AwardBrowser({ version, active }: { version: number; active: boo
       tableClass="award-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
-          <th className="col-competition">{columns.competition}</th>
-          <th className="col-nation">{columns.nation}</th>
-          <th className="num col-prestige">{columns.prestige}</th>
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
+          <SortHeader by="competition" sort={sort} label={columns.competition} className="col-competition" />
+          <SortHeader by="nation" sort={sort} label={columns.nation} className="col-nation" />
+          <SortHeader by="prestige" sort={sort} label={columns.prestige} className="num col-prestige" />
           <th className="num col-uid">{columns.uid}</th>
         </>
       }
