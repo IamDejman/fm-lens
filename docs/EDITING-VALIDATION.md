@@ -3186,3 +3186,47 @@ wording: "Hits free kick with power", "Likes to beat opponent repeatedly" and
 Not run: the packaged app with these changes on any platform (the list and
 the tags were checked in the browser preview); the Spanish and Turkish names
 against FM in those languages.
+
+## Dragging numbers, scroll position and reopening (12 November 2026)
+
+Three changes to the interface, none to what is written to the game or how:
+a number's input can be dragged sideways (`app/src/dragValue.ts`,
+`draggedText` in `app/src/editDraft.ts`), lists and profiles keep their scroll
+position, and what the window held comes back when FM Lens is opened again
+(`app/src/restore.ts`). A drag only fills the input; Apply, the guards and Undo
+are untouched. No Rust changed.
+
+Checked in the browser preview (`npm --prefix app run dev`, `?writable`, sample
+data, headless Chromium, 1440 by 900). This is not the native app and not a
+live game.
+
+- Scroll: the player list at 900 px stayed at 900 after going to Staff and
+  back, with and without a search, with a profile open, and after an Apply.
+  Before the change each of these went back to 0. A new search starts at the
+  top. An open profile at 250 px was at 250 after the same round trip.
+- Dragging: 78 of a player's 141 inputs drag (numbers only). Eccentricity 18
+  went to 14 over 40 px left, to 20 over 64 px right, and stopped at 20 and at 1
+  however far the pointer went. A click without movement changed nothing and
+  focused the input. Current ability 180 went to 173 over 30 px, showed as one
+  pending change, read "Current ability 180 → 173" in Review and applied. A
+  club's balance went 17,551,479 → 18,000,000 → 19,000,000 → 20,000,000. At
+  150% zoom in the dark theme, 36 px moved an attribute three steps.
+- Reopening: with a club open on its Squad tab, a player selected on the second
+  page at 1,200 px on the Contract tab, and "nov" in the Staff search, the
+  window was closed and a new one opened on the same storage. It came back on
+  Clubs with that club and tab, Players had the same row, page, scroll position
+  and tab, and Staff had its search. Settings did not open by itself.
+- A language or currency reload still brings the window back as before, with
+  Settings open.
+
+`npm --prefix app run build` and `npm --prefix app test` passed: 8 node tests
+and 104 in vitest, 14 of them new (`app/tests/drag-value.test.tsx`,
+`app/tests/navigation-memory.test.tsx`), covering the steps of a drag, a finger
+and a date left alone, rows kept while a list reads again, another career
+starting afresh and a list that left the screen before the app closed.
+
+The numbers above are from the run on top of 0.7.10. There, current ability
+follows a changed attribute by itself, whether it was typed or dragged.
+
+Not run: the native macOS and Windows apps (WebKit and WebView2), a real FM
+restart or a second career, and the Rust checks.

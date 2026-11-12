@@ -2,6 +2,7 @@ import {
   Fragment,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -20,6 +21,7 @@ import { isShortcut } from "./keys";
 import { fieldLabel, PERSONALITY_LABELS, PERSONALITY_NOTES, profileText } from "./labels";
 import { PERSONALITY } from "./playerAttributes";
 import { PanelResizer, PanelWidthButton, usePanelWidth } from "./PanelResizer";
+import { ProfilePlaceContext } from "./profilePlace";
 import type { Attribute, FmDate, Reputation } from "./types";
 import {
   AppliedFieldsContext,
@@ -135,6 +137,16 @@ export function ProfileFrame(props: ProfileFrameProps) {
   const panelWidth = usePanelWidth(wide ? "wide" : "profile");
   const shownVitals = vitals?.filter(Boolean) ?? [];
   const body = useRef<HTMLDivElement>(null);
+  const place = useContext(ProfilePlaceContext);
+  const shown = loaded?.details !== undefined;
+
+  // Coming back to its section builds the profile again: once it has something to show, it is where it was left.
+  useLayoutEffect(() => {
+    const top = shown ? (place?.top() ?? 0) : 0;
+    if (top > 0) {
+      body.current?.scrollTo({ top });
+    }
+  }, [shown, place]);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -245,7 +257,12 @@ export function ProfileFrame(props: ProfileFrameProps) {
 
         {tabs}
 
-        <div className="profile-body" ref={body} data-tour="profile">
+        <div
+          className="profile-body"
+          ref={body}
+          data-tour="profile"
+          onScroll={place ? (event) => place.note(event.currentTarget.scrollTop) : undefined}
+        >
           <SectionJump body={body} />
           {!loaded && (
             <p className="profile-status" role="status">
