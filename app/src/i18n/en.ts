@@ -1755,6 +1755,12 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.9": [
+        "A freeze now holds current ability too, so a frozen player stops declining.",
+        "Edit a player and FM Lens suggests the CA his attributes are worth.",
+        "Rest the pointer on an attribute to see what it means.",
+        "Traits have FM27's names and sit in FM's groups.",
+      ],
       "0.7.8": [
         "Works with FM27's 12 November update on Steam.",
         "Sort every list, and filter players by wage, value, height and personality.",
