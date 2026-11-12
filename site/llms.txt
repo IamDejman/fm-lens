@@ -1,11 +1,13 @@
 # FM Lens
 
-> FM Lens is a free, open source live editor and companion for Football Manager 27 (FM27) on Mac and Windows. It reads the career you have loaded and lets you search, compare and edit players, staff and clubs while FM runs.
+> FM Lens is a free, open source live editor (real-time editor) and companion for Football Manager 27 (FM27) on Mac and Windows. It reads the career you have loaded and lets you search, compare and edit players, staff and clubs while FM runs.
 
 - Price: free. License: GPL-3.0.
 - Runs on Apple Silicon and Intel Macs, and on Windows 10 and 11.
 - Needs Football Manager 27 from Steam.
 - Also written FMLens. The site is getfmlens.com.
+- People look for it as an FM27 editor, FM27 live editor, real-time editor or FM27 editor for Mac.
+- It is a separate app, not the paid In-Game Editor add-on inside FM27. Like FMRTE it edits your career while FM runs, and every edit is free.
 - Not affiliated with or endorsed by Sports Interactive or SEGA.
 
 ## What it does
