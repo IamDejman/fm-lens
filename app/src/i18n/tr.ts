@@ -411,6 +411,69 @@ export const tr: Strings = {
     right_foot: "Sağ Ayak",
   },
 
+  attributeNotes: {
+    // Teknik
+    corners: "Korner vuruşlarının kalitesi.",
+    crossing: "Kanatlardan yapılan ortaların isabeti.",
+    dribbling: "Topla koşarken topu kontrol etme becerisi.",
+    finishing: "Pozisyonları gole çevirme becerisi.",
+    first_touch: "Gelen topu temiz kontrol etme becerisi.",
+    free_kicks: "Direkt serbest vuruşların kalitesi, şut ya da orta.",
+    heading: "Kaleye ya da takım arkadaşına yapılan kafa vuruşlarının isabeti.",
+    long_shots: "Ceza sahası dışından atılan şutların tehlikesi.",
+    long_throws: "Taç atışlarının uzaklığı ve sertliği.",
+    marking: "Rakibi yakından takip edip etkisiz kılma becerisi.",
+    passing: "Kısa ve uzun pasların isabeti.",
+    penalty_taking: "Penaltılardaki güvenilirlik.",
+    tackling: "Faul yapmadan topu kapma becerisi.",
+    technique: "Top tekniği: zor pasları, şutları ve kontrolleri mümkün kılar.",
+    // Zihinsel
+    aggression: "İkili mücadeleye girme isteği.",
+    anticipation: "Oyunu önceden okuma becerisi.",
+    bravery: "Topu kazanmak için sakatlanmayı göze alma.",
+    composure: "Baskı altında, topla ya da kale önünde sakin kalma.",
+    concentration: "Dikkatin ne kadar sürdüğü, özellikle maç sonlarında.",
+    decisions: "Doğru seçeneğin ne sıklıkla seçildiği.",
+    determination: "Geriye düşülse bile devam etme ve kazanma azmi.",
+    flair: "Beklenmedik olanı deneme eğilimi.",
+    leadership: "Takım arkadaşlarını yüreklendirme ve yönlendirme becerisi. En çok kaptanda önemlidir.",
+    off_the_ball: "Top takımdayken boş alan bulma becerisi.",
+    positioning: "Top rakipteyken alan kapatma becerisi.",
+    teamwork: "Takım talimatlarına uyma ve takım için oynama.",
+    vision: "Zor olanlar dahil, görülen pas seçeneklerinin sayısı.",
+    work_rate: "Maç boyunca ne kadar koşulduğu.",
+    // Fiziksel
+    acceleration: "En yüksek hıza ne kadar çabuk ulaşıldığı.",
+    agility: "Dönme, hızlanma ve durma çabukluğu.",
+    balance: "Topla ve ikili mücadelelerde ayakta kalma becerisi.",
+    jumping_reach: "Sıçrayınca ulaşılan en yüksek nokta. Boy da etkiler.",
+    natural_fitness: "Kondisyonun maçlar arasında ve yaşla birlikte ne kadar korunduğu.",
+    pace: "En yüksek hız.",
+    stamina: "Yüksek tempoya yorulmadan ne kadar dayanıldığı.",
+    strength: "Rakiplere karşı ikili mücadelelerdeki fiziksel güç.",
+    // Kalecilik
+    aerial_reach: "Kalecinin topu tutmak ya da yumruklamak için ulaştığı yükseklik.",
+    command_of_area: "Kalecinin ceza sahasına ve oraya gelen toplara hakimiyeti.",
+    communication: "Kalecinin savunmayı yönlendirme becerisi.",
+    eccentricity: "Kalecinin çalım atmak ya da kornere çıkmak gibi beklenmedik işler yapma eğilimi.",
+    handling: "Topu elden kaçırmadan tutma becerisi.",
+    kicking: "Kalecinin ayakla vuruşlarının uzaklığı ve isabeti.",
+    one_on_ones: "Kalecinin hücumcuyla karşı karşıya kaldığındaki başarısı.",
+    punching: "Kalecinin topu tutmak yerine ne sıklıkla yumrukladığı.",
+    reflexes: "Kalecinin şutlara tepki verme çabukluğu.",
+    rushing_out: "Kalecinin ara paslarına ve hücumculara çıkmak için kalesini ne sıklıkla terk ettiği.",
+    throwing: "Kalecinin elle atışlarının uzaklığı ve isabeti.",
+    // Gizli
+    consistency: "Her zamanki seviyeye ne sıklıkla ulaşıldığı.",
+    dirtiness: "Ne sıklıkla faul yapıldığı ve kuralların zorlandığı.",
+    important_matches: "Büyük maçlardaki performans.",
+    injury_proneness: "Sakatlanmaya ne kadar yatkın olunduğu.",
+    versatility: "Yeni mevki ve rollere uyum sağlama çabukluğu.",
+    // Ayaklar
+    left_foot: "Sol ayağın ne kadar iyi kullanıldığı.",
+    right_foot: "Sağ ayağın ne kadar iyi kullanıldığı.",
+  },
+
   staffAttributes: {
     // Antrenörlük
     attacking: "Hücum",
@@ -439,6 +502,34 @@ export const tr: Strings = {
     sports_science: "Spor Bilimi",
   },
 
+  staffAttributeNotes: {
+    // Antrenörlük
+    attacking: "Hücum oyununu çalıştırma.",
+    defending: "Savunma oyununu çalıştırma.",
+    fitness: "Kondisyon çalıştırma: güç, hız ve dayanıklılık.",
+    goalkeeping: "Kalecileri çalıştırma.",
+    possession: "Topla oyunu çalıştırma: pas ve topa sahip olma.",
+    set_pieces: "Korner, serbest vuruş ve taç çalıştırma.",
+    tactical: "Takım taktiğini ve dizilişini çalıştırma.",
+    technical: "Top tekniğini çalıştırma.",
+    working_with_youngsters: "Genç oyuncuları çalıştırma ve geliştirme becerisi.",
+    // Zihinsel
+    authority: "Disiplini sağlama becerisi.",
+    determination: "Başarma azmi. Oyunculara da geçer.",
+    motivating: "Oyuncuları antrenmanda ve maç öncesinde motive etme becerisi.",
+    people_management: "Oyuncularla ilgilenme ve onları mutlu tutma becerisi.",
+    // Bilgi
+    data_analysis: "Maç ve oyuncu verilerini yorumlama becerisi.",
+    judging_ability: "Bir oyuncunun mevcut yeteneğini doğru değerlendirme.",
+    judging_potential: "Bir oyuncunun potansiyelini doğru değerlendirme.",
+    judging_staff: "Personelin yeteneğini doğru değerlendirme.",
+    negotiating: "Transfer ve sözleşmelerde yapılan anlaşmaların kalitesi.",
+    tactical_knowledge: "Taktik ve diziliş bilgisi.",
+    // Sağlık
+    physiotherapy: "Sakatlıkları tedavi etme ve önleme becerisi.",
+    sports_science: "Kondisyonu ve sakatlık riskini yönetme becerisi.",
+  },
+
   personality: {
     adaptability: "Uyum",
     ambition: "Hırs",
@@ -448,6 +539,17 @@ export const tr: Strings = {
     sportsmanship: "Sportmenlik",
     temperament: "Mizaç",
     controversy: "Tartışmacılık",
+  },
+
+  personalityNotes: {
+    adaptability: "Yeni bir ülkeye çabuk alışma.",
+    ambition: "Zirveye çıkma ve bunun için kulüp değiştirme isteği.",
+    loyalty: "Kulübe bağlılık.",
+    pressure: "Baskıyla başa çıkma.",
+    professionalism: "Antrenmanı ve işi ciddiye alma.",
+    sportsmanship: "Adil oyun.",
+    temperament: "İşler kötü gittiğinde sakin kalma.",
+    controversy: "Medyada tartışma yaratma eğilimi.",
   },
 
   positions: {

@@ -5,7 +5,7 @@ import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
 import { keepPlaying, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
-import { ATTRIBUTE_LABELS, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
+import { ATTRIBUTE_LABELS, ATTRIBUTE_NOTES, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
 import { PromisesGroup } from "./PromisesGroup";
 import { MoveButton } from "./MoveDialog";
@@ -421,7 +421,10 @@ function Height({ cm }: { cm: number }) {
 
 function attributeRows(details: PlayerDetails, keys: readonly AttributeKey[]): RatingRow[] {
   return keys.map((key) =>
-    attributeRow(key, ATTRIBUTE_LABELS[key], details.attributes[key], { lowerIsBetter: LOWER_IS_BETTER.has(key) }),
+    attributeRow(key, ATTRIBUTE_LABELS[key], details.attributes[key], {
+      lowerIsBetter: LOWER_IS_BETTER.has(key),
+      note: ATTRIBUTE_NOTES[key],
+    }),
   );
 }
 

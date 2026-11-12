@@ -10,6 +10,7 @@ import {
   jobLabel,
   profileText,
   STAFF_ATTRIBUTE_LABELS,
+  STAFF_ATTRIBUTE_NOTES,
   type StaffAttributeKey,
 } from "./labels";
 import { MoveButton } from "./MoveDialog";
@@ -345,6 +346,7 @@ function attributeRows(details: StaffDetails, keys: StaffAttributeKey[]): Rating
   return keys.map((key) =>
     attributeRow(key, STAFF_ATTRIBUTE_LABELS[key], details.attributes[key], {
       scale: STORED_AS_SHOWN.has(key) ? 20 : 100,
+      note: STAFF_ATTRIBUTE_NOTES[key],
     }),
   );
 }

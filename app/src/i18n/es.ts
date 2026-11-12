@@ -424,6 +424,69 @@ export const es: Strings = {
     right_foot: "Pie derecho",
   },
 
+  attributeNotes: {
+    // Técnicos
+    corners: "Calidad de los saques de esquina.",
+    crossing: "Precisión de los centros desde la banda.",
+    dribbling: "Control del balón en carrera.",
+    finishing: "Acierto al definir las ocasiones.",
+    first_touch: "Limpieza al controlar el balón cuando llega.",
+    free_kicks: "Calidad de las faltas directas, a puerta o al área.",
+    heading: "Precisión de los remates y pases de cabeza.",
+    long_shots: "Peligro de los tiros desde fuera del área.",
+    long_throws: "Distancia y fuerza de los saques de banda.",
+    marking: "Capacidad para seguir de cerca a un rival y anularlo.",
+    passing: "Precisión de los pases, cortos y largos.",
+    penalty_taking: "Fiabilidad al lanzar penaltis.",
+    tackling: "Capacidad para quitar el balón sin hacer falta.",
+    technique: "Calidad con el balón: permite los pases, tiros y controles más difíciles.",
+    // Mentales
+    aggression: "Disposición a entrar al choque.",
+    anticipation: "Capacidad para leer la jugada antes de que ocurra.",
+    bravery: "Disposición a arriesgar el físico para ganar el balón.",
+    composure: "Calma bajo presión, con el balón o ante la portería.",
+    concentration: "Cuánto dura la atención, sobre todo al final de los partidos.",
+    decisions: "Frecuencia con la que se elige la mejor opción.",
+    determination: "Empeño por seguir y ganar, incluso con el marcador en contra.",
+    flair: "Tendencia a intentar lo inesperado.",
+    leadership: "Capacidad para animar y organizar a los compañeros. Cuenta sobre todo en un capitán.",
+    off_the_ball: "Capacidad para encontrar espacios cuando el equipo tiene el balón.",
+    positioning: "Capacidad para cubrir espacios cuando el rival tiene el balón.",
+    teamwork: "Seguimiento de las instrucciones del equipo y trabajo para los demás.",
+    vision: "Cantidad de opciones de pase que se ven, también las difíciles.",
+    work_rate: "Cuánto se corre durante todo el partido.",
+    // Físicos
+    acceleration: "Rapidez para alcanzar la velocidad máxima.",
+    agility: "Rapidez para girar, arrancar y frenar.",
+    balance: "Capacidad para mantenerse en pie, con el balón y en los choques.",
+    jumping_reach: "Altura máxima que se alcanza al saltar. La estatura también cuenta.",
+    natural_fitness: "Cómo se mantiene la forma entre partidos y con la edad.",
+    pace: "Velocidad máxima.",
+    stamina: "Cuánto se aguanta un ritmo alto antes de cansarse.",
+    strength: "Capacidad para aguantar a los rivales y ganarles los choques.",
+    // Portero
+    aerial_reach: "Altura a la que llega el portero para atrapar o despejar el balón.",
+    command_of_area: "Dominio del portero sobre el área y los balones que llegan a ella.",
+    communication: "Capacidad del portero para organizar a la defensa.",
+    eccentricity: "Tendencia del portero a hacer lo inesperado, como regatear o subir a rematar un córner.",
+    handling: "Seguridad al atrapar el balón sin soltarlo.",
+    kicking: "Distancia y precisión de los saques con el pie.",
+    one_on_ones: "Rendimiento del portero ante un atacante en solitario.",
+    punching: "Frecuencia con la que el portero despeja de puños en vez de atrapar.",
+    reflexes: "Rapidez del portero para reaccionar a los tiros.",
+    rushing_out: "Frecuencia con la que el portero sale a por balones al hueco y atacantes.",
+    throwing: "Distancia y precisión de los saques con la mano.",
+    // Ocultos
+    consistency: "Frecuencia con la que se alcanza el nivel habitual.",
+    dirtiness: "Frecuencia con la que se hacen faltas y se juega al límite del reglamento.",
+    important_matches: "Rendimiento en los partidos grandes.",
+    injury_proneness: "Facilidad para lesionarse.",
+    versatility: "Rapidez para adaptarse a nuevas posiciones y funciones.",
+    // Pies
+    left_foot: "Calidad con el pie izquierdo.",
+    right_foot: "Calidad con el pie derecho.",
+  },
+
   staffAttributes: {
     // Entrenamiento
     attacking: "Ataque",
@@ -452,6 +515,34 @@ export const es: Strings = {
     sports_science: "Ciencias del deporte",
   },
 
+  staffAttributeNotes: {
+    // Entrenamiento
+    attacking: "Entrenamiento del juego de ataque.",
+    defending: "Entrenamiento del juego defensivo.",
+    fitness: "Entrenamiento físico: fuerza, velocidad y resistencia.",
+    goalkeeping: "Entrenamiento de porteros.",
+    possession: "Entrenamiento del juego con balón: pases y posesión.",
+    set_pieces: "Entrenamiento de córneres, faltas y saques de banda.",
+    tactical: "Entrenamiento de la táctica y la colocación del equipo.",
+    technical: "Entrenamiento de la técnica con el balón.",
+    working_with_youngsters: "Capacidad para entrenar a los jóvenes y hacerlos crecer.",
+    // Mentales
+    authority: "Capacidad para mantener la disciplina.",
+    determination: "Empeño por triunfar. Se contagia a los jugadores.",
+    motivating: "Capacidad para motivar a los jugadores, en los entrenamientos y antes de los partidos.",
+    people_management: "Capacidad para tratar a los jugadores y mantenerlos contentos.",
+    // Conocimientos
+    data_analysis: "Capacidad para interpretar los datos de partidos y jugadores.",
+    judging_ability: "Acierto al valorar la calidad actual de un jugador.",
+    judging_potential: "Acierto al valorar el potencial de un jugador.",
+    judging_staff: "Acierto al valorar la calidad del personal.",
+    negotiating: "Calidad de los acuerdos en traspasos y contratos.",
+    tactical_knowledge: "Conocimiento de tácticas y formaciones.",
+    // Médicos
+    physiotherapy: "Capacidad para tratar y prevenir lesiones.",
+    sports_science: "Gestión de la forma física y del riesgo de lesión.",
+  },
+
   personality: {
     adaptability: "Adaptabilidad",
     ambition: "Ambición",
@@ -461,6 +552,17 @@ export const es: Strings = {
     sportsmanship: "Deportividad",
     temperament: "Temperamento",
     controversy: "Controversia",
+  },
+
+  personalityNotes: {
+    adaptability: "Facilidad para adaptarse a un país nuevo.",
+    ambition: "Ganas de llegar a lo más alto, y de cambiar de club para lograrlo.",
+    loyalty: "Apego al club.",
+    pressure: "Capacidad para aguantar la presión.",
+    professionalism: "Seriedad en los entrenamientos y en el trabajo.",
+    sportsmanship: "Juego limpio.",
+    temperament: "Capacidad para mantener la calma cuando las cosas van mal.",
+    controversy: "Tendencia a crear polémica en los medios.",
   },
 
   positions: {
