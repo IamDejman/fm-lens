@@ -646,8 +646,8 @@ dd,
   background: var(--accent-hover);
 }
 
-/* Report a problem and Wishlist: quiet, like the rest of the small print, until pointed at. */
-.colophon :is(.colophon-report, .colophon-wishlist) {
+/* Report a problem, Wishlist and Check for updates: quiet, like the rest of the small print, until pointed at. */
+.colophon :is(.colophon-report, .colophon-wishlist, .colophon-update) {
   flex: none;
   min-height: 0;
   padding: 0;
@@ -661,7 +661,7 @@ dd,
   text-underline-offset: 2px;
 }
 
-.colophon :is(.colophon-report, .colophon-wishlist):hover:not(:disabled) {
+.colophon :is(.colophon-report, .colophon-wishlist, .colophon-update):hover:not(:disabled) {
   background: none;
   color: var(--text);
 }

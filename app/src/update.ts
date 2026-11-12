@@ -6,8 +6,8 @@
 // app as it runs, so it waits for the user. Either way the colophon offers Relaunch to update. A copy that cannot
 // replace itself (one macOS runs from where it was downloaded, a bare FM Lens.exe, or a development build) names the new
 // version and opens the website's download page instead. Offline, or when the check fails, nothing happens and the app
-// works as before. Check for Updates, in the app menu on macOS and in Settings, About, on Windows, looks at once and
-// says what it found.
+// works as before. Check for Updates, at the foot of the window, in the app menu on macOS and in Settings, About, on
+// Windows, looks at once and says what it found.
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { check, type Update } from "@tauri-apps/plugin-updater";

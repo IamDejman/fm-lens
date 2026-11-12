@@ -1523,6 +1523,7 @@ export const es: Strings = {
     installFailed: (reason) => `No se ha podido actualizar: ${reason}. Descárgala desde su página.`,
     later: "Más tarde",
     checkForUpdates: "Buscar actualizaciones…",
+    check: "Buscar actualizaciones",
     checking: "Buscando actualizaciones…",
     upToDate: "FM Lens está actualizado.",
     checkFailed: "No se han podido buscar actualizaciones.",

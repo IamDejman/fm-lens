@@ -1619,6 +1619,8 @@ export const en = {
      * once.
      */
     checkForUpdates: "Check for Updates…",
+    /** At the foot of the window, beside Wishlist: the same, until a newer version is ready to relaunch into. */
+    check: "Check for updates",
     checking: "Checking for updates…",
     upToDate: "FM Lens is up to date.",
     /** Offline, or the releases could not be read. */
