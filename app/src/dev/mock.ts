@@ -1472,6 +1472,8 @@ function fieldTable(entity: Entity): EditField[] {
     ...common,
     ...reputation,
     { ...field("nation", "pointer", 0x1_0000, 0x7fff_ffff_ffff), mass: false },
+    // From 1920: chairmen and owners are staff too.
+    field("date_of_birth", "date", 19200101, 20201231),
     ...STAFF_ATTRIBUTE_ORDER.map((key) =>
       STAFF_RATINGS.includes(key)
         ? field(`attribute.${key}`, "u8", 1, 20)
@@ -1824,11 +1826,10 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
       Object.assign(row, { nation, nationUid: 1000 + NATIONS.indexOf(nation) });
       return;
     }
-    if (entity === "player" && key === "date_of_birth") {
+    if (row && key === "date_of_birth") {
       // The list row has the birth date and the age, and the profile is built from the row.
-      const player = row as PlayerSummary;
-      player.dateOfBirth = dateFromNumber(value);
-      player.age = player.dateOfBirth && ageOn(player.dateOfBirth, GAME_DATE);
+      row.dateOfBirth = dateFromNumber(value);
+      row.age = row.dateOfBirth && ageOn(row.dateOfBirth, GAME_DATE);
       return;
     }
     if (entity === "player" && key === "contract.expires") {
