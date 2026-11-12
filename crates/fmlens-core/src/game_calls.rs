@@ -67,6 +67,9 @@ fn packed_date(date: FmDate) -> u32 {
 /// A date FM keeps for "not set": 1 January 1900.
 const UNSET_DATE: u32 = 0x076C_0001;
 
+/// The 16 bytes the game's editor starts a loan's fees from, none of them set: the same on every build read.
+const LOAN_DEFAULTS: [u8; 16] = [0xFF, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF];
+
 /// An injury the game gave a player, with what takes it away again.
 #[derive(Debug, Clone)]
 pub struct AddedInjury {
@@ -561,7 +564,11 @@ impl Session {
         if !is_user_pointer(rules) {
             return Ok(Some(false));
         }
+        // The date for none, where this build's profile has it: anything else there must not be passed as a date.
         let none = base + check.no_date;
+        if self.process.read_u32(none)? != UNSET_DATE {
+            return Ok(None);
+        }
         let mut program = Program::new();
         program.push(Step::new(
             needs,
@@ -762,7 +769,12 @@ impl Session {
         put(0x08, &[0xFF; 8]);
         put(0x30, &[UNSET_DATE.to_le_bytes(), UNSET_DATE.to_le_bytes(), UNSET_DATE.to_le_bytes()].concat());
         put(0x3C, &[0xFF; 0x0D]);
-        put(o.defaults, &process.read_bytes(self.plugin.base + rvas.defaults, 16)?);
+        // A build that keeps them elsewhere would start the loan with fees of whatever is there.
+        let defaults = process.read_bytes(self.plugin.base + rvas.defaults, 16)?;
+        if defaults != LOAN_DEFAULTS {
+            return Err(MoveError::CallUnavailable);
+        }
+        put(o.defaults, &defaults);
         put(0x6F, &[0xFF]);
         put(o.player, &self.identity_block(object, 0)?.to_le_bytes());
         put(o.club, &senior.to_le_bytes());
