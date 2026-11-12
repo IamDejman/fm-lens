@@ -1505,6 +1505,11 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.8": [
+        "FM27'nin 12 Kasım Steam güncellemesiyle çalışır.",
+        "Her listeyi sıralayın, oyuncuları maaşa, değere, boya ve kişiliğe göre filtreleyin.",
+        "Personelin doğum tarihini ve bir oyuncunun bütün özelliklerini düzenleyin.",
+      ],
       "0.7.7": [
         "Mutsuzluğu kaldır kalıcı: nedenler Devam’dan sonra geri gelmez.",
         "Mutluluk düzenlemesi yerinde kalır: moral de onunla ayarlanır.",
