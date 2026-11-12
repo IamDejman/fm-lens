@@ -1,8 +1,9 @@
 # FM27 on Steam for macOS (app 4530370, build 26577676), an update of 12 November 2026 whose fm.app reads
 # 27.0.1.2503222: the arm64 half of the universal game_plugin, which Apple silicon Macs run natively. The update rebuilt
-# game_plugin (another LC_UUID) and moved nothing FM Lens uses: every value here is build 26385295's
-# (steam-26385295-macos-arm64.toml) at the same address, and the code still calls and loads each one where that build's
-# notes say. The notes on each value are 27.0.0's, with 27.0.1's addresses. See docs/recon/fm27-steam-26577676.md.
+# game_plugin (another LC_UUID). Every function and static here is build 26385295's (steam-26385295-macos-arm64.toml)
+# at the same address, and the code still calls and loads each one where that build's notes say. The two constants read
+# from __TEXT sit 0x30 further: starting_loan.defaults and work_permit_check.no_date. The notes on each value are
+# 27.0.0's, with 27.0.1's addresses. See docs/recon/fm27-steam-26577676.md.
 name = "FM27 Steam build 26577676 (27.0.1, macOS, Apple silicon)"
 edition = 27
 storefront = "steam"
@@ -115,7 +116,7 @@ needs_work_permit = 0x1C40898
 # (fees unset).
 [starting_loan]
 vtable = 0x565A9D8
-defaults = 0x542ACC0
+defaults = 0x542ACF0
 
 # What the game's editor actions start from: the static pointer to the registry of Value types (its integer type at
 # +0x28, kind 1, read live), the static pointer to the database table of teams (Arsenal's senior team, id 462, its
@@ -149,4 +150,4 @@ class = "N2db16HUMAN_NON_PLAYERE"
 [work_permit_check]
 enabled = 0x57709D2
 rules = 0x5771808
-no_date = 0x538A440
+no_date = 0x538A470

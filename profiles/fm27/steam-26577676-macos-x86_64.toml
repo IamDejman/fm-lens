@@ -1,8 +1,9 @@
 # FM27 on Steam for macOS (app 4530370, build 26577676), an update of 12 November 2026 whose fm.app reads
 # 27.0.1.2503222: the Intel half of the universal game_plugin, which Intel Macs run, and Apple silicon Macs under
-# Rosetta. The update rebuilt game_plugin (another LC_UUID) and moved nothing FM Lens uses: every value here is build
-# 26385295's (steam-26385295-macos-x86_64.toml) at the same address, and the code still calls and loads each one where
-# that build's notes say. See docs/recon/fm27-steam-26577676.md.
+# Rosetta. The update rebuilt game_plugin (another LC_UUID). Every function and static here is build 26385295's
+# (steam-26385295-macos-x86_64.toml) at the same address, and the code still calls and loads each one where that
+# build's notes say. The two constants read from __TEXT sit 0x30 further: starting_loan.defaults and
+# work_permit_check.no_date. See docs/recon/fm27-steam-26577676.md.
 name = "FM27 Steam build 26577676 (27.0.1, macOS, Intel)"
 edition = 27
 storefront = "steam"
@@ -105,7 +106,7 @@ needs_work_permit = 0x1DE49E0
 # STARTING_LOAN builder at 0x2572450: vtable and the 16 bytes copied to +0x58.
 [starting_loan]
 vtable = 0x5BF11C0
-defaults = 0x59DF030
+defaults = 0x59DF060
 
 # Value registry, integer type within it, team table and editor-enabled byte.
 [editor]
@@ -119,4 +120,4 @@ enabled = 0x5D038B0
 [work_permit_check]
 enabled = 0x5D04D8A
 rules = 0x5D05BF8
-no_date = 0x5934970
+no_date = 0x59349A0

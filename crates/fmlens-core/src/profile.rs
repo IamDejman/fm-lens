@@ -1499,7 +1499,7 @@ mod tests {
         // 27.0.1 carries the layout across.
         let arm64_1 = [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
         let intel_1 = [0x94, 0xCD, 0xDC, 0x80, 0x84, 0x74, 0x32, 0x7A, 0x85, 0xE0, 0xE4, 0xFF, 0x95, 0xDC, 0x68, 0x93];
-        // Build 26577676 is 27.0.1 at the same addresses.
+        // Build 26577676 is 27.0.1 with the same functions and statics.
         let arm64_2 = [0xA8, 0x55, 0x0B, 0x47, 0xFD, 0xE0, 0x3D, 0x0D, 0xA6, 0xCB, 0x1B, 0x63, 0xDE, 0xE8, 0xDA, 0x19];
         let intel_2 = [0xDD, 0x0E, 0xE1, 0x57, 0x4C, 0x9C, 0x31, 0xA7, 0x81, 0xDD, 0x0D, 0x11, 0x22, 0xE6, 0x2F, 0xC7];
         let traced = [arm64, intel, arm64_1, intel_1, arm64_2, intel_2].map(|uuid| PluginFingerprint::MachO { uuid });
@@ -1575,10 +1575,11 @@ mod tests {
         }
     }
 
-    /// The update of 12 November 2026 (Steam build 26577676) rebuilt game_plugin and moved nothing FM Lens uses: its
-    /// macOS profiles are build 26385295's under another UUID.
+    /// The update of 12 November 2026 (Steam build 26577676) rebuilt game_plugin. On macOS every function and static
+    /// FM Lens uses is where build 26385295 has it; the two constants it reads from `__TEXT`, the loan's default bytes
+    /// and the date for none, sit 0x30 further in both halves.
     #[test]
-    fn steam_26577676_on_macos_is_26385295_under_another_uuid() {
+    fn steam_26577676_on_macos_is_26385295_with_two_constants_moved() {
         let old_arm64 =
             [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
         let old_intel =
@@ -1591,6 +1592,12 @@ mod tests {
             assert!(new.name.contains("26577676"), "{}", new.name);
             new.name.clone_from(&old.name);
             new.plugin = old.plugin;
+            let loan = new.starting_loan.as_mut().expect("starting loan");
+            assert_eq!(Some(loan.defaults), old.starting_loan.as_ref().map(|loan| loan.defaults + 0x30));
+            loan.defaults -= 0x30;
+            let check = new.work_permit_check.as_mut().expect("the work permit check");
+            assert_eq!(Some(check.no_date), old.work_permit_check.as_ref().map(|check| check.no_date + 0x30));
+            check.no_date -= 0x30;
             assert_eq!(format!("{new:?}"), format!("{old:?}"));
         }
     }
