@@ -38,7 +38,10 @@ layouts do not. If `profile` fails and every other step passes:
 2. Take the arrays from `scan.txt`, and the in-game date's RVA from `fmlens-probe find "<date FM shows>"`
    ([macOS notes](recon/fm27-steam-macos.md#2700-steam-build-26340721)).
 3. The profile's other values (retirement manager, officials, human manager) were traced in the old build's code:
-   re-trace each as its comment says, or leave it out, which turns that feature off on this build.
+   re-trace each as its comment says, or leave it out, which turns that feature off on this build. Read the two
+   constants back from the new file as well: `starting_loan.defaults` holds `FFFFFFFF 00000000 FFFFFFFF FFFFFFFF` and
+   `work_permit_check.no_date` holds `01 00 6C 07`. They can move while every function and static stays, as on
+   [build 26577676](recon/fm27-steam-26577676.md).
 4. Run the script again. It must pass in full.
 
 ## 3. A step fails

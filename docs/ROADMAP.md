@@ -26,11 +26,12 @@ further data-layout and game-behavior research.
 Windows ships from 0.6.2. The Windows reads, game actions and bounded app
 edit/undo checks are recorded in EDITING-VALIDATION.md and
 [the Windows handoff](internal/WINDOWS-PARITY-HANDOFF.md). Those checks used
-Windows Server 2022. Two of them saved an edited copy, quit FM and loaded it
+Windows Server 2022. Three of them saved an edited copy, quit FM and loaded it
 again: on 8 November (build 26340721) a player's attributes and a contract wage
-held, and on 10 November (27.0.1, build 26385295) a player attribute, a contract
+held, on 10 November (27.0.1, build 26385295) a player attribute, a contract
 wage, a staff attribute, a club balance, Max tactics and a free-agent signing
-held. Other Windows edits have no save and reload, and Windows 10/11 execution
+held, and on 12 November (build 26577676) the same six and a work permit held.
+Other Windows edits have no save and reload, and Windows 10/11 execution
 remains unverified. Unless a row names another platform, its in-game persistence
 evidence is from macOS ARM64; mapped Windows fields do not inherit that evidence.
 
@@ -39,6 +40,9 @@ Windows. On 10 November it passed the PATCH-VALIDATION.md run on all three: read
 checks, a bounded set of edits and game actions, and a save reloaded on the Mac
 and on Windows. Rows that name build 26340721 (27.0.0) say where their evidence
 came from; it was not repeated field by field on 27.0.1.
+
+Steam build 26577676 (12 November, still 27.0.1) has its own three profiles and
+passed the same run on all three that day. It is the verified build.
 
 Intel action parity (#164): all 24 ARM64 call keys, the injury and database statics, the editor tables and the STARTING_LOAN defaults have Intel values, and the Intel bridge passes an indirect result place the System V way. The actions switch on through profile and helper capability discovery. Run under Rosetta in the packaged app on 9 and 10 November: Add injury and Heal, work permit Revoke and Request, Loan and End loan, Transfer, Release, Sign, Sign later and Cancel transfer, Max tactics, Max attributes and Lift bans, with their undos where they have one (the 9 November entries and the FM27 27.0.1 entry in EDITING-VALIDATION.md). No Rosetta run saved an edited career, so Intel has no edited-save persistence of its own; on 10 November it loaded the copy edited and saved on Apple Silicon and read those edits back. See [the mapping and Rosetta handoff](recon/fm27-steam-26340721-macos-x86_64.md#intel-action-parity-mapping-8-november-2026).
 

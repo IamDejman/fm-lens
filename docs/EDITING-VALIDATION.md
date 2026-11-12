@@ -2949,3 +2949,90 @@ Windows installer build among them.
 Not run: anything in FM on any platform: the date on FM's staff profile, an
 undo, a stale-value refusal, a Continue, and a save, quit and reload on a
 career copy; the human manager's own date; a member of staff born before 1940.
+
+## FM27 Steam build 26577676 (12 November 2026)
+
+Steam updated FM27 on 12 November to build 26577676, still 27.0.1. game_plugin
+was rebuilt on every platform, so FM Lens opened the build read-only. Every
+function and static FM Lens uses stayed where build 26385295 has it; on macOS
+the two constants it reads from the game's code moved by 0x30. The three new
+profiles are in `profiles/fm27/`; how they were made is in
+[recon/fm27-steam-26577676.md](recon/fm27-steam-26577676.md). This is the run
+of [PATCH-VALIDATION.md](PATCH-VALIDATION.md) on that build.
+
+Packaged FM Lens 0.7.7 built from `Iamdejman/steam-26577676` (3687c08), driven
+through the accessibility API (UI Automation on Windows). Every edit was read
+back with `fmlens-probe` of the same commit. Test copies only.
+
+What the run found: the first build of the branch (1ad76c0) carried build
+26385295's addresses for the two constants. Windows does not read them from
+there and passed in full. On Apple Silicon a loan (Bukayo Saka to Barcelona)
+read back with a future fee of 33,619,968 and End loan refused it; that game
+was closed without saving. e449def moved the two addresses in both Mac
+profiles, and 907a095 has FM Lens read both constants back before it uses
+them, so a stale address refuses the action. The Mac columns below are the
+build with the fix; on Windows the loan and the work permit ran again on it.
+
+Read checks (`scripts/check-build.sh`): 15 of 15 on Apple Silicon
+(`reports/build-check/A8550B47-FDE0-3D0D-A6CB-1B63DEE8DA19-20261112-123753`) and
+15 of 15 under Rosetta
+(`reports/build-check/DD0EE157-4C9C-31A7-81DD-0D1122E62FC7-20261112-152640`).
+On Windows `fmlens-probe health` named the build "FM27 Steam build 26577676
+(27.0.1)" and passed 12 of 12; `info` gave game_plugin.dll size `0x185fa000`,
+timestamp `0x6af38e5c`; the script's 14 steps, run through PowerShell, passed,
+and the arrays sit where the profile says (players `+0x5820810` 25,025, staff
+`+0x5820858` 14,178, clubs `+0x58209c8` 19,311).
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass. UUID A8550B47, Arsenal, 10 Dec 2027 | Pass. UUID DD0EE157, "FM27 Steam build 26577676 (27.0.1, macOS, Intel)", 30,308 players, Arsenal, 10 Dec 2027 | Pass. 25,025 players, Ayo Elu, Arsenal, 28 Jul 2026 |
+| Player attribute | Pass. Bukayo Saka Heading 9 to 12 (stored 60); after the reload 12 to 13 | Pass. Saka Heading 12 to 13 | Pass. Saka Heading 12 to 13 (stored 60 to 65) |
+| Contract wage | Pass. Saka 300,000 to 310,000; after the reload 310,000 to 320,000 | Pass. Saka 310,000 to 320,000 | Pass. Saka 310,000 to 320,000 |
+| Add injury, then Heal | Pass. Abdominal strain from 10 Dec 2027, back 27 to 31 Dec; Heal: none | Pass. Injury added; Heal: none | Pass. Abdominal strain from 28 Jul 2026, back 16 to 21 Aug; Heal: none |
+| Work permit Revoke, then Request | Pass. Gabriel: none, then "England: active"; Saka reads "Not needed" | Pass. Gabriel: none, then "England: active"; Saka reads "Not needed" | Pass. Gabriel: none, then "England: active"; the same again on 3687c08 |
+| Loan, then End loan | Pass. Saka to Barcelona, 10 Dec 2027 to 30 Jun 2028, borrower pays 0, no future fee; back at Arsenal | Pass. Saka to Barcelona, 10 Dec 2027 to 30 Jun 2028, borrower pays 0, no future fee; back at Arsenal | Pass. Saka to Barcelona, 28 Jul 2026 to 30 Jun 2027; back at Arsenal; the same again on 3687c08, borrower pays 0, no future fee |
+| Transfer club to club | Pass. Paul Ifill, Greytown AFC to Barcelona, 1,000 a week to 30 Jun 2029 | Pass. Ifill to Barcelona, 1,000 a week to 30 Jun 2029 | Pass. Paul Ifill, Arsenal to Barcelona, 1,000 a week to 30 Jun 2028 |
+| Release | Pass. Ifill a free agent, no contract | Pass. Ifill a free agent, no contract | Pass. Ifill a free agent, no contract |
+| Sign later, then Cancel transfer | Pass. Arsenal on 24 Dec 2027 (offer 381, 58 to 59 future transfers); cancelled, 58 again | Pass. Arsenal on 24 Dec 2027 (offer 381, 58 to 59); cancelled, 58 again | Pass. Arsenal on 10 Aug 2026 (offer 1388, 44 to 45 future transfers); cancelled, 44 again |
+| Sign now | Pass. Ifill at Arsenal, 23,520 a week to 30 Jun 2029 | Pass. Ifill at Arsenal, 23,520 a week to 30 Jun 2029 | Pass. Ifill at Arsenal, 20,665 a week to 30 Jun 2027 |
+| Club balance | Pass. Arsenal 190,873,135 to 200,000,000 | Pass. Arsenal 190,873,135 to 200,000,000 | Pass. Arsenal 340,000,000 to 350,000,000 |
+| Max tactics | Pass. First team, 30 changes, values at 10000; Undo all put every value back | Pass. First team, 30 changes; Undo all put every value back | Pass. U21 (team 25631), 23 changes, values at 10000 |
+| Lift bans, Heal, Refresh fitness, Remove unhappiness | Pass. First team (30 players): injured 5 to 0, banned 3 to 0, below full energy 22 to 0, below full sharpness 18 to 0, jaded 12 to 0; Remove unhappiness 10 changes | Pass. First team: injured 5 to 0, banned 3 to 0, energy, sharpness and jaded counts to 0; Remove unhappiness 10 changes | Pass. U21: Refresh fitness 63 changes, Remove unhappiness 1, Heal 1; no ban to lift |
+| Staff attribute | Pass. Nicolas Jover Fitness 3 to 6 (stored 30); after the reload 6 to 7 | Pass. Jover Fitness 6 to 7 | Pass. Jover Fitness 6 to 7 (stored 30 to 35) |
+| Nation field | Pass. England reputation 9,238 to 9,300; after the reload 9,300 to 9,310 | Pass. England reputation 9,300 to 9,310 | Pass. England youth rating 135 to 140 |
+| Undo in Changes | Pass. Arsenal's balance back to 190,873,135 | Pass. Arsenal's balance back to 190,873,135 | Pass. Youth rating back to 135, "104 changes · 1 undone" |
+| FM shows it | Pass. News on the Portal: "Paul Ifill deal falls through" | Pass. News on the Portal: "Paul Ifill deal falls through" | Pass. News on the Portal: "Paul Ifill deal falls through" |
+| FM kept running | Pass | Pass. Still responding 22 minutes in, no error in its log | Pass. `fm` responding after the last edit and after the save |
+| Saved under a new name, reloaded | Pass. Saved as `FM-Lens-26577676-2026-11-12`, FM quit and started again, that save loaded: Heading 12, wage 310,000, Jover Fitness 6, reputation 9,300, balance 190,893,135 | Pass. That save loaded: Heading 12, wage 310,000, Jover Fitness 6, reputation 9,300 | Pass. Saved as `FM-Lens-26577676-Windows`, FM quit and started again (process 5008), that save loaded: Heading 13, wage 320,000, Jover Fitness 7, balance 350,000,000, youth rating 135, Ifill at Arsenal on 20,665 a week, Gabriel's permit active, U21 tactics at 10000, 44 future transfers |
+
+Notes:
+
+- Max tactics reports only the players it changed. On Windows Arsenal's first
+  team was at the maximum already in the loaded save and read "No changes
+  made", so the check used the U21 team.
+- On Windows FM Lens loads its bridge into the running game, so FM did not need
+  a restart to take edits. After the restart FM Lens connected to the new
+  process and one more edit applied (Saka Heading 13 to 14, not saved).
+- On the Mac FM loads the bridge when Steam starts it. The first values in the
+  Apple Silicon column (Heading 9 to 12, wage, Jover, reputation) were set
+  while FM still held the bridge of the released 0.7.7, which does not know the
+  build: they applied with the notice that FM's screen could not refresh, and
+  they are what the new save holds. Everything else ran after FM was started
+  again with the new bridge.
+- Under Rosetta FM was started with `arch -x86_64` and the packaged universal
+  bridge while Steam was running, and FM Lens with `arch -x86_64`.
+
+Mac: FM27 build 26577676 native on Apple Silicon (FM process 14092, FM Lens
+14441). The test copy `FMLensTacticsTest-2026-11-11` (Arsenal, 10 Dec 2027) was
+saved only as the new file `FM-Lens-26577676-2026-11-12`; the run on 3687c08
+was in that file and quit without saving. Then under Rosetta (FM process 50412,
+FM Lens 52027) in the same file, quit without saving.
+
+Windows: FM27 build 26577676 on the test machine (FM process 5528, then 5008;
+FM Lens 7696, then 6032) with the installer built there from the branch, in
+`FM-Lens-27.0.1-Windows` (Arsenal, 28 Jul 2026), saved only as the new file
+`FM-Lens-26577676-Windows`. The loan and the work permit on 3687c08 were not
+saved. No other save changed.
+
+Main career SHA-256 stayed 23472DA3...6192BEF4 on Mac and AF20CBAC...2CB747E5
+on Windows.
