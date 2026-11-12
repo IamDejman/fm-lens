@@ -26,7 +26,7 @@ Staff and club filters cover additional decoded values.
 ## Platforms and evidence
 
 FM Lens ships a universal Mac app and, from 0.6.2, a Windows installer. The
-verified game build is FM27 27.0.1, Steam build 26385295, checked on 10
+verified game build is FM27 27.0.1, Steam build 26577676, checked on 12
 November on Apple Silicon, under Rosetta and on Windows. Most of the evidence
 is from 27.0.0, Steam build 26340721. ARM64 has the broadest local
 validation; Intel checks used Rosetta and cover selected reads/actions.
