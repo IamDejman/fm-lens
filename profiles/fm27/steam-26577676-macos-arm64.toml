@@ -1,0 +1,152 @@
+# FM27 on Steam for macOS (app 4530370, build 26577676), an update of 12 November 2026 whose fm.app reads
+# 27.0.1.2503222: the arm64 half of the universal game_plugin, which Apple silicon Macs run natively. The update rebuilt
+# game_plugin (another LC_UUID) and moved nothing FM Lens uses: every value here is build 26385295's
+# (steam-26385295-macos-arm64.toml) at the same address, and the code still calls and loads each one where that build's
+# notes say. The notes on each value are 27.0.0's, with 27.0.1's addresses. See docs/recon/fm27-steam-26577676.md.
+name = "FM27 Steam build 26577676 (27.0.1, macOS, Apple silicon)"
+edition = 27
+storefront = "steam"
+
+# The in-game date, a variable of its own: 16 November 2026 on a save whose screens read 16/11/2026, then 17 November
+# once the game had moved on a day.
+current_date = 0x574DDB8
+game_ui = 0x57708F0
+
+# The static pointer to the retirement manager (RETIREMENT_MANAGER): read on that save, with Cristiano Ronaldo and Karim
+# Benzema among the planned retirements.
+retirement_manager = 0x57442A8
+
+# The (begin, end) pair of the match officials' array: 1166 db::OFFICIAL objects of 0x148 bytes, Michael Oliver
+# (UID 103994) among them. The Intel half has it too, found statically.
+officials = 0x576EEC8
+
+# The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: 1,045 records on a save at
+# 11 December 2027, Collins Sichenje's and Mees Rijks' granted. The Intel half has it too, found statically.
+transfer_manager = 0x57409F8
+
+# The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902
+# awards and 8,238 competitions (the last a placeholder without a name), the Premier League (UID 11) seventh. 27.0.0 and
+# 27.0.1 have them.
+awards = 0x576ED50
+competitions = 0x576ED68
+
+# The static pointers to the database table of the kinds of injury (136, in the same block as the competitions) and to
+# the injury manager (INJURY_MANAGER). 27.0.0 and 27.0.1 have them.
+injury_kinds = 0x576ED90
+injury_manager = 0x57442A0
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
+# no others on this build. Traced statically; see docs/recon/fm27-player-extras.md.
+[calls]
+# GAME_UI virtual slot +0xA0, used by FM's morale action with the person's identity.
+entity_changed = 0x30CF8
+# Same rfui dispatcher; an empty reference vector requests an unfiltered view refresh.
+refresh_views = 0x2FDC8
+# INJURY_MANAGER::add_injury, as the game's training injuries call it: (manager, player, kind index, cause 3, 0, 0,
+# 0, 0, then on the stack a news byte 0, 0 and a u16 0). Returns the new injury, or null when injuries are switched
+# off or he already has one of that kind.
+add_injury = 0x27148D4
+# TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force, esc). It makes the
+# player a work permit record, an ESC slot where esc is 1 (dated today), or takes the slot away. The game's editor
+# gives a permit with force 0 and esc 0, which does nothing unless the game's rules say he needs one.
+set_work_permit = 0x2D942FC
+# TRANSFER_MANAGER::find_work_permit: (manager, identity block, club team). The place of his record for the club's
+# country in the manager's list, or -1. Only reads.
+find_work_permit = 0x2DEBFB8
+# TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), as the game's editor takes a permit away:
+# the record leaves both of the manager's lists and is freed. See docs/recon/fm27-call-shapes.md section 1.
+remove_work_permit = 0x2DCF0A0
+# TRANSFER_MANAGER::start_loan: (manager, a STARTING_LOAN, 1), as the game's editor calls it from 0x239D64C. Returns
+# nothing; the editor reads the loan back. See docs/recon/fm27-call-shapes.md section 3.
+start_loan = 0x2E191B4
+# TRANSFER_MANAGER::sign_free_agent: (manager, the player's person block, the club team, a terms map, an empty list
+# for the entities it touches, 0), as the game's editor calls it from 0x239C64C. Returns true when he signed. An empty
+# map gives the game's own terms: no fee, from today. See docs/recon/fm27-call-shapes.md section 2.
+sign_free_agent = 0x2E0DC3C
+# The terms map's constructor and destructor (the map is three qwords), and the destructor of the list of entity
+# references the signing fills (three qwords too), each taking the object itself.
+map_new = 0x440FC20
+map_drop = 0x440FCE0
+refs_drop = 0x4417A38
+# TRANSFER_MANAGER::end_contract: (manager, the player object, the contract, a kind for the news, 0, 1, 0, 0, then two
+# zeros on the stack). The game's daily check calls it on a loan contract once the loan has run out, at 0x2621018, and
+# the player goes back to his club. On his own contract it leaves him at his club with none. See
+# docs/recon/fm27-call-shapes.md section 4.
+end_contract = 0x2D5AF78
+# Releasing a player, as the game's editor does at 0x239EBC8 once it has ended any loan: TRANSFER_MANAGER::withdraw_offers
+# (manager, the identity block, 1, 0, 0, 0, 0), then TRANSFER_MANAGER::leave_team (manager, the identity block, the team
+# his contract is with, 9 for a release, 0, 0, 0, 1, then a byte 1 and a qword 0 on the stack). He becomes a free agent.
+# See docs/recon/fm27-call-shapes.md section 4.
+withdraw_offers = 0x2D5ED38
+leave_team = 0x2D588D0
+# The date term of a signing ('TrDt'), as the game's editor puts it in the terms map at 0x25D974: the date type
+# (no arguments), the Value of a date (type, &Value, &raw date), the map's insert (map, key, &Value) and the Value's
+# destructor. A date after today has the game agree the signing for that day. See section 5.
+date_type = 0x4308FC0
+date_value = 0x43091EC
+map_insert = 0x441038C
+value_drop = 0x441CCD8
+# Cancelling a transfer agreed for a later day, as the game's editor does at 0x239BC7C: TRANSFER_MANAGER::cancel_offer
+# (manager, &slot holding the offer with a reference taken, its team, 2 for the team it joins or 0 for the one it
+# leaves, 0, 0, 0, 1, then two zeros on the stack); then the manager's dated transfers drop its record ((manager +
+# 0x18, offer, the player's identity block), at 0x239BC94). The offer's reference count is the u32 at +0x08:
+# ref_copy copies a {pointer, u32} slot taking a reference, ref_drop gives one back and destroys the object with the
+# last. See section 5.
+cancel_offer = 0x2D27800
+drop_dated_transfer = 0x18322B0
+ref_copy = 0x76C9BC
+ref_drop = 0x4B5E388
+# The game's editor action that makes every player of a team fully familiar with its tactic
+# (TEAM_MAXIMISE_TACTICAL_UNDERSTANDING_ACTION, 0x23A232C): it takes the action's map, which holds under 'dref' a struct
+# Value whose own map holds the team's reference (0x18 << 24 | the team's id) as an integer Value under 'dref'. The
+# struct Value is made with struct_value (Value*, map*), which moves the map's entries into it; map_insert moves a Value
+# into the map. For each player of the team it raises each familiarity of the tactic to 10000 (0x489B254) and sets
+# the record's dirty byte; for a human manager's team it also updates what the manager knows of the players. See
+# docs/recon/fm27-staff-extras.md.
+struct_value = 0x441D77C
+maximise_tactics = 0x23A232C
+# What set_work_permit asks before it gives a permit, unforced: the rules of the club's nation (rules root, the
+# nation, the club's women's byte), then whether they say the player needs a permit (rules, identity block, club
+# team, 1, 0, 6, 0, no date*, no date*, null), a bool. Both only read; FM's own screens ask the second too.
+work_permit_rules = 0x423DA28
+needs_work_permit = 0x1C40898
+
+# What a STARTING_LOAN (layout-macos.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58
+# (fees unset).
+[starting_loan]
+vtable = 0x565A9D8
+defaults = 0x542ACC0
+
+# What the game's editor actions start from: the static pointer to the registry of Value types (its integer type at
+# +0x28, kind 1, read live), the static pointer to the database table of teams (Arsenal's senior team, id 462, its
+# entry 462), and the byte the editor's actions check is 1 before they do anything (1 on the test career).
+[editor]
+value_types = 0x57D7BC0
+integer_type = 0x28
+teams = 0x576EDE8
+enabled = 0x576F518
+
+# game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
+[plugin]
+uuid = "A8550B47-FDE0-3D0D-A6CB-1B63DEE8DA19"
+
+# RVAs in game_plugin of the (begin, end) pointer pairs of the entity arrays, as calibrate found them by scanning.
+[arrays]
+players = 0x576EE50
+staff = 0x576EE98
+clubs = 0x576F008
+
+# The human manager's flags word, traced statically in this arm64 slice: the become_unsackable action resolves the
+# selected human manager (db::HUMAN_NON_PLAYER) and toggles bit 1 of the u32 at +0x3FC, keeping the other bits. Read on
+# a manager whose person block is shifted 0x340; the offset is not shifted again. The Intel half has it too.
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = "N2db16HUMAN_NON_PLAYERE"
+
+# What needs_work_permit takes, as set_work_permit reads it: the byte that is 1 while work permits are in force
+# (otherwise it gives none), the static pointer to the rules root, and the date it passes for none (1 Jan 1900).
+[work_permit_check]
+enabled = 0x57709D2
+rules = 0x5771808
+no_date = 0x538A440
