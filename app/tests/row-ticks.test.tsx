@@ -1,9 +1,12 @@
-// Ticking players in the list: Mass edit and Clone & templates take the ticked ones in place of the whole list.
+// Ticking rows in the player, staff and club lists: Mass edit and Clone & templates take the ticked ones in place of
+// the whole list.
 
 import { beforeEach, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ClubBrowser } from '../src/ClubBrowser';
 import { PlayerBrowser } from '../src/PlayerBrowser';
+import { StaffBrowser } from '../src/StaffBrowser';
 import { EditorContext, NO_GAME_ACTIONS } from '../src/useProfileEditing';
 import { mockInvoke } from '../src/dev/mock';
 import { call } from '../src/api';
@@ -37,8 +40,8 @@ async function twoPlayers(): Promise<[PlayerSummary, PlayerSummary]> {
   return [first, second];
 }
 
-/** Searches for the player, as the only text in the search box, and ticks his row. */
-async function searchAndTick(player: PlayerSummary) {
+/** Searches for the player, member of staff or club, as the only text in the search box, and ticks the row. */
+async function searchAndTick(player: { uid: number; name: string }) {
   const search = screen.getByRole('textbox', { name: /search/i });
   await userEvent.clear(search);
   await userEvent.type(search, String(player.uid));
@@ -170,4 +173,46 @@ test('another game starts with no player ticked, and a game that cannot be edite
   rerender(<Players game={1} editable={false} />);
   expect(screen.queryByRole('checkbox', { name: `Select ${first.name}` })).toBeNull();
   expect(screen.queryByRole('checkbox', { name: 'Select all on this page' })).toBeNull();
+});
+
+test.each([
+  ['staff', 'search_staff', 'Mass edit staff', 'Only the 2 staff you selected', 'current_ability', 150],
+  ['club', 'search_clubs', 'Mass edit clubs', 'Only the 2 clubs you selected', 'reputation', 5000],
+] as const)('a mass edit of %s changes only the ones ticked', async (entity, command, title, scope, field, wanted) => {
+  const { rows } = await mockInvoke<{ rows: { uid: number; name: string }[] }>(command, { query: '', limit: 200 });
+  const first = rows[0];
+  const second = rows.find((row) => row.name !== first.name)!;
+  // A value neither has now, so that both change.
+  const now = await Promise.all(
+    [first, second].map((row) => mockInvoke<Record<string, number>>('read_values', { entity, uid: row.uid })),
+  );
+  let value: number = wanted;
+  while (now.some((values) => values[field] === value)) {
+    value += 1;
+  }
+  const Browser = entity === 'staff' ? StaffBrowser : ClubBrowser;
+  render(
+    <EditorContext.Provider value={editor}>
+      <Browser version={0} game={0} active reveal={null} />
+    </EditorContext.Provider>,
+  );
+  await searchAndTick(first);
+  expect(document.querySelector('.profile')).toBeNull();
+  await searchAndTick(second);
+  expect(ticked()).toBe('2 selected');
+
+  await userEvent.click(screen.getByRole('button', { name: 'Mass edit' }));
+  const dialog = await screen.findByRole('dialog', { name: title });
+  expect(within(dialog).getByText(scope)).toBeTruthy();
+  await userEvent.type(await within(dialog).findByRole('spinbutton', { name: 'Value' }), String(value));
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Preview' }));
+  const changes = await within(dialog).findByRole('region', { name: 'Changes the mass edit would make' });
+  expect(lastCall('plan_mass_edit')).toMatchObject({ entity, query: '', filters: {}, selected: [first.uid, second.uid] });
+  const names = within(changes).getAllByRole('row').slice(1).map((row) => row.querySelector('.name')?.textContent);
+  expect(names.sort()).toEqual([first.name, second.name].sort());
+
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
+  await within(dialog).findByText('2 changes applied');
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Undo this mass edit' }));
+  await within(dialog).findByText('Undid 2 changes');
 });

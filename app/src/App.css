@@ -1598,6 +1598,14 @@ input::placeholder {
   cursor: default;
 }
 
+/* The narrowest lists, beside a profile in a small window, are for picking the next row: the boxes drop out there, as
+   other columns do, and the count beside the search box stays. */
+@container (max-width: 440px) {
+  .grid .col-tick {
+    display: none;
+  }
+}
+
 /* What a picked row holds besides its cells, under it, as a competition's rules: on the row's bar and a lighter tint
  * so the two read as one, its facts in columns across the table. */
 .grid tbody tr.row-detail {
@@ -1966,6 +1974,30 @@ input::placeholder {
   }
 
   .staff-grid :is(.col-name, .col-job, .col-club) {
+    white-space: normal;
+  }
+}
+
+/* With its column of boxes (see ListBrowser) the staff table is that much wider, so its columns drop out that much
+   sooner. */
+@container (max-width: 990px) {
+  .staff-grid.ticking :is(.col-born, .col-uid) {
+    display: none;
+  }
+}
+
+@container (max-width: 810px) {
+  .staff-grid.ticking .col-nation {
+    display: none;
+  }
+}
+
+@container (max-width: 710px) {
+  .staff-grid.ticking :is(.col-age, .col-pa) {
+    display: none;
+  }
+
+  .staff-grid.ticking :is(.col-name, .col-job, .col-club) {
     white-space: normal;
   }
 }
@@ -3494,7 +3526,8 @@ button.danger:hover:not(:disabled) {
   font-variant-numeric: tabular-nums;
 }
 
-.ticked + .more-menu {
+/* The actions keep to the right edge, the count just before them. */
+.toolbar > .ticked + :is(.more-menu, .mass-edit-toggle) {
   margin-left: 0;
 }
 

@@ -327,8 +327,10 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
                   type="button"
                   onClick={() => {
                     ticks.clear();
-                    // The button goes with the count: focus stays with the ticking.
-                    tickShown.current?.focus();
+                    // The button goes with the count: focus stays with the ticking, or goes to the search box where
+                    // the list is too narrow to show its boxes.
+                    const box = tickShown.current;
+                    (box && box.getClientRects().length > 0 ? box : searchInput.current)?.focus();
                   }}
                 >
                   {feedback.clearTicks}
@@ -348,7 +350,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
         <div className="table-wrap" data-list-width={listWidth} aria-busy={searching} ref={tableWrap} data-tour={active ? "list" : undefined}>
           {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
           <table
-            className={["grid", tableClass, !profile && !detail && "static"].filter(Boolean).join(" ")}
+            className={["grid", tableClass, ticks && "ticking", !profile && !detail && "static"].filter(Boolean).join(" ")}
             role="grid"
             aria-label={settled && page ? summary(page.total, page.total) : error ? feedback.failed : feedback.searching}
           >

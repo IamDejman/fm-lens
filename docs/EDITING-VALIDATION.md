@@ -2849,14 +2849,15 @@ Not run: the packaged app under Rosetta; staff and clubs in the packaged app
 (both were run in the browser preview); a Continue with a mass freeze on. The
 hold itself is the profiles' freeze, followed over a holiday on 8 November.
 
-## Ticked players for Mass edit and Clone & templates (12 November 2026)
+## Ticked rows for Mass edit and Clone & templates (12 November 2026)
 
-The player list has a box on each row and one in its header for the rows on
-show, while the game can be edited. Mass edit and Clone & templates take the
-ticked players in place of everyone the search and filters match. Ticks stay
-through searches, filters, sorting and pages, so players found by different
-searches can be changed together, and the toolbar shows how many are ticked with
-Clear. Shift+Space ticks the row the keyboard is on; the boxes are not Tab stops.
+The player, staff and club lists each have a box on every row and one in the
+header for the rows on show, while the game can be edited. Mass edit, and for
+players Clone & templates, take the ticked rows in place of everyone the search
+and filters match. Ticks stay through searches, filters, sorting and pages, so
+rows found by different searches can be changed together, and the toolbar shows
+how many are ticked with Clear. Each list keeps its own ticks. Shift+Space ticks
+the row the keyboard is on; the boxes are not Tab stops.
 
 - `plan_mass_edit` takes `selected`, the UIDs to keep, as `plan_player_template`
   already did; both now share `keep_selected`. Targets are still resolved from
@@ -2872,14 +2873,22 @@ Clear. Shift+Space ticks the row the keyboard is on; the boxes are not Tab stops
   someone else in another save.
 - The browser preview's sample data now answers the Clone & templates commands,
   which it did not before.
+- The column of boxes costs no room where the list is tight: it drops out of a
+  list narrower than 440px, where the count beside the search box stays, and
+  the staff table's columns give way 30px sooner while it has boxes. Measured
+  from 720 to 1600 wide, with and without a profile open, the three lists
+  overflow exactly as they do without boxes. That leaves what main already
+  had: the staff and player lists overflow beside a profile in a window under
+  about 1000 and 860 wide.
 
 Checks run, in a Linux container with no FM and no native app:
 
-- `npm test` in `app`: 71 tests pass, five of them new
+- `npm test` in `app`: 73 tests pass, seven of them new
   (`tests/row-ticks.test.tsx`): a mass edit, a freeze alone and a template each
   reach only the two ticked players, found by different searches, with the
-  request the window sends; the header box, Shift+Space and Clear; ticks
-  dropped for another game and no boxes while the game cannot be edited.
+  request the window sends; a mass edit of staff and one of clubs likewise; the
+  header box, Shift+Space and Clear; ticks dropped for another game and no
+  boxes while the game cannot be edited.
 - `npm run build`, `cargo fmt --all --check`, and `cargo check` of
   `fmlens-core` for `aarch64-apple-darwin`.
 - The browser preview on sample data, driven in Chromium at 1280 and 900 wide
@@ -2892,10 +2901,16 @@ Checks run, in a Linux container with no FM and no native app:
   after the mass edit and after Reload; Clear; Shift+Space ticked and Space
   still opened the row; the header box ticked all 200 rows. No horizontal
   overflow, beside an open profile either, and no console errors.
+- The same preview for staff and clubs, light at 1280 and dark at 960x600 and
+  150%: two ticked in each; "Only the 2 staff you selected" and "Only the 2
+  clubs you selected"; 2 changes applied and undone; Freeze attributes and
+  Freeze money alone, "2 to freeze", "2 frozen", then "2 unfrozen"; the one
+  player ticked beforehand still ticked afterwards, and neither list showing
+  it.
 
 Not run: the native macOS and Windows apps, and anything against a running
 game, so nothing here is live or persistence evidence. The desktop crate builds
 only for macOS and Windows; its build, Clippy and tests, with the new
 `a_selection_keeps_exactly_the_chosen_targets`, are CI's. Still to do natively:
-tick players in the app, apply and undo a mass edit, a freeze and a clone on a
-test career, and load another save to see the ticks go.
+tick players, staff and clubs in the app, apply and undo a mass edit, a freeze
+and a clone on a test career, and load another save to see the ticks go.

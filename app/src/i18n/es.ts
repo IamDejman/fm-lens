@@ -2394,7 +2394,7 @@ export const es: Strings = {
     retry: "Reintentar",
     ticked: (count) => (count === 1 ? "1 seleccionado" : `${format(count)} seleccionados`),
     clearTicks: "Borrar",
-    tickRow: (name) => `Seleccionar a ${name}`,
+    tickRow: (name) => `Seleccionar: ${name}`,
     tickShown: "Seleccionar todos los de esta página",
   },
 

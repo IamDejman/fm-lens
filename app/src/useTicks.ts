@@ -1,7 +1,7 @@
 // The rows ticked in a list, for the actions that take the ticked ones in place of the whole list (Mass edit, Clone &
-// templates). The set lives with the list (see `PlayerBrowser`), which stays mounted while another view is shown, and
-// it outlasts searches, filters and pages, so rows found by several searches can be ticked together. A reload of the
-// window starts with none.
+// templates). The set lives with the list (the players, staff and clubs each have their own), which stays mounted
+// while another view is shown, and it outlasts searches, filters and pages, so rows found by several searches can be
+// ticked together. A reload of the window starts with none.
 
 import { useMemo, useState } from "react";
 

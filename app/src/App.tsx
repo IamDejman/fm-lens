@@ -624,10 +624,10 @@ function App() {
             <div className="views">
               <PlayerBrowser version={dataVersion} game={game} active={view === "players"} reveal={revealPlayer} />
               <DeferredView active={view === "staff"} label={staffListText.nav}>
-                <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
+                <StaffBrowser version={dataVersion} game={game} active={view === "staff"} reveal={revealStaff} />
               </DeferredView>
               <DeferredView active={view === "clubs"} label={clubListText.nav}>
-                <ClubBrowser version={dataVersion} active={view === "clubs"} reveal={revealClub} />
+                <ClubBrowser version={dataVersion} game={game} active={view === "clubs"} reveal={revealClub} />
               </DeferredView>
               <DeferredView active={view === "nations"} label={nationListText.nav}>
                 <NationBrowser version={dataVersion} active={view === "nations"} />
