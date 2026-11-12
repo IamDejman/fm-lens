@@ -31,8 +31,10 @@ const HEIGHT_RANGE = { min: 100, max: 250 };
 const MONEY_RANGE = { min: 0, max: Number.MAX_SAFE_INTEGER };
 const MOST_POUNDS = 2_147_483_647;
 
-/** The traits the game names, by their bit: the select offers these (bits 62 and 63 have no name). */
-export const TRAIT_CHOICES: readonly number[] = Array.from({ length: 62 }, (_, bit) => bit);
+/** The traits the game names, by their bit: the select offers these (bits 61 and 62 are no trait in FM27). */
+export const TRAIT_CHOICES: readonly number[] = Array.from({ length: 64 }, (_, bit) => bit).filter(
+  (bit) => bit !== 61 && bit !== 62,
+);
 
 /** What the filter inputs hold, as typed: an empty string, or `false`, is no filter. */
 export interface PlayerFilterFields {

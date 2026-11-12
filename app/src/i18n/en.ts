@@ -214,7 +214,7 @@ const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
   926: "Doesn't believe a teammate deserves the playing time he wants",
 };
 
-/** Players' traits (preferred moves), by their bit in the game's mask; named as FMRTE names them. */
+/** Players' traits (preferred moves), by their bit in the game's mask; named as FM27 names them. */
 const TRAIT_NAMES_EN: readonly string[] = [
   "Runs with ball down left",
   "Runs with ball down right",
@@ -261,9 +261,9 @@ const TRAIT_NAMES_EN: readonly string[] = [
   "Tries first time shots",
   "Tries long range passes",
   "Likes ball played into feet",
-  "Hits free kicks with power",
-  "Likes to beat man repeatedly",
-  "Likes to switch ball to other flank",
+  "Hits free kick with power",
+  "Likes to beat opponent repeatedly",
+  "Likes to switch ball to wide areas",
   "Will retire at top",
   "Will play football as long as possible",
   "Possesses long flat throw",
@@ -277,6 +277,9 @@ const TRAIT_NAMES_EN: readonly string[] = [
   "Cuts inside from right wing",
   "Crosses early",
   "Brings ball out of defence",
+  // Bits 61 and 62 are no trait in FM27: the game shows nothing for them.
+  "",
+  "",
   "Plays ball with feet"
 ];
 
@@ -749,7 +752,17 @@ export const en = {
     /** A player's traits (preferred moves): the heading, none, and each one's name by its bit. */
     traits: "Traits",
     noTraits: "No traits",
-    traitName: (bit: number) => TRAIT_NAMES_EN[bit] ?? "Unknown trait",
+    traitName: (bit: number) => TRAIT_NAMES_EN[bit] || "Unknown trait",
+    /** The groups the traits are listed in while a player is edited. */
+    traitGroups: {
+      movement: "Movement",
+      passing: "Passing",
+      finishing: "Finishing",
+      discipline: "Discipline",
+      defending: "Defending",
+      technique: "Technique",
+      career: "Career",
+    },
     /** A player's reasons to be unhappy, as FMRTE lists them, and the button that removes them all. */
     unhappiness: "Unhappiness",
     noUnhappiness: "Nothing makes him unhappy",

@@ -3152,3 +3152,37 @@ Not run: the packaged app on Apple Silicon, under Rosetta or on Windows; an
 Apply of a suggested ability in FM; any other game build or database, where
 the weights may fit worse; a goalkeeper or a player with no rated position
 in the preview (both are in the tests).
+
+## Traits: FM27's names and groups (12 November 2026)
+
+The profile's trait list offered 62 traits by bit, named as FMRTE names them,
+and showed "Unknown trait" for bits 62 and 63. Each of the last five bits was
+set alone on Bukayo Saka and David Raya (Arsenal, 14 April 2027) on Windows,
+and the player's trait list read in FM after each Apply.
+
+| Bit | FM27 shows | FM Lens before | FM Lens now |
+|---|---|---|---|
+| 59 | Crosses Early | Crosses early | The same |
+| 60 | Brings Ball Out of Defense | Brings ball out of defence | The same |
+| 61 | Nothing, on either player | Plays ball with feet | Not offered |
+| 62 | Nothing | Unknown trait | Not offered, not listed |
+| 63 | Plays Ball With Feet | Unknown trait | Plays ball with feet |
+
+Bits 8, 11, 51 and 58 read as FM names them on Saka's own traits. Both
+players were set back to their own traits.
+
+The edit list is now grouped as FM groups traits under Development, Training,
+Start New Trait Training: Movement, Passing, Finishing, Discipline, Defending
+and Technique, each in the game's order (by bit). The groups were read from
+that menu for Saka, Gabriel, Bruno Guimarães and Raya; 42 of the 62 traits
+were seen in a group. Placed by their kind, not seen: bits 1, 4, 18, 39, 54,
+58 (Movement), 22, 30, 59 (Passing), 38 (Defending), 11, 32, 53, 55, 63
+(Technique) and the three of Discipline, which FM offered to none of the four.
+"Will retire at top" and "Will play football as long as possible" are in no
+FM group and stand under Career. Three English names now follow FM27's
+wording: "Hits free kick with power", "Likes to beat opponent repeatedly" and
+"Likes to switch ball to wide areas".
+
+Not run: the packaged app with these changes on any platform (the list and
+the tags were checked in the browser preview); the Spanish and Turkish names
+against FM in those languages.
