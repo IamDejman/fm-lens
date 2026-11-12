@@ -3092,3 +3092,31 @@ Rosetta FM 82569 started with `arch -x86_64` and the packaged universal
 bridge, FM Lens 82602 with `arch -x86_64`. Every game was quit without saving.
 The test copy stayed 89,343,966 bytes from 14:31, and the main career SHA-256
 stayed 23472DA3...6192BEF4.
+
+## Suggested current ability (12 November 2026)
+
+While a player is edited, the profile shows the current ability that fits the
+attributes and positions as typed ("Suggested CA 170"), and a click fills it
+in. It is worked out in the app (`app/src/abilityEstimate.ts`) and makes no
+call to the game; the write is the ordinary current ability edit.
+
+The weights were fitted to a read-only export of the 30,282 players of a
+career on build 26577676 (`fmlens-probe players --export`, stored 0-100
+attributes). Against that export the app's function is off by 2.15 points
+RMS, by 4 or less for 19 players in 20 and by 29 at worst. A player whose
+ability is within 6 of the estimate keeps that difference, so an unedited
+player is suggested the ability he has and the button stays hidden.
+
+Checks run, none of them against a running game:
+
+- `npm test` (82 tests) and `npm run build` on the branch, rebased on c93585a.
+- The app's function against all 30,282 exported players: 2.154 RMS.
+- The browser preview on sample data (`?writable`): an edited attribute moved
+  the suggestion (Decisions to 5 read 170, Marking to 1 read 197); a click
+  filled Current ability and the button went; the header kept its height
+  with and without the button; no console errors.
+
+Not run: the packaged app on Apple Silicon, under Rosetta or on Windows; an
+Apply of a suggested ability in FM; any other game build or database, where
+the weights may fit worse; a goalkeeper or a player with no rated position
+in the preview (both are in the tests).
