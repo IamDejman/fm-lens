@@ -1646,6 +1646,10 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.10": [
+        "Sube los atributos de un jugador y su HA sube con ellos: los cambios se quedan.",
+        "Da las gracias: Apoyar FM Lens abre Ko-fi dentro de la app.",
+      ],
       "0.7.9": [
         "Congelar mantiene también la habilidad actual: un jugador congelado deja de decaer.",
         "Al editar un jugador, FM Lens sugiere la HA que valen sus atributos.",

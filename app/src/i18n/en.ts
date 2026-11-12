@@ -1755,6 +1755,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.10": [
+        "Raise a player's attributes and his CA rises with them, so the edits stay.",
+        "Say thanks: Support FM Lens opens Ko-fi inside the app.",
+      ],
       "0.7.9": [
         "A freeze now holds current ability too, so a frozen player stops declining.",
         "Edit a player and FM Lens suggests the CA his attributes are worth.",
