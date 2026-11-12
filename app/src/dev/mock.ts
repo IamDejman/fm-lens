@@ -3056,6 +3056,20 @@ function operate(field: EditField, operation: MassOperationKind, old: number): n
   }
 }
 
+/** Only the `targets` with one of the `selected` UIDs, every one of which has to be there, as the real commands do. */
+function keepSelected<Target extends { uid: number }>(targets: Target[], selected: number[] | undefined): Target[] {
+  if (selected === undefined) {
+    return targets;
+  }
+  const uids = new Set(selected);
+  const kept = targets.filter((target) => uids.has(target.uid));
+  if (kept.length !== uids.size) {
+    const message = "Some of what you selected could not be found. Clear the selection and choose again.";
+    throw failure("mass.selectionChanged", message);
+  }
+  return kept;
+}
+
 /** `plan_mass_edit`, with the real command's checks and messages. */
 function planMass(
   entity: Entity,
@@ -3063,15 +3077,29 @@ function planMass(
   filters: MassFilters,
   operations: MassOperation[],
   wanted: boolean | null,
+  selected?: number[],
 ): MassPreview {
   if (operations.length === 0 && wanted === null) {
     throw failure("mass.noOperations", "Choose at least one field to change.");
   }
-  const targets = selectTargets(entity, query, filters);
+  const targets = keepSelected(selectTargets(entity, query, filters), selected);
   if (targets.length > MASS_LIMIT) {
     const message = `${targets.length} match. Narrow the search or the filters to ${MASS_LIMIT} or fewer for a mass edit.`;
     throw failure("mass.tooMany", message, { count: targets.length, limit: MASS_LIMIT });
   }
+  return planFor(entity, targets, operations, wanted);
+}
+
+/**
+ * What `operations` would change for each of `targets`, and with `wanted` which of them would be frozen or unfrozen,
+ * kept until it is applied: the plan both previews share.
+ */
+function planFor(
+  entity: Entity,
+  targets: { uid: number; name: string }[],
+  operations: MassOperation[],
+  wanted: boolean | null,
+): MassPreview {
   const table = fieldTable(entity);
   const ops = operations.map(({ field: key, operation }) => {
     const field = table.find((f) => f.key === key);
@@ -3126,6 +3154,81 @@ function planMass(
     skipped: skipped.slice(0, PREVIEW_ROWS),
     freeze: freeze && { frozen: freeze.frozen, count: freeze.uids.length },
   };
+}
+
+/** A player template, as the real commands take and give it (see `PlayerTemplate` in template.rs). */
+interface MockTemplate {
+  format: string;
+  version: number;
+  name: string;
+  values: Record<string, number>;
+}
+
+/** The keys each group of a template holds, as `TemplateGroup::includes` does. */
+const TEMPLATE_GROUPS: Record<string, (key: string) => boolean> = {
+  ability: (key) => key === "current_ability" || key === "potential_ability",
+  attributes: (key) => key.startsWith("attribute."),
+  personality: (key) => key.startsWith("personality."),
+  positions: (key) => key.startsWith("position."),
+  traits: (key) => key.startsWith("trait."),
+};
+
+const templateInvalid = (message: string) => failure("template.invalid", message);
+
+/** `validate_player_template`: the template as operations, or the real command's refusal. */
+function templateOperations(template: MockTemplate): MassOperation[] {
+  if (template.format !== "fm-lens-player" || template.version !== 1) {
+    throw templateInvalid("Unsupported player template format or version.");
+  }
+  const keys = Object.keys(template.values);
+  if (keys.length === 0 || keys.length > 256) {
+    throw templateInvalid("A template must contain 1–256 player fields.");
+  }
+  const table = fieldTable("player");
+  return keys.map((key) => {
+    const portable = Object.values(TEMPLATE_GROUPS).some((includes) => includes(key));
+    const field = table.find((f) => f.mass && f.key === key && portable);
+    const value = template.values[key];
+    if (!field) {
+      throw templateInvalid(`Unsupported template field: ${key}`);
+    }
+    if (value < field.min || value > field.max) {
+      throw templateInvalid(`${value} is not a valid ${key}; it takes ${field.min} to ${field.max}`);
+    }
+    return { field: key, operation: { op: "set", value } };
+  });
+}
+
+/** `capture_player_template`: the chosen groups of the player's values. */
+function captureTemplate(uid: number, name: string, groups: string[]): MockTemplate {
+  if (!players.some((p) => p.uid === uid)) {
+    throw notFound("player", uid);
+  }
+  const current = currentValues("player", uid);
+  const values: Record<string, number> = {};
+  for (const field of fieldTable("player")) {
+    if (field.mass && groups.some((group) => TEMPLATE_GROUPS[group]?.(field.key))) {
+      const value: number | undefined = current[field.key];
+      if (value === undefined) {
+        throw templateInvalid(`Cannot read ${field.key} from this player.`);
+      }
+      values[field.key] = value;
+    }
+  }
+  const template = { format: "fm-lens-player", version: 1, name, values };
+  templateOperations(template);
+  return template;
+}
+
+/** `plan_player_template`, with the real command's checks and messages. */
+function planTemplate(template: MockTemplate, query: string, filters: MassFilters, selected?: number[]): MassPreview {
+  pendingMass = null;
+  const operations = templateOperations(template);
+  const targets = keepSelected(selectTargets("player", query, filters), selected);
+  if (targets.length === 0 || targets.length > MASS_LIMIT) {
+    throw failure("template.targetCount", `Select 1–${MASS_LIMIT} players; ${targets.length} match.`);
+  }
+  return planFor("player", targets, operations, null);
 }
 
 /** `apply_mass_edit`: the previewed changes, each only while the value is still the one previewed, then its freeze. */
@@ -3546,6 +3649,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         gameDate: failedChecks ? null : gameDate,
         health: mockHealth(),
         career: mockCareer(),
+        sameGame: true,
       };
       return reloaded as T;
     }
@@ -3657,7 +3761,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "frozen_selection": {
       const entity = args?.entity as Entity;
       const held = frozenSet(entity);
-      const targets = selectTargets(entity, String(args?.query ?? ""), (args?.filters ?? {}) as MassFilters);
+      const targets = keepSelected(
+        selectTargets(entity, String(args?.query ?? ""), (args?.filters ?? {}) as MassFilters),
+        args?.selected as number[] | undefined,
+      );
       return { selected: targets.length, frozen: targets.filter(({ uid }) => held.has(uid)).length } as T;
     }
     case "export_players": {
@@ -3848,6 +3955,18 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         (args?.filters ?? {}) as MassFilters,
         (args?.operations ?? []) as MassOperation[],
         (args?.freeze ?? null) as boolean | null,
+        args?.selected as number[] | undefined,
+      ) as T;
+    case "capture_player_template":
+      return captureTemplate(Number(args?.uid), String(args?.name ?? ""), (args?.groups ?? []) as string[]) as T;
+    case "validate_player_template":
+      return templateOperations(args?.template as MockTemplate).length as T;
+    case "plan_player_template":
+      return planTemplate(
+        args?.template as MockTemplate,
+        String(args?.query ?? ""),
+        (args?.filters ?? {}) as MassFilters,
+        args?.selected as number[] | undefined,
       ) as T;
     case "apply_mass_edit":
       return applyMass(Number(args?.id)) as T;

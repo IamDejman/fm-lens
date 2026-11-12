@@ -1,6 +1,6 @@
 // Mass editing: the button in the toolbar of a list, and the dialog it opens. The dialog changes one or more fields of
-// everything the list's search and filters select, and freezes or unfreezes it: it previews exactly what would be
-// written, applies it, and can undo it.
+// everything the list's search and filters select, or of the rows ticked in the list when there are any, and freezes
+// or unfreezes it: it previews exactly what would be written, applies it, and can undo it.
 
 import { useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
@@ -54,7 +54,7 @@ import type {
 import { useModal } from "./useModal";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 
-/** What a mass edit applies to: the list as it was when the dialog opened. */
+/** What a mass edit applies to: the list as it was when the dialog opened, or the rows ticked in it then. */
 interface MassScope {
   /** The list's search text. */
   query: string;
@@ -63,6 +63,11 @@ interface MassScope {
   /** How many the search and the filters select, and how many of them the list has rows for. */
   total: number;
   shown: number;
+  /**
+   * The UIDs of the ticked rows, when there are any: the mass edit takes those, whatever the list shows now (they may
+   * have been ticked under other searches), and `total` counts them.
+   */
+  selected?: readonly number[];
 }
 
 interface MassEditButtonProps {
@@ -71,6 +76,8 @@ interface MassEditButtonProps {
   filters: MassFilters;
   /** The search text and the total of the list, from its toolbar. */
   list: ListState;
+  /** The UIDs of the rows ticked in the list, in a list whose rows can be ticked: the mass edit takes those. */
+  ticked?: readonly number[];
 }
 
 /**
@@ -78,7 +85,7 @@ interface MassEditButtonProps {
  * dialog applies to what the list selects when it is opened; the list cannot change while the dialog is up. Edits
  * pending in the open profile are asked about before the dialog opens (see `askToLeave`).
  */
-export function MassEditButton({ entity, filters, list }: MassEditButtonProps) {
+export function MassEditButton({ entity, filters, list, ticked = [] }: MassEditButtonProps) {
   const { editable } = useContext(EditorContext);
   const [scope, setScope] = useState<MassScope | null>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -93,7 +100,13 @@ export function MassEditButton({ entity, filters, list }: MassEditButtonProps) {
     if (total !== null) {
       // A mass edit would write under the edits pending in the open profile, which were read before it: the profile
       // asks first, and the dialog opens only if they are discarded.
-      askToLeave(() => setScope({ query: list.query, filters, total, shown: list.shown }));
+      askToLeave(() =>
+        setScope(
+          ticked.length > 0
+            ? { query: "", filters: {}, total: ticked.length, shown: ticked.length, selected: ticked }
+            : { query: list.query, filters, total, shown: list.shown },
+        ),
+      );
     }
   };
 
@@ -105,7 +118,7 @@ export function MassEditButton({ entity, filters, list }: MassEditButtonProps) {
         className="mass-edit-toggle"
         aria-haspopup="dialog"
         disabled={total === null}
-        title={text.buttonTitle}
+        title={ticked.length > 0 ? text.buttonTitleSelected : text.buttonTitle}
         onClick={open}
       >
         {text.button}
@@ -183,7 +196,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       return;
     }
     let cancelled = false;
-    frozenSelection(entity, scope.query, scope.filters).then(
+    frozenSelection(entity, scope.query, scope.filters, scope.selected).then(
       (now) => {
         if (!cancelled) {
           setFreeze(now);
@@ -355,7 +368,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
     complete &&
     run("preview", async () => {
       try {
-        const data = await planMassEdit(entity, scope.query, scope.filters, operations, wanted);
+        const data = await planMassEdit(entity, scope.query, scope.filters, operations, wanted, scope.selected);
         if (alive.current) {
           setPreview({ data, key: draftKey });
         }
@@ -370,7 +383,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
   /** Reads again what of the list is frozen, after an Apply or an Undo that changed it. */
   const readFrozen = async () => {
     try {
-      const now = await frozenSelection(entity, scope.query, scope.filters);
+      const now = await frozenSelection(entity, scope.query, scope.filters, scope.selected);
       if (alive.current) {
         setFreeze(now);
       }
@@ -386,7 +399,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
     run("apply", async () => {
       try {
         // A freeze alone was not previewed: it is planned now.
-        const plan = current ?? (await planMassEdit(entity, scope.query, scope.filters, [], wanted));
+        const plan = current ?? (await planMassEdit(entity, scope.query, scope.filters, [], wanted, scope.selected));
         const done = await applyMassEdit(plan.id);
         // The game has changed: the lists, the profile and the change log read it again.
         if (done.applied > 0) {
@@ -440,9 +453,13 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
   const scopeText =
     scope.total === 0
       ? text.scopeNone(entity)
-      : scope.total > MASS_LIMIT
-        ? text.scopeTooMany(entity, scope.total, MASS_LIMIT)
-        : text.scope(entity, scope.total);
+      : scope.selected
+        ? scope.total > MASS_LIMIT
+          ? text.scopeTooManySelected(entity, scope.total, MASS_LIMIT)
+          : text.scopeSelected(entity, scope.total)
+        : scope.total > MASS_LIMIT
+          ? text.scopeTooMany(entity, scope.total, MASS_LIMIT)
+          : text.scope(entity, scope.total);
   // Why Preview is off, while there is something to fill in.
   const previewHint = complete || freezeOnly !== null || applied ? undefined : text.previewBlocked;
   const applyTitle =

@@ -128,6 +128,8 @@ function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
+  // Counts the games read: what a list holds by UID alone, such as its ticked rows, is of one game.
+  const [game, setGame] = useState(0);
   // What connecting froze again of what was frozen in the save before, until the notice that says so is dismissed.
   const [refrozen, setRefrozen] = useState<Refrozen | null>(null);
   const [view, setView] = useState<View>(() => restored("view", readView));
@@ -194,14 +196,18 @@ function App() {
         editable: connected.editable,
       });
       setDataVersion((v) => v + 1);
+      setGame((g) => g + 1);
     });
 
   // The game was read again, by Reload or by the app itself: the lists, the open profile and the log follow.
   const readAgain = useCallback(
-    ({ refrozen: again, ...reloaded }: ReloadInfo) => {
+    ({ refrozen: again, sameGame, ...reloaded }: ReloadInfo) => {
       setConnection((c) => c && { ...c, ...reloaded });
       if (again) {
         setRefrozen(again);
+      }
+      if (!sameGame) {
+        setGame((g) => g + 1);
       }
       setDataVersion((v) => v + 1);
       void reloadLog();
@@ -616,7 +622,7 @@ function App() {
           // Visited lists stay mounted, so each keeps its search and selection while another is shown.
           <EditorContext.Provider value={editor}>
             <div className="views">
-              <PlayerBrowser version={dataVersion} active={view === "players"} reveal={revealPlayer} />
+              <PlayerBrowser version={dataVersion} game={game} active={view === "players"} reveal={revealPlayer} />
               <DeferredView active={view === "staff"} label={staffListText.nav}>
                 <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
               </DeferredView>

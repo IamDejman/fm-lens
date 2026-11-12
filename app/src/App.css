@@ -1579,6 +1579,25 @@ input::placeholder {
   cursor: default;
 }
 
+/* Ticking rows (see ListBrowser): a column of boxes before the others, as narrow as a box. The whole cell ticks. */
+.grid .col-tick {
+  width: 1px;
+  padding-right: 0;
+}
+
+.grid .col-tick input {
+  display: block;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.grid .col-tick input:disabled {
+  cursor: default;
+}
+
 /* What a picked row holds besides its cells, under it, as a competition's rules: on the row's bar and a lighter tint
  * so the two read as one, its facts in columns across the table. */
 .grid tbody tr.row-detail {
@@ -3463,6 +3482,20 @@ button.danger:hover:not(:disabled) {
 .more-menu {
   position: relative;
   margin-left: auto;
+}
+
+/* How many rows are ticked and the button that unticks them, beside the actions that take them. */
+.ticked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  font-size: var(--type-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.ticked + .more-menu {
+  margin-left: 0;
 }
 
 .more-panel:not([hidden]) {

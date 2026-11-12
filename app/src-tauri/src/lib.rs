@@ -531,7 +531,7 @@ impl Connection {
     }
 
     /// What the window learns of a connection just read again; `refrozen` as `read_again` gave it.
-    fn reload_info(&self, refrozen: Option<Refrozen>) -> ReloadInfo {
+    fn reload_info(&self, refrozen: Option<Refrozen>, same_game: bool) -> ReloadInfo {
         ReloadInfo {
             editable: self.session.process.can_write() && self.session.writes_allowed(),
             writable: self.session.process.can_write(),
@@ -542,6 +542,7 @@ impl Connection {
             game_date: self.session.game_date(),
             health: Health::clone(&self.session.health()),
             career: self.career.clone(),
+            same_game,
             refrozen,
         }
     }
@@ -2861,6 +2862,9 @@ struct ReloadInfo {
     health: Health,
     /// The human manager and club of the career loaded now.
     career: Option<Career>,
+    /// Whether this is the game read before, moved on. False once FM has loaded another save: what the window holds
+    /// of the game before, such as the rows ticked in a list, is then of another game.
+    same_game: bool,
     /// Only when the game has loaded another save since: what was frozen in that one before and is frozen again,
     /// when there was any. What was frozen in the save before is not held in this one.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -3081,7 +3085,7 @@ fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failur
     connection.carry_log(std::mem::take(&mut old.log), same_game);
     eprintln!("FM Lens read the game again after FM moved its lists (same game: {same_game}).");
     connection.hold_frozen();
-    let info = connection.reload_info(refrozen);
+    let info = connection.reload_info(refrozen, same_game);
     *guard = Some(connection);
     drop(guard);
     if let Err(err) = app.emit(READ_AGAIN_EVENT, info) {
@@ -3116,7 +3120,7 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     };
     // Old addresses must never be used to undo changes in another game: there they are only listed.
     connection.carry_log(log, same_game);
-    let info = connection.reload_info(refrozen);
+    let info = connection.reload_info(refrozen, same_game);
     *state.0.lock()? = Some(connection);
     Ok(info)
 }
@@ -3660,17 +3664,22 @@ struct SelectionFreeze {
     frozen: usize,
 }
 
-/// How much of what `query` and the entity's filter select is frozen: what the freeze box of a mass edit starts from.
+/// How much of what `query` and the entity's filter select, or of the `selected` UIDs of them, is frozen: what the
+/// freeze box of a mass edit starts from.
 #[tauri::command]
 fn frozen_selection(
     state: State<'_, AppState>,
     entity: Entity,
     query: String,
     filters: Filters,
+    selected: Option<Vec<u32>>,
 ) -> Result<SelectionFreeze, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
-    let targets = connection.select(entity, &query, filters);
+    let mut targets = connection.select(entity, &query, filters);
+    if let Some(selected) = selected {
+        keep_selected(&mut targets, selected)?;
+    }
     let frozen = targets.iter().filter(|(target, _)| connection.is_frozen(entity, target.uid)).count();
     Ok(SelectionFreeze { selected: targets.len(), frozen })
 }
@@ -4791,10 +4800,25 @@ fn too_many(count: usize) -> Failure {
     Failure::new("mass.tooMany", message).with("count", count).with("limit", MASS_LIMIT)
 }
 
+/// Keeps of `targets` only those with one of the `selected` UIDs, e.g. the rows ticked in a list. Every one of them
+/// has to be there: a mass edit never quietly covers fewer than were chosen.
+fn keep_selected(targets: &mut Vec<(Target, String)>, selected: Vec<u32>) -> Result<(), Failure> {
+    let selected: BTreeSet<u32> = selected.into_iter().collect();
+    targets.retain(|(target, _)| selected.contains(&target.uid));
+    if targets.len() != selected.len() {
+        return Err(Failure::new(
+            "mass.selectionChanged",
+            "Some of what you selected could not be found. Clear the selection and choose again.",
+        ));
+    }
+    Ok(())
+}
+
 /// Works out a mass edit: `operations` applied to every player, member of staff or club
-/// that `query` and the entity's filter select, from the values the game holds now, and
-/// with `freeze` their attributes or money frozen (true) or unfrozen, as `freeze_attributes`,
-/// `freeze_staff_attributes` and `freeze_money` do for one. A freeze needs no operations.
+/// that `query` and the entity's filter select, or only to the `selected` UIDs of them, from
+/// the values the game holds now, and with `freeze` their attributes or money frozen (true) or
+/// unfrozen, as `freeze_attributes`, `freeze_staff_attributes` and `freeze_money` do for one. A
+/// freeze needs no operations.
 /// Nothing is written; the plan waits for `apply_mass_edit` with the preview's id.
 #[tauri::command]
 fn plan_mass_edit(
@@ -4804,13 +4828,17 @@ fn plan_mass_edit(
     filters: Filters,
     operations: Vec<MassOperation>,
     freeze: Option<bool>,
+    selected: Option<Vec<u32>>,
 ) -> Result<MassPreview, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     if operations.is_empty() && freeze.is_none() {
         return Err(Failure::new("mass.noOperations", "Choose at least one field to change."));
     }
-    let targets = connection.select(entity, &query, filters);
+    let mut targets = connection.select(entity, &query, filters);
+    if let Some(selected) = selected {
+        keep_selected(&mut targets, selected)?;
+    }
     if targets.len() > MASS_LIMIT {
         return Err(too_many(targets.len()));
     }
@@ -4888,14 +4916,7 @@ fn plan_player_template(
     let operations = template.operations(&fields).map_err(|err| Failure::new("template.invalid", err.to_string()))?;
     let mut targets = connection.select(Entity::Player, &query, filters);
     if let Some(selected) = selected {
-        let selected: BTreeSet<u32> = selected.into_iter().collect();
-        targets.retain(|(target, _)| selected.contains(&target.uid));
-        if targets.len() != selected.len() {
-            return Err(Failure::new(
-                "template.selectionChanged",
-                "Some selected players no longer match. Refresh your selection.",
-            ));
-        }
+        keep_selected(&mut targets, selected)?;
     }
     if targets.is_empty() || targets.len() > MASS_LIMIT {
         return Err(Failure::new(
@@ -5192,6 +5213,26 @@ mod tests {
             assert!(!card_stem_ok(stem), "{stem}");
         }
         assert!(!card_stem_ok(&"a-".repeat(49)));
+    }
+
+    #[test]
+    fn a_selection_keeps_exactly_the_chosen_targets() {
+        let target = |uid: u32| (Target { entity: Entity::Player, uid, address: 0, shift: 0 }, format!("Player {uid}"));
+        let listed = || vec![target(1), target(2), target(3)];
+        let uids = |targets: &[(Target, String)]| targets.iter().map(|(target, _)| target.uid).collect::<Vec<_>>();
+
+        // Whatever order they were ticked in, and however often one is named.
+        let mut targets = listed();
+        keep_selected(&mut targets, vec![3, 1, 3]).unwrap();
+        assert_eq!(uids(&targets), [1, 3]);
+
+        // One that is not there is refused, rather than leaving a mass edit on fewer than were chosen.
+        let mut targets = listed();
+        assert_eq!(keep_selected(&mut targets, vec![1, 4]).unwrap_err().code, "mass.selectionChanged");
+        // No selection at all is not "everyone".
+        let mut targets = listed();
+        keep_selected(&mut targets, Vec::new()).unwrap();
+        assert!(targets.is_empty());
     }
 
     #[test]

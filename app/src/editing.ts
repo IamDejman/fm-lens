@@ -46,9 +46,16 @@ export const freezeAttributes = (uid: number, frozen: boolean) => call<number[]>
 /** The players whose attributes are frozen: while the app is connected, they do not get worse. */
 export const frozenPlayers = () => call<number[]>("frozen_players");
 
-/** How much of what `query` and the entity's filter in `filters` select is frozen. */
-export const frozenSelection = (entity: MassEntity, query: string, filters: MassFilters) =>
-  call<SelectionFreeze>("frozen_selection", { entity, query, filters });
+/**
+ * How much of what `query` and the entity's filter in `filters` select is frozen, or of those of them with the
+ * `selected` UIDs (the rows ticked in the list).
+ */
+export const frozenSelection = (
+  entity: MassEntity,
+  query: string,
+  filters: MassFilters,
+  selected?: readonly number[],
+) => call<SelectionFreeze>("frozen_selection", { entity, query, filters, selected });
 
 /**
  * Whether the mass edit or the undo that `command` answered `result` to froze (true) or unfroze anything; null when it
@@ -209,8 +216,9 @@ export function numberFromIso(text: string): number | null {
 
 /**
  * Works out a mass edit: `operations` on every player, member of staff or club that `query` and the entity's
- * filter in `filters` select, from the values the game holds now, and with `freeze` their attributes or money frozen
- * (true) or unfrozen, which needs no operations. Nothing is written until `applyMassEdit`.
+ * filter in `filters` select, or only on those of them with the `selected` UIDs (the rows ticked in the list), from
+ * the values the game holds now, and with `freeze` their attributes or money frozen (true) or unfrozen, which needs
+ * no operations. Nothing is written until `applyMassEdit`.
  */
 export const planMassEdit = (
   entity: Entity,
@@ -218,7 +226,8 @@ export const planMassEdit = (
   filters: MassFilters,
   operations: MassOperation[],
   freeze: boolean | null = null,
-) => call<MassPreview>("plan_mass_edit", { entity, query, filters, operations, freeze });
+  selected?: readonly number[],
+) => call<MassPreview>("plan_mass_edit", { entity, query, filters, operations, freeze, selected });
 
 /** Writes the mass edit previewed as `id`, exactly as shown; each change only if the value is still the one previewed. */
 export const applyMassEdit = (id: number) => call<MassReport>("apply_mass_edit", { id });

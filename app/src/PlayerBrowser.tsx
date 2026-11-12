@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Ability } from "./Ability";
 import { ComparisonTray } from "./Comparison";
 import { ExportButton } from "./ExportDialog";
@@ -22,6 +22,8 @@ import { SavedFilterControls } from "./SavedFilterControls";
 import { readFields, readOrder } from "./savedFilters";
 import type { PlayerOrder, PlayerSort, PlayerSummary } from "./types";
 import { useComparison } from "./useComparison";
+import { EditorContext } from "./useProfileEditing";
+import { useTicks } from "./useTicks";
 
 const text = playerListText;
 
@@ -34,8 +36,16 @@ const FIRST_ASCENDING: ReadonlySet<PlayerSort> = new Set<PlayerSort>(["name", "n
 /** How many positions a row shows before the ellipsis; its hover text has all of them. */
 const POSITIONS_SHOWN = 3;
 
+interface PlayerBrowserProps {
+  version: number;
+  /** Changes when another game is read: the players ticked are of the game before. */
+  game: number;
+  active: boolean;
+  reveal: Reveal | null;
+}
+
 /** The players table with the profile of the selected player beside it. */
-export function PlayerBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
+export function PlayerBrowser({ version, game, active, reveal }: PlayerBrowserProps) {
   // The filters and the sort start as they were before the language was switched, if it was (see `restore.ts`).
   const [fields, setFields] = useState<PlayerFilterFields>(() => restored("playerFields", readFields));
   // A player asked for from elsewhere is found whatever the filters were: they are cleared for him.
@@ -56,6 +66,11 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
   // The players picked for a comparison. They are kept here, as the list is: every list stays mounted while another
   // view is shown (see `App`), so the set survives switching views.
   const comparison = useComparison();
+  // The players ticked for Mass edit and Clone & templates, which take them in place of the whole list. There is
+  // nothing to tick them for while the game cannot be written to.
+  const { editable } = useContext(EditorContext);
+  const ticks = useTicks(game);
+  const ticked = editable ? ticks.uids : [];
 
   const filter = toPlayerFilter(fields);
   const filterCount = countFilters(filter);
@@ -99,10 +114,11 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
       toolbarActions={(list) => (
         <MoreMenu>
           <ExportButton list={list} filter={filter} order={order} />
-          <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
-          <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
+          <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} ticked={ticked} />
+          <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} ticked={ticked} />
         </MoreMenu>
       )}
+      ticking={editable ? { ticks, name: (p) => p.name } : undefined}
       footer={<ComparisonTray comparison={comparison} />}
       tableClass="player-grid"
       header={

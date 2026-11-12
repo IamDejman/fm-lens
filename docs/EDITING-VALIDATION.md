@@ -2847,3 +2847,54 @@ frozen and no edit was left standing; neither career was saved.
 Not run: the packaged app under Rosetta; staff and clubs in the packaged app
 (both were run in the browser preview); a Continue with a mass freeze on. The
 hold itself is the profiles' freeze, followed over a holiday on 8 November.
+
+## Ticked players for Mass edit and Clone & templates (12 November 2026)
+
+The player list has a box on each row and one in its header for the rows on
+show, while the game can be edited. Mass edit and Clone & templates take the
+ticked players in place of everyone the search and filters match. Ticks stay
+through searches, filters, sorting and pages, so players found by different
+searches can be changed together, and the toolbar shows how many are ticked with
+Clear. Shift+Space ticks the row the keyboard is on; the boxes are not Tab stops.
+
+- `plan_mass_edit` takes `selected`, the UIDs to keep, as `plan_player_template`
+  already did; both now share `keep_selected`. Targets are still resolved from
+  the current lists, never from anything the window held. A UID that is not
+  there refuses the whole preview (`mass.selectionChanged`) rather than
+  covering fewer players than were ticked.
+- The freeze box of Mass edit (#235) follows the ticks: `frozen_selection`
+  takes `selected` too, so the box starts from what is frozen among the ticked
+  players, and the freeze of a mass edit is planned from the same narrowed
+  targets, with or without fields.
+- `reload` and the `game-read-again` event report `sameGame`. The window drops
+  the ticks on a new connection and whenever that is false, since a UID may be
+  someone else in another save.
+- The browser preview's sample data now answers the Clone & templates commands,
+  which it did not before.
+
+Checks run, in a Linux container with no FM and no native app:
+
+- `npm test` in `app`: 71 tests pass, five of them new
+  (`tests/row-ticks.test.tsx`): a mass edit, a freeze alone and a template each
+  reach only the two ticked players, found by different searches, with the
+  request the window sends; the header box, Shift+Space and Clear; ticks
+  dropped for another game and no boxes while the game cannot be edited.
+- `npm run build`, `cargo fmt --all --check`, and `cargo check` of
+  `fmlens-core` for `aarch64-apple-darwin`.
+- The browser preview on sample data, driven in Chromium at 1280 and 900 wide
+  in light and dark, and at 960x600 at 80, 100 and 150% zoom: three players
+  ticked without a profile opening; the count held under a search that found
+  no one; Mass edit read "Only the 3 players you selected", previewed, applied
+  and undid 3 changes; its freeze box alone read "3 to freeze", then "3 frozen"
+  and, undone, "3 unfrozen"; Clone & templates read "Apply to the 3 players you
+  selected", showed no ID box, and applied and undid 212 changes; ticks kept
+  after the mass edit and after Reload; Clear; Shift+Space ticked and Space
+  still opened the row; the header box ticked all 200 rows. No horizontal
+  overflow, beside an open profile either, and no console errors.
+
+Not run: the native macOS and Windows apps, and anything against a running
+game, so nothing here is live or persistence evidence. The desktop crate builds
+only for macOS and Windows; its build, Clippy and tests, with the new
+`a_selection_keeps_exactly_the_chosen_targets`, are CI's. Still to do natively:
+tick players in the app, apply and undo a mass edit, a freeze and a clone on a
+test career, and load another save to see the ticks go.

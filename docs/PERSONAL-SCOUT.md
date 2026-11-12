@@ -170,7 +170,10 @@ not covered by this in-memory history. See the 7 November refresh checks in
 Clone & templates can capture selected ability, attribute, personality, position
 and trait groups. Templates use versioned JSON, a local library and destination
 field validation, then preview/apply/undo through the bulk editor. Identity and
-contract fields are excluded. Staff attribute freezes last for the connection.
+contract fields are excluded. Mass edit and Clone & templates change every player
+the list's search and filters match, or only the players ticked in the list when
+any are; ticks stay through searches and pages and are dropped when FM loads
+another save. Staff attribute freezes last for the connection.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
 See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 167 player, 39 staff and 14 club

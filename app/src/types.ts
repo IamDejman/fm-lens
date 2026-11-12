@@ -140,6 +140,8 @@ export interface ReloadInfo {
   /** The checks, run again with the game as it is now. */
   health: Health;
   career: Career | null;
+  /** Whether this is the game read before, moved on; false once FM has loaded another save. */
+  sameGame: boolean;
   /**
    * Only when the game has loaded another save since: what was frozen in that one before and is frozen again, when
    * there was any. What was frozen in the save before is not held in this one.
