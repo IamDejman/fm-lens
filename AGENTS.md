@@ -130,13 +130,14 @@ validated fields and the guarded memory layer for domain operations.
 
 - Distinguish available UI, inherited code, live verification and roadmap work.
   Code presence does not establish that an operation works on this user's save.
-- The verified target is FM27 27.0.1, Steam build 26385295: native ARM64 module
-  UUID 2A2D0ED6-324E-3D0D-A27D-10AEDBD0E270, Intel
-  94CDDC80-8474-327A-85E0-E4FF95DC6893. It passed the docs/PATCH-VALIDATION.md
-  run on 10 November on Apple Silicon, under Rosetta and on the Windows test
-  box (Windows Server 2022 only); see the FM27 27.0.1 entry in
-  docs/EDITING-VALIDATION.md. Most field, in-game and persistence evidence is
-  from 27.0.0, build 26340721 (ARM64 UUID
+- The verified target is FM27 27.0.1, Steam build 26577676: native ARM64 module
+  UUID A8550B47-FDE0-3D0D-A6CB-1B63DEE8DA19, Intel
+  DD0EE157-4C9C-31A7-81DD-0D1122E62FC7. It passed the docs/PATCH-VALIDATION.md
+  run on 12 November on Apple Silicon, under Rosetta and on the Windows test
+  box (Windows Server 2022 only); see the FM27 Steam build 26577676 entry in
+  docs/EDITING-VALIDATION.md. The first 27.0.1, build 26385295, passed the same
+  run on 10 November and its profiles remain. Most field, in-game and
+  persistence evidence is from 27.0.0, build 26340721 (ARM64 UUID
   F4540355-2186-39CB-9119-C706A6A35346), whose profiles remain. The object
   layouts are unchanged in 27.0.1, but evidence dated before 10 November was
   not rerun there. Reinspect after game updates. The Intel half ships in the
@@ -154,7 +155,7 @@ validated fields and the guarded memory layer for domain operations.
   held after a quit and reload there twice (8 and 10 November): a player's
   attributes, contract wages, a staff attribute, a club balance, Max tactics
   and a free-agent signing, not the other fields. The field
-  catalog lists 169 player, 42 staff and 14 club definitions. This does not mean
+  catalog lists 169 player, 43 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after

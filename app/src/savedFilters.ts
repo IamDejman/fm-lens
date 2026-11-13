@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { PLAYER_ATTRIBUTES, readAttributeRows } from "./AttributeFilters";
 import { intlLocale } from "./i18n";
-import { NO_PLAYER_FILTERS, POSITION_ORDER, type PlayerFilterFields } from "./PlayerFilters";
+import { NO_PLAYER_FILTERS, POSITION_ORDER, TRAIT_CHOICES, type PlayerFilterFields } from "./PlayerFilters";
 import { isRecord } from "./restore";
 import type { PlayerOrder, PlayerSort } from "./types";
 
@@ -39,6 +39,9 @@ const SORTS: Record<PlayerSort, true> = {
   contractExpires: true,
 };
 
+/** The sorts, for a sort that is read back (see `readListOrder`). */
+export const PLAYER_SORTS = Object.keys(SORTS) as PlayerSort[];
+
 const POSITION_KEYS: ReadonlySet<string> = new Set(POSITION_ORDER);
 
 /** A date input's `YYYY-MM-DD`. */
@@ -64,7 +67,15 @@ export function readFields(value: unknown): PlayerFilterFields {
     minAge: textOr(given.minAge, none.minAge, isNumberText),
     maxAge: textOr(given.maxAge, none.maxAge, isNumberText),
     minCurrentAbility: textOr(given.minCurrentAbility, none.minCurrentAbility, isNumberText),
+    maxCurrentAbility: textOr(given.maxCurrentAbility, none.maxCurrentAbility, isNumberText),
     minPotentialAbility: textOr(given.minPotentialAbility, none.minPotentialAbility, isNumberText),
+    maxPotentialAbility: textOr(given.maxPotentialAbility, none.maxPotentialAbility, isNumberText),
+    minHeight: textOr(given.minHeight, none.minHeight, isNumberText),
+    maxHeight: textOr(given.maxHeight, none.maxHeight, isNumberText),
+    minWage: textOr(given.minWage, none.minWage, isNumberText),
+    maxWage: textOr(given.maxWage, none.maxWage, isNumberText),
+    minValue: textOr(given.minValue, none.minValue, isNumberText),
+    maxValue: textOr(given.maxValue, none.maxValue, isNumberText),
     nation: textOr(given.nation, none.nation),
     club: textOr(given.club, none.club),
     freeAgents: typeof given.freeAgents === "boolean" ? given.freeAgents : none.freeAgents,
@@ -75,6 +86,7 @@ export function readFields(value: unknown): PlayerFilterFields {
     ),
     transferListed: typeof given.transferListed === "boolean" ? given.transferListed : none.transferListed,
     loanListed: typeof given.loanListed === "boolean" ? given.loanListed : none.loanListed,
+    trait: textOr(given.trait, none.trait, (text) => text === "" || TRAIT_CHOICES.includes(Number(text))),
     attributes: readAttributeRows(given.attributes, PLAYER_ATTRIBUTES),
   };
 }

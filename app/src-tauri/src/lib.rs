@@ -6,18 +6,20 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlens_core::{
-    AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSummary, CaptainRole, CaptainSet, Change, Clause,
-    ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, Coded, Cohered, CompetitionFilter, CompetitionRule,
-    CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
-    Field, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts,
-    GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted,
-    Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter,
-    NationSummary, OfficialFilter, OfficialSummary, Operation, Paid, PermitChange, PersonRef, Picture, Planned,
-    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
-    PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex,
-    Session, SessionError, SignedPlayer, Skipped, StadiumFilter, StadiumSummary, StaffChange, StaffDetails,
-    StaffFilter, StaffIndex, StaffPlan, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan,
-    TransferredPlayer, find_game, nation_summaries, nations, read_stadiums, sort_players,
+    AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, CaptainRole, CaptainSet,
+    Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded, Cohered,
+    CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded, EditError, EndedLoan,
+    Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate, FutureTransfer, GAME_EXE,
+    GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health,
+    Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
+    MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, OfficialFilter,
+    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
+    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
+    SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
+    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
+    TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
+    read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -86,14 +88,27 @@ const LOWER_IS_BETTER: [&str; 2] = ["attribute.injury_proneness", "attribute.dir
 /// What Max attributes raises to 200 with the attributes.
 const ABILITY: [&str; 2] = ["current_ability", "potential_ability"];
 
+/// What falls as a player's attributes do, so a freeze of his attributes holds it with them.
+const CURRENT_ABILITY: &str = "current_ability";
+
+/// Of a player's `fields`, what a freeze holds: the attributes the editor can change, then his current ability, which
+/// the game lowers as it lowers them. The attributes come first, for the check they share.
+fn held_fields(fields: Vec<Field>) -> Vec<Field> {
+    let (mut held, rest): (Vec<Field>, Vec<Field>) =
+        fields.into_iter().partition(|field| field.key.starts_with("attribute."));
+    held.extend(rest.into_iter().find(|field| field.key == CURRENT_ABILITY));
+    held
+}
+
 /// What the app keeps from getting worse while it is connected (see `Connection::hold_frozen`).
 #[derive(Default)]
 struct Frozen {
     /// The clubs whose money is frozen, with the least their balance may be: what it was when it was frozen, or more
     /// once the club earned more.
     money: BTreeMap<u32, i64>,
-    /// The players whose attributes are frozen, with the worst each attribute may be, as stored: what it was when it
-    /// was frozen, or better once he improved. Worse is lower, or higher where lower is better.
+    /// The players whose attributes are frozen, with the worst each attribute and his current ability may be, as
+    /// stored: what it was when it was frozen, or better once he improved. Worse is lower, or higher where lower is
+    /// better.
     attributes: BTreeMap<u32, BTreeMap<String, i64>>,
     /// The members of staff whose attributes are frozen, held the same way on the staff's own attribute scales.
     staff_attributes: BTreeMap<u32, BTreeMap<String, i64>>,
@@ -465,17 +480,19 @@ impl Connection {
         froze
     }
 
-    /// Freezes the attributes of the player `uid` at what they are now (see `hold_attributes`). Refused while the
-    /// attributes may not be written.
+    /// Freezes the attributes of the player `uid`, and his current ability, at what they are now (see
+    /// `hold_attributes`). Refused while the attributes may not be written.
     fn freeze_player(&mut self, uid: u32) -> Result<(), Failure> {
         let target = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?.target();
-        let fields = self.attribute_fields();
-        // They share one check: what holds for the first holds for all.
+        let mut fields = self.held_fields();
+        // The attributes share one check: what holds for the first holds for all.
         if let Some(field) = fields.first()
             && let Some(lock) = self.session.field_lock(field)
         {
             return Err(EditError::Locked { field: field.key.clone(), lock }.into());
         }
+        // His current ability has its own: where that fails he is frozen without it.
+        fields.retain(|field| field.key != CURRENT_ABILITY || self.session.field_lock(field).is_none());
         let values = self.session.read_fields(&target, &fields)?;
         let held = fields.into_iter().zip(values).filter_map(|(field, value)| Some((field.key, value?))).collect();
         self.frozen.attributes.insert(uid, held);
@@ -886,6 +903,27 @@ impl Connection {
         logged
     }
 
+    /// Reads again what the row of the player `uid` keeps of his contract and his valuation for the list's filters,
+    /// after a move gave him another contract or none. A read that fails leaves the row as it was. Only reads memory.
+    fn resync_contract(&mut self, uid: u32) {
+        let Some(row) = self.players.get(uid) else {
+            return;
+        };
+        let Ok(Some(details)) = read_player_details(&self.session.process, &self.session.layout, row) else {
+            return;
+        };
+        let contract = details.contract.as_ref();
+        let wage = contract.map(|contract| contract.wage);
+        let (transfer_listed, loan_listed) =
+            contract.map_or((false, false), |contract| (contract.transfer_listed, contract.loan_listed));
+        self.players.update(uid, |player| {
+            player.wage = wage;
+            player.transfer_listed = transfer_listed;
+            player.loan_listed = loan_listed;
+            player.transfer_value = details.transfer_value;
+        });
+    }
+
     /// Logs a free agent's signing, as a change of his `club` from none; undone by releasing him again.
     fn log_signing(&mut self, signed: SignedPlayer) -> LoggedChange {
         let to = self.club_name(signed.club);
@@ -894,6 +932,7 @@ impl Connection {
             player.club_uid = Some(signed.club);
             player.contract_expires = signed.expires;
         });
+        self.resync_contract(signed.player);
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -929,6 +968,7 @@ impl Connection {
             player.club_uid = Some(moved.to_club);
             player.contract_expires = moved.expires;
         });
+        self.resync_contract(moved.player);
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -1644,12 +1684,14 @@ impl Connection {
                 player.contract_expires = FmDate::from_number(expires);
             }
         });
+        self.resync_contract(done.player);
         let with = done.other.map(|other| {
             rows.push(self.row_before(other));
             self.players.update(other, |player| {
                 player.club = Some(from.clone());
                 player.club_uid = Some(done.from_club);
             });
+            self.resync_contract(other);
             self.player_name(other)
         });
         let before = LoggedMove { done: done.clone(), rows, paid };
@@ -1702,6 +1744,7 @@ impl Connection {
             player.club_uid = None;
             player.contract_expires = None;
         });
+        self.resync_contract(player);
         let change =
             Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: i64::from(from_club), new: 0 };
         let logged = LoggedChange {
@@ -1765,6 +1808,7 @@ impl Connection {
                         player.club_uid = row.club_uid;
                         player.contract_expires = row.contract_expires;
                     });
+                    self.resync_contract(row.uid);
                 }
             }
             Some(Undo::Heal(healed)) => self.session.undo_heal(&healed)?,
@@ -1891,9 +1935,9 @@ impl Connection {
         .ok_or_else(|| not_found(entity, uid))
     }
 
-    /// Keeps the balance of every frozen club and the attributes of every frozen player from getting worse: what the
-    /// game took is put back, and what it gave raises what they are held at. These writes are not logged; unfreezing
-    /// ends them.
+    /// Keeps the balance of every frozen club and the attributes and current ability of every frozen player from
+    /// getting worse: what the game took is put back, and what it gave raises what they are held at. These writes are
+    /// not logged; unfreezing ends them.
     fn hold_frozen(&mut self) {
         self.hold_money();
         self.hold_attributes();
@@ -1924,7 +1968,7 @@ impl Connection {
         if self.frozen.attributes.is_empty() {
             return;
         }
-        let fields = self.attribute_fields();
+        let fields = self.held_fields();
         for (&uid, held) in self.frozen.attributes.iter_mut() {
             let Some(target) = self.players.get(uid).map(|player| player.target()) else {
                 continue;
@@ -1952,10 +1996,9 @@ impl Connection {
         }
     }
 
-    /// The attributes of players the editor can change.
-    fn attribute_fields(&self) -> Vec<Field> {
-        let fields = self.session.fields(Entity::Player).into_iter();
-        fields.filter(|field| field.key.starts_with("attribute.")).collect()
+    /// What a frozen player is held at (see `held_fields`).
+    fn held_fields(&self) -> Vec<Field> {
+        held_fields(self.session.fields(Entity::Player))
     }
 
     /// The attributes of staff the editor can change.
@@ -2104,6 +2147,9 @@ impl Connection {
             }),
             Entity::Staff => self.staff.update(change.uid, |s| {
                 s.note_change(&change.field, value);
+                if change.field == "date_of_birth" {
+                    s.note_birth(today);
+                }
                 if let Some(nation) = nation {
                     (s.nation, s.nation_uid) = (Some(nation.name), nation.uid);
                 }
@@ -2889,6 +2935,78 @@ fn page<T: Listed + Clone>(
     Page { total: hits.len(), rows: hits.into_iter().skip(offset).take(limit.min(200)).cloned().collect() }
 }
 
+/// A row of a list and, where the list is ranked for something, how well it fits.
+#[derive(Serialize)]
+struct Ranked<T> {
+    #[serde(flatten)]
+    row: T,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fit: Option<Fit>,
+}
+
+/// The best fit at your club for what a list is ranked for: what the fits of the list are read against.
+#[derive(Serialize)]
+struct Yours {
+    uid: u32,
+    name: String,
+    score: f32,
+}
+
+/// One page of a list that can be ranked.
+#[derive(Serialize)]
+struct RankedPage<T> {
+    total: usize,
+    rows: Vec<Ranked<T>>,
+    /// Only while the list is ranked and someone at your club fits.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    yours: Option<Yours>,
+}
+
+/// A page as [`page`] makes it, each row with its `fit`; `yours` is left to the command (see [`best_of`]).
+fn ranked_page<T: Listed + Clone>(
+    index: &SearchIndex<T>,
+    query: &str,
+    limit: usize,
+    offset: usize,
+    keep: impl Fn(&T) -> bool,
+    sort: impl FnOnce(&mut Vec<&T>),
+    fit: impl Fn(&T) -> Option<Fit>,
+) -> RankedPage<T> {
+    let mut hits = index.search(query);
+    hits.retain(|item| keep(item));
+    sort(&mut hits);
+    let rows = hits.iter().skip(offset).take(limit.min(200)).map(|&row| Ranked { row: row.clone(), fit: fit(row) });
+    RankedPage { total: hits.len(), rows: rows.collect(), yours: None }
+}
+
+/// The best fit among all that `index` holds that are `own`, whatever a search and its filters keep.
+fn best_of<T: Listed>(
+    index: &SearchIndex<T>,
+    fit: impl Fn(&T) -> Option<Fit>,
+    own: impl Fn(&T) -> bool,
+) -> Option<Yours> {
+    index
+        .iter()
+        .filter(|item| own(item))
+        .filter_map(|item| Some((item, fit(item)?.score)))
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(item, score)| Yours { uid: item.uid(), name: item.display_name().to_owned(), score })
+}
+
+/// Sorts `hits` by their `fit`, the best first and those with none last; equal fits stay as the search found them.
+fn best_first<T>(hits: &mut [&T], fit: impl Fn(&T) -> Option<Fit>) {
+    hits.sort_by_cached_key(|&item| std::cmp::Reverse(fit(item).map_or(-1, |fit| (fit.score * 1000.0) as i32)));
+}
+
+/// The sort of a page: by the column `order` names, or as the search found the rows (best first) without one.
+fn by_column<S: SortColumn>(order: Option<Order<S>>) -> impl FnOnce(&mut Vec<&S::Row>) {
+    move |hits| {
+        if let Some(order) = order {
+            sort_rows(hits, order);
+        }
+    }
+}
+
 /// What a command reports when it fails: a code the window says in its own language, the
 /// values the message names, and the message in English for a code the window does not know.
 #[derive(Debug, Clone, Serialize)]
@@ -3121,7 +3239,9 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     Ok(info)
 }
 
-/// Players matching `query`, highest current ability first; at most `limit` rows.
+/// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
+/// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
+/// your club's players who play them.
 #[tauri::command]
 fn search_players(
     state: State<'_, AppState>,
@@ -3130,25 +3250,36 @@ fn search_players(
     offset: Option<usize>,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
-) -> Result<Page<fmlens_core::PlayerSummary>, Failure> {
+    best: Option<BestFor>,
+) -> Result<RankedPage<fmlens_core::PlayerSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(
+    let best = best.unwrap_or_default();
+    let yours = best_of(
+        &connection.players,
+        |p| best.player(p),
+        |p| best.plays(p) && p.club_uid.is_some_and(|club| connection.human_clubs.contains(&club)),
+    );
+    let page = ranked_page(
         &connection.players,
         &query,
         limit,
         offset.unwrap_or(0),
-        |p| filter.matches(p),
-        |hits| {
-            if let Some(order) = order {
-                sort_players(hits, order);
-            }
+        |p| filter.matches(p) && best.plays(p),
+        |hits| match order {
+            Some(order) => sort_players(hits, order),
+            None if best.ranks() => best_first(hits, |p| best.player(p)),
+            None => {}
         },
-    ))
+        |p| best.player(p),
+    );
+    Ok(RankedPage { yours, ..page })
 }
 
-/// Staff matching `query`, the human manager first, then by current ability; at most `limit` rows.
+/// Staff matching `query`, the human manager first, then by current ability, or in `order`; at most `limit` rows.
+/// With `best`, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
+/// your club's staff.
 #[tauri::command]
 fn search_staff(
     state: State<'_, AppState>,
@@ -3156,11 +3287,37 @@ fn search_staff(
     limit: usize,
     offset: Option<usize>,
     filter: Option<StaffFilter>,
-) -> Result<Page<fmlens_core::StaffSummary>, Failure> {
+    order: Option<Order<StaffSort>>,
+    best: Option<BestFor>,
+) -> Result<RankedPage<fmlens_core::StaffSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(&connection.staff, &query, limit, offset.unwrap_or(0), |s| filter.matches(s), |_| {}))
+    let best = best.unwrap_or_default();
+    // You are not your own staff, and the board is not ranked.
+    let yours = best_of(
+        &connection.staff,
+        |s| best.staff(s),
+        |s| {
+            !s.is_human
+                && !fmlens_core::board_job(s.job)
+                && s.club_uid.is_some_and(|club| connection.human_clubs.contains(&club))
+        },
+    );
+    let page = ranked_page(
+        &connection.staff,
+        &query,
+        limit,
+        offset.unwrap_or(0),
+        |s| filter.matches(s) && (!best.ranks() || filter.job.is_some() || !fmlens_core::board_job(s.job)),
+        |hits| match order {
+            Some(order) => sort_rows(hits, order),
+            None if best.ranks() => best_first(hits, |s| best.staff(s)),
+            None => {}
+        },
+        |s| best.staff(s),
+    );
+    Ok(RankedPage { yours, ..page })
 }
 
 /// The person a list of clubs is picked for.
@@ -3177,8 +3334,8 @@ fn own_side_first(hits: &mut [&fmlens_core::ClubSummary], women: bool) {
     hits.sort_by_key(|club| club.women != women);
 }
 
-/// Clubs matching `query`, highest reputation first; at most `limit` rows. With `picked_for`, a picker's list for
-/// that person: the clubs of their own side of the game (men's or women's) before the others.
+/// Clubs matching `query`, highest reputation first, or in `order`; at most `limit` rows. With `picked_for`, a
+/// picker's list for that person: the clubs of their own side of the game (men's or women's) before the others.
 #[tauri::command]
 fn search_clubs(
     state: State<'_, AppState>,
@@ -3186,6 +3343,7 @@ fn search_clubs(
     limit: usize,
     offset: Option<usize>,
     filter: Option<ClubFilter>,
+    order: Option<Order<ClubSort>>,
     picked_for: Option<PickedFor>,
 ) -> Result<Page<fmlens_core::ClubSummary>, Failure> {
     let guard = state.0.lock()?;
@@ -3207,6 +3365,7 @@ fn search_clubs(
         offset.unwrap_or(0),
         |c| filter.matches(c),
         |hits| {
+            by_column(order)(hits);
             if let Some(women) = women {
                 own_side_first(hits, women);
             }
@@ -3378,7 +3537,12 @@ fn club_details(state: State<'_, AppState>, uid: u32) -> Result<ClubDetails, Fai
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let club = connection.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?;
-    connection.session.club_details(club)?.ok_or_else(data_changed)
+    let mut details = connection.session.club_details(club)?.ok_or_else(data_changed)?;
+    // The owner of its stadium is named from the clubs the app read; an owner that is none of them is left out.
+    if let Some(stadium) = details.stadium.as_mut() {
+        stadium.owner = stadium_owner(stadium.owner_address, connection.clubs.iter());
+    }
+    Ok(details)
 }
 
 /// The full profile of the player with `uid`. Only reads memory.
@@ -3404,7 +3568,8 @@ fn staff_details(state: State<'_, AppState>, uid: u32) -> Result<StaffDetails, F
     Ok(details)
 }
 
-/// Senior stadiums matching `query` (stadium or club name), highest capacity first; at most `limit` rows.
+/// Senior stadiums matching `query` (stadium or club name), highest capacity first, or in `order`; at most `limit`
+/// rows.
 #[tauri::command]
 fn search_stadiums(
     state: State<'_, AppState>,
@@ -3412,16 +3577,17 @@ fn search_stadiums(
     limit: usize,
     offset: Option<usize>,
     filter: Option<StadiumFilter>,
+    order: Option<Order<StadiumSort>>,
 ) -> Result<Page<StadiumSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.stadium_index();
-    Ok(page(index, &query, limit, offset.unwrap_or(0), |stadium| filter.matches(stadium), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |stadium| filter.matches(stadium), by_column(order)))
 }
 
-/// Match officials matching `query` by name or UID, best current ability first; at most `limit` rows. Only reads
-/// memory.
+/// Match officials matching `query` by name or UID, best current ability first, or in `order`; at most `limit` rows.
+/// Only reads memory.
 #[tauri::command]
 fn search_officials(
     state: State<'_, AppState>,
@@ -3429,15 +3595,17 @@ fn search_officials(
     limit: usize,
     offset: Option<usize>,
     filter: Option<OfficialFilter>,
+    order: Option<Order<OfficialSort>>,
 ) -> Result<Page<OfficialSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.official_index()?;
-    Ok(page(index, &query, limit, offset.unwrap_or(0), |official| filter.matches(official), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |official| filter.matches(official), by_column(order)))
 }
 
-/// Competitions matching `query` by name or UID, highest reputation first; at most `limit` rows. Only reads memory.
+/// Competitions matching `query` by name or UID, highest reputation first, or in `order`; at most `limit` rows. Only
+/// reads memory.
 #[tauri::command]
 fn search_competitions(
     state: State<'_, AppState>,
@@ -3445,12 +3613,13 @@ fn search_competitions(
     limit: usize,
     offset: Option<usize>,
     filter: Option<CompetitionFilter>,
+    order: Option<Order<CompetitionSort>>,
 ) -> Result<Page<CompetitionSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.competition_index()?;
-    Ok(page(index, &query, limit, offset.unwrap_or(0), |competition| filter.matches(competition), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |competition| filter.matches(competition), by_column(order)))
 }
 
 /// The rules of the competition with the UID `uid` that FM keeps as plain numbers and yes-or-no values; `None` where
@@ -3476,8 +3645,8 @@ fn competition_rules(state: State<'_, AppState>, uid: u32) -> Result<Option<Vec<
     }
 }
 
-/// Awards matching `query` by name, competition or UID, most prestigious first; at most `limit` rows. Only reads
-/// memory.
+/// Awards matching `query` by name, competition or UID, most prestigious first, or in `order`; at most `limit` rows.
+/// Only reads memory.
 #[tauri::command]
 fn search_awards(
     state: State<'_, AppState>,
@@ -3485,15 +3654,17 @@ fn search_awards(
     limit: usize,
     offset: Option<usize>,
     filter: Option<AwardFilter>,
+    order: Option<Order<AwardSort>>,
 ) -> Result<Page<AwardSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let index = connection.award_index()?;
-    Ok(page(index, &query, limit, offset.unwrap_or(0), |award| filter.matches(award), |_| {}))
+    Ok(page(index, &query, limit, offset.unwrap_or(0), |award| filter.matches(award), by_column(order)))
 }
 
-/// The nations of the list (see `Connection::listed_nations`) matching `query` by name; at most `limit` rows.
+/// The nations of the list (see `Connection::listed_nations`) matching `query` by name, by name or in `order`; at
+/// most `limit` rows.
 #[tauri::command]
 fn search_nations(
     state: State<'_, AppState>,
@@ -3501,6 +3672,7 @@ fn search_nations(
     limit: usize,
     offset: Option<usize>,
     filter: Option<NationFilter>,
+    order: Option<Order<NationSort>>,
 ) -> Result<Page<NationSummary>, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
@@ -3510,7 +3682,14 @@ fn search_nations(
     for (row, nation) in rows.iter_mut().zip(&nations) {
         row.continent = connection.session.nation_continent(nation.address);
     }
-    Ok(page(&SearchIndex::new(rows), &query, limit, offset.unwrap_or(0), |nation| filter.matches(nation), |_| {}))
+    Ok(page(
+        &SearchIndex::new(rows),
+        &query,
+        limit,
+        offset.unwrap_or(0),
+        |nation| filter.matches(nation),
+        by_column(order),
+    ))
 }
 
 /// Whether this build's layout places nations' details (see `nation_details`): without them the nations list opens no
@@ -5214,6 +5393,8 @@ mod tests {
             women,
             reputation: Some(reputation),
             founded: None,
+            nation: None,
+            nation_uid: None,
             address: 0,
         };
         // As the search finds them: highest reputation first, the women's clubs on a scale of their own.
@@ -5319,6 +5500,20 @@ mod tests {
         assert!(old.is_empty());
         // Another save: nothing carries over, and the file freezes that save's afresh.
         assert!(Frozen::carry_over(&mut held(), false).is_none());
+    }
+
+    #[test]
+    fn a_frozen_player_keeps_his_current_ability_with_his_attributes() {
+        let layout = fmlens_core::layout_for(27).expect("a layout for FM27");
+        let held = held_fields(fmlens_core::fields(&layout, Entity::Player));
+        let keys: Vec<&str> = held.iter().map(|field| field.key.as_str()).collect();
+        // The attributes first, for the check they share, then the ability the game lowers with them.
+        assert!(keys.first().is_some_and(|key| key.starts_with("attribute.")));
+        assert_eq!(keys.last(), Some(&CURRENT_ABILITY));
+        assert_eq!(keys.iter().filter(|key| !key.starts_with("attribute.")).count(), 1);
+        assert!(keys.contains(&"attribute.pace") && keys.contains(&"attribute.injury_proneness"));
+        // Higher is better for it, as for most attributes.
+        assert!(!LOWER_IS_BETTER.contains(&CURRENT_ABILITY));
     }
 
     #[test]

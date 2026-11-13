@@ -37,6 +37,10 @@ Since then, on the same box:
   `docs/PATCH-VALIDATION.md` run ("FM27 27.0.1"): `fmlens-probe health` 12 of 12, a bounded set of edits and game
   actions, then a Save As to `FM-Lens-27.0.1-Windows`, an FM quit and restart and a reload. A player and a staff
   attribute, a wage, a club balance, a signing, a work permit and Max tactics held.
+- **12 November, Steam build 26577676 (still 27.0.1).** Its Windows profile is build 26385295's under the new size of
+  image and link timestamp. It passed the same run ("FM27 Steam build 26577676"), with a Save As to
+  `FM-Lens-26577676-Windows`, an FM quit and restart and a reload: a player and a staff attribute, a wage, a club
+  balance, a signing, a work permit and Max tactics held.
 - **Still not checked on Windows:** Lift bans (nobody is banned in the test saves), persistence of the other mapped
   fields, Windows 10 and 11 themselves, and Game Pass (section 3.4).
 

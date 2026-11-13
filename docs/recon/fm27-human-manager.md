@@ -1,7 +1,7 @@
 # FM27: the human manager's unsackable flag
 
-Status: implemented on Steam builds 26340721 (27.0.0) and 26385295 (27.0.1),
-on macOS ARM64, macOS Intel and Windows. Apply, undo, stale-value refusal and
+Status: implemented on Steam builds 26340721 (27.0.0), 26385295 and 26577676
+(both 27.0.1), on macOS ARM64, macOS Intel and Windows. Apply, undo, stale-value refusal and
 save/reload are tested on 26340721 ARM64 (gates 1 to 7 below); Windows has
 apply, readback and undo only, Intel a read under Rosetta, and no check is
 recorded on 27.0.1. A real dismissal scenario has not been run, so this is not
@@ -28,7 +28,8 @@ statically ([Intel notes](fm27-steam-26340721-macos-x86_64.md)). So does its
 Windows build (`steam-26340721.toml`), except that MSVC puts the vtable naming
 `.?AVHUMAN_NON_PLAYER@db@@` at the person block, `+0x440`, which the profile gives
 as `class_at`. The three 27.0.1 profiles (build 26385295) carry the same values;
-the Intel and Windows ones name the handler's new address. The Launch Preview
+the Intel and Windows ones name the handler's new address. Build 26577676's
+three profiles carry build 26385295's. The Launch Preview
 and the Game Pass builds leave the field unavailable.
 
 ## Static trace (ARM64 slice of game_plugin)

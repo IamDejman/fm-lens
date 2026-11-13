@@ -149,7 +149,7 @@ pub struct PlayerDetails {
 
 /// The range getter treats 300 million specially and may compute a value instead.
 /// Do not present that marker as a price or infer a transfer status from it.
-fn transfer_value(raw: i32, has_team: bool) -> Option<i32> {
+pub(crate) fn transfer_value(raw: i32, has_team: bool) -> Option<i32> {
     match raw {
         _ if !has_team => Some(0),
         300_000_000 => None,

@@ -1,0 +1,123 @@
+# FM27 on Steam for macOS (app 4530370, build 26577676), an update of 12 November 2026 whose fm.app reads
+# 27.0.1.2503222: the Intel half of the universal game_plugin, which Intel Macs run, and Apple silicon Macs under
+# Rosetta. The update rebuilt game_plugin (another LC_UUID). Every function and static here is build 26385295's
+# (steam-26385295-macos-x86_64.toml) at the same address, and the code still calls and loads each one where that
+# build's notes say. The two constants read from __TEXT sit 0x30 further: starting_loan.defaults and
+# work_permit_check.no_date. See docs/recon/fm27-steam-26577676.md.
+name = "FM27 Steam build 26577676 (27.0.1, macOS, Intel)"
+edition = 27
+storefront = "steam"
+
+# The in-game date.
+current_date = 0x5CE3700
+
+# The static pointer to the game's GAME_UI. The game's editor actions load it and call its virtual slot +0xA0 with the
+# person (0x256EEEA, the twin of the arm64 0x239A408, which loads 0x57708F0), as entity_changed below. Loaded before
+# +0xA0 calls in nine places; see docs/recon/fm27-intel-refresh.md.
+game_ui = 0x5D04CA8
+
+# The static pointer to the retirement manager, loaded in 61 places; its class is checked before it is used.
+retirement_manager = 0x5CD9EF0
+
+# The (begin, end) pair of the match officials' array, 0x78 above the players' as in the arm64 half: three functions
+# that walk the officials (by nation, by competition) load it where their arm64 twins load 0x576EEC8.
+officials = 0x5D03260
+
+# The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: the game's editor action
+# for work permits (0x2573A40, the twin of the arm64 0x239EEFC: keys 'dref' and 'tick', the player through identity
+# slot 0x6E0) loads it at 0x2573B14, where the arm64 half loads 0x57409F8. Loaded in 985 places.
+transfer_manager = 0x5CD7E80
+
+# Database table pointers, traced through the static database constructor and typed tables.
+# Static mapping only; see docs/recon/fm27-steam-26340721-macos-x86_64.md.
+awards = 0x5D030E8
+competitions = 0x5D03100
+injury_kinds = 0x5D03128
+# INJURY_MANAGER, loaded by the training-injury caller of add_injury.
+injury_manager = 0x5CD9EE0
+
+# game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
+[plugin]
+uuid = "DD0EE157-4C9C-31A7-81DD-0D1122E62FC7"
+
+# RVAs in game_plugin of the (begin, end) pointer pairs of the entity arrays.
+[arrays]
+players = 0x5D031E8
+staff = 0x5D03230
+clubs = 0x5D033A0
+
+# The human manager's flags word, traced statically: become_unsackable's handler (0x256EAA0) finds the selected human
+# manager through the same vtable slots as the arm64 half and toggles bit 1 of the u32 at +0x3FC (andl/orl at
+# 0x256EB9F). The object layout is the arm64 half's.
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = "N2db16HUMAN_NON_PLAYERE"
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
+# no others on this build. The work permit calls are direct calls of the work permit action above, with the arm64
+# half's arguments (see docs/recon/fm27-steam-26340721-macos-x86_64.md); the refresh calls are traced from GAME_UI's
+# vtable (see docs/recon/fm27-intel-refresh.md).
+[calls]
+# GAME_UI virtual slot +0xA0, the twin of the arm64 0x30CF8: (ui, the person's identity). It makes the identity's
+# reference vector (0x6844E0) and hands it to the rfui notifier (0x2FBD0), which calls refresh_views.
+entity_changed = 0x30AA0
+# The rfui dispatcher, the twin of the arm64 0x2FDC8 instruction for instruction; an empty reference vector requests
+# an unfiltered view refresh.
+refresh_views = 0x2FC70
+# TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force, esc), called at
+# 0x2573D98 with force 0 and esc 0 for 'tick' false ("add_work_permit").
+set_work_permit = 0x30A2CE0
+# TRANSFER_MANAGER::find_work_permit: (manager, identity block, club team), called at 0x2573CB8: -1 unless the
+# identity's flag 0x4 is set, then a binary search of the records at +0x720 by the id at +0x08. Only reads.
+find_work_permit = 0x3105530
+# TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), called at 0x2573D48 for 'tick' true
+# ("remove_work_permit") with the record at [manager + 0x720] of the place found: takes it out of the ESC slots at
+# +0x780 and the records at +0x720.
+remove_work_permit = 0x30E1970
+
+# Intel twins of the ARM64 editor/training calls. Arguments follow the same scalar order,
+# with six System V registers then stack slots. Evidence and ABI audit are in the recon note.
+add_injury = 0x2949EC0
+start_loan = 0x3135D50
+sign_free_agent = 0x312A3D0
+map_new = 0x4905B90
+map_drop = 0x4905C30
+refs_drop = 0x490D1D0
+end_contract = 0x3065450
+withdraw_offers = 0x3069A40
+leave_team = 0x3062B90
+date_type = 0x47FD920
+date_value = 0x47FDB10
+map_insert = 0x4906240
+value_drop = 0x4911E90
+cancel_offer = 0x302EF10
+drop_dated_transfer = 0x197BA90
+ref_copy = 0x7A4A90
+ref_drop = 0x5125B20
+struct_value = 0x4912870
+maximise_tactics = 0x2576EB0
+# What set_work_permit asks before it gives a permit, unforced: the rules of the club's nation (rules root, the
+# nation, the club's women's byte), then whether they say the player needs a permit (rules, identity block, club
+# team, 1, 0, 6, 0, no date*, no date*, null), a bool. Both only read; FM's own screens ask the second too.
+work_permit_rules = 0x472A380
+needs_work_permit = 0x1DE49E0
+
+# STARTING_LOAN builder at 0x2572450: vtable and the 16 bytes copied to +0x58.
+[starting_loan]
+vtable = 0x5BF11C0
+defaults = 0x59DF060
+
+# Value registry, integer type within it, team table and editor-enabled byte.
+[editor]
+value_types = 0x5D6BDD8
+integer_type = 0x28
+teams = 0x5D03180
+enabled = 0x5D038B0
+
+# What needs_work_permit takes, as set_work_permit reads it: the byte that is 1 while work permits are in force
+# (otherwise it gives none), the static pointer to the rules root, and the date it passes for none (1 Jan 1900).
+[work_permit_check]
+enabled = 0x5D04D8A
+rules = 0x5D05BF8
+no_date = 0x59349A0

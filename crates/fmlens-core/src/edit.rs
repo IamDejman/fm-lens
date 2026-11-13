@@ -437,6 +437,9 @@ fn player_mood_fields(layout: &Layout) -> [Field; 4] {
 /// goes on, so once the game is past 2020 its date is the latest (see [`Session::fields`]).
 const BIRTH_DATES: RangeInclusive<i64> = 19400101..=20201231;
 
+/// The same for staff, from 1920: chairmen and owners are staff too, and can be far older than any player.
+const STAFF_BIRTH_DATES: RangeInclusive<i64> = 19200101..=20201231;
+
 /// The latest birth date the editor writes on `today`, the game's date, where it is read.
 fn latest_birth(today: Option<FmDate>) -> i64 {
     today.map_or(*BIRTH_DATES.end(), |today| today.to_number().max(*BIRTH_DATES.end()))
@@ -513,6 +516,9 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         field("reputation.current", s.current_reputation, Kind::U16, 0..=10_000),
         field("reputation.world", s.world_reputation, Kind::U16, 0..=10_000),
         field("nation", s.nation, Kind::Pointer, POINTERS).single(),
+        // The person record's own date, where a player's keeps his; the game works out the age from it. A member of
+        // staff without one is left as he is.
+        field("date_of_birth", s.date_of_birth, Kind::Date, STAFF_BIRTH_DATES).plausible(19000101..=21001231),
     ];
     out.extend(crate::STAFF_ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter()).filter_map(|key| {
         if let Some(&offset) = s.attributes.get(*key) {
@@ -753,11 +759,23 @@ impl PlayerSummary {
             "nation" => self.nation_address = value as u64,
             "contract.transfer_listed" => self.transfer_listed = value != 0,
             "contract.loan_listed" => self.loan_listed = value != 0,
+            "contract.wage" => self.wage = Some(value as i32),
+            "height" => self.height_cm = value as u16,
             _ => {
                 let position = field.strip_prefix("position.").and_then(|key| POSITIONS.iter().position(|&k| k == key));
                 if let Some(i) = position {
                     self.position_ratings[i] = value as u8;
                     self.positions = crate::players::natural_positions(&self.position_ratings);
+                }
+                let rating =
+                    field.strip_prefix("personality.").and_then(|key| PERSONALITY.iter().position(|&k| k == key));
+                if let Some(i) = rating {
+                    self.personality[i] = value as u8;
+                }
+                // A trait is one bit of the mask.
+                if let Some(bit) = field.strip_prefix("trait.").and_then(|n| n.parse::<u32>().ok()).filter(|&n| n < 64)
+                {
+                    self.traits = if value != 0 { self.traits | 1 << bit } else { self.traits & !(1 << bit) };
                 }
             }
         }
@@ -788,9 +806,16 @@ impl StaffSummary {
         match field {
             "current_ability" => self.current_ability = value as u16,
             "potential_ability" => self.potential_ability = value as i16,
+            // The age follows from the game's date, which the caller has (see `note_birth`).
+            "date_of_birth" => self.date_of_birth = FmDate::from_number(value),
             "nation" => self.nation_address = value as u64,
             _ => {}
         }
+    }
+
+    /// Works the age out again on `today`, the game's date, after the birth date changed.
+    pub fn note_birth(&mut self, today: Option<FmDate>) {
+        self.age = self.date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today));
     }
 }
 
@@ -1467,11 +1492,11 @@ mod tests {
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        // The 2 contract fields, the coaching licence and the 2 formations where the layout places them, and the human
-        // manager's 2 flags.
+        // The 7 basic fields; the 2 contract fields, the coaching licence and the 2 formations where the layout places
+        // them, and the human manager's 2 flags.
         let licence = usize::from(layout.staff.coaching_licence.is_some());
         let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + formations + 2);
+        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 2 + licence + formations + 2);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).
@@ -1546,6 +1571,31 @@ mod tests {
         oliver.note_change("reputation", 9000, today);
         oliver.note_change("date_of_birth", 19900101, today);
         assert_eq!((oliver.reputation, oliver.age), (9000, Some(36)));
+    }
+
+    #[test]
+    fn staff_take_a_birth_date_where_a_player_keeps_his() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let (p, s) = (&layout.player, &layout.staff);
+        let staff = fields(&layout, Entity::Staff);
+        let born = staff.iter().find(|f| f.key == "date_of_birth").cloned().expect("field");
+        assert_eq!((born.offset, born.kind, born.place), (s.date_of_birth, Kind::Date, Place::Object));
+        // The same place in the person record as a player's, whose edit is already in use.
+        assert_eq!(s.date_of_birth - s.person_block, p.date_of_birth - p.person_block);
+        assert_eq!(crate::health::Check::of_field(&born), crate::health::Check::Staff);
+
+        // A chairman born in the 1930s keeps a date of his own; no one is born before 1920 or after the game's date.
+        assert!(born.takes(19470308) && born.takes(19350101) && born.takes(20201231));
+        assert!(!born.takes(19191231) && !born.takes(20300101));
+        // No date at all, or one that is no day, is not written over.
+        assert!(born.is_plausible(19030101) && !born.is_plausible(0) && !born.is_plausible(19470230));
+
+        // In the person block, so the human manager's is 0x340 further.
+        assert!(born.shifted);
+        let coach = Target { entity: Entity::Staff, uid: 1, address: 0x1000, shift: 0 };
+        let manager = Target { entity: Entity::Staff, uid: 2, address: 0x1000, shift: 0x340 };
+        assert_eq!(born.address(coach.address, &coach), 0x1000 + s.date_of_birth);
+        assert_eq!(born.address(manager.address, &manager), 0x1000 + s.date_of_birth + 0x340);
     }
 
     #[test]
@@ -1795,9 +1845,24 @@ mod tests {
             attributes: vec![10; crate::ATTRIBUTE_GROUPS.iter().map(|(_, keys)| keys.len()).sum()],
             transfer_listed: false,
             loan_listed: false,
+            height_cm: 180,
+            wage: Some(1_000),
+            transfer_value: None,
+            personality: [10; 8],
+            traits: 0b100,
             address: 0,
             shift: 0,
         };
+        // What the list's filters read follows too.
+        player.note_change("contract.wage", 25_000);
+        player.note_change("height", 191);
+        player.note_change("personality.ambition", 17);
+        player.note_change("trait.7", 1);
+        player.note_change("trait.2", 0);
+        player.note_change("trait.64", 1);
+        assert_eq!((player.wage, player.height_cm), (Some(25_000), 191));
+        assert_eq!(player.personality[PERSONALITY.iter().position(|&key| key == "ambition").unwrap()], 17);
+        assert_eq!(player.traits, 1 << 7);
         player.note_change("current_ability", 130);
         player.note_change("potential_ability", 160);
         player.note_change("position.dc", 19);

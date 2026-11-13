@@ -71,7 +71,7 @@ async function openDialog() {
         openStaff: () => {},
       }}
     >
-      <MassEditButton entity="player" filters={{ playerFilter: {} }} list={{ query: 'arsenal', total: 3, shown: 3 }} />
+      <MassEditButton entity="player" filters={{ playerFilter: {} }} list={{ query: 'arsenal', total: 3, shown: 3, yours: null }} />
     </EditorContext.Provider>,
   );
   await userEvent.click(screen.getByRole('button', { name: 'Mass edit' }));

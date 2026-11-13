@@ -835,8 +835,7 @@ pub struct ClubLayout {
     pub links: Option<u64>,
     #[serde(default)]
     pub link_club: Option<u64>,
-    /// Pointers to the nation a club based abroad plays in, null for the others, and to its own nation: the game takes
-    /// the first that is set as the country the club is in.
+    /// Pointers to the club's own nation (Cardiff City: Wales) and to the nation whose league it plays in (England).
     #[serde(default)]
     pub plays_in: Option<u64>,
     #[serde(default)]
@@ -868,6 +867,8 @@ impl ClubLayout {
             self.medical_staff + 24,
             self.coaching_staff + 24,
             self.scouting_staff + 24,
+            self.plays_in.map_or(0, |offset| offset + 8),
+            self.nation.map_or(0, |offset| offset + 8),
         ]
         .into_iter()
         .max()
@@ -1272,12 +1273,15 @@ const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/steam-26227640.toml"),
     include_str!("../../../profiles/fm27/steam-26340721.toml"),
     include_str!("../../../profiles/fm27/steam-26385295.toml"),
+    include_str!("../../../profiles/fm27/steam-26577676.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-arm64.toml"),
     include_str!("../../../profiles/fm27/steam-26340721-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26340721-macos-arm64.toml"),
     include_str!("../../../profiles/fm27/steam-26385295-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26385295-macos-arm64.toml"),
+    include_str!("../../../profiles/fm27/steam-26577676-macos-x86_64.toml"),
+    include_str!("../../../profiles/fm27/steam-26577676-macos-arm64.toml"),
 ];
 
 /// The built-in object layout for `edition`, if there is one.
@@ -1496,7 +1500,10 @@ mod tests {
         // 27.0.1 carries the layout across.
         let arm64_1 = [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
         let intel_1 = [0x94, 0xCD, 0xDC, 0x80, 0x84, 0x74, 0x32, 0x7A, 0x85, 0xE0, 0xE4, 0xFF, 0x95, 0xDC, 0x68, 0x93];
-        let traced = [arm64, intel, arm64_1, intel_1].map(|uuid| PluginFingerprint::MachO { uuid });
+        // Build 26577676 is 27.0.1 with the same functions and statics.
+        let arm64_2 = [0xA8, 0x55, 0x0B, 0x47, 0xFD, 0xE0, 0x3D, 0x0D, 0xA6, 0xCB, 0x1B, 0x63, 0xDE, 0xE8, 0xDA, 0x19];
+        let intel_2 = [0xDD, 0x0E, 0xE1, 0x57, 0x4C, 0x9C, 0x31, 0xA7, 0x81, 0xDD, 0x0D, 0x11, 0x22, 0xE6, 0x2F, 0xC7];
+        let traced = [arm64, intel, arm64_1, intel_1, arm64_2, intel_2].map(|uuid| PluginFingerprint::MachO { uuid });
         for plugin in &traced {
             let profile = profile_for(*plugin).expect("27.0.0 or 27.0.1 on macOS");
             assert_eq!(
@@ -1524,9 +1531,14 @@ mod tests {
             profile_for(windows_1).expect("27.0.1 on Windows").human_manager,
             profile_for(windows).expect("27.0.0 on Windows").human_manager
         );
+        let windows_2 = PluginFingerprint::Pe { size_of_image: 0x185F_A000, link_timestamp: 0x6AF3_8E5C };
+        assert_eq!(
+            profile_for(windows_2).expect("build 26577676 on Windows").human_manager,
+            profile_for(windows).expect("27.0.0 on Windows").human_manager
+        );
         for text in BUILDS {
             let profile: BuildProfile = parse(text);
-            if !traced.contains(&profile.plugin) && profile.plugin != windows && profile.plugin != windows_1 {
+            if !traced.contains(&profile.plugin) && ![windows, windows_1, windows_2].contains(&profile.plugin) {
                 assert!(profile.human_manager.is_none(), "{}", profile.name);
             }
         }
@@ -1562,6 +1574,45 @@ mod tests {
             let count = |calls: Option<CallRvas>| calls.map(|calls| calls.all().len());
             assert_eq!(count(new.calls), count(old.calls));
         }
+    }
+
+    /// The update of 12 November 2026 (Steam build 26577676) rebuilt game_plugin. On macOS every function and static
+    /// FM Lens uses is where build 26385295 has it; the two constants it reads from `__TEXT`, the loan's default bytes
+    /// and the date for none, sit 0x30 further in both halves.
+    #[test]
+    fn steam_26577676_on_macos_is_26385295_with_two_constants_moved() {
+        let old_arm64 =
+            [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
+        let old_intel =
+            [0x94, 0xCD, 0xDC, 0x80, 0x84, 0x74, 0x32, 0x7A, 0x85, 0xE0, 0xE4, 0xFF, 0x95, 0xDC, 0x68, 0x93];
+        let arm64 = [0xA8, 0x55, 0x0B, 0x47, 0xFD, 0xE0, 0x3D, 0x0D, 0xA6, 0xCB, 0x1B, 0x63, 0xDE, 0xE8, 0xDA, 0x19];
+        let intel = [0xDD, 0x0E, 0xE1, 0x57, 0x4C, 0x9C, 0x31, 0xA7, 0x81, 0xDD, 0x0D, 0x11, 0x22, 0xE6, 0x2F, 0xC7];
+        let profile = |uuid| profile_for(PluginFingerprint::MachO { uuid }).expect("27.0.1 on macOS");
+        for (new, old) in [(arm64, old_arm64), (intel, old_intel)] {
+            let (mut new, old) = (profile(new), profile(old));
+            assert!(new.name.contains("26577676"), "{}", new.name);
+            new.name.clone_from(&old.name);
+            new.plugin = old.plugin;
+            let loan = new.starting_loan.as_mut().expect("starting loan");
+            assert_eq!(Some(loan.defaults), old.starting_loan.as_ref().map(|loan| loan.defaults + 0x30));
+            loan.defaults -= 0x30;
+            let check = new.work_permit_check.as_mut().expect("the work permit check");
+            assert_eq!(Some(check.no_date), old.work_permit_check.as_ref().map(|check| check.no_date + 0x30));
+            check.no_date -= 0x30;
+            assert_eq!(format!("{new:?}"), format!("{old:?}"));
+        }
+    }
+
+    /// The same update on Windows: another DLL (size and link time), every value where build 26385295 has it.
+    #[test]
+    fn steam_26577676_on_windows_is_26385295_under_another_fingerprint() {
+        let old = PluginFingerprint::Pe { size_of_image: 0x17CB_9000, link_timestamp: 0x6AE8_B5A4 };
+        let new = PluginFingerprint::Pe { size_of_image: 0x185F_A000, link_timestamp: 0x6AF3_8E5C };
+        let (old, mut new) = (profile_for(old).expect("27.0.1"), profile_for(new).expect("build 26577676"));
+        assert!(new.name.contains("26577676"), "{}", new.name);
+        new.name.clone_from(&old.name);
+        new.plugin = old.plugin;
+        assert_eq!(format!("{new:?}"), format!("{old:?}"));
     }
 
     /// 27.0.1 on Windows: another DLL (size and link time), every static in the block of table pointers 0x11B040 further.

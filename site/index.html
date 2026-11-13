@@ -3,17 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FM Lens: Football Manager 27 companion for Mac and Windows</title>
-  <meta name="description" content="A free companion for Football Manager 27 on Mac and Windows. Search, compare and edit players, staff and clubs in your loaded career while FM runs.">
+  <title>FM Lens: free FM27 live editor for Mac and Windows</title>
+  <meta name="description" content="FM Lens is a free, open source real-time editor for Football Manager 27 (FM27) on Mac and Windows. Edit players, staff and clubs in your career while FM runs.">
   <link rel="canonical" href="https://getfmlens.com/">
   <meta name="theme-color" content="#251b37">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="FM Lens">
   <meta property="og:url" content="https://getfmlens.com/">
-  <meta property="og:title" content="FM Lens: Football Manager 27 companion for Mac and Windows">
-  <meta property="og:description" content="Search, compare and edit players, staff and clubs in your loaded FM27 career while you play. Free for Mac and Windows.">
+  <meta property="og:title" content="FM Lens: free FM27 live editor for Mac and Windows">
+  <meta property="og:description" content="A free, open source live editor for Football Manager 27 (FM27). Search, compare and edit players, staff and clubs while you play, on Mac and Windows.">
   <meta property="og:image" content="https://getfmlens.com/images/social.png">
   <meta property="og:image:width" content="1280">
   <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="FM Lens, a live editor for Football Manager 27, showing a list of players beside one player's profile">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" type="image/png" sizes="64x64" href="images/icon-64.png">
   <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
@@ -23,13 +25,33 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "FM Lens",
-    "url": "https://getfmlens.com/",
-    "applicationCategory": "GameApplication",
-    "operatingSystem": "macOS, Windows",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
-    "license": "https://www.gnu.org/licenses/gpl-3.0.html"
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://getfmlens.com/#site",
+        "name": "FM Lens",
+        "alternateName": ["FMLens", "getfmlens"],
+        "url": "https://getfmlens.com/"
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://getfmlens.com/#app",
+        "name": "FM Lens",
+        "alternateName": ["FMLens", "FM Lens for Football Manager 27"],
+        "description": "A free, open source live editor and companion for Football Manager 27 (FM27) on Mac and Windows. Search, compare and edit players, staff and clubs in your loaded career in real time while FM runs.",
+        "url": "https://getfmlens.com/",
+        "downloadUrl": "https://getfmlens.com/download/",
+        "releaseNotes": "https://getfmlens.com/releases/",
+        "image": "https://getfmlens.com/images/social.png",
+        "screenshot": "https://getfmlens.com/images/fm-lens-1920.webp",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "macOS, Windows",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "sameAs": ["https://github.com/IamDejman/fm-lens", "https://github.com/IamDejman/fm-lens-releases"]
+      }
+    ]
   }
   </script>
 </head>
@@ -49,9 +71,9 @@
 
     <div class="hero">
       <div class="wrap">
-        <h1>FM Lens is a free companion for Football Manager 27 on Mac and Windows.</h1>
+        <h1>FM Lens is a free live editor and companion for Football Manager 27 on Mac and Windows.</h1>
         <p class="lead">It reads the career you have loaded and lets you search, compare and edit players, staff and
-          clubs while FM runs.</p>
+          clubs in real time while FM27 runs.</p>
         <div class="get">
           <a class="button" href="/download/?for=mac">
             <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>
@@ -68,7 +90,7 @@
             srcset="images/fm-lens-800.webp 800w, images/fm-lens-1280.webp 1280w, images/fm-lens-1920.webp 1920w"
             sizes="(min-width: 1200px) 1120px, calc(100vw - 32px)" width="1920" height="1200"
             fetchpriority="high"
-            alt="FM Lens showing a list of players beside one player's profile, with his attributes rated 1 to 20">
+            alt="FM Lens editing a Football Manager 27 career: a list of players beside one player's profile, with his attributes rated 1 to 20">
         </div>
       </div>
     </div>
@@ -136,6 +158,30 @@
           <p>Start FM from Steam, load a copy of your save and choose <strong>Connect</strong>.</p>
         </li>
       </ol>
+    </section>
+
+    <section class="part" aria-labelledby="questions">
+      <h2 id="questions">Questions</h2>
+      <dl class="features">
+        <div>
+          <dt>Is FM Lens free?</dt>
+          <dd>Yes. Every feature is free, editing included, and it is open source under GPL-3.0.</dd>
+        </div>
+        <div>
+          <dt>Does it work on Mac?</dt>
+          <dd>Yes. It runs on Apple Silicon and Intel Macs, and on Windows 10 and 11. You need Football Manager 27
+            from Steam.</dd>
+        </div>
+        <div>
+          <dt>Is it the In-Game Editor?</dt>
+          <dd>No. The In-Game Editor is a paid add-on inside FM27. FM Lens is a separate app that edits your career
+            in real time from outside the game.</dd>
+        </div>
+        <div>
+          <dt>Is it an alternative to FMRTE?</dt>
+          <dd>Yes. FM Lens is a real-time editor for FM27 too, and every edit is free.</dd>
+        </div>
+      </dl>
     </section>
 
   </main>
