@@ -53,8 +53,8 @@ pub enum Check {
     Attributes,
     /// The eight personality ratings go up to 20.
     Personality,
-    /// Energy, match sharpness, jadedness and morale stay in the ranges the game keeps them in: no one below 35%
-    /// sharpness, and most players fresh.
+    /// Energy, match sharpness, jadedness and morale stay in the ranges the game keeps them in, and most players are
+    /// at 35% sharpness or more and fresh.
     LiveValues,
     /// Players' contracts point back at them, and some were signed after the player joined. Guards the contract
     /// fields; with [`Check::Teams`], [`Check::Staff`] and [`Check::Clubs`], every change to the game's lists and
@@ -248,6 +248,13 @@ impl Tally {
     }
 }
 
+/// Whether the players `sharp` at 35% match sharpness or more and `fresh` at 50% energy or more are as many as live
+/// values read where they should be give: most of them, in season or out. A field read in the wrong place, mostly
+/// zero, fails.
+fn live_values_hold(sharp: Tally, fresh: Tally) -> bool {
+    sharp.holds(0.5) && fresh.holds(0.6)
+}
+
 /// The mean of the values added, and how many there were.
 #[derive(Debug, Default, Clone, Copy)]
 struct Mean {
@@ -380,7 +387,8 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     let mut attributes = Tally::default();
     let mut personality = Tally::default();
     let mut live = Tally::default();
-    // The game keeps match sharpness at 35% or above, and most players are fresh on any day.
+    // Most players are at 35% match sharpness or more and fresh on any day. Fewer are sharp after the summer break:
+    // 1,875 of 2,000 on 17 June 2027 and 1,959 on 11 May (Windows), against 1,999 on 10 December.
     let mut sharp = Tally::default();
     let mut fresh = Tally::default();
     let mut contracts = Tally::default();
@@ -509,7 +517,7 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     own.passed &= within.holds(0.95) && same.fit * 2 <= same.sampled;
     own.note = format!("{} of {} within their potential, {} of them at it", within.fit, within.sampled, same.fit);
     let mut live = live.result(Check::LiveValues, 0.99, String::new());
-    live.passed &= sharp.holds(0.99) && fresh.holds(0.6);
+    live.passed &= live_values_hold(sharp, fresh);
     live.note =
         format!("{} of {} at 35% sharpness or more, {} at 50% energy or more", sharp.fit, sharp.sampled, fresh.fit);
     let mut contracts = contracts.result(Check::Contracts, 0.95, String::new());
@@ -839,6 +847,17 @@ mod tests {
         assert!(!tally(96, 100).holds(0.97));
         assert!(!tally(10, 10).holds(0.5));
         assert!(tally(LEAST_SAMPLED, LEAST_SAMPLED).holds(1.0));
+    }
+
+    #[test]
+    fn live_values_hold_after_the_summer_break() {
+        let tally = |fit, sampled| Tally { fit, sampled };
+        // Windows, 17 June 2027: the check refused morale and energy writes with 99% asked of sharpness.
+        assert!(live_values_hold(tally(1_875, 2_000), tally(2_000, 2_000)));
+        assert!(live_values_hold(tally(1_999, 2_000), tally(1_999, 2_000)));
+        // Sharpness or energy read where the game keeps something else, mostly zero.
+        assert!(!live_values_hold(tally(40, 2_000), tally(2_000, 2_000)));
+        assert!(!live_values_hold(tally(2_000, 2_000), tally(40, 2_000)));
     }
 
     fn date(year: u16, month: u8, day: u8) -> FmDate {
