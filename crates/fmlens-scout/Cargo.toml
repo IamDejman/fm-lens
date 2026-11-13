@@ -1,0 +1,14 @@
+[package]
+name = "fmlens-scout"
+description = "Scouting estimates FM Lens works out from a player's own data"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

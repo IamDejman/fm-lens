@@ -1162,6 +1162,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "fmlens-scout"
+version = "0.7.6"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
