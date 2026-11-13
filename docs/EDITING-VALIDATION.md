@@ -3756,8 +3756,24 @@ Fixed since build 8:
 FM rounds a weekly wage in pounds to its step and rounds halves up, as the
 notice assumes: £262,500 shows as £275K.
 
-After FM loads another career, FM Lens shows the new game date at once but
-keeps the lists it read until Reload, unless something is frozen (then it reads
-again by itself). A write from such a list is refused, as its values are stale.
+After FM loads another career, build 9 showed the new game date at once but
+kept the lists it read until Reload, unless something was frozen (then it read
+again by itself). A write from such a list was refused, as its values were
+stale. Fixed in build 10, below.
+
+Not run: macOS (Apple Silicon and Intel), Game Pass.
+
+## Build 10 on Windows (13 November 2026)
+
+Same machine and game, FM Lens built from d5f1c9f: FM Lens reads the game
+again by itself whenever FM moves its lists, frozen or not.
+
+| Check | Result |
+|---|---|
+| Nothing frozen, FM loads "FM Lens Positions 2026-11-13" | Without Reload: 30,308 players became 26,664, Saka age 26 became 25, date 30 Jun 2027, that save's freeze notice ("Money: Arsenal") back |
+| Write from the re-read list | Saka CA 183 to 182 applied, probe read 182; Undo, probe read 183 |
+| Reload afterwards | Same header, 26,664 players, same notice |
+| FM loads "FM-Lens-ClubNames-2026-11-13" back (something frozen) | Without Reload: 30,308 players, Saka age 26, notice gone |
+| After each load | FM Lens idle (CPU time unchanged over 10 seconds), no repeated reads |
 
 Not run: macOS (Apple Silicon and Intel), Game Pass.
