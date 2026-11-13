@@ -885,6 +885,8 @@ export const tr: Strings = {
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
     removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır.",
+    inspire: "Motive et",
+    inspireTitle: "Morali en üste çıkarır, tüm mutsuzluk nedenlerini kaldırır",
     concernSince: (date) => `${date} tarihinden beri`,
     concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : ""),
     concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? "Bilinmeyen neden",

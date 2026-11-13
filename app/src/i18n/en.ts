@@ -875,6 +875,9 @@ export const en = {
     removeUnhappiness: "Remove all",
     removingUnhappiness: "Removing…",
     removeUnhappinessTitle: "Clears every reason he's unhappy.",
+    /** On the heading of his morale: morale to the top and his reasons to be unhappy ended, at once. */
+    inspire: "Inspire",
+    inspireTitle: "Morale to the top, and every reason he's unhappy cleared",
     concernSince: (date: string) => `since ${date}`,
     concernKind: (kind: number): string => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : ""),
     concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? "Unknown reason",
