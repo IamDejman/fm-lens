@@ -40,6 +40,21 @@ async function withNations(table: EditField[]): Promise<EditField[]> {
   return table.map((field) => (field.key === "nation" ? { ...field, choices } : field));
 }
 
+/** The kinds of thing that have a table. */
+const ENTITIES: readonly Entity[] = ["player", "staff", "club", "nation", "official"];
+
+/** What a field is kept under in `fieldIndex`: `player:attribute.finishing`. */
+export const fieldIndexKey = (entity: Entity, key: string) => `${entity}:${key}`;
+
+/**
+ * Every editable field by `fieldIndexKey`, to tell what kind of value a logged change or a failure holds (an
+ * attribute, a date, an amount of money) and how it is shown.
+ */
+export async function fieldIndex(): Promise<ReadonlyMap<string, EditField>> {
+  const all = await Promise.all(ENTITIES.map(fieldTable));
+  return new Map(all.flat().map((field) => [fieldIndexKey(field.entity, field.key), field] as const));
+}
+
 /** Forgets the tables, for the next connection. */
 export function forgetFieldTables(): void {
   tables.clear();
