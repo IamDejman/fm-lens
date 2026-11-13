@@ -141,6 +141,8 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
       version={version}
       active={active}
       reveal={reveal}
+      // He was found by his name: the players like him are not searched by it.
+      clearSearch={similarRequest}
       placeholder={text.search}
       summary={(total, shown) =>
         text.summary(
