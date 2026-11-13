@@ -13,7 +13,7 @@ const player: Pick<PlayerDetails, 'uid' | 'club' | 'workPermits'> = { uid: 123, 
 const edited = vi.fn();
 function View({ details = player, editable = true, available = true }) {
   return <EditorContext.Provider value={{ editable, readOnlyNote: 'Read only', onEdited: edited,
-    gameActions: { ...NO_GAME_ACTIONS, workPermit: available }, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}>
+    gameActions: { ...NO_GAME_ACTIONS, workPermit: available }, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}>
     <WorkPermitGroup details={details} />
   </EditorContext.Provider>;
 }

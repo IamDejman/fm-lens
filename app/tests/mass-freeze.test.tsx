@@ -69,6 +69,7 @@ async function openDialog() {
         gameDate: null,
         openPlayer: () => {},
         openStaff: () => {},
+        findSimilar: () => {},
       }}
     >
       <MassEditButton entity="player" filters={{ playerFilter: {} }} list={{ query: 'arsenal', total: 3, shown: 3, yours: null }} />

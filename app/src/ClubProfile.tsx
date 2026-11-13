@@ -11,7 +11,8 @@ import {
   SUPPORTER_TRAIT_LABELS,
   type SupporterMixKey,
 } from "./labels";
-import { ClubLogo, PICTURE_SIZE } from "./Picture";
+import { ClubLogo, Picture, PICTURE_SIZE } from "./Picture";
+import { clubKits, type KitKind } from "./pictures";
 import {
   Fact,
   ProfileFrame,
@@ -134,8 +135,39 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
         <ClubInfo details={details} />
         <ClubTiesGroups rivals={details.rivals} links={details.links} />
+        <Kits club={details.uid} />
       </div>
     </div>
+  );
+}
+
+/** The club's kits, from the user's kit packs; nothing when no pack has them. */
+function Kits({ club }: { club: number }) {
+  const [kits, setKits] = useState<KitKind[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    clubKits(club)
+      .then((found) => !cancelled && setKits(found))
+      .catch(() => !cancelled && setKits([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [club]);
+  if (kits.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{text.kits}</h3>
+      <ul className="club-kits">
+        {kits.map((kind) => (
+          <li key={kind}>
+            <Picture kind={`kit-${kind}`} id={club} size={PICTURE_SIZE.kit} label={text.kitNames[kind]} />
+            <span>{text.kitNames[kind]}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
