@@ -670,6 +670,10 @@ pub struct ContractLayout {
     pub clauses: u64,
     /// The list of its bonuses for winning competitions: 32-byte entries.
     pub competition_bonuses: u64,
+    /// Pointer to the list of its bonuses for winning awards: 16-byte entries, the award and the amount. Where the
+    /// layout has it.
+    #[serde(default)]
+    pub award_bonuses: Option<u64>,
     /// `i32`, pounds per week.
     pub loyalty_bonus: u64,
     /// `i8` each: how happy the player is, and how happy with his playing time, as FMRTE shows them.

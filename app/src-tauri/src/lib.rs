@@ -1200,11 +1200,11 @@ impl Connection {
 
     /// Names the competitions of a contract's competition bonuses, from the competitions read once (or the awards, where
     /// no competition has the UID). A table that cannot be read leaves them unnamed rather than failing the profile.
-    fn name_competition_bonuses(&mut self, bonuses: &mut [CompetitionBonus]) {
+    fn name_competition_bonuses(&mut self, bonuses: &mut Vec<CompetitionBonus>) {
         if bonuses.is_empty() {
             return;
         }
-        for bonus in bonuses.iter_mut() {
+        for bonus in bonuses.iter_mut().filter(|bonus| !bonus.award) {
             let uid = bonus.competition_uid;
             bonus.competition = self.competition_index().ok().and_then(|index| index.get(uid)).map(|c| c.name.clone());
         }
@@ -1212,6 +1212,8 @@ impl Connection {
             let uid = bonus.competition_uid;
             bonus.competition = self.award_index().ok().and_then(|index| index.get(uid)).map(|a| a.name.clone());
         }
+        // An award bonus is read through a pointer: one that names no award is not shown.
+        bonuses.retain(|bonus| !bonus.award || bonus.competition.is_some());
     }
 
     /// Logs a change to a person's preferences just written, as a change of his field `preference.favouredClub`,

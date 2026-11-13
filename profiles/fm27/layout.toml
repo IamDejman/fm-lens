@@ -147,6 +147,10 @@ job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant mana
 # whose clauses list holds his release clause (859,031,872 pounds, a billion euros) and three bonuses.
 clauses = 0x68            # 8-byte entries: u32 amount (0xFFFFFFFF: none), u16 condition (0xFFFF: none), u16 kind
 competition_bonuses = 0x80 # 32-byte entries: the competition's UID at +0x14, the amount at +0x18
+# Pointer to a (begin, end, capacity) list of 16-byte entries: a pointer to the award, then a u32 amount in pounds.
+# Steam 26577676 (13 Nov 2026): Declan Rice's contract at Barcelona holds the World Footballer of the Year (102407)
+# and the World Golden Ball (102406) at 1,171,666 each, which FM's contract page shows as $1.6M each.
+award_bonuses = 0x98
 # Checked against FMRTE's contract page for Kane, Haaland, Alex Scott, Olise and Mbappé (Game Pass, 6 Sep 2026):
 # loyalty bonus 33,401 / 43,634 / 20,882 / 37,798 / 50,098, happiness 71 / 60 / 60 / 60 / 80 and playing time
 # happiness 4 / 16 / 27 / 8 / 30. Olivier Boscagli's happiness reads -4.

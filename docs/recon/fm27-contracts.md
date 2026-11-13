@@ -73,6 +73,14 @@ The u16 condition on kinds 0, 16, 17, 18, 27 and 31 (values 700 to 2,400) is not
 
 Competition and award bonuses are not in the +0x68 list. They are in the +0x80 list, 32-byte entries. 687 contracts have them. Rice has one: words `076c0001 ffffffff 00000014 ffffffff 00000000 0000027d 000cfc1f 0000ffff`. +0x14 is the UID of what the bonus is for (Rice: 637) and +0x18 its amount (850,975), as the Windows layout notes for Mbappé; FM Lens shows these two read-only (13 November). The rest is not decoded: +0x00 is an unset date, +0x08 (here 0x14, 20) may say what the bonus is paid for. Not yet compared with FM's contract screen.
 
+Award bonuses are a third list. Contract +0x98 is a pointer to a `(begin, end, capacity)` header whose entries are 16 bytes: a pointer to the `db::AWARD`, then a `u32` amount in pounds. Established on Windows, Steam 26577676, 13 November 2026 (copy save, 30 June 2027):
+
+- Declan Rice (Barcelona): two entries, awards 102407 (World Footballer of the Year) and 102406 (World Golden Ball), 1,171,666 each. FM's contract page shows both at $1.6M, in the same order.
+- Kai Havertz (Arsenal): 102407 at 439,614, 102408 (World Player of the Year) at 350,669, 102406 at 439,614. FM shows $600K and $475K for the first two.
+- Census with `fmlens-probe clauses`: 303 contracts have the list, 548 entries, and all 548 point at an award in the game's table.
+
+FM Lens shows them read-only after the competition bonuses and drops any entry whose pointer does not lead to a known award. Windows only: `award_bonuses` is not set in the macOS layout, where the +0x98 pointer was seen but not compared with FM.
+
 Values to check in FM:
 - Saka contract screen, Bonuses: appearance 50,000, goal 65,000, assist 45,000, unused sub 15,000. Relegation wage decrease 25 percent.
 - Haaland: appearance 82,000, goal 85,000, unused sub 23,625, yearly wage rise 5 percent.
@@ -182,7 +190,7 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 
 ## Open items
 
-- Competition and award bonus entry encoding, the +0x98 structure, and the 16-byte entries there.
+- Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
 - LOAN_CONTRACT term fields (+0xA0 to +0xB0 and +0xCC to +0xE8).
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
 - Where wages are deducted from balance.
