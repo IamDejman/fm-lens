@@ -125,6 +125,8 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
   /** The order the summary line names: the one asked for, or likeness while the list is compared. */
   const named = order ?? (similar ? null : undefined);
   const stopComparing = () => setSimilar(null);
+  // A mass edit or a template changes the players the list shows.
+  const listed = { playerFilter: filter, best: best.recipe?.best, leftOut: similar?.uid };
 
   return (
     <ListBrowser<PlayerRow>
@@ -200,8 +202,8 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
           <MoreMenu>
             <ColumnsButton choice={columns} onChoose={setColumns} />
             <ExportButton list={list} filter={filter} order={order} />
-            <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
-            <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
+            <MassEditButton entity="player" filters={listed} list={list} />
+            <PlayerTemplatesButton filters={listed} list={list} />
           </MoreMenu>
         </>
       )}

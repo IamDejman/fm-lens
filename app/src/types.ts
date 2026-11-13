@@ -1459,6 +1459,10 @@ export interface MassFilters {
   playerFilter?: PlayerFilter;
   staffFilter?: StaffFilter;
   clubFilter?: ClubFilter;
+  /** The player list's "Best for": only the players who play its positions are listed. */
+  best?: BestFor;
+  /** The player the player list is compared with, whom it leaves out. */
+  leftOut?: number;
 }
 
 /** How much of what a list selects is frozen: its players' or staff's attributes, or its clubs' money. */

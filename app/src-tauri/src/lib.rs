@@ -608,7 +608,9 @@ impl Connection {
         match entity {
             Entity::Player => {
                 let filter = filters.player_filter.unwrap_or_default();
-                let hits = self.players.search(query).into_iter().filter(|p| filter.matches(p));
+                let best = filters.best.unwrap_or_default();
+                let listed = |p: &&PlayerSummary| player_listed(p, &filter, &best, filters.left_out);
+                let hits = self.players.search(query).into_iter().filter(listed);
                 hits.map(|p| (p.target(), p.name.clone())).collect()
             }
             Entity::Staff => {
@@ -2556,6 +2558,10 @@ struct Filters {
     player_filter: Option<PlayerFilter>,
     staff_filter: Option<StaffFilter>,
     club_filter: Option<ClubFilter>,
+    /// The player list's "Best for": only the players who play its positions are listed.
+    best: Option<BestFor>,
+    /// The player a player list is compared with, whom it leaves out.
+    left_out: Option<u32>,
 }
 
 /// One field of a mass edit and what to do with it.
@@ -3452,6 +3458,12 @@ const MOST_ATTRIBUTE_COLUMNS: usize = 12;
 /// The most roles a player list rates its players in at once.
 const MOST_ROLE_COLUMNS: usize = 6;
 
+/// Whether the player list shows `p`: he matches the filter, plays a position of "Best for", and is not the player
+/// the list is compared with. A mass edit or a template of the list changes the same players.
+fn player_listed(p: &PlayerSummary, filter: &PlayerFilter, best: &BestFor, left_out: Option<u32>) -> bool {
+    Some(p.uid) != left_out && filter.matches(p) && best.plays(p)
+}
+
 /// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
 /// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
 /// your club's players who play them. `attributes` are the keys of the attributes to send with each row, for the
@@ -3494,7 +3506,7 @@ fn search_players(
         &query,
         limit,
         offset.unwrap_or(0),
-        |p| Some(p.uid) != left_out && filter.matches(p) && best.plays(p),
+        |p| player_listed(p, &filter, &best, left_out),
         |hits| match (order, &likeness) {
             (Some(order), Some(likeness)) if order.by == PlayerSort::Similarity => {
                 sort_by_likeness(hits, likeness, order.ascending)
@@ -5630,6 +5642,60 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_mass_edit_changes_the_players_the_list_shows() {
+        let player = |uid: u32, st: u8| {
+            let mut position_ratings = [1u8; 15];
+            position_ratings[12] = st;
+            PlayerSummary {
+                uid,
+                name: format!("Player {uid}"),
+                full_name: None,
+                date_of_birth: None,
+                age: Some(25),
+                nation: None,
+                nation_uid: None,
+                nation_address: 0,
+                club: None,
+                club_uid: None,
+                positions: Vec::new(),
+                contract_expires: None,
+                current_ability: 150,
+                potential_ability: 160,
+                position_ratings,
+                attributes: Vec::new(),
+                base: fmlens_core::Base::default(),
+                transfer_listed: false,
+                loan_listed: false,
+                height_cm: 180,
+                wage: None,
+                transfer_value: None,
+                current_reputation: 5000,
+                personality: [10; 8],
+                traits: 0,
+                address: 0,
+                shift: 0,
+            }
+        };
+        // As the player list sends them while it is compared with player 1 and ranked for strikers.
+        let filters: Filters = serde_json::from_str(
+            r#"{"playerFilter":{},"best":{"weights":[{"key":"finishing","weight":1}],"positions":["st"]},"leftOut":1}"#,
+        )
+        .unwrap();
+        let filter = filters.player_filter.unwrap_or_default();
+        let best = filters.best.unwrap_or_default();
+        let listed = |p: &PlayerSummary| player_listed(p, &filter, &best, filters.left_out);
+        assert!(!listed(&player(1, 20)), "the compared player");
+        assert!(listed(&player(2, 20)));
+        assert!(!listed(&player(3, 10)), "no striker");
+        // Without them, as before.
+        let plain: Filters = serde_json::from_str(r#"{"playerFilter":{}}"#).unwrap();
+        let anyone = |p: &PlayerSummary| {
+            player_listed(p, &plain.player_filter.clone().unwrap_or_default(), &BestFor::default(), plain.left_out)
+        };
+        assert!(anyone(&player(1, 20)) && anyone(&player(3, 10)));
+    }
 
     #[test]
     fn a_card_keeps_only_the_names_the_app_gives_it() {
