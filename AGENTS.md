@@ -77,6 +77,9 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - app/src-tauri/: Tauri commands, connections and desktop packaging.
 - crates/fmlens-mem/: process access and the final memory-write guard.
 - crates/fmlens-core/: FM decoding, layouts, validation and domain operations.
+- crates/fmlens-scout/: FM Lens's own scouting estimates (potential attributes,
+  roles, likeness, development, career records), with no game or platform code;
+  docs/SCOUTING.md explains them. They are estimates, never FM data.
 - crates/fmlens-bridge/: the bridge that runs the game's own functions: a macOS
   library with its Steam launcher, and a Windows DLL the app embeds.
 - crates/fmlens-probe/: diagnostics; upstream mutation commands remain present
