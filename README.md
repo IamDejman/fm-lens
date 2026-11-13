@@ -54,6 +54,12 @@ should do next with **Wishlist** at the foot of the app, or in a
 - Heal injuries, lift bans, refresh fitness and sharpness, and set or freeze a
   player's attributes.
 - Copy a player's profile onto others with templates, previewed first.
+- Scout with FM Lens's own estimates: find players like any other, today or at
+  their peak; search by potential attributes and by role ratings; see each
+  player's chance of reaching his potential and his progress rate; rank the
+  best and most promising players by continent or country; and see how a
+  player developed in your other careers. [How they work](docs/SCOUTING.md).
+- Show faces, logos, flags and kits from the graphics packs you added to FM.
 - Export to CSV or JSON. Light and dark appearance, 80 to 150% zoom and
   keyboard shortcuts.
 - Drag a number sideways to change it. FM Lens reopens where you left it.
@@ -88,6 +94,7 @@ The app is `target/debug/bundle/macos/FM Lens.app`. Releases are built as
 - [Developing and releasing](docs/DEVELOPING.md)
 - [Feature status and roadmap](docs/ROADMAP.md)
 - [Mapped editing fields](docs/EDITOR-FIELDS.md)
+- [Scouting estimates](docs/SCOUTING.md)
 - [Editing tests and remaining validation](docs/EDITING-VALIDATION.md)
 - [Current build and live verification](docs/PERSONAL-SCOUT.md)
 - [Brand assets and generation prompts](docs/brand/FM-LENS.md)
@@ -119,6 +126,10 @@ or Windows version and processor, and the app language:
 
 To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
 nothing.
+
+To show how a player developed in your other careers, the app keeps each
+connected career's player ages and abilities in its own data folder on your
+computer. They are never sent anywhere.
 
 Before it opens for the first time on a computer, the app asks for an email
 address. FM Lens's own server keeps it on FM Lens's email list, on Amazon Web
