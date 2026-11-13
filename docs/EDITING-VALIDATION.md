@@ -3186,3 +3186,35 @@ wording: "Hits free kick with power", "Likes to beat opponent repeatedly" and
 Not run: the packaged app with these changes on any platform (the list and
 the tags were checked in the browser preview); the Spanish and Turkish names
 against FM in those languages.
+
+## Contract signed and joined dates (13 November 2026)
+
+The day a contract was signed and the day its holder joined the club are
+editable, for players and staff, one person at a time. No game was run for
+this change: both are enabled, unverified.
+
+Why the layout is taken as mapped: both dates sit in the contract record the
+profile already reads them from (`signed` 0x44 and `joined` 0x4C, on macOS and
+Windows alike), beside the contract end at 0x48, which is an edit already in
+use and checked in FM. recon/fm27-contracts.md read all three on Saka, Rice
+and White. Staff use the same contract record.
+
+The editor writes 1 January 1950 to the game's date, since a contract is not
+signed, nor a club joined, on a day to come; where the game's date is not
+read, to 31 December 2100. A date the game holds as unset is left as it is,
+as for the contract end. Neither date is offered in a mass edit.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core` and `fmlens-probe`, for a Windows and an Apple Silicon target, from Linux | Pass. This type-checks the new unit tests; it does not run them |
+| `cargo fmt --all --check` | Pass |
+| `npm run build` and `npm test` | Pass (8 and 91 tests, one of them new: both dates are inputs in Edit, a day after the game's date is refused, and an applied date is read back) |
+| Browser preview on sample data (`?writable`), Lukas Kowalski, game date 18 July 2026 | Contract tab: Signed and Joined are inputs in Edit beside Expires. Joined 19/07/2026 read invalid ("Enter a date from 1 Jan 1950 to 18 Jul 2026") with Apply off. Signed 15/06/2023 and Joined 01/07/2020 applied: the profile read 15 Jun 2023 and 1 Jul 2020, Changes listed "Contract signed 1 Jul 2024 → 15 Jun 2023" and "Joined club 15 Aug 2022 → 1 Jul 2020", each with Undo, and one Undo read "Undone" |
+
+Not run: anything in FM on any platform: either date on FM's contract or
+history screens, an undo, a stale-value refusal, a Continue, and a save, quit
+and reload on a career copy; a member of staff's dates; what FM does with a
+joined date after the signed date, or with either date changed for a player on
+loan. The preview's first test found that its sample data did not report
+values for the two fields; the real app reads every field's value the same
+way, so that fix is to the sample data only.

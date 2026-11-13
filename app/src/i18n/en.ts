@@ -612,6 +612,8 @@ export const en = {
     "contract.playing_time_happiness": "Playing time happiness",
     "contract.unhappiness": "Reasons to be unhappy",
     "contract.expires": "Contract end",
+    "contract.signed": "Contract signed",
+    "contract.joined": "Joined club",
     "loan.wage": "Loan wage paid by borrower",
     "loan.ends": "Loan end",
     "transfer.joins": "Joins",
