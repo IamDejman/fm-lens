@@ -1104,6 +1104,7 @@ name = "fmlens-app"
 version = "0.7.10"
 dependencies = [
  "fmlens-core",
+ "fmlens-gfx",
  "fmlens-mem",
  "serde",
  "serde_json",
@@ -1138,6 +1139,17 @@ dependencies = [
  "serde_json",
  "toml 1.1.8+spec-1.1.0",
  "unicode-normalization",
+]
+
+[[package]]
+name = "fmlens-gfx"
+version = "0.7.10"
+dependencies = [
+ "lz4_flex",
+ "png",
+ "serde",
+ "serde_json",
+ "texture2ddecoder",
 ]
 
 [[package]]
@@ -2233,6 +2245,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
+name = "lz4_flex"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecbdfe44b1bd960b68170b417450a628c43f7cf56bb3c5317e61cb230ee7f226"
+
+[[package]]
 name = "mach2"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2734,6 +2752,12 @@ dependencies = [
  "smallvec",
  "windows-link",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "percent-encoding"
@@ -4165,6 +4189,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fed54709c5b3a53d09bb1c113ea4f5ceafd1e772ddcb0030a82e1d56c087b08"
 dependencies = [
  "new_debug_unreachable",
+]
+
+[[package]]
+name = "texture2ddecoder"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "427ae8ec7f2f0fdd3146b77cfa44bea880caf066f7e55398a8467afe2645c832"
+dependencies = [
+ "paste",
 ]
 
 [[package]]

@@ -1,0 +1,17 @@
+[package]
+name = "fmlens-gfx"
+description = "Read-only reader for the pictures built into Football Manager 27"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+lz4_flex = { version = "0.14", default-features = false, features = ["safe-decode"] }
+texture2ddecoder = "0.1"
+png = { version = "0.18", default-features = false }
+
+[dev-dependencies]
+serde_json.workspace = true

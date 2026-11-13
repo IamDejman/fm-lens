@@ -1,4 +1,4 @@
-// Pictures from the user's graphics packs (club logos, faces, flags), served by the app's
+// Pictures from the user's graphics packs, or else the game's own (logos, faces, flags, kits), served by the app's
 // `fmgfx` protocol. In a plain browser there are none, and every picture falls back.
 
 import { call, inTauri } from "./api";

@@ -1,7 +1,7 @@
 mod bridge;
 mod scouting;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -2716,6 +2716,98 @@ impl Graphics {
     }
 }
 
+/// The pictures built into the game (logos, faces, flags and kits), shown where no pack has one. They are
+/// found beside the game's executable, so they are known from the first connection on.
+#[derive(Default, Clone)]
+struct GamePictures(Arc<GamePicturesState>);
+
+#[derive(Default)]
+struct GamePicturesState {
+    /// The folder the pictures were opened from, and the pictures.
+    opened: Mutex<Option<(PathBuf, Arc<fmlens_gfx::GameGraphics>)>>,
+    made: Mutex<MadePictures>,
+}
+
+/// The pictures already made, as PNG files.
+type MadePictures = HashMap<(fmlens_gfx::Kind, u32), Arc<Vec<u8>>>;
+
+/// How many made pictures are kept: past it they are all forgotten, and made again when asked for.
+const GAME_PICTURES_KEPT: usize = 1500;
+
+impl GamePictures {
+    /// Opens the pictures of the install `game_executable` runs from, unless they are open already. An install
+    /// without them, or with pictures in a format this app does not know, leaves the packs as the only pictures.
+    fn open_for(&self, game_executable: &Path) {
+        let Some(folder) = fmlens_gfx::addr_data_for(game_executable) else {
+            return;
+        };
+        let Ok(mut opened) = self.0.opened.lock() else {
+            return;
+        };
+        if opened.as_ref().is_some_and(|(open, _)| *open == folder) {
+            return;
+        }
+        match fmlens_gfx::GameGraphics::open(&folder) {
+            Ok(pictures) => {
+                *opened = Some((folder, Arc::new(pictures)));
+                if let Ok(mut made) = self.0.made.lock() {
+                    made.clear();
+                }
+            }
+            Err(err) => eprintln!("FM Lens could not read the game's own pictures: {err}"),
+        }
+    }
+
+    fn pictures(&self) -> Option<Arc<fmlens_gfx::GameGraphics>> {
+        self.0.opened.lock().ok()?.as_ref().map(|(_, pictures)| pictures.clone())
+    }
+
+    /// Whether the game has this picture: nothing is decoded.
+    fn has(&self, picture: Picture, id: u32) -> bool {
+        self.pictures().is_some_and(|pictures| pictures.has(game_kind(picture), id))
+    }
+
+    /// The game's picture as a PNG file, no bigger than the app shows it; None where the game has none or it
+    /// cannot be read.
+    fn png(&self, picture: Picture, id: u32) -> Option<Arc<Vec<u8>>> {
+        let kind = game_kind(picture);
+        if let Some(png) = self.0.made.lock().ok()?.get(&(kind, id)) {
+            return Some(png.clone());
+        }
+        let png = Arc::new(self.pictures()?.png(kind, id, game_picture_side(picture)).ok()??);
+        let mut made = self.0.made.lock().ok()?;
+        if made.len() >= GAME_PICTURES_KEPT {
+            made.clear();
+        }
+        made.insert((kind, id), png.clone());
+        Some(png)
+    }
+}
+
+/// The game's family of pictures a picture of the packs belongs to.
+fn game_kind(picture: Picture) -> fmlens_gfx::Kind {
+    match picture {
+        Picture::ClubLogo => fmlens_gfx::Kind::Club,
+        Picture::Face => fmlens_gfx::Kind::Face,
+        Picture::Flag => fmlens_gfx::Kind::Flag,
+        Picture::CompetitionLogo => fmlens_gfx::Kind::Competition,
+        Picture::HomeKit => fmlens_gfx::Kind::KitHome,
+        Picture::AwayKit => fmlens_gfx::Kind::KitAway,
+        Picture::ThirdKit => fmlens_gfx::Kind::KitThird,
+    }
+}
+
+/// The longer side a picture of the game is cut down to, in pixels: about three times the biggest box the app
+/// shows it in, so it stays sharp on a dense screen.
+fn game_picture_side(picture: Picture) -> u32 {
+    match picture {
+        Picture::ClubLogo | Picture::CompetitionLogo => 160,
+        Picture::Face => 192,
+        Picture::Flag => 96,
+        Picture::HomeKit | Picture::AwayKit | Picture::ThirdKit => 256,
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GraphicsInfo {
@@ -2739,16 +2831,15 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
     }
 }
 
-/// The kits of the club with `uid` the graphics packs have: "home", "away" and "third", in that order. None while the
-/// packs are still being read.
+/// The kits of the club with `uid` the graphics packs or the game have: "home", "away" and "third", in that order.
 #[tauri::command]
-fn club_kits(graphics: State<'_, Graphics>, uid: u32) -> Vec<&'static str> {
-    let Some(index) = graphics.index() else {
-        return Vec::new();
-    };
+fn club_kits(graphics: State<'_, Graphics>, game: State<'_, GamePictures>, uid: u32) -> Vec<&'static str> {
+    let index = graphics.index();
     [(Picture::HomeKit, "home"), (Picture::AwayKit, "away"), (Picture::ThirdKit, "third")]
         .into_iter()
-        .filter(|&(picture, _)| index.file(picture, uid).is_some())
+        .filter(|&(picture, _)| {
+            index.as_ref().is_some_and(|index| index.file(picture, uid).is_some()) || game.has(picture, uid)
+        })
         .map(|(_, kind)| kind)
         .collect()
 }
@@ -2875,9 +2966,9 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
-/// Serves `fmgfx` requests such as `/club/728`, `/kit-home/728`, `/face/7458500` or `/flag/765` from the
-/// graphics packs; anything unknown or missing is a 404.
-fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Vec<u8>> {
+/// Serves `fmgfx` requests such as `/club/728`, `/kit-home/728`, `/face/7458500` or `/flag/765`: the picture of
+/// the graphics packs, or else the game's own; anything unknown or missing is a 404.
+fn picture_response(graphics: &Graphics, game: &GamePictures, path: &str) -> tauri::http::Response<Vec<u8>> {
     // The window's own origin differs from fmgfx's, so let it read the answers, not only show them.
     let not_found = || {
         tauri::http::Response::builder()
@@ -2900,16 +2991,14 @@ fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Ve
     let Some(id) = parts.next().and_then(|id| id.parse().ok()) else {
         return not_found();
     };
-    let Some(index) = graphics.index() else {
+    let index = graphics.index();
+    let packed = index.as_ref().and_then(|index| index.file(picture, id)).and_then(|file| {
+        let png = file.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
+        std::fs::read(file).ok().map(|bytes| (bytes, png))
+    });
+    let Some((bytes, png)) = packed.or_else(|| game.png(picture, id).map(|png| (png.to_vec(), true))) else {
         return not_found();
     };
-    let Some(file) = index.file(picture, id) else {
-        return not_found();
-    };
-    let Ok(bytes) = std::fs::read(file) else {
-        return not_found();
-    };
-    let png = file.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
     tauri::http::Response::builder()
         .header("Content-Type", if png { "image/png" } else { "image/jpeg" })
         .header("Cache-Control", "max-age=3600")
@@ -3194,12 +3283,16 @@ async fn connect(
     state: State<'_, AppState>,
     file: State<'_, FrozenFile>,
     histories: State<'_, Histories>,
+    pictures: State<'_, GamePictures>,
 ) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
+    let pictures = pictures.inner().clone();
     let (mut connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let pid = find_game(None)?;
         let mut connection = Connection::load(connect_session(pid)?)?;
+        // Before the lists are shown, so that their first pictures are not asked for too early.
+        pictures.open_for(&connection.session.game.exe_path);
         // Without a human manager the lists are not a career the user can recognise or should edit.
         if connection.career.is_none() {
             return Err(no_career());
@@ -5346,6 +5439,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
         .manage(Graphics::default())
+        .manage(GamePictures::default())
         .setup(|app| {
             // Reading the packs' config files takes a moment: do it beside the window. FM keeps its user data
             // in the documents folder on Windows and in Application Support on macOS, or somewhere else, which
@@ -5405,9 +5499,14 @@ pub fn run() {
             });
             Ok(())
         })
-        .register_uri_scheme_protocol("fmgfx", |ctx, request| {
-            let graphics = ctx.app_handle().state::<Graphics>();
-            picture_response(&graphics, request.uri().path())
+        // Beside the window: a picture of the game is unpacked and made smaller before it is sent.
+        .register_asynchronous_uri_scheme_protocol("fmgfx", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let response =
+                    picture_response(&app.state::<Graphics>(), &app.state::<GamePictures>(), request.uri().path());
+                responder.respond(response);
+            });
         })
         .invoke_handler(tauri::generate_handler![
             detect_game,
