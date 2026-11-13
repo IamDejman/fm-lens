@@ -268,7 +268,12 @@ Every line matches:
 `+0xB1` bit `0x01` does not follow the preferred position: 75 loans have the bit with no position, 89 a position
 without it (Pondeca shows GK with the bit clear). It has no line on FM's Loan Club tab either: Helafu, Webb, Moussongo
 Bahel, Ndiaye, Sebine, Thomas-Smith, Maddox, Sweet and Scheller (bit set) show the same lines as Kabashi, Anderson and
-Diouf (bit clear), each line explained by the other flags. Its meaning is open.
+Diouf (bit clear), each line explained by the other flags. In the census it is set only on loans with a joined date
+(`+0x4C`): all 343 records with `+0x4C` unset (1900), such as the extra records of Anderson, Krumrey and Sosa, have it
+clear. Among the 457 with a joined date, 254 have it and 203 do not, and it follows neither the dates nor the future fee:
+Kabashi and Diouf (clear) signed between Sebine and Thomas-Smith (set). Its meaning is open. `+0xD8` and
+`+0xDC` hold -1 in all 343 records without a joined date and counts of up to a few thousand in most others (Webb 180
+and 180, Thomas-Smith 270 and 0, Helafu 2,048 and 2,369), so they may count minutes played; not checked against FM.
 
 Position and role in `+0xA0`, every value in the census, each read from FM's Loan Club tab on the same copy (value =
 role * 64 + position):
@@ -335,6 +340,11 @@ these tabs agree with the table in 3.1: Diouf and Fontàs (`+0xB0` bit `0x04` cl
 terminated; Fontàs (`+0xB1` `0x81`) can play against the parent club's B team; Maddox (`+0xB0` `0x0E`) shows no line
 for bit `0x08`.
 
+FM's loan offer form (Make An Offer, Loan Offer, Mainoo, not submitted) creates no `db::LOAN_CONTRACT`: 800 records
+before and after the clauses were filled. So role 11 and position 12 cannot be read by choosing them in a clause
+without making an offer. The form has a position and a role both in and out of possession; the Loan Club tab shows one
+of each, and where the out-of-possession pair is held is open.
+
 ## 4. Payroll
 
 Status: partial.
@@ -376,7 +386,8 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 - Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
 - LOAN_CONTRACT term fields: fees, fee condition, its kind and European competition, matches played, the preferred
   position and role (every value in the census but position 12 and role 11), and six flags mapped on Windows (3.1);
-  `+0xB1` bit `0x01` (no line on FM's tab) and the remaining words are open. `+0xB0` bit `0x08` has no line on FM's Loan Club tab (Musaba, Wright and Monga
+  `+0xB1` bit `0x01` (no line on FM's tab, set only on loans with a joined date), the out-of-possession position and
+  role, `+0xD8` and `+0xDC` (maybe minutes) and the remaining words are open. `+0xB0` bit `0x08` has no line on FM's Loan Club tab (Musaba, Wright and Monga
   compared).
 - FM's add-clause routine is found statically on macOS (1.1) but never called; Windows not looked for.
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
