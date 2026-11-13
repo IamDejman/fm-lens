@@ -3187,6 +3187,47 @@ Not run: the packaged app with these changes on any platform (the list and
 the tags were checked in the browser preview); the Spanish and Turkish names
 against FM in those languages.
 
+## Women's FIFA points (12 November 2026)
+
+Branch `Iamdejman/confident-darwin-ktyc9o`, from main at e47d8a8 (0.7.7).
+
+A nation's profile shows the women's world ranking and points, and
+`women.points` can be edited, 0.00 to 3,000.00, one nation at a time, behind
+the nations health check. Both are read from the women's container at the
+offsets the men's uses in its own (`ranking` and `points` in `[national]`).
+`fmlens-probe nation UID` prints them on a `women ranking` line.
+EDITOR-FIELDS.md lists the new field: 37 nation fields.
+
+What the mapping rests on: the read-only probe work of 5 November on ARM64
+build 26340721 (recon/fm27-nations.md), where the women's container read
+England 3rd on 2,027.1 and Spain 2nd on 2,105.4. The women's container was not
+read for these on Intel or Windows.
+
+Checks, all in a Linux container with no game:
+
+- `npm --prefix app run build` and `npm --prefix app test`: pass (7 node tests,
+  66 vitest tests).
+- `cargo fmt --all --check`: pass.
+- `cargo test --locked -p fmlens-mem -p fmlens-core -p fmlens-probe`, built for
+  `x86_64-pc-windows-gnu` and run under Wine: 108 core and 5 mem tests pass,
+  `nations_take_their_own_rules_one_at_a_time` among them.
+- `cargo clippy --locked --all-targets -- -D warnings` on those three crates,
+  same target: clean.
+- The fields the code defines on each layout, listed and compared with
+  EDITOR-FIELDS.md key by key: 169 player, 42 staff, 14 club, 37 nation and
+  4 official on both, none missing and none extra.
+- Browser preview with sample data: Germany's women's ranking and points show;
+  3000.5 is refused, 2,042.00 -> 2,100.25 applies, Changes names it "Women's
+  FIFA points", Undo puts 2,042.00 back, and the men's points do not move.
+
+Not run: a macOS build, the app crate, the Tauri bundle, and anything against
+a running game. No read, edit, FM inspection or save and reload.
+
+To check on a disposable copy: `fmlens-probe nation 765` against FM's women's
+world ranking; edit `women.points` in the app, read it back and undo; hold the
+edit to FM's next women's ranking date; then save, quit and reload. Repeat the
+read under Rosetta and on Windows.
+
 ## Dragging numbers, scroll position and reopening (12 November 2026)
 
 Three changes to the interface, none to what is written to the game or how:
