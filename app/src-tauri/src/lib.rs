@@ -2689,6 +2689,20 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
     }
 }
 
+/// The kits of the club with `uid` the graphics packs have: "home", "away" and "third", in that order. None while the
+/// packs are still being read.
+#[tauri::command]
+fn club_kits(graphics: State<'_, Graphics>, uid: u32) -> Vec<&'static str> {
+    let Some(index) = graphics.index() else {
+        return Vec::new();
+    };
+    [(Picture::HomeKit, "home"), (Picture::AwayKit, "away"), (Picture::ThirdKit, "third")]
+        .into_iter()
+        .filter(|&(picture, _)| index.file(picture, uid).is_some())
+        .map(|(_, kind)| kind)
+        .collect()
+}
+
 /// Whether this copy of the app can update itself from FM Lens's own releases (the updater's endpoint in
 /// tauri.conf.json): download a new version, check its signature and put it in place. The macOS app run from its
 /// bundle, unless macOS runs it from a read-only copy, as it does an app opened where it was downloaded (App
@@ -2811,7 +2825,7 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
-/// Serves `fmgfx` requests such as `/club/728`, `/face/7458500` or `/flag/765` from the
+/// Serves `fmgfx` requests such as `/club/728`, `/kit-home/728`, `/face/7458500` or `/flag/765` from the
 /// graphics packs; anything unknown or missing is a 404.
 fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Vec<u8>> {
     // The window's own origin differs from fmgfx's, so let it read the answers, not only show them.
@@ -2828,6 +2842,9 @@ fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Ve
         Some("face") => Picture::Face,
         Some("flag") => Picture::Flag,
         Some("competition") => Picture::CompetitionLogo,
+        Some("kit-home") => Picture::HomeKit,
+        Some("kit-away") => Picture::AwayKit,
+        Some("kit-third") => Picture::ThirdKit,
         _ => return not_found(),
     };
     let Some(id) = parts.next().and_then(|id| id.parse().ok()) else {
@@ -5350,6 +5367,7 @@ pub fn run() {
             scouting::player_scout,
             scouting::top_players_list,
             scouting::top_places_list,
+            club_kits,
             search_staff,
             search_clubs,
             search_nations,

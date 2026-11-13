@@ -1312,6 +1312,8 @@ export const tr: Strings = {
   },
 
   clubProfile: {
+    kits: "Formalar",
+    kitNames: { home: "İç saha", away: "Deplasman", third: "Üçüncü" },
     // Header
     womensClub: "Kadın kulübü",
     founded: (year) => `Kuruluş ${year}`,
