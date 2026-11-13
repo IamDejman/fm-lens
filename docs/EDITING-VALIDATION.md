@@ -3009,6 +3009,54 @@ release in the same container. It leaves out reading the game on Connect.
 | Sorted by name | 27 ms | 17 ms | 989 ms | 480 ms |
 | First search after Connect or an edit | - | 7 ms | - | 186 ms |
 
+## Full nation and stadium lists (13 November 2026)
+
+Read-only work on the Nations and Stadiums lists. Nothing here was run against a
+game: it was written in a Linux container with no FM.
+
+The game keeps every database class in a table, and the static pointers to the
+tables sit in one block (docs/recon/fm27-competitions-awards-2.md, read on the
+arm64 Mac build 26340721). FM Lens already read two of them, competitions and
+awards, and a third, the kinds of injury, was found on its own in every build.
+In all nine Steam profiles the competitions sit 0x18 and the kinds of injury
+0x40 after the awards, as in that block, so its order holds across builds and
+platforms. The nations (0x28 after the awards) and stadiums (0x80) are now taken
+from the same block in each profile: `nations` and `stadiums`.
+
+What changed:
+
+- The Nations list adds every nation of the nation table (251 on the test save
+  of the recon) to those of the people and competitions read. They are the same
+  objects players point at, so a nation is listed once, and its profile and
+  edits work as for any other nation.
+- The Stadiums list adds, after the clubs' senior stadiums, every other stadium
+  of the stadium table (21,923 on the same save) that has a name and passes the
+  capacity checks the clubs' stadiums pass. Such a stadium has no club, so a
+  men's or women's filter leaves it out, and its row id is one of its own above
+  every UID seen.
+
+Guards: a table is used only when its first row's class is `db::NATION` or
+`db::STADIUM` (`N2db6NATIONE` and `N2db7STADIUME` on macOS,
+`.?AVNATION@db@@` and `.?AVSTADIUM@db@@` on Windows), every row has that class
+and every row's place in the table is the index at `+0x08`. Anything else and
+the lists stay as they were. The index at `+0x08` is checked for nations in the
+recon; for stadiums it is not, so a build where it differs keeps the old list.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 123 tests, 2 of them new: every profile's table slots against the awards', and the row ids of stadiums no club plays at |
+| `cargo clippy --all-targets -- -D warnings`: core, probe and app for Windows; core, mem and probe for `aarch64-apple-darwin` | Pass |
+| `npm test` | Pass, a new test lists a stadium no club plays at, opens it and filters it out by men's clubs |
+| `npm run build` | Pass |
+
+Still to do on a running game, on each platform: open Nations and count 251
+nations, with one not represented by anyone in the save opening its profile;
+open Stadiums, find a national stadium such as Wembley with no club, and time
+the first open of the list.
+
 ## Staff birth date (12 November 2026)
 
 A member of staff's birth date is editable, the human manager's too. No game

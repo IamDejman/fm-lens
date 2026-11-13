@@ -11,7 +11,7 @@ use fmlens_mem::{Process, is_user_pointer};
 use serde::Serialize;
 
 use crate::index::Listed;
-use crate::players::{nation_name, nation_uid};
+use crate::players::{Nation, nation_name, nation_uid};
 use crate::rtti::class_of;
 use crate::session::Session;
 use crate::text::{Memo, read_fm_string};
@@ -363,6 +363,41 @@ impl Session {
             });
         }
         Ok(awards)
+    }
+
+    /// Every nation in the game's table of them, whether anyone in the save is from it or not. Empty where this
+    /// build's profile or layout does not place the table, or the table does not check out. Only reads memory.
+    pub fn nation_table(&self) -> Result<Vec<Nation>, MoveError> {
+        let (Some(t), Some(slot)) = (self.layout.nation_table.as_ref(), self.profile.as_ref().and_then(|p| p.nations))
+        else {
+            return Ok(Vec::new());
+        };
+        let n = &self.layout.nation;
+        let size = t.size.max(n.uid + 4).max(n.name + 8);
+        let rows = table_rows(self, slot, t.table_items, &t.class, t.index, size)?;
+        Ok(rows
+            .into_iter()
+            .filter_map(|(address, bytes)| {
+                let uid = u32::from_le_bytes(bytes[n.uid as usize..n.uid as usize + 4].try_into().expect("4 bytes"));
+                let name = u64::from_le_bytes(bytes[n.name as usize..n.name as usize + 8].try_into().expect("8 bytes"));
+                let name = read_fm_string(&self.process, name).filter(|name| !name.trim().is_empty())?;
+                Some(Nation { address, uid: Some(uid), name })
+            })
+            .collect())
+    }
+
+    /// Every stadium in the game's table of them, as its address and its bytes up to the last field of
+    /// [`StadiumLayout`](crate::profile::StadiumLayout). Empty where this build's profile or layout does not place the
+    /// table, or the table does not check out. Only reads memory.
+    pub fn stadium_table(&self) -> Result<Vec<(u64, Vec<u8>)>, MoveError> {
+        let (Some(t), Some(s), Some(slot)) = (
+            self.layout.stadium_table.as_ref(),
+            self.layout.stadium.as_ref(),
+            self.profile.as_ref().and_then(|p| p.stadiums),
+        ) else {
+            return Ok(Vec::new());
+        };
+        table_rows(self, slot, t.table_items, &t.class, t.index, t.size.max(s.end()))
     }
 }
 

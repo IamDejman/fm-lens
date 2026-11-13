@@ -15,7 +15,9 @@ a known build enables the mapped fields.
 
 The nation list covers nations represented by loaded players, staff and
 competitions; the stadium list covers senior stadiums with every club that plays
-at each. Neither is a complete database scan.
+at each. Where the build profile places the game's nation and stadium tables,
+the lists add every other nation and stadium from them; that has unit tests and
+a sample-data preview, not yet a read from a running game.
 Mapped nation fields and official fields can be edited where the build supports
 them; stadium browsing is read-only. On ARM64, England's population, men's
 reputation and nationality rules passed the bounded save/quit/reload checks in
