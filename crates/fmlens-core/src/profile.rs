@@ -63,6 +63,11 @@ pub struct Layout {
     /// The kinds of injury; only in the layouts they have been checked in.
     #[serde(default)]
     pub injury_kind: Option<InjuryKindLayout>,
+    /// The database tables of every nation and every stadium; only in the layouts they have been described in.
+    #[serde(default)]
+    pub nation_table: Option<TableLayout>,
+    #[serde(default)]
+    pub stadium_table: Option<TableLayout>,
     /// The object the game's function that starts a loan takes; only in the layouts it has been traced in.
     #[serde(default)]
     pub starting_loan: Option<StartingLoanLayout>,
@@ -159,6 +164,18 @@ pub struct CompetitionLayout {
     pub actual: Option<u64>,
     #[serde(default)]
     pub rules: Option<u64>,
+}
+
+/// A database table read as the competitions' is ([`CompetitionLayout`]): its objects of the mangled class `class`,
+/// each read as `size` bytes, with their place in the table at `index`. A nation's fields are those of
+/// [`NationLayout`], a stadium's those of [`StadiumLayout`].
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TableLayout {
+    pub class: String,
+    pub size: u64,
+    pub table_items: u64,
+    pub index: u64,
 }
 
 /// A kind of injury (`db::INJURY`), read from its database table as a competition is ([`CompetitionLayout`]). Its
@@ -1007,6 +1024,12 @@ pub struct BuildProfile {
     pub competitions: Option<u64>,
     #[serde(default)]
     pub awards: Option<u64>,
+    /// RVAs in the game plugin of the static pointers to the database tables of every nation and every stadium
+    /// ([`TableLayout`]), in the same block as the competitions'.
+    #[serde(default)]
+    pub nations: Option<u64>,
+    #[serde(default)]
+    pub stadiums: Option<u64>,
     /// RVA in the game plugin of the static pointer to the database table of the kinds of injury
     /// ([`InjuryKindLayout`]), on the one build where it has been read.
     #[serde(default)]
@@ -1411,6 +1434,39 @@ mod tests {
         assert_eq!(mach_o.to_string(), "UUID 9E8E47DE-F704-314C-917D-C32D12637678");
         assert!(toml::from_str::<PluginFingerprint>(r#"uuid = "9E8E47DE-F704""#).is_err());
         assert!(toml::from_str::<PluginFingerprint>("size_of_image = 1\nlink_timestamp = 2\nuuid = 3").is_err());
+    }
+
+    #[test]
+    fn every_build_places_the_nation_and_stadium_tables_in_the_awards_block() {
+        // The block of table pointers keeps one order: competitions 0x18, nations 0x28, kinds of injury 0x40 and
+        // stadiums 0x80 after the awards (docs/recon/fm27-competitions-awards-2.md).
+        let mut placed = 0;
+        for profile in BUILDS.iter().map(|text| parse::<BuildProfile>(text)) {
+            let Some(awards) = profile.awards else {
+                assert_eq!((profile.nations, profile.stadiums), (None, None), "{}", profile.name);
+                continue;
+            };
+            assert_eq!(profile.competitions, Some(awards + 0x18), "{}", profile.name);
+            assert_eq!(profile.nations, Some(awards + 0x28), "{}", profile.name);
+            assert_eq!(profile.injury_kinds, Some(awards + 0x40), "{}", profile.name);
+            assert_eq!(profile.stadiums, Some(awards + 0x80), "{}", profile.name);
+            placed += 1;
+        }
+        assert_eq!(placed, 9);
+        for (layout, items, nation, stadium) in [
+            (parse::<Layout>(WINDOWS), 0x80, ".?AVNATION@db@@", ".?AVSTADIUM@db@@"),
+            (parse::<Layout>(MACOS), 0x88, "N2db6NATIONE", "N2db7STADIUME"),
+        ] {
+            let (n, s) = (layout.nation_table.expect("nation table"), layout.stadium_table.expect("stadium table"));
+            assert_eq!((n.class.as_str(), s.class.as_str()), (nation, stadium));
+            // The tables are the competitions' kind of table.
+            let c = layout.competition.as_ref().expect("competitions");
+            assert_eq!((n.table_items, s.table_items, c.table_items), (items, items, items));
+            assert_eq!((n.index, s.index), (c.index, c.index));
+            // A row holds every field the lists read.
+            assert!(n.size >= layout.nation.uid + 4 && n.size >= layout.nation.name + 8);
+            assert!(s.size >= layout.stadium.as_ref().expect("stadium").end());
+        }
     }
 
     #[test]

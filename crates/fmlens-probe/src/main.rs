@@ -2480,13 +2480,13 @@ impl PlayerFilterArgs {
         let contract_expires_by = self.expires_by.as_deref().map(parse_iso_date).transpose()?;
         let attributes = self.attributes.iter().map(|text| parse_attribute_bound(text)).collect::<Result<_>>()?;
         let filter = PlayerFilter {
-            position: self.position.clone(),
+            positions: self.position.iter().cloned().collect(),
             min_age: self.min_age,
             max_age: self.max_age,
             min_current_ability: self.min_ca,
             min_potential_ability: self.min_pa,
-            nation: self.nation.clone(),
-            club: self.club.clone(),
+            nation: self.nation.clone().into(),
+            club: self.club.clone().into(),
             club_uid: None,
             free_agents: self.free_agents,
             contract_expires_by,

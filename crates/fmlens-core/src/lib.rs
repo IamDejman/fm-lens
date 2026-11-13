@@ -38,6 +38,7 @@ mod relations;
 mod retirement;
 pub mod rtti;
 mod scan;
+mod scouting;
 mod session;
 mod squad;
 mod staff;
@@ -60,15 +61,16 @@ pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
 pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue};
 pub use date::FmDate;
 pub use details::{
-    ATTRIBUTE_GROUPS, Attribute, Clause, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
-    read_player_details,
+    ATTRIBUTE_GROUPS, Attribute, Clause, CompetitionBonus, Contract, International, PERSONALITY, POSITIONS,
+    PlayerDetails, Reputation, read_player_details,
 };
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};
 pub use filter::{
     AttributeBound, AwardFilter, AwardSort, ClubFilter, ClubSort, CompetitionFilter, CompetitionSort, NationFilter,
-    NationSort, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, SortColumn, SortKey,
-    StadiumSort, StaffFilter, StaffSort, sort_players, sort_rows,
+    NationSort, Needle, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, RoleBound,
+    SortColumn, SortKey, StadiumSort, StaffFilter, StaffSort, player_attribute, sort_by_likeness, sort_players,
+    sort_rows,
 };
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use game_calls::{
@@ -86,7 +88,7 @@ pub use mood::{ConcernsEnded, ConcernsPlan, HappinessHold};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
 pub use officials::OfficialSummary;
 pub use players::{
-    Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations, read_players,
+    Base, Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations, read_players,
 };
 pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,
@@ -99,6 +101,10 @@ pub use relations::{
 };
 pub use retirement::{PlannedRetirement, RetirementPlan, RetirementSet};
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};
+pub use scouting::{
+    Development, Likeness, PROMISING_AGE, Place, REPORT_ROLES, ROLES, RoleRating, Scores, ScoutReport, SimilarTo,
+    TOP_COUNT, TopKind, TopPlaces, TopScope, WITHIN, history, scores, scout_report, top_places, top_players,
+};
 pub use session::{ArraySource, Session, SessionError, find_game};
 pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember, TeamId};
 pub use staff::{

@@ -119,6 +119,7 @@ function InGame({ start, onValue }: { start: string; onValue: (value: string) =>
     gameDate: { year: 2027, month: 12, day: 8 },
     openPlayer: () => {},
     openStaff: () => {},
+    findSimilar: () => {},
   };
   return (
     <EditorContext.Provider value={editor}>

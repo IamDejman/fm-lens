@@ -1,4 +1,5 @@
 mod bridge;
+mod scouting;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -8,20 +9,22 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, CaptainRole, CaptainSet,
     Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded, Cohered,
-    CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded, EditError, EndedLoan,
-    Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate, FutureTransfer, GAME_EXE,
-    GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health,
-    Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
-    MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, OfficialFilter,
-    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
-    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
-    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
-    SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
-    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
-    TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
-    read_stadiums, sort_players, sort_rows, stadium_owner,
+    CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded,
+    EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate,
+    FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
+    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
+    MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort,
+    NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef,
+    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
+    PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS,
+    SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary,
+    StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId,
+    TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
+    read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
+use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
+use scouting::Histories;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, State};
 
@@ -71,6 +74,9 @@ struct Connection {
     /// Competitions and awards, read once. Cleared when the connection is loaded again.
     competitions: Option<SearchIndex<CompetitionSummary>>,
     awards: Option<SearchIndex<AwardSummary>>,
+    /// Every nation of the game's table of them, read once; empty where the build does not place the table. Cleared
+    /// when the connection is loaded again.
+    nation_table: Option<Vec<Nation>>,
 }
 
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
@@ -315,6 +321,7 @@ impl Connection {
             officials: None,
             competitions: None,
             awards: None,
+            nation_table: None,
         })
     }
 
@@ -1188,6 +1195,22 @@ impl Connection {
                     self.clubs.get(uid).map(|club| club.name.clone())
                 }
             };
+        }
+    }
+
+    /// Names the competitions of a contract's competition bonuses, from the competitions read once (or the awards, where
+    /// no competition has the UID). A table that cannot be read leaves them unnamed rather than failing the profile.
+    fn name_competition_bonuses(&mut self, bonuses: &mut [CompetitionBonus]) {
+        if bonuses.is_empty() {
+            return;
+        }
+        for bonus in bonuses.iter_mut() {
+            let uid = bonus.competition_uid;
+            bonus.competition = self.competition_index().ok().and_then(|index| index.get(uid)).map(|c| c.name.clone());
+        }
+        for bonus in bonuses.iter_mut().filter(|bonus| bonus.competition.is_none()) {
+            let uid = bonus.competition_uid;
+            bonus.competition = self.award_index().ok().and_then(|index| index.get(uid)).map(|a| a.name.clone());
         }
     }
 
@@ -2092,10 +2115,13 @@ impl Connection {
             .collect()
     }
 
-    /// Senior stadiums of the loaded clubs, read once. Empty when this build has no stadium layout.
+    /// The stadiums, read once: the loaded clubs' senior stadiums, then every other stadium of the game's table where
+    /// the build places it. Empty when this build has no stadium layout.
     fn stadium_index(&mut self) -> &SearchIndex<StadiumSummary> {
         if self.stadiums.is_none() {
-            let rows = read_stadiums(&self.session.process, &self.session.layout, self.clubs.iter());
+            // Without the table, the clubs' stadiums are still listed.
+            let table = self.session.stadium_table().unwrap_or_default();
+            let rows = read_stadiums(&self.session.process, &self.session.layout, self.clubs.iter(), table);
             self.stadiums = Some(SearchIndex::new(rows));
         }
         self.stadiums.as_ref().expect("stadium index just stored")
@@ -2137,22 +2163,26 @@ impl Connection {
         players.chain(staff)
     }
 
-    /// The nations list: those of the people in the lists and those of the competitions, which reach the nations no
-    /// one in the save is from. Just the people's where the competitions cannot be read.
+    /// The nations list: every nation of the game's table of them, where the build places it, with those of the
+    /// people in the lists and of the competitions. Just the people's where neither table can be read.
     fn listed_nations(&mut self) -> Vec<Nation> {
         // Read once; a nation's own fields are found among these too (see `target`).
         let _ = self.competition_index();
+        if self.nation_table.is_none() {
+            self.nation_table = Some(self.session.nation_table().unwrap_or_default());
+        }
         self.known_nations()
     }
 
-    /// The nations of the people in the lists, and of the competitions once they are read.
+    /// The nations of the people in the lists, and of the competitions and the nations' table once they are read.
     fn known_nations(&self) -> Vec<Nation> {
         let competitions = self
             .competitions
             .iter()
             .flat_map(|index| index.iter())
             .map(|c| (c.nation_address, c.nation.as_deref(), c.nation_uid));
-        nations(self.people_nations().chain(competitions))
+        let table = self.nation_table.iter().flatten().map(|n| (n.address, Some(n.name.as_str()), n.uid));
+        nations(self.people_nations().chain(competitions).chain(table))
     }
 
     /// Keeps the list rows in step with `value`, just written to the field `change` names.
@@ -2709,6 +2739,20 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
     }
 }
 
+/// The kits of the club with `uid` the graphics packs have: "home", "away" and "third", in that order. None while the
+/// packs are still being read.
+#[tauri::command]
+fn club_kits(graphics: State<'_, Graphics>, uid: u32) -> Vec<&'static str> {
+    let Some(index) = graphics.index() else {
+        return Vec::new();
+    };
+    [(Picture::HomeKit, "home"), (Picture::AwayKit, "away"), (Picture::ThirdKit, "third")]
+        .into_iter()
+        .filter(|&(picture, _)| index.file(picture, uid).is_some())
+        .map(|(_, kind)| kind)
+        .collect()
+}
+
 /// Whether this copy of the app can update itself from FM Lens's own releases (the updater's endpoint in
 /// tauri.conf.json): download a new version, check its signature and put it in place. The macOS app run from its
 /// bundle, unless macOS runs it from a read-only copy, as it does an app opened where it was downloaded (App
@@ -2831,7 +2875,7 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
-/// Serves `fmgfx` requests such as `/club/728`, `/face/7458500` or `/flag/765` from the
+/// Serves `fmgfx` requests such as `/club/728`, `/kit-home/728`, `/face/7458500` or `/flag/765` from the
 /// graphics packs; anything unknown or missing is a 404.
 fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Vec<u8>> {
     // The window's own origin differs from fmgfx's, so let it read the answers, not only show them.
@@ -2848,6 +2892,9 @@ fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Ve
         Some("face") => Picture::Face,
         Some("flag") => Picture::Flag,
         Some("competition") => Picture::CompetitionLogo,
+        Some("kit-home") => Picture::HomeKit,
+        Some("kit-away") => Picture::AwayKit,
+        Some("kit-third") => Picture::ThirdKit,
         _ => return not_found(),
     };
     let Some(id) = parts.next().and_then(|id| id.parse().ok()) else {
@@ -3143,7 +3190,11 @@ fn connect_session(pid: u32) -> Result<Session, Failure> {
 
 /// Reads every player, member of staff and club, with editing only on a known build.
 #[tauri::command]
-async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ConnectionInfo, Failure> {
+async fn connect(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    histories: State<'_, Histories>,
+) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
     let (mut connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
@@ -3170,6 +3221,7 @@ async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Res
     connection.carry_log(log, same_game);
     let mut info = connection.info(started.elapsed().as_millis());
     info.refrozen = (!refrozen.is_empty()).then_some(refrozen);
+    histories.record(&connection);
     *guard = Some(connection);
     Ok(info)
 }
@@ -3245,7 +3297,11 @@ fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failur
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails. What is frozen
 /// stays frozen, unless the game has loaded another save: then what was frozen in that one before is frozen instead.
 #[tauri::command]
-async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ReloadInfo, Failure> {
+async fn reload(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    histories: State<'_, Histories>,
+) -> Result<ReloadInfo, Failure> {
     let mut old = state.0.lock()?.take().ok_or_else(not_connected)?;
     // Kept apart while the game is read, so that a reload that fails loses no change.
     let log = std::mem::take(&mut old.log);
@@ -3269,13 +3325,37 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     // Old addresses must never be used to undo changes in another game: there they are only listed.
     connection.carry_log(log, same_game);
     let info = connection.reload_info(refrozen);
+    histories.record(&connection);
     *state.0.lock()? = Some(connection);
     Ok(info)
 }
 
+/// A row of the player list: the player, the attributes the list was asked to show beside him, and his scores.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PlayerRow {
+    #[serde(flatten)]
+    player: fmlens_core::PlayerSummary,
+    /// As FM shows them (1–20), by key; an attribute the layout does not place is left out.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    attribute_values: BTreeMap<String, u8>,
+    #[serde(flatten)]
+    scores: Scores,
+}
+
+/// The most attribute columns a page of players carries.
+const MOST_ATTRIBUTE_COLUMNS: usize = 12;
+
+/// The most roles a player list rates its players in at once.
+const MOST_ROLE_COLUMNS: usize = 6;
+
 /// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
 /// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
-/// your club's players who play them.
+/// your club's players who play them. `attributes` are the keys of the attributes to send with each row, for the
+/// list's attribute columns. Each row carries his rating in `roles` and, with `similar`, how like that player he is:
+/// the player himself is left out, and the most alike come first unless `order` asks otherwise.
+// The window names each argument, so they stay arguments.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn search_players(
     state: State<'_, AppState>,
@@ -3285,30 +3365,67 @@ fn search_players(
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
     best: Option<BestFor>,
-) -> Result<RankedPage<fmlens_core::PlayerSummary>, Failure> {
+    attributes: Option<Vec<String>>,
+    similar: Option<SimilarTo>,
+    roles: Option<Vec<String>>,
+) -> Result<RankedPage<PlayerRow>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let best = best.unwrap_or_default();
+    let likeness = match similar {
+        Some(similar) => {
+            let target = connection.players.get(similar.uid).ok_or_else(|| not_found(Entity::Player, similar.uid))?;
+            Some(Likeness::new(&target.scouted(), similar.peak))
+        }
+        None => None,
+    };
+    let left_out = similar.map(|similar| similar.uid);
     let yours = best_of(
         &connection.players,
         |p| best.player(p),
         |p| best.plays(p) && p.club_uid.is_some_and(|club| connection.human_clubs.contains(&club)),
     );
-    let page = ranked_page(
+    let found = ranked_page(
         &connection.players,
         &query,
         limit,
         offset.unwrap_or(0),
-        |p| filter.matches(p) && best.plays(p),
-        |hits| match order {
-            Some(order) => sort_players(hits, order),
-            None if best.ranks() => best_first(hits, |p| best.player(p)),
-            None => {}
+        |p| Some(p.uid) != left_out && filter.matches(p) && best.plays(p),
+        |hits| match (order, &likeness) {
+            (Some(order), Some(likeness)) if order.by == PlayerSort::Similarity => {
+                sort_by_likeness(hits, likeness, order.ascending)
+            }
+            (Some(order), _) => sort_players(hits, order),
+            (None, Some(likeness)) => sort_by_likeness(hits, likeness, false),
+            (None, None) if best.ranks() => best_first(hits, |p| best.player(p)),
+            (None, None) => {}
         },
         |p| best.player(p),
     );
-    Ok(RankedPage { yours, ..page })
+    let columns: Vec<(String, usize)> = attributes
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|key| fmlens_core::player_attribute(&key).map(|place| (key, place)))
+        .take(MOST_ATTRIBUTE_COLUMNS)
+        .collect();
+    let mut roles = roles.unwrap_or_default();
+    roles.truncate(MOST_ROLE_COLUMNS);
+    let rows = found
+        .rows
+        .into_iter()
+        .map(|Ranked { row: player, fit }| {
+            let attribute_values = columns
+                .iter()
+                .filter_map(|(key, place)| {
+                    player.attributes.get(*place).filter(|&&value| value > 0).map(|&value| (key.clone(), value))
+                })
+                .collect();
+            let scores = scores(&player, &roles, likeness.as_ref(), None);
+            Ranked { row: PlayerRow { player, attribute_values, scores }, fit }
+        })
+        .collect();
+    Ok(RankedPage { total: found.total, rows, yours })
 }
 
 /// Staff matching `query`, the human manager first, then by current ability, or in `order`; at most `limit` rows.
@@ -3582,12 +3699,15 @@ fn club_details(state: State<'_, AppState>, uid: u32) -> Result<ClubDetails, Fai
 /// The full profile of the player with `uid`. Only reads memory.
 #[tauri::command]
 fn player_details(state: State<'_, AppState>, uid: u32) -> Result<PlayerDetails, Failure> {
-    let guard = state.0.lock()?;
-    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
     let mut details = connection.session.player_details(player)?.ok_or_else(data_changed)?;
     // The game keeps a club's name with the club; a person's comes from the lists.
     connection.name_preferences(&mut details.preferences);
+    if let Some(contract) = details.contract.as_mut() {
+        connection.name_competition_bonuses(&mut contract.competition_bonuses);
+    }
     Ok(details)
 }
 
@@ -5239,6 +5359,7 @@ pub fn run() {
                 None => user_data.ok().map(|folder| GraphicsIndex::default_root(&folder, 27)),
             };
             let data = std::env::var_os(DATA_FOLDER).map(PathBuf::from).or_else(|| app.path().app_data_dir().ok());
+            app.manage(Histories::new(data.as_ref().map(|folder| folder.join(scouting::HISTORY_FOLDER))));
             app.manage(FrozenFile(data.map(|folder| folder.join(FROZEN_FILE))));
             let exports = std::env::var_os(EXPORTS_FOLDER)
                 .map(PathBuf::from)
@@ -5296,6 +5417,10 @@ pub fn run() {
             allow_editing,
             reload,
             search_players,
+            scouting::player_scout,
+            scouting::top_players_list,
+            scouting::top_places_list,
+            club_kits,
             search_staff,
             search_clubs,
             search_nations,

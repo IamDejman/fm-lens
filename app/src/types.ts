@@ -389,6 +389,14 @@ export interface PlayerSummary {
   contractExpires: FmDate | null;
   currentAbility: number;
   potentialAbility: number;
+  /** His stored base valuation in pounds; null where the build does not place it or the game has not set one. */
+  value: number | null;
+  /** Pounds a week; null without a contract. */
+  wage: number | null;
+  /** 0–10000. */
+  currentReputation: number;
+  /** In a list row: the attributes the list asked for (see `search_players`), as FM shows them, by key. */
+  attributeValues?: Record<string, number>;
   /** How well he fits what the list is ranked for, when it is ranked. */
   fit?: Fit;
 }
@@ -418,11 +426,71 @@ export interface Yours {
   score: number;
 }
 
+/** A row of a player list: the player and the scores the list asked for (see `search_players`). */
+export interface PlayerRow extends PlayerSummary {
+  /** How like the player the list is compared with he is, 0 to 100. */
+  similarity: number | null;
+  /** The chance, in percent, that he comes within 7 of his potential; null without his age or potential. */
+  development: number | null;
+  /** His progress rate in half stars, 0 to 10. */
+  progress: number | null;
+  /** His rating, 0 to 100, in each role the list shows, by role id. */
+  roles: Record<string, number>;
+  /** His place in a list of top players. */
+  rank: number | null;
+}
+
 export interface PlayerPage {
   total: number;
-  rows: PlayerSummary[];
+  rows: PlayerRow[];
   /** Only while the list is ranked and someone at your club fits. */
   yours?: Yours;
+}
+
+/** The player the list is compared with, as he is today or both at their peak. */
+export interface SimilarTo {
+  uid: number;
+  peak: boolean;
+}
+
+/** A role the list rates players in, and the least rating they must have in it. */
+export interface RoleBound {
+  role: string;
+  min?: number;
+}
+
+/** From `player_scout`: FM Lens's estimates for one player. */
+export interface ScoutReport {
+  /** His potential as the estimates take it: the middle of one of FM's ranges. */
+  potential: number | null;
+  /** His attributes at his potential (1 to 20), by key. */
+  peak: Record<string, number>;
+  development: { probability: number; gain: number; halfStars: number } | null;
+  /** The roles he suits best, today or at his peak. */
+  roles: { role: string; today: number; peak: number }[];
+  /** How he developed in the user's other careers; null while they are being read. */
+  careers: OtherCareer[] | null;
+}
+
+export interface OtherCareer {
+  manager: string;
+  club: string | null;
+  points: { year: number; age: number; currentAbility: number; potentialAbility: number }[];
+}
+
+export type TopKind = "best" | "promising";
+
+export interface TopScope {
+  women?: boolean;
+  continent?: string;
+  /** The UID of the country. */
+  nation?: number;
+}
+
+/** From `top_places_list`: where the players play. */
+export interface TopPlaces {
+  continents: string[];
+  nations: { uid: number; name: string; continent: string | null }[];
 }
 
 /** A club whose senior team plays at a stadium. */
@@ -434,11 +502,10 @@ export interface StadiumClub {
 
 /** A senior-team stadium with the clubs that play there, from the same fields as the club profile. */
 export interface StadiumSummary {
-  /** Row id: the UID of the first of `clubs`. */
+  /** Row id: the UID of the first of `clubs`, or one of its own for a stadium no club plays at. */
   uid: number;
-  /** Highest reputation first. Never empty. */
-  /** Never empty. */
-  clubs: [StadiumClub, ...StadiumClub[]];
+  /** The clubs whose senior team plays there, highest reputation first; empty for a stadium no club plays at. */
+  clubs: StadiumClub[];
   name: string | null;
   capacity: number;
   seating: number;
@@ -615,8 +682,8 @@ export interface AttributeBound {
 
 /** Filters for `search_players`; omitted fields match everyone. */
 export interface PlayerFilter {
-  /** A position key (gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr); rated 15+ there. */
-  position?: string;
+  /** Position keys (gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr); rated 15+ in any of them. */
+  positions?: string[];
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
@@ -632,6 +699,9 @@ export interface PlayerFilter {
   /** Pounds, the stored base valuation. A player the game has not valued keeps to no bound. */
   minValue?: number;
   maxValue?: number;
+  /** 0–10000, of his current reputation. */
+  minReputation?: number;
+  maxReputation?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
   /** Part of the club's name; accents and case ignored. */
@@ -651,16 +721,35 @@ export interface PlayerFilter {
   personality?: AttributeBound[];
   /** Trait bits (0 to 63): only players who have every one of them. */
   traits?: number[];
+  /** Bounds on his attributes at his potential, as FM Lens projects them. */
+  potentialAttributes?: AttributeBound[];
+  /** Roles the list rates players in; each with a least rating must hold. */
+  roles?: RoleBound[];
+  /** The least chance of development, in percent, and the least progress rate, in half stars. */
+  minDevelopment?: number;
+  minProgress?: number;
+  /** Part of the name of the country his club is in. */
+  basedIn?: string;
 }
 
-export type PlayerSort =
+/** The player columns that sort the list, but for the attributes. */
+export type PlayerColumnSort =
   | "currentAbility"
   | "potentialAbility"
   | "age"
   | "name"
   | "nation"
   | "club"
-  | "contractExpires";
+  | "contractExpires"
+  | "value"
+  | "wage"
+  | "reputation";
+
+/**
+ * What the player list is sorted by: a column, a score ("development", "progress"), an attribute ("attribute.finishing")
+ * or a role ("role.anchor.defend").
+ */
+export type PlayerSort = PlayerColumnSort | "development" | "progress" | `attribute.${string}` | `role.${string}`;
 
 /** Sort order for `search_players`; without one, results are by current ability, highest first. */
 export interface PlayerOrder {
@@ -755,6 +844,8 @@ export interface Contract {
   playingTimeHappiness: number;
   /** His clauses and bonuses, in the contract's order. */
   clauses: Clause[];
+  /** What the contract pays for competitions, from its own list; read-only. */
+  competitionBonuses: CompetitionBonus[];
   /** His reasons to be unhappy, over ones too (`ended` set), in the order the game keeps them. */
   concerns: Concern[];
   /** A player-coach's contract: he works as staff too, and does not move. */
@@ -773,6 +864,21 @@ export interface Concern {
 }
 
 /** One of a contract's clauses or bonuses: a release clause, an appearance fee, a yearly wage rise... */
+/**
+ * A bonus a contract pays for a competition. What it is paid for (a title, a round reached) is not read, so only the
+ * competition and the amount are known.
+ */
+export interface CompetitionBonus {
+  /** Its place in the contract's list. */
+  index: number;
+  /** The UID the bonus names. */
+  competitionUid: number;
+  /** The competition's (or award's) name; null where none has that UID. */
+  competition: string | null;
+  /** Pounds; null where the bonus holds none. */
+  amount: number | null;
+}
+
 export interface Clause {
   /** Its place in the contract's list. */
   index: number;
@@ -1431,6 +1537,7 @@ export interface GraphicsCounts {
   faces: number;
   flags: number;
   competitionLogos: number;
+  kits: number;
 }
 
 /** From `graphics_info`: the user's graphics packs, read once in the background when the app starts. */

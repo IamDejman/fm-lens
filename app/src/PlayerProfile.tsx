@@ -18,6 +18,7 @@ import { CancelTransferButton, EndLoanButton, ReleaseButton } from "./ReleaseDia
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ShareButton } from "./ShareDialog";
 import { SuggestedAbility } from "./SuggestedAbility";
+import { ScoutTab } from "./ScoutParts";
 import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
@@ -50,7 +51,7 @@ import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
 /** The tabs of a player's profile, in their order. */
-const TABS = ["attributes", "mood", "contract", "medical", "career"] as const;
+const TABS = ["attributes", "mood", "contract", "medical", "career", "scout"] as const;
 
 export type PlayerTab = (typeof TABS)[number];
 
@@ -204,6 +205,7 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
           {tab === "contract" && <ContractTab details={details} />}
           {tab === "medical" && <MedicalGroups details={details} />}
           {tab === "career" && <CareerTab details={details} />}
+          {tab === "scout" && <ScoutTab details={details} version={version} />}
         </div>
       )}
     </ProfileFrame>
@@ -370,7 +372,13 @@ function ContractTab({ details }: { details: PlayerDetails }) {
         </section>
       )}
       {contract && (
-        <ClauseList uid={details.uid} name={details.name} clauses={contract.clauses} room={details.clauseRoom} />
+        <ClauseList
+          uid={details.uid}
+          name={details.name}
+          clauses={contract.clauses}
+          room={details.clauseRoom}
+          bonuses={contract.competitionBonuses}
+        />
       )}
       {details.loan && <LoanGroup loan={details.loan} />}
       {details.futureTransfers.length > 0 && <FutureTransferGroup transfers={details.futureTransfers} />}

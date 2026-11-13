@@ -13,13 +13,15 @@ import {
   womenOnly,
 } from "./FilterBar";
 import { formatNumber } from "./format";
-import { clubListText, clubProfileText, stadiumListText } from "./labels";
+import { clubListText, clubProfileText, profileText, stadiumListText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact, ProfileFrame } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
-import type { StadiumClub, StadiumFilter, StadiumSort, StadiumSummary } from "./types";
+import type { ListOrder, StadiumClub, StadiumFilter, StadiumSort, StadiumSummary } from "./types";
 
 const columns = stadiumListText.columns;
 const filters = stadiumListText.filters;
@@ -32,7 +34,16 @@ const SORT: SortStart<StadiumSort> = {
   firstAscending: ["name"],
 };
 
-/** Senior stadiums, one row each with every club that plays there, with the selected stadium beside the table. */
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = { kind: "all", minCapacity: "", maxCapacity: "" };
+type StadiumFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<StadiumFields, StadiumSort>("stadiums", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
+
+/**
+ * Stadiums, one row each with every club whose senior team plays there, then, where the build places the game's table
+ * of them, every other stadium; the selected stadium beside the table.
+ */
 export function StadiumBrowser({ version, active }: { version: number; active: boolean }) {
   const [kind, setKind] = useState(() => restored("stadiumKind", readKind));
   const [minCapacity, setMinCapacity] = useState(() => restored("stadiumMin", readText));
@@ -41,6 +52,14 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
   useSnapshot("stadiumMin", () => minCapacity);
   useSnapshot("stadiumMax", () => maxCapacity);
   const sort = useListSort("stadiumOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: StadiumFields = { kind, minCapacity, maxCapacity };
+  const applySaved = (saved: StadiumFields, order: ListOrder<StadiumSort> | null) => {
+    setKind(readKind(saved.kind));
+    setMinCapacity(saved.minCapacity);
+    setMaxCapacity(saved.maxCapacity);
+    sort.set(order);
+  };
   const min = whole(minCapacity, CAPACITY_RANGE);
   const max = whole(maxCapacity, CAPACITY_RANGE);
   const filter: StadiumFilter | undefined =
@@ -72,7 +91,19 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
       summary={stadiumListText.summary}
       empty={(query) => stadiumListText.empty(query, filter !== undefined)}
       filterBar={
-        <FilterBar chips={chips} onClear={clearAll}>
+        <FilterBar
+          chips={chips}
+          onClear={clearAll}
+          actions={
+            <SavedFilterControls
+              kind={SAVED}
+              fields={fields}
+              order={sort.order}
+              filtered={chips.length > 0}
+              onApply={applySaved}
+            />
+          }
+        >
           <KindField labels={filters} value={kind} onChange={setKind} />
           <RangeField
             label={filters.capacity}
@@ -133,27 +164,34 @@ function ClubNames({ clubs }: { clubs: readonly StadiumClub[] }) {
 /** A club's name for a cell's hover, which has no tags: "Club América (Women)". */
 const clubTitle = (club: StadiumClub) => (club.women ? `${club.name} (${clubListText.women})` : club.name);
 
+/** A stadium's name: its own, or else that of the first club that plays there. */
+const stadiumName = (stadium: StadiumSummary) => stadium.name ?? stadium.clubs[0]?.name ?? profileText.none;
+
 function StadiumCells({ stadium }: { stadium: StadiumSummary }) {
   const [club, ...others] = stadium.clubs;
-  const name = stadium.name ?? club.name;
+  const name = stadiumName(stadium);
   return (
     <>
       <td className="col-name" title={name}>
         {name}
       </td>
-      <td className="col-club" title={stadium.clubs.map(clubTitle).join(", ")}>
-        <WithPicture picture={<ClubLogo uid={club.uid} name={club.name} size={PICTURE_SIZE.rowLogo} />}>
-          <div className="club-line">
-            <span className="name-text">{club.name}</span>
-            {club.women && <span className="tag women">{clubListText.women}</span>}
-          </div>
-          {others.length > 0 && (
-            <div className="sub">
-              <ClubNames clubs={others} />
+      {club === undefined ? (
+        <td className="col-club muted">{profileText.none}</td>
+      ) : (
+        <td className="col-club" title={stadium.clubs.map(clubTitle).join(", ")}>
+          <WithPicture picture={<ClubLogo uid={club.uid} name={club.name} size={PICTURE_SIZE.rowLogo} />}>
+            <div className="club-line">
+              <span className="name-text">{club.name}</span>
+              {club.women && <span className="tag women">{clubListText.women}</span>}
             </div>
-          )}
-        </WithPicture>
-      </td>
+            {others.length > 0 && (
+              <div className="sub">
+                <ClubNames clubs={others} />
+              </div>
+            )}
+          </WithPicture>
+        </td>
+      )}
       <td className="num">{formatNumber(stadium.capacity)}</td>
       <td className="num">{formatNumber(stadium.seating)}</td>
       <td className="num">{formatNumber(stadium.expansion)}</td>
@@ -165,8 +203,8 @@ function StadiumProfile({ stadium, onClose }: { stadium: StadiumSummary; onClose
   const [club] = stadium.clubs;
   return (
     <ProfileFrame
-      picture={<ClubLogo uid={club.uid} name={club.name} size={PICTURE_SIZE.clubLogo} />}
-      name={stadium.name ?? club.name}
+      picture={club && <ClubLogo uid={club.uid} name={club.name} size={PICTURE_SIZE.clubLogo} />}
+      name={stadiumName(stadium)}
       fullName={null}
       vitals={[]}
       loaded={{ details: stadium }}
@@ -174,7 +212,7 @@ function StadiumProfile({ stadium, onClose }: { stadium: StadiumSummary; onClose
     >
       <dl className="stats stadium-stats">
         <Fact label={stadium.clubs.length > 1 ? stadiumListText.clubs : columns.club}>
-          <ClubNames clubs={stadium.clubs} />
+          {club ? <ClubNames clubs={stadium.clubs} /> : profileText.none}
         </Fact>
         <Fact label={clubProfileText.capacity}>{formatNumber(stadium.capacity)}</Fact>
         <Fact label={clubProfileText.seating}>{formatNumber(stadium.seating)}</Fact>

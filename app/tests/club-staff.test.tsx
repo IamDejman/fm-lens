@@ -64,6 +64,7 @@ function renderTab(openStaff = vi.fn(), clubUid = 500) {
         gameDate: null,
         openPlayer: () => {},
         openStaff,
+        findSimilar: () => {},
       }}
     >
       <ClubStaffTab clubUid={clubUid} clubName="Northbridge FC" version={0} panel={{ id: 'p', labelledBy: 't' }} />

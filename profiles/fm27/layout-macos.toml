@@ -200,6 +200,25 @@ rules = 0x50
 # The kinds of injury (db::INJURY): a database table at a static of the build profile (`injury_kinds`), its vector of
 # pointers at +0x88, each kind 0x78 bytes with its place at +0x08 and its UID at +0x0C. 136 kinds on 11 Dec 2027; the
 # name is at the injury's `kind_name`.
+# Every nation (db::NATION) and every stadium (db::STADIUM), from their database tables in the block that holds the
+# competitions' (statics `nations` and `stadiums` of the build profile), read as the competitions are: a vector of
+# pointers at +0x88, each object with its place in the table at +0x08. The nations' fields are those of [nation], the
+# stadiums' those of [stadium]. Read from the table block on the arm64 Mac build 26340721 (docs/recon/
+# fm27-competitions-awards-2.md): 251 nations, the same objects players point at, and 21,923 stadiums. The class and
+# every row's place are checked before a row is used; where they do not check out the lists keep to the nations of the
+# people and competitions read and to the clubs' stadiums.
+[nation_table]
+class = "N2db6NATIONE"
+size = 0x20
+table_items = 0x88
+index = 0x08
+
+[stadium_table]
+class = "N2db7STADIUME"
+size = 0x98
+table_items = 0x88
+index = 0x08
+
 [injury_kind]
 class = "N2db6INJURYE"
 size = 0x78

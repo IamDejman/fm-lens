@@ -8,8 +8,10 @@ import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
 import { Born, Fact, ProfileFrame, ReputationMeter } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
-import type { OfficialFilter, OfficialSort, OfficialSummary } from "./types";
+import type { ListOrder, OfficialFilter, OfficialSort, OfficialSummary } from "./types";
 import { useProfileEditing } from "./useProfileEditing";
 
 const text = officialListText;
@@ -28,6 +30,22 @@ const SORT: SortStart<OfficialSort> = {
   start: { by: "currentAbility", ascending: false },
   firstAscending: ["name", "nation"],
 };
+
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = {
+  minAge: "",
+  maxAge: "",
+  minCurrentAbility: "",
+  maxCurrentAbility: "",
+  minPotentialAbility: "",
+  maxPotentialAbility: "",
+  minReputation: "",
+  maxReputation: "",
+  nation: "",
+};
+type OfficialFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<OfficialFields, OfficialSort>("officials", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
 
 /** The match officials, best first, with the selected official beside the table. */
 export function OfficialBrowser({
@@ -57,6 +75,20 @@ export function OfficialBrowser({
   useSnapshot("officialMaxRep", () => maxReputation);
   useSnapshot("officialNation", () => nation);
   const sort = useListSort("officialOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: OfficialFields = { minAge, maxAge, minCurrentAbility, maxCurrentAbility, minPotentialAbility, maxPotentialAbility, minReputation, maxReputation, nation };
+  const applySaved = (saved: OfficialFields, order: ListOrder<OfficialSort> | null) => {
+    setMinAge(saved.minAge);
+    setMaxAge(saved.maxAge);
+    setMinCurrentAbility(saved.minCurrentAbility);
+    setMaxCurrentAbility(saved.maxCurrentAbility);
+    setMinPotentialAbility(saved.minPotentialAbility);
+    setMaxPotentialAbility(saved.maxPotentialAbility);
+    setMinReputation(saved.minReputation);
+    setMaxReputation(saved.maxReputation);
+    setNation(saved.nation);
+    sort.set(order);
+  };
   const minAgeValue = whole(minAge, AGE_RANGE);
   const maxAgeValue = whole(maxAge, AGE_RANGE);
   const minCa = whole(minCurrentAbility, ABILITY_RANGE);
@@ -138,7 +170,19 @@ export function OfficialBrowser({
       summary={text.summary}
       empty={(query) => text.empty(query, filter !== undefined)}
       filterBar={
-        <FilterBar chips={chips} onClear={clearAll}>
+        <FilterBar
+          chips={chips}
+          onClear={clearAll}
+          actions={
+            <SavedFilterControls
+              kind={SAVED}
+              fields={fields}
+              order={sort.order}
+              filtered={chips.length > 0}
+              onApply={applySaved}
+            />
+          }
+        >
           <RangeField
             label={filters.age}
             minLabel={filters.minAge}

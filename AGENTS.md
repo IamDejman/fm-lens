@@ -77,6 +77,9 @@ GPL-3.0-or-later licensing, copyright notices and third-party attribution.
 - app/src-tauri/: Tauri commands, connections and desktop packaging.
 - crates/fmlens-mem/: process access and the final memory-write guard.
 - crates/fmlens-core/: FM decoding, layouts, validation and domain operations.
+- crates/fmlens-scout/: FM Lens's own scouting estimates (potential attributes,
+  roles, likeness, development, career records), with no game or platform code;
+  docs/SCOUTING.md explains them. They are estimates, never FM data.
 - crates/fmlens-bridge/: the bridge that runs the game's own functions: a macOS
   library with its Steam launcher, and a Windows DLL the app embeds.
 - crates/fmlens-probe/: diagnostics; upstream mutation commands remain present
@@ -155,7 +158,7 @@ validated fields and the guarded memory layer for domain operations.
   held after a quit and reload there twice (8 and 10 November): a player's
   attributes, contract wages, a staff attribute, a club balance, Max tactics
   and a free-agent signing, not the other fields. The field
-  catalog lists 169 player, 43 staff and 14 club definitions. This does not mean
+  catalog lists 171 player, 45 staff and 14 club definitions. This does not mean
   every field has passed an in-game persistence test.
 - A copied-career test demonstrated Saka finishing 15 -> 16, memory readback,
   conditional undo, saving, a full FM quit/relaunch, and FM displaying 16 after
@@ -172,13 +175,17 @@ validated fields and the guarded memory layer for domain operations.
   real staff decline. Do not describe any freeze as stored in the save or as
   holding while FM Lens is closed.
 - The nation browser lists nations represented by loaded players, staff and
-  competitions, not a complete database scan. Guarded nation editing exists for
+  competitions, and every nation of the game's nation table where the build
+  profile places it (not yet read from a running game; the list falls back
+  when the table does not check out). Guarded nation editing exists for
   mapped fields. On ARM64, England's population, men's reputation and
   nationality rules passed the 5 November save/quit/reload checks; not every
   nation field or platform has that evidence. Synthetic nation row IDs must never be mutation UIDs;
   mutation targets require the actual UID and current record.
 - The stadium browser lists senior stadiums, one row per ground with every club
-  that plays there. It is read-only. Competitions and awards are read-only;
+  that plays there, then the other stadiums of the game's stadium table where
+  the build profile places it, on the same terms as the nation table. It is
+  read-only. Competitions and awards are read-only;
   their browsing/rules data do not establish editing support.
 - Officials have mapped CA/PA, reputation and birth-date edits. Readback after
   Continue is recorded, but FM screen comparison and persistence are not fully

@@ -2952,6 +2952,111 @@ bids, interest, instalments and buy-backs, FM's own value range, a release
 clause's condition, clause kinds outside the named table, and a second
 editor's check of hidden values.
 
+## List columns, saved filters and search speed (13 November 2026)
+
+Read-only work on the lists, on top of Sorting, more filters and every
+attribute above. Nothing here was run against a game: it was written in a
+Linux container with no FM, so every check is on code and on the browser
+preview's sample data.
+
+What changed:
+
+- Players filter by several positions at once and by a current-reputation
+  range.
+- The player list shows Value and Wage. Columns, under More, chooses the
+  columns and up to eight attribute columns; Value, Wage, Reputation and an
+  attribute column sort the list. A value or wage that is not known sorts last
+  either way.
+- Staff, clubs, nations, stadiums, competitions, awards and officials keep
+  saved filters, as the player list did. A player filter saved with one
+  position still reads as that position.
+- The search index works its best-first order out once, and again after an
+  edit, in place of sorting every hit on every request. A filter's nation, club
+  or continent text is folded once per request, and a column sort compares
+  each text by its place among the others.
+
+The row's value, wage and reputation are the bytes the list already read, at
+the offsets the profile uses; the reputation is `player.current_reputation`.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core -p fmlens-mem -p fmlens-probe`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 121 core tests, 5 memory tests |
+| `cargo clippy --all-targets -- -D warnings`, `x86_64-pc-windows-gnu`: core, mem, probe and app | Pass |
+| `cargo clippy --all-targets -- -D warnings`, `aarch64-apple-darwin`: core, mem and probe | Pass |
+| `npm test` | Pass. 95 tests, 5 of them new in `tests/list-columns.test.tsx` |
+| `npm run build` | Pass |
+| Browser preview, sample data, 1280 x 860: two positions with a reputation range, Columns with two attribute columns sorted by one, and a club filter saved and shown as the one in effect | Looked right in screenshots |
+
+Not run: the app crate's own Rust tests, which do not link in that container;
+any macOS build of the app crate; the Tauri bundle; and every native check.
+Still to do on a career copy, on each platform: compare Value, Wage and a
+reputation filter with FM's screens for a few players, sort the player list by
+Value, Wage and an attribute column, and save, reload and apply a filter on
+each list.
+
+Speed, on made-up players, with the repository's `SearchIndex` built for
+release in the same container. It leaves out reading the game on Connect.
+
+| | 30,314 players, before | after | 550,000 players, before | after |
+|---|---|---|---|---|
+| Page with no search or filter | 6 ms | under 0.1 ms | 220 ms | 0.3 ms |
+| Name search | 1 ms | 0.7 ms | 15 ms | 12 ms |
+| Age, CA, position and two attribute filters | 6 ms | 0.2 ms | 237 ms | 6 ms |
+| Nation filter | 16 ms | 1.3 ms | 476 ms | 53 ms |
+| Sorted by name | 27 ms | 17 ms | 989 ms | 480 ms |
+| First search after Connect or an edit | - | 7 ms | - | 186 ms |
+
+## Full nation and stadium lists (13 November 2026)
+
+Read-only work on the Nations and Stadiums lists. Nothing here was run against a
+game: it was written in a Linux container with no FM.
+
+The game keeps every database class in a table, and the static pointers to the
+tables sit in one block (docs/recon/fm27-competitions-awards-2.md, read on the
+arm64 Mac build 26340721). FM Lens already read two of them, competitions and
+awards, and a third, the kinds of injury, was found on its own in every build.
+In all nine Steam profiles the competitions sit 0x18 and the kinds of injury
+0x40 after the awards, as in that block, so its order holds across builds and
+platforms. The nations (0x28 after the awards) and stadiums (0x80) are now taken
+from the same block in each profile: `nations` and `stadiums`.
+
+What changed:
+
+- The Nations list adds every nation of the nation table (251 on the test save
+  of the recon) to those of the people and competitions read. They are the same
+  objects players point at, so a nation is listed once, and its profile and
+  edits work as for any other nation.
+- The Stadiums list adds, after the clubs' senior stadiums, every other stadium
+  of the stadium table (21,923 on the same save) that has a name and passes the
+  capacity checks the clubs' stadiums pass. Such a stadium has no club, so a
+  men's or women's filter leaves it out, and its row id is one of its own above
+  every UID seen.
+
+Guards: a table is used only when its first row's class is `db::NATION` or
+`db::STADIUM` (`N2db6NATIONE` and `N2db7STADIUME` on macOS,
+`.?AVNATION@db@@` and `.?AVSTADIUM@db@@` on Windows), every row has that class
+and every row's place in the table is the index at `+0x08`. Anything else and
+the lists stay as they were. The index at `+0x08` is checked for nations in the
+recon; for stadiums it is not, so a build where it differs keeps the old list.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 123 tests, 2 of them new: every profile's table slots against the awards', and the row ids of stadiums no club plays at |
+| `cargo clippy --all-targets -- -D warnings`: core, probe and app for Windows; core, mem and probe for `aarch64-apple-darwin` | Pass |
+| `npm test` | Pass, a new test lists a stadium no club plays at, opens it and filters it out by men's clubs |
+| `npm run build` | Pass |
+
+Still to do on a running game, on each platform: open Nations and count 251
+nations, with one not represented by anyone in the save opening its profile;
+open Stadiums, find a national stadium such as Wembley with no club, and time
+the first open of the list.
+
 ## Staff birth date (12 November 2026)
 
 A member of staff's birth date is editable, the human manager's too. No game
@@ -3301,3 +3406,118 @@ follows a changed attribute by itself, whether it was typed or dragged.
 
 Not run: the native macOS and Windows apps (WebKit and WebView2), a real FM
 restart or a second career, and the Rust checks.
+
+## Contract signed and joined dates (13 November 2026)
+
+The day a contract was signed and the day its holder joined the club are
+editable, for players and staff, one person at a time. No game was run for
+this change: both are enabled, unverified.
+
+Why the layout is taken as mapped: both dates sit in the contract record the
+profile already reads them from (`signed` 0x44 and `joined` 0x4C, on macOS and
+Windows alike), beside the contract end at 0x48, which is an edit already in
+use and checked in FM. recon/fm27-contracts.md read all three on Saka, Rice
+and White. Staff use the same contract record.
+
+The editor writes 1 January 1950 to the game's date, since a contract is not
+signed, nor a club joined, on a day to come; where the game's date is not
+read, to 31 December 2100. A date the game holds as unset is left as it is,
+as for the contract end. Neither date is offered in a mass edit.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core` and `fmlens-probe`, for a Windows and an Apple Silicon target, from Linux | Pass. This type-checks the new unit tests; it does not run them |
+| `cargo fmt --all --check` | Pass |
+| `npm run build` and `npm test` | Pass (8 and 91 tests, one of them new: both dates are inputs in Edit, a day after the game's date is refused, and an applied date is read back) |
+| Browser preview on sample data (`?writable`), Lukas Kowalski, game date 18 July 2026 | Contract tab: Signed and Joined are inputs in Edit beside Expires. Joined 19/07/2026 read invalid ("Enter a date from 1 Jan 1950 to 18 Jul 2026") with Apply off. Signed 15/06/2023 and Joined 01/07/2020 applied: the profile read 15 Jun 2023 and 1 Jul 2020, Changes listed "Contract signed 1 Jul 2024 → 15 Jun 2023" and "Joined club 15 Aug 2022 → 1 Jul 2020", each with Undo, and one Undo read "Undone" |
+
+The unit tests and the app crate's checks need macOS or Windows, so the
+Validate workflow was run on the branch at b5b0c0b (run 43367636288): both
+`macos-checks` and `windows-checks` passed, the workspace tests and the
+Windows installer build among them.
+
+Not run: anything in FM on any platform: either date on FM's contract or
+history screens, an undo, a stale-value refusal, a Continue, and a save, quit
+and reload on a career copy; a member of staff's dates; what FM does with a
+joined date after the signed date, or with either date changed for a player on
+loan. The preview's first test found that its sample data did not report
+values for the two fields; the real app reads every field's value the same
+way, so that fix is to the sample data only.
+
+## Scouting and kits (13 November 2026)
+
+Added FM Lens's own scouting estimates (docs/SCOUTING.md): Find similar, potential
+attributes, role ratings, chance of development, progress rate, top players by
+world, continent or country, and records of the user's other careers; and club
+kits from kit packs. All of it only reads the lists FM Lens already holds, plus
+two new list fields: each player's personality and the country his club is in
+(`club.plays_in`/`club.nation`, the lookup the language marks already used). No
+game memory is written, so the editing guards are unchanged.
+
+Checks that ran, in a Linux container without FM:
+
+- `cargo test -p fmlens-scout`: 17 tests, including one that the app's role list
+  (app/src/scoutRoles.ts) matches the catalogue.
+- `cargo test -p fmlens-core` built for `x86_64-pc-windows-gnu` and run under
+  Wine: 105 tests, including the new scouting, filter, sort and kit tests.
+- `cargo clippy -D warnings` for fmlens-core, fmlens-probe and fmlens-scout on
+  `aarch64-apple-darwin` and `x86_64-pc-windows-msvc`, and for fmlens-app on
+  `x86_64-pc-windows-gnu`. The app's own tests (the career record file) did not
+  link with MinGW and are left to CI.
+- `npm test` (66 tests, 4 new, before the rebase) and `npm run build`.
+- The browser preview with sample data, at 1440 and 1000 pixels wide, light and
+  dark: role columns, the filters, the Scout tab, a comparison and Top players.
+  The preview uses stand-in numbers, not the models.
+- CI (validate.yml run 455) passed on both jobs before the branch was rebased
+  onto the 0.7.10 main (macOS: format, Clippy, workspace tests, bridge build;
+  Windows: Clippy, workspace tests, installer build). After the rebase, which
+  joined the role columns to main's column chooser and sort names and the
+  comparison to its Best for ranking, the local checks above ran again: 125
+  core tests under Wine, 17 scouting tests, 120 frontend tests, Clippy for both
+  targets and the preview screens. The pull request's own checks follow.
+
+Not checked: any of it against a live career, on macOS or Windows; how long the
+scores take on a 30,000-player save; the record files' size over long careers;
+a real kit pack. Next, on a copied career: connect, open Saka's Scout tab and
+compare his potential attributes and roles with FM's screens, run Find similar
+both ways, sort the list by a role and by progress with no filter (the slowest
+case), open Top players for England and Europe, reload after a game month and
+confirm one record file in the data folder's `history/`, then load a second
+career and confirm Saka's other-career row.
+
+## Competition bonuses, read-only (13 November 2026)
+
+A player's Bonuses and clauses group now lists what his contract pays for
+competitions, under his clauses: one row per bonus, named by the competition
+("Premier League bonus") with its amount. They are read-only and are not in the
+Change dialog. No game was run for this change, so none of it has been
+compared with FM.
+
+What is read: each contract has a second list beside its clauses, at contract
++0x80 on macOS and Windows alike, of 32-byte entries. FM Lens takes the UID at
++0x14 and the amount at +0x18 (0xFFFFFFFF: none). The Windows layout already
+named those two from Kylian Mbappé on Game Pass, and the macOS research read
+the same shape on Declan Rice (UID 637, 850,975). The app names the UID from
+the competitions it reads once per connection, or from the awards where no
+competition has it, and shows "Unknown competition" where neither does. A
+table that cannot be read leaves the name out rather than failing the profile.
+
+Not decoded: what a bonus is paid for (a title, a round reached, an
+appearance). The rest of the entry likely says, but it is unmapped, so the row
+names only the competition. A bonus with no amount shows a tick.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for an Apple Silicon target, from Linux | Pass. This type-checks the new unit test (Rice's entry gives UID 637 and 850,975); it does not run it |
+| Validate workflow on the branch at aaa4f42 (run 43384287924) | Failed on both `macos-checks` and `windows-checks`: the new unit test expected 851,999, a wrong conversion of 0x000CFC1F, which the code correctly reads as 850,975. The test and these notes were corrected; the rerun is below |
+| Validate workflow on the branch at eed03fe (run 43385875282) | Pass: `macos-checks` and `windows-checks`, the workspace tests (the new one included), the app crate's Clippy and the Windows installer build among them |
+| `cargo fmt --all --check` | Pass |
+| `npm test` | Pass, with three new tests: bonuses listed by competition after the clauses, a bonus with no amount and one whose UID names nothing, no "No bonuses or clauses" when only bonuses exist, and none in the Change dialog |
+| Browser preview on sample data | A player's group listed "Türkiye First Division bonus £913,000" and "Unknown competition bonus £250,000" after his clauses |
+
+To check on a career copy: for Declan Rice, and two or three players with
+more than one bonus (`fmlens-probe clauses <UID>` prints the raw entries),
+compare each row's competition and amount with FM's contract screen, and note
+what FM says each is paid for, so the rest of the entry can be mapped. FM shows
+a contract's bonuses only for players it has scouted; your own club's are
+always shown.

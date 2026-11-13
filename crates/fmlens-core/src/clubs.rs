@@ -1,5 +1,5 @@
 use std::collections::hash_map::Entry;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use fmlens_mem::{Module, Process, is_user_pointer};
 use serde::{Deserialize, Serialize};
@@ -204,9 +204,10 @@ impl StadiumClub {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StadiumSummary {
-    /// Row id: the UID of the first of `clubs`. A club plays at one stadium, so no two rows share it.
+    /// Row id: the UID of the first of `clubs`, as a club plays at one stadium; for a stadium no club plays at, an id
+    /// that is no club's and no other stadium's.
     pub uid: u32,
-    /// Highest reputation first. Never empty.
+    /// Highest reputation first. Empty for a stadium no club's senior team plays at.
     pub clubs: Vec<StadiumClub>,
     pub name: Option<String>,
     pub capacity: u32,
@@ -291,28 +292,68 @@ pub(crate) fn club_stadium(process: &Process, layout: &Layout, club: u64) -> Opt
     stadium_looks_real(&bytes, s).then_some((stadium, bytes))
 }
 
-/// The senior stadiums the layout can read, each once with the clubs that play there. Empty when this build has no
-/// stadium layout. Only reads memory.
+/// The stadiums the layout can read, each once: first those the clubs' senior teams play at, with those clubs, then
+/// the others of `table`, every stadium of the game's table of them (see [`Session::stadium_table`]), which may be
+/// empty. A stadium of the table is listed only when it has a name and looks like a stadium. Empty when this build has
+/// no stadium layout. Only reads memory.
+///
+/// [`Session::stadium_table`]: crate::session::Session::stadium_table
 pub fn read_stadiums<'a>(
     process: &Process,
     layout: &Layout,
     clubs: impl IntoIterator<Item = &'a ClubSummary>,
+    table: Vec<(u64, Vec<u8>)>,
 ) -> Vec<StadiumSummary> {
     let Some(s) = layout.stadium.as_ref() else {
         return Vec::new();
     };
     let clubs: Vec<&ClubSummary> = clubs.into_iter().collect();
     let by_address: HashMap<u64, &ClubSummary> = clubs.iter().map(|&club| (club.address, club)).collect();
-    let found = clubs.iter().filter_map(|&club| {
-        let (address, bytes) = club_stadium(process, layout, club.address)?;
-        Some((address, club, bytes))
-    });
-    group_by_stadium(found, |bytes| {
+    let found: Vec<(u64, &ClubSummary, Vec<u8>)> = clubs
+        .iter()
+        .filter_map(|&club| {
+            let (address, bytes) = club_stadium(process, layout, club.address)?;
+            Some((address, club, bytes))
+        })
+        .collect();
+    let played_at: HashSet<u64> = found.iter().map(|&(address, _, _)| address).collect();
+    let row = |bytes: &Vec<u8>| {
         let mut row = stadium_row(process, s, bytes);
         row.owner = by_address.get(&owner_address(bytes, s)).map(|&club| StadiumClub::of(club));
         row
-    })
+    };
+    let mut rows = group_by_stadium(found, row);
+    let unplayed = table.into_iter().enumerate().filter_map(|(place, (address, bytes))| {
+        let looks_real = !played_at.contains(&address) && stadium_looks_real(&bytes, s);
+        looks_real.then(|| (place, row(&bytes)))
+    });
+    let unplayed = with_row_ids(unplayed, clubs.iter().map(|club| club.uid));
+    rows.extend(unplayed);
+    rows
 }
+
+/// The stadiums no club plays at, given with their place in the game's table, that have a name, each with a row id of
+/// its own: no club's UID in `taken` and no other stadium's.
+fn with_row_ids(
+    stadiums: impl IntoIterator<Item = (usize, StadiumSummary)>,
+    taken: impl IntoIterator<Item = u32>,
+) -> Vec<StadiumSummary> {
+    let mut used: HashSet<u32> = taken.into_iter().collect();
+    stadiums
+        .into_iter()
+        .filter(|(_, stadium)| stadium.name.is_some())
+        .map(|(place, mut stadium)| {
+            stadium.uid = UNPLAYED_STADIUM_IDS.wrapping_add(place as u32);
+            while !used.insert(stadium.uid) {
+                stadium.uid = stadium.uid.wrapping_add(1);
+            }
+            stadium
+        })
+        .collect()
+}
+
+/// Where the row ids of the stadiums no club plays at start: above every UID the test saves held.
+const UNPLAYED_STADIUM_IDS: u32 = 0xF000_0000;
 
 /// What the owner field of a stadium's bytes holds.
 fn owner_address(bytes: &[u8], s: &StadiumLayout) -> u64 {
@@ -610,6 +651,28 @@ mod tests {
         assert!(stadium_owner(0x7000_3000, clubs).is_none());
         assert!(stadium_owner(0, clubs).is_none());
         assert!(stadium_owner(0x10, [&ClubSummary { address: 0x10, ..city.clone() }]).is_none());
+    }
+
+    #[test]
+    fn stadiums_no_club_plays_at_get_ids_of_their_own() {
+        let taken = [UNPLAYED_STADIUM_IDS + 2, 602];
+        let unplayed = |name, capacity| StadiumSummary { clubs: Vec::new(), ..stadium(name, capacity) };
+        let rows = with_row_ids(
+            [(0, unplayed(Some("Ground A"), 500)), (1, unplayed(None, 900)), (2, unplayed(Some("Ground C"), 1200))],
+            taken,
+        );
+        // A stadium without a name is left out; one whose id is a club's UID takes the next free one.
+        assert_eq!(
+            rows.iter().map(|row| row.name.as_deref()).collect::<Vec<_>>(),
+            [Some("Ground A"), Some("Ground C")]
+        );
+        assert_eq!(rows[0].uid, UNPLAYED_STADIUM_IDS);
+        assert_eq!(rows[1].uid, UNPLAYED_STADIUM_IDS + 3);
+        assert!(rows.iter().all(|row| row.clubs.is_empty()));
+        // With no club, a stadium is found by its name and keeps to no men's or women's filter.
+        assert_eq!(rows[1].display_name(), "Ground C");
+        assert!(!StadiumFilter { women: Some(false), ..StadiumFilter::default() }.matches(&rows[1]));
+        assert!(StadiumFilter::default().matches(&rows[1]));
     }
 
     #[test]
