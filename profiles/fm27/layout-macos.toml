@@ -56,6 +56,9 @@ u21_goals = 0x381         # u8
 contract = 0x2F0          # contract pointer
 # 15 ratings, 1..20: GK, SW, DL, DC, DR, DM, ML, MC, MR, AML, AMC, AMR, ST, WBL, WBR
 positions = 0x148
+# Pointer to the (begin, end, capacity) list of 0x18-byte records the game keeps of his positions and writes
+# his ratings back from: read in the position setter of the ARM64 and of the Intel half, each on its own.
+position_records = 0x1A0
 # 8 ratings, 1..20: adaptability, ambition, loyalty, pressure, professionalism,
 # sportsmanship, temperament, controversy
 personality = 0x2B8

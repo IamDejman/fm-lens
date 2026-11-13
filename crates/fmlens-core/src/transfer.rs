@@ -52,7 +52,7 @@ const LONGEST_LIST: u64 = 2_000;
 
 /// Bytes the editor writes at one address, with the bytes it expects to find there.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Patch {
+pub struct Patch {
     address: u64,
     before: Vec<u8>,
     after: Vec<u8>,

@@ -566,6 +566,11 @@ pub struct PlayerLayout {
     pub injuries: u64,
     /// First of the 15 position ratings, in [`crate::POSITIONS`] order.
     pub positions: u64,
+    /// Pointer to the list of the records the game keeps of his positions, which it writes his ratings back from;
+    /// only in the layouts it has been placed in, and positions are edited in no other. See
+    /// `docs/recon/fm27-position-records.md`.
+    #[serde(default)]
+    pub position_records: Option<u64>,
     /// First of the 8 personality ratings, in [`crate::PERSONALITY`] order.
     pub personality: u64,
     /// Attribute offsets by key; see [`crate::ATTRIBUTE_GROUPS`].
@@ -615,6 +620,7 @@ impl PlayerLayout {
             self.traits + 8,
             self.injuries + 8,
             self.positions + crate::POSITIONS.len() as u64,
+            self.position_records.map_or(0, |offset| offset + 8),
             self.personality + crate::PERSONALITY.len() as u64,
         ];
         let attributes = self.attributes.values().map(|offset| offset + 1);
@@ -1350,6 +1356,7 @@ mod tests {
             (mac.player.positions, mac.player.morale, mac.player.jadedness),
             (windows.player.positions - 8, windows.player.morale - 8, windows.player.jadedness - 8)
         );
+        assert_eq!(mac.player.position_records, windows.player.position_records.map(|offset| offset - 8));
         assert_eq!(mac.player.date_of_birth, windows.player.date_of_birth - 0x40);
         assert_eq!(mac.player.traits, windows.player.traits - 0x40);
         assert_eq!(mac.player.relations, windows.player.relations - 0x40);

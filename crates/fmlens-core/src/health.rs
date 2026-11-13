@@ -16,6 +16,7 @@ use serde::Serialize;
 use crate::date::FmDate;
 use crate::edit::{Entity, Field};
 use crate::national::Side;
+use crate::position_records::Records;
 use crate::profile::Layout;
 use crate::session::Session;
 
@@ -372,6 +373,10 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     let mut same = Tally::default();
     let mut positions = Tally::default();
     let mut natural = Tally::default();
+    // The records the game keeps of positions and writes ratings back from: each list reads as one, and most hold
+    // the rating the player has.
+    let mut records = Tally::default();
+    let mut kept = Tally::default();
     let mut attributes = Tally::default();
     let mut personality = Tally::default();
     let mut live = Tally::default();
@@ -410,6 +415,13 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
         let ratings = player.positions(layout);
         positions.add(ratings.iter().all(|&rating| rating <= 20));
         natural.add(ratings.contains(&20));
+        if let Some(at) = p.position_records {
+            let list = Records::read(process, player.u64(layout, at));
+            records.add(list.is_some());
+            for (position, rating) in list.iter().flat_map(Records::ratings) {
+                kept.add(ratings[position] == rating);
+            }
+        }
 
         attributes.add(p.attributes.values().all(|&at| player.u8(layout, at) <= 100));
         let goalkeeping: Vec<u8> = GOALKEEPING.iter().filter_map(|key| attribute(player, key)).collect();
@@ -486,6 +498,13 @@ pub(crate) fn check(session: &Session, date: Option<FmDate>) -> Health {
     let mut positions = positions.result(Check::Positions, 0.99, String::new());
     positions.passed &= natural.holds(0.95);
     positions.note = format!("{} of {} rate 20 somewhere", natural.fit, natural.sampled);
+    if p.position_records.is_some() {
+        positions.passed &= records.holds(0.99) && kept.fit * 10 >= kept.sampled * 9;
+        positions.note += &format!(
+            "; the records of {} of {} read, {} of {} at the player's rating",
+            records.fit, records.sampled, kept.fit, kept.sampled
+        );
+    }
     let mut own = own.result(Check::Players, 0.97, String::new());
     own.passed &= within.holds(0.95) && same.fit * 2 <= same.sampled;
     own.note = format!("{} of {} within their potential, {} of them at it", within.fit, within.sampled, same.fit);

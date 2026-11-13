@@ -740,6 +740,7 @@ impl Connection {
             field: field.to_owned(),
             old: i64::from(done.old.unwrap_or(0)),
             new: i64::from(done.new),
+            record: Vec::new(),
         };
         let captaincy = Captaincy {
             team: done.team,
@@ -777,6 +778,7 @@ impl Connection {
             field: "injuries".to_owned(),
             old: done.injuries as i64,
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -800,7 +802,7 @@ impl Connection {
 
     /// Logs a change the game made itself to the player `uid`, as one of his `field` from `old` to `new`.
     fn log_game_change(&mut self, uid: u32, field: &str, old: i64, new: i64, undo: Undo) -> LoggedChange {
-        let change = Change { entity: Entity::Player, uid, field: field.to_owned(), old, new };
+        let change = Change { entity: Entity::Player, uid, field: field.to_owned(), old, new, record: Vec::new() };
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -841,6 +843,7 @@ impl Connection {
                 field: "loan".to_owned(),
                 old: from,
                 new: to,
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -881,6 +884,7 @@ impl Connection {
                 field: "loan".to_owned(),
                 old: i64::from(ended.from_club),
                 new: i64::from(ended.to_club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -943,6 +947,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: 0,
                 new: i64::from(signed.club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -979,6 +984,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: i64::from(moved.from_club),
                 new: i64::from(moved.to_club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1016,6 +1022,7 @@ impl Connection {
                 field: "future_transfer".to_owned(),
                 old: cancelled.club_uid.map_or(0, i64::from),
                 new: 0,
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1052,6 +1059,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: 0,
                 new: i64::from(agreed.club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1082,6 +1090,7 @@ impl Connection {
             field: "promise".to_owned(),
             old: i64::from(done.promise.id),
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1111,6 +1120,7 @@ impl Connection {
             field: "bans".to_owned(),
             old: done.bans as i64,
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1141,6 +1151,7 @@ impl Connection {
             field: "contract.unhappiness".to_owned(),
             old: done.concerns as i64,
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1206,6 +1217,7 @@ impl Connection {
             field: field.to_owned(),
             old: i64::from(done.before.strength),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.strength)),
+            record: Vec::new(),
         };
         let name = match done.entity {
             Entity::Staff => self.staff.get(done.person).map_or_else(|| done.person.to_string(), |m| m.name.clone()),
@@ -1247,6 +1259,7 @@ impl Connection {
             field: "language".to_owned(),
             old: i64::from(done.before.level),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.level)),
+            record: Vec::new(),
         };
         let name = match done.entity {
             Entity::Staff => self.staff.get(done.person).map_or_else(|| done.person.to_string(), |m| m.name.clone()),
@@ -1288,6 +1301,7 @@ impl Connection {
             field: "injury".to_owned(),
             old: i64::from(done.before.days),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.days)),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1318,6 +1332,7 @@ impl Connection {
             field: "cohesion".to_owned(),
             old: i64::from(done.before),
             new: i64::from(fmlens_core::MOST_FAMILIARITY),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1348,6 +1363,7 @@ impl Connection {
             field: "tactics".to_owned(),
             old: i64::from(done.before),
             new: i64::from(done.after),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1378,6 +1394,7 @@ impl Connection {
             field: "retirement".to_owned(),
             old: done.date.map_or(0, FmDate::to_number),
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1422,6 +1439,7 @@ impl Connection {
             field: field.to_owned(),
             old: uid(&done.before),
             new: uid(&done.after),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1453,6 +1471,7 @@ impl Connection {
             field: "clause".to_owned(),
             old: amount(&done.before),
             new: amount(&done.after),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1521,7 +1540,14 @@ impl Connection {
             id: self.log.len() + 1,
             at: now_ms(),
             name,
-            change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
+            change: Change {
+                entity: Entity::Staff,
+                uid: done.member,
+                field: field.to_owned(),
+                old,
+                new,
+                record: Vec::new(),
+            },
             undone_at: None,
             earlier_game: false,
             team: None,
@@ -1651,6 +1677,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: moved.from_club.map_or(0, i64::from),
                 new: i64::from(moved.to_club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1701,6 +1728,7 @@ impl Connection {
             field: "club".to_owned(),
             old: i64::from(done.from_club),
             new: i64::from(done.to_club),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1745,8 +1773,14 @@ impl Connection {
             player.contract_expires = None;
         });
         self.resync_contract(player);
-        let change =
-            Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: i64::from(from_club), new: 0 };
+        let change = Change {
+            entity: Entity::Player,
+            uid: player,
+            field: "club".to_owned(),
+            old: i64::from(from_club),
+            new: 0,
+            record: Vec::new(),
+        };
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -5414,7 +5448,14 @@ mod tests {
             id: 1,
             at: 0,
             name: "Test signing".to_owned(),
-            change: Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: 0, new: 617 },
+            change: Change {
+                entity: Entity::Player,
+                uid: player,
+                field: "club".to_owned(),
+                old: 0,
+                new: 617,
+                record: Vec::new(),
+            },
             undone_at: None,
             earlier_game: false,
             team: None,

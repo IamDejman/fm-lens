@@ -71,6 +71,10 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
   "the new value is not one of the game's own records of that kind":
     "yeni değer, oyunun bu türdeki kendi kayıtlarından biri değil",
   "it holds a value the editor cannot name": "düzenleyicinin adlandıramadığı bir değer tutuyor",
+  "the game's records of the player's positions do not read as expected":
+    "oyunun oyuncunun mevkileri için tuttuğu kayıtlar beklendiği gibi okunmuyor",
+  "the player's position records changed after this edit; undo newer position edits first":
+    "oyuncunun mevki kayıtları bu düzenlemeden sonra değişti; önce daha yeni mevki düzenlemelerini geri alın",
 };
 
 const reload = "verileri yeniden okuyup tekrar deneyin";

@@ -30,6 +30,7 @@ mod mood;
 mod national;
 mod officials;
 mod players;
+mod position_records;
 mod profile;
 mod promises;
 mod refresh;
