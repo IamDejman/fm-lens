@@ -128,6 +128,9 @@ export const playerListText = strings.playerList;
 /** The staff list. */
 export const staffListText = strings.staffList;
 
+/** Best for: the select that ranks the player and staff lists, and its column. */
+export const bestForText = strings.bestFor;
+
 /** The club profile: what the player and staff panels do not have. */
 export const clubProfileText = strings.clubProfile;
 

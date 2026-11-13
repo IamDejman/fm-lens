@@ -308,6 +308,8 @@ export interface StaffSummary {
   potentialAbility: number;
   /** The manager the user controls in this save. */
   isHuman: boolean;
+  /** How well they fit what the list is ranked for, when it is ranked. */
+  fit?: Fit;
 }
 
 /** A national team, as its manager's row names it. */
@@ -385,6 +387,26 @@ export interface PlayerSummary {
   contractExpires: FmDate | null;
   currentAbility: number;
   potentialAbility: number;
+  /** How well he fits what the list is ranked for, when it is ranked. */
+  fit?: Fit;
+}
+
+/**
+ * What `search_players` and `search_staff` rank their list for: attributes of the list's entity and what a point of
+ * each counts for. The best fit comes first unless an order is asked for.
+ */
+export interface BestFor {
+  weights: { key: string; weight: number }[];
+  /** Position keys: only the players who can play one of them are listed. */
+  positions?: string[];
+}
+
+/** How well a row fits what its list is ranked for. */
+export interface Fit {
+  /** 0 to 100: 100 for 20 in every attribute of the recipe. */
+  score: number;
+  /** The rating (1–20) of each attribute of the recipe, in the recipe's order; 0 for one that is not known. */
+  values: number[];
 }
 
 export interface PlayerPage {

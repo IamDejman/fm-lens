@@ -162,3 +162,55 @@ test("a player's profile has the attributes of both kinds of player", async () =
     expect(group.querySelectorAll('.rating, li, tr, dd').length).toBeGreaterThan(5);
   }
 });
+
+test('picking what the players are best for ranks them by fit, and a header sorts them again', async () => {
+  render(<PlayerBrowser version={0} active reveal={null} />);
+  await screen.findAllByRole('row');
+  expect(screen.queryByRole('columnheader', { name: 'Fit' })).toBeNull();
+  const pick = screen.getByRole('combobox', { name: 'Best for' });
+  await userEvent.selectOptions(pick, 'ST: Finishing');
+  await waitFor(() => expect(lastArgs('search_players')?.best).toMatchObject({ positions: ['st'] }));
+  expect(lastArgs('search_players')?.order).toBeUndefined();
+  const fit = await screen.findByRole('columnheader', { name: 'Fit' });
+  expect(fit.getAttribute('aria-sort')).toBe('descending');
+  const scores = () => [...document.querySelectorAll('td.col-fit')].map((cell) => Number(cell.textContent));
+  await waitFor(() => expect(scores().length).toBeGreaterThan(1));
+  expect(scores()).toEqual([...scores()].sort((a, b) => b - a));
+  // The box over a fit has the attributes of the recipe, the first of them its name.
+  await userEvent.hover(document.querySelector('td.col-fit')!);
+  expect((await screen.findByRole('tooltip')).textContent).toMatch(/^Finishing \d+\n/);
+  await userEvent.unhover(document.querySelector('td.col-fit')!);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Age' }));
+  await waitFor(() => expect(lastArgs('search_players')?.order).toMatchObject({ by: 'age' }));
+  expect(screen.getByRole('columnheader', { name: 'Fit' }).getAttribute('aria-sort')).toBeNull();
+  await userEvent.click(within(screen.getByRole('columnheader', { name: 'Fit' })).getByRole('button'));
+  await waitFor(() => expect(lastArgs('search_players')?.order).toBeUndefined());
+
+  await userEvent.selectOptions(pick, 'Any');
+  await waitFor(() => expect(lastArgs('search_players')?.best).toBeUndefined());
+  expect(screen.queryByRole('columnheader', { name: 'Fit' })).toBeNull();
+});
+
+test('the sample search keeps to the positions of a recipe and scores as the game search does', async () => {
+  const best = { weights: [{ key: 'finishing', weight: 3 }, { key: 'pace', weight: 1 }], positions: ['st'] };
+  const page = await mockInvoke<PlayerPage>('search_players', { query: '', limit: 200, best });
+  const strikers = await mockInvoke<PlayerPage>('search_players', { query: '', limit: 200, filter: { position: 'st' } });
+  expect(page.total).toBe(strikers.total);
+  const [first] = page.rows;
+  const [finishing, pace] = first.fit!.values;
+  expect(first.fit!.score).toBeCloseTo((100 * (3 * finishing + pace)) / 80, 5);
+  const fits = page.rows.map((row) => row.fit!.score);
+  expect(fits).toEqual([...fits].sort((a, b) => b - a));
+});
+
+test('the staff list is ranked for a job, among the staff the filters keep', async () => {
+  render(<StaffBrowser version={0} active reveal={null} />);
+  await screen.findAllByRole('row');
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Best for' }), 'Coach: Attacking');
+  await waitFor(() => expect(lastArgs('search_staff')?.best).toMatchObject({ weights: expect.arrayContaining([{ key: 'attacking', weight: 6 }]) }));
+  expect(lastArgs('search_staff')?.order).toBeUndefined();
+  await waitFor(() => expect(document.querySelector('td.col-fit')).toBeTruthy());
+  await userEvent.hover(document.querySelector('td.col-fit')!);
+  expect((await screen.findByRole('tooltip')).textContent).toMatch(/^Attacking \d+\n/);
+});
