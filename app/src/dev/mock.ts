@@ -3,12 +3,14 @@
 
 import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
+import { BOARD_JOBS, fitOf } from "../recipes";
 import { version as appVersion } from "../../package.json";
 import type {
   ApplyReport,
   AttributeBound,
   BestFor,
   Fit,
+  Yours,
   ClubMoney,
   FeePlan,
   Nation,
@@ -3296,35 +3298,54 @@ function byColumn<Row>(
   };
 }
 
-/** How well a person of these `ratings` fits `best`, as the real search scores it (see `best.rs`). */
-function fitOf(best: BestFor, ratings: Record<string, { value: number } | undefined>): Fit | undefined {
-  const values = best.weights.map(({ key }) => ratings[key]?.value ?? 0);
-  let sum = 0;
-  let most = 0;
-  best.weights.forEach(({ weight }, i) => {
-    if (weight > 0) {
-      sum += weight * values[i];
-      most += weight * 20;
-    }
-  });
-  return sum > 0 ? { score: (100 * sum) / most, values } : undefined;
+type Ratings = Record<string, { value: number } | undefined>;
+
+/** The club of the career's manager. */
+const humanClub = () => staff.find((s) => s.isHuman)?.clubUid ?? null;
+
+const onBoard = (s: StaffSummary) => s.job !== null && BOARD_JOBS.includes(s.job);
+
+/** What a search was asked to rank for, if anything. */
+function bestOf(args: Record<string, unknown> | undefined): BestFor | undefined {
+  const best = args?.best as BestFor | undefined;
+  return best && best.weights.length > 0 ? best : undefined;
 }
 
 /**
- * The hits of a search asked to rank for `best`, each with its fit, the best first unless an order was asked for;
+ * The hits of a search asked to rank for something, each with its fit, the best first unless an order was asked for;
  * the hits as they are without it.
  */
 function ranked<Row extends { fit?: Fit }>(
   hits: Row[],
   args: Record<string, unknown> | undefined,
-  ratings: (row: Row) => Record<string, { value: number } | undefined>,
+  ratings: (row: Row) => Ratings,
 ): Row[] {
-  const best = args?.best as BestFor | undefined;
-  if (!best || best.weights.length === 0) {
+  const best = bestOf(args);
+  if (!best) {
     return hits;
   }
-  const rows = hits.map((row) => ({ ...row, fit: fitOf(best, ratings(row)) }));
+  const rows = hits.map((row) => ({ ...row, fit: fitOf(best, (key) => ratings(row)[key]?.value ?? 0) }));
   return args?.order ? rows : rows.sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
+}
+
+/** The best fit among `own`, those of your club a ranked search could list, as the real search answers with it. */
+function yoursOf<Row extends { uid: number; name: string }>(
+  own: Row[],
+  args: Record<string, unknown> | undefined,
+  ratings: (row: Row) => Ratings,
+): Yours | undefined {
+  const best = bestOf(args);
+  if (!best) {
+    return undefined;
+  }
+  let yours: Yours | undefined;
+  for (const row of own) {
+    const score = fitOf(best, (key) => ratings(row)[key]?.value ?? 0)?.score;
+    if (score !== undefined && score >= (yours?.score ?? 0)) {
+      yours = { uid: row.uid, name: row.name, score };
+    }
+  }
+  return yours;
 }
 
 /** The sort a search was asked for, if any. */
@@ -3659,14 +3680,20 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const order = (args?.order ?? { by: "currentAbility", ascending: false }) as PlayerOrder;
       const words = fold(query).split(/\s+/).filter(Boolean);
       const positions = (args?.best as BestFor | undefined)?.positions ?? [];
+      const plays = (p: PlayerSummary) => positions.length === 0 || positions.some((key) => p.positions.includes(key));
       const found = players
         .filter((p) => String(p.uid) === query.trim() || words.every((w) => fold(`${p.name} ${p.fullName ?? ""}`).includes(w)))
         .filter((p) => matchesPlayerFilter(p, filter))
-        .filter((p) => positions.length === 0 || positions.some((key) => p.positions.includes(key)))
+        .filter(plays)
         .sort(bySearchRank)
         .sort(playerComparator(order));
       const hits = ranked(found, args, (p) => details(p).attributes);
-      const page: PlayerPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
+      const own = players.filter((p) => p.clubUid !== null && p.clubUid === humanClub() && plays(p));
+      const page: PlayerPage = {
+        total: hits.length,
+        rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit),
+        yours: yoursOf(own, args, (p) => details(p).attributes),
+      };
       return page as T;
     }
     case "search_clubs": {
@@ -3705,6 +3732,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const found = staff
         .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
         .filter((s) => matchesStaffFilter(s, filter))
+        // A ranked list leaves the board out unless it is filtered to one of its jobs.
+        .filter((s) => !bestOf(args) || filter.job !== undefined || !onBoard(s))
         .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name))
         .sort(
           byColumn<StaffSummary>(orderOf(args), (s, by) => {
@@ -3725,7 +3754,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           }),
         );
       const hits = ranked(found, args, (s) => staffDetails(s).attributes);
-      const page: StaffPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
+      const own = staff.filter((s) => !s.isHuman && !onBoard(s) && s.clubUid !== null && s.clubUid === humanClub());
+      const page: StaffPage = {
+        total: hits.length,
+        rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit),
+        yours: yoursOf(own, args, (s) => staffDetails(s).attributes),
+      };
       return page as T;
     }
     case "staff_details": {
