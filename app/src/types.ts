@@ -969,6 +969,9 @@ export interface NationDetails {
 }
 
 export interface WomenFootball {
+  /** Its place in the women's FIFA ranking; null when unranked. */
+  ranking: number | null;
+  points: number | null;
   joinedFifa: number | null;
   joinedContinental: number | null;
   youthRating: number | null;
@@ -1069,7 +1072,7 @@ export interface EditField {
    * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
    * "finance.wage_budget", "finance.total_wage_budget".
    * Nations: "reputation" (the senior team's), "youth_rating", "game_importance", "attendance", the same four with
-   * "women.", "points" (FIFA), "population", "dual_nationality", "naturalisation".
+   * "women.", "points" and "women.points" (FIFA), "population", "dual_nationality", "naturalisation".
    */
   key: string;
   entity: Entity;

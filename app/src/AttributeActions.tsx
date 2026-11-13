@@ -4,6 +4,8 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { Chevron } from "./DropMenu";
 import { changeLog, freezeAttributes, frozenPlayers, setAttributes, undoBatch, watchMassFreeze } from "./editing";
+import { describeFieldError } from "./editDraft";
+import { fieldIndex, fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { fieldLabel, massEditText, profileText } from "./labels";
 import { undoFailureLines } from "./massDraft";
@@ -120,9 +122,12 @@ export function AttributeActions({ uid, open, panel }: { uid: number; open: bool
   const setAll = () =>
     write(async () => {
       const report = await setAttributes(uid, level);
-      const lines = report.failed
-        .slice(0, PROBLEMS_SHOWN)
-        .map(({ field, error }) => `${fieldLabel("player", field)}: ${describeError(error)}`);
+      // The table says how each refused field's values are shown; without it they stay as the game stores them.
+      const table = report.failed.length > 0 ? await fieldTable("player").catch(() => []) : [];
+      const lines = report.failed.slice(0, PROBLEMS_SHOWN).map(
+        ({ field, error }) =>
+          `${fieldLabel("player", field)}: ${describeFieldError(error, table.find((spec) => spec.key === field))}`,
+      );
       const more = report.failed.length - PROBLEMS_SHOWN;
       return {
         message: profileText.setAttributesDone(report.applied, level),
@@ -137,10 +142,11 @@ export function AttributeActions({ uid, open, panel }: { uid: number; open: bool
       const done = await undoBatch(batch);
       // The log names the fields behind the changes that could not be taken back.
       const log = done.failed.length > 0 ? await changeLog().catch(() => []) : [];
+      const fields = done.failed.length > 0 ? await fieldIndex().catch(() => null) : null;
       return {
         message: profileText.setAttributesUndone(done.undone),
         failed: false,
-        problems: undoFailureLines(done.failed, log),
+        problems: undoFailureLines(done.failed, log, fields),
         batch: null,
       };
     });
