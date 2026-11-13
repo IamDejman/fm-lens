@@ -474,6 +474,7 @@ mod tests {
             potential_ability: 188,
             position_ratings: [1; 15],
             attributes: Vec::new(),
+            base: crate::players::Base::default(),
             transfer_listed: false,
             loan_listed: false,
             height_cm: 178,
