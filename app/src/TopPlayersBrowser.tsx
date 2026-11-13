@@ -138,7 +138,7 @@ export function TopPlayersBrowser({ version, active }: { version: number; active
             </select>
           </label>
           {divisions.length > 0 ? (
-            <label className="filter-field">
+            <label className="filter-field top-division">
               <span id={ids.division}>{text.division}</span>
               <select
                 aria-labelledby={ids.division}

@@ -5969,6 +5969,11 @@ button.danger:hover:not(:disabled) {
   margin-bottom: var(--space-3);
 }
 
+/* A division's name is long ("Sky Bet Championship"): its field takes two columns. */
+.top-division {
+  grid-column: span 2;
+}
+
 .similar-name {
   font-weight: 750;
 }
