@@ -60,8 +60,8 @@ pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
 pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue};
 pub use date::FmDate;
 pub use details::{
-    ATTRIBUTE_GROUPS, Attribute, Clause, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
-    read_player_details,
+    ATTRIBUTE_GROUPS, Attribute, Clause, CompetitionBonus, Contract, International, PERSONALITY, POSITIONS,
+    PlayerDetails, Reputation, read_player_details,
 };
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};

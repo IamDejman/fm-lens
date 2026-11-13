@@ -3484,3 +3484,40 @@ both ways, sort the list by a role and by progress with no filter (the slowest
 case), open Top players for England and Europe, reload after a game month and
 confirm one record file in the data folder's `history/`, then load a second
 career and confirm Saka's other-career row.
+
+## Competition bonuses, read-only (13 November 2026)
+
+A player's Bonuses and clauses group now lists what his contract pays for
+competitions, under his clauses: one row per bonus, named by the competition
+("Premier League bonus") with its amount. They are read-only and are not in the
+Change dialog. No game was run for this change, so none of it has been
+compared with FM.
+
+What is read: each contract has a second list beside its clauses, at contract
++0x80 on macOS and Windows alike, of 32-byte entries. FM Lens takes the UID at
++0x14 and the amount at +0x18 (0xFFFFFFFF: none). The Windows layout already
+named those two from Kylian Mbappé on Game Pass, and the macOS research read
+the same shape on Declan Rice (UID 637, 850,975). The app names the UID from
+the competitions it reads once per connection, or from the awards where no
+competition has it, and shows "Unknown competition" where neither does. A
+table that cannot be read leaves the name out rather than failing the profile.
+
+Not decoded: what a bonus is paid for (a title, a round reached, an
+appearance). The rest of the entry likely says, but it is unmapped, so the row
+names only the competition. A bonus with no amount shows a tick.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for an Apple Silicon target, from Linux | Pass. This type-checks the new unit test (Rice's entry gives UID 637 and 850,975); it does not run it |
+| Validate workflow on the branch at aaa4f42 (run 43384287924) | Failed on both `macos-checks` and `windows-checks`: the new unit test expected 851,999, a wrong conversion of 0x000CFC1F, which the code correctly reads as 850,975. The test and these notes were corrected; the rerun is below |
+| Validate workflow on the branch at eed03fe (run 43385875282) | Pass: `macos-checks` and `windows-checks`, the workspace tests (the new one included), the app crate's Clippy and the Windows installer build among them |
+| `cargo fmt --all --check` | Pass |
+| `npm test` | Pass, with three new tests: bonuses listed by competition after the clauses, a bonus with no amount and one whose UID names nothing, no "No bonuses or clauses" when only bonuses exist, and none in the Change dialog |
+| Browser preview on sample data | A player's group listed "Türkiye First Division bonus £913,000" and "Unknown competition bonus £250,000" after his clauses |
+
+To check on a career copy: for Declan Rice, and two or three players with
+more than one bonus (`fmlens-probe clauses <UID>` prints the raw entries),
+compare each row's competition and amount with FM's contract screen, and note
+what FM says each is paid for, so the rest of the entry can be mapped. FM shows
+a contract's bonuses only for players it has scouted; your own club's are
+always shown.
