@@ -86,6 +86,14 @@ Intel action parity (#164): all 24 ARM64 call keys, the injury and database stat
 | Currency selector | Available; broader locale checks remain |
 | Dedicated UI zoom selector | Implemented: 80, 90, 100, 110, 125 and 150 percent. Player-column priorities follow measured zoom-adjusted width; native macOS readability checked at 100/125/150%, including an open profile and light/dark appearance (8 November). Wider window/platform coverage remains open |
 | Keyboard navigation | Available: ⌘1-⌘9 sections, ⌘F search, arrow keys in lists, Enter/Space opens, Escape closes, ⌘S applies edits (see DESIGN-STANDARDS.md) |
+| Find similar players | Available (13 November): every player scored 0 to 100 against one, today or both at their potential, from FM Lens's own model (docs/SCOUTING.md). Unit-tested; checked in the browser preview with sample data, not yet against a live career |
+| Potential attributes search | Available: filters on attributes at a player's potential, projected by FM Lens (FM stores none). Same evidence as above |
+| Roles and duties search | Available: 57 role and duty ratings (FM Lens's weights, not FM's stars) as filters and sortable columns, and a player's best roles today and at peak. Same evidence as above |
+| Chance of development and progress rate | Available: from a player's own data only, on the list and the Scout tab. Same evidence as above; the models are estimates, not calibrated against real FM outcomes yet |
+| Top players lists | Partial: best and most promising, men's or women's clubs, by world, continent or country. Division lists need the club to league link (recon/fm27-scouting-research.md) |
+| Development across careers | Partial: the user's own careers, recorded locally once a month of game time from the first connection after updating. Pooling records across users is not built and needs an owner decision |
+| In-game scout card | Missing / research: needs which player FM's hover is on (recon/fm27-scouting-research.md) |
+| Graphics packs | Available: faces, club logos, flags and competition logos; club kits from kit packs (13 November) read from `graphics/pictures/club/<id>/kits/<home, away or third>`, unit-tested, not yet checked against an installed kit pack |
 | Guided first-run tour | Delivered: skippable introduction to navigation, search, settings and the editing boundary, then, once the game can be edited, a guided first edit (open, Edit, change, Apply, Changes) that follows what the user does |
 
 ## Automatic refresh after Apply and Undo (6 November 2026)

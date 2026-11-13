@@ -71,7 +71,7 @@ function ToggleHarness() {
   return <EditButton editing={edit} ready />;
 }
 test('the profile toggle reads Done while editing', async () => {
-  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}><ToggleHarness /></EditorContext.Provider>);
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}><ToggleHarness /></EditorContext.Provider>);
   const toggle = screen.getByRole('button', { name: 'Edit' });
   expect(toggle.getAttribute('title')).toBe('Edit this profile');
   await userEvent.click(toggle);
@@ -84,7 +84,7 @@ test('the profile toggle reads Done while editing', async () => {
 
 // Pending-navigation coverage uses the real editor hook and the same fixture command adapter as the preview.
 test('pending navigation requires an explicit discard', async () => {
-  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}><PendingHarness /></EditorContext.Provider>);
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}><PendingHarness /></EditorContext.Provider>);
   await userEvent.click(screen.getByRole('button', { name: 'Edit fixture' }));
   await screen.findByRole('textbox', { name: 'Finishing' });
   await userEvent.clear(screen.getByRole('textbox', { name: 'Finishing' }));
@@ -115,7 +115,7 @@ test('settings snapshot records open state for window restoration', async () => 
 
 
 test.each(['Navigate', 'Done fixture', 'Close fixture'])('invalid-only draft is protected by %s', async action => {
-  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}><PendingHarness /></EditorContext.Provider>);
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}><PendingHarness /></EditorContext.Provider>);
   await userEvent.click(screen.getByRole('button', { name: 'Edit fixture' }));
   const input = await screen.findByRole('textbox', { name: 'Finishing' });
   await userEvent.clear(input);

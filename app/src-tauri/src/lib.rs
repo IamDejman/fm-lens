@@ -1,4 +1,5 @@
 mod bridge;
+mod scouting;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -21,7 +22,9 @@ use fmlens_core::{
     TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
     read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
+use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
+use scouting::Histories;
 use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, State};
 
@@ -2702,6 +2705,20 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
     }
 }
 
+/// The kits of the club with `uid` the graphics packs have: "home", "away" and "third", in that order. None while the
+/// packs are still being read.
+#[tauri::command]
+fn club_kits(graphics: State<'_, Graphics>, uid: u32) -> Vec<&'static str> {
+    let Some(index) = graphics.index() else {
+        return Vec::new();
+    };
+    [(Picture::HomeKit, "home"), (Picture::AwayKit, "away"), (Picture::ThirdKit, "third")]
+        .into_iter()
+        .filter(|&(picture, _)| index.file(picture, uid).is_some())
+        .map(|(_, kind)| kind)
+        .collect()
+}
+
 /// Whether this copy of the app can update itself from FM Lens's own releases (the updater's endpoint in
 /// tauri.conf.json): download a new version, check its signature and put it in place. The macOS app run from its
 /// bundle, unless macOS runs it from a read-only copy, as it does an app opened where it was downloaded (App
@@ -2824,7 +2841,7 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
-/// Serves `fmgfx` requests such as `/club/728`, `/face/7458500` or `/flag/765` from the
+/// Serves `fmgfx` requests such as `/club/728`, `/kit-home/728`, `/face/7458500` or `/flag/765` from the
 /// graphics packs; anything unknown or missing is a 404.
 fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Vec<u8>> {
     // The window's own origin differs from fmgfx's, so let it read the answers, not only show them.
@@ -2841,6 +2858,9 @@ fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Ve
         Some("face") => Picture::Face,
         Some("flag") => Picture::Flag,
         Some("competition") => Picture::CompetitionLogo,
+        Some("kit-home") => Picture::HomeKit,
+        Some("kit-away") => Picture::AwayKit,
+        Some("kit-third") => Picture::ThirdKit,
         _ => return not_found(),
     };
     let Some(id) = parts.next().and_then(|id| id.parse().ok()) else {
@@ -3136,7 +3156,11 @@ fn connect_session(pid: u32) -> Result<Session, Failure> {
 
 /// Reads every player, member of staff and club, with editing only on a known build.
 #[tauri::command]
-async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ConnectionInfo, Failure> {
+async fn connect(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    histories: State<'_, Histories>,
+) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
     let (mut connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
@@ -3163,6 +3187,7 @@ async fn connect(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Res
     connection.carry_log(log, same_game);
     let mut info = connection.info(started.elapsed().as_millis());
     info.refrozen = (!refrozen.is_empty()).then_some(refrozen);
+    histories.record(&connection);
     *guard = Some(connection);
     Ok(info)
 }
@@ -3238,7 +3263,11 @@ fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failur
 /// Reads everything again, e.g. after the game has moved on. Drops the connection when that fails. What is frozen
 /// stays frozen, unless the game has loaded another save: then what was frozen in that one before is frozen instead.
 #[tauri::command]
-async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Result<ReloadInfo, Failure> {
+async fn reload(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    histories: State<'_, Histories>,
+) -> Result<ReloadInfo, Failure> {
     let mut old = state.0.lock()?.take().ok_or_else(not_connected)?;
     // Kept apart while the game is read, so that a reload that fails loses no change.
     let log = std::mem::take(&mut old.log);
@@ -3262,11 +3291,12 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     // Old addresses must never be used to undo changes in another game: there they are only listed.
     connection.carry_log(log, same_game);
     let info = connection.reload_info(refrozen);
+    histories.record(&connection);
     *state.0.lock()? = Some(connection);
     Ok(info)
 }
 
-/// A row of the player list: the player, and the attributes the list was asked to show beside him.
+/// A row of the player list: the player, the attributes the list was asked to show beside him, and his scores.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PlayerRow {
@@ -3275,15 +3305,21 @@ struct PlayerRow {
     /// As FM shows them (1–20), by key; an attribute the layout does not place is left out.
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     attribute_values: BTreeMap<String, u8>,
+    #[serde(flatten)]
+    scores: Scores,
 }
 
 /// The most attribute columns a page of players carries.
 const MOST_ATTRIBUTE_COLUMNS: usize = 12;
 
+/// The most roles a player list rates its players in at once.
+const MOST_ROLE_COLUMNS: usize = 6;
+
 /// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
 /// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
 /// your club's players who play them. `attributes` are the keys of the attributes to send with each row, for the
-/// list's attribute columns.
+/// list's attribute columns. Each row carries his rating in `roles` and, with `similar`, how like that player he is:
+/// the player himself is left out, and the most alike come first unless `order` asks otherwise.
 // The window names each argument, so they stay arguments.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
@@ -3296,11 +3332,21 @@ fn search_players(
     order: Option<PlayerOrder>,
     best: Option<BestFor>,
     attributes: Option<Vec<String>>,
+    similar: Option<SimilarTo>,
+    roles: Option<Vec<String>>,
 ) -> Result<RankedPage<PlayerRow>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let best = best.unwrap_or_default();
+    let likeness = match similar {
+        Some(similar) => {
+            let target = connection.players.get(similar.uid).ok_or_else(|| not_found(Entity::Player, similar.uid))?;
+            Some(Likeness::new(&target.scouted(), similar.peak))
+        }
+        None => None,
+    };
+    let left_out = similar.map(|similar| similar.uid);
     let yours = best_of(
         &connection.players,
         |p| best.player(p),
@@ -3311,11 +3357,15 @@ fn search_players(
         &query,
         limit,
         offset.unwrap_or(0),
-        |p| filter.matches(p) && best.plays(p),
-        |hits| match order {
-            Some(order) => sort_players(hits, order),
-            None if best.ranks() => best_first(hits, |p| best.player(p)),
-            None => {}
+        |p| Some(p.uid) != left_out && filter.matches(p) && best.plays(p),
+        |hits| match (order, &likeness) {
+            (Some(order), Some(likeness)) if order.by == PlayerSort::Similarity => {
+                sort_by_likeness(hits, likeness, order.ascending)
+            }
+            (Some(order), _) => sort_players(hits, order),
+            (None, Some(likeness)) => sort_by_likeness(hits, likeness, false),
+            (None, None) if best.ranks() => best_first(hits, |p| best.player(p)),
+            (None, None) => {}
         },
         |p| best.player(p),
     );
@@ -3325,6 +3375,8 @@ fn search_players(
         .filter_map(|key| fmlens_core::player_attribute(&key).map(|place| (key, place)))
         .take(MOST_ATTRIBUTE_COLUMNS)
         .collect();
+    let mut roles = roles.unwrap_or_default();
+    roles.truncate(MOST_ROLE_COLUMNS);
     let rows = found
         .rows
         .into_iter()
@@ -3335,7 +3387,8 @@ fn search_players(
                     player.attributes.get(*place).filter(|&&value| value > 0).map(|&value| (key.clone(), value))
                 })
                 .collect();
-            Ranked { row: PlayerRow { player, attribute_values }, fit }
+            let scores = scores(&player, &roles, likeness.as_ref(), None);
+            Ranked { row: PlayerRow { player, attribute_values, scores }, fit }
         })
         .collect();
     Ok(RankedPage { total: found.total, rows, yours })
@@ -5272,6 +5325,7 @@ pub fn run() {
                 None => user_data.ok().map(|folder| GraphicsIndex::default_root(&folder, 27)),
             };
             let data = std::env::var_os(DATA_FOLDER).map(PathBuf::from).or_else(|| app.path().app_data_dir().ok());
+            app.manage(Histories::new(data.as_ref().map(|folder| folder.join(scouting::HISTORY_FOLDER))));
             app.manage(FrozenFile(data.map(|folder| folder.join(FROZEN_FILE))));
             let exports = std::env::var_os(EXPORTS_FOLDER)
                 .map(PathBuf::from)
@@ -5329,6 +5383,10 @@ pub fn run() {
             allow_editing,
             reload,
             search_players,
+            scouting::player_scout,
+            scouting::top_players_list,
+            scouting::top_places_list,
+            club_kits,
             search_staff,
             search_clubs,
             search_nations,

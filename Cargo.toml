@@ -14,6 +14,7 @@ authors = ["FM Lens contributors"]
 # Cargo unifies that feature during workspace checks. Build the desktop package separately.
 fmlens-mem = { path = "crates/fmlens-mem", default-features = false }
 fmlens-core = { path = "crates/fmlens-core" }
+fmlens-scout = { path = "crates/fmlens-scout" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

@@ -4,8 +4,8 @@
 import { call, inTauri } from "./api";
 import type { GraphicsInfo } from "./types";
 
-/** What a picture shows: a club's logo, a person's face, a nation's flag or a competition's logo. */
-export type PictureKind = "club" | "face" | "flag" | "competition";
+/** What a picture shows: a club's logo or one of its kits, a person's face, a nation's flag or a competition's logo. */
+export type PictureKind = "club" | "face" | "flag" | "competition" | "kit-home" | "kit-away" | "kit-third";
 
 /**
  * The address of a picture, or null when there can be none (no id, or no app to serve it). The app answers
@@ -22,3 +22,8 @@ export function pictureUrl(kind: PictureKind, id: number | null | undefined): st
 
 /** Where the graphics packs are and how many pictures they hold. */
 export const graphicsInfo = () => call<GraphicsInfo>("graphics_info");
+
+/** The kits of a club its graphics packs have, home first. */
+export const clubKits = (uid: number) => call<KitKind[]>("club_kits", { uid });
+
+export type KitKind = "home" | "away" | "third";

@@ -1890,6 +1890,7 @@ mod tests {
             position_ratings,
             nation_address: 0,
             attributes: vec![10; crate::ATTRIBUTE_GROUPS.iter().map(|(_, keys)| keys.len()).sum()],
+            base: crate::players::Base::default(),
             transfer_listed: false,
             loan_listed: false,
             height_cm: 180,
