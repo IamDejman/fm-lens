@@ -6,6 +6,7 @@ import {
   readAttributeRows,
   STAFF_ATTRIBUTES,
   toAttributeBounds,
+  type AttributeRow,
 } from "./AttributeFilters";
 import { BestForSelect, FitCell, FitHeader, useBestFor, YourBest } from "./BestFor";
 import { STAFF_RECIPES, type Recipe } from "./recipes";
@@ -15,10 +16,12 @@ import { JOB_FILTER_OPTIONS, jobLabel, playerListText, profileText, staffListTex
 import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { NationFlag, WithPicture } from "./Picture";
-import { restored, useSnapshot } from "./restore";
+import { isRecord, restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import { EmployerPicture, employerOf, HumanBadge, jobOf, readStaffTab, StaffProfile } from "./StaffProfile";
-import type { StaffFilter, StaffSort, StaffSummary, Yours } from "./types";
+import type { ListOrder, StaffFilter, StaffSort, StaffSummary, Yours } from "./types";
 
 const AGE_RANGE = { min: 0, max: 99 };
 const ABILITY_RANGE = { min: 1, max: 200 };
@@ -45,6 +48,32 @@ const SORT: SortStart<StaffSort> = {
   start: { by: "currentAbility", ascending: false },
   firstAscending: ["name", "club", "nation"],
 };
+
+/** The inputs of the filter bar but the attribute rows, empty: what a saved filter holds of them. */
+const NO_FIELDS = {
+  job: "",
+  unemployed: false,
+  humanOnly: false,
+  minAge: "",
+  maxAge: "",
+  minCurrentAbility: "",
+  maxCurrentAbility: "",
+  minPotentialAbility: "",
+  maxPotentialAbility: "",
+  nation: "",
+  club: "",
+};
+
+type StaffFields = typeof NO_FIELDS & { attributes: AttributeRow[] };
+
+const SAVED = savedKind<StaffFields, StaffSort>(
+  "staff",
+  (value) => ({
+    ...readPlain(value, NO_FIELDS),
+    attributes: readAttributeRows(isRecord(value) ? value.attributes : undefined, STAFF_ATTRIBUTES),
+  }),
+  SORT.sorts,
+);
 
 /** The job filter saved before the language was switched: a job the select offers, or "" for any. */
 const readJob = (value: unknown) =>
@@ -79,6 +108,36 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   useSnapshot("staffMaxPa", () => maxPotentialAbility);
   const best = useBestFor("staffBest", STAFF_RECIPES);
   const sort = useListSort("staffOrder", SORT, best.recipe !== undefined);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: StaffFields = {
+    job,
+    unemployed,
+    humanOnly,
+    minAge,
+    maxAge,
+    minCurrentAbility,
+    maxCurrentAbility,
+    minPotentialAbility,
+    maxPotentialAbility,
+    nation,
+    club,
+    attributes,
+  };
+  const applySaved = (saved: StaffFields, order: ListOrder<StaffSort> | null) => {
+    setJob(readJob(saved.job));
+    setUnemployed(saved.unemployed);
+    setHumanOnly(saved.humanOnly);
+    setMinAge(saved.minAge);
+    setMaxAge(saved.maxAge);
+    setMinCurrentAbility(saved.minCurrentAbility);
+    setMaxCurrentAbility(saved.maxCurrentAbility);
+    setMinPotentialAbility(saved.minPotentialAbility);
+    setMaxPotentialAbility(saved.maxPotentialAbility);
+    setNation(saved.nation);
+    setClub(saved.club);
+    setAttributes(saved.attributes);
+    sort.set(order);
+  };
   useSnapshot("staffNation", () => nation);
   useSnapshot("staffClub", () => club);
   useSnapshot("staffAttributes", () => attributes);
@@ -200,7 +259,19 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
       summary={staffListText.summary}
       empty={(query) => staffListText.empty(query, filter !== undefined)}
       filterBar={
-        <FilterBar chips={chips} onClear={clearAll}>
+        <FilterBar
+          chips={chips}
+          onClear={clearAll}
+          actions={
+            <SavedFilterControls
+              kind={SAVED}
+              fields={fields}
+              order={sort.order}
+              filtered={chips.length > 0}
+              onApply={applySaved}
+            />
+          }
+        >
           <label className="filter-field">
             <span>{filters.job}</span>
             <select value={job} onChange={(e) => setJob(e.currentTarget.value)}>

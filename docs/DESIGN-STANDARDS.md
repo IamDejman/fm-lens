@@ -68,8 +68,11 @@ One family: Archivo (variable). The scale is fixed; 11px is the floor.
 - **Buttons**: text says what happens ("Apply 3 changes", "Release"). One `primary` per area.
   Disabled buttons say why in a `title` when the reason isn't obvious (read-only, nothing to apply).
 - **Lists**: search first, then filters, then the table. 200 rows, best first. The count says how many match.
+  A list that reads the same search again keeps its rows on show until the new ones arrive, so it stays where
+  it was scrolled to. What a list holds comes back when the app starts again (`restore.ts`).
 - **Profiles**: header (picture, name, club, nation, vitals, CA/PA), actions, then groups. Values that can be
-  edited are buttons that start editing at that field. A profile with 4 or more top-level groups gets the
+  edited are buttons that start editing at that field. A number's input is dragged sideways to change it
+  (`useDragValue`); a press that does not move is still the click that types. A profile with 4 or more top-level groups gets the
   section bar (`SectionJump`): it stays at the top and links to each group. New groups appear in it by
   being a `section.profile-group` with an `h3` directly in the profile body.
 - **Dialogs**: `useModal` (focus trap, Escape, focus returns to the opener). Title says the action.

@@ -14,15 +14,18 @@ import {
 import { ListBrowser } from "./ListBrowser";
 import { NATION_STYLE_LABELS, nationListText, profileText } from "./labels";
 import { restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import { useProfileEditing } from "./useProfileEditing";
 import type {
+  ListOrder,
   NamedPerson,
   NationDetails,
-  NationalTeam,
   NationFilter,
   NationSort,
   NationSummary,
+  NationalTeam,
   WomenFootball,
 } from "./types";
 
@@ -36,6 +39,12 @@ const SORT: SortStart<NationSort> = {
   start: { by: "name", ascending: true },
   firstAscending: ["name", "continent"],
 };
+
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = { continent: "" };
+type NationFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<NationFields, NationSort>("nations", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
 
 /**
  * The nations of the players, staff and competitions in the save, with the selected nation beside the table where the
@@ -56,6 +65,12 @@ export function NationBrowser({
   );
   useSnapshot("nationContinent", () => continent);
   const sort = useListSort("nationOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: NationFields = { continent };
+  const applySaved = (saved: NationFields, order: ListOrder<NationSort> | null) => {
+    setContinent(saved.continent);
+    sort.set(order);
+  };
   // The continent is a column only where the build reads it: a sort by it kept from elsewhere asks for nothing.
   const order = sort.order?.by === "continent" && !detailed ? undefined : (sort.order ?? undefined);
   const continentValue = (detailed && continent.trim()) || undefined;
@@ -83,7 +98,19 @@ export function NationBrowser({
       empty={(query) => text.empty(query, filter !== undefined)}
       filterBar={
         detailed ? (
-          <FilterBar chips={chips} onClear={() => setContinent("")}>
+          <FilterBar
+            chips={chips}
+            onClear={() => setContinent("")}
+            actions={
+              <SavedFilterControls
+                kind={SAVED}
+                fields={fields}
+                order={sort.order}
+                filtered={chips.length > 0}
+                onApply={applySaved}
+              />
+            }
+          >
             <label className="filter-field">
               <span>{filters.continent}</span>
               <input
@@ -174,7 +201,7 @@ interface NationProfileProps {
 }
 
 /**
- * A nation's rules, FIFA standing, rivals and national teams, men's and women's. Its rules, FIFA points, youth
+ * A nation's rules, FIFA standings, rivals and national teams, men's and women's. Its rules, FIFA points, youth
  * ratings, game importance, attendance, style and senior teams' reputations can be edited where the row is the
  * nation's own UID.
  */
@@ -343,7 +370,10 @@ const nameOf = (person: NamedPerson | null) => person?.name ?? profileText.none;
 /** The kind of a senior national team (`NationalTeam.kind`). */
 const SENIOR = 0;
 
-/** A nation's women's football: when it joined FIFA and its confederation, its youth rating, and its teams. */
+/**
+ * A nation's women's football: its FIFA standing, when it joined FIFA and its confederation, its youth rating, and
+ * its teams.
+ */
 function WomenGroups({ women }: { women: WomenFootball }) {
   return (
     <>
@@ -363,6 +393,16 @@ function WomenGroups({ women }: { women: WomenFootball }) {
           <Fact label={text.attendance}>
             <EditableValue field="women.attendance">
               {orDash(women.attendance)}
+            </EditableValue>
+          </Fact>
+          <Fact label={text.ranking}>{orDash(women.ranking)}</Fact>
+          <Fact label={text.points}>
+            <EditableValue field="women.points">
+              {orDash(
+                women.points === null
+                  ? null
+                  : formatNumber(women.points, TWO_DECIMALS),
+              )}
             </EditableValue>
           </Fact>
           <Fact label={text.joinedFifa}>{orDash(women.joinedFifa)}</Fact>

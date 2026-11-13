@@ -86,7 +86,8 @@ export function Settings({
   const [open, setOpen] = useState(() => restored("settings", (value) => value === true));
   // Set once another language or currency is on its way in, so that the window opens again after the reload.
   const reopen = useRef(false);
-  useSnapshot("settings", () => open || reopen.current);
+  // Only a reload brings the window back open: the app opens without it.
+  useSnapshot("settings", () => open || reopen.current, false);
   const button = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {

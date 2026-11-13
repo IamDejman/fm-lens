@@ -2952,6 +2952,63 @@ bids, interest, instalments and buy-backs, FM's own value range, a release
 clause's condition, clause kinds outside the named table, and a second
 editor's check of hidden values.
 
+## List columns, saved filters and search speed (13 November 2026)
+
+Read-only work on the lists, on top of Sorting, more filters and every
+attribute above. Nothing here was run against a game: it was written in a
+Linux container with no FM, so every check is on code and on the browser
+preview's sample data.
+
+What changed:
+
+- Players filter by several positions at once and by a current-reputation
+  range.
+- The player list shows Value and Wage. Columns, under More, chooses the
+  columns and up to eight attribute columns; Value, Wage, Reputation and an
+  attribute column sort the list. A value or wage that is not known sorts last
+  either way.
+- Staff, clubs, nations, stadiums, competitions, awards and officials keep
+  saved filters, as the player list did. A player filter saved with one
+  position still reads as that position.
+- The search index works its best-first order out once, and again after an
+  edit, in place of sorting every hit on every request. A filter's nation, club
+  or continent text is folded once per request, and a column sort compares
+  each text by its place among the others.
+
+The row's value, wage and reputation are the bytes the list already read, at
+the offsets the profile uses; the reputation is `player.current_reputation`.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core -p fmlens-mem -p fmlens-probe`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 121 core tests, 5 memory tests |
+| `cargo clippy --all-targets -- -D warnings`, `x86_64-pc-windows-gnu`: core, mem, probe and app | Pass |
+| `cargo clippy --all-targets -- -D warnings`, `aarch64-apple-darwin`: core, mem and probe | Pass |
+| `npm test` | Pass. 95 tests, 5 of them new in `tests/list-columns.test.tsx` |
+| `npm run build` | Pass |
+| Browser preview, sample data, 1280 x 860: two positions with a reputation range, Columns with two attribute columns sorted by one, and a club filter saved and shown as the one in effect | Looked right in screenshots |
+
+Not run: the app crate's own Rust tests, which do not link in that container;
+any macOS build of the app crate; the Tauri bundle; and every native check.
+Still to do on a career copy, on each platform: compare Value, Wage and a
+reputation filter with FM's screens for a few players, sort the player list by
+Value, Wage and an attribute column, and save, reload and apply a filter on
+each list.
+
+Speed, on made-up players, with the repository's `SearchIndex` built for
+release in the same container. It leaves out reading the game on Connect.
+
+| | 30,314 players, before | after | 550,000 players, before | after |
+|---|---|---|---|---|
+| Page with no search or filter | 6 ms | under 0.1 ms | 220 ms | 0.3 ms |
+| Name search | 1 ms | 0.7 ms | 15 ms | 12 ms |
+| Age, CA, position and two attribute filters | 6 ms | 0.2 ms | 237 ms | 6 ms |
+| Nation filter | 16 ms | 1.3 ms | 476 ms | 53 ms |
+| Sorted by name | 27 ms | 17 ms | 989 ms | 480 ms |
+| First search after Connect or an edit | - | 7 ms | - | 186 ms |
+
 ## Staff birth date (12 November 2026)
 
 A member of staff's birth date is editable, the human manager's too. No game
@@ -3186,6 +3243,121 @@ wording: "Hits free kick with power", "Likes to beat opponent repeatedly" and
 Not run: the packaged app with these changes on any platform (the list and
 the tags were checked in the browser preview); the Spanish and Turkish names
 against FM in those languages.
+
+## Women's FIFA points (12 November 2026)
+
+Branch `Iamdejman/confident-darwin-ktyc9o`, from main at e47d8a8 (0.7.7).
+
+A nation's profile shows the women's world ranking and points, and
+`women.points` can be edited, 0.00 to 3,000.00, one nation at a time, behind
+the nations health check. Both are read from the women's container at the
+offsets the men's uses in its own (`ranking` and `points` in `[national]`).
+`fmlens-probe nation UID` prints them on a `women ranking` line.
+EDITOR-FIELDS.md lists the new field: 37 nation fields.
+
+What the mapping rests on: the read-only probe work of 5 November on ARM64
+build 26340721 (recon/fm27-nations.md), where the women's container read
+England 3rd on 2,027.1 and Spain 2nd on 2,105.4. The women's container was not
+read for these on Intel or Windows.
+
+Checks, all in a Linux container with no game:
+
+- `npm --prefix app run build` and `npm --prefix app test`: pass (7 node tests,
+  66 vitest tests).
+- `cargo fmt --all --check`: pass.
+- `cargo test --locked -p fmlens-mem -p fmlens-core -p fmlens-probe`, built for
+  `x86_64-pc-windows-gnu` and run under Wine: 108 core and 5 mem tests pass,
+  `nations_take_their_own_rules_one_at_a_time` among them.
+- `cargo clippy --locked --all-targets -- -D warnings` on those three crates,
+  same target: clean.
+- The fields the code defines on each layout, listed and compared with
+  EDITOR-FIELDS.md key by key: 169 player, 42 staff, 14 club, 37 nation and
+  4 official on both, none missing and none extra.
+- Browser preview with sample data: Germany's women's ranking and points show;
+  3000.5 is refused, 2,042.00 -> 2,100.25 applies, Changes names it "Women's
+  FIFA points", Undo puts 2,042.00 back, and the men's points do not move.
+
+Not run: a macOS build, the app crate, the Tauri bundle, and anything against
+a running game. No read, edit, FM inspection or save and reload.
+
+To check on a disposable copy: `fmlens-probe nation 765` against FM's women's
+world ranking; edit `women.points` in the app, read it back and undo; hold the
+edit to FM's next women's ranking date; then save, quit and reload. Repeat the
+read under Rosetta and on Windows.
+
+## Inspire on a player's profile (13 November 2026)
+
+The Mood tab's Morale and happiness heading has an Inspire button: morale to 20
+and the player's lasting reasons to be unhappy ended, in one press. It is the
+old squad button Inspire all for one player. That button was split on 7
+November into Max morale and Remove unhappiness, so the 7 November entry's
+"Inspire all" row is evidence for both of those as they were then.
+
+Inspire uses what is already there. Morale goes through `apply_edits` over the
+value the profile read; the reasons end through `remove_unhappiness`, the call
+Remove all uses (see "Unhappiness that came back after Continue" above). So the
+build and career guards, stale-value refusal, the Changes rows and Undo are the
+ones those two have. Only what is short is done: no morale edit at 20, no call
+for a player with nothing lasting. One the game refuses does not hold the other
+back. No Rust changed.
+
+Not checked in FM. No game was available: this ran in a Linux container.
+
+| Check | Result |
+|---|---|
+| `npm --prefix app run build` | Pass |
+| `npm --prefix app test` | Pass, 97 tests; `tests/inspire.test.tsx` covers what is sent, when the button waits and a refused write |
+| Browser preview, sample data (`?writable`), Kerem Yılmaz | Morale 8 to 20 and his one lasting reason gone, the button dimmed and focus on the heading. Changes: "Morale 8 → 20" and "Reasons to be unhappy 1 → 0", each with Undo |
+| Undo of both rows, same preview | Morale back to 8, the reason listed again and Inspire on again |
+| Rust checks | Not run. `fmlens-core` builds for macOS and Windows only, so its tests do not run on Linux |
+
+Still to do on a career copy, on each platform: press Inspire on an unhappy
+player, look at FM's Happiness panel and Dynamics, Continue a day, undo both
+rows from Changes, then save, quit and reload.
+
+## Dragging numbers, scroll position and reopening (12 November 2026)
+
+Three changes to the interface, none to what is written to the game or how:
+a number's input can be dragged sideways (`app/src/dragValue.ts`,
+`draggedText` in `app/src/editDraft.ts`), lists and profiles keep their scroll
+position, and what the window held comes back when FM Lens is opened again
+(`app/src/restore.ts`). A drag only fills the input; Apply, the guards and Undo
+are untouched. No Rust changed.
+
+Checked in the browser preview (`npm --prefix app run dev`, `?writable`, sample
+data, headless Chromium, 1440 by 900). This is not the native app and not a
+live game.
+
+- Scroll: the player list at 900 px stayed at 900 after going to Staff and
+  back, with and without a search, with a profile open, and after an Apply.
+  Before the change each of these went back to 0. A new search starts at the
+  top. An open profile at 250 px was at 250 after the same round trip.
+- Dragging: 78 of a player's 141 inputs drag (numbers only). Eccentricity 18
+  went to 14 over 40 px left, to 20 over 64 px right, and stopped at 20 and at 1
+  however far the pointer went. A click without movement changed nothing and
+  focused the input. Current ability 180 went to 173 over 30 px, showed as one
+  pending change, read "Current ability 180 → 173" in Review and applied. A
+  club's balance went 17,551,479 → 18,000,000 → 19,000,000 → 20,000,000. At
+  150% zoom in the dark theme, 36 px moved an attribute three steps.
+- Reopening: with a club open on its Squad tab, a player selected on the second
+  page at 1,200 px on the Contract tab, and "nov" in the Staff search, the
+  window was closed and a new one opened on the same storage. It came back on
+  Clubs with that club and tab, Players had the same row, page, scroll position
+  and tab, and Staff had its search. Settings did not open by itself.
+- A language or currency reload still brings the window back as before, with
+  Settings open.
+
+`npm --prefix app run build` and `npm --prefix app test` passed: 8 node tests
+and 104 in vitest, 14 of them new (`app/tests/drag-value.test.tsx`,
+`app/tests/navigation-memory.test.tsx`), covering the steps of a drag, a finger
+and a date left alone, rows kept while a list reads again, another career
+starting afresh and a list that left the screen before the app closed.
+
+The numbers above are from the run on top of 0.7.10. There, current ability
+follows a changed attribute by itself, whether it was typed or dragged.
+
+Not run: the native macOS and Windows apps (WebKit and WebView2), a real FM
+restart or a second career, and the Rust checks.
 
 ## Contract signed and joined dates (13 November 2026)
 

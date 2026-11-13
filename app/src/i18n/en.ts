@@ -20,7 +20,7 @@ import type {
   MassEntity,
   MassOperationKind,
   MassPreview,
-  PlayerSort,
+  PlayerColumnSort,
   SquadSort,
   Storefront,
 } from "../types";
@@ -697,6 +697,7 @@ export const en = {
     "women.game_importance": "Women's game importance",
     "women.attendance": "Women's attendance",
     points: "FIFA points",
+    "women.points": "Women's FIFA points",
   },
 
   profile: {
@@ -876,6 +877,9 @@ export const en = {
     removeUnhappiness: "Remove all",
     removingUnhappiness: "Removing…",
     removeUnhappinessTitle: "Clears every reason he's unhappy.",
+    /** On the heading of his morale: morale to the top and his reasons to be unhappy ended, at once. */
+    inspire: "Inspire",
+    inspireTitle: "Morale to the top, and every reason he's unhappy cleared",
     concernSince: (date: string) => `since ${date}`,
     concernKind: (kind: number): string => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : ""),
     concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? "Unknown reason",
@@ -1049,8 +1053,11 @@ export const en = {
       born: "Born",
       currentAbility: "CA",
       potentialAbility: "PA",
+      value: "Value",
+      wage: "Wage",
+      reputation: "Reputation",
       uid: "ID",
-    } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
+    } satisfies Record<PlayerColumnSort | "positions" | "born" | "uid", string>,
     /** Hover text of a column header that sorts the list; `by` is a name from `sortNames`. */
     sortBy: (by: string) => `Sort by ${by}`,
     /** The name of each sortable column, as the summary line and the hover text of a header say it. */
@@ -1062,7 +1069,20 @@ export const en = {
       nation: "nation",
       club: "club",
       contractExpires: "contract end",
-    } satisfies Record<PlayerSort, string>,
+      value: "value",
+      wage: "wage",
+      reputation: "reputation",
+    } satisfies Record<PlayerColumnSort, string>,
+    /** Choosing which columns the list shows, from More. */
+    columnChooser: {
+      button: "Columns",
+      title: "Columns",
+      attributes: "Attribute columns",
+      /** Under the attributes once `max` of them are columns. */
+      full: (max: number) => `Up to ${max} attribute columns.`,
+      reset: "Reset",
+      done: "Done",
+    },
     filters: {
       /** The button that shows or hides the filters. */
       toggle: "Filters",
@@ -1099,6 +1119,9 @@ export const en = {
       value: "Base value",
       minValue: "Minimum value",
       maxValue: "Maximum value",
+      reputation: "Reputation",
+      minReputation: "Minimum reputation",
+      maxReputation: "Maximum reputation",
       /** The select of the trait a player must have. */
       trait: "Trait",
       /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */
@@ -2036,6 +2059,8 @@ export const en = {
     undo: "Undo",
     /** Hover text of Undo; `label` is the field's name. */
     undoTitle: (label: string) => `Put ${label} back to its old value`,
+    /** Why an Undo was refused: a newer change to the same field still stands; `label` is the field's name. */
+    undoLaterFirst: (label: string) => `${label} was changed again after this. Undo the later change first.`,
     /** The small tag after the fields a mass edit changed: a mass edit is one row of the list. */
     batch: "Mass edit",
     /** Under those fields: how many changes the mass edit made, and how many of them are not undone. */

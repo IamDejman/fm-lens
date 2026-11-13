@@ -33,7 +33,7 @@ import {
   updateText,
 } from "./labels";
 import { PlayerBrowser } from "./PlayerBrowser";
-import { restored, useSnapshot } from "./restore";
+import { heldFor, restored, useSnapshot } from "./restore";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
@@ -79,7 +79,6 @@ const VIEWS: { id: View; label: string }[] = [
 /** The views of the masthead's Lists menu; the rest are tabs of their own. */
 const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials"]);
 
-/** The view the window was in before the language was switched; the first one when there was no such switch. */
 /** How often the app looks at the game: FM may have closed, moved its lists or moved on a day. */
 const CHECK_EVERY_MS = 5000;
 
@@ -92,7 +91,11 @@ const FREEZE_COMMANDS: ReadonlySet<string> = new Set([
 
 const dayKey = ({ year, month, day }: FmDate) => `${year}-${month}-${day}`;
 
+/** The view the window was in before it started again; the first one when nothing was kept of it. */
 const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
+
+/** What tells one career from another: its manager. A manager who changes clubs is still in the same career. */
+const careerKey = (career: Career | null): string => (career ? `${career.uid}:${career.manager}` : "");
 
 /** The app's own football-lens symbol and wordmark. */
 function BrandMark() {
@@ -488,6 +491,10 @@ function App() {
     }
   };
   const career = connection?.career ?? null;
+  // Before the lists are built: what the last run of the app left of them is theirs only in the same career.
+  if (connection) {
+    heldFor(careerKey(career));
+  }
 
   // Before anything else, once on each computer. The app is mounted behind it, so it still updates itself.
   if (emailAsked) {

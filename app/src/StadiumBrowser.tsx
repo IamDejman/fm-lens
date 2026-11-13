@@ -18,8 +18,10 @@ import { ListBrowser } from "./ListBrowser";
 import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact, ProfileFrame } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
-import type { StadiumClub, StadiumFilter, StadiumSort, StadiumSummary } from "./types";
+import type { ListOrder, StadiumClub, StadiumFilter, StadiumSort, StadiumSummary } from "./types";
 
 const columns = stadiumListText.columns;
 const filters = stadiumListText.filters;
@@ -32,6 +34,12 @@ const SORT: SortStart<StadiumSort> = {
   firstAscending: ["name"],
 };
 
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = { kind: "all", minCapacity: "", maxCapacity: "" };
+type StadiumFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<StadiumFields, StadiumSort>("stadiums", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
+
 /** Senior stadiums, one row each with every club that plays there, with the selected stadium beside the table. */
 export function StadiumBrowser({ version, active }: { version: number; active: boolean }) {
   const [kind, setKind] = useState(() => restored("stadiumKind", readKind));
@@ -41,6 +49,14 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
   useSnapshot("stadiumMin", () => minCapacity);
   useSnapshot("stadiumMax", () => maxCapacity);
   const sort = useListSort("stadiumOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: StadiumFields = { kind, minCapacity, maxCapacity };
+  const applySaved = (saved: StadiumFields, order: ListOrder<StadiumSort> | null) => {
+    setKind(readKind(saved.kind));
+    setMinCapacity(saved.minCapacity);
+    setMaxCapacity(saved.maxCapacity);
+    sort.set(order);
+  };
   const min = whole(minCapacity, CAPACITY_RANGE);
   const max = whole(maxCapacity, CAPACITY_RANGE);
   const filter: StadiumFilter | undefined =
@@ -72,7 +88,19 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
       summary={stadiumListText.summary}
       empty={(query) => stadiumListText.empty(query, filter !== undefined)}
       filterBar={
-        <FilterBar chips={chips} onClear={clearAll}>
+        <FilterBar
+          chips={chips}
+          onClear={clearAll}
+          actions={
+            <SavedFilterControls
+              kind={SAVED}
+              fields={fields}
+              order={sort.order}
+              filtered={chips.length > 0}
+              onApply={applySaved}
+            />
+          }
+        >
           <KindField labels={filters} value={kind} onChange={setKind} />
           <RangeField
             label={filters.capacity}

@@ -8,6 +8,7 @@ import { Ability } from "./Ability";
 import { CaptainMenu } from "./CaptainMenu";
 import { DropMenu } from "./DropMenu";
 import { changeLog, clubSquads, setCaptain, teamAction, undoBatch, undoChange } from "./editing";
+import { fieldIndex } from "./fieldTables";
 import { describeError, formatNumber } from "./format";
 import { intlLocale } from "./i18n";
 import {
@@ -266,11 +267,12 @@ export function SquadTab({ clubUid, version, panel }: SquadTabProps) {
       const done = await take();
       // The log names the players behind the changes that could not be taken back.
       const log = done.failed.length > 0 ? await changeLog().catch(() => []) : [];
+      const fields = done.failed.length > 0 ? await fieldIndex().catch(() => null) : null;
       return {
         team: forTeam,
         message: massEditText.undone(done.undone),
         failed: false,
-        problems: undoFailureLines(done.failed, log),
+        problems: undoFailureLines(done.failed, log, fields),
         undo: null,
       };
     });
