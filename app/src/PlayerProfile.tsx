@@ -4,7 +4,7 @@ import { BestFits } from "./BestFor";
 import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
-import { keepPlaying, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
+import { applyEdits, keepPlaying, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { ATTRIBUTE_LABELS, ATTRIBUTE_NOTES, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
@@ -341,26 +341,7 @@ function MoodTab({ details }: { details: PlayerDetails }) {
   const { contract } = details;
   return (
     <>
-      <section className="profile-group">
-        <h3>{profileText.moraleAndHappiness}</h3>
-        <dl className="stats">
-          <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
-            <EditableValue field="morale">{profileText.morale(details.morale)}</EditableValue>
-          </Fact>
-          {contract && (
-            <>
-              <Fact label={profileText.happiness} title={profileText.moodTitle}>
-                <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
-              </Fact>
-              <Fact label={profileText.playingTimeHappiness} title={profileText.moodTitle}>
-                <EditableValue field="contract.playing_time_happiness">
-                  {formatNumber(contract.playingTimeHappiness)}
-                </EditableValue>
-              </Fact>
-            </>
-          )}
-        </dl>
-      </section>
+      <MoraleGroup details={details} />
       {contract && <ConcernList uid={details.uid} concerns={contract.concerns} />}
       <PromisesGroup uid={details.uid} promises={details.promises} />
       <PreferencesGroup
@@ -666,6 +647,115 @@ export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid
       ) : !notIssued && (
         <p className="injuries-none">{needed === false ? profileText.permitNotNeeded : profileText.permitNone}</p>
       )}
+    </section>
+  );
+}
+
+/** The best morale there is: what Inspire gives one player, and Max morale a team. */
+const TOP_MORALE = 20;
+
+/**
+ * His morale and happiness, with Inspire on the heading: morale to the top and every reason to be unhappy that lasts
+ * ended, which Max morale and Remove unhappiness do for a team. It asks no question; each of the two is logged like
+ * any change, and undone from the Changes view.
+ */
+export function MoraleGroup({ details }: { details: Pick<PlayerDetails, "uid" | "morale" | "contract"> }) {
+  const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
+  const { uid, morale, contract } = details;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const unhappy = contract?.concerns.some((concern) => concern.ended === null) ?? false;
+  const inspired = morale >= TOP_MORALE && !unhappy;
+  const heading = useRef<HTMLHeadingElement>(null);
+  const wasInspired = useRef(inspired);
+
+  // The button stays busy until the profile has read the game again, which gives new details.
+  useEffect(() => {
+    setBusy(false);
+  }, [details]);
+
+  useEffect(() => {
+    setError(null);
+  }, [uid]);
+
+  // Inspiring him dims the button that had focus: it goes to the heading, so that someone using the keyboard stays
+  // in the group.
+  useEffect(() => {
+    if (!wasInspired.current && inspired && focusLost()) {
+      heading.current?.focus();
+    }
+    wasInspired.current = inspired;
+  }, [inspired]);
+
+  const inspire = async () => {
+    // While it is under way the button is only dimmed (aria-disabled), not disabled: a disabled button loses focus.
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    // Each of the two is tried on its own: one the game refuses does not hold the other back.
+    const refused: unknown[] = [];
+    if (morale < TOP_MORALE) {
+      try {
+        const report = await applyEdits("player", uid, [{ field: "morale", expected: morale, value: TOP_MORALE }]);
+        refused.push(...report.failed.map((failed) => failed.error));
+      } catch (e) {
+        refused.push(e);
+      }
+    }
+    if (unhappy) {
+      try {
+        await removeUnhappiness(uid);
+      } catch (e) {
+        refused.push(e);
+      }
+    }
+    if (refused.length > 0) {
+      setError(describeError(refused[0]));
+      setBusy(false);
+    }
+    // The game may have changed, or moved on from what the profile shows: it is read again either way.
+    onEdited();
+  };
+
+  return (
+    <section className="profile-group">
+      <GroupHead title={profileText.moraleAndHappiness} headingRef={heading}>
+        <button
+          type="button"
+          className="heal-toggle"
+          disabled={!editable || inspired}
+          aria-disabled={busy || undefined}
+          aria-busy={busy || undefined}
+          title={editable ? profileText.inspireTitle : readOnlyNote}
+          onClick={() => void inspire()}
+        >
+          {profileText.inspire}
+        </button>
+      </GroupHead>
+      {error !== null && (
+        <p className="heal-error" role="alert">
+          {error}
+        </p>
+      )}
+      <dl className="stats">
+        <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
+          <EditableValue field="morale">{profileText.morale(morale)}</EditableValue>
+        </Fact>
+        {contract && (
+          <>
+            <Fact label={profileText.happiness} title={profileText.moodTitle}>
+              <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
+            </Fact>
+            <Fact label={profileText.playingTimeHappiness} title={profileText.moodTitle}>
+              <EditableValue field="contract.playing_time_happiness">
+                {formatNumber(contract.playingTimeHappiness)}
+              </EditableValue>
+            </Fact>
+          </>
+        )}
+      </dl>
     </section>
   );
 }
