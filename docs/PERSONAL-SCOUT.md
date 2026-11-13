@@ -175,7 +175,7 @@ contract fields are excluded. Player, staff and money freezes are remembered for
 the save and hold only while FM Lens is connected.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
-See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 169 player, 43 staff and 14 club
+See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 171 player, 45 staff and 14 club
 field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
 behavioral evidence and outstanding checks.
 

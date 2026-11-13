@@ -667,6 +667,8 @@ export const tr: Strings = {
     "contract.playing_time_happiness": "Forma süresi mutluluğu",
     "contract.unhappiness": "Mutsuzluk nedenleri",
     "contract.expires": "Sözleşme bitişi",
+    "contract.signed": "Sözleşme imza tarihi",
+    "contract.joined": "Kulübe katılım tarihi",
     "loan.wage": "Kiralayan kulübün ödediği maaş",
     "loan.ends": "Kiralık bitişi",
     "transfer.joins": "Katılış tarihi",

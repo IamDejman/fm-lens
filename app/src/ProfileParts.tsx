@@ -618,7 +618,7 @@ export function WageFact({ wage }: { wage: number }) {
   );
 }
 
-/** When the contract was signed, ends and began; the end is a date input while it can be edited. */
+/** When the contract was signed, ends and began: each a date input while it can be edited. */
 export function ContractDates({
   contract,
 }: {
@@ -627,11 +627,15 @@ export function ContractDates({
   const date = (value: FmDate | null) => formatDate(value) || profileText.none;
   return (
     <dl className="stats">
-      <Fact label={profileText.signed}>{date(contract.signed)}</Fact>
+      <Fact label={profileText.signed}>
+        <EditableValue field="contract.signed">{date(contract.signed)}</EditableValue>
+      </Fact>
       <Fact label={profileText.expires}>
         <EditableValue field="contract.expires">{date(contract.expires)}</EditableValue>
       </Fact>
-      <Fact label={profileText.joined}>{date(contract.joined)}</Fact>
+      <Fact label={profileText.joined}>
+        <EditableValue field="contract.joined">{date(contract.joined)}</EditableValue>
+      </Fact>
     </dl>
   );
 }
