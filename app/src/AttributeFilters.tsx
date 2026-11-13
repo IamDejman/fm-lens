@@ -91,6 +91,8 @@ export function attributeChips(
   rows: readonly AttributeRow[],
   choices: AttributeChoices,
   onChange: (rows: AttributeRow[]) => void,
+  label: (name: string, range: string) => string = chipLabel,
+  prefix = "attribute",
 ): FilterChip[] {
   return rows.flatMap((row, index): FilterChip[] => {
     const range = row.key === "" ? null : rangeText(end(row.min), end(row.max));
@@ -98,8 +100,8 @@ export function attributeChips(
       ? []
       : [
           {
-            key: `attribute-${index}`,
-            label: chipLabel(choices.labels[row.key] ?? row.key, range),
+            key: `${prefix}-${index}`,
+            label: label(choices.labels[row.key] ?? row.key, range),
             remove: () => onChange(rows.filter((_, at) => at !== index)),
           },
         ];
@@ -140,13 +142,15 @@ interface AttributeFiltersProps {
   rows: readonly AttributeRow[];
   choices: AttributeChoices;
   onChange: (rows: AttributeRow[]) => void;
+  /** The heading of the rows; Attributes by default. */
+  heading?: string;
 }
 
 /**
  * Bounds on attributes, across the filter panel: a row each, with the attribute, the least and the most it may be, and
  * a button that takes the row away; then a button for one more row.
  */
-export function AttributeFilters({ rows, choices, onChange }: AttributeFiltersProps) {
+export function AttributeFilters({ rows, choices, onChange, heading: title = text.attributes.heading }: AttributeFiltersProps) {
   const heading = useId();
   // A row the button just added gets keyboard focus; rows that come back with the panel do not take it.
   const [added, setAdded] = useState(false);
@@ -155,7 +159,7 @@ export function AttributeFilters({ rows, choices, onChange }: AttributeFiltersPr
 
   return (
     <div className="filter-attributes" role="group" aria-labelledby={heading}>
-      <span id={heading}>{text.attributes.heading}</span>
+      <span id={heading}>{title}</span>
       {rows.map((row, index) => (
         <div key={index} className="attribute-bound">
           <select

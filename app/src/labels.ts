@@ -125,6 +125,9 @@ export const JOB_FILTER_OPTIONS: readonly { code: number; label: string }[] = Ob
 /** The player list: search, filter bar and columns. */
 export const playerListText = strings.playerList;
 
+/** FM Lens's scouting estimates: roles, likeness, development, top players and other careers. */
+export const scoutText = strings.scout;
+
 /** The staff list. */
 export const staffListText = strings.staffList;
 
