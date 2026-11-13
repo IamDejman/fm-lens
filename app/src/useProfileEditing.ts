@@ -11,7 +11,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { inputState, summarize, type InputState, type Pending, type Typed } from "./editDraft";
+import { describeFieldError, inputState, summarize, type InputState, type Pending, type Typed } from "./editDraft";
 import { applyEdits, profileKey, readValues } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
@@ -419,7 +419,7 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
         onEdited();
       }
       const problems = result.failed.map((failed) =>
-        editText.refused(fieldLabel(entity, failed.field), describeError(failed.error)),
+        editText.refused(fieldLabel(entity, failed.field), describeFieldError(failed.error, byKey.get(failed.field))),
       );
       let values: FieldValues | null = null;
       try {
@@ -431,7 +431,9 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
         return;
       }
       const refusals = Object.fromEntries(
-        result.failed.map((failed) => [failed.field, describeError(failed.error)] as const),
+        result.failed.map(
+          (failed) => [failed.field, describeFieldError(failed.error, byKey.get(failed.field))] as const,
+        ),
       );
       const refusedKeys = Object.keys(refusals);
       // The inputs show the game's values again; the ones the game refused keep what was typed.

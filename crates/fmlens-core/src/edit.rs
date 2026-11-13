@@ -616,13 +616,13 @@ const MOST_FORMATION: u8 = 64;
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
 
-/// The most FIFA points the editor writes; the leader of the test save had 1,995.88.
+/// The most FIFA points the editor writes; the leaders of the test save had 1,995.88 (men's) and 2,105.4 (women's).
 const MOST_FIFA_POINTS: f32 = 3000.0;
 
 /// The senior national teams' reputations and the containers' youth ratings, game importance, attendance and style
-/// ratings, men's and women's, the men's FIFA points, the population, whether dual nationality is allowed, and the years of residence that
-/// gain the nationality (255: no number of years does). One nation at a time; none where the build's layout does not
-/// place nations.
+/// ratings and FIFA points, men's and women's, the population, whether dual nationality is allowed, and the years of
+/// residence that gain the nationality (255: no number of years does). One nation at a time; none where the build's
+/// layout does not place nations.
 fn nation_fields(layout: &Layout) -> Vec<Field> {
     let Some(n) = layout.national.as_ref() else {
         return Vec::new();
@@ -674,11 +674,16 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
         attendance("women.attendance", Side::Women),
     ]);
     fields.extend(style("women.", Side::Women));
-    fields.extend([
-        // The live points FM ranks by at its next ranking date; the published position follows then, not at once.
-        field("points", n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
+    // The live points FM ranks by at its next ranking date; the published position follows then, not at once. The
+    // women's container holds the women's ranking the same way.
+    let points = |key: &str, side: Side| {
+        field(key, n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
             .plausible(0..=f32_bits(f32::MAX))
-            .in_record(Place::NationalContainer(Side::Men)),
+            .in_record(Place::NationalContainer(side))
+    };
+    fields.extend([
+        points("points", Side::Men),
+        points("women.points", Side::Women),
         // Tuvalu has 9,646 people, Nigeria 232,679,478.
         field("population", n.population, Kind::U32, 1..=2_000_000_000).plausible(0..=i64::from(u32::MAX)),
         field("dual_nationality", n.dual_nationality, Kind::U8, 0..=2).choices(&DUAL_NATIONALITY),
@@ -1616,23 +1621,25 @@ mod tests {
         };
         let expected: Vec<String> = side("")
             .chain(side("women."))
-            .chain(["points", "population", "dual_nationality", "naturalisation"].map(String::from))
+            .chain(["points", "women.points", "population", "dual_nationality", "naturalisation"].map(String::from))
             .collect();
         assert_eq!(keys, expected);
         assert!(nations.iter().all(|f| !f.mass && !f.shifted));
 
-        // The men's FIFA points, an f32 in the container held as its bits: England's 1,922.83 is in range, a negative
-        // number or one past 3,000 is not, and the bytes written are the float's own.
-        let points = key("points");
-        assert_eq!(
-            (points.place, points.offset, points.kind),
-            (Place::NationalContainer(Side::Men), n.points, Kind::F32)
-        );
-        let england = f32_bits(1922.83);
-        assert!(points.takes(0) && points.takes(england) && points.takes(f32_bits(3000.0)));
-        assert!(!points.takes(f32_bits(3000.01)) && !points.takes(f32_bits(-1.0)));
-        assert_eq!(points.decode(&1922.83f32.to_le_bytes()), england);
-        assert_eq!(points.encode(f32_bits(2000.5), &[0; 4]), 2000.5f32.to_le_bytes());
+        // The FIFA points, an f32 in each side's container held as its bits: England's 1,922.83 (its women's 2,027.1)
+        // is in range, a negative number or one past 3,000 is not, and the bytes written are the float's own.
+        for (name, side, england) in [("points", Side::Men, 1922.83f32), ("women.points", Side::Women, 2027.1)] {
+            let points = key(name);
+            assert_eq!(
+                (points.place, points.offset, points.kind),
+                (Place::NationalContainer(side), n.points, Kind::F32)
+            );
+            let bits = f32_bits(england);
+            assert!(points.takes(0) && points.takes(bits) && points.takes(f32_bits(3000.0)));
+            assert!(!points.takes(f32_bits(3000.01)) && !points.takes(f32_bits(-1.0)));
+            assert_eq!(points.decode(&england.to_le_bytes()), bits);
+            assert_eq!(points.encode(f32_bits(2000.5), &[0; 4]), 2000.5f32.to_le_bytes());
+        }
 
         // The senior teams' reputations, found through the containers; the youth ratings in the containers; the rest
         // in the nation itself.

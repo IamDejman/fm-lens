@@ -731,6 +731,7 @@ export const tr: Strings = {
     "women.game_importance": "Kadın futbolunda oyunun önemi",
     "women.attendance": "Kadın futbolunda seyirci ilgisi",
     points: "FIFA puanı",
+    "women.points": "Kadın FIFA puanı",
   },
 
   profile: {
@@ -1846,6 +1847,7 @@ export const tr: Strings = {
     earlierGame: "Önceki oyun",
     undo: "Geri al",
     undoTitle: (label) => `Eski değeri oyuna geri yaz: ${label}`,
+    undoLaterFirst: (label) => `${label} bundan sonra yeniden değiştirildi. Önce sonraki değişikliği geri alın.`,
     batch: "Toplu düzenleme",
     batchCount: (total, remaining) =>
       remaining === 0

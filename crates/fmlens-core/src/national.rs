@@ -82,11 +82,14 @@ pub struct NationDetails {
     pub women: Option<WomenFootball>,
 }
 
-/// A nation's women's football: the years its women's teams joined FIFA and the continental body, their youth
-/// rating, and the teams.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+/// A nation's women's football: its place and points in the women's FIFA ranking, the years its women's teams joined
+/// FIFA and the continental body, their youth rating, and the teams.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WomenFootball {
+    /// Its place in the women's FIFA ranking; `None` when unranked.
+    pub ranking: Option<u16>,
+    pub points: Option<f32>,
     pub joined_fifa: Option<u16>,
     pub joined_continental: Option<u16>,
     pub youth_rating: Option<u16>,
@@ -369,6 +372,8 @@ impl Session {
         if let Some(container) = container(&self.process, &self.layout, address, Side::Women) {
             let facts = self.association(container)?;
             details.women = Some(WomenFootball {
+                ranking: facts.ranking,
+                points: facts.points,
                 joined_fifa: facts.joined_fifa,
                 joined_continental: facts.joined_continental,
                 youth_rating: facts.youth_rating,
