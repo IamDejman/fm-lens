@@ -877,9 +877,9 @@ export interface Concern {
 export interface CompetitionBonus {
   /** Its place in the contract's list. */
   index: number;
-  /** The UID the bonus names. */
-  competitionUid: number;
-  /** The competition's (or award's) name; null where none has that UID. */
+  /** What it names: the competition's place in the game's table, or the award's UID for an award bonus. */
+  key: number;
+  /** The competition's (or award's) name; null where none is found. */
   competition: string | null;
   /** Pounds; null where the bonus holds none. */
   amount: number | null;

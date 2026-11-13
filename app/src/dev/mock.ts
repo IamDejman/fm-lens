@@ -1178,7 +1178,7 @@ const clauseCapacity = new Map<number, number>();
 /** The clauses of a fixture contract: as changed through the editor, or as `generated`, numbered in order. */
 /** A fixture contract's bonus for the competition `uid`, named as the app names it from the competitions. */
 function competitionBonus(index: number, uid: number, amount: number): CompetitionBonus {
-  return { index, competitionUid: uid, competition: COMPETITIONS.find((c) => c.uid === uid)?.name ?? null, amount };
+  return { index, key: uid, competition: COMPETITIONS.find((c) => c.uid === uid)?.name ?? null, amount };
 }
 
 function clausesOf(uid: number, generated: Clause[]): Clause[] {

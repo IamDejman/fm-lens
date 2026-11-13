@@ -3758,9 +3758,10 @@ fn competitions(session: &Session, name: Option<String>, limit: usize) -> Result
     all.sort_by_key(|a| std::cmp::Reverse(a.reputation));
     for c in all.iter().take(limit) {
         println!(
-            "  {:<40} {:<10} {:<16} {:<14} rep {:>3}{}",
+            "  {:<40} {:<10} #{:<6} {:<16} {:<14} rep {:>3}{}",
             c.name,
             c.uid,
+            c.index,
             c.nation.as_deref().unwrap_or("-"),
             c.continent.as_deref().unwrap_or("-"),
             c.reputation,

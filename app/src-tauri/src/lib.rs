@@ -1207,13 +1207,17 @@ impl Connection {
         if bonuses.is_empty() {
             return;
         }
-        for bonus in bonuses.iter_mut().filter(|bonus| !bonus.award) {
-            let uid = bonus.competition_uid;
-            bonus.competition = self.competition_index().ok().and_then(|index| index.get(uid)).map(|c| c.name.clone());
-        }
-        for bonus in bonuses.iter_mut().filter(|bonus| bonus.competition.is_none()) {
-            let uid = bonus.competition_uid;
-            bonus.competition = self.award_index().ok().and_then(|index| index.get(uid)).map(|a| a.name.clone());
+        // A competition bonus names the competition by its place in the game's table, an award bonus by the award's UID.
+        for bonus in bonuses.iter_mut() {
+            let key = bonus.key;
+            bonus.competition = if bonus.award {
+                self.award_index().ok().and_then(|index| index.get(key)).map(|a| a.name.clone())
+            } else {
+                self.competition_index()
+                    .ok()
+                    .and_then(|index| index.iter().find(|c| c.index == key))
+                    .map(|c| c.name.clone())
+            };
         }
         // An award bonus is read through a pointer: one that names no award is not shown.
         bonuses.retain(|bonus| !bonus.award || bonus.competition.is_some());

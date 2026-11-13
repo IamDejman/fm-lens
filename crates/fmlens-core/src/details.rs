@@ -307,9 +307,10 @@ pub struct Clause {
 pub struct CompetitionBonus {
     /// Its place in the contract's list.
     pub index: usize,
-    /// The UID the entry names, a competition's on the contracts read so far.
-    pub competition_uid: u32,
-    /// The competition's name, where the app finds a competition (or an award) with that UID; none here.
+    /// What it names: the competition's place in the game's table of competitions, or the award's UID for an award
+    /// bonus.
+    pub key: u32,
+    /// The competition's (or award's) name, where the app finds one by its key; none here.
     pub competition: Option<String>,
     /// Pounds; none where the entry holds none.
     pub amount: Option<u32>,
@@ -318,10 +319,11 @@ pub struct CompetitionBonus {
     pub award: bool,
 }
 
-/// Bytes per competition bonus, and where in one the UID it names and its amount are. Read on Windows (Game Pass,
-/// Kylian Mbappé) and on macOS ARM64 (Declan Rice: UID 637, 850,975).
+/// Bytes per competition bonus, and where in one the competition's place in the game's table and its amount are.
+/// Read on Windows (Game Pass, Kylian Mbappé) and on macOS ARM64 (Declan Rice: 637, 850,975). On Windows, place 637
+/// is the UEFA Champions League, which FM's contract page names for Rice's bonus.
 const BONUS_ENTRY: usize = 32;
-const BONUS_UID: usize = 0x14;
+const BONUS_KEY: usize = 0x14;
 const BONUS_AMOUNT: usize = 0x18;
 
 /// The longest list of competition bonuses read; the test save's longest held a handful.
@@ -333,7 +335,7 @@ fn bonus_at(index: usize, entry: &[u8; BONUS_ENTRY]) -> CompetitionBonus {
     let amount = u32_at(BONUS_AMOUNT);
     CompetitionBonus {
         index,
-        competition_uid: u32_at(BONUS_UID),
+        key: u32_at(BONUS_KEY),
         competition: None,
         amount: (amount != u32::MAX).then_some(amount),
         award: false,
@@ -399,14 +401,8 @@ pub(crate) fn read_award_bonuses(
         let (target, amount) = award_bonus_at(entry);
         let uid = is_user_pointer(target).then(|| process.read_u32(target + award.uid).ok()).flatten();
         // One entry that does not point at something readable: the list is not what it is taken for.
-        let Some(competition_uid) = uid else { return Vec::new() };
-        bonuses.push(CompetitionBonus {
-            index: first + index,
-            competition_uid,
-            competition: None,
-            amount,
-            award: true,
-        });
+        let Some(key) = uid else { return Vec::new() };
+        bonuses.push(CompetitionBonus { index: first + index, key, competition: None, amount, award: true });
     }
     bonuses
 }
@@ -559,14 +555,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn competition_bonuses_give_the_uid_and_the_amount() {
-        // Declan Rice's one bonus, read on macOS ARM64: UID 637 (0x27D) and 850,975 (0xCFC1F).
+    fn competition_bonuses_give_the_competition_and_the_amount() {
+        // Declan Rice's one bonus, read on macOS ARM64: the competition at 637 (0x27D) and 850,975 (0xCFC1F).
         let words: [u32; 8] = [0x076C_0001, 0xFFFF_FFFF, 0x14, 0xFFFF_FFFF, 0, 0x27D, 0x000C_FC1F, 0xFFFF];
         let entry: [u8; BONUS_ENTRY] = words.map(u32::to_le_bytes).concat().try_into().expect("32 bytes");
         let bonus = bonus_at(1, &entry);
         assert_eq!(
             bonus,
-            CompetitionBonus { index: 1, competition_uid: 637, competition: None, amount: Some(850_975), award: false }
+            CompetitionBonus { index: 1, key: 637, competition: None, amount: Some(850_975), award: false }
         );
         // An entry that holds no amount gives none.
         let mut none = entry;
