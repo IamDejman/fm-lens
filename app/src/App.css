@@ -5733,4 +5733,41 @@ button.danger:hover:not(:disabled) {
 
 .grid td.col-fit {
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Who fits best at your club, beside the select: the fits of the list are read against it. A long name is cut short,
+   and beside an open profile it gives way as the count does. */
+.your-best {
+  max-width: 16rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--type-base);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.with-profile .toolbar .your-best {
+  display: none;
+}
+
+/* A fit better than the best at your club: in the colour of what is good, with a mark for those who see no colour. */
+.grid td.col-fit.better {
+  color: var(--ok);
+}
+
+.better-mark {
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-1);
+  fill: currentColor;
+}
+
+/* In a profile, what the person is best for: the name of the recipe as a rating's is, and the score bold. */
+.best-fits .stat dt {
+  color: var(--text);
+}
+
+.best-fits .stat dd {
+  font-weight: 700;
 }

@@ -7,7 +7,7 @@ import {
   STAFF_ATTRIBUTES,
   toAttributeBounds,
 } from "./AttributeFilters";
-import { BestForSelect, FitCell, FitHeader, useBestFor } from "./BestFor";
+import { BestForSelect, FitCell, FitHeader, useBestFor, YourBest } from "./BestFor";
 import { STAFF_RECIPES, type Recipe } from "./recipes";
 import { chipLabel, FilterBar, RangeField, rangeText, type FilterChip } from "./FilterBar";
 import { formatDate } from "./format";
@@ -18,7 +18,7 @@ import { NationFlag, WithPicture } from "./Picture";
 import { restored, useSnapshot } from "./restore";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import { EmployerPicture, employerOf, HumanBadge, jobOf, readStaffTab, StaffProfile } from "./StaffProfile";
-import type { StaffFilter, StaffSort, StaffSummary } from "./types";
+import type { StaffFilter, StaffSort, StaffSummary, Yours } from "./types";
 
 const AGE_RANGE = { min: 0, max: 99 };
 const ABILITY_RANGE = { min: 1, max: 200 };
@@ -285,6 +285,7 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
               sort.set(null);
             }}
           />
+          <YourBest yours={list.yours} />
           <MassEditButton entity="staff" filters={{ staffFilter: filter }} list={list} />
         </>
       )}
@@ -315,7 +316,7 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
           <th className="num col-uid">{columns.id}</th>
         </>
       }
-      cells={(s) => <StaffCells staff={s} recipe={best.recipe} />}
+      cells={(s, list) => <StaffCells staff={s} recipe={best.recipe} yours={list.yours} />}
       profile={(s, panel) => (
         <StaffProfile member={s} version={panel.version} tab={tab} onTab={setTab} onClose={panel.onClose} />
       )}
@@ -323,7 +324,15 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   );
 }
 
-function StaffCells({ staff: s, recipe }: { staff: StaffSummary; recipe: Recipe | undefined }) {
+function StaffCells({
+  staff: s,
+  recipe,
+  yours,
+}: {
+  staff: StaffSummary;
+  recipe: Recipe | undefined;
+  yours: Yours | null;
+}) {
   const job = jobOf(s);
   const employer = employerOf(s);
   return (
@@ -349,7 +358,7 @@ function StaffCells({ staff: s, recipe }: { staff: StaffSummary; recipe: Recipe 
         <WithPicture picture={<NationFlag uid={s.nationUid} />}>{s.nation ?? profileText.none}</WithPicture>
       </td>
       <td className="date col-born">{formatDate(s.dateOfBirth)}</td>
-      {recipe && <FitCell recipe={recipe} fit={s.fit} />}
+      {recipe && <FitCell recipe={recipe} fit={s.fit} yours={yours} />}
       <td className="num col-ca">
         <Ability value={s.currentAbility} />
       </td>

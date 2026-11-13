@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Ability } from "./Ability";
-import { BestForSelect, FitCell, FitHeader, useBestFor } from "./BestFor";
+import { BestForSelect, FitCell, FitHeader, useBestFor, YourBest } from "./BestFor";
 import { PLAYER_RECIPES } from "./recipes";
 import { ComparisonTray } from "./Comparison";
 import { ExportButton } from "./ExportDialog";
@@ -113,6 +113,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
               sort.set(null);
             }}
           />
+          <YourBest yours={list.yours} />
           <MoreMenu>
             <ExportButton list={list} filter={filter} order={order} />
             <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
@@ -137,7 +138,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           <th className="num col-uid">{text.columns.uid}</th>
         </>
       }
-      cells={(p) => (
+      cells={(p, list) => (
         <>
           {/* The hover text has what a long name, nation or club is cut to. */}
           <td className="col-name" title={p.fullName && p.fullName !== p.name ? `${p.name}\n${p.fullName}` : p.name}>
@@ -158,7 +159,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           </td>
           <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
           <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
-          {best.recipe && <FitCell recipe={best.recipe} fit={p.fit} />}
+          {best.recipe && <FitCell recipe={best.recipe} fit={p.fit} yours={list.yours} />}
           <td className="num col-ca">
             <Ability value={p.currentAbility} />
           </td>

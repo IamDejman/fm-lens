@@ -7,6 +7,7 @@ import { toPounds } from '../src/currency';
 import { profileText } from '../src/labels';
 import { PlayerBrowser } from '../src/PlayerBrowser';
 import { countFilters, NO_PLAYER_FILTERS, toPlayerFilter, TRAIT_CHOICES } from '../src/PlayerFilters';
+import { bestFits, fitOf, PLAYER_RECIPES } from '../src/recipes';
 import { readFields } from '../src/savedFilters';
 import { readListOrder } from '../src/SortHeader';
 import { StadiumBrowser } from '../src/StadiumBrowser';
@@ -213,4 +214,57 @@ test('the staff list is ranked for a job, among the staff the filters keep', asy
   await waitFor(() => expect(document.querySelector('td.col-fit')).toBeTruthy());
   await userEvent.hover(document.querySelector('td.col-fit')!);
   expect((await screen.findByRole('tooltip')).textContent).toMatch(/^Attacking \d+\n/);
+});
+
+test('a ranked list names the best at your club and marks the fits that beat it', async () => {
+  render(<PlayerBrowser version={0} active reveal={null} />);
+  await screen.findAllByRole('row');
+  expect(document.querySelector('.your-best')).toBeNull();
+  await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Best for' }), 'DC: Tackling');
+  await waitFor(() => expect(lastArgs('search_players')?.best).toBeTruthy());
+  const page = await mockInvoke<PlayerPage>('search_players', { query: '', limit: 200, best: lastArgs('search_players')?.best });
+  // The best of your club is one of its own centre-backs, whatever the list is filtered to.
+  const yours = page.yours!;
+  expect(page.rows.find((row) => row.uid === yours.uid)?.fit?.score).toBe(yours.score);
+  await waitFor(() => expect(document.querySelector('.your-best')?.textContent).toBe(`Your best: ${yours.name} ${Math.round(yours.score)}`));
+  const cells = [...document.querySelectorAll('td.col-fit')];
+  const better = page.rows.filter((row) => row.fit!.score > yours.score).length;
+  expect(better).toBeGreaterThan(0);
+  expect(cells.filter((cell) => cell.classList.contains('better'))).toHaveLength(better);
+  expect(within(cells[0] as HTMLElement).getByRole('img', { name: 'Better than your best' })).toBeTruthy();
+});
+
+test('a profile is scored as the game search scores, for the positions the player plays, three at most', () => {
+  // The case of `an_attribute_he_does_not_have_counts_as_none_of_it` in best.rs.
+  const best = { weights: [{ key: 'attacking', weight: 3 }, { key: 'tactical', weight: 1 }, { key: 'juggling', weight: 1 }] };
+  const ratings: Record<string, number> = { attacking: 20, tactical: 0 };
+  expect(fitOf(best, (key) => ratings[key] ?? 0)).toEqual({ score: 60, values: [20, 0, 0] });
+  expect(fitOf(best, () => 0)).toBeUndefined();
+
+  const fits = bestFits(PLAYER_RECIPES, () => 10, (position) => position === 'gk');
+  expect(fits).toHaveLength(3);
+  expect(fits.every(({ recipe }) => !recipe.best.positions?.length || recipe.best.positions.includes('gk'))).toBe(true);
+  const keeper = bestFits(PLAYER_RECIPES, (key) => (key === 'reflexes' ? 20 : 5), (position) => position === 'gk');
+  expect(keeper[0].recipe.label).toBe('GK: Reflexes');
+});
+
+test('the profile of a player and of a member of staff says what they are best for', async () => {
+  /** Opens the profile of the first row of the list on show, once it has rows. */
+  const openFirst = async () => {
+    await waitFor(() => expect(screen.getAllByRole('row').length).toBeGreaterThan(1));
+    await userEvent.click(screen.getAllByRole('row')[1]);
+  };
+  const view = render(<PlayerBrowser version={0} active reveal={null} />);
+  await openFirst();
+  const group = (await screen.findByRole('heading', { name: 'Best for' })).closest('section')!;
+  const scores = [...group.querySelectorAll('dd')].map((cell) => Number(cell.textContent));
+  expect(scores.length).toBeGreaterThan(0);
+  expect(scores).toEqual([...scores].sort((a, b) => b - a));
+  await userEvent.hover(group.querySelector('.stat')!);
+  expect((await screen.findByRole('tooltip')).textContent).toMatch(/^\D+ \d+\n/);
+  view.unmount();
+
+  render(<StaffBrowser version={0} active reveal={null} />);
+  await openFirst();
+  expect(await screen.findByRole('heading', { name: 'Best for' })).toBeTruthy();
 });

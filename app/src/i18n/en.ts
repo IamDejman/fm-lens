@@ -1148,6 +1148,10 @@ export const en = {
     fit: "Fit",
     /** The column as the hover text of its header names it, after `playerList.sortBy`. */
     fitName: "fit",
+    /** Beside the select of a ranked list: who fits best at the user's club, and the score. */
+    yours: (name: string, score: number) => `Your best: ${name} ${score}`,
+    /** What the mark on a fit says: it is better than the best at the user's club. */
+    better: "Better than your best",
   },
   staffList: {
     /** The entry in the sidebar. */

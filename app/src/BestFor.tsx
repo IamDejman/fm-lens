@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useHoverNote } from "./HoverNote";
-import { fitParts, type Recipe } from "./recipes";
+import { fitParts, type Recipe, type RecipeFit } from "./recipes";
 import { bestForText, playerListText, profileText } from "./labels";
 import { restored, useSnapshot } from "./restore";
 import type { ListSort } from "./SortHeader";
-import type { Fit } from "./types";
+import type { Fit, Yours } from "./types";
 
 /** The recipe a list is ranked for, kept in the snapshot of the window under `name`; none until one is picked. */
 export function useBestFor(name: string, recipes: readonly Recipe[]) {
@@ -59,13 +59,57 @@ export function FitHeader<Sort extends string>({ sort }: { sort: ListSort<Sort> 
   );
 }
 
-/** How well a row fits, out of 100; the box over it has the attributes it is made of. */
-export function FitCell({ recipe, fit }: { recipe: Recipe; fit: Fit | undefined }) {
+/** Beside the select: who fits best at your club, and how well. The fits of the list are read against it. */
+export function YourBest({ yours }: { yours: Yours | null }) {
+  const text = yours && bestForText.yours(yours.name, Math.round(yours.score));
+  // The hover text has what a long name is cut to.
+  return text ? <span className="your-best" title={text}>{text}</span> : null;
+}
+
+/**
+ * How well a row fits, out of 100; the box over it has the attributes it is made of. A fit better than `yours`, the
+ * best at your club, is marked.
+ */
+export function FitCell({ recipe, fit, yours }: { recipe: Recipe; fit: Fit | undefined; yours?: Yours | null }) {
   const note = useHoverNote(fit && fitParts(recipe, fit));
+  const better = fit !== undefined && yours != null && fit.score > yours.score;
   return (
-    <td className="num col-fit" {...note.target}>
+    <td className={better ? "num col-fit better" : "num col-fit"} {...note.target}>
+      {better && (
+        <svg className="better-mark" viewBox="0 0 10 10" role="img" aria-label={bestForText.better}>
+          <path d="M5 1.5 9 8H1z" />
+        </svg>
+      )}
       {fit ? Math.round(fit.score) : profileText.none}
       {note.box}
     </td>
+  );
+}
+
+/** In a profile: the recipes the person fits best, each with its score out of 100. Nothing where none fits. */
+export function BestFits({ fits }: { fits: RecipeFit[] }) {
+  if (fits.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group best-fits">
+      <h3>{bestForText.label}</h3>
+      <dl className="stats">
+        {fits.map(({ recipe, fit }) => (
+          <BestFit key={recipe.key} recipe={recipe} fit={fit} />
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function BestFit({ recipe, fit }: RecipeFit) {
+  const note = useHoverNote(fitParts(recipe, fit));
+  return (
+    <div className="stat" {...note.target}>
+      <dt>{recipe.label}</dt>
+      <dd>{Math.round(fit.score)}</dd>
+      {note.box}
+    </div>
   );
 }

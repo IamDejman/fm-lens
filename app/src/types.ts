@@ -326,6 +326,8 @@ export interface NationalJob {
 export interface StaffPage {
   total: number;
   rows: StaffSummary[];
+  /** Only while the list is ranked and someone on your staff fits. */
+  yours?: Yours;
 }
 
 export interface StaffContract {
@@ -409,9 +411,18 @@ export interface Fit {
   values: number[];
 }
 
+/** The best fit at your club for what a list is ranked for: what the fits of the list are read against. */
+export interface Yours {
+  uid: number;
+  name: string;
+  score: number;
+}
+
 export interface PlayerPage {
   total: number;
   rows: PlayerSummary[];
+  /** Only while the list is ranked and someone at your club fits. */
+  yours?: Yours;
 }
 
 /** A club whose senior team plays at a stadium. */

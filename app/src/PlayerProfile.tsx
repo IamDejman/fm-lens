@@ -1,5 +1,6 @@
 import { useContext, useEffect, useId, useRef, useState } from "react";
 import { AttributeActions, ToolsToggle } from "./AttributeActions";
+import { BestFits } from "./BestFor";
 import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
@@ -8,6 +9,7 @@ import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { ATTRIBUTE_LABELS, ATTRIBUTE_NOTES, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
 import { PromisesGroup } from "./PromisesGroup";
+import { bestFits, PLAYER_RECIPES } from "./recipes";
 import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
@@ -310,11 +312,20 @@ function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; 
             <RatingList rows={personalityRows(details.personality)} />
             {!editingTraits && <TraitTags traits={details.traits} />}
           </section>
-          <section className="profile-group">
-            <h3>{profileText.positions}</h3>
-            <PositionPitch ratings={details.positionRatings} />
-            <RatingList rows={attributeRows(details, FEET)} />
-          </section>
+          <div className="profile-stack">
+            <section className="profile-group">
+              <h3>{profileText.positions}</h3>
+              <PositionPitch ratings={details.positionRatings} />
+              <RatingList rows={attributeRows(details, FEET)} />
+            </section>
+            <BestFits
+              fits={bestFits(
+                PLAYER_RECIPES,
+                (key) => details.attributes[key]?.value ?? 0,
+                (position) => details.positions.includes(position),
+              )}
+            />
+          </div>
         </div>
       </div>
 

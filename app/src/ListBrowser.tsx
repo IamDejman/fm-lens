@@ -5,6 +5,7 @@ import { layoutPixels, watchZoom } from "./appearance";
 import { describeError } from "./format";
 import { isShortcut, shortcutAria } from "./keys";
 import { isRecord, restored, useSnapshot } from "./restore";
+import type { Yours } from "./types";
 import { askToLeave } from "./useProfileEditing";
 
 /** Rows shown at once; the best come first. */
@@ -24,6 +25,7 @@ function readList(value: unknown): { query: string; selected: number | null; off
 interface Page<Row> {
   total: number;
   rows: Row[];
+  yours?: Yours;
 }
 
 /** A row to show from elsewhere in the app: the list searches for `query` and opens the row with this UID. */
@@ -43,6 +45,8 @@ export interface ListState {
   total: number | null;
   /** How many of them the list has rows for: the best ones (see `summary`). */
   shown: number;
+  /** The best fit at your club, while the list is ranked for something and has one. */
+  yours: Yours | null;
 }
 
 interface ListBrowserProps<Row extends { uid: number }> {
@@ -84,7 +88,7 @@ interface ListBrowserProps<Row extends { uid: number }> {
   /** The header cells. */
   header: ReactNode;
   /** The cells of one row. */
-  cells: (row: Row) => ReactNode;
+  cells: (row: Row, list: ListState) => ReactNode;
   /** The profile panel of the selected row, beside the table. */
   profile?: (row: Row, panel: { version: number; onClose: () => void }) => ReactNode;
   /**
@@ -271,6 +275,12 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
 
   const settled = page !== null && shownFor?.requestKey === requestKey && !loading;
   const searching = !settled && error === null;
+  const list: ListState = {
+    query,
+    total: settled ? page.total : null,
+    shown: settled ? page.rows.length : 0,
+    yours: (settled && page.yours) || null,
+  };
 
   // A hidden list has no profile open: its window-wide Escape handler must not fire.
   const showProfile = active && selected !== null && profile !== undefined;
@@ -296,11 +306,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
             />
           </label>
           <span className="count" id={countId} role="status">{settled ? summary(page.total, page.total) : ""}</span>
-          {toolbarActions?.({
-            query,
-            total: settled ? page.total : null,
-            shown: settled ? page.rows.length : 0,
-          })}
+          {toolbarActions?.(list)}
         </div>
         {filterBar}
         {error && <div className="banner" role="alert">{error} <button type="button" onClick={() => setAttempt((value) => value + 1)}>{feedback.retry}</button></div>}
@@ -354,7 +360,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
                         }
                       }}
                     >
-                      {cells(row)}
+                      {cells(row, list)}
                     </tr>
                     {detail && isSelected && (
                       <tr className="row-detail">

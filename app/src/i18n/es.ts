@@ -1123,6 +1123,10 @@ export const es: Strings = {
     fit: "Ajuste",
     /** The column as the hover text of its header names it, after `playerList.sortBy`. */
     fitName: "ajuste",
+    /** Beside the select of a ranked list: who fits best at the user's club, and the score. */
+    yours: (name, score) => `Tu mejor: ${name} ${score}`,
+    /** What the mark on a fit says: it is better than the best at the user's club. */
+    better: "Supera a tu mejor",
   },
   staffList: {
     nav: "Personal",

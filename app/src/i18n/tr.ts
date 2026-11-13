@@ -1110,6 +1110,10 @@ export const tr: Strings = {
     fit: "Uyum",
     /** The column as the hover text of its header names it, after `playerList.sortBy`. */
     fitName: "uyum",
+    /** Beside the select of a ranked list: who fits best at the user's club, and the score. */
+    yours: (name, score) => `En iyin: ${name} ${score}`,
+    /** What the mark on a fit says: it is better than the best at the user's club. */
+    better: "En iyinden iyi",
   },
   staffList: {
     nav: "Personel",
