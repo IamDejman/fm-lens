@@ -760,6 +760,7 @@ impl PlayerSummary {
             "contract.transfer_listed" => self.transfer_listed = value != 0,
             "contract.loan_listed" => self.loan_listed = value != 0,
             "contract.wage" => self.wage = Some(value as i32),
+            "reputation.current" => self.current_reputation = value as u16,
             "height" => self.height_cm = value as u16,
             _ => {
                 let position = field.strip_prefix("position.").and_then(|key| POSITIONS.iter().position(|&k| k == key));
@@ -1848,6 +1849,7 @@ mod tests {
             height_cm: 180,
             wage: Some(1_000),
             transfer_value: None,
+            current_reputation: 5000,
             personality: [10; 8],
             traits: 0b100,
             address: 0,
