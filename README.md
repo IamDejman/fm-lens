@@ -56,6 +56,7 @@ should do next with **Wishlist** at the foot of the app, or in a
 - Copy a player's profile onto others with templates, previewed first.
 - Export to CSV or JSON. Light and dark appearance, 80 to 150% zoom and
   keyboard shortcuts.
+- Drag a number sideways to change it. FM Lens reopens where you left it.
 
 ## Limits
 
