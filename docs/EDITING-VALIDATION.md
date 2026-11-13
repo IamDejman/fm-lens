@@ -3469,6 +3469,7 @@ names only the competition. A bonus with no amount shows a tick.
 |---|---|
 | `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for an Apple Silicon target, from Linux | Pass. This type-checks the new unit test (Rice's entry gives UID 637 and 850,975); it does not run it |
 | Validate workflow on the branch at aaa4f42 (run 43384287924) | Failed on both `macos-checks` and `windows-checks`: the new unit test expected 851,999, a wrong conversion of 0x000CFC1F, which the code correctly reads as 850,975. The test and these notes were corrected; the rerun is below |
+| Validate workflow on the branch at eed03fe (run 43385875282) | Pass: `macos-checks` and `windows-checks`, the workspace tests (the new one included), the app crate's Clippy and the Windows installer build among them |
 | `cargo fmt --all --check` | Pass |
 | `npm test` | Pass, with three new tests: bonuses listed by competition after the clauses, a bonus with no amount and one whose UID names nothing, no "No bonuses or clauses" when only bonuses exist, and none in the Change dialog |
 | Browser preview on sample data | A player's group listed "Türkiye First Division bonus £913,000" and "Unknown competition bonus £250,000" after his clauses |
