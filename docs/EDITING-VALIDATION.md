@@ -3574,6 +3574,9 @@ Later, on Windows (13 November): Nwaneri's, Rice's and Havertz's other bonuses a
 award bonuses matched FM. The two players found with a competition bonus are
 behind FM's Scouting Required, so none has been compared.
 
+Later still: +0x14 is the competition's place in the game's table, not its
+UID, so every bonus showed as "Unknown competition". Fixed in build 11, below.
+
 ## Position edits that stay (13 November 2026)
 
 Windows Server 2022, FM27 Steam build 26577676 (27.0.1), on a copy of the
@@ -3648,7 +3651,7 @@ keeping scroll and reopening where you left off; the undo refusal message.
 | Nwaneri (on loan at Dortmund): signed and joined dates | Applied, FM's Parent Club tab showed the new start date, the loan record unchanged; both undone |
 | Bonuses: Nwaneri, Rice, Havertz | Every row matches FM's contract page (FM in dollars at about 1.35): Havertz appearance 30,670 ($41.5K), goal 23,003 ($31K), unused sub 7,667 ($10.25K), landmark goals 552,074 ($750K) and 138,018 ($185K), sell-on 15% |
 | Award bonuses (new, Windows only) | Havertz: World Footballer of the Year 439,614 ($600K), World Player of the Year 350,669 ($475K), World Golden Ball 439,614, as in FM. Probe census: 303 contracts, 548 entries, all naming a known award |
-| Competition bonuses (+0x80) | Not compared: the two players found with one (De Bruyne, Linder) are behind FM's "Scouting Required". Linder's shows as "Unknown competition bonus" (UID 6787) |
+| Competition bonuses (+0x80) | Not compared: the two players found with one (De Bruyne, Linder) are behind FM's "Scouting Required". Linder's shows as "Unknown competition bonus" (6787, the UEFA Women's Champions League's place in the table: see build 11) |
 | Nations list | 251 nations; Tuvalu, Sint Maarten and Kiribati found by search |
 | Stadiums list | 18,765; Wembley with no club, capacity 90,000 |
 | FM's own pictures with no graphics pack | Club logos in lists, profiles, rivals and affiliates; faces; flags; competition logos (white-only logos on a dark tile, also QPR's); three kits on Arsenal's Overview; initials where the game has no picture (staff have none). The reader's ignored live tests: 6 passed on the Windows install, pixels matching the Mac references |
@@ -3775,5 +3778,22 @@ again by itself whenever FM moves its lists, frozen or not.
 | Reload afterwards | Same header, 26,664 players, same notice |
 | FM loads "FM-Lens-ClubNames-2026-11-13" back (something frozen) | Without Reload: 30,308 players, Saka age 26, notice gone |
 | After each load | FM Lens idle (CPU time unchanged over 10 seconds), no repeated reads |
+
+Not run: macOS (Apple Silicon and Intel), Game Pass.
+
+## Build 11 on Windows (13 November 2026)
+
+Same machine and save ("FM-Lens-ClubNames-2026-11-13", 10 December 2027).
+Every competition bonus showed as "Unknown competition", because +0x14 in the
+entry is the competition's place in the game's table of competitions, not its
+UID. FM Lens now finds the competition by that place; an award bonus is still
+named by the award's UID.
+
+| Check | Result |
+|---|---|
+| Probe `competitions Champions`, with each competition's place | UEFA Champions League: UID 1301394, place 637; the UEFA Women's Champions League is at 6787, Linder's value above |
+| Probe `clauses` on Arsenal's players | Rice, Kvaratskhelia and Raya each have one competition bonus, all at 637 |
+| Rice in FM Lens 11 and FM | "UEFA Champions League bonus £850,975"; FM: "Winning the UEFA Champions League $1.1M". His award bonuses still named (World Footballer of the Year, World Golden Ball) |
+| Kvaratskhelia in FM Lens 11 and FM | "UEFA Champions League bonus £1,001,203"; FM: "Winning the UEFA Champions League $1.3M". GOAL50 award bonus still named |
 
 Not run: macOS (Apple Silicon and Intel), Game Pass.
