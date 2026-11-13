@@ -3464,10 +3464,17 @@ Checks that ran, in a Linux container without FM:
   `aarch64-apple-darwin` and `x86_64-pc-windows-msvc`, and for fmlens-app on
   `x86_64-pc-windows-gnu`. The app's own tests (the career record file) did not
   link with MinGW and are left to CI.
-- `npm test` (66 tests, 4 new) and `npm run build`.
+- `npm test` (66 tests, 4 new, before the rebase) and `npm run build`.
 - The browser preview with sample data, at 1440 and 1000 pixels wide, light and
   dark: role columns, the filters, the Scout tab, a comparison and Top players.
   The preview uses stand-in numbers, not the models.
+- CI (validate.yml run 455) passed on both jobs before the branch was rebased
+  onto the 0.7.10 main (macOS: format, Clippy, workspace tests, bridge build;
+  Windows: Clippy, workspace tests, installer build). After the rebase, which
+  joined the role columns to main's column chooser and sort names and the
+  comparison to its Best for ranking, the local checks above ran again: 125
+  core tests under Wine, 17 scouting tests, 120 frontend tests, Clippy for both
+  targets and the preview screens. The pull request's own checks follow.
 
 Not checked: any of it against a live career, on macOS or Windows; how long the
 scores take on a 30,000-player save; the record files' size over long careers;
