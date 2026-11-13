@@ -961,7 +961,14 @@ export const en = {
     /** The button that opens Set all attributes and Freeze attributes. */
     tools: "Tools",
     tabsLabel: "Player sections",
-    tabs: { attributes: "Attributes", mood: "Mood", contract: "Contract", medical: "Medical", career: "Career" },
+    tabs: {
+      attributes: "Attributes",
+      mood: "Mood",
+      contract: "Contract",
+      medical: "Medical",
+      career: "Career",
+      scout: "Scout",
+    },
     /** The tabs of a member of staff's profile. */
     staffTabsLabel: "Staff sections",
     staffTabs: { attributes: "Attributes", contract: "Contract", career: "Career" },
@@ -1057,7 +1064,10 @@ export const en = {
       wage: "Wage",
       reputation: "Reputation",
       uid: "ID",
-    } satisfies Record<PlayerColumnSort | "positions" | "born" | "uid", string>,
+      similarity: "Like",
+      development: "Dev",
+      progress: "Progress",
+    } satisfies Record<PlayerColumnSort | "similarity" | "development" | "progress" | "positions" | "born" | "uid", string>,
     /** Hover text of a column header that sorts the list; `by` is a name from `sortNames`. */
     sortBy: (by: string) => `Sort by ${by}`,
     /** The name of each sortable column, as the summary line and the hover text of a header say it. */
@@ -1072,7 +1082,10 @@ export const en = {
       value: "value",
       wage: "wage",
       reputation: "reputation",
-    } satisfies Record<PlayerColumnSort, string>,
+      similarity: "likeness",
+      development: "development",
+      progress: "progress",
+    } satisfies Record<PlayerColumnSort | "similarity" | "development" | "progress", string>,
     /** Choosing which columns the list shows, from More. */
     columnChooser: {
       button: "Columns",
@@ -1124,6 +1137,24 @@ export const en = {
       maxReputation: "Maximum reputation",
       /** The select of the trait a player must have. */
       trait: "Trait",
+      basedIn: "Based in",
+      minDevelopment: "Min development",
+      minDevelopmentTitle: "Least chance, in percent, of coming within 7 of his potential",
+      minProgress: "Min progress",
+      /** The entries of the progress select: `halfStars` from 1 to 10. */
+      stars: (halfStars: number) => `${"★".repeat(Math.floor(halfStars / 2))}${halfStars % 2 ? "½" : ""}`,
+      /** The heading of the bounds on attributes at a player's potential, and the chip of one. */
+      potentialAttributes: "Potential attributes",
+      potentialChip: (name: string, range: string) => `${name} at peak: ${range}`,
+      roles: {
+        heading: "Roles",
+        role: "Role",
+        pick: "Pick a role",
+        /** The least-rating input of a row, for assistive technology. */
+        min: (name: string) => (name ? `Min rating as ${name}` : "Min rating"),
+        add: "Add role",
+        remove: (name: string) => (name ? `Remove ${name}` : "Remove this row"),
+      },
       /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */
       chips: "Filters in effect",
       removeChip: (label: string) => `Remove ${label}`,
@@ -1162,6 +1193,118 @@ export const en = {
         full: (max: number) =>
           `You can save up to ${max} filters. Delete one, or reuse a name to replace it.`,
       },
+    },
+  },
+
+  /** FM Lens's scouting estimates: roles, likeness, development, top players and other careers. */
+  scout: {
+    roleGroups: { goalkeepers: "Goalkeepers", defenders: "Defenders", midfielders: "Midfielders", forwards: "Forwards" },
+    duties: { defend: "Defend", support: "Support", attack: "Attack" },
+    dutyShort: { defend: "D", support: "S", attack: "A" },
+    /** A role with its duty. */
+    roleLabel: (role: string, duty: string) => `${role} (${duty})`,
+    roles: {
+      goalkeeper: { name: "Goalkeeper", short: "GK" },
+      sweeper_keeper: { name: "Sweeper Keeper", short: "SK" },
+      central_defender: { name: "Central Defender", short: "CD" },
+      stopper: { name: "Stopper", short: "STP" },
+      covering_defender: { name: "Covering Defender", short: "CVD" },
+      ball_playing_defender: { name: "Ball-Playing Defender", short: "BPD" },
+      no_nonsense_defender: { name: "No-Nonsense Defender", short: "NND" },
+      full_back: { name: "Full-Back", short: "FB" },
+      wing_back: { name: "Wing-Back", short: "WB" },
+      inverted_wing_back: { name: "Inverted Wing-Back", short: "IWB" },
+      complete_wing_back: { name: "Complete Wing-Back", short: "CWB" },
+      defensive_midfielder: { name: "Defensive Midfielder", short: "DM" },
+      anchor: { name: "Anchor", short: "A" },
+      half_back: { name: "Half-Back", short: "HB" },
+      ball_winning_midfielder: { name: "Ball-Winning Midfielder", short: "BWM" },
+      deep_lying_playmaker: { name: "Deep-Lying Playmaker", short: "DLP" },
+      regista: { name: "Regista", short: "RGA" },
+      roaming_playmaker: { name: "Roaming Playmaker", short: "RPM" },
+      segundo_volante: { name: "Segundo Volante", short: "VOL" },
+      central_midfielder: { name: "Central Midfielder", short: "CM" },
+      box_to_box_midfielder: { name: "Box-to-Box Midfielder", short: "BBM" },
+      mezzala: { name: "Mezzala", short: "MEZ" },
+      carrilero: { name: "Carrilero", short: "CAR" },
+      advanced_playmaker: { name: "Advanced Playmaker", short: "AP" },
+      wide_midfielder: { name: "Wide Midfielder", short: "WM" },
+      defensive_winger: { name: "Defensive Winger", short: "DW" },
+      winger: { name: "Winger", short: "W" },
+      inverted_winger: { name: "Inverted Winger", short: "IW" },
+      inside_forward: { name: "Inside Forward", short: "IF" },
+      raumdeuter: { name: "Raumdeuter", short: "RMD" },
+      wide_target_forward: { name: "Wide Target Forward", short: "WTF" },
+      attacking_midfielder: { name: "Attacking Midfielder", short: "AM" },
+      enganche: { name: "Enganche", short: "ENG" },
+      shadow_striker: { name: "Shadow Striker", short: "SS" },
+      trequartista: { name: "Trequartista", short: "TQ" },
+      advanced_forward: { name: "Advanced Forward", short: "AF" },
+      poacher: { name: "Poacher", short: "P" },
+      target_forward: { name: "Target Forward", short: "TF" },
+      deep_lying_forward: { name: "Deep-Lying Forward", short: "DLF" },
+      false_nine: { name: "False Nine", short: "F9" },
+      complete_forward: { name: "Complete Forward", short: "CF" },
+      pressing_forward: { name: "Pressing Forward", short: "PF" },
+    },
+    /** Hover text of the score columns of the player list. */
+    columnTitles: {
+      similarity: "How like him, 0 to 100",
+      development: "Chance of coming within 7 of his potential",
+      progress: "Ability expected over the next two years",
+    },
+    /** Progress in stars, for assistive technology; `halfStars` from 0 to 10. */
+    starsLabel: (halfStars: number) => `${format(halfStars / 2)} of 5 stars`,
+    /** The bar over the player list while it is compared with a player. */
+    similar: {
+      like: (name: string) => `Like ${name}`,
+      today: "Today",
+      peak: "At peak",
+      /** For assistive technology: the group of the two buttons above. */
+      when: "Compared",
+      stop: "Stop comparing",
+    },
+    /** A player's Scout tab. */
+    report: {
+      development: "Development",
+      chance: "Reaches potential",
+      chanceTitle: "Chance his current ability comes within 7 of his potential during his career",
+      progress: "Progress",
+      gain: (points: number) => `+${format(points)} ability in two years`,
+      potential: "Potential ability",
+      roles: "Best roles",
+      role: "Role",
+      today: "Today",
+      peak: "Peak",
+      attributes: "Potential attributes",
+      findSimilar: "Find similar",
+      similarToday: "As he is today",
+      similarPeak: "At his peak",
+      careers: "Your other careers",
+      careersReading: "Reading your careers…",
+      noCareers: "Not seen in your other careers yet.",
+      career: (manager: string, club: string | null) => (club ? `${manager}, ${club}` : manager),
+      year: "Year",
+      age: "Age",
+      failed: (reason: string) => `Couldn't work out the report: ${reason}`,
+    },
+    /** The Top players list. */
+    top: {
+      nav: "Top players",
+      search: "Search the list",
+      kind: "List",
+      best: "Best",
+      promising: "Most promising",
+      game: "Game",
+      men: "Men",
+      women: "Women",
+      where: "Where",
+      world: "World",
+      continents: "Continents",
+      nations: "Countries",
+      rank: "#",
+      summary: (total: number) => `${format(total)} ${total === 1 ? "player" : "players"}`,
+      empty: (query: string) => (query === "" ? "No players here." : `No players match “${query}”.`),
     },
   },
 
@@ -1224,6 +1367,8 @@ export const en = {
 
   /** The club profile: what the player and staff panels do not have. */
   clubProfile: {
+    kits: "Kits",
+    kitNames: { home: "Home", away: "Away", third: "Third" },
     // Header
     womensClub: "Women's club",
     /** "Founded 1882", in the line under the name. */

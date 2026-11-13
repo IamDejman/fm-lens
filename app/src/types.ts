@@ -426,11 +426,71 @@ export interface Yours {
   score: number;
 }
 
+/** A row of a player list: the player and the scores the list asked for (see `search_players`). */
+export interface PlayerRow extends PlayerSummary {
+  /** How like the player the list is compared with he is, 0 to 100. */
+  similarity: number | null;
+  /** The chance, in percent, that he comes within 7 of his potential; null without his age or potential. */
+  development: number | null;
+  /** His progress rate in half stars, 0 to 10. */
+  progress: number | null;
+  /** His rating, 0 to 100, in each role the list shows, by role id. */
+  roles: Record<string, number>;
+  /** His place in a list of top players. */
+  rank: number | null;
+}
+
 export interface PlayerPage {
   total: number;
-  rows: PlayerSummary[];
+  rows: PlayerRow[];
   /** Only while the list is ranked and someone at your club fits. */
   yours?: Yours;
+}
+
+/** The player the list is compared with, as he is today or both at their peak. */
+export interface SimilarTo {
+  uid: number;
+  peak: boolean;
+}
+
+/** A role the list rates players in, and the least rating they must have in it. */
+export interface RoleBound {
+  role: string;
+  min?: number;
+}
+
+/** From `player_scout`: FM Lens's estimates for one player. */
+export interface ScoutReport {
+  /** His potential as the estimates take it: the middle of one of FM's ranges. */
+  potential: number | null;
+  /** His attributes at his potential (1 to 20), by key. */
+  peak: Record<string, number>;
+  development: { probability: number; gain: number; halfStars: number } | null;
+  /** The roles he suits best, today or at his peak. */
+  roles: { role: string; today: number; peak: number }[];
+  /** How he developed in the user's other careers; null while they are being read. */
+  careers: OtherCareer[] | null;
+}
+
+export interface OtherCareer {
+  manager: string;
+  club: string | null;
+  points: { year: number; age: number; currentAbility: number; potentialAbility: number }[];
+}
+
+export type TopKind = "best" | "promising";
+
+export interface TopScope {
+  women?: boolean;
+  continent?: string;
+  /** The UID of the country. */
+  nation?: number;
+}
+
+/** From `top_places_list`: where the players play. */
+export interface TopPlaces {
+  continents: string[];
+  nations: { uid: number; name: string; continent: string | null }[];
 }
 
 /** A club whose senior team plays at a stadium. */
@@ -661,6 +721,15 @@ export interface PlayerFilter {
   personality?: AttributeBound[];
   /** Trait bits (0 to 63): only players who have every one of them. */
   traits?: number[];
+  /** Bounds on his attributes at his potential, as FM Lens projects them. */
+  potentialAttributes?: AttributeBound[];
+  /** Roles the list rates players in; each with a least rating must hold. */
+  roles?: RoleBound[];
+  /** The least chance of development, in percent, and the least progress rate, in half stars. */
+  minDevelopment?: number;
+  minProgress?: number;
+  /** Part of the name of the country his club is in. */
+  basedIn?: string;
 }
 
 /** The player columns that sort the list, but for the attributes. */
@@ -676,8 +745,11 @@ export type PlayerColumnSort =
   | "wage"
   | "reputation";
 
-/** What the player list is sorted by: a column, or an attribute ("attribute.finishing"). */
-export type PlayerSort = PlayerColumnSort | `attribute.${string}`;
+/**
+ * What the player list is sorted by: a column, a score ("development", "progress"), an attribute ("attribute.finishing")
+ * or a role ("role.anchor.defend").
+ */
+export type PlayerSort = PlayerColumnSort | "development" | "progress" | `attribute.${string}` | `role.${string}`;
 
 /** Sort order for `search_players`; without one, results are by current ability, highest first. */
 export interface PlayerOrder {
@@ -1448,6 +1520,7 @@ export interface GraphicsCounts {
   faces: number;
   flags: number;
   competitionLogos: number;
+  kits: number;
 }
 
 /** From `graphics_info`: the user's graphics packs, read once in the background when the app starts. */

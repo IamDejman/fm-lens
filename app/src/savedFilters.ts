@@ -5,7 +5,15 @@
 import { useState } from "react";
 import { PLAYER_ATTRIBUTES, readAttributeRows } from "./AttributeFilters";
 import { intlLocale } from "./i18n";
-import { NO_PLAYER_FILTERS, POSITION_ORDER, TRAIT_CHOICES, type PlayerFilterFields } from "./PlayerFilters";
+import {
+  NO_PLAYER_FILTERS,
+  POSITION_ORDER,
+  POTENTIAL_ATTRIBUTES,
+  TRAIT_CHOICES,
+  type PlayerFilterFields,
+} from "./PlayerFilters";
+import { readRoleRows } from "./RoleFilters";
+import { ROLE_IDS } from "./scoutRoles";
 import { isRecord } from "./restore";
 import { readListOrder } from "./SortHeader";
 import type { ListOrder, PlayerColumnSort, PlayerOrder, PlayerSort } from "./types";
@@ -61,10 +69,16 @@ const SORTED_ATTRIBUTES = PLAYER_ATTRIBUTES.groups
   .flatMap((group) => group.keys)
   .filter((key) => !key.includes("."));
 
-/** The sorts, for a sort that is read back (see `readListOrder`): the columns, then each attribute. */
+/** The sorts, for a sort that is read back (see `readListOrder`): the columns, the scores, each attribute and role. */
+/** A sort by a player's rating in a role: "role.anchor.defend". */
+export const ROLE_SORT = "role.";
+
 export const PLAYER_SORTS: readonly PlayerSort[] = [
   ...(Object.keys(SORTS) as PlayerColumnSort[]),
+  "development",
+  "progress",
   ...SORTED_ATTRIBUTES.map((key): PlayerSort => `${ATTRIBUTE_SORT}${key}`),
+  ...[...ROLE_IDS].map((id): PlayerSort => `${ROLE_SORT}${id}`),
 ];
 
 /** The positions in a stored value, in the filter's order; one saved before the filter took several is one position. */
@@ -133,6 +147,11 @@ export function readFields(value: unknown): PlayerFilterFields {
     loanListed: typeof given.loanListed === "boolean" ? given.loanListed : none.loanListed,
     trait: textOr(given.trait, none.trait, (text) => text === "" || TRAIT_CHOICES.includes(Number(text))),
     attributes: readAttributeRows(given.attributes, PLAYER_ATTRIBUTES),
+    basedIn: textOr(given.basedIn, none.basedIn),
+    minDevelopment: textOr(given.minDevelopment, none.minDevelopment, isNumberText),
+    minProgress: textOr(given.minProgress, none.minProgress, (text) => text === "" || /^(10|[1-9])$/.test(text)),
+    potentialAttributes: readAttributeRows(given.potentialAttributes, POTENTIAL_ATTRIBUTES),
+    roles: readRoleRows(given.roles),
   };
 }
 

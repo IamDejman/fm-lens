@@ -527,6 +527,7 @@ dd,
    are the language, theme and zoom of Settings. */
 .move-mode,
 .squad-teams,
+.segmented,
 .settings-switch {
   display: inline-flex;
   align-self: flex-start;
@@ -537,6 +538,7 @@ dd,
 
 .move-mode button,
 .squad-teams button,
+.segmented button,
 .settings-switch button {
   min-width: 40px;
   min-height: 26px;
@@ -552,12 +554,14 @@ dd,
 
 .move-mode button + button,
 .squad-teams button + button,
+.segmented button + button,
 .settings-switch button + button {
   border-left: 1px solid var(--border-strong);
 }
 
 .move-mode button:hover:not(:disabled, [aria-pressed="true"]),
 .squad-teams button:hover:not(:disabled, [aria-pressed="true"]),
+.segmented button:hover:not(:disabled, [aria-pressed="true"]),
 .settings-switch button:hover:not(:disabled, [aria-pressed="true"]) {
   background: var(--hover);
   color: var(--text);
@@ -565,6 +569,7 @@ dd,
 
 .move-mode button[aria-pressed="true"],
 .squad-teams button[aria-pressed="true"],
+.segmented button[aria-pressed="true"],
 .settings-switch button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--on-accent);
@@ -572,6 +577,7 @@ dd,
 
 .move-mode button:focus-visible,
 .squad-teams button:focus-visible,
+.segmented button:focus-visible,
 .settings-switch button:focus-visible {
   outline-offset: -2px;
 }
@@ -5895,4 +5901,148 @@ button.danger:hover:not(:disabled) {
 
 .best-fits .stat dd {
   font-weight: 700;
+}
+
+/* FM Lens's scouting estimates: the score columns of the player lists, the bar of a comparison, the lists of top
+   players and the Scout tab of a profile. */
+.stars {
+  position: relative;
+  display: inline-block;
+  color: var(--border-strong);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.stars::before {
+  content: "★★★★★";
+}
+
+.stars-on {
+  position: absolute;
+  inset: 0;
+  width: var(--stars);
+  overflow: hidden;
+  color: var(--accent);
+}
+
+.stars-on::before {
+  content: "★★★★★";
+}
+
+.player-grid :is(.col-like, .col-dev, .col-role, .col-rank) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.player-grid .col-progress {
+  width: 1%;
+}
+
+.player-grid td.col-like {
+  font-weight: 750;
+}
+
+.player-grid td.col-rank {
+  color: var(--muted);
+}
+
+/* The scores go before Born and the ID, and beside an open profile only likeness stays. */
+.table-wrap:is([data-list-width="compact"], [data-list-width="narrow"], [data-list-width="small"]) .player-grid :is(.col-dev, .col-progress, .col-role) {
+  display: none;
+}
+
+.with-profile .player-grid :is(.col-dev, .col-progress, .col-role) {
+  display: none;
+}
+
+.similar-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: var(--type-base);
+}
+
+/* The choices of the lists of top players, laid out as the filters of the player list. */
+.top-bar {
+  margin-bottom: var(--space-3);
+}
+
+.similar-name {
+  font-weight: 750;
+}
+
+.scout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--type-base);
+}
+
+.scout-actions span {
+  color: var(--muted);
+}
+
+.scout-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-base);
+}
+
+.scout-table :is(th, td) {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.scout-table th {
+  color: var(--muted);
+  font-size: var(--type-sm);
+  font-weight: 650;
+}
+
+.scout-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.scout-career + .scout-career {
+  margin-top: var(--space-4);
+}
+
+.scout-career h4 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--type-base);
+}
+
+.scout-gain {
+  margin-left: var(--space-1);
+  color: var(--ok);
+  font-size: var(--type-xs);
+  font-weight: 650;
+}
+
+/* A club's kits from the user's kit packs. */
+.club-kits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.club-kits li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  color: var(--muted);
+  font-size: var(--type-sm);
+}
+
+.club-kits .picture img {
+  object-fit: contain;
 }

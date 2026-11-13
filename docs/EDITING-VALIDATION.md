@@ -3443,3 +3443,44 @@ joined date after the signed date, or with either date changed for a player on
 loan. The preview's first test found that its sample data did not report
 values for the two fields; the real app reads every field's value the same
 way, so that fix is to the sample data only.
+
+## Scouting and kits (13 November 2026)
+
+Added FM Lens's own scouting estimates (docs/SCOUTING.md): Find similar, potential
+attributes, role ratings, chance of development, progress rate, top players by
+world, continent or country, and records of the user's other careers; and club
+kits from kit packs. All of it only reads the lists FM Lens already holds, plus
+two new list fields: each player's personality and the country his club is in
+(`club.plays_in`/`club.nation`, the lookup the language marks already used). No
+game memory is written, so the editing guards are unchanged.
+
+Checks that ran, in a Linux container without FM:
+
+- `cargo test -p fmlens-scout`: 17 tests, including one that the app's role list
+  (app/src/scoutRoles.ts) matches the catalogue.
+- `cargo test -p fmlens-core` built for `x86_64-pc-windows-gnu` and run under
+  Wine: 105 tests, including the new scouting, filter, sort and kit tests.
+- `cargo clippy -D warnings` for fmlens-core, fmlens-probe and fmlens-scout on
+  `aarch64-apple-darwin` and `x86_64-pc-windows-msvc`, and for fmlens-app on
+  `x86_64-pc-windows-gnu`. The app's own tests (the career record file) did not
+  link with MinGW and are left to CI.
+- `npm test` (66 tests, 4 new, before the rebase) and `npm run build`.
+- The browser preview with sample data, at 1440 and 1000 pixels wide, light and
+  dark: role columns, the filters, the Scout tab, a comparison and Top players.
+  The preview uses stand-in numbers, not the models.
+- CI (validate.yml run 455) passed on both jobs before the branch was rebased
+  onto the 0.7.10 main (macOS: format, Clippy, workspace tests, bridge build;
+  Windows: Clippy, workspace tests, installer build). After the rebase, which
+  joined the role columns to main's column chooser and sort names and the
+  comparison to its Best for ranking, the local checks above ran again: 125
+  core tests under Wine, 17 scouting tests, 120 frontend tests, Clippy for both
+  targets and the preview screens. The pull request's own checks follow.
+
+Not checked: any of it against a live career, on macOS or Windows; how long the
+scores take on a 30,000-player save; the record files' size over long careers;
+a real kit pack. Next, on a copied career: connect, open Saka's Scout tab and
+compare his potential attributes and roles with FM's screens, run Find similar
+both ways, sort the list by a role and by progress with no filter (the slowest
+case), open Top players for England and Europe, reload after a game month and
+confirm one record file in the data folder's `history/`, then load a second
+career and confirm Saka's other-career row.

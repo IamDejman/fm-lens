@@ -1,7 +1,8 @@
-//! Pictures from the graphics packs the user installed for the game: club logos, faces
-//! and flags. A pack's folders hold `config.xml` files that map each picture file to
+//! Pictures from the graphics packs the user installed for the game: club logos and kits,
+//! faces and flags. A pack's folders hold `config.xml` files that map each picture file to
 //! what it shows, e.g. `<record from="TCM1_728" to="graphics/pictures/club/728/logo"/>`
-//! puts `TCM1_728.png` of that folder on the club with UID 728.
+//! puts `TCM1_728.png` of that folder on the club with UID 728, and a kit pack's
+//! `to="graphics/pictures/club/728/kits/home"` its home kit.
 
 use std::collections::HashMap;
 use std::fs;
@@ -21,6 +22,10 @@ pub enum Picture {
     Flag,
     /// A competition's logo, by competition UID.
     CompetitionLogo,
+    /// A club's home, away and third kits, by club UID.
+    HomeKit,
+    AwayKit,
+    ThirdKit,
 }
 
 impl Picture {
@@ -33,6 +38,12 @@ impl Picture {
         let (kind, id, what) = (parts.next()?, parts.next()?.parse().ok()?, parts.next()?);
         let picture = match (kind, what) {
             ("club", "logo") => Picture::ClubLogo,
+            ("club", "kits" | "kit") => match parts.next()? {
+                "home" => Picture::HomeKit,
+                "away" => Picture::AwayKit,
+                "third" => Picture::ThirdKit,
+                _ => return None,
+            },
             ("person", "portrait") => Picture::Face,
             ("nation", "flag") => Picture::Flag,
             ("comp", "logo") => Picture::CompetitionLogo,
@@ -57,6 +68,7 @@ pub struct GraphicsCounts {
     pub faces: usize,
     pub flags: usize,
     pub competition_logos: usize,
+    pub kits: usize,
 }
 
 /// The extensions picture files come with, in the order they are tried.
@@ -133,6 +145,7 @@ impl GraphicsIndex {
                 Picture::Face => counts.faces += 1,
                 Picture::Flag => counts.flags += 1,
                 Picture::CompetitionLogo => counts.competition_logos += 1,
+                Picture::HomeKit | Picture::AwayKit | Picture::ThirdKit => counts.kits += 1,
             }
         }
         counts
@@ -167,6 +180,9 @@ mod tests {
             <record from="europe/tur" to="graphics/pictures/nation/765/flag"/>
             <record from="missing" to="graphics/pictures/club/1/logo"/>
             <record from="team" to="graphics/pictures/team/43457016/logo"/>
+            <record from="728_home" to="graphics/pictures/club/728/kits/home"/>
+            <record from="728_third" to="graphics/pictures/club/728/kit/third"/>
+            <record from="728_keeper" to="graphics/pictures/club/728/kits/goalkeeper"/>
         </list>
     </record>"#;
 
@@ -174,7 +190,11 @@ mod tests {
     fn reads_records() {
         let found: Vec<(&str, &str)> = records(CONFIG).collect();
         assert_eq!(found[0], ("TCM1_728", "graphics/pictures/club/728/logo"));
-        assert_eq!(found.len(), 5);
+        assert_eq!(found.len(), 8);
+        assert_eq!(Picture::from_target("graphics/pictures/club/728/kits/home"), Some((Picture::HomeKit, 728)));
+        assert_eq!(Picture::from_target("graphics/pictures/club/728/kit/away"), Some((Picture::AwayKit, 728)));
+        assert_eq!(Picture::from_target("graphics/pictures/club/728/kits"), None);
+        assert_eq!(Picture::from_target("graphics/pictures/club/728/kits/goalkeeper"), None);
         assert_eq!(Picture::from_target("graphics/pictures/club/728/logo"), Some((Picture::ClubLogo, 728)));
         assert_eq!(Picture::from_target("graphics/pictures/person/7458500/portrait"), Some((Picture::Face, 7458500)));
         assert_eq!(Picture::from_target("graphics/pictures/team/43457016/logo"), None);
@@ -188,7 +208,7 @@ mod tests {
         fs::create_dir_all(&pack).expect("temp folder");
         fs::write(pack.join("config.xml"), CONFIG).expect("config");
         fs::create_dir_all(pack.join("europe")).expect("subfolder");
-        for file in ["TCM1_728.png", "face_7458500.jpg", "europe/tur.png"] {
+        for file in ["TCM1_728.png", "face_7458500.jpg", "europe/tur.png", "728_home.png", "728_third.png"] {
             fs::write(pack.join(file), b"picture").expect("picture");
         }
         let index = GraphicsIndex::scan(&root);
@@ -200,8 +220,11 @@ mod tests {
             "a file in a subfolder"
         );
         assert_eq!(index.file(Picture::ClubLogo, 1), None, "its file is missing");
+        assert_eq!(index.file(Picture::HomeKit, 728), Some(pack.join("728_home.png").as_path()));
+        assert_eq!(index.file(Picture::ThirdKit, 728), Some(pack.join("728_third.png").as_path()));
+        assert_eq!(index.file(Picture::AwayKit, 728), None);
         let counts = index.counts();
-        assert_eq!((counts.club_logos, counts.faces, counts.flags), (1, 1, 1));
+        assert_eq!((counts.club_logos, counts.faces, counts.flags, counts.kits), (1, 1, 1, 2));
         fs::remove_dir_all(&root).expect("clean up");
         assert_eq!(GraphicsIndex::scan(&root).counts().club_logos, 0, "no folder, no pictures");
     }

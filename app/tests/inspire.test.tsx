@@ -19,7 +19,7 @@ const player = (morale: number, concerns: Concern[] | null): Pick<PlayerDetails,
 });
 function View({ details, editable = true }: { details: ReturnType<typeof player>; editable?: boolean }) {
   return <EditorContext.Provider value={{ editable, readOnlyNote: 'Read only', onEdited: edited,
-    gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}>
+    gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}>
     <MoraleGroup details={details} />
   </EditorContext.Provider>;
 }

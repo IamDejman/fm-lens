@@ -27,12 +27,13 @@ import {
   nationListText,
   officialListText,
   playerListText,
+  scoutText,
   stadiumListText,
   staffListText,
   supportText,
   updateText,
 } from "./labels";
-import { PlayerBrowser } from "./PlayerBrowser";
+import { PlayerBrowser, type SimilarRequest } from "./PlayerBrowser";
 import { heldFor, restored, useSnapshot } from "./restore";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
@@ -52,6 +53,7 @@ const CompetitionBrowser = lazy(() => import("./CompetitionBrowser").then((modul
 const AwardBrowser = lazy(() => import("./AwardBrowser").then((module) => ({ default: module.AwardBrowser })));
 const StadiumBrowser = lazy(() => import("./StadiumBrowser").then((module) => ({ default: module.StadiumBrowser })));
 const OfficialBrowser = lazy(() => import("./OfficialBrowser").then((module) => ({ default: module.OfficialBrowser })));
+const TopPlayersBrowser = lazy(() => import("./TopPlayersBrowser").then((module) => ({ default: module.TopPlayersBrowser })));
 
 type View =
   | "players"
@@ -62,7 +64,8 @@ type View =
   | "awards"
   | "stadiums"
   | "officials"
-  | "changes";
+  | "changes"
+  | "top";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
@@ -74,10 +77,12 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "stadiums", label: stadiumListText.nav },
   { id: "officials", label: officialListText.nav },
   { id: "changes", label: changesText.nav },
+  // Last, so that the sections before it keep their shortcuts; it has none.
+  { id: "top", label: scoutText.top.nav },
 ];
 
 /** The views of the masthead's Lists menu; the rest are tabs of their own. */
-const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials"]);
+const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials", "top"]);
 
 /** How often the app looks at the game: FM may have closed, moved its lists or moved on a day. */
 const CHECK_EVERY_MS = 5000;
@@ -424,6 +429,16 @@ function App() {
       }),
     [],
   );
+  // A player to compare the player list with, asked for from a profile.
+  const [similarRequest, setSimilarRequest] = useState<SimilarRequest | null>(null);
+  const findSimilar = useCallback(
+    (player: { uid: number; name: string }, peak: boolean) =>
+      askToLeave(() => {
+        setView("players");
+        setSimilarRequest({ ...player, peak });
+      }),
+    [],
+  );
   // A member of staff asked for from elsewhere: a row of a club's staff, or your manager from the top bar.
   const [revealStaff, setRevealStaff] = useState<Reveal | null>(null);
   const openStaff = useCallback(
@@ -444,8 +459,9 @@ function App() {
       gameDate,
       openPlayer,
       openStaff,
+      findSimilar,
     }),
-    [editable, note, edited, gameActions, loadInjuryKinds, gameDate, openPlayer, openStaff],
+    [editable, note, edited, gameActions, loadInjuryKinds, gameDate, openPlayer, openStaff, findSimilar],
   );
 
   // With edits pending in the open profile, leaving for another view asks first.
@@ -537,7 +553,7 @@ function App() {
                               type="button"
                               role="menuitemradio"
                               aria-checked={list.id === view}
-                              aria-keyshortcuts={shortcutAria(String(at + 1))}
+                              aria-keyshortcuts={at < SECTION_SHORTCUTS.length ? shortcutAria(String(at + 1)) : undefined}
                               tabIndex={-1}
                               onClick={() => {
                                 close();
@@ -545,7 +561,7 @@ function App() {
                               }}
                             >
                               {list.label}
-                              <kbd>{shortcutLabel(String(at + 1))}</kbd>
+                              {at < SECTION_SHORTCUTS.length && <kbd>{shortcutLabel(String(at + 1))}</kbd>}
                             </button>
                           ),
                       )
@@ -641,7 +657,12 @@ function App() {
           <EditorContext.Provider value={editor}>
             <StandingFieldsContext.Provider value={standingByProfile}>
             <div className="views">
-              <PlayerBrowser version={dataVersion} active={view === "players"} reveal={revealPlayer} />
+              <PlayerBrowser
+                version={dataVersion}
+                active={view === "players"}
+                reveal={revealPlayer}
+                similar={similarRequest}
+              />
               <DeferredView active={view === "staff"} label={staffListText.nav}>
                 <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
               </DeferredView>
@@ -662,6 +683,9 @@ function App() {
               </DeferredView>
               <DeferredView active={view === "officials"} label={officialListText.nav}>
                 <OfficialBrowser version={dataVersion} active={view === "officials"} />
+              </DeferredView>
+              <DeferredView active={view === "top"} label={scoutText.top.nav}>
+                <TopPlayersBrowser version={dataVersion} active={view === "top"} />
               </DeferredView>
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
