@@ -52,10 +52,10 @@ export function ScoutTab({ details, version }: { details: PlayerDetails; version
         </dl>
         <div className="scout-actions" role="group" aria-label={text.findSimilar}>
           <span>{text.findSimilar}</span>
-          <button type="button" onClick={() => findSimilar(player, false)}>
+          <button type="button" onClick={() => findSimilar?.(player, false)}>
             {text.similarToday}
           </button>
-          <button type="button" onClick={() => findSimilar(player, true)}>
+          <button type="button" onClick={() => findSimilar?.(player, true)}>
             {text.similarPeak}
           </button>
         </div>

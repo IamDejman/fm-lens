@@ -39,8 +39,8 @@ export interface EditorState {
   openPlayer: (uid: number) => void;
   /** Shows the member of staff with this UID in the staff list, their profile open (a row of a club's staff does this). */
   openStaff: (uid: number) => void;
-  /** Shows the player list compared with this player, as he is today or both at their peak. */
-  findSimilar: (player: { uid: number; name: string }, peak: boolean) => void;
+  /** Shows the player list compared with this player, as he is today or both at their peak; the app always has it. */
+  findSimilar?: (player: { uid: number; name: string }, peak: boolean) => void;
 }
 
 export const NO_GAME_ACTIONS: GameActions = {
