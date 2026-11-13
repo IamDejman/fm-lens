@@ -3718,7 +3718,7 @@ unchanged since the save), with build 8:
 | Ogunnaike | DL 5, DC 4, AMC 18, AMR 20 | "AM (RC)": AMR natural, AMC green, DL and DC low |
 | Ranson | GK 3, ST 6 | Only GK and ST lit, "No suitable roles" |
 | Saka's wage | 260000 | $18.22M p/a, expires 30 June 2031 |
-| Stuivenberg's contract | Signed 1 July 2025, joined 1 January 2020, expires 30 June 2032 | Start Date 7/1/2025, Expiry 6/30/2032; the joined date checked in the probe only |
+| Stuivenberg's contract | Signed 1 July 2025, joined 1 January 2020, expires 30 June 2032 | Start Date 7/1/2025, Expiry 6/30/2032; FM has no screen for a staff member's joined date, so it was checked in the probe, and the undo was exact |
 
 The freeze banner of a career ("Freezes from last time are back on") stays on
 screen after another career is loaded, until it is dismissed. Nothing was

@@ -211,6 +211,20 @@ others show "optional" in FM, and no flag difference stands out); the preferred 
 `+0x9C`. The macOS layout of these fields is not checked. Nothing here is written by FM Lens; showing them read-only
 would be the next step, and editing the fee or flags needs a save, quit and reload check first.
 
+Three more loans, same build, on a career copy at 10 December 2027 (735 loans), compared with FM's Loan Club tab.
+All match:
+
+| Loan | Bytes `+0xB0`, `+0xB1`, `+0xB4` | FM's Loan Club tab | Future fee `+0xC0` |
+| --- | --- | --- | --- |
+| Fábio Vieira (Hamburger SV to Wolfsburg) | `03 10 00` | Can play against own team, can play in cup matches, cannot be terminated; no recall | 12,818,652 = Mandatory Future Fee $17.25M |
+| Arthur Chaves | `03 01 20` | Can play against own team, can play in cup matches, cannot play against the parent club in cup matches; a preferred position | 5,154,191 = $7M, due after 15 matches |
+| Ollie Wright | `0E 00 00` | Can be recalled, can play in cup matches | -1, none |
+
+The cup bit is set in all 735 loans, so no negative is seen yet. Wright's `+0xB0` bit `0x08` has no line on FM's
+tab. Vieira's monthly fee `+0xCC` 249,211 shows as $325K (ratio 1.304) and Chaves's 80,534 as $110K (1.366), not
+the 1.346 the future fees follow, so how FM converts the monthly fee is not settled. Still open: where the "15
+matches" condition is kept, and what makes a fee mandatory or conditional.
+
 ## 4. Payroll
 
 Status: partial.
