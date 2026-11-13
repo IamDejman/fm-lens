@@ -1,4 +1,5 @@
 mod bridge;
+mod scout_card;
 mod scouting;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -5482,6 +5483,7 @@ pub fn run() {
         .manage(AppState::default())
         .manage(Graphics::default())
         .manage(GamePictures::default())
+        .manage(scout_card::ScoutCard::default())
         .setup(|app| {
             // Reading the packs' config files takes a moment: do it beside the window. FM keeps its user data
             // in the documents folder on Windows and in Application Support on macOS, or somewhere else, which
@@ -5504,6 +5506,7 @@ pub fn run() {
             // Stage the bundled helper for FM's next normal launch. A running game keeps
             // serving through its existing helper; compatibility is discovered on connection.
             bridge::refresh(app.handle());
+            scout_card::start(app.handle());
             // Frozen money and attributes: every little while, what the game took from them is put back. Once FM has
             // moved its lists, which stops every write, the game is read again, frozen or not.
             let handle = app.handle().clone();
@@ -5650,8 +5653,17 @@ pub fn run() {
             system_version,
             bridge::bridge_status,
             bridge::set_up_bridge,
-            bridge::remove_bridge
+            bridge::remove_bridge,
+            scout_card::set_scout_card,
+            scout_card::scout_card_shown,
+            scout_card::scout_card_ready
         ])
+        // The scout card's window would keep the app running once the main window has closed.
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
+                scout_card::close(window.app_handle());
+            }
+        })
         .run(context())
         .expect("error while running tauri application");
 }

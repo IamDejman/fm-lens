@@ -1,7 +1,7 @@
 // Settings: the gear at the right of the masthead, or ⌘, (Ctrl+, off a Mac), opens a window of them in four parts.
-// General holds the language, each with its flag and its own name, and the currency money is shown in; Appearance the
-// theme and the zoom; Privacy the switch for anonymous usage; About the app's version, the game's build and a link to
-// star FM Lens on GitHub. Theme, zoom and usage apply at once. Another language or currency reloads the window (see
+// General holds the language, each with its flag and its own name, the currency money is shown in and, on Windows, the
+// switch for the in-game scout card; Appearance the theme and the zoom; Privacy the switch for anonymous usage; About
+// the app's version, the game's build and a link to star FM Lens on GitHub. Theme, zoom and the switches apply at once. Another language or currency reloads the window (see
 // `setLocale` and `setCurrency`), which the app survives connected, and the window comes back with Settings open (see
 // restore.ts).
 
@@ -14,6 +14,7 @@ import { locale, setLocale, type Locale } from "./i18n";
 import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
 import { appText, starText, supportText, updateText } from "./labels";
 import { restored, useSnapshot } from "./restore";
+import { scoutCardAvailable, scoutCardOn, setScoutCardOn } from "./scoutCardSetting";
 import { openRepository } from "./StarNotice";
 import { useModal } from "./useModal";
 import { askToLeave } from "./useProfileEditing";
@@ -180,6 +181,7 @@ function SettingsDialog({ busy, details, onCheckForUpdates, onSupport, onReload,
   const [theme, updateTheme] = useState(appearance);
   const [scale, updateScale] = useState(zoom);
   const [sharing, updateSharing] = useState(usageOn);
+  const [scoutCard, updateScoutCard] = useState(scoutCardOn);
 
   useModal(dialog, true, onClose);
 
@@ -250,6 +252,19 @@ function SettingsDialog({ busy, details, onCheckForUpdates, onSupport, onReload,
                 ))}
               </select>
             </div>
+            {scoutCardAvailable && (
+              <label className="settings-usage">
+                <input
+                  type="checkbox"
+                  checked={scoutCard}
+                  onChange={(event) => {
+                    setScoutCardOn(event.target.checked);
+                    updateScoutCard(event.target.checked);
+                  }}
+                />
+                {appText.scoutCardLabel}
+              </label>
+            )}
           </section>
 
           <section className="settings-section" aria-labelledby={`${id}-appearance`}>

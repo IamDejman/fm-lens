@@ -1733,6 +1733,8 @@ export const en = {
     zoomLabel: "Zoom",
     /** A switch: anonymous counts of launches and edits, sent to PostHog (see `usage.ts`). */
     usageLabel: "Share anonymous usage",
+    /** A switch (Windows): FM Lens's card over the game while FM shows a player's card (see ScoutCard.tsx). */
+    scoutCardLabel: "In-game scout card",
     appearance: "Appearance",
     themes: { system: "System", light: "Light", dark: "Dark" },
     /** Shown once, until it is skipped or finished. It introduces browsing, settings and the editing boundary. */

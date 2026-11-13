@@ -1643,6 +1643,7 @@ export const tr: Strings = {
     done: "Tamam",
     zoomLabel: "Yakınlaştırma",
     usageLabel: "Anonim kullanım verisi paylaş",
+    scoutCardLabel: "Oyun içi gözlemci kartı",
     appearance: "Görünüm",
     themes: { system: "Sistem", light: "Açık", dark: "Koyu" },
     tour: {

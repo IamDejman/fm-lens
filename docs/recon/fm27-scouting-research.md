@@ -77,9 +77,31 @@ Finding the class takes one scan of FM's memory: the class whose name is
 +0x80, static fields +0xb8). A test reader in C# took 10 to 20 seconds; it is
 done once per game start.
 
-Not yet checked: other screens (search, shortlist, scouting), staff cards,
-macOS (Apple Silicon and Intel), and a full card session. With this path the
-card can now be built: the steps above, with item 1 read from this path.
+The card is built on this path for Windows (`app/src-tauri/src/scout_card.rs`).
+It finds the class once per game start, then every 120 ms reads `m_target`,
+walks the tree to the player card and reads the UID. FM keeps the same root and
+target when the pointer moves straight from one player's (i) to another's, so a
+remembered path is used again only while each element still lists the next as
+a child; otherwise the tree is searched again.
+
+Checked on Windows on 13 November, FM27 Steam build 26577676, on a career copy
+at 10 December 2027, with a release build of the branch:
+
+- The card showed the hovered player, and the next one when the pointer moved
+  straight between players, on the squad, player profile and scout report
+  screens; nothing stale over an attribute's tooltip.
+- Shift showed the peak view; letting go went back.
+- A click on the card's place went to FM (the window under the point was FM's,
+  and FM stayed in front); the card window never took focus.
+- It went when the pointer left, when another window came to the front and at
+  FM's main menu, and followed FM to another save and back.
+- The Settings switch hid it and brought it back.
+- FM full screen (1024 x 768, borderless) and in a window.
+- Faces, club logos and flags from the game's install; initials for a player
+  with no face.
+
+Not checked: staff cards (the card shows players only), macOS (Apple Silicon
+and Intel) and Game Pass.
 
 ## Top players by division
 
