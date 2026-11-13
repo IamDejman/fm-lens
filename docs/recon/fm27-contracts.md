@@ -266,8 +266,74 @@ Every line matches:
 | `+0xB1` bit `0x80` | Can play against the parent club's B team | Sorba Thomas (`0x90`) and Pondeca (`0x80`) show the line; Kharebashvili and Maddison (`0x10`) do not; 191 loans, mostly at Spanish clubs |
 
 `+0xB1` bit `0x01` does not follow the preferred position: 75 loans have the bit with no position, 89 a position
-without it (Pondeca shows GK with the bit clear). Positions seen: 2 AM (R), 4 AM (C), 6 AM (L), 9 ST (C), 49 GK; the
-rest of the table and the role numbers are not mapped beyond these.
+without it (Pondeca shows GK with the bit clear). It has no line on FM's Loan Club tab either: Helafu, Webb, Moussongo
+Bahel, Ndiaye, Sebine, Thomas-Smith, Maddox, Sweet and Scheller (bit set) show the same lines as Kabashi, Anderson and
+Diouf (bit clear), each line explained by the other flags. Its meaning is open.
+
+Position and role in `+0xA0`, every value in the census, each read from FM's Loan Club tab on the same copy (value =
+role * 64 + position):
+
+| Position | FM | Example |
+| --- | --- | --- |
+| 48 | none (no line) | Musaba |
+| 49 | GK | Pondeca, Slicker, Krumrey |
+| 51 | D (R) | Helafu, Webb |
+| 53 | D (C) | Anderson, Jonyla, Ndiaye, Sweet |
+| 55 | D (L) | Diouf, Shimbo |
+| 56 | WB (R) | Fontàs |
+| 58 | DM | Sainsbury, Hoarau, Moussongo Bahel, Maurić |
+| 60 | WB (L) | Sosa |
+| 63 | M (C) | Goudmijn, Joseph Jones, Maddox |
+| 1 | M (L) | Charlie Smith, Kalum Thompson |
+| 2 | AM (R) | Hebert, Edwards, Kabashi |
+| 4 | AM (C) | Kameri, Proctor, Key |
+| 6 | AM (L) | Monga |
+| 9 | ST (C) | Bradbury, Fearn, Sebine, Francis-Caesar, Thomas-Smith |
+
+12 is seen once (Berzal, whose terms need scouting). M (R) is not seen in the census.
+
+| Role | FM | Example |
+| --- | --- | --- |
+| 50 | none (no line) | Madjo, Fontàs |
+| 97 | Goalkeeper | Pondeca |
+| 15 | No-Nonsense Goalkeeper | Slicker |
+| 108 | Ball-Playing Goalkeeper | Krumrey |
+| 98 | Centre-Back | Jonyla |
+| 117 | Ball-Playing Centre-Back | Ndiaye |
+| 120 | No-Nonsense Centre-Back | Anderson |
+| 110 | Advanced Centre-Back | Sweet |
+| 13 | Wide Centre-Back | Toko |
+| 16 | Overlapping Centre-Back | Scheller |
+| 99 | Full-Back | Shimbo |
+| 14 | Inside Full-Back | Diouf |
+| 100 | Wing-Back | Helafu |
+| 0 | Advanced Wing-Back | Sosa |
+| 6 | Inside Wing-Back | Webb |
+| 101 | Defensive Midfielder | Moussongo Bahel |
+| 125 | Half Back | Maurić |
+| 111 | Deep-Lying Playmaker | Sainsbury |
+| 102 | Central Midfielder | Joseph Jones |
+| 112 | Box-To-Box Midfielder | Hoarau |
+| 18 | Channel Midfielder | Kameri |
+| 113 | Advanced Playmaker | Proctor, Goudmijn |
+| 105 | Attacking Midfielder | Maddox |
+| 103 | Wide Midfielder | Kalum Thompson |
+| 104 | Winger | Hebert, Monga |
+| 10 | Inside Winger | Charlie Smith |
+| 118 | Inside Forward | Kabashi |
+| 7 | Wide Forward | Edwards |
+| 3 | Second Striker | Key |
+| 106 | Deep-Lying Forward | Francis-Caesar |
+| 107 | Centre Forward | Sebine |
+| 114 | Target Forward | Bradbury |
+| 115 | Poacher | Thomas-Smith |
+| 122 | Channel Forward | Fearn |
+
+Role 11 is seen in 4 loans but not read: the one single-record loan (McGrath) had ended by this date. The flags on
+these tabs agree with the table in 3.1: Diouf and Fontàs (`+0xB0` bit `0x04` clear) show no recall line; Scheller
+(`+0xB0` bit `0x01`) can play against his own team; Maurić, Shimbo and Krumrey (`+0xB1` bit `0x10`) cannot be
+terminated; Fontàs (`+0xB1` `0x81`) can play against the parent club's B team; Maddox (`+0xB0` `0x0E`) shows no line
+for bit `0x08`.
 
 ## 4. Payroll
 
@@ -309,8 +375,8 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 
 - Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
 - LOAN_CONTRACT term fields: fees, fee condition, its kind and European competition, matches played, the preferred
-  position and role, and six flags mapped on Windows (3.1); the full position and role tables, `+0xB1` bit `0x01` and
-  the remaining words are open. `+0xB0` bit `0x08` has no line on FM's Loan Club tab (Musaba, Wright and Monga
+  position and role (every value in the census but position 12 and role 11), and six flags mapped on Windows (3.1);
+  `+0xB1` bit `0x01` (no line on FM's tab) and the remaining words are open. `+0xB0` bit `0x08` has no line on FM's Loan Club tab (Musaba, Wright and Monga
   compared).
 - FM's add-clause routine is found statically on macOS (1.1) but never called; Windows not looked for.
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
