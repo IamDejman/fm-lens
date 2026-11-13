@@ -12,7 +12,7 @@ Conventions: TM = [game_plugin+0x56a49f8] (TRANSFER_MANAGER), P = player object,
 | Is FM's own cancel the pair FM Lens uses? | Yes. The server handler of PLAYER_CANCEL_FUTURE_TRANSFER runs 0x238bce0, whose loop is `cancel_offer` (0x2D180B4) then `drop_dated_transfer` (0x1827808) per pending offer, exactly as `cancel_signing` | high |
 | Does FM Lens need new calls? | No new function. Needs reader fixes (person ref stub, lazy from-team) and a class check, see section 5 | high |
 | Instalments | TM+0xd8 vector (TM+0xD0 on Windows) of 0x28-byte records, created on the completion day, paid on the 1st of each month | high: matched with FM on Windows (section 8) |
-| Buy-back | PLAYER_BUY_BACK_INFO (0x28 bytes) in the BUYING club's list at [club+0xb0], created on completion | high for the fee and holder: matched with FM on Windows; window dates not compared (section 8) |
+| Buy-back | PLAYER_BUY_BACK_INFO (0x28 bytes) in the BUYING club's list at [club+0xb0], created on completion | high: fee, holder and window dates matched with FM on Windows (section 8) |
 | Extra payments (EXTRA_TRANSFER_PAYMENT_INFO) | class and factory found, no creation site traced | low |
 
 ## 1. Storage of an agreed future transfer
@@ -234,4 +234,15 @@ Quansah's 1 to 15 June of 2027 (60,132,232), 2028 and 2029 (51,541,912 each); ma
 Compared with FM on a Brighton career at 13 July 2026: Jamie Rushworth (at Coventry City) has a record of 35,000,000
 held by Brighton with no window, and FM's contract page shows that Brighton can buy him back for $47M. FM shows a
 buy-back only to the clubs in it: Arsenal has none, a scouted McAtee's contract page shows none, and FM's Clauses page
-lists only the user's club's clauses. No dated window was on an FM screen, so the dates are not compared.
+lists only the user's club's clauses.
+
+Dated window compared on an Arsenal career copy at 2 January 2028: FM's news says PSG forward Floyd Samba's buy-back
+clause for $49.5M to Man City is now active and due to expire on 1/3/2030. His record (UID 2000511340) holds
+36,898,002, held by Manchester City (UID 679), start 2 January 2028 (the day the news came) and end 3 January 2030.
+The fee, holder and both dates match. The day words are `0x1A02` and `0x1A03`: bits above the low 9 hold flags
+(`0x1A00` in both), so only the low 9 bits are the day of year (1-based), as `FmDate::from_raw` reads them.
+
+A window is removed once it has passed: Quansah's 1 to 15 June 2027 record is gone by January 2028, and his 2028 and
+2029 windows (1 to 15 June, 51,541,912 each) remain. Fully scouted on 7 January 2028, his contract page lists three
+clauses (a relegation salary drop, an optional extension by the club, a minimum fee release clause) and no buy-back:
+FM shows the buy-back only to Liverpool, the club that holds it, as with Rushworth above.

@@ -206,7 +206,7 @@ bit `0x20`. Flag bytes of the eight: Nwaneri `07 20 11 09 20`, Linder `06 30 11 
 (bytes `+0xB0` to `+0xB4`).
 
 Not established: the kind of a competition condition (winning it or avoiding relegation; not in `+0xF7`); the
-preferred position and role encoding (candidates `+0xA0..` and `+0xF4..`); `+0xB0` bit `0x08` (73 loans), `+0xB1` bits `0x20` and `0x80`; `+0xD8`, `+0xDC`, `+0xE4`,
+preferred position and role encoding (candidates `+0xA0..` and `+0xF4..`); `+0xB0` bit `0x08` (no line on FM's tab, see below), `+0xB1` bits `0x20` and `0x80`; `+0xD8`, `+0xDC`, `+0xE4`,
 `+0xE8`, `+0x54`, `+0x56`, `+0x58`, `+0x60`, `+0x68` (pointer, 159 non-null), `+0x30` (pointer, 45 non-null), `+0x90`,
 `+0x9C`. The macOS layout of these fields is not checked. Nothing here is written by FM Lens; showing them read-only
 would be the next step, and editing the fee or flags needs a save, quit and reload check first.
@@ -223,6 +223,19 @@ All match:
 The cup bit is set in all 735 loans, so no negative is seen yet. Wright's `+0xB0` bit `0x08` has no line on FM's
 tab.
 
+`+0xB0` bit `0x08`, on the same copy: set in 104 of the 735 loans. FM's Loan Club tab shows no line for it. Two more
+loans compared, all lines match the known bits:
+
+| Loan | Bytes `+0xB0`, `+0xB1`, `+0xB4` | FM's Loan Club tab | `+0x20` wage share, `+0xCC` and `+0xD0` |
+| --- | --- | --- | --- |
+| Anthony Musaba (Hull City) | `0F 00 00` | Can be recalled, can play against own team, can play in cup matches | 34,361; 0 and 0 = $0 and $0 |
+| Jeremy Monga (Middlesbrough) | `06 01 00` | Can be recalled, can play in cup matches; Preferred Position AM (L), Role Winger | 20,000; 21,666 and 21,666 = $29K each |
+
+Musaba (`0x0F`) and Wright (`0x0E`) show the same kinds of line as Monga (`0x06`), so no line follows bit `0x08`. It
+goes with loans the borrower pays little for: 101 of the 104 have no monthly fee (252 of the 631 without it), and 85
+have no wage share (9 of the 631). It decides neither: Musaba's borrower pays a wage share, and 9 loans without the
+bit pay none. FM Lens neither reads nor writes it.
+
 Four more, same build, on a Brighton career at 13 July 2026 (1,258 loans, 260 with a future fee: 220 optional, 21
 after a number of matches from 1 to 30, 19 on a competition), compared with FM's Loan Club tab. All match:
 
@@ -237,7 +250,7 @@ The monthly fee follows the same rate as the future fee; FM rounds what it shows
 $325K; Chaves's 80,534 is $108K, shown as $110K). The matches played so far are not in `+0xF7` and not found.
 `+0xB1` bit `0x01` is set for Gruda and Chaves, yet FM shows no preferred position line for either on 13 July 2026,
 while Chaves showed one at 10 December 2027 with the same byte: the bit alone does not decide it (the July date is
-pre-season, which may matter).
+pre-season, which may matter). Monga, bit set, shows Preferred Position AM (L) and Role Winger at 10 December 2027.
 
 ## 4. Payroll
 
@@ -279,7 +292,8 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 
 - Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
 - LOAN_CONTRACT term fields: fees, fee condition and five flags mapped on Windows (3.1); the competition condition's
-  kind, matches played, the preferred position and the remaining words are open.
+  kind, matches played, the preferred position and the remaining words are open. `+0xB0` bit `0x08` has no line on
+  FM's Loan Club tab (Musaba, Wright and Monga compared).
 - FM's add-clause routine is found statically on macOS (1.1) but never called; Windows not looked for.
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
 - Where wages are deducted from balance.

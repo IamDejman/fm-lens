@@ -3655,6 +3655,7 @@ keeping scroll and reopening where you left off; the undo refusal message.
 | Nations list | 251 nations; Tuvalu, Sint Maarten and Kiribati found by search |
 | Stadiums list | 18,765; Wembley with no club, capacity 90,000 |
 | FM's own pictures with no graphics pack | Club logos in lists, profiles, rivals and affiliates; faces; flags; competition logos (white-only logos on a dark tile, also QPR's); three kits on Arsenal's Overview; initials where the game has no picture (staff have none). The reader's ignored live tests: 6 passed on the Windows install, pixels matching the Mac references |
+| A kit from a graphics pack | A test pack in `Documents\Sports Interactive\Football Manager 27\graphics\fmlens-kit-test` whose `config.xml` maps `618_away` to its own picture: Brighton's Overview showed the pack's away shirt beside the game's home and third. The pack was removed afterwards |
 | Top players by division | England men and women: each division lists its own clubs (relegated clubs in the Championship, The New Saints under England as the data has it); long names fit the select |
 | Custom column and saved filter | A column (FIN) and a saved filter ("Big names") survived app restarts |
 
