@@ -1,0 +1,139 @@
+# FM27 on Steam (app 4530370, build 26577676), an update of 12 November 2026. The update rebuilt game_plugin.dll
+# (another size of image and link time, as the protection lays its own sections out anew) and moved nothing FM Lens
+# uses: every value here is build 26385295's (steam-26385295.toml) at the same address, and the code still calls and
+# loads each one where that build's notes say. The notes on each value are 27.0.0's, with 27.0.1's addresses. See
+# docs/recon/fm27-steam-26577676.md.
+name = "FM27 Steam build 26577676 (27.0.1)"
+edition = 27
+storefront = "steam"
+
+# The in-game date: 2 November 2026 on the Steam test save, as the game's own "2nd November 2026" says. The date with
+# the arrays (ClusterLayout::current_date) reads 1 January 1900, unset, as on Game Pass.
+current_date = 0x57CA3B8
+
+# The static pointer to the game's UI (game_plugin::GAME_UI), whose entity_changed refreshes FM's screens after an edit.
+game_ui = 0x581CB90
+
+# The static pointer to the retirement manager (RETIREMENT_MANAGER): the only pointer to the one object of that
+# class, 0xDAC0 before the players pair as in build 26227640.
+retirement_manager = 0x5812D50
+
+# The (begin, end) pair of the match officials' array, with the other arrays: 1,061 db::OFFICIAL objects of 0x148
+# bytes on the Steam test save, Hyun-Chul Moon (South Korea) the best.
+officials = 0x5820888
+
+# The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: Gabriel's for England
+# is active on the Steam test save.
+transfer_manager = 0x580EA58
+
+# The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902
+# awards and 8,084 competitions (721 women's) on the Steam test save, the World Golden Ball and FIFA World Cup first.
+awards = 0x5820710
+competitions = 0x5820728
+
+# The static pointers to the database table of the kinds of injury (136, a cold first) and to the injury manager
+# (INJURY_MANAGER), 8 bytes before the retirement manager's.
+injury_kinds = 0x5820750
+injury_manager = 0x5812D48
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
+# no others on this build. Their arguments are those of the macOS profiles (steam-26577676-macos-arm64.toml), passed
+# the Windows x64 way; each was traced at the same caller as on macOS.
+[calls]
+# GAME_UI virtual slot +0x98 (+0xA0 on macOS): (ui, identity), as the game's editor calls it after removing injuries
+# (0x2A93B2C).
+entity_changed = 0x1F0210
+# The same rfui dispatcher: (an empty reference vector, the address of 16 zero bytes of options) refreshes every view.
+refresh_views = 0x1EF430
+# INJURY_MANAGER::add_injury, as the game's training injuries call it at 0x2ECA3B0: (manager, player, kind index,
+# cause 3, 0, 0, 0, 0, then on the stack a news byte 0, 0 and a u16 0).
+add_injury = 0x2ECACD0
+# TRANSFER_MANAGER::set_work_permit: (manager, identity block, club team, force, esc), the last a byte on the stack.
+# The game's editor (0x2A97F70) calls it with force 0 and esc 0 to give a permit.
+set_work_permit = 0xB6CD20
+# TRANSFER_MANAGER::find_work_permit: (manager, identity block, club team). The place of his record for the club's
+# country in the manager's list, or -1. Only reads. 98 for Gabriel at Arsenal on the Steam test save.
+find_work_permit = 0xBCD170
+# TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), as the game's editor takes a permit away
+# after finding it.
+remove_work_permit = 0xBAB5F0
+# Releasing a player, as the game's editor does at 0x2A97CBC once it has ended any loan: TRANSFER_MANAGER::withdraw_offers
+# (manager, identity block, 1, 0, 0, 0, 0; the entry is a jump into the protected code) then TRANSFER_MANAGER::leave_team
+# (manager, identity block, the team his contract is with, 9 for a release, 0, 0, 0, 1, then a byte 1 and a qword 0 on
+# the stack, as the editor passes them at 0x2A97CC1 to 0x2A97CF2). He becomes a free agent.
+withdraw_offers = 0xB33630
+leave_team = 0xB2CFB0
+# TRANSFER_MANAGER::start_loan: (manager, a STARTING_LOAN, 1), as the game's editor calls it from 0x2A96770.
+start_loan = 0xBFB1B0
+# TRANSFER_MANAGER::sign_free_agent: (manager, the player's ACTUAL_PERSON, 0x28 into his person block, the club team,
+# a terms map, an empty list for the entities it touches, 0). Returns true when he signed.
+sign_free_agent = 0xBF2320
+# The terms map's constructor and destructor, and the destructor of the list of entity references the signing fills.
+map_new = 0xC2AA0
+map_drop = 0xA1BCE0
+refs_drop = 0x150F90
+# TRANSFER_MANAGER::end_contract: (manager, the player object, the contract, a kind for the news, 0, 1, 0, 0, then two
+# zeros on the stack), as the game's daily check ends a loan that has run out.
+end_contract = 0xB2F6B0
+# The date term of a signing ('TrDt'): the date type, the Value of a date (type, &Value, &raw date), the map's insert
+# (map, key, &Value) and the Value's destructor.
+date_type = 0xFD8C40
+date_value = 0xFD8D30
+map_insert = 0xA1BFE0
+value_drop = 0xA124E0
+# Cancelling a transfer agreed for a later day, as the game's editor does at 0x2A952BD: cancel_offer (manager, &slot
+# holding the offer with a reference taken, its team, 2 or 0, 0, 0, 0, 1, then two zeros on the stack); then
+# drop_dated_transfer (manager + 0x18, offer, the player's identity block). This build has no ref_drop: ref_assign
+# (&slot, &empty slot) gives the reference back, as the slot's own assignment does.
+cancel_offer = 0xAF6120
+drop_dated_transfer = 0x1A93640
+ref_copy = 0x7E0490
+ref_assign = 0x7E04B0
+# The game's editor action that makes every player of a team fully familiar with its tactic, and the struct Value its
+# map holds the team's reference in.
+struct_value = 0xA12CF0
+maximise_tactics = 0x330AF30
+# What set_work_permit asks before it gives a permit, unforced: the rules of the club's nation (rules root, the
+# nation, the club's women's byte), then whether they say the player needs a permit (rules, identity block, club
+# team, 1, 0, 6, 0, no date*, no date*, null), a bool. Both only read; FM's own screens ask the second too.
+work_permit_rules = 0x1867BA0
+needs_work_permit = 0x248EEC0
+
+# What a STARTING_LOAN (layout.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58.
+[starting_loan]
+vtable = 0x4DB49C8
+defaults = 0x4D903D0
+
+# What the game's editor actions start from: the registry of Value types (its integer type at +0x28), the database
+# table of teams, and the byte the editor's actions check is 1.
+[editor]
+value_types = 0x581BF78
+integer_type = 0x28
+teams = 0x58207A8
+enabled = 0x5820E20
+
+# The human manager's flags word, as on macOS: the become_unsackable action (0x2F3C1D0) sets or clears bit 1 of the u32
+# at +0x3FC. MSVC keeps the class's vtable on the person block, 0x440 into the object (shifted 0x340).
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = ".?AVHUMAN_NON_PLAYER@db@@"
+class_at = 0x440
+
+# game_plugin.dll as mapped in memory; these two values identify the build.
+[plugin]
+size_of_image = 0x185FA000
+link_timestamp = 0x6AF38E5C
+
+# RVAs in game_plugin.dll of the (begin, end) pointer pairs of the entity arrays.
+[arrays]
+players = 0x5820810
+staff = 0x5820858
+clubs = 0x58209C8
+
+# What needs_work_permit takes, as set_work_permit reads it: the byte that is 1 while work permits are in force
+# (otherwise it gives none), the static pointer to the rules root, and the date it passes for none (1 Jan 1900).
+[work_permit_check]
+enabled = 0x581C39A
+rules = 0x58262C0
+no_date = 0x4BFF83C

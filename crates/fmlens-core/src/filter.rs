@@ -4,10 +4,10 @@ use std::sync::LazyLock;
 
 use serde::Deserialize;
 
-use crate::clubs::ClubSummary;
+use crate::clubs::{ClubSummary, StadiumSummary};
 use crate::competitions::{AwardSummary, CompetitionSummary};
 use crate::date::FmDate;
-use crate::details::{ATTRIBUTE_GROUPS, POSITIONS};
+use crate::details::{ATTRIBUTE_GROUPS, PERSONALITY, POSITIONS};
 use crate::game_calls::MANAGER_JOB;
 use crate::officials::OfficialSummary;
 use crate::players::{NationSummary, PLAYABLE_RATING, PlayerSummary};
@@ -51,13 +51,25 @@ impl AttributeBound {
     /// Whether `values`, a summary's attributes, keep to the bound. An attribute the entity does not have, or one the
     /// game's layout does not place (0), keeps to no bound: a mass edit must never widen to everyone over it.
     fn holds(&self, index: &HashMap<&'static str, usize>, values: &[u8]) -> bool {
-        match index.get(self.key.as_str()).and_then(|&i| values.get(i)) {
-            Some(&value) if value > 0 => {
+        self.holds_value(index.get(self.key.as_str()).and_then(|&i| values.get(i)).copied())
+    }
+
+    /// Whether `value`, the rating the bound's key names, keeps to the bound; none, or 0, keeps to no bound.
+    fn holds_value(&self, value: Option<u8>) -> bool {
+        match value {
+            Some(value) if value > 0 => {
                 self.min.is_none_or(|min| value >= min) && self.max.is_none_or(|max| value <= max)
             }
             _ => false,
         }
     }
+}
+
+/// Whether `value` is known and within `min` and `max`, either of which may be unset; with neither set it need not be
+/// known.
+fn within<T: PartialOrd + Copy>(value: Option<T>, min: Option<T>, max: Option<T>) -> bool {
+    (min.is_none() && max.is_none())
+        || value.is_some_and(|value| min.is_none_or(|min| value >= min) && max.is_none_or(|max| value <= max))
 }
 
 /// Filters the player list applies on top of a name search. Unset fields match everyone.
@@ -69,7 +81,19 @@ pub struct PlayerFilter {
     pub min_age: Option<u16>,
     pub max_age: Option<u16>,
     pub min_current_ability: Option<u16>,
+    pub max_current_ability: Option<u16>,
     pub min_potential_ability: Option<i16>,
+    /// A potential the game keeps as a range (a negative number) keeps to no upper bound.
+    pub max_potential_ability: Option<i16>,
+    /// Centimetres. A player whose height is not set keeps to no bound.
+    pub min_height: Option<u16>,
+    pub max_height: Option<u16>,
+    /// Pounds per week. A player without a contract keeps to no bound.
+    pub min_wage: Option<i32>,
+    pub max_wage: Option<i32>,
+    /// Pounds, the stored base valuation. A player the game has not valued keeps to no bound.
+    pub min_value: Option<i32>,
+    pub max_value: Option<i32>,
     /// Part of the nation's name, accents and case ignored.
     pub nation: Option<String>,
     /// Part of the club's name, accents and case ignored.
@@ -85,6 +109,10 @@ pub struct PlayerFilter {
     pub loan_listed: bool,
     /// Bounds on attributes, every one of which must hold.
     pub attributes: Vec<AttributeBound>,
+    /// Bounds on personality ratings, by [`PERSONALITY`] key, every one of which must hold.
+    pub personality: Vec<AttributeBound>,
+    /// Trait bits (0 to 63): only players who have every one of them.
+    pub traits: Vec<u8>,
 }
 
 impl PlayerFilter {
@@ -99,7 +127,12 @@ impl PlayerFilter {
             && self.min_age.is_none_or(|min| p.age.is_some_and(|age| age >= min))
             && self.max_age.is_none_or(|max| p.age.is_some_and(|age| age <= max))
             && self.min_current_ability.is_none_or(|min| p.current_ability >= min)
+            && self.max_current_ability.is_none_or(|max| p.current_ability <= max)
             && self.min_potential_ability.is_none_or(|min| p.potential_ability >= min)
+            && self.max_potential_ability.is_none_or(|max| p.potential_ability > 0 && p.potential_ability <= max)
+            && within(Some(p.height_cm).filter(|&cm| cm > 0), self.min_height, self.max_height)
+            && within(p.wage, self.min_wage, self.max_wage)
+            && within(p.transfer_value, self.min_value, self.max_value)
             && contains(p.nation.as_deref(), self.nation.as_deref())
             && contains(p.club.as_deref(), self.club.as_deref())
             && self.club_uid.is_none_or(|uid| p.club_uid == Some(uid))
@@ -108,6 +141,10 @@ impl PlayerFilter {
             && (!self.transfer_listed || p.transfer_listed)
             && (!self.loan_listed || p.loan_listed)
             && self.attributes.iter().all(|bound| bound.holds(&PLAYER_ATTRIBUTES, &p.attributes))
+            && self.personality.iter().all(|bound| {
+                bound.holds_value(PERSONALITY.iter().position(|&key| key == bound.key).map(|i| p.personality[i]))
+            })
+            && self.traits.iter().all(|&bit| bit < 64 && p.traits >> bit & 1 == 1)
     }
 }
 
@@ -117,6 +154,76 @@ fn contains(text: Option<&str>, needle: Option<&str>) -> bool {
         Some(needle) => text.is_some_and(|text| fold(text).contains(&fold(needle))),
         None => true,
     }
+}
+
+/// What a row is sorted by: a text, compared without accents or case, or a number. A row without the value goes
+/// last, whichever way the list is sorted.
+pub enum SortKey<'a> {
+    Text(Option<&'a str>),
+    Number(Option<i64>),
+}
+
+/// A column a list can be sorted by: what each row has in it.
+pub trait SortColumn: Copy {
+    type Row;
+    fn key(self, row: &Self::Row) -> SortKey<'_>;
+}
+
+/// How a list is sorted: by one of its columns, upwards or downwards.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Order<S> {
+    pub by: S,
+    #[serde(default)]
+    pub ascending: bool,
+}
+
+/// Sorts `rows` by `order`; unknown values go last either way. Text compares without accents or case. The sort is
+/// stable: equal rows keep their order, which after a search is best first.
+pub fn sort_rows<S: SortColumn>(rows: &mut [&S::Row], order: Order<S>) {
+    enum Folded {
+        Text(String),
+        Number(i64),
+        Unknown,
+    }
+    // Fold each distinct text once rather than on every comparison.
+    let mut folded: HashMap<&str, String> = HashMap::new();
+    let mut keyed: Vec<(Folded, &S::Row)> = rows
+        .iter()
+        .map(|&row| {
+            let key = match order.by.key(row) {
+                SortKey::Text(Some(text)) => Folded::Text(folded.entry(text).or_insert_with(|| fold(text)).clone()),
+                SortKey::Number(Some(number)) => Folded::Number(number),
+                SortKey::Text(None) | SortKey::Number(None) => Folded::Unknown,
+            };
+            (key, row)
+        })
+        .collect();
+    keyed.sort_by(|(a, _), (b, _)| {
+        let known = match (a, b) {
+            (Folded::Text(a), Folded::Text(b)) => a.cmp(b),
+            (Folded::Number(a), Folded::Number(b)) => a.cmp(b),
+            (Folded::Unknown, Folded::Unknown) => return Ordering::Equal,
+            (Folded::Unknown, _) => return Ordering::Greater,
+            (_, Folded::Unknown) => return Ordering::Less,
+            // A column is all text or all numbers.
+            (Folded::Text(_), Folded::Number(_)) | (Folded::Number(_), Folded::Text(_)) => Ordering::Equal,
+        };
+        if order.ascending { known } else { known.reverse() }
+    });
+    for (slot, (_, row)) in rows.iter_mut().zip(keyed) {
+        *slot = row;
+    }
+}
+
+/// A whole number as a sort key.
+fn number(value: impl Into<i64>) -> SortKey<'static> {
+    SortKey::Number(Some(value.into()))
+}
+
+/// A number that may be unknown as a sort key.
+fn known_number(value: Option<impl Into<i64>>) -> SortKey<'static> {
+    SortKey::Number(value.map(Into::into))
 }
 
 /// Columns the player list can be sorted by.
@@ -133,6 +240,22 @@ pub enum PlayerSort {
     ContractExpires,
 }
 
+impl SortColumn for PlayerSort {
+    type Row = PlayerSummary;
+
+    fn key(self, p: &PlayerSummary) -> SortKey<'_> {
+        match self {
+            Self::CurrentAbility => number(p.current_ability),
+            Self::PotentialAbility => number(p.potential_ability),
+            Self::Age => known_number(p.age),
+            Self::Name => SortKey::Text(Some(&p.name)),
+            Self::Nation => SortKey::Text(p.nation.as_deref()),
+            Self::Club => SortKey::Text(p.club.as_deref()),
+            Self::ContractExpires => known_number(p.contract_expires.map(FmDate::to_number)),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct PlayerOrder {
@@ -140,59 +263,175 @@ pub struct PlayerOrder {
     pub ascending: bool,
 }
 
-/// Sorts `players` by `order`; unknown values go last either way. Text compares without
-/// accents or case. The sort is stable: equal players keep their order, which after a
-/// search is best first.
+/// Sorts `players` by `order` (see [`sort_rows`]).
 pub fn sort_players(players: &mut [&PlayerSummary], order: PlayerOrder) {
-    // Fold each distinct text once rather than on every comparison.
-    let mut folded: HashMap<&str, String> = HashMap::new();
-    let mut keyed: Vec<(Option<String>, &PlayerSummary)> = players
-        .iter()
-        .map(|&p| (sort_text(p, order.by).map(|text| folded.entry(text).or_insert_with(|| fold(text)).clone()), p))
-        .collect();
-    keyed.sort_by(|(a_text, a), (b_text, b)| {
-        let primary = match order.by {
-            PlayerSort::CurrentAbility => Some(a.current_ability.cmp(&b.current_ability)),
-            PlayerSort::PotentialAbility => Some(a.potential_ability.cmp(&b.potential_ability)),
-            PlayerSort::Age => known(a.age, b.age),
-            PlayerSort::Name | PlayerSort::Nation | PlayerSort::Club => known(a_text.as_ref(), b_text.as_ref()),
-            PlayerSort::ContractExpires => known(a.contract_expires, b.contract_expires),
-        };
-        match primary {
-            Some(ordering) if order.ascending => ordering,
-            Some(ordering) => ordering.reverse(),
-            None => unknown_last(a, b, order.by),
+    sort_rows(players, Order { by: order.by, ascending: order.ascending });
+}
+
+/// Columns the staff list can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum StaffSort {
+    Name,
+    Age,
+    /// The employer: the club, or the nation of the national team they manage.
+    Club,
+    Nation,
+    CurrentAbility,
+    PotentialAbility,
+}
+
+impl SortColumn for StaffSort {
+    type Row = StaffSummary;
+
+    fn key(self, s: &StaffSummary) -> SortKey<'_> {
+        match self {
+            Self::Name => SortKey::Text(Some(&s.name)),
+            Self::Age => known_number(s.age),
+            Self::Club => SortKey::Text(s.club.as_deref().or(s.national.as_ref().map(|job| job.nation.as_str()))),
+            Self::Nation => SortKey::Text(s.nation.as_deref()),
+            Self::CurrentAbility => number(s.current_ability),
+            Self::PotentialAbility => number(s.potential_ability),
         }
-    });
-    for (slot, (_, player)) in players.iter_mut().zip(keyed) {
-        *slot = player;
     }
 }
 
-/// The text a player is sorted by, for the text columns.
-fn sort_text(p: &PlayerSummary, by: PlayerSort) -> Option<&str> {
-    match by {
-        PlayerSort::Name => Some(&p.name),
-        PlayerSort::Nation => p.nation.as_deref(),
-        PlayerSort::Club => p.club.as_deref(),
-        _ => None,
+/// Columns the club list can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ClubSort {
+    Name,
+    Nation,
+    Reputation,
+    Founded,
+}
+
+impl SortColumn for ClubSort {
+    type Row = ClubSummary;
+
+    fn key(self, c: &ClubSummary) -> SortKey<'_> {
+        match self {
+            Self::Name => SortKey::Text(Some(&c.name)),
+            Self::Nation => SortKey::Text(c.nation.as_deref()),
+            Self::Reputation => known_number(c.reputation),
+            Self::Founded => known_number(c.founded),
+        }
     }
 }
 
-/// Compares two optional values, or `None` when either is unknown.
-fn known<T: Ord>(a: Option<T>, b: Option<T>) -> Option<Ordering> {
-    Some(a.as_ref()?.cmp(b.as_ref()?))
+/// Columns the stadium list can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum StadiumSort {
+    Name,
+    Capacity,
+    Seating,
+    Expansion,
 }
 
-fn unknown_last(a: &PlayerSummary, b: &PlayerSummary, by: PlayerSort) -> Ordering {
-    let has = |p: &PlayerSummary| match by {
-        PlayerSort::Age => p.age.is_some(),
-        PlayerSort::Nation => p.nation.is_some(),
-        PlayerSort::Club => p.club.is_some(),
-        PlayerSort::ContractExpires => p.contract_expires.is_some(),
-        _ => true,
-    };
-    has(b).cmp(&has(a))
+impl SortColumn for StadiumSort {
+    type Row = StadiumSummary;
+
+    fn key(self, s: &StadiumSummary) -> SortKey<'_> {
+        match self {
+            Self::Name => SortKey::Text(Some(crate::index::Listed::display_name(s))),
+            Self::Capacity => number(s.capacity),
+            Self::Seating => number(s.seating),
+            Self::Expansion => number(s.expansion),
+        }
+    }
+}
+
+/// Columns the nation list can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NationSort {
+    Name,
+    Continent,
+}
+
+impl SortColumn for NationSort {
+    type Row = NationSummary;
+
+    fn key(self, n: &NationSummary) -> SortKey<'_> {
+        match self {
+            Self::Name => SortKey::Text(Some(&n.name)),
+            Self::Continent => SortKey::Text(n.continent.as_deref()),
+        }
+    }
+}
+
+/// Columns the match officials list can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OfficialSort {
+    Name,
+    Age,
+    Nation,
+    Reputation,
+    CurrentAbility,
+    PotentialAbility,
+}
+
+impl SortColumn for OfficialSort {
+    type Row = OfficialSummary;
+
+    fn key(self, o: &OfficialSummary) -> SortKey<'_> {
+        match self {
+            Self::Name => SortKey::Text(Some(&o.name)),
+            Self::Age => known_number(o.age),
+            Self::Nation => SortKey::Text(o.nation.as_deref()),
+            Self::Reputation => number(o.reputation),
+            Self::CurrentAbility => number(o.current_ability),
+            Self::PotentialAbility => number(o.potential_ability),
+        }
+    }
+}
+
+/// Columns the competition list can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CompetitionSort {
+    Name,
+    Nation,
+    Continent,
+    Reputation,
+}
+
+impl SortColumn for CompetitionSort {
+    type Row = CompetitionSummary;
+
+    fn key(self, c: &CompetitionSummary) -> SortKey<'_> {
+        match self {
+            Self::Name => SortKey::Text(Some(&c.name)),
+            Self::Nation => SortKey::Text(c.nation.as_deref()),
+            Self::Continent => SortKey::Text(c.continent.as_deref()),
+            Self::Reputation => number(c.reputation),
+        }
+    }
+}
+
+/// Columns the award list can be sorted by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AwardSort {
+    Name,
+    Competition,
+    Nation,
+    Prestige,
+}
+
+impl SortColumn for AwardSort {
+    type Row = AwardSummary;
+
+    fn key(self, a: &AwardSummary) -> SortKey<'_> {
+        match self {
+            Self::Name => SortKey::Text(Some(&a.name)),
+            Self::Competition => SortKey::Text(a.competition.as_deref()),
+            Self::Nation => SortKey::Text(a.nation.as_deref()),
+            Self::Prestige => number(a.prestige),
+        }
+    }
 }
 
 /// Filters for the staff list.
@@ -208,7 +447,10 @@ pub struct StaffFilter {
     pub min_age: Option<u16>,
     pub max_age: Option<u16>,
     pub min_current_ability: Option<u16>,
+    pub max_current_ability: Option<u16>,
     pub min_potential_ability: Option<i16>,
+    /// A potential the game keeps as a range (a negative number) keeps to no upper bound.
+    pub max_potential_ability: Option<i16>,
     /// Part of the nation's name, accents and case ignored.
     pub nation: Option<String>,
     /// Part of the employer's name, accents and case ignored.
@@ -226,7 +468,9 @@ impl StaffFilter {
             && self.min_age.is_none_or(|min| s.age.is_some_and(|age| age >= min))
             && self.max_age.is_none_or(|max| s.age.is_some_and(|age| age <= max))
             && self.min_current_ability.is_none_or(|min| s.current_ability >= min)
+            && self.max_current_ability.is_none_or(|max| s.current_ability <= max)
             && self.min_potential_ability.is_none_or(|min| s.potential_ability >= min)
+            && self.max_potential_ability.is_none_or(|max| s.potential_ability > 0 && s.potential_ability <= max)
             && contains(s.nation.as_deref(), self.nation.as_deref())
             && (contains(s.club.as_deref(), self.club.as_deref())
                 || s.national.as_ref().is_some_and(|job| contains(Some(&job.nation), self.club.as_deref())))
@@ -246,6 +490,8 @@ pub struct ClubFilter {
     /// A club with no founded year keeps to no bound.
     pub founded_from: Option<u16>,
     pub founded_to: Option<u16>,
+    /// Part of the name of the nation the club is from, accents and case ignored.
+    pub nation: Option<String>,
 }
 
 impl ClubFilter {
@@ -255,6 +501,7 @@ impl ClubFilter {
             && self.max_reputation.is_none_or(|max| c.reputation.is_some_and(|reputation| reputation <= max))
             && self.founded_from.is_none_or(|from| c.founded.is_some_and(|year| year >= from))
             && self.founded_to.is_none_or(|to| c.founded.is_some_and(|year| year <= to))
+            && contains(c.nation.as_deref(), self.nation.as_deref())
     }
 }
 
@@ -315,7 +562,12 @@ pub struct OfficialFilter {
     pub min_age: Option<u16>,
     pub max_age: Option<u16>,
     pub min_current_ability: Option<u16>,
+    pub max_current_ability: Option<u16>,
     pub min_potential_ability: Option<u16>,
+    pub max_potential_ability: Option<u16>,
+    /// 0–10000.
+    pub min_reputation: Option<u16>,
+    pub max_reputation: Option<u16>,
     /// Part of the nation's name, accents and case ignored.
     pub nation: Option<String>,
 }
@@ -325,7 +577,11 @@ impl OfficialFilter {
         self.min_age.is_none_or(|min| o.age.is_some_and(|age| age >= min))
             && self.max_age.is_none_or(|max| o.age.is_some_and(|age| age <= max))
             && self.min_current_ability.is_none_or(|min| o.current_ability >= min)
+            && self.max_current_ability.is_none_or(|max| o.current_ability <= max)
             && self.min_potential_ability.is_none_or(|min| o.potential_ability >= min)
+            && self.max_potential_ability.is_none_or(|max| o.potential_ability <= max)
+            && self.min_reputation.is_none_or(|min| o.reputation >= min)
+            && self.max_reputation.is_none_or(|max| o.reputation <= max)
             && contains(o.nation.as_deref(), self.nation.as_deref())
     }
 }
@@ -370,6 +626,11 @@ mod tests {
             attributes: vec![10; PLAYER_ATTRIBUTES.len()],
             transfer_listed: false,
             loan_listed: false,
+            height_cm: 180,
+            wage: Some(50_000),
+            transfer_value: Some(20_000_000),
+            personality: [10; 8],
+            traits: 0,
             address: 0,
             shift: 0,
         }
@@ -450,6 +711,153 @@ mod tests {
         // Same age: the incoming order (here by club) decides.
         sort_players(&mut list, PlayerOrder { by: PlayerSort::Age, ascending: true });
         assert_eq!(list.iter().map(|p| p.name.as_str()).collect::<Vec<_>>(), ["Özil", "Zico", "pelé"]);
+    }
+
+    #[test]
+    fn ability_height_wage_and_value_ranges() {
+        let striker = player("Arda", Some(19), 140, Some("Fenerbahçe"), 18);
+        let with = |change: fn(&mut PlayerFilter)| {
+            let mut filter = PlayerFilter::default();
+            change(&mut filter);
+            filter.matches(&player("Arda", Some(19), 140, Some("Fenerbahçe"), 18))
+        };
+        // The fixture: CA 140, PA 150, 180 cm, 50,000 a week, valued at 20,000,000.
+        assert!(with(|f| f.max_current_ability = Some(140)) && !with(|f| f.max_current_ability = Some(139)));
+        assert!(with(|f| f.max_potential_ability = Some(150)) && !with(|f| f.max_potential_ability = Some(149)));
+        assert!(with(|f| (f.min_height, f.max_height) = (Some(180), Some(180))));
+        assert!(!with(|f| f.min_height = Some(181)) && !with(|f| f.max_height = Some(179)));
+        assert!(with(|f| (f.min_wage, f.max_wage) = (Some(50_000), Some(50_000))));
+        assert!(!with(|f| f.min_wage = Some(50_001)) && !with(|f| f.max_wage = Some(49_999)));
+        assert!(with(|f| (f.min_value, f.max_value) = (Some(20_000_000), Some(20_000_000))));
+        assert!(!with(|f| f.min_value = Some(20_000_001)) && !with(|f| f.max_value = Some(19_999_999)));
+
+        // What is not known keeps to no bound, upper ones included: a filter never widens to everyone over it.
+        let unknown =
+            PlayerSummary { height_cm: 0, wage: None, transfer_value: None, potential_ability: -9, ..striker };
+        let fails = |filter: PlayerFilter| !filter.matches(&unknown);
+        assert!(fails(PlayerFilter { max_height: Some(250), ..PlayerFilter::default() }));
+        assert!(fails(PlayerFilter { max_wage: Some(i32::MAX), ..PlayerFilter::default() }));
+        assert!(fails(PlayerFilter { min_value: Some(0), ..PlayerFilter::default() }));
+        assert!(fails(PlayerFilter { max_potential_ability: Some(200), ..PlayerFilter::default() }));
+        assert!(PlayerFilter::default().matches(&unknown));
+    }
+
+    #[test]
+    fn personality_bounds_and_traits() {
+        let mut leader = player("Arda", Some(19), 140, Some("Fenerbahçe"), 18);
+        leader.personality[PERSONALITY.iter().position(|&key| key == "professionalism").unwrap()] = 18;
+        leader.traits = 1 << 7 | 1 << 49;
+        let personality = |personality| PlayerFilter { personality, ..PlayerFilter::default() };
+        assert!(personality(vec![bound("professionalism", Some(15), None)]).matches(&leader));
+        assert!(!personality(vec![bound("professionalism", Some(19), None)]).matches(&leader));
+        assert!(!personality(vec![bound("ambition", None, Some(9))]).matches(&leader));
+        // A key that is no personality rating, and a rating the game has not set, match no one.
+        assert!(!personality(vec![bound("finishing", None, None)]).matches(&leader));
+        leader.personality[0] = 0;
+        assert!(!personality(vec![bound(PERSONALITY[0], None, Some(20))]).matches(&leader));
+
+        let traits = |traits| PlayerFilter { traits, ..PlayerFilter::default() };
+        assert!(traits(vec![7]).matches(&leader) && traits(vec![7, 49]).matches(&leader));
+        assert!(!traits(vec![7, 10]).matches(&leader));
+        // A bit the mask does not have matches no one, rather than everyone or a panic.
+        assert!(!traits(vec![64]).matches(&leader) && !traits(vec![255]).matches(&leader));
+
+        let wire: PlayerFilter = serde_json::from_str(
+            r#"{"maxCurrentAbility":150,"minWage":1000,"maxValue":5000000,"minHeight":185,
+                "personality":[{"key":"ambition","min":15}],"traits":[7]}"#,
+        )
+        .expect("wire filter");
+        assert_eq!((wire.max_current_ability, wire.min_wage, wire.max_value), (Some(150), Some(1000), Some(5_000_000)));
+        assert_eq!((wire.min_height, wire.personality.len(), wire.traits.as_slice()), (Some(185), 1, &[7u8][..]));
+    }
+
+    #[test]
+    fn every_list_sorts_by_its_columns_with_unknowns_last() {
+        fn names<S: SortColumn>(rows: &[&S::Row], by: S, ascending: bool, name: fn(&S::Row) -> &str) -> Vec<String> {
+            let mut rows = rows.to_vec();
+            sort_rows(&mut rows, Order { by, ascending });
+            rows.into_iter().map(|row| name(row).to_owned()).collect()
+        }
+
+        let ada =
+            StaffSummary { name: "Ada".to_owned(), ..staff(Some(50), 120, Some("Türkiye"), Some("Özspor"), None) };
+        let bo = StaffSummary { name: "Bo".to_owned(), ..staff(None, 150, None, None, None) };
+        let cy = StaffSummary {
+            name: "Cy".to_owned(),
+            national: Some(crate::national::NationalJob {
+                nation: "Peru".to_owned(),
+                nation_uid: None,
+                age_limit: None,
+                women: false,
+            }),
+            ..staff(Some(40), 100, Some("Peru"), None, None)
+        };
+        let all = [&ada, &bo, &cy];
+        let name: fn(&StaffSummary) -> &str = |s| s.name.as_str();
+        assert_eq!(names(&all, StaffSort::CurrentAbility, false, name), ["Bo", "Ada", "Cy"]);
+        assert_eq!(names(&all, StaffSort::Age, true, name), ["Cy", "Ada", "Bo"]);
+        assert_eq!(names(&all, StaffSort::Age, false, name), ["Ada", "Cy", "Bo"]);
+        // The employer is the club or the national team; accents do not move "Özspor" past "Peru".
+        assert_eq!(names(&all, StaffSort::Club, true, name), ["Ada", "Cy", "Bo"]);
+        assert_eq!(names(&all, StaffSort::Nation, false, name), ["Ada", "Cy", "Bo"]);
+        assert_eq!(names(&all, StaffSort::Name, false, name), ["Cy", "Bo", "Ada"]);
+
+        let old = ClubSummary {
+            name: "Old".to_owned(),
+            nation: Some("Chile".to_owned()),
+            ..club(false, Some(9000), Some(1880))
+        };
+        let new = ClubSummary { name: "New".to_owned(), nation: None, ..club(false, None, Some(1999)) };
+        let mid =
+            ClubSummary { name: "Mid".to_owned(), nation: Some("Brazil".to_owned()), ..club(true, Some(5000), None) };
+        let all = [&old, &new, &mid];
+        let name: fn(&ClubSummary) -> &str = |c| c.name.as_str();
+        assert_eq!(names(&all, ClubSort::Reputation, true, name), ["Mid", "Old", "New"]);
+        assert_eq!(names(&all, ClubSort::Founded, false, name), ["New", "Old", "Mid"]);
+        assert_eq!(names(&all, ClubSort::Nation, true, name), ["Mid", "Old", "New"]);
+        assert_eq!(names(&all, ClubSort::Name, true, name), ["Mid", "New", "Old"]);
+
+        let ground = |name: Option<&str>, club: &str, capacity: u32, seating: u32| StadiumSummary {
+            uid: capacity,
+            clubs: vec![crate::clubs::StadiumClub { uid: 1, name: club.to_owned(), women: false }],
+            name: name.map(str::to_owned),
+            capacity,
+            seating,
+            used: 0,
+            expansion: capacity * 2,
+            owner: None,
+        };
+        // A ground without a name of its own is listed, and sorted, by its club.
+        let (park, lane, unnamed) = (
+            ground(Some("Park"), "City", 40_000, 30_000),
+            ground(Some("Lane"), "Town", 9_000, 9_000),
+            ground(None, "Amber", 20_000, 1_000),
+        );
+        let all = [&park, &lane, &unnamed];
+        let name: fn(&StadiumSummary) -> &str = |s| crate::index::Listed::display_name(s);
+        assert_eq!(names(&all, StadiumSort::Name, true, name), ["Amber", "Lane", "Park"]);
+        assert_eq!(names(&all, StadiumSort::Capacity, false, name), ["Park", "Amber", "Lane"]);
+        assert_eq!(names(&all, StadiumSort::Seating, true, name), ["Amber", "Lane", "Park"]);
+        assert_eq!(names(&all, StadiumSort::Expansion, true, name), ["Lane", "Amber", "Park"]);
+
+        let nation = |name: &str, continent: Option<&str>| NationSummary {
+            uid: 1,
+            nation_uid: None,
+            name: name.to_owned(),
+            continent: continent.map(str::to_owned),
+        };
+        let (japan, peru, unread) =
+            (nation("Japan", Some("Asia")), nation("Peru", Some("South America")), nation("Åland", None));
+        let all = [&japan, &peru, &unread];
+        let name: fn(&NationSummary) -> &str = |n| n.name.as_str();
+        assert_eq!(names(&all, NationSort::Name, true, name), ["Åland", "Japan", "Peru"]);
+        assert_eq!(names(&all, NationSort::Continent, false, name), ["Peru", "Japan", "Åland"]);
+
+        let wire: Order<OfficialSort> = serde_json::from_str(r#"{"by":"potentialAbility"}"#).expect("wire order");
+        assert!(wire.by == OfficialSort::PotentialAbility && !wire.ascending);
+        let wire: Order<AwardSort> = serde_json::from_str(r#"{"by":"prestige","ascending":true}"#).expect("wire order");
+        assert!(wire.by == AwardSort::Prestige && wire.ascending);
+        assert!(serde_json::from_str::<Order<CompetitionSort>>(r#"{"by":"prestige"}"#).is_err());
     }
 
     fn staff(age: Option<u16>, ca: u16, nation: Option<&str>, club: Option<&str>, job: Option<u8>) -> StaffSummary {
@@ -541,7 +949,17 @@ mod tests {
     }
 
     fn club(women: bool, reputation: Option<u16>, founded: Option<u16>) -> ClubSummary {
-        ClubSummary { uid: 1, name: "Northbridge".to_owned(), short_name: None, women, reputation, founded, address: 0 }
+        ClubSummary {
+            uid: 1,
+            name: "Northbridge".to_owned(),
+            short_name: None,
+            women,
+            reputation,
+            founded,
+            nation: Some("Türkiye".to_owned()),
+            nation_uid: None,
+            address: 0,
+        }
     }
 
     #[test]
@@ -553,8 +971,14 @@ mod tests {
             max_reputation: Some(9000),
             founded_from: Some(1880),
             founded_to: Some(1900),
+            nation: Some("turkiye".to_owned()),
         };
         assert!(filter.matches(&mens));
+        assert!(!ClubFilter { nation: Some("spain".to_owned()), ..ClubFilter::default() }.matches(&mens));
+        // A club whose nation was not read matches no nation.
+        let nowhere = ClubSummary { nation: None, ..mens.clone() };
+        assert!(!ClubFilter { nation: Some("turkiye".to_owned()), ..ClubFilter::default() }.matches(&nowhere));
+        assert!(ClubFilter::default().matches(&nowhere));
         assert!(!ClubFilter { women: Some(true), ..ClubFilter::default() }.matches(&mens));
         assert!(!ClubFilter { max_reputation: Some(1000), ..ClubFilter::default() }.matches(&mens));
         let unknown = club(true, None, None);
@@ -634,10 +1058,18 @@ mod tests {
             min_age: Some(35),
             max_age: Some(45),
             min_current_ability: Some(150),
+            max_current_ability: Some(150),
             min_potential_ability: Some(160),
+            max_potential_ability: Some(170),
+            min_reputation: Some(5000),
+            max_reputation: Some(6000),
             nation: Some("ital".to_owned()),
         };
         assert!(filter.matches(&referee));
+        assert!(!OfficialFilter { max_current_ability: Some(149), ..OfficialFilter::default() }.matches(&referee));
+        assert!(!OfficialFilter { max_potential_ability: Some(159), ..OfficialFilter::default() }.matches(&referee));
+        assert!(!OfficialFilter { min_reputation: Some(5001), ..OfficialFilter::default() }.matches(&referee));
+        assert!(!OfficialFilter { max_reputation: Some(4999), ..OfficialFilter::default() }.matches(&referee));
         assert!(!OfficialFilter { min_current_ability: Some(151), ..OfficialFilter::default() }.matches(&referee));
         assert!(!OfficialFilter { max_age: Some(30), ..OfficialFilter::default() }.matches(&referee));
         let unknown_age = OfficialSummary { age: None, ..referee.clone() };

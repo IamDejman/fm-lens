@@ -214,7 +214,7 @@ const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
   926: "Doesn't believe a teammate deserves the playing time he wants",
 };
 
-/** Players' traits (preferred moves), by their bit in the game's mask; named as FMRTE names them. */
+/** Players' traits (preferred moves), by their bit in the game's mask; named as FM27 names them. */
 const TRAIT_NAMES_EN: readonly string[] = [
   "Runs with ball down left",
   "Runs with ball down right",
@@ -261,9 +261,9 @@ const TRAIT_NAMES_EN: readonly string[] = [
   "Tries first time shots",
   "Tries long range passes",
   "Likes ball played into feet",
-  "Hits free kicks with power",
-  "Likes to beat man repeatedly",
-  "Likes to switch ball to other flank",
+  "Hits free kick with power",
+  "Likes to beat opponent repeatedly",
+  "Likes to switch ball to wide areas",
   "Will retire at top",
   "Will play football as long as possible",
   "Possesses long flat throw",
@@ -277,6 +277,9 @@ const TRAIT_NAMES_EN: readonly string[] = [
   "Cuts inside from right wing",
   "Crosses early",
   "Brings ball out of defence",
+  // Bits 61 and 62 are no trait in FM27: the game shows nothing for them.
+  "",
+  "",
   "Plays ball with feet"
 ];
 
@@ -344,6 +347,70 @@ export const en = {
     right_foot: "Right Foot",
   },
 
+  /** What each attribute of a player measures: the box over its row. */
+  attributeNotes: {
+    // Technical
+    corners: "How well the player delivers corners.",
+    crossing: "How accurately the player crosses the ball from wide areas.",
+    dribbling: "How well the player keeps the ball under control while running with it.",
+    finishing: "How well the player turns a chance into a goal.",
+    first_touch: "How cleanly the player controls the ball when receiving it.",
+    free_kicks: "How good the player's free kicks are, whether a shot or a delivery.",
+    heading: "How accurately the player heads the ball, at goal or to a team-mate.",
+    long_shots: "How dangerous the player's shots from outside the box are.",
+    long_throws: "How far and how flat the player can throw the ball in.",
+    marking: "How tightly the player tracks an opponent and keeps them quiet.",
+    passing: "How accurately the player passes the ball, short and long.",
+    penalty_taking: "How reliable the player is from the penalty spot.",
+    tackling: "How cleanly the player wins the ball without giving away a foul.",
+    technique: "How refined the player is on the ball. It makes the harder passes, shots and touches come off.",
+    // Mental
+    aggression: "How readily the player goes into challenges.",
+    anticipation: "How early the player reads what is about to happen.",
+    bravery: "How willing the player is to risk getting hurt to win the ball.",
+    composure: "How calm the player stays under pressure, on the ball or in front of goal.",
+    concentration: "How long the player stays focused, above all late in a match.",
+    decisions: "How often the player picks the right option.",
+    determination: "How hard the player keeps pushing to win, even when behind.",
+    flair: "How likely the player is to try something unexpected.",
+    leadership: "How well the player lifts and organises team-mates. It matters most in a captain.",
+    off_the_ball: "How well the player finds space when the team has the ball.",
+    positioning: "How well the player covers space when the other team has the ball.",
+    teamwork: "How closely the player follows team instructions and works for others.",
+    vision: "How many passing options the player sees, the hard ones too.",
+    work_rate: "How much running the player puts in over a whole match.",
+    // Physical
+    acceleration: "How quickly the player reaches top speed.",
+    agility: "How quickly the player turns, starts and stops.",
+    balance: "How well the player stays upright, on the ball and in challenges.",
+    jumping_reach: "The highest point the player can reach when jumping. Height counts too.",
+    natural_fitness: "How well the player keeps fit between matches and with age.",
+    pace: "How fast the player runs at top speed.",
+    stamina: "How long the player keeps up a high tempo before tiring.",
+    strength: "How well the player holds off opponents and pushes past them.",
+    // Goalkeeping
+    aerial_reach: "How high the keeper can reach to catch or punch the ball.",
+    command_of_area: "How well the keeper takes charge of the box and claims balls played into it.",
+    communication: "How well the keeper organises the defence.",
+    eccentricity: "How often the keeper does something unexpected, like dribbling out or going up for a corner.",
+    handling: "How securely the keeper holds the ball instead of spilling it.",
+    kicking: "How far and how accurately the keeper kicks the ball.",
+    one_on_ones: "How well the keeper does when facing an attacker alone.",
+    punching: "How often the keeper punches the ball instead of catching it.",
+    reflexes: "How quickly the keeper reacts to a shot.",
+    rushing_out: "How often the keeper comes off the line to meet through balls and attackers.",
+    throwing: "How far and how accurately the keeper throws the ball.",
+    // Hidden
+    consistency: "How often the player performs at their usual level.",
+    dirtiness: "How often the player fouls and bends the rules.",
+    important_matches: "How well the player performs in big matches.",
+    injury_proneness: "How easily the player picks up injuries.",
+    versatility: "How quickly the player learns a new position or role.",
+    // Feet
+    left_foot: "How good the player is with the left foot.",
+    right_foot: "How good the player is with the right foot.",
+  },
+
   staffAttributes: {
     // Coaching
     attacking: "Attacking",
@@ -372,6 +439,35 @@ export const en = {
     sports_science: "Sports Science",
   },
 
+  /** What each attribute of a member of staff measures: the box over its row. */
+  staffAttributeNotes: {
+    // Coaching
+    attacking: "Ability to coach attacking play.",
+    defending: "Ability to coach defending.",
+    fitness: "Ability to coach fitness: strength, speed and stamina.",
+    goalkeeping: "Ability to coach goalkeepers.",
+    possession: "Ability to coach play on the ball: passing and keeping it.",
+    set_pieces: "Ability to coach corners, free kicks and throw-ins.",
+    tactical: "Ability to coach team shape and tactics.",
+    technical: "Ability to coach ball skills.",
+    working_with_youngsters: "Ability to coach young players and bring them on.",
+    // Mental
+    authority: "Ability to keep discipline.",
+    determination: "Drive to succeed. It rubs off on the players.",
+    motivating: "Ability to lift the players, in training and before matches.",
+    people_management: "Ability to handle players and keep them happy.",
+    // Knowledge
+    data_analysis: "Ability to read match and player data.",
+    judging_ability: "Accuracy in judging how good a player is now.",
+    judging_potential: "Accuracy in judging how good a player can become.",
+    judging_staff: "Accuracy in judging how good other staff are.",
+    negotiating: "Ability to strike good deals on transfers and contracts.",
+    tactical_knowledge: "Knowledge of tactics and formations.",
+    // Medical
+    physiotherapy: "Ability to treat and prevent injuries.",
+    sports_science: "Ability to manage fitness and injury risk.",
+  },
+
   personality: {
     adaptability: "Adaptability",
     ambition: "Ambition",
@@ -381,6 +477,18 @@ export const en = {
     sportsmanship: "Sportsmanship",
     temperament: "Temperament",
     controversy: "Controversy",
+  },
+
+  /** What each personality rating measures, for players and staff alike: the box over its row. */
+  personalityNotes: {
+    adaptability: "How quickly they settle in a new country.",
+    ambition: "How much they want to reach the top, and to move on for it.",
+    loyalty: "How attached they are to their club.",
+    pressure: "How well they cope with pressure.",
+    professionalism: "How seriously they take training and the job.",
+    sportsmanship: "How much they value fair play.",
+    temperament: "How well they keep calm when things go wrong.",
+    controversy: "How likely they are to stir up trouble in the media.",
   },
 
   /** The abbreviations of the positions: the same in every language. */
@@ -618,6 +726,8 @@ export const en = {
     potentialAbilityShort: "PA",
     /** Hover text of a potential ability that is set as a range (the game stores it as a negative number). */
     potentialRange: "Potential set as a range",
+    /** While a player is edited: the button that puts the current ability that fits his attributes in the input. */
+    suggestedAbility: (value: number) => `Suggested CA ${value}`,
     /** The group of what the header leaves out: the full name, the birth date, the height and the ID. */
     personalDetails: "Personal details",
     fullNameLabel: "Full name",
@@ -748,7 +858,17 @@ export const en = {
     /** A player's traits (preferred moves): the heading, none, and each one's name by its bit. */
     traits: "Traits",
     noTraits: "No traits",
-    traitName: (bit: number) => TRAIT_NAMES_EN[bit] ?? "Unknown trait",
+    traitName: (bit: number) => TRAIT_NAMES_EN[bit] || "Unknown trait",
+    /** The groups the traits are listed in while a player is edited. */
+    traitGroups: {
+      movement: "Movement",
+      passing: "Passing",
+      finishing: "Finishing",
+      discipline: "Discipline",
+      defending: "Defending",
+      technique: "Technique",
+      career: "Career",
+    },
     /** A player's reasons to be unhappy, as FMRTE lists them, and the button that removes them all. */
     unhappiness: "Unhappiness",
     noUnhappiness: "Nothing makes him unhappy",
@@ -957,18 +1077,29 @@ export const en = {
       /** The hint in an empty age input. */
       minPlaceholder: "Min",
       maxPlaceholder: "Max",
-      minCurrentAbility: "Min CA",
       minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
       minPotentialAbilityTitle: "Minimum potential ability",
-      /** The hint in an empty ability input: what it accepts. */
-      abilityPlaceholder: "1–200",
       nation: "Nation",
       club: "Club",
       freeAgentsOnly: "Free agents only",
       contractEndsBy: "Contract ends by",
       transferListedOnly: "Transfer listed only",
       loanListedOnly: "Loan listed only",
+      maxCurrentAbilityTitle: "Maximum current ability",
+      maxPotentialAbilityTitle: "Maximum potential ability",
+      height: "Height (cm)",
+      minHeight: "Minimum height",
+      maxHeight: "Maximum height",
+      /** A week, in the currency on show. */
+      wage: "Wage p/w",
+      minWage: "Minimum wage",
+      maxWage: "Maximum wage",
+      /** The stored base transfer value the Contract tab shows. */
+      value: "Base value",
+      minValue: "Minimum value",
+      maxValue: "Maximum value",
+      /** The select of the trait a player must have. */
+      trait: "Trait",
       /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */
       chips: "Filters in effect",
       removeChip: (label: string) => `Remove ${label}`,
@@ -1011,6 +1142,18 @@ export const en = {
   },
 
   /** The staff list. */
+  /** The select that ranks the player and staff lists for a job, and the column of how well each row fits. */
+  bestFor: {
+    label: "Best for",
+    /** The column: a score out of 100. */
+    fit: "Fit",
+    /** The column as the hover text of its header names it, after `playerList.sortBy`. */
+    fitName: "fit",
+    /** Beside the select of a ranked list: who fits best at the user's club, and the score. */
+    yours: (name: string, score: number) => `Your best: ${name} ${score}`,
+    /** What the mark on a fit says: it is better than the best at the user's club. */
+    better: "Better than your best",
+  },
   staffList: {
     /** The entry in the sidebar. */
     nav: "Staff",
@@ -1050,11 +1193,6 @@ export const en = {
       maxAge: "Maximum age",
       minPlaceholder: "Min",
       maxPlaceholder: "Max",
-      minCurrentAbility: "Min CA",
-      minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
-      minPotentialAbilityTitle: "Minimum potential ability",
-      abilityPlaceholder: "1–200",
       nation: "Nation",
       club: "Club",
     },
@@ -1116,6 +1254,8 @@ export const en = {
     usedAll: "All of it",
     usedTitle: "How much of the capacity FM lets in. 0 means all of it.",
     expansion: "Can grow to",
+    /** The club that owns the stadium, shown when it is another club. */
+    owner: "Owner",
     /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
     noStadium: "Couldn't read this club's stadium.",
 
@@ -1193,11 +1333,6 @@ export const en = {
       age: "Age",
       minAge: "Minimum age",
       maxAge: "Maximum age",
-      minCurrentAbility: "Min CA",
-      minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
-      minPotentialAbilityTitle: "Minimum potential ability",
-      abilityPlaceholder: "1–200",
       nation: "Nation",
     },
     reputation: "Reputation",
@@ -1617,6 +1752,8 @@ export const en = {
      * once.
      */
     checkForUpdates: "Check for Updates…",
+    /** At the foot of the window, beside Wishlist: the same, until a newer version is ready to relaunch into. */
+    check: "Check for updates",
     checking: "Checking for updates…",
     upToDate: "FM Lens is up to date.",
     /** Offline, or the releases could not be read. */
@@ -1631,6 +1768,21 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.10": [
+        "Raise a player's attributes and his CA rises with them, so the edits stay.",
+        "Say thanks: Support FM Lens opens Ko-fi inside the app.",
+      ],
+      "0.7.9": [
+        "A freeze now holds current ability too, so a frozen player stops declining.",
+        "Edit a player and FM Lens suggests the CA his attributes are worth.",
+        "Rest the pointer on an attribute to see what it means.",
+        "Traits have FM27's names and sit in FM's groups.",
+      ],
+      "0.7.8": [
+        "Works with FM27's 12 November update on Steam.",
+        "Sort every list, and filter players by wage, value, height and personality.",
+        "Edit staff birth dates, and every attribute on a player's profile.",
+      ],
       "0.7.7": [
         "Remove unhappiness lasts: the reasons stay gone after you Continue.",
         "A happiness edit holds: morale moves with it.",
@@ -1743,6 +1895,15 @@ export const en = {
     button: "Star on GitHub",
     /** Hides the ask for good. */
     notNow: "Not now",
+  },
+
+  /** Support FM Lens: at the foot of the window, in Settings and under Help, and the window it opens. */
+  support: {
+    button: "Support FM Lens",
+    /** The window's title, over Ko-fi's panel. */
+    title: "Say thanks",
+    /** Opens the Ko-fi page in the browser, for a payment the window cannot show. */
+    browser: "Open in browser",
   },
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */

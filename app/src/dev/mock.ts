@@ -3,10 +3,14 @@
 
 import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
+import { BOARD_JOBS, fitOf } from "../recipes";
 import { version as appVersion } from "../../package.json";
 import type {
   ApplyReport,
   AttributeBound,
+  BestFor,
+  Fit,
+  Yours,
   ClubMoney,
   FeePlan,
   Nation,
@@ -1473,6 +1477,8 @@ function fieldTable(entity: Entity): EditField[] {
     ...common,
     ...reputation,
     { ...field("nation", "pointer", 0x1_0000, 0x7fff_ffff_ffff), mass: false },
+    // From 1920: chairmen and owners are staff too.
+    field("date_of_birth", "date", 19200101, 20201231),
     ...STAFF_ATTRIBUTE_ORDER.map((key) =>
       STAFF_RATINGS.includes(key)
         ? field(`attribute.${key}`, "u8", 1, 20)
@@ -1825,11 +1831,10 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
       Object.assign(row, { nation, nationUid: 1000 + NATIONS.indexOf(nation) });
       return;
     }
-    if (entity === "player" && key === "date_of_birth") {
+    if (row && key === "date_of_birth") {
       // The list row has the birth date and the age, and the profile is built from the row.
-      const player = row as PlayerSummary;
-      player.dateOfBirth = dateFromNumber(value);
-      player.age = player.dateOfBirth && ageOn(player.dateOfBirth, GAME_DATE);
+      row.dateOfBirth = dateFromNumber(value);
+      row.age = row.dateOfBirth && ageOn(row.dateOfBirth, GAME_DATE);
       return;
     }
     if (entity === "player" && key === "contract.expires") {
@@ -3184,10 +3189,15 @@ function undoMassBatch(batch: number): BatchUndo {
   return report;
 }
 
-const clubs: ClubSummary[] = CLUBS.flatMap((name, i) => [
-  { uid: 500 + i * 7, name, shortName: name.split(" ")[0], women: false, reputation: 8200 - i * 900, founded: 1880 + i * 11 },
-  { uid: 2_000_100_000 + i, name, shortName: name.split(" ")[0], women: true, reputation: 6100 - i * 700, founded: 1985 + i * 4 },
-]);
+const clubs: ClubSummary[] = CLUBS.flatMap((name, i) => {
+  // The men's club and its women's club are from the same nation.
+  const place = { nation: NATIONS[i % NATIONS.length], nationUid: 1000 + (i % NATIONS.length) };
+  const shortName = name.split(" ")[0];
+  return [
+    { uid: 500 + i * 7, name, shortName, women: false, reputation: 8200 - i * 900, founded: 1880 + i * 11, ...place },
+    { uid: 2_000_100_000 + i, name, shortName, women: true, reputation: 6100 - i * 700, founded: 1985 + i * 4, ...place },
+  ];
+});
 
 /** Made-up but self-consistent profile for a fixture club; women's clubs have no finances. */
 function clubDetails(club: ClubSummary): ClubDetails {
@@ -3222,7 +3232,16 @@ function clubDetails(club: ClubSummary): ClubDetails {
 /** A made-up stadium for `club`: all seated, as in the top leagues, with room to grow. */
 function stadiumOf(club: ClubSummary, next: () => number): ClubDetails["stadium"] {
   const capacity = Math.round(8000 + next() * 60000);
-  return { name: `${club.shortName} Park`, capacity, seating: capacity, used: 0, expansion: Math.round(capacity * 1.25) };
+  // The men's club owns the ground its women's club shares.
+  const owner = clubs.find((other) => other.shortName === club.shortName && !other.women) ?? club;
+  return {
+    name: `${club.shortName} Park`,
+    capacity,
+    seating: capacity,
+    used: 0,
+    expansion: Math.round(capacity * 1.25),
+    owner: { uid: owner.uid, name: owner.name, women: owner.women },
+  };
 }
 
 /** A date as a number that orders like the date. */
@@ -3247,17 +3266,118 @@ function holds(bound: AttributeBound, value: number | undefined): boolean {
   );
 }
 
+/** Whether `value` is known and within the two ends, as the real filter has it; with neither end it need not be known. */
+function within(value: number | null, min: number | undefined, max: number | undefined): boolean {
+  return (
+    (min === undefined && max === undefined) ||
+    (value !== null && (min === undefined || value >= min) && (max === undefined || value <= max))
+  );
+}
+
+/**
+ * The sort of the real commands by a column: unknown values go last either way and text compares without accents or
+ * case. Like the real one it is stable, so equals keep the search's order.
+ */
+function byColumn<Row>(
+  order: { by: string; ascending: boolean } | undefined,
+  column: (row: Row, by: string) => string | number | null,
+): (a: Row, b: Row) => number {
+  if (!order) {
+    return () => 0;
+  }
+  const value = (row: Row) => {
+    const found = column(row, order.by);
+    return typeof found === "string" ? fold(found) : found;
+  };
+  return (a, b) => {
+    const x = value(a);
+    const y = value(b);
+    if (x === null || y === null) {
+      return x === y ? 0 : x === null ? 1 : -1;
+    }
+    return x === y ? 0 : (x < y ? -1 : 1) * (order.ascending ? 1 : -1);
+  };
+}
+
+type Ratings = Record<string, { value: number } | undefined>;
+
+/** The club of the career's manager. */
+const humanClub = () => staff.find((s) => s.isHuman)?.clubUid ?? null;
+
+const onBoard = (s: StaffSummary) => s.job !== null && BOARD_JOBS.includes(s.job);
+
+/** What a search was asked to rank for, if anything. */
+function bestOf(args: Record<string, unknown> | undefined): BestFor | undefined {
+  const best = args?.best as BestFor | undefined;
+  return best && best.weights.length > 0 ? best : undefined;
+}
+
+/**
+ * The hits of a search asked to rank for something, each with its fit, the best first unless an order was asked for;
+ * the hits as they are without it.
+ */
+function ranked<Row extends { fit?: Fit }>(
+  hits: Row[],
+  args: Record<string, unknown> | undefined,
+  ratings: (row: Row) => Ratings,
+): Row[] {
+  const best = bestOf(args);
+  if (!best) {
+    return hits;
+  }
+  const rows = hits.map((row) => ({ ...row, fit: fitOf(best, (key) => ratings(row)[key]?.value ?? 0) }));
+  return args?.order ? rows : rows.sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
+}
+
+/** The best fit among `own`, those of your club a ranked search could list, as the real search answers with it. */
+function yoursOf<Row extends { uid: number; name: string }>(
+  own: Row[],
+  args: Record<string, unknown> | undefined,
+  ratings: (row: Row) => Ratings,
+): Yours | undefined {
+  const best = bestOf(args);
+  if (!best) {
+    return undefined;
+  }
+  let yours: Yours | undefined;
+  for (const row of own) {
+    const score = fitOf(best, (key) => ratings(row)[key]?.value ?? 0)?.score;
+    if (score !== undefined && score >= (yours?.score ?? 0)) {
+      yours = { uid: row.uid, name: row.name, score };
+    }
+  }
+  return yours;
+}
+
+/** The sort a search was asked for, if any. */
+const orderOf = (args: Record<string, unknown> | undefined) =>
+  args?.order as { by: string; ascending: boolean } | undefined;
+
 /** The player filter of the real command: fields that are not set match everyone. */
 function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
-  // The listings and the attributes are in the profile, made only when a filter asks for them.
-  const needsDetails = f.transferListed || f.loanListed || (f.attributes?.length ?? 0) > 0;
+  // The listings, the attributes and what else the row leaves out are in the profile, made only when a filter asks
+  // for them.
+  const needsDetails =
+    f.transferListed ||
+    f.loanListed ||
+    (f.attributes?.length ?? 0) > 0 ||
+    (f.personality?.length ?? 0) > 0 ||
+    (f.traits?.length ?? 0) > 0 ||
+    [f.minHeight, f.maxHeight, f.minWage, f.maxWage, f.minValue, f.maxValue].some((bound) => bound !== undefined);
   const d = needsDetails ? details(p) : null;
   return (
     (f.position === undefined || p.positions.includes(f.position)) &&
     (f.minAge === undefined || (p.age !== null && p.age >= f.minAge)) &&
     (f.maxAge === undefined || (p.age !== null && p.age <= f.maxAge)) &&
     (f.minCurrentAbility === undefined || p.currentAbility >= f.minCurrentAbility) &&
+    (f.maxCurrentAbility === undefined || p.currentAbility <= f.maxCurrentAbility) &&
     (f.minPotentialAbility === undefined || p.potentialAbility >= f.minPotentialAbility) &&
+    (f.maxPotentialAbility === undefined || (p.potentialAbility > 0 && p.potentialAbility <= f.maxPotentialAbility)) &&
+    within(d && d.heightCm > 0 ? d.heightCm : null, f.minHeight, f.maxHeight) &&
+    within(d?.contract?.wage ?? null, f.minWage, f.maxWage) &&
+    within(d?.transferValue ?? null, f.minValue, f.maxValue) &&
+    (f.personality ?? []).every((bound) => holds(bound, d?.personality[bound.key])) &&
+    (f.traits ?? []).every((bit) => d?.traits.includes(bit) === true) &&
     contains(p.nation, f.nation) &&
     contains(p.club, f.club) &&
     (f.clubUid === undefined || p.clubUid === f.clubUid) &&
@@ -3317,7 +3437,8 @@ function matchesClubFilter(c: ClubSummary, f: ClubFilter): boolean {
     (f.minReputation === undefined || (c.reputation !== null && c.reputation >= f.minReputation)) &&
     (f.maxReputation === undefined || (c.reputation !== null && c.reputation <= f.maxReputation)) &&
     (f.foundedFrom === undefined || (c.founded !== null && c.founded >= f.foundedFrom)) &&
-    (f.foundedTo === undefined || (c.founded !== null && c.founded <= f.foundedTo))
+    (f.foundedTo === undefined || (c.founded !== null && c.founded <= f.foundedTo)) &&
+    contains(c.nation, f.nation)
   );
 }
 
@@ -3330,7 +3451,9 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
     (f.minAge === undefined || (s.age !== null && s.age >= f.minAge)) &&
     (f.maxAge === undefined || (s.age !== null && s.age <= f.maxAge)) &&
     (f.minCurrentAbility === undefined || s.currentAbility >= f.minCurrentAbility) &&
+    (f.maxCurrentAbility === undefined || s.currentAbility <= f.maxCurrentAbility) &&
     (f.minPotentialAbility === undefined || s.potentialAbility >= f.minPotentialAbility) &&
+    (f.maxPotentialAbility === undefined || (s.potentialAbility > 0 && s.potentialAbility <= f.maxPotentialAbility)) &&
     contains(s.nation, f.nation) &&
     contains(s.club, f.club) &&
     (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
@@ -3557,12 +3680,21 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       // Without an order the best current ability comes first, as with the real command.
       const order = (args?.order ?? { by: "currentAbility", ascending: false }) as PlayerOrder;
       const words = fold(query).split(/\s+/).filter(Boolean);
-      const hits = players
+      const positions = (args?.best as BestFor | undefined)?.positions ?? [];
+      const plays = (p: PlayerSummary) => positions.length === 0 || positions.some((key) => p.positions.includes(key));
+      const found = players
         .filter((p) => String(p.uid) === query.trim() || words.every((w) => fold(`${p.name} ${p.fullName ?? ""}`).includes(w)))
         .filter((p) => matchesPlayerFilter(p, filter))
+        .filter(plays)
         .sort(bySearchRank)
         .sort(playerComparator(order));
-      const page: PlayerPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
+      const hits = ranked(found, args, (p) => details(p).attributes);
+      const own = players.filter((p) => p.clubUid !== null && p.clubUid === humanClub() && plays(p));
+      const page: PlayerPage = {
+        total: hits.length,
+        rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit),
+        yours: yoursOf(own, args, (p) => details(p).attributes),
+      };
       return page as T;
     }
     case "search_clubs": {
@@ -3573,7 +3705,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const hits = clubs
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
         .filter((c) => matchesClubFilter(c, filter))
-        .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
+        .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name))
+        .sort(byColumn<ClubSummary>(orderOf(args), (c, by) => (by === "name" ? c.name : by === "nation" ? c.nation : by === "founded" ? c.founded : c.reputation)));
       // A picker lists the person's own side of the game first.
       const pickedFor = args?.pickedFor as { uid: number; staff: boolean } | undefined;
       if (pickedFor) {
@@ -3597,11 +3730,37 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const limit = Number(args?.limit ?? 200);
       const filter = (args?.filter ?? {}) as StaffFilter;
       const words = fold(query).split(/\s+/).filter(Boolean);
-      const hits = staff
+      const found = staff
         .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
         .filter((s) => matchesStaffFilter(s, filter))
-        .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
-      const page: StaffPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
+        // A ranked list leaves the board out unless it is filtered to one of its jobs.
+        .filter((s) => !bestOf(args) || filter.job !== undefined || !onBoard(s))
+        .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<StaffSummary>(orderOf(args), (s, by) => {
+            switch (by) {
+              case "name":
+                return s.name;
+              case "age":
+                return s.age;
+              case "club":
+                return s.club ?? s.national?.nation ?? null;
+              case "nation":
+                return s.nation;
+              case "potentialAbility":
+                return s.potentialAbility;
+              default:
+                return s.currentAbility;
+            }
+          }),
+        );
+      const hits = ranked(found, args, (s) => staffDetails(s).attributes);
+      const own = staff.filter((s) => !s.isHuman && !onBoard(s) && s.clubUid !== null && s.clubUid === humanClub());
+      const page: StaffPage = {
+        total: hits.length,
+        rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit),
+        yours: yoursOf(own, args, (s) => staffDetails(s).attributes),
+      };
       return page as T;
     }
     case "staff_details": {
@@ -3724,6 +3883,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           seating: stadium.seating,
           used: stadium.used,
           expansion: stadium.expansion,
+          owner: stadium.owner,
         });
       }
       const words = query.split(/\s+/).filter(Boolean);
@@ -3739,6 +3899,11 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       });
       const label = (row: StadiumSummary) => row.name ?? row.clubs[0].name;
       rows.sort((a, b) => b.capacity - a.capacity || label(a).localeCompare(label(b)));
+      rows.sort(
+        byColumn<StadiumSummary>(orderOf(args), (row, by) =>
+          by === "name" ? label(row) : by === "seating" ? row.seating : by === "expansion" ? row.expansion : row.capacity,
+        ),
+      );
       const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return stadiumPage as T;
     }
@@ -3754,10 +3919,32 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
             (filter.minAge === undefined || (o.age !== null && o.age >= filter.minAge)) &&
             (filter.maxAge === undefined || (o.age !== null && o.age <= filter.maxAge)) &&
             (filter.minCurrentAbility === undefined || o.currentAbility >= filter.minCurrentAbility) &&
+            (filter.maxCurrentAbility === undefined || o.currentAbility <= filter.maxCurrentAbility) &&
             (filter.minPotentialAbility === undefined || o.potentialAbility >= filter.minPotentialAbility) &&
+            (filter.maxPotentialAbility === undefined || o.potentialAbility <= filter.maxPotentialAbility) &&
+            (filter.minReputation === undefined || o.reputation >= filter.minReputation) &&
+            (filter.maxReputation === undefined || o.reputation <= filter.maxReputation) &&
             contains(o.nation, filter.nation),
         )
-        .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
+        .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<OfficialSummary>(orderOf(args), (o, by) => {
+            switch (by) {
+              case "name":
+                return o.name;
+              case "age":
+                return o.age;
+              case "nation":
+                return o.nation;
+              case "reputation":
+                return o.reputation;
+              case "potentialAbility":
+                return o.potentialAbility;
+              default:
+                return o.currentAbility;
+            }
+          }),
+        );
       const officialPage: OfficialPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return officialPage as T;
     }
@@ -3776,7 +3963,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
             (filter.minReputation === undefined || c.reputation >= filter.minReputation) &&
             (filter.maxReputation === undefined || c.reputation <= filter.maxReputation),
         )
-        .sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name));
+        .sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<CompetitionSummary>(orderOf(args), (c, by) =>
+            by === "name" ? c.name : by === "nation" ? c.nation : by === "continent" ? c.continent : c.reputation,
+          ),
+        );
       const competitionPage: CompetitionPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return competitionPage as T;
     }
@@ -3806,7 +3998,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
             (filter.minPrestige === undefined || a.prestige >= filter.minPrestige) &&
             (filter.maxPrestige === undefined || a.prestige <= filter.maxPrestige),
         )
-        .sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name));
+        .sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<AwardSummary>(orderOf(args), (a, by) =>
+            by === "name" ? a.name : by === "competition" ? a.competition : by === "nation" ? a.nation : a.prestige,
+          ),
+        );
       const awardPage: AwardPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return awardPage as T;
     }
@@ -3829,6 +4026,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim())
         .filter((nation) => contains(nation.continent, filter.continent));
       rows.sort((a, b) => a.name.localeCompare(b.name));
+      rows.sort(byColumn<NationSummary>(orderOf(args), (nation, by) => (by === "continent" ? nation.continent : nation.name)));
       const page: NationPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
