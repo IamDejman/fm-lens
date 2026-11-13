@@ -17,6 +17,26 @@ pub(crate) struct Rgba {
     pub data: Vec<u8>,
 }
 
+/// The one shade a picture is drawn in, when it is: such art does not show on a page of its own shade.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Shade {
+    /// Near-white only.
+    Pale,
+    /// Near-black only.
+    Dark,
+}
+
+/// A pixel fainter than this is not counted towards the shade.
+const SHADE_MIN_ALPHA: u8 = 32;
+/// Every channel at or above this is near-white; every channel at or below `255 - this` is near-black.
+const SHADE_LEVEL: u8 = 200;
+/// The share of the visible pixels (in tenths) that must be of the shade.
+const SHADE_TENTHS: usize = 9;
+/// The share of the tile's side (in fifths) the picture is fitted into.
+const TILE_FILL_FIFTHS: u32 = 4;
+/// The tile's corner radius as a share of its side, the same as the app's initials badge.
+const TILE_RADIUS: f32 = 0.22;
+
 /// How many bytes of the stored data to read for mip 0, or `None` for crunched data (all of it).
 pub(crate) fn mip0_bytes(format: i32, w: u32, h: u32) -> Result<Option<u64>> {
     match format {
@@ -112,6 +132,62 @@ impl Rgba {
         Rgba { w: nw, h: nh, data }
     }
 
+    /// The one shade the picture is drawn in, if nine tenths of what shows of it is near-white or near-black.
+    pub fn shade(&self) -> Option<Shade> {
+        let (mut seen, mut pale, mut dark) = (0usize, 0usize, 0usize);
+        for p in self.data.as_chunks::<4>().0 {
+            if p[3] > SHADE_MIN_ALPHA {
+                seen += 1;
+                pale += usize::from(p[0].min(p[1]).min(p[2]) >= SHADE_LEVEL);
+                dark += usize::from(p[0].max(p[1]).max(p[2]) <= 255 - SHADE_LEVEL);
+            }
+        }
+        let most = |n: usize| seen > 0 && n * 10 >= seen * SHADE_TENTHS;
+        if most(pale) {
+            Some(Shade::Pale)
+        } else if most(dark) {
+            Some(Shade::Dark)
+        } else {
+            None
+        }
+    }
+
+    /// The picture on a square, rounded tile of one colour, no bigger than `max_side`: the picture is fitted into
+    /// the middle four fifths of the tile and never scaled up.
+    pub fn on_tile(self, max_side: u32, colour: [u8; 3]) -> Rgba {
+        let img = self.shrink((max_side * TILE_FILL_FIFTHS / 5).max(1));
+        let side = (img.w.max(img.h) * 5).div_ceil(TILE_FILL_FIFTHS).min(max_side.max(img.w.max(img.h)));
+        let (left, top) = ((side - img.w) / 2, (side - img.h) / 2);
+        let radius = side as f32 * TILE_RADIUS;
+        let mut data = Vec::with_capacity(side as usize * side as usize * 4);
+        for y in 0..side {
+            for x in 0..side {
+                // How much of the pixel the rounded square covers: all of it away from the corners.
+                let from_edge = |v: u32| (radius - (v as f32 + 0.5).min(side as f32 - v as f32 - 0.5)).max(0.0);
+                let cover = (radius - from_edge(x).hypot(from_edge(y)) + 0.5).clamp(0.0, 1.0);
+                let inside = x >= left && x < left + img.w && y >= top && y < top + img.h;
+                let p = if inside {
+                    let at = ((y - top) as usize * img.w as usize + (x - left) as usize) * 4;
+                    [img.data[at], img.data[at + 1], img.data[at + 2], img.data[at + 3]]
+                } else {
+                    [0; 4]
+                };
+                let over = f32::from(p[3]) / 255.0;
+                let under = cover * (1.0 - over);
+                let alpha = over + under;
+                let mix = |c: usize| {
+                    if alpha > 0.0 {
+                        ((f32::from(p[c]) * over + f32::from(colour[c]) * under) / alpha).round() as u8
+                    } else {
+                        0
+                    }
+                };
+                data.extend_from_slice(&[mix(0), mix(1), mix(2), (alpha * 255.0).round() as u8]);
+            }
+        }
+        Rgba { w: side, h: side, data }
+    }
+
     pub fn to_png(&self) -> Result<Vec<u8>> {
         let mut out = Vec::new();
         let encode = |e: png::EncodingError| Error::Encode(e.to_string());
@@ -198,6 +274,42 @@ mod tests {
         let img = solid(5, 5, [10, 20, 30, 255]).shrink(2);
         assert_eq!((img.w, img.h), (2, 2));
         assert!(img.data.as_chunks::<4>().0.iter().all(|p| *p == [10, 20, 30, 255]));
+    }
+
+    #[test]
+    fn shade_is_told_from_what_shows() {
+        assert_eq!(solid(4, 4, [255, 255, 255, 255]).shade(), Some(Shade::Pale));
+        assert_eq!(solid(4, 4, [20, 10, 30, 255]).shade(), Some(Shade::Dark));
+        assert_eq!(solid(4, 4, [220, 30, 30, 255]).shade(), None);
+        assert_eq!(solid(4, 4, [255, 255, 255, 0]).shade(), None);
+        // One coloured pixel in ten leaves it pale; two do not. Clear pixels do not count either way.
+        let mut img = solid(10, 2, [240, 240, 240, 255]);
+        img.data[40..80].copy_from_slice(&[0, 0, 0, 0].repeat(10));
+        img.data[0..4].copy_from_slice(&[200, 0, 0, 255]);
+        assert_eq!(img.shade(), Some(Shade::Pale));
+        img.data[4..8].copy_from_slice(&[200, 0, 0, 255]);
+        assert_eq!(img.shade(), None);
+    }
+
+    #[test]
+    fn tile_sits_behind_the_picture_with_round_corners() {
+        let out = solid(80, 80, [255, 255, 255, 255]).on_tile(100, [10, 20, 30]);
+        assert_eq!((out.w, out.h), (100, 100));
+        let at = |x: usize, y: usize| out.data[(y * 100 + x) * 4..][..4].to_vec();
+        assert_eq!(at(0, 0), [0, 0, 0, 0]);
+        assert_eq!(at(99, 99), [0, 0, 0, 0]);
+        assert_eq!(at(50, 2), [10, 20, 30, 255]);
+        assert_eq!(at(2, 50), [10, 20, 30, 255]);
+        assert_eq!(at(50, 50), [255, 255, 255, 255]);
+        // A clear picture leaves the plain tile; a small one is not scaled up, the tile is drawn around it.
+        let clear = solid(8, 8, [0, 0, 0, 0]).on_tile(100, [10, 20, 30]);
+        assert_eq!((clear.w, clear.h), (10, 10));
+        assert_eq!(clear.data[(5 * 10 + 5) * 4..][..4], [10, 20, 30, 255]);
+        // A wide picture is centred on a square tile.
+        let wide = solid(80, 40, [255, 255, 255, 255]).on_tile(50, [0, 0, 0]);
+        assert_eq!((wide.w, wide.h), (50, 50));
+        assert_eq!(wide.data[(25 * 50 + 25) * 4..][..4], [255, 255, 255, 255]);
+        assert_eq!(wide.data[(8 * 50 + 25) * 4..][..4], [0, 0, 0, 255]);
     }
 
     #[test]

@@ -20,7 +20,7 @@ use serde::Serialize;
 use catalog::{Catalog, Entry, Res};
 pub use error::Error;
 use error::Result;
-use pixels::Rgba;
+use pixels::{Rgba, Shade};
 use unity::{Bundle, CLASS_MONO_BEHAVIOUR, CLASS_SPRITE, CLASS_TEXTURE2D};
 
 const CATALOG_FILE: &str = "catalog_info.bin";
@@ -51,6 +51,15 @@ pub struct Counts {
     pub faces: usize,
     pub flags: usize,
     pub kits: usize,
+}
+
+/// The colours of the tile put behind a logo that is drawn in one shade only.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tiles {
+    /// Behind near-white art, as RGB.
+    pub dark: [u8; 3],
+    /// Behind near-black art, as RGB.
+    pub light: [u8; 3],
 }
 
 /// The game's pictures, read from an `AddrData` folder.
@@ -90,13 +99,32 @@ impl GameGraphics {
     /// The picture as PNG bytes: upright, RGBA, scaled down so its longer side is at most `max_side` (never
     /// scaled up). `Ok(None)` when the game has no such picture.
     pub fn png(&self, kind: Kind, uid: u32, max_side: u32) -> Result<Option<Vec<u8>>> {
+        self.render(kind, uid, max_side, None)
+    }
+
+    /// Like [`Self::png`], for a logo shown on a page that may be light or dark. The game draws some logos in
+    /// white only, for its own dark screens, and a few in black only: such a logo is put on a rounded tile of the
+    /// other shade, so it shows on either page. Any other picture comes back as `png` gives it.
+    pub fn logo_png(&self, kind: Kind, uid: u32, max_side: u32, tiles: Tiles) -> Result<Option<Vec<u8>>> {
+        self.render(kind, uid, max_side, Some(tiles))
+    }
+
+    fn render(&self, kind: Kind, uid: u32, max_side: u32, tiles: Option<Tiles>) -> Result<Option<Vec<u8>>> {
         if max_side == 0 {
             return Err(Error::Format("max_side must be at least 1"));
         }
         let Some(entry) = self.catalog.lookup(kind, uid) else { return Ok(None) };
         let bundle = self.bundle(&entry.bundle)?;
         let picture = picture(&bundle, entry)?;
-        Ok(Some(picture.shrink(max_side).to_png()?))
+        let tile = tiles.and_then(|tiles| match picture.shade()? {
+            Shade::Pale => Some(tiles.dark),
+            Shade::Dark => Some(tiles.light),
+        });
+        let sized = match tile {
+            Some(colour) => picture.on_tile(max_side, colour),
+            None => picture.shrink(max_side),
+        };
+        Ok(Some(sized.to_png()?))
     }
 
     /// The opened index of a bundle, built on first use.

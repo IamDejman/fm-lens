@@ -5,7 +5,7 @@
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use fmlens_gfx::{GameGraphics, Kind};
+use fmlens_gfx::{GameGraphics, Kind, Tiles};
 
 fn open() -> GameGraphics {
     let dir = std::env::var_os("FMLENS_ADDR_DATA").expect("set FMLENS_ADDR_DATA to the AddrData folder");
@@ -83,6 +83,22 @@ fn aliases_resolve_to_a_picture() {
     let gfx = open();
     assert!(gfx.has(Kind::Club, 2000254864));
     assert_eq!(size_of(&gfx, Kind::Club, 2000254864, 512), (512, 512));
+}
+
+#[test]
+#[ignore = "needs FMLENS_ADDR_DATA"]
+fn one_shade_logos_get_a_tile() {
+    let gfx = open();
+    let tiles = Tiles { dark: [10, 20, 30], light: [240, 230, 220] };
+    // The Premier League's logo is white only: it comes back on the dark tile.
+    let bytes = gfx.logo_png(Kind::Competition, 11, 160, tiles).expect("reads").expect("picture exists");
+    let (w, h, px) = decode(&bytes);
+    assert_eq!((w, h), (160, 160));
+    assert_eq!(px[..4], [0, 0, 0, 0], "the corner is clear");
+    assert_eq!(px[(3 * 160 + 80) * 4..][..4], [10, 20, 30, 255], "the tile shows above the logo");
+    // Arsenal's logo is in colour: it is the plain picture.
+    let plain = gfx.png(Kind::Club, 602, 160).expect("reads");
+    assert_eq!(gfx.logo_png(Kind::Club, 602, 160, tiles).expect("reads"), plain);
 }
 
 /// Mean absolute difference per channel against a reference PNG, at the reference's own size.

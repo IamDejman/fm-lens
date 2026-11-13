@@ -2731,6 +2731,9 @@ struct GamePicturesState {
 /// The pictures already made, as PNG files.
 type MadePictures = HashMap<(fmlens_gfx::Kind, u32), Arc<Vec<u8>>>;
 
+/// The tiles behind the game's one-shade logos: the app's dark and light raised surfaces (`--raised` in App.css).
+const LOGO_TILES: fmlens_gfx::Tiles = fmlens_gfx::Tiles { dark: [0x26, 0x2a, 0x39], light: [0xf4, 0xf5, 0xf9] };
+
 /// How many made pictures are kept: past it they are all forgotten, and made again when asked for.
 const GAME_PICTURES_KEPT: usize = 1500;
 
@@ -2774,7 +2777,12 @@ impl GamePictures {
         if let Some(png) = self.0.made.lock().ok()?.get(&(kind, id)) {
             return Some(png.clone());
         }
-        let png = Arc::new(self.pictures()?.png(kind, id, game_picture_side(picture)).ok()??);
+        let (pictures, side) = (self.pictures()?, game_picture_side(picture));
+        let made = match picture {
+            Picture::ClubLogo | Picture::CompetitionLogo => pictures.logo_png(kind, id, side, LOGO_TILES),
+            _ => pictures.png(kind, id, side),
+        };
+        let png = Arc::new(made.ok()??);
         let mut made = self.0.made.lock().ok()?;
         if made.len() >= GAME_PICTURES_KEPT {
             made.clear();
