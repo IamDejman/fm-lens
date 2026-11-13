@@ -26,13 +26,19 @@ Staff and club filters cover additional decoded values.
 ## Platforms and evidence
 
 FM Lens ships a universal Mac app and, from 0.6.2, a Windows installer. The
-verified game build is FM27 Steam 26340721. ARM64 has the broadest local
+verified game build is FM27 27.0.1, Steam build 26577676, checked on 12
+November on Apple Silicon, under Rosetta and on Windows. Most of the evidence
+is from 27.0.0, Steam build 26340721. ARM64 has the broadest local
 validation; Intel checks used Rosetta and cover selected reads/actions.
 Windows app edits and undo were exercised on Windows Server 2022, including
 attributes, contracts, mass edits, templates, squad actions and manager fields.
-Windows installer and self-update checks are recorded separately. Windows
-edited-save persistence and Windows 10/11 execution remain unverified. See the dated Windows entries in
-[EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026).
+Windows installer and self-update checks are recorded separately. On Windows an
+edited copy was saved, FM quit and the copy loaded again twice (8 and 10
+November): a player's attributes, contract wages, a staff attribute, a club
+balance, Max tactics and a free-agent signing held. Other Windows edits have no
+save and reload, and Windows 10/11 execution remains unverified. See the dated Windows entries in
+[EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026),
+"Windows: every feature on main" and "FM27 27.0.1".
 Availability on a platform does not certify every mapped field.
 
 Upstream update installation is disabled so it cannot replace this build.
@@ -165,10 +171,11 @@ not covered by this in-memory history. See the 7 November refresh checks in
 Clone & templates can capture selected ability, attribute, personality, position
 and trait groups. Templates use versioned JSON, a local library and destination
 field validation, then preview/apply/undo through the bulk editor. Identity and
-contract fields are excluded. Staff attribute freezes last for the connection.
+contract fields are excluded. Player, staff and money freezes are remembered for
+the save and hold only while FM Lens is connected.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
-See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 167 player, 39 staff and 14 club
+See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 169 player, 43 staff and 14 club
 field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
 behavioral evidence and outstanding checks.
 

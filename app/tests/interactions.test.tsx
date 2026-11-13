@@ -100,7 +100,7 @@ test('pending navigation requires an explicit discard', async () => {
 });
 
 test('settings snapshot records open state for window restoration', async () => {
-  const mounted = render(<Settings busy={false} details={<p>Fixture version</p>} />);
+  const mounted = render(<Settings busy={false} details={<p>Fixture version</p>} onSupport={() => {}} />);
   await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
   expect(within(screen.getByRole('dialog')).getByText('Fixture version')).toBeTruthy();
   saveSnapshot();
@@ -108,7 +108,7 @@ test('settings snapshot records open state for window restoration', async () => 
   mounted.unmount();
   vi.resetModules();
   const { Settings: RestoredSettings } = await import('../src/Settings');
-  render(<RestoredSettings busy={false} details={<p>Restored version</p>} />);
+  render(<RestoredSettings busy={false} details={<p>Restored version</p>} onSupport={() => {}} />);
   expect(within(screen.getByRole('dialog')).getByText('Restored version')).toBeTruthy();
   expect(sessionStorage.getItem('fmlens.restore')).toBeNull();
 });

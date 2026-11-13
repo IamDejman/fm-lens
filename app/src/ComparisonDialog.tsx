@@ -6,8 +6,10 @@ import { createPortal } from "react-dom";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { describeError, formatDate, formatMoney } from "./format";
+import { useHoverNote } from "./HoverNote";
 import {
   ATTRIBUTE_LABELS,
+  ATTRIBUTE_NOTES,
   comparisonText as text,
   fieldLabel,
   positionLabel,
@@ -143,9 +145,23 @@ export function ComparisonDialog({ players, onClose }: ComparisonDialogProps) {
 interface RatingLine {
   key: string;
   label: string;
+  /** What the rating measures, for the hover text of its name. */
+  note?: string;
   /** A low value is the good one (see `LOWER_IS_BETTER`): the colours and the highlight run the other way. */
   lowerIsBetter: boolean;
   cells: (RatingRow | undefined)[];
+}
+
+/** The name of a rating at the head of its row; what the rating measures shows in a box over it. */
+function RatingName({ line }: { line: RatingLine }) {
+  const detail = line.lowerIsBetter ? profileText.lowerIsBetter : undefined;
+  const note = useHoverNote(line.note, detail);
+  return (
+    <th scope="row" title={line.note ? undefined : detail} {...note.target}>
+      {line.label}
+      {note.box}
+    </th>
+  );
 }
 
 /** A group of rating rows under a heading. */
@@ -162,6 +178,7 @@ function attributeLines(columns: readonly Column[], keys: readonly AttributeKey[
     return {
       key,
       label,
+      note: ATTRIBUTE_NOTES[key],
       lowerIsBetter,
       cells: columns.map(
         (column) => column.details && attributeRow(key, label, column.details.attributes[key], { lowerIsBetter }),
@@ -176,6 +193,7 @@ function personalityLines(columns: readonly Column[]): RatingLine[] {
   return personalityRows({}).map((row, index) => ({
     key: row.key,
     label: row.label,
+    note: row.note,
     lowerIsBetter: row.lowerIsBetter ?? false,
     cells: rows.map((own) => own?.[index]),
   }));
@@ -268,9 +286,7 @@ function RatingBody({ section, columns }: { section: RatingSection; columns: rea
         );
         return (
           <tr key={line.key}>
-            <th scope="row" title={line.lowerIsBetter ? profileText.lowerIsBetter : undefined}>
-              {line.label}
-            </th>
+            <RatingName line={line} />
             {line.cells.map((cell, index) => (
               <Cell
                 key={columns[index].player.uid}

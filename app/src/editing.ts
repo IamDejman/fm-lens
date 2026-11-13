@@ -1,6 +1,6 @@
 // Editing: the Rust commands that change the game, and how stored values are shown.
 
-import { call } from "./api";
+import { call, watchCommands } from "./api";
 import { converts, toPounds, toShown } from "./currency";
 import type {
   ApplyReport,
@@ -15,6 +15,7 @@ import type {
   FutureTransfer,
   InjuryKind,
   LoggedChange,
+  MassEntity,
   MassFilters,
   MassOperation,
   MassPreview,
@@ -25,6 +26,7 @@ import type {
   Nation,
   ReleasePreview,
   Promise as PlayerPromise,
+  SelectionFreeze,
   TeamAction,
   TieKind,
 } from "./types";
@@ -43,6 +45,33 @@ export const freezeAttributes = (uid: number, frozen: boolean) => call<number[]>
 
 /** The players whose attributes are frozen: while the app is connected, they do not get worse. */
 export const frozenPlayers = () => call<number[]>("frozen_players");
+
+/** How much of what `query` and the entity's filter in `filters` select is frozen. */
+export const frozenSelection = (entity: MassEntity, query: string, filters: MassFilters) =>
+  call<SelectionFreeze>("frozen_selection", { entity, query, filters });
+
+/**
+ * Whether the mass edit or the undo that `command` answered `result` to froze (true) or unfroze anything; null when it
+ * did neither, or `command` is another.
+ */
+export const massFreeze = (command: string, result: unknown): boolean | null => {
+  if (command !== "apply_mass_edit" && command !== "undo_batch") {
+    return null;
+  }
+  const { freeze } = result as MassReport | BatchUndo;
+  return freeze !== null && freeze.count > 0 ? freeze.frozen : null;
+};
+
+/**
+ * Hears a mass edit that froze or unfroze, and its undo, after which a profile's freeze box reads again what is
+ * frozen. Returns what stops hearing.
+ */
+export const watchMassFreeze = (next: () => void) =>
+  watchCommands((command, _args, result) => {
+    if (massFreeze(command, result) !== null) {
+      next();
+    }
+  });
 
 /**
  * Sets every attribute of the player `uid` to its best: 20, and 1 for injury proneness and dirtiness. The changes are
@@ -66,6 +95,33 @@ export const changeLog = () => call<LoggedChange[]>("change_log");
 
 /** Writes back the old value of a logged change; fails if the game has changed the value since. */
 export const undoChange = (id: number) => call<LoggedChange>("undo_change", { id });
+
+/** Whether a logged change stands: written to the game that is loaded, and not undone. */
+export const stands = (change: LoggedChange) => change.undoneAt === null && change.earlierGame !== true;
+
+/** What a profile's standing fields are kept under: `player:1009102`. */
+export const profileKey = (entity: Entity, uid: number) => `${entity}:${uid}`;
+
+/**
+ * The fields with a change in `log` that stands, by profile (see `profileKey`): what the profiles mark as applied.
+ * A field stays in while any change to it stands, and goes once they are all undone.
+ */
+export function standingFields(log: readonly LoggedChange[]): ReadonlyMap<string, ReadonlySet<string>> {
+  const byProfile = new Map<string, Set<string>>();
+  for (const change of log) {
+    if (!stands(change)) {
+      continue;
+    }
+    const key = profileKey(change.entity, change.uid);
+    const fields = byProfile.get(key);
+    if (fields === undefined) {
+      byProfile.set(key, new Set([change.field]));
+    } else {
+      fields.add(change.field);
+    }
+  }
+  return byProfile;
+}
 
 /** The whole percentage the game shows (0–100) for a stored one (0–10000), for a profile that has no field table. */
 export const wholePercent = (stored: number): number => Math.floor((stored + 50) / 100);
@@ -180,15 +236,21 @@ export function numberFromIso(text: string): number | null {
 
 /**
  * Works out a mass edit: `operations` on every player, member of staff or club that `query` and the entity's
- * filter in `filters` select, from the values the game holds now. Nothing is written until `applyMassEdit`.
+ * filter in `filters` select, from the values the game holds now, and with `freeze` their attributes or money frozen
+ * (true) or unfrozen, which needs no operations. Nothing is written until `applyMassEdit`.
  */
-export const planMassEdit = (entity: Entity, query: string, filters: MassFilters, operations: MassOperation[]) =>
-  call<MassPreview>("plan_mass_edit", { entity, query, filters, operations });
+export const planMassEdit = (
+  entity: Entity,
+  query: string,
+  filters: MassFilters,
+  operations: MassOperation[],
+  freeze: boolean | null = null,
+) => call<MassPreview>("plan_mass_edit", { entity, query, filters, operations, freeze });
 
 /** Writes the mass edit previewed as `id`, exactly as shown; each change only if the value is still the one previewed. */
 export const applyMassEdit = (id: number) => call<MassReport>("apply_mass_edit", { id });
 
-/** Undoes every change of a mass edit that is not undone yet. */
+/** Undoes every change of a mass edit that is not undone yet, and what it froze or unfroze. */
 export const undoBatch = (batch: number) => call<BatchUndo>("undo_batch", { batch });
 
 /**
@@ -369,6 +431,13 @@ export const signFreeAgentLater = (uid: number, club: number, joins: number) =>
  * as one change of his field `bans` from how many he had to 0, and undone as one; fails when he has none.
  */
 export const liftBans = (uid: number) => call<LoggedChange>("lift_bans", { uid });
+
+/**
+ * Ends today every reason to be unhappy of the player that lasts, as the game's own "Remove unhappiness" does: they
+ * stay listed as over, which keeps the game from raising them again the next day. Logged as one change of his field
+ * `contract.unhappiness` from how many lasted to 0, and undone as one; fails when none lasts.
+ */
+export const removeUnhappiness = (uid: number) => call<LoggedChange>("remove_unhappiness", { uid });
 
 /**
  * Keeps the player from retiring: the retirement the game has planned for him is taken out of its plans, and he gets

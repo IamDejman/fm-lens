@@ -1,7 +1,8 @@
 import { Fragment, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { BestFits } from "./BestFor";
 import { EditableValue, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
-import { changeStaffJob, staffJobs } from "./editing";
+import { changeStaffJob, staffJobs, watchMassFreeze } from "./editing";
 import { describeError } from "./format";
 import {
   choiceLabel,
@@ -10,9 +11,11 @@ import {
   jobLabel,
   profileText,
   STAFF_ATTRIBUTE_LABELS,
+  STAFF_ATTRIBUTE_NOTES,
   type StaffAttributeKey,
 } from "./labels";
 import { MoveButton } from "./MoveDialog";
+import { bestFits, BOARD_JOBS, STAFF_RECIPES } from "./recipes";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import {
@@ -252,18 +255,24 @@ function AttributesTab({ details }: { details: StaffDetails }) {
       </div>
       <div className="profile-split">
         <RatingGroup title={profileText.personality} rows={personalityRows(details.personality)} />
-        {details.formations !== null && (
-          <section className="profile-group">
-            <h3>{profileText.formations}</h3>
-            <dl className="stats">
-              {FORMATION_FIELDS.map((field, n) => (
-                <Fact key={field} label={fieldLabel("staff", field)}>
-                  <EditableValue field={field}>{formationText(field, details.formations?.[n] ?? 0)}</EditableValue>
-                </Fact>
-              ))}
-            </dl>
-          </section>
-        )}
+        <div className="profile-stack">
+          {details.formations !== null && (
+            <section className="profile-group">
+              <h3>{profileText.formations}</h3>
+              <dl className="stats">
+                {FORMATION_FIELDS.map((field, n) => (
+                  <Fact key={field} label={fieldLabel("staff", field)}>
+                    <EditableValue field={field}>{formationText(field, details.formations?.[n] ?? 0)}</EditableValue>
+                  </Fact>
+                ))}
+              </dl>
+            </section>
+          )}
+          {/* The board's coaching attributes mean nothing (see `board_job` in `best.rs`). */}
+          {!BOARD_JOBS.includes(details.job ?? -1) && (
+            <BestFits fits={bestFits(STAFF_RECIPES, (key) => details.attributes[key]?.value ?? 0)} />
+          )}
+        </div>
       </div>
     </>
   );
@@ -320,9 +329,11 @@ function StaffFreeze({ uid }: { uid: number }) {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    call<number[]>("frozen_staff").then((staff) => { if (active) setFrozen(staff.includes(uid)); })
+    const read = () => call<number[]>("frozen_staff").then((staff) => { if (active) setFrozen(staff.includes(uid)); })
       .catch((err) => { if (active) setError(describeError(err)); });
-    return () => { active = false; };
+    void read();
+    const stop = watchMassFreeze(() => void read());
+    return () => { active = false; stop(); };
   }, [uid]);
   if (!editable) return null;
   return <div className="attribute-actions">
@@ -343,6 +354,7 @@ function attributeRows(details: StaffDetails, keys: StaffAttributeKey[]): Rating
   return keys.map((key) =>
     attributeRow(key, STAFF_ATTRIBUTE_LABELS[key], details.attributes[key], {
       scale: STORED_AS_SHOWN.has(key) ? 20 : 100,
+      note: STAFF_ATTRIBUTE_NOTES[key],
     }),
   );
 }

@@ -3,14 +3,17 @@
 This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
-The current FM27 Apple Silicon layout defines 169 player fields, 40 staff fields,
-14 club fields, 12 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
-flags word, located only on FM27 Steam build 26340721 (ARM64) for an object of
-class `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
-missing. `manager.unsackable` (bit 1) passed bounded apply/undo and save/reload
+The current FM27 layouts, macOS and Windows alike, define 169 player fields, 43 staff fields,
+14 club fields, 36 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
+flags word, located only on FM27 Steam builds 26340721 (27.0.0), 26385295 and
+26577676 (both 27.0.1), on macOS ARM64, macOS Intel and Windows, for an object of class
+`db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
+missing. The checks below ran on build 26340721, ARM64; Windows has apply,
+readback and undo only, and no check of either flag is recorded on 27.0.1.
+`manager.unsackable` (bit 1) passed bounded apply/undo and save/reload
 persistence on a copied career, but dismissal protection remains unverified.
 `manager.registration_anytime` (bit 8) passed the same apply/undo and
-save/reload checks; FM changed registration outside the window and kept the
+save/reload checks there; FM changed registration outside the window and kept the
 change through save/quit/reload.
 See EDITING-VALIDATION.md. A missing record, unsupported build, changed career storage,
 failed layout check, stale value or invalid current/new value prevents a write.
@@ -204,6 +207,7 @@ records cannot be imported through a template.
 | `reputation.current` | u16 | plain | 0–10000 |
 | `reputation.world` | u16 | plain | 0–10000 |
 | `nation` | pointer | plain | 65536–140737488355327 |
+| `date_of_birth` | date | plain | 1920-01-01–2020-12-31, or to the game date once later |
 | `attribute.attacking` | u8 | attribute | 0 (1)–100 (20) |
 | `attribute.defending` | u8 | attribute | 0 (1)–100 (20) |
 | `attribute.fitness` | u8 | attribute | 0 (1)–100 (20) |
@@ -236,6 +240,8 @@ records cannot be imported through a template.
 | `contract.wage` | i32 | plain | 0–10000000 |
 | `contract.expires` | date | plain | 2000-01-01–2100-12-31 |
 | `coaching_licence` | i8 | plain | 0 (none), 7 (National C) to 1 (Continental Pro) |
+| `formation.in_possession` | u8 | plain | one of 3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64 |
+| `formation.out_of_possession` | u8 | plain | one of 4, 7, 22, 27, 30, 32, 33, 35, 63, 64 |
 | `manager.unsackable` | flag (bit 1) | plain | 0–1 |
 | `manager.registration_anytime` | flag (bit 8) | plain | 0–1 |
 
@@ -270,6 +276,18 @@ One nation at a time; none where the build's layout does not place nations.
 | `women.youth_rating` | i16 | plain | 0–165 |
 | `game_importance`, `women.game_importance` | i8 | plain | 0–4 |
 | `attendance`, `women.attendance` | u8 | plain | 0–16 |
+| `style.depth`, `women.style.depth` | i8 | plain | 0–20 |
+| `style.directness`, `women.style.directness` | i8 | plain | 0–20 |
+| `style.flamboyancy`, `women.style.flamboyancy` | i8 | plain | 0–20 |
+| `style.flexibility`, `women.style.flexibility` | i8 | plain | 0–20 |
+| `style.free_roles`, `women.style.free_roles` | i8 | plain | 0–20 |
+| `style.marking`, `women.style.marking` | i8 | plain | 0–20 |
+| `style.offside`, `women.style.offside` | i8 | plain | 0–20 |
+| `style.pressing`, `women.style.pressing` | i8 | plain | 0–20 |
+| `style.sitting_back`, `women.style.sitting_back` | i8 | plain | 0–20 |
+| `style.tempo`, `women.style.tempo` | i8 | plain | 0–20 |
+| `style.playmaker`, `women.style.playmaker` | i8 | plain | 0–20 |
+| `style.width`, `women.style.width` | i8 | plain | 0–20 |
 | `points` (men's FIFA points) | f32, typed to two decimals | plain | 0.00–3000.00 |
 | `population` | u32 | plain | 1–2000000000 |
 | `dual_nationality` | u8 | plain | 0 or 2 |
@@ -289,15 +307,23 @@ One official at a time; none where the build's layout does not place officials.
 ## Changes made through the game
 
 Some changes are not field writes: the game makes them itself through the
-bridge, or FM Lens edits a list. These include work permits, injuries, loans,
+bridge, or FM Lens edits a list or record. These include work permits, injuries, loans,
 transfers, swaps, releases, free-agent signings, Max tactics, secondary nationalities and homegrown ties,
-contract clauses and a planned retirement. ROADMAP.md lists each one and what
-has been checked in FM.
+contract clauses and a planned retirement. They also include an injury's length
+or removal, lifting bans, staff job changes and club moves, a person's likes and
+dislikes (change a strength, remove one, or point one at another club or
+person), a language's level or removal, closing an open promise, cancelling a
+future transfer, and your manager's Change club, which has no Undo. ROADMAP.md
+lists each one and what has been checked in FM.
 
 ## Unsupported systems
 
-Competition and award editing, promises and youth-intake records do not yet
-have validated editing layouts in this fork. Complete transfers, other future
-transfers, manager relations and moves, language editing, ownership, kits and
-competition rule behavior also remain research work. These cannot be enabled by
-adding inputs or reusing a Windows offset on macOS.
+Competition and award editing, making or editing a promise and youth-intake
+records do not yet have validated editing layouts in this fork. Moving your
+manager to a national team or out of a job, adding a like, dislike, language or
+ban, player registration, career plans beyond a planned retirement, staff
+scouting knowledge and tendencies, instalments and buy-backs, ownership, kits
+and competition rule behavior also remain research work. These cannot be
+enabled by adding inputs or reusing a Windows offset on macOS. Transfers are
+made, but not every linked record (history, finances, registration) is
+verified; see ROADMAP.md.

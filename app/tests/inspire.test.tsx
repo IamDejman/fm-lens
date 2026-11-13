@@ -24,31 +24,40 @@ function View({ details, editable = true }: { details: ReturnType<typeof player>
   </EditorContext.Provider>;
 }
 const inspire = () => screen.getByRole('button', { name: 'Inspire' }) as HTMLButtonElement;
+const commands = () => vi.mocked(call).mock.calls.map(([command]) => command);
+/** What the game answers: a morale edit that is written, or one it refuses; and reasons it ends, or will not. */
+function answer({ morale = true, reasons = true } = {}) {
+  const stale = { code: 'edit.stale', params: {}, message: 'The game changed this value.' };
+  vi.mocked(call).mockImplementation((command: string) =>
+    command === 'apply_edits'
+      ? Promise.resolve(morale ? { applied: [{}], failed: [] } : { applied: [], failed: [{ field: 'morale', value: 20, error: stale }] })
+      : reasons ? Promise.resolve({}) : Promise.reject(stale));
+}
 
-test('Inspire sends top morale and no unhappiness over what the profile read, then has it read again', async () => {
-  vi.mocked(call).mockResolvedValue({ applied: [{}, {}], failed: [] });
+test('Inspire sets top morale over what the profile read, ends his reasons, then has the profile read again', async () => {
+  answer();
   render(<View details={player(12, [lasting, over])} />);
   await userEvent.click(inspire());
-  expect(call).toHaveBeenCalledTimes(1);
-  expect(call).toHaveBeenCalledWith('apply_edits', { entity: 'player', uid: 123, edits: [
-    { field: 'morale', expected: 12, value: 20 },
-    // The game keeps the reasons that are over in the same list: its whole count is what goes to none.
-    { field: 'contract.unhappiness', expected: 2, value: 0 },
-  ] });
+  expect(call).toHaveBeenCalledWith('apply_edits', { entity: 'player', uid: 123,
+    edits: [{ field: 'morale', expected: 12, value: 20 }] });
+  // The reasons end as Remove all ends them, not by a write to their count.
+  expect(call).toHaveBeenCalledWith('remove_unhappiness', { uid: 123 });
+  expect(call).toHaveBeenCalledTimes(2);
   expect(edited).toHaveBeenCalledTimes(1);
 });
 
-test('Inspire sends only what is short of the top', async () => {
-  vi.mocked(call).mockResolvedValue({ applied: [{}], failed: [] });
+test('Inspire does only what is short of the top', async () => {
+  answer();
   const view = render(<View details={player(20, [lasting])} />);
   await userEvent.click(inspire());
-  expect(call).toHaveBeenLastCalledWith('apply_edits', expect.objectContaining({
-    edits: [{ field: 'contract.unhappiness', expected: 1, value: 0 }] }));
-  // A free agent has no contract, and so no reasons to clear.
+  expect(commands()).toEqual(['remove_unhappiness']);
+  vi.mocked(call).mockClear();
+  // A reason that is over needs no ending, and a free agent has no contract to hold one.
+  view.rerender(<View details={player(7, [over])} />);
+  await userEvent.click(inspire());
   view.rerender(<View details={player(7, null)} />);
   await userEvent.click(inspire());
-  expect(call).toHaveBeenLastCalledWith('apply_edits', expect.objectContaining({
-    edits: [{ field: 'morale', expected: 7, value: 20 }] }));
+  expect(commands()).toEqual(['apply_edits', 'apply_edits']);
 });
 
 test('Inspire waits for a player who is short of the top, and for a game that can be written to', () => {
@@ -60,11 +69,13 @@ test('Inspire waits for a player who is short of the top, and for a game that ca
   expect(call).not.toHaveBeenCalled();
 });
 
-test('a refused write is said, and the button can be pressed again', async () => {
-  vi.mocked(call).mockResolvedValue({ applied: [], failed: [
-    { field: 'morale', value: 20, error: { code: 'edit.stale', params: {}, message: 'The game changed this value.' } } ] });
-  render(<View details={player(12, [])} />);
+test('a refused morale write is said, and his reasons still end', async () => {
+  answer({ morale: false });
+  render(<View details={player(12, [lasting])} />);
   await userEvent.click(inspire());
   expect((await screen.findByRole('alert')).textContent).toBeTruthy();
+  expect(commands()).toEqual(['apply_edits', 'remove_unhappiness']);
+  expect(edited).toHaveBeenCalledTimes(1);
+  // Not left busy: the button can be pressed again.
   expect(inspire().getAttribute('aria-disabled')).toBeNull();
 });

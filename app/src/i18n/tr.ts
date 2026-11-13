@@ -23,6 +23,9 @@ const changes = (count: number) => `${format(count)} değişiklik`;
 const changeCount = (count: number) => (count === 0 ? "Değişiklik yok" : changes(count));
 
 /** "12 değere dokunulmadı": the ending is on the noun, so the same words do for one and for many. */
+const toFreeze = (frozen: boolean, count: number) =>
+  frozen ? `${format(count)} dondurulacak` : `${format(count)} için dondurma kaldırılacak`;
+
 const valuesLeftAlone = (count: number) => `${format(count)} değere dokunulmadı`;
 
 /** What each list holds, as the sentences need it: the noun itself, "of the" (genitive) and "in" (locative). */
@@ -280,6 +283,9 @@ const TRAIT_NAMES_TR: readonly string[] = [
   "Sağ kanattan içeri kat eder",
   "Erken orta yapar",
   "Topu savunmadan çıkarır",
+  // Bits 61 and 62 are no trait in FM27: the game shows nothing for them.
+  "",
+  "",
   "Topu ayaklarıyla oynar"
 ];
 
@@ -405,6 +411,69 @@ export const tr: Strings = {
     right_foot: "Sağ Ayak",
   },
 
+  attributeNotes: {
+    // Teknik
+    corners: "Korner vuruşlarının kalitesi.",
+    crossing: "Kanatlardan yapılan ortaların isabeti.",
+    dribbling: "Topla koşarken topu kontrol etme becerisi.",
+    finishing: "Pozisyonları gole çevirme becerisi.",
+    first_touch: "Gelen topu temiz kontrol etme becerisi.",
+    free_kicks: "Direkt serbest vuruşların kalitesi, şut ya da orta.",
+    heading: "Kaleye ya da takım arkadaşına yapılan kafa vuruşlarının isabeti.",
+    long_shots: "Ceza sahası dışından atılan şutların tehlikesi.",
+    long_throws: "Taç atışlarının uzaklığı ve sertliği.",
+    marking: "Rakibi yakından takip edip etkisiz kılma becerisi.",
+    passing: "Kısa ve uzun pasların isabeti.",
+    penalty_taking: "Penaltılardaki güvenilirlik.",
+    tackling: "Faul yapmadan topu kapma becerisi.",
+    technique: "Top tekniği: zor pasları, şutları ve kontrolleri mümkün kılar.",
+    // Zihinsel
+    aggression: "İkili mücadeleye girme isteği.",
+    anticipation: "Oyunu önceden okuma becerisi.",
+    bravery: "Topu kazanmak için sakatlanmayı göze alma.",
+    composure: "Baskı altında, topla ya da kale önünde sakin kalma.",
+    concentration: "Dikkatin ne kadar sürdüğü, özellikle maç sonlarında.",
+    decisions: "Doğru seçeneğin ne sıklıkla seçildiği.",
+    determination: "Geriye düşülse bile devam etme ve kazanma azmi.",
+    flair: "Beklenmedik olanı deneme eğilimi.",
+    leadership: "Takım arkadaşlarını yüreklendirme ve yönlendirme becerisi. En çok kaptanda önemlidir.",
+    off_the_ball: "Top takımdayken boş alan bulma becerisi.",
+    positioning: "Top rakipteyken alan kapatma becerisi.",
+    teamwork: "Takım talimatlarına uyma ve takım için oynama.",
+    vision: "Zor olanlar dahil, görülen pas seçeneklerinin sayısı.",
+    work_rate: "Maç boyunca ne kadar koşulduğu.",
+    // Fiziksel
+    acceleration: "En yüksek hıza ne kadar çabuk ulaşıldığı.",
+    agility: "Dönme, hızlanma ve durma çabukluğu.",
+    balance: "Topla ve ikili mücadelelerde ayakta kalma becerisi.",
+    jumping_reach: "Sıçrayınca ulaşılan en yüksek nokta. Boy da etkiler.",
+    natural_fitness: "Kondisyonun maçlar arasında ve yaşla birlikte ne kadar korunduğu.",
+    pace: "En yüksek hız.",
+    stamina: "Yüksek tempoya yorulmadan ne kadar dayanıldığı.",
+    strength: "Rakiplere karşı ikili mücadelelerdeki fiziksel güç.",
+    // Kalecilik
+    aerial_reach: "Kalecinin topu tutmak ya da yumruklamak için ulaştığı yükseklik.",
+    command_of_area: "Kalecinin ceza sahasına ve oraya gelen toplara hakimiyeti.",
+    communication: "Kalecinin savunmayı yönlendirme becerisi.",
+    eccentricity: "Kalecinin çalım atmak ya da kornere çıkmak gibi beklenmedik işler yapma eğilimi.",
+    handling: "Topu elden kaçırmadan tutma becerisi.",
+    kicking: "Kalecinin ayakla vuruşlarının uzaklığı ve isabeti.",
+    one_on_ones: "Kalecinin hücumcuyla karşı karşıya kaldığındaki başarısı.",
+    punching: "Kalecinin topu tutmak yerine ne sıklıkla yumrukladığı.",
+    reflexes: "Kalecinin şutlara tepki verme çabukluğu.",
+    rushing_out: "Kalecinin ara paslarına ve hücumculara çıkmak için kalesini ne sıklıkla terk ettiği.",
+    throwing: "Kalecinin elle atışlarının uzaklığı ve isabeti.",
+    // Gizli
+    consistency: "Her zamanki seviyeye ne sıklıkla ulaşıldığı.",
+    dirtiness: "Ne sıklıkla faul yapıldığı ve kuralların zorlandığı.",
+    important_matches: "Büyük maçlardaki performans.",
+    injury_proneness: "Sakatlanmaya ne kadar yatkın olunduğu.",
+    versatility: "Yeni mevki ve rollere uyum sağlama çabukluğu.",
+    // Ayaklar
+    left_foot: "Sol ayağın ne kadar iyi kullanıldığı.",
+    right_foot: "Sağ ayağın ne kadar iyi kullanıldığı.",
+  },
+
   staffAttributes: {
     // Antrenörlük
     attacking: "Hücum",
@@ -433,6 +502,34 @@ export const tr: Strings = {
     sports_science: "Spor Bilimi",
   },
 
+  staffAttributeNotes: {
+    // Antrenörlük
+    attacking: "Hücum oyununu çalıştırma.",
+    defending: "Savunma oyununu çalıştırma.",
+    fitness: "Kondisyon çalıştırma: güç, hız ve dayanıklılık.",
+    goalkeeping: "Kalecileri çalıştırma.",
+    possession: "Topla oyunu çalıştırma: pas ve topa sahip olma.",
+    set_pieces: "Korner, serbest vuruş ve taç çalıştırma.",
+    tactical: "Takım taktiğini ve dizilişini çalıştırma.",
+    technical: "Top tekniğini çalıştırma.",
+    working_with_youngsters: "Genç oyuncuları çalıştırma ve geliştirme becerisi.",
+    // Zihinsel
+    authority: "Disiplini sağlama becerisi.",
+    determination: "Başarma azmi. Oyunculara da geçer.",
+    motivating: "Oyuncuları antrenmanda ve maç öncesinde motive etme becerisi.",
+    people_management: "Oyuncularla ilgilenme ve onları mutlu tutma becerisi.",
+    // Bilgi
+    data_analysis: "Maç ve oyuncu verilerini yorumlama becerisi.",
+    judging_ability: "Bir oyuncunun mevcut yeteneğini doğru değerlendirme.",
+    judging_potential: "Bir oyuncunun potansiyelini doğru değerlendirme.",
+    judging_staff: "Personelin yeteneğini doğru değerlendirme.",
+    negotiating: "Transfer ve sözleşmelerde yapılan anlaşmaların kalitesi.",
+    tactical_knowledge: "Taktik ve diziliş bilgisi.",
+    // Sağlık
+    physiotherapy: "Sakatlıkları tedavi etme ve önleme becerisi.",
+    sports_science: "Kondisyonu ve sakatlık riskini yönetme becerisi.",
+  },
+
   personality: {
     adaptability: "Uyum",
     ambition: "Hırs",
@@ -442,6 +539,17 @@ export const tr: Strings = {
     sportsmanship: "Sportmenlik",
     temperament: "Mizaç",
     controversy: "Tartışmacılık",
+  },
+
+  personalityNotes: {
+    adaptability: "Yeni bir ülkeye çabuk alışma.",
+    ambition: "Zirveye çıkma ve bunun için kulüp değiştirme isteği.",
+    loyalty: "Kulübe bağlılık.",
+    pressure: "Baskıyla başa çıkma.",
+    professionalism: "Antrenmanı ve işi ciddiye alma.",
+    sportsmanship: "Adil oyun.",
+    temperament: "İşler kötü gittiğinde sakin kalma.",
+    controversy: "Medyada tartışma yaratma eğilimi.",
   },
 
   positions: {
@@ -647,6 +755,7 @@ export const tr: Strings = {
     potentialAbility: "Potansiyel yetenek",
     potentialAbilityShort: "PY",
     potentialRange: "Potansiyel bir aralık olarak belirlenmiş",
+    suggestedAbility: (value) => `Önerilen MY ${value}`,
     personalDetails: "Kişisel bilgiler",
     fullNameLabel: "Tam ad",
     heightLabel: "Boy",
@@ -760,7 +869,16 @@ export const tr: Strings = {
     morale: (value) => `${value} / 20`,
     traits: "Özellikler",
     noTraits: "Özelliği yok",
-    traitName: (bit) => TRAIT_NAMES_TR[bit] ?? "Bilinmeyen özellik",
+    traitName: (bit) => TRAIT_NAMES_TR[bit] || "Bilinmeyen özellik",
+    traitGroups: {
+      movement: "Hareket",
+      passing: "Pas",
+      finishing: "Bitiricilik",
+      discipline: "Disiplin",
+      defending: "Savunma",
+      technique: "Teknik",
+      career: "Kariyer",
+    },
     unhappiness: "Mutsuzluk",
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",
@@ -847,7 +965,7 @@ export const tr: Strings = {
     fitness: "Kondisyon",
     international: "Milli takım",
     noPromises: "Söz yok",
-    promisesUnavailable: "Windows'ta henüz kullanılamıyor",
+    promisesUnavailable: "FM'in bu sürümünde kullanılamıyor",
     noContract: "Sözleşmesi yok",
     setAttributes: "Bütün özellikleri şuna ayarla:",
     setAttributesButton: "Uygula",
@@ -936,17 +1054,26 @@ export const tr: Strings = {
       maxAge: "En yüksek yaş",
       minPlaceholder: "Min",
       maxPlaceholder: "Maks",
-      minCurrentAbility: "Min MY",
       minCurrentAbilityTitle: "En düşük mevcut yetenek",
-      minPotentialAbility: "Min PY",
       minPotentialAbilityTitle: "En düşük potansiyel yetenek",
-      abilityPlaceholder: "1–200",
       nation: "Uyruk",
       club: "Kulüp",
       freeAgentsOnly: "Yalnızca serbest oyuncular",
       contractEndsBy: "Sözleşme bitişi (en geç)",
       transferListedOnly: "Yalnızca transfer listesindekiler",
       loanListedOnly: "Yalnızca kiralık listesindekiler",
+      maxCurrentAbilityTitle: "En yüksek mevcut yetenek",
+      maxPotentialAbilityTitle: "En yüksek potansiyel yetenek",
+      height: "Boy (cm)",
+      minHeight: "En kısa boy",
+      maxHeight: "En uzun boy",
+      wage: "Haftalık maaş",
+      minWage: "En düşük maaş",
+      maxWage: "En yüksek maaş",
+      value: "Temel değer",
+      minValue: "En düşük değer",
+      maxValue: "En yüksek değer",
+      trait: "Özellik",
       chips: "Etkin filtreler",
       removeChip: (label: string) => `Kaldır: ${label}`,
       attributes: {
@@ -978,6 +1105,18 @@ export const tr: Strings = {
     },
   },
 
+  /** The select that ranks the player and staff lists for a job, and the column of how well each row fits. */
+  bestFor: {
+    label: "En uygun",
+    /** The column: a score out of 100. */
+    fit: "Uyum",
+    /** The column as the hover text of its header names it, after `playerList.sortBy`. */
+    fitName: "uyum",
+    /** Beside the select of a ranked list: who fits best at the user's club, and the score. */
+    yours: (name, score) => `En iyin: ${name} ${score}`,
+    /** What the mark on a fit says: it is better than the best at the user's club. */
+    better: "En iyinden iyi",
+  },
   staffList: {
     nav: "Personel",
     count: (total) => `${format(total)} personel`,
@@ -1015,11 +1154,6 @@ export const tr: Strings = {
       maxAge: "En yüksek yaş",
       minPlaceholder: "Min",
       maxPlaceholder: "Maks",
-      minCurrentAbility: "Min MY",
-      minCurrentAbilityTitle: "En düşük mevcut yetenek",
-      minPotentialAbility: "Min PY",
-      minPotentialAbilityTitle: "En düşük potansiyel yetenek",
-      abilityPlaceholder: "1–200",
       nation: "Uyruk",
       club: "Kulüp",
     },
@@ -1069,6 +1203,7 @@ export const tr: Strings = {
     usedAll: "Tamamı",
     usedTitle: "Oyunun kapasitenin ne kadarını kullandığı. 0 tamamı demektir.",
     expansion: "Genişleyebileceği",
+    owner: "Sahibi",
     noStadium: "Bu kulübün stadyumu okunamadı.",
     info: "Kulüp bilgisi",
     seasonTickets: "Sezonluk biletler",
@@ -1136,11 +1271,6 @@ export const tr: Strings = {
       age: "Yaş",
       minAge: "En düşük yaş",
       maxAge: "En yüksek yaş",
-      minCurrentAbility: "Min MY",
-      minCurrentAbilityTitle: "En düşük mevcut yetenek",
-      minPotentialAbility: "Min PY",
-      minPotentialAbilityTitle: "En düşük potansiyel yetenek",
-      abilityPlaceholder: "1–200",
       nation: "Ülke",
     },
     reputation: "İtibar",
@@ -1497,6 +1627,7 @@ export const tr: Strings = {
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
     later: "Sonra",
     checkForUpdates: "Güncellemeleri Denetle…",
+    check: "Güncellemeleri denetle",
     checking: "Güncellemeler denetleniyor…",
     upToDate: "FM Lens güncel.",
     checkFailed: "Güncellemeler denetlenemedi.",
@@ -1504,6 +1635,26 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.10": [
+        "Bir oyuncunun özelliklerini yükseltin, MY de onlarla yükselir: değişiklikler kalır.",
+        "Teşekkür et: FM Lens'i destekle, Ko-fi'yi uygulamanın içinde açar.",
+      ],
+      "0.7.9": [
+        "Dondurma artık mevcut yeteneği de tutar: dondurulan oyuncu gerilemez.",
+        "Bir oyuncuyu düzenlerken FM Lens, özelliklerine uyan MY'yi önerir.",
+        "Bir özelliğin ne anlama geldiğini görmek için imleci üzerine getirin.",
+        "Oyuncu davranışları FM27'deki adları ve gruplarıyla gelir.",
+      ],
+      "0.7.8": [
+        "FM27'nin 12 Kasım Steam güncellemesiyle çalışır.",
+        "Her listeyi sıralayın, oyuncuları maaşa, değere, boya ve kişiliğe göre filtreleyin.",
+        "Personelin doğum tarihini ve bir oyuncunun bütün özelliklerini düzenleyin.",
+      ],
+      "0.7.7": [
+        "Mutsuzluğu kaldır kalıcı: nedenler Devam’dan sonra geri gelmez.",
+        "Mutluluk düzenlemesi yerinde kalır: moral de onunla ayarlanır.",
+        "Toplu düzenleme listedeki her şeyi dondurabilir ya da dondurmayı kaldırabilir.",
+      ],
       "0.7.6": [
         "Personel sekmesi her takımın kendi personelini gösterir: A takımı, U21, U18.",
       ],
@@ -1608,6 +1759,12 @@ export const tr: Strings = {
     ask: "FM Lens ücretsiz ve açık kaynak, hep öyle kalacak. GitHub'da bir yıldız beni cesaretlendirir.",
     button: "GitHub'da yıldız ver",
     notNow: "Şimdi değil",
+  },
+
+  support: {
+    button: "FM Lens'i destekle",
+    title: "Teşekkür et",
+    browser: "Tarayıcıda aç",
   },
 
   edit: {
@@ -1778,6 +1935,10 @@ export const tr: Strings = {
       "Önce aramayı veya filtreleri daraltın.",
     loadingFields: "Alanlar okunuyor…",
     fieldsFailed: (reason) => `Alanlar okunamadı: ${reason}`,
+    toFreeze,
+    frozenCount: (frozen, count) =>
+      frozen ? `${format(count)} donduruldu` : `${format(count)} için dondurma kaldırıldı`,
+    freezeFailed: (count, reason) => `${format(count)} dondurulamadı: ${reason}`,
 
     // The fields to change
     groups: {
@@ -1837,12 +1998,13 @@ export const tr: Strings = {
       const affected = preview.targets - preview.unchanged;
       return [
         preview.changes === 0
-          ? "Değişiklik yok"
+          ? !preview.freeze?.count && "Değişiklik yok"
           : affected === preview.targets
             ? `${format(preview.targets)} ${noun.plain} için ${changes(preview.changes)}`
             : `${format(preview.targets)} ${noun.of} ${format(affected)} tanesi için ${changes(preview.changes)}`,
         preview.unchanged > 0 && `${format(preview.unchanged)} ${noun.in} bu değerler zaten var`,
         preview.skippedCount > 0 && valuesLeftAlone(preview.skippedCount),
+        !!preview.freeze?.count && toFreeze(preview.freeze.frozen, preview.freeze.count),
       ]
         .filter(Boolean)
         .join(" · ");

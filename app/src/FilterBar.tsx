@@ -97,13 +97,15 @@ interface RangeFieldProps {
   max: string;
   onMin: (value: string) => void;
   onMax: (value: string) => void;
+  /** For numbers with many digits, such as money: the field takes two cells of the form. */
+  wide?: boolean;
 }
 
 /** The two ends of a number filter under one name. */
-export function RangeField({ label, minLabel, maxLabel, range, min, max, onMin, onMax }: RangeFieldProps) {
+export function RangeField({ label, minLabel, maxLabel, range, min, max, onMin, onMax, wide }: RangeFieldProps) {
   const id = useId();
   return (
-    <div className="filter-field" role="group" aria-labelledby={id}>
+    <div className={wide ? "filter-field wide" : "filter-field"} role="group" aria-labelledby={id}>
       <span id={id}>{label}</span>
       <input
         type="number"

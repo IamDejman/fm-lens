@@ -6,9 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::calibrate::ArrayRef;
 use crate::index::{Listed, SearchIndex};
+use crate::players::{nation_name, nation_uid};
 use crate::profile::{ClubFinanceLayout, Layout, StadiumLayout};
 use crate::relations::Related;
-use crate::text::read_fm_string;
+use crate::text::{Memo, read_fm_string};
 
 /// Supporter-mix percentages in the order FM stores them.
 pub const SUPPORTER_MIX: [&str; 6] = ["hardcore", "core", "family", "fair_weather", "casual", "other"];
@@ -29,6 +30,10 @@ pub struct ClubSummary {
     /// 0–10000, from the senior team.
     pub reputation: Option<u16>,
     pub founded: Option<u16>,
+    /// The nation the club is from; none where the layout does not place it.
+    pub nation: Option<String>,
+    /// The nation's UID, e.g. for its flag.
+    pub nation_uid: Option<u32>,
     #[serde(skip)]
     pub address: u64,
 }
@@ -68,6 +73,9 @@ pub fn read_clubs(
     let (begin, count) = array.locate(process, module)?;
     let pointers = process.read_bytes(begin, (count * 8) as usize)?;
     let mut buf = vec![0u8; c.end() as usize];
+    // Many clubs share a nation; resolve each pointer once.
+    let mut nations = Memo::default();
+    let mut nation_uids: HashMap<u64, Option<u32>> = HashMap::new();
 
     let mut clubs = Vec::with_capacity(count as usize);
     for chunk in pointers.as_chunks::<8>().0 {
@@ -81,6 +89,16 @@ pub fn read_clubs(
             continue;
         };
         let info = u64_at(c.info);
+        // `plays_in` holds the club's own nation (Cardiff City: Wales), `nation` the one whose league it plays in.
+        let nation_address = [c.plays_in, c.nation]
+            .into_iter()
+            .flatten()
+            .map(u64_at)
+            .find(|&nation| is_user_pointer(nation))
+            .unwrap_or(0);
+        let nation = nations.get(nation_address, |nation| nation_name(process, layout, nation));
+        let nation_uid =
+            *nation_uids.entry(nation_address).or_insert_with(|| nation_uid(process, layout, nation_address));
         clubs.push(ClubSummary {
             uid: u32::from_le_bytes(buf[c.uid as usize..c.uid as usize + 4].try_into().expect("4 bytes")),
             name,
@@ -92,6 +110,8 @@ pub fn read_clubs(
                 .then(|| read_u16(process, info + layout.club_info.founded))
                 .flatten()
                 .filter(|&year| year > 1800),
+            nation_uid: nation.as_ref().and(nation_uid),
+            nation,
             address: object,
         });
     }
@@ -147,6 +167,21 @@ pub struct Stadium {
     pub used: u32,
     /// The most it can be expanded to.
     pub expansion: u32,
+    /// The club that owns it, when its owner is one of the clubs read (see [`stadium_owner`]). The reader of a club's
+    /// profile leaves it out: whoever has the clubs fills it in from `owner_address`.
+    pub owner: Option<StadiumClub>,
+    /// What the stadium's owner field holds; 0 when it holds no pointer.
+    #[serde(skip)]
+    pub owner_address: u64,
+}
+
+/// The club at `address`, a stadium's owner field, as a row names it: one of `clubs`, or none. A stadium a council or
+/// nobody owns, and an owner that is not a club the app read, have none.
+pub fn stadium_owner<'a>(address: u64, clubs: impl IntoIterator<Item = &'a ClubSummary>) -> Option<StadiumClub> {
+    if !is_user_pointer(address) {
+        return None;
+    }
+    clubs.into_iter().find(|club| club.address == address).map(StadiumClub::of)
 }
 
 /// A club whose senior team plays at a stadium.
@@ -156,6 +191,12 @@ pub struct StadiumClub {
     pub uid: u32,
     pub name: String,
     pub women: bool,
+}
+
+impl StadiumClub {
+    fn of(club: &ClubSummary) -> Self {
+        Self { uid: club.uid, name: club.name.clone(), women: club.women }
+    }
 }
 
 /// One senior-team stadium, with every club whose senior team plays there. Read from the same layout as the club
@@ -172,6 +213,8 @@ pub struct StadiumSummary {
     pub seating: u32,
     pub used: u32,
     pub expansion: u32,
+    /// The club that owns it, when its owner is one of the clubs read.
+    pub owner: Option<StadiumClub>,
 }
 
 impl StadiumSummary {
@@ -258,11 +301,22 @@ pub fn read_stadiums<'a>(
     let Some(s) = layout.stadium.as_ref() else {
         return Vec::new();
     };
-    let found = clubs.into_iter().filter_map(|club| {
+    let clubs: Vec<&ClubSummary> = clubs.into_iter().collect();
+    let by_address: HashMap<u64, &ClubSummary> = clubs.iter().map(|&club| (club.address, club)).collect();
+    let found = clubs.iter().filter_map(|&club| {
         let (address, bytes) = club_stadium(process, layout, club.address)?;
         Some((address, club, bytes))
     });
-    group_by_stadium(found, |bytes| stadium_row(process, s, bytes))
+    group_by_stadium(found, |bytes| {
+        let mut row = stadium_row(process, s, bytes);
+        row.owner = by_address.get(&owner_address(bytes, s)).map(|&club| StadiumClub::of(club));
+        row
+    })
+}
+
+/// What the owner field of a stadium's bytes holds.
+fn owner_address(bytes: &[u8], s: &StadiumLayout) -> u64 {
+    u64::from_le_bytes(bytes[s.owner as usize..s.owner as usize + 8].try_into().expect("8 bytes"))
 }
 
 /// One row per stadium address in `found`, which gives the stadium each club plays at with the stadium's bytes; the
@@ -287,10 +341,7 @@ fn group_by_stadium<'a, B>(
             // Stable, and an unknown reputation goes last.
             tenants.sort_by_key(|club| std::cmp::Reverse(club.reputation));
             row.uid = tenants[0].uid;
-            row.clubs = tenants
-                .iter()
-                .map(|club| StadiumClub { uid: club.uid, name: club.name.clone(), women: club.women })
-                .collect();
+            row.clubs = tenants.iter().map(|&club| StadiumClub::of(club)).collect();
             row
         })
         .collect()
@@ -309,6 +360,7 @@ fn stadium_row(process: &Process, s: &StadiumLayout, bytes: &[u8]) -> StadiumSum
         seating: u32_at(s.seating),
         used: u32_at(s.used),
         expansion: u32_at(s.expansion),
+        owner: None,
     }
 }
 
@@ -382,6 +434,8 @@ pub fn read_club_details(
             seating: u32_at(s.seating),
             used: u32_at(s.used),
             expansion: u32_at(s.expansion),
+            owner: None,
+            owner_address: owner_address(&bytes, s),
         });
     }
 
@@ -488,6 +542,7 @@ mod tests {
             seating: capacity,
             used: 0,
             expansion: capacity + 1000,
+            owner: None,
         }
     }
 
@@ -531,7 +586,30 @@ mod tests {
     }
 
     fn club(uid: u32, name: &str, women: bool, reputation: Option<u16>) -> ClubSummary {
-        ClubSummary { uid, name: name.to_owned(), short_name: None, women, reputation, founded: None, address: 0 }
+        ClubSummary {
+            uid,
+            name: name.to_owned(),
+            short_name: None,
+            women,
+            reputation,
+            founded: None,
+            nation: None,
+            nation_uid: None,
+            address: 0,
+        }
+    }
+
+    #[test]
+    fn a_stadium_s_owner_is_one_of_the_clubs_read_or_none() {
+        let city = ClubSummary { address: 0x7000_1000, ..club(10, "City", false, Some(6000)) };
+        let ladies = ClubSummary { address: 0x7000_2000, ..club(30, "City Women", true, None) };
+        let clubs = [&city, &ladies];
+        let owner = stadium_owner(0x7000_2000, clubs).expect("a club the app read");
+        assert_eq!((owner.uid, owner.name.as_str(), owner.women), (30, "City Women", true));
+        // A pointer to something that is no club the app read, and no pointer at all, name no owner.
+        assert!(stadium_owner(0x7000_3000, clubs).is_none());
+        assert!(stadium_owner(0, clubs).is_none());
+        assert!(stadium_owner(0x10, [&ClubSummary { address: 0x10, ..city.clone() }]).is_none());
     }
 
     #[test]

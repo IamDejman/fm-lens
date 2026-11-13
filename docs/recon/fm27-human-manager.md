@@ -1,8 +1,15 @@
 # FM27: the human manager's unsackable flag
 
-Status: implemented for one build only. Apply, undo, stale-value refusal and
-save/reload are tested (gates 1 to 7 below). A real dismissal scenario has not been
-run, so this is not evidence that a manager is protected from being sacked.
+Status: implemented on Steam builds 26340721 (27.0.0), 26385295 and 26577676
+(both 27.0.1), on macOS ARM64, macOS Intel and Windows. Apply, undo, stale-value refusal and
+save/reload are tested on 26340721 ARM64 (gates 1 to 7 below); Windows has
+apply, readback and undo only, Intel a read under Rosetta, and no check is
+recorded on 27.0.1. A real dismissal scenario has not been run, so this is not
+evidence that a manager is protected from being sacked.
+
+This note also covers the other things done to the human manager: squad
+registration at any time, Change club and likes and dislikes (see "The game's
+own manager actions" below). A move to a national team is not built.
 
 ## Build and class
 
@@ -20,8 +27,10 @@ The profile `profiles/fm27/steam-26340721-macos-arm64.toml` carries these as
 statically ([Intel notes](fm27-steam-26340721-macos-x86_64.md)). So does its
 Windows build (`steam-26340721.toml`), except that MSVC puts the vtable naming
 `.?AVHUMAN_NON_PLAYER@db@@` at the person block, `+0x440`, which the profile gives
-as `class_at`. The Launch Preview and the other Windows builds leave the field
-unavailable.
+as `class_at`. The three 27.0.1 profiles (build 26385295) carry the same values;
+the Intel and Windows ones name the handler's new address. Build 26577676's
+three profiles carry build 26385295's. The Launch Preview
+and the Game Pass builds leave the field unavailable.
 
 ## Static trace (ARM64 slice of game_plugin)
 
@@ -102,8 +111,8 @@ scenario (8) remains unverified:
 7. Save, fully quit FM, relaunch through Steam, reload the copy and reread the flags.
 8. Run a dismissal scenario (poor results, board confidence) and record the outcome.
 
-Registration and club or national-team moves for the human manager need their
-own linked-record mappings; this flag does not cover them.
+This flag does not cover registration or moves. Registration at any time is a
+second flag and a club move goes through the game's own call; both are below.
 
 ## The game's own manager actions
 
@@ -141,18 +150,30 @@ Other bits written to the word, for reference only: 0, 3, 4, 11, 12 and 13.
 
 ### Club and national-team moves: not raw writes
 
-The handler around `0x238DDBC`–`0x238DF40` picks `staff_to_my_team` or
+The code around `0x238DDBC`–`0x238DF40` picks `staff_to_my_team` or
 `staff_to_other_team`, `player_to_my_team` or `player_to_other_team`,
 `loan_to_my_team` or `loan_to_other_team`, and `staff_to_my_national_team` or
 `staff_to_other_national_team`, by comparing the target team with the user's.
-It then builds a named request and passes it to the game's action system. The
-move itself (contracts, job, the club's or nation's staff list, history) is
-done by FM's own processing, not by a field. FM Lens only reads and writes
-memory and never runs game code, so it cannot trigger these safely. Rebuilding
-their effects with raw writes would risk an inconsistent career.
+It is the editor's analytics logging, not the move
+([fm27-manager-moves.md](fm27-manager-moves.md) traces the move itself). The
+move (contracts, job, the club's or nation's staff list, history) is done by
+FM's own processing, not by a field, and rebuilding its effects with raw writes
+would risk an inconsistent career.
 
-A game-native route for a national job is to raise the manager's reputation
-(already editable) and apply or wait for an offer in FM.
+Change club leaves it to the game: through the bridge, FM Lens has the game
+sign the human manager for the club's senior team with a Manager job
+(`sign_free_agent`, `Session::move_manager`), on macOS and Windows. The game ends the job he has
+and dismisses the club's manager, and nothing undoes it. FM treated it as a
+real appointment and it held through a day and a save and load, but FM's Job
+History gained no row for the new club and the dismissed manager's history row
+stayed open (../EDITING-VALIDATION.md, "Human manager: Change club"). No run on
+27.0.1 is recorded, and a move to a women's team was not tried.
+
+A move to a national team and leaving a job are not built. The game's national
+routine needs a live editor session, which the bridge does not have
+([fm27-manager-moves.md](fm27-manager-moves.md)). A game-native route for a
+national job is to raise the manager's reputation (already editable) and apply
+or wait for an offer in FM.
 
 ### Manager relations
 

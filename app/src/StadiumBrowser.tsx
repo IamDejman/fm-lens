@@ -18,11 +18,19 @@ import { ListBrowser } from "./ListBrowser";
 import { ClubLogo, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact, ProfileFrame } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
-import type { StadiumClub, StadiumFilter, StadiumSummary } from "./types";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
+import type { StadiumClub, StadiumFilter, StadiumSort, StadiumSummary } from "./types";
 
 const columns = stadiumListText.columns;
 const filters = stadiumListText.filters;
 const CAPACITY_RANGE = { min: 0, max: 300_000 };
+
+/** The columns the list sorts by. Until one is clicked the search answers with the largest first. */
+const SORT: SortStart<StadiumSort> = {
+  sorts: ["name", "capacity", "seating", "expansion"],
+  start: { by: "capacity", ascending: false },
+  firstAscending: ["name"],
+};
 
 /** Senior stadiums, one row each with every club that plays there, with the selected stadium beside the table. */
 export function StadiumBrowser({ version, active }: { version: number; active: boolean }) {
@@ -32,6 +40,7 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
   useSnapshot("stadiumKind", () => kind);
   useSnapshot("stadiumMin", () => minCapacity);
   useSnapshot("stadiumMax", () => maxCapacity);
+  const sort = useListSort("stadiumOrder", SORT);
   const min = whole(minCapacity, CAPACITY_RANGE);
   const max = whole(maxCapacity, CAPACITY_RANGE);
   const filter: StadiumFilter | undefined =
@@ -56,7 +65,7 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
     <ListBrowser<StadiumSummary>
       name="stadiums"
       command="search_stadiums"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order: sort.order ?? undefined }}
       version={version}
       active={active}
       placeholder={stadiumListText.search}
@@ -80,11 +89,11 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
       tableClass="stadium-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
           <th className="col-club">{columns.club}</th>
-          <th className="num col-capacity">{columns.capacity}</th>
-          <th className="num col-seating">{columns.seating}</th>
-          <th className="num col-expansion">{columns.expansion}</th>
+          <SortHeader by="capacity" sort={sort} label={columns.capacity} className="num col-capacity" />
+          <SortHeader by="seating" sort={sort} label={columns.seating} className="num col-seating" />
+          <SortHeader by="expansion" sort={sort} label={columns.expansion} className="num col-expansion" />
         </>
       }
       cells={(stadium) => <StadiumCells stadium={stadium} />}
@@ -173,6 +182,11 @@ function StadiumProfile({ stadium, onClose }: { stadium: StadiumSummary; onClose
           {stadium.used === 0 ? clubProfileText.usedAll : formatNumber(stadium.used)}
         </Fact>
         <Fact label={clubProfileText.expansion}>{formatNumber(stadium.expansion)}</Fact>
+        {stadium.owner && (
+          <Fact label={clubProfileText.owner}>
+            <ClubNames clubs={[stadium.owner]} />
+          </Fact>
+        )}
       </dl>
     </ProfileFrame>
   );

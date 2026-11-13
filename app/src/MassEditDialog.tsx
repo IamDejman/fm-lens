@@ -1,6 +1,6 @@
 // Mass editing: the button in the toolbar of a list, and the dialog it opens. The dialog changes one or more fields of
-// everything the list's search and filters select: it previews exactly what would be written, applies it, and can
-// undo it.
+// everything the list's search and filters select, and freezes or unfreezes it: it previews exactly what would be
+// written, applies it, and can undo it.
 
 import { useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
@@ -9,6 +9,7 @@ import { valueText } from "./editDraft";
 import {
   applyMassEdit,
   changeLog,
+  frozenSelection,
   isoFromNumber,
   isStoredFiner,
   planMassEdit,
@@ -17,7 +18,15 @@ import {
 } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { currencySymbol, describeError } from "./format";
-import { changesText, editText, fieldLabel, massEditText as text, profileText, valueChange } from "./labels";
+import {
+  changesText,
+  clubProfileText,
+  editText,
+  fieldLabel,
+  massEditText as text,
+  profileText,
+  valueChange,
+} from "./labels";
 import type { ListState } from "./ListBrowser";
 import { useDialogReturn } from "./MoreMenu";
 import {
@@ -32,7 +41,16 @@ import {
   type OperationKind,
   type RowVerdict,
 } from "./massDraft";
-import type { EditField, LoggedChange, MassEntity, MassFilters, MassPreview, MassReport } from "./types";
+import type {
+  EditField,
+  FreezeCount,
+  LoggedChange,
+  MassEntity,
+  MassFilters,
+  MassPreview,
+  MassReport,
+  SelectionFreeze,
+} from "./types";
 import { useModal } from "./useModal";
 import { askToLeave, EditorContext } from "./useProfileEditing";
 
@@ -104,6 +122,8 @@ type Busy = "preview" | "apply" | "undo";
 interface UndoOutcome {
   undone: number;
   problems: string[];
+  /** What it froze again or unfroze. */
+  freeze: FreezeCount | null;
 }
 
 /** The preview of the rows as they were when Preview was pressed, with what they were (`key`, see `draftKey`). */
@@ -137,6 +157,10 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
   const [report, setReport] = useState<MassReport | null>(null);
   const [undone, setUndone] = useState<UndoOutcome | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // How much of the list is frozen; null until the app has said.
+  const [freeze, setFreeze] = useState<SelectionFreeze | null>(null);
+  // What the freeze box asks of Apply: all of the list frozen (true) or unfrozen; null while it is left as it is.
+  const [wanted, setWanted] = useState<boolean | null>(null);
 
   // Nothing to change, or more than one mass edit takes: the dialog only says so.
   const blocked = scope.total === 0 || scope.total > MASS_LIMIT;
@@ -152,6 +176,25 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       alive.current = false;
     };
   }, []);
+
+  // What of the list is frozen already. Without an answer the freeze box is not offered.
+  useEffect(() => {
+    if (blocked) {
+      return;
+    }
+    let cancelled = false;
+    frozenSelection(entity, scope.query, scope.filters).then(
+      (now) => {
+        if (!cancelled) {
+          setFreeze(now);
+        }
+      },
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [blocked, entity, scope]);
 
   // The field table of the list's kind of entity, without the fields a mass edit may not change (`mass: false`, such as
   // a squad number, which is changed one player at a time): one row to start with, for its first field.
@@ -227,10 +270,28 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
   });
   const operations = verdicts.flatMap((verdict) => (verdict.ok ? [verdict.operation] : []));
   const complete = rows.length > 0 && operations.length === rows.length;
-  // What the rows say, so that a preview is applicable only for them as they are.
-  const draftKey = JSON.stringify(rows.map(({ field, kind, text: typed }) => [field, kind, typed.trim()]));
+  // What the rows and the freeze box say, so that a preview is applicable only for them as they are.
+  const draftKey = JSON.stringify([wanted, ...rows.map(({ field, kind, text: typed }) => [field, kind, typed.trim()])]);
   const previewed = preview !== null && preview.key === draftKey ? preview.data : null;
   const current = applied ? null : previewed;
+
+  // The freeze box: ticked while everything in the list is frozen, and in between while only some of it is. It is
+  // part of the edit: a click asks Apply for the rest frozen too, or all of it unfrozen, and nothing is frozen before.
+  const allFrozen = freeze !== null && freeze.selected > 0 && freeze.frozen === freeze.selected;
+  const someFrozen = freeze !== null && freeze.frozen > 0 && !allFrozen;
+  const toggleFreeze = () =>
+    setWanted((old) => {
+      if (someFrozen) {
+        // In between: freeze the rest, then unfreeze all of it, then leave it as it is.
+        return old === null ? true : old ? false : null;
+      }
+      return old === null ? !allFrozen : null;
+    });
+  // The box changed and no field filled in: there is nothing to preview, and Apply freezes right away.
+  const freezeOnly: FreezeCount | null =
+    !applied && freeze !== null && wanted !== null && rows.every((row) => row.text.trim() === "")
+      ? { frozen: wanted, count: wanted ? freeze.selected - freeze.frozen : freeze.frozen }
+      : null;
 
   const change = (id: number, edit: (row: OperationDraft) => OperationDraft) =>
     setRows((old) => old.map((row) => (row.id === id ? edit(row) : row)));
@@ -294,7 +355,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
     complete &&
     run("preview", async () => {
       try {
-        const data = await planMassEdit(entity, scope.query, scope.filters, operations);
+        const data = await planMassEdit(entity, scope.query, scope.filters, operations, wanted);
         if (alive.current) {
           setPreview({ data, key: draftKey });
         }
@@ -306,12 +367,27 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       }
     });
 
+  /** Reads again what of the list is frozen, after an Apply or an Undo that changed it. */
+  const readFrozen = async () => {
+    try {
+      const now = await frozenSelection(entity, scope.query, scope.filters);
+      if (alive.current) {
+        setFreeze(now);
+      }
+    } catch {
+      // The box then keeps what it showed.
+    }
+  };
+
+  const canApply =
+    current !== null ? current.changes + (current.freeze?.count ?? 0) > 0 : freezeOnly !== null && freezeOnly.count > 0;
   const apply = () =>
-    current !== null &&
-    current.changes > 0 &&
+    canApply &&
     run("apply", async () => {
       try {
-        const done = await applyMassEdit(current.id);
+        // A freeze alone was not previewed: it is planned now.
+        const plan = current ?? (await planMassEdit(entity, scope.query, scope.filters, [], wanted));
+        const done = await applyMassEdit(plan.id);
         // The game has changed: the lists, the profile and the change log read it again.
         if (done.applied > 0) {
           onEdited();
@@ -319,6 +395,9 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
         if (alive.current) {
           setReport(done);
           setUndone(null);
+        }
+        if (done.freeze !== null) {
+          await readFrozen();
         }
       } catch (e) {
         // The plan is gone or out of date: it is previewed again.
@@ -346,19 +425,36 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
         }
       }
       if (alive.current) {
-        setUndone({ undone: done.undone, problems: undoFailureLines(done.failed, log) });
+        setUndone({ undone: done.undone, problems: undoFailureLines(done.failed, log), freeze: done.freeze });
+      }
+      if (done.freeze !== null) {
+        await readFrozen();
       }
     });
 
-  const canUndo = report !== null && report.applied > 0 && (undone === null || undone.problems.length > 0);
+  const froze = report?.freeze ?? null;
+  const canUndo =
+    report !== null &&
+    (report.applied > 0 || (froze !== null && froze.count > 0)) &&
+    (undone === null || undone.problems.length > 0);
   const scopeText =
     scope.total === 0
       ? text.scopeNone(entity)
       : scope.total > MASS_LIMIT
         ? text.scopeTooMany(entity, scope.total, MASS_LIMIT)
         : text.scope(entity, scope.total);
+  // Why Preview is off, while there is something to fill in.
+  const previewHint = complete || freezeOnly !== null || applied ? undefined : text.previewBlocked;
   const applyTitle =
-    current === null ? text.applyFirst : current.changes === 0 ? text.applyNothing : text.applyTitle(current.changes);
+    current === null
+      ? freezeOnly === null
+        ? text.applyFirst
+        : undefined
+      : current.changes > 0
+        ? text.applyTitle(current.changes)
+        : canApply
+          ? undefined
+          : text.applyNothing;
 
   return createPortal(
     // A click beside the dialog does nothing, and keeps focus where it is.
@@ -382,9 +478,28 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       >
         <header className="modal-head">
           <h2 id={titleId}>{text.title[entity]}</h2>
-          <p id={scopeId} className={scope.total > MASS_LIMIT ? "mass-scope warn" : "mass-scope"}>
-            {scopeText}
-          </p>
+          <div className="mass-scope-row">
+            <p id={scopeId} className={scope.total > MASS_LIMIT ? "mass-scope warn" : "mass-scope"}>
+              {scopeText}
+            </p>
+            {freeze !== null && (
+              // After Apply it shows what is frozen now, as the fields show what was applied.
+              <label className="freeze-toggle">
+                <input
+                  ref={(box) => {
+                    if (box) {
+                      box.indeterminate = someFrozen && (applied || wanted === null);
+                    }
+                  }}
+                  type="checkbox"
+                  checked={applied ? allFrozen : (wanted ?? allFrozen)}
+                  disabled={busy !== null || applied}
+                  onChange={toggleFreeze}
+                />
+                <span>{entity === "club" ? clubProfileText.freeze : profileText.freezeAttributes}</span>
+              </label>
+            )}
+          </div>
         </header>
 
         <div className="modal-body">
@@ -450,13 +565,13 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
                       </svg>
                       {text.addField}
                     </button>
-                    <span className="mass-hint">{complete ? "" : text.previewBlocked}</span>
+                    <span className="mass-hint">{previewHint ?? ""}</span>
                     <button
                       ref={previewButton}
                       type="submit"
                       className="mass-preview"
                       disabled={!complete}
-                      title={complete ? undefined : text.previewBlocked}
+                      title={previewHint}
                     >
                       {busy === "preview" ? text.previewing : text.preview}
                     </button>
@@ -466,7 +581,11 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
 
               {/* A live region that is always there, so that it is read out when the preview fills it. */}
               <p ref={summary} className="mass-summary" role="status">
-                {previewed ? text.summary(entity, previewed) : ""}
+                {previewed
+                  ? text.summary(entity, previewed)
+                  : freezeOnly !== null
+                    ? text.toFreeze(freezeOnly.frozen, freezeOnly.count)
+                    : ""}
               </p>
               {current !== null && <PreviewTable entity={entity} preview={current} fields={byKey} />}
               {current !== null && current.skippedCount > 0 && <SkippedList entity={entity} preview={current} />}
@@ -485,17 +604,28 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
         >
           {report !== null && (
             <>
-              <p>{text.applied(report.applied)}</p>
+              {(report.applied > 0 || froze === null || froze.count === 0) && <p>{text.applied(report.applied)}</p>}
+              {froze !== null && froze.count > 0 && <p>{text.frozenCount(froze.frozen, froze.count)}</p>}
               <Problems
-                lines={report.failed.map((failed) =>
-                  text.failure(failed.name, fieldLabel(entity, failed.field), describeError(failed.error)),
-                )}
+                lines={[
+                  ...report.failed.map((failed) =>
+                    text.failure(failed.name, fieldLabel(entity, failed.field), describeError(failed.error)),
+                  ),
+                  ...(froze !== null && froze.error !== null
+                    ? [text.freezeFailed(froze.failed, describeError(froze.error))]
+                    : []),
+                ]}
               />
             </>
           )}
           {undone !== null && (
             <>
-              <p>{text.undone(undone.undone)}</p>
+              {(undone.undone > 0 || undone.freeze === null || undone.freeze.count === 0) && (
+                <p>{text.undone(undone.undone)}</p>
+              )}
+              {undone.freeze !== null && undone.freeze.count > 0 && (
+                <p>{text.frozenCount(undone.freeze.frozen, undone.freeze.count)}</p>
+              )}
               <Problems lines={undone.problems} />
             </>
           )}
@@ -522,7 +652,7 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
             <button
               type="button"
               className="primary mass-apply"
-              disabled={current === null || current.changes === 0 || busy !== null}
+              disabled={!canApply || busy !== null}
               title={applyTitle}
               onClick={() => void apply()}
             >
