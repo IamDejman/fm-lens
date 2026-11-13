@@ -173,6 +173,13 @@ function contractEnd(next: () => number): FmDate {
   return roll < 0.8 ? { year, month: 6, day: 30 } : { year, month: 12, day: 31 };
 }
 
+/** Made-up grounds no club of the sample save plays at: a national stadium, a closed one, a training ground. */
+const UNPLAYED_GROUNDS: readonly (readonly [string, number])[] = [
+  ["National Stadium", 61000],
+  ["Old Riverside Ground", 18500],
+  ["Harbour Training Centre", 2400],
+];
+
 /** The fixture players, and how well each plays every position (by UID): the list and the profile both read the ratings. */
 const { players, ratings } = (() => {
   const next = random(27);
@@ -3917,6 +3924,19 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           owner: stadium.owner,
         });
       }
+      // Grounds of the game's table that no club of the save plays at, as a build that places the table lists them.
+      UNPLAYED_GROUNDS.forEach(([name, capacity], index) => {
+        grounds.set(name, {
+          uid: 0xf000_0000 + index,
+          clubs: [],
+          name,
+          capacity,
+          seating: capacity,
+          used: 0,
+          expansion: Math.round(capacity * 1.2),
+          owner: null,
+        });
+      });
       const words = query.split(/\s+/).filter(Boolean);
       const rows = [...grounds.values()].filter((row) => {
         const haystack = fold(`${row.name ?? ""} ${row.clubs.map((c) => c.name).join(" ")}`);
@@ -3928,7 +3948,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           (filter.maxCapacity === undefined || row.capacity <= filter.maxCapacity)
         );
       });
-      const label = (row: StadiumSummary) => row.name ?? row.clubs[0].name;
+      const label = (row: StadiumSummary) => row.name ?? row.clubs[0]?.name ?? "";
       rows.sort((a, b) => b.capacity - a.capacity || label(a).localeCompare(label(b)));
       rows.sort(
         byColumn<StadiumSummary>(orderOf(args), (row, by) =>

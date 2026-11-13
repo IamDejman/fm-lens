@@ -71,6 +71,9 @@ struct Connection {
     /// Competitions and awards, read once. Cleared when the connection is loaded again.
     competitions: Option<SearchIndex<CompetitionSummary>>,
     awards: Option<SearchIndex<AwardSummary>>,
+    /// Every nation of the game's table of them, read once; empty where the build does not place the table. Cleared
+    /// when the connection is loaded again.
+    nation_table: Option<Vec<Nation>>,
 }
 
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
@@ -315,6 +318,7 @@ impl Connection {
             officials: None,
             competitions: None,
             awards: None,
+            nation_table: None,
         })
     }
 
@@ -2058,10 +2062,13 @@ impl Connection {
             .collect()
     }
 
-    /// Senior stadiums of the loaded clubs, read once. Empty when this build has no stadium layout.
+    /// The stadiums, read once: the loaded clubs' senior stadiums, then every other stadium of the game's table where
+    /// the build places it. Empty when this build has no stadium layout.
     fn stadium_index(&mut self) -> &SearchIndex<StadiumSummary> {
         if self.stadiums.is_none() {
-            let rows = read_stadiums(&self.session.process, &self.session.layout, self.clubs.iter());
+            // Without the table, the clubs' stadiums are still listed.
+            let table = self.session.stadium_table().unwrap_or_default();
+            let rows = read_stadiums(&self.session.process, &self.session.layout, self.clubs.iter(), table);
             self.stadiums = Some(SearchIndex::new(rows));
         }
         self.stadiums.as_ref().expect("stadium index just stored")
@@ -2103,22 +2110,26 @@ impl Connection {
         players.chain(staff)
     }
 
-    /// The nations list: those of the people in the lists and those of the competitions, which reach the nations no
-    /// one in the save is from. Just the people's where the competitions cannot be read.
+    /// The nations list: every nation of the game's table of them, where the build places it, with those of the
+    /// people in the lists and of the competitions. Just the people's where neither table can be read.
     fn listed_nations(&mut self) -> Vec<Nation> {
         // Read once; a nation's own fields are found among these too (see `target`).
         let _ = self.competition_index();
+        if self.nation_table.is_none() {
+            self.nation_table = Some(self.session.nation_table().unwrap_or_default());
+        }
         self.known_nations()
     }
 
-    /// The nations of the people in the lists, and of the competitions once they are read.
+    /// The nations of the people in the lists, and of the competitions and the nations' table once they are read.
     fn known_nations(&self) -> Vec<Nation> {
         let competitions = self
             .competitions
             .iter()
             .flat_map(|index| index.iter())
             .map(|c| (c.nation_address, c.nation.as_deref(), c.nation_uid));
-        nations(self.people_nations().chain(competitions))
+        let table = self.nation_table.iter().flatten().map(|n| (n.address, Some(n.name.as_str()), n.uid));
+        nations(self.people_nations().chain(competitions).chain(table))
     }
 
     /// Keeps the list rows in step with `value`, just written to the field `change` names.

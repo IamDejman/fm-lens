@@ -442,11 +442,10 @@ export interface StadiumClub {
 
 /** A senior-team stadium with the clubs that play there, from the same fields as the club profile. */
 export interface StadiumSummary {
-  /** Row id: the UID of the first of `clubs`. */
+  /** Row id: the UID of the first of `clubs`, or one of its own for a stadium no club plays at. */
   uid: number;
-  /** Highest reputation first. Never empty. */
-  /** Never empty. */
-  clubs: [StadiumClub, ...StadiumClub[]];
+  /** The clubs whose senior team plays there, highest reputation first; empty for a stadium no club plays at. */
+  clubs: StadiumClub[];
   name: string | null;
   capacity: number;
   seating: number;

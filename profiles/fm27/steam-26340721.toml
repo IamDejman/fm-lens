@@ -28,6 +28,12 @@ transfer_manager = 0x56F3A18
 # awards and 8,084 competitions (721 women's) on the Steam test save, the World Golden Ball and FIFA World Cup first.
 awards = 0x57056D0
 competitions = 0x57056E8
+# The static pointers to the database tables of every nation and every stadium, in the same block: 0x28 and 0x80 after
+# the awards', where the block of the arm64 Mac build 26340721 has them (docs/recon/fm27-competitions-awards-2.md). The
+# block keeps one order in every build profiled: the competitions sit 0x18 and the kinds of injury 0x40 after the
+# awards in each, each found on its own. The tables' class and rows are checked before they are used.
+nations = 0x57056F8
+stadiums = 0x5705750
 
 # The static pointers to the database table of the kinds of injury (136, a cold first) and to the injury manager
 # (INJURY_MANAGER), 8 bytes before the retirement manager's.

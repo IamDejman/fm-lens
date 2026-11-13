@@ -124,3 +124,17 @@ test('a club filter and its sort are saved under a name and brought back', async
   await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Saved filters' }), "Old women's clubs");
   await waitFor(() => expect(lastSearch('search_clubs')).toMatchObject({ filter: { women: true }, order: { by: 'founded', ascending: true } }));
 });
+
+test('a stadium no club plays at is listed, with no club, and opens', async () => {
+  const { StadiumBrowser } = await import('../src/StadiumBrowser');
+  render(<StadiumBrowser version={1} active />);
+  const table = await screen.findByRole('grid');
+  const row = (await within(table).findByText('Old Riverside Ground')).closest('tr')!;
+  expect(within(row).getByText('-')).toBeTruthy();
+  await userEvent.click(row);
+  expect(await screen.findByRole('heading', { name: 'Old Riverside Ground' })).toBeTruthy();
+  // A men's or women's filter keeps to the clubs that play there, so it leaves such a stadium out.
+  await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+  await userEvent.selectOptions(screen.getAllByRole('combobox')[0], 'men');
+  await waitFor(() => expect(within(table).queryByText('Old Riverside Ground')).toBeNull());
+});

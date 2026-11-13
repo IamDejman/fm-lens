@@ -27,6 +27,12 @@ transfer_manager = 0x56A49F8
 # build has them.
 awards = 0x56D2D18
 competitions = 0x56D2D30
+# The static pointers to the database tables of every nation and every stadium, in the same block: 0x28 and 0x80 after
+# the awards', where the block of the arm64 Mac build 26340721 has them (docs/recon/fm27-competitions-awards-2.md). The
+# block keeps one order in every build profiled: the competitions sit 0x18 and the kinds of injury 0x40 after the
+# awards in each, each found on its own. The tables' class and rows are checked before they are used.
+nations = 0x56D2D40
+stadiums = 0x56D2D98
 
 # The static pointers to the database table of the kinds of injury (136, in the same block as the competitions) and to
 # the injury manager (INJURY_MANAGER). Only this build has them.
