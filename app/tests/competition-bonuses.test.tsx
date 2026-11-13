@@ -14,25 +14,25 @@ function group(clauses: Clause[], bonuses: CompetitionBonus[]) {
 
 test('competition bonuses are listed under the clauses, by competition, with their amounts', () => {
   group([appearance], [
-    { index: 0, competitionUid: 637, competition: 'Premier League', amount: 851_999 },
+    { index: 0, competitionUid: 637, competition: 'Premier League', amount: 850_975 },
     { index: 1, competitionUid: 9_999, competition: null, amount: null },
   ]);
   const terms = screen.getAllByRole('term').map((term) => term.textContent);
   expect(terms).toEqual(['Appearance fee', 'Premier League bonus', 'Unknown competition bonus']);
   const row = screen.getByText('Premier League bonus').closest('div')!;
-  expect(within(row).getByRole('definition').textContent).toBe('£851,999');
+  expect(within(row).getByRole('definition').textContent).toBe('£850,975');
   // One without an amount still shows that it is there.
   expect(within(screen.getByText('Unknown competition bonus').closest('div')!).getByRole('definition').textContent).toBe('✓');
 });
 
 test('a contract with only competition bonuses does not say it has none', () => {
-  group([], [{ index: 0, competitionUid: 637, competition: 'Premier League', amount: 851_999 }]);
+  group([], [{ index: 0, competitionUid: 637, competition: 'Premier League', amount: 850_975 }]);
   expect(screen.queryByText('No bonuses or clauses')).toBeNull();
   expect(screen.getByText('Premier League bonus')).toBeTruthy();
 });
 
 test('the Change dialog leaves competition bonuses out: they are read, not changed', async () => {
-  group([appearance], [{ index: 0, competitionUid: 637, competition: 'Premier League', amount: 851_999 }]);
+  group([appearance], [{ index: 0, competitionUid: 637, competition: 'Premier League', amount: 850_975 }]);
   screen.getByRole('button', { name: 'Change' }).click();
   const dialog = await screen.findByRole('dialog');
   expect(within(dialog).queryByText(/Premier League/)).toBeNull();

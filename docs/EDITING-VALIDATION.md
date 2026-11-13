@@ -3456,7 +3456,7 @@ What is read: each contract has a second list beside its clauses, at contract
 +0x80 on macOS and Windows alike, of 32-byte entries. FM Lens takes the UID at
 +0x14 and the amount at +0x18 (0xFFFFFFFF: none). The Windows layout already
 named those two from Kylian Mbappé on Game Pass, and the macOS research read
-the same shape on Declan Rice (UID 637, 851,999). The app names the UID from
+the same shape on Declan Rice (UID 637, 850,975). The app names the UID from
 the competitions it reads once per connection, or from the awards where no
 competition has it, and shows "Unknown competition" where neither does. A
 table that cannot be read leaves the name out rather than failing the profile.
@@ -3467,8 +3467,8 @@ names only the competition. A bonus with no amount shows a tick.
 
 | Check | Result |
 |---|---|
-| `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for an Apple Silicon target, from Linux | Pass. This type-checks the new unit test (Rice's entry gives UID 637 and 851,999); it does not run it |
-| `cargo clippy` on the app crate from Linux | Not run: it needs a Windows or macOS toolchain; the Validate workflow covers it |
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for an Apple Silicon target, from Linux | Pass. This type-checks the new unit test (Rice's entry gives UID 637 and 850,975); it does not run it |
+| Validate workflow on the branch at aaa4f42 (run 43384287924) | Failed on both `macos-checks` and `windows-checks`: the new unit test expected 851,999, a wrong conversion of 0x000CFC1F, which the code correctly reads as 850,975. The test and these notes were corrected; the rerun is below |
 | `cargo fmt --all --check` | Pass |
 | `npm test` | Pass, with three new tests: bonuses listed by competition after the clauses, a bonus with no amount and one whose UID names nothing, no "No bonuses or clauses" when only bonuses exist, and none in the Change dialog |
 | Browser preview on sample data | A player's group listed "Türkiye First Division bonus £913,000" and "Unknown competition bonus £250,000" after his clauses |

@@ -71,7 +71,7 @@ Unidentified: 35, 36, 42, 43 (no contracts use them). 54 and 63 are flags (63 ap
 
 The u16 condition on kinds 0, 16, 17, 18, 27 and 31 (values 700 to 2,400) is not a club id, not a club UID, and has no clear link to dates. Meaning unknown. FM Lens must preserve it on any rewrite.
 
-Competition and award bonuses are not in the +0x68 list. They are in the +0x80 list, 32-byte entries. 687 contracts have them. Rice has one: words `076c0001 ffffffff 00000014 ffffffff 00000000 0000027d 000cfc1f 0000ffff`. +0x14 is the UID of what the bonus is for (Rice: 637) and +0x18 its amount (851,999), as the Windows layout notes for Mbappé; FM Lens shows these two read-only (13 November). The rest is not decoded: +0x00 is an unset date, +0x08 (here 0x14, 20) may say what the bonus is paid for. Not yet compared with FM's contract screen.
+Competition and award bonuses are not in the +0x68 list. They are in the +0x80 list, 32-byte entries. 687 contracts have them. Rice has one: words `076c0001 ffffffff 00000014 ffffffff 00000000 0000027d 000cfc1f 0000ffff`. +0x14 is the UID of what the bonus is for (Rice: 637) and +0x18 its amount (850,975), as the Windows layout notes for Mbappé; FM Lens shows these two read-only (13 November). The rest is not decoded: +0x00 is an unset date, +0x08 (here 0x14, 20) may say what the bonus is paid for. Not yet compared with FM's contract screen.
 
 Values to check in FM:
 - Saka contract screen, Bonuses: appearance 50,000, goal 65,000, assist 45,000, unused sub 15,000. Relegation wage decrease 25 percent.
