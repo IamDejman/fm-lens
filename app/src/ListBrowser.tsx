@@ -1,20 +1,22 @@
-import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { changesText as pagingText, listFeedbackText as feedback } from "./labels";
 import { call } from "./api";
 import { layoutPixels, watchZoom } from "./appearance";
 import { describeError } from "./format";
 import { isShortcut, shortcutAria } from "./keys";
-import { isRecord, restored, useSnapshot } from "./restore";
+import { ProfilePlaceContext, type ProfilePlace } from "./profilePlace";
+import { isRecord, noteChange, restored, useSnapshot } from "./restore";
 import type { Yours } from "./types";
 import { askToLeave } from "./useProfileEditing";
 
 /** Rows shown at once; the best come first. */
 const ROW_LIMIT = 200;
 
-/** Saved search, page and selection; older or invalid snapshots fall back to the first page. */
-function readList(value: unknown): { query: string; selected: number | null; offset: number; argsKey: string | null } {
+/** Saved search, page, place and selection; older or invalid snapshots fall back to the top of the first page. */
+function readList(value: unknown): { query: string; selected: number | null; offset: number; argsKey: string | null; scroll: number } {
   const given = isRecord(value) ? value : {};
   return {
+    scroll: typeof given.scroll === "number" && Number.isFinite(given.scroll) && given.scroll > 0 ? given.scroll : 0,
     query: typeof given.query === "string" ? given.query : "",
     offset: Number.isSafeInteger(given.offset) && Number(given.offset) >= 0 && Number(given.offset) % ROW_LIMIT === 0 ? Number(given.offset) : 0,
     argsKey: typeof given.argsKey === "string" ? given.argsKey : null,
@@ -51,8 +53,8 @@ export interface ListState {
 
 interface ListBrowserProps<Row extends { uid: number }> {
   /**
-   * What the list is called in the snapshot of the window that is kept when the language is switched (see
-   * `restore.ts`), which gives it back its search text and its selected row: no other list has the same name.
+   * What the list is called in what is kept of the window for when it starts again (see `restore.ts`), which gives it
+   * back its search text, its page, its place and its selected row: no other list has the same name.
    */
   name: string;
   /**
@@ -104,9 +106,10 @@ interface ListBrowserProps<Row extends { uid: number }> {
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
   const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
   const { name, footer, tableClass, header, cells, profile, detail, reveal } = props;
-  // What the list held before the language was switched, if it was: the search text, and the UID of the row to select
-  // as soon as the rows are there again.
+  // What the list held before the window started again, if it did: the search text, the UID of the row to select as
+  // soon as the rows are there again, and how far down it was scrolled.
   const [start] = useState(() => restored(name, readList));
+  const place = useRef(start.scroll);
   const [query, setQuery] = useState(start.query);
   const argsKey = JSON.stringify(requestArgs ?? {});
   const [position, setPosition] = useState(() => ({ key: JSON.stringify([start.query, start.argsKey ?? argsKey]), offset: start.offset }));
@@ -145,7 +148,14 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const offset = position.key === pageKey ? position.offset : 0;
   const requestKey = JSON.stringify([command, pageKey, offset, version, attempt]);
   const error = failure?.requestKey === requestKey ? failure.message : null;
-  useSnapshot(name, () => ({ query, selected: selected?.uid ?? null, offset, argsKey }));
+  useSnapshot(name, () => ({
+    query,
+    selected: selected?.uid ?? null,
+    offset,
+    argsKey,
+    // A list that has not shown its rows yet is still where it was left.
+    scroll: page === null ? place.current : Math.round(tableWrap.current?.scrollTop ?? 0),
+  }));
   useEffect(() => setPosition((current) => current.key === pageKey ? current : { key: pageKey, offset: 0 }), [pageKey]);
   const goToPage = (next: number) => {
     setPosition({ key: pageKey, offset: next });
@@ -153,6 +163,28 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   };
   // The arguments of the rows on show, so a new sort or filter can start at the top.
   const shownArgs = useRef(argsKey);
+
+  // Where the open profile is scrolled to, so that it is there again on coming back to this list from another
+  // section, which builds it anew. Another row's profile, or the same one closed and opened again, starts at its top.
+  const profilePlace = useRef<{ uid: number; top: number } | null>(null);
+  const selectedUid = selected?.uid ?? null;
+  useEffect(() => {
+    if (profilePlace.current?.uid !== selectedUid) {
+      profilePlace.current = null;
+    }
+  }, [selectedUid]);
+  const profilePlaceOf = useMemo<ProfilePlace | null>(
+    () =>
+      selectedUid === null
+        ? null
+        : {
+            top: () => (profilePlace.current?.uid === selectedUid ? profilePlace.current.top : 0),
+            note: (top) => {
+              profilePlace.current = { uid: selectedUid, top };
+            },
+          },
+    [selectedUid],
+  );
 
   const closeProfile = useCallback(() => {
     // The panel unmounts with the focused control inside it; keep keyboard focus in the table. In a narrow window the
@@ -275,12 +307,30 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
 
   const settled = page !== null && shownFor?.requestKey === requestKey && !loading;
   const searching = !settled && error === null;
+  // The same list read again, after an edit or on coming back to its section, keeps the rows it has until the new ones
+  // are there, and with them its place: an empty table would scroll back to its top.
+  const shownRows =
+    page !== null &&
+    (settled ||
+      (error === null && shownFor?.query === query && shownFor.argsKey === argsKey && shownFor.offset === offset));
   const list: ListState = {
     query,
     total: settled ? page.total : null,
     shown: settled ? page.rows.length : 0,
-    yours: (settled && page.yours) || null,
+    // The rows on show keep their mark while the list is read again.
+    yours: (shownRows && page.yours) || null,
   };
+
+  // Back where the list was scrolled to before the window started again, once the rows it had then are drawn.
+  useLayoutEffect(() => {
+    if (!shownRows || place.current === 0) {
+      return;
+    }
+    if (query === start.query && offset === start.offset) {
+      tableWrap.current?.scrollTo({ top: place.current });
+    }
+    place.current = 0;
+  }, [shownRows, query, offset, start]);
 
   // A hidden list has no profile open: its window-wide Escape handler must not fire.
   const showProfile = active && selected !== null && profile !== undefined;
@@ -305,24 +355,32 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               spellCheck={false}
             />
           </label>
-          <span className="count" id={countId} role="status">{settled ? summary(page.total, page.total) : ""}</span>
+          <span className="count" id={countId} role="status">{shownRows ? summary(page.total, page.total) : ""}</span>
           {toolbarActions?.(list)}
         </div>
         {filterBar}
         {error && <div className="banner" role="alert">{error} <button type="button" onClick={() => setAttempt((value) => value + 1)}>{feedback.retry}</button></div>}
 
-        <div className="table-wrap" data-list-width={listWidth} aria-busy={searching} ref={tableWrap} data-tour={active ? "list" : undefined}>
+        <div
+          className="table-wrap"
+          data-list-width={listWidth}
+          aria-busy={searching}
+          ref={tableWrap}
+          data-tour={active ? "list" : undefined}
+          // How far down the list is goes into what is kept for the next start.
+          onScroll={noteChange}
+        >
           {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
           <table
             className={["grid", tableClass, !profile && !detail && "static"].filter(Boolean).join(" ")}
             role="grid"
-            aria-label={settled && page ? summary(page.total, page.total) : error ? feedback.failed : feedback.searching}
+            aria-label={shownRows ? summary(page.total, page.total) : error ? feedback.failed : feedback.searching}
           >
             <thead>
               <tr ref={headRow}>{header}</tr>
             </thead>
             <tbody>
-              {settled && page?.rows.map((row, index) => {
+              {shownRows && page.rows.map((row, index) => {
                 const isSelected = row.uid === selected?.uid;
                 return (
                   <Fragment key={row.uid}>
@@ -373,7 +431,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
               })}
             </tbody>
           </table>
-          {searching && <p className="empty" role="status">{feedback.searching}</p>}
+          {searching && !shownRows && <p className="empty" role="status">{feedback.searching}</p>}
           {settled && page && page.rows.length === 0 && <p className="empty">{empty(query)}</p>}
         </div>
         {page && page.total > ROW_LIMIT && (
@@ -397,7 +455,9 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
       </section>
 
       {showProfile && (
-        <Fragment key={selected.uid}>{profile?.(selected, { version, onClose: closeProfile })}</Fragment>
+        <ProfilePlaceContext.Provider key={selected.uid} value={profilePlaceOf}>
+          {profile?.(selected, { version, onClose: closeProfile })}
+        </ProfilePlaceContext.Provider>
       )}
     </div>
   );
