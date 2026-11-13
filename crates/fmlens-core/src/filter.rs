@@ -2,6 +2,8 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
+use fmlens_scout::{Likeness, ROLES, development, role};
+
 use serde::Deserialize;
 
 use crate::clubs::{ClubSummary, StadiumSummary};
@@ -117,9 +119,59 @@ pub struct PlayerFilter {
     pub personality: Vec<AttributeBound>,
     /// Trait bits (0 to 63): only players who have every one of them.
     pub traits: Vec<u8>,
+    /// Bounds on his attributes at his potential, as FM Lens projects them (see [`PlayerSummary::peak_shown`]).
+    pub potential_attributes: Vec<AttributeBound>,
+    /// Roles the list rates him in; each with a least rating must hold.
+    pub roles: Vec<RoleBound>,
+    /// The least chance, in percent, that he comes within 7 of his potential, and the least progress rate, in half
+    /// stars (see [`fmlens_scout::development`]).
+    pub min_development: Option<u8>,
+    pub min_progress: Option<u8>,
+    /// Part of the name of the country his club is in, accents and case ignored.
+    pub based_in: Needle,
+}
+
+/// A role the list rates players in (see [`fmlens_scout::Role::id`]), and the least rating (0–100) they must have in it.
+/// Without a least rating it holds for everyone: the role is only shown.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct RoleBound {
+    pub role: String,
+    pub min: Option<u8>,
+}
+
+impl RoleBound {
+    /// Whether `p` keeps to the bound. An unknown role with a least rating keeps to no bound.
+    fn holds(&self, p: &PlayerSummary) -> bool {
+        let Some(min) = self.min else {
+            return true;
+        };
+        role(&self.role).is_some_and(|role| role.rating(&p.scouted().values(), &p.position_ratings) >= min)
+    }
 }
 
 impl PlayerFilter {
+    /// Whether the scouting bounds hold for `p`: worked out only when one is set.
+    fn scouting_holds(&self, p: &PlayerSummary) -> bool {
+        if !self.potential_attributes.is_empty() {
+            let peak = p.peak_shown();
+            if !self.potential_attributes.iter().all(|bound| bound.holds(&PLAYER_ATTRIBUTES, &peak)) {
+                return false;
+            }
+        }
+        if self.min_development.is_some() || self.min_progress.is_some() {
+            let Some(estimate) = development(&p.scouted()) else {
+                return false;
+            };
+            if self.min_development.is_some_and(|min| estimate.probability < min)
+                || self.min_progress.is_some_and(|min| estimate.half_stars < min)
+            {
+                return false;
+            }
+        }
+        self.roles.iter().all(|bound| bound.holds(p))
+    }
+
     pub fn matches(&self, p: &PlayerSummary) -> bool {
         let position = self.positions.is_empty()
             || self.positions.iter().any(|key| {
@@ -148,6 +200,8 @@ impl PlayerFilter {
                 bound.holds_value(PERSONALITY.iter().position(|&key| key == bound.key).map(|i| p.personality[i]))
             })
             && self.traits.iter().all(|&bit| bit < 64 && p.traits >> bit & 1 == 1)
+            && self.based_in.found_in(p.base.nation.as_deref())
+            && self.scouting_holds(p)
     }
 }
 
@@ -288,6 +342,14 @@ pub enum PlayerSort {
     Reputation,
     /// An attribute, by its place in [`PlayerSummary::attributes`].
     Attribute(usize),
+    /// How like the player the list is compared with (see [`sort_by_likeness`]); no player has a value of his own.
+    Similarity,
+    /// The chance he comes within 7 of his potential.
+    Development,
+    /// The ability he is expected to gain over two years.
+    Progress,
+    /// His rating in a role, by its place in [`ROLES`]; "role.anchor.defend" on the wire.
+    Role(usize),
 }
 
 impl PlayerSort {
@@ -304,7 +366,14 @@ impl PlayerSort {
             "value" => Self::Value,
             "wage" => Self::Wage,
             "reputation" => Self::Reputation,
-            other => Self::Attribute(other.strip_prefix("attribute.").and_then(player_attribute)?),
+            "similarity" => Self::Similarity,
+            "development" => Self::Development,
+            "progress" => Self::Progress,
+            other => match other.split_once('.')? {
+                ("attribute", key) => Self::Attribute(player_attribute(key)?),
+                ("role", id) => Self::Role(ROLES.iter().position(|role| role.id() == id)?),
+                _ => return None,
+            },
         })
     }
 }
@@ -333,6 +402,13 @@ impl SortColumn for PlayerSort {
             Self::Reputation => number(p.current_reputation),
             // One the layout does not place (0) is not known.
             Self::Attribute(i) => known_number(p.attributes.get(i).copied().filter(|&value| value > 0)),
+            Self::Similarity => SortKey::Number(None),
+            Self::Development => known_number(development(&p.scouted()).map(|d| d.probability)),
+            // The gain to a hundredth of a point, so that two players a fraction apart keep their order.
+            Self::Progress => known_number(development(&p.scouted()).map(|d| (f64::from(d.gain) * 100.0) as i64)),
+            Self::Role(i) => {
+                known_number(ROLES.get(i).map(|role| role.rating(&p.scouted().values(), &p.position_ratings)))
+            }
         }
     }
 }
@@ -344,9 +420,20 @@ pub struct PlayerOrder {
     pub ascending: bool,
 }
 
-/// Sorts `players` by `order` (see [`sort_rows`]).
+/// Sorts `players` by `order` (see [`sort_rows`]). [`PlayerSort::Similarity`] needs the player they are compared with:
+/// see [`sort_by_likeness`].
 pub fn sort_players(players: &mut [&PlayerSummary], order: PlayerOrder) {
     sort_rows(players, Order { by: order.by, ascending: order.ascending });
+}
+
+/// Sorts `players` by how like the player of `likeness` they are, the most alike first unless `ascending`. Stable, as
+/// [`sort_rows`] is.
+pub fn sort_by_likeness(players: &mut [&PlayerSummary], likeness: &Likeness, ascending: bool) {
+    let mut keyed: Vec<(u8, &PlayerSummary)> = players.iter().map(|&p| (likeness.score(&p.scouted()), p)).collect();
+    keyed.sort_by(|(a, _), (b, _)| if ascending { a.cmp(b) } else { b.cmp(a) });
+    for (slot, (_, player)) in players.iter_mut().zip(keyed) {
+        *slot = player;
+    }
 }
 
 /// Columns the staff list can be sorted by.
@@ -713,6 +800,7 @@ mod tests {
             current_reputation: 7000,
             personality: [10; 8],
             traits: 0,
+            base: crate::players::Base::default(),
             address: 0,
             shift: 0,
         }
@@ -720,6 +808,47 @@ mod tests {
 
     fn bound(key: &str, min: Option<u8>, max: Option<u8>) -> AttributeBound {
         AttributeBound { key: key.to_owned(), min, max }
+    }
+
+    #[test]
+    fn scouting_filters_and_sorts() {
+        let mut young = player("Young", Some(18), 100, Some("A"), 20);
+        young.potential_ability = 170;
+        let mut veteran = player("Veteran", Some(32), 150, Some("B"), 20);
+        veteran.potential_ability = 150;
+        veteran.attributes[PLAYER_ATTRIBUTES["finishing"]] = 18;
+        veteran.base.nation = Some("España".to_owned());
+
+        let by_potential =
+            PlayerFilter { potential_attributes: vec![bound("passing", Some(14), None)], ..PlayerFilter::default() };
+        assert!(by_potential.matches(&young) && !by_potential.matches(&veteran));
+        let developing = PlayerFilter { min_development: Some(10), min_progress: Some(4), ..PlayerFilter::default() };
+        assert!(developing.matches(&young) && !developing.matches(&veteran));
+        let poacher = |min| PlayerFilter {
+            roles: vec![RoleBound { role: "poacher.attack".to_owned(), min }],
+            ..PlayerFilter::default()
+        };
+        assert!(poacher(None).matches(&young), "a role without a bound is only a column");
+        assert!(poacher(Some(55)).matches(&veteran) && !poacher(Some(55)).matches(&young));
+        let unknown = PlayerFilter {
+            roles: vec![RoleBound { role: "nothing".to_owned(), min: Some(1) }],
+            ..PlayerFilter::default()
+        };
+        assert!(!unknown.matches(&young));
+        let based = PlayerFilter { based_in: Needle::new("espana"), ..PlayerFilter::default() };
+        assert!(based.matches(&veteran) && !based.matches(&young));
+
+        let mut list = vec![&veteran, &young];
+        sort_players(&mut list, PlayerOrder { by: PlayerSort::Progress, ascending: false });
+        assert_eq!(list[0].name, "Young");
+        let poaching = PlayerSort::named("role.poacher.attack").expect("a role sort");
+        assert_eq!(poaching, PlayerSort::Role(ROLES.iter().position(|r| r.id() == "poacher.attack").expect("a role")));
+        sort_players(&mut list, PlayerOrder { by: poaching, ascending: false });
+        assert_eq!(list[0].name, "Veteran");
+        assert_eq!(PlayerSort::named("role.nothing.attack"), None);
+        assert_eq!(PlayerSort::named("similarity"), Some(PlayerSort::Similarity));
+        sort_by_likeness(&mut list, &Likeness::new(&young.scouted(), false), false);
+        assert_eq!(list[0].name, "Young");
     }
 
     #[test]

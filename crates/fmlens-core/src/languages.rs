@@ -106,16 +106,11 @@ impl Session {
     /// The own nation of the club whose team is `team`, else the one whose league it plays in. None for a person
     /// without a club, or where the layout does not place them.
     fn club_country(&self, team: u64) -> Option<u64> {
-        let c = &self.layout.club;
-        let (plays_in, nation) = (c.plays_in?, c.nation?);
         if !is_user_pointer(team) {
             return None;
         }
         let club = self.process.read_u64(team + self.layout.team.club).ok().filter(|&club| is_user_pointer(club))?;
-        [plays_in, nation]
-            .into_iter()
-            .filter_map(|offset| self.process.read_u64(club + offset).ok())
-            .find(|&nation| is_user_pointer(nation))
+        crate::players::club_country(&self.process, &self.layout, club)
     }
 
     /// Works out giving the language at `index` in the list of `person` the level `level`, 1 to 10. Nothing is
