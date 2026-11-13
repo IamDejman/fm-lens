@@ -197,7 +197,7 @@ Steam build 26577676 (27.0.1), Windows Server 2022, career copy at 30 June 2027 
 | `+0xB0` bit `0x02` | Can play in cup matches | set in all 8 and in every loan in the census: no negative seen |
 | `+0xB0` bit `0x01` | Can play against his own (parent) club | Nwaneri only, FM shows it; not seen elsewhere among the 8 |
 | `+0xB1` bit `0x10` | Loan cannot be terminated | 3 set, 5 clear, all match |
-| `+0xB1` bit `0x01` | Tied to a preferred position, but not on its own (see the Brighton save below) | 4 set (Baum, Reid, Wellesley-Smith, Teer-Hutchins), 4 clear, all match |
+| `+0xB1` bit `0x01` | Not established: matched a preferred position in these 8, but not in the census below | 4 set (Baum, Reid, Wellesley-Smith, Teer-Hutchins), 4 clear |
 | `+0xB4` bit `0x20` | Cannot play against the parent club in cup matches | Nwaneri set, 7 clear, all match; set in 636 loans |
 
 FM money is shown in dollars at about 1.347 per stored pound. `+0xB8..+0xBC` repeats `+0xB0..+0xB4` without `+0xB1`
@@ -205,10 +205,11 @@ bit `0x20`. Flag bytes of the eight: Nwaneri `07 20 11 09 20`, Linder `06 30 11 
 `06 31 11 09 00`, Holmberg `06 20 11 09 00`, Reid and Teer-Hutchins `06 21 11 09 00`, Wellesley-Smith `02 21 11 09 00`
 (bytes `+0xB0` to `+0xB4`).
 
-Not established: the kind of a competition condition (winning it or avoiding relegation; not in `+0xF7`); the
-preferred position and role encoding (candidates `+0xA0..` and `+0xF4..`); `+0xB0` bit `0x08` (no line on FM's tab, see below), `+0xB1` bits `0x20` and `0x80`; `+0xD8`, `+0xDC`, `+0xE4`,
-`+0xE8`, `+0x54`, `+0x56`, `+0x58`, `+0x60`, `+0x68` (pointer, 159 non-null), `+0x30` (pointer, 45 non-null), `+0x90`,
-`+0x9C`. The macOS layout of these fields is not checked. Nothing here is written by FM Lens; showing them read-only
+Not established: `+0xB0` bit `0x08` (no line on FM's tab, see below), `+0xB1` bits `0x01` and `0x20`; `+0xD8`,
+`+0xDC`, `+0xE4`, `+0xE8`, `+0x54`, `+0x56`, `+0x58`, `+0x60`, `+0x68` (pointer, 159 non-null), `+0x30` (pointer, 45
+non-null), `+0xA2..+0xA7`, `+0xF9..+0xFB` (counters, nonzero with no match condition). The competition condition's
+kind, the competition qualified for, the preferred position and role, and the matches played are in the next table.
+The macOS layout of these fields is not checked. Nothing here is written by FM Lens; showing them read-only
 would be the next step, and editing the fee or flags needs a save, quit and reload check first.
 
 Three more loans, same build, on a career copy at 10 December 2027 (735 loans), compared with FM's Loan Club tab.
@@ -251,6 +252,22 @@ $325K; Chaves's 80,534 is $108K, shown as $110K). The matches played so far are 
 `+0xB1` bit `0x01` is set for Gruda and Chaves, yet FM shows no preferred position line for either on 13 July 2026,
 while Chaves showed one at 10 December 2027 with the same byte: the bit alone does not decide it (the July date is
 pre-season, which may matter). Monga, bit set, shows Preferred Position AM (L) and Role Winger at 10 December 2027.
+The census on 7 January 2028 below settles it: FM's preferred position line follows `+0xA0`, not this bit.
+
+Same copy at 7 January 2028 (800 loans, 124 players with more than one record), compared with FM's Loan Club tab.
+Every line matches:
+
+| Offset | Holds | Evidence |
+| --- | --- | --- |
+| `+0x9C` u8 | Kind of competition condition, 255 none: 0 winning it, 6 avoiding relegation from it, 10 qualifying for a European competition through it | Set in exactly the 24 loans with `+0xC4`. Maddison 0 = "Winning the Ligue 1"; Sorba Thomas 6 = "Avoiding relegation from the First Division"; Kharebashvili 10 with `+0xC4` 7 (Premier League) = "Qualifying for the UEFA Europa League" |
+| `+0x90` s32 | The European competition of kind 10, -1 otherwise: its place in the table, as `+0xC4` | Set in exactly the 6 loans of kind 10. Núñez 637 = Champions League; Kharebashvili and João Mário 639 = Europa League; Skov Olsen 2945 = Conference League |
+| `+0xA0` u16 | Preferred position (low 6 bits, 48 none) and role (the rest, 50 none) | Pondeca and Cowan 6257 = GK, Goalkeeper (49, 97); Hebert 6658 = AM (R), Winger (2, 104); Monga 6662 = AM (L), Winger (6, 104); Kameri 1156 = AM (C), Channel Midfielder (4, 18); Proctor 7236 = AM (C), Advanced Playmaker (4, 113); Bradbury 7305 = ST (C), Target Forward (9, 114); Madjo 3209 = ST (C), no role line (9, 50); 3248 (48, 50) = no lines (Musaba, Wright, Maddison, Kharebashvili) |
+| `+0xF8` u8 | Matches played toward a fee due after a number of matches | Solanke 17 = "After 25 matches (17 played)"; Muheim 16 = "After 10 matches (16 played)"; Maupay 16 = "After 25 matches (16 played)". Nonzero in 17 of the 18 loans with such a condition, zero in all 782 others |
+| `+0xB1` bit `0x80` | Can play against the parent club's B team | Sorba Thomas (`0x90`) and Pondeca (`0x80`) show the line; Kharebashvili and Maddison (`0x10`) do not; 191 loans, mostly at Spanish clubs |
+
+`+0xB1` bit `0x01` does not follow the preferred position: 75 loans have the bit with no position, 89 a position
+without it (Pondeca shows GK with the bit clear). Positions seen: 2 AM (R), 4 AM (C), 6 AM (L), 9 ST (C), 49 GK; the
+rest of the table and the role numbers are not mapped beyond these.
 
 ## 4. Payroll
 
@@ -291,9 +308,10 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 ## Open items
 
 - Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
-- LOAN_CONTRACT term fields: fees, fee condition and five flags mapped on Windows (3.1); the competition condition's
-  kind, matches played, the preferred position and the remaining words are open. `+0xB0` bit `0x08` has no line on
-  FM's Loan Club tab (Musaba, Wright and Monga compared).
+- LOAN_CONTRACT term fields: fees, fee condition, its kind and European competition, matches played, the preferred
+  position and role, and six flags mapped on Windows (3.1); the full position and role tables, `+0xB1` bit `0x01` and
+  the remaining words are open. `+0xB0` bit `0x08` has no line on FM's Loan Club tab (Musaba, Wright and Monga
+  compared).
 - FM's add-clause routine is found statically on macOS (1.1) but never called; Windows not looked for.
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
 - Where wages are deducted from balance.
