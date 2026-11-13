@@ -12,7 +12,7 @@ Conventions: TM = [game_plugin+0x56a49f8] (TRANSFER_MANAGER), P = player object,
 | Is FM's own cancel the pair FM Lens uses? | Yes. The server handler of PLAYER_CANCEL_FUTURE_TRANSFER runs 0x238bce0, whose loop is `cancel_offer` (0x2D180B4) then `drop_dated_transfer` (0x1827808) per pending offer, exactly as `cancel_signing` | high |
 | Does FM Lens need new calls? | No new function. Needs reader fixes (person ref stub, lazy from-team) and a class check, see section 5 | high |
 | Instalments | TM+0xd8 vector (TM+0xD0 on Windows) of 0x28-byte records, created on the completion day, paid on the 1st of each month | high: matched with FM on Windows (section 8) |
-| Buy-back | PLAYER_BUY_BACK_INFO (0x28 bytes) in the BUYING club's list at [club+0xb0], created on completion | medium: record read on Windows; FM shows other clubs' clauses only after scouting (section 8) |
+| Buy-back | PLAYER_BUY_BACK_INFO (0x28 bytes) in the BUYING club's list at [club+0xb0], created on completion | high for the fee and holder: matched with FM on Windows; window dates not compared (section 8) |
 | Extra payments (EXTRA_TRANSFER_PAYMENT_INFO) | class and factory found, no creation site traced | low |
 
 ## 1. Storage of an agreed future transfer
@@ -228,6 +228,10 @@ Buy-backs: 71 `db::PLAYER_BUY_BACK_INFO` records (vtable `game_plugin.dll+0x4ec8
 +0x0C end date (0x076C0001 none), +0x10 and +0x14 the player UID twice, +0x18 s32 fee, +0x20 the club that holds the
 right (the seller). Examples agree with real clauses: Aaron Ramsey (Burnley) 25M held by Aston Villa; James McAtee
 (Forest) 60M held by Man City; Jarell Quansah (Leverkusen) 51,541,912 held by Liverpool with dated windows in 2028 and
-2029. Not compared with an FM screen: Arsenal has none, and on a career copy at 10 December 2027 FM's contract page
-shows "Scouting Required" in place of another club's clauses (Quansah at Leverkusen, Vieira at Hamburger SV).
-Comparing needs a scout report on the player and time advanced. Ramsey is a free agent by then.
+2029. The dates are FM dates (day of year and year): a player can have one record per window, each with its own fee, such as
+Quansah's 1 to 15 June of 2027 (60,132,232), 2028 and 2029 (51,541,912 each); many windows run 1 June to 15 July.
+
+Compared with FM on a Brighton career at 13 July 2026: Jamie Rushworth (at Coventry City) has a record of 35,000,000
+held by Brighton with no window, and FM's contract page shows that Brighton can buy him back for $47M. FM shows a
+buy-back only to the clubs in it: Arsenal has none, a scouted McAtee's contract page shows none, and FM's Clauses page
+lists only the user's club's clauses. No dated window was on an FM screen, so the dates are not compared.

@@ -188,15 +188,16 @@ Steam build 26577676 (27.0.1), Windows Server 2022, career copy at 30 June 2027 
 | Offset | Holds | Evidence |
 | --- | --- | --- |
 | `+0xC0` s32 | Future fee, -1 none (981 of 1,365 none) | Linder 778,930 = FM $1M optional; Baum 427,440 = $575K; Holmberg 1,776,000 = $2.4M; Rudd 1,067,446 = $1.4M |
-| `+0xC4` s32 | Competition the fee depends on, -1 none | Rudd 6443, where FM shows the fee as due on winning the Barclays WSL; other values in the census 22, 11, 16, 7, 51. Id space not resolved (not the competition UID) |
+| `+0xC4` s32 | Competition the fee depends on, -1 none: its place in the game's table of competitions, as for competition bonuses (not its UID) | Rudd 6443 = Barclays WSL, FM: due on winning it; Gruda 16 = Bundesliga, FM: on avoiding relegation from it. Census values 22, 11, 16, 7, 51 = Serie A, Ligue 1, Bundesliga, Premier League, Spanish First Division |
 | `+0xCC` s32 | Monthly playing fee | Nwaneri 171,806 = $230K; Linder 50,960 = $69K; Rudd 4,669 = $6.25K; Baum 7,725 = $10.5K; four loans with $0 hold 0 |
 | `+0xD0` s32 | Monthly fee when unused | Baum 15,450 = $21K; equal to `+0xCC` in the other seven (893 of 1,365 equal) |
 | `+0xD4` s32 | Copy of the wage share `+0x20` | equal in 1,356 of 1,365 |
+| `+0xF7` u8 | Fee condition: 1 to 99 due after that many matches, 100 mandatory, 254 optional; 254 or 255 with no fee or a competition condition | Guessand 30 = After 30 matches; Chaves 15 = After 15 matches; Vieira 100 = Mandatory; Nkunku 254 = Optional |
 | `+0xB0` bit `0x04` | Can be recalled | 6 set, 2 clear, all 8 match FM |
 | `+0xB0` bit `0x02` | Can play in cup matches | set in all 8 and in every loan in the census: no negative seen |
 | `+0xB0` bit `0x01` | Can play against his own (parent) club | Nwaneri only, FM shows it; not seen elsewhere among the 8 |
 | `+0xB1` bit `0x10` | Loan cannot be terminated | 3 set, 5 clear, all match |
-| `+0xB1` bit `0x01` | A preferred position is set | 4 set (Baum, Reid, Wellesley-Smith, Teer-Hutchins), 4 clear, all match |
+| `+0xB1` bit `0x01` | Tied to a preferred position, but not on its own (see the Brighton save below) | 4 set (Baum, Reid, Wellesley-Smith, Teer-Hutchins), 4 clear, all match |
 | `+0xB4` bit `0x20` | Cannot play against the parent club in cup matches | Nwaneri set, 7 clear, all match; set in 636 loans |
 
 FM money is shown in dollars at about 1.347 per stored pound. `+0xB8..+0xBC` repeats `+0xB0..+0xB4` without `+0xB1`
@@ -204,9 +205,8 @@ bit `0x20`. Flag bytes of the eight: Nwaneri `07 20 11 09 20`, Linder `06 30 11 
 `06 31 11 09 00`, Holmberg `06 20 11 09 00`, Reid and Teer-Hutchins `06 21 11 09 00`, Wellesley-Smith `02 21 11 09 00`
 (bytes `+0xB0` to `+0xB4`).
 
-Not established: whether a future fee is optional, mandatory or conditional beyond Rudd's competition case (all three
-others show "optional" in FM, and no flag difference stands out); the preferred position and role encoding (candidates
-`+0xA0..` and `+0xF4..`); `+0xB0` bit `0x08` (73 loans), `+0xB1` bits `0x20` and `0x80`; `+0xD8`, `+0xDC`, `+0xE4`,
+Not established: the kind of a competition condition (winning it or avoiding relegation; not in `+0xF7`); the
+preferred position and role encoding (candidates `+0xA0..` and `+0xF4..`); `+0xB0` bit `0x08` (73 loans), `+0xB1` bits `0x20` and `0x80`; `+0xD8`, `+0xDC`, `+0xE4`,
 `+0xE8`, `+0x54`, `+0x56`, `+0x58`, `+0x60`, `+0x68` (pointer, 159 non-null), `+0x30` (pointer, 45 non-null), `+0x90`,
 `+0x9C`. The macOS layout of these fields is not checked. Nothing here is written by FM Lens; showing them read-only
 would be the next step, and editing the fee or flags needs a save, quit and reload check first.
@@ -221,9 +221,23 @@ All match:
 | Ollie Wright | `0E 00 00` | Can be recalled, can play in cup matches | -1, none |
 
 The cup bit is set in all 735 loans, so no negative is seen yet. Wright's `+0xB0` bit `0x08` has no line on FM's
-tab. Vieira's monthly fee `+0xCC` 249,211 shows as $325K (ratio 1.304) and Chaves's 80,534 as $110K (1.366), not
-the 1.346 the future fees follow, so how FM converts the monthly fee is not settled. Still open: where the "15
-matches" condition is kept, and what makes a fee mandatory or conditional.
+tab.
+
+Four more, same build, on a Brighton career at 13 July 2026 (1,258 loans, 260 with a future fee: 220 optional, 21
+after a number of matches from 1 to 30, 19 on a competition), compared with FM's Loan Club tab. All match:
+
+| Loan | `+0xC0` future fee | `+0xC4` | `+0xF7` | FM | `+0xCC` monthly fee | FM |
+| --- | --- | --- | --- | --- | --- | --- |
+| Gruda | 21,475,798 | 16 | 254 | $29M on avoiding relegation from the Bundesliga | 390,469 | $525K |
+| Guessand | 22,000,000 | -1 | 30 | $29.5M after 30 matches (0 played) | 222,222 | $300K |
+| Nkunku | 24,052,894 | -1 | 254 | Optional Future Fee $32.5M | 257,709 | $350K |
+| Chaves | 5,154,191 | -1 | 15 | $7M after 15 matches (16 played) | 80,534 | $110K |
+
+The monthly fee follows the same rate as the future fee; FM rounds what it shows (Vieira's 249,211 is $335K, shown as
+$325K; Chaves's 80,534 is $108K, shown as $110K). The matches played so far are not in `+0xF7` and not found.
+`+0xB1` bit `0x01` is set for Gruda and Chaves, yet FM shows no preferred position line for either on 13 July 2026,
+while Chaves showed one at 10 December 2027 with the same byte: the bit alone does not decide it (the July date is
+pre-season, which may matter).
 
 ## 4. Payroll
 
@@ -264,8 +278,8 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 ## Open items
 
 - Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
-- LOAN_CONTRACT term fields: fees and five flags mapped on Windows (3.1); preferred position, the fee kind and the
-  remaining words are open.
+- LOAN_CONTRACT term fields: fees, fee condition and five flags mapped on Windows (3.1); the competition condition's
+  kind, matches played, the preferred position and the remaining words are open.
 - FM's add-clause routine is found statically on macOS (1.1) but never called; Windows not looked for.
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
 - Where wages are deducted from balance.
