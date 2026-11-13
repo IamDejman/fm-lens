@@ -3683,6 +3683,21 @@ Saka's Scout tab listed "Your other careers" with the Arsenal career's rows:
 career saved under another name kept the same manager and counted as the same
 career ("Not seen in your other careers yet"), as intended.
 
+Re-run on 14 November 2026 with the latest build (0.7.10 with the scout card, PR 268), on the ClubNames copy at 7
+January 2028:
+
+| Check | Result |
+|---|---|
+| Saka's Scout tab | Reaches potential 100%, Progress 0 of 5, PA 188, best roles Raumdeuter 83/83, Advanced Playmaker (Attack) 82/83, Inside Forward (Attack) 82/83 |
+| Find similar at his peak | 30,208 players, Güler, Fermín and Szoboszlai first |
+| Best for "ST: Finishing" | 5,969 strikers, Haaland, Mbappé and Kane first |
+| Minimum development 90 | 8,562 players |
+| Minimum progress one star | 15,236 players; Saka (0 stars) drops out |
+| Potential Pace 17 or more | 4,268 players; Cubarsí (at his peak, Pace 17 on his Attributes tab) is in it, Saka is not |
+| Role Inside Forward (Support) 80 or more | Mbappé, Saka, Yamal and Olise first; Haaland drops out |
+| Top players, Best and Most promising | 100 per list, with Dev and Progress; Romero (16, PA 199) first among the most promising |
+| Pictures | Faces, club logos and flags from FM; initials where FM has no picture (Barcelona, Real Madrid, Cubarsí's face) |
+
 Not run: macOS; scoring speed on a 550,000-player database.
 
 ## Mass edit of a compared or ranked list (13 November 2026)
