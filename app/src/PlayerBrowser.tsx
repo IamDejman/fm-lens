@@ -201,7 +201,13 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
           <YourBest yours={list.yours} />
           <MoreMenu>
             <ColumnsButton choice={columns} onChoose={setColumns} />
-            <ExportButton list={list} filter={filter} order={order} />
+            <ExportButton
+              list={list}
+              filter={filter}
+              order={order}
+              best={best.recipe?.best}
+              similar={similar ? { uid: similar.uid, peak: similar.peak } : undefined}
+            />
             <MassEditButton entity="player" filters={listed} list={list} />
             <PlayerTemplatesButton filters={listed} list={list} />
           </MoreMenu>

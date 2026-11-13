@@ -3467,6 +3467,27 @@ fn player_listed(p: &PlayerSummary, filter: &PlayerFilter, best: &BestFor, left_
     Some(p.uid) != left_out && filter.matches(p) && best.plays(p)
 }
 
+/// How like the player of `similar` each player is, for a list compared with him.
+fn likeness_to(connection: &Connection, similar: Option<SimilarTo>) -> Result<Option<Likeness>, Failure> {
+    let Some(similar) = similar else { return Ok(None) };
+    let target = connection.players.get(similar.uid).ok_or_else(|| not_found(Entity::Player, similar.uid))?;
+    Ok(Some(Likeness::new(&target.scouted(), similar.peak)))
+}
+
+/// Puts the player list's `hits` in the order it shows them: `order` when one is asked for, else the most alike first
+/// while it is compared, or the best fit first while `best` ranks it.
+fn sort_listed(hits: &mut [&PlayerSummary], order: Option<PlayerOrder>, likeness: Option<&Likeness>, best: &BestFor) {
+    match (order, likeness) {
+        (Some(order), Some(likeness)) if order.by == PlayerSort::Similarity => {
+            sort_by_likeness(hits, likeness, order.ascending)
+        }
+        (Some(order), _) => sort_players(hits, order),
+        (None, Some(likeness)) => sort_by_likeness(hits, likeness, false),
+        (None, None) if best.ranks() => best_first(hits, |p| best.player(p)),
+        (None, None) => {}
+    }
+}
+
 /// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
 /// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
 /// your club's players who play them. `attributes` are the keys of the attributes to send with each row, for the
@@ -3491,13 +3512,7 @@ fn search_players(
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let best = best.unwrap_or_default();
-    let likeness = match similar {
-        Some(similar) => {
-            let target = connection.players.get(similar.uid).ok_or_else(|| not_found(Entity::Player, similar.uid))?;
-            Some(Likeness::new(&target.scouted(), similar.peak))
-        }
-        None => None,
-    };
+    let likeness = likeness_to(connection, similar)?;
     let left_out = similar.map(|similar| similar.uid);
     let yours = best_of(
         &connection.players,
@@ -3510,15 +3525,7 @@ fn search_players(
         limit,
         offset.unwrap_or(0),
         |p| player_listed(p, &filter, &best, left_out),
-        |hits| match (order, &likeness) {
-            (Some(order), Some(likeness)) if order.by == PlayerSort::Similarity => {
-                sort_by_likeness(hits, likeness, order.ascending)
-            }
-            (Some(order), _) => sort_players(hits, order),
-            (None, Some(likeness)) => sort_by_likeness(hits, likeness, false),
-            (None, None) if best.ranks() => best_first(hits, |p| best.player(p)),
-            (None, None) => {}
-        },
+        |hits| sort_listed(hits, order, likeness.as_ref(), &best),
         |p| best.player(p),
     );
     let columns: Vec<(String, usize)> = attributes
@@ -3642,15 +3649,19 @@ fn search_clubs(
     ))
 }
 
-/// Writes the players `query` and `filter` select, in `order`, to a new file in the exports folder as `format`: what
-/// their profiles hold, with the in-game date in the file and in its name ("players-2027-01-02.csv"; a second export
-/// that day "players-2027-01-02-2.csv"). Only reads memory.
+/// Writes the players the list shows for `query`, `filter`, `best` and `similar`, in its order, to a new file in the
+/// exports folder as `format`: what their profiles hold, with the in-game date in the file and in its name
+/// ("players-2027-01-02.csv"; a second export that day "players-2027-01-02-2.csv"). Only reads memory.
+// The window names each argument, so they stay arguments.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 async fn export_players(
     app: tauri::AppHandle,
     query: String,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
+    best: Option<BestFor>,
+    similar: Option<SimilarTo>,
     format: ExportFormat,
 ) -> Result<ExportReport, Failure> {
     tauri::async_runtime::spawn_blocking(move || -> Result<ExportReport, Failure> {
@@ -3661,11 +3672,12 @@ async fn export_players(
         let guard = state.0.lock()?;
         let connection = guard.as_ref().ok_or_else(not_connected)?;
         let filter = filter.unwrap_or_default();
+        let best = best.unwrap_or_default();
+        let likeness = likeness_to(connection, similar)?;
+        let left_out = similar.map(|similar| similar.uid);
         let mut hits = connection.players.search(&query);
-        hits.retain(|player| filter.matches(player));
-        if let Some(order) = order {
-            sort_players(&mut hits, order);
-        }
+        hits.retain(|player| player_listed(player, &filter, &best, left_out));
+        sort_listed(&mut hits, order, likeness.as_ref(), &best);
         let header = ExportHeader {
             writer: format!("FM Lens {}", app.package_info().version),
             game: connection.session.game.name(),
@@ -5646,41 +5658,44 @@ pub fn run() {
 mod tests {
     use super::*;
 
+    /// A player of 25, CA 150, rating `st` as a striker.
+    fn summary(uid: u32, st: u8) -> PlayerSummary {
+        let mut position_ratings = [1u8; 15];
+        position_ratings[12] = st;
+        PlayerSummary {
+            uid,
+            name: format!("Player {uid}"),
+            full_name: None,
+            date_of_birth: None,
+            age: Some(25),
+            nation: None,
+            nation_uid: None,
+            nation_address: 0,
+            club: None,
+            club_uid: None,
+            positions: Vec::new(),
+            contract_expires: None,
+            current_ability: 150,
+            potential_ability: 160,
+            position_ratings,
+            attributes: Vec::new(),
+            base: fmlens_core::Base::default(),
+            transfer_listed: false,
+            loan_listed: false,
+            height_cm: 180,
+            wage: None,
+            transfer_value: None,
+            current_reputation: 5000,
+            personality: [10; 8],
+            traits: 0,
+            address: 0,
+            shift: 0,
+        }
+    }
+
     #[test]
     fn a_mass_edit_changes_the_players_the_list_shows() {
-        let player = |uid: u32, st: u8| {
-            let mut position_ratings = [1u8; 15];
-            position_ratings[12] = st;
-            PlayerSummary {
-                uid,
-                name: format!("Player {uid}"),
-                full_name: None,
-                date_of_birth: None,
-                age: Some(25),
-                nation: None,
-                nation_uid: None,
-                nation_address: 0,
-                club: None,
-                club_uid: None,
-                positions: Vec::new(),
-                contract_expires: None,
-                current_ability: 150,
-                potential_ability: 160,
-                position_ratings,
-                attributes: Vec::new(),
-                base: fmlens_core::Base::default(),
-                transfer_listed: false,
-                loan_listed: false,
-                height_cm: 180,
-                wage: None,
-                transfer_value: None,
-                current_reputation: 5000,
-                personality: [10; 8],
-                traits: 0,
-                address: 0,
-                shift: 0,
-            }
-        };
+        let player = summary;
         // As the player list sends them while it is compared with player 1 and ranked for strikers.
         let filters: Filters = serde_json::from_str(
             r#"{"playerFilter":{},"best":{"weights":[{"key":"finishing","weight":1}],"positions":["st"]},"leftOut":1}"#,
@@ -5698,6 +5713,27 @@ mod tests {
             player_listed(p, &plain.player_filter.clone().unwrap_or_default(), &BestFor::default(), plain.left_out)
         };
         assert!(anyone(&player(1, 20)) && anyone(&player(3, 10)));
+    }
+
+    #[test]
+    fn an_export_keeps_the_order_the_list_shows() {
+        let player = |uid: u32, finishing: u8, ability: u16| PlayerSummary {
+            attributes: vec![finishing; 64],
+            current_ability: ability,
+            ..summary(uid, 20)
+        };
+        let players = [player(1, 10, 170), player(2, 18, 120), player(3, 14, 150)];
+        let order = |order: Option<PlayerOrder>, best: &BestFor| {
+            let mut hits: Vec<&PlayerSummary> = players.iter().collect();
+            sort_listed(&mut hits, order, None, best);
+            hits.iter().map(|p| p.uid).collect::<Vec<_>>()
+        };
+        let finishers: BestFor =
+            serde_json::from_str(r#"{"weights":[{"key":"finishing","weight":1}],"positions":[]}"#).unwrap();
+        assert_eq!(order(None, &finishers), [2, 3, 1], "best for finishing first");
+        let by_ability = PlayerOrder { by: PlayerSort::CurrentAbility, ascending: false };
+        assert_eq!(order(Some(by_ability), &finishers), [1, 3, 2], "a column wins over Best for");
+        assert_eq!(order(None, &BestFor::default()), [1, 2, 3], "as the search found them");
     }
 
     #[test]
