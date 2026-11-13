@@ -85,7 +85,7 @@ const FREEZE_EVERY: Duration = Duration::from_secs(2);
 /// How long the hold of frozen values waits after failing to read the game again before it tries once more.
 const READ_AGAIN_RETRY: Duration = Duration::from_secs(30);
 
-/// The event that tells the window the game was read again without it (see `read_again_for_freezes`), with what a
+/// The event that tells the window the game was read again without it (see `read_again_once_moved`), with what a
 /// Reload returns.
 const READ_AGAIN_EVENT: &str = "game-read-again";
 
@@ -3382,10 +3382,10 @@ fn load_again(pid: u32) -> Result<Connection, Failure> {
     Ok(connection)
 }
 
-/// Reads the game again once FM has moved its lists, which stops every write, so that what is frozen stays held: as
-/// Reload does, without waiting for the window, which is told as it is of a Reload. Left alone when the connection
-/// was read again or let go meanwhile.
-fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failure> {
+/// Reads the game again once FM has moved its lists, which stops every write, e.g. on loading another save: so that
+/// the lists follow the game and what is frozen stays held. As Reload does, without waiting for the window, which is
+/// told as it is of a Reload. Left alone when the connection was read again or let go meanwhile.
+fn read_again_once_moved(app: &tauri::AppHandle, pid: u32) -> Result<(), Failure> {
     let path = app.state::<FrozenFile>().0.clone();
     let mut connection = load_again(pid)?;
     let state = app.state::<AppState>();
@@ -3398,6 +3398,7 @@ fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failur
     eprintln!("FM Lens read the game again after FM moved its lists (same game: {same_game}).");
     connection.hold_frozen();
     let info = connection.reload_info(refrozen, same_game);
+    app.state::<Histories>().record(&connection);
     *guard = Some(connection);
     drop(guard);
     if let Err(err) = app.emit(READ_AGAIN_EVENT, info) {
@@ -5500,7 +5501,7 @@ pub fn run() {
             // serving through its existing helper; compatibility is discovered on connection.
             bridge::refresh(app.handle());
             // Frozen money and attributes: every little while, what the game took from them is put back. Once FM has
-            // moved its lists, which stops every write, the game is read again first.
+            // moved its lists, which stops every write, the game is read again, frozen or not.
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 let mut next_read = Instant::now();
@@ -5508,21 +5509,18 @@ pub fn run() {
                     std::thread::sleep(FREEZE_EVERY);
                     let state = handle.state::<AppState>();
                     let stale = match state.0.lock().as_deref_mut() {
+                        Ok(Some(connection)) if connection.stale() => Some(connection.session.process.pid()),
                         Ok(Some(connection)) if !connection.frozen.is_empty() => {
-                            if connection.stale() {
-                                Some(connection.session.process.pid())
-                            } else {
-                                connection.hold_frozen();
-                                None
-                            }
+                            connection.hold_frozen();
+                            None
                         }
                         _ => None,
                     };
                     if let Some(pid) = stale
                         && Instant::now() >= next_read
-                        && let Err(err) = read_again_for_freezes(&handle, pid)
+                        && let Err(err) = read_again_once_moved(&handle, pid)
                     {
-                        eprintln!("FM Lens could not read the game again to hold what is frozen: {}", err.message);
+                        eprintln!("FM Lens could not read the game again after FM moved its lists: {}", err.message);
                         next_read = Instant::now() + READ_AGAIN_RETRY;
                     }
                 }

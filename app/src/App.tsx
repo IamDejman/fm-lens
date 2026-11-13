@@ -247,7 +247,7 @@ function App() {
     [run, readAgain, detect],
   );
 
-  // To keep what is frozen held, the Rust side reads the game again by itself once FM has moved its lists.
+  // The Rust side reads the game again by itself once FM has moved its lists, e.g. on loading another save.
   useEffect(() => {
     if (!inTauri) {
       return;
