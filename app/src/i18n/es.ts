@@ -1116,6 +1116,14 @@ export const es: Strings = {
     },
   },
 
+  /** The select that ranks the player and staff lists for a job, and the column of how well each row fits. */
+  bestFor: {
+    label: "Mejor para",
+    /** The column: a score out of 100. */
+    fit: "Ajuste",
+    /** The column as the hover text of its header names it, after `playerList.sortBy`. */
+    fitName: "ajuste",
+  },
   staffList: {
     nav: "Personal",
     count: (total) => entityCount("staff", total),

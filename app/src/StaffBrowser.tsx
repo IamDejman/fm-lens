@@ -7,6 +7,8 @@ import {
   STAFF_ATTRIBUTES,
   toAttributeBounds,
 } from "./AttributeFilters";
+import { BestForSelect, FitCell, FitHeader, useBestFor } from "./BestFor";
+import { STAFF_RECIPES, type Recipe } from "./recipes";
 import { chipLabel, FilterBar, RangeField, rangeText, type FilterChip } from "./FilterBar";
 import { formatDate } from "./format";
 import { JOB_FILTER_OPTIONS, jobLabel, playerListText, profileText, staffListText } from "./labels";
@@ -75,7 +77,8 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   useSnapshot("staffMaxCa", () => maxCurrentAbility);
   useSnapshot("staffMinPa", () => minPotentialAbility);
   useSnapshot("staffMaxPa", () => maxPotentialAbility);
-  const sort = useListSort("staffOrder", SORT);
+  const best = useBestFor("staffBest", STAFF_RECIPES);
+  const sort = useListSort("staffOrder", SORT, best.recipe !== undefined);
   useSnapshot("staffNation", () => nation);
   useSnapshot("staffClub", () => club);
   useSnapshot("staffAttributes", () => attributes);
@@ -190,7 +193,7 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
       name="staff"
       reveal={reveal}
       command="search_staff"
-      requestArgs={{ filter, order: sort.order ?? undefined }}
+      requestArgs={{ filter, order: sort.order ?? undefined, best: best.recipe?.best }}
       version={version}
       active={active}
       placeholder={staffListText.search}
@@ -272,7 +275,19 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
           <AttributeFilters rows={attributes} choices={STAFF_ATTRIBUTES} onChange={setAttributes} />
         </FilterBar>
       }
-      toolbarActions={(list) => <MassEditButton entity="staff" filters={{ staffFilter: filter }} list={list} />}
+      toolbarActions={(list) => (
+        <>
+          <BestForSelect
+            recipes={STAFF_RECIPES}
+            value={best.key}
+            onChange={(key) => {
+              best.set(key);
+              sort.set(null);
+            }}
+          />
+          <MassEditButton entity="staff" filters={{ staffFilter: filter }} list={list} />
+        </>
+      )}
       tableClass="staff-grid"
       header={
         <>
@@ -282,6 +297,7 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
           <SortHeader by="club" sort={sort} label={columns.club} className="col-club" />
           <SortHeader by="nation" sort={sort} label={columns.nation} className="col-nation" />
           <th className="col-born">{columns.born}</th>
+          {best.recipe && <FitHeader sort={sort} />}
           <SortHeader
             by="currentAbility"
             sort={sort}
@@ -299,7 +315,7 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
           <th className="num col-uid">{columns.id}</th>
         </>
       }
-      cells={(s) => <StaffCells staff={s} />}
+      cells={(s) => <StaffCells staff={s} recipe={best.recipe} />}
       profile={(s, panel) => (
         <StaffProfile member={s} version={panel.version} tab={tab} onTab={setTab} onClose={panel.onClose} />
       )}
@@ -307,7 +323,7 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
   );
 }
 
-function StaffCells({ staff: s }: { staff: StaffSummary }) {
+function StaffCells({ staff: s, recipe }: { staff: StaffSummary; recipe: Recipe | undefined }) {
   const job = jobOf(s);
   const employer = employerOf(s);
   return (
@@ -333,6 +349,7 @@ function StaffCells({ staff: s }: { staff: StaffSummary }) {
         <WithPicture picture={<NationFlag uid={s.nationUid} />}>{s.nation ?? profileText.none}</WithPicture>
       </td>
       <td className="date col-born">{formatDate(s.dateOfBirth)}</td>
+      {recipe && <FitCell recipe={recipe} fit={s.fit} />}
       <td className="num col-ca">
         <Ability value={s.currentAbility} />
       </td>

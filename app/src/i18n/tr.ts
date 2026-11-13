@@ -1103,6 +1103,14 @@ export const tr: Strings = {
     },
   },
 
+  /** The select that ranks the player and staff lists for a job, and the column of how well each row fits. */
+  bestFor: {
+    label: "En uygun",
+    /** The column: a score out of 100. */
+    fit: "Uyum",
+    /** The column as the hover text of its header names it, after `playerList.sortBy`. */
+    fitName: "uyum",
+  },
   staffList: {
     nav: "Personel",
     count: (total) => `${format(total)} personel`,

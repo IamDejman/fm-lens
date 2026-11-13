@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Ability } from "./Ability";
+import { BestForSelect, FitCell, FitHeader, useBestFor } from "./BestFor";
+import { PLAYER_RECIPES } from "./recipes";
 import { ComparisonTray } from "./Comparison";
 import { ExportButton } from "./ExportDialog";
 import { formatDate } from "./format";
@@ -39,16 +41,23 @@ const POSITIONS_SHOWN = 3;
 export function PlayerBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
   // The filters and the sort start as they were before the language was switched, if it was (see `restore.ts`).
   const [fields, setFields] = useState<PlayerFilterFields>(() => restored("playerFields", readFields));
+  const best = useBestFor("playerBest", PLAYER_RECIPES);
   // A player asked for from elsewhere is found whatever the filters were: they are cleared for him.
   const [revealed, setRevealed] = useState(reveal);
   if (revealed !== reveal) {
     setRevealed(reveal);
     if (reveal) {
       setFields(NO_PLAYER_FILTERS);
+      best.set("");
     }
   }
-  // No order is asked for until a header is clicked: the search answers with the best current ability first.
-  const sort = useListSort("playerOrder", { sorts: PLAYER_SORTS, start: DEFAULT_ORDER, firstAscending: FIRST_ASCENDING });
+  // No order is asked for until a header is clicked: the search answers with the best current ability first, or
+  // the best fit while the list is ranked.
+  const sort = useListSort(
+    "playerOrder",
+    { sorts: PLAYER_SORTS, start: DEFAULT_ORDER, firstAscending: FIRST_ASCENDING },
+    best.recipe !== undefined,
+  );
   const { order } = sort;
   useSnapshot("playerFields", () => fields);
   // The tab of the profile is kept here, so that the next player picked opens on the same one.
@@ -68,7 +77,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
     <ListBrowser<PlayerSummary>
       name="players"
       command="search_players"
-      requestArgs={{ filter, order: order ?? undefined }}
+      requestArgs={{ filter, order: order ?? undefined, best: best.recipe?.best }}
       version={version}
       active={active}
       reveal={reveal}
@@ -95,11 +104,21 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
         />
       }
       toolbarActions={(list) => (
-        <MoreMenu>
-          <ExportButton list={list} filter={filter} order={order} />
-          <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
-          <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
-        </MoreMenu>
+        <>
+          <BestForSelect
+            recipes={PLAYER_RECIPES}
+            value={best.key}
+            onChange={(key) => {
+              best.set(key);
+              sort.set(null);
+            }}
+          />
+          <MoreMenu>
+            <ExportButton list={list} filter={filter} order={order} />
+            <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
+            <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
+          </MoreMenu>
+        </>
       )}
       footer={<ComparisonTray comparison={comparison} />}
       tableClass="player-grid"
@@ -112,6 +131,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           {sortHeader("club", "col-club")}
           {sortHeader("contractExpires", "col-contract")}
           <th className="col-born">{text.columns.born}</th>
+          {best.recipe && <FitHeader sort={sort} />}
           {sortHeader("currentAbility", "num col-ca")}
           {sortHeader("potentialAbility", "num col-pa")}
           <th className="num col-uid">{text.columns.uid}</th>
@@ -138,6 +158,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           </td>
           <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
           <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
+          {best.recipe && <FitCell recipe={best.recipe} fit={p.fit} />}
           <td className="num col-ca">
             <Ability value={p.currentAbility} />
           </td>

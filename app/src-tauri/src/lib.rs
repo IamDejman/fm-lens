@@ -6,19 +6,20 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlens_core::{
-    AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, CaptainRole, CaptainSet, Change,
-    Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded, Cohered, CompetitionFilter,
-    CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays,
-    ExportFormat, ExportHeader, FeePlan, Field, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo,
-    GameRelease, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind,
-    Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation,
-    NationDetails, NationFilter, NationSort, NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation,
-    Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder,
-    PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed,
-    RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn,
-    StadiumFilter, StadiumSort, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan,
-    StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game,
-    nation_summaries, nations, read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
+    AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, CaptainRole, CaptainSet,
+    Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded, Cohered,
+    CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded, EditError, EndedLoan,
+    Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate, FutureTransfer, GAME_EXE,
+    GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health,
+    Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
+    MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, OfficialFilter,
+    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
+    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
+    SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
+    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
+    TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
+    read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -2934,6 +2935,37 @@ fn page<T: Listed + Clone>(
     Page { total: hits.len(), rows: hits.into_iter().skip(offset).take(limit.min(200)).cloned().collect() }
 }
 
+/// A row of a list and, where the list is ranked for something, how well it fits.
+#[derive(Serialize)]
+struct Ranked<T> {
+    #[serde(flatten)]
+    row: T,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fit: Option<Fit>,
+}
+
+/// A page as [`page`] makes it, each row with its `fit`.
+fn ranked_page<T: Listed + Clone>(
+    index: &SearchIndex<T>,
+    query: &str,
+    limit: usize,
+    offset: usize,
+    keep: impl Fn(&T) -> bool,
+    sort: impl FnOnce(&mut Vec<&T>),
+    fit: impl Fn(&T) -> Option<Fit>,
+) -> Page<Ranked<T>> {
+    let mut hits = index.search(query);
+    hits.retain(|item| keep(item));
+    sort(&mut hits);
+    let rows = hits.iter().skip(offset).take(limit.min(200)).map(|&row| Ranked { row: row.clone(), fit: fit(row) });
+    Page { total: hits.len(), rows: rows.collect() }
+}
+
+/// Sorts `hits` by their `fit`, the best first and those with none last; equal fits stay as the search found them.
+fn best_first<T>(hits: &mut [&T], fit: impl Fn(&T) -> Option<Fit>) {
+    hits.sort_by_cached_key(|&item| std::cmp::Reverse(fit(item).map_or(-1, |fit| (fit.score * 1000.0) as i32)));
+}
+
 /// The sort of a page: by the column `order` names, or as the search found the rows (best first) without one.
 fn by_column<S: SortColumn>(order: Option<Order<S>>) -> impl FnOnce(&mut Vec<&S::Row>) {
     move |hits| {
@@ -3175,7 +3207,8 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
     Ok(info)
 }
 
-/// Players matching `query`, highest current ability first; at most `limit` rows.
+/// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
+/// its positions, each with their fit, and the best fit first unless `order` asks otherwise.
 #[tauri::command]
 fn search_players(
     state: State<'_, AppState>,
@@ -3184,25 +3217,29 @@ fn search_players(
     offset: Option<usize>,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
-) -> Result<Page<fmlens_core::PlayerSummary>, Failure> {
+    best: Option<BestFor>,
+) -> Result<Page<Ranked<fmlens_core::PlayerSummary>>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(
+    let best = best.unwrap_or_default();
+    Ok(ranked_page(
         &connection.players,
         &query,
         limit,
         offset.unwrap_or(0),
-        |p| filter.matches(p),
-        |hits| {
-            if let Some(order) = order {
-                sort_players(hits, order);
-            }
+        |p| filter.matches(p) && best.plays(p),
+        |hits| match order {
+            Some(order) => sort_players(hits, order),
+            None if best.ranks() => best_first(hits, |p| best.player(p)),
+            None => {}
         },
+        |p| best.player(p),
     ))
 }
 
 /// Staff matching `query`, the human manager first, then by current ability, or in `order`; at most `limit` rows.
+/// With `best`, each with their fit, and the best fit first unless `order` asks otherwise.
 #[tauri::command]
 fn search_staff(
     state: State<'_, AppState>,
@@ -3211,11 +3248,25 @@ fn search_staff(
     offset: Option<usize>,
     filter: Option<StaffFilter>,
     order: Option<Order<StaffSort>>,
-) -> Result<Page<fmlens_core::StaffSummary>, Failure> {
+    best: Option<BestFor>,
+) -> Result<Page<Ranked<fmlens_core::StaffSummary>>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
-    Ok(page(&connection.staff, &query, limit, offset.unwrap_or(0), |s| filter.matches(s), by_column(order)))
+    let best = best.unwrap_or_default();
+    Ok(ranked_page(
+        &connection.staff,
+        &query,
+        limit,
+        offset.unwrap_or(0),
+        |s| filter.matches(s) && (!best.ranks() || filter.job.is_some() || !fmlens_core::board_job(s.job)),
+        |hits| match order {
+            Some(order) => sort_rows(hits, order),
+            None if best.ranks() => best_first(hits, |s| best.staff(s)),
+            None => {}
+        },
+        |s| best.staff(s),
+    ))
 }
 
 /// The person a list of clubs is picked for.

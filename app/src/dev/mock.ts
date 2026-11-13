@@ -7,6 +7,8 @@ import { version as appVersion } from "../../package.json";
 import type {
   ApplyReport,
   AttributeBound,
+  BestFor,
+  Fit,
   ClubMoney,
   FeePlan,
   Nation,
@@ -3294,6 +3296,37 @@ function byColumn<Row>(
   };
 }
 
+/** How well a person of these `ratings` fits `best`, as the real search scores it (see `best.rs`). */
+function fitOf(best: BestFor, ratings: Record<string, { value: number } | undefined>): Fit | undefined {
+  const values = best.weights.map(({ key }) => ratings[key]?.value ?? 0);
+  let sum = 0;
+  let most = 0;
+  best.weights.forEach(({ weight }, i) => {
+    if (weight > 0) {
+      sum += weight * values[i];
+      most += weight * 20;
+    }
+  });
+  return sum > 0 ? { score: (100 * sum) / most, values } : undefined;
+}
+
+/**
+ * The hits of a search asked to rank for `best`, each with its fit, the best first unless an order was asked for;
+ * the hits as they are without it.
+ */
+function ranked<Row extends { fit?: Fit }>(
+  hits: Row[],
+  args: Record<string, unknown> | undefined,
+  ratings: (row: Row) => Record<string, { value: number } | undefined>,
+): Row[] {
+  const best = args?.best as BestFor | undefined;
+  if (!best || best.weights.length === 0) {
+    return hits;
+  }
+  const rows = hits.map((row) => ({ ...row, fit: fitOf(best, ratings(row)) }));
+  return args?.order ? rows : rows.sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
+}
+
 /** The sort a search was asked for, if any. */
 const orderOf = (args: Record<string, unknown> | undefined) =>
   args?.order as { by: string; ascending: boolean } | undefined;
@@ -3625,11 +3658,14 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       // Without an order the best current ability comes first, as with the real command.
       const order = (args?.order ?? { by: "currentAbility", ascending: false }) as PlayerOrder;
       const words = fold(query).split(/\s+/).filter(Boolean);
-      const hits = players
+      const positions = (args?.best as BestFor | undefined)?.positions ?? [];
+      const found = players
         .filter((p) => String(p.uid) === query.trim() || words.every((w) => fold(`${p.name} ${p.fullName ?? ""}`).includes(w)))
         .filter((p) => matchesPlayerFilter(p, filter))
+        .filter((p) => positions.length === 0 || positions.some((key) => p.positions.includes(key)))
         .sort(bySearchRank)
         .sort(playerComparator(order));
+      const hits = ranked(found, args, (p) => details(p).attributes);
       const page: PlayerPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
@@ -3666,7 +3702,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const limit = Number(args?.limit ?? 200);
       const filter = (args?.filter ?? {}) as StaffFilter;
       const words = fold(query).split(/\s+/).filter(Boolean);
-      const hits = staff
+      const found = staff
         .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
         .filter((s) => matchesStaffFilter(s, filter))
         .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name))
@@ -3688,6 +3724,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
             }
           }),
         );
+      const hits = ranked(found, args, (s) => staffDetails(s).attributes);
       const page: StaffPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
