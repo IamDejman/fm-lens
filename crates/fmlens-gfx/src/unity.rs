@@ -518,9 +518,9 @@ mod tests {
     }
 
     fn write_temp(name: &str, bytes: &[u8]) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("fmlens-gfx-{}-{name}", std::process::id()));
-        std::fs::write(&dir, bytes).unwrap();
-        dir
+        let path = std::env::temp_dir().join(format!("fmlens-gfx-{}-bundle-{name}", std::process::id()));
+        std::fs::write(&path, bytes).unwrap();
+        path
     }
 
     #[test]
