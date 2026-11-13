@@ -316,7 +316,7 @@ pub struct CompetitionBonus {
 }
 
 /// Bytes per competition bonus, and where in one the UID it names and its amount are. Read on Windows (Game Pass,
-/// Kylian Mbappé) and on macOS ARM64 (Declan Rice: UID 637, 851,999).
+/// Kylian Mbappé) and on macOS ARM64 (Declan Rice: UID 637, 850,975).
 const BONUS_ENTRY: usize = 32;
 const BONUS_UID: usize = 0x14;
 const BONUS_AMOUNT: usize = 0x18;
@@ -498,13 +498,13 @@ mod tests {
 
     #[test]
     fn competition_bonuses_give_the_uid_and_the_amount() {
-        // Declan Rice's one bonus, read on macOS ARM64: UID 637 (0x27D) and 851,999 (0xCFC1F).
+        // Declan Rice's one bonus, read on macOS ARM64: UID 637 (0x27D) and 850,975 (0xCFC1F).
         let words: [u32; 8] = [0x076C_0001, 0xFFFF_FFFF, 0x14, 0xFFFF_FFFF, 0, 0x27D, 0x000C_FC1F, 0xFFFF];
         let entry: [u8; BONUS_ENTRY] = words.map(u32::to_le_bytes).concat().try_into().expect("32 bytes");
         let bonus = bonus_at(1, &entry);
         assert_eq!(
             bonus,
-            CompetitionBonus { index: 1, competition_uid: 637, competition: None, amount: Some(851_999) }
+            CompetitionBonus { index: 1, competition_uid: 637, competition: None, amount: Some(850_975) }
         );
         // An entry that holds no amount gives none.
         let mut none = entry;
