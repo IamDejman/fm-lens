@@ -3,7 +3,8 @@
 
 import { useContext, useEffect, useId, useRef, type CSSProperties, type ReactNode } from "react";
 import { DateInput } from "./DateInput";
-import { valueText, type Pending } from "./editDraft";
+import { useDragValue } from "./dragValue";
+import { draggedText, dragPace, valueText, type Pending } from "./editDraft";
 import { isoFromNumber, isStoredFiner } from "./editing";
 import { currencySymbol } from "./format";
 import { blankLabel, changesText, choiceLabel, editText, fieldLabel, valueChange } from "./labels";
@@ -19,7 +20,8 @@ import {
 /**
  * The input of an editable field, showing the value as the game shows it and taking the values it takes: a number
  * input, with the sign of the chosen currency before it for an amount of money and the percent sign after it for a percentage, or a
- * date typed as text (`DateInput`, with the calendar of the browser behind a button) for a date. A field that holds a code from a list is a
+ * date typed as text (`DateInput`, with the calendar of the browser behind a button) for a date. A number is dragged
+ * sideways to change it, as well as typed (see dragValue.ts). A field that holds a code from a list is a
  * select of its choices, and a yes-or-no a checkbox with the name of the field, or with Yes or No `inFact`, where the
  * label beside it names the field. A number that may be left empty says "none" while it is. A changed input is
  * outlined in the accent colour and says what it was; one that cannot be applied is outlined as an error. A number
@@ -31,6 +33,15 @@ export function EditInput({ field, inFact = false, hint = true }: { field: strin
   const hintId = useId();
   const applied = useContext(AppliedFieldsContext).has(field);
   const input = session?.input(field);
+  // Only a number is dragged: not a date, a choice or a yes-or-no, and nothing while the changes are written.
+  const dragged = input !== undefined && input !== null && input.field.kind !== "date" && input.field.kind !== "flag"
+    && input.field.choices === null;
+  const drag = useDragValue(
+    dragged && session?.busy === false,
+    input?.value ?? 0,
+    input ? dragPace(input.field) : 1,
+    (from, steps) => input && session?.type(field, draggedText(input.field, from, steps)),
+  );
   if (!session || !input) {
     return null;
   }
@@ -112,7 +123,8 @@ export function EditInput({ field, inFact = false, hint = true }: { field: strin
     <input
       type={clearable ? "text" : "number"}
       inputMode={clearable ? "numeric" : undefined}
-      className={`edit-input${outline}`}
+      className={`edit-input draggable${outline}${drag.dragging ? " dragging" : ""}`}
+      {...drag.handlers}
       style={{ "--digits": digits } as CSSProperties}
       min={range.min / unit}
       max={range.max / unit}

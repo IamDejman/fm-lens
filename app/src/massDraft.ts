@@ -1,9 +1,11 @@
 // What the inputs of the mass-edit dialog hold and what they stand for. No React here: the dialog only draws it.
 
-import { valueText } from "./editDraft";
-import { numberFromIso, shownRange, storedValue } from "./editing";
-import { describeError } from "./format";
+import { describeFieldError, valueText } from "./editDraft";
+import { changedLater, numberFromIso, shownRange, storedValue } from "./editing";
+import { fieldIndexKey } from "./fieldTables";
+import { describeError, isFailure } from "./format";
 import {
+  changesText,
   editText,
   fieldLabel,
   massEditText,
@@ -247,14 +249,40 @@ export function groupFields(entity: MassEntity, fields: readonly EditField[]): F
 // Undo ---------------------------------------------------------------------------------------------------------------
 
 /**
- * What to tell about the changes a batch undo could not take back: for each, who and which field when `log` has the
- * change, otherwise its number; then the game's reason.
+ * Why the undo of `change` was refused. Where a newer change to the same field still stands in `log`, the field holds
+ * what that one wrote: it has to be undone first, and saying so helps more than the value the field has now. Otherwise
+ * the game's reason, its values as the app shows them where the field's entry in the field table (`field`) is known.
  */
-export function undoFailureLines(failed: BatchUndo["failed"], log: readonly LoggedChange[]): string[] {
+export function undoFailureText(
+  change: LoggedChange,
+  error: unknown,
+  log: readonly LoggedChange[],
+  field: EditField | undefined,
+): string {
+  if (isFailure(error) && error.code === "edit.conflict" && changedLater(change, log)) {
+    return changesText.undoLaterFirst(fieldLabel(change.entity, change.field));
+  }
+  return describeFieldError(error, field);
+}
+
+/**
+ * What to tell about the changes a batch undo could not take back: for each, who and which field when `log` has the
+ * change, otherwise its number; then why (see `undoFailureText`). `fields` is every editable field (see `fieldIndex`),
+ * where it could be read.
+ */
+export function undoFailureLines(
+  failed: BatchUndo["failed"],
+  log: readonly LoggedChange[],
+  fields: ReadonlyMap<string, EditField> | null = null,
+): string[] {
   const byId = new Map(log.map((change) => [change.id, change] as const));
   return failed.map(({ id, error }) => {
     const change = byId.get(id);
-    const who = change ? `${change.name} · ${fieldLabel(change.entity, change.field)}` : massEditText.changeNumber(id);
-    return massEditText.undoFailure(who, describeError(error));
+    if (change === undefined) {
+      return massEditText.undoFailure(massEditText.changeNumber(id), describeError(error));
+    }
+    const who = `${change.name} · ${fieldLabel(change.entity, change.field)}`;
+    const field = fields?.get(fieldIndexKey(change.entity, change.field));
+    return massEditText.undoFailure(who, undoFailureText(change, error, log, field));
   });
 }

@@ -389,6 +389,14 @@ export interface PlayerSummary {
   contractExpires: FmDate | null;
   currentAbility: number;
   potentialAbility: number;
+  /** His stored base valuation in pounds; null where the build does not place it or the game has not set one. */
+  value: number | null;
+  /** Pounds a week; null without a contract. */
+  wage: number | null;
+  /** 0–10000. */
+  currentReputation: number;
+  /** In a list row: the attributes the list asked for (see `search_players`), as FM shows them, by key. */
+  attributeValues?: Record<string, number>;
   /** How well he fits what the list is ranked for, when it is ranked. */
   fit?: Fit;
 }
@@ -615,8 +623,8 @@ export interface AttributeBound {
 
 /** Filters for `search_players`; omitted fields match everyone. */
 export interface PlayerFilter {
-  /** A position key (gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr); rated 15+ there. */
-  position?: string;
+  /** Position keys (gk, sw, dl, dc, dr, dm, ml, mc, mr, aml, amc, amr, st, wbl, wbr); rated 15+ in any of them. */
+  positions?: string[];
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
@@ -632,6 +640,9 @@ export interface PlayerFilter {
   /** Pounds, the stored base valuation. A player the game has not valued keeps to no bound. */
   minValue?: number;
   maxValue?: number;
+  /** 0–10000, of his current reputation. */
+  minReputation?: number;
+  maxReputation?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
   /** Part of the club's name; accents and case ignored. */
@@ -653,14 +664,21 @@ export interface PlayerFilter {
   traits?: number[];
 }
 
-export type PlayerSort =
+/** The player columns that sort the list, but for the attributes. */
+export type PlayerColumnSort =
   | "currentAbility"
   | "potentialAbility"
   | "age"
   | "name"
   | "nation"
   | "club"
-  | "contractExpires";
+  | "contractExpires"
+  | "value"
+  | "wage"
+  | "reputation";
+
+/** What the player list is sorted by: a column, or an attribute ("attribute.finishing"). */
+export type PlayerSort = PlayerColumnSort | `attribute.${string}`;
 
 /** Sort order for `search_players`; without one, results are by current ability, highest first. */
 export interface PlayerOrder {
@@ -951,6 +969,9 @@ export interface NationDetails {
 }
 
 export interface WomenFootball {
+  /** Its place in the women's FIFA ranking; null when unranked. */
+  ranking: number | null;
+  points: number | null;
   joinedFifa: number | null;
   joinedContinental: number | null;
   youthRating: number | null;
@@ -1051,7 +1072,7 @@ export interface EditField {
    * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
    * "finance.wage_budget", "finance.total_wage_budget".
    * Nations: "reputation" (the senior team's), "youth_rating", "game_importance", "attendance", the same four with
-   * "women.", "points" (FIFA), "population", "dual_nationality", "naturalisation".
+   * "women.", "points" and "women.points" (FIFA), "population", "dual_nationality", "naturalisation".
    */
   key: string;
   entity: Entity;

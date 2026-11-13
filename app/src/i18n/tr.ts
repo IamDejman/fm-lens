@@ -5,7 +5,7 @@ import { knownFormationName } from "../formationNames";
 // Turkish has no plural after a number ("3 değişiklik"), and its case endings follow the word they end, not a
 // number, so the sentences are built to put an ending on a noun ("oyuncunun"), never on a figure.
 
-import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerSort, SquadSort, Storefront } from "../types";
+import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerColumnSort, SquadSort, Storefront } from "../types";
 import { PERCENT_CLAUSES, RELEASE_CLAUSES } from "../clauseKinds";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
@@ -733,6 +733,7 @@ export const tr: Strings = {
     "women.game_importance": "Kadın futbolunda oyunun önemi",
     "women.attendance": "Kadın futbolunda seyirci ilgisi",
     points: "FIFA puanı",
+    "women.points": "Kadın FIFA puanı",
   },
 
   profile: {
@@ -886,6 +887,8 @@ export const tr: Strings = {
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
     removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır.",
+    inspire: "Motive et",
+    inspireTitle: "Morali en üste çıkarır, tüm mutsuzluk nedenlerini kaldırır",
     concernSince: (date) => `${date} tarihinden beri`,
     concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : ""),
     concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? "Bilinmeyen neden",
@@ -1030,8 +1033,11 @@ export const tr: Strings = {
       born: "Doğum",
       currentAbility: "MY",
       potentialAbility: "PY",
+      value: "Değer",
+      wage: "Maaş",
+      reputation: "İtibar",
       uid: "UID",
-    } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
+    } satisfies Record<PlayerColumnSort | "positions" | "born" | "uid", string>,
     sortBy: (by) => `Sırala: ${by}`,
     // Said as "sıralama: …" and "Sırala: …", so they stand as plain nouns.
     sortNames: {
@@ -1042,7 +1048,18 @@ export const tr: Strings = {
       nation: "uyruk",
       club: "kulüp",
       contractExpires: "sözleşme bitişi",
-    } satisfies Record<PlayerSort, string>,
+      value: "değer",
+      wage: "maaş",
+      reputation: "itibar",
+    } satisfies Record<PlayerColumnSort, string>,
+    columnChooser: {
+      button: "Sütunlar",
+      title: "Sütunlar",
+      attributes: "Özellik sütunları",
+      full: (max) => `En çok ${max} özellik sütunu.`,
+      reset: "Sıfırla",
+      done: "Tamam",
+    },
     filters: {
       toggle: "Filtreler",
       toggleActive: (count) => `Filtreler, ${count} etkin`,
@@ -1073,6 +1090,9 @@ export const tr: Strings = {
       value: "Temel değer",
       minValue: "En düşük değer",
       maxValue: "En yüksek değer",
+      reputation: "İtibar",
+      minReputation: "En düşük itibar",
+      maxReputation: "En yüksek itibar",
       trait: "Özellik",
       chips: "Etkin filtreler",
       removeChip: (label: string) => `Kaldır: ${label}`,
@@ -1846,6 +1866,7 @@ export const tr: Strings = {
     earlierGame: "Önceki oyun",
     undo: "Geri al",
     undoTitle: (label) => `Eski değeri oyuna geri yaz: ${label}`,
+    undoLaterFirst: (label) => `${label} bundan sonra yeniden değiştirildi. Önce sonraki değişikliği geri alın.`,
     batch: "Toplu düzenleme",
     batchCount: (total, remaining) =>
       remaining === 0

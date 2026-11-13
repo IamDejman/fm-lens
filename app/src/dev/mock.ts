@@ -201,6 +201,10 @@ const { players, ratings } = (() => {
       contractExpires: club === null ? null : contractEnd(own),
       currentAbility: ca,
       potentialAbility,
+      // Read from the profile when he is listed (see `listed`), so the row and the profile agree.
+      value: null,
+      wage: null,
+      currentReputation: 0,
     };
   });
   return { players, ratings };
@@ -1408,6 +1412,7 @@ function fieldTable(entity: Entity): EditField[] {
       { ...field("women.attendance", "u8", 0, 16), mass: false },
       ...NATION_STYLE.map((key) => ({ ...field(`women.style.${key}`, "i8", 0, 20), mass: false })),
       { ...field("points", "f32", 0, floatBits(3000)), mass: false },
+      { ...field("women.points", "f32", 0, floatBits(3000)), mass: false },
       { ...field("population", "u32", 1, 2_000_000_000), mass: false },
       { ...field("dual_nationality", "u8", 0, 2), choices: [0, 2], mass: false },
       { ...field("naturalisation", "u8", 0, 50), blank: 255, mass: false },
@@ -3367,6 +3372,12 @@ function yoursOf<Row extends { uid: number; name: string }>(
 const orderOf = (args: Record<string, unknown> | undefined) =>
   args?.order as { by: string; ascending: boolean } | undefined;
 
+/** A player as the list has him: with the value, wage and reputation of his profile. */
+function listed(p: PlayerSummary): PlayerSummary {
+  const d = details(p);
+  return { ...p, value: d.transferValue ?? null, wage: d.contract?.wage ?? null, currentReputation: d.reputation.current };
+}
+
 /** The player filter of the real command: fields that are not set match everyone. */
 function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
   // The listings, the attributes and what else the row leaves out are in the profile, made only when a filter asks
@@ -3377,10 +3388,12 @@ function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
     (f.attributes?.length ?? 0) > 0 ||
     (f.personality?.length ?? 0) > 0 ||
     (f.traits?.length ?? 0) > 0 ||
-    [f.minHeight, f.maxHeight, f.minWage, f.maxWage, f.minValue, f.maxValue].some((bound) => bound !== undefined);
+    [f.minHeight, f.maxHeight, f.minWage, f.maxWage, f.minValue, f.maxValue, f.minReputation, f.maxReputation].some(
+      (bound) => bound !== undefined,
+    );
   const d = needsDetails ? details(p) : null;
   return (
-    (f.position === undefined || p.positions.includes(f.position)) &&
+    (f.positions === undefined || f.positions.some((key) => p.positions.includes(key))) &&
     (f.minAge === undefined || (p.age !== null && p.age >= f.minAge)) &&
     (f.maxAge === undefined || (p.age !== null && p.age <= f.maxAge)) &&
     (f.minCurrentAbility === undefined || p.currentAbility >= f.minCurrentAbility) &&
@@ -3390,6 +3403,7 @@ function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
     within(d && d.heightCm > 0 ? d.heightCm : null, f.minHeight, f.maxHeight) &&
     within(d?.contract?.wage ?? null, f.minWage, f.maxWage) &&
     within(d?.transferValue ?? null, f.minValue, f.maxValue) &&
+    within(d?.reputation.current ?? null, f.minReputation, f.maxReputation) &&
     (f.personality ?? []).every((bound) => holds(bound, d?.personality[bound.key])) &&
     (f.traits ?? []).every((bit) => d?.traits.includes(bit) === true) &&
     contains(p.nation, f.nation) &&
@@ -3417,7 +3431,16 @@ function bySearchRank(a: PlayerSummary, b: PlayerSummary): number {
  */
 function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b: PlayerSummary) => number {
   const value = (p: PlayerSummary): string | number | null => {
+    if (by.startsWith("attribute.")) {
+      return details(p).attributes[by.slice("attribute.".length)]?.value ?? null;
+    }
     switch (by) {
+      case "value":
+        return details(p).transferValue ?? null;
+      case "wage":
+        return details(p).contract?.wage ?? null;
+      case "reputation":
+        return details(p).reputation.current;
       case "currentAbility":
         return p.currentAbility;
       case "potentialAbility":
@@ -3432,6 +3455,8 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
         return p.club && fold(p.club);
       case "contractExpires":
         return p.contractExpires && dayNumber(p.contractExpires);
+      default:
+        return null;
     }
   };
   return (a, b) => {
@@ -3704,9 +3729,16 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .sort(playerComparator(order));
       const hits = ranked(found, args, (p) => details(p).attributes);
       const own = players.filter((p) => p.clubUid !== null && p.clubUid === humanClub() && plays(p));
+      // The attributes the list has columns for go with each row.
+      const columns = ((args?.attributes ?? []) as string[]).slice(0, 12);
+      const rows = hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit).map((p): PlayerSummary => {
+        const attributes = details(p).attributes;
+        const shown = columns.filter((key) => attributes[key] !== undefined).map((key) => [key, attributes[key].value]);
+        return { ...listed(p), ...(shown.length > 0 ? { attributeValues: Object.fromEntries(shown) } : {}) };
+      });
       const page: PlayerPage = {
         total: hits.length,
-        rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit),
+        rows,
         yours: yoursOf(own, args, (p) => details(p).attributes),
       };
       return page as T;
@@ -4363,6 +4395,8 @@ function nationDetails(index: number): NationDetails | null {
       .map((rival, i) => ({ uid: 1000 + NATIONS.indexOf(rival), name: rival, strength: 100 - i * 15 })),
     teams: [team(null, 0, 8_500 - index * 300, older), team(21, 266, 6_000 - index * 200, younger)],
     women: {
+      ranking: index + 2,
+      points: 2105.4 - index * 31.7,
       joinedFifa: 1970 + index * 4,
       joinedContinental: 1972 + index * 4,
       youthRating: 155 - index * 11,
@@ -4449,6 +4483,9 @@ function withWrittenNation(uid: number, d: NationDetails): NationDetails {
   if (values.points !== undefined) {
     d.points = floatOfBits(values.points);
   }
+  if (values["women.points"] !== undefined && women) {
+    women.points = floatOfBits(values["women.points"]);
+  }
   if (values.population !== undefined) {
     d.population = values.population;
   }
@@ -4520,6 +4557,9 @@ function nationValues(uid: number): FieldValues {
   }
   // FM keeps the points of an unranked nation too; the profile shows none.
   values.points = floatBits(d.points ?? 0);
+  if (d.women) {
+    values["women.points"] = floatBits(d.women.points ?? 0);
+  }
   if (d.population !== null) {
     values.population = d.population;
   }

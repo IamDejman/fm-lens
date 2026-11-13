@@ -4,12 +4,13 @@ import { BestForSelect, FitCell, FitHeader, useBestFor, YourBest } from "./BestF
 import { PLAYER_RECIPES } from "./recipes";
 import { ComparisonTray } from "./Comparison";
 import { ExportButton } from "./ExportDialog";
-import { formatDate } from "./format";
+import { formatDate, formatMoney, formatNumber } from "./format";
 import { playerListText, positionLabel, profileText } from "./labels";
 import { ListBrowser, type Reveal } from "./ListBrowser";
 import { MassEditButton } from "./MassEditDialog";
 import { MoreMenu } from "./MoreMenu";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
+import { attributeHeading, attributeName, ColumnsButton, usePlayerColumns, type PlayerColumn } from "./PlayerColumns";
 import {
   countFilters,
   NO_PLAYER_FILTERS,
@@ -21,9 +22,9 @@ import { PlayerProfile, readPlayerTab, type PlayerTab } from "./PlayerProfile";
 import { PlayerTemplatesButton } from "./PlayerTemplates";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
-import { PLAYER_SORTS, readFields } from "./savedFilters";
+import { ATTRIBUTE_SORT, PLAYER_SAVED, PLAYER_SORTS, readFields } from "./savedFilters";
 import { SortHeader, useListSort } from "./SortHeader";
-import type { PlayerOrder, PlayerSort, PlayerSummary } from "./types";
+import type { PlayerColumnSort, PlayerOrder, PlayerSort, PlayerSummary } from "./types";
 import { useComparison } from "./useComparison";
 
 const text = playerListText;
@@ -69,21 +70,32 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
 
   const filter = toPlayerFilter(fields);
   const filterCount = countFilters(filter);
-  const sortHeader = (by: PlayerSort, className?: string) => (
-    <SortHeader by={by} sort={sort} label={text.columns[by]} name={text.sortNames[by]} className={className} />
+  // The columns the user chose to show, and the attributes that have a column.
+  const [columns, setColumns] = usePlayerColumns();
+  const shows = (column: PlayerColumn) => columns.columns.includes(column);
+  const sortHeader = (by: PlayerColumnSort, className?: string) => (
+    <SortHeader<PlayerSort> by={by} sort={sort} label={text.columns[by]} name={text.sortNames[by]} className={className} />
   );
+  /** What the list is sorted by, as the summary line says it. */
+  const sortName = (by: PlayerSort) =>
+    by.startsWith(ATTRIBUTE_SORT) ? attributeName(by.slice(ATTRIBUTE_SORT.length)) : text.sortNames[by as PlayerColumnSort];
 
   return (
     <ListBrowser<PlayerSummary>
       name="players"
       command="search_players"
-      requestArgs={{ filter, order: order ?? undefined, best: best.recipe?.best }}
+      requestArgs={{
+        filter,
+        order: order ?? undefined,
+        best: best.recipe?.best,
+        attributes: columns.attributes.length > 0 ? columns.attributes : undefined,
+      }}
       version={version}
       active={active}
       reveal={reveal}
       placeholder={text.search}
       summary={(total, shown) =>
-        text.summary(total, shown, order && { by: text.sortNames[order.by], ascending: order.ascending })
+        text.summary(total, shown, order && { by: sortName(order.by), ascending: order.ascending })
       }
       empty={(query) => text.empty(query, filterCount > 0)}
       filterBar={
@@ -92,6 +104,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           onChange={setFields}
           actions={
             <SavedFilterControls
+              kind={PLAYER_SAVED}
               fields={fields}
               order={order}
               filtered={filterCount > 0}
@@ -115,6 +128,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           />
           <YourBest yours={list.yours} />
           <MoreMenu>
+            <ColumnsButton choice={columns} onChoose={setColumns} />
             <ExportButton list={list} filter={filter} order={order} />
             <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
             <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
@@ -126,16 +140,29 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
       header={
         <>
           {sortHeader("name", "col-name")}
-          {sortHeader("age", "num col-age")}
-          <th className="col-positions">{text.columns.positions}</th>
-          {sortHeader("nation", "col-nation")}
-          {sortHeader("club", "col-club")}
-          {sortHeader("contractExpires", "col-contract")}
-          <th className="col-born">{text.columns.born}</th>
+          {shows("age") && sortHeader("age", "num col-age")}
+          {shows("positions") && <th className="col-positions">{text.columns.positions}</th>}
+          {shows("nation") && sortHeader("nation", "col-nation")}
+          {shows("club") && sortHeader("club", "col-club")}
+          {shows("contractExpires") && sortHeader("contractExpires", "col-contract")}
+          {shows("born") && <th className="col-born">{text.columns.born}</th>}
+          {shows("value") && sortHeader("value", "num col-value")}
+          {shows("wage") && sortHeader("wage", "num col-wage")}
+          {shows("reputation") && sortHeader("reputation", "num col-rep")}
+          {columns.attributes.map((key) => (
+            <SortHeader<PlayerSort>
+              key={key}
+              by={`${ATTRIBUTE_SORT}${key}`}
+              sort={sort}
+              label={attributeHeading(key)}
+              name={attributeName(key)}
+              className="num col-attribute"
+            />
+          ))}
           {best.recipe && <FitHeader sort={sort} />}
-          {sortHeader("currentAbility", "num col-ca")}
-          {sortHeader("potentialAbility", "num col-pa")}
-          <th className="num col-uid">{text.columns.uid}</th>
+          {shows("currentAbility") && sortHeader("currentAbility", "num col-ca")}
+          {shows("potentialAbility") && sortHeader("potentialAbility", "num col-pa")}
+          {shows("uid") && <th className="num col-uid">{text.columns.uid}</th>}
         </>
       }
       cells={(p, list) => (
@@ -147,26 +174,44 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
             {/* Shown instead of the Club column beside an open profile. */}
             <div className="sub row-club">{p.club ?? profileText.freeAgent}</div>
           </td>
-          <td className="num col-age">{p.age ?? profileText.none}</td>
-          <PositionsCell positions={p.positions} />
-          <td className="col-nation" title={p.nation ?? undefined}>
-            <WithPicture picture={<NationFlag uid={p.nationUid} />}>{p.nation ?? profileText.none}</WithPicture>
-          </td>
-          <td className="col-club" title={p.club ?? undefined}>
-            <WithPicture picture={<ClubLogo uid={p.clubUid} name={p.club} size={PICTURE_SIZE.rowLogo} />}>
-              {p.club ?? <span className="muted">{profileText.freeAgent}</span>}
-            </WithPicture>
-          </td>
-          <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
-          <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
+          {shows("age") && <td className="num col-age">{p.age ?? profileText.none}</td>}
+          {shows("positions") && <PositionsCell positions={p.positions} />}
+          {shows("nation") && (
+            <td className="col-nation" title={p.nation ?? undefined}>
+              <WithPicture picture={<NationFlag uid={p.nationUid} />}>{p.nation ?? profileText.none}</WithPicture>
+            </td>
+          )}
+          {shows("club") && (
+            <td className="col-club" title={p.club ?? undefined}>
+              <WithPicture picture={<ClubLogo uid={p.clubUid} name={p.club} size={PICTURE_SIZE.rowLogo} />}>
+                {p.club ?? <span className="muted">{profileText.freeAgent}</span>}
+              </WithPicture>
+            </td>
+          )}
+          {shows("contractExpires") && (
+            <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
+          )}
+          {shows("born") && <td className="date col-born">{formatDate(p.dateOfBirth)}</td>}
+          {shows("value") && <td className="num col-value">{p.value === null ? profileText.none : formatMoney(p.value)}</td>}
+          {shows("wage") && <td className="num col-wage">{p.wage === null ? profileText.none : formatMoney(p.wage)}</td>}
+          {shows("reputation") && <td className="num col-rep">{formatNumber(p.currentReputation)}</td>}
+          {columns.attributes.map((key) => (
+            <td key={key} className="num col-attribute">
+              {p.attributeValues?.[key] ?? profileText.none}
+            </td>
+          ))}
           {best.recipe && <FitCell recipe={best.recipe} fit={p.fit} yours={list.yours} />}
-          <td className="num col-ca">
-            <Ability value={p.currentAbility} />
-          </td>
-          <td className="num col-pa">
-            <Ability value={p.potentialAbility} />
-          </td>
-          <td className="num uid col-uid">{p.uid}</td>
+          {shows("currentAbility") && (
+            <td className="num col-ca">
+              <Ability value={p.currentAbility} />
+            </td>
+          )}
+          {shows("potentialAbility") && (
+            <td className="num col-pa">
+              <Ability value={p.potentialAbility} />
+            </td>
+          )}
+          {shows("uid") && <td className="num uid col-uid">{p.uid}</td>}
         </>
       )}
       profile={(p, panel) => (

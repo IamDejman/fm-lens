@@ -66,8 +66,8 @@ pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};
 pub use filter::{
     AttributeBound, AwardFilter, AwardSort, ClubFilter, ClubSort, CompetitionFilter, CompetitionSort, NationFilter,
-    NationSort, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, SortColumn, SortKey,
-    StadiumSort, StaffFilter, StaffSort, sort_players, sort_rows,
+    NationSort, Needle, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, SortColumn,
+    SortKey, StadiumSort, StaffFilter, StaffSort, player_attribute, sort_players, sort_rows,
 };
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use game_calls::{

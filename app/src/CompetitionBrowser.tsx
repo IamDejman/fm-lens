@@ -18,8 +18,10 @@ import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
 import { Fact, useProfileDetails } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
-import type { CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary } from "./types";
+import type { CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ListOrder } from "./types";
 
 const text = competitionListText;
 const columns = text.columns;
@@ -32,6 +34,12 @@ const SORT: SortStart<CompetitionSort> = {
   start: { by: "reputation", ascending: false },
   firstAscending: ["name", "nation", "continent"],
 };
+
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = { kind: "all", nation: "", continent: "", minReputation: "", maxReputation: "" };
+type CompetitionFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<CompetitionFields, CompetitionSort>("competitions", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
 
 /**
  * The competitions, highest reputation first. A row holds all FM Lens knows of a competition but its short name and
@@ -50,6 +58,16 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
   useSnapshot("competitionMinRep", () => minReputation);
   useSnapshot("competitionMaxRep", () => maxReputation);
   const sort = useListSort("competitionOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: CompetitionFields = { kind, nation, continent, minReputation, maxReputation };
+  const applySaved = (saved: CompetitionFields, order: ListOrder<CompetitionSort> | null) => {
+    setKind(readKind(saved.kind));
+    setNation(saved.nation);
+    setContinent(saved.continent);
+    setMinReputation(saved.minReputation);
+    setMaxReputation(saved.maxReputation);
+    sort.set(order);
+  };
   const nationValue = nation.trim() || undefined;
   const continentValue = continent.trim() || undefined;
   const minRep = whole(minReputation, REPUTATION_RANGE);
@@ -111,7 +129,19 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
       summary={text.summary}
       empty={(query) => text.empty(query, filter !== undefined)}
       filterBar={
-        <FilterBar chips={chips} onClear={clearAll}>
+        <FilterBar
+          chips={chips}
+          onClear={clearAll}
+          actions={
+            <SavedFilterControls
+              kind={SAVED}
+              fields={fields}
+              order={sort.order}
+              filtered={chips.length > 0}
+              onApply={applySaved}
+            />
+          }
+        >
           <KindField labels={filters} value={kind} onChange={setKind} />
           <label className="filter-field">
             <span>{filters.nation}</span>

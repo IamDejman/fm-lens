@@ -99,6 +99,22 @@ export const undoChange = (id: number) => call<LoggedChange>("undo_change", { id
 /** Whether a logged change stands: written to the game that is loaded, and not undone. */
 export const stands = (change: LoggedChange) => change.undoneAt === null && change.earlierGame !== true;
 
+/**
+ * Whether a change newer than `change`, to the same field of the same profile, still stands in `log` (newest first, as
+ * the log is). The field then holds what the newer one wrote, so that one has to be undone first.
+ */
+export function changedLater(change: LoggedChange, log: readonly LoggedChange[]): boolean {
+  for (const other of log) {
+    if (other.id === change.id) {
+      return false;
+    }
+    if (stands(other) && other.entity === change.entity && other.uid === change.uid && other.field === change.field) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /** What a profile's standing fields are kept under: `player:1009102`. */
 export const profileKey = (entity: Entity, uid: number) => `${entity}:${uid}`;
 

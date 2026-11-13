@@ -175,6 +175,12 @@ contract fields are excluded. Player, staff and money freezes are remembered for
 the save and hold only while FM Lens is connected.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
+While a profile is edited, a number can be dragged sideways instead of typed:
+right for more, left for less. It still waits for Apply. FM Lens opens where it
+was left: the section, each list's search, filters, page and open profile, and
+the profile tab. That is kept for one career; another career starts its lists
+afresh.
+
 See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 171 player, 45 staff and 14 club
 field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
 behavioral evidence and outstanding checks.
