@@ -5,7 +5,7 @@
 import { useContext, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { DateInput } from "./DateInput";
-import { valueText } from "./editDraft";
+import { describeFieldError, valueText } from "./editDraft";
 import {
   applyMassEdit,
   changeLog,
@@ -16,7 +16,7 @@ import {
   shownValue,
   undoBatch,
 } from "./editing";
-import { fieldTable } from "./fieldTables";
+import { fieldIndex, fieldTable } from "./fieldTables";
 import { currencySymbol, describeError } from "./format";
 import {
   changesText,
@@ -417,15 +417,18 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
       }
       // The failures only have the numbers of the changes: the log names them.
       let log: LoggedChange[] = [];
+      let index: ReadonlyMap<string, EditField> | null = null;
       if (done.failed.length > 0) {
         try {
           log = await changeLog();
         } catch {
           // They are then told by number.
         }
+        // Without the fields, the reasons keep the values as the game stores them.
+        index = await fieldIndex().catch(() => null);
       }
       if (alive.current) {
-        setUndone({ undone: done.undone, problems: undoFailureLines(done.failed, log), freeze: done.freeze });
+        setUndone({ undone: done.undone, problems: undoFailureLines(done.failed, log, index), freeze: done.freeze });
       }
       if (done.freeze !== null) {
         await readFrozen();
@@ -609,7 +612,11 @@ function MassEditDialog({ entity, scope, onClose }: { entity: MassEntity; scope:
               <Problems
                 lines={[
                   ...report.failed.map((failed) =>
-                    text.failure(failed.name, fieldLabel(entity, failed.field), describeError(failed.error)),
+                    text.failure(
+                      failed.name,
+                      fieldLabel(entity, failed.field),
+                      describeFieldError(failed.error, byKey.get(failed.field)),
+                    ),
                   ),
                   ...(froze !== null && froze.error !== null
                     ? [text.freezeFailed(froze.failed, describeError(froze.error))]

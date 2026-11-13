@@ -1844,6 +1844,7 @@ export const tr: Strings = {
     earlierGame: "Önceki oyun",
     undo: "Geri al",
     undoTitle: (label) => `Eski değeri oyuna geri yaz: ${label}`,
+    undoLaterFirst: (label) => `${label} bundan sonra yeniden değiştirildi. Önce sonraki değişikliği geri alın.`,
     batch: "Toplu düzenleme",
     batchCount: (total, remaining) =>
       remaining === 0
