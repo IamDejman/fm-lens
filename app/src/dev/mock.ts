@@ -1478,7 +1478,6 @@ function fieldTable(entity: Entity): EditField[] {
       ...CLUB_FACILITIES.map((key) => field(`facilities.${key}`, "u8", 1, 20)),
       field("finance.balance", "i32", -2_000_000_000, 2_000_000_000),
       field("finance.transfer_budget", "i32", 0, 2_000_000_000),
-      field("finance.wage_budget", "i32", 0, 100_000_000),
       field("finance.total_wage_budget", "i32", 0, 100_000_000),
       ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "u32", 0, 250_000)),
     ];

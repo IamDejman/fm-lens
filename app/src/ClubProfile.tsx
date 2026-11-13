@@ -295,7 +295,7 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
               </EditableValue>
             </Fact>
             <Fact label={text.wageBudget}>
-              <EditableValue field="finance.wage_budget">{formatMoney(finances.wageBudget)}</EditableValue>
+              {formatMoney(finances.wageBudget)}
               <PerWeek />
             </Fact>
             <Fact label={text.totalWageBudget}>

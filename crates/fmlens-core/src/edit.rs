@@ -609,7 +609,7 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
         facility("facilities.corporate", f.corporate, Place::ClubFinance),
         money("finance.balance", f.balance, -2_000_000_000..=2_000_000_000),
         money("finance.transfer_budget", f.transfer_budget, 0..=2_000_000_000),
-        money("finance.wage_budget", f.wage_budget, 0..=100_000_000),
+        // Not the wage budget used (`f.wage_budget`): the game works it out again from the contracts within seconds.
         money("finance.total_wage_budget", f.total_wage_budget, 0..=100_000_000),
     ];
     // Capacities, as stored. The biggest stadium of the test save held 115,109.
@@ -1616,9 +1616,10 @@ mod tests {
         let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
         assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2);
         let clubs = fields(&layout, Entity::Club);
-        // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
-        // knows it (Windows so far).
-        assert_eq!(clubs.len(), 10 + if layout.stadium.is_some() { 4 } else { 0 });
+        // Reputation, the 5 facilities and the 3 amounts of money; and the 4 capacities of the stadium where the layout
+        // knows it (Windows so far). The wage budget used is the game's to work out.
+        assert_eq!(clubs.len(), 9 + if layout.stadium.is_some() { 4 } else { 0 });
+        assert!(!clubs.iter().any(|field| field.key == "finance.wage_budget"));
         if layout.stadium.is_some() {
             assert_eq!(key(&clubs, "stadium.capacity").place, Place::Stadium);
             // A count of seats, not money, which the app shows with a pound sign.

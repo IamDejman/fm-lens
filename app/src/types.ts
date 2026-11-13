@@ -1164,7 +1164,7 @@ export interface EditField {
    * "contract.loan_listed".
    * Clubs: "reputation", "facilities.training", "facilities.youth_facilities", "facilities.youth_coaching",
    * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
-   * "finance.wage_budget", "finance.total_wage_budget".
+   * "finance.total_wage_budget".
    * Nations: "reputation" (the senior team's), "youth_rating", "game_importance", "attendance", the same four with
    * "women.", "points" and "women.points" (FIFA), "population", "dual_nationality", "naturalisation".
    */
