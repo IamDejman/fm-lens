@@ -3211,6 +3211,11 @@ as for the contract end. Neither date is offered in a mass edit.
 | `npm run build` and `npm test` | Pass (8 and 91 tests, one of them new: both dates are inputs in Edit, a day after the game's date is refused, and an applied date is read back) |
 | Browser preview on sample data (`?writable`), Lukas Kowalski, game date 18 July 2026 | Contract tab: Signed and Joined are inputs in Edit beside Expires. Joined 19/07/2026 read invalid ("Enter a date from 1 Jan 1950 to 18 Jul 2026") with Apply off. Signed 15/06/2023 and Joined 01/07/2020 applied: the profile read 15 Jun 2023 and 1 Jul 2020, Changes listed "Contract signed 1 Jul 2024 → 15 Jun 2023" and "Joined club 15 Aug 2022 → 1 Jul 2020", each with Undo, and one Undo read "Undone" |
 
+The unit tests and the app crate's checks need macOS or Windows, so the
+Validate workflow was run on the branch at b5b0c0b (run 43367636288): both
+`macos-checks` and `windows-checks` passed, the workspace tests and the
+Windows installer build among them.
+
 Not run: anything in FM on any platform: either date on FM's contract or
 history screens, an undo, a stale-value refusal, a Continue, and a save, quit
 and reload on a career copy; a member of staff's dates; what FM does with a
