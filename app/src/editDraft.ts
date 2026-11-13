@@ -2,7 +2,7 @@
 
 import { toShown } from "./currency";
 import { dateFromNumber, editFor, isoFromNumber, numberFromIso, shownRange, shownValue } from "./editing";
-import { formatAmount, formatDate, formatNumber, formatPercent } from "./format";
+import { describeError, formatAmount, formatDate, formatNumber, formatPercent, isFailure } from "./format";
 import { blankLabel, choiceLabel, editText, profileText } from "./labels";
 import type { EditField, FieldEdit, FieldValues } from "./types";
 import { fmShownWage, nextFmWage } from "./wage";
@@ -87,6 +87,18 @@ export function valueText(field: EditField | undefined, shown: number): string {
     default:
       return field?.choices ? choiceLabel(field.key, shown) : formatNumber(shown);
   }
+}
+
+/**
+ * The message of a failed call about `field` (see `describeError`), the values it names written as the app shows them:
+ * the game stores Finishing 10 as 50, and "FM has since changed Finishing to 10" is what the screen agrees with. A
+ * failure that names another field, or none, or a field the table lacks (`undefined`), is worded as it comes.
+ */
+export function describeFieldError(error: unknown, field: EditField | undefined): string {
+  if (field === undefined || !isFailure(error) || error.params.field !== field.key) {
+    return describeError(error);
+  }
+  return describeError(error, (stored) => valueText(field, shownValue(field, stored)));
 }
 
 /**

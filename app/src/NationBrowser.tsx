@@ -174,7 +174,7 @@ interface NationProfileProps {
 }
 
 /**
- * A nation's rules, FIFA standing, rivals and national teams, men's and women's. Its rules, FIFA points, youth
+ * A nation's rules, FIFA standings, rivals and national teams, men's and women's. Its rules, FIFA points, youth
  * ratings, game importance, attendance, style and senior teams' reputations can be edited where the row is the
  * nation's own UID.
  */
@@ -343,7 +343,10 @@ const nameOf = (person: NamedPerson | null) => person?.name ?? profileText.none;
 /** The kind of a senior national team (`NationalTeam.kind`). */
 const SENIOR = 0;
 
-/** A nation's women's football: when it joined FIFA and its confederation, its youth rating, and its teams. */
+/**
+ * A nation's women's football: its FIFA standing, when it joined FIFA and its confederation, its youth rating, and
+ * its teams.
+ */
 function WomenGroups({ women }: { women: WomenFootball }) {
   return (
     <>
@@ -363,6 +366,16 @@ function WomenGroups({ women }: { women: WomenFootball }) {
           <Fact label={text.attendance}>
             <EditableValue field="women.attendance">
               {orDash(women.attendance)}
+            </EditableValue>
+          </Fact>
+          <Fact label={text.ranking}>{orDash(women.ranking)}</Fact>
+          <Fact label={text.points}>
+            <EditableValue field="women.points">
+              {orDash(
+                women.points === null
+                  ? null
+                  : formatNumber(women.points, TWO_DECIMALS),
+              )}
             </EditableValue>
           </Fact>
           <Fact label={text.joinedFifa}>{orDash(women.joinedFifa)}</Fact>

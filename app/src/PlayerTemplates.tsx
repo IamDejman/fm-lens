@@ -2,6 +2,7 @@ import { useContext, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { call } from "./api";
 import { applyMassEdit, shownValue, undoBatch } from "./editing";
+import { describeFieldError } from "./editDraft";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
 import { fieldLabel, templatesText as text } from "./labels";
@@ -262,7 +263,7 @@ function TemplatesDialog({
     setUndone(text.undone(next.undone));
     if (next.failed.length)
       throw new Error(
-        next.failed.map((entry) => describeError(entry.error)).join("\n"),
+        next.failed.map((entry) => describeFieldError(entry.error, byKey.get(entry.error.params.field))).join("\n"),
       );
     setReport(null);
   };
@@ -568,7 +569,7 @@ function TemplatesDialog({
                   <ul>
                     {report.failed.slice(0, 100).map((entry, i) => (
                       <li key={i}>
-                        {entry.name}: {describeError(entry.error)}
+                        {entry.name}: {describeFieldError(entry.error, byKey.get(entry.field))}
                       </li>
                     ))}
                   </ul>
