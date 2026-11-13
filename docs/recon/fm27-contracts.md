@@ -271,7 +271,9 @@ Bahel, Ndiaye, Sebine, Thomas-Smith, Maddox, Sweet and Scheller (bit set) show t
 Diouf (bit clear), each line explained by the other flags. In the census it is set only on loans with a joined date
 (`+0x4C`): all 343 records with `+0x4C` unset (1900), such as the extra records of Anderson, Krumrey and Sosa, have it
 clear. Among the 457 with a joined date, 254 have it and 203 do not, and it follows neither the dates nor the future fee:
-Kabashi and Diouf (clear) signed between Sebine and Thomas-Smith (set). Its meaning is open. `+0xD8` and
+Kabashi and Diouf (clear) signed between Sebine and Thomas-Smith (set). Nor does it mark a domestic loan: Anderson
+(Southampton to Aldershot Town) has it clear and Helafu (Man Utd to Blackpool) set, and FM's Parent Club tab shows only
+the parent contract. Its meaning is open. `+0xD8` and
 `+0xDC` hold -1 in all 343 records without a joined date and counts of up to a few thousand in most others (Webb 180
 and 180, Thomas-Smith 270 and 0, Helafu 2,048 and 2,369), so they may count minutes played; not checked against FM.
 
