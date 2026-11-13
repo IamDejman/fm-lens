@@ -497,6 +497,8 @@ function App() {
           <BrandMark />
         </header>
         <EmailGate onGiven={() => setEmailAsked(false)} />
+        {/* The menu of the app is there before the email is: what it opens is shown here too. */}
+        {supporting && <SupportDialog onClose={() => setSupporting(false)} />}
       </div>
     );
   }
