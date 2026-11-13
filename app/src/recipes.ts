@@ -94,6 +94,48 @@ export const STAFF_RECIPES: readonly Recipe[] = [
   staff(48, { sports_science: 1 }),
 ];
 
+/** The jobs of those who run a club, whom a ranked staff list leaves out (see `board_job` in `best.rs`). */
+export const BOARD_JOBS: readonly number[] = [4, 6, 8, 24, 66, 70];
+
+/**
+ * How well someone fits `best`, as the search scores it (see `best.rs`): `value` is their rating of an attribute, 0
+ * for one they do not have, which counts as none of it. No fit with none of the attributes.
+ */
+export function fitOf(best: BestFor, value: (key: string) => number): Fit | undefined {
+  const values = best.weights.map(({ key }) => value(key));
+  let sum = 0;
+  let most = 0;
+  best.weights.forEach(({ weight }, i) => {
+    if (weight > 0) {
+      sum += weight * values[i];
+      most += weight * 20;
+    }
+  });
+  return sum > 0 ? { score: (100 * sum) / most, values } : undefined;
+}
+
+export interface RecipeFit {
+  recipe: Recipe;
+  fit: Fit;
+}
+
+/**
+ * The recipes someone fits best, the best first and three at most: a profile's answer to what they are best for.
+ * `plays` tells whether they can play a position, so a player is only scored for the positions he plays.
+ */
+export function bestFits(
+  recipes: readonly Recipe[],
+  value: (key: string) => number,
+  plays: (position: string) => boolean = () => true,
+): RecipeFit[] {
+  return recipes
+    .filter(({ best }) => !best.positions?.length || best.positions.some(plays))
+    .map((recipe) => ({ recipe, fit: fitOf(recipe.best, value) }))
+    .filter((scored): scored is RecipeFit => scored.fit !== undefined)
+    .sort((a, b) => b.fit.score - a.fit.score)
+    .slice(0, 3);
+}
+
 /** What a fit is made of, a line for each attribute of the recipe the person has: "Finishing 17". */
 export function fitParts(recipe: Recipe, fit: Fit): string {
   return recipe.names

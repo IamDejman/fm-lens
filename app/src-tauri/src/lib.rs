@@ -2944,7 +2944,25 @@ struct Ranked<T> {
     fit: Option<Fit>,
 }
 
-/// A page as [`page`] makes it, each row with its `fit`.
+/// The best fit at your club for what a list is ranked for: what the fits of the list are read against.
+#[derive(Serialize)]
+struct Yours {
+    uid: u32,
+    name: String,
+    score: f32,
+}
+
+/// One page of a list that can be ranked.
+#[derive(Serialize)]
+struct RankedPage<T> {
+    total: usize,
+    rows: Vec<Ranked<T>>,
+    /// Only while the list is ranked and someone at your club fits.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    yours: Option<Yours>,
+}
+
+/// A page as [`page`] makes it, each row with its `fit`; `yours` is left to the command (see [`best_of`]).
 fn ranked_page<T: Listed + Clone>(
     index: &SearchIndex<T>,
     query: &str,
@@ -2953,12 +2971,26 @@ fn ranked_page<T: Listed + Clone>(
     keep: impl Fn(&T) -> bool,
     sort: impl FnOnce(&mut Vec<&T>),
     fit: impl Fn(&T) -> Option<Fit>,
-) -> Page<Ranked<T>> {
+) -> RankedPage<T> {
     let mut hits = index.search(query);
     hits.retain(|item| keep(item));
     sort(&mut hits);
     let rows = hits.iter().skip(offset).take(limit.min(200)).map(|&row| Ranked { row: row.clone(), fit: fit(row) });
-    Page { total: hits.len(), rows: rows.collect() }
+    RankedPage { total: hits.len(), rows: rows.collect(), yours: None }
+}
+
+/// The best fit among all that `index` holds that are `own`, whatever a search and its filters keep.
+fn best_of<T: Listed>(
+    index: &SearchIndex<T>,
+    fit: impl Fn(&T) -> Option<Fit>,
+    own: impl Fn(&T) -> bool,
+) -> Option<Yours> {
+    index
+        .iter()
+        .filter(|item| own(item))
+        .filter_map(|item| Some((item, fit(item)?.score)))
+        .max_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(item, score)| Yours { uid: item.uid(), name: item.display_name().to_owned(), score })
 }
 
 /// Sorts `hits` by their `fit`, the best first and those with none last; equal fits stay as the search found them.
@@ -3208,7 +3240,8 @@ async fn reload(state: State<'_, AppState>, file: State<'_, FrozenFile>) -> Resu
 }
 
 /// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
-/// its positions, each with their fit, and the best fit first unless `order` asks otherwise.
+/// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
+/// your club's players who play them.
 #[tauri::command]
 fn search_players(
     state: State<'_, AppState>,
@@ -3218,12 +3251,17 @@ fn search_players(
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
     best: Option<BestFor>,
-) -> Result<Page<Ranked<fmlens_core::PlayerSummary>>, Failure> {
+) -> Result<RankedPage<fmlens_core::PlayerSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let best = best.unwrap_or_default();
-    Ok(ranked_page(
+    let yours = best_of(
+        &connection.players,
+        |p| best.player(p),
+        |p| best.plays(p) && p.club_uid.is_some_and(|club| connection.human_clubs.contains(&club)),
+    );
+    let page = ranked_page(
         &connection.players,
         &query,
         limit,
@@ -3235,11 +3273,13 @@ fn search_players(
             None => {}
         },
         |p| best.player(p),
-    ))
+    );
+    Ok(RankedPage { yours, ..page })
 }
 
 /// Staff matching `query`, the human manager first, then by current ability, or in `order`; at most `limit` rows.
-/// With `best`, each with their fit, and the best fit first unless `order` asks otherwise.
+/// With `best`, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
+/// your club's staff.
 #[tauri::command]
 fn search_staff(
     state: State<'_, AppState>,
@@ -3249,12 +3289,22 @@ fn search_staff(
     filter: Option<StaffFilter>,
     order: Option<Order<StaffSort>>,
     best: Option<BestFor>,
-) -> Result<Page<Ranked<fmlens_core::StaffSummary>>, Failure> {
+) -> Result<RankedPage<fmlens_core::StaffSummary>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let best = best.unwrap_or_default();
-    Ok(ranked_page(
+    // You are not your own staff, and the board is not ranked.
+    let yours = best_of(
+        &connection.staff,
+        |s| best.staff(s),
+        |s| {
+            !s.is_human
+                && !fmlens_core::board_job(s.job)
+                && s.club_uid.is_some_and(|club| connection.human_clubs.contains(&club))
+        },
+    );
+    let page = ranked_page(
         &connection.staff,
         &query,
         limit,
@@ -3266,7 +3316,8 @@ fn search_staff(
             None => {}
         },
         |s| best.staff(s),
-    ))
+    );
+    Ok(RankedPage { yours, ..page })
 }
 
 /// The person a list of clubs is picked for.
