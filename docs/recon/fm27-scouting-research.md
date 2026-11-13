@@ -1,7 +1,6 @@
 # Scouting: what needs the running game (13 November 2026)
 
-Two requested parts of the scouting work need mapping in a running FM27 and
-were not built. Nothing here was checked in the game.
+What the scouting work needed from a running FM27, and what came of it.
 
 ## In-game scout card
 
@@ -33,15 +32,43 @@ hides at FM's main menu and when another save loads.
 
 ## Top players by division
 
-The lists of top players cover the world, a continent and a country. A
-division needs the league each club plays in this season.
+Built for Windows; established in the running game on Steam build 26577676
+(27.0.1), on a career copy at 30 June 2027, after the 2026/27 season ended.
+Read-only throughout.
 
-The competitions table is read (`crates/fmlens-core/src/competitions.rs`), and
-its rule data names a competition's level, but no link from a club or team to
-its league is mapped. Candidates to trace: the team's current competitions
-(fixtures or table entries) and the league's list of teams for the season.
-Confirm on clubs of several levels in two countries, after a promotion and
-relegation, before offering a division list.
+A team (`db::TEAM`, 0xB8 bytes) points at competitions (`db::COMP`):
+
+| Offset | Holds |
+| --- | --- |
+| `0x50` | The division it plays in this season |
+| `0x60` | Last season's division: differs only for a promoted or relegated club |
+| `0x98` | Its continental competition, null for none |
+
+How it was established: the senior teams of over 30 clubs were read with the probe
+and each pointer followed to a competition's UID and name.
+
+- Unchanged clubs hold the same division at both offsets: Arsenal, Everton,
+  Brentford, Leeds and Coventry the Premier League (UID 11); Wolves, Burnley,
+  Southampton, Sheffield United and Norwich the Championship (12); Luton
+  League One (13); Barnet League Two (14).
+- Promoted clubs hold the new division at `0x50` and the old at `0x60`:
+  Middlesbrough and Birmingham 11 and 12, Leicester 12 and 13. FM's own club
+  page for Middlesbrough names the Premier League as its current league.
+- Relegated clubs the same: Sunderland, Fulham and Ipswich 12 and 11, West
+  Bromwich Albion 13 and 12.
+- Other countries: Real Madrid the Spanish First Division (67), Leganés the
+  Spanish Second Division (68), Bayern the Bundesliga (22).
+- Women's clubs: Sunderland and Ipswich the Women's Super League at `0x50`
+  and WSL 2 at `0x60`; Southampton, Leicester and Burnley WSL 2.
+- Continental: Arsenal, Real Madrid and Bayern the UEFA Champions League.
+
+FM Lens reads `0x50` of the senior team of each player's club and accepts it
+only when it is one of the competitions in the game's table; anything else is
+no division. The offset is in the Windows layout only. macOS is not mapped,
+so the division choice does not show there.
+
+Not checked: a club with no league this season, a country whose leagues are
+not loaded, and the offset on macOS (ARM64 and Intel) and Game Pass.
 
 ## Community-wide development records
 
