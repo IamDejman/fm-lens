@@ -679,6 +679,8 @@ export const es: Strings = {
     "contract.playing_time_happiness": "Felicidad con los minutos",
     "contract.unhappiness": "Motivos de descontento",
     "contract.expires": "Fin de contrato",
+    "contract.signed": "Firma del contrato",
+    "contract.joined": "Incorporación al club",
     "loan.wage": "Salario pagado por el club receptor",
     "loan.ends": "Fin de la cesión",
     "transfer.joins": "Se incorpora",

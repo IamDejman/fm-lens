@@ -181,7 +181,7 @@ was left: the section, each list's search, filters, page and open profile, and
 the profile tab. That is kept for one career; another career starts its lists
 afresh.
 
-See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 169 player, 43 staff and 14 club
+See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 171 player, 45 staff and 14 club
 field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
 behavioral evidence and outstanding checks.
 
