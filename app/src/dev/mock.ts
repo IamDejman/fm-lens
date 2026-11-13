@@ -3,10 +3,14 @@
 
 import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
+import { BOARD_JOBS, fitOf } from "../recipes";
 import { version as appVersion } from "../../package.json";
 import type {
   ApplyReport,
   AttributeBound,
+  BestFor,
+  Fit,
+  Yours,
   ClubMoney,
   FeePlan,
   Nation,
@@ -1472,6 +1476,8 @@ function fieldTable(entity: Entity): EditField[] {
     ...common,
     ...reputation,
     { ...field("nation", "pointer", 0x1_0000, 0x7fff_ffff_ffff), mass: false },
+    // From 1920: chairmen and owners are staff too.
+    field("date_of_birth", "date", 19200101, 20201231),
     ...STAFF_ATTRIBUTE_ORDER.map((key) =>
       STAFF_RATINGS.includes(key)
         ? field(`attribute.${key}`, "u8", 1, 20)
@@ -1605,8 +1611,13 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
           } else if (name === "playing_time_happiness") {
             contract.playingTimeHappiness = value;
           } else if (name === "unhappiness") {
-            // Only ever set to none; an undo puts the count back, which the made-up list cannot follow.
-            contract.concerns = value === 0 ? [] : contract.concerns;
+            // Set to none, the reasons that last end today; an undo has the ones that ended today last again.
+            const today = numberFromDate(GAME_DATE);
+            contract.concerns = contract.concerns.map((concern) =>
+              value === 0
+                ? { ...concern, ended: concern.ended ?? GAME_DATE }
+                : { ...concern, ended: concern.ended && numberFromDate(concern.ended) === today ? null : concern.ended },
+            );
           }
         }
         break;
@@ -1737,8 +1748,13 @@ function currentValues(entity: Entity, uid: number): FieldValues {
             return contract?.happiness;
           case "playing_time_happiness":
             return contract?.playingTimeHappiness;
-          case "unhappiness":
-            return contract && contract.concerns.length > 0 ? contract.concerns.length : undefined;
+          case "unhappiness": {
+            // None that last reads as nothing to remove, unless some ended today: those an undo can have last again.
+            const lasting = contract?.concerns.filter((concern) => concern.ended === null).length ?? 0;
+            const today = numberFromDate(GAME_DATE);
+            const endedToday = contract?.concerns.some((c) => c.ended && numberFromDate(c.ended) === today) ?? false;
+            return lasting > 0 || endedToday ? lasting : undefined;
+          }
         }
         return undefined;
       }
@@ -1814,11 +1830,10 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
       Object.assign(row, { nation, nationUid: 1000 + NATIONS.indexOf(nation) });
       return;
     }
-    if (entity === "player" && key === "date_of_birth") {
+    if (row && key === "date_of_birth") {
       // The list row has the birth date and the age, and the profile is built from the row.
-      const player = row as PlayerSummary;
-      player.dateOfBirth = dateFromNumber(value);
-      player.age = player.dateOfBirth && ageOn(player.dateOfBirth, GAME_DATE);
+      row.dateOfBirth = dateFromNumber(value);
+      row.age = row.dateOfBirth && ageOn(row.dateOfBirth, GAME_DATE);
       return;
     }
     if (entity === "player" && key === "contract.expires") {
@@ -1836,6 +1851,23 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
   const name =
     entity === "nation" ? nationName(uid) : entity === "official" ? officialOf(uid).name : profileOf(entity, uid).name;
   const report: ApplyReport = { applied: [], failed: [] };
+  const write = (field: string, old: number, value: number) => {
+    writeValue(entity, uid, field, value);
+    const logged: LoggedChange = {
+      id: changes.length + 1,
+      at: Date.now(),
+      name,
+      entity,
+      uid,
+      field,
+      old,
+      new: value,
+      undoneAt: null,
+      batch: null,
+    };
+    changes.push(logged);
+    report.applied.push({ ...logged });
+  };
   for (const edit of edits) {
     const field = fieldTable(entity).find((f) => f.key === edit.field);
     if (!field) {
@@ -1870,23 +1902,34 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
     if (old === edit.value) {
       continue;
     }
-    writeValue(entity, uid, field.key, edit.value);
-    const logged: LoggedChange = {
-      id: changes.length + 1,
-      at: Date.now(),
-      name,
-      entity,
-      uid,
-      field: field.key,
-      old,
-      new: edit.value,
-      undoneAt: null,
-      batch: null,
+    write(field.key, old, edit.value);
+  }
+  // Like the real command, a happiness his morale does not allow moves his morale with it, unless the edit set it.
+  const held = entity === "player" ? report.applied.find((change) => change.field === "contract.happiness") : undefined;
+  const morale: number | undefined = currentValues(entity, uid)["morale"];
+  if (held && morale !== undefined && !edits.some((edit) => edit.field === "morale")) {
+    const allows = (level: number) => {
+      const [low, high] = moraleBand(level);
+      const happiness = Math.max(held.new, -20);
+      return happiness >= low && happiness <= high;
     };
-    changes.push(logged);
-    report.applied.push({ ...logged });
+    const nearest = Array.from({ length: 20 }, (_, i) => i + 1)
+      .filter(allows)
+      .sort((a, b) => Math.abs(a - morale) - Math.abs(b - morale) || a - b)[0];
+    if (!allows(morale) && nearest !== undefined) {
+      write("morale", morale, nearest);
+    }
   }
   return report;
+}
+
+/** The happiness the game allows a player no reason to be unhappy holds elsewhere, by his morale. */
+function moraleBand(morale: number): [number, number] {
+  if (morale >= 18) return [80, 100];
+  if (morale >= 15) return [60, 80];
+  if (morale >= 13) return [40, 60];
+  if (morale >= 11) return [20, 40];
+  return [-20, 20];
 }
 
 /** `undo_change`: writes the old value back unless the value has changed since. */
@@ -2634,6 +2677,22 @@ function liftBans(uid: number, batch: number | null = null): LoggedChange {
   return { ...logged };
 }
 
+/** `remove_unhappiness`: the fixture player's reasons to be unhappy that last end today, logged as one change. */
+function removeUnhappiness(uid: number): LoggedChange {
+  const player = players.find((p) => p.uid === uid);
+  if (!player) {
+    throw notFound("player", uid);
+  }
+  const report: MassReport = { batch: 0, applied: 0, failed: [], freeze: null };
+  setValues(player, [["contract.unhappiness", 0]], report);
+  const logged = changes[changes.length - 1];
+  if (report.applied === 0 || !logged) {
+    throw failure("list.missing", "the list holds nothing at number 0", { index: 0 });
+  }
+  logged.batch = null;
+  return { ...logged };
+}
+
 /** Which promise (as `uid:index`) each closing, by the id of its logged change, closed, for its undo. */
 const promiseUndo = new Map<number, string>();
 
@@ -2800,7 +2859,7 @@ function undoCaptain(entry: LoggedChange): void {
 function teamAction(clubUid: number, index: number, action: TeamAction): MassReport {
   const team = fixtureTeam(clubUid, index);
   const batch = nextMassId++;
-  const report: MassReport = { batch, applied: 0, failed: [] };
+  const report: MassReport = { batch, applied: 0, failed: [], freeze: null };
   if (action === "heal") {
     for (const player of team.players.filter((p) => p.injuries > 0)) {
       healPlayer(player.uid, batch);
@@ -2960,8 +3019,34 @@ function selectTargets(entity: Entity, query: string, filters: MassFilters): { u
 }
 
 /** The mass edit last previewed, until it is applied or replaced. */
-let pendingMass: { id: number; entity: Entity; planned: PlannedChange[] } | null = null;
+let pendingMass: { id: number; entity: Entity; planned: PlannedChange[]; freeze: MassFreeze | null } | null = null;
 let nextMassId = 1;
+
+/** Those a mass edit freezes (`frozen`) or unfreezes: not those that are that way already. */
+interface MassFreeze {
+  entity: Entity;
+  frozen: boolean;
+  uids: number[];
+}
+
+/** What each mass edit froze or unfroze, by its batch, for its undo. */
+const massFreezes = new Map<number, MassFreeze>();
+
+/** What is frozen of a kind of entity: the attributes of players or staff, the money of clubs. */
+const frozenSet = (entity: Entity) =>
+  entity === "player" ? frozenAttributes : entity === "staff" ? frozenStaff : frozenMoney;
+
+/** Freezes or unfreezes what `freeze` names. */
+function makeFreeze({ entity, frozen, uids }: MassFreeze) {
+  const held = frozenSet(entity);
+  for (const uid of uids) {
+    if (frozen) {
+      held.add(uid);
+    } else {
+      held.delete(uid);
+    }
+  }
+}
 
 /** What an operation turns `old` into, as the real one does: added and scaled values stay within the field's range. */
 function operate(field: EditField, operation: MassOperationKind, old: number): number {
@@ -2977,8 +3062,14 @@ function operate(field: EditField, operation: MassOperationKind, old: number): n
 }
 
 /** `plan_mass_edit`, with the real command's checks and messages. */
-function planMass(entity: Entity, query: string, filters: MassFilters, operations: MassOperation[]): MassPreview {
-  if (operations.length === 0) {
+function planMass(
+  entity: Entity,
+  query: string,
+  filters: MassFilters,
+  operations: MassOperation[],
+  wanted: boolean | null,
+): MassPreview {
+  if (operations.length === 0 && wanted === null) {
     throw failure("mass.noOperations", "Choose at least one field to change.");
   }
   const targets = selectTargets(entity, query, filters);
@@ -3022,28 +3113,35 @@ function planMass(entity: Entity, query: string, filters: MassFilters, operation
     }
     unchanged += changed ? 0 : 1;
   }
+  const held = frozenSet(entity);
+  const freeze: MassFreeze | null =
+    wanted === null
+      ? null
+      : { entity, frozen: wanted, uids: targets.map(({ uid }) => uid).filter((uid) => held.has(uid) !== wanted) };
   const id = nextMassId++;
-  pendingMass = { id, entity, planned };
+  pendingMass = { id, entity, planned, freeze };
   return {
     id,
     targets: targets.length,
-    unchanged,
+    // Without operations nobody "already has these values": the plan is the freeze alone.
+    unchanged: ops.length === 0 ? 0 : unchanged,
     changes: planned.length,
     rows: planned.slice(0, PREVIEW_ROWS),
     skippedCount: skipped.length,
     skipped: skipped.slice(0, PREVIEW_ROWS),
+    freeze: freeze && { frozen: freeze.frozen, count: freeze.uids.length },
   };
 }
 
-/** `apply_mass_edit`: the previewed changes, each only while the value is still the one previewed. */
+/** `apply_mass_edit`: the previewed changes, each only while the value is still the one previewed, then its freeze. */
 function applyMass(id: number): MassReport {
   if (!pendingMass || pendingMass.id !== id) {
     throw failure("mass.outOfDate", "This preview is out of date. Preview the mass edit again.");
   }
-  const { entity, planned } = pendingMass;
+  const { entity, planned, freeze } = pendingMass;
   pendingMass = null;
   const batch = nextMassId++;
-  const report: MassReport = { batch, applied: 0, failed: [] };
+  const report: MassReport = { batch, applied: 0, failed: [], freeze: null };
   for (const change of planned) {
     const found = currentValues(entity, change.uid)[change.field];
     if (found !== change.old) {
@@ -3056,12 +3154,19 @@ function applyMass(id: number): MassReport {
     changes.push({ ...change, id: changes.length + 1, at: Date.now(), entity, undoneAt: null, batch });
     report.applied++;
   }
+  if (freeze) {
+    makeFreeze(freeze);
+    report.freeze = { frozen: freeze.frozen, count: freeze.uids.length, failed: 0, error: null };
+    if (freeze.uids.length > 0) {
+      massFreezes.set(batch, freeze);
+    }
+  }
   return report;
 }
 
-/** `undo_batch`: every change of the batch not undone yet, newest first. */
+/** `undo_batch`: every change of the batch not undone yet, newest first, and what it froze or unfroze. */
 function undoMassBatch(batch: number): BatchUndo {
-  const report: BatchUndo = { undone: 0, failed: [] };
+  const report: BatchUndo = { undone: 0, failed: [], freeze: null };
   for (const entry of [...changes].reverse()) {
     if (entry.batch !== batch || entry.undoneAt !== null || entry.earlierGame) {
       continue;
@@ -3074,13 +3179,24 @@ function undoMassBatch(batch: number): BatchUndo {
       report.failed.push({ id: entry.id, error: e as Failure });
     }
   }
+  const made = massFreezes.get(batch);
+  if (made) {
+    massFreezes.delete(batch);
+    makeFreeze({ ...made, frozen: !made.frozen });
+    report.freeze = { frozen: !made.frozen, count: made.uids.length };
+  }
   return report;
 }
 
-const clubs: ClubSummary[] = CLUBS.flatMap((name, i) => [
-  { uid: 500 + i * 7, name, shortName: name.split(" ")[0], women: false, reputation: 8200 - i * 900, founded: 1880 + i * 11 },
-  { uid: 2_000_100_000 + i, name, shortName: name.split(" ")[0], women: true, reputation: 6100 - i * 700, founded: 1985 + i * 4 },
-]);
+const clubs: ClubSummary[] = CLUBS.flatMap((name, i) => {
+  // The men's club and its women's club are from the same nation.
+  const place = { nation: NATIONS[i % NATIONS.length], nationUid: 1000 + (i % NATIONS.length) };
+  const shortName = name.split(" ")[0];
+  return [
+    { uid: 500 + i * 7, name, shortName, women: false, reputation: 8200 - i * 900, founded: 1880 + i * 11, ...place },
+    { uid: 2_000_100_000 + i, name, shortName, women: true, reputation: 6100 - i * 700, founded: 1985 + i * 4, ...place },
+  ];
+});
 
 /** Made-up but self-consistent profile for a fixture club; women's clubs have no finances. */
 function clubDetails(club: ClubSummary): ClubDetails {
@@ -3115,7 +3231,16 @@ function clubDetails(club: ClubSummary): ClubDetails {
 /** A made-up stadium for `club`: all seated, as in the top leagues, with room to grow. */
 function stadiumOf(club: ClubSummary, next: () => number): ClubDetails["stadium"] {
   const capacity = Math.round(8000 + next() * 60000);
-  return { name: `${club.shortName} Park`, capacity, seating: capacity, used: 0, expansion: Math.round(capacity * 1.25) };
+  // The men's club owns the ground its women's club shares.
+  const owner = clubs.find((other) => other.shortName === club.shortName && !other.women) ?? club;
+  return {
+    name: `${club.shortName} Park`,
+    capacity,
+    seating: capacity,
+    used: 0,
+    expansion: Math.round(capacity * 1.25),
+    owner: { uid: owner.uid, name: owner.name, women: owner.women },
+  };
 }
 
 /** A date as a number that orders like the date. */
@@ -3140,17 +3265,118 @@ function holds(bound: AttributeBound, value: number | undefined): boolean {
   );
 }
 
+/** Whether `value` is known and within the two ends, as the real filter has it; with neither end it need not be known. */
+function within(value: number | null, min: number | undefined, max: number | undefined): boolean {
+  return (
+    (min === undefined && max === undefined) ||
+    (value !== null && (min === undefined || value >= min) && (max === undefined || value <= max))
+  );
+}
+
+/**
+ * The sort of the real commands by a column: unknown values go last either way and text compares without accents or
+ * case. Like the real one it is stable, so equals keep the search's order.
+ */
+function byColumn<Row>(
+  order: { by: string; ascending: boolean } | undefined,
+  column: (row: Row, by: string) => string | number | null,
+): (a: Row, b: Row) => number {
+  if (!order) {
+    return () => 0;
+  }
+  const value = (row: Row) => {
+    const found = column(row, order.by);
+    return typeof found === "string" ? fold(found) : found;
+  };
+  return (a, b) => {
+    const x = value(a);
+    const y = value(b);
+    if (x === null || y === null) {
+      return x === y ? 0 : x === null ? 1 : -1;
+    }
+    return x === y ? 0 : (x < y ? -1 : 1) * (order.ascending ? 1 : -1);
+  };
+}
+
+type Ratings = Record<string, { value: number } | undefined>;
+
+/** The club of the career's manager. */
+const humanClub = () => staff.find((s) => s.isHuman)?.clubUid ?? null;
+
+const onBoard = (s: StaffSummary) => s.job !== null && BOARD_JOBS.includes(s.job);
+
+/** What a search was asked to rank for, if anything. */
+function bestOf(args: Record<string, unknown> | undefined): BestFor | undefined {
+  const best = args?.best as BestFor | undefined;
+  return best && best.weights.length > 0 ? best : undefined;
+}
+
+/**
+ * The hits of a search asked to rank for something, each with its fit, the best first unless an order was asked for;
+ * the hits as they are without it.
+ */
+function ranked<Row extends { fit?: Fit }>(
+  hits: Row[],
+  args: Record<string, unknown> | undefined,
+  ratings: (row: Row) => Ratings,
+): Row[] {
+  const best = bestOf(args);
+  if (!best) {
+    return hits;
+  }
+  const rows = hits.map((row) => ({ ...row, fit: fitOf(best, (key) => ratings(row)[key]?.value ?? 0) }));
+  return args?.order ? rows : rows.sort((a, b) => (b.fit?.score ?? -1) - (a.fit?.score ?? -1));
+}
+
+/** The best fit among `own`, those of your club a ranked search could list, as the real search answers with it. */
+function yoursOf<Row extends { uid: number; name: string }>(
+  own: Row[],
+  args: Record<string, unknown> | undefined,
+  ratings: (row: Row) => Ratings,
+): Yours | undefined {
+  const best = bestOf(args);
+  if (!best) {
+    return undefined;
+  }
+  let yours: Yours | undefined;
+  for (const row of own) {
+    const score = fitOf(best, (key) => ratings(row)[key]?.value ?? 0)?.score;
+    if (score !== undefined && score >= (yours?.score ?? 0)) {
+      yours = { uid: row.uid, name: row.name, score };
+    }
+  }
+  return yours;
+}
+
+/** The sort a search was asked for, if any. */
+const orderOf = (args: Record<string, unknown> | undefined) =>
+  args?.order as { by: string; ascending: boolean } | undefined;
+
 /** The player filter of the real command: fields that are not set match everyone. */
 function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
-  // The listings and the attributes are in the profile, made only when a filter asks for them.
-  const needsDetails = f.transferListed || f.loanListed || (f.attributes?.length ?? 0) > 0;
+  // The listings, the attributes and what else the row leaves out are in the profile, made only when a filter asks
+  // for them.
+  const needsDetails =
+    f.transferListed ||
+    f.loanListed ||
+    (f.attributes?.length ?? 0) > 0 ||
+    (f.personality?.length ?? 0) > 0 ||
+    (f.traits?.length ?? 0) > 0 ||
+    [f.minHeight, f.maxHeight, f.minWage, f.maxWage, f.minValue, f.maxValue].some((bound) => bound !== undefined);
   const d = needsDetails ? details(p) : null;
   return (
     (f.position === undefined || p.positions.includes(f.position)) &&
     (f.minAge === undefined || (p.age !== null && p.age >= f.minAge)) &&
     (f.maxAge === undefined || (p.age !== null && p.age <= f.maxAge)) &&
     (f.minCurrentAbility === undefined || p.currentAbility >= f.minCurrentAbility) &&
+    (f.maxCurrentAbility === undefined || p.currentAbility <= f.maxCurrentAbility) &&
     (f.minPotentialAbility === undefined || p.potentialAbility >= f.minPotentialAbility) &&
+    (f.maxPotentialAbility === undefined || (p.potentialAbility > 0 && p.potentialAbility <= f.maxPotentialAbility)) &&
+    within(d && d.heightCm > 0 ? d.heightCm : null, f.minHeight, f.maxHeight) &&
+    within(d?.contract?.wage ?? null, f.minWage, f.maxWage) &&
+    within(d?.transferValue ?? null, f.minValue, f.maxValue) &&
+    (f.personality ?? []).every((bound) => holds(bound, d?.personality[bound.key])) &&
+    (f.traits ?? []).every((bit) => d?.traits.includes(bit) === true) &&
     contains(p.nation, f.nation) &&
     contains(p.club, f.club) &&
     (f.clubUid === undefined || p.clubUid === f.clubUid) &&
@@ -3210,7 +3436,8 @@ function matchesClubFilter(c: ClubSummary, f: ClubFilter): boolean {
     (f.minReputation === undefined || (c.reputation !== null && c.reputation >= f.minReputation)) &&
     (f.maxReputation === undefined || (c.reputation !== null && c.reputation <= f.maxReputation)) &&
     (f.foundedFrom === undefined || (c.founded !== null && c.founded >= f.foundedFrom)) &&
-    (f.foundedTo === undefined || (c.founded !== null && c.founded <= f.foundedTo))
+    (f.foundedTo === undefined || (c.founded !== null && c.founded <= f.foundedTo)) &&
+    contains(c.nation, f.nation)
   );
 }
 
@@ -3223,7 +3450,9 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
     (f.minAge === undefined || (s.age !== null && s.age >= f.minAge)) &&
     (f.maxAge === undefined || (s.age !== null && s.age <= f.maxAge)) &&
     (f.minCurrentAbility === undefined || s.currentAbility >= f.minCurrentAbility) &&
+    (f.maxCurrentAbility === undefined || s.currentAbility <= f.maxCurrentAbility) &&
     (f.minPotentialAbility === undefined || s.potentialAbility >= f.minPotentialAbility) &&
+    (f.maxPotentialAbility === undefined || (s.potentialAbility > 0 && s.potentialAbility <= f.maxPotentialAbility)) &&
     contains(s.nation, f.nation) &&
     contains(s.club, f.club) &&
     (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
@@ -3450,12 +3679,21 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       // Without an order the best current ability comes first, as with the real command.
       const order = (args?.order ?? { by: "currentAbility", ascending: false }) as PlayerOrder;
       const words = fold(query).split(/\s+/).filter(Boolean);
-      const hits = players
+      const positions = (args?.best as BestFor | undefined)?.positions ?? [];
+      const plays = (p: PlayerSummary) => positions.length === 0 || positions.some((key) => p.positions.includes(key));
+      const found = players
         .filter((p) => String(p.uid) === query.trim() || words.every((w) => fold(`${p.name} ${p.fullName ?? ""}`).includes(w)))
         .filter((p) => matchesPlayerFilter(p, filter))
+        .filter(plays)
         .sort(bySearchRank)
         .sort(playerComparator(order));
-      const page: PlayerPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
+      const hits = ranked(found, args, (p) => details(p).attributes);
+      const own = players.filter((p) => p.clubUid !== null && p.clubUid === humanClub() && plays(p));
+      const page: PlayerPage = {
+        total: hits.length,
+        rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit),
+        yours: yoursOf(own, args, (p) => details(p).attributes),
+      };
       return page as T;
     }
     case "search_clubs": {
@@ -3466,7 +3704,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const hits = clubs
         .filter((c) => String(c.uid) === query.trim() || words.every((w) => fold(`${c.name} ${c.shortName ?? ""}`).includes(w)))
         .filter((c) => matchesClubFilter(c, filter))
-        .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name));
+        .sort((a, b) => (b.reputation ?? -1) - (a.reputation ?? -1) || a.name.localeCompare(b.name))
+        .sort(byColumn<ClubSummary>(orderOf(args), (c, by) => (by === "name" ? c.name : by === "nation" ? c.nation : by === "founded" ? c.founded : c.reputation)));
       // A picker lists the person's own side of the game first.
       const pickedFor = args?.pickedFor as { uid: number; staff: boolean } | undefined;
       if (pickedFor) {
@@ -3490,11 +3729,37 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const limit = Number(args?.limit ?? 200);
       const filter = (args?.filter ?? {}) as StaffFilter;
       const words = fold(query).split(/\s+/).filter(Boolean);
-      const hits = staff
+      const found = staff
         .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
         .filter((s) => matchesStaffFilter(s, filter))
-        .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
-      const page: StaffPage = { total: hits.length, rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
+        // A ranked list leaves the board out unless it is filtered to one of its jobs.
+        .filter((s) => !bestOf(args) || filter.job !== undefined || !onBoard(s))
+        .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<StaffSummary>(orderOf(args), (s, by) => {
+            switch (by) {
+              case "name":
+                return s.name;
+              case "age":
+                return s.age;
+              case "club":
+                return s.club ?? s.national?.nation ?? null;
+              case "nation":
+                return s.nation;
+              case "potentialAbility":
+                return s.potentialAbility;
+              default:
+                return s.currentAbility;
+            }
+          }),
+        );
+      const hits = ranked(found, args, (s) => staffDetails(s).attributes);
+      const own = staff.filter((s) => !s.isHuman && !onBoard(s) && s.clubUid !== null && s.clubUid === humanClub());
+      const page: StaffPage = {
+        total: hits.length,
+        rows: hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit),
+        yours: yoursOf(own, args, (s) => staffDetails(s).attributes),
+      };
       return page as T;
     }
     case "staff_details": {
@@ -3548,6 +3813,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "frozen_staff":
       return [...frozenStaff] as T;
+    case "frozen_selection": {
+      const entity = args?.entity as Entity;
+      const held = frozenSet(entity);
+      const targets = selectTargets(entity, String(args?.query ?? ""), (args?.filters ?? {}) as MassFilters);
+      return { selected: targets.length, frozen: targets.filter(({ uid }) => held.has(uid)).length } as T;
+    }
     case "export_players": {
       // Nothing is written in a browser: the report names the file a real export would have.
       const selected = selectTargets("player", String(args?.query ?? ""), {
@@ -3577,7 +3848,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       if (!player) {
         throw notFound("player", uid);
       }
-      const report: MassReport = { batch: nextMassId++, applied: 0, failed: [] };
+      const report: MassReport = { batch: nextMassId++, applied: 0, failed: [], freeze: null };
       setValues(player, ATTRIBUTES.map((key) => attributeAt(key, level)), report);
       return report as T;
     }
@@ -3611,6 +3882,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
           seating: stadium.seating,
           used: stadium.used,
           expansion: stadium.expansion,
+          owner: stadium.owner,
         });
       }
       const words = query.split(/\s+/).filter(Boolean);
@@ -3626,6 +3898,11 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       });
       const label = (row: StadiumSummary) => row.name ?? row.clubs[0].name;
       rows.sort((a, b) => b.capacity - a.capacity || label(a).localeCompare(label(b)));
+      rows.sort(
+        byColumn<StadiumSummary>(orderOf(args), (row, by) =>
+          by === "name" ? label(row) : by === "seating" ? row.seating : by === "expansion" ? row.expansion : row.capacity,
+        ),
+      );
       const stadiumPage: StadiumPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return stadiumPage as T;
     }
@@ -3641,10 +3918,32 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
             (filter.minAge === undefined || (o.age !== null && o.age >= filter.minAge)) &&
             (filter.maxAge === undefined || (o.age !== null && o.age <= filter.maxAge)) &&
             (filter.minCurrentAbility === undefined || o.currentAbility >= filter.minCurrentAbility) &&
+            (filter.maxCurrentAbility === undefined || o.currentAbility <= filter.maxCurrentAbility) &&
             (filter.minPotentialAbility === undefined || o.potentialAbility >= filter.minPotentialAbility) &&
+            (filter.maxPotentialAbility === undefined || o.potentialAbility <= filter.maxPotentialAbility) &&
+            (filter.minReputation === undefined || o.reputation >= filter.minReputation) &&
+            (filter.maxReputation === undefined || o.reputation <= filter.maxReputation) &&
             contains(o.nation, filter.nation),
         )
-        .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name));
+        .sort((a, b) => b.currentAbility - a.currentAbility || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<OfficialSummary>(orderOf(args), (o, by) => {
+            switch (by) {
+              case "name":
+                return o.name;
+              case "age":
+                return o.age;
+              case "nation":
+                return o.nation;
+              case "reputation":
+                return o.reputation;
+              case "potentialAbility":
+                return o.potentialAbility;
+              default:
+                return o.currentAbility;
+            }
+          }),
+        );
       const officialPage: OfficialPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return officialPage as T;
     }
@@ -3663,7 +3962,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
             (filter.minReputation === undefined || c.reputation >= filter.minReputation) &&
             (filter.maxReputation === undefined || c.reputation <= filter.maxReputation),
         )
-        .sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name));
+        .sort((a, b) => b.reputation - a.reputation || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<CompetitionSummary>(orderOf(args), (c, by) =>
+            by === "name" ? c.name : by === "nation" ? c.nation : by === "continent" ? c.continent : c.reputation,
+          ),
+        );
       const competitionPage: CompetitionPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return competitionPage as T;
     }
@@ -3693,7 +3997,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
             (filter.minPrestige === undefined || a.prestige >= filter.minPrestige) &&
             (filter.maxPrestige === undefined || a.prestige <= filter.maxPrestige),
         )
-        .sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name));
+        .sort((a, b) => b.prestige - a.prestige || a.name.localeCompare(b.name))
+        .sort(
+          byColumn<AwardSummary>(orderOf(args), (a, by) =>
+            by === "name" ? a.name : by === "competition" ? a.competition : by === "nation" ? a.nation : a.prestige,
+          ),
+        );
       const awardPage: AwardPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return awardPage as T;
     }
@@ -3716,6 +4025,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         .filter((nation) => query === "" || fold(nation.name).includes(query) || String(nation.uid) === String(args?.query ?? "").trim())
         .filter((nation) => contains(nation.continent, filter.continent));
       rows.sort((a, b) => a.name.localeCompare(b.name));
+      rows.sort(byColumn<NationSummary>(orderOf(args), (nation, by) => (by === "continent" ? nation.continent : nation.name)));
       const page: NationPage = { total: rows.length, rows: rows.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit) };
       return page as T;
     }
@@ -3735,6 +4045,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         String(args?.query ?? ""),
         (args?.filters ?? {}) as MassFilters,
         (args?.operations ?? []) as MassOperation[],
+        (args?.freeze ?? null) as boolean | null,
       ) as T;
     case "apply_mass_edit":
       return applyMass(Number(args?.id)) as T;
@@ -3792,6 +4103,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return signFreeAgentLater(Number(args?.uid), Number(args?.club), Number(args?.joins)) as T;
     case "lift_bans":
       return liftBans(Number(args?.uid)) as T;
+    case "remove_unhappiness":
+      return removeUnhappiness(Number(args?.uid)) as T;
     case "close_promise":
       return closePromise(Number(args?.uid), Number(args?.index), args?.promise as PlayerPromise | undefined) as T;
     case "change_clause":

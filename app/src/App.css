@@ -646,8 +646,8 @@ dd,
   background: var(--accent-hover);
 }
 
-/* Report a problem and Wishlist: quiet, like the rest of the small print, until pointed at. */
-.colophon :is(.colophon-report, .colophon-wishlist) {
+/* Report a problem, Wishlist, Support FM Lens and Check for updates: quiet, like the rest of the small print, until pointed at. */
+.colophon :is(.colophon-report, .colophon-wishlist, .colophon-support, .colophon-update) {
   flex: none;
   min-height: 0;
   padding: 0;
@@ -661,7 +661,7 @@ dd,
   text-underline-offset: 2px;
 }
 
-.colophon :is(.colophon-report, .colophon-wishlist):hover:not(:disabled) {
+.colophon :is(.colophon-report, .colophon-wishlist, .colophon-support, .colophon-update):hover:not(:disabled) {
   background: none;
   color: var(--text);
 }
@@ -1262,6 +1262,17 @@ input::placeholder {
   grid-column: 1 / -1;
 }
 
+/* Money has many digits: its two ends take two cells, where the form has two. */
+.filter-field.wide {
+  grid-column: span 2;
+}
+
+@container (max-width: 400px) {
+  .filter-field.wide {
+    grid-column: auto;
+  }
+}
+
 /* A yes-or-no: the box and its words on one line, level with the inputs beside it. */
 .filter-field:has(> input[type="checkbox"]) {
   display: flex;
@@ -1273,6 +1284,7 @@ input::placeholder {
 
 /* The inputs of the filters, and those of the saved filters in the head of the bar (see below). */
 .filter-fields :is(select, input:not([type="checkbox"])),
+.best-for select,
 .saved-select,
 .saved-form input {
   min-height: 30px;
@@ -1285,6 +1297,7 @@ input::placeholder {
 }
 
 .filter-fields :is(select, input:not([type="checkbox"])):focus-visible,
+.best-for select:focus-visible,
 .saved-select:focus-visible,
 .saved-form input:focus-visible {
   border-color: var(--accent);
@@ -1870,6 +1883,17 @@ input::placeholder {
 .award-grid .col-name .tag.women {
   flex: none;
   margin-left: 0;
+}
+
+/* A club's nation in one line; it is the first column to go where the list is narrow. */
+.club-grid td.col-nation {
+  white-space: nowrap;
+}
+
+@container (max-width: 560px) {
+  .club-grid .col-nation {
+    display: none;
+  }
 }
 
 @container (max-width: 420px) {
@@ -2616,6 +2640,37 @@ input::placeholder {
   color: var(--text);
 }
 
+/* What a rating measures, in a box over its row (HoverNote places it, then shows it). */
+.hover-note {
+  position: fixed;
+  z-index: 110;
+  visibility: hidden;
+  max-width: min(21rem, calc(100vw / var(--ui-scale, 1) - 12px));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.28);
+  font-size: var(--type-base);
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  pointer-events: none;
+}
+
+.hover-note p {
+  margin: 0;
+  /* The parts of a fit are a line each. */
+  white-space: pre-line;
+}
+
+.hover-note .hover-note-detail {
+  margin-top: var(--space-1);
+  color: var(--muted);
+  font-size: var(--type-sm);
+}
+
 /* The unit of an amount, in small print after it. */
 .stat dd .unit {
   margin-left: 3px;
@@ -2670,6 +2725,11 @@ input::placeholder {
   margin: var(--space-2) 0 0;
   padding: 0 var(--space-2);
   list-style: none;
+}
+
+/* A long trait breaks onto a second line rather than run over the column beside it. */
+.tags .tag {
+  white-space: normal;
 }
 
 .tag.listed {
@@ -3113,6 +3173,39 @@ select.edit-input {
   max-width: 100%;
   text-align: left;
   appearance: auto;
+}
+
+/* The traits while a player is edited: a group under its name, its traits a checklist in columns of one width. */
+.trait-group {
+  margin-top: var(--space-3);
+  padding: 0 var(--space-2);
+}
+
+.profile-group .trait-group h4 {
+  margin: 0 0 var(--space-1);
+  padding: 0;
+  border: 0;
+}
+
+.trait-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 2px var(--space-3);
+}
+
+/* A trait is a line of the list, not a pill: only one that is changed, applied or refused is outlined. */
+.trait-list .edit-flag {
+  display: flex;
+  min-width: 0;
+}
+
+.trait-list .edit-flag:not(.changed, .invalid, .applied) {
+  border-color: transparent;
+  background: none;
+}
+
+.trait-list .edit-flag:not(.changed, .invalid, .applied):hover {
+  background: var(--field);
 }
 
 /* A yes-or-no: a checkbox in a pill like a tag, with the name of the field. The pill is outlined as an input is. */
@@ -3692,6 +3785,19 @@ button.danger:hover:not(:disabled) {
 
 .mass-scope.warn {
   color: var(--danger);
+}
+
+/* What the dialog applies to, and at the end of the row the box that freezes all of it. */
+.mass-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+}
+
+.mass-scope-row .freeze-toggle {
+  margin: 0;
 }
 
 /* The fields to change: a fieldset only to switch all its controls off together while a call runs. */
@@ -4848,6 +4954,22 @@ button.danger:hover:not(:disabled) {
   width: min(560px, 100%);
 }
 
+/* Support FM Lens: Ko-fi's panel, edge to edge, at the height Ko-fi makes it. */
+.support-dialog {
+  width: min(480px, 100%);
+}
+
+.support-dialog .modal-body {
+  padding: 0;
+}
+
+.support-panel {
+  width: 100%;
+  height: 712px;
+  border: 0;
+  background: #f9f9f9;
+}
+
 /* Once sent, Close sits where Send was. */
 .report-dialog .modal-foot {
   justify-content: flex-end;
@@ -5593,4 +5715,59 @@ button.danger:hover:not(:disabled) {
 /* A section scrolled to by the bar lands under it, not behind it. */
 .profile-body > section.profile-group {
   scroll-margin-top: 84px;
+}
+
+/* Best for: the select that ranks a list, beside the search box, and the column of how well each row fits. */
+.best-for {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--type-base);
+  white-space: nowrap;
+}
+
+.best-for select {
+  max-width: 13rem;
+}
+
+.grid td.col-fit {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Who fits best at your club, beside the select: the fits of the list are read against it. A long name is cut short,
+   and beside an open profile it gives way as the count does. */
+.your-best {
+  max-width: 16rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--type-base);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.with-profile .toolbar .your-best {
+  display: none;
+}
+
+/* A fit better than the best at your club: in the colour of what is good, with a mark for those who see no colour. */
+.grid td.col-fit.better {
+  color: var(--ok);
+}
+
+.better-mark {
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-1);
+  fill: currentColor;
+}
+
+/* In a profile, what the person is best for: the name of the recipe as a rating's is, and the score bold. */
+.best-fits .stat dt {
+  color: var(--text);
+}
+
+.best-fits .stat dd {
+  font-weight: 700;
 }

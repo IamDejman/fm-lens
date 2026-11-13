@@ -476,6 +476,11 @@ mod tests {
             attributes: Vec::new(),
             transfer_listed: false,
             loan_listed: false,
+            height_cm: 178,
+            wage: Some(300_000),
+            transfer_value: None,
+            personality: [10; 8],
+            traits: 0,
             address: 0,
             shift: 0,
         };

@@ -47,6 +47,7 @@ export const EDITS = new Set([
   "move_staff",
   "point_preference",
   "release_player",
+  "remove_unhappiness",
   "remove_clause",
   "remove_injury",
   "remove_language",

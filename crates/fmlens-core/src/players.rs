@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::calibrate::ArrayRef;
 use crate::date::FmDate;
-use crate::details::{ATTRIBUTE_GROUPS, Attribute, POSITIONS};
+use crate::details::{ATTRIBUTE_GROUPS, Attribute, PERSONALITY, POSITIONS, transfer_value};
 use crate::filter::attribute_keys;
 use crate::index::{Listed, SearchIndex};
 use crate::profile::{Layout, PlayerLayout};
@@ -49,6 +49,20 @@ pub struct PlayerSummary {
     pub transfer_listed: bool,
     #[serde(skip)]
     pub loan_listed: bool,
+    /// For the list's filters, as the profile reads them: his height in centimetres (0 when not set), his wage in
+    /// pounds a week (none without a contract), his stored base valuation in pounds (none where the layout does not
+    /// place it or the game has not valued him), his personality ratings in [`crate::PERSONALITY`] order, and his
+    /// traits as the game's mask of them.
+    #[serde(skip)]
+    pub height_cm: u16,
+    #[serde(skip)]
+    pub wage: Option<i32>,
+    #[serde(skip)]
+    pub transfer_value: Option<i32>,
+    #[serde(skip)]
+    pub personality: [u8; 8],
+    #[serde(skip)]
+    pub traits: u64,
     /// Address of the player object in the game process.
     #[serde(skip)]
     pub address: u64,
@@ -160,6 +174,11 @@ pub fn read_players(
         let contract_expires =
             has_contract.then(|| FmDate::from_raw(contract_u16(c.expires), contract_u16(c.expires + 2))).flatten();
         let listing = if has_contract { contract_buf[c.listing as usize] } else { 0 };
+        let wage = has_contract.then(|| {
+            i32::from_le_bytes(contract_buf[c.wage as usize..c.wage as usize + 4].try_into().expect("4 bytes"))
+        });
+        let mut personality = [0u8; PERSONALITY.len()];
+        personality.copy_from_slice(&buf[at(p.personality)..at(p.personality) + PERSONALITY.len()]);
         players.push(PlayerSummary {
             uid,
             name,
@@ -179,6 +198,11 @@ pub fn read_players(
             attributes,
             transfer_listed: listing & 1 != 0,
             loan_listed: listing & 2 != 0,
+            height_cm: u16_at(p.height),
+            wage,
+            transfer_value: p.transfer_value.and_then(|offset| transfer_value(u32_at(offset) as i32, team != 0)),
+            personality,
+            traits: u64_at(p.traits),
             address: object,
             shift,
         });

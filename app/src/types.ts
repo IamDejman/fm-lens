@@ -225,6 +225,10 @@ export interface ClubSummary {
   /** 0–10000. */
   reputation: number | null;
   founded: number | null;
+  /** The nation the club is from; null where the build does not place it. */
+  nation: string | null;
+  /** The nation's UID, for its flag (see pictures.ts). */
+  nationUid: number | null;
 }
 
 export interface ClubPage {
@@ -273,6 +277,8 @@ export interface Stadium {
   used: number;
   /** The most it can be expanded to. */
   expansion: number;
+  /** The club that owns it; null when no club of the save does. */
+  owner: StadiumClub | null;
 }
 
 /** A manager, coach, scout, director or other non-playing person. */
@@ -302,6 +308,8 @@ export interface StaffSummary {
   potentialAbility: number;
   /** The manager the user controls in this save. */
   isHuman: boolean;
+  /** How well they fit what the list is ranked for, when it is ranked. */
+  fit?: Fit;
 }
 
 /** A national team, as its manager's row names it. */
@@ -318,6 +326,8 @@ export interface NationalJob {
 export interface StaffPage {
   total: number;
   rows: StaffSummary[];
+  /** Only while the list is ranked and someone on your staff fits. */
+  yours?: Yours;
 }
 
 export interface StaffContract {
@@ -379,11 +389,40 @@ export interface PlayerSummary {
   contractExpires: FmDate | null;
   currentAbility: number;
   potentialAbility: number;
+  /** How well he fits what the list is ranked for, when it is ranked. */
+  fit?: Fit;
+}
+
+/**
+ * What `search_players` and `search_staff` rank their list for: attributes of the list's entity and what a point of
+ * each counts for. The best fit comes first unless an order is asked for.
+ */
+export interface BestFor {
+  weights: { key: string; weight: number }[];
+  /** Position keys: only the players who can play one of them are listed. */
+  positions?: string[];
+}
+
+/** How well a row fits what its list is ranked for. */
+export interface Fit {
+  /** 0 to 100: 100 for 20 in every attribute of the recipe. */
+  score: number;
+  /** The rating (1–20) of each attribute of the recipe, in the recipe's order; 0 for one that is not known. */
+  values: number[];
+}
+
+/** The best fit at your club for what a list is ranked for: what the fits of the list are read against. */
+export interface Yours {
+  uid: number;
+  name: string;
+  score: number;
 }
 
 export interface PlayerPage {
   total: number;
   rows: PlayerSummary[];
+  /** Only while the list is ranked and someone at your club fits. */
+  yours?: Yours;
 }
 
 /** A club whose senior team plays at a stadium. */
@@ -406,6 +445,8 @@ export interface StadiumSummary {
   /** The capacity in use when the game limits it; 0 when it does not. */
   used: number;
   expansion: number;
+  /** The club that owns it; null when no club of the save does. */
+  owner: StadiumClub | null;
 }
 
 export interface StadiumPage {
@@ -443,7 +484,12 @@ export interface OfficialFilter {
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
+  maxCurrentAbility?: number;
   minPotentialAbility?: number;
+  maxPotentialAbility?: number;
+  /** 0–10000. */
+  minReputation?: number;
+  maxReputation?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
 }
@@ -574,7 +620,18 @@ export interface PlayerFilter {
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
+  maxCurrentAbility?: number;
   minPotentialAbility?: number;
+  maxPotentialAbility?: number;
+  /** Centimetres. A player whose height is not set keeps to no bound. */
+  minHeight?: number;
+  maxHeight?: number;
+  /** Pounds per week. A player without a contract keeps to no bound. */
+  minWage?: number;
+  maxWage?: number;
+  /** Pounds, the stored base valuation. A player the game has not valued keeps to no bound. */
+  minValue?: number;
+  maxValue?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
   /** Part of the club's name; accents and case ignored. */
@@ -590,6 +647,10 @@ export interface PlayerFilter {
   loanListed?: boolean;
   /** Bounds on attributes, every one of which must hold. */
   attributes?: AttributeBound[];
+  /** Bounds on personality ratings, by their key ("ambition"), every one of which must hold. */
+  personality?: AttributeBound[];
+  /** Trait bits (0 to 63): only players who have every one of them. */
+  traits?: number[];
 }
 
 export type PlayerSort =
@@ -607,6 +668,21 @@ export interface PlayerOrder {
   ascending: boolean;
 }
 
+/** How a list is sorted: by one of its columns, upwards or downwards. Without one, a search answers best first. */
+export interface ListOrder<Sort extends string> {
+  by: Sort;
+  ascending: boolean;
+}
+
+/** The columns each of the other lists can be sorted by, as its search command takes them. */
+export type StaffSort = "name" | "age" | "club" | "nation" | "currentAbility" | "potentialAbility";
+export type ClubSort = "name" | "nation" | "reputation" | "founded";
+export type StadiumSort = "name" | "capacity" | "seating" | "expansion";
+export type NationSort = "name" | "continent";
+export type OfficialSort = "name" | "age" | "nation" | "reputation" | "currentAbility" | "potentialAbility";
+export type CompetitionSort = "name" | "nation" | "continent" | "reputation";
+export type AwardSort = "name" | "competition" | "nation" | "prestige";
+
 /** Filters for `search_staff`. */
 export interface StaffFilter {
   /** Job code (see `jobLabel`); its player-coach variant matches too. */
@@ -618,7 +694,9 @@ export interface StaffFilter {
   minAge?: number;
   maxAge?: number;
   minCurrentAbility?: number;
+  maxCurrentAbility?: number;
   minPotentialAbility?: number;
+  maxPotentialAbility?: number;
   /** Part of the nation's name; accents and case ignored. */
   nation?: string;
   /** Part of the employer's name; accents and case ignored. */
@@ -637,6 +715,8 @@ export interface ClubFilter {
   /** A club with no founded year keeps to no bound. */
   foundedFrom?: number;
   foundedTo?: number;
+  /** Part of the name of the nation the club is from; accents and case ignored. */
+  nation?: string;
 }
 
 /** An attribute as stored (`raw`, 0–100) and as FM shows it (`value`, 1–20). */
@@ -1268,6 +1348,20 @@ export interface MassFilters {
   clubFilter?: ClubFilter;
 }
 
+/** How much of what a list selects is frozen: its players' or staff's attributes, or its clubs' money. */
+export interface SelectionFreeze {
+  /** How many the search and the filter select. */
+  selected: number;
+  /** How many of them are frozen now. */
+  frozen: number;
+}
+
+/** How many a mass edit freezes (`frozen`) or unfreezes: the attributes of players or staff, the money of clubs. */
+export interface FreezeCount {
+  frozen: boolean;
+  count: number;
+}
+
 /** A change a mass edit would write: as stored. */
 export interface PlannedChange {
   uid: number;
@@ -1304,6 +1398,8 @@ export interface MassPreview {
   skippedCount: number;
   /** The first 500 of them. */
   skipped: SkippedField[];
+  /** How many it would freeze or unfreeze, when its freeze box was changed. */
+  freeze: FreezeCount | null;
 }
 
 /** From `apply_mass_edit`. */
@@ -1313,6 +1409,8 @@ export interface MassReport {
   applied: number;
   /** Changes not written, e.g. because the game changed the value after the preview. */
   failed: { uid: number; name: string; field: string; error: Failure }[];
+  /** What it froze or unfroze, how many could not be frozen, and why the first of them was refused. */
+  freeze: (FreezeCount & { failed: number; error: Failure | null }) | null;
 }
 
 /** From `undo_batch`. */
@@ -1320,6 +1418,8 @@ export interface BatchUndo {
   undone: number;
   /** Changes the game has changed since, left as they are. */
   failed: { id: number; error: Failure }[];
+  /** What was frozen again or unfrozen, when the mass edit had unfrozen or frozen it. */
+  freeze: FreezeCount | null;
 }
 
 /** How many pictures of each kind the graphics packs hold. */

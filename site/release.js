@@ -45,11 +45,16 @@ export async function release(version) {
 
 /**
  * The ten latest releases, newest first, with their notes as GitHub renders them and their downloads, or null when
- * GitHub cannot be reached.
+ * GitHub cannot be reached. The token is for scripts/build-site.mjs, which GitHub then answers more often; a browser
+ * has none.
  */
-export async function releaseNotes() {
+export async function releaseNotes(token) {
   try {
-    const response = await fetch(`${API}?per_page=10`, { headers: { Accept: "application/vnd.github.html+json" } });
+    const headers = { Accept: "application/vnd.github.html+json" };
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+    const response = await fetch(`${API}?per_page=10`, { headers });
     if (!response.ok) {
       return null;
     }
@@ -65,4 +70,45 @@ export async function releaseNotes() {
   } catch {
     return null;
   }
+}
+
+const DOWNLOAD_ICON =
+  '<svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10M5.5 8.5 10 13l4.5-4.5M4 17h12"/></svg>';
+
+/** Text, safe to put into HTML. */
+function escaped(text) {
+  return text.replace(/[&<>"]/g, (mark) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[mark]);
+}
+
+/**
+ * The release notes page's list: each release's version, date, downloads and notes. scripts/build-site.mjs writes it
+ * into the published page, so the notes are there without a script, and the page draws it again when GitHub has a
+ * newer release than the page was published with. The date is the day in UTC, so both write the same.
+ */
+export function releaseNotesHtml(releases) {
+  const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  return releases
+    .map((release) => {
+      const version = escaped(release.version);
+      // The download page starts this version's download.
+      const files = [["mac", "Mac"], ["windows", "Windows"]]
+        .filter(([computer]) => release.downloads[computer])
+        .map(
+          ([computer, name]) =>
+            `<a class="button release-download" href="/download/?for=${computer}&amp;version=${version}" aria-label="Download FM Lens ${version} for ${name}">${DOWNLOAD_ICON}${name}</a>`,
+        )
+        .join("");
+      return [
+        "<article>",
+        `<h2 id="v${version}">FM Lens ${version}</h2>`,
+        `<p class="release-date">${date.format(new Date(release.published))}</p>`,
+        files && `<div class="release-files">${files}</div>`,
+        // GitHub renders and sanitizes the release text it sends as HTML.
+        `<div class="release-body">${release.html}</div>`,
+        "</article>",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n");
 }

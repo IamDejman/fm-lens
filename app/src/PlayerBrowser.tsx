@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Ability } from "./Ability";
+import { BestForSelect, FitCell, FitHeader, useBestFor, YourBest } from "./BestFor";
+import { PLAYER_RECIPES } from "./recipes";
 import { ComparisonTray } from "./Comparison";
 import { ExportButton } from "./ExportDialog";
 import { formatDate } from "./format";
@@ -19,7 +21,8 @@ import { PlayerProfile, readPlayerTab, type PlayerTab } from "./PlayerProfile";
 import { PlayerTemplatesButton } from "./PlayerTemplates";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
-import { readFields, readOrder } from "./savedFilters";
+import { PLAYER_SORTS, readFields } from "./savedFilters";
+import { SortHeader, useListSort } from "./SortHeader";
 import type { PlayerOrder, PlayerSort, PlayerSummary } from "./types";
 import { useComparison } from "./useComparison";
 
@@ -29,7 +32,7 @@ const text = playerListText;
 const DEFAULT_ORDER: PlayerOrder = { by: "currentAbility", ascending: false };
 
 /** The columns whose first click sorts from A to Z or from the earliest date; the numbers start with the highest. */
-const FIRST_ASCENDING: ReadonlySet<PlayerSort> = new Set<PlayerSort>(["name", "nation", "club", "contractExpires"]);
+const FIRST_ASCENDING: readonly PlayerSort[] = ["name", "nation", "club", "contractExpires"];
 
 /** How many positions a row shows before the ellipsis; its hover text has all of them. */
 const POSITIONS_SHOWN = 3;
@@ -38,18 +41,25 @@ const POSITIONS_SHOWN = 3;
 export function PlayerBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
   // The filters and the sort start as they were before the language was switched, if it was (see `restore.ts`).
   const [fields, setFields] = useState<PlayerFilterFields>(() => restored("playerFields", readFields));
+  const best = useBestFor("playerBest", PLAYER_RECIPES);
   // A player asked for from elsewhere is found whatever the filters were: they are cleared for him.
   const [revealed, setRevealed] = useState(reveal);
   if (revealed !== reveal) {
     setRevealed(reveal);
     if (reveal) {
       setFields(NO_PLAYER_FILTERS);
+      best.set("");
     }
   }
-  // Null until a header is clicked: no order is asked for, and the search answers with the best current ability first.
-  const [order, setOrder] = useState<PlayerOrder | null>(() => restored("playerOrder", readOrder));
+  // No order is asked for until a header is clicked: the search answers with the best current ability first, or
+  // the best fit while the list is ranked.
+  const sort = useListSort(
+    "playerOrder",
+    { sorts: PLAYER_SORTS, start: DEFAULT_ORDER, firstAscending: FIRST_ASCENDING },
+    best.recipe !== undefined,
+  );
+  const { order } = sort;
   useSnapshot("playerFields", () => fields);
-  useSnapshot("playerOrder", () => order);
   // The tab of the profile is kept here, so that the next player picked opens on the same one.
   const [tab, setTab] = useState<PlayerTab>(() => restored("playerTab", readPlayerTab));
   useSnapshot("playerTab", () => tab);
@@ -59,18 +69,15 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
 
   const filter = toPlayerFilter(fields);
   const filterCount = countFilters(filter);
-  const sorted = order ?? DEFAULT_ORDER;
-  const sortBy = (by: PlayerSort) =>
-    setOrder({ by, ascending: sorted.by === by ? !sorted.ascending : FIRST_ASCENDING.has(by) });
   const sortHeader = (by: PlayerSort, className?: string) => (
-    <SortHeader by={by} order={sorted} onSort={sortBy} className={className} />
+    <SortHeader by={by} sort={sort} label={text.columns[by]} name={text.sortNames[by]} className={className} />
   );
 
   return (
     <ListBrowser<PlayerSummary>
       name="players"
       command="search_players"
-      requestArgs={{ filter, order: order ?? undefined }}
+      requestArgs={{ filter, order: order ?? undefined, best: best.recipe?.best }}
       version={version}
       active={active}
       reveal={reveal}
@@ -90,18 +97,29 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
               filtered={filterCount > 0}
               onApply={(savedFields, savedOrder) => {
                 setFields(savedFields);
-                setOrder(savedOrder);
+                sort.set(savedOrder);
               }}
             />
           }
         />
       }
       toolbarActions={(list) => (
-        <MoreMenu>
-          <ExportButton list={list} filter={filter} order={order} />
-          <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
-          <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
-        </MoreMenu>
+        <>
+          <BestForSelect
+            recipes={PLAYER_RECIPES}
+            value={best.key}
+            onChange={(key) => {
+              best.set(key);
+              sort.set(null);
+            }}
+          />
+          <YourBest yours={list.yours} />
+          <MoreMenu>
+            <ExportButton list={list} filter={filter} order={order} />
+            <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
+            <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
+          </MoreMenu>
+        </>
       )}
       footer={<ComparisonTray comparison={comparison} />}
       tableClass="player-grid"
@@ -114,12 +132,13 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           {sortHeader("club", "col-club")}
           {sortHeader("contractExpires", "col-contract")}
           <th className="col-born">{text.columns.born}</th>
+          {best.recipe && <FitHeader sort={sort} />}
           {sortHeader("currentAbility", "num col-ca")}
           {sortHeader("potentialAbility", "num col-pa")}
           <th className="num col-uid">{text.columns.uid}</th>
         </>
       }
-      cells={(p) => (
+      cells={(p, list) => (
         <>
           {/* The hover text has what a long name, nation or club is cut to. */}
           <td className="col-name" title={p.fullName && p.fullName !== p.name ? `${p.name}\n${p.fullName}` : p.name}>
@@ -140,6 +159,7 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
           </td>
           <td className="date col-contract">{formatDate(p.contractExpires) || profileText.none}</td>
           <td className="date col-born">{formatDate(p.dateOfBirth)}</td>
+          {best.recipe && <FitCell recipe={best.recipe} fit={p.fit} yours={list.yours} />}
           <td className="num col-ca">
             <Ability value={p.currentAbility} />
           </td>
@@ -160,30 +180,6 @@ export function PlayerBrowser({ version, active, reveal }: { version: number; ac
         />
       )}
     />
-  );
-}
-
-interface SortHeaderProps {
-  /** The column; it is also what the list is sorted by. */
-  by: PlayerSort;
-  /** How the list is sorted now. */
-  order: PlayerOrder;
-  onSort: (by: PlayerSort) => void;
-  className?: string;
-}
-
-/** A column header that sorts the list; the sorted column shows an arrow and says which way in `aria-sort`. */
-function SortHeader({ by, order, onSort, className }: SortHeaderProps) {
-  const direction = order.by !== by ? undefined : order.ascending ? "ascending" : "descending";
-  return (
-    <th className={className} aria-sort={direction}>
-      <button type="button" className="sort" title={text.sortBy(text.sortNames[by])} onClick={() => onSort(by)}>
-        {text.columns[by]}
-        <svg className="sort-arrow" viewBox="0 0 10 10" aria-hidden="true">
-          <path d="M5 8.5v-7M2 4.5l3-3 3 3" />
-        </svg>
-      </button>
-    </th>
   );
 }
 
