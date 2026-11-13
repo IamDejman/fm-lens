@@ -3397,7 +3397,8 @@ rows from Changes, then save, quit and reload.
 
 Later, on Windows (13 November): on Saliba, morale was refused as the build's live values
 did not check out; his one concern ended, came back on Undo, and the re-applied
-edit held through a save, quit and reload.
+edit held through a save, quit and reload. With build 9 his morale went to 20,
+held and undid (see Build 9 on Windows below).
 
 ## Dragging numbers, scroll position and reopening (12 November 2026)
 
@@ -3700,7 +3701,8 @@ same check as the list's rows (6810209, with a backend test).
 | Clone & templates on those lists | "Apply to 19 players matching "Saka"", then "Apply to 10 players matching "Saka"" |
 
 Export still writes what the search and filter select, without the compared
-player left out or "Best for" applied.
+player left out or "Best for" applied. Fixed in build 9 (see Build 9 on
+Windows below).
 
 ## Third reload and FM's screens (13 November 2026)
 
@@ -3718,3 +3720,44 @@ unchanged since the save), with build 8:
 The freeze banner of a career ("Freezes from last time are back on") stays on
 screen after another career is loaded, until it is dismissed. Nothing was
 frozen in the new career: the banner is left over, not a freeze carried across.
+Fixed in build 9 (see Build 9 on Windows below).
+
+## Build 9 on Windows (13 November 2026)
+
+FM27 27.0.1 (Steam build 26577676) on Windows Server 2022, FM Lens 0.7.10 built
+from the position branch at f4d2a2b (build 9), on the copy "FM Lens Positions
+2026-11-13" at 30 June 2027. FM showed money in pounds a week for the wage
+check and was put back to dollars a year after. Nothing was saved.
+
+Fixed since build 8:
+
+- Export writes the players the list shows, in its order (58b77ff).
+- The freeze notice goes when FM has loaded another career (7a3ddd4).
+- The wage budget used is read-only: FM works it out again from the
+  contracts within seconds, so an edit never held (a3a64ac).
+- The live values check asks most players, not 99%, to be at 35% match
+  sharpness or more. After the summer break fewer are, so it failed and every
+  morale write was refused, which is why Inspire's morale and happiness did
+  not hold before (f4d2a2b).
+
+| Check | FM Lens | FM |
+|---|---|---|
+| Health | Passes on 30 June 2027 (live values 1,878 of 2,000) and on 10 Dec 2027 on another copy (1,999 of 2,000) | - |
+| Inspire, William Saliba (49039004) | Morale 11 to 20, one Changes row; still 20 after FM opened his profile and a Reload | Happiness "Delighted"; FM moved his happiness from 20 to 80 itself |
+| Undo of that | Morale 11 | - |
+| Happiness, Bukayo Saka (28122642), 40 to 90 | Morale 11 to 18 written with it (two rows); 90 and 18 after FM opened his profile and a Reload | Happiness "Delighted" |
+| Undo of both | Happiness 40, morale 11 | - |
+| Saka's wage, £260,000 to £262,500 a week | Notice "FM may display about £275,000 p/w"; probe 262500 | "£275K p/w" (at £260,000: "£250K p/w") |
+| Undo of that | Probe 260000 | "£250K p/w" |
+| Export, "Best for" GK: Kicking, search "son" | List 113 players; CSV 113 rows in the list's order (first 14 compared) | - |
+| Export, Find similar to Saka (today) | List 26,663 players; CSV 26,663 rows, without Saka, in the list's order (first 11 compared) | - |
+| Freeze notice | Shown on the copy ("Money: Arsenal"); gone after FM loaded "FM-Lens-ClubNames-2026-11-13" and Reload | - |
+
+FM rounds a weekly wage in pounds to its step and rounds halves up, as the
+notice assumes: £262,500 shows as £275K.
+
+After FM loads another career, FM Lens shows the new game date at once but
+keeps the lists it read until Reload, unless something is frozen (then it reads
+again by itself). A write from such a list is refused, as its values are stale.
+
+Not run: macOS (Apple Silicon and Intel), Game Pass.
