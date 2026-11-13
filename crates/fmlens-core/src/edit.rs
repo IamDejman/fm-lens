@@ -359,9 +359,23 @@ pub fn fields(layout: &Layout, entity: Entity) -> Vec<Field> {
     }
 }
 
-/// A wage in pounds per week, and a contract end between 2000 and 2100.
-fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 2] {
+/// The days a contract may have been signed on, or its holder have joined the club: from 1950, as a member of staff
+/// may have been at his club for decades, to the game's date once that is read (see [`Session::fields`]).
+const CONTRACT_STARTS: RangeInclusive<i64> = 19500101..=21001231;
+
+/// The fields whose latest day is the game's date: a contract is not signed, nor a club joined, on a day to come.
+const CONTRACT_START_KEYS: [&str; 2] = ["contract.signed", "contract.joined"];
+
+/// A wage in pounds per week, a contract end between 2000 and 2100, and the days the contract was signed and its
+/// holder joined the club: those two one person at a time.
+fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 4] {
     let c = &layout.contract;
+    let start = |key: &str, offset: u64| {
+        Field::new(entity, key, offset, Kind::Date, CONTRACT_STARTS)
+            .plausible(0..=22001231)
+            .single()
+            .in_record(Place::Contract)
+    };
     [
         Field::new(entity, "contract.wage", c.wage, Kind::I32, 0..=10_000_000)
             .plausible(0..=i64::from(i32::MAX))
@@ -369,7 +383,15 @@ fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 2] {
         Field::new(entity, "contract.expires", c.expires, Kind::Date, 20000101..=21001231)
             .plausible(0..=22001231)
             .in_record(Place::Contract),
+        start("contract.signed", c.signed),
+        start("contract.joined", c.joined),
     ]
+}
+
+/// The latest day the editor writes to a field of [`CONTRACT_START_KEYS`] on `today`, the game's date, where it is
+/// read.
+fn latest_contract_start(today: Option<FmDate>) -> i64 {
+    today.map_or(*CONTRACT_STARTS.end(), |today| today.to_number().min(*CONTRACT_STARTS.end()))
 }
 
 /// What the borrowing club pays of a loaned player's wage, and when the loan ends: one player at a time, where the
@@ -1045,6 +1067,10 @@ impl Session {
         for field in out.iter_mut().filter(|field| field.key == "date_of_birth") {
             field.max = latest;
         }
+        let latest = latest_contract_start(self.game_date());
+        for field in out.iter_mut().filter(|field| CONTRACT_START_KEYS.contains(&field.key.as_str())) {
+            field.max = latest;
+        }
         out
     }
 
@@ -1383,6 +1409,14 @@ mod tests {
     }
 
     #[test]
+    fn contract_starts_end_at_the_game_date() {
+        // Without the game's date, the static range; with it, no day after it.
+        assert_eq!(latest_contract_start(None), 21001231);
+        assert_eq!(latest_contract_start(FmDate::from_number(20271211)), 20271211);
+        assert_eq!(latest_contract_start(FmDate::from_number(21500101)), 21001231);
+    }
+
+    #[test]
     fn kinds_round_trip() {
         let old = [0u8; 4];
         for (kind, value) in [
@@ -1469,14 +1503,14 @@ mod tests {
         let layout = crate::layout_for(27).expect("FM27 layout");
         let key = |list: &[Field], key: &str| list.iter().find(|f| f.key == key).cloned().expect(key);
         let players = fields(&layout, Entity::Player);
-        // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
-        // transfer and loan listing, which only players have.
+        // Every position but the sweeper; the contract's wage, end and the days it was signed and he joined; and the
+        // squad number, squad status and the transfer and loan listing, which only players have.
         // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale); and a loan's wage
         // and end, where the layout places loans.
         let loan = if layout.loan.is_some() { 2 } else { 0 };
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 4 + 64 + loan
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 4 + 4 + 4 + 64 + loan
         );
         if layout.loan.is_some() {
             for key in ["loan.wage", "loan.ends"] {
@@ -1490,14 +1524,26 @@ mod tests {
         assert!(!key(&players, "nation").mass);
         assert!(!key(&players, "contract.squad_number").mass);
         assert!(key(&players, "contract.wage").mass);
+        // The days a contract was signed and its holder joined: in the contract, one person at a time, players and
+        // staff alike.
+        let c = &layout.contract;
+        for (entity, list) in [(Entity::Player, &players), (Entity::Staff, &fields(&layout, Entity::Staff))] {
+            for (name, offset) in [("contract.signed", c.signed), ("contract.joined", c.joined)] {
+                let field = key(list, name);
+                assert_eq!((field.entity, field.offset, field.kind), (entity, offset, Kind::Date));
+                assert_eq!(field.place, Place::Contract);
+                assert!(!field.mass && !field.shifted);
+                assert!(field.takes(20090701) && !field.takes(19491231) && field.blank.is_none());
+            }
+        }
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        // The 7 basic fields; the 2 contract fields, the coaching licence and the 2 formations where the layout places
+        // The 7 basic fields; the 4 contract fields, the coaching licence and the 2 formations where the layout places
         // them, and the human manager's 2 flags.
         let licence = usize::from(layout.staff.coaching_licence.is_some());
         let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
-        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 2 + licence + formations + 2);
+        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2);
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far).

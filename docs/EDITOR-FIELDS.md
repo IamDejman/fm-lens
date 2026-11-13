@@ -3,7 +3,7 @@
 This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
-The current FM27 layouts, macOS and Windows alike, define 169 player fields, 43 staff fields,
+The current FM27 layouts, macOS and Windows alike, define 171 player fields, 45 staff fields,
 14 club fields, 37 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam builds 26340721 (27.0.0), 26385295 and
 26577676 (both 27.0.1), on macOS ARM64, macOS Intel and Windows, for an object of class
@@ -122,6 +122,8 @@ records cannot be imported through a template.
 | `personality.controversy` | u8 | plain | 1–20 |
 | `contract.wage` | i32 | plain | 0–10000000 |
 | `contract.expires` | date | plain | 2000-01-01–2100-12-31 |
+| `contract.signed` | date | plain | 1950-01-01 to the game date (2100-12-31 where it is not read) |
+| `contract.joined` | date | plain | 1950-01-01 to the game date (2100-12-31 where it is not read) |
 | `contract.squad_number` | u8 | plain | 1–99 |
 | `contract.squad_status` | u8 | plain | 1–40 |
 | `contract.transfer_listed` | flag | plain | 0–1 |
@@ -239,6 +241,8 @@ records cannot be imported through a template.
 | `personality.controversy` | u8 | plain | 1–20 |
 | `contract.wage` | i32 | plain | 0–10000000 |
 | `contract.expires` | date | plain | 2000-01-01–2100-12-31 |
+| `contract.signed` | date | plain | 1950-01-01 to the game date (2100-12-31 where it is not read) |
+| `contract.joined` | date | plain | 1950-01-01 to the game date (2100-12-31 where it is not read) |
 | `coaching_licence` | i8 | plain | 0 (none), 7 (National C) to 1 (Continental Pro) |
 | `formation.in_possession` | u8 | plain | one of 3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64 |
 | `formation.out_of_possession` | u8 | plain | one of 4, 7, 22, 27, 30, 32, 33, 35, 63, 64 |

@@ -1436,7 +1436,14 @@ function fieldTable(entity: Entity): EditField[] {
   ];
   const reputation = ["home", "current", "world"].map((key) => field(`reputation.${key}`, "u16", 0, 10_000));
   const personality = PERSONALITY.map((key) => field(`personality.${key}`, "u8", 1, 20));
-  const contract = [field("contract.wage", "i32", 0, 10_000_000), field("contract.expires", "date", 20000101, 21001231)];
+  // The days a contract was signed and its holder joined run to the game's date, one person at a time.
+  const latestStart = numberFromDate(GAME_DATE);
+  const contract = [
+    field("contract.wage", "i32", 0, 10_000_000),
+    field("contract.expires", "date", 20000101, 21001231),
+    { ...field("contract.signed", "date", 19500101, latestStart), mass: false },
+    { ...field("contract.joined", "date", 19500101, latestStart), mass: false },
+  ];
   const loan = [
     { ...field("loan.wage", "i32", 0, 10_000_000), mass: false },
     { ...field("loan.ends", "date", 20000101, 21001231), mass: false },
@@ -1598,6 +1605,10 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
           d.contract.wage = value;
         } else if (d.contract && name === "expires") {
           d.contract.expires = dateFromNumber(value);
+        } else if (d.contract && name === "signed") {
+          d.contract.signed = dateFromNumber(value);
+        } else if (d.contract && name === "joined") {
+          d.contract.joined = dateFromNumber(value);
         } else if (entity === "player" && (d as PlayerDetails).contract) {
           // What only a player's contract has.
           const contract = (d as PlayerDetails).contract!;
@@ -1738,6 +1749,10 @@ function currentValues(entity: Entity, uid: number): FieldValues {
             return person.contract?.wage;
           case "expires":
             return person.contract?.expires && numberFromDate(person.contract.expires);
+          case "signed":
+            return person.contract?.signed && numberFromDate(person.contract.signed);
+          case "joined":
+            return person.contract?.joined && numberFromDate(person.contract.joined);
           // Only a player's contract has these; the real table offers them for players only.
           case "squad_number":
             return contract && (contract.squadNumber ?? 255);
