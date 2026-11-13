@@ -125,6 +125,7 @@ pictures in the game and show initials. FM Lens also reads kit packs: a mapping 
 ## Not yet available
 
 The in-game scout card (hover a player's (i) in FM and see FM Lens's card over
-the game) needs FM Lens to know which player FM is pointing at. A trace in the
-running game found no fixed place in FM's own memory that holds it. See
+the game) needs FM Lens to know which player FM is pointing at. On Windows that
+is now found: FM's card keeps the player's UID in its Unity layer, reached from
+one fixed place. The card itself is not built yet. See
 [the research note](recon/fm27-scouting-research.md).

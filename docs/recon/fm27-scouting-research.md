@@ -49,10 +49,37 @@ before, during and after each hover (`refs --span 0x400`).
   likely held in managed objects rather than in `game_plugin`'s native memory
   (not proven).
 
-Result: no stable native read gives the hovered player, so the card is not
-built. Finding it needs a walk of the IL2CPP object graph from a known root
-(the tooltip or info-button controller) on each platform, then the checks
-above.
+Result: no stable native read gives the hovered player.
+
+### The managed path (13 November 2026, Windows)
+
+Same build, FM27's IL2CPP layer (`GameAssembly.dll`, metadata version 0x27),
+read only. The card's person is reachable from one static field:
+
+| Step | Read |
+|---|---|
+| Static root | `SI.Bindable.Tooltip+Visuals.s_floatingElement` (static field +0x0): an `SI.UI.FloatingElement` |
+| Card open | `FloatingElement` +0x68 (`m_target`): non-zero while a card shows, 0 once it closes |
+| Card tree | `FloatingElement` +0x28 (`m_root`, "floating-element-root"); each `VisualElement` has its name at +0x38 and its children (`List`) at +0x290 |
+| Player card | A `BindableVariableSizedGridElement` named `PlayerReportHeaderTooltip` (with `PlayerAttributesBlock`, `CoachScoutReportBlock`, `PlayerHappiness`, `PlayerPositionalTooltip`) |
+| Bound person | The `SI.Bindable.BindingVariables` element "person-portrait": +0x2c8 core, core +0x10 value variables (`List`), the variable "personBind" +0x20 scope value, scope +0x28 an `SI.Bindable.DynamicReference` |
+| UID | The reference is a dictionary keyed by four-letter codes (entries at +0x18, count at +0x20, 0x18 bytes each, value at +0x10): key `unid` holds a numeric value whose +0x18 is the person's UID |
+
+Checked by hovering the icon by a player's name on Arsenal's squad screen:
+Raya read 29111433 and Saliba 49039004, both as the probe gives them; with the
+pointer moved off, `m_target` went to 0 and the tree emptied (4 elements). The
+row under the pointer holds its own "personBind" for the same player, so the
+card's tree, not the row, is the one to read.
+
+Finding the class takes one scan of FM's memory: the class whose name is
+`Visuals` and whose declaring type (+0x50) is `SI.Bindable.Tooltip`
+(`Il2CppClass`: name +0x10, namespace +0x18, parent +0x58, self +0x78, fields
++0x80, static fields +0xb8). A test reader in C# took 10 to 20 seconds; it is
+done once per game start.
+
+Not yet checked: other screens (search, shortlist, scouting), staff cards,
+macOS (Apple Silicon and Intel), and a full card session. With this path the
+card can now be built: the steps above, with item 1 read from this path.
 
 ## Top players by division
 
