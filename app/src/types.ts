@@ -844,6 +844,8 @@ export interface Contract {
   playingTimeHappiness: number;
   /** His clauses and bonuses, in the contract's order. */
   clauses: Clause[];
+  /** What the contract pays for competitions, from its own list; read-only. */
+  competitionBonuses: CompetitionBonus[];
   /** His reasons to be unhappy, over ones too (`ended` set), in the order the game keeps them. */
   concerns: Concern[];
   /** A player-coach's contract: he works as staff too, and does not move. */
@@ -862,6 +864,21 @@ export interface Concern {
 }
 
 /** One of a contract's clauses or bonuses: a release clause, an appearance fee, a yearly wage rise... */
+/**
+ * A bonus a contract pays for a competition. What it is paid for (a title, a round reached) is not read, so only the
+ * competition and the amount are known.
+ */
+export interface CompetitionBonus {
+  /** Its place in the contract's list. */
+  index: number;
+  /** The UID the bonus names. */
+  competitionUid: number;
+  /** The competition's (or award's) name; null where none has that UID. */
+  competition: string | null;
+  /** Pounds; null where the bonus holds none. */
+  amount: number | null;
+}
+
 export interface Clause {
   /** Its place in the contract's list. */
   index: number;

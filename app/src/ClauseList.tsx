@@ -11,7 +11,7 @@ import { addReleaseClause, changeClause, removeClause } from "./editing";
 import { describeError, formatAmount, formatMoney, formatNumber } from "./format";
 import { clauseText as text, profileText } from "./labels";
 import { Fact, GroupHead } from "./ProfileParts";
-import type { Clause } from "./types";
+import type { Clause, CompetitionBonus } from "./types";
 import { useModal } from "./useModal";
 import { EditorContext } from "./useProfileEditing";
 
@@ -64,8 +64,13 @@ interface ClauseListProps {
   room: number;
 }
 
+interface ClauseGroupProps extends ClauseListProps {
+  /** What the contract pays for competitions: shown under the clauses, never changed here. */
+  bonuses: CompetitionBonus[];
+}
+
 /** The group in the profile, with the button on its heading that opens the dialog while the game can be written to. */
-export function ClauseList({ uid, name, clauses, room }: ClauseListProps) {
+export function ClauseList({ uid, name, clauses, room, bonuses }: ClauseGroupProps) {
   const { editable, readOnlyNote } = useContext(EditorContext);
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
@@ -94,13 +99,18 @@ export function ClauseList({ uid, name, clauses, room }: ClauseListProps) {
           {text.change}
         </button>
       </GroupHead>
-      {clauses.length === 0 ? (
+      {clauses.length === 0 && bonuses.length === 0 ? (
         <p className="note">{profileText.noClauses}</p>
       ) : (
         <dl className="stats">
           {clauses.map((clause) => (
             <Fact key={clause.index} label={profileText.clauseName(clause.kind)}>
               {clauseDetail(clause)}
+            </Fact>
+          ))}
+          {bonuses.map((bonus) => (
+            <Fact key={`competition-${bonus.index}`} label={profileText.competitionBonus(bonus.competition)}>
+              {bonus.amount === null ? "✓" : formatMoney(bonus.amount)}
             </Fact>
           ))}
         </dl>

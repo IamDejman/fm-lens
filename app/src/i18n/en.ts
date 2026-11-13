@@ -892,6 +892,8 @@ export const en = {
     moodTitle: "From -100 to 100.",
     /** The name of a clause or bonus by its kind; a kind the app does not know yet by its number. */
     clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? "Unknown clause",
+    /** A contract's bonus for a competition, by the competition's name. */
+    competitionBonus: (competition: string | null) => `${competition ?? "Unknown competition"} bonus`,
     /** What a clause depends on, by kind; null where what it means is not known. */
     clauseCondition: (kind: number, value: number): string | null => {
       if (RELEASE_CLAUSES.has(kind)) {

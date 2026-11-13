@@ -372,7 +372,13 @@ function ContractTab({ details }: { details: PlayerDetails }) {
         </section>
       )}
       {contract && (
-        <ClauseList uid={details.uid} name={details.name} clauses={contract.clauses} room={details.clauseRoom} />
+        <ClauseList
+          uid={details.uid}
+          name={details.name}
+          clauses={contract.clauses}
+          room={details.clauseRoom}
+          bonuses={contract.competitionBonuses}
+        />
       )}
       {details.loan && <LoanGroup loan={details.loan} />}
       {details.futureTransfers.length > 0 && <FutureTransferGroup transfers={details.futureTransfers} />}
