@@ -21,6 +21,8 @@ export const PLAYER_COLUMNS = [
   "value",
   "wage",
   "reputation",
+  "development",
+  "progress",
   "currentAbility",
   "potentialAbility",
   "uid",

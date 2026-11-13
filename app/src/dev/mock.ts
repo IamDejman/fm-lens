@@ -64,6 +64,12 @@ import type {
   PlayerFilter,
   PlayerOrder,
   PlayerPage,
+  PlayerRow,
+  ScoutReport,
+  SimilarTo,
+  TopKind,
+  TopPlaces,
+  TopScope,
   PlayerSummary,
   Refrozen,
   ReloadInfo,
@@ -3421,9 +3427,82 @@ function matchesPlayerFilter(p: PlayerSummary, f: PlayerFilter): boolean {
       (p.contractExpires !== null && dayNumber(p.contractExpires) <= dayNumber(f.contractExpiresBy))) &&
     (!f.transferListed || d?.contract?.transferListed === true) &&
     (!f.loanListed || d?.contract?.loanListed === true) &&
-    (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value))
+    (f.attributes ?? []).every((bound) => holds(bound, d?.attributes[bound.key]?.value)) &&
+    (f.potentialAttributes ?? []).every((bound) => holds(bound, mockScout(p).peak[bound.key])) &&
+    (f.roles ?? []).every((bound) => bound.min === undefined || mockRoleRating(p, bound.role) >= bound.min) &&
+    (f.minDevelopment === undefined || (mockDevelopment(p)?.probability ?? -1) >= f.minDevelopment) &&
+    (f.minProgress === undefined || (mockDevelopment(p)?.halfStars ?? -1) >= f.minProgress) &&
+    contains(mockPlace(p)?.name ?? null, f.basedIn)
   );
 }
+
+/** The scouting report of a made-up player: his attributes a little higher, and a few roles. */
+function mockScout(p: PlayerSummary): Omit<ScoutReport, "careers"> {
+  const d = details(p);
+  const growth = Math.max(0, p.potentialAbility - p.currentAbility) * 0.08;
+  const peak = Object.fromEntries(
+    Object.entries(d.attributes).map(([key, attribute]) => [key, Math.min(20, Math.round(attribute.value + growth))]),
+  );
+  const roles = ["advanced_forward.attack", "inside_forward.attack", "winger.support", "poacher.attack",
+    "central_midfielder.support", "ball_playing_defender.defend"]
+    .map((role) => ({ role, today: mockRoleRating(p, role), peak: Math.min(100, mockRoleRating(p, role) + Math.round(growth * 4)) }))
+    .sort((a, b) => b.peak - a.peak);
+  return { potential: p.potentialAbility > 0 ? p.potentialAbility : null, peak, development: mockDevelopment(p), roles };
+}
+
+// Stand-ins for FM Lens's scouting estimates (crates/fmlens-scout): simple numbers that move the right way, enough to
+// lay the UI out with. They are not the real models.
+
+/** A number from 0 to `span` - 1 that is the same for the same text. */
+function spread(text: string, span: number): number {
+  let hash = 7;
+  for (const char of text) {
+    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 100003;
+  }
+  return hash % span;
+}
+
+function mockDevelopment(p: PlayerSummary): { probability: number; gain: number; halfStars: number } | null {
+  if (p.age === null || p.potentialAbility <= 0) {
+    return null;
+  }
+  const gap = Math.max(0, p.potentialAbility - p.currentAbility);
+  const years = Math.max(0, 25 - p.age);
+  const gain = Math.min(gap, (gap * Math.min(years, 2)) / 4);
+  const probability = gap <= 7 ? 100 : Math.max(1, Math.min(99, Math.round(95 - gap + years * 4)));
+  const halfStars = [1, 3, 5, 8, 11, 15, 19, 24, 30, 37].filter((bound) => gain >= bound).length;
+  return { probability, gain, halfStars };
+}
+
+function mockRoleRating(p: PlayerSummary, role: string): number {
+  return Math.max(0, Math.min(100, Math.round(p.currentAbility / 2.2 + spread(`${p.uid}${role}`, 25))));
+}
+
+function mockSimilarity(target: PlayerSummary, p: PlayerSummary, peak: boolean): number {
+  const ability = (x: PlayerSummary) => (peak ? Math.max(x.currentAbility, x.potentialAbility) : x.currentAbility);
+  const shared = target.positions.some((position) => p.positions.includes(position)) ? 0 : 25;
+  return Math.max(0, 100 - Math.abs(ability(target) - ability(p)) - shared - spread(`${target.uid}:${p.uid}`, 8));
+}
+
+function mockRow(p: PlayerSummary, roles: readonly string[], similar: { target: PlayerSummary; peak: boolean } | null, rank: number | null): PlayerRow {
+  const development = mockDevelopment(p);
+  return {
+    ...p,
+    similarity: similar ? mockSimilarity(similar.target, p, similar.peak) : null,
+    development: development?.probability ?? null,
+    progress: development?.halfStars ?? null,
+    roles: Object.fromEntries(roles.map((role) => [role, mockRoleRating(p, role)])),
+    rank,
+  };
+}
+
+/** Where a made-up player's club is: the club's name decides the country, so the lists have some to choose from. */
+const MOCK_PLACES = [
+  { uid: 765, name: "England", continent: "Europe" },
+  { uid: 796, name: "Spain", continent: "Europe" },
+  { uid: 1649, name: "Argentina", continent: "South America" },
+];
+const mockPlace = (p: PlayerSummary) => (p.club === null ? null : MOCK_PLACES[spread(p.club, MOCK_PLACES.length)]);
 
 /** The search's own order, as the real index has it: best current ability first, then by name without accents or case. */
 function bySearchRank(a: PlayerSummary, b: PlayerSummary): number {
@@ -3441,6 +3520,9 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
     if (by.startsWith("attribute.")) {
       return details(p).attributes[by.slice("attribute.".length)]?.value ?? null;
     }
+    if (by.startsWith("role.")) {
+      return mockRoleRating(p, by.slice("role.".length));
+    }
     switch (by) {
       case "value":
         return details(p).transferValue ?? null;
@@ -3448,6 +3530,10 @@ function playerComparator({ by, ascending }: PlayerOrder): (a: PlayerSummary, b:
         return details(p).contract?.wage ?? null;
       case "reputation":
         return details(p).reputation.current;
+      case "development":
+        return mockDevelopment(p)?.probability ?? null;
+      case "progress":
+        return mockDevelopment(p)?.gain ?? null;
       case "currentAbility":
         return p.currentAbility;
       case "potentialAbility":
@@ -3723,30 +3809,103 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const query = String(args?.query ?? "");
       const limit = Number(args?.limit ?? 200);
       const filter = (args?.filter ?? {}) as PlayerFilter;
-      // Without an order the best current ability comes first, as with the real command.
+      const similarTo = (args?.similar ?? null) as SimilarTo | null;
+      const target = similarTo && players.find((p) => p.uid === similarTo.uid);
+      if (similarTo && !target) {
+        throw notFound("player", similarTo.uid);
+      }
+      const similar = target ? { target, peak: similarTo?.peak === true } : null;
+      // Without an order the best current ability comes first, as with the real command; compared, the most alike.
       const order = (args?.order ?? { by: "currentAbility", ascending: false }) as PlayerOrder;
+      const roles = ((args?.roles ?? []) as string[]).slice(0, 6);
       const words = fold(query).split(/\s+/).filter(Boolean);
       const positions = (args?.best as BestFor | undefined)?.positions ?? [];
       const plays = (p: PlayerSummary) => positions.length === 0 || positions.some((key) => p.positions.includes(key));
       const found = players
         .filter((p) => String(p.uid) === query.trim() || words.every((w) => fold(`${p.name} ${p.fullName ?? ""}`).includes(w)))
-        .filter((p) => matchesPlayerFilter(p, filter))
+        .filter((p) => p.uid !== target?.uid && matchesPlayerFilter(p, filter))
         .filter(plays)
         .sort(bySearchRank)
-        .sort(playerComparator(order));
-      const hits = ranked(found, args, (p) => details(p).attributes);
+        .sort(
+          similar && args?.order === undefined
+            ? (a, b) => mockSimilarity(similar.target, b, similar.peak) - mockSimilarity(similar.target, a, similar.peak)
+            : playerComparator(order),
+        );
+      // A comparison orders the list itself; it is never ranked for Best for at once.
+      const hits = similar ? found : ranked(found, args, (p) => details(p).attributes);
       const own = players.filter((p) => p.clubUid !== null && p.clubUid === humanClub() && plays(p));
       // The attributes the list has columns for go with each row.
       const columns = ((args?.attributes ?? []) as string[]).slice(0, 12);
-      const rows = hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit).map((p): PlayerSummary => {
+      const rows = hits.slice(Number(args?.offset ?? 0), Number(args?.offset ?? 0) + limit).map((p): PlayerRow => {
         const attributes = details(p).attributes;
         const shown = columns.filter((key) => attributes[key] !== undefined).map((key) => [key, attributes[key].value]);
-        return { ...listed(p), ...(shown.length > 0 ? { attributeValues: Object.fromEntries(shown) } : {}) };
+        const row = mockRow(listed(p), roles, similar, null);
+        return { ...row, ...(shown.length > 0 ? { attributeValues: Object.fromEntries(shown) } : {}) };
       });
       const page: PlayerPage = {
         total: hits.length,
         rows,
         yours: yoursOf(own, args, (p) => details(p).attributes),
+      };
+      return page as T;
+    }
+    case "player_scout": {
+      const uid = Number(args?.uid);
+      const player = players.find((p) => p.uid === uid);
+      if (!player) {
+        throw notFound("player", uid);
+      }
+      // Every third made-up player turns up in another career.
+      const careers = player.uid % 3 === 0 && player.age !== null
+        ? [{
+            manager: "Alex Morgan",
+            club: "Northbridge Athletic",
+            points: [0, 1, 2].map((year) => ({
+              year: 2026 + year,
+              age: (player.age ?? 0) - 1 + year,
+              currentAbility: Math.max(1, player.currentAbility - 12 + year * 9),
+              potentialAbility: player.potentialAbility,
+            })),
+          }]
+        : [];
+      const report: ScoutReport = { ...mockScout(player), careers };
+      return report as T;
+    }
+    case "top_places_list": {
+      const places: TopPlaces = {
+        continents: [...new Set(MOCK_PLACES.map((place) => place.continent))].sort(),
+        nations: [...MOCK_PLACES].sort((a, b) => a.name.localeCompare(b.name)),
+      };
+      return places as T;
+    }
+    case "top_players_list": {
+      const query = String(args?.query ?? "");
+      const limit = Number(args?.limit ?? 200);
+      const offset = Number(args?.offset ?? 0);
+      const kind = (args?.kind ?? "best") as TopKind;
+      const scope = (args?.scope ?? {}) as TopScope;
+      const inScope = (p: PlayerSummary) => {
+        const place = mockPlace(p);
+        return (
+          (scope.women ?? false) === false &&
+          (scope.nation === undefined || place?.uid === scope.nation) &&
+          (scope.continent === undefined || place?.continent === scope.continent)
+        );
+      };
+      const ranked = players
+        .filter((p) => inScope(p) && (kind === "best" || (p.age !== null && p.age <= 21)))
+        .sort((a, b) =>
+          kind === "best"
+            ? b.currentAbility - a.currentAbility || b.potentialAbility - a.potentialAbility
+            : b.potentialAbility - a.potentialAbility || b.currentAbility - a.currentAbility,
+        )
+        .slice(0, 100)
+        .map((p, at) => ({ p, rank: at + 1 }));
+      const words = fold(query).split(/\s+/).filter(Boolean);
+      const hits = ranked.filter(({ p }) => words.every((w) => fold(p.name).includes(w)));
+      const page: PlayerPage = {
+        total: hits.length,
+        rows: hits.slice(offset, offset + limit).map(({ p, rank }) => mockRow(listed(p), [], null, rank)),
       };
       return page as T;
     }

@@ -1152,3 +1152,28 @@ mod tests {
         assert!(familiarity(10) > familiarity(9) && familiarity(10) < familiarity(12));
     }
 }
+
+#[cfg(test)]
+mod app_list {
+    use super::ROLES;
+
+    /// The app lists the roles for its select (app/src/scoutRoles.ts): the same ones, each once.
+    #[test]
+    fn the_app_lists_every_role() {
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../app/src/scoutRoles.ts");
+        let source = std::fs::read_to_string(path).expect("the app's list of roles");
+        let mut listed: Vec<String> = source
+            .lines()
+            .map(str::trim)
+            .filter_map(|line| line.strip_prefix('"').and_then(|rest| rest.strip_suffix("\",")))
+            .map(str::to_owned)
+            .collect();
+        let mut ours: Vec<String> = ROLES.iter().map(|role| role.id()).collect();
+        let count = listed.len();
+        listed.sort();
+        listed.dedup();
+        assert_eq!(listed.len(), count, "a role listed twice");
+        ours.sort();
+        assert_eq!(listed, ours);
+    }
+}
