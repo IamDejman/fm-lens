@@ -1445,10 +1445,10 @@ export const en = {
     /** In the status line, once connected. */
     count: (total: number) => `${format(total)} clubs`,
     search: "Search clubs by name or ID",
-    summary: (total: number, shown: number) =>
-      total > shown
-        ? `${format(total)} clubs · Top ${shown} by reputation`
-        : `${format(total)} clubs`,
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 club" : `${format(total)} clubs`;
+      return total > shown ? `${count} · Top ${shown} by reputation` : count;
+    },
     /** The message under an empty table; `filtered` is whether a filter is in effect. */
     empty: (query: string, filtered: boolean) => {
       if (query === "") {
@@ -1628,10 +1628,10 @@ export const en = {
   stadiumList: {
     nav: "Stadiums",
     search: "Search stadiums by name or club",
-    summary: (total: number, shown: number) =>
-      total > shown
-        ? `${format(total)} stadiums · Top ${shown} by capacity`
-        : `${format(total)} stadiums`,
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 stadium" : `${format(total)} stadiums`;
+      return total > shown ? `${count} · Top ${shown} by capacity` : count;
+    },
     empty: (query: string, filtered: boolean) => {
       if (query === "" && !filtered) {
         return "Couldn't read any stadiums.";
