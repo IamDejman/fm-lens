@@ -59,6 +59,7 @@ import type {
   Preference,
   Tie,
   Clause,
+  CompetitionBonus,
   TieKind,
   PlayerDetails,
   PlayerFilter,
@@ -280,6 +281,11 @@ function details(player: PlayerSummary): PlayerDetails {
             ...(player.uid % 4 === 0 ? [{ index: 5, kind: 13, amount: 275_000, condition: 20 }] : []),
             ...(player.uid % 6 === 0 ? [{ index: 6, kind: 55, amount: 28_000_000, condition: null }] : []),
           ]),
+          // Some contracts pay for a competition: a league's, and now and then one whose UID names none.
+          competitionBonuses: [
+            ...(player.uid % 5 === 0 ? [competitionBonus(0, 100, Math.round(100 + next() * 900) * 1_000)] : []),
+            ...(player.uid % 10 === 0 ? [competitionBonus(1, 9_999, 250_000)] : []),
+          ],
           // A few players have reasons to be unhappy: one over, and one or two that last.
           concerns:
             next() < 0.3
@@ -1164,6 +1170,11 @@ const clauseUndo = new Map<number, Clause[]>();
 const clauseCapacity = new Map<number, number>();
 
 /** The clauses of a fixture contract: as changed through the editor, or as `generated`, numbered in order. */
+/** A fixture contract's bonus for the competition `uid`, named as the app names it from the competitions. */
+function competitionBonus(index: number, uid: number, amount: number): CompetitionBonus {
+  return { index, competitionUid: uid, competition: COMPETITIONS.find((c) => c.uid === uid)?.name ?? null, amount };
+}
+
 function clausesOf(uid: number, generated: Clause[]): Clause[] {
   const listed = generated.map((clause, index) => ({ ...clause, index }));
   if (!clauseCapacity.has(uid)) {

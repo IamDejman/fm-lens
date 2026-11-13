@@ -516,6 +516,7 @@ mod tests {
                     Clause { index: 0, kind: 0, amount: Some(150_000_000), condition: None },
                     Clause { index: 1, kind: 3, amount: None, condition: Some(10) },
                 ],
+                competition_bonuses: Vec::new(),
                 concerns: Vec::new(),
                 player_coach: false,
             }),

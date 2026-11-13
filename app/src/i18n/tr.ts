@@ -899,6 +899,7 @@ export const tr: Strings = {
     playingTimeHappiness: "Forma süresi mutluluğu",
     moodTitle: "-100 ile 100 arasında.",
     clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? "Bilinmeyen madde",
+    competitionBonus: (competition) => `${competition ?? "Bilinmeyen turnuva"} primi`,
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
         return null;
