@@ -554,8 +554,8 @@ impl Connection {
         self.session.known_build() && self.session.process.can_write() && !self.session.current_career()
     }
 
-    /// What the window learns of a connection just read again; `refrozen` as `read_again` gave it.
-    fn reload_info(&self, refrozen: Option<Refrozen>) -> ReloadInfo {
+    /// What the window learns of a connection just read again; `refrozen` and `same_game` as `take_frozen` gave them.
+    fn reload_info(&self, refrozen: Option<Refrozen>, same_game: bool) -> ReloadInfo {
         ReloadInfo {
             editable: self.session.process.can_write() && self.session.writes_allowed(),
             writable: self.session.process.can_write(),
@@ -566,6 +566,7 @@ impl Connection {
             game_date: self.session.game_date(),
             health: Health::clone(&self.session.health()),
             career: self.career.clone(),
+            same_game,
             refrozen,
         }
     }
@@ -3093,6 +3094,8 @@ struct ReloadInfo {
     health: Health,
     /// The human manager and club of the career loaded now.
     career: Option<Career>,
+    /// Whether the game read is the one read before: no save loaded and no FM restart since.
+    same_game: bool,
     /// Only when the game has loaded another save since: what was frozen in that one before and is frozen again,
     /// when there was any. What was frozen in the save before is not held in this one.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -3394,7 +3397,7 @@ fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failur
     connection.carry_log(std::mem::take(&mut old.log), same_game);
     eprintln!("FM Lens read the game again after FM moved its lists (same game: {same_game}).");
     connection.hold_frozen();
-    let info = connection.reload_info(refrozen);
+    let info = connection.reload_info(refrozen, same_game);
     *guard = Some(connection);
     drop(guard);
     if let Err(err) = app.emit(READ_AGAIN_EVENT, info) {
@@ -3433,7 +3436,7 @@ async fn reload(
     };
     // Old addresses must never be used to undo changes in another game: there they are only listed.
     connection.carry_log(log, same_game);
-    let info = connection.reload_info(refrozen);
+    let info = connection.reload_info(refrozen, same_game);
     histories.record(&connection);
     *state.0.lock()? = Some(connection);
     Ok(info)

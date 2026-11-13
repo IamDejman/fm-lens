@@ -3816,6 +3816,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         gameDate: failedChecks ? null : gameDate,
         health: mockHealth(),
         career: mockCareer(),
+        sameGame: true,
       };
       return reloaded as T;
     }
