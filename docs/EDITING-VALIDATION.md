@@ -3228,6 +3228,36 @@ world ranking; edit `women.points` in the app, read it back and undo; hold the
 edit to FM's next women's ranking date; then save, quit and reload. Repeat the
 read under Rosetta and on Windows.
 
+## Inspire on a player's profile (13 November 2026)
+
+The Mood tab's Morale and happiness heading has an Inspire button: morale to 20
+and the player's lasting reasons to be unhappy ended, in one press. It is the
+old squad button Inspire all for one player. That button was split on 7
+November into Max morale and Remove unhappiness, so the 7 November entry's
+"Inspire all" row is evidence for both of those as they were then.
+
+Inspire uses what is already there. Morale goes through `apply_edits` over the
+value the profile read; the reasons end through `remove_unhappiness`, the call
+Remove all uses (see "Unhappiness that came back after Continue" above). So the
+build and career guards, stale-value refusal, the Changes rows and Undo are the
+ones those two have. Only what is short is done: no morale edit at 20, no call
+for a player with nothing lasting. One the game refuses does not hold the other
+back. No Rust changed.
+
+Not checked in FM. No game was available: this ran in a Linux container.
+
+| Check | Result |
+|---|---|
+| `npm --prefix app run build` | Pass |
+| `npm --prefix app test` | Pass, 97 tests; `tests/inspire.test.tsx` covers what is sent, when the button waits and a refused write |
+| Browser preview, sample data (`?writable`), Kerem Yılmaz | Morale 8 to 20 and his one lasting reason gone, the button dimmed and focus on the heading. Changes: "Morale 8 → 20" and "Reasons to be unhappy 1 → 0", each with Undo |
+| Undo of both rows, same preview | Morale back to 8, the reason listed again and Inspire on again |
+| Rust checks | Not run. `fmlens-core` builds for macOS and Windows only, so its tests do not run on Linux |
+
+Still to do on a career copy, on each platform: press Inspire on an unhappy
+player, look at FM's Happiness panel and Dynamics, Continue a day, undo both
+rows from Changes, then save, quit and reload.
+
 ## Dragging numbers, scroll position and reopening (12 November 2026)
 
 Three changes to the interface, none to what is written to the game or how:
