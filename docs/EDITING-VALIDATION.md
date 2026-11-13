@@ -2952,6 +2952,63 @@ bids, interest, instalments and buy-backs, FM's own value range, a release
 clause's condition, clause kinds outside the named table, and a second
 editor's check of hidden values.
 
+## List columns, saved filters and search speed (13 November 2026)
+
+Read-only work on the lists, on top of Sorting, more filters and every
+attribute above. Nothing here was run against a game: it was written in a
+Linux container with no FM, so every check is on code and on the browser
+preview's sample data.
+
+What changed:
+
+- Players filter by several positions at once and by a current-reputation
+  range.
+- The player list shows Value and Wage. Columns, under More, chooses the
+  columns and up to eight attribute columns; Value, Wage, Reputation and an
+  attribute column sort the list. A value or wage that is not known sorts last
+  either way.
+- Staff, clubs, nations, stadiums, competitions, awards and officials keep
+  saved filters, as the player list did. A player filter saved with one
+  position still reads as that position.
+- The search index works its best-first order out once, and again after an
+  edit, in place of sorting every hit on every request. A filter's nation, club
+  or continent text is folded once per request, and a column sort compares
+  each text by its place among the others.
+
+The row's value, wage and reputation are the bytes the list already read, at
+the offsets the profile uses; the reputation is `player.current_reputation`.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core -p fmlens-mem -p fmlens-probe`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 121 core tests, 5 memory tests |
+| `cargo clippy --all-targets -- -D warnings`, `x86_64-pc-windows-gnu`: core, mem, probe and app | Pass |
+| `cargo clippy --all-targets -- -D warnings`, `aarch64-apple-darwin`: core, mem and probe | Pass |
+| `npm test` | Pass. 95 tests, 5 of them new in `tests/list-columns.test.tsx` |
+| `npm run build` | Pass |
+| Browser preview, sample data, 1280 x 860: two positions with a reputation range, Columns with two attribute columns sorted by one, and a club filter saved and shown as the one in effect | Looked right in screenshots |
+
+Not run: the app crate's own Rust tests, which do not link in that container;
+any macOS build of the app crate; the Tauri bundle; and every native check.
+Still to do on a career copy, on each platform: compare Value, Wage and a
+reputation filter with FM's screens for a few players, sort the player list by
+Value, Wage and an attribute column, and save, reload and apply a filter on
+each list.
+
+Speed, on made-up players, with the repository's `SearchIndex` built for
+release in the same container. It leaves out reading the game on Connect.
+
+| | 30,314 players, before | after | 550,000 players, before | after |
+|---|---|---|---|---|
+| Page with no search or filter | 6 ms | under 0.1 ms | 220 ms | 0.3 ms |
+| Name search | 1 ms | 0.7 ms | 15 ms | 12 ms |
+| Age, CA, position and two attribute filters | 6 ms | 0.2 ms | 237 ms | 6 ms |
+| Nation filter | 16 ms | 1.3 ms | 476 ms | 53 ms |
+| Sorted by name | 27 ms | 17 ms | 989 ms | 480 ms |
+| First search after Connect or an edit | - | 7 ms | - | 186 ms |
+
 ## Staff birth date (12 November 2026)
 
 A member of staff's birth date is editable, the human manager's too. No game
@@ -3258,60 +3315,46 @@ Still to do on a career copy, on each platform: press Inspire on an unhappy
 player, look at FM's Happiness panel and Dynamics, Continue a day, undo both
 rows from Changes, then save, quit and reload.
 
-## List columns, saved filters and search speed (13 November 2026)
+## Dragging numbers, scroll position and reopening (12 November 2026)
 
-Read-only work on the lists, on top of Sorting, more filters and every
-attribute above. Nothing here was run against a game: it was written in a
-Linux container with no FM, so every check is on code and on the browser
-preview's sample data.
+Three changes to the interface, none to what is written to the game or how:
+a number's input can be dragged sideways (`app/src/dragValue.ts`,
+`draggedText` in `app/src/editDraft.ts`), lists and profiles keep their scroll
+position, and what the window held comes back when FM Lens is opened again
+(`app/src/restore.ts`). A drag only fills the input; Apply, the guards and Undo
+are untouched. No Rust changed.
 
-What changed:
+Checked in the browser preview (`npm --prefix app run dev`, `?writable`, sample
+data, headless Chromium, 1440 by 900). This is not the native app and not a
+live game.
 
-- Players filter by several positions at once and by a current-reputation
-  range.
-- The player list shows Value and Wage. Columns, under More, chooses the
-  columns and up to eight attribute columns; Value, Wage, Reputation and an
-  attribute column sort the list. A value or wage that is not known sorts last
-  either way.
-- Staff, clubs, nations, stadiums, competitions, awards and officials keep
-  saved filters, as the player list did. A player filter saved with one
-  position still reads as that position.
-- The search index works its best-first order out once, and again after an
-  edit, in place of sorting every hit on every request. A filter's nation, club
-  or continent text is folded once per request, and a column sort compares
-  each text by its place among the others.
+- Scroll: the player list at 900 px stayed at 900 after going to Staff and
+  back, with and without a search, with a profile open, and after an Apply.
+  Before the change each of these went back to 0. A new search starts at the
+  top. An open profile at 250 px was at 250 after the same round trip.
+- Dragging: 78 of a player's 141 inputs drag (numbers only). Eccentricity 18
+  went to 14 over 40 px left, to 20 over 64 px right, and stopped at 20 and at 1
+  however far the pointer went. A click without movement changed nothing and
+  focused the input. Current ability 180 went to 173 over 30 px, showed as one
+  pending change, read "Current ability 180 → 173" in Review and applied. A
+  club's balance went 17,551,479 → 18,000,000 → 19,000,000 → 20,000,000. At
+  150% zoom in the dark theme, 36 px moved an attribute three steps.
+- Reopening: with a club open on its Squad tab, a player selected on the second
+  page at 1,200 px on the Contract tab, and "nov" in the Staff search, the
+  window was closed and a new one opened on the same storage. It came back on
+  Clubs with that club and tab, Players had the same row, page, scroll position
+  and tab, and Staff had its search. Settings did not open by itself.
+- A language or currency reload still brings the window back as before, with
+  Settings open.
 
-The row's value, wage and reputation are the bytes the list already read, at
-the offsets the profile uses; the reputation is `player.current_reputation`.
+`npm --prefix app run build` and `npm --prefix app test` passed: 8 node tests
+and 104 in vitest, 14 of them new (`app/tests/drag-value.test.tsx`,
+`app/tests/navigation-memory.test.tsx`), covering the steps of a drag, a finger
+and a date left alone, rows kept while a list reads again, another career
+starting afresh and a list that left the screen before the app closed.
 
-Checks run:
+The numbers above are from the run on top of 0.7.10. There, current ability
+follows a changed attribute by itself, whether it was typed or dragged.
 
-| Check | Result |
-|---|---|
-| `cargo fmt --all --check` | Pass |
-| `cargo test -p fmlens-core -p fmlens-mem -p fmlens-probe`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 121 core tests, 5 memory tests |
-| `cargo clippy --all-targets -- -D warnings`, `x86_64-pc-windows-gnu`: core, mem, probe and app | Pass |
-| `cargo clippy --all-targets -- -D warnings`, `aarch64-apple-darwin`: core, mem and probe | Pass |
-| `npm test` | Pass. 95 tests, 5 of them new in `tests/list-columns.test.tsx` |
-| `npm run build` | Pass |
-| Browser preview, sample data, 1280 x 860: two positions with a reputation range, Columns with two attribute columns sorted by one, and a club filter saved and shown as the one in effect | Looked right in screenshots |
-
-Not run: the app crate's own Rust tests, which do not link in that container;
-any macOS build of the app crate; the Tauri bundle; and every native check.
-Still to do on a career copy, on each platform: compare Value, Wage and a
-reputation filter with FM's screens for a few players, sort the player list by
-Value, Wage and an attribute column, and save, reload and apply a filter on
-each list.
-
-Speed, on made-up players, with the repository's `SearchIndex` built for
-release in the same container. It leaves out reading the game on Connect.
-
-| | 30,314 players, before | after | 550,000 players, before | after |
-|---|---|---|---|---|
-| Page with no search or filter | 6 ms | under 0.1 ms | 220 ms | 0.3 ms |
-| Name search | 1 ms | 0.7 ms | 15 ms | 12 ms |
-| Age, CA, position and two attribute filters | 6 ms | 0.2 ms | 237 ms | 6 ms |
-| Nation filter | 16 ms | 1.3 ms | 476 ms | 53 ms |
-| Sorted by name | 27 ms | 17 ms | 989 ms | 480 ms |
-| First search after Connect or an edit | - | 7 ms | - | 186 ms |
-
+Not run: the native macOS and Windows apps (WebKit and WebView2), a real FM
+restart or a second career, and the Rust checks.

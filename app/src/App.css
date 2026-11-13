@@ -3148,6 +3148,22 @@ input::placeholder {
   outline-offset: 1px;
 }
 
+/* A number is dragged sideways to change it (see dragValue.ts): the pointer says so until the input is typed in. */
+.edit-input.draggable:not(:focus, input:read-only) {
+  cursor: ew-resize;
+}
+
+/* While a number is dragged the pointer keeps its shape wherever it goes, and no text is selected. */
+:root:has(.edit-input.dragging),
+:root:has(.edit-input.dragging) * {
+  cursor: ew-resize !important;
+  user-select: none;
+}
+
+.edit-input.dragging::selection {
+  background: transparent;
+}
+
 /* A value other than the game's is marked with the highlighter, inside an ink frame, until it is applied. Red is kept
    for a value that cannot be applied (.invalid). */
 .edit-input.changed,

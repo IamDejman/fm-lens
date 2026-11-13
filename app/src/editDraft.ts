@@ -150,6 +150,8 @@ export interface InputState {
   status: "same" | "changed" | "invalid";
   /** The value the game showed when editing began, as shown. */
   was: number;
+  /** What the input stands for now, as shown: the value typed, or the game's while the text stands for none. */
+  value: number;
   /** Why it is invalid. */
   message: string | null;
   /** An estimate of FM’s rounded weekly display; never changes the amount to write. */
@@ -199,6 +201,7 @@ export function inputState(
     range,
     status: verdict.status === "invalid" || refusal !== undefined ? "invalid" : verdict.status,
     was,
+    value: typedValue ?? was,
     message: verdict.status === "invalid" ? invalidMessage(field, range) : (refusal ?? null),
     notice: field.key === WAGE && verdict.status === "changed" && typedValue !== null
       && fmShownWage(typedValue) !== typedValue
@@ -212,6 +215,62 @@ export function inputState(
 function steppedWage(field: EditField, from: number, range: { min: number; max: number }): InputState["stepped"] {
   const within = (wage: number) => inputText(field, Math.min(range.max, Math.max(range.min, wage)));
   return { up: within(nextFmWage(from, true)), down: within(nextFmWage(from, false)) };
+}
+
+/** The widest range a drag goes through one value at a time: an attribute, an ability, a percentage, a year. */
+const FINE_SPAN = 400;
+
+/**
+ * How many pixels of a drag make one step in the input of `field`: fewer the more values it takes, so that an
+ * attribute is set with care and an ability does not take the whole window.
+ */
+export function dragPace(field: EditField): number {
+  const { min, max } = shownRange(field);
+  return max - min > FINE_SPAN ? 4 : Math.min(8, Math.max(3, Math.round(160 / Math.max(1, max - min))));
+}
+
+/**
+ * How far one step of a drag takes the value `shown`: 1 over a range it goes through one by one; over a wide one,
+ * such as an amount of money, one of its second digit, so that £74,000,000 moves by £1,000,000 and a reputation of
+ * 8,200 by 100. A float is in hundredths, like its range.
+ */
+function dragStep(shown: number, range: { min: number; max: number }): number {
+  if (range.max - range.min <= FINE_SPAN) {
+    return 1;
+  }
+  const digits = String(Math.trunc(Math.max(Math.abs(shown), 100))).length;
+  return 10 ** (digits - 2);
+}
+
+/**
+ * What the input of `field` holds once it was dragged `steps` steps up (down, for a negative count) from the value
+ * `from`, as shown: each step goes to the next whole step above or below, a wage to the next one FM shows as it is
+ * (see wage.ts), and none past what the input takes. The blank, such as no squad number, is on no scale: a drag up
+ * from it begins at the least the input takes, and a drag down at the most. No steps is the value the drag began at.
+ */
+export function draggedText(field: EditField, from: number, steps: number): string {
+  if (steps === 0) {
+    return inputText(field, from);
+  }
+  const range = shownRange(field);
+  const within = (value: number) => Math.min(range.max, Math.max(range.min, value));
+  const up = steps > 0;
+  let value = from === field.blank ? (up ? range.min - 1 : range.max + 1) : within(from);
+  for (let left = Math.abs(steps); left > 0; left--) {
+    const step = dragStep(value, range);
+    const next = within(
+      field.key === WAGE
+        ? nextFmWage(value, up)
+        : up
+          ? Math.floor(value / step) * step + step
+          : Math.ceil(value / step) * step - step,
+    );
+    if (next === value) {
+      break;
+    }
+    value = next;
+  }
+  return inputText(field, value);
 }
 
 /** A change Apply would write. */
