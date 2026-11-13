@@ -8,8 +8,10 @@ import { MassEditButton } from "./MassEditDialog";
 import { ClubLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
-import type { ClubFilter, ClubSort, ClubSummary } from "./types";
+import type { ClubFilter, ClubSort, ClubSummary, ListOrder } from "./types";
 
 const columns = clubListText.columns;
 const filters = clubListText.filters;
@@ -22,6 +24,19 @@ const SORT: SortStart<ClubSort> = {
   start: { by: "reputation", ascending: false },
   firstAscending: ["name", "nation", "founded"],
 };
+
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = {
+  kind: "all",
+  minReputation: "",
+  maxReputation: "",
+  foundedFrom: "",
+  foundedTo: "",
+  nation: "",
+};
+type ClubFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<ClubFields, ClubSort>("clubs", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
 
 /** Which clubs the list shows. */
 type ClubKind = "all" | "men" | "women";
@@ -54,6 +69,17 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
   const [nation, setNation] = useState(() => restored("clubNation", readText));
   useSnapshot("clubNation", () => nation);
   const sort = useListSort("clubOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: ClubFields = { kind, minReputation, maxReputation, foundedFrom, foundedTo, nation };
+  const applySaved = (saved: ClubFields, order: ListOrder<ClubSort> | null) => {
+    setKind(readKind(saved.kind));
+    setMinReputation(saved.minReputation);
+    setMaxReputation(saved.maxReputation);
+    setFoundedFrom(saved.foundedFrom);
+    setFoundedTo(saved.foundedTo);
+    setNation(saved.nation);
+    sort.set(order);
+  };
   useSnapshot("clubKind", () => kind);
   useSnapshot("clubMinRep", () => minReputation);
   useSnapshot("clubMaxRep", () => maxReputation);
@@ -145,7 +171,19 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
       summary={clubListText.summary}
       empty={(query) => clubListText.empty(query, filter !== undefined)}
       filterBar={
-        <FilterBar chips={chips} onClear={clearAll}>
+        <FilterBar
+          chips={chips}
+          onClear={clearAll}
+          actions={
+            <SavedFilterControls
+              kind={SAVED}
+              fields={fields}
+              order={sort.order}
+              filtered={chips.length > 0}
+              onApply={applySaved}
+            />
+          }
+        >
           <label className="filter-field">
             <span>{filters.kind}</span>
             <select aria-label={filters.kind} value={kind} onChange={(e) => setKind(e.currentTarget.value as ClubKind)}>

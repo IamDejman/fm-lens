@@ -479,6 +479,7 @@ mod tests {
             height_cm: 178,
             wage: Some(300_000),
             transfer_value: None,
+            current_reputation: 7600,
             personality: [10; 8],
             traits: 0,
             address: 0,

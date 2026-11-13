@@ -28,7 +28,7 @@ static STAFF_ATTRIBUTES: LazyLock<HashMap<&'static str, usize>> =
     LazyLock::new(|| attribute_keys(STAFF_ATTRIBUTE_GROUPS).enumerate().map(|(i, key)| (key, i)).collect());
 
 /// Where the attribute `key` sits in [`PlayerSummary::attributes`].
-pub(crate) fn player_attribute(key: &str) -> Option<usize> {
+pub fn player_attribute(key: &str) -> Option<usize> {
     PLAYER_ATTRIBUTES.get(key).copied()
 }
 
@@ -76,8 +76,9 @@ fn within<T: PartialOrd + Copy>(value: Option<T>, min: Option<T>, max: Option<T>
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct PlayerFilter {
-    /// A [`POSITIONS`] key; matches players rated [`PLAYABLE_RATING`] or more there.
-    pub position: Option<String>,
+    /// [`POSITIONS`] keys; matches players rated [`PLAYABLE_RATING`] or more in any of them. A key that is no
+    /// position matches no one.
+    pub positions: Vec<String>,
     pub min_age: Option<u16>,
     pub max_age: Option<u16>,
     pub min_current_ability: Option<u16>,
@@ -94,10 +95,13 @@ pub struct PlayerFilter {
     /// Pounds, the stored base valuation. A player the game has not valued keeps to no bound.
     pub min_value: Option<i32>,
     pub max_value: Option<i32>,
+    /// 0–10000, of his current reputation.
+    pub min_reputation: Option<u16>,
+    pub max_reputation: Option<u16>,
     /// Part of the nation's name, accents and case ignored.
-    pub nation: Option<String>,
+    pub nation: Needle,
     /// Part of the club's name, accents and case ignored.
-    pub club: Option<String>,
+    pub club: Needle,
     /// Only players of the club with this UID, e.g. those a player can swap with.
     pub club_uid: Option<u32>,
     /// Only players without a club.
@@ -117,12 +121,10 @@ pub struct PlayerFilter {
 
 impl PlayerFilter {
     pub fn matches(&self, p: &PlayerSummary) -> bool {
-        let position = match self.position.as_deref() {
-            Some(key) => {
+        let position = self.positions.is_empty()
+            || self.positions.iter().any(|key| {
                 POSITIONS.iter().position(|&k| k == key).is_some_and(|i| p.position_ratings[i] >= PLAYABLE_RATING)
-            }
-            None => true,
-        };
+            });
         position
             && self.min_age.is_none_or(|min| p.age.is_some_and(|age| age >= min))
             && self.max_age.is_none_or(|max| p.age.is_some_and(|age| age <= max))
@@ -133,8 +135,9 @@ impl PlayerFilter {
             && within(Some(p.height_cm).filter(|&cm| cm > 0), self.min_height, self.max_height)
             && within(p.wage, self.min_wage, self.max_wage)
             && within(p.transfer_value, self.min_value, self.max_value)
-            && contains(p.nation.as_deref(), self.nation.as_deref())
-            && contains(p.club.as_deref(), self.club.as_deref())
+            && within(Some(p.current_reputation), self.min_reputation, self.max_reputation)
+            && self.nation.found_in(p.nation.as_deref())
+            && self.club.found_in(p.club.as_deref())
             && self.club_uid.is_none_or(|uid| p.club_uid == Some(uid))
             && (!self.free_agents || p.club.is_none())
             && self.contract_expires_by.is_none_or(|by| p.contract_expires.is_some_and(|end| end <= by))
@@ -148,11 +151,49 @@ impl PlayerFilter {
     }
 }
 
-/// Whether `text` contains `needle`, ignoring accents and case; an empty needle matches anything.
-fn contains(text: Option<&str>, needle: Option<&str>) -> bool {
-    match needle.map(str::trim).filter(|n| !n.is_empty()) {
-        Some(needle) => text.is_some_and(|text| fold(text).contains(&fold(needle))),
-        None => true,
+/// Part of a name a filter looks for, accents and case ignored: folded once, however many rows it is looked for in.
+/// An empty one is found in anything.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Needle(Option<String>);
+
+impl Needle {
+    pub fn new(text: &str) -> Self {
+        let text = text.trim();
+        Self((!text.is_empty()).then(|| fold(text)))
+    }
+
+    /// Whether `text` contains it; a text that is not known contains none but the empty one.
+    fn found_in(&self, text: Option<&str>) -> bool {
+        let Some(needle) = &self.0 else {
+            return true;
+        };
+        text.is_some_and(|text| {
+            if text.is_ascii() {
+                // Folding plain letters only lowers them: most names are compared as they are, with nothing copied.
+                let (text, needle) = (text.as_bytes(), needle.as_bytes());
+                needle.is_ascii() && text.windows(needle.len()).any(|part| part.eq_ignore_ascii_case(needle))
+            } else {
+                fold(text).contains(needle.as_str())
+            }
+        })
+    }
+}
+
+impl From<&str> for Needle {
+    fn from(text: &str) -> Self {
+        Self::new(text)
+    }
+}
+
+impl From<Option<String>> for Needle {
+    fn from(text: Option<String>) -> Self {
+        text.map_or_else(Self::default, |text| Self::new(&text))
+    }
+}
+
+impl<'de> Deserialize<'de> for Needle {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Ok(Option::<String>::deserialize(deserializer)?.into())
     }
 }
 
@@ -181,35 +222,39 @@ pub struct Order<S> {
 /// Sorts `rows` by `order`; unknown values go last either way. Text compares without accents or case. The sort is
 /// stable: equal rows keep their order, which after a search is best first.
 pub fn sort_rows<S: SortColumn>(rows: &mut [&S::Row], order: Order<S>) {
-    enum Folded {
-        Text(String),
-        Number(i64),
-        Unknown,
+    let keys: Vec<SortKey<'_>> = rows.iter().map(|&row| order.by.key(row)).collect();
+    // Each distinct text is folded once and stands for its place among the others, so the rows compare as numbers.
+    let mut texts: Vec<&str> =
+        keys.iter().filter_map(|key| if let SortKey::Text(text) = key { *text } else { None }).collect();
+    texts.sort_unstable();
+    texts.dedup();
+    let mut folded: Vec<(String, &str)> = texts.into_iter().map(|text| (fold(text), text)).collect();
+    folded.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    let mut places: HashMap<&str, i64> = HashMap::with_capacity(folded.len());
+    let mut place = 0;
+    for (i, (text, original)) in folded.iter().enumerate() {
+        if i > 0 && folded[i - 1].0 != *text {
+            place += 1;
+        }
+        places.insert(original, place);
     }
-    // Fold each distinct text once rather than on every comparison.
-    let mut folded: HashMap<&str, String> = HashMap::new();
-    let mut keyed: Vec<(Folded, &S::Row)> = rows
+    let mut keyed: Vec<(Option<i64>, &S::Row)> = rows
         .iter()
-        .map(|&row| {
-            let key = match order.by.key(row) {
-                SortKey::Text(Some(text)) => Folded::Text(folded.entry(text).or_insert_with(|| fold(text)).clone()),
-                SortKey::Number(Some(number)) => Folded::Number(number),
-                SortKey::Text(None) | SortKey::Number(None) => Folded::Unknown,
+        .zip(keys)
+        .map(|(&row, key)| {
+            let value = match key {
+                SortKey::Number(number) => number,
+                SortKey::Text(text) => text.and_then(|text| places.get(text).copied()),
             };
-            (key, row)
+            (value, row)
         })
         .collect();
-    keyed.sort_by(|(a, _), (b, _)| {
-        let known = match (a, b) {
-            (Folded::Text(a), Folded::Text(b)) => a.cmp(b),
-            (Folded::Number(a), Folded::Number(b)) => a.cmp(b),
-            (Folded::Unknown, Folded::Unknown) => return Ordering::Equal,
-            (Folded::Unknown, _) => return Ordering::Greater,
-            (_, Folded::Unknown) => return Ordering::Less,
-            // A column is all text or all numbers.
-            (Folded::Text(_), Folded::Number(_)) | (Folded::Number(_), Folded::Text(_)) => Ordering::Equal,
-        };
-        if order.ascending { known } else { known.reverse() }
+    keyed.sort_by(|(a, _), (b, _)| match (a, b) {
+        (Some(a), Some(b)) if order.ascending => a.cmp(b),
+        (Some(a), Some(b)) => b.cmp(a),
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => Ordering::Equal,
     });
     for (slot, (_, row)) in rows.iter_mut().zip(keyed) {
         *slot = row;
@@ -226,9 +271,9 @@ fn known_number(value: Option<impl Into<i64>>) -> SortKey<'static> {
     SortKey::Number(value.map(Into::into))
 }
 
-/// Columns the player list can be sorted by.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// Columns the player list can be sorted by. On the wire each is its name in camel case; an attribute is
+/// "attribute.finishing".
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum PlayerSort {
     #[default]
     CurrentAbility,
@@ -238,6 +283,37 @@ pub enum PlayerSort {
     Nation,
     Club,
     ContractExpires,
+    Value,
+    Wage,
+    Reputation,
+    /// An attribute, by its place in [`PlayerSummary::attributes`].
+    Attribute(usize),
+}
+
+impl PlayerSort {
+    /// The sort `name` stands for on the wire.
+    pub fn named(name: &str) -> Option<Self> {
+        Some(match name {
+            "currentAbility" => Self::CurrentAbility,
+            "potentialAbility" => Self::PotentialAbility,
+            "age" => Self::Age,
+            "name" => Self::Name,
+            "nation" => Self::Nation,
+            "club" => Self::Club,
+            "contractExpires" => Self::ContractExpires,
+            "value" => Self::Value,
+            "wage" => Self::Wage,
+            "reputation" => Self::Reputation,
+            other => Self::Attribute(other.strip_prefix("attribute.").and_then(player_attribute)?),
+        })
+    }
+}
+
+impl<'de> Deserialize<'de> for PlayerSort {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let name = String::deserialize(deserializer)?;
+        Self::named(&name).ok_or_else(|| serde::de::Error::custom(format!("unknown player sort {name}")))
+    }
 }
 
 impl SortColumn for PlayerSort {
@@ -252,6 +328,11 @@ impl SortColumn for PlayerSort {
             Self::Nation => SortKey::Text(p.nation.as_deref()),
             Self::Club => SortKey::Text(p.club.as_deref()),
             Self::ContractExpires => known_number(p.contract_expires.map(FmDate::to_number)),
+            Self::Value => known_number(p.transfer_value),
+            Self::Wage => known_number(p.wage),
+            Self::Reputation => number(p.current_reputation),
+            // One the layout does not place (0) is not known.
+            Self::Attribute(i) => known_number(p.attributes.get(i).copied().filter(|&value| value > 0)),
         }
     }
 }
@@ -452,9 +533,9 @@ pub struct StaffFilter {
     /// A potential the game keeps as a range (a negative number) keeps to no upper bound.
     pub max_potential_ability: Option<i16>,
     /// Part of the nation's name, accents and case ignored.
-    pub nation: Option<String>,
+    pub nation: Needle,
     /// Part of the employer's name, accents and case ignored.
-    pub club: Option<String>,
+    pub club: Needle,
     /// Bounds on attributes, every one of which must hold.
     pub attributes: Vec<AttributeBound>,
 }
@@ -471,9 +552,9 @@ impl StaffFilter {
             && self.max_current_ability.is_none_or(|max| s.current_ability <= max)
             && self.min_potential_ability.is_none_or(|min| s.potential_ability >= min)
             && self.max_potential_ability.is_none_or(|max| s.potential_ability > 0 && s.potential_ability <= max)
-            && contains(s.nation.as_deref(), self.nation.as_deref())
-            && (contains(s.club.as_deref(), self.club.as_deref())
-                || s.national.as_ref().is_some_and(|job| contains(Some(&job.nation), self.club.as_deref())))
+            && self.nation.found_in(s.nation.as_deref())
+            && (self.club.found_in(s.club.as_deref())
+                || s.national.as_ref().is_some_and(|job| self.club.found_in(Some(&job.nation))))
             && self.attributes.iter().all(|bound| bound.holds(&STAFF_ATTRIBUTES, &s.attributes))
     }
 }
@@ -491,7 +572,7 @@ pub struct ClubFilter {
     pub founded_from: Option<u16>,
     pub founded_to: Option<u16>,
     /// Part of the name of the nation the club is from, accents and case ignored.
-    pub nation: Option<String>,
+    pub nation: Needle,
 }
 
 impl ClubFilter {
@@ -501,7 +582,7 @@ impl ClubFilter {
             && self.max_reputation.is_none_or(|max| c.reputation.is_some_and(|reputation| reputation <= max))
             && self.founded_from.is_none_or(|from| c.founded.is_some_and(|year| year >= from))
             && self.founded_to.is_none_or(|to| c.founded.is_some_and(|year| year <= to))
-            && contains(c.nation.as_deref(), self.nation.as_deref())
+            && self.nation.found_in(c.nation.as_deref())
     }
 }
 
@@ -512,9 +593,9 @@ pub struct CompetitionFilter {
     /// `Some(true)` for women's competitions only, `Some(false)` for men's only.
     pub women: Option<bool>,
     /// Part of the nation's name, accents and case ignored. An international competition has no nation.
-    pub nation: Option<String>,
+    pub nation: Needle,
     /// Part of the continent's name, accents and case ignored.
-    pub continent: Option<String>,
+    pub continent: Needle,
     /// 0–200.
     pub min_reputation: Option<u16>,
     pub max_reputation: Option<u16>,
@@ -523,8 +604,8 @@ pub struct CompetitionFilter {
 impl CompetitionFilter {
     pub fn matches(&self, c: &CompetitionSummary) -> bool {
         self.women.is_none_or(|women| c.women == women)
-            && contains(c.nation.as_deref(), self.nation.as_deref())
-            && contains(c.continent.as_deref(), self.continent.as_deref())
+            && self.nation.found_in(c.nation.as_deref())
+            && self.continent.found_in(c.continent.as_deref())
             && self.min_reputation.is_none_or(|min| c.reputation >= min)
             && self.max_reputation.is_none_or(|max| c.reputation <= max)
     }
@@ -537,7 +618,7 @@ pub struct AwardFilter {
     /// `Some(true)` for women's awards only, `Some(false)` for men's only.
     pub women: Option<bool>,
     /// Part of the nation's name, accents and case ignored.
-    pub nation: Option<String>,
+    pub nation: Needle,
     /// FM's code for who gets it (see [`AwardSummary::recipients`]).
     pub recipients: Option<u8>,
     /// 0–20.
@@ -548,7 +629,7 @@ pub struct AwardFilter {
 impl AwardFilter {
     pub fn matches(&self, a: &AwardSummary) -> bool {
         self.women.is_none_or(|women| a.women == women)
-            && contains(a.nation.as_deref(), self.nation.as_deref())
+            && self.nation.found_in(a.nation.as_deref())
             && self.recipients.is_none_or(|code| a.recipients == code)
             && self.min_prestige.is_none_or(|min| a.prestige >= min)
             && self.max_prestige.is_none_or(|max| a.prestige <= max)
@@ -569,7 +650,7 @@ pub struct OfficialFilter {
     pub min_reputation: Option<u16>,
     pub max_reputation: Option<u16>,
     /// Part of the nation's name, accents and case ignored.
-    pub nation: Option<String>,
+    pub nation: Needle,
 }
 
 impl OfficialFilter {
@@ -582,7 +663,7 @@ impl OfficialFilter {
             && self.max_potential_ability.is_none_or(|max| o.potential_ability <= max)
             && self.min_reputation.is_none_or(|min| o.reputation >= min)
             && self.max_reputation.is_none_or(|max| o.reputation <= max)
-            && contains(o.nation.as_deref(), self.nation.as_deref())
+            && self.nation.found_in(o.nation.as_deref())
     }
 }
 
@@ -591,12 +672,12 @@ impl OfficialFilter {
 #[serde(rename_all = "camelCase", default)]
 pub struct NationFilter {
     /// Part of the continent's name, accents and case ignored. A nation whose continent was not read matches none.
-    pub continent: Option<String>,
+    pub continent: Needle,
 }
 
 impl NationFilter {
     pub fn matches(&self, n: &NationSummary) -> bool {
-        contains(n.continent.as_deref(), self.continent.as_deref())
+        self.continent.found_in(n.continent.as_deref())
     }
 }
 
@@ -629,6 +710,7 @@ mod tests {
             height_cm: 180,
             wage: Some(50_000),
             transfer_value: Some(20_000_000),
+            current_reputation: 7000,
             personality: [10; 8],
             traits: 0,
             address: 0,
@@ -667,21 +749,68 @@ mod tests {
     fn filters_combine() {
         let striker = player("Arda", Some(19), 140, Some("Fenerbahçe"), 18);
         let filter = PlayerFilter {
-            position: Some("st".to_owned()),
+            positions: vec!["gk".to_owned(), "st".to_owned()],
             max_age: Some(21),
             min_current_ability: Some(120),
-            nation: Some("turkiye".to_owned()),
-            club: Some("fenerbahce".to_owned()),
+            nation: "turkiye".into(),
+            club: "fenerbahce".into(),
             contract_expires_by: Some(FmDate { year: 2027, month: 12, day: 31 }),
             ..PlayerFilter::default()
         };
         assert!(filter.matches(&striker));
-        assert!(!PlayerFilter { position: Some("gk".to_owned()), ..PlayerFilter::default() }.matches(&striker));
+        assert!(!PlayerFilter { positions: vec!["gk".to_owned()], ..PlayerFilter::default() }.matches(&striker));
         assert!(!PlayerFilter { free_agents: true, ..PlayerFilter::default() }.matches(&striker));
         assert!(!PlayerFilter { min_age: Some(20), ..PlayerFilter::default() }.matches(&striker));
         let no_age = player("Unknown", None, 100, None, 1);
         assert!(!PlayerFilter { max_age: Some(30), ..PlayerFilter::default() }.matches(&no_age));
         assert!(PlayerFilter { free_agents: true, ..PlayerFilter::default() }.matches(&no_age));
+    }
+
+    #[test]
+    fn a_name_is_looked_for_without_accents_or_case() {
+        let found = |needle: &str, text: &str| Needle::new(needle).found_in(Some(text));
+        // Plain names, compared as they are, and names with accents, folded.
+        assert!(found("ARSE", "Arsenal") && found(" nal ", "Arsenal") && !found("arsenic", "Arsenal"));
+        assert!(found("Türk", "Turkiye") && found("turk", "Türkiye") && found("BAHCE", "Fenerbahçe"));
+        // A letter that folding leaves as it is has no place in a plain name; one longer than the name neither.
+        assert!(found("é", "Arsenal") && !found("ж", "Arsenal") && !found("arsenal fc", "Arsenal"));
+        // An empty one is found in anything, a name that is not known included; any other in none.
+        assert!(Needle::new("  ").found_in(None) && Needle::default().found_in(None));
+        assert!(!Needle::new("a").found_in(None));
+        let wire: PlayerFilter = serde_json::from_str(r#"{"nation":" Türk ","club":null}"#).expect("wire filter");
+        assert_eq!((wire.nation, wire.club), (Needle::new("turk"), Needle::default()));
+    }
+
+    #[test]
+    fn several_positions_reputation_and_the_new_sorts() {
+        let striker = player("Arda", Some(19), 140, Some("Fenerbahçe"), 18);
+        // A player who can play any of the positions matches; a key that is no position matches no one.
+        assert!(
+            PlayerFilter { positions: vec!["gk".to_owned(), "st".to_owned()], ..PlayerFilter::default() }
+                .matches(&striker)
+        );
+        assert!(!PlayerFilter { positions: vec!["cf".to_owned()], ..PlayerFilter::default() }.matches(&striker));
+        assert!(PlayerFilter { min_reputation: Some(7000), ..PlayerFilter::default() }.matches(&striker));
+        assert!(!PlayerFilter { max_reputation: Some(6999), ..PlayerFilter::default() }.matches(&striker));
+
+        let mut a = player("A", Some(30), 100, Some("X"), 1);
+        let mut b = player("B", Some(30), 120, None, 1);
+        let c = player("C", Some(30), 110, Some("Y"), 1);
+        (a.transfer_value, b.transfer_value, b.wage) = (Some(5), None, None);
+        a.attributes[PLAYER_ATTRIBUTES["finishing"]] = 18;
+        b.attributes[PLAYER_ATTRIBUTES["finishing"]] = 0;
+        let mut list = vec![&a, &b, &c];
+        let names = |list: &[&PlayerSummary]| list.iter().map(|p| p.name.clone()).collect::<String>();
+        sort_players(&mut list, PlayerOrder { by: PlayerSort::Value, ascending: false });
+        assert_eq!(names(&list), "CAB");
+        // No contract, no wage: last either way.
+        sort_players(&mut list, PlayerOrder { by: PlayerSort::Wage, ascending: true });
+        assert_eq!(names(&list)[2..], *"B");
+        let finishing: PlayerOrder = serde_json::from_str(r#"{"by":"attribute.finishing","ascending":false}"#).unwrap();
+        sort_players(&mut list, finishing);
+        assert_eq!(names(&list), "ACB");
+        assert!(serde_json::from_str::<PlayerOrder>(r#"{"by":"attribute.tactical"}"#).is_err());
+        assert_eq!(serde_json::from_str::<PlayerOrder>(r#"{"by":"wage"}"#).unwrap().by, PlayerSort::Wage);
     }
 
     #[test]
@@ -892,8 +1021,8 @@ mod tests {
             max_age: Some(45),
             min_current_ability: Some(120),
             min_potential_ability: Some(145),
-            nation: Some("turkiye".to_owned()),
-            club: Some("fenerbahce".to_owned()),
+            nation: "turkiye".into(),
+            club: "fenerbahce".into(),
             job: Some(2),
             ..StaffFilter::default()
         };
@@ -903,7 +1032,7 @@ mod tests {
         let unknown = staff(None, 100, None, None, None);
         assert!(!StaffFilter { min_age: Some(20), ..StaffFilter::default() }.matches(&unknown));
         assert!(StaffFilter { unemployed: true, ..StaffFilter::default() }.matches(&unknown));
-        assert!(!StaffFilter { nation: Some("spain".to_owned()), ..StaffFilter::default() }.matches(&unknown));
+        assert!(!StaffFilter { nation: "spain".into(), ..StaffFilter::default() }.matches(&unknown));
     }
 
     #[test]
@@ -921,8 +1050,8 @@ mod tests {
         assert!(StaffFilter { job: Some(MANAGER_JOB), ..StaffFilter::default() }.matches(&national));
         assert!(!StaffFilter { job: Some(2), ..StaffFilter::default() }.matches(&national));
         // The team is the employer the club filter searches.
-        assert!(StaffFilter { club: Some("turkiye".to_owned()), ..StaffFilter::default() }.matches(&national));
-        assert!(!StaffFilter { club: Some("italy".to_owned()), ..StaffFilter::default() }.matches(&national));
+        assert!(StaffFilter { club: "turkiye".into(), ..StaffFilter::default() }.matches(&national));
+        assert!(!StaffFilter { club: "italy".into(), ..StaffFilter::default() }.matches(&national));
     }
 
     #[test]
@@ -940,7 +1069,7 @@ mod tests {
         assert!(StaffFilter { unemployed: true, ..humans.clone() }.matches(&unemployed));
         assert!(!StaffFilter { unemployed: true, ..humans.clone() }.matches(&human));
         // Alongside the other filters.
-        let at = |club: &str| StaffFilter { club: Some(club.to_owned()), ..humans.clone() };
+        let at = |club: &str| StaffFilter { club: club.into(), ..humans.clone() };
         assert!(at("arsenal").matches(&human) && !at("real").matches(&ai) && !at("real").matches(&human));
         assert!(!StaffFilter { min_current_ability: Some(100), ..humans.clone() }.matches(&human));
         assert!(StaffFilter { job: Some(16), ..humans.clone() }.matches(&human));
@@ -971,13 +1100,13 @@ mod tests {
             max_reputation: Some(9000),
             founded_from: Some(1880),
             founded_to: Some(1900),
-            nation: Some("turkiye".to_owned()),
+            nation: "turkiye".into(),
         };
         assert!(filter.matches(&mens));
-        assert!(!ClubFilter { nation: Some("spain".to_owned()), ..ClubFilter::default() }.matches(&mens));
+        assert!(!ClubFilter { nation: "spain".into(), ..ClubFilter::default() }.matches(&mens));
         // A club whose nation was not read matches no nation.
         let nowhere = ClubSummary { nation: None, ..mens.clone() };
-        assert!(!ClubFilter { nation: Some("turkiye".to_owned()), ..ClubFilter::default() }.matches(&nowhere));
+        assert!(!ClubFilter { nation: "turkiye".into(), ..ClubFilter::default() }.matches(&nowhere));
         assert!(ClubFilter::default().matches(&nowhere));
         assert!(!ClubFilter { women: Some(true), ..ClubFilter::default() }.matches(&mens));
         assert!(!ClubFilter { max_reputation: Some(1000), ..ClubFilter::default() }.matches(&mens));
@@ -1004,8 +1133,8 @@ mod tests {
         let cup = CompetitionSummary { nation: None, continent: Some("Asia".to_owned()), ..league.clone() };
         let filter = CompetitionFilter {
             women: Some(false),
-            nation: Some("turkiye".to_owned()),
-            continent: Some("eur".to_owned()),
+            nation: "turkiye".into(),
+            continent: "eur".into(),
             min_reputation: Some(100),
             max_reputation: Some(150),
         };
@@ -1032,7 +1161,7 @@ mod tests {
         };
         let filter = AwardFilter {
             women: Some(true),
-            nation: Some("espana".to_owned()),
+            nation: "espana".into(),
             recipients: Some(1),
             min_prestige: Some(10),
             max_prestige: Some(12),
@@ -1063,7 +1192,7 @@ mod tests {
             max_potential_ability: Some(170),
             min_reputation: Some(5000),
             max_reputation: Some(6000),
-            nation: Some("ital".to_owned()),
+            nation: "ital".into(),
         };
         assert!(filter.matches(&referee));
         assert!(!OfficialFilter { max_current_ability: Some(149), ..OfficialFilter::default() }.matches(&referee));
@@ -1077,10 +1206,10 @@ mod tests {
 
         let nation =
             NationSummary { uid: 4, nation_uid: None, name: "Japan".to_owned(), continent: Some("Asia".to_owned()) };
-        assert!(NationFilter { continent: Some("asia".to_owned()) }.matches(&nation));
-        assert!(!NationFilter { continent: Some("europe".to_owned()) }.matches(&nation));
+        assert!(NationFilter { continent: "asia".into() }.matches(&nation));
+        assert!(!NationFilter { continent: "europe".into() }.matches(&nation));
         let unread = NationSummary { continent: None, ..nation.clone() };
-        assert!(!NationFilter { continent: Some("asia".to_owned()) }.matches(&unread));
+        assert!(!NationFilter { continent: "asia".into() }.matches(&unread));
         assert!(NationFilter::default().matches(&unread));
     }
 }

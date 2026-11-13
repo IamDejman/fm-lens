@@ -55,10 +55,12 @@ pub struct PlayerSummary {
     /// traits as the game's mask of them.
     #[serde(skip)]
     pub height_cm: u16,
-    #[serde(skip)]
     pub wage: Option<i32>,
-    #[serde(skip)]
+    /// "value" in a list row: the profile has its own `transfer_value` beside the row's fields.
+    #[serde(rename = "value")]
     pub transfer_value: Option<i32>,
+    /// His current reputation, 0–10000, for the list's column and filter.
+    pub current_reputation: u16,
     #[serde(skip)]
     pub personality: [u8; 8],
     #[serde(skip)]
@@ -201,6 +203,7 @@ pub fn read_players(
             height_cm: u16_at(p.height),
             wage,
             transfer_value: p.transfer_value.and_then(|offset| transfer_value(u32_at(offset) as i32, team != 0)),
+            current_reputation: u16_at(p.current_reputation),
             personality,
             traits: u64_at(p.traits),
             address: object,
