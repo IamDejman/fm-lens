@@ -30,6 +30,30 @@ Checks before shipping: macOS ARM64, Intel under Rosetta and Windows; full
 screen and windowed FM; the card never steals focus or a click from FM; it
 hides at FM's main menu and when another save loads.
 
+### What the live trace found (13 November 2026, Windows)
+
+Steam build 26577676, read-only probe. FM's own hover card was raised for David
+Raya (UID 29111433) and then for Illan Meslier (49040115) on Arsenal's squad
+screen, and every word in memory pointing into each player's object was listed
+before, during and after each hover (`refs --span 0x400`).
+
+- Raya had 158 references with no card, 158 with his card up and 122 once the
+  pointer moved to Meslier; Meslier went from 41 to 80. The references that
+  switched follow the screen's row and card widgets, which are rebuilt on each
+  hover, not one slot that is reused.
+- The one fixed slot that followed the card, an entry at
+  `game_plugin.dll+0x581ed40` (index 2 of 3,597), belongs to
+  `PLAYER_ABILITY_CHANGE_ADVICE_SUGGESTION` (backroom advice on player
+  development), not to the card.
+- The card is drawn by the game's Unity layer, so the person it shows is most
+  likely held in managed objects rather than in `game_plugin`'s native memory
+  (not proven).
+
+Result: no stable native read gives the hovered player, so the card is not
+built. Finding it needs a walk of the IL2CPP object graph from a known root
+(the tooltip or info-button controller) on each platform, then the checks
+above.
+
 ## Top players by division
 
 Built for Windows; established in the running game on Steam build 26577676

@@ -11,8 +11,8 @@ Conventions: TM = [game_plugin+0x56a49f8] (TRANSFER_MANAGER), P = player object,
 | Where is an agreed club-to-club future transfer stored? | Same two places as FM Lens' own free-agent signing: offer in TM+0x20 vector (status 0x13), dated record in TM+0x50 vector. Same registration function 0x2d91328 | high |
 | Is FM's own cancel the pair FM Lens uses? | Yes. The server handler of PLAYER_CANCEL_FUTURE_TRANSFER runs 0x238bce0, whose loop is `cancel_offer` (0x2D180B4) then `drop_dated_transfer` (0x1827808) per pending offer, exactly as `cancel_signing` | high |
 | Does FM Lens need new calls? | No new function. Needs reader fixes (person ref stub, lazy from-team) and a class check, see section 5 | high |
-| Instalments | TM+0xd8 vector of 0x28-byte records, created on the completion day, paid on the 1st of each month | high (layout), medium (field meaning of +0x10 and +0x14) |
-| Buy-back | PLAYER_BUY_BACK_INFO (0x28 bytes) in the BUYING club's list at [club+0xb0], created on completion | medium |
+| Instalments | TM+0xd8 vector (TM+0xD0 on Windows) of 0x28-byte records, created on the completion day, paid on the 1st of each month | high: matched with FM on Windows (section 8) |
+| Buy-back | PLAYER_BUY_BACK_INFO (0x28 bytes) in the BUYING club's list at [club+0xb0], created on completion | medium: record read on Windows, not compared with an FM screen (section 8) |
 | Extra payments (EXTRA_TRANSFER_PAYMENT_INFO) | class and factory found, no creation site traced | low |
 
 ## 1. Storage of an agreed future transfer
@@ -194,8 +194,8 @@ TRANSFER_INFO (db class N2db13TRANSFER_INFO, many subclasses, factory 0x17fb938 
 2. Cancel it with the existing pair and read back: record gone from TM+0x50, offer status 0x10, player still at his club with his contract, no news crash. Check both clubs' budgets before and after (the finance reversal of section 2.4 is the only money effect expected).
 3. Whether the cancel hits a stale dated record when the player has two dated records (section 2.3).
 4. Whether the daily check "CHECKING_FUTURE_TRANSFERS_FOR_CANCELLATIONS" (scope 0x56bcd18, 0x2e19520..) discards or keeps a dated record whose offer is no longer 0x13 (the loop at 0x2e19608..0x2e19738 skips it; erasing at 0x2e19a10 onward was not read).
-5. Instalment record layout against a live transfer with instalments (fields +0x18, +0x20, +0x21, dates +0x10, +0x14) and which club is payer (+0x00).
-6. Buy-back item ids at +0x10/+0x14 and which club list holds it (buyer's, per static reading).
+5. Instalment record layout: done on Windows and matched with FM (section 8).
+6. Buy-back ids at +0x10/+0x14: the player UID on Windows (section 8). Which club list holds it is not checked live.
 7. That a flag at 0x56d499f (editor active) is not needed by `0x2d180b4` itself: the function has no such gate (the gate is only in the UI handler 0x346d1c), but a live call is the proof.
 
 ## 7. Unresolved
@@ -204,3 +204,28 @@ TRANSFER_INFO (db class N2db13TRANSFER_INFO, many subclasses, factory 0x17fb938 
 - The four extra-data vectors at +0x18..+0x60 of the offer (sell-on, add-on terms).
 - Where the amount committed by `[offer+0x58]` is added at registration.
 - Return values of 0x2d180b4 and 0x1827808 (the editor ignores both).
+
+## 8. Windows live results (13 November 2026)
+
+Steam build 26577676 (27.0.1), Windows Server 2022, career copy at 30 June 2027 (Arsenal). Read-only probe
+(`instances`, `dump`) and FM's own screens. Money: FM shows dollars at about 1.347 per stored pound.
+
+Instalments: the transfer manager (vtables `game_plugin.dll+0x4d90898`, `+0x4d908a8`, `+0x4d908d8`) holds the vector at
+TM+0xD0 on Windows (macOS static: +0xD8): 1,158 pointers to 0x28-byte records with the layout of section 3. Periods:
+12 months 1,098, 6 months 58, 1 month 2. 26 records involve Arsenal. Two were compared with FM's Clauses page
+(Recruitment, Transfers, Clauses):
+
+| FM shows | Record |
+| --- | --- |
+| Ramsdale: $6.06M every 12 months to Arsenal, next August 2027, one more | payer Southampton (UID 713), receiver Arsenal, created 2024, 375,000 x 12 = 4.5M, remaining 3 |
+| Bruno Guimaraes: $24.25M every 12 months to Newcastle, next July 2027, three more | payer Arsenal, receiver Newcastle (UID 688), created 2026, 1,500,000 x 12 = 18M, remaining 25 |
+
+Both match: +0x00 is the payer and +0x08 the receiver; +0x18 is the monthly amount, and a payment of period x amount
+falls when the remaining count modulo the period is 1, so "remaining" counts months, not payments. The static holder of
+the transfer manager on Windows is not established (the probe found the object by its vtable).
+
+Buy-backs: 71 `db::PLAYER_BUY_BACK_INFO` records (vtable `game_plugin.dll+0x4ec8ad8`, 0x28 bytes): +0x08 start date,
++0x0C end date (0x076C0001 none), +0x10 and +0x14 the player UID twice, +0x18 s32 fee, +0x20 the club that holds the
+right (the seller). Examples agree with real clauses: Aaron Ramsey (Burnley) 25M held by Aston Villa; James McAtee
+(Forest) 60M held by Man City; Jarell Quansah (Leverkusen) 51,541,912 held by Liverpool with dated windows in 2028 and
+2029. Not compared with an FM screen: Arsenal has none and FM does not show other clubs' clauses.

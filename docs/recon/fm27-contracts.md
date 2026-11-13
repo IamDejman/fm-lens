@@ -90,6 +90,33 @@ Values to check in FM:
 
 Editing: amounts and conditions of existing entries are safe to change in place (existing `clauses.rs` planning does this, limits 2,000,000,000 and 1,000). Add and remove need the list capacity, so use FM's own add function. Add `clause_name` entries for all kinds above to FM Lens (now only 0, 1, 3, 10, 15, 19, 22, 27, 32, 33, 34, 38, 39, 40).
 
+### 1.1 FM's own add-clause routine (static, 13 November 2026)
+
+Read-only disassembly of the macOS `game_plugin` of Steam build 26577676; nothing was run. There is no out-of-line
+"add clause" function on ARM64: the game inlines the fast path (end below capacity) at each site, and every grow goes
+through one shared slow path.
+
+- ARM64 RVA `0x12a7618` (0x108 bytes): `entry* f(vec* x0, const u8* kind, const u32* amount, const u16* condition)`.
+  `x0` is `contract+0x68` (the begin, end, capacity triple), not the contract. It always reallocates (new capacity
+  max(2 x capacity, size + 1)), writes u32 amount at +0, u16 condition at +4, u8 kind at +6 and 0 at +7, frees the old
+  buffer and returns the new end (the entry is at return - 8). It does not de-duplicate. 16 call sites in 11
+  functions, including `GAME_FULL_CONTRACT` virtual methods and `TRANSFER_MANAGER` (0x2e00094).
+- Allocator: alloc `0x436e62c`, free `0x436eafc`, both with the global allocator `[0x5740a90]` as the first argument;
+  a size-class pool with a mutex per class. A list buffer must never come from or go to plain malloc or free.
+- `0x1285ab0` adds a clause of a given kind with an amount the game computes and skips kinds already present;
+  `0x100b018` adds one with the game's default amount from a builder object (layout unknown, one caller).
+- Signature (ARM64, unique in the slice): `fa 67 bb a9 f8 5f 01 a9 f6 57 02 a9 f4 4f 03 a9 fd 7b 04 a9 fd 03 01 91 f5
+  03 02 aa f6 03 01 aa 01 20 40 a9 02 01 01 cb 58 fc 43 93 08 07 00 91 09 fd 7d d3 ?? ?? ?? b5`; second anchor at
+  +0x94: `ca 02 40 39 ab 02 40 b9 8c 02 40 79`.
+- Intel slice: the slow path is at RVA `0x13a7470` (45 callers) and a wrapper `add(contract, kind, amount, condition)`
+  at `0x1389c90` with no direct callers; found by shape only.
+- Windows: not looked for.
+
+Not established, so adding clauses stays off: any live call, which thread is safe (the old buffer is freed at once, so
+a reader on another thread would see garbage; call only with FM paused or on its own thread), whether the contract
+screen or wage totals need a refresh afterwards, a remove routine, and the Windows address. Calling it needs a new game
+call per platform with the usual live, undo and save, quit and reload checks.
+
 ## 2. Contract fields FM Lens edits
 
 Status: found for all fields below. Squad status label mapping partial.
@@ -152,6 +179,38 @@ Values to check in FM:
 
 Editing: changing the end date means editing LOAN_CONTRACT +0x48 only. Ending or creating a loan must go through FM's loan functions (the transfer action code near 0x18bd338) because club squads, registration and finance change too. Raw writes of the wage share are safe but not of the team fields.
 
+### 3.1 Loan terms on Windows, checked against FM (13 November 2026)
+
+Steam build 26577676 (27.0.1), Windows Server 2022, career copy at 30 June 2027 (Arsenal). Read-only: the probe's
+`instances db::LOAN_CONTRACT` (vtable `game_plugin.dll+0x4ecdcf8`, 1,365 objects of 0x100 bytes; reached from player
++0x338) and `dump`, compared with FM's contract page, Loan Club tab, for eight Arsenal loans in and out.
+
+| Offset | Holds | Evidence |
+| --- | --- | --- |
+| `+0xC0` s32 | Future fee, -1 none (981 of 1,365 none) | Linder 778,930 = FM $1M optional; Baum 427,440 = $575K; Holmberg 1,776,000 = $2.4M; Rudd 1,067,446 = $1.4M |
+| `+0xC4` s32 | Competition the fee depends on, -1 none | Rudd 6443, where FM shows the fee as due on winning the Barclays WSL; other values in the census 22, 11, 16, 7, 51. Id space not resolved (not the competition UID) |
+| `+0xCC` s32 | Monthly playing fee | Nwaneri 171,806 = $230K; Linder 50,960 = $69K; Rudd 4,669 = $6.25K; Baum 7,725 = $10.5K; four loans with $0 hold 0 |
+| `+0xD0` s32 | Monthly fee when unused | Baum 15,450 = $21K; equal to `+0xCC` in the other seven (893 of 1,365 equal) |
+| `+0xD4` s32 | Copy of the wage share `+0x20` | equal in 1,356 of 1,365 |
+| `+0xB0` bit `0x04` | Can be recalled | 6 set, 2 clear, all 8 match FM |
+| `+0xB0` bit `0x02` | Can play in cup matches | set in all 8 and in every loan in the census: no negative seen |
+| `+0xB0` bit `0x01` | Can play against his own (parent) club | Nwaneri only, FM shows it; not seen elsewhere among the 8 |
+| `+0xB1` bit `0x10` | Loan cannot be terminated | 3 set, 5 clear, all match |
+| `+0xB1` bit `0x01` | A preferred position is set | 4 set (Baum, Reid, Wellesley-Smith, Teer-Hutchins), 4 clear, all match |
+| `+0xB4` bit `0x20` | Cannot play against the parent club in cup matches | Nwaneri set, 7 clear, all match; set in 636 loans |
+
+FM money is shown in dollars at about 1.347 per stored pound. `+0xB8..+0xBC` repeats `+0xB0..+0xB4` without `+0xB1`
+bit `0x20`. Flag bytes of the eight: Nwaneri `07 20 11 09 20`, Linder `06 30 11 09 00`, Rudd `02 30 11 09 00`, Baum
+`06 31 11 09 00`, Holmberg `06 20 11 09 00`, Reid and Teer-Hutchins `06 21 11 09 00`, Wellesley-Smith `02 21 11 09 00`
+(bytes `+0xB0` to `+0xB4`).
+
+Not established: whether a future fee is optional, mandatory or conditional beyond Rudd's competition case (all three
+others show "optional" in FM, and no flag difference stands out); the preferred position and role encoding (candidates
+`+0xA0..` and `+0xF4..`); `+0xB0` bit `0x08` (73 loans), `+0xB1` bits `0x20` and `0x80`; `+0xD8`, `+0xDC`, `+0xE4`,
+`+0xE8`, `+0x54`, `+0x56`, `+0x58`, `+0x60`, `+0x68` (pointer, 159 non-null), `+0x30` (pointer, 45 non-null), `+0x90`,
+`+0x9C`. The macOS layout of these fields is not checked. Nothing here is written by FM Lens; showing them read-only
+would be the next step, and editing the fee or flags needs a save, quit and reload check first.
+
 ## 4. Payroll
 
 Status: partial.
@@ -191,7 +250,9 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 ## Open items
 
 - Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
-- LOAN_CONTRACT term fields (+0xA0 to +0xB0 and +0xCC to +0xE8).
+- LOAN_CONTRACT term fields: fees and five flags mapped on Windows (3.1); preferred position, the fee kind and the
+  remaining words are open.
+- FM's add-clause routine is found statically on macOS (1.1) but never called; Windows not looked for.
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
 - Where wages are deducted from balance.
 - Staff clause census, loan-ins.

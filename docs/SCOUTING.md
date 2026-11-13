@@ -98,9 +98,9 @@ The best players (by current ability) or the most promising (21 and under, by
 potential ability) of men's or women's clubs, in the world, a continent or a
 country: 100 at most. A player plays in the country his club is in, as the
 game finds it (where it plays when based abroad). Free agents appear only in
-the world lists. Lists by division need the league each club plays in, which
-FM Lens does not read yet (see
-[the research note](recon/fm27-scouting-research.md)).
+the world lists. On Windows a country's list can be narrowed to one of its
+divisions, by the league each club plays in this season; macOS does not read
+that yet (see [the research note](recon/fm27-scouting-research.md)).
 
 ## Your other careers
 
@@ -115,14 +115,16 @@ birth date, as players FM makes up during a career (regens) can reuse an ID.
 Only careers connected in FM Lens are recorded, from the first time each one is
 connected after updating.
 
-## Kits
+## Pictures and kits
 
-Club logos, faces and flags from graphics packs were already shown. FM Lens
-now also reads kit packs: a mapping to `graphics/pictures/club/<id>/kits/home`
+With no graphics pack, FM Lens shows the game's own club logos, faces, flags,
+competition logos and kits, read from the game's install. Staff have no
+pictures in the game and show initials. FM Lens also reads kit packs: a mapping to `graphics/pictures/club/<id>/kits/home`
 (or `away` or `third`) puts that shirt on the club's Overview.
 
 ## Not yet available
 
 The in-game scout card (hover a player's (i) in FM and see FM Lens's card over
-the game) needs FM Lens to know which player FM is pointing at, which is not
-mapped yet. See [the research note](recon/fm27-scouting-research.md).
+the game) needs FM Lens to know which player FM is pointing at. A trace in the
+running game found no fixed place in FM's own memory that holds it. See
+[the research note](recon/fm27-scouting-research.md).
