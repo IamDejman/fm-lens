@@ -88,7 +88,8 @@ pub use mood::{ConcernsEnded, ConcernsPlan, HappinessHold};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
 pub use officials::OfficialSummary;
 pub use players::{
-    Base, Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations, read_players,
+    Base, Division, Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations,
+    read_players,
 };
 pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,
@@ -102,8 +103,8 @@ pub use relations::{
 pub use retirement::{PlannedRetirement, RetirementPlan, RetirementSet};
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};
 pub use scouting::{
-    Development, Likeness, PROMISING_AGE, Place, REPORT_ROLES, ROLES, RoleRating, Scores, ScoutReport, SimilarTo,
-    TOP_COUNT, TopKind, TopPlaces, TopScope, WITHIN, history, scores, scout_report, top_places, top_players,
+    Development, League, Likeness, PROMISING_AGE, Place, REPORT_ROLES, ROLES, RoleRating, Scores, ScoutReport,
+    SimilarTo, TOP_COUNT, TopKind, TopPlaces, TopScope, WITHIN, history, scores, scout_report, top_places, top_players,
 };
 pub use session::{ArraySource, Session, SessionError, find_game};
 pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember, TeamId};

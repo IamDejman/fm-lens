@@ -1268,6 +1268,8 @@ export const tr: Strings = {
       world: "Dünya",
       continents: "Kıtalar",
       nations: "Ülkeler",
+      division: "Lig",
+      allDivisions: "Tümü",
       rank: "#",
       summary: (total) => `${format(total)} oyuncu`,
       empty: (query) => (query === "" ? "Burada oyuncu yok." : `“${query}” ile eşleşen oyuncu yok.`),

@@ -303,6 +303,11 @@ players = 0x38
 captain = 0x88
 vice_captain = 0x90
 reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its senior team
+# Pointer to the competition the team plays its league football in this season (0x60 holds last season's, which
+# differs for a promoted or relegated club; 0x98 its continental competition). After the 2026/27 season ended:
+# Arsenal the Premier League, Middlesbrough (promoted) the Premier League as the game's club page shows, Sunderland
+# (relegated) the Championship, Real Madrid the Spanish First Division (docs/EDITING-VALIDATION.md).
+division = 0x50
 # The manager's object, as for a national team. Arsenal's senior team points at its human manager (staff id
 # 2002071616, his person block 0x340 further) on Steam 26340721.
 manager = 0x80

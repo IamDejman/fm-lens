@@ -1281,6 +1281,8 @@ export const es: Strings = {
       world: "Mundo",
       continents: "Continentes",
       nations: "Países",
+      division: "División",
+      allDivisions: "Todas",
       rank: "#",
       summary: (total) => `${format(total)} ${total === 1 ? "jugador" : "jugadores"}`,
       empty: (query) => (query === "" ? "No hay jugadores aquí." : `Ningún jugador coincide con «${query}».`),

@@ -151,6 +151,8 @@ pub struct TopScope {
     pub continent: Option<String>,
     /// The UID of the country their club is in.
     pub nation: Option<u32>,
+    /// The UID of the division their club plays in.
+    pub division: Option<u32>,
 }
 
 /// How many players a list of top players holds.
@@ -170,6 +172,7 @@ pub fn top_players<'a>(
         p.base.women == scope.women
             && scope.nation.is_none_or(|uid| p.base.nation_uid == Some(uid))
             && scope.continent.as_deref().is_none_or(|continent| p.base.continent.as_deref() == Some(continent))
+            && scope.division.is_none_or(|uid| p.base.division.as_ref().is_some_and(|division| division.uid == uid))
     };
     let mut ranked: Vec<&PlayerSummary> = players
         .into_iter()
@@ -185,7 +188,7 @@ pub fn top_players<'a>(
     ranked
 }
 
-/// The continents and countries players play in, for the lists of top players.
+/// The continents, countries and divisions players play in, for the lists of top players.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TopPlaces {
@@ -193,6 +196,19 @@ pub struct TopPlaces {
     pub continents: Vec<String>,
     /// By name, accents and case ignored.
     pub nations: Vec<Place>,
+    /// The best known first. Empty where the build does not place a club's division.
+    pub divisions: Vec<League>,
+}
+
+/// A division players play in.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct League {
+    pub uid: u32,
+    pub name: String,
+    /// The UID of the country its clubs are in.
+    pub nation: Option<u32>,
+    pub women: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -203,10 +219,22 @@ pub struct Place {
     pub continent: Option<String>,
 }
 
-/// Every continent and country `players` play in, each once.
+/// Every continent, country and division `players` play in, each once.
 pub fn top_places<'a>(players: impl IntoIterator<Item = &'a PlayerSummary>) -> TopPlaces {
     let mut nations: HashMap<u32, Place> = HashMap::new();
+    let mut divisions: HashMap<u32, (u16, League)> = HashMap::new();
     for p in players {
+        if let Some(division) = &p.base.division {
+            divisions.entry(division.uid).or_insert_with(|| {
+                let league = League {
+                    uid: division.uid,
+                    name: division.name.clone(),
+                    nation: p.base.nation_uid,
+                    women: p.base.women,
+                };
+                (division.reputation, league)
+            });
+        }
         if let (Some(uid), Some(name)) = (p.base.nation_uid, p.base.nation.as_ref()) {
             nations.entry(uid).or_insert_with(|| Place {
                 uid,
@@ -220,13 +248,15 @@ pub fn top_places<'a>(players: impl IntoIterator<Item = &'a PlayerSummary>) -> T
     continents.dedup();
     let mut nations: Vec<Place> = nations.into_values().collect();
     nations.sort_by_cached_key(|place| (fold(&place.name), place.uid));
-    TopPlaces { continents, nations }
+    let mut divisions: Vec<(u16, League)> = divisions.into_values().collect();
+    divisions.sort_by_cached_key(|(reputation, league)| (Reverse(*reputation), fold(&league.name), league.uid));
+    TopPlaces { continents, nations, divisions: divisions.into_iter().map(|(_, league)| league).collect() }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::players::Base;
+    use crate::players::{Base, Division};
     use crate::{ATTRIBUTE_GROUPS, FmDate, PERSONALITY, POSITIONS};
 
     pub(crate) fn player(uid: u32, age: u16, ca: u16, pa: i16, base: Base) -> PlayerSummary {
@@ -269,7 +299,12 @@ mod tests {
             nation: Some(format!("Nation {nation}")),
             nation_uid: Some(nation),
             continent: Some(continent.to_owned()),
+            division: None,
         }
+    }
+
+    fn league(uid: u32, reputation: u16, base: Base) -> Base {
+        Base { division: Some(Division { uid, name: format!("Division {uid}"), reputation }), ..base }
     }
 
     #[test]
@@ -304,9 +339,9 @@ mod tests {
     #[test]
     fn top_lists_rank_within_their_scope() {
         let players = [
-            player(1, 30, 170, 170, based(765, "Europe")),
-            player(2, 19, 120, 185, based(765, "Europe")),
-            player(3, 25, 180, 180, based(1649, "South America")),
+            player(1, 30, 170, 170, league(11, 190, based(765, "Europe"))),
+            player(2, 19, 120, 185, league(12, 160, based(765, "Europe"))),
+            player(3, 25, 180, 180, league(40, 170, based(1649, "South America"))),
             player(4, 18, 100, -10, based(1649, "South America")),
             player(5, 20, 150, 175, Base { women: true, ..based(765, "Europe") }),
             player(6, 24, 175, 176, Base::default()),
@@ -319,9 +354,15 @@ mod tests {
         assert_eq!(uids(TopKind::Best, &europe), [1, 2]);
         assert_eq!(uids(TopKind::Best, &TopScope { nation: Some(1649), ..TopScope::default() }), [3, 4]);
         assert_eq!(uids(TopKind::Best, &TopScope { women: true, ..TopScope::default() }), [5]);
+        assert_eq!(uids(TopKind::Best, &TopScope { division: Some(12), ..TopScope::default() }), [2]);
+        assert_eq!(uids(TopKind::Best, &TopScope { division: Some(99), ..TopScope::default() }), [0u32; 0]);
 
         let places = top_places(&players);
         assert_eq!(places.continents, ["Europe", "South America"]);
         assert_eq!(places.nations.iter().map(|n| n.uid).collect::<Vec<_>>(), [1649, 765]);
+        assert_eq!(
+            places.divisions.iter().map(|d| (d.uid, d.nation)).collect::<Vec<_>>(),
+            [(11, Some(765)), (40, Some(1649)), (12, Some(765))]
+        );
     }
 }

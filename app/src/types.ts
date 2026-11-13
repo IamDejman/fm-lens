@@ -485,12 +485,16 @@ export interface TopScope {
   continent?: string;
   /** The UID of the country. */
   nation?: number;
+  /** The UID of the division. */
+  division?: number;
 }
 
 /** From `top_places_list`: where the players play. */
 export interface TopPlaces {
   continents: string[];
   nations: { uid: number; name: string; continent: string | null }[];
+  /** The best known first; `nation` is the UID of the country its clubs are in. */
+  divisions: { uid: number; name: string; nation: number | null; women: boolean }[];
 }
 
 /** A club whose senior team plays at a stadium. */

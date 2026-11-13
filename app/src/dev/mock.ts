@@ -3889,6 +3889,15 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const places: TopPlaces = {
         continents: [...new Set(MOCK_PLACES.map((place) => place.continent))].sort(),
         nations: [...MOCK_PLACES].sort((a, b) => a.name.localeCompare(b.name)),
+        // Each made-up country has two divisions; a player's is by his UID.
+        divisions: MOCK_PLACES.flatMap((place) =>
+          [0, 1].map((tier) => ({
+            uid: place.uid * 10 + tier,
+            name: `${place.name} ${tier === 0 ? "First" : "Second"} Division`,
+            nation: place.uid,
+            women: false,
+          })),
+        ),
       };
       return places as T;
     }
@@ -3903,6 +3912,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         return (
           (scope.women ?? false) === false &&
           (scope.nation === undefined || place?.uid === scope.nation) &&
+          (scope.division === undefined || (place ? place.uid * 10 + (p.uid % 2) : -1) === scope.division) &&
           (scope.continent === undefined || place?.continent === scope.continent)
         );
       };

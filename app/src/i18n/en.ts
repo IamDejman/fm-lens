@@ -1304,6 +1304,8 @@ export const en = {
       world: "World",
       continents: "Continents",
       nations: "Countries",
+      division: "Division",
+      allDivisions: "All",
       rank: "#",
       summary: (total: number) => `${format(total)} ${total === 1 ? "player" : "players"}`,
       empty: (query: string) => (query === "" ? "No players here." : `No players match “${query}”.`),

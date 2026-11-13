@@ -826,6 +826,10 @@ pub struct TeamLayout {
     /// `u8`: 0 for a club's team, otherwise a nation's, whose `club` then points to the nation's teams.
     #[serde(default)]
     pub national: Option<u64>,
+    /// Pointer to the competition the team plays its league football in this season, null for none; where it has been
+    /// traced.
+    #[serde(default)]
+    pub division: Option<u64>,
 }
 
 impl TeamLayout {
