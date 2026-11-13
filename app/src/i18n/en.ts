@@ -1367,6 +1367,8 @@ export const en = {
 
   /** The club profile: what the player and staff panels do not have. */
   clubProfile: {
+    kits: "Kits",
+    kitNames: { home: "Home", away: "Away", third: "Third" },
     // Header
     womensClub: "Women's club",
     /** "Founded 1882", in the line under the name. */

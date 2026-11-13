@@ -1520,6 +1520,7 @@ export interface GraphicsCounts {
   faces: number;
   flags: number;
   competitionLogos: number;
+  kits: number;
 }
 
 /** From `graphics_info`: the user's graphics packs, read once in the background when the app starts. */

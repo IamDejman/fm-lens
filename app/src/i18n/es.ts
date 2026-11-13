@@ -1325,6 +1325,8 @@ export const es: Strings = {
   },
 
   clubProfile: {
+    kits: "Equipaciones",
+    kitNames: { home: "Local", away: "Visitante", third: "Tercera" },
     // Cabecera
     womensClub: "Club femenino",
     founded: (year) => `Fundado en ${year}`,

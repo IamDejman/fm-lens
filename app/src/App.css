@@ -6024,3 +6024,25 @@ button.danger:hover:not(:disabled) {
   font-size: var(--type-xs);
   font-weight: 650;
 }
+
+/* A club's kits from the user's kit packs. */
+.club-kits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.club-kits li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  color: var(--muted);
+  font-size: var(--type-sm);
+}
+
+.club-kits .picture img {
+  object-fit: contain;
+}

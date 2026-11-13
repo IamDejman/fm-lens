@@ -3779,7 +3779,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "graphics_info":
       // A plain browser has no graphics packs: every picture falls back.
-      return { root: null, ready: true, counts: { clubLogos: 0, faces: 0, flags: 0, competitionLogos: 0 } } as T;
+      return { root: null, ready: true, counts: { clubLogos: 0, faces: 0, flags: 0, competitionLogos: 0, kits: 0 } } as T;
+    case "club_kits":
+      // The browser has no graphics packs.
+      return [] as T;
     case "allow_editing": {
       if (!mockConnection) {
         throw failure("app.notConnected", "Not connected to the game");
