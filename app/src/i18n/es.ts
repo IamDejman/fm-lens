@@ -911,6 +911,7 @@ export const es: Strings = {
     playingTimeHappiness: "Felicidad con los minutos",
     moodTitle: "De -100 a 100.",
     clauseName: (kind) => CLAUSE_NAMES_ES[kind] ?? "Cláusula desconocida",
+    competitionBonus: (competition) => `Prima de ${competition ?? "competición desconocida"}`,
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
         return null;

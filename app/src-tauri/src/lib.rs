@@ -8,18 +8,18 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, CaptainRole, CaptainSet,
     Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded, Cohered,
-    CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded, EditError, EndedLoan,
-    Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate, FutureTransfer, GAME_EXE,
-    GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health,
-    Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan,
-    MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, OfficialFilter,
-    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
-    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
-    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
-    SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
-    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
-    TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
-    read_stadiums, sort_players, sort_rows, stadium_owner,
+    CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded,
+    EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate,
+    FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
+    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
+    MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort,
+    NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef,
+    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
+    PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS,
+    SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary,
+    StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId,
+    TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
+    read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
 use serde::{Deserialize, Serialize};
@@ -1181,6 +1181,22 @@ impl Connection {
                     self.clubs.get(uid).map(|club| club.name.clone())
                 }
             };
+        }
+    }
+
+    /// Names the competitions of a contract's competition bonuses, from the competitions read once (or the awards, where
+    /// no competition has the UID). A table that cannot be read leaves them unnamed rather than failing the profile.
+    fn name_competition_bonuses(&mut self, bonuses: &mut [CompetitionBonus]) {
+        if bonuses.is_empty() {
+            return;
+        }
+        for bonus in bonuses.iter_mut() {
+            let uid = bonus.competition_uid;
+            bonus.competition = self.competition_index().ok().and_then(|index| index.get(uid)).map(|c| c.name.clone());
+        }
+        for bonus in bonuses.iter_mut().filter(|bonus| bonus.competition.is_none()) {
+            let uid = bonus.competition_uid;
+            bonus.competition = self.award_index().ok().and_then(|index| index.get(uid)).map(|a| a.name.clone());
         }
     }
 
@@ -3596,12 +3612,15 @@ fn club_details(state: State<'_, AppState>, uid: u32) -> Result<ClubDetails, Fai
 /// The full profile of the player with `uid`. Only reads memory.
 #[tauri::command]
 fn player_details(state: State<'_, AppState>, uid: u32) -> Result<PlayerDetails, Failure> {
-    let guard = state.0.lock()?;
-    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
     let mut details = connection.session.player_details(player)?.ok_or_else(data_changed)?;
     // The game keeps a club's name with the club; a person's comes from the lists.
     connection.name_preferences(&mut details.preferences);
+    if let Some(contract) = details.contract.as_mut() {
+        connection.name_competition_bonuses(&mut contract.competition_bonuses);
+    }
     Ok(details)
 }
 

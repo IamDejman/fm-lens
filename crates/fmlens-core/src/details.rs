@@ -206,6 +206,8 @@ pub struct Contract {
     pub playing_time_happiness: i8,
     /// His clauses and bonuses, in the contract's order.
     pub clauses: Vec<Clause>,
+    /// What the contract pays for competitions, in the contract's order; a separate list from the clauses.
+    pub competition_bonuses: Vec<CompetitionBonus>,
     /// His reasons to be unhappy, over ones too, in the order the game keeps them.
     pub concerns: Vec<Concern>,
     /// A player-coach's contract: he works as staff too, and does not move.
@@ -295,6 +297,60 @@ pub struct Clause {
     pub amount: Option<u32>,
     /// What it depends on: goals, assists, matches, years or a percentage, by kind; none for most.
     pub condition: Option<u16>,
+}
+
+/// A bonus a contract pays for a competition, from its own list beside the clauses. Read-only: what the bonus is
+/// paid for (a title, a round reached, an appearance) is held elsewhere in the entry and is not decoded, so only the
+/// competition and the amount are given.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompetitionBonus {
+    /// Its place in the contract's list.
+    pub index: usize,
+    /// The UID the entry names, a competition's on the contracts read so far.
+    pub competition_uid: u32,
+    /// The competition's name, where the app finds a competition (or an award) with that UID; none here.
+    pub competition: Option<String>,
+    /// Pounds; none where the entry holds none.
+    pub amount: Option<u32>,
+}
+
+/// Bytes per competition bonus, and where in one the UID it names and its amount are. Read on Windows (Game Pass,
+/// Kylian Mbappé) and on macOS ARM64 (Declan Rice: UID 637, 851,999).
+const BONUS_ENTRY: usize = 32;
+const BONUS_UID: usize = 0x14;
+const BONUS_AMOUNT: usize = 0x18;
+
+/// The longest list of competition bonuses read; the test save's longest held a handful.
+const MOST_BONUSES: u64 = 64;
+
+/// The competition bonus `entry` at `index` says, its competition not yet named.
+fn bonus_at(index: usize, entry: &[u8; BONUS_ENTRY]) -> CompetitionBonus {
+    let u32_at = |at: usize| u32::from_le_bytes(entry[at..at + 4].try_into().expect("4 bytes"));
+    let amount = u32_at(BONUS_AMOUNT);
+    CompetitionBonus {
+        index,
+        competition_uid: u32_at(BONUS_UID),
+        competition: None,
+        amount: (amount != u32::MAX).then_some(amount),
+    }
+}
+
+/// The competition bonuses of the contract at `contract`, from its list of 32-byte entries; none when the list does
+/// not look like one.
+pub(crate) fn read_competition_bonuses(process: &Process, layout: &Layout, contract: u64) -> Vec<CompetitionBonus> {
+    let size = BONUS_ENTRY as u64;
+    let at = contract + layout.contract.competition_bonuses;
+    let (Ok(begin), Ok(end)) = (process.read_u64(at), process.read_u64(at + 8)) else {
+        return Vec::new();
+    };
+    if !is_user_pointer(begin) || end < begin || end - begin > size * MOST_BONUSES || (end - begin) % size != 0 {
+        return Vec::new();
+    }
+    let Ok(bytes) = process.read_bytes(begin, (end - begin) as usize) else {
+        return Vec::new();
+    };
+    bytes.as_chunks::<BONUS_ENTRY>().0.iter().enumerate().map(|(index, entry)| bonus_at(index, entry)).collect()
 }
 
 /// The clauses of the contract at `contract`, from its list of 8-byte entries; none when the list does not look
@@ -426,6 +482,7 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
         happiness: buf[c.happiness as usize] as i8,
         playing_time_happiness: buf[c.playing_time_happiness as usize] as i8,
         clauses: read_clauses(process, layout, address),
+        competition_bonuses: read_competition_bonuses(process, layout, address),
         concerns: read_concerns(
             process,
             u64::from_le_bytes(buf[c.unhappiness as usize..c.unhappiness as usize + 8].try_into().expect("8 bytes")),
@@ -438,6 +495,22 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn competition_bonuses_give_the_uid_and_the_amount() {
+        // Declan Rice's one bonus, read on macOS ARM64: UID 637 (0x27D) and 851,999 (0xCFC1F).
+        let words: [u32; 8] = [0x076C_0001, 0xFFFF_FFFF, 0x14, 0xFFFF_FFFF, 0, 0x27D, 0x000C_FC1F, 0xFFFF];
+        let entry: [u8; BONUS_ENTRY] = words.map(u32::to_le_bytes).concat().try_into().expect("32 bytes");
+        let bonus = bonus_at(1, &entry);
+        assert_eq!(
+            bonus,
+            CompetitionBonus { index: 1, competition_uid: 637, competition: None, amount: Some(851_999) }
+        );
+        // An entry that holds no amount gives none.
+        let mut none = entry;
+        none[BONUS_AMOUNT..BONUS_AMOUNT + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(bonus_at(0, &none).amount, None);
+    }
 
     /// Entries sit 28 bytes apart, so half of them are not aligned to eight bytes: Bukayo Saka's was at ...8f64.
     #[test]
