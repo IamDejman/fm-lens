@@ -32,6 +32,12 @@ transfer_manager = 0x5CD7E80
 # Static mapping only; see docs/recon/fm27-steam-26340721-macos-x86_64.md.
 awards = 0x5D030E8
 competitions = 0x5D03100
+# The static pointers to the database tables of every nation and every stadium, in the same block: 0x28 and 0x80 after
+# the awards', where the block of the arm64 Mac build 26340721 has them (docs/recon/fm27-competitions-awards-2.md). The
+# block keeps one order in every build profiled: the competitions sit 0x18 and the kinds of injury 0x40 after the
+# awards in each, each found on its own. The tables' class and rows are checked before they are used.
+nations = 0x5D03110
+stadiums = 0x5D03168
 injury_kinds = 0x5D03128
 # INJURY_MANAGER, loaded by the training-injury caller of add_injury.
 injury_manager = 0x5CD9EE0
