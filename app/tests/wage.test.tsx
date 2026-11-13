@@ -67,7 +67,7 @@ test.each(['MacIntel', 'Win32'])('real editor Apply submits £260,000 and reread
       <p>{edit.report?.applied === 1 ? 'Applied exact wage' : ''}</p></>;
   }
   render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {},
-    gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}><Editor /></EditorContext.Provider>);
+    gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}><Editor /></EditorContext.Provider>);
   await userEvent.click(screen.getByRole('button', { name: 'Edit wage' }));
   const input = await screen.findByRole('spinbutton');
   await userEvent.clear(input);

@@ -25,6 +25,8 @@ export const PICTURE_SIZE = {
   rowFace: 28,
   /** A club's logo in the header of its profile. */
   clubLogo: 56,
+  /** A club's kit on its profile: a shirt is taller than wide. */
+  kit: { width: 64, height: 80 },
   /** A flag, in a table cell or a line of text: the 3:2 of most flags, small. */
   flag: { width: 16, height: 11 },
 } as const;

@@ -64,7 +64,7 @@ function DragHarness() {
 }
 
 async function editing() {
-  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}><DragHarness /></EditorContext.Provider>);
+  render(<EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited() {}, gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}><DragHarness /></EditorContext.Provider>);
   await userEvent.click(screen.getByRole('button', { name: 'Edit fixture' }));
   return await screen.findByRole('spinbutton', { name: 'Finishing' }) as HTMLInputElement;
 }

@@ -5,6 +5,7 @@ import {
   PERSONALITY_PREFIX,
   PLAYER_ATTRIBUTES,
   toAttributeBounds,
+  type AttributeChoices,
   type AttributeRow,
 } from "./AttributeFilters";
 import { toPounds } from "./currency";
@@ -13,6 +14,7 @@ import { chipLabel, FilterBar, RangeField, rangeText, type FilterChip } from "./
 import { formatDate, formatMoney, formatNumber } from "./format";
 import { intlLocale } from "./i18n";
 import { playerListText, POSITION_LABELS, profileText, type PositionKey } from "./labels";
+import { RoleFilters, roleChips, toRoleBounds, type RoleRow } from "./RoleFilters";
 import type { FmDate, PlayerFilter } from "./types";
 
 const text = playerListText.filters;
@@ -36,6 +38,15 @@ const MOST_POUNDS = 2_147_483_647;
 export const TRAIT_CHOICES: readonly number[] = Array.from({ length: 64 }, (_, bit) => bit).filter(
   (bit) => bit !== 61 && bit !== 62,
 );
+const PERCENT_RANGE = { min: 0, max: 100 };
+
+/** The attributes the potential-attributes rows offer: a player's own, not the personality ratings. */
+export const POTENTIAL_ATTRIBUTES: AttributeChoices = {
+  ...PLAYER_ATTRIBUTES,
+  groups: PLAYER_ATTRIBUTES.groups.filter((group) => !group.keys.some((key) => key.startsWith(PERSONALITY_PREFIX))),
+};
+/** Progress rates, in half stars. */
+const HALF_STARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 /** What the filter inputs hold, as typed: an empty string, or `false`, is no filter. */
 export interface PlayerFilterFields {
@@ -69,6 +80,14 @@ export interface PlayerFilterFields {
   trait: string;
   /** Bounds on attributes and, with `PERSONALITY_PREFIX` before their key, on personality ratings. */
   attributes: AttributeRow[];
+  /** Part of the name of the country his club is in. */
+  basedIn: string;
+  /** The least chance of development, in percent, and the least progress rate, in half stars ("1" to "10"). */
+  minDevelopment: string;
+  minProgress: string;
+  potentialAttributes: AttributeRow[];
+  /** Roles to rate the players in, a column each, with a least rating where one is typed. */
+  roles: RoleRow[];
 }
 
 export const NO_PLAYER_FILTERS: PlayerFilterFields = {
@@ -95,6 +114,11 @@ export const NO_PLAYER_FILTERS: PlayerFilterFields = {
   loanListed: false,
   trait: "",
   attributes: [],
+  basedIn: "",
+  minDevelopment: "",
+  minProgress: "",
+  potentialAttributes: [],
+  roles: [],
 };
 
 /** A whole number within `range`; nothing for an empty or unreadable input. */
@@ -158,7 +182,15 @@ export function toPlayerFilter(fields: PlayerFilterFields): PlayerFilter | undef
     attributes: attributes.length > 0 ? attributes : undefined,
     personality: personality.length > 0 ? personality : undefined,
     traits: trait === undefined ? undefined : [trait],
+    potentialAttributes: toAttributeBounds(fields.potentialAttributes),
+    roles: toRoleBounds(fields.roles).filter((bound) => bound.min !== undefined),
+    minDevelopment: whole(fields.minDevelopment, PERCENT_RANGE),
+    minProgress: whole(fields.minProgress, { min: 1, max: 10 }),
+    basedIn: fields.basedIn.trim() || undefined,
   };
+  if (filter.roles?.length === 0) {
+    delete filter.roles;
+  }
   return countFilters(filter) > 0 ? filter : undefined;
 }
 
@@ -186,8 +218,17 @@ export function countFilters(filter: PlayerFilter | undefined): number {
     filter.transferListed,
     filter.loanListed,
     filter.traits,
+    filter.basedIn,
+    filter.minDevelopment,
+    filter.minProgress,
   ].filter((value) => value !== undefined).length;
-  return single + (filter.attributes?.length ?? 0) + (filter.personality?.length ?? 0);
+  return (
+    single +
+    (filter.attributes?.length ?? 0) +
+    (filter.personality?.length ?? 0) +
+    (filter.potentialAttributes?.length ?? 0) +
+    (filter.roles?.length ?? 0)
+  );
 }
 
 interface PlayerFilterBarProps {
@@ -199,9 +240,11 @@ interface PlayerFilterBarProps {
 
 /** A chip for each filter in effect, as `countFilters` counts them: the two ends of the age range are one. */
 function playerChips(fields: PlayerFilterFields, onChange: (fields: PlayerFilterFields) => void): FilterChip[] {
+  // A role without a least rating is a column, not a filter, but has its chip too.
+  const roles = roleChips(fields.roles, (rows) => onChange({ ...fields, roles: rows }));
   const filter = toPlayerFilter(fields);
   if (!filter) {
-    return [];
+    return roles;
   }
   const chips: FilterChip[] = [];
   const add = (key: string, label: string, cleared: Partial<PlayerFilterFields>) =>
@@ -265,9 +308,26 @@ function playerChips(fields: PlayerFilterFields, onChange: (fields: PlayerFilter
   if (trait !== undefined) {
     add("trait", chipLabel(text.trait, profileText.traitName(trait)), { trait: "" });
   }
+  if (filter.basedIn) {
+    add("basedIn", chipLabel(text.basedIn, filter.basedIn), { basedIn: "" });
+  }
+  if (filter.minDevelopment !== undefined) {
+    add("development", chipLabel(text.minDevelopment, `${filter.minDevelopment}%`), { minDevelopment: "" });
+  }
+  if (filter.minProgress !== undefined) {
+    add("progress", chipLabel(text.minProgress, text.stars(filter.minProgress)), { minProgress: "" });
+  }
   return [
     ...chips,
     ...attributeChips(fields.attributes, PLAYER_ATTRIBUTES, (attributes) => onChange({ ...fields, attributes })),
+    ...attributeChips(
+      fields.potentialAttributes,
+      POTENTIAL_ATTRIBUTES,
+      (potentialAttributes) => onChange({ ...fields, potentialAttributes }),
+      text.potentialChip,
+      "potential",
+    ),
+    ...roles,
   ];
 }
 
@@ -473,11 +533,56 @@ export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarPr
         <span>{text.loanListedOnly}</span>
       </label>
 
+      <label className="filter-field">
+        <span>{text.basedIn}</span>
+        <input
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={fields.basedIn}
+          onChange={(e) => set("basedIn", e.currentTarget.value)}
+        />
+      </label>
+
+      <label className="filter-field" title={text.minDevelopmentTitle}>
+        <span>{text.minDevelopment}</span>
+        <input
+          type="number"
+          min={PERCENT_RANGE.min}
+          max={PERCENT_RANGE.max}
+          step={1}
+          placeholder="%"
+          value={fields.minDevelopment}
+          onChange={(e) => set("minDevelopment", e.currentTarget.value)}
+        />
+      </label>
+
+      <label className="filter-field">
+        <span>{text.minProgress}</span>
+        <select value={fields.minProgress} onChange={(e) => set("minProgress", e.currentTarget.value)}>
+          <option value="">{text.any}</option>
+          {HALF_STARS.map((half) => (
+            <option key={half} value={String(half)}>
+              {text.stars(half)}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <AttributeFilters
         rows={fields.attributes}
         choices={PLAYER_ATTRIBUTES}
         onChange={(rows) => set("attributes", rows)}
       />
+
+      <AttributeFilters
+        rows={fields.potentialAttributes}
+        choices={POTENTIAL_ATTRIBUTES}
+        heading={text.potentialAttributes}
+        onChange={(rows) => set("potentialAttributes", rows)}
+      />
+
+      <RoleFilters rows={fields.roles} onChange={(rows) => set("roles", rows)} />
     </FilterBar>
   );
 }
