@@ -340,10 +340,12 @@ these tabs agree with the table in 3.1: Diouf and Fontàs (`+0xB0` bit `0x04` cl
 terminated; Fontàs (`+0xB1` `0x81`) can play against the parent club's B team; Maddox (`+0xB0` `0x0E`) shows no line
 for bit `0x08`.
 
-FM's loan offer form (Make An Offer, Loan Offer, Mainoo, not submitted) creates no `db::LOAN_CONTRACT`: 800 records
-before and after the clauses were filled. So role 11 and position 12 cannot be read by choosing them in a clause
-without making an offer. The form has a position and a role both in and out of possession; the Loan Club tab shows one
-of each, and where the out-of-possession pair is held is open.
+FM's loan offer (Make An Offer, Loan Offer, Mainoo) creates no `db::LOAN_CONTRACT`, filled in or made: 800 records
+before, after filling the clauses and after making it. The offer is held as a `FULL_TRANSFER_OFFER` (vtable
+`game_plugin.dll+0x5051cd8`, pointing at the player) until a deal is agreed, so role 11 and position 12 can only be read
+by advancing the game until a loan with them is agreed. The offer was withdrawn and the copy not saved. The form has a
+position and a role both in and out of possession; the Loan Club tab shows one of each, and where the
+out-of-possession pair is held is open.
 
 ## 4. Payroll
 
