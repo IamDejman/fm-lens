@@ -3,6 +3,7 @@
 
 #![cfg(any(windows, target_os = "macos"))]
 
+pub mod best;
 #[cfg(target_os = "macos")]
 pub mod bridge_setup;
 mod calibrate;
@@ -46,6 +47,7 @@ mod text;
 mod transfer;
 mod work_permits;
 
+pub use best::{BestFor, Fit, Weight, board_job};
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
 pub use clubs::{

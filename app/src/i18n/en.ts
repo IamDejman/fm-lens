@@ -1141,6 +1141,14 @@ export const en = {
   },
 
   /** The staff list. */
+  /** The select that ranks the player and staff lists for a job, and the column of how well each row fits. */
+  bestFor: {
+    label: "Best for",
+    /** The column: a score out of 100. */
+    fit: "Fit",
+    /** The column as the hover text of its header names it, after `playerList.sortBy`. */
+    fitName: "fit",
+  },
   staffList: {
     /** The entry in the sidebar. */
     nav: "Staff",
