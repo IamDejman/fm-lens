@@ -107,12 +107,16 @@ fn held_fields(fields: Vec<Field>) -> Vec<Field> {
     held
 }
 
+/// What a money freeze holds of a club: its balance, then its transfer budget, which the game lowers on its own too.
+const BALANCE: &str = "finance.balance";
+const TRANSFER_BUDGET: &str = "finance.transfer_budget";
+
 /// What the app keeps from getting worse while it is connected (see `Connection::hold_frozen`).
 #[derive(Default)]
 struct Frozen {
-    /// The clubs whose money is frozen, with the least their balance may be: what it was when it was frozen, or more
-    /// once the club earned more.
-    money: BTreeMap<u32, i64>,
+    /// The clubs whose money is frozen, with the least their balance and their transfer budget may be: what each was
+    /// when it was frozen, or more once the club had more.
+    money: BTreeMap<u32, BTreeMap<String, i64>>,
     /// The players whose attributes are frozen, with the worst each attribute and his current ability may be, as
     /// stored: what it was when it was frozen, or better once he improved. Worse is lower, or higher where lower is
     /// better.
@@ -159,7 +163,7 @@ impl Frozen {
     /// game had changed it.
     fn note(&mut self, change: &Change, value: i64) {
         let held = match change.entity {
-            Entity::Club if change.field == "finance.balance" => self.money.get_mut(&change.uid),
+            Entity::Club => self.money.get_mut(&change.uid).and_then(|held| held.get_mut(&change.field)),
             Entity::Player => self.attributes.get_mut(&change.uid).and_then(|held| held.get_mut(&change.field)),
             Entity::Staff => self.staff_attributes.get_mut(&change.uid).and_then(|held| held.get_mut(&change.field)),
             _ => None,
@@ -507,16 +511,25 @@ impl Connection {
         Ok(())
     }
 
-    /// Freezes the money of the club `uid` at its balance now (see `hold_money`). Refused while the balance may not be
-    /// written.
+    /// Freezes the money of the club `uid` at its balance and its transfer budget now (see `hold_money`). Refused
+    /// while the balance may not be written.
     fn freeze_club(&mut self, uid: u32) -> Result<(), Failure> {
         let target = self.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?.target();
-        let field = self.session.field(Entity::Club, "finance.balance")?;
+        let field = self.session.field(Entity::Club, BALANCE)?;
         if let Some(lock) = self.session.field_lock(&field) {
             return Err(EditError::Locked { field: field.key.clone(), lock }.into());
         }
-        let balance = self.session.read_field(&target, &field)?;
-        self.frozen.money.insert(uid, balance);
+        let mut held = BTreeMap::from([(field.key.clone(), self.session.read_field(&target, &field)?)]);
+        // The transfer budget has its own check: where that fails, or the budget holds what the editor would not
+        // write (a club that overspent), the club is frozen without it.
+        if let Ok(budget) = self.session.field(Entity::Club, TRANSFER_BUDGET)
+            && self.session.field_lock(&budget).is_none()
+            && let Ok(value) = self.session.read_field(&target, &budget)
+            && budget.takes(value)
+        {
+            held.insert(budget.key, value);
+        }
+        self.frozen.money.insert(uid, held);
         Ok(())
     }
 
@@ -2002,8 +2015,8 @@ impl Connection {
         .ok_or_else(|| not_found(entity, uid))
     }
 
-    /// Keeps the balance of every frozen club and the attributes and current ability of every frozen player from
-    /// getting worse: what the game took is put back, and what it gave raises what they are held at. These writes are
+    /// Keeps the balance and transfer budget of every frozen club and the attributes and current ability of every
+    /// frozen player from getting worse: what the game took is put back, and what it gave raises what they are held at. These writes are
     /// not logged; unfreezing ends them.
     fn hold_frozen(&mut self) {
         self.hold_money();
@@ -2012,21 +2025,28 @@ impl Connection {
     }
 
     fn hold_money(&mut self) {
-        let Ok(field) = self.session.field(Entity::Club, "finance.balance") else {
+        if self.frozen.money.is_empty() {
             return;
-        };
-        for (&uid, floor) in self.frozen.money.iter_mut() {
+        }
+        let fields: Vec<Field> =
+            [BALANCE, TRANSFER_BUDGET].iter().filter_map(|key| self.session.field(Entity::Club, key).ok()).collect();
+        for (&uid, held) in self.frozen.money.iter_mut() {
             let Some(target) = self.clubs.get(uid).map(|club| club.target()) else {
                 continue;
             };
-            match self.session.read_field(&target, &field) {
-                Ok(now) if now < *floor => {
-                    // Only while the game still holds what was read: a day it is working out is left to it.
-                    let held = self.session.write_field_if(&target, &field, now, *floor);
-                    log_refused(&mut self.frozen.refused, &target, held.err());
+            for field in &fields {
+                let Some(floor) = held.get_mut(&field.key) else {
+                    continue;
+                };
+                match self.session.read_field(&target, field) {
+                    Ok(now) if now < *floor => {
+                        // Only while the game still holds what was read: a day it is working out is left to it.
+                        let written = self.session.write_field_if(&target, field, now, *floor);
+                        log_refused(&mut self.frozen.refused, &target, written.err());
+                    }
+                    Ok(now) => *floor = now,
+                    Err(err) => log_refused(&mut self.frozen.refused, &target, Some(err)),
                 }
-                Ok(now) => *floor = now,
-                Err(err) => log_refused(&mut self.frozen.refused, &target, Some(err)),
             }
         }
     }
@@ -4026,8 +4046,8 @@ fn list_nations(state: State<'_, AppState>) -> Result<Vec<Nation>, Failure> {
     Ok(connection.nations())
 }
 
-/// Freezes the money of the club `club`, or unfreezes it: while the app is connected, a frozen club's balance does not
-/// go down. Refused while the balance may not be written. The app remembers it for this save, and freezes it again
+/// Freezes the money of the club `club`, or unfreezes it: while the app is connected, a frozen club's balance and
+/// transfer budget do not go down. Refused while the balance may not be written. The app remembers it for this save, and freezes it again
 /// when it connects to the save another time. Returns the clubs frozen now.
 #[tauri::command]
 fn freeze_money(
@@ -5926,7 +5946,7 @@ mod tests {
         let held = || {
             let mut frozen = Frozen::default();
             // Frozen at -£5,446,930, then the club earned more: that is the floor now.
-            frozen.money.insert(617, -5_051_283);
+            frozen.money.insert(617, BTreeMap::from([(BALANCE.to_owned(), -5_051_283)]));
             frozen.attributes.insert(7, BTreeMap::from([("attributes.free_kicks".to_owned(), 13)]));
             frozen.staff_attributes.insert(9, BTreeMap::from([("attributes.coaching".to_owned(), 15)]));
             frozen.refused.insert("club 617".to_owned());
@@ -5941,6 +5961,29 @@ mod tests {
         assert!(old.is_empty());
         // Another save: nothing carries over, and the file freezes that save's afresh.
         assert!(Frozen::carry_over(&mut held(), false).is_none());
+    }
+
+    #[test]
+    fn a_written_balance_or_transfer_budget_is_what_a_frozen_club_is_held_at() {
+        let mut frozen = Frozen::default();
+        frozen.money.insert(617, BTreeMap::from([(BALANCE.to_owned(), 1_000), (TRANSFER_BUDGET.to_owned(), 641)]));
+        // Frozen without its transfer budget: an overspent one is left to the game.
+        frozen.money.insert(602, BTreeMap::from([(BALANCE.to_owned(), 5_000)]));
+        let wrote = |uid, field: &str, new| Change {
+            entity: Entity::Club,
+            uid,
+            field: field.to_owned(),
+            old: 0,
+            new,
+            record: Vec::new(),
+        };
+        // Lowered by the editor: not put back as if the game had taken it.
+        frozen.note(&wrote(617, TRANSFER_BUDGET, 0), 0);
+        frozen.note(&wrote(617, BALANCE, 400), 400);
+        frozen.note(&wrote(602, TRANSFER_BUDGET, 9_000), 9_000);
+        frozen.note(&wrote(617, "finance.total_wage_budget", 7), 7);
+        assert_eq!(frozen.money[&617], BTreeMap::from([(BALANCE.to_owned(), 400), (TRANSFER_BUDGET.to_owned(), 0)]));
+        assert_eq!(frozen.money[&602], BTreeMap::from([(BALANCE.to_owned(), 5_000)]));
     }
 
     #[test]
