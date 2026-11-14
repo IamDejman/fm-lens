@@ -648,7 +648,14 @@ function App() {
           {update && update.phase !== "ready" && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
           {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
           {askingStar && <StarNotice onAnswer={answerStar} />}
-          {connection && <CompatibilityNotice connection={connection} />}
+          {connection && (
+            <CompatibilityNotice
+              connection={connection}
+              update={update}
+              onRelaunch={relaunch}
+              onCheck={() => void checkNow()}
+            />
+          )}
           {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
         </div>
         {error && <div className="banner" role="alert">{error}</div>}
