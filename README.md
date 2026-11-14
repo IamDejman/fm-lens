@@ -104,9 +104,9 @@ The app is `target/debug/bundle/macos/FM Lens.app`. Releases are built as
 
 FM Lens and [getfmlens.com](https://getfmlens.com) count use anonymously with
 [PostHog](https://posthog.com), to know how many people use them and which
-features matter. No names, no values you edit, no file paths and nothing you
-type are sent. PostHog does not keep the IP address. For the app it keeps the
-country and city the connection came from; for the site, not even that.
+features matter. The counts carry no names, no values you edit, no file paths
+and nothing you type. PostHog does not keep the IP address. For the app it keeps
+the country and city the connection came from; for the site, not even that.
 
 The app sends these events with a random install id, the app version, the macOS
 or Windows version and processor, and the app language:
@@ -124,8 +124,17 @@ or Windows version and processor, and the app language:
 - `star_asked`, `star_clicked` and `star_declined`: the ask for a star on GitHub
   was shown, followed or turned down.
 
-To stop it, turn off **Share anonymous usage** in Settings. Debug builds send
-nothing.
+The app also records its own window with PostHog's session replay, under the
+same install id: what FM Lens shows and where you click, so we can see where it
+is hard to use. It never records FM or anything else on your screen. What you
+type is hidden, and so are your manager's name, email addresses and your folder
+name in file paths. The rest of what FM Lens shows from your save, such as
+players, clubs and their values, is in the recording, along with the window's
+size, your time zone and the system's version. PostHog keeps a recording for 30
+days.
+
+To stop both, turn off **Share usage and recordings of this window** in
+Settings. Debug builds send nothing.
 
 To show how a player developed in your other careers, the app keeps each
 connected career's player ages and abilities in its own data folder on your

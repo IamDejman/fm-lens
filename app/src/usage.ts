@@ -2,11 +2,13 @@ import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { inTauri, watchCommands } from "./api";
 import { locale } from "./i18n";
+import { replaySession, startReplay, stopReplay } from "./replay";
 
 /**
  * Anonymous usage counts, sent to PostHog: how many installs open the app, connect to FM and use each kind of edit.
  * Never a name, a value, a path or anything typed. Nothing is sent from a debug build, from the browser preview, or
- * once "Share anonymous usage" is off in Settings. The README and the site list every event.
+ * once sharing is off in Settings. The README and the site list every event. The window itself is recorded by
+ * `replay.ts`, which masks what says who the user is: it starts here, so the same rules decide whether it runs.
  */
 
 /** FM Lens's PostHog project key. It can only add events, so it is safe in the app. */
@@ -79,6 +81,11 @@ export function setUsageOn(on: boolean): void {
   } catch {
     // Without storage nothing is sent anyway: `usageOn` reads it as off.
   }
+  if (on) {
+    record();
+  } else {
+    stopReplay();
+  }
 }
 
 interface Context {
@@ -144,6 +151,7 @@ export function track(event: string, props: Record<string, unknown> = {}): void 
           timestamp: new Date().toISOString(),
           properties: {
             ...ctx.props,
+            ...replaySession(),
             ...props,
             $set: ctx.props,
             $set_once: { first_version: ctx.props.app_version },
@@ -194,3 +202,19 @@ watchCommands((command, args = {}) => {
     track("edit_applied", { command, ...detail(command, args) });
   }
 });
+
+/** Records the window from its first screen, when usage is shared. */
+function record(): void {
+  if (!usageOn()) {
+    return;
+  }
+  void ready()
+    .then((ctx) => {
+      if (ctx) {
+        startReplay(POSTHOG_KEY, ctx.distinctId);
+      }
+    })
+    .catch(() => {});
+}
+
+record();

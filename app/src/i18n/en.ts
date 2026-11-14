@@ -1731,8 +1731,8 @@ export const en = {
     done: "Done",
     /** The interface scale, separate from the window's own zoom. */
     zoomLabel: "Zoom",
-    /** A switch: anonymous counts of launches and edits, sent to PostHog (see `usage.ts`). */
-    usageLabel: "Share anonymous usage",
+    /** A switch: anonymous counts of launches and edits (`usage.ts`) and recordings of the window (`replay.ts`). */
+    usageLabel: "Share usage and recordings of this window",
     /** A switch (Windows): FM Lens's card over the game while FM shows a player's card (see ScoutCard.tsx). */
     scoutCardLabel: "In-game scout card",
     appearance: "Appearance",
@@ -1943,6 +1943,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "0.7.11": [
+        "FM Lens now records how its window is used, to find what is hard to use. What you type and your manager’s name are hidden. Turn it off in Settings.",
+      ],
       "0.7.10": [
         "Raise a player's attributes and his CA rises with them, so the edits stay.",
         "Say thanks: Support FM Lens opens Ko-fi inside the app.",

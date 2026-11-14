@@ -1664,7 +1664,7 @@ export const es: Strings = {
     about: "Acerca de",
     done: "Listo",
     zoomLabel: "Zoom",
-    usageLabel: "Compartir uso anónimo",
+    usageLabel: "Compartir uso y grabaciones de esta ventana",
     scoutCardLabel: "Ficha de ojeo en el juego",
     appearance: "Apariencia",
     themes: { system: "Sistema", light: "Claro", dark: "Oscuro" },
@@ -1822,6 +1822,9 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "0.7.11": [
+        "FM Lens ahora graba cómo se usa su ventana, para ver qué resulta difícil. Lo que escribes y el nombre de tu mánager quedan ocultos. Desactívalo en Ajustes.",
+      ],
       "0.7.10": [
         "Sube los atributos de un jugador y su HA sube con ellos: los cambios se quedan.",
         "Da las gracias: Apoyar FM Lens abre Ko-fi dentro de la app.",

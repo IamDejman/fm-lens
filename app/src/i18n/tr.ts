@@ -1642,7 +1642,7 @@ export const tr: Strings = {
     about: "Hakkında",
     done: "Tamam",
     zoomLabel: "Yakınlaştırma",
-    usageLabel: "Anonim kullanım verisi paylaş",
+    usageLabel: "Kullanımı ve bu pencerenin kayıtlarını paylaş",
     scoutCardLabel: "Oyun içi gözlemci kartı",
     appearance: "Görünüm",
     themes: { system: "Sistem", light: "Açık", dark: "Koyu" },
@@ -1797,6 +1797,9 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "0.7.11": [
+        "FM Lens artık penceresinin nasıl kullanıldığını kaydediyor: neyin zor olduğunu görmek için. Yazdıklarınız ve teknik direktörünüzün adı gizlenir. Ayarlar'dan kapatabilirsiniz.",
+      ],
       "0.7.10": [
         "Bir oyuncunun özelliklerini yükseltin, MY de onlarla yükselir: değişiklikler kalır.",
         "Teşekkür et: FM Lens'i destekle, Ko-fi'yi uygulamanın içinde açar.",

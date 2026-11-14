@@ -40,8 +40,8 @@
     <div class="message policy">
       <h1>Privacy</h1>
       <p>FM Lens and this site count use anonymously with PostHog, to see how many people use them and which
-        features matter. No names, no values you edit, no file paths and nothing you type are sent. PostHog does not
-        keep your IP address.</p>
+        features matter. The counts carry no names, no values you edit, no file paths and nothing you type. PostHog
+        does not keep your IP address.</p>
 
       <h2>The app</h2>
       <p>The app sends these events with a random install id, the app version, your macOS or Windows version and
@@ -57,7 +57,12 @@
         <li><code translate="no">change_undone</code>, <code translate="no">players_exported</code>, <code translate="no">report_sent</code>, <code translate="no">wish_sent</code></li>
         <li><code translate="no">star_asked</code>, <code translate="no">star_clicked</code>, <code translate="no">star_declined</code>: the ask for a star on GitHub was shown, followed or turned down</li>
       </ul>
-      <p>To stop it, turn off <strong>Share anonymous usage</strong> in Settings.</p>
+      <p>The app also records its own window, under the same install id: what FM Lens shows and where you click,
+        so we can see where it is hard to use. It never records FM or anything else on your screen. What you type is
+        hidden, and so are your manager's name, email addresses and your folder name in file paths. The rest of what
+        FM Lens shows from your save, such as players, clubs and their values, is in the recording, along with the
+        window's size, your time zone and the system's version. PostHog keeps a recording for 30 days.</p>
+      <p>To stop both, turn off <strong>Share usage and recordings of this window</strong> in Settings.</p>
 
       <h2>This site</h2>
       <p>The site counts page views and downloads started, without cookies or stored ids. It does not
