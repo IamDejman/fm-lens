@@ -113,6 +113,16 @@ pub struct EndedLoan {
     pub loan_listed: Option<bool>,
 }
 
+/// A loan's future fee and the byte of its condition, as the loan contract holds them.
+#[derive(Debug, Clone, Copy)]
+struct FutureFee {
+    amount: u32,
+    condition: u8,
+}
+
+/// The fee condition of a loan agreed without a future fee.
+const NO_FEE_CONDITION: u8 = 255;
+
 /// The kinds of contract end the game's daily check passes for a loan that ran out, which pick its news: one for a
 /// parent club a human manager runs, one for any other.
 const LOAN_ENDED_HUMAN: u64 = 2;
@@ -1384,9 +1394,9 @@ impl Session {
     pub fn plan_end_loan(&self, player: &PlayerSummary) -> Result<(u32, u32), MoveError> {
         let object = self.player_object(player)?;
         let terms = self.loan(player).ok_or(MoveError::NotOnLoan)?;
-        // The game completes a transfer with a mandatory future fee when the loan ends; which fees are mandatory is
-        // not known, so no loan with one is ended.
-        if terms.future_fee.is_some() {
+        // The game completes a transfer with a future fee when the loan ends, so the fee is taken out of the loan
+        // first: only where the profile places the fee's condition too.
+        if terms.future_fee.is_some() && self.layout.loan.as_ref().is_none_or(|l| l.fee_condition.is_none()) {
             return Err(MoveError::FutureFee);
         }
         // He plays for the club he is loaned to; his own contract names his parent club.
@@ -1399,7 +1409,9 @@ impl Session {
 
     /// Has the game end `player`'s loan today, as its daily check does once a loan runs out: it ends the loan
     /// contract and he goes back to his own club, with the game's news of it. `human_clubs` are the UIDs of the clubs
-    /// human managers run, for the news. The game says nothing back, so the loan is read back to tell.
+    /// human managers run, for the news. The game says nothing back, so the loan is read back to tell. A future fee
+    /// is taken out of the loan first, so he goes back rather than the transfer going through, and put back should the
+    /// game not end the loan.
     pub fn end_loan(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<EndedLoan, MoveError> {
         let function = self.game_function(|calls| calls.end_contract)?;
         let class = self.layout.work_permit.as_ref().map(|w| w.class.as_str()).unwrap_or_default();
@@ -1414,6 +1426,7 @@ impl Session {
             .ok()
             .map(|value| value != 0);
         let kind = if human_clubs.contains(&to_club) { LOAN_ENDED_HUMAN } else { LOAN_ENDED };
+        let fee = self.take_future_fee(loan)?;
 
         let zero = Arg::value(0);
         let mut program = Program::new();
@@ -1433,7 +1446,16 @@ impl Session {
                 zero,
             ],
         ));
-        self.call_game(&program)?;
+        let called = self.call_game(&program);
+        // The loan is the game's to free once it has ended it, so the fee goes back only into a loan he still has.
+        if self.loan_contract(object, 0) == Some(loan) {
+            if let Some(fee) = fee {
+                self.put_future_fee(loan, fee)?;
+            }
+            called?;
+            return Err(MoveError::CallDeclined);
+        }
+        called?;
         let (process, layout) = (&self.process, &self.layout);
         let team = process.read_u64(object + layout.player.team)?;
         if self.loan_contract(object, 0).is_some() {
@@ -1452,6 +1474,41 @@ impl Session {
             wage: terms.wage,
             loan_listed,
         })
+    }
+
+    /// Takes the future fee out of the loan contract at `loan`, leaving it as a loan agreed without one, and gives
+    /// back what it held; none for a loan without a fee. A loan whose fee's condition the profile does not place is
+    /// refused.
+    fn take_future_fee(&self, loan: u64) -> Result<Option<FutureFee>, MoveError> {
+        let Some(l) = self.layout.loan.as_ref() else {
+            return Ok(None);
+        };
+        let amount = self.process.read_u32(loan + l.future_fee)?;
+        if amount == u32::MAX {
+            return Ok(None);
+        }
+        let at = l.fee_condition.ok_or(MoveError::FutureFee)?;
+        let held = FutureFee { amount, condition: self.process.read_bytes(loan + at, 1)?[0] };
+        self.process.write_bytes(loan + at, &[NO_FEE_CONDITION])?;
+        let taken = self.process.write_bytes(loan + l.future_fee, &u32::MAX.to_le_bytes());
+        if taken.is_err() || self.process.read_u32(loan + l.future_fee).ok() != Some(u32::MAX) {
+            self.put_future_fee(loan, held)?;
+            taken?;
+            return Err(MoveError::CallDeclined);
+        }
+        Ok(Some(held))
+    }
+
+    /// Puts the future fee `fee` back into the loan contract at `loan`, as [`Self::take_future_fee`] found it.
+    fn put_future_fee(&self, loan: u64, fee: FutureFee) -> Result<(), MoveError> {
+        let Some(l) = self.layout.loan.as_ref() else {
+            return Ok(());
+        };
+        self.process.write_bytes(loan + l.future_fee, &fee.amount.to_le_bytes())?;
+        if let Some(at) = l.fee_condition {
+            self.process.write_bytes(loan + at, &[fee.condition])?;
+        }
+        Ok(())
     }
 
     /// Has the game release `player` from his contract, as its own editor does (at 0x238eddc): it withdraws the offers
@@ -1570,6 +1627,14 @@ mod tests {
         // Four letters, the first in the high byte, as the game's editor passes them.
         assert_eq!(JOB_TERM.to_be_bytes()[4..], *b"Pcjo");
         assert_eq!(TRANSFER_DATE.to_be_bytes()[4..], *b"TrDt");
+    }
+
+    /// A loan with a future fee is ended only where the fee's condition is placed, so the fee can be taken out whole.
+    #[test]
+    fn the_windows_layout_places_a_loan_fee_s_condition() {
+        let layout = |text| toml::from_str::<crate::profile::Layout>(text).expect("layout").loan.expect("loans");
+        assert_eq!(layout(include_str!("../../../profiles/fm27/layout.toml")).fee_condition, Some(0xF7));
+        assert_eq!(layout(include_str!("../../../profiles/fm27/layout-macos.toml")).fee_condition, None);
     }
 
     #[test]

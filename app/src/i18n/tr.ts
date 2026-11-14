@@ -2506,6 +2506,7 @@ export const tr: Strings = {
     from: "Kiralık olduğu kulüp",
     checking: "Kiralık kontrol ediliyor…",
     ready: (from, to) => `${from} → ${to}`,
+    feeDropped: (fee) => `${fee} tutarındaki gelecek bonservis bedeli düşer.`,
 
     // The foot
     end: "Kiralığı bitir",

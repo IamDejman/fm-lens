@@ -21,6 +21,7 @@ import type {
   MassPreview,
   MassReport,
   ManagerPreview,
+  LoanEndPreview,
   MovePreview,
   MoveTerms,
   Nation,
@@ -431,7 +432,7 @@ export const startLoan = (uid: number, club: number, ends: number) =>
   call<LoggedChange>("start_loan", { uid, club, ends });
 
 /** The clubs the player's loan would end between: the one he is loaned to, then his own. Only reads. */
-export const planEndLoan = (uid: number) => call<MovePreview>("plan_end_loan", { uid });
+export const planEndLoan = (uid: number) => call<LoanEndPreview>("plan_end_loan", { uid });
 
 /** Has the game end the player's loan today: he goes back to his own club. */
 export const endLoan = (uid: number) => call<LoggedChange>("end_loan", { uid });

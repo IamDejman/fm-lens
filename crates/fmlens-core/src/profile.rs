@@ -225,6 +225,10 @@ pub struct LoanLayout {
     pub class: String,
     /// The loan's future fee, a u32 in the contract, `u32::MAX` for none.
     pub future_fee: u64,
+    /// The byte of the fee's condition (matches to play, mandatory or optional), where the profile places it: a loan
+    /// with a future fee is ended early only where it does.
+    #[serde(default)]
+    pub fee_condition: Option<u64>,
 }
 
 /// Work permits: the transfer manager the game keeps them in ([`BuildProfile::transfer_manager`]), of class `class`; at

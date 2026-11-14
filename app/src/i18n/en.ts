@@ -2825,6 +2825,8 @@ export const en = {
     checking: "Checking the loan…",
     /** The loan can be ended; `from` is the club he is loaned to and `to` his own. */
     ready: (from: string, to: string) => `${from} → ${to}`,
+    /** The loan has a future fee, which ending it gives up; `fee` is the amount. */
+    feeDropped: (fee: string) => `The ${fee} future fee is dropped.`,
 
     // The foot
     end: "End loan",

@@ -2557,6 +2557,7 @@ export const es: Strings = {
     from: "Cedido en",
     checking: "Comprobando la cesión…",
     ready: (from, to) => `${from} → ${to}`,
+    feeDropped: (fee) => `Se pierde el traspaso futuro de ${fee}.`,
 
     // El pie
     end: "Terminar cesión",
