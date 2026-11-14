@@ -159,11 +159,15 @@ with the reading first and read back after.
   breaks the order was not tried, so the write must keep the list sorted or refuse.
 - Date joined at `+0xC8` was left with the person. A click on a board member's row selected the
   row and opened no profile.
+- The career was then played on by holiday for seven days, from 28 January to 4 February 2028,
+  through a league match, the close of the transfer window and the month end. FM kept
+  responding. Both Staff pages and the probe still showed the swapped holders, and both lists
+  read as before. Manchester United's Club Info page opened as usual.
 
 Still to prove in FM on a career copy before any of this is enabled:
 - FM shows the change without a save and load (FM Lens refreshes FM's panels after its own
   edits; that was not tried here).
-- Quit FM and load again, then play on through a month end and a season end.
+- Quit FM and load again, then play on through a season end. One month end has passed.
 - A swap that changes the uid order of a list.
 - What FM writes to the copies at `+0xB8` and `+0xBC`, and to date joined at `+0xC8`, when a
   director leaves or joins by himself.
