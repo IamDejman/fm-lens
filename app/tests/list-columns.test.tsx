@@ -88,11 +88,14 @@ test('the player list shows value and wage, and an attribute column once it is c
   await userEvent.click(screen.getByRole('button', { name: 'More' }));
   await userEvent.click(screen.getByRole('button', { name: 'Columns' }));
   const dialog = screen.getByRole('dialog', { name: 'Columns' });
+  // The menu goes as its dialog opens, so its panel never shows beside or over the dialog.
+  expect(screen.getByRole('button', { name: 'More', hidden: true }).getAttribute('aria-expanded')).toBe('false');
   // The personality ratings of the filter rows are not attributes a column shows.
   expect(within(dialog).queryByRole('checkbox', { name: 'Ambition' })).toBeNull();
   await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Finishing' }));
   await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Value' }));
   await userEvent.click(within(dialog).getByRole('button', { name: 'Done' }));
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'More' })));
   await waitFor(() => expect(lastSearch('search_players')?.attributes).toEqual(['finishing']));
   await waitFor(() => expect(within(table).getByRole('columnheader', { name: 'Fin' })).toBeTruthy());
   expect(within(table).queryByRole('columnheader', { name: 'Value' })).toBeNull();

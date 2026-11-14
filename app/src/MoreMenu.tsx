@@ -8,38 +8,44 @@ import {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { appText } from "./labels";
 
-/** Closes the menu an action is in and gives focus to its More button; null outside a menu. */
-const MenuContext = createContext<(() => void) | null>(null);
+/** The menu an action is in: `hide` takes its panel off the screen, `focus` gives focus to its More button. */
+interface Menu {
+  hide: () => void;
+  focus: () => void;
+}
+
+/** Null outside a menu. */
+const MenuContext = createContext<Menu | null>(null);
 
 /**
- * For an action that opens a dialog: once the dialog is gone (`open` false again), the menu the action is in closes
- * and focus goes to its More button; outside a menu, focus goes back to the action's own button. Doing it earlier,
- * with the dialog still up, would only make the dialog take focus back.
+ * For an action that opens a dialog: the menu the action is in goes as the dialog opens, so its panel does not show
+ * beside the dialog or over it. Once the dialog is gone (`open` false again), focus goes to the menu's More button;
+ * outside a menu, to the action's own button. Doing that earlier, with the dialog still up, would only make the dialog
+ * take focus back.
  */
 export function useDialogReturn(open: boolean, button: RefObject<HTMLButtonElement | null>) {
-  const closeMenu = useContext(MenuContext);
+  const menu = useContext(MenuContext);
   const wasOpen = useRef(false);
   useEffect(() => {
-    if (wasOpen.current && !open) {
-      if (closeMenu) {
-        closeMenu();
-      } else {
-        button.current?.focus();
-      }
+    if (open && !wasOpen.current) {
+      menu?.hide();
+    } else if (wasOpen.current && !open) {
+      (menu ? menu.focus : () => button.current?.focus())();
     }
     wasOpen.current = open;
-  }, [open, closeMenu, button]);
+  }, [open, menu, button]);
 }
 
 /**
  * A More button that opens `children` in a small panel. The actions stay mounted while it is closed, so a dialog one of
- * them opened survives. The panel stays open while that dialog is up and closes with it (see `useDialogReturn`);
- * Escape or a click elsewhere closes it too.
+ * them opened survives the panel closing, which it does as the dialog opens (see `useDialogReturn`). Escape or a click
+ * elsewhere closes it too.
  */
 export function MoreMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -50,6 +56,7 @@ export function MoreMenu({ children }: { children: ReactNode }) {
     setOpen(false);
     toggle.current?.focus();
   }, []);
+  const menu = useMemo<Menu>(() => ({ hide: () => setOpen(false), focus: () => toggle.current?.focus() }), []);
 
   useEffect(() => {
     if (!open) {
@@ -57,8 +64,7 @@ export function MoreMenu({ children }: { children: ReactNode }) {
     }
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
-      // A click in a dialog an action opened is not a click elsewhere.
-      if (target instanceof Element && (box.current?.contains(target) || target.closest(".modal-backdrop"))) {
+      if (target instanceof Element && box.current?.contains(target)) {
         return;
       }
       setOpen(false);
@@ -90,7 +96,7 @@ export function MoreMenu({ children }: { children: ReactNode }) {
         {appText.more}
       </button>
       <div id={panelId} className="more-panel" hidden={!open}>
-        <MenuContext value={close}>{children}</MenuContext>
+        <MenuContext value={menu}>{children}</MenuContext>
       </div>
     </div>
   );

@@ -114,6 +114,7 @@ export function StadiumBrowser({ version, active }: { version: number; active: b
             max={maxCapacity}
             onMin={setMinCapacity}
             onMax={setMaxCapacity}
+            wide
           />
         </FilterBar>
       }
