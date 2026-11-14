@@ -220,10 +220,11 @@ function App() {
 
   // The game was read again, by Reload or by the app itself: the lists, the open profile and the log follow.
   const readAgain = useCallback(
-    ({ refrozen: again, ...reloaded }: ReloadInfo) => {
+    ({ refrozen: again, sameGame, ...reloaded }: ReloadInfo) => {
       setConnection((c) => c && { ...c, ...reloaded });
-      if (again) {
-        setRefrozen(again);
+      // What came back on in a save before is not frozen in another one.
+      if (again || !sameGame) {
+        setRefrozen(again ?? null);
       }
       setDataVersion((v) => v + 1);
       void reloadLog();
@@ -246,7 +247,7 @@ function App() {
     [run, readAgain, detect],
   );
 
-  // To keep what is frozen held, the Rust side reads the game again by itself once FM has moved its lists.
+  // The Rust side reads the game again by itself once FM has moved its lists, e.g. on loading another save.
   useEffect(() => {
     if (!inTauri) {
       return;

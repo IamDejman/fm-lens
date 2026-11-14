@@ -2,7 +2,7 @@ import { useReducer, useSyncExternalStore, type CSSProperties, type ReactNode } 
 import { intlLocale } from "./i18n";
 import { pictureUrl, type PictureKind } from "./pictures";
 
-// Pictures from the graphics packs: club logos, faces and flags. A picture sits in a box of a fixed size, so a row or a
+// Pictures from the graphics packs, or else the game's own: club and competition logos, faces, flags and kits. A picture sits in a box of a fixed size, so a row or a
 // header is as big while the picture is on its way, or when no pack has it, as with it. Where there is none the box
 // shows a stand-in: initials for a club or a person, an empty frame for a flag (never a made-up flag).
 
@@ -188,6 +188,24 @@ export function ClubLogo({ uid, name, size, label = "" }: ClubLogoProps) {
     </span>
   ) : null;
   return <Picture kind="club" id={uid} size={size} label={label} fallback={badge} />;
+}
+
+interface CompetitionLogoProps {
+  uid: number;
+  /** The competition's name, for the initials of its badge. */
+  name: string;
+  /** The side of the square box. */
+  size: number;
+}
+
+/** A competition's logo, beside its name; where there is none, a badge with its initials, as for a club. */
+export function CompetitionLogo({ uid, name, size }: CompetitionLogoProps) {
+  const badge = (
+    <span className="picture-badge" style={{ "--hue": hueOf(name) } as CSSProperties}>
+      {clubInitials(name)}
+    </span>
+  );
+  return <Picture kind="competition" id={uid} size={size} label="" fallback={badge} />;
 }
 
 interface PersonFaceProps {

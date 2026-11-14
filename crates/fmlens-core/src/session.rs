@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
@@ -11,7 +12,7 @@ use crate::details::{PlayerDetails, read_player_details};
 use crate::edit::{Entity, Field};
 use crate::game::{GAME_EXE, GAME_PLUGIN, GameInfo};
 use crate::health::{Check, Health, Lock, STRUCTURE};
-use crate::players::{PlayerSummary, read_players};
+use crate::players::{Division, PlayerSummary, read_players};
 use crate::profile::{BuildProfile, Layout, PluginFingerprint, layout_for, profile_for};
 use crate::staff::{StaffDetails, StaffSummary, read_staff, read_staff_details};
 
@@ -269,7 +270,17 @@ impl Session {
     /// Reads every player, with ages on the current in-game date. Only reads memory.
     pub fn players(&self) -> Result<Vec<PlayerSummary>, SessionError> {
         let array = self.arrays.players.as_ref().ok_or(SessionError::PlayersNotFound)?;
-        Ok(read_players(&self.process, &self.plugin, array, &self.layout, self.game_date())?)
+        // A division is only ever one of the game's competitions, so a team pointing anywhere else has none.
+        let divisions: HashMap<u64, Division> = match self.layout.team.division {
+            Some(_) => self
+                .competitions()
+                .unwrap_or_default()
+                .into_iter()
+                .map(|c| (c.address, Division { uid: c.uid, name: c.name, reputation: c.reputation }))
+                .collect(),
+            None => HashMap::new(),
+        };
+        Ok(read_players(&self.process, &self.plugin, array, &self.layout, self.game_date(), &divisions)?)
     }
 
     /// Reads every club. Only reads memory.

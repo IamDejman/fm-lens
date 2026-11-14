@@ -98,9 +98,9 @@ The best players (by current ability) or the most promising (21 and under, by
 potential ability) of men's or women's clubs, in the world, a continent or a
 country: 100 at most. A player plays in the country his club is in, as the
 game finds it (where it plays when based abroad). Free agents appear only in
-the world lists. Lists by division need the league each club plays in, which
-FM Lens does not read yet (see
-[the research note](recon/fm27-scouting-research.md)).
+the world lists. On Windows a country's list can be narrowed to one of its
+divisions, by the league each club plays in this season; macOS does not read
+that yet (see [the research note](recon/fm27-scouting-research.md)).
 
 ## Your other careers
 
@@ -115,14 +115,27 @@ birth date, as players FM makes up during a career (regens) can reuse an ID.
 Only careers connected in FM Lens are recorded, from the first time each one is
 connected after updating.
 
-## Kits
+## Pictures and kits
 
-Club logos, faces and flags from graphics packs were already shown. FM Lens
-now also reads kit packs: a mapping to `graphics/pictures/club/<id>/kits/home`
+With no graphics pack, FM Lens shows the game's own club logos, faces, flags,
+competition logos and kits, read from the game's install. Staff have no
+pictures in the game and show initials. FM Lens also reads kit packs: a mapping to `graphics/pictures/club/<id>/kits/home`
 (or `away` or `third`) puts that shirt on the club's Overview.
 
-## Not yet available
+## In-game scout card (Windows)
 
-The in-game scout card (hover a player's (i) in FM and see FM Lens's card over
-the game) needs FM Lens to know which player FM is pointing at, which is not
-mapped yet. See [the research note](recon/fm27-scouting-research.md).
+Hover the (i) by a player's name in FM and FM Lens's card for him shows by
+the pointer, over the game: his face, club, nation, age, position, current and
+potential ability, his best three roles, chance of development and progress
+rate. Hold Shift for his peak: the roles at his potential and the attributes
+that grow most. FM Lens must be running and connected to the career.
+
+The card never takes focus or a click from FM. It goes when the pointer leaves
+FM's card, when FM is not the window in front and at FM's main menu, and it
+follows FM when another save loads. It works with FM full screen or in a
+window. Switch it off in Settings, General.
+
+FM Lens finds the player from FM's own card: FM keeps the player's UID in its
+Unity layer, reached from one fixed place (see
+[the research note](recon/fm27-scouting-research.md)). macOS does not read it
+yet, so the card and its switch are Windows only.

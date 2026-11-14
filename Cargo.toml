@@ -15,6 +15,7 @@ authors = ["FM Lens contributors"]
 fmlens-mem = { path = "crates/fmlens-mem", default-features = false }
 fmlens-core = { path = "crates/fmlens-core" }
 fmlens-scout = { path = "crates/fmlens-scout" }
+fmlens-gfx = { path = "crates/fmlens-gfx" }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

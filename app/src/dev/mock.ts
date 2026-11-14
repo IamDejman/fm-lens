@@ -310,7 +310,7 @@ function details(player: PlayerSummary): PlayerDetails {
           }),
         }
       : null,
-    // As stored: energy and match sharpness 0–10000 (the game keeps sharpness at 35% or more), and jadedness
+    // As stored: energy and match sharpness 0–10000 (most players at 35% sharpness or more), and jadedness
     // from -500, fully rested, to a little above 0 early in a season.
     condition: Math.round(7000 + next() * 3000),
     matchSharpness: Math.round(3500 + next() * 6500),
@@ -1178,7 +1178,7 @@ const clauseCapacity = new Map<number, number>();
 /** The clauses of a fixture contract: as changed through the editor, or as `generated`, numbered in order. */
 /** A fixture contract's bonus for the competition `uid`, named as the app names it from the competitions. */
 function competitionBonus(index: number, uid: number, amount: number): CompetitionBonus {
-  return { index, competitionUid: uid, competition: COMPETITIONS.find((c) => c.uid === uid)?.name ?? null, amount };
+  return { index, key: uid, competition: COMPETITIONS.find((c) => c.uid === uid)?.name ?? null, amount };
 }
 
 function clausesOf(uid: number, generated: Clause[]): Clause[] {
@@ -1478,7 +1478,6 @@ function fieldTable(entity: Entity): EditField[] {
       ...CLUB_FACILITIES.map((key) => field(`facilities.${key}`, "u8", 1, 20)),
       field("finance.balance", "i32", -2_000_000_000, 2_000_000_000),
       field("finance.transfer_budget", "i32", 0, 2_000_000_000),
-      field("finance.wage_budget", "i32", 0, 100_000_000),
       field("finance.total_wage_budget", "i32", 0, 100_000_000),
       ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "u32", 0, 250_000)),
     ];
@@ -3816,6 +3815,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         gameDate: failedChecks ? null : gameDate,
         health: mockHealth(),
         career: mockCareer(),
+        sameGame: true,
       };
       return reloaded as T;
     }
@@ -3889,6 +3889,15 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const places: TopPlaces = {
         continents: [...new Set(MOCK_PLACES.map((place) => place.continent))].sort(),
         nations: [...MOCK_PLACES].sort((a, b) => a.name.localeCompare(b.name)),
+        // Each made-up country has two divisions; a player's is by his UID.
+        divisions: MOCK_PLACES.flatMap((place) =>
+          [0, 1].map((tier) => ({
+            uid: place.uid * 10 + tier,
+            name: `${place.name} ${tier === 0 ? "First" : "Second"} Division`,
+            nation: place.uid,
+            women: false,
+          })),
+        ),
       };
       return places as T;
     }
@@ -3903,6 +3912,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         return (
           (scope.women ?? false) === false &&
           (scope.nation === undefined || place?.uid === scope.nation) &&
+          (scope.division === undefined || (place ? place.uid * 10 + (p.uid % 2) : -1) === scope.division) &&
           (scope.continent === undefined || place?.continent === scope.continent)
         );
       };

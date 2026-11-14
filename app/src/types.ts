@@ -140,6 +140,8 @@ export interface ReloadInfo {
   /** The checks, run again with the game as it is now. */
   health: Health;
   career: Career | null;
+  /** Whether the game read is the one read before: no save loaded and no FM restart since. */
+  sameGame: boolean;
   /**
    * Only when the game has loaded another save since: what was frozen in that one before and is frozen again, when
    * there was any. What was frozen in the save before is not held in this one.
@@ -485,12 +487,16 @@ export interface TopScope {
   continent?: string;
   /** The UID of the country. */
   nation?: number;
+  /** The UID of the division. */
+  division?: number;
 }
 
 /** From `top_places_list`: where the players play. */
 export interface TopPlaces {
   continents: string[];
   nations: { uid: number; name: string; continent: string | null }[];
+  /** The best known first; `nation` is the UID of the country its clubs are in. */
+  divisions: { uid: number; name: string; nation: number | null; women: boolean }[];
 }
 
 /** A club whose senior team plays at a stadium. */
@@ -871,9 +877,9 @@ export interface Concern {
 export interface CompetitionBonus {
   /** Its place in the contract's list. */
   index: number;
-  /** The UID the bonus names. */
-  competitionUid: number;
-  /** The competition's (or award's) name; null where none has that UID. */
+  /** What it names: the competition's place in the game's table, or the award's UID for an award bonus. */
+  key: number;
+  /** The competition's (or award's) name; null where none is found. */
   competition: string | null;
   /** Pounds; null where the bonus holds none. */
   amount: number | null;
@@ -1158,7 +1164,7 @@ export interface EditField {
    * "contract.loan_listed".
    * Clubs: "reputation", "facilities.training", "facilities.youth_facilities", "facilities.youth_coaching",
    * "facilities.youth_recruitment", "facilities.corporate", "finance.balance", "finance.transfer_budget",
-   * "finance.wage_budget", "finance.total_wage_budget".
+   * "finance.total_wage_budget".
    * Nations: "reputation" (the senior team's), "youth_rating", "game_importance", "attendance", the same four with
    * "women.", "points" and "women.points" (FIFA), "population", "dual_nationality", "naturalisation".
    */
@@ -1455,6 +1461,10 @@ export interface MassFilters {
   playerFilter?: PlayerFilter;
   staffFilter?: StaffFilter;
   clubFilter?: ClubFilter;
+  /** The player list's "Best for": only the players who play its positions are listed. */
+  best?: BestFor;
+  /** The player the player list is compared with, whom it leaves out. */
+  leftOut?: number;
 }
 
 /** How much of what a list selects is frozen: its players' or staff's attributes, or its clubs' money. */
