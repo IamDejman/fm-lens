@@ -187,7 +187,7 @@ Values to check in FM, Nicolas Jover (staff 48030808, Arsenal, Set Piece Coach):
 - Contract: Set Piece Coach, 16000 per week, expires 2032-06-30, joined 2021-07-05.
 - Coaching licence: level 2 (byte +0x204).
 
-Values to check in FM, human manager Ayodeji Eluwande (UID 2002071958):
+Values to check in FM, the human manager (UID 2002071958):
 - Attacking 3, defending 3, fitness 1, goalkeeping 1, possession 1, set pieces 1, tactical 1,
   technical 3, working with youngsters 7. Authority 4, determination 20, motivating 6, people
   management 3. Knowledge 10/12/10/10/10/11. Medical 10/10.

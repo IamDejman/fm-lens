@@ -14,7 +14,8 @@ after that.
 
 ## What you need
 
-- A Mac with Apple Silicon or Intel, or a PC with 64-bit Windows 10 or 11.
+- A Mac with Apple Silicon or Intel, or a 64-bit Windows PC. Built for Windows 10
+  and 11; tested so far on Windows Server 2022.
 - Football Manager 27 from Steam, version 27.0.1 (build 26577676 or 26385295)
   or 27.0.0 (build 26340721). Other builds open read-only.
 - A copy of your save to edit.

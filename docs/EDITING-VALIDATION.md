@@ -566,7 +566,7 @@ Quintero's permit shows, then revoke it; Keitel's contract reads 30/06/2029
 and £5,000; Berg's arranged-transfer badge is gone; González joined Getafe
 with FM's contract; Oliver's official screen; Nwaneri back at Arsenal. Then
 End loan on a loan without a future fee, work permits (#20), competitions and
-awards (#21) and the earlier items in `docs/internal/HANDOFF.md` section 4.
+awards (#21) and the earlier items of the November batch's screen checklist.
 
 ### Rechecks and the rest of section 4 (5 November 2026, evening)
 
@@ -787,7 +787,7 @@ checked before and after (OK both times) and the copy's file time is unchanged.
 | #77 After the fix (9ec665e) | Nico Paz: promise 1, made 24 Nov 2027, due 23 Jan 2028. Gyökeres: none | - | Same promise |
 | #77 Close Nico Paz's promise | "Ended 11 Dec 2027" | Closed, status 1, ends 11 Dec | 11 Dec: "44 days" (cached). 12 Dec: "Completed", "Succeeded" |
 | #77 Undo of the close | "Undone" | Open, status 0, due 23 Jan 2028 | - |
-| #78 Human manager, Arsenal -> Nottingham Forest | Dialog: "Oliver Glasner loses his job". Header and profile: Nottingham Forest | Manager of Nottingham Forest; Glasner no job | At once: "Eluwande takes charge at Nott'm Forest", "Welcome to Nott'm Forest!", Forest's portal |
+| #78 Human manager, Arsenal -> Nottingham Forest | Dialog: "Oliver Glasner loses his job". Header and profile: Nottingham Forest | Manager of Nottingham Forest; Glasner no job | At once: FM's news of the move to Nott'm Forest, "Welcome to Nott'm Forest!", Forest's portal |
 
 Findings:
 
@@ -1029,9 +1029,9 @@ Batch 2026-11-05`; Arsenal, 11 Dec 2027 16:30). Continue was never pressed.
 |---|---|---|
 | Your favourite club, Arsenal -> Chelsea | Saved, in Changes | My Profile: "Favourite Club Chelsea" at once |
 | Saka, Ezri Konsa (60) -> Declan Rice | Saved | Favoured Personnel: Declan Rice, Reason "Team-mates" |
-| Saka, Ayodeji Eluwande (98) -> Albert Stuivenberg | Saved | Stuivenberg, Reason "Manager", the old entry's reason |
-| Undo of the Stuivenberg change | "Undone" | Ayodeji Eluwande back, Reason "Manager" |
-| Save in FM, quit, relaunch, load the copy | Probe: Saka favours Declan Rice (60) and Ayodeji Eluwande (98); no Konsa or Stuivenberg | Your profile: "Favourite Club Chelsea" |
+| Saka, the human manager (98) -> Albert Stuivenberg | Saved | Stuivenberg, Reason "Manager", the old entry's reason |
+| Undo of the Stuivenberg change | "Undone" | The human manager back, Reason "Manager" |
+| Save in FM, quit, relaunch, load the copy | Probe: Saka favours Declan Rice (60) and the human manager (98); no Konsa or Stuivenberg | Your profile: "Favourite Club Chelsea" |
 
 FM keeps the Reason with the entry: Replace changes who a like points at, not
 why. The copy was saved once on purpose for the reload; FM was then quit without
@@ -1266,7 +1266,7 @@ the line shows for any signing of a player who has one.
 
 FM27 Steam build 26340721 on Windows Server 2022 (the AWS g4dn.xlarge). FM Lens
 0.6.0 built on the box from `fix/windows-icon` (#143, on `main` at 4a91fb7), the
-app itself, not a test harness. Save: the Arsenal career in `Ayo Elu - Arsenal.fm`, at 13 July
+app itself, not a test harness. Save: the main Arsenal test career, at 13 July
 2026. Continue was never pressed and the career was never saved: the save
 file's SHA-256 stayed `AF20CBAC…2CB747E5`, and FM kept responding after every
 step.
@@ -1282,7 +1282,7 @@ step.
 | Squad: Refresh fitness | 54 changes; energy and sharpness 100% | Changes |
 | Squad: Max morale | 24 changes; 20/20 | Changes |
 | Squad: Max cohesion (experimental) | 18 changes. Four new signings skipped: "FM hasn't set his familiarity with this club yet" | Changes |
-| Your manager, Ayo Elu (2002071616) | Unsackable No -> Yes; wage £281,250 -> £300,000 | Changes |
+| Your manager (2002071616) | Unsackable No -> Yes; wage £281,250 -> £300,000 | Changes |
 
 Changes then read "173 changes · 173 undone", and Gabriel's list row showed CA
 174, PA 176 again.
@@ -1338,7 +1338,7 @@ Checks: production frontend build; app backend regression covering 451 equal-ran
 
 ### Live-career paging follow-up (7 November 2026)
 
-Normal live-data native debug bundle from `Iamdejman/list-pagination`, FM27 Steam build 26340721 ARM64, module UUID F4540355-2186-39CB-9119-C706A6A35346, PID 2559. Loaded career: Ayodeji Eluwande / Arsenal, 11 December 2027, 16:30, matching FM's Portal. The read-only probe's 12 health checks passed. This was browsing only: no Apply, Undo, Continue, save or game restart. All 18 baseline career file hashes remained unchanged.
+Normal live-data native debug bundle from `Iamdejman/list-pagination`, FM27 Steam build 26340721 ARM64, module UUID F4540355-2186-39CB-9119-C706A6A35346, PID 2559. Loaded career: the human manager's Arsenal, 11 December 2027, 16:30, matching FM's Portal. The read-only probe's 12 health checks passed. This was browsing only: no Apply, Undo, Continue, save or game restart. All 18 baseline career file hashes remained unchanged.
 
 - Players: 30,300 results. Next showed 201–400; page-one leader Erling Haaland was replaced in the list by page-two leader Pau Navarro, while Haaland's open profile remained.
 - Sorting by name from page two returned to 1–200 of 30,300.
@@ -1362,7 +1362,7 @@ Checks: frontend production build, native Tauri debug bundle, source detector (n
 
 Branch `Iamdejman/promise-formation-labels`. Display-only mappings: promise 1 is Playing time, from the corrected Nico Paz check in "Six features" above (promise 7 was a different, category-0 record and is not named). Formation IDs 4, 7 and 29 use the 7 November native edit/undo observations; 22, 28, 30 and 63 use the FM screen comparisons in docs/recon/fm27-staff-extras.md. The same formation mapper supplies profile display, editable choices and Changes through choiceLabel. Unmapped promises retain Promise N; unmapped formations now say Formation N, localized in all three dictionaries. Zero still means none. Formation notation keeps the observed English FM spelling; localized promise/fallback wording is a translation, not a separately verified foreign-language FM string. No new IDs were inferred from language-resource strings or tentative disassembly.
 
-Checks: production frontend build, native ad-hoc-signed Tauri debug bundle, source detector and diff checks passed (the existing Vite chunk warning remains). Native live-career display check on the known ARM64 build, Arsenal / Ayodeji Eluwande, 11 December 2027: Nico Paz’s Mood shows Playing time, made 24 November and due 23 January; Arteta’s Attributes shows 4-2-3-1 DM AM Wide in possession and 4-4-2 2DM out of possession. No Edit/Apply, promise closure, Continue or save was used; all 18 baseline career hashes are unchanged. Other mapped formation labels and localized wording were not newly compared in FM during this pass. Additional IDs remain unmapped.
+Checks: production frontend build, native ad-hoc-signed Tauri debug bundle, source detector and diff checks passed (the existing Vite chunk warning remains). Native live-career display check on the known ARM64 build, Arsenal, 11 December 2027: Nico Paz’s Mood shows Playing time, made 24 November and due 23 January; Arteta’s Attributes shows 4-2-3-1 DM AM Wide in possession and 4-4-2 2DM out of possession. No Edit/Apply, promise closure, Continue or save was used; all 18 baseline career hashes are unchanged. Other mapped formation labels and localized wording were not newly compared in FM during this pass. Additional IDs remain unmapped.
 
 ## Runtime assets and deferred browsers (8 November 2026)
 
@@ -1408,7 +1408,7 @@ override and loopback collector are not part of the shipped source.
 
 Native interaction used the running Steam ARM64 game, PID 2559, module UUID
 F4540355-2186-39CB-9119-C706A6A35346, build 26340721. FM showed Arsenal,
-11 December 2027, 16:30; FM Lens identified Ayodeji Eluwande. Players (30,300),
+11 December 2027, 16:30; FM Lens identified the human manager. Players (30,300),
 staff (20,215), clubs (21,675), nations (227), competitions (8,084), awards
 (3,902), stadiums (19,234) and officials (1,166) rendered. Searching staff for
 Arteta, opening Mikel Arteta, switching to Clubs and returning retained both
@@ -1450,7 +1450,7 @@ mapping its original file (inode 639157841) to the end.
 |---|---|---|---|
 | 0.6.1 connects to the running FM | Connected | - | - |
 | Update, then Relaunch to update | 0.6.2 opens on the same data and shows its What's new | - | PID 2559 unchanged |
-| Reads after the relaunch | Connected: Ayodeji Eluwande, Arsenal, 11 Dec 2027, 30,300 players; Saka (28122642) Finishing 16 | 80 (16) | - |
+| Reads after the relaunch | Connected: the human manager, Arsenal, 11 Dec 2027, 30,300 players; Saka (28122642) Finishing 16 | 80 (16) | - |
 | Apply Finishing 16 -> 17 | "1 change applied.", no refresh warning; Changes 1 | 85 (17) | 17 with the improvement arrow, without Continue |
 | Save Game As `FM Lens Update 2026-11-08` | - | - | Saved (`f7c6040f…`) |
 | Undo | Undone at 04:29:43, no warning | 80 (16) | 16 at once |
@@ -1584,14 +1584,14 @@ Clubs' finances over the holiday, for reference: Brentford -£9,631,777 ->
 
 ### Human manager: Change club
 
-On Mon 3 Jan 2028, after the holiday, FM Lens's Change club moved Ayodeji
-Eluwande (staff 2002071958) from Arsenal to Brentford. FM needed a tactic
+On Mon 3 Jan 2028, after the holiday, FM Lens's Change club moved the human
+manager (staff 2002071958) from Arsenal to Brentford. FM needed a tactic
 (Brentford had "No Tactic Set"), introductions and captains before Continue,
 as for any new job.
 
 | Check | FM Lens | Probe | FM |
 |---|---|---|---|
-| Change club Arsenal -> Brentford | Preview "Arsenal -> Brentford / Keith Andrews loses his job / It can't be undone."; header then shows Brentford | Brentford, new contract £144,282 p/w, 2028-01-03 to 2030-06-30 (was £281,250 p/w at Arsenal). Reputation home 2881 -> 3000, current 7872 -> 7172, world 2486 -> 2687 | "Eluwande takes charge at Brentford"; the career now runs at Brentford. Wage budget £245K p/w over |
+| Change club Arsenal -> Brentford | Preview "Arsenal -> Brentford / Keith Andrews loses his job / It can't be undone."; header then shows Brentford | Brentford, new contract £144,282 p/w, 2028-01-03 to 2030-06-30 (was £281,250 p/w at Arsenal). Reputation home 2881 -> 3000, current 7872 -> 7172, world 2486 -> 2687 | FM's news of the move to Brentford; the career now runs at Brentford. Wage budget £245K p/w over |
 | Keith Andrews (staff 103353) | "loses his job" | No club, no contract | Free agent; news "Andrews eyes Arsenal job". His staff history row "25- BRE Manager" stays open, with no end year |
 | Arsenal | - | No change from the move | Caretaker David Horseman. Kepa left the first-team list for the U21 list at once (28 -> 27 and 28 -> 29). Players' morale moved |
 | Brentford | - | - | U21 captain Callum Wilson -> Beau Redknapp |
@@ -1681,7 +1681,7 @@ balance rose by about 84% of the fee; that split was not traced.
 FM27 Steam build 26340721 on the Windows test box (Windows Server 2022, g4dn.xlarge),
 FM Lens 0.6.2 built from `feat/windows-parity`, driven over RDP. Save: a copy of the
 Arsenal career at 13 July 2026, written with FM's Save As as
-`FM Lens Windows 2026-11-08`; the test save `Ayo Elu - Arsenal` kept its SHA-256
+`FM Lens Windows 2026-11-08`; the main test save kept its SHA-256
 `AF20CBAC…B747E5` before and after. A second Save As, `FM Lens Persist Check`, was used for the relaunch test. Each action was made in the app, then checked in
 the app's Changes list and, where FM shows it, in FM.
 
@@ -1710,7 +1710,7 @@ the app's Changes list and, where FM shows it, in FM.
 | Max attributes (24 players, 1,271 changes) | Pass. FM showed Saka at 20 across the board | Undo restored Saka's edited values in FM |
 | Max morale (23 changes) | Pass. Read back 20 of 20. FM shows morale as icons, so not checked in FM | Undo restored |
 | Max tactics (24 changes) | Pass in the app only. The copy has no tactic set up, so FM shows nothing to compare | Undo restored |
-| Staff attribute edit (manager Ayo Elu Attacking 5 to 17) | Pass. FM shows "Very Good" | Not undone |
+| Staff attribute edit (your manager, Attacking 5 to 17) | Pass. FM shows "Very Good" | Not undone |
 | Save As a new name, quit FM, relaunch through Steam, load the copy | Pass. Saved as `FM Lens Persist Check`. Steam started FM with no sign-in. After loading: Saka's Corners 5 and Finishing 20, Arsenal's balance £329,887,681 and Rice's £275,000 wage all held, and both freezes came back on | None needed |
 
 Notes. The NVIDIA "Control Panel is not found" toast sits over FM Lens's Apply button
@@ -1730,7 +1730,7 @@ useful room for names instead of relying solely on WebKit container queries.
 Native verification used the ad-hoc-signed debug Tauri app with production Vite
 output, connected to the running Steam ARM64 career: PID 13579, build 26340721,
 module UUID F4540355-2186-39CB-9119-C706A6A35346. FM showed 8 December 2027,
-11:00; FM Lens named Ayodeji Eluwande / Arsenal.
+11:00; FM Lens named the human manager and Arsenal.
 
 | Reproduction | Result |
 |---|---|
@@ -1814,7 +1814,7 @@ the app reported one change applied. Reopened the wage editor, which freshly
 reads the game: value 260000, No changes. Exited edit mode without further edits.
 Independent read-only probe `get player 28122642 contract.wage` returned 260000.
 
-SHA-256 of both the main `Ayodeji Eluwande - Arsenal.fm` and source
+SHA-256 of both the main Arsenal career and source
 `FM Lens Transfers 2026-11-08.fm` stayed
 3adeb4fdef1c5928a5f396e719c9216842282665af21e9e8a3b8e803bd956000.
 The disposable copy stayed
@@ -2373,7 +2373,7 @@ timestamp `0x6ae8b5a4`.
 
 | Check | Apple Silicon | Intel (Rosetta) | Windows |
 |---|---|---|---|
-| Profile matched, data loaded | Pass. UUID 2A2D0ED6, Arsenal, 8 Dec 2027 | Pass. UUID 94CDDC80, Arsenal, 8 Dec 2027 | Pass. 25,025 players, Ayo Elu, Arsenal, 28 Jul 2026 |
+| Profile matched, data loaded | Pass. UUID 2A2D0ED6, Arsenal, 8 Dec 2027 | Pass. UUID 94CDDC80, Arsenal, 8 Dec 2027 | Pass. 25,025 players, the human manager, Arsenal, 28 Jul 2026 |
 | Player attribute | Pass. Bukayo Saka Heading 9 to 12 (stored 46 to 60) | Pass. Saka Heading 12 to 14 (stored 70) | Pass. Saka Heading 9 to 12 (stored 45 to 60) |
 | Contract wage | Pass. Saka 300,000 to 310,000 | Pass. Saka 310,000 to 320,000 | Pass. Saka 300,000 to 310,000 |
 | Add injury, then Heal | Pass. Abdominal strain from 8 Dec 2027, back 26 to 30 Dec; Heal: none | Pass. Injury added; Heal: none | Pass. Abdominal strain from 28 Jul 2026, back 16 to 21 Aug; Heal: none |
@@ -3149,7 +3149,7 @@ and the arrays sit where the profile says (players `+0x5820810` 25,025, staff
 
 | Check | Apple Silicon | Intel (Rosetta) | Windows |
 |---|---|---|---|
-| Profile matched, data loaded | Pass. UUID A8550B47, Arsenal, 10 Dec 2027 | Pass. UUID DD0EE157, "FM27 Steam build 26577676 (27.0.1, macOS, Intel)", 30,308 players, Arsenal, 10 Dec 2027 | Pass. 25,025 players, Ayo Elu, Arsenal, 28 Jul 2026 |
+| Profile matched, data loaded | Pass. UUID A8550B47, Arsenal, 10 Dec 2027 | Pass. UUID DD0EE157, "FM27 Steam build 26577676 (27.0.1, macOS, Intel)", 30,308 players, Arsenal, 10 Dec 2027 | Pass. 25,025 players, the human manager, Arsenal, 28 Jul 2026 |
 | Player attribute | Pass. Bukayo Saka Heading 9 to 12 (stored 60); after the reload 12 to 13 | Pass. Saka Heading 12 to 13 | Pass. Saka Heading 12 to 13 (stored 60 to 65) |
 | Contract wage | Pass. Saka 300,000 to 310,000; after the reload 310,000 to 320,000 | Pass. Saka 310,000 to 320,000 | Pass. Saka 310,000 to 320,000 |
 | Add injury, then Heal | Pass. Abdominal strain from 10 Dec 2027, back 27 to 31 Dec; Heal: none | Pass. Injury added; Heal: none | Pass. Abdominal strain from 28 Jul 2026, back 16 to 21 Aug; Heal: none |
@@ -3242,8 +3242,10 @@ Notes:
 - The first click on a numeric header such as CA sorts lowest first, so the
   list opens on CA 1 players; the second click puts the best first. Left as
   it is for 0.7.8.
-- Berwick Rangers, in the Scottish league, reads England on e4cd6d4; not
-  looked at in FM. FM's own screen was looked at for Swansea and Monaco only.
+- Berwick Rangers, in the Scottish league, reads England on e4cd6d4. FM
+  reads the same: on 14 November its search showed "Berwick · ENG" and its
+  club screen England (Windows). FM's own screen was looked at for Swansea,
+  Monaco and Berwick only.
 - Not run: a stadium a club rents or shares, the wage, value, personality and
   trait filters against profiles, a row's wage after a transfer, the human
   manager's birth date, and Windows. The 0.7.8 release went ahead on the Mac
@@ -3675,9 +3677,9 @@ Builds 6 and 7 against the same career copy.
 | Top players, Most promising | 100 per list |
 | Your other careers | The career's record file was written under `history/` with one season; the tab reads "Not seen in your other careers yet" for a single career |
 
-A second career, with build 8: a new Brighton career ("Ayo Elu - Brighton", 13
+A second career, with build 8: a new Brighton career (its own save, 13
 July 2026, its own manager) was started, saved and loaded. FM Lens wrote its own
-record file (`history/0f7aaf79.json`, key `Steam:2002071526:Ayo Elu`), and
+record file (`history/0f7aaf79.json`, keyed by store, manager UID and manager name), and
 Saka's Scout tab listed "Your other careers" with the Arsenal career's rows:
 2026, age 24, CA 180, PA 188, and 2027, age 25, CA 183. A copy of the Arsenal
 career saved under another name kept the same manager and counted as the same
@@ -3914,3 +3916,165 @@ in Arsenal's U21s, held an England permit.
 
 FM did not decline, so the message for a permit FM does not issue was not
 seen on Windows. The copy was not saved.
+
+## Fixes build on Windows (14 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from main with #271, #272 and #273 (18fa823). Edits were made on copies
+of a career written with FM's Save As; the main career's SHA-256 was the same
+before and after. Where a row says saved and loaded, the copy was saved and
+loaded again in the running game, without a quit and relaunch.
+
+### Row ticks (#270) and applied marks (#239)
+
+| Check | Result |
+|---|---|
+| Players: tick two rows | "2 selected" with Clear; the header box reads part ticked |
+| Search ("Rice", 83 players), clear it, page, sort | The ticks stay |
+| Header box | Ticks the 200 on the page ("200 selected"); the next page's header box is off |
+| Mass edit with two ticked | "Mass edit players", "Only the 2 players you selected". Current ability set to 195: preview "1 change for 1 of 2 players · 1 already has these values", then "1 change applied" and "Undo this mass edit" |
+| Clone & templates with two ticked | "Apply to the 2 players you selected" |
+| Clubs and Staff | "2 selected"; "Only the 2 clubs you selected", "Only the 2 staff you selected" |
+| A profile open | The tick column hides |
+| Applied marks | Saka's CA 188 to 195 (mass edit) and PA 188 to 196 (profile edit) each showed the mark, kept it when the profile was closed and reopened, and lost it on Undo |
+
+Seen: with CA above PA, the PA field opened at 195.
+
+### Lists (#271) and budget freeze (#272)
+
+| Check | Result |
+|---|---|
+| Columns from the More menu | The dialog opens with the menu closed |
+| Stadiums, Capacity Min 80000 | The field shows all five digits; chip "Capacity: ≥ 80,000"; 38 stadiums |
+| Arsenal frozen, transfer budget set to £50,000,000 | FM showed $67,380,953 |
+| FM's own Budget Adjustment | FM lowered the transfer budget to $47,301,471 and raised the wage budget from $455,731,118 to $475,810,539 a year |
+| Reload in FM Lens | Transfer budget £50,000,000 again; total wage budget £6,503,366 to £6,789,903 a week, FM's change kept; balance £122,391,052 unchanged. FM's tile read "$67M" |
+
+The budget was lowered with FM's Budget Adjustment, not by a holiday past a
+signing. Arsenal was then unfrozen and the budget edit undone.
+
+### Lift bans and work permit
+
+Arsenal's squad button read "Lift bans 2 banned": William Saliba (49039004),
+"1 match, From 14 Nov 2027", and Gabriel.
+
+| Check | Result |
+|---|---|
+| Lift on Saliba's Medical tab | "No bans"; Changes: "William Saliba, Bans, Lifted 1 ban" |
+| Lift bans on the squad | Gabriel's ban cleared; Changes: "Lift bans ARSENAL 1 change" |
+| Undo of both | "2 banned" again |
+
+FM's club screens did not show these bans, which look like international
+bans, so FM's side was not confirmed.
+
+A declined work permit (#168) could not be reached again: FM issues every
+permit it lets you request on this build. The message is covered by
+`app/tests/work-permit.test.tsx`.
+
+### End loan with a future fee (#273)
+
+The copy held 894 loans: 646 without a future fee, 147 optional, 59
+mandatory, 24 on a competition and 18 after matches.
+
+| Loan | Future fee |
+|---|---|
+| Benjamin White (29141472), Arsenal to West Ham | £58,000,000, mandatory |
+| Yasin Ayari (93142470), Brighton to Bayer 04 Leverkusen | £85,788,328, optional |
+| Carlos Espí (2000299722), R. Madrid to Newcastle | £40,061,222 after 20 matches |
+| Ryan Sessegnon (29165656), Fulham to AS Monaco | £33,500,464 on a competition |
+
+| Check | Result |
+|---|---|
+| Dialog | Borrower and parent club, then "The £N future fee is dropped." |
+| End loan, each of the four | Back at his own club with no loan. The balances and transfer budgets of all eight clubs unchanged. FM showed White at Arsenal |
+| Arsenal's wage budget used | £5,542,121 to £5,618,921 |
+| Undo, each of the four | The loan starts again at the same club with the same borrower wage and dates, and no future fee. FM: White at West Ham, 8/10/2027 to 6/29/2028, "No Addons", monthly fee $0 |
+
+Undo is not exact. A restarted loan has no future fee and no monthly fee
+(White's was 75,000). Newcastle's balance fell £20,000 (£9,387,547 to
+£9,367,547) when Espí's loan restarted, and Arsenal's wage budget used ended
+at £5,597,121. The Macs were not run: there such a loan is still refused.
+
+### Update offer (#266), session replay (#241), nation choices (#269)
+
+| Check | Result |
+|---|---|
+| A build of the app without this game build's profile | "FM27 · Steam build 26577676 is not supported yet", "Values may be wrong, so editing is off." and Check for updates; no Edit buttons |
+| Check for updates | "FM Lens is up to date." with Dismiss. Relaunch to update was not reached: 0.7.10 is the latest |
+| Session replay in a packaged build | Records by default; Settings shows "Share usage and recordings of this window" on |
+| Switched off | No events sent; the recording stopped |
+| Switched on again | Events resumed and the same recording carried on. Left on |
+| Nation choices | Saka's Nationality picker read England on the copy, on a second career (Brighton) after loading it and a Reload, and on the copy again. Nothing applied or saved |
+
+Masking was not viewed in a recording on Windows; the tests cover it.
+
+### Enabled edits checked in the game
+
+Made on a copy, saved with Save As and loaded back in the running game.
+
+| Edit | FM before the save | After save and load |
+|---|---|---|
+| Coaching licence: Aaron Briggs (28111283), Continental Pro to Continental B | "Continental B License" | Same |
+| Staff language: Nicolas Jover, German 5 to 9 | "German (Fluent)", was Good | Same |
+| Clone traits: Saka's onto Wrexham's 52 players, 257 changes, 0 skipped | Callum Doyle (2000036812) shows the four traits | Same |
+| Release clause: Declan Rice, Unused substitute fee (£17,249) removed, Minimum fee release clause £150,000,000 added | "Minimum Fee Release Clause $202M" | Same; FM Lens read £150,000,000 |
+
+Not run: Undo of the licence and language edits, and removing a staff
+language.
+
+Payroll. The same save (28 January 2028) went twice through the same 11-day
+holiday to 8 February 2028 with all offers rejected: once as it was, once
+with Rice's wage raised from £344,990 to £1,344,990 a week.
+
+| February | Control | Wage raised |
+|---|---|---|
+| Player Salaries | $6,268,032 | $7,615,651 |
+| Bonuses | $1,176,717 | $1,077,041 |
+| Loyalty | $951,058 | $951,058 |
+| Staff | $927,045 | $927,045 |
+| Non-soccer | $428,535 | $428,535 |
+| Balance | $119,693,486 | $128,390,353 |
+| Payroll budget available, a year | $65.92M | ($2.47M) |
+
+Player Salaries rose $1,347,619, which is £1,000,000 at FM's rate, for the
+one payday in the holiday. The fixed lines match. Bonuses and the balance
+differ because the matches went differently.
+
+Templates across saves. A second career (Brighton, 13 July 2026) was loaded
+without saving the copy, and the template "Saka traits" (traits only), saved
+from the Arsenal copy, was applied to two of its players.
+
+| Check | Result |
+|---|---|
+| Preview | "2 players · 9 changes · 0 skipped · 0 already set": Lewis Dunk (29036189) 5, Kaoru Mitoma (45111891) 4 |
+| Apply | "9 changes applied."; FM showed Dunk with the template's four traits |
+| Undo | "Undid 9 changes."; FM showed his own one trait again |
+
+Nothing was saved. Another build could not be tried: the box has one.
+
+### Other findings
+
+- FM closed once with "Application Error" at 3% of loading a test copy,
+  straight after the template check, on an FM process six hours old with many
+  loads and two holidays behind it. No save changed, and there was no crash
+  dump or log line. The same steps on a fresh FM (load the second career,
+  apply 9, undo 9, load the copy) loaded fine. A trait edit is an 8-byte write
+  of an inline mask, with no pointer or allocation.
+- Happiness Undo depends on order. Happiness 100 to 60 also wrote Morale 20
+  to 17. Undoing Morale first let FM move Happiness to 80, and the Happiness
+  Undo was refused: "FM has since changed Happiness to 80, so it was left
+  alone." Undoing Happiness first restored both.
+- Loan position 12 is still unread: one record (Asier Berzal, 2000502987),
+  FM's Loan Options "Scouting Required".
+- FM's autosave writes rolling "(v02)" files next to the loaded test copy
+  during a holiday.
+- "Only these player IDs" in Clone & templates narrows the current list, so a
+  search has to be cleared first.
+- After a large wage edit, FM's payroll budget available goes negative.
+- `fmlens_bridge.dll` and `FM Lens.exe` import only kernel32, advapi32,
+  user32, ntdll and the Universal CRT (`api-ms-win-crt-*`), not VCRUNTIME140
+  or MSVCP140. This stands in for the clean-PC run of #190, which this box
+  cannot do.
+- Not run: Windows 10 and 11 (the box is Windows Server 2022), Game Pass (the
+  box has Steam), a quit and relaunch for the edits above, and the Macs for
+  #273.
