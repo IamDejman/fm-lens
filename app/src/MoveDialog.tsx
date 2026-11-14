@@ -7,6 +7,9 @@
 // goes the other way, and each keeps his own contract. Where the game starts loans itself on this version, the switch
 // also makes it a loan: after the club, the day the loan ends, and the game makes the loan.
 //
+// For a board member the dialog only swaps: after the club it picks one of the club's board, and each takes the
+// other's seat, with its job and wage.
+//
 // For a free agent, where the game signs players itself on this version, the dialog signs him instead: the club, and
 // the wage and contract end to replace the game's, if any. Where it also signs players for a later day, the day he
 // joins: after today, the game agrees the signing now and makes it on that day, on its own terms.
@@ -16,6 +19,7 @@ import { createPortal } from "react-dom";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import {
+  boardMembers,
   isoFromNumber,
   movePlayer,
   moveManager,
@@ -23,21 +27,32 @@ import {
   numberFromDate,
   numberFromIso,
   planClubMove,
+  planBoardSwap,
   planClubSwap,
   planManagerMove,
   planStaffMove,
   signFreeAgent,
   signFreeAgentLater,
   startLoan,
+  swapBoard,
   swapPlayers,
 } from "./editing";
 import { toPounds, toShown } from "./currency";
 import { DateInput } from "./DateInput";
 import { currencySymbol, describeError, formatAmount, formatDate, formatMoney } from "./format";
-import { clubListText, editText, fieldLabel, moveText as text, positionLabel, profileText } from "./labels";
+import {
+  clubListText,
+  editText,
+  fieldLabel,
+  jobLabel,
+  moveText as text,
+  positionLabel,
+  profileText,
+} from "./labels";
 import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
 import type {
+  BoardMember,
   ClubMoney,
   ClubPage,
   ClubSummary,
@@ -64,10 +79,10 @@ interface MovingPlayer {
 }
 
 /**
- * Who the dialog moves: a player, a member of staff, who keeps his job and his contract's terms, or the human manager,
- * whom the game makes the club's manager.
+ * Who the dialog moves: a player, a member of staff, who keeps his job and his contract's terms, the human manager,
+ * whom the game makes the club's manager, or a board member, who swaps seats with another.
  */
-type Kind = "player" | "staff" | "manager";
+type Kind = "player" | "staff" | "manager" | "board";
 
 interface MoveButtonProps {
   player: MovingPlayer;
@@ -116,17 +131,25 @@ export function MoveButton({ player, kind = "player", contract, ready, agreed }:
         aria-haspopup="dialog"
         disabled={!ready}
         title={
-          kind === "manager"
-            ? text.managerButtonTitle
-            : kind === "staff"
-              ? text.staffButtonTitle
-              : player.club === null
-                ? text.signButtonTitle
-                : text.buttonTitle
+          kind === "board"
+            ? text.boardButtonTitle
+            : kind === "manager"
+              ? text.managerButtonTitle
+              : kind === "staff"
+                ? text.staffButtonTitle
+                : player.club === null
+                  ? text.signButtonTitle
+                  : text.buttonTitle
         }
         onClick={() => setOpened({ player, contract, agreed })}
       >
-        {kind === "manager" ? text.managerButton : player.club === null ? text.signButton : text.button}
+        {kind === "board"
+          ? text.boardButton
+          : kind === "manager"
+            ? text.managerButton
+            : player.club === null
+              ? text.signButton
+              : text.button}
       </button>
       {opened && (
         <MoveDialog
@@ -523,6 +546,173 @@ function PartnerPicker({ club, partner, busy, inputRef, onPick, onChange }: Part
   );
 }
 
+/** A board member as one line: his face, his name (cut short where it does not fit), and under it his seat's job. */
+function SeatLine({ member }: { member: BoardMember }) {
+  return (
+    <WithPicture picture={<PersonFace uid={member.uid} name={member.name} size={PICTURE_SIZE.rowFace} />}>
+      <span className="move-player-text">
+        <span className="move-club-name" title={member.name}>
+          {member.name}
+        </span>
+        <span className="move-player-detail">{jobLabel(member.job)}</span>
+      </span>
+    </WithPicture>
+  );
+}
+
+interface BoardPickerProps {
+  /** The club whose board is listed. */
+  club: ClubSummary;
+  /** The member who swaps, left out of the list: his own board may be the one picked. */
+  self: number;
+  /** The member picked to swap with; null while the list is on show. */
+  seat: BoardMember | null;
+  /** Whether the swap is being made: the picked member stays. */
+  busy: boolean;
+  /** The list, which the dialog moves focus to once the club is picked. */
+  listRef: RefObject<HTMLUListElement | null>;
+  onPick: (member: BoardMember) => void;
+  /** Takes the picked member back, for the list to come up again. */
+  onChange: () => void;
+}
+
+/**
+ * The board of the club a swap goes to, the most senior seats first: a list with one row highlighted, which the arrows
+ * move and Enter picks. The member picked takes the place of the list. Mount it with `key={club.uid}` so that another
+ * club starts from its own board.
+ */
+function BoardPicker({ club, self, seat, busy, listRef, onPick, onChange }: BoardPickerProps) {
+  const base = useId();
+  const id = (part: string) => `${base}-${part}`;
+  const changeButton = useRef<HTMLButtonElement>(null);
+  // The control that takes focus once the next render is on screen: the one that takes the place of the one pressed.
+  const pendingFocus = useRef<"list" | "change" | null>(null);
+  // Set when a key moved the highlight, so that the row it reached scrolls into view; the mouse is not followed.
+  const keyboardMoved = useRef(false);
+
+  const [found, setFound] = useState<{ rows: BoardMember[] } | { error: string } | null>(null);
+  // The row Enter picks.
+  const [active, setActive] = useState(0);
+  const rows = found !== null && "rows" in found ? found.rows : [];
+
+  // The board is read once: an answer that comes after the picker has gone is dropped.
+  useEffect(() => {
+    let cancelled = false;
+    boardMembers(club.uid).then(
+      (members) => {
+        if (!cancelled) {
+          setFound({ rows: members.filter((member) => member.uid !== self) });
+        }
+      },
+      (e) => {
+        if (!cancelled) {
+          setFound({ error: describeError(e) });
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [club.uid, self]);
+
+  useEffect(() => {
+    const target = pendingFocus.current;
+    if (target === null) {
+      return;
+    }
+    pendingFocus.current = null;
+    (target === "list" ? listRef : changeButton).current?.focus();
+  });
+
+  useEffect(() => {
+    if (keyboardMoved.current) {
+      keyboardMoved.current = false;
+      listRef.current?.children[active]?.scrollIntoView?.({ block: "nearest" });
+    }
+  }, [active, listRef]);
+
+  const pick = (chosen: BoardMember) => {
+    onPick(chosen);
+    pendingFocus.current = "change";
+  };
+
+  const chooseAgain = () => {
+    onChange();
+    pendingFocus.current = "list";
+  };
+
+  const listKeyDown = (event: KeyboardEvent<HTMLUListElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (rows.length > 0) {
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        keyboardMoved.current = true;
+        setActive((index) => (index + step + rows.length) % rows.length);
+      }
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const row = rows[active];
+      if (row) {
+        pick(row);
+      }
+    }
+  };
+
+  if (seat !== null) {
+    return (
+      <div className="move-club">
+        <SeatLine member={seat} />
+        <button ref={changeButton} type="button" className="move-change" disabled={busy} onClick={chooseAgain}>
+          {text.changeMember}
+        </button>
+      </div>
+    );
+  }
+
+  // What the list says under itself: a live region that is always there, so that it is read out when it fills.
+  const note =
+    found === null
+      ? text.boardReading
+      : "error" in found
+        ? text.boardFailed(found.error)
+        : rows.length === 0
+          ? text.boardEmpty
+          : "";
+  const noteIsError = found !== null && "error" in found;
+
+  return (
+    <div className="move-results-box move-partners" aria-busy={found === null || undefined}>
+      <ul
+        ref={listRef}
+        className="move-results"
+        role="listbox"
+        tabIndex={0}
+        aria-label={text.boardMembersLabel}
+        aria-activedescendant={rows.length > 0 ? id(`seat-${active}`) : undefined}
+        onKeyDown={listKeyDown}
+      >
+        {rows.map((row, index) => (
+          <li
+            key={row.uid}
+            id={id(`seat-${index}`)}
+            className={index === active ? "move-option active" : "move-option"}
+            role="option"
+            aria-selected={index === active}
+            // Focus stays in the list: a click only picks.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => pick(row)}
+          >
+            <SeatLine member={row} />
+          </li>
+        ))}
+      </ul>
+      <p className={noteIsError ? "move-results-note error" : "move-results-note"} role="status">
+        {note}
+      </p>
+    </div>
+  );
+}
+
 interface MoveDialogProps {
   player: MovingPlayer;
   kind: Kind;
@@ -537,15 +727,17 @@ interface MoveDialogProps {
 
 function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDialogProps) {
   // A member of staff moves in the departments he works in, keeping his job and his contract's terms: no fee, no
-  // terms and no swap. The human manager neither: the game makes his contract.
+  // terms and no swap. The human manager neither: the game makes his contract. A board member only swaps seats.
   const staff = kind !== "player";
   const manager = kind === "manager";
+  const board = kind === "board";
   const { gameActions, gameDate } = useContext(EditorContext);
   const base = useId();
   const id = (part: string) => `${base}-${part}`;
   const dialog = useRef<HTMLDivElement>(null);
   const searchInput = useRef<HTMLInputElement>(null);
   const partnerInput = useRef<HTMLInputElement>(null);
+  const seatList = useRef<HTMLUListElement>(null);
   const results = useRef<HTMLUListElement>(null);
   const changeButton = useRef<HTMLButtonElement>(null);
   const moveButton = useRef<HTMLButtonElement>(null);
@@ -570,6 +762,8 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   const [club, setClub] = useState<ClubSummary | null>(null);
   // The player a swap sends to the player's club: one of the club's players, once picked. A move has none.
   const [partner, setPartner] = useState<PlayerSummary | null>(null);
+  // The board member a board member swaps seats with: one of the club's board, once picked.
+  const [seat, setSeat] = useState<BoardMember | null>(null);
   const [wageText, setWageText] = useState(wasWageShown === null ? "" : String(wasWageShown));
   const [expiresText, setExpiresText] = useState(wasExpires === null ? "" : isoFromNumber(wasExpires));
   const [feeText, setFeeText] = useState("");
@@ -597,7 +791,9 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
 
   // A free agent is signed: there is no club to leave, no fee and nothing to swap.
   const sign = !staff && player.club === null;
-  const swap = !sign && mode === "swap";
+  const swap = board || (!sign && mode === "swap");
+  // Who goes the other way in a swap.
+  const other = board ? seat : partner;
   const loan = !sign && mode === "loan";
   // The day the loan ends, once it is a real date after today.
   const loanEndsValue = numberFromIso(loanEndsText);
@@ -627,8 +823,8 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
         ? `loan:${club.uid}:${loanEnds}`
         : null
       : swap
-        ? partner !== null
-          ? swapKey(partner.uid)
+        ? other !== null
+          ? swapKey(other.uid)
           : null
         : club !== null && valid
           ? planKey(club.uid, terms, fee)
@@ -648,7 +844,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
         ? () => startLoan(player.uid, club.uid, loanEnds)
         : null
       : swap
-        ? partner && (() => swapPlayers(player.uid, partner.uid))
+        ? other && (() => (board ? swapBoard : swapPlayers)(player.uid, other.uid))
         : club &&
           (() =>
             manager
@@ -737,17 +933,17 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
 
   // The same for a swap, a moment after the player to swap with is picked.
   useEffect(() => {
-    if (!swap || partner === null) {
+    if (!swap || other === null) {
       return;
     }
     let cancelled = false;
     const answer = (result: Planned["outcome"]) => {
       if (!cancelled) {
-        setPlanned({ key: swapKey(partner.uid), outcome: result });
+        setPlanned({ key: swapKey(other.uid), outcome: result });
       }
     };
     const timer = setTimeout(() => {
-      planClubSwap(player.uid, partner.uid).then(
+      (board ? planBoardSwap : planClubSwap)(player.uid, other.uid).then(
         (made) => answer({ preview: made }),
         (e) => answer({ error: describeError(e) }),
       );
@@ -756,7 +952,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [swap, player.uid, partner, replans]);
+  }, [swap, board, player.uid, other, replans]);
 
   // Focus that was asked for while the controls changed: the button that takes the place of the search, the search
   // that takes the place of the button, the search for the player of a swap that takes the place of the clubs, or Move
@@ -773,7 +969,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     } else if (target === "change") {
       changeButton.current?.focus();
     } else if (target === "partner") {
-      partnerInput.current?.focus();
+      (board ? seatList : partnerInput).current?.focus();
     } else {
       (moveButton.current && !moveButton.current.disabled ? moveButton : cancelButton).current?.focus();
     }
@@ -796,6 +992,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     setClub(null);
     // The player was one of the club's.
     setPartner(null);
+    setSeat(null);
     pendingFocus.current = "search";
   };
 
@@ -880,8 +1077,17 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   const route = (made: MovePreview | ManagerPreview) => {
     const leaves = made.from?.name ?? from;
     const lines = [
-      swap && partner !== null
-        ? text.swapRoute(player.name, leaves, made.to.name, partner.name)
+      swap && other !== null
+        ? made.jobs
+          ? text.boardRoute(
+              player.name,
+              jobLabel(made.jobs[1]),
+              made.to.name,
+              other.name,
+              jobLabel(made.jobs[0]),
+              leaves,
+            )
+          : text.swapRoute(player.name, leaves, made.to.name, other.name)
         : text.route(leaves, made.to.name),
     ];
     if (made.fee) {
@@ -920,8 +1126,8 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
         }
       : swap
         ? {
-            title: text.swapTitle,
-            choose: text.swapChooseClub,
+            title: board ? text.boardTitle : text.swapTitle,
+            choose: board ? text.boardChooseClub : text.swapChooseClub,
             button: text.swap,
             busy: text.swapping,
           }
@@ -953,8 +1159,8 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
           ? loanEnds === null
             ? { tone: "pending", message: loanEndsValue === null ? text.expiresInvalid : text.loanEndsAfterToday }
             : { tone: "ok", message: text.route(from, club.name) }
-          : swap && partner === null
-            ? { tone: "pending", message: text.swapChoosePlayer }
+          : swap && other === null
+            ? { tone: "pending", message: board ? text.boardChooseMember : text.swapChoosePlayer }
             : !swap && !valid
               ? { tone: "pending", message: text.fixTerms }
               : outcome === null
@@ -1095,15 +1301,28 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
           {swap && club !== null && (
             <section className="move-section" aria-labelledby={id("swap-with")}>
               <h3 id={id("swap-with")}>{text.swapWith}</h3>
-              <PartnerPicker
-                key={club.uid}
-                club={club}
-                partner={partner}
-                busy={moving}
-                inputRef={partnerInput}
-                onPick={setPartner}
-                onChange={() => setPartner(null)}
-              />
+              {board ? (
+                <BoardPicker
+                  key={club.uid}
+                  club={club}
+                  self={player.uid}
+                  seat={seat}
+                  busy={moving}
+                  listRef={seatList}
+                  onPick={setSeat}
+                  onChange={() => setSeat(null)}
+                />
+              ) : (
+                <PartnerPicker
+                  key={club.uid}
+                  club={club}
+                  partner={partner}
+                  busy={moving}
+                  inputRef={partnerInput}
+                  onPick={setPartner}
+                  onChange={() => setPartner(null)}
+                />
+              )}
             </section>
           )}
 
@@ -1166,7 +1385,13 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
               <h3 id={id("contract")}>{profileText.contract}</h3>
               {swap || staff ? (
                 <p className="move-note">
-                  {manager ? text.managerContract : staff ? text.staffContract : text.swapContract}
+                  {manager
+                    ? text.managerContract
+                    : board
+                      ? text.boardContract
+                      : staff
+                        ? text.staffContract
+                        : text.swapContract}
                 </p>
               ) : (
                 <div className="move-terms">

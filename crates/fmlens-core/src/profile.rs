@@ -52,6 +52,9 @@ pub struct Layout {
     /// A loaned player's loan contract; only in the layouts it has been checked in.
     #[serde(default)]
     pub loan: Option<LoanLayout>,
+    /// A club's board; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub board: Option<BoardLayout>,
     /// The game's list of work permits; only in the layouts it has been checked in.
     #[serde(default)]
     pub work_permit: Option<WorkPermitLayout>,
@@ -229,6 +232,22 @@ pub struct LoanLayout {
     /// with a future fee is ended early only where it does.
     #[serde(default)]
     pub fee_condition: Option<u64>,
+}
+
+/// A club's board: at `list` of the club, a pointer to a block that starts with a (begin, end, capacity) list of
+/// pointers to its members' staff objects, in ascending order of their ids. A member's contract is of the class
+/// `class` (as [`crate::rtti::class_of`] names it), `record` bytes long and laid out as a contract's first fields
+/// ([`ContractLayout`]); his person block is of the class `member_class`. His staff object repeats his seat's wage, a
+/// u32 at `wage_copy`, and his club's id, a u32 at `club_copy`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BoardLayout {
+    pub list: u64,
+    pub class: String,
+    pub member_class: String,
+    pub record: u64,
+    pub wage_copy: u64,
+    pub club_copy: u64,
 }
 
 /// Work permits: the transfer manager the game keeps them in ([`BuildProfile::transfer_manager`]), of class `class`; at

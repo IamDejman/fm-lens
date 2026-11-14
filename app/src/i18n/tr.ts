@@ -162,6 +162,9 @@ const errors: ErrorTexts = {
   "relation.rule": (p) => `${p.rule} numaralı yerli kuralı, düzenleyicinin yazdığı kurallardan değil.`,
   "staff.you": () => "Bu sizsiniz, yönettiğiniz teknik direktör.",
   "staff.unemployed": () => "Bu personelin bir kulübü yok.",
+  "board.unavailable": () => "Oyunun bu sürümünde yönetim kurulu koltukları henüz takas edilemiyor.",
+  "board.notSeat": () => "Yalnızca sahip, başkan veya yönetici koltuk takası yapabilir.",
+  "board.unusual": () => "Bu yönetim kurulu, FM Lens'in güvenle takas edemeyeceği bir düzende.",
   "staff.role": () =>
     "Kulüp ya da takımlarından biri bu personele doğrudan işaret ediyor (bir takımın teknik direktörü gibi); onu oyun kendisi taşır.",
   "staff.notListed": () => "Kulübün personel listeleri onu olması gereken yerde tutmuyor.",
@@ -2301,6 +2304,21 @@ export const tr: Strings = {
     swapChoosePlayer: "Takas edilecek oyuncuyu seçin.",
     swapChecking: "Takas kontrol ediliyor…",
     swapRoute: (player, from, to, other) => `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
+
+    // Swapping a board member's seat
+    boardButton: "Koltuk takası",
+    boardButtonTitle: "Başka bir yönetim kurulu üyesiyle koltuk değiştir",
+    boardTitle: "Koltuk takası",
+    boardChooseClub: "Diğer üyenin kulübünü seçin.",
+    boardChooseMember: "Takas edilecek üyeyi seçin.",
+    boardMembersLabel: "Yönetim kurulu üyeleri",
+    boardReading: "Yönetim kurulu okunuyor…",
+    boardFailed: (reason) => `Yönetim kurulu okunamadı: ${reason}`,
+    boardEmpty: "Bu yönetim kurulunda başka kimse yok.",
+    changeMember: "Başka üye seç",
+    boardContract: "Her biri diğerinin görevini ve maaşını alır.",
+    boardRoute: (player, job, to, other, otherJob, from) =>
+      `${player} → ${to} (${job})\n${other} → ${from} (${otherJob})`,
 
     // The foot
     move: "Transfer et",

@@ -8,6 +8,7 @@ import { version as appVersion } from "../../package.json";
 import type {
   ApplyReport,
   AttributeBound,
+  BoardMember,
   BestFor,
   Fit,
   Yours,
@@ -1321,6 +1322,9 @@ const STAFF_ATTRIBUTES = [
 ];
 const STAFF_RATINGS = ["working_with_youngsters", "authority"];
 
+/** The jobs of a board's seats, the most senior first, as the real command ranks them. */
+const SEAT_JOBS = [66, 4, 70, 8, 6];
+
 /** The teams of a fixture club's staff, as `fixtureTeams` lists them: most work for the first team. */
 const SENIOR_TEAM = { index: 0, kind: 0, ageLimit: null };
 const STAFF_TEAMS = [SENIOR_TEAM, SENIOR_TEAM, SENIOR_TEAM, { index: 1, kind: 10, ageLimit: 21 }, { index: 2, kind: 12, ageLimit: 18 }];
@@ -1349,6 +1353,31 @@ const staff: StaffSummary[] = (() => {
     };
   });
 })();
+
+// Two boards, so that a seat can be swapped within one and between two. They follow the generated staff, whose
+// values come off one stream.
+const BOARDS: [string, number, string][] = [
+  ["Marta Feld", 66, CLUBS[0]],
+  ["Tomas Reyes", 6, CLUBS[0]],
+  ["Selin Aydin", 4, CLUBS[1]],
+  ["Ian Holt", 6, CLUBS[1]],
+];
+staff.push(
+  ...BOARDS.map(([name, job, club], i) => ({
+    uid: 2_900_000 + i,
+    name,
+    fullName: null,
+    dateOfBirth: { year: 1960 + i * 4, month: 3, day: 12 },
+    age: ageOn({ year: 1960 + i * 4, month: 3, day: 12 }, GAME_DATE),
+    ...withUids(NATIONS[i % NATIONS.length], club),
+    team: SENIOR_TEAM,
+    job,
+    national: null,
+    currentAbility: 90,
+    potentialAbility: 100,
+    isHuman: false,
+  })),
+);
 
 /** Made-up but self-consistent profile for a fixture member of staff. */
 function staffDetails(member: StaffSummary): StaffDetails {
@@ -1387,6 +1416,7 @@ function staffDetails(member: StaffSummary): StaffDetails {
     preferences: currentPreferences(true, member.uid),
     coachingLicence: member.uid % 9,
     formations: [[29, 4, 28, 3][member.uid % 4], [22, 4, 0, 32][member.uid % 4]],
+    boardSeat: !member.isHuman && member.job !== null && SEAT_JOBS.includes(member.job),
   });
 }
 
@@ -2099,6 +2129,61 @@ function logStaff(member: StaffSummary, field: string, old: number, value: numbe
   return { ...logged };
 }
 
+/** What the rows of the two members of a board swap said before it, by the id of its change. */
+const boardUndo = new Map<number, { uid: number; row: Pick<StaffSummary, "club" | "clubUid" | "team" | "job"> }[]>();
+
+/** `board_members`: the club's fixture staff with a seat's job, the most senior first. */
+function boardMembers(clubUid: number): BoardMember[] {
+  return staff
+    .flatMap((s) => (s.clubUid === clubUid && s.job !== null && SEAT_JOBS.includes(s.job) ? [{ uid: s.uid, name: s.name, job: s.job }] : []))
+    .sort((a, b) => SEAT_JOBS.indexOf(a.job) - SEAT_JOBS.indexOf(b.job));
+}
+
+/** `plan_board_swap`: the checks of the real command that the fixtures can have, with its messages. */
+function planBoardSwap(uid: number, otherUid: number): MovePreview {
+  const seat = (id: number) => {
+    const member = staff.find((s) => s.uid === id);
+    if (!member) {
+      throw notFound("staff", id);
+    }
+    if (member.isHuman) {
+      throw failure("staff.you", "that's you; use Change club");
+    }
+    const club = clubs.find((c) => c.uid === member.clubUid);
+    if (!club || member.job === null || !SEAT_JOBS.includes(member.job)) {
+      throw failure("board.notSeat", "only an owner, chairperson, president or director can swap seats");
+    }
+    return { club: { uid: club.uid, name: club.name }, job: member.job };
+  };
+  const [mine, theirs] = [seat(uid), seat(otherUid)];
+  if (uid === otherUid) {
+    throw failure("board.unusual", "this board is set up in a way FM Lens can't swap safely");
+  }
+  return { from: mine.club, to: theirs.club, jobs: [mine.job, theirs.job] };
+}
+
+/** `swap_board`: the two fixture members take each other's seats, logged as one change of the first one's. */
+function swapBoard(uid: number, otherUid: number): LoggedChange {
+  const preview = planBoardSwap(uid, otherUid);
+  const member = staff.find((s) => s.uid === uid)!;
+  const other = staff.find((s) => s.uid === otherUid)!;
+  const rowOf = (s: StaffSummary) => ({ club: s.club, clubUid: s.clubUid, team: s.team, job: s.job });
+  const [mine, theirs] = [rowOf(member), rowOf(other)];
+  boardUndo.set(changes.length + 1, [
+    { uid, row: mine },
+    { uid: otherUid, row: theirs },
+  ]);
+  Object.assign(member, theirs);
+  Object.assign(other, mine);
+  return preview.from.uid !== preview.to.uid
+    ? logStaff(member, "club", preview.from.uid, preview.to.uid, {
+        from: preview.from.name,
+        to: preview.to.name,
+        with: other.name,
+      })
+    : logStaff(member, "contract.job", mine.job ?? 0, theirs.job ?? 0, { with: other.name });
+}
+
 function moveStaff(uid: number, clubUid: number): LoggedChange {
   const preview = planStaffMove(uid, clubUid);
   const member = staff.find((s) => s.uid === uid)!;
@@ -2159,6 +2244,14 @@ function undoOne(id: number): LoggedChange {
   }
   if (entry.permanent) {
     throw failure("app.permanent", "This change cannot be undone.");
+  }
+  const boardRows = entry.entity === "staff" ? boardUndo.get(entry.id) : undefined;
+  if (boardRows) {
+    for (const { uid, row } of boardRows) {
+      Object.assign(staff.find((s) => s.uid === uid)!, row);
+    }
+    entry.undoneAt = Date.now();
+    return { ...entry };
   }
   const staffRow = entry.entity === "staff" ? staffUndo.get(entry.id) : undefined;
   if (staffRow) {
@@ -4456,6 +4549,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return planStaffMove(Number(args?.uid), Number(args?.club)) as T;
     case "move_staff":
       return moveStaff(Number(args?.uid), Number(args?.club)) as T;
+    case "board_members":
+      return boardMembers(Number(args?.club)) as T;
+    case "plan_board_swap":
+      return planBoardSwap(Number(args?.uid), Number(args?.other)) as T;
+    case "swap_board":
+      return swapBoard(Number(args?.uid), Number(args?.other)) as T;
     case "refresh_game_ui":
       return undefined as T;
     case "career":

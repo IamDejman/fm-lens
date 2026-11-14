@@ -293,6 +293,9 @@ const errors: ErrorTexts = {
   "relation.rule": (p) => `La regla de formación local ${p.rule} no es de las que escribe el editor.`,
   "staff.you": () => "Eres tú, el mánager que controlas.",
   "staff.unemployed": () => "Este miembro del personal no tiene club.",
+  "board.unavailable": () => "Todavía no se pueden intercambiar puestos de la directiva en esta versión del juego.",
+  "board.notSeat": () => "Solo un propietario, presidente o directivo puede intercambiar su puesto.",
+  "board.unusual": () => "Esta directiva está organizada de una forma que FM Lens no puede intercambiar con seguridad.",
   "staff.role": () =>
     "El club o uno de sus equipos apunta directamente a este miembro del personal (como un equipo a su mánager); " +
     "de moverlo se encarga el propio juego.",
@@ -2349,6 +2352,21 @@ export const es: Strings = {
     swapChoosePlayer: "Elige el jugador por el que intercambiar.",
     swapChecking: "Comprobando el intercambio…",
     swapRoute: (player, from, to, other) => `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
+
+    // Intercambiar el puesto de un directivo
+    boardButton: "Intercambiar puesto",
+    boardButtonTitle: "Intercambiar el puesto con otro directivo",
+    boardTitle: "Intercambiar puesto",
+    boardChooseClub: "Elige el club del otro directivo.",
+    boardChooseMember: "Elige el directivo por el que intercambiar.",
+    boardMembersLabel: "Directiva",
+    boardReading: "Leyendo la directiva…",
+    boardFailed: (reason) => `No se pudo leer la directiva: ${reason}`,
+    boardEmpty: "No hay nadie más en esta directiva.",
+    changeMember: "Elegir otro directivo",
+    boardContract: "Cada uno recibe el puesto y el sueldo del otro.",
+    boardRoute: (player, job, to, other, otherJob, from) =>
+      `${player} → ${to} (${job})\n${other} → ${from} (${otherJob})`,
 
     // El pie
     move: "Traspasar",

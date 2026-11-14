@@ -414,6 +414,17 @@ future_fee = 0xC0
 # without a fee. Read against FM's Loan Club tab on Steam 26577676.
 fee_condition = 0xF7
 
+# A club's board: its owner, chairperson, president, managing director and directors, whose contracts are short
+# db::BASIC_CONTRACT records. Read on Steam 26577676 at seven clubs (Manchester United 15 members, Barcelona 1), and
+# two swaps of seats checked in FM through a save and load: docs/recon/fm27-board-members.md.
+[board]
+list = 0x110              # club: pointer to a block that starts with the (begin, end, capacity) of the members
+class = ".?AVBASIC_CONTRACT@db@@"
+member_class = ".?AVACTUAL_NON_PLAYER@db@@"
+record = 0x28             # bytes of a board contract
+wage_copy = 0xB8          # staff object: u32 copy of the wage, 0xFFFFFFFF for none
+club_copy = 0xBC          # staff object: u32 copy of the club's id
+
 # TRANSFER_MANAGER's records of the work permits players hold, as on macOS but 8 bytes sooner in the manager: a
 # (begin, end) of pointers to 0x18-byte records, sorted by player id, each the nation's pointer, the player's id
 # (+0x08), the year it was made (+0x10), the day his ESC slot began (+0x12) and flags (+0x16, bit 0 an ESC slot).

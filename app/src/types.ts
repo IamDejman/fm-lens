@@ -365,6 +365,8 @@ export interface StaffDetails extends StaffSummary {
   coachingLicence: number | null;
   /** His preferred formation ids in and out of possession, 0 for none; null where the build does not place them. */
   formations: [number, number] | null;
+  /** Whether he holds a seat on a club's board that can be swapped for another's. */
+  boardSeat: boolean;
 }
 
 export interface FmDate {
@@ -1388,6 +1390,15 @@ export interface MovePreview {
   fee?: FeePlan;
   /** FM makes the move itself (the player is at your club), and it can't be undone. */
   permanent?: boolean;
+  /** For a swap of board seats (`plan_board_swap`): the job he has and the one he takes, as contract codes. */
+  jobs?: [number, number];
+}
+
+/** From `board_members`: a member of a club's board, and his seat's job as a contract code. */
+export interface BoardMember {
+  uid: number;
+  name: string;
+  job: number;
 }
 
 /** From `plan_end_loan`: the clubs the loan ends between, and the future fee ending it gives up. */

@@ -212,7 +212,7 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
         editing.stage === "view" &&
         (info.isHuman ? gameActions.moveManager : info.club !== null) && (
           <MoveButton
-            kind={info.isHuman ? "manager" : "staff"}
+            kind={info.isHuman ? "manager" : details?.boardSeat ? "board" : "staff"}
             player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
             contract={null}
             ready={details !== undefined}

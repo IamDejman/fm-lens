@@ -5,6 +5,7 @@ import { converts, toPounds, toShown } from "./currency";
 import type {
   ApplyReport,
   BatchUndo,
+  BoardMember,
   CaptainRole,
   ClubTeam,
   EditField,
@@ -374,6 +375,15 @@ export const planStaffMove = (uid: number, club: number) => call<MovePreview>("p
 
 /** Moves the member of staff to the club, in the departments he works in; logged and undone like any change. */
 export const moveStaff = (uid: number, club: number) => call<LoggedChange>("move_staff", { uid, club });
+
+/** The board of the club, the most senior seats first. Only reads the game. */
+export const boardMembers = (club: number) => call<BoardMember[]>("board_members", { club });
+
+/** Checks the two board members can swap seats, and names their clubs and jobs. Nothing is written. */
+export const planBoardSwap = (uid: number, other: number) => call<MovePreview>("plan_board_swap", { uid, other });
+
+/** Swaps the seats of two board members, each taking the other's club, job and wage; logged and undone as one. */
+export const swapBoard = (uid: number, other: number) => call<LoggedChange>("swap_board", { uid, other });
 
 /** Checks the human manager can be made the manager of the club, and names who it dismisses. Nothing is written. */
 export const planManagerMove = (uid: number, club: number) => call<ManagerPreview>("plan_manager_move", { uid, club });

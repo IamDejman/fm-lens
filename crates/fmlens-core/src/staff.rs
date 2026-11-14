@@ -311,6 +311,8 @@ pub struct StaffDetails {
     /// The formation ids of his preferred formation in possession and out of possession, 0 for none; `None` where the
     /// layout does not place them.
     pub formations: Option<[u8; 2]>,
+    /// Whether he holds a seat on a club's board that can be swapped for another.
+    pub board_seat: bool,
 }
 
 /// The highest coaching licence level.
@@ -383,6 +385,7 @@ pub fn read_staff_details(
         preferences: Vec::new(),
         coaching_licence: s.coaching_licence.map(|offset| licence_level(u8_at(offset))),
         formations: s.formations.map(|offsets| offsets.map(u8_at)),
+        board_seat: false,
     }))
 }
 
