@@ -70,7 +70,7 @@ Values to compare with FM's Personal page (read on 5 November 2026):
 | Javier Mallo | 67245073 | English 10 |
 | Rodolfo Borrell | 67046405 | English 10, Catalan 10, Spanish 10 |
 | Txiki Begiristain | 7449788 | English 10, French 4 |
-| Ayodeji Eluwande (human manager, UID 2002071958) | | English 10 |
+| The human manager (UID 2002071958) | | English 10 |
 
 If any of these differ from the screen (the Conte and Pol values look surprising), the offsets are
 right but the proficiency scale or the order may need a second look. Not yet compared with the UI.

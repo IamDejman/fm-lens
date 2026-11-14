@@ -397,7 +397,7 @@ Status: found for fields, partial for clauses.
 
 Where: staff use the same `db::FULL_CONTRACT`. Staff array at game_plugin+0x56d2e60, UID at +0x214. The human manager has his contract at element+0x4B0 and his UID at +0x554.
 - Arteta (id 6701089, PSG): contract 0x726cc752c0. Wage 21,747 at +0x20, job 0x10 (Manager) at +0x26, signed and joined 2027-08-14, expires 2030-06-30, empty clause list.
-- Human manager Ayodeji Eluwande: Manager, 281,250 a week, signed 2026-07-13, expires 2029-06-30.
+- The human manager: Manager, 281,250 a week, signed 2026-07-13, expires 2029-06-30.
 - Arsenal has 91 staff contract lines (`ars-staff-wages.txt`), summing to 690,308 a week.
 - Clauses: Arteta has none. Not checked across all staff.
 

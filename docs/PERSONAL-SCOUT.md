@@ -37,8 +37,10 @@ attributes, contracts, mass edits, templates, squad actions and manager fields.
 Windows installer and self-update checks are recorded separately. On Windows an
 edited copy was saved, FM quit and the copy loaded again twice (8 and 10
 November): a player's attributes, contract wages, a staff attribute, a club
-balance, Max tactics and a free-agent signing held. Other Windows edits have no
-save and reload, and Windows 10/11 execution remains unverified. See the dated Windows entries in
+balance, Max tactics and a free-agent signing held. On 14 November a coaching licence, a staff
+language, cloned traits, an added release clause and a raised wage held through
+a save and a load in the running game. Other Windows edits have no save and
+reload, and Windows 10/11 execution remains unverified. See the dated Windows entries in
 [EDITING-VALIDATION.md](EDITING-VALIDATION.md#windows-edits-7-november-2026),
 "Windows: every feature on main" and "FM27 27.0.1".
 Availability on a platform does not certify every mapped field.

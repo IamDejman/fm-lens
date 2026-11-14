@@ -46,12 +46,11 @@ Since then, on the same box:
 
 ## 2. The Windows test box
 
-- AWS `i-0b8af2b9b13815f9f`, g4dn.xlarge, `eu-central-1`, profile `footballadder`. About $0.84 an hour while
-  running; stop it whenever work pauses, with the user's OK. No Elastic IP, so the address changes on every start:
-  `aws ec2 describe-instances --profile footballadder --region eu-central-1 --instance-ids i-0b8af2b9b13815f9f
-  --query 'Reservations[0].Instances[0].PublicIpAddress'`. Ask before creating anything else that bills.
-- SSH as `Administrator` with `~/.ssh/fm-lens-windows`. The RDP file and password are in
-  `~/Documents/FM Lens Windows/` on the user's Mac. In the Windows App on a Mac, Ctrl+V pastes.
+- An AWS g4dn.xlarge. About $0.84 an hour while running; stop it whenever work pauses, with the user's OK. No
+  Elastic IP, so the address changes on every start: read it with `aws ec2 describe-instances`. The instance id,
+  region and AWS profile are kept outside this repo. Ask before creating anything else that bills.
+- SSH as `Administrator` with a key kept outside this repo, as are the RDP file and password. In the Windows App
+  on a Mac, Ctrl+V pastes.
 - Steam and FM27 are installed. The user signs in to Steam themselves over RDP: never enter, ask for or handle the
   Steam password. FM27 has Denuvo, 5 machine activations a day, and a stop and start can count as a new machine, so
   avoid needless restarts of the instance.
@@ -60,7 +59,7 @@ Since then, on the same box:
   `FM Lens.exe` to the desktop. `runin.ps1 -Name <unique>` starts a GUI program inside the RDP session (anything
   started straight from SSH has no desktop). `winshot.ps1` and `shot.ps1` take screenshots, `click.ps1` and
   `type.ps1` drive the mouse and keyboard, `hash.ps1` prints the save's SHA-256 and whether FM responds.
-- The test save is `Documents\Sports Interactive\Football Manager 27\games\Ayo Elu - Arsenal.fm`, SHA-256
+- The test save is the main Arsenal career in `Documents\Sports Interactive\Football Manager 27\games`, SHA-256
   `AF20CBAC52DE4D850B20029437F92675EEC7AEA83BC65C0611105E6E2CB747E5`. Check it is unchanged after every test. Never
   press Continue (Space in FM) or save in it: the persistence runs of 8 and 10 November worked in copies made with
   FM's Save As and saved only those.
@@ -131,7 +130,7 @@ Windows bridge and CI job; its scope says Windows is shipped once the release is
 
 ## 4. How to work
 
-- Never edit, stage or switch branches in the user's checkout at `/Users/ayodejieluwande/fm27`; other sessions share
+- Never edit, stage or switch branches in the user's main checkout; other sessions share
   it. Use a worktree off `origin/main` and a PR; commits as `type(scope): Subject`, no AI attribution lines.
 - Pass `--repo IamDejman/fm-lens` to `gh`.
 - Verify every installer's signature or published checksum before running it on the box.
