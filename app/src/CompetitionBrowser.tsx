@@ -15,7 +15,7 @@ import {
 import { formatNumber } from "./format";
 import { competitionListText, editText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
-import { NationFlag, WithPicture } from "./Picture";
+import { CompetitionLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact, useProfileDetails } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
@@ -193,10 +193,14 @@ function CompetitionCells({ competition }: { competition: CompetitionSummary }) 
   return (
     <>
       <td className="col-name" title={competition.name}>
-        <span className="name">
-          <span className="name-text">{competition.name}</span>
-          {competition.women && <span className="tag women">{text.women}</span>}
-        </span>
+        <WithPicture
+          picture={<CompetitionLogo uid={competition.uid} name={competition.name} size={PICTURE_SIZE.rowLogo} />}
+        >
+          <span className="name">
+            <span className="name-text">{competition.name}</span>
+            {competition.women && <span className="tag women">{text.women}</span>}
+          </span>
+        </WithPicture>
       </td>
       <td className="col-nation" title={competition.nation ?? undefined}>
         {competition.nation === null ? (

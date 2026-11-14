@@ -18,9 +18,11 @@ use crate::health::Lock;
 use crate::national::Side;
 use crate::officials::OfficialSummary;
 use crate::players::{Nation, PlayerSummary};
+use crate::position_records::Records;
 use crate::profile::{HumanManagerLayout, Layout};
 use crate::session::Session;
 use crate::staff::StaffSummary;
+use crate::transfer::{MoveError, Patch};
 
 /// The kind of object a field belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -127,6 +129,13 @@ const POINTERS: RangeInclusive<i64> = 0x1_0000..=0x7FFF_FFFF_FFFF;
 
 /// Why a pointer field refuses a new value; the app has the words in Turkish and Spanish too.
 const OTHER_CLASS: &str = "the new value is not one of the game's own records of that kind";
+
+/// Why a position is left as it is when the records the game keeps of the player's positions cannot be read.
+const ODD_RECORDS: &str = "the game's records of the player's positions do not read as expected";
+
+/// Why a position is left as it is when the records of the player's positions changed meanwhile: the game
+/// changed them, or a later edit took another record out.
+const RECORDS_CHANGED: &str = "the player's position records changed after this edit; undo newer position edits first";
 
 /// How the game shows a stored value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -508,11 +517,12 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         let offset = *p.attributes.get(*key)?;
         Some(field(&format!("attribute.{key}"), offset, Kind::U8, 1..=100).plausible(0..=100).attribute())
     }));
-    // The game no longer plays a sweeper: every player rates 1 there, so it is not offered.
+    // The game no longer plays a sweeper: every player rates 1 there, so it is not offered. It writes a rating back
+    // from the record it keeps of the position, so the rest are offered only where the layout places those records.
     out.extend(
-        POSITIONS.iter().enumerate().filter(|&(_, &key)| key != "sw").map(|(i, key)| {
-            field(&format!("position.{key}"), p.positions + i as u64, Kind::U8, 1..=20).plausible(0..=20)
-        }),
+        POSITIONS.iter().enumerate().filter(|&(_, &key)| key != "sw" && p.position_records.is_some()).map(
+            |(i, key)| field(&format!("position.{key}"), p.positions + i as u64, Kind::U8, 1..=20).plausible(0..=20),
+        ),
     );
     out.extend(PERSONALITY.iter().enumerate().map(|(i, key)| {
         field(&format!("personality.{key}"), p.personality + i as u64, Kind::U8, 1..=20).plausible(0..=20)
@@ -599,7 +609,7 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
         facility("facilities.corporate", f.corporate, Place::ClubFinance),
         money("finance.balance", f.balance, -2_000_000_000..=2_000_000_000),
         money("finance.transfer_budget", f.transfer_budget, 0..=2_000_000_000),
-        money("finance.wage_budget", f.wage_budget, 0..=100_000_000),
+        // Not the wage budget used (`f.wage_budget`): the game works it out again from the contracts within seconds.
         money("finance.total_wage_budget", f.total_wage_budget, 0..=100_000_000),
     ];
     // Capacities, as stored. The biggest stadium of the test save held 115,109.
@@ -892,6 +902,10 @@ pub struct Change {
     pub field: String,
     pub old: i64,
     pub new: i64,
+    /// The writes that took the game's record of a position out of the player's list as his rating changed, which
+    /// an undo puts back; none for any other field. They hold only in the game they were written in.
+    #[serde(skip)]
+    pub record: Vec<Patch>,
 }
 
 #[derive(Debug)]
@@ -1198,7 +1212,14 @@ impl Session {
         if field.kind == Kind::Date && old == 0 {
             return Err(EditError::Unset { field: field.key.clone() });
         }
-        let change = Change { entity: target.entity, uid: target.uid, field: field.key.clone(), old, new: value };
+        let mut change = Change {
+            entity: target.entity,
+            uid: target.uid,
+            field: field.key.clone(),
+            old,
+            new: value,
+            record: Vec::new(),
+        };
         if old == value {
             return Ok(change);
         }
@@ -1214,18 +1235,52 @@ impl Session {
         {
             return Err(EditError::Taken { field: field.key.clone(), value, holder });
         }
-        self.process.write_bytes(address, &field.encode(value, &old_bytes))?;
-        let read = field.decode(&self.process.read_bytes(address, field.kind.size())?);
-        if read != value {
-            // Best effort: put back what was there.
-            let _ = self.process.write_bytes(address, &old_bytes);
-            return Err(EditError::NotApplied { field: field.key.clone(), wrote: value, read });
+        // The game writes a position's rating back from the record it keeps of it: the record goes first, as in the
+        // game's own editor. An undo puts it back itself.
+        if !restoring {
+            change.record = self.position_record(target, field)?;
+            self.write_patches(&change.record).map_err(|err| record_error(field, err))?;
+        }
+        if let Err(err) = self.write_checked(address, field, value, &old_bytes) {
+            // Best effort: the record goes back, as the rating has.
+            let _ = self.undo_patches(&change.record);
+            return Err(err);
         }
         // The game reuses the scores it keeps of a squad's mood for a week: have it work them out from this.
         if target.entity == Entity::Player && crate::mood::MOOD_FIELDS.contains(&field.key.as_str()) {
             self.recheck_squad_mood(target.address);
         }
         Ok(change)
+    }
+
+    /// Writes `value` to `field` at `address`, over `old_bytes`, and reads it back; where the game then holds something
+    /// else, what was there goes back.
+    fn write_checked(&self, address: u64, field: &Field, value: i64, old_bytes: &[u8]) -> Result<(), EditError> {
+        self.process.write_bytes(address, &field.encode(value, old_bytes))?;
+        let read = field.decode(&self.process.read_bytes(address, field.kind.size())?);
+        if read != value {
+            // Best effort: put back what was there.
+            let _ = self.process.write_bytes(address, old_bytes);
+            return Err(EditError::NotApplied { field: field.key.clone(), wrote: value, read });
+        }
+        Ok(())
+    }
+
+    /// The writes that take the game's record of the position `field` rates out of the player's list; none for any
+    /// other field, or for a position the game keeps no record of. Refused when his records do not read as such.
+    fn position_record(&self, target: &Target, field: &Field) -> Result<Vec<Patch>, EditError> {
+        let p = &self.layout.player;
+        let position = field.key.strip_prefix("position.").filter(|_| target.entity == Entity::Player);
+        let (Some(key), Some(offset)) = (position, p.position_records) else {
+            return Ok(Vec::new());
+        };
+        let Some(position) = POSITIONS.iter().position(|&name| name == key) else {
+            return Ok(Vec::new());
+        };
+        let pointer = self.process.read_u64(target.address + p.at(offset, target.shift))?;
+        let records = Records::read(&self.process, pointer)
+            .ok_or_else(|| EditError::Unsupported { field: field.key.clone(), reason: ODD_RECORDS })?;
+        Ok(records.removal(position))
     }
 
     /// Whether the objects at `a` and `b` are of one class: their first word, the class's table, is the same.
@@ -1267,10 +1322,17 @@ impl Session {
     }
 
     /// Undoes `change`, provided the game still holds the value it wrote, or already holds the
-    /// one it found.
+    /// one it found. The record of a position the change took out goes back with the rating; where the game has
+    /// changed the player's records since, neither does.
     pub fn revert(&self, target: &Target, change: &Change) -> Result<Change, EditError> {
         let field = self.field(target.entity, &change.field)?;
-        self.write(target, &field, change.old, Some(change.new), true)
+        let undone = self.write(target, &field, change.old, Some(change.new), true)?;
+        if let Err(err) = self.undo_patches(&change.record) {
+            // Best effort: the rating stays as the change wrote it, with no record to write another back from.
+            let _ = self.write(target, &field, change.new, Some(change.old), true);
+            return Err(record_error(&field, err));
+        }
+        Ok(undone)
     }
 
     fn check_target(&self, target: &Target, field: &Field) -> Result<(), EditError> {
@@ -1379,6 +1441,15 @@ impl Session {
             }
             _ => None,
         })
+    }
+}
+
+/// What went wrong taking the record of a position out of a player's list, or putting it back, as an edit's failure.
+fn record_error(field: &Field, err: MoveError) -> EditError {
+    match err {
+        MoveError::Locked(lock) => EditError::Locked { field: field.key.clone(), lock },
+        MoveError::Memory(err) => EditError::Memory(err),
+        _ => EditError::Unsupported { field: field.key.clone(), reason: RECORDS_CHANGED },
     }
 }
 
@@ -1545,9 +1616,10 @@ mod tests {
         let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
         assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2);
         let clubs = fields(&layout, Entity::Club);
-        // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
-        // knows it (Windows so far).
-        assert_eq!(clubs.len(), 10 + if layout.stadium.is_some() { 4 } else { 0 });
+        // Reputation, the 5 facilities and the 3 amounts of money; and the 4 capacities of the stadium where the layout
+        // knows it (Windows so far). The wage budget used is the game's to work out.
+        assert_eq!(clubs.len(), 9 + if layout.stadium.is_some() { 4 } else { 0 });
+        assert!(!clubs.iter().any(|field| field.key == "finance.wage_budget"));
         if layout.stadium.is_some() {
             assert_eq!(key(&clubs, "stadium.capacity").place, Place::Stadium);
             // A count of seats, not money, which the app shows with a pound sign.

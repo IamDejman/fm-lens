@@ -25,6 +25,9 @@ const MOST_ROWS: u64 = 100_000;
 #[serde(rename_all = "camelCase")]
 pub struct CompetitionSummary {
     pub uid: u32,
+    /// Its place in the game's table of competitions, which a contract's competition bonus names it by.
+    #[serde(skip)]
+    pub index: u32,
     pub name: String,
     pub short_name: Option<String>,
     /// None for an international competition.
@@ -225,6 +228,7 @@ impl Session {
             let u16_at = |at: u64| u16::from_le_bytes([bytes[at as usize], bytes[at as usize + 1]]);
             let u64_at = |at: u64| u64::from_le_bytes(bytes[at as usize..at as usize + 8].try_into().expect("8 bytes"));
             let uid = u32::from_le_bytes(bytes[c.uid as usize..c.uid as usize + 4].try_into().expect("4 bytes"));
+            let index = u32::from_le_bytes(bytes[c.index as usize..c.index as usize + 4].try_into().expect("4 bytes"));
             // The table ends with a placeholder that has no name.
             let Some(name) = read_fm_string(&self.process, u64_at(c.name)).filter(|name| !name.trim().is_empty())
             else {
@@ -233,6 +237,7 @@ impl Session {
             let (nation, continent) = (u64_at(c.nation), u64_at(c.continent));
             competitions.push(CompetitionSummary {
                 uid,
+                index,
                 name,
                 short_name: read_fm_string(&self.process, u64_at(c.short_name)).filter(|s| !s.trim().is_empty()),
                 nation: nations.get(nation, |nation| nation_name(&self.process, &self.layout, nation)),

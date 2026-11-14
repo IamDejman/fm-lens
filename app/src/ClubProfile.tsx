@@ -141,7 +141,7 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
   );
 }
 
-/** The club's kits, from the user's kit packs; nothing when no pack has them. */
+/** The club's kits, from the user's kit packs or else the game; nothing when neither has them. */
 function Kits({ club }: { club: number }) {
   const [kits, setKits] = useState<KitKind[]>([]);
   useEffect(() => {
@@ -295,7 +295,7 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
               </EditableValue>
             </Fact>
             <Fact label={text.wageBudget}>
-              <EditableValue field="finance.wage_budget">{formatMoney(finances.wageBudget)}</EditableValue>
+              {formatMoney(finances.wageBudget)}
               <PerWeek />
             </Fact>
             <Fact label={text.totalWageBudget}>

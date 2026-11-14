@@ -1304,6 +1304,8 @@ export const en = {
       world: "World",
       continents: "Continents",
       nations: "Countries",
+      division: "Division",
+      allDivisions: "All",
       rank: "#",
       summary: (total: number) => `${format(total)} ${total === 1 ? "player" : "players"}`,
       empty: (query: string) => (query === "" ? "No players here." : `No players match “${query}”.`),
@@ -1443,10 +1445,10 @@ export const en = {
     /** In the status line, once connected. */
     count: (total: number) => `${format(total)} clubs`,
     search: "Search clubs by name or ID",
-    summary: (total: number, shown: number) =>
-      total > shown
-        ? `${format(total)} clubs · Top ${shown} by reputation`
-        : `${format(total)} clubs`,
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 club" : `${format(total)} clubs`;
+      return total > shown ? `${count} · Top ${shown} by reputation` : count;
+    },
     /** The message under an empty table; `filtered` is whether a filter is in effect. */
     empty: (query: string, filtered: boolean) => {
       if (query === "") {
@@ -1626,10 +1628,10 @@ export const en = {
   stadiumList: {
     nav: "Stadiums",
     search: "Search stadiums by name or club",
-    summary: (total: number, shown: number) =>
-      total > shown
-        ? `${format(total)} stadiums · Top ${shown} by capacity`
-        : `${format(total)} stadiums`,
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 stadium" : `${format(total)} stadiums`;
+      return total > shown ? `${count} · Top ${shown} by capacity` : count;
+    },
     empty: (query: string, filtered: boolean) => {
       if (query === "" && !filtered) {
         return "Couldn't read any stadiums.";
@@ -1731,6 +1733,8 @@ export const en = {
     zoomLabel: "Zoom",
     /** A switch: anonymous counts of launches and edits, sent to PostHog (see `usage.ts`). */
     usageLabel: "Share anonymous usage",
+    /** A switch (Windows): FM Lens's card over the game while FM shows a player's card (see ScoutCard.tsx). */
+    scoutCardLabel: "In-game scout card",
     appearance: "Appearance",
     themes: { system: "System", light: "Light", dark: "Dark" },
     /** Shown once, until it is skipped or finished. It introduces browsing, settings and the editing boundary. */

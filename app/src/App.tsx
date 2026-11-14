@@ -220,12 +220,13 @@ function App() {
 
   // The game was read again, by Reload or by the app itself: the lists, the open profile and the log follow.
   const readAgain = useCallback(
-    ({ refrozen: again, ...reloaded }: ReloadInfo) => {
+    ({ refrozen: again, sameGame, ...reloaded }: ReloadInfo) => {
       // The game may have loaded another save, whose nations sit at other addresses: the tables are read again.
       forgetFieldTables();
       setConnection((c) => c && { ...c, ...reloaded });
-      if (again) {
-        setRefrozen(again);
+      // What came back on in a save before is not frozen in another one.
+      if (again || !sameGame) {
+        setRefrozen(again ?? null);
       }
       setDataVersion((v) => v + 1);
       void reloadLog();
@@ -248,7 +249,7 @@ function App() {
     [run, readAgain, detect],
   );
 
-  // To keep what is frozen held, the Rust side reads the game again by itself once FM has moved its lists.
+  // The Rust side reads the game again by itself once FM has moved its lists, e.g. on loading another save.
   useEffect(() => {
     if (!inTauri) {
       return;
@@ -649,7 +650,14 @@ function App() {
           {update && update.phase !== "ready" && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
           {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
           {askingStar && <StarNotice onAnswer={answerStar} />}
-          {connection && <CompatibilityNotice connection={connection} />}
+          {connection && (
+            <CompatibilityNotice
+              connection={connection}
+              update={update}
+              onRelaunch={relaunch}
+              onCheck={() => void checkNow()}
+            />
+          )}
           {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
         </div>
         {error && <div className="banner" role="alert">{error}</div>}

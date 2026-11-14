@@ -1,7 +1,8 @@
 mod bridge;
+mod scout_card;
 mod scouting;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -85,7 +86,7 @@ const FREEZE_EVERY: Duration = Duration::from_secs(2);
 /// How long the hold of frozen values waits after failing to read the game again before it tries once more.
 const READ_AGAIN_RETRY: Duration = Duration::from_secs(30);
 
-/// The event that tells the window the game was read again without it (see `read_again_for_freezes`), with what a
+/// The event that tells the window the game was read again without it (see `read_again_once_moved`), with what a
 /// Reload returns.
 const READ_AGAIN_EVENT: &str = "game-read-again";
 
@@ -554,8 +555,8 @@ impl Connection {
         self.session.known_build() && self.session.process.can_write() && !self.session.current_career()
     }
 
-    /// What the window learns of a connection just read again; `refrozen` as `read_again` gave it.
-    fn reload_info(&self, refrozen: Option<Refrozen>) -> ReloadInfo {
+    /// What the window learns of a connection just read again; `refrozen` and `same_game` as `take_frozen` gave them.
+    fn reload_info(&self, refrozen: Option<Refrozen>, same_game: bool) -> ReloadInfo {
         ReloadInfo {
             editable: self.session.process.can_write() && self.session.writes_allowed(),
             writable: self.session.process.can_write(),
@@ -566,6 +567,7 @@ impl Connection {
             game_date: self.session.game_date(),
             health: Health::clone(&self.session.health()),
             career: self.career.clone(),
+            same_game,
             refrozen,
         }
     }
@@ -608,7 +610,9 @@ impl Connection {
         match entity {
             Entity::Player => {
                 let filter = filters.player_filter.unwrap_or_default();
-                let hits = self.players.search(query).into_iter().filter(|p| filter.matches(p));
+                let best = filters.best.unwrap_or_default();
+                let listed = |p: &&PlayerSummary| player_listed(p, &filter, &best, filters.left_out);
+                let hits = self.players.search(query).into_iter().filter(listed);
                 hits.map(|p| (p.target(), p.name.clone())).collect()
             }
             Entity::Staff => {
@@ -747,6 +751,7 @@ impl Connection {
             field: field.to_owned(),
             old: i64::from(done.old.unwrap_or(0)),
             new: i64::from(done.new),
+            record: Vec::new(),
         };
         let captaincy = Captaincy {
             team: done.team,
@@ -784,6 +789,7 @@ impl Connection {
             field: "injuries".to_owned(),
             old: done.injuries as i64,
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -807,7 +813,7 @@ impl Connection {
 
     /// Logs a change the game made itself to the player `uid`, as one of his `field` from `old` to `new`.
     fn log_game_change(&mut self, uid: u32, field: &str, old: i64, new: i64, undo: Undo) -> LoggedChange {
-        let change = Change { entity: Entity::Player, uid, field: field.to_owned(), old, new };
+        let change = Change { entity: Entity::Player, uid, field: field.to_owned(), old, new, record: Vec::new() };
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -848,6 +854,7 @@ impl Connection {
                 field: "loan".to_owned(),
                 old: from,
                 new: to,
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -888,6 +895,7 @@ impl Connection {
                 field: "loan".to_owned(),
                 old: i64::from(ended.from_club),
                 new: i64::from(ended.to_club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -950,6 +958,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: 0,
                 new: i64::from(signed.club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -986,6 +995,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: i64::from(moved.from_club),
                 new: i64::from(moved.to_club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1023,6 +1033,7 @@ impl Connection {
                 field: "future_transfer".to_owned(),
                 old: cancelled.club_uid.map_or(0, i64::from),
                 new: 0,
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1059,6 +1070,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: 0,
                 new: i64::from(agreed.club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1089,6 +1101,7 @@ impl Connection {
             field: "promise".to_owned(),
             old: i64::from(done.promise.id),
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1118,6 +1131,7 @@ impl Connection {
             field: "bans".to_owned(),
             old: done.bans as i64,
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1148,6 +1162,7 @@ impl Connection {
             field: "contract.unhappiness".to_owned(),
             old: done.concerns as i64,
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1189,18 +1204,24 @@ impl Connection {
 
     /// Names the competitions of a contract's competition bonuses, from the competitions read once (or the awards, where
     /// no competition has the UID). A table that cannot be read leaves them unnamed rather than failing the profile.
-    fn name_competition_bonuses(&mut self, bonuses: &mut [CompetitionBonus]) {
+    fn name_competition_bonuses(&mut self, bonuses: &mut Vec<CompetitionBonus>) {
         if bonuses.is_empty() {
             return;
         }
+        // A competition bonus names the competition by its place in the game's table, an award bonus by the award's UID.
         for bonus in bonuses.iter_mut() {
-            let uid = bonus.competition_uid;
-            bonus.competition = self.competition_index().ok().and_then(|index| index.get(uid)).map(|c| c.name.clone());
+            let key = bonus.key;
+            bonus.competition = if bonus.award {
+                self.award_index().ok().and_then(|index| index.get(key)).map(|a| a.name.clone())
+            } else {
+                self.competition_index()
+                    .ok()
+                    .and_then(|index| index.iter().find(|c| c.index == key))
+                    .map(|c| c.name.clone())
+            };
         }
-        for bonus in bonuses.iter_mut().filter(|bonus| bonus.competition.is_none()) {
-            let uid = bonus.competition_uid;
-            bonus.competition = self.award_index().ok().and_then(|index| index.get(uid)).map(|a| a.name.clone());
-        }
+        // An award bonus is read through a pointer: one that names no award is not shown.
+        bonuses.retain(|bonus| !bonus.award || bonus.competition.is_some());
     }
 
     /// Logs a change to a person's preferences just written, as a change of his field `preference.favouredClub`,
@@ -1229,6 +1250,7 @@ impl Connection {
             field: field.to_owned(),
             old: i64::from(done.before.strength),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.strength)),
+            record: Vec::new(),
         };
         let name = match done.entity {
             Entity::Staff => self.staff.get(done.person).map_or_else(|| done.person.to_string(), |m| m.name.clone()),
@@ -1270,6 +1292,7 @@ impl Connection {
             field: "language".to_owned(),
             old: i64::from(done.before.level),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.level)),
+            record: Vec::new(),
         };
         let name = match done.entity {
             Entity::Staff => self.staff.get(done.person).map_or_else(|| done.person.to_string(), |m| m.name.clone()),
@@ -1311,6 +1334,7 @@ impl Connection {
             field: "injury".to_owned(),
             old: i64::from(done.before.days),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.days)),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1341,6 +1365,7 @@ impl Connection {
             field: "cohesion".to_owned(),
             old: i64::from(done.before),
             new: i64::from(fmlens_core::MOST_FAMILIARITY),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1371,6 +1396,7 @@ impl Connection {
             field: "tactics".to_owned(),
             old: i64::from(done.before),
             new: i64::from(done.after),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1401,6 +1427,7 @@ impl Connection {
             field: "retirement".to_owned(),
             old: done.date.map_or(0, FmDate::to_number),
             new: 0,
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1445,6 +1472,7 @@ impl Connection {
             field: field.to_owned(),
             old: uid(&done.before),
             new: uid(&done.after),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1476,6 +1504,7 @@ impl Connection {
             field: "clause".to_owned(),
             old: amount(&done.before),
             new: amount(&done.after),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1544,7 +1573,14 @@ impl Connection {
             id: self.log.len() + 1,
             at: now_ms(),
             name,
-            change: Change { entity: Entity::Staff, uid: done.member, field: field.to_owned(), old, new },
+            change: Change {
+                entity: Entity::Staff,
+                uid: done.member,
+                field: field.to_owned(),
+                old,
+                new,
+                record: Vec::new(),
+            },
             undone_at: None,
             earlier_game: false,
             team: None,
@@ -1674,6 +1710,7 @@ impl Connection {
                 field: "club".to_owned(),
                 old: moved.from_club.map_or(0, i64::from),
                 new: i64::from(moved.to_club),
+                record: Vec::new(),
             },
             undone_at: None,
             earlier_game: false,
@@ -1724,6 +1761,7 @@ impl Connection {
             field: "club".to_owned(),
             old: i64::from(done.from_club),
             new: i64::from(done.to_club),
+            record: Vec::new(),
         };
         let logged = LoggedChange {
             id: self.log.len() + 1,
@@ -1768,8 +1806,14 @@ impl Connection {
             player.contract_expires = None;
         });
         self.resync_contract(player);
-        let change =
-            Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: i64::from(from_club), new: 0 };
+        let change = Change {
+            entity: Entity::Player,
+            uid: player,
+            field: "club".to_owned(),
+            old: i64::from(from_club),
+            new: 0,
+            record: Vec::new(),
+        };
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -2520,6 +2564,10 @@ struct Filters {
     player_filter: Option<PlayerFilter>,
     staff_filter: Option<StaffFilter>,
     club_filter: Option<ClubFilter>,
+    /// The player list's "Best for": only the players who play its positions are listed.
+    best: Option<BestFor>,
+    /// The player a player list is compared with, whom it leaves out.
+    left_out: Option<u32>,
 }
 
 /// One field of a mass edit and what to do with it.
@@ -2682,6 +2730,106 @@ impl Graphics {
     }
 }
 
+/// The pictures built into the game (logos, faces, flags and kits), shown where no pack has one. They are
+/// found beside the game's executable, so they are known from the first connection on.
+#[derive(Default, Clone)]
+struct GamePictures(Arc<GamePicturesState>);
+
+#[derive(Default)]
+struct GamePicturesState {
+    /// The folder the pictures were opened from, and the pictures.
+    opened: Mutex<Option<(PathBuf, Arc<fmlens_gfx::GameGraphics>)>>,
+    made: Mutex<MadePictures>,
+}
+
+/// The pictures already made, as PNG files.
+type MadePictures = HashMap<(fmlens_gfx::Kind, u32), Arc<Vec<u8>>>;
+
+/// The tiles behind the game's one-shade logos: the app's dark and light raised surfaces (`--raised` in App.css).
+const LOGO_TILES: fmlens_gfx::Tiles = fmlens_gfx::Tiles { dark: [0x26, 0x2a, 0x39], light: [0xf4, 0xf5, 0xf9] };
+
+/// How many made pictures are kept: past it they are all forgotten, and made again when asked for.
+const GAME_PICTURES_KEPT: usize = 1500;
+
+impl GamePictures {
+    /// Opens the pictures of the install `game_executable` runs from, unless they are open already. An install
+    /// without them, or with pictures in a format this app does not know, leaves the packs as the only pictures.
+    fn open_for(&self, game_executable: &Path) {
+        let Some(folder) = fmlens_gfx::addr_data_for(game_executable) else {
+            return;
+        };
+        let Ok(mut opened) = self.0.opened.lock() else {
+            return;
+        };
+        if opened.as_ref().is_some_and(|(open, _)| *open == folder) {
+            return;
+        }
+        match fmlens_gfx::GameGraphics::open(&folder) {
+            Ok(pictures) => {
+                *opened = Some((folder, Arc::new(pictures)));
+                if let Ok(mut made) = self.0.made.lock() {
+                    made.clear();
+                }
+            }
+            Err(err) => eprintln!("FM Lens could not read the game's own pictures: {err}"),
+        }
+    }
+
+    fn pictures(&self) -> Option<Arc<fmlens_gfx::GameGraphics>> {
+        self.0.opened.lock().ok()?.as_ref().map(|(_, pictures)| pictures.clone())
+    }
+
+    /// Whether the game has this picture: nothing is decoded.
+    fn has(&self, picture: Picture, id: u32) -> bool {
+        self.pictures().is_some_and(|pictures| pictures.has(game_kind(picture), id))
+    }
+
+    /// The game's picture as a PNG file, no bigger than the app shows it; None where the game has none or it
+    /// cannot be read.
+    fn png(&self, picture: Picture, id: u32) -> Option<Arc<Vec<u8>>> {
+        let kind = game_kind(picture);
+        if let Some(png) = self.0.made.lock().ok()?.get(&(kind, id)) {
+            return Some(png.clone());
+        }
+        let (pictures, side) = (self.pictures()?, game_picture_side(picture));
+        let made = match picture {
+            Picture::ClubLogo | Picture::CompetitionLogo => pictures.logo_png(kind, id, side, LOGO_TILES),
+            _ => pictures.png(kind, id, side),
+        };
+        let png = Arc::new(made.ok()??);
+        let mut made = self.0.made.lock().ok()?;
+        if made.len() >= GAME_PICTURES_KEPT {
+            made.clear();
+        }
+        made.insert((kind, id), png.clone());
+        Some(png)
+    }
+}
+
+/// The game's family of pictures a picture of the packs belongs to.
+fn game_kind(picture: Picture) -> fmlens_gfx::Kind {
+    match picture {
+        Picture::ClubLogo => fmlens_gfx::Kind::Club,
+        Picture::Face => fmlens_gfx::Kind::Face,
+        Picture::Flag => fmlens_gfx::Kind::Flag,
+        Picture::CompetitionLogo => fmlens_gfx::Kind::Competition,
+        Picture::HomeKit => fmlens_gfx::Kind::KitHome,
+        Picture::AwayKit => fmlens_gfx::Kind::KitAway,
+        Picture::ThirdKit => fmlens_gfx::Kind::KitThird,
+    }
+}
+
+/// The longer side a picture of the game is cut down to, in pixels: about three times the biggest box the app
+/// shows it in, so it stays sharp on a dense screen.
+fn game_picture_side(picture: Picture) -> u32 {
+    match picture {
+        Picture::ClubLogo | Picture::CompetitionLogo => 160,
+        Picture::Face => 192,
+        Picture::Flag => 96,
+        Picture::HomeKit | Picture::AwayKit | Picture::ThirdKit => 256,
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct GraphicsInfo {
@@ -2705,16 +2853,15 @@ fn graphics_info(graphics: State<'_, Graphics>) -> GraphicsInfo {
     }
 }
 
-/// The kits of the club with `uid` the graphics packs have: "home", "away" and "third", in that order. None while the
-/// packs are still being read.
+/// The kits of the club with `uid` the graphics packs or the game have: "home", "away" and "third", in that order.
 #[tauri::command]
-fn club_kits(graphics: State<'_, Graphics>, uid: u32) -> Vec<&'static str> {
-    let Some(index) = graphics.index() else {
-        return Vec::new();
-    };
+fn club_kits(graphics: State<'_, Graphics>, game: State<'_, GamePictures>, uid: u32) -> Vec<&'static str> {
+    let index = graphics.index();
     [(Picture::HomeKit, "home"), (Picture::AwayKit, "away"), (Picture::ThirdKit, "third")]
         .into_iter()
-        .filter(|&(picture, _)| index.file(picture, uid).is_some())
+        .filter(|&(picture, _)| {
+            index.as_ref().is_some_and(|index| index.file(picture, uid).is_some()) || game.has(picture, uid)
+        })
         .map(|(_, kind)| kind)
         .collect()
 }
@@ -2841,9 +2988,9 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
-/// Serves `fmgfx` requests such as `/club/728`, `/kit-home/728`, `/face/7458500` or `/flag/765` from the
-/// graphics packs; anything unknown or missing is a 404.
-fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Vec<u8>> {
+/// Serves `fmgfx` requests such as `/club/728`, `/kit-home/728`, `/face/7458500` or `/flag/765`: the picture of
+/// the graphics packs, or else the game's own; anything unknown or missing is a 404.
+fn picture_response(graphics: &Graphics, game: &GamePictures, path: &str) -> tauri::http::Response<Vec<u8>> {
     // The window's own origin differs from fmgfx's, so let it read the answers, not only show them.
     let not_found = || {
         tauri::http::Response::builder()
@@ -2866,16 +3013,14 @@ fn picture_response(graphics: &Graphics, path: &str) -> tauri::http::Response<Ve
     let Some(id) = parts.next().and_then(|id| id.parse().ok()) else {
         return not_found();
     };
-    let Some(index) = graphics.index() else {
+    let index = graphics.index();
+    let packed = index.as_ref().and_then(|index| index.file(picture, id)).and_then(|file| {
+        let png = file.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
+        std::fs::read(file).ok().map(|bytes| (bytes, png))
+    });
+    let Some((bytes, png)) = packed.or_else(|| game.png(picture, id).map(|png| (png.to_vec(), true))) else {
         return not_found();
     };
-    let Some(file) = index.file(picture, id) else {
-        return not_found();
-    };
-    let Ok(bytes) = std::fs::read(file) else {
-        return not_found();
-    };
-    let png = file.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("png"));
     tauri::http::Response::builder()
         .header("Content-Type", if png { "image/png" } else { "image/jpeg" })
         .header("Cache-Control", "max-age=3600")
@@ -2954,6 +3099,8 @@ struct ReloadInfo {
     health: Health,
     /// The human manager and club of the career loaded now.
     career: Option<Career>,
+    /// Whether the game read is the one read before: no save loaded and no FM restart since.
+    same_game: bool,
     /// Only when the game has loaded another save since: what was frozen in that one before and is frozen again,
     /// when there was any. What was frozen in the save before is not held in this one.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -3160,12 +3307,16 @@ async fn connect(
     state: State<'_, AppState>,
     file: State<'_, FrozenFile>,
     histories: State<'_, Histories>,
+    pictures: State<'_, GamePictures>,
 ) -> Result<ConnectionInfo, Failure> {
     let started = Instant::now();
     let path = file.0.clone();
+    let pictures = pictures.inner().clone();
     let (mut connection, refrozen) = tauri::async_runtime::spawn_blocking(move || -> Result<_, Failure> {
         let pid = find_game(None)?;
         let mut connection = Connection::load(connect_session(pid)?)?;
+        // Before the lists are shown, so that their first pictures are not asked for too early.
+        pictures.open_for(&connection.session.game.exe_path);
         // Without a human manager the lists are not a career the user can recognise or should edit.
         if connection.career.is_none() {
             return Err(no_career());
@@ -3236,10 +3387,10 @@ fn load_again(pid: u32) -> Result<Connection, Failure> {
     Ok(connection)
 }
 
-/// Reads the game again once FM has moved its lists, which stops every write, so that what is frozen stays held: as
-/// Reload does, without waiting for the window, which is told as it is of a Reload. Left alone when the connection
-/// was read again or let go meanwhile.
-fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failure> {
+/// Reads the game again once FM has moved its lists, which stops every write, e.g. on loading another save: so that
+/// the lists follow the game and what is frozen stays held. As Reload does, without waiting for the window, which is
+/// told as it is of a Reload. Left alone when the connection was read again or let go meanwhile.
+fn read_again_once_moved(app: &tauri::AppHandle, pid: u32) -> Result<(), Failure> {
     let path = app.state::<FrozenFile>().0.clone();
     let mut connection = load_again(pid)?;
     let state = app.state::<AppState>();
@@ -3251,7 +3402,8 @@ fn read_again_for_freezes(app: &tauri::AppHandle, pid: u32) -> Result<(), Failur
     connection.carry_log(std::mem::take(&mut old.log), same_game);
     eprintln!("FM Lens read the game again after FM moved its lists (same game: {same_game}).");
     connection.hold_frozen();
-    let info = connection.reload_info(refrozen);
+    let info = connection.reload_info(refrozen, same_game);
+    app.state::<Histories>().record(&connection);
     *guard = Some(connection);
     drop(guard);
     if let Err(err) = app.emit(READ_AGAIN_EVENT, info) {
@@ -3290,7 +3442,7 @@ async fn reload(
     };
     // Old addresses must never be used to undo changes in another game: there they are only listed.
     connection.carry_log(log, same_game);
-    let info = connection.reload_info(refrozen);
+    let info = connection.reload_info(refrozen, same_game);
     histories.record(&connection);
     *state.0.lock()? = Some(connection);
     Ok(info)
@@ -3314,6 +3466,33 @@ const MOST_ATTRIBUTE_COLUMNS: usize = 12;
 
 /// The most roles a player list rates its players in at once.
 const MOST_ROLE_COLUMNS: usize = 6;
+
+/// Whether the player list shows `p`: he matches the filter, plays a position of "Best for", and is not the player
+/// the list is compared with. A mass edit or a template of the list changes the same players.
+fn player_listed(p: &PlayerSummary, filter: &PlayerFilter, best: &BestFor, left_out: Option<u32>) -> bool {
+    Some(p.uid) != left_out && filter.matches(p) && best.plays(p)
+}
+
+/// How like the player of `similar` each player is, for a list compared with him.
+fn likeness_to(connection: &Connection, similar: Option<SimilarTo>) -> Result<Option<Likeness>, Failure> {
+    let Some(similar) = similar else { return Ok(None) };
+    let target = connection.players.get(similar.uid).ok_or_else(|| not_found(Entity::Player, similar.uid))?;
+    Ok(Some(Likeness::new(&target.scouted(), similar.peak)))
+}
+
+/// Puts the player list's `hits` in the order it shows them: `order` when one is asked for, else the most alike first
+/// while it is compared, or the best fit first while `best` ranks it.
+fn sort_listed(hits: &mut [&PlayerSummary], order: Option<PlayerOrder>, likeness: Option<&Likeness>, best: &BestFor) {
+    match (order, likeness) {
+        (Some(order), Some(likeness)) if order.by == PlayerSort::Similarity => {
+            sort_by_likeness(hits, likeness, order.ascending)
+        }
+        (Some(order), _) => sort_players(hits, order),
+        (None, Some(likeness)) => sort_by_likeness(hits, likeness, false),
+        (None, None) if best.ranks() => best_first(hits, |p| best.player(p)),
+        (None, None) => {}
+    }
+}
 
 /// Players matching `query`, highest current ability first; at most `limit` rows. With `best`, only those who play
 /// its positions, each with their fit, and the best fit first unless `order` asks otherwise; and the best fit among
@@ -3339,13 +3518,7 @@ fn search_players(
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let filter = filter.unwrap_or_default();
     let best = best.unwrap_or_default();
-    let likeness = match similar {
-        Some(similar) => {
-            let target = connection.players.get(similar.uid).ok_or_else(|| not_found(Entity::Player, similar.uid))?;
-            Some(Likeness::new(&target.scouted(), similar.peak))
-        }
-        None => None,
-    };
+    let likeness = likeness_to(connection, similar)?;
     let left_out = similar.map(|similar| similar.uid);
     let yours = best_of(
         &connection.players,
@@ -3357,16 +3530,8 @@ fn search_players(
         &query,
         limit,
         offset.unwrap_or(0),
-        |p| Some(p.uid) != left_out && filter.matches(p) && best.plays(p),
-        |hits| match (order, &likeness) {
-            (Some(order), Some(likeness)) if order.by == PlayerSort::Similarity => {
-                sort_by_likeness(hits, likeness, order.ascending)
-            }
-            (Some(order), _) => sort_players(hits, order),
-            (None, Some(likeness)) => sort_by_likeness(hits, likeness, false),
-            (None, None) if best.ranks() => best_first(hits, |p| best.player(p)),
-            (None, None) => {}
-        },
+        |p| player_listed(p, &filter, &best, left_out),
+        |hits| sort_listed(hits, order, likeness.as_ref(), &best),
         |p| best.player(p),
     );
     let columns: Vec<(String, usize)> = attributes
@@ -3490,15 +3655,19 @@ fn search_clubs(
     ))
 }
 
-/// Writes the players `query` and `filter` select, in `order`, to a new file in the exports folder as `format`: what
-/// their profiles hold, with the in-game date in the file and in its name ("players-2027-01-02.csv"; a second export
-/// that day "players-2027-01-02-2.csv"). Only reads memory.
+/// Writes the players the list shows for `query`, `filter`, `best` and `similar`, in its order, to a new file in the
+/// exports folder as `format`: what their profiles hold, with the in-game date in the file and in its name
+/// ("players-2027-01-02.csv"; a second export that day "players-2027-01-02-2.csv"). Only reads memory.
+// The window names each argument, so they stay arguments.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 async fn export_players(
     app: tauri::AppHandle,
     query: String,
     filter: Option<PlayerFilter>,
     order: Option<PlayerOrder>,
+    best: Option<BestFor>,
+    similar: Option<SimilarTo>,
     format: ExportFormat,
 ) -> Result<ExportReport, Failure> {
     tauri::async_runtime::spawn_blocking(move || -> Result<ExportReport, Failure> {
@@ -3509,11 +3678,12 @@ async fn export_players(
         let guard = state.0.lock()?;
         let connection = guard.as_ref().ok_or_else(not_connected)?;
         let filter = filter.unwrap_or_default();
+        let best = best.unwrap_or_default();
+        let likeness = likeness_to(connection, similar)?;
+        let left_out = similar.map(|similar| similar.uid);
         let mut hits = connection.players.search(&query);
-        hits.retain(|player| filter.matches(player));
-        if let Some(order) = order {
-            sort_players(&mut hits, order);
-        }
+        hits.retain(|player| player_listed(player, &filter, &best, left_out));
+        sort_listed(&mut hits, order, likeness.as_ref(), &best);
         let header = ExportHeader {
             writer: format!("FM Lens {}", app.package_info().version),
             game: connection.session.game.name(),
@@ -5312,6 +5482,8 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState::default())
         .manage(Graphics::default())
+        .manage(GamePictures::default())
+        .manage(scout_card::ScoutCard::default())
         .setup(|app| {
             // Reading the packs' config files takes a moment: do it beside the window. FM keeps its user data
             // in the documents folder on Windows and in Application Support on macOS, or somewhere else, which
@@ -5334,8 +5506,9 @@ pub fn run() {
             // Stage the bundled helper for FM's next normal launch. A running game keeps
             // serving through its existing helper; compatibility is discovered on connection.
             bridge::refresh(app.handle());
+            scout_card::start(app.handle());
             // Frozen money and attributes: every little while, what the game took from them is put back. Once FM has
-            // moved its lists, which stops every write, the game is read again first.
+            // moved its lists, which stops every write, the game is read again, frozen or not.
             let handle = app.handle().clone();
             std::thread::spawn(move || {
                 let mut next_read = Instant::now();
@@ -5343,21 +5516,18 @@ pub fn run() {
                     std::thread::sleep(FREEZE_EVERY);
                     let state = handle.state::<AppState>();
                     let stale = match state.0.lock().as_deref_mut() {
+                        Ok(Some(connection)) if connection.stale() => Some(connection.session.process.pid()),
                         Ok(Some(connection)) if !connection.frozen.is_empty() => {
-                            if connection.stale() {
-                                Some(connection.session.process.pid())
-                            } else {
-                                connection.hold_frozen();
-                                None
-                            }
+                            connection.hold_frozen();
+                            None
                         }
                         _ => None,
                     };
                     if let Some(pid) = stale
                         && Instant::now() >= next_read
-                        && let Err(err) = read_again_for_freezes(&handle, pid)
+                        && let Err(err) = read_again_once_moved(&handle, pid)
                     {
-                        eprintln!("FM Lens could not read the game again to hold what is frozen: {}", err.message);
+                        eprintln!("FM Lens could not read the game again after FM moved its lists: {}", err.message);
                         next_read = Instant::now() + READ_AGAIN_RETRY;
                     }
                 }
@@ -5371,9 +5541,14 @@ pub fn run() {
             });
             Ok(())
         })
-        .register_uri_scheme_protocol("fmgfx", |ctx, request| {
-            let graphics = ctx.app_handle().state::<Graphics>();
-            picture_response(&graphics, request.uri().path())
+        // Beside the window: a picture of the game is unpacked and made smaller before it is sent.
+        .register_asynchronous_uri_scheme_protocol("fmgfx", |ctx, request, responder| {
+            let app = ctx.app_handle().clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                let response =
+                    picture_response(&app.state::<Graphics>(), &app.state::<GamePictures>(), request.uri().path());
+                responder.respond(response);
+            });
         })
         .invoke_handler(tauri::generate_handler![
             detect_game,
@@ -5478,8 +5653,17 @@ pub fn run() {
             system_version,
             bridge::bridge_status,
             bridge::set_up_bridge,
-            bridge::remove_bridge
+            bridge::remove_bridge,
+            scout_card::set_scout_card,
+            scout_card::scout_card_shown,
+            scout_card::scout_card_ready
         ])
+        // The scout card's window would keep the app running once the main window has closed.
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::Destroyed) {
+                scout_card::close(window.app_handle());
+            }
+        })
         .run(context())
         .expect("error while running tauri application");
 }
@@ -5487,6 +5671,84 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A player of 25, CA 150, rating `st` as a striker.
+    fn summary(uid: u32, st: u8) -> PlayerSummary {
+        let mut position_ratings = [1u8; 15];
+        position_ratings[12] = st;
+        PlayerSummary {
+            uid,
+            name: format!("Player {uid}"),
+            full_name: None,
+            date_of_birth: None,
+            age: Some(25),
+            nation: None,
+            nation_uid: None,
+            nation_address: 0,
+            club: None,
+            club_uid: None,
+            positions: Vec::new(),
+            contract_expires: None,
+            current_ability: 150,
+            potential_ability: 160,
+            position_ratings,
+            attributes: Vec::new(),
+            base: fmlens_core::Base::default(),
+            transfer_listed: false,
+            loan_listed: false,
+            height_cm: 180,
+            wage: None,
+            transfer_value: None,
+            current_reputation: 5000,
+            personality: [10; 8],
+            traits: 0,
+            address: 0,
+            shift: 0,
+        }
+    }
+
+    #[test]
+    fn a_mass_edit_changes_the_players_the_list_shows() {
+        let player = summary;
+        // As the player list sends them while it is compared with player 1 and ranked for strikers.
+        let filters: Filters = serde_json::from_str(
+            r#"{"playerFilter":{},"best":{"weights":[{"key":"finishing","weight":1}],"positions":["st"]},"leftOut":1}"#,
+        )
+        .unwrap();
+        let filter = filters.player_filter.unwrap_or_default();
+        let best = filters.best.unwrap_or_default();
+        let listed = |p: &PlayerSummary| player_listed(p, &filter, &best, filters.left_out);
+        assert!(!listed(&player(1, 20)), "the compared player");
+        assert!(listed(&player(2, 20)));
+        assert!(!listed(&player(3, 10)), "no striker");
+        // Without them, as before.
+        let plain: Filters = serde_json::from_str(r#"{"playerFilter":{}}"#).unwrap();
+        let anyone = |p: &PlayerSummary| {
+            player_listed(p, &plain.player_filter.clone().unwrap_or_default(), &BestFor::default(), plain.left_out)
+        };
+        assert!(anyone(&player(1, 20)) && anyone(&player(3, 10)));
+    }
+
+    #[test]
+    fn an_export_keeps_the_order_the_list_shows() {
+        let player = |uid: u32, finishing: u8, ability: u16| PlayerSummary {
+            attributes: vec![finishing; 64],
+            current_ability: ability,
+            ..summary(uid, 20)
+        };
+        let players = [player(1, 10, 170), player(2, 18, 120), player(3, 14, 150)];
+        let order = |order: Option<PlayerOrder>, best: &BestFor| {
+            let mut hits: Vec<&PlayerSummary> = players.iter().collect();
+            sort_listed(&mut hits, order, None, best);
+            hits.iter().map(|p| p.uid).collect::<Vec<_>>()
+        };
+        let finishers: BestFor =
+            serde_json::from_str(r#"{"weights":[{"key":"finishing","weight":1}],"positions":[]}"#).unwrap();
+        assert_eq!(order(None, &finishers), [2, 3, 1], "best for finishing first");
+        let by_ability = PlayerOrder { by: PlayerSort::CurrentAbility, ascending: false };
+        assert_eq!(order(Some(by_ability), &finishers), [1, 3, 2], "a column wins over Best for");
+        assert_eq!(order(None, &BestFor::default()), [1, 2, 3], "as the search found them");
+    }
 
     #[test]
     fn a_card_keeps_only_the_names_the_app_gives_it() {
@@ -5539,7 +5801,14 @@ mod tests {
             id: 1,
             at: 0,
             name: "Test signing".to_owned(),
-            change: Change { entity: Entity::Player, uid: player, field: "club".to_owned(), old: 0, new: 617 },
+            change: Change {
+                entity: Entity::Player,
+                uid: player,
+                field: "club".to_owned(),
+                old: 0,
+                new: 617,
+                record: Vec::new(),
+            },
             undone_at: None,
             earlier_game: false,
             team: None,

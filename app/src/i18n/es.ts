@@ -77,6 +77,10 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
   "the new value is not one of the game's own records of that kind":
     "el nuevo valor no es uno de los registros del propio juego de ese tipo",
   "it holds a value the editor cannot name": "tiene un valor que el editor no sabe nombrar",
+  "the game's records of the player's positions do not read as expected":
+    "los registros que el juego guarda de las posiciones del jugador no se leen como se esperaba",
+  "the player's position records changed after this edit; undo newer position edits first":
+    "los registros de posiciones del jugador cambiaron después de esta edición; deshaz antes las ediciones de posición más recientes",
 };
 
 const reload = "vuelve a leer los datos e inténtalo de nuevo";
@@ -1277,6 +1281,8 @@ export const es: Strings = {
       world: "Mundo",
       continents: "Continentes",
       nations: "Países",
+      division: "División",
+      allDivisions: "Todas",
       rank: "#",
       summary: (total) => `${format(total)} ${total === 1 ? "jugador" : "jugadores"}`,
       empty: (query) => (query === "" ? "No hay jugadores aquí." : `Ningún jugador coincide con «${query}».`),
@@ -1659,6 +1665,7 @@ export const es: Strings = {
     done: "Listo",
     zoomLabel: "Zoom",
     usageLabel: "Compartir uso anónimo",
+    scoutCardLabel: "Ficha de ojeo en el juego",
     appearance: "Apariencia",
     themes: { system: "Sistema", light: "Claro", dark: "Oscuro" },
     tour: {

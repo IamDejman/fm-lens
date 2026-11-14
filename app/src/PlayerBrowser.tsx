@@ -125,6 +125,8 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
   /** The order the summary line names: the one asked for, or likeness while the list is compared. */
   const named = order ?? (similar ? null : undefined);
   const stopComparing = () => setSimilar(null);
+  // A mass edit or a template changes the players the list shows.
+  const listed = { playerFilter: filter, best: best.recipe?.best, leftOut: similar?.uid };
 
   return (
     <ListBrowser<PlayerRow>
@@ -141,6 +143,8 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
       version={version}
       active={active}
       reveal={reveal}
+      // He was found by his name: the players like him are not searched by it.
+      clearSearch={similarRequest}
       placeholder={text.search}
       summary={(total, shown) =>
         text.summary(
@@ -197,9 +201,15 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
           <YourBest yours={list.yours} />
           <MoreMenu>
             <ColumnsButton choice={columns} onChoose={setColumns} />
-            <ExportButton list={list} filter={filter} order={order} />
-            <MassEditButton entity="player" filters={{ playerFilter: filter }} list={list} />
-            <PlayerTemplatesButton filters={{ playerFilter: filter }} list={list} />
+            <ExportButton
+              list={list}
+              filter={filter}
+              order={order}
+              best={best.recipe?.best}
+              similar={similar ? { uid: similar.uid, peak: similar.peak } : undefined}
+            />
+            <MassEditButton entity="player" filters={listed} list={list} />
+            <PlayerTemplatesButton filters={listed} list={list} />
           </MoreMenu>
         </>
       )}
