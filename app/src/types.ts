@@ -1390,6 +1390,13 @@ export interface MovePreview {
   permanent?: boolean;
 }
 
+/** From `plan_end_loan`: the clubs the loan ends between, and the future fee ending it gives up. */
+export interface LoanEndPreview {
+  from: { uid: number; name: string };
+  to: { uid: number; name: string };
+  futureFee?: number;
+}
+
 /** From `plan_release`: the club the player leaves. */
 export interface ReleasePreview {
   uid: number;

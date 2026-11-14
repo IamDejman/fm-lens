@@ -410,6 +410,9 @@ name = 0x18               # FM string pointer
 slot = 0x338
 class = ".?AVLOAN_CONTRACT@db@@"
 future_fee = 0xC0
+# The fee's condition, a byte: 1 to 99 due after that many matches, 100 mandatory, 254 optional; 254 or 255 on a loan
+# without a fee. Read against FM's Loan Club tab on Steam 26577676.
+fee_condition = 0xF7
 
 # TRANSFER_MANAGER's records of the work permits players hold, as on macOS but 8 bytes sooner in the manager: a
 # (begin, end) of pointers to 0x18-byte records, sorted by player id, each the nation's pointer, the player's id

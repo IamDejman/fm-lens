@@ -2498,6 +2498,16 @@ struct RowBefore {
     contract_expires: Option<FmDate>,
 }
 
+/// The clubs a loan would end between, and the future fee ending it gives up.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LoanEndPreview {
+    from: ClubName,
+    to: ClubName,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    future_fee: Option<u32>,
+}
+
 /// The clubs a move is between.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -4643,23 +4653,23 @@ fn start_loan(state: State<'_, AppState>, uid: u32, club: u32, ends: i64) -> Res
     Ok(connection.log_loan(started))
 }
 
-/// The clubs the loan of the player `uid` would end between: the one he is loaned to, then his own. Only reads.
+/// The clubs the loan of the player `uid` would end between: the one he is loaned to, then his own, and the future
+/// fee ending it gives up. Only reads.
 #[tauri::command]
-fn plan_end_loan(state: State<'_, AppState>, uid: u32) -> Result<MovePreview, Failure> {
+fn plan_end_loan(state: State<'_, AppState>, uid: u32) -> Result<LoanEndPreview, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
     let (from, to) = connection.session.plan_end_loan(player)?;
-    Ok(MovePreview {
-        from: Some(ClubName { uid: from, name: connection.club_name(from) }),
+    Ok(LoanEndPreview {
+        from: ClubName { uid: from, name: connection.club_name(from) },
         to: ClubName { uid: to, name: connection.club_name(to) },
-        fee: None,
-        displaced: None,
-        permanent: false,
+        future_fee: connection.session.loan(player).and_then(|loan| loan.future_fee),
     })
 }
 
-/// Has the game end the loan of the player `uid` today: he goes back to his own club. Logged as a change of his `loan`
+/// Has the game end the loan of the player `uid` today: he goes back to his own club, and a future fee the loan had
+/// is given up. Logged as a change of his `loan`
 /// from the borrower to his club, and undone by starting the loan again until the same day.
 #[tauri::command]
 fn end_loan(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {

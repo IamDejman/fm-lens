@@ -20,7 +20,7 @@ import {
   planRelease,
   releasePlayer,
 } from "./editing";
-import { describeError, formatDate } from "./format";
+import { describeError, formatDate, formatMoney } from "./format";
 import { cancelTransferText, endLoanText, moveText, profileText, releaseText } from "./labels";
 import { ClubLine } from "./MoveDialog";
 import { useModal } from "./useModal";
@@ -50,7 +50,11 @@ const ENDINGS = {
   },
   endLoan: {
     text: { ...endLoanText, act: endLoanText.end, busy: endLoanText.ending },
-    plan: (uid: number) => planEndLoan(uid).then(({ from, to }) => endLoanText.ready(from.name, to.name)),
+    plan: (uid: number) =>
+      planEndLoan(uid).then(({ from, to, futureFee }) => {
+        const ready = endLoanText.ready(from.name, to.name);
+        return futureFee === undefined ? ready : `${ready}\n${endLoanText.feeDropped(formatMoney(futureFee))}`;
+      }),
     make: endLoan,
   },
   cancelTransfer: {

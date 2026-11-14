@@ -92,6 +92,7 @@ import type {
   MassPreview,
   MassReport,
   ManagerPreview,
+  LoanEndPreview,
   MovePreview,
   ReleasePreview,
   MoveTerms,
@@ -360,7 +361,7 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
     wage: 5000 + (player.uid % 9) * 2500,
     starts: { year: 2026, month: 8, day: 10 },
     ends: { year: 2027, month: 6, day: 29 },
-    // Every other one has a future fee, which End loan refuses.
+    // Every other one has a future fee, which End loan drops.
     futureFee: player.uid % 2 === 0 ? 25_000_000 : null,
   };
 }
@@ -490,7 +491,7 @@ const endedLoans = new Map<number, { loan: LoanTerms; borrower: { name: string; 
 const loanEndUndo = new Map<number, { parent: string; parentUid: number; ends: FmDate } | undefined>();
 
 /** `plan_end_loan`: the clubs the fixture player's loan would end between, as the real command checks them. */
-function planEndLoan(uid: number): MovePreview {
+function planEndLoan(uid: number): LoanEndPreview {
   const player = players.find((p) => p.uid === uid);
   if (!player) {
     throw notFound("player", uid);
@@ -499,10 +500,11 @@ function planEndLoan(uid: number): MovePreview {
   if (!loan || player.club === null || player.clubUid === null || loan.parentUid === null || loan.parent === null) {
     throw failure("move.notOnLoan", "the player is not on loan");
   }
-  if (loan.futureFee !== null) {
-    throw failure("loan.futureFee", "the loan has a future fee; ending it early would complete the transfer");
-  }
-  return { from: { uid: player.clubUid, name: player.club }, to: { uid: loan.parentUid, name: loan.parent } };
+  return {
+    from: { uid: player.clubUid, name: player.club },
+    to: { uid: loan.parentUid, name: loan.parent },
+    ...(loan.futureFee !== null && { futureFee: loan.futureFee }),
+  };
 }
 
 /** `end_loan`: the game ends the fixture player's loan today, and he goes back to his own club. */
