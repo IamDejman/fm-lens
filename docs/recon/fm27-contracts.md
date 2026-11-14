@@ -290,6 +290,7 @@ role * 64 + position):
 | 56 | WB (R) | Fontàs |
 | 58 | DM | Sainsbury, Hoarau, Moussongo Bahel, Maurić |
 | 60 | WB (L) | Sosa |
+| 61 | M (R) | Drakes-Thomas (made by a loan offer, below) |
 | 63 | M (C) | Goudmijn, Joseph Jones, Maddox |
 | 1 | M (L) | Charlie Smith, Kalum Thompson |
 | 2 | AM (R) | Hebert, Edwards, Kabashi |
@@ -297,7 +298,16 @@ role * 64 + position):
 | 6 | AM (L) | Monga |
 | 9 | ST (C) | Bradbury, Fearn, Sebine, Francis-Caesar, Thomas-Smith |
 
-12 is seen once (Berzal, whose terms need scouting). M (R) is not seen in the census.
+61 is M (R). It is not in the census, so it was made on a copy saved for the test (FM-Lens-Loans-2026-11-14): a loan
+offer for Drakes-Thomas (Chelsea) with Midfielder (Right) and Winger in possession, made on 21 Jan 2028, gave a
+`db::LOAN_CONTRACT` a week later with `+0xA0` = 6717 (61, 104), signed 22 Jan 2028, no joined date. It is the only
+record with 61 in 927. He had not joined by 4 Feb 2028, so FM's Loan Club tab was not read for it: the value rests on
+the offer's terms and on Winger reading 104 as in the table below.
+
+12 is seen once (Berzal, Unionistas B, no role, who plays DM and M (C)) and is not read. FM asks for scouting before it
+shows his loan options, and a scout request and two weeks (to 4 Feb 2028) did not show them. The codes run
+(48 + k) mod 64 over a pitch grid (GK 1; D 3, 5, 7; WB (R) 8, DM 10, WB (L) 12; M 13, 15, 17; AM 18, 20, 22; ST (C) 25),
+which puts 12 at k = 28, past ST (C). That is a guess from the pattern, not read from FM.
 
 | Role | FM | Example |
 | --- | --- | --- |
@@ -319,24 +329,33 @@ role * 64 + position):
 | 101 | Defensive Midfielder | Moussongo Bahel |
 | 125 | Half Back | Maurić |
 | 111 | Deep-Lying Playmaker | Sainsbury |
+| 19 | Midfield Playmaker | McDonnell |
 | 102 | Central Midfielder | Joseph Jones |
 | 112 | Box-To-Box Midfielder | Hoarau |
 | 18 | Channel Midfielder | Kameri |
+| 11 | Wide Central Midfielder | McGrath |
 | 113 | Advanced Playmaker | Proctor, Goudmijn |
 | 105 | Attacking Midfielder | Maddox |
+| 123 | Free Role | Rabbaj |
 | 103 | Wide Midfielder | Kalum Thompson |
 | 104 | Winger | Hebert, Monga |
 | 10 | Inside Winger | Charlie Smith |
 | 118 | Inside Forward | Kabashi |
 | 7 | Wide Forward | Edwards |
 | 3 | Second Striker | Key |
+| 2 | False Nine | Sow |
 | 106 | Deep-Lying Forward | Francis-Caesar |
 | 107 | Centre Forward | Sebine |
 | 114 | Target Forward | Bradbury |
 | 115 | Poacher | Thomas-Smith |
 | 122 | Channel Forward | Fearn |
 
-Role 11 is seen in 4 loans but not read: the one single-record loan (McGrath) had ended by this date. The flags on
+Role 11 was read later, on a copy at 21 Jan 2028: McGrath (Aston Villa, at Greenock Morton from 9 Jan 2028) has 63 and
+11, and FM shows M (C), Wide Central Midfielder. Roles 19, 123 and 2 are not in the census; they were read on the test
+copy at 4 Feb 2028 (McDonnell 63 and 19, Rabbaj 4 and 123, Sow 9 and 2). With these, every role and position code in
+927 records is read but position 12.
+
+The flags on
 these tabs agree with the table in 3.1: Diouf and Fontàs (`+0xB0` bit `0x04` clear) show no recall line; Scheller
 (`+0xB0` bit `0x01`) can play against his own team; Maurić, Shimbo and Krumrey (`+0xB1` bit `0x10`) cannot be
 terminated; Fontàs (`+0xB1` `0x81`) can play against the parent club's B team; Maddox (`+0xB0` `0x0E`) shows no line
@@ -344,8 +363,11 @@ for bit `0x08`.
 
 FM's loan offer (Make An Offer, Loan Offer, Mainoo) creates no `db::LOAN_CONTRACT`, filled in or made: 800 records
 before, after filling the clauses and after making it. The offer is held as a `FULL_TRANSFER_OFFER` (vtable
-`game_plugin.dll+0x5051cd8`, pointing at the player) until a deal is agreed, so role 11 and position 12 can only be read
-by advancing the game until a loan with them is agreed. The offer was withdrawn and the copy not saved. The form has a
+`game_plugin.dll+0x5051cd8`, pointing at the player) until a deal is agreed, so a code
+can only be read once a loan with it is agreed. The offer was withdrawn and the copy not saved. On the later test copy
+a made offer also added one `LOAN_OFFER` (vtable `game_plugin.dll+0x4f26178`, `+0x38` the player, 871 to 872); no
+position or role code was found in its first 0x100 bytes. The `db::LOAN_CONTRACT` appears once the club accepts, with
+no joined date until the player moves. The form has a
 position and a role both in and out of possession; the Loan Club tab shows one of each, and where the
 out-of-possession pair is held is open.
 
@@ -389,7 +411,7 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 
 - Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
 - LOAN_CONTRACT term fields: fees, fee condition, its kind and European competition, matches played, the preferred
-  position and role (every value in the census but position 12 and role 11), and six flags mapped on Windows (3.1);
+  position and role (every value seen but position 12), and six flags mapped on Windows (3.1);
   `+0xB1` bit `0x01` (no line on FM's tab, set only on loans with a joined date), the out-of-possession position and
   role, `+0xD8` and `+0xDC` (maybe minutes) and the remaining words are open. `+0xB0` bit `0x08` has no line on FM's Loan Club tab (Musaba, Wright and Monga
   compared).
