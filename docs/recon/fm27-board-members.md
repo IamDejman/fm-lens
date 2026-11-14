@@ -4,8 +4,9 @@ Scope: how the game ties an owner, chairperson, president, managing director or 
 club, what else points at such a person, and what a change of board member would have to write.
 Method: read-only probe readings (`club`, `staff`, `lists`, `refs`, `holders`, `dump`, `find`,
 `types`) on a copy of a career, game date 28 January 2028. Seven clubs were read: Manchester
-United, Inter Miami, Arsenal, Chelsea, Barcelona, Newcastle United and Wrexham. Nothing was
-written to the game. Addresses are RVAs (game_plugin.dll+0x...). macOS was not read.
+United, Inter Miami, Arsenal, Chelsea, Barcelona, Newcastle United and Wrexham. The readings
+wrote nothing. One guarded swap was then tried on the same career copy (section 7). Addresses
+are RVAs (game_plugin.dll+0x...). macOS was not read.
 
 Offsets are from the staff object start unless another record is named.
 
@@ -19,7 +20,7 @@ Offsets are from the staff object start unless another record is named.
 | 4. Everything else that points at a board member | found | medium |
 | 5. People without a club | found | medium |
 | 6. The game's own board classes | names only | low |
-| 7. Changing who holds a seat | plan only, nothing written | - |
+| 7. Changing who holds a seat | one swap tried, shows in FM after save and load | medium |
 | 8. Removing or adding a seat | not safe yet | - |
 | 9. A player as a board member | not possible | high |
 
@@ -34,8 +35,11 @@ Where:
   Chelsea 7, Newcastle United 7, Wrexham 9, Arsenal 3, Inter Miami 2, Barcelona 1.
 - Jobs seen in the lists: 4 chairperson, 6 director, 8 managing director, 66 owner,
   70 president. This matches `BOARD_JOBS` in `crates/fmlens-core/src/best.rs`.
-- Order is not by job. The owner was first at Manchester United, a director first at Newcastle.
+- Entries are in ascending uid order at all seven clubs, not by job. The owner was first at
+  Manchester United, a director first at Newcastle.
 - Count equals room at every club, so the list is always full.
+- FM shows the board on the club's Staff page (First Team, Staff, All Staff) with the jobs
+  Owner, Chairperson and Director. FM's search does not find board members.
 - The medical, coaching and scouting lists at club `+0x60`, `+0x78` and `+0x90` hold no board
   member. Nothing in the team records points at one.
 - Club uid is at club `+0x0C`. Club records are 0x170 apart.
@@ -114,8 +118,9 @@ takeover manager holds, and whether it names people, was not read.
 
 ## 7. Changing who holds a seat
 
-Status: plan only. Nothing was written. The seat (contract record and list slot) stays where it
-is and only the person in it changes, so nothing is allocated or freed.
+Status: one swap tried on a career copy, see Trial below. Not enabled in the app. The seat
+(contract record and list slot) stays where it is and only the person in it changes, so nothing
+is allocated or freed.
 
 Swap two board members, A at one club and B at another:
 - A's club board list: the slot holding A now holds B. B's club list: the slot holding B now
@@ -137,9 +142,29 @@ Guard, on top of sections 1 and 2:
   place in any club list.
 - Every value is compared with what was read before it is written, then read back.
 
+Trial (14 November 2026, career copy, game date 28 January 2028): the Manchester United owner
+and an Inter Miami director were swapped with the eight writes above. Each value was compared
+with the reading first and read back after.
+- Before: FM's Staff page listed the owner at Manchester United with the job Owner and the
+  director at Inter Miami with the job Director.
+- Straight after the writes the probe read the new holders in both seats. FM's Staff page still
+  showed the old holders, also after leaving the page and coming back.
+- After saving under a new name and loading that save, FM's Staff page showed the former
+  director at Manchester United with the job Owner, and the former owner at Inter Miami with
+  the job Director. The former owner was no longer in Manchester United's list.
+- The probe after the load read the same: the owner seat (wage 10000, `+0x24` 157, job 66) with
+  its new holder first in Manchester United's list, and both copies at `+0xB8` and `+0xBC`
+  matching the seats.
+- Both lists stayed in uid order because each new uid fell in the old one's place. A swap that
+  breaks the order was not tried, so the write must keep the list sorted or refuse.
+- Date joined at `+0xC8` was left with the person. A click on a board member's row selected the
+  row and opened no profile.
+
 Still to prove in FM on a career copy before any of this is enabled:
-- The club's board screen and both people's profiles show the change.
-- Save, quit, reload, then play on through a month end and a season end.
+- FM shows the change without a save and load (FM Lens refreshes FM's panels after its own
+  edits; that was not tried here).
+- Quit FM and load again, then play on through a month end and a season end.
+- A swap that changes the uid order of a list.
 - What FM writes to the copies at `+0xB8` and `+0xBC`, and to date joined at `+0xC8`, when a
   director leaves or joins by himself.
 - A takeover in progress, and a takeover after the change.
