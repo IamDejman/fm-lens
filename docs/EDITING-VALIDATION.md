@@ -3869,7 +3869,7 @@ Nothing was written to the game.
 | #252 | Trait groups | Movement, Passing, Finishing, Discipline, Defending, Technique, Career; "Plays ball with feet" named |
 | #165 | No experimental tags | Max cohesion in the squad's More menu; Unsackable and Register squad any time on your Contract tab |
 | #163 | Kept across the app swap | Rice's profile and search, Brighton's club profile and its Staff tab came back. Corners 25 alone: "No changes · 1 invalid"; Done asks "Discard 1 change?", and Discard leaves the profile as it was |
-| #173 | Wage note | Your profile shows "FM shows £275,000" for £281,250. Not compared with FM |
+| #173 | Wage note | Matches FM's screen. Rice: FM shows £350K p/w, FM Lens £344,990 with "FM shows £350,000". Your profile: FM shows £275K p/w, FM Lens £281,250 with "FM shows £275,000". FM's display was set to pounds per week for this, then put back to dollars per year |
 
 Seen in passing, not fixed:
 
@@ -3877,9 +3877,9 @@ Seen in passing, not fixed:
 - The Stadiums capacity Min field shows "8000" for 80,000, as the field is
   too narrow; the chip reads 80,000.
 
-Not run: #190 (the bridge's C++ runtime needs a clean PC), #168 (the declined
-permit message), #173 against FM, Windows 10 and 11, macOS (Apple Silicon and
-Intel), Game Pass.
+Not run: #190 (the bridge's C++ runtime needs a clean PC), the declined answer
+of #168 (see below), Windows 10 and 11, macOS (Apple Silicon and Intel), Game
+Pass.
 
 ### Star ask after 20 edits (#211)
 
@@ -3900,3 +3900,17 @@ and no usage events were sent.
 | Restart and connect | No ask |
 
 Rice ended unfrozen, and FM Lens's frozen list was as before the test.
+
+### Work permit request (#168)
+
+Same build and copy. Andria Bartishvili (2000474999), a foreign 18-year-old
+in Arsenal's U21s, held an England permit.
+
+| Check | Result |
+|---|---|
+| Revoke | The permit reads None and Request permit shows |
+| Request permit | FM issued it: England, Active |
+| Changes | Both listed: Active to None, then None to Active |
+
+FM did not decline, so the message for a permit FM does not issue was not
+seen on Windows. The copy was not saved.
