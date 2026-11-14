@@ -832,7 +832,7 @@ Findings:
 
 ## Automatic refresh without Continue (6 November 2026)
 
-Implementation worktree: `codex/automatic-refresh`, based on main `97ca87a`
+Implementation worktree: `Iamdejman/automatic-refresh`, based on main `97ca87a`
 (version 0.5.5). The installed `/Applications/FM Lens.app` (0.5.4) was left
 untouched. Earlier testing used an older development bundle; the observations
 below are from the new 0.5.5 development bundle. Debug builds now refuse
@@ -891,7 +891,7 @@ replacement of installed helpers. Steam configuration was not changed.
 
 ## Contract-header refresh without Continue (6 November 2026)
 
-Follow-up on `codex/automatic-refresh` (0.5.5 source baseline `97ca87a`).
+Follow-up on `Iamdejman/automatic-refresh` (0.5.5 source baseline `97ca87a`).
 The earlier entity-only notifier refreshed attributes but left the contract
 header cached. This is resolved for the tested expiry header by additionally
 requesting an unfiltered refresh of active views after contract field changes
@@ -1040,7 +1040,7 @@ before and after (OK).
 
 ## Helper compatibility across FM Lens updates (7 November 2026)
 
-Local branch: `codex/helper-update-compatibility`, based on `9bda48c` (0.5.10).
+Local branch: `Iamdejman/helper-update-compatibility`, based on `9bda48c` (0.5.10).
 This changes connection compatibility and optional refresh behavior, not field
 layouts or the game-memory write guard. No game process was running during
 validation. The installed FM Lens app, installed helper, Steam configuration
@@ -1315,30 +1315,30 @@ box (`F85704E3…F1728ED4`). The update came from the published FM Lens 0.6.2 re
 
 ## Frontend interaction CI (8 November 2026)
 
-Branch `codex/frontend-interaction-ci`, based on main at `86c64b3`. Main already has a Windows runner with workspace Clippy/tests, writable-graph checks and an installer build. This follow-up adds `npm test` before the frontend build in both platform jobs. The test command type-checks its sources then runs Vitest/jsdom with React Testing Library and the preview's fixture command adapter; it never connects to FM.
+Branch `Iamdejman/frontend-interaction-ci`, based on main at `86c64b3`. Main already has a Windows runner with workspace Clippy/tests, writable-graph checks and an installer build. This follow-up adds `npm test` before the frontend build in both platform jobs. The test command type-checks its sources then runs Vitest/jsdom with React Testing Library and the preview's fixture command adapter; it never connects to FM.
 
-Four interaction tests cover: every section shortcut isolated behind a modal plus Tab wrapping and Escape; an earlier search resolving after the latest search without replacing its rows; Keep editing and explicit Discard when navigation encounters pending values; and Settings saving an open snapshot, then reopening from it in a fresh module load. The modal test first failed for keys 7–9 on main, so this branch includes the shared shortcut definition already implemented and natively verified in `codex/modal-shortcut-isolation` (#149). This is the same narrow fix, not a new modal implementation.
+Four interaction tests cover: every section shortcut isolated behind a modal plus Tab wrapping and Escape; an earlier search resolving after the latest search without replacing its rows; Keep editing and explicit Discard when navigation encounters pending values; and Settings saving an open snapshot, then reopening from it in a fresh module load. The modal test first failed for keys 7–9 on main, so this branch includes the shared shortcut definition already implemented and natively verified in `Iamdejman/modal-shortcut-isolation` (#149). This is the same narrow fix, not a new modal implementation.
 
 Checks: all four tests and the production frontend build passed locally on macOS; the existing Vite chunk warning remains. Windows execution of the new tests requires the CI run and has not been claimed as a local Windows pass. No FM data was read or edited and no native UI was changed beyond that already verified shortcut fix. jsdom geometry/media shims are explicit in tests/setup.ts; these tests do not establish native rendering, performance, Windows bridge behaviour or edited-save persistence.
 
 
 ## Modal navigation shortcuts (7 November 2026)
 
-Branch `codex/modal-shortcut-isolation`, based on main at `06963d9`. Section navigation and modal shortcut interception now share the same nine section keys, so shortcuts 7, 8 and 9 are intercepted along with 1 through 6. Added frontend regression checks for all nine keys on Mac and Windows modifier conventions, including modified/composing input and preservation of ordinary editing shortcuts; CI runs them with `npm test`.
+Branch `Iamdejman/modal-shortcut-isolation`, based on main at `06963d9`. Section navigation and modal shortcut interception now share the same nine section keys, so shortcuts 7, 8 and 9 are intercepted along with 1 through 6. Added frontend regression checks for all nine keys on Mac and Windows modifier conventions, including modified/composing input and preservation of ordinary editing shortcuts; CI runs them with `npm test`.
 
 Checks: both frontend shortcut tests, production frontend build and `git diff --check` passed. The existing large-chunk warning remains. Native verification then passed in the ad-hoc-signed Tauri debug app: connect sample data, open Lukas Kowalski, open Settings with Cmd+comma, press Cmd+1 through Cmd+9, observing Settings and its focus after each key. Escape returned to the same player profile; Cmd+9 then opened Changes normally. For this check only, the API adapter used the existing sample-data backend inside the native WKWebView; that temporary change was restored before committing. No FM process, career, game-memory write or installed app was involved. This verifies native keyboard/modal handling, not live-game editing or pending-edit consequences.
 
 
 ## Search result pagination (7 November 2026)
 
-Branch `codex/list-pagination`, based on main at `198d4e2`. All eight list search commands accept an optional offset (omitting it retains page one), filter and sort before slicing, and cap responses at 200 rows. SearchIndex resolves equal rank and name with UID; player column sorts retain this stable base order. The frontend uses Previous/Next and the existing translated range labels; it resets for search/filter/order changes, retains an open profile, keeps old rows on request failure, and permits retrying that page. A refresh beyond the shortened list clamps to the last page.
+Branch `Iamdejman/list-pagination`, based on main at `198d4e2`. All eight list search commands accept an optional offset (omitting it retains page one), filter and sort before slicing, and cap responses at 200 rows. SearchIndex resolves equal rank and name with UID; player column sorts retain this stable base order. The frontend uses Previous/Next and the existing translated range labels; it resets for search/filter/order changes, retains an open profile, keeps old rows on request failure, and permits retrying that page. A refresh beyond the shortened list clamps to the last page.
 
 Checks: production frontend build; app backend regression covering 451 equal-ranked/equal-named entries across three pages without gaps/duplicates, filtered reverse order, a short last page, out-of-range offsets and the response cap; preview interaction from 1–200 to 201–400 of 400 (200 rows each, no overlap), narrowed search and sort reset. No console errors/warnings in the exercised preview flows. The existing Vite chunk warning remains. All core/app library tests passed (99 core, 2 app), along with strict app Clippy with warnings denied and formatting/diff checks. Native interaction passed in an ad-hoc-signed Tauri debug bundle with the existing sample-data backend temporarily selected: Next showed 201–400 of 400, Previous restored 1–200 of 400, and Lukas Kowalski’s profile remained open on both pages. The pager was visually inspected beside the profile. The API adapter was restored afterward; no sample-mode change is included in source. Live-career paging, request-failure recovery and pending-edit consequences were not exercised natively. No FM connection or career edit was made.
 
 
 ### Live-career paging follow-up (7 November 2026)
 
-Normal live-data native debug bundle from `codex/list-pagination`, FM27 Steam build 26340721 ARM64, module UUID F4540355-2186-39CB-9119-C706A6A35346, PID 2559. Loaded career: Ayodeji Eluwande / Arsenal, 11 December 2027, 16:30, matching FM's Portal. The read-only probe's 12 health checks passed. This was browsing only: no Apply, Undo, Continue, save or game restart. All 18 baseline career file hashes remained unchanged.
+Normal live-data native debug bundle from `Iamdejman/list-pagination`, FM27 Steam build 26340721 ARM64, module UUID F4540355-2186-39CB-9119-C706A6A35346, PID 2559. Loaded career: Ayodeji Eluwande / Arsenal, 11 December 2027, 16:30, matching FM's Portal. The read-only probe's 12 health checks passed. This was browsing only: no Apply, Undo, Continue, save or game restart. All 18 baseline career file hashes remained unchanged.
 
 - Players: 30,300 results. Next showed 201–400; page-one leader Erling Haaland was replaced in the list by page-two leader Pau Navarro, while Haaland's open profile remained.
 - Sorting by name from page two returned to 1–200 of 30,300.
@@ -1351,7 +1351,7 @@ The remaining five entity lists were not exercised live in this follow-up; they 
 
 ## Search loading feedback (7 November 2026)
 
-Branch `codex/search-loading-feedback`, stacked on pagination `2826943` (#151). A result is current only when its command, query, filters/order, offset, data version and retry generation match the active request. Pending requests hide cached rows, counts and ranges, show Searching in the table area, and disable page controls; the selected profile is retained. Empty states appear only after a matching successful response. Failures are scoped to their request, expose Retry and do not restore stale rows. English, Spanish and Turkish include the feedback strings. The count announces completion; the table has a direct accessible label so WebKit preserves its name.
+Branch `Iamdejman/search-loading-feedback`, stacked on pagination `2826943` (#151). A result is current only when its command, query, filters/order, offset, data version and retry generation match the active request. Pending requests hide cached rows, counts and ranges, show Searching in the table area, and disable page controls; the selected profile is retained. Empty states appear only after a matching successful response. Failures are scoped to their request, expose Retry and do not restore stale rows. English, Spanish and Turkish include the feedback strings. The count announces completion; the table has a direct accessible label so WebKit preserves its name.
 
 Native verification used the real running Arsenal career (11 December 2027, 16:30), FM27 Steam 26340721 ARM64, module UUID F4540355-2186-39CB-9119-C706A6A35346, PID 2559. Temporary API instrumentation delayed Alex searches by 20 seconds and failed the first __retry_check__ query; these changes were removed before the final build/commit. Confirmed pending Alex has only table headers, Searching feedback and disabled page controls (where present), without old rows/count/range; feedback also remains visible without a pager. Haaland's open profile survives search changes. A newer Silva search returns 92 players and stays current after the delayed Alex request finishes. An injected failure has no stale rows, labels the grid Search failed and offers Retry; Retry completes with 0 players and the matching empty message. Visual inspection covered the loading screen. No game-data edit, Continue or save was used.
 
@@ -1360,7 +1360,7 @@ Checks: frontend production build, native Tauri debug bundle, source detector (n
 
 ## Verified promise and formation names (8 November 2026)
 
-Branch `codex/promise-formation-labels`. Display-only mappings: promise 1 is Playing time, from the corrected Nico Paz check in "Six features" above (promise 7 was a different, category-0 record and is not named). Formation IDs 4, 7 and 29 use the 7 November native edit/undo observations; 22, 28, 30 and 63 use the FM screen comparisons in docs/recon/fm27-staff-extras.md. The same formation mapper supplies profile display, editable choices and Changes through choiceLabel. Unmapped promises retain Promise N; unmapped formations now say Formation N, localized in all three dictionaries. Zero still means none. Formation notation keeps the observed English FM spelling; localized promise/fallback wording is a translation, not a separately verified foreign-language FM string. No new IDs were inferred from language-resource strings or tentative disassembly.
+Branch `Iamdejman/promise-formation-labels`. Display-only mappings: promise 1 is Playing time, from the corrected Nico Paz check in "Six features" above (promise 7 was a different, category-0 record and is not named). Formation IDs 4, 7 and 29 use the 7 November native edit/undo observations; 22, 28, 30 and 63 use the FM screen comparisons in docs/recon/fm27-staff-extras.md. The same formation mapper supplies profile display, editable choices and Changes through choiceLabel. Unmapped promises retain Promise N; unmapped formations now say Formation N, localized in all three dictionaries. Zero still means none. Formation notation keeps the observed English FM spelling; localized promise/fallback wording is a translation, not a separately verified foreign-language FM string. No new IDs were inferred from language-resource strings or tentative disassembly.
 
 Checks: production frontend build, native ad-hoc-signed Tauri debug bundle, source detector and diff checks passed (the existing Vite chunk warning remains). Native live-career display check on the known ARM64 build, Arsenal / Ayodeji Eluwande, 11 December 2027: Nico Paz’s Mood shows Playing time, made 24 November and due 23 January; Arteta’s Attributes shows 4-2-3-1 DM AM Wide in possession and 4-4-2 2DM out of possession. No Edit/Apply, promise closure, Continue or save was used; all 18 baseline career hashes are unchanged. Other mapped formation labels and localized wording were not newly compared in FM during this pass. Additional IDs remain unmapped.
 
@@ -1720,7 +1720,7 @@ call shapes come from the editor's release branch at 0x29CE8BC (see
 
 ## Four native audit fixes (8 November 2026)
 
-Baseline `eb1d33b`; branch `codex/native-audit-fixes`. The window snapshot now
+Baseline `eb1d33b`; branch `Iamdejman/native-audit-fixes`. The window snapshot now
 includes a validated page offset tied to the search/filter/sort arguments and
 carries forward unopened sections' saved state. Invalid inputs count as dirty
 drafts for navigation, Close and Done, while Apply stays disabled. The player
