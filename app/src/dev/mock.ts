@@ -1912,6 +1912,7 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
     };
     changes.push(logged);
     report.applied.push({ ...logged });
+    return logged.id;
   };
   for (const edit of edits) {
     const field = fieldTable(entity).find((f) => f.key === edit.field);
@@ -1962,11 +1963,14 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
       .filter(allows)
       .sort((a, b) => Math.abs(a - morale) - Math.abs(b - morale) || a - b)[0];
     if (!allows(morale) && nearest !== undefined) {
-      write("morale", morale, nearest);
+      happinessHolds.set(write("morale", morale, nearest), held.id);
     }
   }
   return report;
 }
+
+/** For a change that moved his morale to hold a happiness edit (by its id): the id of that edit's change. */
+const happinessHolds = new Map<number, number>();
 
 /** The happiness the game allows a player no reason to be unhappy holds elsewhere, by his morale. */
 function moraleBand(morale: number): [number, number] {
@@ -2118,7 +2122,28 @@ function changeStaffJob(uid: number, job: number): LoggedChange {
   return logStaff(member, "contract.job", old, job);
 }
 
+/** `undo_change`: like the real command, a happiness edit and what moved to hold it are undone together. */
 function undoChange(id: number): LoggedChange {
+  const edit = happinessHolds.get(id);
+  const held = [...happinessHolds].filter(([, holds]) => holds === (edit ?? id)).map(([hold]) => hold);
+  const open = (other: number) =>
+    other !== id && changes.some((c) => c.id === other && c.undoneAt === null && !c.earlierGame);
+  const undone = undoOne(id);
+  for (const other of [...(edit === undefined ? [] : [edit]), ...held.reverse()].filter(open)) {
+    try {
+      undoOne(other);
+    } catch {
+      // What the game has changed since stays as it is; without the happiness, so does the rest of what held it.
+      if (other === edit) {
+        break;
+      }
+    }
+  }
+  return undone;
+}
+
+/** Undoes the one change `id`. */
+function undoOne(id: number): LoggedChange {
   const entry = changes.find((c) => c.id === id);
   if (!entry) {
     throw failure("app.noChange", `No change ${id}`, { id });
@@ -3320,10 +3345,10 @@ function undoMassBatch(batch: number): BatchUndo {
       continue;
     }
     try {
-      undoChange(entry.id);
+      undoOne(entry.id);
       report.undone++;
     } catch (e) {
-      // `undoChange` fails the way the real command does, with a failure.
+      // `undoOne` fails the way the real command does, with a failure.
       report.failed.push({ id: entry.id, error: e as Failure });
     }
   }

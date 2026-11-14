@@ -660,6 +660,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: None,
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -682,11 +683,12 @@ impl Connection {
                     let held =
                         (entity == Entity::Player && change.field == "contract.happiness" && change.old != change.new)
                             .then_some(change.new);
-                    self.log_change(change, planned.name.clone(), Some(batch));
+                    let edit = self.log_change(change, planned.name.clone(), Some(batch)).id;
                     report.applied += 1;
                     if let Some(happiness) = held {
                         let keep_morale = sets_morale.contains(&planned.uid);
-                        let (logged, failed) = self.hold_happiness(planned.uid, happiness, keep_morale, Some(batch));
+                        let (logged, failed) =
+                            self.hold_happiness(planned.uid, edit, happiness, keep_morale, Some(batch));
                         report.applied += logged.len();
                         report.failed.extend(failed.into_iter().map(|failed| MassFailure {
                             uid: planned.uid,
@@ -709,10 +711,12 @@ impl Connection {
 
     /// Has the game leave the happiness just written to the player `uid` where it is: the reasons to be unhappy that
     /// hold it elsewhere end, and his morale moves to the nearest that allows it, unless the same edit set his morale
-    /// (`keep_morale`). Each is logged as a change of its own; what could not be written comes back with its field.
+    /// (`keep_morale`). Each is logged as a change of its own that holds the logged happiness edit `edit`; what could
+    /// not be written comes back with its field.
     fn hold_happiness(
         &mut self,
         uid: u32,
+        edit: usize,
         happiness: i64,
         keep_morale: bool,
         batch: Option<u32>,
@@ -728,7 +732,10 @@ impl Connection {
         if hold.end_concerns {
             let ended = self.session.plan_end_concerns(player).and_then(|plan| self.session.apply_end_concerns(&plan));
             match ended {
-                Ok(done) => logged.push(self.log_concerns(done, batch)),
+                Ok(done) => {
+                    let ended = self.log_concerns(done, batch);
+                    logged.push(self.holding(ended, edit));
+                }
                 Err(err) => {
                     failed.push(FailedEdit { field: "contract.unhappiness".to_owned(), value: 0, error: err.into() });
                 }
@@ -741,7 +748,10 @@ impl Connection {
                 .and_then(|field| self.session.write_field(&target, &field, morale));
             match written {
                 Ok(change) if change.old == change.new => {}
-                Ok(change) => logged.push(self.log_change(change, name, batch)),
+                Ok(change) => {
+                    let moved = self.log_change(change, name, batch);
+                    logged.push(self.holding(moved, edit));
+                }
                 Err(err) => {
                     let error = self.with_names(err.into());
                     failed.push(FailedEdit { field: "morale".to_owned(), value: morale, error });
@@ -749,6 +759,15 @@ impl Connection {
             }
         }
         (logged, failed)
+    }
+
+    /// Marks the change just logged as one that holds the logged happiness edit `edit` (see `LoggedChange::holds`).
+    fn holding(&mut self, mut logged: LoggedChange, edit: usize) -> LoggedChange {
+        logged.holds = Some(edit);
+        if let Some(last) = self.log.last_mut().filter(|last| last.id == logged.id) {
+            last.holds = Some(edit);
+        }
+        logged
     }
 
     /// Logs a captaincy just written, as a change of the club's `captain` or `vice_captain`
@@ -787,6 +806,7 @@ impl Connection {
             captaincy: Some(captaincy),
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Captain(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -817,6 +837,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Heal(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -840,6 +861,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(undo),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -883,6 +905,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Loan(started)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -924,6 +947,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::LoanEnded(ended)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -981,6 +1005,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Signed(signed)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1024,6 +1049,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Permanent),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1062,6 +1088,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Permanent),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1099,6 +1126,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::SignedLater(agreed)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1129,6 +1157,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Promise(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1159,6 +1188,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Lift(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1190,6 +1220,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Concerns(done)),
         };
         self.pending_contract_refresh = true;
@@ -1282,6 +1313,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(named.first()), to: end(named.get(1)) }),
             clause: None,
+            holds: None,
             undo: Some(Undo::Preference(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1324,6 +1356,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
             clause: None,
+            holds: None,
             undo: Some(Undo::Language(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1362,6 +1395,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
             clause: None,
+            holds: None,
             undo: Some(Undo::Injury(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1393,6 +1427,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Cohesion(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1424,6 +1459,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Tactics(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1455,6 +1491,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Retirement(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1500,6 +1537,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
             clause: None,
+            holds: None,
             undo: Some(Undo::Tie(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1532,6 +1570,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: Some(ClauseChange { from: done.before.clone(), to: done.after.clone() }),
+            holds: None,
             undo: Some(Undo::Clause(done)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1602,6 +1641,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, team: staff_team, job })),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1733,6 +1773,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Permanent),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1789,6 +1830,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::Move(before)),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1846,6 +1888,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(undo),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
@@ -1853,9 +1896,26 @@ impl Connection {
         logged
     }
 
+    /// Undoes the logged change `id` (see `undo_one`), and with it the rest of a happiness edit: the edit itself and
+    /// what moved to hold it (see `hold_happiness`). The game holds a happiness by his morale and his reasons to be
+    /// unhappy, so with one of them undone alone it moves the happiness, which then no longer goes back. The change
+    /// asked for has to go back; another the game has changed since stays as it is, listed as not undone.
+    fn undo(&mut self, id: usize) -> Result<LoggedChange, Failure> {
+        let with = undone_with(&self.log, id);
+        let edit = self.log.iter().find(|logged| logged.id == id).and_then(|logged| logged.holds);
+        let undone = self.undo_one(id)?;
+        for other in with {
+            // Where the happiness itself no longer goes back, the rest of what holds it stays too.
+            if self.undo_one(other).is_err() && Some(other) == edit {
+                break;
+            }
+        }
+        Ok(undone)
+    }
+
     /// Writes back the old value of the logged change `id`, if the game still holds the new
     /// one; a move or healing goes back if the game still holds everything it wrote.
-    fn undo(&mut self, id: usize) -> Result<LoggedChange, Failure> {
+    fn undo_one(&mut self, id: usize) -> Result<LoggedChange, Failure> {
         let entry = self
             .log
             .iter()
@@ -2294,10 +2354,28 @@ struct LoggedChange {
     /// For a change to a player's contract clauses: the clause before and after.
     #[serde(skip_serializing_if = "Option::is_none")]
     clause: Option<ClauseChange>,
+    /// For a change made so that the game keeps a happiness edit (his morale moved, his reasons to be unhappy ended;
+    /// see `Connection::hold_happiness`): the id of that edit's change. They are undone together (see
+    /// `Connection::undo`).
+    #[serde(skip)]
+    holds: Option<usize>,
     /// For a move, healing, lifting bans, a captaincy, a tie or a clause: what undoing it takes. Other changes write
     /// back `old`. The app is told only of a change nothing undoes, as `permanent: true`.
     #[serde(rename = "permanent", serialize_with = "serialize_permanent", skip_serializing_if = "is_undoable")]
     undo: Option<Undo>,
+}
+
+/// The changes that go back with the logged change `id`, in the order they are undone: with a happiness edit what
+/// moved to hold it, newest first, and with one of those the happiness edit, then the rest. Only what can still be
+/// undone is named.
+fn undone_with(log: &[LoggedChange], id: usize) -> Vec<usize> {
+    let Some(asked) = log.iter().find(|logged| logged.id == id) else {
+        return Vec::new();
+    };
+    let edit = asked.holds.unwrap_or(id);
+    let open = |logged: &&LoggedChange| logged.id != id && logged.undone_at.is_none() && !logged.earlier_game;
+    let held = log.iter().rev().filter(|logged| logged.holds == Some(edit));
+    log.iter().filter(|logged| logged.id == edit).chain(held).filter(open).map(|logged| logged.id).collect()
 }
 
 /// A cancelled offer can no longer be undone through its original Sign row. Keep the history,
@@ -4238,10 +4316,13 @@ fn apply_edits(
             // Already the value asked for: nothing was written.
             Ok(change) if change.old == change.new => {}
             Ok(change) => {
-                if entity == Entity::Player && change.field == "contract.happiness" {
-                    held = Some(change.new);
+                let happiness =
+                    (entity == Entity::Player && change.field == "contract.happiness").then_some(change.new);
+                let logged = connection.log_change(change, name.clone(), None);
+                if let Some(happiness) = happiness {
+                    held = Some((logged.id, happiness));
                 }
-                report.applied.push(connection.log_change(change, name.clone(), None));
+                report.applied.push(logged);
             }
             Err(err) => {
                 let error = connection.with_names(err.into());
@@ -4250,8 +4331,8 @@ fn apply_edits(
         }
     }
     // The game puts a happiness back that his reasons to be unhappy or his morale do not allow: move them with it.
-    if let Some(happiness) = held {
-        let (logged, failed) = connection.hold_happiness(uid, happiness, keep_morale, None);
+    if let Some((edit, happiness)) = held {
+        let (logged, failed) = connection.hold_happiness(uid, edit, happiness, keep_morale, None);
         report.applied.extend(logged);
         report.failed.extend(failed);
     }
@@ -5467,7 +5548,8 @@ fn apply_mass_edit(state: State<'_, AppState>, file: State<'_, FrozenFile>, id: 
     Ok(report)
 }
 
-/// Undoes every change of the mass edit `batch` that is not undone yet, newest first.
+/// Undoes every change of the mass edit `batch` that is not undone yet, newest first: what held a happiness edit
+/// before the edit, each on its own, as all of them are in the batch.
 /// Changes the game has changed since are left as they are and reported. What the mass
 /// edit froze is unfrozen, and what it unfroze is frozen again at what it is now.
 #[tauri::command]
@@ -5483,7 +5565,7 @@ fn undo_batch(state: State<'_, AppState>, file: State<'_, FrozenFile>, batch: u3
         .collect();
     let mut report = BatchUndo { undone: 0, failed: Vec::new(), freeze: None };
     for id in ids {
-        match connection.undo(id) {
+        match connection.undo_one(id) {
             Ok(_) => report.undone += 1,
             Err(error) => report.failed.push(BatchUndoFailure { id, error }),
         }
@@ -5884,6 +5966,7 @@ mod tests {
             captaincy: None,
             tie: None,
             clause: None,
+            holds: None,
             undo: Some(Undo::SignedLater(AgreedSigning {
                 player,
                 club: 617,
@@ -5905,6 +5988,58 @@ mod tests {
         assert!(log[1..].iter().all(|entry| is_undoable(&entry.undo)));
         retire_cancelled_signing(&mut log, 7, 42);
         assert!(!is_undoable(&log[0].undo), "retiring an undo is idempotent");
+    }
+
+    #[test]
+    fn a_happiness_edit_is_undone_with_what_holds_it() {
+        let change = |id, field: &str, holds| LoggedChange {
+            id,
+            at: 0,
+            name: "Test player".to_owned(),
+            change: Change {
+                entity: Entity::Player,
+                uid: 7,
+                field: field.to_owned(),
+                old: 0,
+                new: 1,
+                record: Vec::new(),
+            },
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            holds,
+            undo: None,
+        };
+        // Two happiness edits, each with what it ended or moved to be held, and a change of something else.
+        let log = || {
+            vec![
+                change(1, "contract.happiness", None),
+                change(2, "contract.unhappiness", Some(1)),
+                change(3, "morale", Some(1)),
+                change(4, "attribute.finishing", None),
+                change(5, "contract.happiness", None),
+                change(6, "morale", Some(5)),
+            ]
+        };
+        // The edit takes what holds it, newest first; either of those takes the edit, then the other.
+        assert_eq!(undone_with(&log(), 1), [3, 2]);
+        assert_eq!(undone_with(&log(), 3), [1, 2]);
+        assert_eq!(undone_with(&log(), 2), [1, 3]);
+        assert_eq!(undone_with(&log(), 6), [5]);
+        // Any other change goes back alone, and one that is not listed takes nothing.
+        assert!(undone_with(&log(), 4).is_empty());
+        assert!(undone_with(&log(), 9).is_empty());
+        // What is undone already, or was made in an earlier game, is left out.
+        let mut log = log();
+        log[0].undone_at = Some(1);
+        log[1].earlier_game = true;
+        assert!(undone_with(&log, 3).is_empty());
+        assert_eq!(undone_with(&log, 5), [6]);
     }
 
     #[test]
