@@ -1665,6 +1665,7 @@ export const es: Strings = {
     done: "Listo",
     zoomLabel: "Zoom",
     usageLabel: "Compartir uso anónimo",
+    scoutCardLabel: "Ficha de ojeo en el juego",
     appearance: "Apariencia",
     themes: { system: "Sistema", light: "Claro", dark: "Oscuro" },
     tour: {

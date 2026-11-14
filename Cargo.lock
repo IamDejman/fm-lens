@@ -1106,6 +1106,7 @@ dependencies = [
  "fmlens-core",
  "fmlens-gfx",
  "fmlens-mem",
+ "memchr",
  "serde",
  "serde_json",
  "tauri",
