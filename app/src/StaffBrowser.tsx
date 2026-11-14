@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import { Ability } from "./Ability";
 import {
   attributeChips,
@@ -22,6 +22,8 @@ import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import { EmployerPicture, employerOf, HumanBadge, jobOf, readStaffTab, StaffProfile } from "./StaffProfile";
 import type { ListOrder, StaffFilter, StaffSort, StaffSummary, Yours } from "./types";
+import { EditorContext } from "./useProfileEditing";
+import { useTicks } from "./useTicks";
 
 const AGE_RANGE = { min: 0, max: 99 };
 const ABILITY_RANGE = { min: 1, max: 200 };
@@ -79,8 +81,20 @@ const SAVED = savedKind<StaffFields, StaffSort>(
 const readJob = (value: unknown) =>
   typeof value === "string" && JOB_FILTER_OPTIONS.some(({ code }) => String(code) === value) ? value : "";
 
+interface StaffBrowserProps {
+  version: number;
+  /** Changes when another game is read: the staff ticked are of the game before. */
+  game: number;
+  active: boolean;
+  reveal: Reveal | null;
+}
+
 /** The staff table with the profile of the selected member of staff beside it. */
-export function StaffBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
+export function StaffBrowser({ version, game, active, reveal }: StaffBrowserProps) {
+  // The staff ticked for Mass edit, which takes them in place of the whole list; there is nothing to tick them for
+  // while the game cannot be written to.
+  const { editable } = useContext(EditorContext);
+  const ticks = useTicks(game);
   // The filters start as they were before the language was switched, if it was (see `restore.ts`).
   // The job as the select holds it: a job code, or "" for any.
   const [job, setJob] = useState(() => restored("staffJob", readJob));
@@ -357,9 +371,15 @@ export function StaffBrowser({ version, active, reveal }: { version: number; act
             }}
           />
           <YourBest yours={list.yours} />
-          <MassEditButton entity="staff" filters={{ staffFilter: filter }} list={list} />
+          <MassEditButton
+            entity="staff"
+            filters={{ staffFilter: filter }}
+            list={list}
+            ticked={editable ? ticks.uids : []}
+          />
         </>
       )}
+      ticking={editable ? { ticks, name: (s) => s.name } : undefined}
       tableClass="staff-grid"
       header={
         <>

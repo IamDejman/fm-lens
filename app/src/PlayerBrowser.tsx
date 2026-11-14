@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { Ability } from "./Ability";
 import { BestForSelect, FitCell, FitHeader, useBestFor, YourBest } from "./BestFor";
 import { PLAYER_RECIPES } from "./recipes";
@@ -29,6 +29,8 @@ import { roleLabel, roleShort } from "./scoutRoles";
 import { SortHeader, useListSort, type ListSort } from "./SortHeader";
 import type { PlayerColumnSort, PlayerOrder, PlayerRow, PlayerSort } from "./types";
 import { useComparison } from "./useComparison";
+import { EditorContext } from "./useProfileEditing";
+import { useTicks } from "./useTicks";
 
 const text = playerListText;
 
@@ -54,13 +56,15 @@ export interface SimilarRequest {
 
 interface PlayerBrowserProps {
   version: number;
+  /** Changes when another game is read: the players ticked are of the game before. */
+  game: number;
   active: boolean;
   reveal: Reveal | null;
   similar?: SimilarRequest | null;
 }
 
 /** The players table with the profile of the selected player beside it. */
-export function PlayerBrowser({ version, active, reveal, similar: similarRequest = null }: PlayerBrowserProps) {
+export function PlayerBrowser({ version, game, active, reveal, similar: similarRequest = null }: PlayerBrowserProps) {
   // The filters and the sort start as they were before the language was switched, if it was (see `restore.ts`).
   const [fields, setFields] = useState<PlayerFilterFields>(() => restored("playerFields", readFields));
   const best = useBestFor("playerBest", PLAYER_RECIPES);
@@ -101,6 +105,11 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
   // The players picked for a comparison. They are kept here, as the list is: every list stays mounted while another
   // view is shown (see `App`), so the set survives switching views.
   const comparison = useComparison();
+  // The players ticked for Mass edit and Clone & templates, which take them in place of the whole list. There is
+  // nothing to tick them for while the game cannot be written to.
+  const { editable } = useContext(EditorContext);
+  const ticks = useTicks(game);
+  const ticked = editable ? ticks.uids : [];
 
   const filter = toPlayerFilter(fields);
   const filterCount = countFilters(filter);
@@ -208,11 +217,12 @@ export function PlayerBrowser({ version, active, reveal, similar: similarRequest
               best={best.recipe?.best}
               similar={similar ? { uid: similar.uid, peak: similar.peak } : undefined}
             />
-            <MassEditButton entity="player" filters={listed} list={list} />
-            <PlayerTemplatesButton filters={listed} list={list} />
+            <MassEditButton entity="player" filters={listed} list={list} ticked={ticked} />
+            <PlayerTemplatesButton filters={listed} list={list} ticked={ticked} />
           </MoreMenu>
         </>
       )}
+      ticking={editable ? { ticks, name: (p) => p.name } : undefined}
       footer={<ComparisonTray comparison={comparison} />}
       tableClass="player-grid"
       header={

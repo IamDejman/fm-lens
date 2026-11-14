@@ -362,6 +362,8 @@ const errors: ErrorTexts = {
   "mass.tooMany": (p) =>
     `Hay ${p.count} resultados. Para una edición masiva, acota la búsqueda o los filtros a ${p.limit} como máximo.`,
   "mass.outOfDate": () => "Esta vista previa está desfasada. Vuelve a generar la vista previa de la edición masiva.",
+  "mass.selectionChanged": () =>
+    "No se ha encontrado parte de lo que has seleccionado. Borra la selección y vuelve a elegir.",
 };
 
 export const es: Strings = {
@@ -2126,6 +2128,7 @@ export const es: Strings = {
   massEdit: {
     button: "Edición masiva",
     buttonTitle: "Editar a todos los de la lista",
+    buttonTitleSelected: "Editar los que has seleccionado",
     title: {
       player: "Edición masiva de jugadores",
       staff: "Edición masiva de personal",
@@ -2137,11 +2140,18 @@ export const es: Strings = {
       total === 1
         ? `El ${nouns[entity].one} que muestra ahora la lista (búsqueda y filtros)`
         : `Los ${entityCount(entity, total)} que muestra ahora la lista (búsqueda y filtros)`,
+    scopeSelected: (entity, total) =>
+      total === 1
+        ? `Solo el ${nouns[entity].one} que has seleccionado`
+        : `Solo los ${entityCount(entity, total)} que has seleccionado`,
     scopeNone: (entity) =>
       `Ningún ${nouns[entity].one} coincide con la búsqueda y los filtros, así que no hay nada que cambiar.`,
     scopeTooMany: (entity, total, limit) =>
       `Los ${entityCount(entity, total)} que muestra la lista son más de los que admite una edición masiva ` +
       `(${format(limit)}). Acota antes la búsqueda o los filtros.`,
+    scopeTooManySelected: (entity, total, limit) =>
+      `Los ${entityCount(entity, total)} que has seleccionado son más de los que admite una edición masiva ` +
+      `(${format(limit)}). Desmarca algunos.`,
     loadingFields: "Leyendo los campos…",
     fieldsFailed: (reason) => `No se han podido leer los campos: ${reason}`,
     toFreeze,
@@ -2463,6 +2473,10 @@ export const es: Strings = {
     importFile: "Importar archivo",
     applyHeading: (total, query) =>
       `Aplicar a ${total === 1 ? "1 jugador" : `${format(total)} jugadores`}${query ? ` que coinciden con «${query}»` : ""}`,
+    applyHeadingSelected: (total) =>
+      total === 1
+        ? "Aplicar al jugador que has seleccionado"
+        : `Aplicar a los ${format(total)} jugadores que has seleccionado`,
     limit: "Solo estos ID de jugador",
     limitPlaceholder: "Todos",
     preview: "Vista previa",
@@ -2691,7 +2705,15 @@ export const es: Strings = {
     steamBuild: (id) => `(compilación ${id})`,
   },
 
-  listFeedback: { failed: "La búsqueda falló", searching: "Buscando…", retry: "Reintentar" },
+  listFeedback: {
+    failed: "La búsqueda falló",
+    searching: "Buscando…",
+    retry: "Reintentar",
+    ticked: (count) => (count === 1 ? "1 seleccionado" : `${format(count)} seleccionados`),
+    clearTicks: "Borrar",
+    tickRow: (name) => `Seleccionar: ${name}`,
+    tickShown: "Seleccionar todos los de esta página",
+  },
 
   errors,
 };

@@ -2305,6 +2305,8 @@ export const en = {
     /** The button in the toolbar of the player, staff and club lists. */
     button: "Mass edit",
     buttonTitle: "Edit everyone in the list",
+    /** The same while rows are ticked in the list: the mass edit takes those. */
+    buttonTitleSelected: "Edit the ones you selected",
     title: {
       player: "Mass edit players",
       staff: "Mass edit staff",
@@ -2315,12 +2317,17 @@ export const en = {
     /** `total` is the list's: the search and the filters of the list select them. */
     scope: (entity: MassEntity, total: number) =>
       `All ${entityCount[entity](total)} in the list`,
+    /** The same when rows are ticked in the list: `total` is how many. */
+    scopeSelected: (entity: MassEntity, total: number) =>
+      `Only the ${entityCount[entity](total)} you selected`,
     scopeNone: (entity: MassEntity) =>
       `No ${entityNouns[entity]} match your search and filters.`,
     /** `limit` is the most one mass edit takes. */
     scopeTooMany: (entity: MassEntity, total: number, limit: number) =>
       `That's ${entityCount[entity](total)}, but one mass edit takes up to ${format(limit)}. ` +
       "Narrow your search or filters.",
+    scopeTooManySelected: (entity: MassEntity, total: number, limit: number) =>
+      `That's ${entityCount[entity](total)}, but one mass edit takes up to ${format(limit)}. Untick some.`,
     loadingFields: "Loading fields…",
     fieldsFailed: (reason: string) => `Couldn't load the fields: ${reason}`,
     /** Beside the fields while the freeze box alone was changed: what Apply would do. */
@@ -2724,6 +2731,8 @@ export const en = {
     importFile: "Import file",
     applyHeading: (total: number, query: string) =>
       `Apply to ${entityCount.player(total)}${query ? ` matching “${query}”` : ""}`,
+    /** The same when players are ticked in the list: `total` is how many. */
+    applyHeadingSelected: (total: number) => `Apply to the ${entityCount.player(total)} you selected`,
     limit: "Only these player IDs",
     limitPlaceholder: "All of them",
     preview: "Preview",
@@ -2999,7 +3008,20 @@ export const en = {
     steamBuild: (id: string) => `build ${id}`,
   },
 
-  listFeedback: { failed: "Search failed", searching: "Searching…", retry: "Retry" },
+  listFeedback: {
+    failed: "Search failed",
+    searching: "Searching…",
+    retry: "Retry",
+    // Ticking rows, in a list whose actions take the ticked ones.
+    /** Beside the search box: how many rows are ticked, on this page and any other. */
+    ticked: (count: number) => `${format(count)} selected`,
+    /** Unticks every row. */
+    clearTicks: "Clear",
+    /** The name of a row's box for assistive technology; `name` is the row's. */
+    tickRow: (name: string) => `Select ${name}`,
+    /** The name of the box in the header, which ticks or unticks the rows on show. */
+    tickShown: "Select all on this page",
+  },
 
   errors,
 };

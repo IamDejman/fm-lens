@@ -8,6 +8,7 @@ import { ProfilePlaceContext, type ProfilePlace } from "./profilePlace";
 import { isRecord, noteChange, restored, useSnapshot } from "./restore";
 import type { Yours } from "./types";
 import { askToLeave } from "./useProfileEditing";
+import type { Ticks } from "./useTicks";
 
 /** Rows shown at once; the best come first. */
 const ROW_LIMIT = 200;
@@ -102,12 +103,18 @@ interface ListBrowserProps<Row extends { uid: number }> {
   reveal?: Reveal | null;
   /** Each new object empties the search box, e.g. when the list starts being compared with one player. */
   clearSearch?: object | null;
+  /**
+   * Ticking rows, for the toolbar's actions that take the ticked ones (see `useTicks`): a column of boxes before the
+   * others, one in the header for the rows on show, and how many are ticked beside the search box. `name` is what a
+   * row's box is called for assistive technology. Ticking a row does not open it.
+   */
+  ticking?: { ticks: Ticks; name: (row: Row) => string };
 }
 
 /** A searchable table with the profile of the selected row beside it, or its detail under it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
   const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
-  const { name, footer, tableClass, header, cells, profile, detail, reveal, clearSearch = null } = props;
+  const { name, footer, tableClass, header, cells, profile, detail, reveal, clearSearch = null, ticking } = props;
   // What the list held before the window started again, if it did: the search text, the UID of the row to select as
   // soon as the rows are there again, and how far down it was scrolled.
   const [start] = useState(() => restored(name, readList));
@@ -132,6 +139,7 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
   const [failure, setFailure] = useState<{ requestKey: string; message: string } | null>(null);
   const [selected, setSelected] = useState<Row | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
+  const tickShown = useRef<HTMLInputElement>(null);
   const tableWrap = useRef<HTMLDivElement>(null);
   const selectedRow = useRef<HTMLTableRowElement>(null);
   const headRow = useRef<HTMLTableRowElement>(null);
@@ -341,6 +349,20 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
     place.current = 0;
   }, [shownRows, query, offset, start]);
 
+  // The rows on show, for the box in the header: ticked when all of them are, and half-ticked when only some are.
+  const ticks = ticking?.ticks;
+  const shownUids = settled ? page.rows.map((row) => row.uid) : [];
+  const tickedShown = ticks ? shownUids.filter((uid) => ticks.has(uid)).length : 0;
+  const allTicked = shownUids.length > 0 && tickedShown === shownUids.length;
+  const someTicked = tickedShown > 0 && !allTicked;
+  // After every render: the box is there only while rows can be ticked.
+  useEffect(() => {
+    if (tickShown.current) {
+      tickShown.current.indeterminate = someTicked;
+    }
+  });
+  const ticked = ticks?.uids.length ?? 0;
+
   // A hidden list has no profile open: its window-wide Escape handler must not fire.
   const showProfile = active && selected !== null && profile !== undefined;
   const className = ["workspace", showProfile && "with-profile", !active && "inactive"].filter(Boolean).join(" ");
@@ -365,6 +387,26 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
             />
           </label>
           <span className="count" id={countId} role="status">{shownRows ? summary(page.total, page.total) : ""}</span>
+          {ticks && (
+            <span className="ticked">
+              {/* A live region that is always there, so that the count is read out as rows are ticked. */}
+              <span role="status">{ticked > 0 ? feedback.ticked(ticked) : ""}</span>
+              {ticked > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    ticks.clear();
+                    // The button goes with the count: focus stays with the ticking, or goes to the search box where
+                    // the list is too narrow to show its boxes.
+                    const box = tickShown.current;
+                    (box && box.getClientRects().length > 0 ? box : searchInput.current)?.focus();
+                  }}
+                >
+                  {feedback.clearTicks}
+                </button>
+              )}
+            </span>
+          )}
           {toolbarActions?.(list)}
         </div>
         {filterBar}
@@ -381,12 +423,27 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
         >
           {/* A grid: the rows are picked with the arrow keys and Enter, and the picked one is selected. */}
           <table
-            className={["grid", tableClass, !profile && !detail && "static"].filter(Boolean).join(" ")}
+            className={["grid", tableClass, ticks && "ticking", !profile && !detail && "static"].filter(Boolean).join(" ")}
             role="grid"
             aria-label={shownRows ? summary(page.total, page.total) : error ? feedback.failed : feedback.searching}
           >
             <thead>
-              <tr ref={headRow}>{header}</tr>
+              <tr ref={headRow}>
+                {ticks && (
+                  <th className="col-tick">
+                    <input
+                      ref={tickShown}
+                      type="checkbox"
+                      aria-label={feedback.tickShown}
+                      title={feedback.tickShown}
+                      checked={allTicked}
+                      disabled={shownUids.length === 0}
+                      onChange={(e) => ticks.setAll(shownUids, e.currentTarget.checked)}
+                    />
+                  </th>
+                )}
+                {header}
+              </tr>
             </thead>
             <tbody>
               {shownRows && page.rows.map((row, index) => {
@@ -402,6 +459,12 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
                       tabIndex={row.uid === tabStop ? 0 : -1}
                       onClick={() => pick(row)}
                       onKeyDown={(e) => {
+                        // Shift+Space ticks the row the keyboard is on, as its box does.
+                        if (ticks && e.key === " " && e.shiftKey) {
+                          e.preventDefault();
+                          ticks.toggle(row.uid);
+                          return;
+                        }
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           pick(row);
@@ -427,6 +490,34 @@ export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps
                         }
                       }}
                     >
+                      {ticking && ticks && (
+                        // The whole cell ticks, and none of it opens the row.
+                        <td
+                          className="col-tick"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (e.target === e.currentTarget) {
+                              ticks.toggle(row.uid);
+                            }
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            aria-label={feedback.tickRow(ticking.name(row))}
+                            aria-keyshortcuts="Shift+Space"
+                            // The table is one Tab stop: Shift+Space on a row is how the keyboard ticks it.
+                            tabIndex={-1}
+                            checked={ticks.has(row.uid)}
+                            onChange={() => ticks.toggle(row.uid)}
+                            // Space is the box's own key here, not the row's; Enter and the arrow keys stay the row's.
+                            onKeyDown={(e) => {
+                              if (e.key === " ") {
+                                e.stopPropagation();
+                              }
+                            }}
+                          />
+                        </td>
+                      )}
                       {cells(row, list)}
                     </tr>
                     {detail && isSelected && (

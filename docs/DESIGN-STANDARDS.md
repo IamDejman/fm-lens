@@ -88,6 +88,7 @@ One family: Archivo (variable). The scale is fixed; 11px is the floor.
 | ⌘F | Search box of the open list |
 | Up / Down, Home / End | Move between rows |
 | Enter or Space | Open the focused row |
+| Shift+Space | Tick the focused row, in a list with boxes |
 | Escape | Close a menu or dialog; leave edit mode; close the profile |
 | ⌘S | Apply the edits of the profile being edited |
 

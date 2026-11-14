@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useContext, useId, useState } from "react";
 import { ClubProfile, readTab, type ClubTab } from "./ClubProfile";
 import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
 import { formatNumber } from "./format";
@@ -12,6 +12,8 @@ import { SavedFilterControls } from "./SavedFilterControls";
 import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
 import type { ClubFilter, ClubSort, ClubSummary, ListOrder } from "./types";
+import { EditorContext } from "./useProfileEditing";
+import { useTicks } from "./useTicks";
 
 const columns = clubListText.columns;
 const filters = clubListText.filters;
@@ -58,8 +60,20 @@ function whole(input: string, range: { min: number; max: number }): number | und
 
 const readText = (value: unknown) => (typeof value === "string" ? value : "");
 
+interface ClubBrowserProps {
+  version: number;
+  /** Changes when another game is read: the clubs ticked are of the game before. */
+  game: number;
+  active: boolean;
+  reveal: Reveal | null;
+}
+
 /** The clubs table with the profile of the selected club beside it. */
-export function ClubBrowser({ version, active, reveal }: { version: number; active: boolean; reveal: Reveal | null }) {
+export function ClubBrowser({ version, game, active, reveal }: ClubBrowserProps) {
+  // The clubs ticked for Mass edit, which takes them in place of the whole list; there is nothing to tick them for
+  // while the game cannot be written to.
+  const { editable } = useContext(EditorContext);
+  const ticks = useTicks(game);
   // It starts as it was before the language was switched, if it was (see `restore.ts`).
   const [kind, setKind] = useState<ClubKind>(() => restored("clubKind", readKind));
   const [minReputation, setMinReputation] = useState(() => restored("clubMinRep", readText));
@@ -251,7 +265,15 @@ export function ClubBrowser({ version, active, reveal }: { version: number; acti
           </label>
         </FilterBar>
       }
-      toolbarActions={(list) => <MassEditButton entity="club" filters={{ clubFilter: filter }} list={list} />}
+      toolbarActions={(list) => (
+        <MassEditButton
+          entity="club"
+          filters={{ clubFilter: filter }}
+          list={list}
+          ticked={editable ? ticks.uids : []}
+        />
+      )}
+      ticking={editable ? { ticks, name: (c) => c.name } : undefined}
       tableClass="club-grid"
       header={
         <>

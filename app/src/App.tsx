@@ -139,6 +139,8 @@ function App() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
+  // Counts the games read: what a list holds by UID alone, such as its ticked rows, is of one game.
+  const [game, setGame] = useState(0);
   // What connecting froze again of what was frozen in the save before, until the notice that says so is dismissed.
   const [refrozen, setRefrozen] = useState<Refrozen | null>(null);
   const [view, setView] = useState<View>(() => restored("view", readView));
@@ -217,6 +219,7 @@ function App() {
         editable: connected.editable,
       });
       setDataVersion((v) => v + 1);
+      setGame((g) => g + 1);
     });
 
   // The game was read again, by Reload or by the app itself: the lists, the open profile and the log follow.
@@ -228,6 +231,9 @@ function App() {
       // What came back on in a save before is not frozen in another one.
       if (again || !sameGame) {
         setRefrozen(again ?? null);
+      }
+      if (!sameGame) {
+        setGame((g) => g + 1);
       }
       setDataVersion((v) => v + 1);
       void reloadLog();
@@ -673,15 +679,16 @@ function App() {
             <div className="views">
               <PlayerBrowser
                 version={dataVersion}
+                game={game}
                 active={view === "players"}
                 reveal={revealPlayer}
                 similar={similarRequest}
               />
               <DeferredView active={view === "staff"} label={staffListText.nav}>
-                <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
+                <StaffBrowser version={dataVersion} game={game} active={view === "staff"} reveal={revealStaff} />
               </DeferredView>
               <DeferredView active={view === "clubs"} label={clubListText.nav}>
-                <ClubBrowser version={dataVersion} active={view === "clubs"} reveal={revealClub} />
+                <ClubBrowser version={dataVersion} game={game} active={view === "clubs"} reveal={revealClub} />
               </DeferredView>
               <DeferredView active={view === "nations"} label={nationListText.nav}>
                 <NationBrowser version={dataVersion} active={view === "nations"} />

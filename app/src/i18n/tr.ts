@@ -223,6 +223,7 @@ const errors: ErrorTexts = {
   "mass.tooMany": (p) =>
     `${p.count} sonuç var. Toplu düzenleme için aramayı ya da filtreleri en fazla ${p.limit} sonuca daraltın.`,
   "mass.outOfDate": () => "Bu önizleme eskidi. Toplu düzenlemeyi yeniden önizleyin.",
+  "mass.selectionChanged": () => "Seçtiklerinizin bir kısmı bulunamadı. Seçimi temizleyip yeniden seçin.",
 };
 
 const TRAIT_NAMES_TR: readonly string[] = [
@@ -2085,6 +2086,7 @@ export const tr: Strings = {
   massEdit: {
     button: "Toplu düzenleme",
     buttonTitle: "Listedeki herkesi düzenle",
+    buttonTitleSelected: "Seçtiklerinizi düzenle",
     title: {
       player: "Oyuncuları toplu düzenle",
       staff: "Personeli toplu düzenle",
@@ -2093,12 +2095,17 @@ export const tr: Strings = {
 
     // What it applies to
     scope: (entity, total) => `Listenin şu an gösterdiği ${entityCount(entity, total)} (arama ve filtreler)`,
+    scopeSelected: (entity, total) => `Yalnızca seçtiğiniz ${entityCount(entity, total)}`,
     scopeNone: (entity) =>
       `Aramaya ve filtrelere uyan ${nouns[entity].plain} yok, bu yüzden değiştirilecek bir şey yok.`,
     scopeTooMany: (entity, total, limit) =>
       `Listenin gösterdiği ${entityCount(entity, total)}, ` +
       `bir toplu düzenlemenin kaldırabileceğinden (${format(limit)}) fazla. ` +
       "Önce aramayı veya filtreleri daraltın.",
+    scopeTooManySelected: (entity, total, limit) =>
+      `Seçtiğiniz ${entityCount(entity, total)}, ` +
+      `bir toplu düzenlemenin kaldırabileceğinden (${format(limit)}) fazla. ` +
+      "Bazılarının işaretini kaldırın.",
     loadingFields: "Alanlar okunuyor…",
     fieldsFailed: (reason) => `Alanlar okunamadı: ${reason}`,
     toFreeze,
@@ -2418,6 +2425,7 @@ export const tr: Strings = {
     importFile: "Dosya içe aktar",
     applyHeading: (total, query) =>
       `${query ? `“${query}” ile eşleşen ` : ""}${format(total)} oyuncuya uygula`,
+    applyHeadingSelected: (total) => `Seçtiğiniz ${format(total)} oyuncuya uygula`,
     limit: "Yalnızca bu oyuncu kimlikleri",
     limitPlaceholder: "Hepsi",
     preview: "Önizle",
@@ -2642,7 +2650,15 @@ export const tr: Strings = {
     steamBuild: (id) => `derleme ${id}`,
   },
 
-  listFeedback: { failed: "Arama başarısız", searching: "Aranıyor…", retry: "Yeniden dene" },
+  listFeedback: {
+    failed: "Arama başarısız",
+    searching: "Aranıyor…",
+    retry: "Yeniden dene",
+    ticked: (count) => `${format(count)} seçili`,
+    clearTicks: "Temizle",
+    tickRow: (name) => `Seç: ${name}`,
+    tickShown: "Bu sayfadakilerin tümünü seç",
+  },
 
   errors,
 };

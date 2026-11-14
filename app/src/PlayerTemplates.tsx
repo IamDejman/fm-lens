@@ -57,18 +57,24 @@ function loadLibrary(): PlayerTemplate[] {
   }
 }
 
+/** Who a template is applied to: the list as it was when the dialog opened, or the players ticked in it then. */
 interface Scope {
   query: string;
   filters: MassFilters;
   total: number;
+  /** The UIDs of the ticked players, when there are any: the template goes onto those, and `total` counts them. */
+  selected?: readonly number[];
 }
 
 export function PlayerTemplatesButton({
   list,
   filters,
+  ticked = [],
 }: {
   list: ListState;
   filters: MassFilters;
+  /** The UIDs of the players ticked in the list: a template is applied to those in place of the whole list. */
+  ticked?: readonly number[];
 }) {
   const { editable } = useContext(EditorContext);
   const [scope, setScope] = useState<Scope | null>(null);
@@ -84,7 +90,11 @@ export function PlayerTemplatesButton({
         disabled={list.total === null}
         onClick={() =>
           askToLeave(() =>
-            setScope({ query: list.query, filters, total: list.total ?? 0 }),
+            setScope(
+              ticked.length > 0
+                ? { query: "", filters: {}, total: ticked.length, selected: ticked }
+                : { query: list.query, filters, total: list.total ?? 0 },
+            ),
           )
         }
       >
@@ -225,8 +235,9 @@ function TemplatesDialog({
     if (!template) return;
     setPreview(null);
     setReport(null);
-    let selected: number[] | undefined;
-    if (targetUids.trim()) {
+    // The ticked players are the list of who it goes onto; without any, the IDs typed narrow the list's.
+    let selected: readonly number[] | undefined = scope.selected;
+    if (!selected && targetUids.trim()) {
       const entries = targetUids.trim().split(/[\s,;]+/);
       if (
         !entries.every(
@@ -479,19 +490,23 @@ function TemplatesDialog({
             </div>
             <section className="template-targets">
               <h3>
-                {text.applyHeading(scope.total, scope.query)}
+                {scope.selected
+                  ? text.applyHeadingSelected(scope.total)
+                  : text.applyHeading(scope.total, scope.query)}
               </h3>
-              <label>
-                {text.limit}
-                <input
-                  value={targetUids}
-                  onChange={(e) => {
-                    setTargetUids(e.target.value);
-                    invalidate();
-                  }}
-                  placeholder={text.limitPlaceholder}
-                />
-              </label>
+              {!scope.selected && (
+                <label>
+                  {text.limit}
+                  <input
+                    value={targetUids}
+                    onChange={(e) => {
+                      setTargetUids(e.target.value);
+                      invalidate();
+                    }}
+                    placeholder={text.limitPlaceholder}
+                  />
+                </label>
+              )}
               <button
                 type="button"
                 disabled={
