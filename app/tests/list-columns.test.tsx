@@ -78,7 +78,7 @@ test('the sample search answers the new filters, sorts and columns', async () =>
 });
 
 test('the player list shows value and wage, and an attribute column once it is chosen', async () => {
-  render(<PlayerBrowser version={1} active reveal={null} />);
+  render(<PlayerBrowser version={1} game={0} active reveal={null} />);
   const table = await screen.findByRole('grid');
   await waitFor(() => expect(within(table).getAllByRole('row').length).toBeGreaterThan(1));
   expect(within(table).getByRole('columnheader', { name: 'Value' })).toBeTruthy();
@@ -104,7 +104,7 @@ test('the player list shows value and wage, and an attribute column once it is c
 });
 
 test('a club filter and its sort are saved under a name and brought back', async () => {
-  render(<ClubBrowser version={1} active reveal={null} />);
+  render(<ClubBrowser version={1} game={0} active reveal={null} />);
   const table = await screen.findByRole('grid');
   await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
   await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Clubs to show' }), 'women');

@@ -87,7 +87,7 @@ test('the sample players keep to the new bounds', async () => {
 });
 
 test('a club header sorts the list and the nation filters it', async () => {
-  render(<ClubBrowser version={0} active reveal={null} />);
+  render(<ClubBrowser version={0} game={0} active reveal={null} />);
   await screen.findAllByRole('row');
   // Highest reputation first until a header is clicked: no order is asked for.
   await waitFor(() => expect(lastArgs('search_clubs')).toMatchObject({ query: '' }));
@@ -119,7 +119,7 @@ test('a club header sorts the list and the nation filters it', async () => {
 });
 
 test('the staff list asks for an ability range and a sort by age', async () => {
-  render(<StaffBrowser version={0} active reveal={null} />);
+  render(<StaffBrowser version={0} game={0} active reveal={null} />);
   await screen.findAllByRole('row');
   await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
   await userEvent.type(screen.getByRole('spinbutton', { name: 'Maximum current ability' }), '120');
@@ -146,7 +146,7 @@ test('a stadium names the club that owns it', async () => {
 test("a player's profile has the attributes of both kinds of player", async () => {
   const keeper = (await mockInvoke<PlayerPage>('search_players', { query: '', limit: 1, filter: { positions: ['gk'] } })).rows[0];
   const striker = (await mockInvoke<PlayerPage>('search_players', { query: '', limit: 1, filter: { positions: ['st'] } })).rows[0];
-  render(<PlayerBrowser version={0} active reveal={null} />);
+  render(<PlayerBrowser version={0} game={0} active reveal={null} />);
   for (const [player, own, other, attribute] of [
     [striker, 'Technical', 'Goalkeeping', 'Handling'],
     [keeper, 'Goalkeeping', 'Technical', 'Finishing'],
@@ -165,7 +165,7 @@ test("a player's profile has the attributes of both kinds of player", async () =
 });
 
 test('picking what the players are best for ranks them by fit, and a header sorts them again', async () => {
-  render(<PlayerBrowser version={0} active reveal={null} />);
+  render(<PlayerBrowser version={0} game={0} active reveal={null} />);
   await screen.findAllByRole('row');
   expect(screen.queryByRole('columnheader', { name: 'Fit' })).toBeNull();
   const pick = screen.getByRole('combobox', { name: 'Best for' });
@@ -206,7 +206,7 @@ test('the sample search keeps to the positions of a recipe and scores as the gam
 });
 
 test('the staff list is ranked for a job, among the staff the filters keep', async () => {
-  render(<StaffBrowser version={0} active reveal={null} />);
+  render(<StaffBrowser version={0} game={0} active reveal={null} />);
   await screen.findAllByRole('row');
   await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Best for' }), 'Coach: Attacking');
   await waitFor(() => expect(lastArgs('search_staff')?.best).toMatchObject({ weights: expect.arrayContaining([{ key: 'attacking', weight: 6 }]) }));
@@ -217,7 +217,7 @@ test('the staff list is ranked for a job, among the staff the filters keep', asy
 });
 
 test('a ranked list names the best at your club and marks the fits that beat it', async () => {
-  render(<PlayerBrowser version={0} active reveal={null} />);
+  render(<PlayerBrowser version={0} game={0} active reveal={null} />);
   await screen.findAllByRole('row');
   expect(document.querySelector('.your-best')).toBeNull();
   await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Best for' }), 'DC: Tackling');
@@ -254,7 +254,7 @@ test('the profile of a player and of a member of staff says what they are best f
     await waitFor(() => expect(screen.getAllByRole('row').length).toBeGreaterThan(1));
     await userEvent.click(screen.getAllByRole('row')[1]);
   };
-  const view = render(<PlayerBrowser version={0} active reveal={null} />);
+  const view = render(<PlayerBrowser version={0} game={0} active reveal={null} />);
   await openFirst();
   const group = (await screen.findByRole('heading', { name: 'Best for' })).closest('section')!;
   const scores = [...group.querySelectorAll('dd')].map((cell) => Number(cell.textContent));
@@ -264,7 +264,7 @@ test('the profile of a player and of a member of staff says what they are best f
   expect((await screen.findByRole('tooltip')).textContent).toMatch(/^\D+ \d+\n/);
   view.unmount();
 
-  render(<StaffBrowser version={0} active reveal={null} />);
+  render(<StaffBrowser version={0} game={0} active reveal={null} />);
   await openFirst();
   expect(await screen.findByRole('heading', { name: 'Best for' })).toBeTruthy();
 });

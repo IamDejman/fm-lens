@@ -145,7 +145,7 @@ test('the Scout tab shows the estimates and asks for players like him today or a
 
 test('a comparison asks for likeness, shows it, and can be switched to the peak or stopped', async () => {
   calls.length = 0;
-  render(<PlayerBrowser version={0} active reveal={null} similar={{ uid: 7, name: 'Ada Striker', peak: false }} />);
+  render(<PlayerBrowser version={0} game={0} active reveal={null} similar={{ uid: 7, name: 'Ada Striker', peak: false }} />);
   expect(await screen.findByText('Like Ada Striker')).toBeTruthy();
   expect(await screen.findByText('88')).toBeTruthy();
   const searched = () => calls.filter((call) => call.command === 'search_players').at(-1)?.args;

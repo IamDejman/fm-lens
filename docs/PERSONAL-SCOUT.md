@@ -173,8 +173,11 @@ not covered by this in-memory history. See the 7 November refresh checks in
 Clone & templates can capture selected ability, attribute, personality, position
 and trait groups. Templates use versioned JSON, a local library and destination
 field validation, then preview/apply/undo through the bulk editor. Identity and
-contract fields are excluded. Player, staff and money freezes are remembered for
-the save and hold only while FM Lens is connected.
+contract fields are excluded. Mass edit and Clone & templates change everyone
+the list's search and filters match, or only the rows ticked in the list when
+any are, in the player, staff and club lists; ticks stay through searches and
+pages and are dropped when FM loads another save. Player, staff and money freezes are remembered for the save and
+hold only while FM Lens is connected.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
 While a profile is edited, a number can be dragged sideways instead of typed:
