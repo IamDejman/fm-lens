@@ -1416,7 +1416,7 @@ export const en = {
     noFinances: "FM only tracks money for clubs in playable leagues.",
     /** Freezing the club's money, while the game can be written to, and what that does. */
     freeze: "Freeze money",
-    freezeNote: "The balance can't go down while FM Lens is connected.",
+    freezeNote: "The balance and transfer budget can't go down while FM Lens is connected.",
 
     // Stadium
     stadium: "Stadium",
