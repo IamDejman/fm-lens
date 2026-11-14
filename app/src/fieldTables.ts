@@ -7,8 +7,8 @@ import type { EditField, Entity } from "./types";
 const tables = new Map<Entity, Promise<EditField[]>>();
 
 /**
- * The editable fields of players, of staff or of clubs. The table never changes during a connection, so it is
- * fetched once.
+ * The editable fields of players, of staff or of clubs. The table is fetched once and kept until the game is read
+ * again: the nation choices are addresses, which another save moves.
  */
 export function fieldTable(entity: Entity): Promise<EditField[]> {
   let table = tables.get(entity);
@@ -55,7 +55,7 @@ export async function fieldIndex(): Promise<ReadonlyMap<string, EditField>> {
   return new Map(all.flat().map((field) => [fieldIndexKey(field.entity, field.key), field] as const));
 }
 
-/** Forgets the tables, for the next connection. */
+/** Forgets the tables, for the next connection or after the game is read again. */
 export function forgetFieldTables(): void {
   tables.clear();
 }

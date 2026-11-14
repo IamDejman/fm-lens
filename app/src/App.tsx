@@ -221,6 +221,8 @@ function App() {
   // The game was read again, by Reload or by the app itself: the lists, the open profile and the log follow.
   const readAgain = useCallback(
     ({ refrozen: again, ...reloaded }: ReloadInfo) => {
+      // The game may have loaded another save, whose nations sit at other addresses: the tables are read again.
+      forgetFieldTables();
       setConnection((c) => c && { ...c, ...reloaded });
       if (again) {
         setRefrozen(again);
