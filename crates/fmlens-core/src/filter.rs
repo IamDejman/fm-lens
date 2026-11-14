@@ -1249,6 +1249,7 @@ mod tests {
     fn competition_award_official_and_nation_filters() {
         let league = CompetitionSummary {
             uid: 1,
+            index: 0,
             name: "Süper Lig".to_owned(),
             short_name: None,
             nation: Some("Türkiye".to_owned()),

@@ -5969,6 +5969,11 @@ button.danger:hover:not(:disabled) {
   margin-bottom: var(--space-3);
 }
 
+/* A division's name is long ("Sky Bet Championship"): its field takes two columns. */
+.top-division {
+  grid-column: span 2;
+}
+
 .similar-name {
   font-weight: 750;
 }
@@ -6045,4 +6050,96 @@ button.danger:hover:not(:disabled) {
 
 .club-kits .picture img {
   object-fit: contain;
+}
+
+/* The in-game scout card (see ScoutCard.tsx): its window is see-through and sized to the card. */
+:root.card-window,
+:root.card-window body {
+  background: transparent;
+}
+
+.scout-card {
+  display: grid;
+  gap: var(--space-3);
+  width: 300px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--type-sm);
+}
+
+.scout-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.scout-card-who {
+  overflow-wrap: anywhere;
+}
+
+.scout-card-who h1 {
+  margin: 0;
+  font-size: var(--type-md);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.scout-card-who p {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.scout-card-part {
+  white-space: nowrap;
+}
+
+.scout-card-abilities {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: var(--space-1);
+  align-items: baseline;
+}
+
+.scout-card-abilities abbr {
+  color: var(--muted);
+  font-size: var(--type-xs);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.scout-card-abilities .ability {
+  min-width: 0;
+  font-size: var(--type-md);
+  text-align: right;
+}
+
+.scout-card h2 {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--type-xs);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.scout-card dl {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.scout-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.scout-card dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }

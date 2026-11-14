@@ -85,6 +85,17 @@ pub struct Base {
     pub nation_uid: Option<u32>,
     /// Read where the build places nations' details.
     pub continent: Option<String>,
+    /// The division the senior team of his club plays in this season, where the build places it.
+    pub division: Option<Division>,
+}
+
+/// A division clubs play in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Division {
+    pub uid: u32,
+    pub name: String,
+    /// 0 to 200.
+    pub reputation: u16,
 }
 
 impl Listed for PlayerSummary {
@@ -111,13 +122,15 @@ impl Listed for PlayerSummary {
 /// Players with a search index over their names.
 pub type PlayerIndex = SearchIndex<PlayerSummary>;
 
-/// Reads every player in the players array; ages are computed for `today`. Only reads memory.
+/// Reads every player in the players array; ages are computed for `today`. `divisions` are the competitions a club's
+/// division may be, by where each is: a team pointing anywhere else has no division. Only reads memory.
 pub fn read_players(
     process: &Process,
     module: &Module,
     array: &ArrayRef,
     layout: &Layout,
     today: Option<FmDate>,
+    divisions: &HashMap<u64, Division>,
 ) -> fmlens_mem::Result<Vec<PlayerSummary>> {
     let p = &layout.player;
     let c = &layout.contract;
@@ -138,7 +151,7 @@ pub fn read_players(
     let mut nations = Memo::default();
     let mut nation_uids: HashMap<u64, Option<u32>> = HashMap::new();
     // Where each team's club plays, and each country's name and continent.
-    let mut team_bases: HashMap<u64, (bool, u64)> = HashMap::new();
+    let mut team_bases: HashMap<u64, (bool, u64, u64)> = HashMap::new();
     let mut countries: HashMap<u64, Base> = HashMap::new();
 
     let mut players = Vec::with_capacity(count as usize);
@@ -178,9 +191,10 @@ pub fn read_players(
         let nation = nations.get(nation_ptr, |nation| nation_name(process, layout, nation));
         let nation_uid = *nation_uids.entry(nation_ptr).or_insert_with(|| nation_uid(process, layout, nation_ptr));
 
-        let (women, country) = *team_bases.entry(team).or_insert_with(|| team_base(process, layout, team));
+        let (women, country, division) = *team_bases.entry(team).or_insert_with(|| team_base(process, layout, team));
         let base = Base {
             women,
+            division: divisions.get(&division).cloned(),
             ..countries
                 .entry(country)
                 .or_insert_with(|| Base {
@@ -188,6 +202,7 @@ pub fn read_players(
                     nation: nation_name(process, layout, country),
                     nation_uid: crate::players::nation_uid(process, layout, country),
                     continent: crate::national::continent_of(process, layout, country),
+                    division: None,
                 })
                 .clone()
         };
@@ -331,18 +346,23 @@ pub(crate) fn natural_positions(ratings: &[u8; POSITIONS.len()]) -> Vec<&'static
     playable.into_iter().map(|(_, i)| POSITIONS[i]).collect()
 }
 
-/// Whether the club of `team` is a women's club, and the country it is in (see [`club_country`]); `(false, 0)` for no
-/// club.
-fn team_base(process: &Process, layout: &Layout, team: u64) -> (bool, u64) {
+/// Whether the club of `team` is a women's club, the country it is in (see [`club_country`]) and what its senior team
+/// holds as its division (0 where the layout does not place it); `(false, 0, 0)` for no club.
+fn team_base(process: &Process, layout: &Layout, team: u64) -> (bool, u64, u64) {
     let club = is_user_pointer(team)
         .then(|| process.read_u64(team + layout.team.club).ok())
         .flatten()
         .filter(|&club| is_user_pointer(club));
     let Some(club) = club else {
-        return (false, 0);
+        return (false, 0, 0);
     };
     let women = process.read_bytes(club + layout.club.women, 1).is_ok_and(|byte| byte[0] == 1);
-    (women, club_country(process, layout, club).unwrap_or(0))
+    let division = layout.team.division.and_then(|offset| {
+        let teams = process.read_u64(club + layout.club.teams).ok().filter(|&teams| is_user_pointer(teams))?;
+        let senior = process.read_u64(teams).ok().filter(|&senior| is_user_pointer(senior))?;
+        process.read_u64(senior + offset).ok()
+    });
+    (women, club_country(process, layout, club).unwrap_or(0), division.unwrap_or(0))
 }
 
 /// The nation `club` is in, as the game finds it for most clubs: the one it plays in when based abroad, else its own.

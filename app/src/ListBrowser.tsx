@@ -100,17 +100,26 @@ interface ListBrowserProps<Row extends { uid: number }> {
   detail?: (row: Row) => ReactNode;
   /** A row to open, asked for elsewhere in the app; each new object is a new request. */
   reveal?: Reveal | null;
+  /** Each new object empties the search box, e.g. when the list starts being compared with one player. */
+  clearSearch?: object | null;
 }
 
 /** A searchable table with the profile of the selected row beside it, or its detail under it. */
 export function ListBrowser<Row extends { uid: number }>(props: ListBrowserProps<Row>) {
   const { command, requestArgs, version, active, placeholder, summary, empty, filterBar, toolbarActions } = props;
-  const { name, footer, tableClass, header, cells, profile, detail, reveal } = props;
+  const { name, footer, tableClass, header, cells, profile, detail, reveal, clearSearch = null } = props;
   // What the list held before the window started again, if it did: the search text, the UID of the row to select as
   // soon as the rows are there again, and how far down it was scrolled.
   const [start] = useState(() => restored(name, readList));
   const place = useRef(start.scroll);
   const [query, setQuery] = useState(start.query);
+  const [cleared, setCleared] = useState(clearSearch);
+  if (cleared !== clearSearch) {
+    setCleared(clearSearch);
+    if (clearSearch) {
+      setQuery("");
+    }
+  }
   const argsKey = JSON.stringify(requestArgs ?? {});
   const [position, setPosition] = useState(() => ({ key: JSON.stringify([start.query, start.argsKey ?? argsKey]), offset: start.offset }));
   const [loading, setLoading] = useState(false);

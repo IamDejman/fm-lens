@@ -4,7 +4,7 @@
 //! Pass) and to map where the game keeps its data. This build refuses every write to the
 //! game's memory: the inherited mutation subcommands are present but not enabled.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
@@ -2033,6 +2033,26 @@ fn list_entries(process: &Process, at: u64, size: usize) -> Vec<Vec<u8>> {
         .unwrap_or_default()
 }
 
+/// The award bonuses of the contract at `contract`: the award each points at, the UID read there and the amount. None
+/// where the layout does not say where the list's pointer is.
+fn award_bonus_entries(session: &Session, contract: u64) -> Vec<(u64, Option<u32>, u32)> {
+    let process = &session.process;
+    let (Some(at), Some(award)) = (session.layout.contract.award_bonuses, session.layout.award.as_ref()) else {
+        return Vec::new();
+    };
+    let Some(list) = process.read_u64(contract + at).ok().filter(|&list| is_user_pointer(list)) else {
+        return Vec::new();
+    };
+    list_entries(process, list, 16)
+        .iter()
+        .map(|e| {
+            let target = u64::from_le_bytes(e[..8].try_into().expect("8"));
+            let uid = is_user_pointer(target).then(|| process.read_u32(target + award.uid).ok()).flatten();
+            (target, uid, u32::from_le_bytes(e[8..12].try_into().expect("4")))
+        })
+        .collect()
+}
+
 /// What `clauses` saw of one kind: how many contracts, the lowest and highest amounts, and who (ability, name, amount).
 struct KindSeen {
     contracts: usize,
@@ -2069,11 +2089,18 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
                 e.chunks(4).map(|w| format!("{:x}", u32::from_le_bytes(w.try_into().expect("4")))).collect();
             println!("  competition bonus  {}", words.join(" "));
         }
+        for (award, uid, amount) in award_bonus_entries(session, contract) {
+            println!("  award bonus  award {award:#x}  UID {uid:?}  amount {amount}");
+        }
         return Ok(());
     }
     // Every kind: how many contracts, the amounts, and the best players who have one.
     let mut kinds: BTreeMap<u16, KindSeen> = BTreeMap::new();
     let (mut bonuses, mut contracts, mut roomy) = (0, 0, 0);
+    // Award bonuses: contracts with a list, their entries, and those whose pointer leads to a known award's UID.
+    let award_uids: HashSet<u32> = session.awards().map(|all| all.iter().map(|a| a.uid).collect()).unwrap_or_default();
+    let (mut award_lists, mut award_entries, mut award_known) = (0, 0, 0);
+    let mut award_who: Vec<String> = Vec::new();
     let mut release_room: Vec<(u16, String, u32)> = Vec::new();
     for player in &players {
         let Some(contract) = contract_of(player) else { continue };
@@ -2097,6 +2124,15 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
             seen.who.push((player.current_ability, player.name.clone(), amount));
         }
         bonuses += usize::from(!list_entries(process, contract + c.competition_bonuses, 32).is_empty());
+        let awards = award_bonus_entries(session, contract);
+        if !awards.is_empty() {
+            award_lists += 1;
+            award_entries += awards.len();
+            award_known += awards.iter().filter(|(_, uid, _)| uid.is_some_and(|uid| award_uids.contains(&uid))).count();
+            if award_who.len() < 8 {
+                award_who.push(format!("{} ({}) x{}", player.name, player.uid, awards.len()));
+            }
+        }
     }
     for (kind, KindSeen { contracts: count, low, high, mut who }) in kinds {
         who.sort_by_key(|&(ability, _, _)| std::cmp::Reverse(ability));
@@ -2104,6 +2140,10 @@ fn clauses(session: &Session, uid: Option<u32>) -> Result<()> {
         println!("  kind {kind:>3} ({kind:#04x}): {count:>6} contracts, {low}..{high}; {}", best.join(", "));
     }
     println!("{bonuses} contracts have competition bonuses");
+    println!(
+        "{award_lists} contracts have award bonuses: {award_entries} entries, {award_known} point at a known award; {}",
+        award_who.join(", ")
+    );
     release_room.sort_by_key(|&(ability, _, _)| std::cmp::Reverse(ability));
     let best: Vec<String> = release_room.iter().take(5).map(|(_, name, uid)| format!("{name} ({uid})")).collect();
     println!(
@@ -3718,9 +3758,10 @@ fn competitions(session: &Session, name: Option<String>, limit: usize) -> Result
     all.sort_by_key(|a| std::cmp::Reverse(a.reputation));
     for c in all.iter().take(limit) {
         println!(
-            "  {:<40} {:<10} {:<16} {:<14} rep {:>3}{}",
+            "  {:<40} {:<10} #{:<6} {:<16} {:<14} rep {:>3}{}",
             c.name,
             c.uid,
+            c.index,
             c.nation.as_deref().unwrap_or("-"),
             c.continent.as_deref().unwrap_or("-"),
             c.reputation,

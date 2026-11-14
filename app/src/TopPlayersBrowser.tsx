@@ -1,5 +1,5 @@
-// The lists of top players: the best, or the most promising, in the world, a continent or a country, for men's or
-// women's clubs. Each player's profile opens beside the list, as in the player list.
+// The lists of top players: the best, or the most promising, in the world, a continent, a country or one of its
+// divisions, for men's or women's clubs. Each player's profile opens beside the list, as in the player list.
 
 import { useEffect, useId, useState } from "react";
 import { Ability } from "./Ability";
@@ -17,15 +17,16 @@ import { useComparison } from "./useComparison";
 const text = scoutText.top;
 const columns = playerListText.columns;
 
-/** What the list shows: which list, men's or women's clubs, and where ("" for the world, "c:<name>" for a continent,
- * "n:<uid>" for a country). */
+/** What the list shows: which list, men's or women's clubs, where ("" for the world, "c:<name>" for a continent,
+ * "n:<uid>" for a country) and, in a country, the UID of one of its divisions. */
 interface TopChoice {
   kind: TopKind;
   women: boolean;
   where: string;
+  division: number | null;
 }
 
-const START: TopChoice = { kind: "best", women: false, where: "" };
+const START: TopChoice = { kind: "best", women: false, where: "", division: null };
 
 function readChoice(value: unknown): TopChoice {
   if (typeof value !== "object" || value === null) {
@@ -36,15 +37,23 @@ function readChoice(value: unknown): TopChoice {
     kind: given.kind === "promising" ? "promising" : "best",
     women: given.women === true,
     where: typeof given.where === "string" && given.where.length <= 200 ? given.where : "",
+    division: Number.isSafeInteger(given.division) ? (given.division as number) : null,
   };
 }
 
-function scopeOf({ women, where }: TopChoice): TopScope {
+/** The UID of the country chosen, if one is. */
+function nationOf(where: string): number | null {
+  const uid = Number(where.slice(2));
+  return where.startsWith("n:") && Number.isSafeInteger(uid) ? uid : null;
+}
+
+function scopeOf({ women, where, division }: TopChoice): TopScope {
   if (where.startsWith("c:")) {
     return { women, continent: where.slice(2) };
   }
-  if (where.startsWith("n:") && Number.isSafeInteger(Number(where.slice(2)))) {
-    return { women, nation: Number(where.slice(2)) };
+  const nation = nationOf(where);
+  if (nation !== null) {
+    return division === null ? { women, nation } : { women, nation, division };
   }
   return { women };
 }
@@ -56,7 +65,7 @@ export function TopPlayersBrowser({ version, active }: { version: number; active
   useSnapshot("topTab", () => tab);
   const comparison = useComparison();
   const [places, setPlaces] = useState<TopPlaces | null>(null);
-  const ids = { kind: useId(), game: useId(), where: useId() };
+  const ids = { kind: useId(), game: useId(), where: useId(), division: useId() };
 
   useEffect(() => {
     if (!active) {
@@ -65,13 +74,18 @@ export function TopPlayersBrowser({ version, active }: { version: number; active
     let cancelled = false;
     call<TopPlaces>("top_places_list")
       .then((found) => !cancelled && setPlaces(found))
-      .catch(() => !cancelled && setPlaces({ continents: [], nations: [] }));
+      .catch(() => !cancelled && setPlaces({ continents: [], nations: [], divisions: [] }));
     return () => {
       cancelled = true;
     };
   }, [active, version]);
 
-  const set = <K extends keyof TopChoice>(key: K, value: TopChoice[K]) => setChoice({ ...choice, [key]: value });
+  // A division belongs to a country and to the men's or women's game, so choosing either again clears it.
+  const set = <K extends keyof TopChoice>(key: K, value: TopChoice[K]) =>
+    setChoice({ ...choice, division: key === "division" ? choice.division : null, [key]: value });
+  const nation = nationOf(choice.where);
+  const divisions =
+    places && nation !== null ? places.divisions.filter((d) => d.nation === nation && d.women === choice.women) : [];
 
   return (
     <ListBrowser<PlayerRow>
@@ -123,6 +137,23 @@ export function TopPlayersBrowser({ version, active }: { version: number; active
               )}
             </select>
           </label>
+          {divisions.length > 0 ? (
+            <label className="filter-field top-division">
+              <span id={ids.division}>{text.division}</span>
+              <select
+                aria-labelledby={ids.division}
+                value={divisions.some((d) => d.uid === choice.division) ? String(choice.division) : ""}
+                onChange={(e) => set("division", e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}
+              >
+                <option value="">{text.allDivisions}</option>
+                {divisions.map((d) => (
+                  <option key={d.uid} value={d.uid}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
         </div>
       }
       footer={<ComparisonTray comparison={comparison} />}
