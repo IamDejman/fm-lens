@@ -63,6 +63,11 @@ pub struct Layout {
     /// The kinds of injury; only in the layouts they have been checked in.
     #[serde(default)]
     pub injury_kind: Option<InjuryKindLayout>,
+    /// The database tables of every nation and every stadium; only in the layouts they have been described in.
+    #[serde(default)]
+    pub nation_table: Option<TableLayout>,
+    #[serde(default)]
+    pub stadium_table: Option<TableLayout>,
     /// The object the game's function that starts a loan takes; only in the layouts it has been traced in.
     #[serde(default)]
     pub starting_loan: Option<StartingLoanLayout>,
@@ -159,6 +164,18 @@ pub struct CompetitionLayout {
     pub actual: Option<u64>,
     #[serde(default)]
     pub rules: Option<u64>,
+}
+
+/// A database table read as the competitions' is ([`CompetitionLayout`]): its objects of the mangled class `class`,
+/// each read as `size` bytes, with their place in the table at `index`. A nation's fields are those of
+/// [`NationLayout`], a stadium's those of [`StadiumLayout`].
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TableLayout {
+    pub class: String,
+    pub size: u64,
+    pub table_items: u64,
+    pub index: u64,
 }
 
 /// A kind of injury (`db::INJURY`), read from its database table as a competition is ([`CompetitionLayout`]). Its
@@ -566,6 +583,11 @@ pub struct PlayerLayout {
     pub injuries: u64,
     /// First of the 15 position ratings, in [`crate::POSITIONS`] order.
     pub positions: u64,
+    /// Pointer to the list of the records the game keeps of his positions, which it writes his ratings back from;
+    /// only in the layouts it has been placed in, and positions are edited in no other. See
+    /// `docs/recon/fm27-position-records.md`.
+    #[serde(default)]
+    pub position_records: Option<u64>,
     /// First of the 8 personality ratings, in [`crate::PERSONALITY`] order.
     pub personality: u64,
     /// Attribute offsets by key; see [`crate::ATTRIBUTE_GROUPS`].
@@ -615,6 +637,7 @@ impl PlayerLayout {
             self.traits + 8,
             self.injuries + 8,
             self.positions + crate::POSITIONS.len() as u64,
+            self.position_records.map_or(0, |offset| offset + 8),
             self.personality + crate::PERSONALITY.len() as u64,
         ];
         let attributes = self.attributes.values().map(|offset| offset + 1);
@@ -647,6 +670,10 @@ pub struct ContractLayout {
     pub clauses: u64,
     /// The list of its bonuses for winning competitions: 32-byte entries.
     pub competition_bonuses: u64,
+    /// Pointer to the list of its bonuses for winning awards: 16-byte entries, the award and the amount. Where the
+    /// layout has it.
+    #[serde(default)]
+    pub award_bonuses: Option<u64>,
     /// `i32`, pounds per week.
     pub loyalty_bonus: u64,
     /// `i8` each: how happy the player is, and how happy with his playing time, as FMRTE shows them.
@@ -803,6 +830,10 @@ pub struct TeamLayout {
     /// `u8`: 0 for a club's team, otherwise a nation's, whose `club` then points to the nation's teams.
     #[serde(default)]
     pub national: Option<u64>,
+    /// Pointer to the competition the team plays its league football in this season, null for none; where it has been
+    /// traced.
+    #[serde(default)]
+    pub division: Option<u64>,
 }
 
 impl TeamLayout {
@@ -835,8 +866,7 @@ pub struct ClubLayout {
     pub links: Option<u64>,
     #[serde(default)]
     pub link_club: Option<u64>,
-    /// Pointers to the nation a club based abroad plays in, null for the others, and to its own nation: the game takes
-    /// the first that is set as the country the club is in.
+    /// Pointers to the club's own nation (Cardiff City: Wales) and to the nation whose league it plays in (England).
     #[serde(default)]
     pub plays_in: Option<u64>,
     #[serde(default)]
@@ -868,6 +898,8 @@ impl ClubLayout {
             self.medical_staff + 24,
             self.coaching_staff + 24,
             self.scouting_staff + 24,
+            self.plays_in.map_or(0, |offset| offset + 8),
+            self.nation.map_or(0, |offset| offset + 8),
         ]
         .into_iter()
         .max()
@@ -1000,6 +1032,12 @@ pub struct BuildProfile {
     pub competitions: Option<u64>,
     #[serde(default)]
     pub awards: Option<u64>,
+    /// RVAs in the game plugin of the static pointers to the database tables of every nation and every stadium
+    /// ([`TableLayout`]), in the same block as the competitions'.
+    #[serde(default)]
+    pub nations: Option<u64>,
+    #[serde(default)]
+    pub stadiums: Option<u64>,
     /// RVA in the game plugin of the static pointer to the database table of the kinds of injury
     /// ([`InjuryKindLayout`]), on the one build where it has been read.
     #[serde(default)]
@@ -1272,12 +1310,15 @@ const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/steam-26227640.toml"),
     include_str!("../../../profiles/fm27/steam-26340721.toml"),
     include_str!("../../../profiles/fm27/steam-26385295.toml"),
+    include_str!("../../../profiles/fm27/steam-26577676.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-arm64.toml"),
     include_str!("../../../profiles/fm27/steam-26340721-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26340721-macos-arm64.toml"),
     include_str!("../../../profiles/fm27/steam-26385295-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26385295-macos-arm64.toml"),
+    include_str!("../../../profiles/fm27/steam-26577676-macos-x86_64.toml"),
+    include_str!("../../../profiles/fm27/steam-26577676-macos-arm64.toml"),
 ];
 
 /// The built-in object layout for `edition`, if there is one.
@@ -1346,6 +1387,7 @@ mod tests {
             (mac.player.positions, mac.player.morale, mac.player.jadedness),
             (windows.player.positions - 8, windows.player.morale - 8, windows.player.jadedness - 8)
         );
+        assert_eq!(mac.player.position_records, windows.player.position_records.map(|offset| offset - 8));
         assert_eq!(mac.player.date_of_birth, windows.player.date_of_birth - 0x40);
         assert_eq!(mac.player.traits, windows.player.traits - 0x40);
         assert_eq!(mac.player.relations, windows.player.relations - 0x40);
@@ -1400,6 +1442,39 @@ mod tests {
         assert_eq!(mach_o.to_string(), "UUID 9E8E47DE-F704-314C-917D-C32D12637678");
         assert!(toml::from_str::<PluginFingerprint>(r#"uuid = "9E8E47DE-F704""#).is_err());
         assert!(toml::from_str::<PluginFingerprint>("size_of_image = 1\nlink_timestamp = 2\nuuid = 3").is_err());
+    }
+
+    #[test]
+    fn every_build_places_the_nation_and_stadium_tables_in_the_awards_block() {
+        // The block of table pointers keeps one order: competitions 0x18, nations 0x28, kinds of injury 0x40 and
+        // stadiums 0x80 after the awards (docs/recon/fm27-competitions-awards-2.md).
+        let mut placed = 0;
+        for profile in BUILDS.iter().map(|text| parse::<BuildProfile>(text)) {
+            let Some(awards) = profile.awards else {
+                assert_eq!((profile.nations, profile.stadiums), (None, None), "{}", profile.name);
+                continue;
+            };
+            assert_eq!(profile.competitions, Some(awards + 0x18), "{}", profile.name);
+            assert_eq!(profile.nations, Some(awards + 0x28), "{}", profile.name);
+            assert_eq!(profile.injury_kinds, Some(awards + 0x40), "{}", profile.name);
+            assert_eq!(profile.stadiums, Some(awards + 0x80), "{}", profile.name);
+            placed += 1;
+        }
+        assert_eq!(placed, 9);
+        for (layout, items, nation, stadium) in [
+            (parse::<Layout>(WINDOWS), 0x80, ".?AVNATION@db@@", ".?AVSTADIUM@db@@"),
+            (parse::<Layout>(MACOS), 0x88, "N2db6NATIONE", "N2db7STADIUME"),
+        ] {
+            let (n, s) = (layout.nation_table.expect("nation table"), layout.stadium_table.expect("stadium table"));
+            assert_eq!((n.class.as_str(), s.class.as_str()), (nation, stadium));
+            // The tables are the competitions' kind of table.
+            let c = layout.competition.as_ref().expect("competitions");
+            assert_eq!((n.table_items, s.table_items, c.table_items), (items, items, items));
+            assert_eq!((n.index, s.index), (c.index, c.index));
+            // A row holds every field the lists read.
+            assert!(n.size >= layout.nation.uid + 4 && n.size >= layout.nation.name + 8);
+            assert!(s.size >= layout.stadium.as_ref().expect("stadium").end());
+        }
     }
 
     #[test]
@@ -1496,7 +1571,10 @@ mod tests {
         // 27.0.1 carries the layout across.
         let arm64_1 = [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
         let intel_1 = [0x94, 0xCD, 0xDC, 0x80, 0x84, 0x74, 0x32, 0x7A, 0x85, 0xE0, 0xE4, 0xFF, 0x95, 0xDC, 0x68, 0x93];
-        let traced = [arm64, intel, arm64_1, intel_1].map(|uuid| PluginFingerprint::MachO { uuid });
+        // Build 26577676 is 27.0.1 with the same functions and statics.
+        let arm64_2 = [0xA8, 0x55, 0x0B, 0x47, 0xFD, 0xE0, 0x3D, 0x0D, 0xA6, 0xCB, 0x1B, 0x63, 0xDE, 0xE8, 0xDA, 0x19];
+        let intel_2 = [0xDD, 0x0E, 0xE1, 0x57, 0x4C, 0x9C, 0x31, 0xA7, 0x81, 0xDD, 0x0D, 0x11, 0x22, 0xE6, 0x2F, 0xC7];
+        let traced = [arm64, intel, arm64_1, intel_1, arm64_2, intel_2].map(|uuid| PluginFingerprint::MachO { uuid });
         for plugin in &traced {
             let profile = profile_for(*plugin).expect("27.0.0 or 27.0.1 on macOS");
             assert_eq!(
@@ -1524,9 +1602,14 @@ mod tests {
             profile_for(windows_1).expect("27.0.1 on Windows").human_manager,
             profile_for(windows).expect("27.0.0 on Windows").human_manager
         );
+        let windows_2 = PluginFingerprint::Pe { size_of_image: 0x185F_A000, link_timestamp: 0x6AF3_8E5C };
+        assert_eq!(
+            profile_for(windows_2).expect("build 26577676 on Windows").human_manager,
+            profile_for(windows).expect("27.0.0 on Windows").human_manager
+        );
         for text in BUILDS {
             let profile: BuildProfile = parse(text);
-            if !traced.contains(&profile.plugin) && profile.plugin != windows && profile.plugin != windows_1 {
+            if !traced.contains(&profile.plugin) && ![windows, windows_1, windows_2].contains(&profile.plugin) {
                 assert!(profile.human_manager.is_none(), "{}", profile.name);
             }
         }
@@ -1562,6 +1645,45 @@ mod tests {
             let count = |calls: Option<CallRvas>| calls.map(|calls| calls.all().len());
             assert_eq!(count(new.calls), count(old.calls));
         }
+    }
+
+    /// The update of 12 November 2026 (Steam build 26577676) rebuilt game_plugin. On macOS every function and static
+    /// FM Lens uses is where build 26385295 has it; the two constants it reads from `__TEXT`, the loan's default bytes
+    /// and the date for none, sit 0x30 further in both halves.
+    #[test]
+    fn steam_26577676_on_macos_is_26385295_with_two_constants_moved() {
+        let old_arm64 =
+            [0x2A, 0x2D, 0x0E, 0xD6, 0x32, 0x4E, 0x3D, 0x0D, 0xA2, 0x7D, 0x10, 0xAE, 0xDB, 0xD0, 0xE2, 0x70];
+        let old_intel =
+            [0x94, 0xCD, 0xDC, 0x80, 0x84, 0x74, 0x32, 0x7A, 0x85, 0xE0, 0xE4, 0xFF, 0x95, 0xDC, 0x68, 0x93];
+        let arm64 = [0xA8, 0x55, 0x0B, 0x47, 0xFD, 0xE0, 0x3D, 0x0D, 0xA6, 0xCB, 0x1B, 0x63, 0xDE, 0xE8, 0xDA, 0x19];
+        let intel = [0xDD, 0x0E, 0xE1, 0x57, 0x4C, 0x9C, 0x31, 0xA7, 0x81, 0xDD, 0x0D, 0x11, 0x22, 0xE6, 0x2F, 0xC7];
+        let profile = |uuid| profile_for(PluginFingerprint::MachO { uuid }).expect("27.0.1 on macOS");
+        for (new, old) in [(arm64, old_arm64), (intel, old_intel)] {
+            let (mut new, old) = (profile(new), profile(old));
+            assert!(new.name.contains("26577676"), "{}", new.name);
+            new.name.clone_from(&old.name);
+            new.plugin = old.plugin;
+            let loan = new.starting_loan.as_mut().expect("starting loan");
+            assert_eq!(Some(loan.defaults), old.starting_loan.as_ref().map(|loan| loan.defaults + 0x30));
+            loan.defaults -= 0x30;
+            let check = new.work_permit_check.as_mut().expect("the work permit check");
+            assert_eq!(Some(check.no_date), old.work_permit_check.as_ref().map(|check| check.no_date + 0x30));
+            check.no_date -= 0x30;
+            assert_eq!(format!("{new:?}"), format!("{old:?}"));
+        }
+    }
+
+    /// The same update on Windows: another DLL (size and link time), every value where build 26385295 has it.
+    #[test]
+    fn steam_26577676_on_windows_is_26385295_under_another_fingerprint() {
+        let old = PluginFingerprint::Pe { size_of_image: 0x17CB_9000, link_timestamp: 0x6AE8_B5A4 };
+        let new = PluginFingerprint::Pe { size_of_image: 0x185F_A000, link_timestamp: 0x6AF3_8E5C };
+        let (old, mut new) = (profile_for(old).expect("27.0.1"), profile_for(new).expect("build 26577676"));
+        assert!(new.name.contains("26577676"), "{}", new.name);
+        new.name.clone_from(&old.name);
+        new.plugin = old.plugin;
+        assert_eq!(format!("{new:?}"), format!("{old:?}"));
     }
 
     /// 27.0.1 on Windows: another DLL (size and link time), every static in the block of table pointers 0x11B040 further.

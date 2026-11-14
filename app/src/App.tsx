@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useSt
 import { getVersion } from "@tauri-apps/api/app";
 import { listen } from "@tauri-apps/api/event";
 import { call, inTauri, watchCommands } from "./api";
-import { addCheckForUpdates } from "./appMenu";
+import { addMenuItems } from "./appMenu";
 import { BridgeSetup } from "./BridgeSetup";
 import { EmailGate, emailGiven } from "./EmailGate";
 import { ChangesView, useChangeLog } from "./ChangesView";
@@ -17,6 +17,7 @@ import { isShortcut, MAC, SECTION_SHORTCUTS, shortcutAria, shortcutLabel } from 
 import { ReportDialog, type ReportKind } from "./ReportDialog";
 import { Settings } from "./Settings";
 import { StarNotice, useStarAsk } from "./StarNotice";
+import { SupportDialog, type SupportSource } from "./SupportDialog";
 import {
   appText,
   awardListText,
@@ -26,12 +27,14 @@ import {
   nationListText,
   officialListText,
   playerListText,
+  scoutText,
   stadiumListText,
   staffListText,
+  supportText,
   updateText,
 } from "./labels";
-import { PlayerBrowser } from "./PlayerBrowser";
-import { restored, useSnapshot } from "./restore";
+import { PlayerBrowser, type SimilarRequest } from "./PlayerBrowser";
+import { heldFor, restored, useSnapshot } from "./restore";
 import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
@@ -51,6 +54,7 @@ const CompetitionBrowser = lazy(() => import("./CompetitionBrowser").then((modul
 const AwardBrowser = lazy(() => import("./AwardBrowser").then((module) => ({ default: module.AwardBrowser })));
 const StadiumBrowser = lazy(() => import("./StadiumBrowser").then((module) => ({ default: module.StadiumBrowser })));
 const OfficialBrowser = lazy(() => import("./OfficialBrowser").then((module) => ({ default: module.OfficialBrowser })));
+const TopPlayersBrowser = lazy(() => import("./TopPlayersBrowser").then((module) => ({ default: module.TopPlayersBrowser })));
 
 type View =
   | "players"
@@ -61,7 +65,8 @@ type View =
   | "awards"
   | "stadiums"
   | "officials"
-  | "changes";
+  | "changes"
+  | "top";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "players", label: playerListText.nav },
@@ -73,12 +78,13 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "stadiums", label: stadiumListText.nav },
   { id: "officials", label: officialListText.nav },
   { id: "changes", label: changesText.nav },
+  // Last, so that the sections before it keep their shortcuts; it has none.
+  { id: "top", label: scoutText.top.nav },
 ];
 
 /** The views of the masthead's Lists menu; the rest are tabs of their own. */
-const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials"]);
+const LISTS: ReadonlySet<View> = new Set(["nations", "competitions", "awards", "stadiums", "officials", "top"]);
 
-/** The view the window was in before the language was switched; the first one when there was no such switch. */
 /** How often the app looks at the game: FM may have closed, moved its lists or moved on a day. */
 const CHECK_EVERY_MS = 5000;
 
@@ -91,7 +97,11 @@ const FREEZE_COMMANDS: ReadonlySet<string> = new Set([
 
 const dayKey = ({ year, month, day }: FmDate) => `${year}-${month}-${day}`;
 
+/** The view the window was in before it started again; the first one when nothing was kept of it. */
 const readView = (value: unknown): View => VIEWS.find(({ id }) => id === value)?.id ?? "players";
+
+/** What tells one career from another: its manager. A manager who changes clubs is still in the same career. */
+const careerKey = (career: Career | null): string => (career ? `${career.uid}:${career.manager}` : "");
 
 /** The app's own football-lens symbol and wordmark. */
 function BrandMark() {
@@ -142,6 +152,11 @@ function App() {
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
   const [reporting, setReporting] = useState<ReportKind | null>(null);
+  const [supporting, setSupporting] = useState(false);
+  const support = useCallback((from: SupportSource) => {
+    track("support_opened", { from });
+    setSupporting(true);
+  }, []);
   const { whatsNew, dismiss: dismissWhatsNew } = useWhatsNew(version);
   const { asking: askingStar, answer: answerStar } = useStarAsk();
   const [emailAsked, setEmailAsked] = useState(() => !emailGiven());
@@ -156,9 +171,14 @@ function App() {
   useEffect(() => {
     if (inTauri && MAC) {
       // Without it the app menu stays as it was: the checks every four hours carry on.
-      addCheckForUpdates(updateText.checkForUpdates, () => void checkNow()).catch(() => {});
+      addMenuItems({
+        check: updateText.checkForUpdates,
+        onCheck: () => void checkNow(),
+        support: supportText.button,
+        onSupport: () => support("menu"),
+      }).catch(() => {});
     }
-  }, [checkNow]);
+  }, [checkNow, support]);
 
   const run = useCallback(async (label: string, task: () => Promise<void>) => {
     setBusy(label);
@@ -201,10 +221,11 @@ function App() {
 
   // The game was read again, by Reload or by the app itself: the lists, the open profile and the log follow.
   const readAgain = useCallback(
-    ({ refrozen: again, ...reloaded }: ReloadInfo) => {
+    ({ refrozen: again, sameGame, ...reloaded }: ReloadInfo) => {
       setConnection((c) => c && { ...c, ...reloaded });
-      if (again) {
-        setRefrozen(again);
+      // What came back on in a save before is not frozen in another one.
+      if (again || !sameGame) {
+        setRefrozen(again ?? null);
       }
       setDataVersion((v) => v + 1);
       void reloadLog();
@@ -227,7 +248,7 @@ function App() {
     [run, readAgain, detect],
   );
 
-  // To keep what is frozen held, the Rust side reads the game again by itself once FM has moved its lists.
+  // The Rust side reads the game again by itself once FM has moved its lists, e.g. on loading another save.
   useEffect(() => {
     if (!inTauri) {
       return;
@@ -410,6 +431,16 @@ function App() {
       }),
     [],
   );
+  // A player to compare the player list with, asked for from a profile.
+  const [similarRequest, setSimilarRequest] = useState<SimilarRequest | null>(null);
+  const findSimilar = useCallback(
+    (player: { uid: number; name: string }, peak: boolean) =>
+      askToLeave(() => {
+        setView("players");
+        setSimilarRequest({ ...player, peak });
+      }),
+    [],
+  );
   // A member of staff asked for from elsewhere: a row of a club's staff, or your manager from the top bar.
   const [revealStaff, setRevealStaff] = useState<Reveal | null>(null);
   const openStaff = useCallback(
@@ -430,8 +461,9 @@ function App() {
       gameDate,
       openPlayer,
       openStaff,
+      findSimilar,
     }),
-    [editable, note, edited, gameActions, loadInjuryKinds, gameDate, openPlayer, openStaff],
+    [editable, note, edited, gameActions, loadInjuryKinds, gameDate, openPlayer, openStaff, findSimilar],
   );
 
   // With edits pending in the open profile, leaving for another view asks first.
@@ -480,6 +512,10 @@ function App() {
   const manager = career?.manager ?? null;
   // A layout effect, so the name is masked before the recorder is told of the header that shows it.
   useLayoutEffect(() => hideManager(manager), [manager]);
+  // Before the lists are built: what the last run of the app left of them is theirs only in the same career.
+  if (connection) {
+    heldFor(careerKey(career));
+  }
 
   // Before anything else, once on each computer. The app is mounted behind it, so it still updates itself.
   if (emailAsked) {
@@ -489,6 +525,8 @@ function App() {
           <BrandMark />
         </header>
         <EmailGate onGiven={() => setEmailAsked(false)} />
+        {/* The menu of the app is there before the email is: what it opens is shown here too. */}
+        {supporting && <SupportDialog onClose={() => setSupporting(false)} />}
       </div>
     );
   }
@@ -520,7 +558,7 @@ function App() {
                               type="button"
                               role="menuitemradio"
                               aria-checked={list.id === view}
-                              aria-keyshortcuts={shortcutAria(String(at + 1))}
+                              aria-keyshortcuts={at < SECTION_SHORTCUTS.length ? shortcutAria(String(at + 1)) : undefined}
                               tabIndex={-1}
                               onClick={() => {
                                 close();
@@ -528,7 +566,7 @@ function App() {
                               }}
                             >
                               {list.label}
-                              <kbd>{shortcutLabel(String(at + 1))}</kbd>
+                              {at < SECTION_SHORTCUTS.length && <kbd>{shortcutLabel(String(at + 1))}</kbd>}
                             </button>
                           ),
                       )
@@ -592,6 +630,7 @@ function App() {
             <Settings
               busy={busy !== null}
               onCheckForUpdates={inTauri && !MAC ? () => void checkNow() : undefined}
+              onSupport={() => support("settings")}
               details={[
                 `FM Lens${version ? ` ${version}` : ""}`,
                 connection
@@ -613,7 +652,14 @@ function App() {
           {update && update.phase !== "ready" && <UpdateNotice update={update} onDismiss={dismissUpdate} />}
           {whatsNew && <WhatsNewNotice version={whatsNew} onDismiss={dismissWhatsNew} />}
           {askingStar && <StarNotice onAnswer={answerStar} />}
-          {connection && <CompatibilityNotice connection={connection} />}
+          {connection && (
+            <CompatibilityNotice
+              connection={connection}
+              update={update}
+              onRelaunch={relaunch}
+              onCheck={() => void checkNow()}
+            />
+          )}
           {connection && refrozen && <FrozenNotice refrozen={refrozen} onDismiss={() => setRefrozen(null)} />}
         </div>
         {error && <div className="banner" role="alert">{error}</div>}
@@ -623,7 +669,12 @@ function App() {
           <EditorContext.Provider value={editor}>
             <StandingFieldsContext.Provider value={standingByProfile}>
             <div className="views">
-              <PlayerBrowser version={dataVersion} active={view === "players"} reveal={revealPlayer} />
+              <PlayerBrowser
+                version={dataVersion}
+                active={view === "players"}
+                reveal={revealPlayer}
+                similar={similarRequest}
+              />
               <DeferredView active={view === "staff"} label={staffListText.nav}>
                 <StaffBrowser version={dataVersion} active={view === "staff"} reveal={revealStaff} />
               </DeferredView>
@@ -644,6 +695,9 @@ function App() {
               </DeferredView>
               <DeferredView active={view === "officials"} label={officialListText.nav}>
                 <OfficialBrowser version={dataVersion} active={view === "officials"} />
+              </DeferredView>
+              <DeferredView active={view === "top"} label={scoutText.top.nav}>
+                <TopPlayersBrowser version={dataVersion} active={view === "top"} />
               </DeferredView>
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
@@ -680,6 +734,10 @@ function App() {
           <button type="button" className="colophon-wishlist" onClick={() => setReporting("wish")}>
             {appText.wishlist}
           </button>
+          <button type="button" className="colophon-support" onClick={() => support("footer")}>
+            {supportText.button}
+          </button>
+          {supporting && <SupportDialog onClose={() => setSupporting(false)} />}
           {reporting && (
             <ReportDialog
               kind={reporting}
@@ -687,9 +745,18 @@ function App() {
               onClose={() => setReporting(null)}
             />
           )}
-          {update?.phase === "ready" && (
+          {update?.phase === "ready" ? (
             <button type="button" className="relaunch" onClick={() => relaunch(update.version)}>
               {updateText.relaunch}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="colophon-update"
+              disabled={update?.phase === "checking"}
+              onClick={() => void checkNow()}
+            >
+              {updateText.check}
             </button>
           )}
         </div>

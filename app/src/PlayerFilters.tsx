@@ -2,17 +2,23 @@ import { useId, type ReactNode } from "react";
 import {
   attributeChips,
   AttributeFilters,
+  PERSONALITY_PREFIX,
   PLAYER_ATTRIBUTES,
   toAttributeBounds,
+  type AttributeChoices,
   type AttributeRow,
 } from "./AttributeFilters";
+import { toPounds } from "./currency";
 import { DateInput } from "./DateInput";
-import { chipLabel, FilterBar, rangeText, type FilterChip } from "./FilterBar";
-import { formatDate } from "./format";
-import { playerListText, POSITION_LABELS, type PositionKey } from "./labels";
+import { chipLabel, FilterBar, RangeField, rangeText, type FilterChip } from "./FilterBar";
+import { formatDate, formatMoney, formatNumber } from "./format";
+import { intlLocale } from "./i18n";
+import { playerListText, POSITION_LABELS, profileText, type PositionKey } from "./labels";
+import { RoleFilters, roleChips, toRoleBounds, type RoleRow } from "./RoleFilters";
 import type { FmDate, PlayerFilter } from "./types";
 
 const text = playerListText.filters;
+const columns = playerListText.columns;
 
 /** The positions in the select, from the goal to the front; their labels are in `POSITION_LABELS`. */
 export const POSITION_ORDER: readonly PositionKey[] = [
@@ -22,15 +28,47 @@ export const POSITION_ORDER: readonly PositionKey[] = [
 /** What the number inputs hold, at most: ability is 1–200; the ages only keep absurd numbers out of the request. */
 const AGE_RANGE = { min: 0, max: 99 };
 const ABILITY_RANGE = { min: 1, max: 200 };
+const HEIGHT_RANGE = { min: 100, max: 250 };
+const REPUTATION_RANGE = { min: 0, max: 10_000 };
+/** Money as typed, in the currency on show; the request has it in pounds, within what the game keeps an amount in. */
+const MONEY_RANGE = { min: 0, max: Number.MAX_SAFE_INTEGER };
+const MOST_POUNDS = 2_147_483_647;
+
+/** The traits the game names, by their bit: the select offers these (bits 61 and 62 are no trait in FM27). */
+export const TRAIT_CHOICES: readonly number[] = Array.from({ length: 64 }, (_, bit) => bit).filter(
+  (bit) => bit !== 61 && bit !== 62,
+);
+const PERCENT_RANGE = { min: 0, max: 100 };
+
+/** The attributes the potential-attributes rows offer: a player's own, not the personality ratings. */
+export const POTENTIAL_ATTRIBUTES: AttributeChoices = {
+  ...PLAYER_ATTRIBUTES,
+  groups: PLAYER_ATTRIBUTES.groups.filter((group) => !group.keys.some((key) => key.startsWith(PERSONALITY_PREFIX))),
+};
+/** Progress rates, in half stars. */
+const HALF_STARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 
 /** What the filter inputs hold, as typed: an empty string, or `false`, is no filter. */
 export interface PlayerFilterFields {
-  /** A position key. */
-  position: string;
+  /** Position keys: a player who can play any of them matches. */
+  positions: string[];
   minAge: string;
   maxAge: string;
   minCurrentAbility: string;
+  maxCurrentAbility: string;
   minPotentialAbility: string;
+  maxPotentialAbility: string;
+  /** Centimetres. */
+  minHeight: string;
+  maxHeight: string;
+  /** A week, in the currency on show. */
+  minWage: string;
+  maxWage: string;
+  /** His stored base value, in the currency on show. */
+  minValue: string;
+  maxValue: string;
+  minReputation: string;
+  maxReputation: string;
   nation: string;
   club: string;
   freeAgents: boolean;
@@ -38,22 +76,49 @@ export interface PlayerFilterFields {
   contractExpiresBy: string;
   transferListed: boolean;
   loanListed: boolean;
+  /** The bit of a trait he must have. */
+  trait: string;
+  /** Bounds on attributes and, with `PERSONALITY_PREFIX` before their key, on personality ratings. */
   attributes: AttributeRow[];
+  /** Part of the name of the country his club is in. */
+  basedIn: string;
+  /** The least chance of development, in percent, and the least progress rate, in half stars ("1" to "10"). */
+  minDevelopment: string;
+  minProgress: string;
+  potentialAttributes: AttributeRow[];
+  /** Roles to rate the players in, a column each, with a least rating where one is typed. */
+  roles: RoleRow[];
 }
 
 export const NO_PLAYER_FILTERS: PlayerFilterFields = {
-  position: "",
+  positions: [],
   minAge: "",
   maxAge: "",
   minCurrentAbility: "",
+  maxCurrentAbility: "",
   minPotentialAbility: "",
+  maxPotentialAbility: "",
+  minHeight: "",
+  maxHeight: "",
+  minWage: "",
+  maxWage: "",
+  minValue: "",
+  maxValue: "",
+  minReputation: "",
+  maxReputation: "",
   nation: "",
   club: "",
   freeAgents: false,
   contractExpiresBy: "",
   transferListed: false,
   loanListed: false,
+  trait: "",
   attributes: [],
+  basedIn: "",
+  minDevelopment: "",
+  minProgress: "",
+  potentialAttributes: [],
+  roles: [],
 };
 
 /** A whole number within `range`; nothing for an empty or unreadable input. */
@@ -71,43 +136,99 @@ function toFmDate(input: string): FmDate | undefined {
   return match ? { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) } : undefined;
 }
 
+/** An amount typed in the currency on show, in the pounds the request takes; nothing for an empty input. */
+function pounds(input: string): number | undefined {
+  const shown = whole(input, MONEY_RANGE);
+  return shown === undefined ? undefined : Math.min(MOST_POUNDS, toPounds(shown));
+}
+
+/** The bit of the trait the select holds; nothing for no trait, or for what is not one the select offers. */
+function traitBit(input: string): number | undefined {
+  const bit = input === "" ? NaN : Number(input);
+  return TRAIT_CHOICES.includes(bit) ? bit : undefined;
+}
+
 /** The filter the inputs ask for, or `undefined` while none is in effect. */
 export function toPlayerFilter(fields: PlayerFilterFields): PlayerFilter | undefined {
+  // The rows bound attributes and personality ratings alike; the request has the two apart.
+  const bounds = toAttributeBounds(fields.attributes) ?? [];
+  const attributes = bounds.filter((bound) => !bound.key.startsWith(PERSONALITY_PREFIX));
+  const personality = bounds
+    .filter((bound) => bound.key.startsWith(PERSONALITY_PREFIX))
+    .map((bound) => ({ ...bound, key: bound.key.slice(PERSONALITY_PREFIX.length) }));
+  const trait = traitBit(fields.trait);
   const filter: PlayerFilter = {
-    position: fields.position || undefined,
+    positions: fields.positions.length > 0 ? fields.positions : undefined,
     minAge: whole(fields.minAge, AGE_RANGE),
     maxAge: whole(fields.maxAge, AGE_RANGE),
     minCurrentAbility: whole(fields.minCurrentAbility, ABILITY_RANGE),
+    maxCurrentAbility: whole(fields.maxCurrentAbility, ABILITY_RANGE),
     minPotentialAbility: whole(fields.minPotentialAbility, ABILITY_RANGE),
+    maxPotentialAbility: whole(fields.maxPotentialAbility, ABILITY_RANGE),
+    minHeight: whole(fields.minHeight, HEIGHT_RANGE),
+    maxHeight: whole(fields.maxHeight, HEIGHT_RANGE),
+    minWage: pounds(fields.minWage),
+    maxWage: pounds(fields.maxWage),
+    minValue: pounds(fields.minValue),
+    maxValue: pounds(fields.maxValue),
+    minReputation: whole(fields.minReputation, REPUTATION_RANGE),
+    maxReputation: whole(fields.maxReputation, REPUTATION_RANGE),
     nation: fields.nation.trim() || undefined,
     club: fields.club.trim() || undefined,
     freeAgents: fields.freeAgents || undefined,
     contractExpiresBy: toFmDate(fields.contractExpiresBy),
     transferListed: fields.transferListed || undefined,
     loanListed: fields.loanListed || undefined,
-    attributes: toAttributeBounds(fields.attributes),
+    attributes: attributes.length > 0 ? attributes : undefined,
+    personality: personality.length > 0 ? personality : undefined,
+    traits: trait === undefined ? undefined : [trait],
+    potentialAttributes: toAttributeBounds(fields.potentialAttributes),
+    roles: toRoleBounds(fields.roles).filter((bound) => bound.min !== undefined),
+    minDevelopment: whole(fields.minDevelopment, PERCENT_RANGE),
+    minProgress: whole(fields.minProgress, { min: 1, max: 10 }),
+    basedIn: fields.basedIn.trim() || undefined,
   };
+  if (filter.roles?.length === 0) {
+    delete filter.roles;
+  }
   return countFilters(filter) > 0 ? filter : undefined;
 }
 
-/** How many filters are in effect; the two ends of the age range count as one, and each attribute bound as one. */
+/**
+ * How many filters are in effect; the two ends of a range count as one, and each bound on an attribute or a
+ * personality rating as one.
+ */
 export function countFilters(filter: PlayerFilter | undefined): number {
   if (!filter) {
     return 0;
   }
   const single = [
-    filter.position,
+    filter.positions,
     filter.minAge ?? filter.maxAge,
-    filter.minCurrentAbility,
-    filter.minPotentialAbility,
+    filter.minCurrentAbility ?? filter.maxCurrentAbility,
+    filter.minPotentialAbility ?? filter.maxPotentialAbility,
+    filter.minHeight ?? filter.maxHeight,
+    filter.minWage ?? filter.maxWage,
+    filter.minValue ?? filter.maxValue,
+    filter.minReputation ?? filter.maxReputation,
     filter.nation,
     filter.club,
     filter.freeAgents,
     filter.contractExpiresBy,
     filter.transferListed,
     filter.loanListed,
+    filter.traits,
+    filter.basedIn,
+    filter.minDevelopment,
+    filter.minProgress,
   ].filter((value) => value !== undefined).length;
-  return single + (filter.attributes?.length ?? 0);
+  return (
+    single +
+    (filter.attributes?.length ?? 0) +
+    (filter.personality?.length ?? 0) +
+    (filter.potentialAttributes?.length ?? 0) +
+    (filter.roles?.length ?? 0)
+  );
 }
 
 interface PlayerFilterBarProps {
@@ -119,31 +240,52 @@ interface PlayerFilterBarProps {
 
 /** A chip for each filter in effect, as `countFilters` counts them: the two ends of the age range are one. */
 function playerChips(fields: PlayerFilterFields, onChange: (fields: PlayerFilterFields) => void): FilterChip[] {
+  // A role without a least rating is a column, not a filter, but has its chip too.
+  const roles = roleChips(fields.roles, (rows) => onChange({ ...fields, roles: rows }));
   const filter = toPlayerFilter(fields);
   if (!filter) {
-    return [];
+    return roles;
   }
   const chips: FilterChip[] = [];
   const add = (key: string, label: string, cleared: Partial<PlayerFilterFields>) =>
     chips.push({ key, label, remove: () => onChange({ ...fields, ...cleared }) });
-  const number = (value: number | undefined) => (value === undefined ? null : String(value));
   const age = rangeText(filter.minAge, filter.maxAge);
-  const minCa = number(filter.minCurrentAbility);
-  const minPa = number(filter.minPotentialAbility);
+  const ability = rangeText(filter.minCurrentAbility, filter.maxCurrentAbility);
+  const potential = rangeText(filter.minPotentialAbility, filter.maxPotentialAbility);
+  const height = rangeText(filter.minHeight, filter.maxHeight, profileText.height);
+  // The chips say the amounts as the list shows money: in the currency on show.
+  const wage = rangeText(filter.minWage, filter.maxWage, formatMoney);
+  const value = rangeText(filter.minValue, filter.maxValue, formatMoney);
+  const trait = filter.traits?.[0];
 
-  if (filter.position) {
-    add("position", chipLabel(text.position, POSITION_LABELS[filter.position as PositionKey] ?? filter.position), {
-      position: "",
-    });
+  if (filter.positions) {
+    const names = filter.positions.map((key) => POSITION_LABELS[key as PositionKey] ?? key).join(", ");
+    add("position", chipLabel(text.position, names), { positions: [] });
   }
   if (age !== null) {
     add("age", chipLabel(text.age, age), { minAge: "", maxAge: "" });
   }
-  if (minCa !== null) {
-    add("minCa", chipLabel(text.minCurrentAbility, minCa), { minCurrentAbility: "" });
+  if (ability !== null) {
+    add("ability", chipLabel(columns.currentAbility, ability), { minCurrentAbility: "", maxCurrentAbility: "" });
   }
-  if (minPa !== null) {
-    add("minPa", chipLabel(text.minPotentialAbility, minPa), { minPotentialAbility: "" });
+  if (potential !== null) {
+    add("potential", chipLabel(columns.potentialAbility, potential), {
+      minPotentialAbility: "",
+      maxPotentialAbility: "",
+    });
+  }
+  if (height !== null) {
+    add("height", chipLabel(profileText.heightLabel, height), { minHeight: "", maxHeight: "" });
+  }
+  if (wage !== null) {
+    add("wage", chipLabel(text.wage, wage), { minWage: "", maxWage: "" });
+  }
+  if (value !== null) {
+    add("value", chipLabel(text.value, value), { minValue: "", maxValue: "" });
+  }
+  const reputation = rangeText(filter.minReputation, filter.maxReputation, formatNumber);
+  if (reputation !== null) {
+    add("reputation", chipLabel(text.reputation, reputation), { minReputation: "", maxReputation: "" });
   }
   if (filter.nation) {
     add("nation", chipLabel(text.nation, filter.nation), { nation: "" });
@@ -163,32 +305,69 @@ function playerChips(fields: PlayerFilterFields, onChange: (fields: PlayerFilter
   if (filter.loanListed) {
     add("loanListed", text.loanListedOnly, { loanListed: false });
   }
+  if (trait !== undefined) {
+    add("trait", chipLabel(text.trait, profileText.traitName(trait)), { trait: "" });
+  }
+  if (filter.basedIn) {
+    add("basedIn", chipLabel(text.basedIn, filter.basedIn), { basedIn: "" });
+  }
+  if (filter.minDevelopment !== undefined) {
+    add("development", chipLabel(text.minDevelopment, `${filter.minDevelopment}%`), { minDevelopment: "" });
+  }
+  if (filter.minProgress !== undefined) {
+    add("progress", chipLabel(text.minProgress, text.stars(filter.minProgress)), { minProgress: "" });
+  }
   return [
     ...chips,
     ...attributeChips(fields.attributes, PLAYER_ATTRIBUTES, (attributes) => onChange({ ...fields, attributes })),
+    ...attributeChips(
+      fields.potentialAttributes,
+      POTENTIAL_ATTRIBUTES,
+      (potentialAttributes) => onChange({ ...fields, potentialAttributes }),
+      text.potentialChip,
+      "potential",
+    ),
+    ...roles,
   ];
 }
+
+/** The traits of the select, by name. */
+const TRAIT_OPTIONS = TRAIT_CHOICES.map((bit) => ({ bit, name: profileText.traitName(bit) })).sort((a, b) =>
+  a.name.localeCompare(b.name, intlLocale),
+);
 
 /** The filter bar of the player list. */
 export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarProps) {
   const ageLabel = useId();
 
+  const positionLabel = useId();
   const set = <K extends keyof PlayerFilterFields>(key: K, value: PlayerFilterFields[K]) =>
     onChange({ ...fields, [key]: value });
+  /** Puts a position in or takes it out; they stay in the order of the pitch. */
+  const togglePosition = (key: string) =>
+    set(
+      "positions",
+      fields.positions.includes(key)
+        ? fields.positions.filter((other) => other !== key)
+        : POSITION_ORDER.filter((other) => other === key || fields.positions.includes(other)),
+    );
 
   return (
     <FilterBar chips={playerChips(fields, onChange)} onClear={() => onChange(NO_PLAYER_FILTERS)} actions={actions}>
-      <label className="filter-field">
-        <span>{text.position}</span>
-        <select value={fields.position} onChange={(e) => set("position", e.currentTarget.value)}>
-          <option value="">{text.any}</option>
-          {POSITION_ORDER.map((key) => (
-            <option key={key} value={key}>
-              {POSITION_LABELS[key]}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="filter-field filter-positions" role="group" aria-labelledby={positionLabel}>
+        <span id={positionLabel}>{text.position}</span>
+        {POSITION_ORDER.map((key) => (
+          <button
+            key={key}
+            type="button"
+            className="position-toggle"
+            aria-pressed={fields.positions.includes(key)}
+            onClick={() => togglePosition(key)}
+          >
+            {POSITION_LABELS[key]}
+          </button>
+        ))}
+      </div>
 
       <div className="filter-field" role="group" aria-labelledby={ageLabel}>
         <span id={ageLabel}>{text.age}</span>
@@ -215,31 +394,38 @@ export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarPr
         />
       </div>
 
-      <label className="filter-field" title={text.minCurrentAbilityTitle}>
-        <span>{text.minCurrentAbility}</span>
-        <input
-          type="number"
-          min={ABILITY_RANGE.min}
-          max={ABILITY_RANGE.max}
-          step={1}
-          placeholder={text.abilityPlaceholder}
-          value={fields.minCurrentAbility}
-          onChange={(e) => set("minCurrentAbility", e.currentTarget.value)}
-        />
-      </label>
+      <RangeField
+        label={columns.currentAbility}
+        minLabel={text.minCurrentAbilityTitle}
+        maxLabel={text.maxCurrentAbilityTitle}
+        range={ABILITY_RANGE}
+        min={fields.minCurrentAbility}
+        max={fields.maxCurrentAbility}
+        onMin={(value) => set("minCurrentAbility", value)}
+        onMax={(value) => set("maxCurrentAbility", value)}
+      />
 
-      <label className="filter-field" title={text.minPotentialAbilityTitle}>
-        <span>{text.minPotentialAbility}</span>
-        <input
-          type="number"
-          min={ABILITY_RANGE.min}
-          max={ABILITY_RANGE.max}
-          step={1}
-          placeholder={text.abilityPlaceholder}
-          value={fields.minPotentialAbility}
-          onChange={(e) => set("minPotentialAbility", e.currentTarget.value)}
-        />
-      </label>
+      <RangeField
+        label={columns.potentialAbility}
+        minLabel={text.minPotentialAbilityTitle}
+        maxLabel={text.maxPotentialAbilityTitle}
+        range={ABILITY_RANGE}
+        min={fields.minPotentialAbility}
+        max={fields.maxPotentialAbility}
+        onMin={(value) => set("minPotentialAbility", value)}
+        onMax={(value) => set("maxPotentialAbility", value)}
+      />
+
+      <RangeField
+        label={text.height}
+        minLabel={text.minHeight}
+        maxLabel={text.maxHeight}
+        range={HEIGHT_RANGE}
+        min={fields.minHeight}
+        max={fields.maxHeight}
+        onMin={(value) => set("minHeight", value)}
+        onMax={(value) => set("maxHeight", value)}
+      />
 
       <label className="filter-field">
         <span>{text.nation}</span>
@@ -261,6 +447,53 @@ export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarPr
           value={fields.club}
           onChange={(e) => set("club", e.currentTarget.value)}
         />
+      </label>
+
+      <RangeField
+        label={text.wage}
+        minLabel={text.minWage}
+        maxLabel={text.maxWage}
+        range={MONEY_RANGE}
+        min={fields.minWage}
+        max={fields.maxWage}
+        onMin={(value) => set("minWage", value)}
+        onMax={(value) => set("maxWage", value)}
+        wide
+      />
+
+      <RangeField
+        label={text.value}
+        minLabel={text.minValue}
+        maxLabel={text.maxValue}
+        range={MONEY_RANGE}
+        min={fields.minValue}
+        max={fields.maxValue}
+        onMin={(value) => set("minValue", value)}
+        onMax={(value) => set("maxValue", value)}
+        wide
+      />
+
+      <RangeField
+        label={text.reputation}
+        minLabel={text.minReputation}
+        maxLabel={text.maxReputation}
+        range={REPUTATION_RANGE}
+        min={fields.minReputation}
+        max={fields.maxReputation}
+        onMin={(value) => set("minReputation", value)}
+        onMax={(value) => set("maxReputation", value)}
+      />
+
+      <label className="filter-field">
+        <span>{text.trait}</span>
+        <select value={fields.trait} onChange={(e) => set("trait", e.currentTarget.value)}>
+          <option value="">{text.any}</option>
+          {TRAIT_OPTIONS.map(({ bit, name }) => (
+            <option key={bit} value={bit}>
+              {name}
+            </option>
+          ))}
+        </select>
       </label>
 
       <label className="filter-field">
@@ -300,11 +533,56 @@ export function PlayerFilterBar({ fields, onChange, actions }: PlayerFilterBarPr
         <span>{text.loanListedOnly}</span>
       </label>
 
+      <label className="filter-field">
+        <span>{text.basedIn}</span>
+        <input
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          value={fields.basedIn}
+          onChange={(e) => set("basedIn", e.currentTarget.value)}
+        />
+      </label>
+
+      <label className="filter-field" title={text.minDevelopmentTitle}>
+        <span>{text.minDevelopment}</span>
+        <input
+          type="number"
+          min={PERCENT_RANGE.min}
+          max={PERCENT_RANGE.max}
+          step={1}
+          placeholder="%"
+          value={fields.minDevelopment}
+          onChange={(e) => set("minDevelopment", e.currentTarget.value)}
+        />
+      </label>
+
+      <label className="filter-field">
+        <span>{text.minProgress}</span>
+        <select value={fields.minProgress} onChange={(e) => set("minProgress", e.currentTarget.value)}>
+          <option value="">{text.any}</option>
+          {HALF_STARS.map((half) => (
+            <option key={half} value={String(half)}>
+              {text.stars(half)}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <AttributeFilters
         rows={fields.attributes}
         choices={PLAYER_ATTRIBUTES}
         onChange={(rows) => set("attributes", rows)}
       />
+
+      <AttributeFilters
+        rows={fields.potentialAttributes}
+        choices={POTENTIAL_ATTRIBUTES}
+        heading={text.potentialAttributes}
+        onChange={(rows) => set("potentialAttributes", rows)}
+      />
+
+      <RoleFilters rows={fields.roles} onChange={(rows) => set("roles", rows)} />
     </FilterBar>
   );
 }

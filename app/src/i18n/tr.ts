@@ -5,7 +5,7 @@ import { knownFormationName } from "../formationNames";
 // Turkish has no plural after a number ("3 değişiklik"), and its case endings follow the word they end, not a
 // number, so the sentences are built to put an ending on a noun ("oyuncunun"), never on a figure.
 
-import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerSort, SquadSort, Storefront } from "../types";
+import type { Entity, MassEntity, MassOperationKind, MassPreview, PlayerColumnSort, SquadSort, Storefront } from "../types";
 import { PERCENT_CLAUSES, RELEASE_CLAUSES } from "../clauseKinds";
 import type { ErrorTexts, Strings } from "./en";
 import { fieldName } from "./fieldNames";
@@ -71,6 +71,10 @@ const UNSUPPORTED: Partial<Record<string, string>> = {
   "the new value is not one of the game's own records of that kind":
     "yeni değer, oyunun bu türdeki kendi kayıtlarından biri değil",
   "it holds a value the editor cannot name": "düzenleyicinin adlandıramadığı bir değer tutuyor",
+  "the game's records of the player's positions do not read as expected":
+    "oyunun oyuncunun mevkileri için tuttuğu kayıtlar beklendiği gibi okunmuyor",
+  "the player's position records changed after this edit; undo newer position edits first":
+    "oyuncunun mevki kayıtları bu düzenlemeden sonra değişti; önce daha yeni mevki düzenlemelerini geri alın",
 };
 
 const reload = "verileri yeniden okuyup tekrar deneyin";
@@ -283,6 +287,9 @@ const TRAIT_NAMES_TR: readonly string[] = [
   "Sağ kanattan içeri kat eder",
   "Erken orta yapar",
   "Topu savunmadan çıkarır",
+  // Bits 61 and 62 are no trait in FM27: the game shows nothing for them.
+  "",
+  "",
   "Topu ayaklarıyla oynar"
 ];
 
@@ -408,6 +415,69 @@ export const tr: Strings = {
     right_foot: "Sağ Ayak",
   },
 
+  attributeNotes: {
+    // Teknik
+    corners: "Korner vuruşlarının kalitesi.",
+    crossing: "Kanatlardan yapılan ortaların isabeti.",
+    dribbling: "Topla koşarken topu kontrol etme becerisi.",
+    finishing: "Pozisyonları gole çevirme becerisi.",
+    first_touch: "Gelen topu temiz kontrol etme becerisi.",
+    free_kicks: "Direkt serbest vuruşların kalitesi, şut ya da orta.",
+    heading: "Kaleye ya da takım arkadaşına yapılan kafa vuruşlarının isabeti.",
+    long_shots: "Ceza sahası dışından atılan şutların tehlikesi.",
+    long_throws: "Taç atışlarının uzaklığı ve sertliği.",
+    marking: "Rakibi yakından takip edip etkisiz kılma becerisi.",
+    passing: "Kısa ve uzun pasların isabeti.",
+    penalty_taking: "Penaltılardaki güvenilirlik.",
+    tackling: "Faul yapmadan topu kapma becerisi.",
+    technique: "Top tekniği: zor pasları, şutları ve kontrolleri mümkün kılar.",
+    // Zihinsel
+    aggression: "İkili mücadeleye girme isteği.",
+    anticipation: "Oyunu önceden okuma becerisi.",
+    bravery: "Topu kazanmak için sakatlanmayı göze alma.",
+    composure: "Baskı altında, topla ya da kale önünde sakin kalma.",
+    concentration: "Dikkatin ne kadar sürdüğü, özellikle maç sonlarında.",
+    decisions: "Doğru seçeneğin ne sıklıkla seçildiği.",
+    determination: "Geriye düşülse bile devam etme ve kazanma azmi.",
+    flair: "Beklenmedik olanı deneme eğilimi.",
+    leadership: "Takım arkadaşlarını yüreklendirme ve yönlendirme becerisi. En çok kaptanda önemlidir.",
+    off_the_ball: "Top takımdayken boş alan bulma becerisi.",
+    positioning: "Top rakipteyken alan kapatma becerisi.",
+    teamwork: "Takım talimatlarına uyma ve takım için oynama.",
+    vision: "Zor olanlar dahil, görülen pas seçeneklerinin sayısı.",
+    work_rate: "Maç boyunca ne kadar koşulduğu.",
+    // Fiziksel
+    acceleration: "En yüksek hıza ne kadar çabuk ulaşıldığı.",
+    agility: "Dönme, hızlanma ve durma çabukluğu.",
+    balance: "Topla ve ikili mücadelelerde ayakta kalma becerisi.",
+    jumping_reach: "Sıçrayınca ulaşılan en yüksek nokta. Boy da etkiler.",
+    natural_fitness: "Kondisyonun maçlar arasında ve yaşla birlikte ne kadar korunduğu.",
+    pace: "En yüksek hız.",
+    stamina: "Yüksek tempoya yorulmadan ne kadar dayanıldığı.",
+    strength: "Rakiplere karşı ikili mücadelelerdeki fiziksel güç.",
+    // Kalecilik
+    aerial_reach: "Kalecinin topu tutmak ya da yumruklamak için ulaştığı yükseklik.",
+    command_of_area: "Kalecinin ceza sahasına ve oraya gelen toplara hakimiyeti.",
+    communication: "Kalecinin savunmayı yönlendirme becerisi.",
+    eccentricity: "Kalecinin çalım atmak ya da kornere çıkmak gibi beklenmedik işler yapma eğilimi.",
+    handling: "Topu elden kaçırmadan tutma becerisi.",
+    kicking: "Kalecinin ayakla vuruşlarının uzaklığı ve isabeti.",
+    one_on_ones: "Kalecinin hücumcuyla karşı karşıya kaldığındaki başarısı.",
+    punching: "Kalecinin topu tutmak yerine ne sıklıkla yumrukladığı.",
+    reflexes: "Kalecinin şutlara tepki verme çabukluğu.",
+    rushing_out: "Kalecinin ara paslarına ve hücumculara çıkmak için kalesini ne sıklıkla terk ettiği.",
+    throwing: "Kalecinin elle atışlarının uzaklığı ve isabeti.",
+    // Gizli
+    consistency: "Her zamanki seviyeye ne sıklıkla ulaşıldığı.",
+    dirtiness: "Ne sıklıkla faul yapıldığı ve kuralların zorlandığı.",
+    important_matches: "Büyük maçlardaki performans.",
+    injury_proneness: "Sakatlanmaya ne kadar yatkın olunduğu.",
+    versatility: "Yeni mevki ve rollere uyum sağlama çabukluğu.",
+    // Ayaklar
+    left_foot: "Sol ayağın ne kadar iyi kullanıldığı.",
+    right_foot: "Sağ ayağın ne kadar iyi kullanıldığı.",
+  },
+
   staffAttributes: {
     // Antrenörlük
     attacking: "Hücum",
@@ -436,6 +506,34 @@ export const tr: Strings = {
     sports_science: "Spor Bilimi",
   },
 
+  staffAttributeNotes: {
+    // Antrenörlük
+    attacking: "Hücum oyununu çalıştırma.",
+    defending: "Savunma oyununu çalıştırma.",
+    fitness: "Kondisyon çalıştırma: güç, hız ve dayanıklılık.",
+    goalkeeping: "Kalecileri çalıştırma.",
+    possession: "Topla oyunu çalıştırma: pas ve topa sahip olma.",
+    set_pieces: "Korner, serbest vuruş ve taç çalıştırma.",
+    tactical: "Takım taktiğini ve dizilişini çalıştırma.",
+    technical: "Top tekniğini çalıştırma.",
+    working_with_youngsters: "Genç oyuncuları çalıştırma ve geliştirme becerisi.",
+    // Zihinsel
+    authority: "Disiplini sağlama becerisi.",
+    determination: "Başarma azmi. Oyunculara da geçer.",
+    motivating: "Oyuncuları antrenmanda ve maç öncesinde motive etme becerisi.",
+    people_management: "Oyuncularla ilgilenme ve onları mutlu tutma becerisi.",
+    // Bilgi
+    data_analysis: "Maç ve oyuncu verilerini yorumlama becerisi.",
+    judging_ability: "Bir oyuncunun mevcut yeteneğini doğru değerlendirme.",
+    judging_potential: "Bir oyuncunun potansiyelini doğru değerlendirme.",
+    judging_staff: "Personelin yeteneğini doğru değerlendirme.",
+    negotiating: "Transfer ve sözleşmelerde yapılan anlaşmaların kalitesi.",
+    tactical_knowledge: "Taktik ve diziliş bilgisi.",
+    // Sağlık
+    physiotherapy: "Sakatlıkları tedavi etme ve önleme becerisi.",
+    sports_science: "Kondisyonu ve sakatlık riskini yönetme becerisi.",
+  },
+
   personality: {
     adaptability: "Uyum",
     ambition: "Hırs",
@@ -445,6 +543,17 @@ export const tr: Strings = {
     sportsmanship: "Sportmenlik",
     temperament: "Mizaç",
     controversy: "Tartışmacılık",
+  },
+
+  personalityNotes: {
+    adaptability: "Yeni bir ülkeye çabuk alışma.",
+    ambition: "Zirveye çıkma ve bunun için kulüp değiştirme isteği.",
+    loyalty: "Kulübe bağlılık.",
+    pressure: "Baskıyla başa çıkma.",
+    professionalism: "Antrenmanı ve işi ciddiye alma.",
+    sportsmanship: "Adil oyun.",
+    temperament: "İşler kötü gittiğinde sakin kalma.",
+    controversy: "Medyada tartışma yaratma eğilimi.",
   },
 
   positions: {
@@ -562,6 +671,8 @@ export const tr: Strings = {
     "contract.playing_time_happiness": "Forma süresi mutluluğu",
     "contract.unhappiness": "Mutsuzluk nedenleri",
     "contract.expires": "Sözleşme bitişi",
+    "contract.signed": "Sözleşme imza tarihi",
+    "contract.joined": "Kulübe katılım tarihi",
     "loan.wage": "Kiralayan kulübün ödediği maaş",
     "loan.ends": "Kiralık bitişi",
     "transfer.joins": "Katılış tarihi",
@@ -626,6 +737,7 @@ export const tr: Strings = {
     "women.game_importance": "Kadın futbolunda oyunun önemi",
     "women.attendance": "Kadın futbolunda seyirci ilgisi",
     points: "FIFA puanı",
+    "women.points": "Kadın FIFA puanı",
   },
 
   profile: {
@@ -650,6 +762,7 @@ export const tr: Strings = {
     potentialAbility: "Potansiyel yetenek",
     potentialAbilityShort: "PY",
     potentialRange: "Potansiyel bir aralık olarak belirlenmiş",
+    suggestedAbility: (value) => `Önerilen MY ${value}`,
     personalDetails: "Kişisel bilgiler",
     fullNameLabel: "Tam ad",
     heightLabel: "Boy",
@@ -763,12 +876,23 @@ export const tr: Strings = {
     morale: (value) => `${value} / 20`,
     traits: "Özellikler",
     noTraits: "Özelliği yok",
-    traitName: (bit) => TRAIT_NAMES_TR[bit] ?? "Bilinmeyen özellik",
+    traitName: (bit) => TRAIT_NAMES_TR[bit] || "Bilinmeyen özellik",
+    traitGroups: {
+      movement: "Hareket",
+      passing: "Pas",
+      finishing: "Bitiricilik",
+      discipline: "Disiplin",
+      defending: "Savunma",
+      technique: "Teknik",
+      career: "Kariyer",
+    },
     unhappiness: "Mutsuzluk",
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
     removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır.",
+    inspire: "Motive et",
+    inspireTitle: "Morali en üste çıkarır, tüm mutsuzluk nedenlerini kaldırır",
     concernSince: (date) => `${date} tarihinden beri`,
     concernKind: (kind) => (kind === 1 ? "Endişeli" : kind === 2 ? "İçsel" : ""),
     concernMotive: (motive) => CONCERN_MOTIVES_TR[motive] ?? "Bilinmeyen neden",
@@ -779,6 +903,7 @@ export const tr: Strings = {
     playingTimeHappiness: "Forma süresi mutluluğu",
     moodTitle: "-100 ile 100 arasında.",
     clauseName: (kind) => CLAUSE_NAMES_TR[kind] ?? "Bilinmeyen madde",
+    competitionBonus: (competition) => `${competition ?? "Bilinmeyen turnuva"} primi`,
     clauseCondition: (kind, value) => {
       if (RELEASE_CLAUSES.has(kind)) {
         return null;
@@ -836,7 +961,14 @@ export const tr: Strings = {
     // Above the attributes, while the profile is read
     tools: "Araçlar",
     tabsLabel: "Oyuncu bölümleri",
-    tabs: { attributes: "Özellikler", mood: "Moral", contract: "Sözleşme", medical: "Sağlık", career: "Kariyer" },
+    tabs: {
+      attributes: "Özellikler",
+      mood: "Moral",
+      contract: "Sözleşme",
+      medical: "Sağlık",
+      career: "Kariyer",
+      scout: "Gözlem",
+    },
     staffTabsLabel: "Personel bölümleri",
     staffTabs: { attributes: "Özellikler", contract: "Sözleşme", career: "Kariyer" },
     statusLabel: "Durum",
@@ -913,8 +1045,14 @@ export const tr: Strings = {
       born: "Doğum",
       currentAbility: "MY",
       potentialAbility: "PY",
+      value: "Değer",
+      wage: "Maaş",
+      reputation: "İtibar",
       uid: "UID",
-    } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
+      similarity: "Benzerlik",
+      development: "Gel.",
+      progress: "İlerleme",
+    } satisfies Record<PlayerColumnSort | "similarity" | "development" | "progress" | "positions" | "born" | "uid", string>,
     sortBy: (by) => `Sırala: ${by}`,
     // Said as "sıralama: …" and "Sırala: …", so they stand as plain nouns.
     sortNames: {
@@ -925,7 +1063,21 @@ export const tr: Strings = {
       nation: "uyruk",
       club: "kulüp",
       contractExpires: "sözleşme bitişi",
-    } satisfies Record<PlayerSort, string>,
+      value: "değer",
+      wage: "maaş",
+      reputation: "itibar",
+      similarity: "benzerlik",
+      development: "gelişim",
+      progress: "ilerleme",
+    } satisfies Record<PlayerColumnSort | "similarity" | "development" | "progress", string>,
+    columnChooser: {
+      button: "Sütunlar",
+      title: "Sütunlar",
+      attributes: "Özellik sütunları",
+      full: (max) => `En çok ${max} özellik sütunu.`,
+      reset: "Sıfırla",
+      done: "Tamam",
+    },
     filters: {
       toggle: "Filtreler",
       toggleActive: (count) => `Filtreler, ${count} etkin`,
@@ -937,17 +1089,44 @@ export const tr: Strings = {
       maxAge: "En yüksek yaş",
       minPlaceholder: "Min",
       maxPlaceholder: "Maks",
-      minCurrentAbility: "Min MY",
       minCurrentAbilityTitle: "En düşük mevcut yetenek",
-      minPotentialAbility: "Min PY",
       minPotentialAbilityTitle: "En düşük potansiyel yetenek",
-      abilityPlaceholder: "1–200",
       nation: "Uyruk",
       club: "Kulüp",
       freeAgentsOnly: "Yalnızca serbest oyuncular",
       contractEndsBy: "Sözleşme bitişi (en geç)",
       transferListedOnly: "Yalnızca transfer listesindekiler",
       loanListedOnly: "Yalnızca kiralık listesindekiler",
+      maxCurrentAbilityTitle: "En yüksek mevcut yetenek",
+      maxPotentialAbilityTitle: "En yüksek potansiyel yetenek",
+      height: "Boy (cm)",
+      minHeight: "En kısa boy",
+      maxHeight: "En uzun boy",
+      wage: "Haftalık maaş",
+      minWage: "En düşük maaş",
+      maxWage: "En yüksek maaş",
+      value: "Temel değer",
+      minValue: "En düşük değer",
+      maxValue: "En yüksek değer",
+      reputation: "İtibar",
+      minReputation: "En düşük itibar",
+      maxReputation: "En yüksek itibar",
+      trait: "Özellik",
+      basedIn: "Oynadığı ülke",
+      minDevelopment: "En az gelişim",
+      minDevelopmentTitle: "Potansiyelinin 7 puan yakınına gelme olasılığı, en az yüzde",
+      minProgress: "En az ilerleme",
+      stars: (halfStars) => `${"★".repeat(Math.floor(halfStars / 2))}${halfStars % 2 ? "½" : ""}`,
+      potentialAttributes: "Potansiyel özellikler",
+      potentialChip: (name, range) => `Zirvede ${name}: ${range}`,
+      roles: {
+        heading: "Roller",
+        role: "Rol",
+        pick: "Rol seçin",
+        min: (name) => (name ? `${name} için en az puan` : "En az puan"),
+        add: "Rol ekle",
+        remove: (name) => (name ? `${name} kaldır` : "Bu satırı kaldır"),
+      },
       chips: "Etkin filtreler",
       removeChip: (label: string) => `Kaldır: ${label}`,
       attributes: {
@@ -976,6 +1155,124 @@ export const tr: Strings = {
           `En fazla ${max} filtre kaydedilebilir. Önce birini silin ya da ` +
           "değiştirmek için kayıtlı bir filtrenin adını kullanın.",
       },
+    },
+  },
+
+  /** The select that ranks the player and staff lists for a job, and the column of how well each row fits. */
+  bestFor: {
+    label: "En uygun",
+    /** The column: a score out of 100. */
+    fit: "Uyum",
+    /** The column as the hover text of its header names it, after `playerList.sortBy`. */
+    fitName: "uyum",
+    /** Beside the select of a ranked list: who fits best at the user's club, and the score. */
+    yours: (name, score) => `En iyin: ${name} ${score}`,
+    /** What the mark on a fit says: it is better than the best at the user's club. */
+    better: "En iyinden iyi",
+  },
+  scout: {
+    roleGroups: { goalkeepers: "Kaleciler", defenders: "Defans", midfielders: "Orta saha", forwards: "Hücum" },
+    duties: { defend: "Savunma", support: "Destek", attack: "Hücum" },
+    dutyShort: { defend: "S", support: "D", attack: "H" },
+    roleLabel: (role, duty) => `${role} (${duty})`,
+    roles: {
+      goalkeeper: { name: "Kaleci", short: "KL" },
+      sweeper_keeper: { name: "Libero kaleci", short: "LK" },
+      central_defender: { name: "Stoper", short: "STP" },
+      stopper: { name: "Önde karşılayan stoper", short: "ÖKS" },
+      covering_defender: { name: "Kapatan stoper", short: "KS" },
+      ball_playing_defender: { name: "Oyun kurucu stoper", short: "OKS" },
+      no_nonsense_defender: { name: "Sert stoper", short: "SS" },
+      full_back: { name: "Bek", short: "BK" },
+      wing_back: { name: "Kanat bek", short: "KB" },
+      inverted_wing_back: { name: "Ters kanat bek", short: "TKB" },
+      complete_wing_back: { name: "Komple kanat bek", short: "KKB" },
+      defensive_midfielder: { name: "Defansif orta saha", short: "DOS" },
+      anchor: { name: "Çapa", short: "ÇP" },
+      half_back: { name: "Yarı bek", short: "YB" },
+      ball_winning_midfielder: { name: "Top kapan orta saha", short: "TKO" },
+      deep_lying_playmaker: { name: "Geriden oyun kurucu", short: "GOK" },
+      regista: { name: "Regista", short: "RG" },
+      roaming_playmaker: { name: "Gezgin oyun kurucu", short: "GZO" },
+      segundo_volante: { name: "Segundo volante", short: "SV" },
+      central_midfielder: { name: "Merkez orta saha", short: "MOS" },
+      box_to_box_midfielder: { name: "Box-to-box orta saha", short: "BTB" },
+      mezzala: { name: "Mezzala", short: "MZ" },
+      carrilero: { name: "Carrilero", short: "CR" },
+      advanced_playmaker: { name: "İleri oyun kurucu", short: "İOK" },
+      wide_midfielder: { name: "Kanat orta saha", short: "KOS" },
+      defensive_winger: { name: "Defansif kanat", short: "DK" },
+      winger: { name: "Kanat oyuncusu", short: "KO" },
+      inverted_winger: { name: "Ters kanat", short: "TK" },
+      inside_forward: { name: "İç forvet", short: "İF" },
+      raumdeuter: { name: "Raumdeuter", short: "RD" },
+      wide_target_forward: { name: "Kanatta hedef forvet", short: "KHF" },
+      attacking_midfielder: { name: "Ofansif orta saha", short: "OOS" },
+      enganche: { name: "Enganche", short: "EN" },
+      shadow_striker: { name: "Gölge forvet", short: "GF" },
+      trequartista: { name: "Trequartista", short: "TQ" },
+      advanced_forward: { name: "İleri forvet", short: "İLF" },
+      poacher: { name: "Fırsatçı golcü", short: "FG" },
+      target_forward: { name: "Hedef forvet", short: "HF" },
+      deep_lying_forward: { name: "Geride oynayan forvet", short: "GOF" },
+      false_nine: { name: "Sahte dokuz", short: "S9" },
+      complete_forward: { name: "Komple forvet", short: "KF" },
+      pressing_forward: { name: "Pres yapan forvet", short: "PF" },
+    },
+    columnTitles: {
+      similarity: "Ona ne kadar benziyor, 0-100",
+      development: "Potansiyelinin 7 puan yakınına gelme olasılığı",
+      progress: "Önümüzdeki iki yılda beklenen yetenek artışı",
+    },
+    starsLabel: (halfStars) => `5 yıldızdan ${format(halfStars / 2)}`,
+    similar: {
+      like: (name) => `${name} benzeri`,
+      today: "Bugün",
+      peak: "Zirvesinde",
+      when: "Karşılaştırma",
+      stop: "Karşılaştırmayı bitir",
+    },
+    report: {
+      development: "Gelişim",
+      chance: "Potansiyeline ulaşır",
+      chanceTitle: "Kariyeri boyunca mevcut yeteneğinin potansiyelinin 7 puan yakınına gelme olasılığı",
+      progress: "İlerleme",
+      gain: (points) => `İki yılda +${format(points)} yetenek`,
+      potential: "Potansiyel yetenek",
+      roles: "En iyi roller",
+      role: "Rol",
+      today: "Bugün",
+      peak: "Zirve",
+      attributes: "Potansiyel özellikler",
+      findSimilar: "Benzerlerini bul",
+      similarToday: "Bugünkü haliyle",
+      similarPeak: "Zirvesinde",
+      careers: "Diğer kariyerleriniz",
+      careersReading: "Kariyerleriniz okunuyor…",
+      noCareers: "Diğer kariyerlerinizde henüz görülmedi.",
+      career: (manager, club) => (club ? `${manager}, ${club}` : manager),
+      year: "Yıl",
+      age: "Yaş",
+      failed: (reason) => `Rapor hazırlanamadı: ${reason}`,
+    },
+    top: {
+      nav: "En iyi oyuncular",
+      search: "Listede ara",
+      kind: "Liste",
+      best: "En iyiler",
+      promising: "En umut vadedenler",
+      game: "Futbol",
+      men: "Erkek",
+      women: "Kadın",
+      where: "Nerede",
+      world: "Dünya",
+      continents: "Kıtalar",
+      nations: "Ülkeler",
+      division: "Lig",
+      allDivisions: "Tümü",
+      rank: "#",
+      summary: (total) => `${format(total)} oyuncu`,
+      empty: (query) => (query === "" ? "Burada oyuncu yok." : `“${query}” ile eşleşen oyuncu yok.`),
     },
   },
 
@@ -1016,17 +1313,14 @@ export const tr: Strings = {
       maxAge: "En yüksek yaş",
       minPlaceholder: "Min",
       maxPlaceholder: "Maks",
-      minCurrentAbility: "Min MY",
-      minCurrentAbilityTitle: "En düşük mevcut yetenek",
-      minPotentialAbility: "Min PY",
-      minPotentialAbilityTitle: "En düşük potansiyel yetenek",
-      abilityPlaceholder: "1–200",
       nation: "Uyruk",
       club: "Kulüp",
     },
   },
 
   clubProfile: {
+    kits: "Formalar",
+    kitNames: { home: "İç saha", away: "Deplasman", third: "Üçüncü" },
     // Header
     womensClub: "Kadın kulübü",
     founded: (year) => `Kuruluş ${year}`,
@@ -1070,6 +1364,7 @@ export const tr: Strings = {
     usedAll: "Tamamı",
     usedTitle: "Oyunun kapasitenin ne kadarını kullandığı. 0 tamamı demektir.",
     expansion: "Genişleyebileceği",
+    owner: "Sahibi",
     noStadium: "Bu kulübün stadyumu okunamadı.",
     info: "Kulüp bilgisi",
     seasonTickets: "Sezonluk biletler",
@@ -1137,11 +1432,6 @@ export const tr: Strings = {
       age: "Yaş",
       minAge: "En düşük yaş",
       maxAge: "En yüksek yaş",
-      minCurrentAbility: "Min MY",
-      minCurrentAbilityTitle: "En düşük mevcut yetenek",
-      minPotentialAbility: "Min PY",
-      minPotentialAbilityTitle: "En düşük potansiyel yetenek",
-      abilityPlaceholder: "1–200",
       nation: "Ülke",
     },
     reputation: "İtibar",
@@ -1353,6 +1643,7 @@ export const tr: Strings = {
     done: "Tamam",
     zoomLabel: "Yakınlaştırma",
     usageLabel: "Kullanımı ve bu pencerenin kayıtlarını paylaş",
+    scoutCardLabel: "Oyun içi gözlemci kartı",
     appearance: "Görünüm",
     themes: { system: "Sistem", light: "Açık", dark: "Koyu" },
     tour: {
@@ -1498,6 +1789,7 @@ export const tr: Strings = {
     installFailed: (reason) => `Güncellenemedi: ${reason}. Bunun yerine sayfasından indirin.`,
     later: "Sonra",
     checkForUpdates: "Güncellemeleri Denetle…",
+    check: "Güncellemeleri denetle",
     checking: "Güncellemeler denetleniyor…",
     upToDate: "FM Lens güncel.",
     checkFailed: "Güncellemeler denetlenemedi.",
@@ -1505,8 +1797,23 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
-      "0.7.8": [
+      "0.7.11": [
         "FM Lens artık penceresinin nasıl kullanıldığını kaydediyor: neyin zor olduğunu görmek için. Yazdıklarınız ve teknik direktörünüzün adı gizlenir. Ayarlar'dan kapatabilirsiniz.",
+      ],
+      "0.7.10": [
+        "Bir oyuncunun özelliklerini yükseltin, MY de onlarla yükselir: değişiklikler kalır.",
+        "Teşekkür et: FM Lens'i destekle, Ko-fi'yi uygulamanın içinde açar.",
+      ],
+      "0.7.9": [
+        "Dondurma artık mevcut yeteneği de tutar: dondurulan oyuncu gerilemez.",
+        "Bir oyuncuyu düzenlerken FM Lens, özelliklerine uyan MY'yi önerir.",
+        "Bir özelliğin ne anlama geldiğini görmek için imleci üzerine getirin.",
+        "Oyuncu davranışları FM27'deki adları ve gruplarıyla gelir.",
+      ],
+      "0.7.8": [
+        "FM27'nin 12 Kasım Steam güncellemesiyle çalışır.",
+        "Her listeyi sıralayın, oyuncuları maaşa, değere, boya ve kişiliğe göre filtreleyin.",
+        "Personelin doğum tarihini ve bir oyuncunun bütün özelliklerini düzenleyin.",
       ],
       "0.7.7": [
         "Mutsuzluğu kaldır kalıcı: nedenler Devam’dan sonra geri gelmez.",
@@ -1619,6 +1926,12 @@ export const tr: Strings = {
     notNow: "Şimdi değil",
   },
 
+  support: {
+    button: "FM Lens'i destekle",
+    title: "Teşekkür et",
+    browser: "Tarayıcıda aç",
+  },
+
   edit: {
     appliedTitle: "Uygulandı",
     unknownNation: "Bilinmeyen ülke",
@@ -1698,6 +2011,7 @@ export const tr: Strings = {
     earlierGame: "Önceki oyun",
     undo: "Geri al",
     undoTitle: (label) => `Eski değeri oyuna geri yaz: ${label}`,
+    undoLaterFirst: (label) => `${label} bundan sonra yeniden değiştirildi. Önce sonraki değişikliği geri alın.`,
     batch: "Toplu düzenleme",
     batchCount: (total, remaining) =>
       remaining === 0

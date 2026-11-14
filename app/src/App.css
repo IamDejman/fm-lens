@@ -527,6 +527,7 @@ dd,
    are the language, theme and zoom of Settings. */
 .move-mode,
 .squad-teams,
+.segmented,
 .settings-switch {
   display: inline-flex;
   align-self: flex-start;
@@ -537,6 +538,7 @@ dd,
 
 .move-mode button,
 .squad-teams button,
+.segmented button,
 .settings-switch button {
   min-width: 40px;
   min-height: 26px;
@@ -552,12 +554,14 @@ dd,
 
 .move-mode button + button,
 .squad-teams button + button,
+.segmented button + button,
 .settings-switch button + button {
   border-left: 1px solid var(--border-strong);
 }
 
 .move-mode button:hover:not(:disabled, [aria-pressed="true"]),
 .squad-teams button:hover:not(:disabled, [aria-pressed="true"]),
+.segmented button:hover:not(:disabled, [aria-pressed="true"]),
 .settings-switch button:hover:not(:disabled, [aria-pressed="true"]) {
   background: var(--hover);
   color: var(--text);
@@ -565,6 +569,7 @@ dd,
 
 .move-mode button[aria-pressed="true"],
 .squad-teams button[aria-pressed="true"],
+.segmented button[aria-pressed="true"],
 .settings-switch button[aria-pressed="true"] {
   background: var(--accent);
   color: var(--on-accent);
@@ -572,6 +577,7 @@ dd,
 
 .move-mode button:focus-visible,
 .squad-teams button:focus-visible,
+.segmented button:focus-visible,
 .settings-switch button:focus-visible {
   outline-offset: -2px;
 }
@@ -646,8 +652,8 @@ dd,
   background: var(--accent-hover);
 }
 
-/* Report a problem and Wishlist: quiet, like the rest of the small print, until pointed at. */
-.colophon :is(.colophon-report, .colophon-wishlist) {
+/* Report a problem, Wishlist, Support FM Lens and Check for updates: quiet, like the rest of the small print, until pointed at. */
+.colophon :is(.colophon-report, .colophon-wishlist, .colophon-support, .colophon-update) {
   flex: none;
   min-height: 0;
   padding: 0;
@@ -661,7 +667,7 @@ dd,
   text-underline-offset: 2px;
 }
 
-.colophon :is(.colophon-report, .colophon-wishlist):hover:not(:disabled) {
+.colophon :is(.colophon-report, .colophon-wishlist, .colophon-support, .colophon-update):hover:not(:disabled) {
   background: none;
   color: var(--text);
 }
@@ -1262,6 +1268,17 @@ input::placeholder {
   grid-column: 1 / -1;
 }
 
+/* Money has many digits: its two ends take two cells, where the form has two. */
+.filter-field.wide {
+  grid-column: span 2;
+}
+
+@container (max-width: 400px) {
+  .filter-field.wide {
+    grid-column: auto;
+  }
+}
+
 /* A yes-or-no: the box and its words on one line, level with the inputs beside it. */
 .filter-field:has(> input[type="checkbox"]) {
   display: flex;
@@ -1273,6 +1290,7 @@ input::placeholder {
 
 /* The inputs of the filters, and those of the saved filters in the head of the bar (see below). */
 .filter-fields :is(select, input:not([type="checkbox"])),
+.best-for select,
 .saved-select,
 .saved-form input {
   min-height: 30px;
@@ -1285,6 +1303,7 @@ input::placeholder {
 }
 
 .filter-fields :is(select, input:not([type="checkbox"])):focus-visible,
+.best-for select:focus-visible,
 .saved-select:focus-visible,
 .saved-form input:focus-visible {
   border-color: var(--accent);
@@ -1429,6 +1448,47 @@ input::placeholder {
   align-items: center;
   gap: var(--space-2);
   color: var(--text);
+}
+
+/* The positions a player may play, a toggle each, across the filter panel. */
+.filter-field.filter-positions[role="group"] {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: var(--space-1);
+}
+
+.filter-field.filter-positions[role="group"] > span:first-child {
+  flex-basis: 100%;
+}
+
+.position-toggle {
+  min-width: 3rem;
+  min-height: 30px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.position-toggle:hover:not([aria-pressed="true"]) {
+  border-color: var(--accent);
+}
+
+.position-toggle[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 650;
+}
+
+.position-toggle[aria-pressed="true"]:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+  color: var(--on-accent);
 }
 
 .bound-remove {
@@ -1632,6 +1692,23 @@ input::placeholder {
 .table-wrap:is([data-list-width="narrow"], [data-list-width="small"]) .player-grid .col-positions {
   display: none;
 }
+/* Value, Wage and Reputation go with Contract; an attribute's column holds two digits, and goes with Positions. */
+.table-wrap:is([data-list-width="compact"], [data-list-width="narrow"], [data-list-width="small"]) .player-grid :is(.col-value, .col-wage, .col-rep) {
+  display: none;
+}
+.table-wrap:is([data-list-width="narrow"], [data-list-width="small"]) .player-grid .col-attribute {
+  display: none;
+}
+.player-grid :is(.col-value, .col-wage) {
+  white-space: nowrap;
+}
+/* With many columns chosen the table scrolls sideways sooner than it cuts a nation or a club down to nothing. */
+.table-wrap:is([data-list-width="wide"], [data-list-width="medium"]) .player-grid td.col-nation {
+  min-width: 110px;
+}
+.table-wrap:is([data-list-width="wide"], [data-list-width="medium"]) .player-grid td.col-club {
+  min-width: 140px;
+}
 .table-wrap[data-list-width="small"] .player-grid .col-name .sub { display: none; }
 .table-wrap[data-list-width="small"] .player-grid :is(th, td) { padding-inline: var(--space-2); }
 .table-wrap[data-list-width="small"] .player-grid td.col-name { width: 46%; }
@@ -1652,7 +1729,7 @@ input::placeholder {
   display: block;
 }
 
-.with-profile .player-grid :is(.col-age, .col-nation, .col-club, .col-contract, .col-born, .col-uid) {
+.with-profile .player-grid :is(.col-age, .col-nation, .col-club, .col-contract, .col-born, .col-uid, .col-value, .col-wage, .col-rep, .col-attribute) {
   display: none;
 }
 
@@ -1870,6 +1947,17 @@ input::placeholder {
 .award-grid .col-name .tag.women {
   flex: none;
   margin-left: 0;
+}
+
+/* A club's nation in one line; it is the first column to go where the list is narrow. */
+.club-grid td.col-nation {
+  white-space: nowrap;
+}
+
+@container (max-width: 560px) {
+  .club-grid .col-nation {
+    display: none;
+  }
 }
 
 @container (max-width: 420px) {
@@ -2616,6 +2704,37 @@ input::placeholder {
   color: var(--text);
 }
 
+/* What a rating measures, in a box over its row (HoverNote places it, then shows it). */
+.hover-note {
+  position: fixed;
+  z-index: 110;
+  visibility: hidden;
+  max-width: min(21rem, calc(100vw / var(--ui-scale, 1) - 12px));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.28);
+  font-size: var(--type-base);
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  pointer-events: none;
+}
+
+.hover-note p {
+  margin: 0;
+  /* The parts of a fit are a line each. */
+  white-space: pre-line;
+}
+
+.hover-note .hover-note-detail {
+  margin-top: var(--space-1);
+  color: var(--muted);
+  font-size: var(--type-sm);
+}
+
 /* The unit of an amount, in small print after it. */
 .stat dd .unit {
   margin-left: 3px;
@@ -2670,6 +2789,11 @@ input::placeholder {
   margin: var(--space-2) 0 0;
   padding: 0 var(--space-2);
   list-style: none;
+}
+
+/* A long trait breaks onto a second line rather than run over the column beside it. */
+.tags .tag {
+  white-space: normal;
 }
 
 .tag.listed {
@@ -3030,6 +3154,22 @@ input::placeholder {
   outline-offset: 1px;
 }
 
+/* A number is dragged sideways to change it (see dragValue.ts): the pointer says so until the input is typed in. */
+.edit-input.draggable:not(:focus, input:read-only) {
+  cursor: ew-resize;
+}
+
+/* While a number is dragged the pointer keeps its shape wherever it goes, and no text is selected. */
+:root:has(.edit-input.dragging),
+:root:has(.edit-input.dragging) * {
+  cursor: ew-resize !important;
+  user-select: none;
+}
+
+.edit-input.dragging::selection {
+  background: transparent;
+}
+
 /* A value other than the game's is marked with the highlighter, inside an ink frame, until it is applied. Red is kept
    for a value that cannot be applied (.invalid). */
 .edit-input.changed,
@@ -3113,6 +3253,39 @@ select.edit-input {
   max-width: 100%;
   text-align: left;
   appearance: auto;
+}
+
+/* The traits while a player is edited: a group under its name, its traits a checklist in columns of one width. */
+.trait-group {
+  margin-top: var(--space-3);
+  padding: 0 var(--space-2);
+}
+
+.profile-group .trait-group h4 {
+  margin: 0 0 var(--space-1);
+  padding: 0;
+  border: 0;
+}
+
+.trait-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 2px var(--space-3);
+}
+
+/* A trait is a line of the list, not a pill: only one that is changed, applied or refused is outlined. */
+.trait-list .edit-flag {
+  display: flex;
+  min-width: 0;
+}
+
+.trait-list .edit-flag:not(.changed, .invalid, .applied) {
+  border-color: transparent;
+  background: none;
+}
+
+.trait-list .edit-flag:not(.changed, .invalid, .applied):hover {
+  background: var(--field);
 }
 
 /* A yes-or-no: a checkbox in a pill like a tag, with the name of the field. The pill is outlined as an input is. */
@@ -3495,6 +3668,57 @@ button.danger:hover:not(:disabled) {
 /* The export dialog is narrower than a mass edit's: a choice of three formats, and what a file holds. */
 .modal.export-dialog {
   width: min(620px, 100%);
+}
+
+/* Choosing the player list's columns: a checkbox each, in as many columns as fit. */
+.modal.columns-dialog {
+  width: min(680px, 100%);
+}
+
+.columns-dialog h3 {
+  margin: 0;
+  font-size: var(--type-base);
+}
+
+.column-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.column-group legend {
+  margin-bottom: var(--space-2);
+  padding: 0;
+  color: var(--muted);
+}
+
+.column-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.column-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  cursor: pointer;
+}
+
+.column-choice input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.column-choice:has(input:disabled) {
+  color: var(--muted);
+  cursor: default;
+}
+
+.columns-dialog .note:empty {
+  display: none;
 }
 
 .export-formats {
@@ -4861,6 +5085,22 @@ button.danger:hover:not(:disabled) {
   width: min(560px, 100%);
 }
 
+/* Support FM Lens: Ko-fi's panel, edge to edge, at the height Ko-fi makes it. */
+.support-dialog {
+  width: min(480px, 100%);
+}
+
+.support-dialog .modal-body {
+  padding: 0;
+}
+
+.support-panel {
+  width: 100%;
+  height: 712px;
+  border: 0;
+  background: #f9f9f9;
+}
+
 /* Once sent, Close sits where Send was. */
 .report-dialog .modal-foot {
   justify-content: flex-end;
@@ -5606,4 +5846,300 @@ button.danger:hover:not(:disabled) {
 /* A section scrolled to by the bar lands under it, not behind it. */
 .profile-body > section.profile-group {
   scroll-margin-top: 84px;
+}
+
+/* Best for: the select that ranks a list, beside the search box, and the column of how well each row fits. */
+.best-for {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--muted);
+  font-size: var(--type-base);
+  white-space: nowrap;
+}
+
+.best-for select {
+  max-width: 13rem;
+}
+
+.grid td.col-fit {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Who fits best at your club, beside the select: the fits of the list are read against it. A long name is cut short,
+   and beside an open profile it gives way as the count does. */
+.your-best {
+  max-width: 16rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--type-base);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.with-profile .toolbar .your-best {
+  display: none;
+}
+
+/* A fit better than the best at your club: in the colour of what is good, with a mark for those who see no colour. */
+.grid td.col-fit.better {
+  color: var(--ok);
+}
+
+.better-mark {
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-1);
+  fill: currentColor;
+}
+
+/* In a profile, what the person is best for: the name of the recipe as a rating's is, and the score bold. */
+.best-fits .stat dt {
+  color: var(--text);
+}
+
+.best-fits .stat dd {
+  font-weight: 700;
+}
+
+/* FM Lens's scouting estimates: the score columns of the player lists, the bar of a comparison, the lists of top
+   players and the Scout tab of a profile. */
+.stars {
+  position: relative;
+  display: inline-block;
+  color: var(--border-strong);
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.stars::before {
+  content: "★★★★★";
+}
+
+.stars-on {
+  position: absolute;
+  inset: 0;
+  width: var(--stars);
+  overflow: hidden;
+  color: var(--accent);
+}
+
+.stars-on::before {
+  content: "★★★★★";
+}
+
+.player-grid :is(.col-like, .col-dev, .col-role, .col-rank) {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.player-grid .col-progress {
+  width: 1%;
+}
+
+.player-grid td.col-like {
+  font-weight: 750;
+}
+
+.player-grid td.col-rank {
+  color: var(--muted);
+}
+
+/* The scores go before Born and the ID, and beside an open profile only likeness stays. */
+.table-wrap:is([data-list-width="compact"], [data-list-width="narrow"], [data-list-width="small"]) .player-grid :is(.col-dev, .col-progress, .col-role) {
+  display: none;
+}
+
+.with-profile .player-grid :is(.col-dev, .col-progress, .col-role) {
+  display: none;
+}
+
+.similar-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: var(--type-base);
+}
+
+/* The choices of the lists of top players, laid out as the filters of the player list. */
+.top-bar {
+  margin-bottom: var(--space-3);
+}
+
+/* A division's name is long ("Sky Bet Championship"): its field takes two columns. */
+.top-division {
+  grid-column: span 2;
+}
+
+.similar-name {
+  font-weight: 750;
+}
+
+.scout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--type-base);
+}
+
+.scout-actions span {
+  color: var(--muted);
+}
+
+.scout-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-base);
+}
+
+.scout-table :is(th, td) {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.scout-table th {
+  color: var(--muted);
+  font-size: var(--type-sm);
+  font-weight: 650;
+}
+
+.scout-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.scout-career + .scout-career {
+  margin-top: var(--space-4);
+}
+
+.scout-career h4 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--type-base);
+}
+
+.scout-gain {
+  margin-left: var(--space-1);
+  color: var(--ok);
+  font-size: var(--type-xs);
+  font-weight: 650;
+}
+
+/* A club's kits from the user's kit packs. */
+.club-kits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.club-kits li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  color: var(--muted);
+  font-size: var(--type-sm);
+}
+
+.club-kits .picture img {
+  object-fit: contain;
+}
+
+/* The in-game scout card (see ScoutCard.tsx): its window is see-through and sized to the card. */
+:root.card-window,
+:root.card-window body {
+  background: transparent;
+}
+
+.scout-card {
+  display: grid;
+  gap: var(--space-3);
+  width: 300px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font-size: var(--type-sm);
+}
+
+.scout-card-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.scout-card-who {
+  overflow-wrap: anywhere;
+}
+
+.scout-card-who h1 {
+  margin: 0;
+  font-size: var(--type-md);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.scout-card-who p {
+  margin: 2px 0 0;
+  color: var(--muted);
+}
+
+.scout-card-part {
+  white-space: nowrap;
+}
+
+.scout-card-abilities {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: var(--space-1);
+  align-items: baseline;
+}
+
+.scout-card-abilities abbr {
+  color: var(--muted);
+  font-size: var(--type-xs);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.scout-card-abilities .ability {
+  min-width: 0;
+  font-size: var(--type-md);
+  text-align: right;
+}
+
+.scout-card h2 {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--type-xs);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.scout-card dl {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.scout-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.scout-card dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
 }

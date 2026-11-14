@@ -66,6 +66,9 @@ u21_goals = 0x3C1         # u8
 contract = 0x330          # contract pointer
 # 15 ratings, 1..20: GK, SW, DL, DC, DR, DM, ML, MC, MR, AML, AMC, AMR, ST, WBL, WBR
 positions = 0x150
+# Pointer to the (begin, end, capacity) list of 0x18-byte records the game keeps of his positions and writes
+# his ratings back from: read in the game's own position setter and in live memory.
+position_records = 0x1A8
 # 8 ratings, 1..20: adaptability, ambition, loyalty, pressure, professionalism,
 # sportsmanship, temperament, controversy
 personality = 0x2F8
@@ -144,6 +147,10 @@ job = 0x26                # u8 job code (1 player, 16 manager, 20 assistant mana
 # whose clauses list holds his release clause (859,031,872 pounds, a billion euros) and three bonuses.
 clauses = 0x68            # 8-byte entries: u32 amount (0xFFFFFFFF: none), u16 condition (0xFFFF: none), u16 kind
 competition_bonuses = 0x80 # 32-byte entries: the competition's UID at +0x14, the amount at +0x18
+# Pointer to a (begin, end, capacity) list of 16-byte entries: a pointer to the award, then a u32 amount in pounds.
+# Steam 26577676 (13 Nov 2026): Declan Rice's contract at Barcelona holds the World Footballer of the Year (102407)
+# and the World Golden Ball (102406) at 1,171,666 each, which FM's contract page shows as $1.6M each.
+award_bonuses = 0x98
 # Checked against FMRTE's contract page for Kane, Haaland, Alex Scott, Olise and Mbappé (Game Pass, 6 Sep 2026):
 # loyalty bonus 33,401 / 43,634 / 20,882 / 37,798 / 50,098, happiness 71 / 60 / 60 / 60 / 80 and playing time
 # happiness 4 / 16 / 27 / 8 / 30. Olivier Boscagli's happiness reads -4.
@@ -300,6 +307,11 @@ players = 0x38
 captain = 0x88
 vice_captain = 0x90
 reputation = 0xA8         # u16, 0..10000; the club's reputation lives on its senior team
+# Pointer to the competition the team plays its league football in this season (0x60 holds last season's, which
+# differs for a promoted or relegated club; 0x98 its continental competition). After the 2026/27 season ended:
+# Arsenal the Premier League, Middlesbrough (promoted) the Premier League as the game's club page shows, Sunderland
+# (relegated) the Championship, Real Madrid the Spanish First Division (docs/EDITING-VALIDATION.md).
+division = 0x50
 # The manager's object, as for a national team. Arsenal's senior team points at its human manager (staff id
 # 2002071616, his person block 0x340 further) on Steam 26340721.
 manager = 0x80
@@ -349,8 +361,8 @@ scouting_staff = 0x90     # scouts, the chief scout, recruitment analysts
 relations = 0x48          # the club's relations, laid out as a person's: code 5 to a club is a rivalry, 0-100
 links = 0x118             # list of pointers to its links with other clubs (affiliations)
 link_club = 0x08          # in a link: the other club
-plays_in = 0xE8           # nation pointer: where it plays when based abroad, else its own nation
-nation = 0xD8             # nation pointer
+plays_in = 0xE8           # nation pointer: its own nation (Cardiff City: Wales)
+nation = 0xD8             # nation pointer: the nation whose league it plays in (Cardiff City: England)
 
 # A club's stadium (db::STADIUM, 0xC0 bytes), which its senior team points at. Read on the Game Pass build with
 # Manchester United's Old Trafford: capacity 74,879, all of it seated, 74,310 in use, room to grow to 95,285; and
@@ -453,6 +465,25 @@ actual = 0xB0
 rules = 0x38
 
 # The kinds of injury (db::INJURY), laid out as on macOS but for the table's vector at +0x80.
+# Every nation (db::NATION) and every stadium (db::STADIUM), from their database tables in the block that holds the
+# competitions' (statics `nations` and `stadiums` of the build profile), read as the competitions are: a vector of
+# pointers at +0x80, each object with its place in the table at +0x08. The nations' fields are those of [nation], the
+# stadiums' those of [stadium]. Read from the table block on the arm64 Mac build 26340721 (docs/recon/
+# fm27-competitions-awards-2.md): 251 nations, the same objects players point at, and 21,923 stadiums. The class and
+# every row's place are checked before a row is used; where they do not check out the lists keep to the nations of the
+# people and competitions read and to the clubs' stadiums.
+[nation_table]
+class = ".?AVNATION@db@@"
+size = 0x20
+table_items = 0x80
+index = 0x08
+
+[stadium_table]
+class = ".?AVSTADIUM@db@@"
+size = 0x98
+table_items = 0x80
+index = 0x08
+
 [injury_kind]
 class = ".?AVINJURY@db@@"
 size = 0x78

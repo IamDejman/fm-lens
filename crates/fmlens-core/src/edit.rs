@@ -18,9 +18,11 @@ use crate::health::Lock;
 use crate::national::Side;
 use crate::officials::OfficialSummary;
 use crate::players::{Nation, PlayerSummary};
+use crate::position_records::Records;
 use crate::profile::{HumanManagerLayout, Layout};
 use crate::session::Session;
 use crate::staff::StaffSummary;
+use crate::transfer::{MoveError, Patch};
 
 /// The kind of object a field belongs to.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -127,6 +129,13 @@ const POINTERS: RangeInclusive<i64> = 0x1_0000..=0x7FFF_FFFF_FFFF;
 
 /// Why a pointer field refuses a new value; the app has the words in Turkish and Spanish too.
 const OTHER_CLASS: &str = "the new value is not one of the game's own records of that kind";
+
+/// Why a position is left as it is when the records the game keeps of the player's positions cannot be read.
+const ODD_RECORDS: &str = "the game's records of the player's positions do not read as expected";
+
+/// Why a position is left as it is when the records of the player's positions changed meanwhile: the game
+/// changed them, or a later edit took another record out.
+const RECORDS_CHANGED: &str = "the player's position records changed after this edit; undo newer position edits first";
 
 /// How the game shows a stored value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -359,9 +368,23 @@ pub fn fields(layout: &Layout, entity: Entity) -> Vec<Field> {
     }
 }
 
-/// A wage in pounds per week, and a contract end between 2000 and 2100.
-fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 2] {
+/// The days a contract may have been signed on, or its holder have joined the club: from 1950, as a member of staff
+/// may have been at his club for decades, to the game's date once that is read (see [`Session::fields`]).
+const CONTRACT_STARTS: RangeInclusive<i64> = 19500101..=21001231;
+
+/// The fields whose latest day is the game's date: a contract is not signed, nor a club joined, on a day to come.
+const CONTRACT_START_KEYS: [&str; 2] = ["contract.signed", "contract.joined"];
+
+/// A wage in pounds per week, a contract end between 2000 and 2100, and the days the contract was signed and its
+/// holder joined the club: those two one person at a time.
+fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 4] {
     let c = &layout.contract;
+    let start = |key: &str, offset: u64| {
+        Field::new(entity, key, offset, Kind::Date, CONTRACT_STARTS)
+            .plausible(0..=22001231)
+            .single()
+            .in_record(Place::Contract)
+    };
     [
         Field::new(entity, "contract.wage", c.wage, Kind::I32, 0..=10_000_000)
             .plausible(0..=i64::from(i32::MAX))
@@ -369,7 +392,15 @@ fn contract_fields(layout: &Layout, entity: Entity) -> [Field; 2] {
         Field::new(entity, "contract.expires", c.expires, Kind::Date, 20000101..=21001231)
             .plausible(0..=22001231)
             .in_record(Place::Contract),
+        start("contract.signed", c.signed),
+        start("contract.joined", c.joined),
     ]
+}
+
+/// The latest day the editor writes to a field of [`CONTRACT_START_KEYS`] on `today`, the game's date, where it is
+/// read.
+fn latest_contract_start(today: Option<FmDate>) -> i64 {
+    today.map_or(*CONTRACT_STARTS.end(), |today| today.to_number().min(*CONTRACT_STARTS.end()))
 }
 
 /// What the borrowing club pays of a loaned player's wage, and when the loan ends: one player at a time, where the
@@ -437,6 +468,9 @@ fn player_mood_fields(layout: &Layout) -> [Field; 4] {
 /// goes on, so once the game is past 2020 its date is the latest (see [`Session::fields`]).
 const BIRTH_DATES: RangeInclusive<i64> = 19400101..=20201231;
 
+/// The same for staff, from 1920: chairmen and owners are staff too, and can be far older than any player.
+const STAFF_BIRTH_DATES: RangeInclusive<i64> = 19200101..=20201231;
+
 /// The latest birth date the editor writes on `today`, the game's date, where it is read.
 fn latest_birth(today: Option<FmDate>) -> i64 {
     today.map_or(*BIRTH_DATES.end(), |today| today.to_number().max(*BIRTH_DATES.end()))
@@ -483,11 +517,12 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
         let offset = *p.attributes.get(*key)?;
         Some(field(&format!("attribute.{key}"), offset, Kind::U8, 1..=100).plausible(0..=100).attribute())
     }));
-    // The game no longer plays a sweeper: every player rates 1 there, so it is not offered.
+    // The game no longer plays a sweeper: every player rates 1 there, so it is not offered. It writes a rating back
+    // from the record it keeps of the position, so the rest are offered only where the layout places those records.
     out.extend(
-        POSITIONS.iter().enumerate().filter(|&(_, &key)| key != "sw").map(|(i, key)| {
-            field(&format!("position.{key}"), p.positions + i as u64, Kind::U8, 1..=20).plausible(0..=20)
-        }),
+        POSITIONS.iter().enumerate().filter(|&(_, &key)| key != "sw" && p.position_records.is_some()).map(
+            |(i, key)| field(&format!("position.{key}"), p.positions + i as u64, Kind::U8, 1..=20).plausible(0..=20),
+        ),
     );
     out.extend(PERSONALITY.iter().enumerate().map(|(i, key)| {
         field(&format!("personality.{key}"), p.personality + i as u64, Kind::U8, 1..=20).plausible(0..=20)
@@ -513,6 +548,9 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
         field("reputation.current", s.current_reputation, Kind::U16, 0..=10_000),
         field("reputation.world", s.world_reputation, Kind::U16, 0..=10_000),
         field("nation", s.nation, Kind::Pointer, POINTERS).single(),
+        // The person record's own date, where a player's keeps his; the game works out the age from it. A member of
+        // staff without one is left as he is.
+        field("date_of_birth", s.date_of_birth, Kind::Date, STAFF_BIRTH_DATES).plausible(19000101..=21001231),
     ];
     out.extend(crate::STAFF_ATTRIBUTE_GROUPS.iter().flat_map(|(_, keys)| keys.iter()).filter_map(|key| {
         if let Some(&offset) = s.attributes.get(*key) {
@@ -571,7 +609,7 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
         facility("facilities.corporate", f.corporate, Place::ClubFinance),
         money("finance.balance", f.balance, -2_000_000_000..=2_000_000_000),
         money("finance.transfer_budget", f.transfer_budget, 0..=2_000_000_000),
-        money("finance.wage_budget", f.wage_budget, 0..=100_000_000),
+        // Not the wage budget used (`f.wage_budget`): the game works it out again from the contracts within seconds.
         money("finance.total_wage_budget", f.total_wage_budget, 0..=100_000_000),
     ];
     // Capacities, as stored. The biggest stadium of the test save held 115,109.
@@ -610,13 +648,13 @@ const MOST_FORMATION: u8 = 64;
 /// What a nation's `dual_nationality` byte holds: its people may hold another nationality as well, or may not.
 pub const DUAL_NATIONALITY: [i64; 2] = [0, 2];
 
-/// The most FIFA points the editor writes; the leader of the test save had 1,995.88.
+/// The most FIFA points the editor writes; the leaders of the test save had 1,995.88 (men's) and 2,105.4 (women's).
 const MOST_FIFA_POINTS: f32 = 3000.0;
 
 /// The senior national teams' reputations and the containers' youth ratings, game importance, attendance and style
-/// ratings, men's and women's, the men's FIFA points, the population, whether dual nationality is allowed, and the years of residence that
-/// gain the nationality (255: no number of years does). One nation at a time; none where the build's layout does not
-/// place nations.
+/// ratings and FIFA points, men's and women's, the population, whether dual nationality is allowed, and the years of
+/// residence that gain the nationality (255: no number of years does). One nation at a time; none where the build's
+/// layout does not place nations.
 fn nation_fields(layout: &Layout) -> Vec<Field> {
     let Some(n) = layout.national.as_ref() else {
         return Vec::new();
@@ -668,11 +706,16 @@ fn nation_fields(layout: &Layout) -> Vec<Field> {
         attendance("women.attendance", Side::Women),
     ]);
     fields.extend(style("women.", Side::Women));
-    fields.extend([
-        // The live points FM ranks by at its next ranking date; the published position follows then, not at once.
-        field("points", n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
+    // The live points FM ranks by at its next ranking date; the published position follows then, not at once. The
+    // women's container holds the women's ranking the same way.
+    let points = |key: &str, side: Side| {
+        field(key, n.points, Kind::F32, 0..=f32_bits(MOST_FIFA_POINTS))
             .plausible(0..=f32_bits(f32::MAX))
-            .in_record(Place::NationalContainer(Side::Men)),
+            .in_record(Place::NationalContainer(side))
+    };
+    fields.extend([
+        points("points", Side::Men),
+        points("women.points", Side::Women),
         // Tuvalu has 9,646 people, Nigeria 232,679,478.
         field("population", n.population, Kind::U32, 1..=2_000_000_000).plausible(0..=i64::from(u32::MAX)),
         field("dual_nationality", n.dual_nationality, Kind::U8, 0..=2).choices(&DUAL_NATIONALITY),
@@ -748,11 +791,24 @@ impl PlayerSummary {
             "nation" => self.nation_address = value as u64,
             "contract.transfer_listed" => self.transfer_listed = value != 0,
             "contract.loan_listed" => self.loan_listed = value != 0,
+            "contract.wage" => self.wage = Some(value as i32),
+            "reputation.current" => self.current_reputation = value as u16,
+            "height" => self.height_cm = value as u16,
             _ => {
                 let position = field.strip_prefix("position.").and_then(|key| POSITIONS.iter().position(|&k| k == key));
                 if let Some(i) = position {
                     self.position_ratings[i] = value as u8;
                     self.positions = crate::players::natural_positions(&self.position_ratings);
+                }
+                let rating =
+                    field.strip_prefix("personality.").and_then(|key| PERSONALITY.iter().position(|&k| k == key));
+                if let Some(i) = rating {
+                    self.personality[i] = value as u8;
+                }
+                // A trait is one bit of the mask.
+                if let Some(bit) = field.strip_prefix("trait.").and_then(|n| n.parse::<u32>().ok()).filter(|&n| n < 64)
+                {
+                    self.traits = if value != 0 { self.traits | 1 << bit } else { self.traits & !(1 << bit) };
                 }
             }
         }
@@ -783,9 +839,16 @@ impl StaffSummary {
         match field {
             "current_ability" => self.current_ability = value as u16,
             "potential_ability" => self.potential_ability = value as i16,
+            // The age follows from the game's date, which the caller has (see `note_birth`).
+            "date_of_birth" => self.date_of_birth = FmDate::from_number(value),
             "nation" => self.nation_address = value as u64,
             _ => {}
         }
+    }
+
+    /// Works the age out again on `today`, the game's date, after the birth date changed.
+    pub fn note_birth(&mut self, today: Option<FmDate>) {
+        self.age = self.date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today));
     }
 }
 
@@ -839,6 +902,10 @@ pub struct Change {
     pub field: String,
     pub old: i64,
     pub new: i64,
+    /// The writes that took the game's record of a position out of the player's list as his rating changed, which
+    /// an undo puts back; none for any other field. They hold only in the game they were written in.
+    #[serde(skip)]
+    pub record: Vec<Patch>,
 }
 
 #[derive(Debug)]
@@ -1014,6 +1081,10 @@ impl Session {
         for field in out.iter_mut().filter(|field| field.key == "date_of_birth") {
             field.max = latest;
         }
+        let latest = latest_contract_start(self.game_date());
+        for field in out.iter_mut().filter(|field| CONTRACT_START_KEYS.contains(&field.key.as_str())) {
+            field.max = latest;
+        }
         out
     }
 
@@ -1141,7 +1212,14 @@ impl Session {
         if field.kind == Kind::Date && old == 0 {
             return Err(EditError::Unset { field: field.key.clone() });
         }
-        let change = Change { entity: target.entity, uid: target.uid, field: field.key.clone(), old, new: value };
+        let mut change = Change {
+            entity: target.entity,
+            uid: target.uid,
+            field: field.key.clone(),
+            old,
+            new: value,
+            record: Vec::new(),
+        };
         if old == value {
             return Ok(change);
         }
@@ -1157,18 +1235,52 @@ impl Session {
         {
             return Err(EditError::Taken { field: field.key.clone(), value, holder });
         }
-        self.process.write_bytes(address, &field.encode(value, &old_bytes))?;
-        let read = field.decode(&self.process.read_bytes(address, field.kind.size())?);
-        if read != value {
-            // Best effort: put back what was there.
-            let _ = self.process.write_bytes(address, &old_bytes);
-            return Err(EditError::NotApplied { field: field.key.clone(), wrote: value, read });
+        // The game writes a position's rating back from the record it keeps of it: the record goes first, as in the
+        // game's own editor. An undo puts it back itself.
+        if !restoring {
+            change.record = self.position_record(target, field)?;
+            self.write_patches(&change.record).map_err(|err| record_error(field, err))?;
+        }
+        if let Err(err) = self.write_checked(address, field, value, &old_bytes) {
+            // Best effort: the record goes back, as the rating has.
+            let _ = self.undo_patches(&change.record);
+            return Err(err);
         }
         // The game reuses the scores it keeps of a squad's mood for a week: have it work them out from this.
         if target.entity == Entity::Player && crate::mood::MOOD_FIELDS.contains(&field.key.as_str()) {
             self.recheck_squad_mood(target.address);
         }
         Ok(change)
+    }
+
+    /// Writes `value` to `field` at `address`, over `old_bytes`, and reads it back; where the game then holds something
+    /// else, what was there goes back.
+    fn write_checked(&self, address: u64, field: &Field, value: i64, old_bytes: &[u8]) -> Result<(), EditError> {
+        self.process.write_bytes(address, &field.encode(value, old_bytes))?;
+        let read = field.decode(&self.process.read_bytes(address, field.kind.size())?);
+        if read != value {
+            // Best effort: put back what was there.
+            let _ = self.process.write_bytes(address, old_bytes);
+            return Err(EditError::NotApplied { field: field.key.clone(), wrote: value, read });
+        }
+        Ok(())
+    }
+
+    /// The writes that take the game's record of the position `field` rates out of the player's list; none for any
+    /// other field, or for a position the game keeps no record of. Refused when his records do not read as such.
+    fn position_record(&self, target: &Target, field: &Field) -> Result<Vec<Patch>, EditError> {
+        let p = &self.layout.player;
+        let position = field.key.strip_prefix("position.").filter(|_| target.entity == Entity::Player);
+        let (Some(key), Some(offset)) = (position, p.position_records) else {
+            return Ok(Vec::new());
+        };
+        let Some(position) = POSITIONS.iter().position(|&name| name == key) else {
+            return Ok(Vec::new());
+        };
+        let pointer = self.process.read_u64(target.address + p.at(offset, target.shift))?;
+        let records = Records::read(&self.process, pointer)
+            .ok_or_else(|| EditError::Unsupported { field: field.key.clone(), reason: ODD_RECORDS })?;
+        Ok(records.removal(position))
     }
 
     /// Whether the objects at `a` and `b` are of one class: their first word, the class's table, is the same.
@@ -1210,10 +1322,17 @@ impl Session {
     }
 
     /// Undoes `change`, provided the game still holds the value it wrote, or already holds the
-    /// one it found.
+    /// one it found. The record of a position the change took out goes back with the rating; where the game has
+    /// changed the player's records since, neither does.
     pub fn revert(&self, target: &Target, change: &Change) -> Result<Change, EditError> {
         let field = self.field(target.entity, &change.field)?;
-        self.write(target, &field, change.old, Some(change.new), true)
+        let undone = self.write(target, &field, change.old, Some(change.new), true)?;
+        if let Err(err) = self.undo_patches(&change.record) {
+            // Best effort: the rating stays as the change wrote it, with no record to write another back from.
+            let _ = self.write(target, &field, change.new, Some(change.old), true);
+            return Err(record_error(&field, err));
+        }
+        Ok(undone)
     }
 
     fn check_target(&self, target: &Target, field: &Field) -> Result<(), EditError> {
@@ -1325,6 +1444,15 @@ impl Session {
     }
 }
 
+/// What went wrong taking the record of a position out of a player's list, or putting it back, as an edit's failure.
+fn record_error(field: &Field, err: MoveError) -> EditError {
+    match err {
+        MoveError::Locked(lock) => EditError::Locked { field: field.key.clone(), lock },
+        MoveError::Memory(err) => EditError::Memory(err),
+        _ => EditError::Unsupported { field: field.key.clone(), reason: RECORDS_CHANGED },
+    }
+}
+
 /// Whether a write of `value` over `expected` meets something else: the game holds `old`, neither what the write
 /// expects nor what it would write.
 fn conflicts(expected: i64, old: i64, value: i64) -> bool {
@@ -1349,6 +1477,14 @@ mod tests {
         assert_eq!(latest_birth(FmDate::from_number(20260701)), 20260701);
         assert_eq!(latest_birth(FmDate::from_number(20460315)), 20460315);
         assert_eq!(latest_birth(FmDate::from_number(20190101)), 20201231);
+    }
+
+    #[test]
+    fn contract_starts_end_at_the_game_date() {
+        // Without the game's date, the static range; with it, no day after it.
+        assert_eq!(latest_contract_start(None), 21001231);
+        assert_eq!(latest_contract_start(FmDate::from_number(20271211)), 20271211);
+        assert_eq!(latest_contract_start(FmDate::from_number(21500101)), 21001231);
     }
 
     #[test]
@@ -1438,14 +1574,14 @@ mod tests {
         let layout = crate::layout_for(27).expect("FM27 layout");
         let key = |list: &[Field], key: &str| list.iter().find(|f| f.key == key).cloned().expect(key);
         let players = fields(&layout, Entity::Player);
-        // Every position but the sweeper; the contract's wage and end; and the squad number, squad status and the
-        // transfer and loan listing, which only players have.
+        // Every position but the sweeper; the contract's wage, end and the days it was signed and he joined; and the
+        // squad number, squad status and the transfer and loan listing, which only players have.
         // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale); and a loan's wage
         // and end, where the layout places loans.
         let loan = if layout.loan.is_some() { 2 } else { 0 };
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 2 + 4 + 4 + 64 + loan
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 4 + 4 + 4 + 64 + loan
         );
         if layout.loan.is_some() {
             for key in ["loan.wage", "loan.ends"] {
@@ -1459,18 +1595,31 @@ mod tests {
         assert!(!key(&players, "nation").mass);
         assert!(!key(&players, "contract.squad_number").mass);
         assert!(key(&players, "contract.wage").mass);
+        // The days a contract was signed and its holder joined: in the contract, one person at a time, players and
+        // staff alike.
+        let c = &layout.contract;
+        for (entity, list) in [(Entity::Player, &players), (Entity::Staff, &fields(&layout, Entity::Staff))] {
+            for (name, offset) in [("contract.signed", c.signed), ("contract.joined", c.joined)] {
+                let field = key(list, name);
+                assert_eq!((field.entity, field.offset, field.kind), (entity, offset, Kind::Date));
+                assert_eq!(field.place, Place::Contract);
+                assert!(!field.mass && !field.shifted);
+                assert!(field.takes(20090701) && !field.takes(19491231) && field.blank.is_none());
+            }
+        }
         assert!(!players.iter().any(|f| f.key == "position.sw"));
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
-        // The 2 contract fields, the coaching licence and the 2 formations where the layout places them, and the human
-        // manager's 2 flags.
+        // The 7 basic fields; the 4 contract fields, the coaching licence and the 2 formations where the layout places
+        // them, and the human manager's 2 flags.
         let licence = usize::from(layout.staff.coaching_licence.is_some());
         let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
-        assert_eq!(staff.len(), 6 + staff_attributes + PERSONALITY.len() + 2 + licence + formations + 2);
+        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2);
         let clubs = fields(&layout, Entity::Club);
-        // Reputation, the 5 facilities and the 4 amounts of money; and the 4 capacities of the stadium where the layout
-        // knows it (Windows so far).
-        assert_eq!(clubs.len(), 10 + if layout.stadium.is_some() { 4 } else { 0 });
+        // Reputation, the 5 facilities and the 3 amounts of money; and the 4 capacities of the stadium where the layout
+        // knows it (Windows so far). The wage budget used is the game's to work out.
+        assert_eq!(clubs.len(), 9 + if layout.stadium.is_some() { 4 } else { 0 });
+        assert!(!clubs.iter().any(|field| field.key == "finance.wage_budget"));
         if layout.stadium.is_some() {
             assert_eq!(key(&clubs, "stadium.capacity").place, Place::Stadium);
             // A count of seats, not money, which the app shows with a pound sign.
@@ -1544,6 +1693,31 @@ mod tests {
     }
 
     #[test]
+    fn staff_take_a_birth_date_where_a_player_keeps_his() {
+        let layout = crate::layout_for(27).expect("FM27 layout");
+        let (p, s) = (&layout.player, &layout.staff);
+        let staff = fields(&layout, Entity::Staff);
+        let born = staff.iter().find(|f| f.key == "date_of_birth").cloned().expect("field");
+        assert_eq!((born.offset, born.kind, born.place), (s.date_of_birth, Kind::Date, Place::Object));
+        // The same place in the person record as a player's, whose edit is already in use.
+        assert_eq!(s.date_of_birth - s.person_block, p.date_of_birth - p.person_block);
+        assert_eq!(crate::health::Check::of_field(&born), crate::health::Check::Staff);
+
+        // A chairman born in the 1930s keeps a date of his own; no one is born before 1920 or after the game's date.
+        assert!(born.takes(19470308) && born.takes(19350101) && born.takes(20201231));
+        assert!(!born.takes(19191231) && !born.takes(20300101));
+        // No date at all, or one that is no day, is not written over.
+        assert!(born.is_plausible(19030101) && !born.is_plausible(0) && !born.is_plausible(19470230));
+
+        // In the person block, so the human manager's is 0x340 further.
+        assert!(born.shifted);
+        let coach = Target { entity: Entity::Staff, uid: 1, address: 0x1000, shift: 0 };
+        let manager = Target { entity: Entity::Staff, uid: 2, address: 0x1000, shift: 0x340 };
+        assert_eq!(born.address(coach.address, &coach), 0x1000 + s.date_of_birth);
+        assert_eq!(born.address(manager.address, &manager), 0x1000 + s.date_of_birth + 0x340);
+    }
+
+    #[test]
     fn nations_take_their_own_rules_one_at_a_time() {
         let layout = crate::layout_for(27).expect("FM27 layout");
         let nations = fields(&layout, Entity::Nation);
@@ -1566,23 +1740,25 @@ mod tests {
         };
         let expected: Vec<String> = side("")
             .chain(side("women."))
-            .chain(["points", "population", "dual_nationality", "naturalisation"].map(String::from))
+            .chain(["points", "women.points", "population", "dual_nationality", "naturalisation"].map(String::from))
             .collect();
         assert_eq!(keys, expected);
         assert!(nations.iter().all(|f| !f.mass && !f.shifted));
 
-        // The men's FIFA points, an f32 in the container held as its bits: England's 1,922.83 is in range, a negative
-        // number or one past 3,000 is not, and the bytes written are the float's own.
-        let points = key("points");
-        assert_eq!(
-            (points.place, points.offset, points.kind),
-            (Place::NationalContainer(Side::Men), n.points, Kind::F32)
-        );
-        let england = f32_bits(1922.83);
-        assert!(points.takes(0) && points.takes(england) && points.takes(f32_bits(3000.0)));
-        assert!(!points.takes(f32_bits(3000.01)) && !points.takes(f32_bits(-1.0)));
-        assert_eq!(points.decode(&1922.83f32.to_le_bytes()), england);
-        assert_eq!(points.encode(f32_bits(2000.5), &[0; 4]), 2000.5f32.to_le_bytes());
+        // The FIFA points, an f32 in each side's container held as its bits: England's 1,922.83 (its women's 2,027.1)
+        // is in range, a negative number or one past 3,000 is not, and the bytes written are the float's own.
+        for (name, side, england) in [("points", Side::Men, 1922.83f32), ("women.points", Side::Women, 2027.1)] {
+            let points = key(name);
+            assert_eq!(
+                (points.place, points.offset, points.kind),
+                (Place::NationalContainer(side), n.points, Kind::F32)
+            );
+            let bits = f32_bits(england);
+            assert!(points.takes(0) && points.takes(bits) && points.takes(f32_bits(3000.0)));
+            assert!(!points.takes(f32_bits(3000.01)) && !points.takes(f32_bits(-1.0)));
+            assert_eq!(points.decode(&england.to_le_bytes()), bits);
+            assert_eq!(points.encode(f32_bits(2000.5), &[0; 4]), 2000.5f32.to_le_bytes());
+        }
 
         // The senior teams' reputations, found through the containers; the youth ratings in the containers; the rest
         // in the nation itself.
@@ -1786,11 +1962,28 @@ mod tests {
             position_ratings,
             nation_address: 0,
             attributes: vec![10; crate::ATTRIBUTE_GROUPS.iter().map(|(_, keys)| keys.len()).sum()],
+            base: crate::players::Base::default(),
             transfer_listed: false,
             loan_listed: false,
+            height_cm: 180,
+            wage: Some(1_000),
+            transfer_value: None,
+            current_reputation: 5000,
+            personality: [10; 8],
+            traits: 0b100,
             address: 0,
             shift: 0,
         };
+        // What the list's filters read follows too.
+        player.note_change("contract.wage", 25_000);
+        player.note_change("height", 191);
+        player.note_change("personality.ambition", 17);
+        player.note_change("trait.7", 1);
+        player.note_change("trait.2", 0);
+        player.note_change("trait.64", 1);
+        assert_eq!((player.wage, player.height_cm), (Some(25_000), 191));
+        assert_eq!(player.personality[PERSONALITY.iter().position(|&key| key == "ambition").unwrap()], 17);
+        assert_eq!(player.traits, 1 << 7);
         player.note_change("current_ability", 130);
         player.note_change("potential_ability", 160);
         player.note_change("position.dc", 19);

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 const source = readFileSync(new URL("../../site/release.js", import.meta.url), "utf8");
-const { release } = await import(`data:text/javascript,${encodeURIComponent(source)}`);
+const { release, releaseNotesHtml } = await import(`data:text/javascript,${encodeURIComponent(source)}`);
 const script = readFileSync(new URL("../../scripts/release.sh", import.meta.url), "utf8");
 const releases = "https://github.com/IamDejman/fm-lens-releases/releases";
 const latest = {
@@ -56,4 +56,14 @@ test("the site asks GitHub for the version a download names", async (t) => {
   assert.equal(globalThis.fetch.mock.calls[0].arguments[0], `${api}/tags/v0.7.2`);
   await release("../../other");
   assert.equal(globalThis.fetch.mock.calls[1].arguments[0], `${api}/latest`);
+});
+
+test("the release notes list names each version, its day in UTC and the downloads it has", () => {
+  const html = releaseNotesHtml([
+    { version: "9.9.9", published: "2026-11-11T23:30:00Z", html: "<p>New</p>", downloads: { mac: "a.dmg", windows: null } },
+  ]);
+  assert.match(html, /<h2 id="v9\.9\.9">FM Lens 9\.9\.9<\/h2>\n<p class="release-date">11 November 2026<\/p>/);
+  assert.match(html, /href="\/download\/\?for=mac&amp;version=9\.9\.9" aria-label="Download FM Lens 9\.9\.9 for Mac"/);
+  assert.ok(!html.includes("for=windows"));
+  assert.match(html, /<div class="release-body"><p>New<\/p><\/div>/);
 });

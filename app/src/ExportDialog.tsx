@@ -1,5 +1,5 @@
-// Exporting players: the button in the toolbar of the player list, and the dialog it opens. The dialog writes what the
-// list's search and filters select, in its order, to a CSV or JSON file in the exports folder. It only reads the game.
+// Exporting players: the button in the toolbar of the player list, and the dialog it opens. The dialog writes the
+// players the list shows, in its order, to a CSV or JSON file in the exports folder. It only reads the game.
 
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -9,7 +9,7 @@ import { locale } from "./i18n";
 import { exportText as text } from "./labels";
 import type { ListState } from "./ListBrowser";
 import { useDialogReturn } from "./MoreMenu";
-import type { ExportFormat, ExportReport, PlayerFilter, PlayerOrder } from "./types";
+import type { BestFor, ExportFormat, ExportReport, PlayerFilter, PlayerOrder, SimilarTo } from "./types";
 import { useModal } from "./useModal";
 
 const FORMATS: readonly ExportFormat[] = ["csv", "csvSemicolon", "json"];
@@ -39,7 +39,9 @@ interface ExportScope {
   query: string;
   filter: PlayerFilter | undefined;
   order: PlayerOrder | null;
-  /** How many players the search and the filters select. */
+  best: BestFor | undefined;
+  similar: SimilarTo | undefined;
+  /** How many players the list shows. */
   total: number;
 }
 
@@ -49,10 +51,14 @@ interface ExportButtonProps {
   /** The list's filter and order, as it sends them to its search: none of either when nothing is chosen. */
   filter: PlayerFilter | undefined;
   order: PlayerOrder | null;
+  /** The list's "Best for", which keeps only the players who play its positions and ranks them. */
+  best: BestFor | undefined;
+  /** The player the list is compared with, whom it leaves out, the most alike first. */
+  similar: SimilarTo | undefined;
 }
 
 /** The Export button of the player list, and the dialog it opens. It reads only, so it is there read-only too. */
-export function ExportButton({ list, filter, order }: ExportButtonProps) {
+export function ExportButton({ list, filter, order, best, similar }: ExportButtonProps) {
   const [scope, setScope] = useState<ExportScope | null>(null);
   const button = useRef<HTMLButtonElement>(null);
   useDialogReturn(scope !== null, button);
@@ -68,7 +74,7 @@ export function ExportButton({ list, filter, order }: ExportButtonProps) {
         aria-haspopup="dialog"
         disabled={total === null}
         title={text.buttonTitle}
-        onClick={() => total !== null && setScope({ query: list.query, filter, order, total })}
+        onClick={() => total !== null && setScope({ query: list.query, filter, order, best, similar, total })}
       >
         {text.button}
       </button>
@@ -126,7 +132,8 @@ function ExportDialog({ scope, onClose }: { scope: ExportScope; onClose: () => v
     setError(null);
     setReport(null);
     try {
-      const args = { query: scope.query, filter: scope.filter, order: scope.order ?? undefined, format };
+      const { query, filter, best, similar } = scope;
+      const args = { query, filter, order: scope.order ?? undefined, best, similar, format };
       const done = await call<ExportReport>("export_players", args);
       if (alive.current) {
         setReport(done);

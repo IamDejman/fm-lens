@@ -35,7 +35,7 @@ function Harness() {
   const standing = useMemo(() => standingFields(log), [log]);
   const [uid, setUid] = useState(FIRST);
   const newest = log.find((change) => change.undoneAt === null);
-  return <EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited: () => void reload(), gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {} }}>
+  return <EditorContext.Provider value={{ editable: true, readOnlyNote: '', onEdited: () => void reload(), gameActions: NO_GAME_ACTIONS, injuryKinds: async () => [], gameDate: null, openPlayer() {}, openStaff() {}, findSimilar() {} }}>
     <StandingFieldsContext.Provider value={standing}>
       <Profile key={uid} uid={uid} />
       <button onClick={() => setUid(uid === FIRST ? OTHER : FIRST)}>Other profile</button>

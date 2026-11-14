@@ -2,6 +2,7 @@ import {
   Fragment,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type CSSProperties,
@@ -15,9 +16,12 @@ import { call } from "./api";
 import { ActivatableValue, EditableValue, EditBar, EditButton, EditInput, SharedRangeHint } from "./EditControls";
 import { converts, toShown } from "./currency";
 import { describeError, formatAmount, formatDate, formatMoney, formatNumber } from "./format";
+import { useHoverNote } from "./HoverNote";
 import { isShortcut } from "./keys";
-import { fieldLabel, PERSONALITY_LABELS, profileText, type PersonalityKey } from "./labels";
+import { fieldLabel, PERSONALITY_LABELS, PERSONALITY_NOTES, profileText } from "./labels";
+import { PERSONALITY } from "./playerAttributes";
 import { PanelResizer, PanelWidthButton, usePanelWidth } from "./PanelResizer";
+import { ProfilePlaceContext } from "./profilePlace";
 import type { Attribute, FmDate, Reputation } from "./types";
 import {
   AppliedFieldsContext,
@@ -133,6 +137,16 @@ export function ProfileFrame(props: ProfileFrameProps) {
   const panelWidth = usePanelWidth(wide ? "wide" : "profile");
   const shownVitals = vitals?.filter(Boolean) ?? [];
   const body = useRef<HTMLDivElement>(null);
+  const place = useContext(ProfilePlaceContext);
+  const shown = loaded?.details !== undefined;
+
+  // Coming back to its section builds the profile again: once it has something to show, it is where it was left.
+  useLayoutEffect(() => {
+    const top = shown ? (place?.top() ?? 0) : 0;
+    if (top > 0) {
+      body.current?.scrollTo({ top });
+    }
+  }, [shown, place]);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -243,7 +257,12 @@ export function ProfileFrame(props: ProfileFrameProps) {
 
         {tabs}
 
-        <div className="profile-body" ref={body} data-tour="profile">
+        <div
+          className="profile-body"
+          ref={body}
+          data-tour="profile"
+          onScroll={place ? (event) => place.note(event.currentTarget.scrollTop) : undefined}
+        >
           <SectionJump body={body} />
           {!loaded && (
             <p className="profile-status" role="status">
@@ -451,7 +470,9 @@ export interface RatingRow {
   field?: string;
   label: string;
   value: number | undefined;
-  /** Hover text, e.g. the value as stored. */
+  /** What the rating measures: shown in a box over the row (see `useHoverNote`). */
+  note?: string;
+  /** Hover text where there is no note, e.g. the value as stored: a cell of the comparison has it. */
   title?: string;
   /** A low value is the good one, so the colours run the other way. */
   lowerIsBetter?: boolean;
@@ -460,24 +481,21 @@ export interface RatingRow {
 /** Ratings where a low value is the good one. */
 export const LOWER_IS_BETTER = new Set<string>(["injury_proneness", "dirtiness", "controversy"]);
 
-const PERSONALITY: PersonalityKey[] = [
-  "adaptability", "ambition", "loyalty", "pressure", "professionalism", "sportsmanship", "temperament", "controversy",
-];
-
 /** An attribute as FM shows it (1–20), with the value as stored in the hover text. */
 export function attributeRow(
   key: string,
   label: string,
   attribute: Attribute | undefined,
-  options: { lowerIsBetter?: boolean; scale?: number } = {},
+  options: { lowerIsBetter?: boolean; scale?: number; note?: string } = {},
 ): RatingRow {
-  const { lowerIsBetter = false, scale } = options;
+  const { lowerIsBetter = false, scale, note } = options;
   const notes = [attribute && profileText.raw(attribute.raw, scale), lowerIsBetter && profileText.lowerIsBetter];
   return {
     key,
     field: `attribute.${key}`,
     label,
     value: attribute?.value,
+    note,
     title: notes.filter(Boolean).join(" · ") || undefined,
     lowerIsBetter,
   };
@@ -491,6 +509,7 @@ export function personalityRows(personality: Record<string, number>): RatingRow[
       field: `personality.${key}`,
       label: PERSONALITY_LABELS[key],
       value: personality[key],
+      note: PERSONALITY_NOTES[key],
       title: lowerIsBetter ? profileText.lowerIsBetter : undefined,
       lowerIsBetter,
     };
@@ -517,8 +536,9 @@ export function RatingList({ rows }: { rows: RatingRow[] }) {
 function RatingItem({ row }: { row: RatingRow }) {
   const editing = useEditableField(row.field);
   const applied = useContext(AppliedFieldsContext).has(row.field ?? "");
+  const note = useHoverNote(row.note, row.lowerIsBetter ? profileText.lowerIsBetter : undefined);
   return (
-    <div className="stat" title={row.title}>
+    <div className="stat" title={row.note ? undefined : row.title} {...note.target}>
       <dt>{row.label}</dt>
       {editing && row.field ? (
         <dd className="edit-cell">
@@ -534,6 +554,7 @@ function RatingItem({ row }: { row: RatingRow }) {
           )}
         </dd>
       )}
+      {note.box}
     </div>
   );
 }
@@ -614,7 +635,7 @@ export function WageFact({ wage }: { wage: number }) {
   );
 }
 
-/** When the contract was signed, ends and began; the end is a date input while it can be edited. */
+/** When the contract was signed, ends and began: each a date input while it can be edited. */
 export function ContractDates({
   contract,
 }: {
@@ -623,11 +644,15 @@ export function ContractDates({
   const date = (value: FmDate | null) => formatDate(value) || profileText.none;
   return (
     <dl className="stats">
-      <Fact label={profileText.signed}>{date(contract.signed)}</Fact>
+      <Fact label={profileText.signed}>
+        <EditableValue field="contract.signed">{date(contract.signed)}</EditableValue>
+      </Fact>
       <Fact label={profileText.expires}>
         <EditableValue field="contract.expires">{date(contract.expires)}</EditableValue>
       </Fact>
-      <Fact label={profileText.joined}>{date(contract.joined)}</Fact>
+      <Fact label={profileText.joined}>
+        <EditableValue field="contract.joined">{date(contract.joined)}</EditableValue>
+      </Fact>
     </dl>
   );
 }

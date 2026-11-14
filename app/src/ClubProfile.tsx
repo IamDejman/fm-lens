@@ -11,7 +11,8 @@ import {
   SUPPORTER_TRAIT_LABELS,
   type SupporterMixKey,
 } from "./labels";
-import { ClubLogo, PICTURE_SIZE } from "./Picture";
+import { ClubLogo, Picture, PICTURE_SIZE } from "./Picture";
+import { clubKits, type KitKind } from "./pictures";
 import {
   Fact,
   ProfileFrame,
@@ -128,14 +129,45 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
       <div className="profile-stack">
         <Facilities facilities={details.facilities} />
         <FinancesGroup club={details.uid} finances={details.finances} />
-        <StadiumGroup stadium={details.stadium} />
+        <StadiumGroup club={details.uid} stadium={details.stadium} />
       </div>
       <div className="profile-stack">
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
         <ClubInfo details={details} />
         <ClubTiesGroups rivals={details.rivals} links={details.links} />
+        <Kits club={details.uid} />
       </div>
     </div>
+  );
+}
+
+/** The club's kits, from the user's kit packs or else the game; nothing when neither has them. */
+function Kits({ club }: { club: number }) {
+  const [kits, setKits] = useState<KitKind[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    clubKits(club)
+      .then((found) => !cancelled && setKits(found))
+      .catch(() => !cancelled && setKits([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [club]);
+  if (kits.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{text.kits}</h3>
+      <ul className="club-kits">
+        {kits.map((kind) => (
+          <li key={kind}>
+            <Picture kind={`kit-${kind}`} id={club} size={PICTURE_SIZE.kit} label={text.kitNames[kind]} />
+            <span>{text.kitNames[kind]}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -263,7 +295,7 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
               </EditableValue>
             </Fact>
             <Fact label={text.wageBudget}>
-              <EditableValue field="finance.wage_budget">{formatMoney(finances.wageBudget)}</EditableValue>
+              {formatMoney(finances.wageBudget)}
               <PerWeek />
             </Fact>
             <Fact label={text.totalWageBudget}>
@@ -281,8 +313,11 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
   );
 }
 
-/** The stadium the senior team plays at: its name, and its capacities, inputs while the club is edited. */
-function StadiumGroup({ stadium }: { stadium: Stadium | null }) {
+/**
+ * The stadium the senior team plays at: its name, and its capacities, inputs while the club is edited; and its owner
+ * where that is another club.
+ */
+function StadiumGroup({ club, stadium }: { club: number; stadium: Stadium | null }) {
   return (
     <section className="profile-group">
       <h3>{stadium?.name ? `${text.stadium} · ${stadium.name}` : text.stadium}</h3>
@@ -300,6 +335,7 @@ function StadiumGroup({ stadium }: { stadium: Stadium | null }) {
           <Fact label={text.expansion}>
             <EditableValue field="stadium.expansion">{formatNumber(stadium.expansion)}</EditableValue>
           </Fact>
+          {stadium.owner && stadium.owner.uid !== club && <Fact label={text.owner}>{stadium.owner.name}</Fact>}
         </dl>
       ) : (
         <p className="note">{text.noStadium}</p>

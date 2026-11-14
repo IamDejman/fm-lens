@@ -15,15 +15,31 @@ import {
 import { formatNumber } from "./format";
 import { competitionListText, editText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
-import { NationFlag, WithPicture } from "./Picture";
+import { CompetitionLogo, NationFlag, PICTURE_SIZE, WithPicture } from "./Picture";
 import { Fact, useProfileDetails } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
-import type { CompetitionFilter, CompetitionRule, CompetitionSummary } from "./types";
+import { SavedFilterControls } from "./SavedFilterControls";
+import { readPlain, savedKind } from "./savedFilters";
+import { SortHeader, useListSort, type SortStart } from "./SortHeader";
+import type { CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ListOrder } from "./types";
 
 const text = competitionListText;
 const columns = text.columns;
 const filters = text.filters;
 const REPUTATION_RANGE = { min: 0, max: 200 };
+
+/** The columns the list sorts by. Until one is clicked the search answers with the highest reputation first. */
+const SORT: SortStart<CompetitionSort> = {
+  sorts: ["name", "nation", "continent", "reputation"],
+  start: { by: "reputation", ascending: false },
+  firstAscending: ["name", "nation", "continent"],
+};
+
+/** The inputs of the filter bar, empty: what a saved filter holds. */
+const NO_FIELDS = { kind: "all", nation: "", continent: "", minReputation: "", maxReputation: "" };
+type CompetitionFields = typeof NO_FIELDS;
+
+const SAVED = savedKind<CompetitionFields, CompetitionSort>("competitions", (value) => readPlain(value, NO_FIELDS), SORT.sorts);
 
 /**
  * The competitions, highest reputation first. A row holds all FM Lens knows of a competition but its short name and
@@ -41,6 +57,17 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
   useSnapshot("competitionContinent", () => continent);
   useSnapshot("competitionMinRep", () => minReputation);
   useSnapshot("competitionMaxRep", () => maxReputation);
+  const sort = useListSort("competitionOrder", SORT);
+  // What a saved filter keeps of the bar, and how one is brought back.
+  const fields: CompetitionFields = { kind, nation, continent, minReputation, maxReputation };
+  const applySaved = (saved: CompetitionFields, order: ListOrder<CompetitionSort> | null) => {
+    setKind(readKind(saved.kind));
+    setNation(saved.nation);
+    setContinent(saved.continent);
+    setMinReputation(saved.minReputation);
+    setMaxReputation(saved.maxReputation);
+    sort.set(order);
+  };
   const nationValue = nation.trim() || undefined;
   const continentValue = continent.trim() || undefined;
   const minRep = whole(minReputation, REPUTATION_RANGE);
@@ -95,14 +122,26 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
     <ListBrowser<CompetitionSummary>
       name="competitions"
       command="search_competitions"
-      requestArgs={{ filter }}
+      requestArgs={{ filter, order: sort.order ?? undefined }}
       version={version}
       active={active}
       placeholder={text.search}
       summary={text.summary}
       empty={(query) => text.empty(query, filter !== undefined)}
       filterBar={
-        <FilterBar chips={chips} onClear={clearAll}>
+        <FilterBar
+          chips={chips}
+          onClear={clearAll}
+          actions={
+            <SavedFilterControls
+              kind={SAVED}
+              fields={fields}
+              order={sort.order}
+              filtered={chips.length > 0}
+              onApply={applySaved}
+            />
+          }
+        >
           <KindField labels={filters} value={kind} onChange={setKind} />
           <label className="filter-field">
             <span>{filters.nation}</span>
@@ -137,10 +176,10 @@ export function CompetitionBrowser({ version, active }: { version: number; activ
       tableClass="competition-grid"
       header={
         <>
-          <th className="col-name">{columns.name}</th>
-          <th className="col-nation">{columns.nation}</th>
-          <th className="col-continent">{columns.continent}</th>
-          <th className="num col-rep">{columns.reputation}</th>
+          <SortHeader by="name" sort={sort} label={columns.name} className="col-name" />
+          <SortHeader by="nation" sort={sort} label={columns.nation} className="col-nation" />
+          <SortHeader by="continent" sort={sort} label={columns.continent} className="col-continent" />
+          <SortHeader by="reputation" sort={sort} label={columns.reputation} className="num col-rep" />
           <th className="num col-uid">{columns.uid}</th>
         </>
       }
@@ -154,10 +193,14 @@ function CompetitionCells({ competition }: { competition: CompetitionSummary }) 
   return (
     <>
       <td className="col-name" title={competition.name}>
-        <span className="name">
-          <span className="name-text">{competition.name}</span>
-          {competition.women && <span className="tag women">{text.women}</span>}
-        </span>
+        <WithPicture
+          picture={<CompetitionLogo uid={competition.uid} name={competition.name} size={PICTURE_SIZE.rowLogo} />}
+        >
+          <span className="name">
+            <span className="name-text">{competition.name}</span>
+            {competition.women && <span className="tag women">{text.women}</span>}
+          </span>
+        </WithPicture>
       </td>
       <td className="col-nation" title={competition.nation ?? undefined}>
         {competition.nation === null ? (

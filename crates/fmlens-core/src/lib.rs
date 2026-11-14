@@ -3,6 +3,7 @@
 
 #![cfg(any(windows, target_os = "macos"))]
 
+pub mod best;
 #[cfg(target_os = "macos")]
 pub mod bridge_setup;
 mod calibrate;
@@ -29,6 +30,7 @@ mod mood;
 mod national;
 mod officials;
 mod players;
+mod position_records;
 mod profile;
 mod promises;
 mod refresh;
@@ -36,6 +38,7 @@ mod relations;
 mod retirement;
 pub mod rtti;
 mod scan;
+mod scouting;
 mod session;
 mod squad;
 mod staff;
@@ -46,25 +49,28 @@ mod text;
 mod transfer;
 mod work_permits;
 
+pub use best::{BestFor, Fit, Weight, board_job};
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
 pub use clubs::{
     ClubDetails, ClubIndex, ClubSummary, Finances, SUPPORTER_MIX, SUPPORTER_TRAITS, StadiumClub, StadiumFilter,
-    StadiumSummary, read_club_details, read_clubs, read_stadiums,
+    StadiumSummary, read_club_details, read_clubs, read_stadiums, stadium_owner,
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
 pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue};
 pub use date::FmDate;
 pub use details::{
-    ATTRIBUTE_GROUPS, Attribute, Clause, Contract, International, PERSONALITY, POSITIONS, PlayerDetails, Reputation,
-    read_player_details,
+    ATTRIBUTE_GROUPS, Attribute, Clause, CompetitionBonus, Contract, International, PERSONALITY, POSITIONS,
+    PlayerDetails, Reputation, read_player_details,
 };
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};
 pub use filter::{
-    AttributeBound, AwardFilter, ClubFilter, CompetitionFilter, NationFilter, OfficialFilter, PlayerFilter,
-    PlayerOrder, PlayerSort, StaffFilter, sort_players,
+    AttributeBound, AwardFilter, AwardSort, ClubFilter, ClubSort, CompetitionFilter, CompetitionSort, NationFilter,
+    NationSort, Needle, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, RoleBound,
+    SortColumn, SortKey, StadiumSort, StaffFilter, StaffSort, player_attribute, sort_by_likeness, sort_players,
+    sort_rows,
 };
 pub use game::{GAME_EXE, GAME_PLUGIN, GameInfo, Storefront};
 pub use game_calls::{
@@ -82,7 +88,8 @@ pub use mood::{ConcernsEnded, ConcernsPlan, HappinessHold};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
 pub use officials::OfficialSummary;
 pub use players::{
-    Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations, read_players,
+    Base, Division, Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations,
+    read_players,
 };
 pub use profile::{
     ArrayRvas, BuildProfile, ContractLayout, Layout, PlayerLayout, PluginFingerprint, StaffLayout, layout_for,
@@ -95,6 +102,10 @@ pub use relations::{
 };
 pub use retirement::{PlannedRetirement, RetirementPlan, RetirementSet};
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};
+pub use scouting::{
+    Development, League, Likeness, PROMISING_AGE, Place, REPORT_ROLES, ROLES, RoleRating, Scores, ScoutReport,
+    SimilarTo, TOP_COUNT, TopKind, TopPlaces, TopScope, WITHIN, history, scores, scout_report, top_places, top_players,
+};
 pub use session::{ArraySource, Session, SessionError, find_game};
 pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember, TeamId};
 pub use staff::{

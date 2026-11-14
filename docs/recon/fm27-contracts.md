@@ -71,7 +71,15 @@ Unidentified: 35, 36, 42, 43 (no contracts use them). 54 and 63 are flags (63 ap
 
 The u16 condition on kinds 0, 16, 17, 18, 27 and 31 (values 700 to 2,400) is not a club id, not a club UID, and has no clear link to dates. Meaning unknown. FM Lens must preserve it on any rewrite.
 
-Competition and award bonuses are not in the +0x68 list. They are in the +0x80 list, 32-byte entries. 687 contracts have them. Rice has one: words `076c0001 ffffffff 00000014 ffffffff 00000000 0000027d 000cfc1f 0000ffff`. Entry layout is not decoded.
+Competition and award bonuses are not in the +0x68 list. They are in the +0x80 list, 32-byte entries. 687 contracts have them. Rice has one: words `076c0001 ffffffff 00000014 ffffffff 00000000 0000027d 000cfc1f 0000ffff`. +0x14 is the competition's place in the game's table of competitions, not its UID (Rice: 637, the UEFA Champions League, UID 1301394) and +0x18 its amount (850,975); FM Lens shows these two read-only (13 November). The rest is not decoded: +0x00 is an unset date, +0x08 (here 0x14, 20) may say what the bonus is paid for. On Windows FM's contract page shows Rice's as "Winning the UEFA Champions League", $1.1M (850,975 at about 1.35), so the 20 at +0x08 may mean winning it.
+
+Award bonuses are a third list. Contract +0x98 is a pointer to a `(begin, end, capacity)` header whose entries are 16 bytes: a pointer to the `db::AWARD`, then a `u32` amount in pounds. Established on Windows, Steam 26577676, 13 November 2026 (copy save, 30 June 2027):
+
+- Declan Rice (Barcelona): two entries, awards 102407 (World Footballer of the Year) and 102406 (World Golden Ball), 1,171,666 each. FM's contract page shows both at $1.6M, in the same order.
+- Kai Havertz (Arsenal): 102407 at 439,614, 102408 (World Player of the Year) at 350,669, 102406 at 439,614. FM shows $600K and $475K for the first two.
+- Census with `fmlens-probe clauses`: 303 contracts have the list, 548 entries, and all 548 point at an award in the game's table.
+
+FM Lens shows them read-only after the competition bonuses and drops any entry whose pointer does not lead to a known award. Windows only: `award_bonuses` is not set in the macOS layout, where the +0x98 pointer was seen but not compared with FM.
 
 Values to check in FM:
 - Saka contract screen, Bonuses: appearance 50,000, goal 65,000, assist 45,000, unused sub 15,000. Relegation wage decrease 25 percent.
@@ -81,6 +89,33 @@ Values to check in FM:
 - Nico Paz: sell-on 10 percent.
 
 Editing: amounts and conditions of existing entries are safe to change in place (existing `clauses.rs` planning does this, limits 2,000,000,000 and 1,000). Add and remove need the list capacity, so use FM's own add function. Add `clause_name` entries for all kinds above to FM Lens (now only 0, 1, 3, 10, 15, 19, 22, 27, 32, 33, 34, 38, 39, 40).
+
+### 1.1 FM's own add-clause routine (static, 13 November 2026)
+
+Read-only disassembly of the macOS `game_plugin` of Steam build 26577676; nothing was run. There is no out-of-line
+"add clause" function on ARM64: the game inlines the fast path (end below capacity) at each site, and every grow goes
+through one shared slow path.
+
+- ARM64 RVA `0x12a7618` (0x108 bytes): `entry* f(vec* x0, const u8* kind, const u32* amount, const u16* condition)`.
+  `x0` is `contract+0x68` (the begin, end, capacity triple), not the contract. It always reallocates (new capacity
+  max(2 x capacity, size + 1)), writes u32 amount at +0, u16 condition at +4, u8 kind at +6 and 0 at +7, frees the old
+  buffer and returns the new end (the entry is at return - 8). It does not de-duplicate. 16 call sites in 11
+  functions, including `GAME_FULL_CONTRACT` virtual methods and `TRANSFER_MANAGER` (0x2e00094).
+- Allocator: alloc `0x436e62c`, free `0x436eafc`, both with the global allocator `[0x5740a90]` as the first argument;
+  a size-class pool with a mutex per class. A list buffer must never come from or go to plain malloc or free.
+- `0x1285ab0` adds a clause of a given kind with an amount the game computes and skips kinds already present;
+  `0x100b018` adds one with the game's default amount from a builder object (layout unknown, one caller).
+- Signature (ARM64, unique in the slice): `fa 67 bb a9 f8 5f 01 a9 f6 57 02 a9 f4 4f 03 a9 fd 7b 04 a9 fd 03 01 91 f5
+  03 02 aa f6 03 01 aa 01 20 40 a9 02 01 01 cb 58 fc 43 93 08 07 00 91 09 fd 7d d3 ?? ?? ?? b5`; second anchor at
+  +0x94: `ca 02 40 39 ab 02 40 b9 8c 02 40 79`.
+- Intel slice: the slow path is at RVA `0x13a7470` (45 callers) and a wrapper `add(contract, kind, amount, condition)`
+  at `0x1389c90` with no direct callers; found by shape only.
+- Windows: not looked for.
+
+Not established, so adding clauses stays off: any live call, which thread is safe (the old buffer is freed at once, so
+a reader on another thread would see garbage; call only with FM paused or on its own thread), whether the contract
+screen or wage totals need a refresh afterwards, a remove routine, and the Windows address. Calling it needs a new game
+call per platform with the usual live, undo and save, quit and reload checks.
 
 ## 2. Contract fields FM Lens edits
 
@@ -144,6 +179,198 @@ Values to check in FM:
 
 Editing: changing the end date means editing LOAN_CONTRACT +0x48 only. Ending or creating a loan must go through FM's loan functions (the transfer action code near 0x18bd338) because club squads, registration and finance change too. Raw writes of the wage share are safe but not of the team fields.
 
+### 3.1 Loan terms on Windows, checked against FM (13 November 2026)
+
+Steam build 26577676 (27.0.1), Windows Server 2022, career copy at 30 June 2027 (Arsenal). Read-only: the probe's
+`instances db::LOAN_CONTRACT` (vtable `game_plugin.dll+0x4ecdcf8`, 1,365 objects of 0x100 bytes; reached from player
++0x338) and `dump`, compared with FM's contract page, Loan Club tab, for eight Arsenal loans in and out.
+
+| Offset | Holds | Evidence |
+| --- | --- | --- |
+| `+0xC0` s32 | Future fee, -1 none (981 of 1,365 none) | Linder 778,930 = FM $1M optional; Baum 427,440 = $575K; Holmberg 1,776,000 = $2.4M; Rudd 1,067,446 = $1.4M |
+| `+0xC4` s32 | Competition the fee depends on, -1 none: its place in the game's table of competitions, as for competition bonuses (not its UID) | Rudd 6443 = Barclays WSL, FM: due on winning it; Gruda 16 = Bundesliga, FM: on avoiding relegation from it. Census values 22, 11, 16, 7, 51 = Serie A, Ligue 1, Bundesliga, Premier League, Spanish First Division |
+| `+0xCC` s32 | Monthly playing fee | Nwaneri 171,806 = $230K; Linder 50,960 = $69K; Rudd 4,669 = $6.25K; Baum 7,725 = $10.5K; four loans with $0 hold 0 |
+| `+0xD0` s32 | Monthly fee when unused | Baum 15,450 = $21K; equal to `+0xCC` in the other seven (893 of 1,365 equal) |
+| `+0xD4` s32 | Copy of the wage share `+0x20` | equal in 1,356 of 1,365 |
+| `+0xF7` u8 | Fee condition: 1 to 99 due after that many matches, 100 mandatory, 254 optional; 254 or 255 with no fee or a competition condition | Guessand 30 = After 30 matches; Chaves 15 = After 15 matches; Vieira 100 = Mandatory; Nkunku 254 = Optional |
+| `+0xB0` bit `0x04` | Can be recalled | 6 set, 2 clear, all 8 match FM |
+| `+0xB0` bit `0x02` | Can play in cup matches | set in all 8 and in every loan in the census: no negative seen |
+| `+0xB0` bit `0x01` | Can play against his own (parent) club | Nwaneri only, FM shows it; not seen elsewhere among the 8 |
+| `+0xB1` bit `0x10` | Loan cannot be terminated | 3 set, 5 clear, all match |
+| `+0xB1` bit `0x01` | Not established: matched a preferred position in these 8, but not in the census below | 4 set (Baum, Reid, Wellesley-Smith, Teer-Hutchins), 4 clear |
+| `+0xB4` bit `0x20` | Cannot play against the parent club in cup matches | Nwaneri set, 7 clear, all match; set in 636 loans |
+
+FM money is shown in dollars at about 1.347 per stored pound. `+0xB8..+0xBC` repeats `+0xB0..+0xB4` without `+0xB1`
+bit `0x20`. Flag bytes of the eight: Nwaneri `07 20 11 09 20`, Linder `06 30 11 09 00`, Rudd `02 30 11 09 00`, Baum
+`06 31 11 09 00`, Holmberg `06 20 11 09 00`, Reid and Teer-Hutchins `06 21 11 09 00`, Wellesley-Smith `02 21 11 09 00`
+(bytes `+0xB0` to `+0xB4`).
+
+Not established: `+0xB0` bit `0x08` (no line on FM's tab, see below), `+0xB1` bits `0x01` and `0x20`; `+0xD8`,
+`+0xDC`, `+0xE4`, `+0xE8`, `+0x54`, `+0x56`, `+0x58`, `+0x60`, `+0x68` (pointer, 159 non-null), `+0x30` (pointer, 45
+non-null), `+0xA2..+0xA7`, `+0xF9..+0xFB` (counters, nonzero with no match condition). The competition condition's
+kind, the competition qualified for, the preferred position and role, and the matches played are in the next table.
+The macOS layout of these fields is not checked. Nothing here is written by FM Lens; showing them read-only
+would be the next step, and editing the fee or flags needs a save, quit and reload check first.
+
+Three more loans, same build, on a career copy at 10 December 2027 (735 loans), compared with FM's Loan Club tab.
+All match:
+
+| Loan | Bytes `+0xB0`, `+0xB1`, `+0xB4` | FM's Loan Club tab | Future fee `+0xC0` |
+| --- | --- | --- | --- |
+| Fábio Vieira (Hamburger SV to Wolfsburg) | `03 10 00` | Can play against own team, can play in cup matches, cannot be terminated; no recall | 12,818,652 = Mandatory Future Fee $17.25M |
+| Arthur Chaves | `03 01 20` | Can play against own team, can play in cup matches, cannot play against the parent club in cup matches; a preferred position | 5,154,191 = $7M, due after 15 matches |
+| Ollie Wright | `0E 00 00` | Can be recalled, can play in cup matches | -1, none |
+
+The cup bit is set in all 735 loans, so no negative is seen yet. Wright's `+0xB0` bit `0x08` has no line on FM's
+tab.
+
+`+0xB0` bit `0x08`, on the same copy: set in 104 of the 735 loans. FM's Loan Club tab shows no line for it. Two more
+loans compared, all lines match the known bits:
+
+| Loan | Bytes `+0xB0`, `+0xB1`, `+0xB4` | FM's Loan Club tab | `+0x20` wage share, `+0xCC` and `+0xD0` |
+| --- | --- | --- | --- |
+| Anthony Musaba (Hull City) | `0F 00 00` | Can be recalled, can play against own team, can play in cup matches | 34,361; 0 and 0 = $0 and $0 |
+| Jeremy Monga (Middlesbrough) | `06 01 00` | Can be recalled, can play in cup matches; Preferred Position AM (L), Role Winger | 20,000; 21,666 and 21,666 = $29K each |
+
+Musaba (`0x0F`) and Wright (`0x0E`) show the same kinds of line as Monga (`0x06`), so no line follows bit `0x08`. It
+goes with loans the borrower pays little for: 101 of the 104 have no monthly fee (252 of the 631 without it), and 85
+have no wage share (9 of the 631). It decides neither: Musaba's borrower pays a wage share, and 9 loans without the
+bit pay none. FM Lens neither reads nor writes it.
+
+Four more, same build, on a Brighton career at 13 July 2026 (1,258 loans, 260 with a future fee: 220 optional, 21
+after a number of matches from 1 to 30, 19 on a competition), compared with FM's Loan Club tab. All match:
+
+| Loan | `+0xC0` future fee | `+0xC4` | `+0xF7` | FM | `+0xCC` monthly fee | FM |
+| --- | --- | --- | --- | --- | --- | --- |
+| Gruda | 21,475,798 | 16 | 254 | $29M on avoiding relegation from the Bundesliga | 390,469 | $525K |
+| Guessand | 22,000,000 | -1 | 30 | $29.5M after 30 matches (0 played) | 222,222 | $300K |
+| Nkunku | 24,052,894 | -1 | 254 | Optional Future Fee $32.5M | 257,709 | $350K |
+| Chaves | 5,154,191 | -1 | 15 | $7M after 15 matches (16 played) | 80,534 | $110K |
+
+The monthly fee follows the same rate as the future fee; FM rounds what it shows (Vieira's 249,211 is $335K, shown as
+$325K; Chaves's 80,534 is $108K, shown as $110K). The matches played so far are not in `+0xF7` and not found.
+`+0xB1` bit `0x01` is set for Gruda and Chaves, yet FM shows no preferred position line for either on 13 July 2026,
+while Chaves showed one at 10 December 2027 with the same byte: the bit alone does not decide it (the July date is
+pre-season, which may matter). Monga, bit set, shows Preferred Position AM (L) and Role Winger at 10 December 2027.
+The census on 7 January 2028 below settles it: FM's preferred position line follows `+0xA0`, not this bit.
+
+Same copy at 7 January 2028 (800 loans, 124 players with more than one record), compared with FM's Loan Club tab.
+Every line matches:
+
+| Offset | Holds | Evidence |
+| --- | --- | --- |
+| `+0x9C` u8 | Kind of competition condition, 255 none: 0 winning it, 6 avoiding relegation from it, 10 qualifying for a European competition through it | Set in exactly the 24 loans with `+0xC4`. Maddison 0 = "Winning the Ligue 1"; Sorba Thomas 6 = "Avoiding relegation from the First Division"; Kharebashvili 10 with `+0xC4` 7 (Premier League) = "Qualifying for the UEFA Europa League" |
+| `+0x90` s32 | The European competition of kind 10, -1 otherwise: its place in the table, as `+0xC4` | Set in exactly the 6 loans of kind 10. Núñez 637 = Champions League; Kharebashvili and João Mário 639 = Europa League; Skov Olsen 2945 = Conference League |
+| `+0xA0` u16 | Preferred position (low 6 bits, 48 none) and role (the rest, 50 none) | Pondeca and Cowan 6257 = GK, Goalkeeper (49, 97); Hebert 6658 = AM (R), Winger (2, 104); Monga 6662 = AM (L), Winger (6, 104); Kameri 1156 = AM (C), Channel Midfielder (4, 18); Proctor 7236 = AM (C), Advanced Playmaker (4, 113); Bradbury 7305 = ST (C), Target Forward (9, 114); Madjo 3209 = ST (C), no role line (9, 50); 3248 (48, 50) = no lines (Musaba, Wright, Maddison, Kharebashvili) |
+| `+0xF8` u8 | Matches played toward a fee due after a number of matches | Solanke 17 = "After 25 matches (17 played)"; Muheim 16 = "After 10 matches (16 played)"; Maupay 16 = "After 25 matches (16 played)". Nonzero in 17 of the 18 loans with such a condition, zero in all 782 others |
+| `+0xB1` bit `0x80` | Can play against the parent club's B team | Sorba Thomas (`0x90`) and Pondeca (`0x80`) show the line; Kharebashvili and Maddison (`0x10`) do not; 191 loans, mostly at Spanish clubs |
+
+`+0xB1` bit `0x01` does not follow the preferred position: 75 loans have the bit with no position, 89 a position
+without it (Pondeca shows GK with the bit clear). It has no line on FM's Loan Club tab either: Helafu, Webb, Moussongo
+Bahel, Ndiaye, Sebine, Thomas-Smith, Maddox, Sweet and Scheller (bit set) show the same lines as Kabashi, Anderson and
+Diouf (bit clear), each line explained by the other flags. In the census it is set only on loans with a joined date
+(`+0x4C`): all 343 records with `+0x4C` unset (1900), such as the extra records of Anderson, Krumrey and Sosa, have it
+clear. Among the 457 with a joined date, 254 have it and 203 do not, and it follows neither the dates nor the future fee:
+Kabashi and Diouf (clear) signed between Sebine and Thomas-Smith (set). Nor does it mark a domestic loan: Anderson
+(Southampton to Aldershot Town) has it clear and Helafu (Man Utd to Blackpool) set, and FM's Parent Club tab shows only
+the parent contract. Its meaning is open. `+0xD8` and
+`+0xDC` hold -1 in all 343 records without a joined date and counts of up to a few thousand in most others (Webb 180
+and 180, Thomas-Smith 270 and 0, Helafu 2,048 and 2,369), so they may count minutes played; not checked against FM.
+
+Position and role in `+0xA0`, every value in the census, each read from FM's Loan Club tab on the same copy (value =
+role * 64 + position):
+
+| Position | FM | Example |
+| --- | --- | --- |
+| 48 | none (no line) | Musaba |
+| 49 | GK | Pondeca, Slicker, Krumrey |
+| 51 | D (R) | Helafu, Webb |
+| 53 | D (C) | Anderson, Jonyla, Ndiaye, Sweet |
+| 55 | D (L) | Diouf, Shimbo |
+| 56 | WB (R) | Fontàs |
+| 58 | DM | Sainsbury, Hoarau, Moussongo Bahel, Maurić |
+| 60 | WB (L) | Sosa |
+| 61 | M (R) | Drakes-Thomas (made by a loan offer, below) |
+| 63 | M (C) | Goudmijn, Joseph Jones, Maddox |
+| 1 | M (L) | Charlie Smith, Kalum Thompson |
+| 2 | AM (R) | Hebert, Edwards, Kabashi |
+| 4 | AM (C) | Kameri, Proctor, Key |
+| 6 | AM (L) | Monga |
+| 9 | ST (C) | Bradbury, Fearn, Sebine, Francis-Caesar, Thomas-Smith |
+
+61 is M (R). It is not in the census, so it was made on a copy saved for the test (FM-Lens-Loans-2026-11-14): a loan
+offer for Drakes-Thomas (Chelsea) with Midfielder (Right) and Winger in possession, made on 21 Jan 2028, gave a
+`db::LOAN_CONTRACT` a week later with `+0xA0` = 6717 (61, 104), signed 22 Jan 2028, no joined date. It is the only
+record with 61 in 927. He had not joined by 4 Feb 2028, so FM's Loan Club tab was not read for it: the value rests on
+the offer's terms and on Winger reading 104 as in the table below.
+
+12 is seen once (Berzal, Unionistas B, no role, who plays DM and M (C)) and is not read. FM asks for scouting before it
+shows his loan options, and a scout request and two weeks (to 4 Feb 2028) did not show them. The codes run
+(48 + k) mod 64 over a pitch grid (GK 1; D 3, 5, 7; WB (R) 8, DM 10, WB (L) 12; M 13, 15, 17; AM 18, 20, 22; ST (C) 25),
+which puts 12 at k = 28, past ST (C). That is a guess from the pattern, not read from FM.
+
+| Role | FM | Example |
+| --- | --- | --- |
+| 50 | none (no line) | Madjo, Fontàs |
+| 97 | Goalkeeper | Pondeca |
+| 15 | No-Nonsense Goalkeeper | Slicker |
+| 108 | Ball-Playing Goalkeeper | Krumrey |
+| 98 | Centre-Back | Jonyla |
+| 117 | Ball-Playing Centre-Back | Ndiaye |
+| 120 | No-Nonsense Centre-Back | Anderson |
+| 110 | Advanced Centre-Back | Sweet |
+| 13 | Wide Centre-Back | Toko |
+| 16 | Overlapping Centre-Back | Scheller |
+| 99 | Full-Back | Shimbo |
+| 14 | Inside Full-Back | Diouf |
+| 100 | Wing-Back | Helafu |
+| 0 | Advanced Wing-Back | Sosa |
+| 6 | Inside Wing-Back | Webb |
+| 101 | Defensive Midfielder | Moussongo Bahel |
+| 125 | Half Back | Maurić |
+| 111 | Deep-Lying Playmaker | Sainsbury |
+| 19 | Midfield Playmaker | McDonnell |
+| 102 | Central Midfielder | Joseph Jones |
+| 112 | Box-To-Box Midfielder | Hoarau |
+| 18 | Channel Midfielder | Kameri |
+| 11 | Wide Central Midfielder | McGrath |
+| 113 | Advanced Playmaker | Proctor, Goudmijn |
+| 105 | Attacking Midfielder | Maddox |
+| 123 | Free Role | Rabbaj |
+| 103 | Wide Midfielder | Kalum Thompson |
+| 104 | Winger | Hebert, Monga |
+| 10 | Inside Winger | Charlie Smith |
+| 118 | Inside Forward | Kabashi |
+| 7 | Wide Forward | Edwards |
+| 3 | Second Striker | Key |
+| 2 | False Nine | Sow |
+| 106 | Deep-Lying Forward | Francis-Caesar |
+| 107 | Centre Forward | Sebine |
+| 114 | Target Forward | Bradbury |
+| 115 | Poacher | Thomas-Smith |
+| 122 | Channel Forward | Fearn |
+
+Role 11 was read later, on a copy at 21 Jan 2028: McGrath (Aston Villa, at Greenock Morton from 9 Jan 2028) has 63 and
+11, and FM shows M (C), Wide Central Midfielder. Roles 19, 123 and 2 are not in the census; they were read on the test
+copy at 4 Feb 2028 (McDonnell 63 and 19, Rabbaj 4 and 123, Sow 9 and 2). With these, every role and position code in
+927 records is read but position 12.
+
+The flags on
+these tabs agree with the table in 3.1: Diouf and Fontàs (`+0xB0` bit `0x04` clear) show no recall line; Scheller
+(`+0xB0` bit `0x01`) can play against his own team; Maurić, Shimbo and Krumrey (`+0xB1` bit `0x10`) cannot be
+terminated; Fontàs (`+0xB1` `0x81`) can play against the parent club's B team; Maddox (`+0xB0` `0x0E`) shows no line
+for bit `0x08`.
+
+FM's loan offer (Make An Offer, Loan Offer, Mainoo) creates no `db::LOAN_CONTRACT`, filled in or made: 800 records
+before, after filling the clauses and after making it. The offer is held as a `FULL_TRANSFER_OFFER` (vtable
+`game_plugin.dll+0x5051cd8`, pointing at the player) until a deal is agreed, so a code
+can only be read once a loan with it is agreed. The offer was withdrawn and the copy not saved. On the later test copy
+a made offer also added one `LOAN_OFFER` (vtable `game_plugin.dll+0x4f26178`, `+0x38` the player, 871 to 872); no
+position or role code was found in its first 0x100 bytes. The `db::LOAN_CONTRACT` appears once the club accepts, with
+no joined date until the player moves. The form has a
+position and a role both in and out of possession; the Loan Club tab shows one of each, and where the
+out-of-possession pair is held is open.
+
 ## 4. Payroll
 
 Status: partial.
@@ -182,8 +409,13 @@ Editing: wage, expiry and job are plain stores as for players. Job codes are the
 
 ## Open items
 
-- Competition and award bonus entry encoding, the +0x98 structure, and the 16-byte entries there.
-- LOAN_CONTRACT term fields (+0xA0 to +0xB0 and +0xCC to +0xE8).
+- Competition bonus entry encoding (+0x80): what each bonus is paid for. Award bonuses (+0x98) on macOS.
+- LOAN_CONTRACT term fields: fees, fee condition, its kind and European competition, matches played, the preferred
+  position and role (every value seen but position 12), and six flags mapped on Windows (3.1);
+  `+0xB1` bit `0x01` (no line on FM's tab, set only on loans with a joined date), the out-of-possession position and
+  role, `+0xD8` and `+0xDC` (maybe minutes) and the remaining words are open. `+0xB0` bit `0x08` has no line on FM's Loan Club tab (Musaba, Wright and Monga
+  compared).
+- FM's add-clause routine is found statically on macOS (1.1) but never called; Windows not looked for.
 - Meaning of contract +0xA8 to +0xBC and the +0xC4 byte.
 - Where wages are deducted from balance.
 - Staff clause census, loan-ins.

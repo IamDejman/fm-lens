@@ -11,7 +11,7 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { inputState, summarize, type InputState, type Pending, type Typed } from "./editDraft";
+import { describeFieldError, inputState, summarize, type InputState, type Pending, type Typed } from "./editDraft";
 import { applyEdits, profileKey, readValues } from "./editing";
 import { fieldTable } from "./fieldTables";
 import { describeError } from "./format";
@@ -39,6 +39,8 @@ export interface EditorState {
   openPlayer: (uid: number) => void;
   /** Shows the member of staff with this UID in the staff list, their profile open (a row of a club's staff does this). */
   openStaff: (uid: number) => void;
+  /** Shows the player list compared with this player, as he is today or both at their peak; the app always has it. */
+  findSimilar?: (player: { uid: number; name: string }, peak: boolean) => void;
 }
 
 export const NO_GAME_ACTIONS: GameActions = {
@@ -63,6 +65,7 @@ export const EditorContext = createContext<EditorState>({
   gameDate: null,
   openPlayer: () => {},
   openStaff: () => {},
+  findSimilar: () => {},
 });
 
 /** The inputs of the profile being edited (header and body), for the components that draw them. */
@@ -419,7 +422,7 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
         onEdited();
       }
       const problems = result.failed.map((failed) =>
-        editText.refused(fieldLabel(entity, failed.field), describeError(failed.error)),
+        editText.refused(fieldLabel(entity, failed.field), describeFieldError(failed.error, byKey.get(failed.field))),
       );
       let values: FieldValues | null = null;
       try {
@@ -431,7 +434,9 @@ export function useProfileEditing(entity: Entity, uid: number, offered = true): 
         return;
       }
       const refusals = Object.fromEntries(
-        result.failed.map((failed) => [failed.field, describeError(failed.error)] as const),
+        result.failed.map(
+          (failed) => [failed.field, describeFieldError(failed.error, byKey.get(failed.field))] as const,
+        ),
       );
       const refusedKeys = Object.keys(refusals);
       // The inputs show the game's values again; the ones the game refused keep what was typed.

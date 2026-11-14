@@ -1,11 +1,16 @@
-// The saved filters, in the head of the player filter bar: Save, which asks for a name there and then (no dialog), and
+// The saved filters, in the head of a list's filter bar: Save, which asks for a name there and then (no dialog), and
 // the select that brings a saved filter back, with Delete for the one that is in effect.
 
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { playerListText } from "./labels";
-import type { PlayerFilterFields } from "./PlayerFilters";
-import { cleanName, isInEffect, MAX_NAME_LENGTH, MAX_SAVED, useSavedFilters } from "./savedFilters";
-import type { PlayerOrder } from "./types";
+import {
+  cleanName,
+  isInEffect,
+  MAX_NAME_LENGTH,
+  MAX_SAVED,
+  useSavedFilters,
+  type SavedFilterKind,
+} from "./savedFilters";
 
 const text = playerListText.filters.saved;
 
@@ -18,19 +23,27 @@ interface Form {
   stage: "name" | "replace" | "full";
 }
 
-interface SavedFilterControlsProps {
+interface SavedFilterControlsProps<Fields, Order> {
+  /** Which list's saved filters these are. */
+  kind: SavedFilterKind<Fields, Order>;
   /** What the filter bar holds and how the list is sorted: what Save keeps, and what a saved filter is compared to. */
-  fields: PlayerFilterFields;
-  order: PlayerOrder | null;
+  fields: Fields;
+  order: Order | null;
   /** Whether any filter is in effect: with none there is nothing to save. */
   filtered: boolean;
   /** Makes a saved filter the one in effect: its fields go to the filter bar and its sort to the list. */
-  onApply: (fields: PlayerFilterFields, order: PlayerOrder | null) => void;
+  onApply: (fields: Fields, order: Order | null) => void;
 }
 
 /** Save, and the select of the saved filters with Delete; they sit after Clear in the head of the filter bar. */
-export function SavedFilterControls({ fields, order, filtered, onApply }: SavedFilterControlsProps) {
-  const { saved, has, save, remove } = useSavedFilters();
+export function SavedFilterControls<Fields, Order>({
+  kind,
+  fields,
+  order,
+  filtered,
+  onApply,
+}: SavedFilterControlsProps<Fields, Order>) {
+  const { saved, has, save, remove } = useSavedFilters(kind);
   // The saved filter that was applied or saved last. It is the one in effect for as long as the bar and the sort are
   // as it has them: the select shows it, and Delete is for it.
   const [chosen, setChosen] = useState<string | null>(null);
@@ -116,7 +129,8 @@ export function SavedFilterControls({ fields, order, filtered, onApply }: SavedF
     const entry = saved.find((other) => other.name === name);
     if (entry) {
       setChosen(entry.name);
-      onApply({ ...entry.fields }, entry.order && { ...entry.order });
+      // A copy read as the list reads a stored one, so that the bar never changes what is kept.
+      onApply(kind.readFields(JSON.parse(JSON.stringify(entry.fields))), kind.readOrder(entry.order));
     }
   };
 

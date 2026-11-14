@@ -15,7 +15,9 @@ a known build enables the mapped fields.
 
 The nation list covers nations represented by loaded players, staff and
 competitions; the stadium list covers senior stadiums with every club that plays
-at each. Neither is a complete database scan.
+at each. Where the build profile places the game's nation and stadium tables,
+the lists add every other nation and stadium from them; that has unit tests and
+a sample-data preview, not yet a read from a running game.
 Mapped nation fields and official fields can be edited where the build supports
 them; stadium browsing is read-only. On ARM64, England's population, men's
 reputation and nationality rules passed the bounded save/quit/reload checks in
@@ -26,7 +28,7 @@ Staff and club filters cover additional decoded values.
 ## Platforms and evidence
 
 FM Lens ships a universal Mac app and, from 0.6.2, a Windows installer. The
-verified game build is FM27 27.0.1, Steam build 26385295, checked on 10
+verified game build is FM27 27.0.1, Steam build 26577676, checked on 12
 November on Apple Silicon, under Rosetta and on Windows. Most of the evidence
 is from 27.0.0, Steam build 26340721. ARM64 has the broadest local
 validation; Intel checks used Rosetta and cover selected reads/actions.
@@ -175,7 +177,13 @@ contract fields are excluded. Player, staff and money freezes are remembered for
 the save and hold only while FM Lens is connected.
 Settings provide System/Light/Dark appearance and 80–150% zoom.
 
-See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 169 player, 42 staff and 14 club
+While a profile is edited, a number can be dragged sideways instead of typed:
+right for more, left for less. It still waits for Apply. FM Lens opens where it
+was left: the section, each list's search, filters, page and open profile, and
+the profile tab. That is kept for one career; another career starts its lists
+afresh.
+
+See [EDITOR-FIELDS.md](EDITOR-FIELDS.md) for the 171 player, 45 staff and 14 club
 field definitions and [EDITING-VALIDATION.md](EDITING-VALIDATION.md) for actual
 behavioral evidence and outstanding checks.
 

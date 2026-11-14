@@ -2,7 +2,7 @@
 
 ![FM Lens logo](app/src/assets/brand/fm-lens-logo.png)
 
-FM Lens is a free companion for Football Manager 27 on Mac and Windows. It reads
+FM Lens is a free, open source live editor and companion for Football Manager 27 (FM27) on Mac and Windows. It reads
 the career you have loaded and lets you search, compare and edit players, staff and clubs while
 FM runs.
 
@@ -15,8 +15,8 @@ after that.
 ## What you need
 
 - A Mac with Apple Silicon or Intel, or a PC with 64-bit Windows 10 or 11.
-- Football Manager 27 from Steam, version 27.0.1 (build 26385295) or 27.0.0
-  (build 26340721). Other builds open read-only.
+- Football Manager 27 from Steam, version 27.0.1 (build 26577676 or 26385295)
+  or 27.0.0 (build 26340721). Other builds open read-only.
 - A copy of your save to edit.
 
 ## Getting started
@@ -45,7 +45,7 @@ should do next with **Wishlist** at the foot of the app, or in a
 
 ## What it does
 
-- Search and filter players, staff and clubs. Browse nations, stadiums,
+- Search, filter and sort players, staff and clubs. Browse nations, stadiums,
   competitions, awards and match officials.
 - Edit attributes, CA and PA, positions, traits, personality, reputation,
   happiness and contracts, and club balances, budgets, facilities and stadiums.
@@ -54,8 +54,15 @@ should do next with **Wishlist** at the foot of the app, or in a
 - Heal injuries, lift bans, refresh fitness and sharpness, and set or freeze a
   player's attributes.
 - Copy a player's profile onto others with templates, previewed first.
+- Scout with FM Lens's own estimates: find players like any other, today or at
+  their peak; search by potential attributes and by role ratings; see each
+  player's chance of reaching his potential and his progress rate; rank the
+  best and most promising players by continent or country; and see how a
+  player developed in your other careers. [How they work](docs/SCOUTING.md).
+- Show faces, logos, flags and kits from the graphics packs you added to FM.
 - Export to CSV or JSON. Light and dark appearance, 80 to 150% zoom and
   keyboard shortcuts.
+- Drag a number sideways to change it. FM Lens reopens where you left it.
 
 ## Limits
 
@@ -87,6 +94,7 @@ The app is `target/debug/bundle/macos/FM Lens.app`. Releases are built as
 - [Developing and releasing](docs/DEVELOPING.md)
 - [Feature status and roadmap](docs/ROADMAP.md)
 - [Mapped editing fields](docs/EDITOR-FIELDS.md)
+- [Scouting estimates](docs/SCOUTING.md)
 - [Editing tests and remaining validation](docs/EDITING-VALIDATION.md)
 - [Current build and live verification](docs/PERSONAL-SCOUT.md)
 - [Brand assets and generation prompts](docs/brand/FM-LENS.md)
@@ -127,6 +135,10 @@ days.
 
 To stop both, turn off **Share usage and recordings of this window** in
 Settings. Debug builds send nothing.
+
+To show how a player developed in your other careers, the app keeps each
+connected career's player ages and abilities in its own data folder on your
+computer. They are never sent anywhere.
 
 Before it opens for the first time on a computer, the app asks for an email
 address. FM Lens's own server keeps it on FM Lens's email list, on Amazon Web

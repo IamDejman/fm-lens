@@ -1823,6 +1823,15 @@ the wage change remains in the running test career and was not saved to disk.
 This confirms exact native macOS Apply/readback, not save/reload persistence or
 native Windows behavior. FM's own displayed wage was not inspected in this check.
 
+Windows (13 November 2026), build 7 of `Iamdejman/position-edits` on the career
+copy, 30 June 2027: Saka's wage per week 320,000, typed 260000 and left the
+field. The input kept 260,000 with the notice "FM shows £250,000"; Apply said
+"1 change applied" and the probe read 260000. FM's contract page showed
+$18.22M p/a, which is 260,000 a week at FM's rate of about 1.3476. After a save,
+quit, relaunch and load, the probe still read 260000 and FM still showed
+$18.22M p/a. FM was set to dollars a year, so the notice's pounds-a-week
+estimate was not compared with FM's own weekly display.
+
 ### Permit request feedback (8 November 2026)
 
 Reproduced the reported native UI behavior for Kai Havertz (91151081), at R. Madrid
@@ -2227,7 +2236,7 @@ files as they are. Test copies only, never saved; Continue was not pressed.
 | Empty "Contract ends by" opens on the game date | Pass. December 2027 (game date 8 Dec 2027) | Pass. December 2027 (game date 8 Dec 2027) | Pass. July 2026 with 13 ringed (game date 13 Jul 2026) |
 | Type `30062029` with the calendar open | Pass. The field reads 30/06/2029 and the calendar closes; 18,500 players | Pass. The field reads 30/06/2029 and the calendar closes; 18,500 players | Pass, after a press on the month label. "Contract ends by: 30 Jun 2029"; 19,409 players |
 | Reopen | Pass. Opens on June 2029 | Pass. Opens on June 2029 | Pass. Opens on June 2029 |
-| Arrow keys | Pass. Right then Return writes 01/07/2029 | Pass. Right then Return writes 01/07/2029 | Not run |
+| Arrow keys | Pass. Right then Return writes 01/07/2029 | Pass. Right then Return writes 01/07/2029 | Pass, after a press on the month label (13 November, build 8 of `Iamdejman/position-edits`, game date 30 Jun 2027). Right then Return writes 01/07/2027; "Contract ends by: 1 Jul 2027" and the calendar closes |
 | Escape | Pass. Closes only the calendar; filter cleared, 30,314 players | Pass. Closes only the calendar; filter cleared, 30,314 players | Pass, after a press on the month label, in Filters and in Sign: the calendar closes and the dialog stays |
 | Sign dialog | Pass. Joins starts on 08/12/2027 | Pass. Joins starts on 08/12/2027 | Pass. Solly March (29090530, 31) to Arsenal: Joins opens on July 2026; 14 writes 14/07/2026, 13 writes it back; `30062029` typed into Contract end with its calendar open; "Contract to 30 Jun 2029"; Undo ("Undone at 23:19:54"), free agent again |
 | Screen readers | Pass. A group named Calendar, each day a named control | Pass. A group named Calendar, each day a named control | Pass. A window named Calendar with labelled buttons |
@@ -2835,8 +2844,8 @@ universal Mac app with native arm64 FM on a copy of the career (17 December
 | Tick the box, no field filled in | "18 to freeze", Apply on with no preview | The same |
 | Apply | "18 frozen"; `frozen.json` held the 18 under the save; Bukayo Saka's profile box was ticked | "18 frozen"; `frozen.json` held the 18 |
 | Undo this mass edit | Not run here | "18 unfrozen"; the list in `frozen.json` was empty |
-| Open again, untick, Apply | The box opened ticked; "18 to unfreeze", then "18 unfrozen"; the list was empty | Not run |
-| Undo of that unfreeze | "18 frozen"; `frozen.json` held the 18 again | Not run |
+| Open again, untick, Apply | The box opened ticked; "18 to unfreeze", then "18 unfrozen"; the list was empty | Run on 13 November (below): "20 unfrozen"; the list was empty |
+| Undo of that unfreeze | "18 frozen"; `frozen.json` held the 18 again | Run on 13 November (below): "20 frozen"; `frozen.json` held the 20 again |
 | Tick the box and set Current ability to 150, Preview | "18 changes for 18 of 18 players · 18 to freeze"; Apply stays off until the preview | The same |
 | Apply | "18 changes applied", "18 frozen"; the list read 150 and Changes counted 18 | The same |
 | Undo this mass edit | "Undid 18 changes", "18 unfrozen"; Saka read 186 again; `frozen.json` was empty | The same; the list read its old values |
@@ -2848,3 +2857,1060 @@ frozen and no edit was left standing; neither career was saved.
 Not run: the packaged app under Rosetta; staff and clubs in the packaged app
 (both were run in the browser preview); a Continue with a mass freeze on. The
 hold itself is the profiles' freeze, followed over a holiday on 8 November.
+
+The two Windows rows were run on 13 November with build 7 of
+`Iamdejman/position-edits` on the position career copy (30 June 2027), on the
+Find similar list for Saka searched for "Saka", with all 20 frozen: untick and
+Apply gave "20 unfrozen"; Undo gave "20 frozen" and `frozen.json` held the 20;
+opening it again, unticking and Apply gave "20 unfrozen" and the list in
+`frozen.json` was empty. That list showed 19 players, so the 20 included the
+compared player: see "Mass edit of a compared or ranked list" below.
+
+## A freeze holds current ability too (12 November 2026)
+
+Feedback on 0.7.7: "the freeze does not work for all". A frozen player kept
+every attribute, but his current ability still fell, so FM showed him
+declining. The freeze now holds current ability with the attributes
+(`held_fields` in `app/src-tauri/src/lib.rs`).
+
+Windows only, on a holiday from 28 July 2026, with a release build of this
+branch as `FM Lens Ability.exe`. Players were frozen with Mass edit's freeze
+box, the list exported before and after each holiday, and the 47 visible
+attributes and CA compared by player.
+
+| Run | Build | Holiday | Frozen | Not frozen |
+|---|---|---|---|---|
+| 1 | 0.7.7 | 28 Jul to 27 Aug 2026, aged 34+ | 1,004: no attribute point lost; CA down for 690 (mean -0.83, worst -3) | 731: 308 lost 695 points; CA down for 615 |
+| 2 | This fix | 27 Aug to 26 Sep 2026, aged 34+ | 1,011: no point lost; CA down for none, up for 2 | 766: 498 lost 1,011 points; CA down for 644 (mean -0.87) |
+| 3 | This fix | 26 Sep 2026 to 14 Apr 2027 (200 days), aged 32+ | 1,861: no point lost; CA down for none, up for 47 (+1 or +2) | 1,072: 1,055 lost 7,286 points; CA down for 1,022 (mean -4.91, worst -10) |
+
+In run 3 the unfrozen players lost pace (831 of them), stamina (848), agility
+(800), strength (786) and acceleration (750). A frozen player's attributes
+still rise: a gain is kept as the new held value.
+
+Not held, as before: position ratings (a few fell, `rating_dm` for 7 frozen
+players), reputation and the hidden values.
+
+After run 3, Mass edit unfroze the 1,872 frozen players still in the list
+("1,872 unfrozen"). `frozen.json` kept 73 players who had left the players'
+list by then (retired): the list cannot reach them, so they stay in the file.
+
+Not run: the Mac, either architecture; a full season. The career was moved on
+by the holiday's own autosaves and is a test career.
+
+## Sorting, more filters and every attribute (12 November 2026)
+
+Read-only work, from an audit of the search and viewing features. No game was
+running: this was written and checked on a Linux machine, so nothing here is
+live evidence. The native checks at the end are still owed.
+
+What changed:
+
+- Every list sorts by its column headers, not only the players'. Without a
+  click a search still answers best first.
+- Player filter: upper bounds on CA and PA, ranges on height, weekly wage and
+  the stored base value, bounds on the eight personality ratings (in the
+  attribute rows) and one trait. The list rows now keep these values. They are
+  read from the same offsets, and in the same reads, as the profile's: no new
+  mapping. A row follows an edit to wage, height, personality or a trait, and
+  reads its contract and value again after a transfer, swap, signing, release
+  or the undo of one. What FM changes itself shows after Reload, as before.
+- Staff and officials: CA and PA ranges; officials also a reputation range.
+- Clubs: a Nation column, filter and sort, from the club's own nation pointer.
+  First written against `club.nation`, which is the nation whose league the
+  club plays in; corrected for 0.7.8 to `club.plays_in` (see "0.7.8 on the
+  Mac" below).
+- Stadiums: the owner, shown when the stadium's owner field (`stadium.owner`,
+  +0x90 in both layouts, never read before) points at a club FM Lens read. A
+  club's profile shows it only when it is another club. Anything else, a
+  council's ground included, shows no owner.
+- A player's profile shows every attribute: the group of his own kind first and
+  the other kind's under Physical, so an outfielder's goalkeeping attributes
+  and a keeper's outfield ones can be seen and edited one at a time.
+
+Checks that ran:
+
+- `cargo fmt --all --check`.
+- `cargo clippy --locked --target x86_64-pc-windows-gnu --workspace
+  --all-targets -- -D warnings`, and the same for `-p fmlens-core -p
+  fmlens-probe` with `--target aarch64-apple-darwin`. Type checks only: nothing
+  was linked for macOS.
+- `cargo test --locked --target x86_64-pc-windows-gnu -p fmlens-core -p
+  fmlens-probe` under Wine: 112 core tests, with new ones for the ranges, the
+  personality and trait filters, every list's sort, the club nation filter, the
+  owner lookup and the row following edits. `-p fmlens-mem
+  --no-default-features`: 6 tests.
+- `npm test` in `app/`: 75 tests in 15 files, 7 of them new
+  (`tests/list-filters.test.tsx`), and `npm run build`.
+- The browser preview on sample data in Chromium, at 1440x900 light and
+  820x700 dark: the player filters, a profile, all eight lists sorted by a
+  header, a club's and a stadium's profile. No console errors. Sample data is
+  not live proof.
+
+Not run: the desktop app crate's own tests (they do not link with a Linux
+cross toolchain; CI runs them), the macOS build, and anything against FM.
+
+Still to check natively, on a career copy, on macOS and Windows:
+
+- A club's Nation against FM for a few clubs, one based abroad among them
+  (Monaco, Swansea), since the layout also has `plays_in`.
+- A stadium's Owner against FM for a ground a club owns, one it rents and a
+  shared one.
+- The wage, value, height, personality and trait filters against the profiles
+  of the players they list. Loading the player list makes no more reads of the
+  game than before (the values come from the bytes each row already read), and
+  the club list a few per nation; confirm neither is slower on a large career.
+- A row's wage after a transfer and after its undo.
+
+Gaps from the same audit that need mapping against a running game, so were
+not attempted: a complete nation list and a complete stadium list (their
+tables' addresses), club income, spending, debt, sponsorship and ownership,
+bids, interest, instalments and buy-backs, FM's own value range, a release
+clause's condition, clause kinds outside the named table, and a second
+editor's check of hidden values.
+
+## List columns, saved filters and search speed (13 November 2026)
+
+Read-only work on the lists, on top of Sorting, more filters and every
+attribute above. Nothing here was run against a game: it was written in a
+Linux container with no FM, so every check is on code and on the browser
+preview's sample data.
+
+What changed:
+
+- Players filter by several positions at once and by a current-reputation
+  range.
+- The player list shows Value and Wage. Columns, under More, chooses the
+  columns and up to eight attribute columns; Value, Wage, Reputation and an
+  attribute column sort the list. A value or wage that is not known sorts last
+  either way.
+- Staff, clubs, nations, stadiums, competitions, awards and officials keep
+  saved filters, as the player list did. A player filter saved with one
+  position still reads as that position.
+- The search index works its best-first order out once, and again after an
+  edit, in place of sorting every hit on every request. A filter's nation, club
+  or continent text is folded once per request, and a column sort compares
+  each text by its place among the others.
+
+The row's value, wage and reputation are the bytes the list already read, at
+the offsets the profile uses; the reputation is `player.current_reputation`.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core -p fmlens-mem -p fmlens-probe`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 121 core tests, 5 memory tests |
+| `cargo clippy --all-targets -- -D warnings`, `x86_64-pc-windows-gnu`: core, mem, probe and app | Pass |
+| `cargo clippy --all-targets -- -D warnings`, `aarch64-apple-darwin`: core, mem and probe | Pass |
+| `npm test` | Pass. 95 tests, 5 of them new in `tests/list-columns.test.tsx` |
+| `npm run build` | Pass |
+| Browser preview, sample data, 1280 x 860: two positions with a reputation range, Columns with two attribute columns sorted by one, and a club filter saved and shown as the one in effect | Looked right in screenshots |
+
+Not run: the app crate's own Rust tests, which do not link in that container;
+any macOS build of the app crate; the Tauri bundle; and every native check.
+Still to do on a career copy, on each platform: compare Value, Wage and a
+reputation filter with FM's screens for a few players, sort the player list by
+Value, Wage and an attribute column, and save, reload and apply a filter on
+each list.
+
+Speed, on made-up players, with the repository's `SearchIndex` built for
+release in the same container. It leaves out reading the game on Connect.
+
+| | 30,314 players, before | after | 550,000 players, before | after |
+|---|---|---|---|---|
+| Page with no search or filter | 6 ms | under 0.1 ms | 220 ms | 0.3 ms |
+| Name search | 1 ms | 0.7 ms | 15 ms | 12 ms |
+| Age, CA, position and two attribute filters | 6 ms | 0.2 ms | 237 ms | 6 ms |
+| Nation filter | 16 ms | 1.3 ms | 476 ms | 53 ms |
+| Sorted by name | 27 ms | 17 ms | 989 ms | 480 ms |
+| First search after Connect or an edit | - | 7 ms | - | 186 ms |
+
+## Full nation and stadium lists (13 November 2026)
+
+Read-only work on the Nations and Stadiums lists. Nothing here was run against a
+game: it was written in a Linux container with no FM.
+
+The game keeps every database class in a table, and the static pointers to the
+tables sit in one block (docs/recon/fm27-competitions-awards-2.md, read on the
+arm64 Mac build 26340721). FM Lens already read two of them, competitions and
+awards, and a third, the kinds of injury, was found on its own in every build.
+In all nine Steam profiles the competitions sit 0x18 and the kinds of injury
+0x40 after the awards, as in that block, so its order holds across builds and
+platforms. The nations (0x28 after the awards) and stadiums (0x80) are now taken
+from the same block in each profile: `nations` and `stadiums`.
+
+What changed:
+
+- The Nations list adds every nation of the nation table (251 on the test save
+  of the recon) to those of the people and competitions read. They are the same
+  objects players point at, so a nation is listed once, and its profile and
+  edits work as for any other nation.
+- The Stadiums list adds, after the clubs' senior stadiums, every other stadium
+  of the stadium table (21,923 on the same save) that has a name and passes the
+  capacity checks the clubs' stadiums pass. Such a stadium has no club, so a
+  men's or women's filter leaves it out, and its row id is one of its own above
+  every UID seen.
+
+Guards: a table is used only when its first row's class is `db::NATION` or
+`db::STADIUM` (`N2db6NATIONE` and `N2db7STADIUME` on macOS,
+`.?AVNATION@db@@` and `.?AVSTADIUM@db@@` on Windows), every row has that class
+and every row's place in the table is the index at `+0x08`. Anything else and
+the lists stay as they were. The index at `+0x08` is checked for nations in the
+recon; for stadiums it is not, so a build where it differs keeps the old list.
+
+Checks run:
+
+| Check | Result |
+|---|---|
+| `cargo fmt --all --check` | Pass |
+| `cargo test -p fmlens-core`, built for `x86_64-pc-windows-gnu` and run under Wine | Pass. 123 tests, 2 of them new: every profile's table slots against the awards', and the row ids of stadiums no club plays at |
+| `cargo clippy --all-targets -- -D warnings`: core, probe and app for Windows; core, mem and probe for `aarch64-apple-darwin` | Pass |
+| `npm test` | Pass, a new test lists a stadium no club plays at, opens it and filters it out by men's clubs |
+| `npm run build` | Pass |
+
+Still to do on a running game, on each platform: open Nations and count 251
+nations, with one not represented by anyone in the save opening its profile;
+open Stadiums, find a national stadium such as Wembley with no club, and time
+the first open of the list.
+
+Later, on Windows (13 November): 251 nations and 18,765 stadiums read from the running game, Tuvalu, Sint
+Maarten and Kiribati found, Wembley with no club and 90,000 seats. The time of
+the first open was not recorded. macOS not run.
+
+## Staff birth date (12 November 2026)
+
+A member of staff's birth date is editable, the human manager's too. No game
+was run for this change: it is enabled, unverified.
+
+Why the layout is taken as mapped: the staff record's `date_of_birth` is the
+date the staff list already reads ages from and the staff health check already
+tests, and it sits at the same place in the person record as a player's, 0x58
+into it on macOS and 0x88 on Windows (a unit test holds both layouts to that).
+A player's birth date at that place is an edit already in use. The human
+manager's is 0x340 further, like his other person fields.
+
+The editor writes 1 January 1920 to 31 December 2020, or to the game's date
+once that is later: as for players, but from 1920, since chairmen and owners
+are staff. A member of staff with no birth date is left as he is.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for a Windows and an Apple Silicon target, from Linux | Pass. This type-checks the new test; it does not run it |
+| `cargo fmt --all --check` | Pass |
+| `npm run build` and `npm test` | Pass (7 and 66 tests) |
+| Browser preview on sample data (`?writable`), a scout born 20 October 1965 | Career tab: the date is an input in Edit. 01/01/1919 read "1 invalid" with Apply off. 08/03/1938 applied: the profile read 8 Mar 1938, the header's age went from 60 to 88, and Changes listed "Date of birth 20 Oct 1965 → 8 Mar 1938" with Undo |
+
+The unit tests and the app crate's checks need macOS or Windows, so the
+Validate workflow was run on the branch at 6f75d25 (run 43177012159): both
+`macos-checks` and `windows-checks` passed, the workspace tests and the
+Windows installer build among them.
+
+Not run: anything in FM on any platform: the date on FM's staff profile, an
+undo, a stale-value refusal, a Continue, and a save, quit and reload on a
+career copy; the human manager's own date; a member of staff born before 1940.
+
+Later, on Windows (13 November): Stuivenberg's birth date showed in FM, undid exactly and
+held through holidays and a save, quit and reload. The human manager's own date
+and a member of staff born before 1940 were not run.
+
+## FM27 Steam build 26577676 (12 November 2026)
+
+Steam updated FM27 on 12 November to build 26577676, still 27.0.1. game_plugin
+was rebuilt on every platform, so FM Lens opened the build read-only. Every
+function and static FM Lens uses stayed where build 26385295 has it; on macOS
+the two constants it reads from the game's code moved by 0x30. The three new
+profiles are in `profiles/fm27/`; how they were made is in
+[recon/fm27-steam-26577676.md](recon/fm27-steam-26577676.md). This is the run
+of [PATCH-VALIDATION.md](PATCH-VALIDATION.md) on that build.
+
+Packaged FM Lens 0.7.7 built from `Iamdejman/steam-26577676` (3687c08), driven
+through the accessibility API (UI Automation on Windows). Every edit was read
+back with `fmlens-probe` of the same commit. Test copies only.
+
+What the run found: the first build of the branch (1ad76c0) carried build
+26385295's addresses for the two constants. Windows does not read them from
+there and passed in full. On Apple Silicon a loan (Bukayo Saka to Barcelona)
+read back with a future fee of 33,619,968 and End loan refused it; that game
+was closed without saving. e449def moved the two addresses in both Mac
+profiles, and 907a095 has FM Lens read both constants back before it uses
+them, so a stale address refuses the action. The Mac columns below are the
+build with the fix; on Windows the loan and the work permit ran again on it.
+
+Read checks (`scripts/check-build.sh`): 15 of 15 on Apple Silicon
+(`reports/build-check/A8550B47-FDE0-3D0D-A6CB-1B63DEE8DA19-20261112-123753`) and
+15 of 15 under Rosetta
+(`reports/build-check/DD0EE157-4C9C-31A7-81DD-0D1122E62FC7-20261112-152640`).
+On Windows `fmlens-probe health` named the build "FM27 Steam build 26577676
+(27.0.1)" and passed 12 of 12; `info` gave game_plugin.dll size `0x185fa000`,
+timestamp `0x6af38e5c`; the script's 14 steps, run through PowerShell, passed,
+and the arrays sit where the profile says (players `+0x5820810` 25,025, staff
+`+0x5820858` 14,178, clubs `+0x58209c8` 19,311).
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass. UUID A8550B47, Arsenal, 10 Dec 2027 | Pass. UUID DD0EE157, "FM27 Steam build 26577676 (27.0.1, macOS, Intel)", 30,308 players, Arsenal, 10 Dec 2027 | Pass. 25,025 players, Ayo Elu, Arsenal, 28 Jul 2026 |
+| Player attribute | Pass. Bukayo Saka Heading 9 to 12 (stored 60); after the reload 12 to 13 | Pass. Saka Heading 12 to 13 | Pass. Saka Heading 12 to 13 (stored 60 to 65) |
+| Contract wage | Pass. Saka 300,000 to 310,000; after the reload 310,000 to 320,000 | Pass. Saka 310,000 to 320,000 | Pass. Saka 310,000 to 320,000 |
+| Add injury, then Heal | Pass. Abdominal strain from 10 Dec 2027, back 27 to 31 Dec; Heal: none | Pass. Injury added; Heal: none | Pass. Abdominal strain from 28 Jul 2026, back 16 to 21 Aug; Heal: none |
+| Work permit Revoke, then Request | Pass. Gabriel: none, then "England: active"; Saka reads "Not needed" | Pass. Gabriel: none, then "England: active"; Saka reads "Not needed" | Pass. Gabriel: none, then "England: active"; the same again on 3687c08 |
+| Loan, then End loan | Pass. Saka to Barcelona, 10 Dec 2027 to 30 Jun 2028, borrower pays 0, no future fee; back at Arsenal | Pass. Saka to Barcelona, 10 Dec 2027 to 30 Jun 2028, borrower pays 0, no future fee; back at Arsenal | Pass. Saka to Barcelona, 28 Jul 2026 to 30 Jun 2027; back at Arsenal; the same again on 3687c08, borrower pays 0, no future fee |
+| Transfer club to club | Pass. Paul Ifill, Greytown AFC to Barcelona, 1,000 a week to 30 Jun 2029 | Pass. Ifill to Barcelona, 1,000 a week to 30 Jun 2029 | Pass. Paul Ifill, Arsenal to Barcelona, 1,000 a week to 30 Jun 2028 |
+| Release | Pass. Ifill a free agent, no contract | Pass. Ifill a free agent, no contract | Pass. Ifill a free agent, no contract |
+| Sign later, then Cancel transfer | Pass. Arsenal on 24 Dec 2027 (offer 381, 58 to 59 future transfers); cancelled, 58 again | Pass. Arsenal on 24 Dec 2027 (offer 381, 58 to 59); cancelled, 58 again | Pass. Arsenal on 10 Aug 2026 (offer 1388, 44 to 45 future transfers); cancelled, 44 again |
+| Sign now | Pass. Ifill at Arsenal, 23,520 a week to 30 Jun 2029 | Pass. Ifill at Arsenal, 23,520 a week to 30 Jun 2029 | Pass. Ifill at Arsenal, 20,665 a week to 30 Jun 2027 |
+| Club balance | Pass. Arsenal 190,873,135 to 200,000,000 | Pass. Arsenal 190,873,135 to 200,000,000 | Pass. Arsenal 340,000,000 to 350,000,000 |
+| Max tactics | Pass. First team, 30 changes, values at 10000; Undo all put every value back | Pass. First team, 30 changes; Undo all put every value back | Pass. U21 (team 25631), 23 changes, values at 10000 |
+| Lift bans, Heal, Refresh fitness, Remove unhappiness | Pass. First team (30 players): injured 5 to 0, banned 3 to 0, below full energy 22 to 0, below full sharpness 18 to 0, jaded 12 to 0; Remove unhappiness 10 changes | Pass. First team: injured 5 to 0, banned 3 to 0, energy, sharpness and jaded counts to 0; Remove unhappiness 10 changes | Pass. U21: Refresh fitness 63 changes, Remove unhappiness 1, Heal 1; no ban to lift |
+| Staff attribute | Pass. Nicolas Jover Fitness 3 to 6 (stored 30); after the reload 6 to 7 | Pass. Jover Fitness 6 to 7 | Pass. Jover Fitness 6 to 7 (stored 30 to 35) |
+| Nation field | Pass. England reputation 9,238 to 9,300; after the reload 9,300 to 9,310 | Pass. England reputation 9,300 to 9,310 | Pass. England youth rating 135 to 140 |
+| Undo in Changes | Pass. Arsenal's balance back to 190,873,135 | Pass. Arsenal's balance back to 190,873,135 | Pass. Youth rating back to 135, "104 changes · 1 undone" |
+| FM shows it | Pass. News on the Portal: "Paul Ifill deal falls through" | Pass. News on the Portal: "Paul Ifill deal falls through" | Pass. News on the Portal: "Paul Ifill deal falls through" |
+| FM kept running | Pass | Pass. Still responding 22 minutes in, no error in its log | Pass. `fm` responding after the last edit and after the save |
+| Saved under a new name, reloaded | Pass. Saved as `FM-Lens-26577676-2026-11-12`, FM quit and started again, that save loaded: Heading 12, wage 310,000, Jover Fitness 6, reputation 9,300, balance 190,893,135 | Pass. That save loaded: Heading 12, wage 310,000, Jover Fitness 6, reputation 9,300 | Pass. Saved as `FM-Lens-26577676-Windows`, FM quit and started again (process 5008), that save loaded: Heading 13, wage 320,000, Jover Fitness 7, balance 350,000,000, youth rating 135, Ifill at Arsenal on 20,665 a week, Gabriel's permit active, U21 tactics at 10000, 44 future transfers |
+
+Notes:
+
+- Max tactics reports only the players it changed. On Windows Arsenal's first
+  team was at the maximum already in the loaded save and read "No changes
+  made", so the check used the U21 team.
+- On Windows FM Lens loads its bridge into the running game, so FM did not need
+  a restart to take edits. After the restart FM Lens connected to the new
+  process and one more edit applied (Saka Heading 13 to 14, not saved).
+- On the Mac FM loads the bridge when Steam starts it. The first values in the
+  Apple Silicon column (Heading 9 to 12, wage, Jover, reputation) were set
+  while FM still held the bridge of the released 0.7.7, which does not know the
+  build: they applied with the notice that FM's screen could not refresh, and
+  they are what the new save holds. Everything else ran after FM was started
+  again with the new bridge.
+- Under Rosetta FM was started with `arch -x86_64` and the packaged universal
+  bridge while Steam was running, and FM Lens with `arch -x86_64`.
+
+Mac: FM27 build 26577676 native on Apple Silicon (FM process 14092, FM Lens
+14441). The test copy `FMLensTacticsTest-2026-11-11` (Arsenal, 10 Dec 2027) was
+saved only as the new file `FM-Lens-26577676-2026-11-12`; the run on 3687c08
+was in that file and quit without saving. Then under Rosetta (FM process 50412,
+FM Lens 52027) in the same file, quit without saving.
+
+Windows: FM27 build 26577676 on the test machine (FM process 5528, then 5008;
+FM Lens 7696, then 6032) with the installer built there from the branch, in
+`FM-Lens-27.0.1-Windows` (Arsenal, 28 Jul 2026), saved only as the new file
+`FM-Lens-26577676-Windows`. The loan and the work permit on 3687c08 were not
+saved. No other save changed.
+
+Main career SHA-256 stayed 23472DA3...6192BEF4 on Mac and AF20CBAC...2CB747E5
+on Windows.
+
+## 0.7.8 on the Mac (12 November 2026)
+
+The FM checks owed by PR 244 (sorting, filters, club Nation, stadium owner,
+every attribute), PR 246 (staff birth date) and PR 239 (applied marks), run
+before the 0.7.8 release. Packaged FM Lens 0.7.8 built from
+`Iamdejman/release-v0.7.8`, first at 6d53fb0, then at e4cd6d4 once the Nation
+column was fixed (below), driven through the accessibility API. Every edit was
+read back with `fmlens-probe` of the same commit. FM27 Steam build 26577676,
+test copy `FM-Lens-26577676-2026-11-12` (Arsenal, 10 Dec 2027), never saved.
+
+What the run found: on 6d53fb0 the clubs' Nation column showed the nation
+whose league a club plays in, not its own. Swansea City read England where FM
+shows Wales; Cardiff City and Wrexham read England, FC Vaduz Switzerland and
+Derry City Republic of Ireland. The column read `club.nation` (+0xD8). The
+club's own nation is `club.plays_in` (+0xE8), set for every club sampled.
+e4cd6d4 has the column, its filter and its sort read `plays_in`, falling back
+to `nation` where it is not a pointer. The local-language mark on a person's
+languages uses the same order. Work permits keep reading `nation`, since the
+league's nation is the one that issues them.
+
+| Pointer | Offset | Cardiff City | Read by |
+|---|---|---|---|
+| `club.plays_in` | +0xE8 | Wales | Nation column, filter and sort; local languages |
+| `club.nation` | +0xD8 | England | Work permits; the fallback for the above |
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass | Pass. "macOS, Intel", 12 of 12 health checks | Not run |
+| Staff birth date (PR 246) | Pass. Nicolas Jover (staff 48030808) 5 Aug 1981 to 5 Aug 1979: FM Lens age 48, probe 1979-08-05. FM's staff profile read "48 years old (5/8/1979)" and his biography "born 5 August 1979". Undo: FM read "46 years old (5/8/1981)" | Pass. The same edit: FM Lens age 48, probe 1979-08-05; Undo: probe 1981-08-05 (age 46) | Not run |
+| Sort by header (PR 244) | Pass. CA: the first click puts CA 1 players first, the second Haaland 195, Mbappé 192, Yamal 187 | Pass. The same | Not run |
+| Player filters (PR 244) | Pass. Height 200 and over: 132 players. With wage 50,000 and over: 5, Courtois (200 cm, 56,455 a week by the probe), Milinković-Savić 202, Lucca 201, Burn 201, Jaouen | Pass. The same 132, then 5 | Not run |
+| Club Nation (PR 244) | Fail on 6d53fb0 (above). Pass on e4cd6d4: Cardiff City, Swansea City and Wrexham Wales, FC Vaduz Liechtenstein, Derry City Northern Ireland, Monaco France, Arsenal England. FM's own screen: Swansea WAL, Monaco FRA | Pass on e4cd6d4. The same values; filter Wales: 229 clubs; sort: Afghanistan first, Zimbabwe first reversed | Not run |
+| Stadium owner (PR 244) | Pass. Arsenal Women's profile: Emirates Stadium, owner Arsenal; the Stadiums list the same | Not run | Not run |
+| Goalkeeping attribute on an outfielder (PR 244) | Pass. Bukayo Saka Handling 1 to 15, read back 15 | Pass. Saka Handling 15 and Reflexes 14, read back | Not run |
+| Applied marks (PR 239) | Pass. Handling and Reflexes both marked after two Applies, and still after closing and reopening the profile. Undo of Handling cleared only its mark (Reflexes 14 stayed marked); Undo of Reflexes: probe Handling 1, Reflexes 2 | Pass. Both marked after reopening; Undo put Handling back to 1 (Reflexes 14), then Reflexes to 2 | Not run |
+
+Notes:
+
+- The first click on a numeric header such as CA sorts lowest first, so the
+  list opens on CA 1 players; the second click puts the best first. Left as
+  it is for 0.7.8.
+- Berwick Rangers, in the Scottish league, reads England on e4cd6d4; not
+  looked at in FM. FM's own screen was looked at for Swansea and Monaco only.
+- Not run: a stadium a club rents or shares, the wage, value, personality and
+  trait filters against profiles, a row's wage after a transfer, the human
+  manager's birth date, and Windows. The 0.7.8 release went ahead on the Mac
+  checks alone.
+
+Mac: Apple Silicon FM process 76714, then 81062 (FM Lens 76638, then 81027);
+Rosetta FM 82569 started with `arch -x86_64` and the packaged universal
+bridge, FM Lens 82602 with `arch -x86_64`. Every game was quit without saving.
+The test copy stayed 89,343,966 bytes from 14:31, and the main career SHA-256
+stayed 23472DA3...6192BEF4.
+
+## Suggested current ability (12 November 2026)
+
+While a player is edited, the profile shows the current ability that fits the
+attributes and positions as typed ("Suggested CA 170"), and a click fills it
+in. It is worked out in the app (`app/src/abilityEstimate.ts`) and makes no
+call to the game; the write is the ordinary current ability edit.
+
+The weights were fitted to a read-only export of the 30,282 players of a
+career on build 26577676 (`fmlens-probe players --export`, stored 0-100
+attributes). Against that export the app's function is off by 2.15 points
+RMS, by 4 or less for 19 players in 20 and by 29 at worst. A player whose
+ability is within 6 of the estimate keeps that difference, so an unedited
+player is suggested the ability he has and the button stays hidden.
+
+Checks run, none of them against a running game:
+
+- `npm test` (82 tests) and `npm run build` on the branch, rebased on c93585a.
+- The app's function against all 30,282 exported players: 2.154 RMS.
+- The browser preview on sample data (`?writable`): an edited attribute moved
+  the suggestion (Decisions to 5 read 170, Marking to 1 read 197); a click
+  filled Current ability and the button went; the header kept its height
+  with and without the button; no console errors.
+
+Not run: the packaged app on Apple Silicon, under Rosetta or on Windows; an
+Apply of a suggested ability in FM; any other game build or database, where
+the weights may fit worse; a goalkeeper or a player with no rated position
+in the preview (both are in the tests).
+
+Later, on Windows (13 November): Raya's Suggested CA (169 to 177) was applied and FM showed
+the new ratings; Undo put 169 back. macOS not run.
+
+## Traits: FM27's names and groups (12 November 2026)
+
+The profile's trait list offered 62 traits by bit, named as FMRTE names them,
+and showed "Unknown trait" for bits 62 and 63. Each of the last five bits was
+set alone on Bukayo Saka and David Raya (Arsenal, 14 April 2027) on Windows,
+and the player's trait list read in FM after each Apply.
+
+| Bit | FM27 shows | FM Lens before | FM Lens now |
+|---|---|---|---|
+| 59 | Crosses Early | Crosses early | The same |
+| 60 | Brings Ball Out of Defense | Brings ball out of defence | The same |
+| 61 | Nothing, on either player | Plays ball with feet | Not offered |
+| 62 | Nothing | Unknown trait | Not offered, not listed |
+| 63 | Plays Ball With Feet | Unknown trait | Plays ball with feet |
+
+Bits 8, 11, 51 and 58 read as FM names them on Saka's own traits. Both
+players were set back to their own traits.
+
+The edit list is now grouped as FM groups traits under Development, Training,
+Start New Trait Training: Movement, Passing, Finishing, Discipline, Defending
+and Technique, each in the game's order (by bit). The groups were read from
+that menu for Saka, Gabriel, Bruno Guimarães and Raya; 42 of the 62 traits
+were seen in a group. Placed by their kind, not seen: bits 1, 4, 18, 39, 54,
+58 (Movement), 22, 30, 59 (Passing), 38 (Defending), 11, 32, 53, 55, 63
+(Technique) and the three of Discipline, which FM offered to none of the four.
+"Will retire at top" and "Will play football as long as possible" are in no
+FM group and stand under Career. Three English names now follow FM27's
+wording: "Hits free kick with power", "Likes to beat opponent repeatedly" and
+"Likes to switch ball to wide areas".
+
+Not run: the packaged app with these changes on any platform (the list and
+the tags were checked in the browser preview); the Spanish and Turkish names
+against FM in those languages.
+
+## Women's FIFA points (12 November 2026)
+
+Branch `claude/confident-darwin-ktyc9o`, from main at e47d8a8 (0.7.7).
+
+A nation's profile shows the women's world ranking and points, and
+`women.points` can be edited, 0.00 to 3,000.00, one nation at a time, behind
+the nations health check. Both are read from the women's container at the
+offsets the men's uses in its own (`ranking` and `points` in `[national]`).
+`fmlens-probe nation UID` prints them on a `women ranking` line.
+EDITOR-FIELDS.md lists the new field: 37 nation fields.
+
+What the mapping rests on: the read-only probe work of 5 November on ARM64
+build 26340721 (recon/fm27-nations.md), where the women's container read
+England 3rd on 2,027.1 and Spain 2nd on 2,105.4. The women's container was not
+read for these on Intel or Windows.
+
+Checks, all in a Linux container with no game:
+
+- `npm --prefix app run build` and `npm --prefix app test`: pass (7 node tests,
+  66 vitest tests).
+- `cargo fmt --all --check`: pass.
+- `cargo test --locked -p fmlens-mem -p fmlens-core -p fmlens-probe`, built for
+  `x86_64-pc-windows-gnu` and run under Wine: 108 core and 5 mem tests pass,
+  `nations_take_their_own_rules_one_at_a_time` among them.
+- `cargo clippy --locked --all-targets -- -D warnings` on those three crates,
+  same target: clean.
+- The fields the code defines on each layout, listed and compared with
+  EDITOR-FIELDS.md key by key: 169 player, 42 staff, 14 club, 37 nation and
+  4 official on both, none missing and none extra.
+- Browser preview with sample data: Germany's women's ranking and points show;
+  3000.5 is refused, 2,042.00 -> 2,100.25 applies, Changes names it "Women's
+  FIFA points", Undo puts 2,042.00 back, and the men's points do not move.
+
+Not run: a macOS build, the app crate, the Tauri bundle, and anything against
+a running game. No read, edit, FM inspection or save and reload.
+
+To check on a disposable copy: `fmlens-probe nation 765` against FM's women's
+world ranking; edit `women.points` in the app, read it back and undo; hold the
+edit to FM's next women's ranking date; then save, quit and reload. Repeat the
+read under Rosetta and on Windows.
+
+Later, on Windows (13 November): England's women's points 2,038 to 2,100 held through
+holidays and a save, quit and reload, and FM's women's ranking followed (2nd).
+Rosetta not run.
+
+## Inspire on a player's profile (13 November 2026)
+
+The Mood tab's Morale and happiness heading has an Inspire button: morale to 20
+and the player's lasting reasons to be unhappy ended, in one press. It is the
+old squad button Inspire all for one player. That button was split on 7
+November into Max morale and Remove unhappiness, so the 7 November entry's
+"Inspire all" row is evidence for both of those as they were then.
+
+Inspire uses what is already there. Morale goes through `apply_edits` over the
+value the profile read; the reasons end through `remove_unhappiness`, the call
+Remove all uses (see "Unhappiness that came back after Continue" above). So the
+build and career guards, stale-value refusal, the Changes rows and Undo are the
+ones those two have. Only what is short is done: no morale edit at 20, no call
+for a player with nothing lasting. One the game refuses does not hold the other
+back. No Rust changed.
+
+Not checked in FM. No game was available: this ran in a Linux container.
+
+| Check | Result |
+|---|---|
+| `npm --prefix app run build` | Pass |
+| `npm --prefix app test` | Pass, 97 tests; `tests/inspire.test.tsx` covers what is sent, when the button waits and a refused write |
+| Browser preview, sample data (`?writable`), Kerem Yılmaz | Morale 8 to 20 and his one lasting reason gone, the button dimmed and focus on the heading. Changes: "Morale 8 → 20" and "Reasons to be unhappy 1 → 0", each with Undo |
+| Undo of both rows, same preview | Morale back to 8, the reason listed again and Inspire on again |
+| Rust checks | Not run. `fmlens-core` builds for macOS and Windows only, so its tests do not run on Linux |
+
+Still to do on a career copy, on each platform: press Inspire on an unhappy
+player, look at FM's Happiness panel and Dynamics, Continue a day, undo both
+rows from Changes, then save, quit and reload.
+
+Later, on Windows (13 November): on Saliba, morale was refused as the build's live values
+did not check out; his one concern ended, came back on Undo, and the re-applied
+edit held through a save, quit and reload. With build 9 his morale went to 20,
+held and undid (see Build 9 on Windows below).
+
+## Dragging numbers, scroll position and reopening (12 November 2026)
+
+Three changes to the interface, none to what is written to the game or how:
+a number's input can be dragged sideways (`app/src/dragValue.ts`,
+`draggedText` in `app/src/editDraft.ts`), lists and profiles keep their scroll
+position, and what the window held comes back when FM Lens is opened again
+(`app/src/restore.ts`). A drag only fills the input; Apply, the guards and Undo
+are untouched. No Rust changed.
+
+Checked in the browser preview (`npm --prefix app run dev`, `?writable`, sample
+data, headless Chromium, 1440 by 900). This is not the native app and not a
+live game.
+
+- Scroll: the player list at 900 px stayed at 900 after going to Staff and
+  back, with and without a search, with a profile open, and after an Apply.
+  Before the change each of these went back to 0. A new search starts at the
+  top. An open profile at 250 px was at 250 after the same round trip.
+- Dragging: 78 of a player's 141 inputs drag (numbers only). Eccentricity 18
+  went to 14 over 40 px left, to 20 over 64 px right, and stopped at 20 and at 1
+  however far the pointer went. A click without movement changed nothing and
+  focused the input. Current ability 180 went to 173 over 30 px, showed as one
+  pending change, read "Current ability 180 → 173" in Review and applied. A
+  club's balance went 17,551,479 → 18,000,000 → 19,000,000 → 20,000,000. At
+  150% zoom in the dark theme, 36 px moved an attribute three steps.
+- Reopening: with a club open on its Squad tab, a player selected on the second
+  page at 1,200 px on the Contract tab, and "nov" in the Staff search, the
+  window was closed and a new one opened on the same storage. It came back on
+  Clubs with that club and tab, Players had the same row, page, scroll position
+  and tab, and Staff had its search. Settings did not open by itself.
+- A language or currency reload still brings the window back as before, with
+  Settings open.
+
+`npm --prefix app run build` and `npm --prefix app test` passed: 8 node tests
+and 104 in vitest, 14 of them new (`app/tests/drag-value.test.tsx`,
+`app/tests/navigation-memory.test.tsx`), covering the steps of a drag, a finger
+and a date left alone, rows kept while a list reads again, another career
+starting afresh and a list that left the screen before the app closed.
+
+The numbers above are from the run on top of 0.7.10. There, current ability
+follows a changed attribute by itself, whether it was typed or dragged.
+
+Not run: the native macOS and Windows apps (WebKit and WebView2), a real FM
+restart or a second career, and the Rust checks.
+
+Later, on Windows (13 November): in the WebView2 app, dragging Reflexes changed the value and
+Suggested CA, scroll stayed after moving between sections, and closing and
+opening FM Lens brought back the search, the open profile and its tab.
+
+## Contract signed and joined dates (13 November 2026)
+
+The day a contract was signed and the day its holder joined the club are
+editable, for players and staff, one person at a time. No game was run for
+this change: both are enabled, unverified.
+
+Why the layout is taken as mapped: both dates sit in the contract record the
+profile already reads them from (`signed` 0x44 and `joined` 0x4C, on macOS and
+Windows alike), beside the contract end at 0x48, which is an edit already in
+use and checked in FM. recon/fm27-contracts.md read all three on Saka, Rice
+and White. Staff use the same contract record.
+
+The editor writes 1 January 1950 to the game's date, since a contract is not
+signed, nor a club joined, on a day to come; where the game's date is not
+read, to 31 December 2100. A date the game holds as unset is left as it is,
+as for the contract end. Neither date is offered in a mass edit.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core` and `fmlens-probe`, for a Windows and an Apple Silicon target, from Linux | Pass. This type-checks the new unit tests; it does not run them |
+| `cargo fmt --all --check` | Pass |
+| `npm run build` and `npm test` | Pass (8 and 91 tests, one of them new: both dates are inputs in Edit, a day after the game's date is refused, and an applied date is read back) |
+| Browser preview on sample data (`?writable`), Lukas Kowalski, game date 18 July 2026 | Contract tab: Signed and Joined are inputs in Edit beside Expires. Joined 19/07/2026 read invalid ("Enter a date from 1 Jan 1950 to 18 Jul 2026") with Apply off. Signed 15/06/2023 and Joined 01/07/2020 applied: the profile read 15 Jun 2023 and 1 Jul 2020, Changes listed "Contract signed 1 Jul 2024 → 15 Jun 2023" and "Joined club 15 Aug 2022 → 1 Jul 2020", each with Undo, and one Undo read "Undone" |
+
+The unit tests and the app crate's checks need macOS or Windows, so the
+Validate workflow was run on the branch at b5b0c0b (run 43367636288): both
+`macos-checks` and `windows-checks` passed, the workspace tests and the
+Windows installer build among them.
+
+Not run: anything in FM on any platform: either date on FM's contract or
+history screens, an undo, a stale-value refusal, a Continue, and a save, quit
+and reload on a career copy; a member of staff's dates; what FM does with a
+joined date after the signed date, or with either date changed for a player on
+loan. The preview's first test found that its sample data did not report
+values for the two fields; the real app reads every field's value the same
+way, so that fix is to the sample data only.
+
+Later, on Windows (13 November): see Contract dates, bonuses, lists and pictures on
+Windows below. FM showed the signed date for a player, a member of staff and a
+loaned-out player; a joined date after the signed date was accepted; a stale
+Undo was refused.
+
+## Scouting and kits (13 November 2026)
+
+Added FM Lens's own scouting estimates (docs/SCOUTING.md): Find similar, potential
+attributes, role ratings, chance of development, progress rate, top players by
+world, continent or country, and records of the user's other careers; and club
+kits from kit packs. All of it only reads the lists FM Lens already holds, plus
+two new list fields: each player's personality and the country his club is in
+(`club.plays_in`/`club.nation`, the lookup the language marks already used). No
+game memory is written, so the editing guards are unchanged.
+
+Checks that ran, in a Linux container without FM:
+
+- `cargo test -p fmlens-scout`: 17 tests, including one that the app's role list
+  (app/src/scoutRoles.ts) matches the catalogue.
+- `cargo test -p fmlens-core` built for `x86_64-pc-windows-gnu` and run under
+  Wine: 105 tests, including the new scouting, filter, sort and kit tests.
+- `cargo clippy -D warnings` for fmlens-core, fmlens-probe and fmlens-scout on
+  `aarch64-apple-darwin` and `x86_64-pc-windows-msvc`, and for fmlens-app on
+  `x86_64-pc-windows-gnu`. The app's own tests (the career record file) did not
+  link with MinGW and are left to CI.
+- `npm test` (66 tests, 4 new, before the rebase) and `npm run build`.
+- The browser preview with sample data, at 1440 and 1000 pixels wide, light and
+  dark: role columns, the filters, the Scout tab, a comparison and Top players.
+  The preview uses stand-in numbers, not the models.
+- CI (validate.yml run 455) passed on both jobs before the branch was rebased
+  onto the 0.7.10 main (macOS: format, Clippy, workspace tests, bridge build;
+  Windows: Clippy, workspace tests, installer build). After the rebase, which
+  joined the role columns to main's column chooser and sort names and the
+  comparison to its Best for ranking, the local checks above ran again: 125
+  core tests under Wine, 17 scouting tests, 120 frontend tests, Clippy for both
+  targets and the preview screens. The pull request's own checks follow.
+
+Not checked: any of it against a live career, on macOS or Windows; how long the
+scores take on a 30,000-player save; the record files' size over long careers;
+a real kit pack. Next, on a copied career: connect, open Saka's Scout tab and
+compare his potential attributes and roles with FM's screens, run Find similar
+both ways, sort the list by a role and by progress with no filter (the slowest
+case), open Top players for England and Europe, reload after a game month and
+confirm one record file in the data folder's `history/`, then load a second
+career and confirm Saka's other-career row.
+
+Later, on Windows (13 November): see Scouting on Windows below.
+
+## Competition bonuses, read-only (13 November 2026)
+
+A player's Bonuses and clauses group now lists what his contract pays for
+competitions, under his clauses: one row per bonus, named by the competition
+("Premier League bonus") with its amount. They are read-only and are not in the
+Change dialog. No game was run for this change, so none of it has been
+compared with FM.
+
+What is read: each contract has a second list beside its clauses, at contract
++0x80 on macOS and Windows alike, of 32-byte entries. FM Lens takes the UID at
++0x14 and the amount at +0x18 (0xFFFFFFFF: none). The Windows layout already
+named those two from Kylian Mbappé on Game Pass, and the macOS research read
+the same shape on Declan Rice (UID 637, 850,975). The app names the UID from
+the competitions it reads once per connection, or from the awards where no
+competition has it, and shows "Unknown competition" where neither does. A
+table that cannot be read leaves the name out rather than failing the profile.
+
+Not decoded: what a bonus is paid for (a title, a round reached, an
+appearance). The rest of the entry likely says, but it is unmapped, so the row
+names only the competition. A bonus with no amount shows a tick.
+
+| Check | Result |
+|---|---|
+| `cargo clippy --all-targets -- -D warnings` on `fmlens-core`, for an Apple Silicon target, from Linux | Pass. This type-checks the new unit test (Rice's entry gives UID 637 and 850,975); it does not run it |
+| Validate workflow on the branch at aaa4f42 (run 43384287924) | Failed on both `macos-checks` and `windows-checks`: the new unit test expected 851,999, a wrong conversion of 0x000CFC1F, which the code correctly reads as 850,975. The test and these notes were corrected; the rerun is below |
+| Validate workflow on the branch at eed03fe (run 43385875282) | Pass: `macos-checks` and `windows-checks`, the workspace tests (the new one included), the app crate's Clippy and the Windows installer build among them |
+| `cargo fmt --all --check` | Pass |
+| `npm test` | Pass, with three new tests: bonuses listed by competition after the clauses, a bonus with no amount and one whose UID names nothing, no "No bonuses or clauses" when only bonuses exist, and none in the Change dialog |
+| Browser preview on sample data | A player's group listed "Türkiye First Division bonus £913,000" and "Unknown competition bonus £250,000" after his clauses |
+
+To check on a career copy: for Declan Rice, and two or three players with
+more than one bonus (`fmlens-probe clauses <UID>` prints the raw entries),
+compare each row's competition and amount with FM's contract screen, and note
+what FM says each is paid for, so the rest of the entry can be mapped. FM shows
+a contract's bonuses only for players it has scouted; your own club's are
+always shown.
+
+Later, on Windows (13 November): Nwaneri's, Rice's and Havertz's other bonuses and Havertz's
+award bonuses matched FM. The two players found with a competition bonus are
+behind FM's Scouting Required, so none has been compared.
+
+Later still: +0x14 is the competition's place in the game's table, not its
+UID, so every bonus showed as "Unknown competition". Fixed in build 11, below.
+
+## Position edits that stay (13 November 2026)
+
+Windows Server 2022, FM27 Steam build 26577676 (27.0.1), on a copy of the
+Arsenal career ("FM Lens Positions 2026-11-13.fm"), 3 to 30 June 2027. The
+copy's source file kept its SHA-256 (AEFFB521...6733) throughout. The cause and
+the record list are in recon/fm27-position-records.md.
+
+Before the fix, four Arsenal players were edited on 3 June 2027. Calafiori,
+who has no position records, kept both edits; Julienne's DM, Ogunnaike's DL and
+DC and Ranson's GK were back at their old ratings by 9 June, and again on 12
+June after a second write. Each rating that came back was the rating in the
+player's record for that position.
+
+With the fix (app tree f085f530, then builds 4 to 6 from the branch):
+
+| Check | Result |
+|---|---|
+| Single edits: Ogunnaike DL 20 to 5, DC 16 to 4, AMC 1 to 18, AMR 1 to 20; Ranson GK 20 to 3, ST 1 to 6 | Applied; each player's record for the edited position taken out, the rest kept; probe and FM read the new ratings |
+| Template: Calafiori's positions onto King, Hashi and Porter; mass edit on the same three | Applied and undone; lists emptied where the template lowered a recorded position |
+| Undo | Newest first restores the rating and the record byte for byte; undoing an older change first is refused while a later change touches the same list |
+| Stale value | An edit whose expected rating or list FM had changed is refused at Apply |
+| Control: Julienne DM 20 to 1 written the old way, record left in | Back at 20 by 27 June |
+| Holidays 17 to 27 June and 27 to 30 June 2027 | Every fixed edit read as written in the probe and in FM |
+| Save, quit FM, relaunch through Steam, load, twice | Ogunnaike DL 5, DC 4, AMC 18, AMR 20; Ranson GK 3, ST 6; the template players as Calafiori; FM showed Ogunnaike "AM (RC)", King "D (C), AM (R)", Ranson no position |
+| Health after the second reload | `positions 2000 of 2000 fit; the records of 2000 of 2000 read, 1972 of 1972 at the player's rating` |
+| After FM restarts | FM Lens says FM closed or restarted; after Connect the Changes list shows the earlier changes without Undo, as for any change from an earlier game run |
+| Build 4 smoke test: Julienne DR 17 to 12 | DR record taken out (list end down 0x18, slot cleared); Undo put the rating and the record back byte for byte. A DR edit on Nwaneri, who has no DR record, left his list untouched |
+
+Not run: macOS ARM64 and Intel in a running game (each half's offset comes from
+its own setter); the Intel setter's first instruction; Game Pass, which shares
+the Windows layout and is guarded by the health check. A full season on the
+edited players was not played.
+
+## Windows run of enabled edits without an FM check (13 November 2026)
+
+Same machine, build and career copy. For each: apply, check FM shows it, undo,
+re-apply, then save, quit FM, relaunch and load, and check FM and the probe
+again. Two save, quit and reload rounds were made.
+
+| Edit | Result |
+|---|---|
+| Saka: first nationality England to Italy, second Nigeria to Ghana | Held. FM showed ITA and GHA, and "No Work Permit" for him |
+| Saka: international caps 62 to 70 | Held |
+| Saka: world reputation 8,515 to 6,000 | Held; FM's reputation word changed to Continental |
+| Saka: trait on (Tries killer balls often), trait off (Curls ball) | Held; FM's traits list followed both |
+| Saka: playing-time happiness 71 to 20 | Held in memory and through reload; nothing on FM's screens shows it |
+| Saka: happiness 40 to 90 | Not held: FM Lens wrote 90 and it survived a save and reload, but FM put it back to 40 as soon as it opened his profile. Undo after that reported Undone without a refusal |
+| Keep playing: Joao Moutinho (retiring 29 June 2027); control De Silvestri | Held. FM's retirement badge went, came back on Undo, and stayed gone after reload; on 30 June Moutinho was still a Braga player and De Silvestri had retired |
+| Saliba: squad number 2 to 44, transfer and loan listed, loyalty bonus 28,977 to 40,000, birth date 2001 to 2000, Arabic Good to Basic | Held; FM showed #44, 27 y/o, both listed, Arabic (Basic) |
+| Saliba: set all attributes to 15 | "52 changes made. Injury proneness and dirtiness set to 6."; FM showed every attribute 15; Undo restored the saved bytes exactly; held after reload |
+| Saliba: Inspire | Morale refused on this build ("Energy, match sharpness, jadedness and morale look wrong..."); his one concern ended and came back on Undo |
+| Stuivenberg (staff): CA 146 to 160, PA 146 to 170, world reputation, birth date 1970 to 1975, Attacking 13 to 18, Ambition 14 to 19, contract end 2030 to 2032 | Held; FM showed 51 y/o, 30 June 2032, Global reputation, Attacking Outstanding |
+| Arsenal: training, youth facilities, youth coaching, corporate, stadium capacity, seated, in use, expansion, total wage budget | Held; FM's Facilities page showed 62,000 all-seater, State of the art training, Superb youth |
+| Arsenal: "Wage budget used" | Not held: FM recomputes it within seconds (it is the weekly wage bill, recon/fm27-contracts.md section 4) |
+| England: men's and women's FIFA points, women's reputation, youth rating, game importance, attendance | Held in memory and through reload; FM's rankings followed the points at the next ranking date (men 3rd, women 2nd); FM has no screen for the other three |
+| Raya: Suggested CA, Reflexes, Handling, One on Ones to 20 | Review showed CA 169 to 177, PA 170 to 177; FM showed the three at 20; Undo restored 169 and 170 |
+
+Also checked in the app against the game: every list sorts by every column both
+ways; advanced search (height, wage, base value, a trait, Professionalism)
+matches the probe; the club nation filter (Wales, 233 clubs); a shared
+stadium's owner (Victoria Road, 6,078, matches FM); a keeper's attribute groups
+in FM's order; applied marks follow the Changes list; Premier League rules
+match FM's rules screens; promise names (the save has none); dragging a number,
+keeping scroll and reopening where you left off; the undo refusal message.
+
+## Contract dates, bonuses, lists and pictures on Windows (13 November 2026)
+
+| Check | Result |
+|---|---|
+| Saka: contract signed date to 1 Aug 2025 | FM's contract page showed Start Date 8/1/2025; joined edits read back; a joined date after the game date refused; a joined date after the signed date accepted; a stale Undo refused, the newest undone |
+| Stuivenberg (staff): signed to 1 Jul 2025, joined to 1 Jan 2020 | FM's staff contract page showed Start Date 7/1/2025 |
+| Nwaneri (on loan at Dortmund): signed and joined dates | Applied, FM's Parent Club tab showed the new start date, the loan record unchanged; both undone |
+| Bonuses: Nwaneri, Rice, Havertz | Every row matches FM's contract page (FM in dollars at about 1.35): Havertz appearance 30,670 ($41.5K), goal 23,003 ($31K), unused sub 7,667 ($10.25K), landmark goals 552,074 ($750K) and 138,018 ($185K), sell-on 15% |
+| Award bonuses (new, Windows only) | Havertz: World Footballer of the Year 439,614 ($600K), World Player of the Year 350,669 ($475K), World Golden Ball 439,614, as in FM. Probe census: 303 contracts, 548 entries, all naming a known award |
+| Competition bonuses (+0x80) | Not compared: the two players found with one (De Bruyne, Linder) are behind FM's "Scouting Required". Linder's shows as "Unknown competition bonus" (6787, the UEFA Women's Champions League's place in the table: see build 11) |
+| Nations list | 251 nations; Tuvalu, Sint Maarten and Kiribati found by search |
+| Stadiums list | 18,765; Wembley with no club, capacity 90,000 |
+| FM's own pictures with no graphics pack | Club logos in lists, profiles, rivals and affiliates; faces; flags; competition logos (white-only logos on a dark tile, also QPR's); three kits on Arsenal's Overview; initials where the game has no picture (staff have none). The reader's ignored live tests: 6 passed on the Windows install, pixels matching the Mac references |
+| A kit from a graphics pack | A test pack in `Documents\Sports Interactive\Football Manager 27\graphics\fmlens-kit-test` whose `config.xml` maps `618_away` to its own picture: Brighton's Overview showed the pack's away shirt beside the game's home and third. The pack was removed afterwards |
+| Top players by division | England men and women: each division lists its own clubs (relegated clubs in the Championship, The New Saints under England as the data has it); long names fit the select |
+| Custom column and saved filter | A column (FIN) and a saved filter ("Big names") survived app restarts |
+
+## Scouting on Windows (13 November 2026)
+
+Builds 6 and 7 against the same career copy.
+
+| Check | Result |
+|---|---|
+| Saka's Scout tab | Reaches potential 100%, Progress 0 of 5, PA 188, best roles (Inside Forward 83/85, Raumdeuter 83/85, Winger 81/83), potential attributes with +1 on Off the Ball and Balance |
+| Find similar, today and at peak | Lists of similar players; the search box is cleared first so the whole list is searched |
+| Best for "ST: Finishing" | 5,767 strikers, Haaland, Mbappe and Kane first |
+| Minimum development 90, maximum age 21 | 4,275 players |
+| Minimum progress one star | 3,653 players |
+| Potential Pace 17 or more | 392 players |
+| Role Inside Forward (Support) 70 or more | 1 player |
+| Top players, Most promising | 100 per list |
+| Your other careers | The career's record file was written under `history/` with one season; the tab reads "Not seen in your other careers yet" for a single career |
+
+A second career, with build 8: a new Brighton career ("Ayo Elu - Brighton", 13
+July 2026, its own manager) was started, saved and loaded. FM Lens wrote its own
+record file (`history/0f7aaf79.json`, key `Steam:2002071526:Ayo Elu`), and
+Saka's Scout tab listed "Your other careers" with the Arsenal career's rows:
+2026, age 24, CA 180, PA 188, and 2027, age 25, CA 183. A copy of the Arsenal
+career saved under another name kept the same manager and counted as the same
+career ("Not seen in your other careers yet"), as intended.
+
+Re-run on 14 November 2026 with the latest build (0.7.10 with the scout card, PR 268), on the ClubNames copy at 7
+January 2028:
+
+| Check | Result |
+|---|---|
+| Saka's Scout tab | Reaches potential 100%, Progress 0 of 5, PA 188, best roles Raumdeuter 83/83, Advanced Playmaker (Attack) 82/83, Inside Forward (Attack) 82/83 |
+| Find similar at his peak | 30,208 players, Güler, Fermín and Szoboszlai first |
+| Best for "ST: Finishing" | 5,969 strikers, Haaland, Mbappé and Kane first |
+| Minimum development 90 | 8,562 players |
+| Minimum progress one star | 15,236 players; Saka (0 stars) drops out |
+| Potential Pace 17 or more | 4,268 players; Cubarsí (at his peak, Pace 17 on his Attributes tab) is in it, Saka is not |
+| Role Inside Forward (Support) 80 or more | Mbappé, Saka, Yamal and Olise first; Haaland drops out |
+| Top players, Best and Most promising | 100 per list, with Dev and Progress; Romero (16, PA 199) first among the most promising |
+| Pictures | Faces, club logos and flags from FM; initials where FM has no picture (Barcelona, Real Madrid, Cubarsí's face) |
+
+Not run: macOS; scoring speed on a 550,000-player database.
+
+## Mass edit of a compared or ranked list (13 November 2026)
+
+On Windows with build 7, the player list compared with Bukayo Saka (Find
+similar) and searched for "Saka": the list showed 19 players and Mass edit said
+"All 19 players in the list", but its freeze box gave "20 to freeze" and "20
+frozen", and `frozen.json` held Saka himself. Mass edit and Templates picked
+their players from the search and filter only, while the list also leaves out
+the player it is compared with and, with a "Best for" that names positions,
+keeps only the players who play one of them.
+
+The list now sends both with its filter, and the players are picked by the
+same check as the list's rows (6810209, with a backend test).
+
+| Check (build 8) | Result |
+|---|---|
+| Compared with Saka, search "Saka" (19 players), Mass edit freeze | "All 19 players in the list", "19 to freeze", "19 frozen"; `frozen.json` held 19 without Saka; Undo "19 unfrozen", the list empty |
+| Best for "AML/AMR: Dribbling", search "Saka" (10 players), Mass edit | "All 10 players in the list", "10 to freeze" (not applied) |
+| Clone & templates on those lists | "Apply to 19 players matching "Saka"", then "Apply to 10 players matching "Saka"" |
+
+Export still writes what the search and filter select, without the compared
+player left out or "Best for" applied. Fixed in build 9 (see Build 9 on
+Windows below).
+
+## Third reload and FM's screens (13 November 2026)
+
+After a third save, quit, relaunch and load of the position career copy (game
+unchanged since the save), with build 8:
+
+| Check | Probe | FM |
+|---|---|---|
+| Health | `positions 2000 of 2000 fit; ... 1972 of 1972 at the player's rating` | - |
+| Ogunnaike | DL 5, DC 4, AMC 18, AMR 20 | "AM (RC)": AMR natural, AMC green, DL and DC low |
+| Ranson | GK 3, ST 6 | Only GK and ST lit, "No suitable roles" |
+| Saka's wage | 260000 | $18.22M p/a, expires 30 June 2031 |
+| Stuivenberg's contract | Signed 1 July 2025, joined 1 January 2020, expires 30 June 2032 | Start Date 7/1/2025, Expiry 6/30/2032; FM has no screen for a staff member's joined date, so it was checked in the probe, and the undo was exact |
+
+The freeze banner of a career ("Freezes from last time are back on") stays on
+screen after another career is loaded, until it is dismissed. Nothing was
+frozen in the new career: the banner is left over, not a freeze carried across.
+Fixed in build 9 (see Build 9 on Windows below).
+
+## Build 9 on Windows (13 November 2026)
+
+FM27 27.0.1 (Steam build 26577676) on Windows Server 2022, FM Lens 0.7.10 built
+from the position branch at f4d2a2b (build 9), on the copy "FM Lens Positions
+2026-11-13" at 30 June 2027. FM showed money in pounds a week for the wage
+check and was put back to dollars a year after. Nothing was saved.
+
+Fixed since build 8:
+
+- Export writes the players the list shows, in its order (58b77ff).
+- The freeze notice goes when FM has loaded another career (7a3ddd4).
+- The wage budget used is read-only: FM works it out again from the
+  contracts within seconds, so an edit never held (a3a64ac).
+- The live values check asks most players, not 99%, to be at 35% match
+  sharpness or more. After the summer break fewer are, so it failed and every
+  morale write was refused, which is why Inspire's morale and happiness did
+  not hold before (f4d2a2b).
+
+| Check | FM Lens | FM |
+|---|---|---|
+| Health | Passes on 30 June 2027 (live values 1,878 of 2,000) and on 10 Dec 2027 on another copy (1,999 of 2,000) | - |
+| Inspire, William Saliba (49039004) | Morale 11 to 20, one Changes row; still 20 after FM opened his profile and a Reload | Happiness "Delighted"; FM moved his happiness from 20 to 80 itself |
+| Undo of that | Morale 11 | - |
+| Happiness, Bukayo Saka (28122642), 40 to 90 | Morale 11 to 18 written with it (two rows); 90 and 18 after FM opened his profile and a Reload | Happiness "Delighted" |
+| Undo of both | Happiness 40, morale 11 | - |
+| Saka's wage, £260,000 to £262,500 a week | Notice "FM may display about £275,000 p/w"; probe 262500 | "£275K p/w" (at £260,000: "£250K p/w") |
+| Undo of that | Probe 260000 | "£250K p/w" |
+| Export, "Best for" GK: Kicking, search "son" | List 113 players; CSV 113 rows in the list's order (first 14 compared) | - |
+| Export, Find similar to Saka (today) | List 26,663 players; CSV 26,663 rows, without Saka, in the list's order (first 11 compared) | - |
+| Freeze notice | Shown on the copy ("Money: Arsenal"); gone after FM loaded "FM-Lens-ClubNames-2026-11-13" and Reload | - |
+
+FM rounds a weekly wage in pounds to its step and rounds halves up, as the
+notice assumes: £262,500 shows as £275K.
+
+After FM loads another career, build 9 showed the new game date at once but
+kept the lists it read until Reload, unless something was frozen (then it read
+again by itself). A write from such a list was refused, as its values were
+stale. Fixed in build 10, below.
+
+Not run: macOS (Apple Silicon and Intel), Game Pass.
+
+## Build 10 on Windows (13 November 2026)
+
+Same machine and game, FM Lens built from d5f1c9f: FM Lens reads the game
+again by itself whenever FM moves its lists, frozen or not.
+
+| Check | Result |
+|---|---|
+| Nothing frozen, FM loads "FM Lens Positions 2026-11-13" | Without Reload: 30,308 players became 26,664, Saka age 26 became 25, date 30 Jun 2027, that save's freeze notice ("Money: Arsenal") back |
+| Write from the re-read list | Saka CA 183 to 182 applied, probe read 182; Undo, probe read 183 |
+| Reload afterwards | Same header, 26,664 players, same notice |
+| FM loads "FM-Lens-ClubNames-2026-11-13" back (something frozen) | Without Reload: 30,308 players, Saka age 26, notice gone |
+| After each load | FM Lens idle (CPU time unchanged over 10 seconds), no repeated reads |
+
+Not run: macOS (Apple Silicon and Intel), Game Pass.
+
+## Build 11 on Windows (13 November 2026)
+
+Same machine and save ("FM-Lens-ClubNames-2026-11-13", 10 December 2027).
+Every competition bonus showed as "Unknown competition", because +0x14 in the
+entry is the competition's place in the game's table of competitions, not its
+UID. FM Lens now finds the competition by that place; an award bonus is still
+named by the award's UID.
+
+| Check | Result |
+|---|---|
+| Probe `competitions Champions`, with each competition's place | UEFA Champions League: UID 1301394, place 637; the UEFA Women's Champions League is at 6787, Linder's value above |
+| Probe `clauses` on Arsenal's players | Rice, Kvaratskhelia and Raya each have one competition bonus, all at 637 |
+| Rice in FM Lens 11 and FM | "UEFA Champions League bonus £850,975"; FM: "Winning the UEFA Champions League $1.1M". His award bonuses still named (World Footballer of the Year, World Golden Ball) |
+| Kvaratskhelia in FM Lens 11 and FM | "UEFA Champions League bonus £1,001,203"; FM: "Winning the UEFA Champions League $1.3M". GOAL50 award bonus still named |
+
+Not run: macOS (Apple Silicon and Intel), Game Pass.
+
+## Final builds on Windows (14 November 2026)
+
+FM27 27.0.1 (Steam build 26577676) on Windows Server 2022, on the copy
+"FM-Lens-Final-2026-11-14", saved from "FM-Lens-ClubNames-2026-11-13" at
+7 January 2028.
+
+### Position edits after save, quit and reload
+
+FM Lens built from the scout card branch at a4deba4. Its position code is the
+same as the position branch at 0658d32; later commits there change docs only.
+Declan Rice (28106491).
+
+| Check | Probe | FM |
+|---|---|---|
+| Edit DC 12 to 4, ST 1 to 14 | DC 4, ST 14 | - |
+| 14 days on holiday, to 21 January 2028 | DC 4, ST 14 | DC red, ST yellow, DR yellow (12) |
+| Save, quit, relaunch through Steam, load the copy | DC 4, ST 14 | DC red, ST yellow |
+| Changes after the relaunch | Both edits "Earlier game", no Undo, as designed | - |
+| Edit back to DC 12, ST 1 | DC 12, ST 1 | - |
+| Undo of the ST edit ("Undone at 01:20:29") | DC 12, ST 14 | DC yellow, ST yellow |
+
+### Nation choices after FM loads another save
+
+In edit mode the nation picker kept the nations of the first save it read.
+After FM loaded another save and FM Lens read the game again, Rice's nation
+showed as "Nicaragua" (build a4deba4). Applying from that stale list could
+write another nation, as the write only checks the kind of value. Main has
+the same bug. The fix (a633bb1, on `Iamdejman/nation-choices-reload` off main)
+drops the read nation lists whenever the game is read again.
+
+Built from a4deba4 with the same change (main reads the game again the same
+way, on Reload and when FM Lens notices the game changed): Rice showed England
+on the first save and again after FM loaded another save and FM Lens read it
+again. Nothing was written. Not run on a build from main.
+
+### Main features without a Windows record
+
+Same build (a4deba4 with the nation fix), same copy, 21 January 2028.
+Nothing was written to the game.
+
+| PR | Check | Result |
+|---|---|---|
+| #249 | Hover notes | Player attribute (Finishing) and a staff coaching attribute (defending) show their notes |
+| #257 | Best for | Players, "DC: Tackling" ranks by Fit, and the Fit hover breaks it down by attribute. Staff, "Assistant Manager" ranks the list |
+| #258 | Your best | "Your best: Gabriel 85" and "Your best: David Raya 84"; Kobel (87) marked as better. His profile lists GK: Reflexes 87, Leadership 76, GK: Kicking 57. Staff: "Your best: Raúl Valbuena 80" |
+| #212 | Club staff tab | Lists the club's staff; a row opens that staff profile |
+| #216 | Squad levels | First team, U21 and U18 switch; the U21 manager is David Horseman |
+| #213 | Wishlist | Window opens with Attach; Send stays off while empty. Cancelled, not sent |
+| #254 | Say thanks | Ko-fi panel with Open in browser and Done |
+| #248 | Check for updates | "FM Lens is up to date." (0.7.10 is the latest release) |
+| #157 | List filters | Competitions by nation England 8,084 to 160; Officials by England 1,166 to 197; Nations in Africa 251 to 57; Stadiums of 80,000 or more 38; Awards of prestige 18 or more 18 |
+| #261 | Saved filters and columns | Filter "WinTest" saved, cleared, applied again (160) and deleted. Players at DC and DR with reputation 9,000 or more: Saliba and Hakimi. Value, Wage and Reputation columns show; More, Columns added PAS |
+| #252 | Trait groups | Movement, Passing, Finishing, Discipline, Defending, Technique, Career; "Plays ball with feet" named |
+| #165 | No experimental tags | Max cohesion in the squad's More menu; Unsackable and Register squad any time on your Contract tab |
+| #163 | Kept across the app swap | Rice's profile and search, Brighton's club profile and its Staff tab came back. Corners 25 alone: "No changes · 1 invalid"; Done asks "Discard 1 change?", and Discard leaves the profile as it was |
+| #173 | Wage note | Matches FM's screen. Rice: FM shows £350K p/w, FM Lens £344,990 with "FM shows £350,000". Your profile: FM shows £275K p/w, FM Lens £281,250 with "FM shows £275,000". FM's display was set to pounds per week for this, then put back to dollars per year |
+
+Seen in passing, not fixed:
+
+- The More menu stays on screen over the Columns window until Done.
+- The Stadiums capacity Min field shows "8000" for 80,000, as the field is
+  too narrow; the chip reads 80,000.
+
+Not run: #190 (the bridge's C++ runtime needs a clean PC), the declined answer
+of #168 (see below), Windows 10 and 11, macOS (Apple Silicon and Intel), Game
+Pass.
+
+### Star ask after 20 edits (#211)
+
+Same build and copy. FM Lens's storage on the box was moved aside, so the app
+started as a new install, then put back after the test. A new install shows
+the email gate; instead of sending an address, the gate's answer and usage
+off were written into the new storage before the first start, so no address
+and no usage events were sent.
+
+| Check | Result |
+|---|---|
+| New install | Edit count starts at 0 |
+| 19 edits (freeze attributes on Rice, on and off) | Count 19, no ask |
+| 20th edit | The ask shows with Star on GitHub and Not now |
+| Not now | The ask closes; answer kept, count stays at 20 |
+| Two more edits | Not counted; no ask |
+| Settings, Star on GitHub | Opens the repository in the browser. Not starred |
+| Restart and connect | No ask |
+
+Rice ended unfrozen, and FM Lens's frozen list was as before the test.
+
+### Work permit request (#168)
+
+Same build and copy. Andria Bartishvili (2000474999), a foreign 18-year-old
+in Arsenal's U21s, held an England permit.
+
+| Check | Result |
+|---|---|
+| Revoke | The permit reads None and Request permit shows |
+| Request permit | FM issued it: England, Active |
+| Changes | Both listed: Active to None, then None to Active |
+
+FM did not decline, so the message for a permit FM does not issue was not
+seen on Windows. The copy was not saved.

@@ -1,13 +1,15 @@
 import { useContext, useEffect, useId, useRef, useState } from "react";
 import { AttributeActions, ToolsToggle } from "./AttributeActions";
+import { BestFits } from "./BestFor";
 import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
-import { keepPlaying, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
+import { applyEdits, keepPlaying, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
-import { ATTRIBUTE_LABELS, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
+import { ATTRIBUTE_LABELS, ATTRIBUTE_NOTES, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
 import { PromisesGroup } from "./PromisesGroup";
+import { bestFits, PLAYER_RECIPES } from "./recipes";
 import { MoveButton } from "./MoveDialog";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { FEET, GOALKEEPING, HIDDEN, isGoalkeeper, MENTAL, PHYSICAL, TECHNICAL } from "./playerAttributes";
@@ -15,6 +17,8 @@ import { PositionPitch, PositionRatings } from "./PositionPitch";
 import { CancelTransferButton, EndLoanButton, ReleaseButton } from "./ReleaseDialog";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ShareButton } from "./ShareDialog";
+import { SuggestedAbility } from "./SuggestedAbility";
+import { ScoutTab } from "./ScoutParts";
 import { TiesGroup } from "./TiesGroup";
 import {
   attributeRow,
@@ -47,7 +51,7 @@ import type { Comparison } from "./useComparison";
 import { EditorContext, useEditableField, useProfileEditing } from "./useProfileEditing";
 
 /** The tabs of a player's profile, in their order. */
-const TABS = ["attributes", "mood", "contract", "medical", "career"] as const;
+const TABS = ["attributes", "mood", "contract", "medical", "career", "scout"] as const;
 
 export type PlayerTab = (typeof TABS)[number];
 
@@ -81,6 +85,8 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
   // A move FM agreed for him on a later day: its dialog shows the first one, and cancels all of them, as FM's editor.
   const agreed = details?.futureTransfers[0];
   const playerCoach = details?.contract?.playerCoach === true;
+  // While he is edited, the ability that fits what is typed takes the place of the moves, under the abilities.
+  const suggestion = editing.stage === "edit" && details && <SuggestedAbility details={details} />;
 
   // Another tab starts at its top, wherever the last one was scrolled to.
   const select = (next: PlayerTab) => {
@@ -126,6 +132,7 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
       headActions={<CompareToggle comparison={comparison} player={{ uid: info.uid, name: info.name }} />}
       headIcons={<ShareButton details={details} />}
       actions={
+        suggestion ||
         // Only while the profile is read, not edited: for a player who has a club to leave, or a free agent where the
         // game signs them. The Transfer dialog starts from his contract, so its button waits for the details. A
         // player-coach works as staff too, so he is not moved or released.
@@ -198,6 +205,7 @@ export function PlayerProfile({ player, version, tab, onTab, onClose, comparison
           {tab === "contract" && <ContractTab details={details} />}
           {tab === "medical" && <MedicalGroups details={details} />}
           {tab === "career" && <CareerTab details={details} />}
+          {tab === "scout" && <ScoutTab details={details} version={version} />}
         </div>
       )}
     </ProfileFrame>
@@ -261,9 +269,14 @@ function StatusChips({ details, onTab }: { details: PlayerDetails; onTab: (tab: 
   );
 }
 
+/** The attributes the main group of a player's kind leaves out: a keeper's outfield ones, the others' goalkeeping. */
+const OUTFIELD_ONLY = TECHNICAL.filter((key) => !GOALKEEPING.includes(key));
+const GOALKEEPING_ONLY = GOALKEEPING.filter((key) => !TECHNICAL.includes(key));
+
 /**
  * His attributes, with Set all and Freeze above them while Tools is open, the positions he plays with their ratings on
- * the pitch (inputs under it while he is edited) and his traits.
+ * the pitch (inputs under it while he is edited) and his traits. Every attribute is there: the group of his own kind
+ * first, as FM has it, and the other kind's under Physical.
  */
 function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; toolsOpen: boolean; tools: string }) {
   const goalkeeper = isGoalkeeper(details);
@@ -284,7 +297,14 @@ function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; 
             <RatingGroup title={profileText.technical} rows={attributeRows(details, TECHNICAL)} />
           )}
           <RatingGroup title={profileText.mental} rows={attributeRows(details, MENTAL)} />
-          <RatingGroup title={profileText.physical} rows={attributeRows(details, PHYSICAL)} />
+          <div className="profile-stack">
+            <RatingGroup title={profileText.physical} rows={attributeRows(details, PHYSICAL)} />
+            {goalkeeper ? (
+              <RatingGroup title={profileText.technical} rows={attributeRows(details, OUTFIELD_ONLY)} />
+            ) : (
+              <RatingGroup title={profileText.goalkeeping} rows={attributeRows(details, GOALKEEPING_ONLY)} />
+            )}
+          </div>
         </div>
 
         <div className="profile-columns">
@@ -294,11 +314,20 @@ function AttributesTab({ details, toolsOpen, tools }: { details: PlayerDetails; 
             <RatingList rows={personalityRows(details.personality)} />
             {!editingTraits && <TraitTags traits={details.traits} />}
           </section>
-          <section className="profile-group">
-            <h3>{profileText.positions}</h3>
-            <PositionPitch ratings={details.positionRatings} />
-            <RatingList rows={attributeRows(details, FEET)} />
-          </section>
+          <div className="profile-stack">
+            <section className="profile-group">
+              <h3>{profileText.positions}</h3>
+              <PositionPitch ratings={details.positionRatings} />
+              <RatingList rows={attributeRows(details, FEET)} />
+            </section>
+            <BestFits
+              fits={bestFits(
+                PLAYER_RECIPES,
+                (key) => details.attributes[key]?.value ?? 0,
+                (position) => details.positions.includes(position),
+              )}
+            />
+          </div>
         </div>
       </div>
 
@@ -314,26 +343,7 @@ function MoodTab({ details }: { details: PlayerDetails }) {
   const { contract } = details;
   return (
     <>
-      <section className="profile-group">
-        <h3>{profileText.moraleAndHappiness}</h3>
-        <dl className="stats">
-          <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
-            <EditableValue field="morale">{profileText.morale(details.morale)}</EditableValue>
-          </Fact>
-          {contract && (
-            <>
-              <Fact label={profileText.happiness} title={profileText.moodTitle}>
-                <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
-              </Fact>
-              <Fact label={profileText.playingTimeHappiness} title={profileText.moodTitle}>
-                <EditableValue field="contract.playing_time_happiness">
-                  {formatNumber(contract.playingTimeHappiness)}
-                </EditableValue>
-              </Fact>
-            </>
-          )}
-        </dl>
-      </section>
+      <MoraleGroup details={details} />
       {contract && <ConcernList uid={details.uid} concerns={contract.concerns} />}
       <PromisesGroup uid={details.uid} promises={details.promises} />
       <PreferencesGroup
@@ -362,7 +372,13 @@ function ContractTab({ details }: { details: PlayerDetails }) {
         </section>
       )}
       {contract && (
-        <ClauseList uid={details.uid} name={details.name} clauses={contract.clauses} room={details.clauseRoom} />
+        <ClauseList
+          uid={details.uid}
+          name={details.name}
+          clauses={contract.clauses}
+          room={details.clauseRoom}
+          bonuses={contract.competitionBonuses}
+        />
       )}
       {details.loan && <LoanGroup loan={details.loan} />}
       {details.futureTransfers.length > 0 && <FutureTransferGroup transfers={details.futureTransfers} />}
@@ -405,7 +421,10 @@ function Height({ cm }: { cm: number }) {
 
 function attributeRows(details: PlayerDetails, keys: readonly AttributeKey[]): RatingRow[] {
   return keys.map((key) =>
-    attributeRow(key, ATTRIBUTE_LABELS[key], details.attributes[key], { lowerIsBetter: LOWER_IS_BETTER.has(key) }),
+    attributeRow(key, ATTRIBUTE_LABELS[key], details.attributes[key], {
+      lowerIsBetter: LOWER_IS_BETTER.has(key),
+      note: ATTRIBUTE_NOTES[key],
+    }),
   );
 }
 
@@ -640,6 +659,115 @@ export function WorkPermitGroup({ details }: { details: Pick<PlayerDetails, "uid
   );
 }
 
+/** The best morale there is: what Inspire gives one player, and Max morale a team. */
+const TOP_MORALE = 20;
+
+/**
+ * His morale and happiness, with Inspire on the heading: morale to the top and every reason to be unhappy that lasts
+ * ended, which Max morale and Remove unhappiness do for a team. It asks no question; each of the two is logged like
+ * any change, and undone from the Changes view.
+ */
+export function MoraleGroup({ details }: { details: Pick<PlayerDetails, "uid" | "morale" | "contract"> }) {
+  const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
+  const { uid, morale, contract } = details;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const unhappy = contract?.concerns.some((concern) => concern.ended === null) ?? false;
+  const inspired = morale >= TOP_MORALE && !unhappy;
+  const heading = useRef<HTMLHeadingElement>(null);
+  const wasInspired = useRef(inspired);
+
+  // The button stays busy until the profile has read the game again, which gives new details.
+  useEffect(() => {
+    setBusy(false);
+  }, [details]);
+
+  useEffect(() => {
+    setError(null);
+  }, [uid]);
+
+  // Inspiring him dims the button that had focus: it goes to the heading, so that someone using the keyboard stays
+  // in the group.
+  useEffect(() => {
+    if (!wasInspired.current && inspired && focusLost()) {
+      heading.current?.focus();
+    }
+    wasInspired.current = inspired;
+  }, [inspired]);
+
+  const inspire = async () => {
+    // While it is under way the button is only dimmed (aria-disabled), not disabled: a disabled button loses focus.
+    if (busy) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    // Each of the two is tried on its own: one the game refuses does not hold the other back.
+    const refused: unknown[] = [];
+    if (morale < TOP_MORALE) {
+      try {
+        const report = await applyEdits("player", uid, [{ field: "morale", expected: morale, value: TOP_MORALE }]);
+        refused.push(...report.failed.map((failed) => failed.error));
+      } catch (e) {
+        refused.push(e);
+      }
+    }
+    if (unhappy) {
+      try {
+        await removeUnhappiness(uid);
+      } catch (e) {
+        refused.push(e);
+      }
+    }
+    if (refused.length > 0) {
+      setError(describeError(refused[0]));
+      setBusy(false);
+    }
+    // The game may have changed, or moved on from what the profile shows: it is read again either way.
+    onEdited();
+  };
+
+  return (
+    <section className="profile-group">
+      <GroupHead title={profileText.moraleAndHappiness} headingRef={heading}>
+        <button
+          type="button"
+          className="heal-toggle"
+          disabled={!editable || inspired}
+          aria-disabled={busy || undefined}
+          aria-busy={busy || undefined}
+          title={editable ? profileText.inspireTitle : readOnlyNote}
+          onClick={() => void inspire()}
+        >
+          {profileText.inspire}
+        </button>
+      </GroupHead>
+      {error !== null && (
+        <p className="heal-error" role="alert">
+          {error}
+        </p>
+      )}
+      <dl className="stats">
+        <Fact label={fieldLabel("player", "morale")} title={profileText.moraleTitle}>
+          <EditableValue field="morale">{profileText.morale(morale)}</EditableValue>
+        </Fact>
+        {contract && (
+          <>
+            <Fact label={profileText.happiness} title={profileText.moodTitle}>
+              <EditableValue field="contract.happiness">{formatNumber(contract.happiness)}</EditableValue>
+            </Fact>
+            <Fact label={profileText.playingTimeHappiness} title={profileText.moodTitle}>
+              <EditableValue field="contract.playing_time_happiness">
+                {formatNumber(contract.playingTimeHappiness)}
+              </EditableValue>
+            </Fact>
+          </>
+        )}
+      </dl>
+    </section>
+  );
+}
+
 /**
  * The reasons to be unhappy that last, by name, with the button that removes them all: each ends today, as the game's
  * own "Remove unhappiness" ends them, and an undo in Changes has them last again.
@@ -701,16 +829,38 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
   );
 }
 
-/** The bits a player's traits are kept in: `trait.0` to `trait.63`. FMRTE's list names the first 62. */
-const TRAIT_BITS = Array.from({ length: 64 }, (_, bit) => bit);
+/**
+ * A player's traits in the groups FM27 trains them in (Development, Training, Start New Trait Training), each trait
+ * by its bit of the mask (`trait.0` to `trait.63`; 61 and 62 are no trait in FM27) and in the game's order. The game
+ * trains no keeper's trait and neither of the two about retiring: those stand under Technique and Career here.
+ */
+const TRAIT_GROUPS: readonly { id: keyof typeof profileText.traitGroups; bits: readonly number[] }[] = [
+  { id: "movement", bits: [0, 1, 2, 3, 4, 5, 13, 18, 19, 20, 27, 31, 33, 39, 40, 51, 52, 54, 57, 58] },
+  { id: "passing", bits: [6, 7, 22, 24, 25, 26, 30, 43, 47, 59] },
+  { id: "finishing", bits: [8, 9, 10, 12, 21, 23, 36, 42, 45, 56] },
+  { id: "discipline", bits: [16, 17, 41] },
+  { id: "defending", bits: [15, 37, 38] },
+  { id: "technique", bits: [11, 14, 28, 29, 32, 34, 35, 44, 46, 50, 53, 55, 60, 63] },
+  { id: "career", bits: [48, 49] },
+];
+
+/** Where each trait stands in that order, by its bit: the traits a player has are listed in it too. */
+const TRAIT_RANK = new Map(TRAIT_GROUPS.flatMap((group) => group.bits).map((bit, rank) => [bit, rank]));
+
+/** Sorts traits into that order; one that is in no group comes after those that are. */
+function byTraitRank(a: number, b: number): number {
+  return (TRAIT_RANK.get(a) ?? a + 64) - (TRAIT_RANK.get(b) ?? b + 64);
+}
 
 /** His traits (preferred moves) by name, under his personality. */
 function TraitTags({ traits }: { traits: number[] }) {
-  return traits.length === 0 ? (
+  // A bit the game shows nothing for is not listed here either.
+  const named = traits.filter((bit) => TRAIT_RANK.has(bit)).sort(byTraitRank);
+  return named.length === 0 ? (
     <p className="note">{profileText.noTraits}</p>
   ) : (
     <ul className="tags" aria-label={profileText.traits}>
-      {traits.map((bit) => (
+      {named.map((bit) => (
         <li key={bit} className="tag">
           {profileText.traitName(bit)}
         </li>
@@ -719,16 +869,25 @@ function TraitTags({ traits }: { traits: number[] }) {
   );
 }
 
-/** While he is edited, a checkbox for each of his traits, which writes its bit of the mask: the width of the profile. */
+/**
+ * While he is edited, a checkbox for each trait, which writes its bit of the mask: the width of the profile, a group
+ * under its name, its traits in columns.
+ */
 function TraitsEditor() {
+  const id = useId();
   return (
     <section className="profile-group">
       <h3>{profileText.traits}</h3>
-      <div className="tags traits-edit">
-        {TRAIT_BITS.map((bit) => (
-          <EditInput key={bit} field={`trait.${bit}`} />
-        ))}
-      </div>
+      {TRAIT_GROUPS.map((group) => (
+        <div key={group.id} className="trait-group" role="group" aria-labelledby={`${id}-${group.id}`}>
+          <h4 id={`${id}-${group.id}`}>{profileText.traitGroups[group.id]}</h4>
+          <div className="trait-list">
+            {group.bits.map((bit) => (
+              <EditInput key={bit} field={`trait.${bit}`} />
+            ))}
+          </div>
+        </div>
+      ))}
     </section>
   );
 }

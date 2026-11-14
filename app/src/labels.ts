@@ -20,13 +20,20 @@ export const ATTRIBUTE_LABELS = strings.attributes;
 
 export type AttributeKey = keyof Strings["attributes"];
 
+/** What each attribute of a player measures, for the box over its row. */
+export const ATTRIBUTE_NOTES: Record<AttributeKey, string> = strings.attributeNotes;
+
 export const STAFF_ATTRIBUTE_LABELS = strings.staffAttributes;
 
 export type StaffAttributeKey = keyof Strings["staffAttributes"];
 
+export const STAFF_ATTRIBUTE_NOTES: Record<StaffAttributeKey, string> = strings.staffAttributeNotes;
+
 export const PERSONALITY_LABELS = strings.personality;
 
 export type PersonalityKey = keyof Strings["personality"];
+
+export const PERSONALITY_NOTES: Record<PersonalityKey, string> = strings.personalityNotes;
 
 export const POSITION_LABELS = strings.positions;
 
@@ -118,8 +125,14 @@ export const JOB_FILTER_OPTIONS: readonly { code: number; label: string }[] = Ob
 /** The player list: search, filter bar and columns. */
 export const playerListText = strings.playerList;
 
+/** FM Lens's scouting estimates: roles, likeness, development, top players and other careers. */
+export const scoutText = strings.scout;
+
 /** The staff list. */
 export const staffListText = strings.staffList;
+
+/** Best for: the select that ranks the player and staff lists, and its column. */
+export const bestForText = strings.bestFor;
 
 /** The club profile: what the player and staff panels do not have. */
 export const clubProfileText = strings.clubProfile;
@@ -149,6 +162,9 @@ export const updateText = strings.update;
 
 /** Asking for a star on GitHub. */
 export const starText = strings.star;
+
+/** Support FM Lens: the button and the window it opens. */
+export const supportText = strings.support;
 
 /** A version of the game the editor was not checked with, or whose data did not check out: the notice about it. */
 export const compatibilityText = strings.compatibility;

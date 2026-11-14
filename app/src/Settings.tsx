@@ -1,7 +1,7 @@
 // Settings: the gear at the right of the masthead, or ⌘, (Ctrl+, off a Mac), opens a window of them in four parts.
-// General holds the language, each with its flag and its own name, and the currency money is shown in; Appearance the
-// theme and the zoom; Privacy the switch for anonymous usage; About the app's version, the game's build and a link to
-// star FM Lens on GitHub. Theme, zoom and usage apply at once. Another language or currency reloads the window (see
+// General holds the language, each with its flag and its own name, the currency money is shown in and, on Windows, the
+// switch for the in-game scout card; Appearance the theme and the zoom; Privacy the switch for anonymous usage; About
+// the app's version, the game's build and a link to star FM Lens on GitHub. Theme, zoom and the switches apply at once. Another language or currency reloads the window (see
 // `setLocale` and `setCurrency`), which the app survives connected, and the window comes back with Settings open (see
 // restore.ts).
 
@@ -12,8 +12,9 @@ import { CURRENCIES, currency, setCurrency } from "./currency";
 import { currencyName, currencySymbolOf } from "./format";
 import { locale, setLocale, type Locale } from "./i18n";
 import { isShortcut, shortcutAria, shortcutLabel } from "./keys";
-import { appText, starText, updateText } from "./labels";
+import { appText, starText, supportText, updateText } from "./labels";
 import { restored, useSnapshot } from "./restore";
+import { scoutCardAvailable, scoutCardOn, setScoutCardOn } from "./scoutCardSetting";
 import { openRepository } from "./StarNotice";
 import { useModal } from "./useModal";
 import { askToLeave } from "./useProfileEditing";
@@ -70,21 +71,24 @@ const BUTTON_TITLE = `${appText.settingsLabel} (${shortcutLabel(",")})`;
  * The gear and the window it opens. While the app is `busy` neither opens, and an open window keeps the language and
  * the currency, which reload, as they are. `details` is what About shows: the app's version and the game's build.
  * `onCheckForUpdates`, where given, adds Check for Updates to About (Windows, which has no app menu to put it in): it
- * closes the window, and the notice under the masthead says what it found.
+ * closes the window, and the notice under the masthead says what it found. `onSupport` opens Support FM Lens.
  */
 export function Settings({
   busy,
   details,
   onCheckForUpdates,
+  onSupport,
 }: {
   busy: boolean;
   details: ReactNode;
   onCheckForUpdates?: () => void;
+  onSupport: () => void;
 }) {
   const [open, setOpen] = useState(() => restored("settings", (value) => value === true));
   // Set once another language or currency is on its way in, so that the window opens again after the reload.
   const reopen = useRef(false);
-  useSnapshot("settings", () => open || reopen.current);
+  // Only a reload brings the window back open: the app opens without it.
+  useSnapshot("settings", () => open || reopen.current, false);
   const button = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -152,6 +156,7 @@ export function Settings({
           busy={busy}
           details={details}
           onCheckForUpdates={onCheckForUpdates}
+          onSupport={onSupport}
           onReload={reload}
           onClose={close}
         />
@@ -164,17 +169,19 @@ interface DialogProps {
   busy: boolean;
   details: ReactNode;
   onCheckForUpdates?: () => void;
+  onSupport: () => void;
   /** Runs `apply`, which reloads the window, once leaving the open profile is settled. */
   onReload: (apply: () => void) => void;
   onClose: () => void;
 }
 
-function SettingsDialog({ busy, details, onCheckForUpdates, onReload, onClose }: DialogProps) {
+function SettingsDialog({ busy, details, onCheckForUpdates, onSupport, onReload, onClose }: DialogProps) {
   const id = useId();
   const dialog = useRef<HTMLDivElement>(null);
   const [theme, updateTheme] = useState(appearance);
   const [scale, updateScale] = useState(zoom);
   const [sharing, updateSharing] = useState(usageOn);
+  const [scoutCard, updateScoutCard] = useState(scoutCardOn);
 
   useModal(dialog, true, onClose);
 
@@ -245,6 +252,19 @@ function SettingsDialog({ busy, details, onCheckForUpdates, onReload, onClose }:
                 ))}
               </select>
             </div>
+            {scoutCardAvailable && (
+              <label className="settings-usage">
+                <input
+                  type="checkbox"
+                  checked={scoutCard}
+                  onChange={(event) => {
+                    setScoutCardOn(event.target.checked);
+                    updateScoutCard(event.target.checked);
+                  }}
+                />
+                {appText.scoutCardLabel}
+              </label>
+            )}
           </section>
 
           <section className="settings-section" aria-labelledby={`${id}-appearance`}>
@@ -318,6 +338,15 @@ function SettingsDialog({ busy, details, onCheckForUpdates, onReload, onClose }:
             )}
             <button type="button" onClick={() => openRepository("settings")}>
               {starText.button}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onSupport();
+              }}
+            >
+              {supportText.button}
             </button>
           </section>
         </div>

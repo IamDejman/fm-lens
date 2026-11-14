@@ -20,7 +20,7 @@ import type {
   MassEntity,
   MassOperationKind,
   MassPreview,
-  PlayerSort,
+  PlayerColumnSort,
   SquadSort,
   Storefront,
 } from "../types";
@@ -214,7 +214,7 @@ const CONCERN_MOTIVES_EN: Partial<Record<number, string>> = {
   926: "Doesn't believe a teammate deserves the playing time he wants",
 };
 
-/** Players' traits (preferred moves), by their bit in the game's mask; named as FMRTE names them. */
+/** Players' traits (preferred moves), by their bit in the game's mask; named as FM27 names them. */
 const TRAIT_NAMES_EN: readonly string[] = [
   "Runs with ball down left",
   "Runs with ball down right",
@@ -261,9 +261,9 @@ const TRAIT_NAMES_EN: readonly string[] = [
   "Tries first time shots",
   "Tries long range passes",
   "Likes ball played into feet",
-  "Hits free kicks with power",
-  "Likes to beat man repeatedly",
-  "Likes to switch ball to other flank",
+  "Hits free kick with power",
+  "Likes to beat opponent repeatedly",
+  "Likes to switch ball to wide areas",
   "Will retire at top",
   "Will play football as long as possible",
   "Possesses long flat throw",
@@ -277,6 +277,9 @@ const TRAIT_NAMES_EN: readonly string[] = [
   "Cuts inside from right wing",
   "Crosses early",
   "Brings ball out of defence",
+  // Bits 61 and 62 are no trait in FM27: the game shows nothing for them.
+  "",
+  "",
   "Plays ball with feet"
 ];
 
@@ -344,6 +347,70 @@ export const en = {
     right_foot: "Right Foot",
   },
 
+  /** What each attribute of a player measures: the box over its row. */
+  attributeNotes: {
+    // Technical
+    corners: "How well the player delivers corners.",
+    crossing: "How accurately the player crosses the ball from wide areas.",
+    dribbling: "How well the player keeps the ball under control while running with it.",
+    finishing: "How well the player turns a chance into a goal.",
+    first_touch: "How cleanly the player controls the ball when receiving it.",
+    free_kicks: "How good the player's free kicks are, whether a shot or a delivery.",
+    heading: "How accurately the player heads the ball, at goal or to a team-mate.",
+    long_shots: "How dangerous the player's shots from outside the box are.",
+    long_throws: "How far and how flat the player can throw the ball in.",
+    marking: "How tightly the player tracks an opponent and keeps them quiet.",
+    passing: "How accurately the player passes the ball, short and long.",
+    penalty_taking: "How reliable the player is from the penalty spot.",
+    tackling: "How cleanly the player wins the ball without giving away a foul.",
+    technique: "How refined the player is on the ball. It makes the harder passes, shots and touches come off.",
+    // Mental
+    aggression: "How readily the player goes into challenges.",
+    anticipation: "How early the player reads what is about to happen.",
+    bravery: "How willing the player is to risk getting hurt to win the ball.",
+    composure: "How calm the player stays under pressure, on the ball or in front of goal.",
+    concentration: "How long the player stays focused, above all late in a match.",
+    decisions: "How often the player picks the right option.",
+    determination: "How hard the player keeps pushing to win, even when behind.",
+    flair: "How likely the player is to try something unexpected.",
+    leadership: "How well the player lifts and organises team-mates. It matters most in a captain.",
+    off_the_ball: "How well the player finds space when the team has the ball.",
+    positioning: "How well the player covers space when the other team has the ball.",
+    teamwork: "How closely the player follows team instructions and works for others.",
+    vision: "How many passing options the player sees, the hard ones too.",
+    work_rate: "How much running the player puts in over a whole match.",
+    // Physical
+    acceleration: "How quickly the player reaches top speed.",
+    agility: "How quickly the player turns, starts and stops.",
+    balance: "How well the player stays upright, on the ball and in challenges.",
+    jumping_reach: "The highest point the player can reach when jumping. Height counts too.",
+    natural_fitness: "How well the player keeps fit between matches and with age.",
+    pace: "How fast the player runs at top speed.",
+    stamina: "How long the player keeps up a high tempo before tiring.",
+    strength: "How well the player holds off opponents and pushes past them.",
+    // Goalkeeping
+    aerial_reach: "How high the keeper can reach to catch or punch the ball.",
+    command_of_area: "How well the keeper takes charge of the box and claims balls played into it.",
+    communication: "How well the keeper organises the defence.",
+    eccentricity: "How often the keeper does something unexpected, like dribbling out or going up for a corner.",
+    handling: "How securely the keeper holds the ball instead of spilling it.",
+    kicking: "How far and how accurately the keeper kicks the ball.",
+    one_on_ones: "How well the keeper does when facing an attacker alone.",
+    punching: "How often the keeper punches the ball instead of catching it.",
+    reflexes: "How quickly the keeper reacts to a shot.",
+    rushing_out: "How often the keeper comes off the line to meet through balls and attackers.",
+    throwing: "How far and how accurately the keeper throws the ball.",
+    // Hidden
+    consistency: "How often the player performs at their usual level.",
+    dirtiness: "How often the player fouls and bends the rules.",
+    important_matches: "How well the player performs in big matches.",
+    injury_proneness: "How easily the player picks up injuries.",
+    versatility: "How quickly the player learns a new position or role.",
+    // Feet
+    left_foot: "How good the player is with the left foot.",
+    right_foot: "How good the player is with the right foot.",
+  },
+
   staffAttributes: {
     // Coaching
     attacking: "Attacking",
@@ -372,6 +439,35 @@ export const en = {
     sports_science: "Sports Science",
   },
 
+  /** What each attribute of a member of staff measures: the box over its row. */
+  staffAttributeNotes: {
+    // Coaching
+    attacking: "Ability to coach attacking play.",
+    defending: "Ability to coach defending.",
+    fitness: "Ability to coach fitness: strength, speed and stamina.",
+    goalkeeping: "Ability to coach goalkeepers.",
+    possession: "Ability to coach play on the ball: passing and keeping it.",
+    set_pieces: "Ability to coach corners, free kicks and throw-ins.",
+    tactical: "Ability to coach team shape and tactics.",
+    technical: "Ability to coach ball skills.",
+    working_with_youngsters: "Ability to coach young players and bring them on.",
+    // Mental
+    authority: "Ability to keep discipline.",
+    determination: "Drive to succeed. It rubs off on the players.",
+    motivating: "Ability to lift the players, in training and before matches.",
+    people_management: "Ability to handle players and keep them happy.",
+    // Knowledge
+    data_analysis: "Ability to read match and player data.",
+    judging_ability: "Accuracy in judging how good a player is now.",
+    judging_potential: "Accuracy in judging how good a player can become.",
+    judging_staff: "Accuracy in judging how good other staff are.",
+    negotiating: "Ability to strike good deals on transfers and contracts.",
+    tactical_knowledge: "Knowledge of tactics and formations.",
+    // Medical
+    physiotherapy: "Ability to treat and prevent injuries.",
+    sports_science: "Ability to manage fitness and injury risk.",
+  },
+
   personality: {
     adaptability: "Adaptability",
     ambition: "Ambition",
@@ -381,6 +477,18 @@ export const en = {
     sportsmanship: "Sportsmanship",
     temperament: "Temperament",
     controversy: "Controversy",
+  },
+
+  /** What each personality rating measures, for players and staff alike: the box over its row. */
+  personalityNotes: {
+    adaptability: "How quickly they settle in a new country.",
+    ambition: "How much they want to reach the top, and to move on for it.",
+    loyalty: "How attached they are to their club.",
+    pressure: "How well they cope with pressure.",
+    professionalism: "How seriously they take training and the job.",
+    sportsmanship: "How much they value fair play.",
+    temperament: "How well they keep calm when things go wrong.",
+    controversy: "How likely they are to stir up trouble in the media.",
   },
 
   /** The abbreviations of the positions: the same in every language. */
@@ -504,6 +612,8 @@ export const en = {
     "contract.playing_time_happiness": "Playing time happiness",
     "contract.unhappiness": "Reasons to be unhappy",
     "contract.expires": "Contract end",
+    "contract.signed": "Contract signed",
+    "contract.joined": "Joined club",
     "loan.wage": "Loan wage paid by borrower",
     "loan.ends": "Loan end",
     "transfer.joins": "Joins",
@@ -587,6 +697,7 @@ export const en = {
     "women.game_importance": "Women's game importance",
     "women.attendance": "Women's attendance",
     points: "FIFA points",
+    "women.points": "Women's FIFA points",
   },
 
   profile: {
@@ -617,6 +728,8 @@ export const en = {
     potentialAbilityShort: "PA",
     /** Hover text of a potential ability that is set as a range (the game stores it as a negative number). */
     potentialRange: "Potential set as a range",
+    /** While a player is edited: the button that puts the current ability that fits his attributes in the input. */
+    suggestedAbility: (value: number) => `Suggested CA ${value}`,
     /** The group of what the header leaves out: the full name, the birth date, the height and the ID. */
     personalDetails: "Personal details",
     fullNameLabel: "Full name",
@@ -747,13 +860,26 @@ export const en = {
     /** A player's traits (preferred moves): the heading, none, and each one's name by its bit. */
     traits: "Traits",
     noTraits: "No traits",
-    traitName: (bit: number) => TRAIT_NAMES_EN[bit] ?? "Unknown trait",
+    traitName: (bit: number) => TRAIT_NAMES_EN[bit] || "Unknown trait",
+    /** The groups the traits are listed in while a player is edited. */
+    traitGroups: {
+      movement: "Movement",
+      passing: "Passing",
+      finishing: "Finishing",
+      discipline: "Discipline",
+      defending: "Defending",
+      technique: "Technique",
+      career: "Career",
+    },
     /** A player's reasons to be unhappy, as FMRTE lists them, and the button that removes them all. */
     unhappiness: "Unhappiness",
     noUnhappiness: "Nothing makes him unhappy",
     removeUnhappiness: "Remove all",
     removingUnhappiness: "Removing…",
     removeUnhappinessTitle: "Clears every reason he's unhappy.",
+    /** On the heading of his morale: morale to the top and his reasons to be unhappy ended, at once. */
+    inspire: "Inspire",
+    inspireTitle: "Morale to the top, and every reason he's unhappy cleared",
     concernSince: (date: string) => `since ${date}`,
     concernKind: (kind: number): string => (kind === 1 ? "Concerned" : kind === 2 ? "Internal" : ""),
     concernMotive: (motive: number) => CONCERN_MOTIVES_EN[motive] ?? "Unknown reason",
@@ -766,6 +892,8 @@ export const en = {
     moodTitle: "From -100 to 100.",
     /** The name of a clause or bonus by its kind; a kind the app does not know yet by its number. */
     clauseName: (kind: number) => CLAUSE_NAMES_EN[kind] ?? "Unknown clause",
+    /** A contract's bonus for a competition, by the competition's name. */
+    competitionBonus: (competition: string | null) => `${competition ?? "Unknown competition"} bonus`,
     /** What a clause depends on, by kind; null where what it means is not known. */
     clauseCondition: (kind: number, value: number): string | null => {
       if (RELEASE_CLAUSES.has(kind)) {
@@ -835,7 +963,14 @@ export const en = {
     /** The button that opens Set all attributes and Freeze attributes. */
     tools: "Tools",
     tabsLabel: "Player sections",
-    tabs: { attributes: "Attributes", mood: "Mood", contract: "Contract", medical: "Medical", career: "Career" },
+    tabs: {
+      attributes: "Attributes",
+      mood: "Mood",
+      contract: "Contract",
+      medical: "Medical",
+      career: "Career",
+      scout: "Scout",
+    },
     /** The tabs of a member of staff's profile. */
     staffTabsLabel: "Staff sections",
     staffTabs: { attributes: "Attributes", contract: "Contract", career: "Career" },
@@ -927,8 +1062,14 @@ export const en = {
       born: "Born",
       currentAbility: "CA",
       potentialAbility: "PA",
+      value: "Value",
+      wage: "Wage",
+      reputation: "Reputation",
       uid: "ID",
-    } satisfies Record<PlayerSort | "positions" | "born" | "uid", string>,
+      similarity: "Like",
+      development: "Dev",
+      progress: "Progress",
+    } satisfies Record<PlayerColumnSort | "similarity" | "development" | "progress" | "positions" | "born" | "uid", string>,
     /** Hover text of a column header that sorts the list; `by` is a name from `sortNames`. */
     sortBy: (by: string) => `Sort by ${by}`,
     /** The name of each sortable column, as the summary line and the hover text of a header say it. */
@@ -940,7 +1081,23 @@ export const en = {
       nation: "nation",
       club: "club",
       contractExpires: "contract end",
-    } satisfies Record<PlayerSort, string>,
+      value: "value",
+      wage: "wage",
+      reputation: "reputation",
+      similarity: "likeness",
+      development: "development",
+      progress: "progress",
+    } satisfies Record<PlayerColumnSort | "similarity" | "development" | "progress", string>,
+    /** Choosing which columns the list shows, from More. */
+    columnChooser: {
+      button: "Columns",
+      title: "Columns",
+      attributes: "Attribute columns",
+      /** Under the attributes once `max` of them are columns. */
+      full: (max: number) => `Up to ${max} attribute columns.`,
+      reset: "Reset",
+      done: "Done",
+    },
     filters: {
       /** The button that shows or hides the filters. */
       toggle: "Filters",
@@ -956,18 +1113,50 @@ export const en = {
       /** The hint in an empty age input. */
       minPlaceholder: "Min",
       maxPlaceholder: "Max",
-      minCurrentAbility: "Min CA",
       minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
       minPotentialAbilityTitle: "Minimum potential ability",
-      /** The hint in an empty ability input: what it accepts. */
-      abilityPlaceholder: "1–200",
       nation: "Nation",
       club: "Club",
       freeAgentsOnly: "Free agents only",
       contractEndsBy: "Contract ends by",
       transferListedOnly: "Transfer listed only",
       loanListedOnly: "Loan listed only",
+      maxCurrentAbilityTitle: "Maximum current ability",
+      maxPotentialAbilityTitle: "Maximum potential ability",
+      height: "Height (cm)",
+      minHeight: "Minimum height",
+      maxHeight: "Maximum height",
+      /** A week, in the currency on show. */
+      wage: "Wage p/w",
+      minWage: "Minimum wage",
+      maxWage: "Maximum wage",
+      /** The stored base transfer value the Contract tab shows. */
+      value: "Base value",
+      minValue: "Minimum value",
+      maxValue: "Maximum value",
+      reputation: "Reputation",
+      minReputation: "Minimum reputation",
+      maxReputation: "Maximum reputation",
+      /** The select of the trait a player must have. */
+      trait: "Trait",
+      basedIn: "Based in",
+      minDevelopment: "Min development",
+      minDevelopmentTitle: "Least chance, in percent, of coming within 7 of his potential",
+      minProgress: "Min progress",
+      /** The entries of the progress select: `halfStars` from 1 to 10. */
+      stars: (halfStars: number) => `${"★".repeat(Math.floor(halfStars / 2))}${halfStars % 2 ? "½" : ""}`,
+      /** The heading of the bounds on attributes at a player's potential, and the chip of one. */
+      potentialAttributes: "Potential attributes",
+      potentialChip: (name: string, range: string) => `${name} at peak: ${range}`,
+      roles: {
+        heading: "Roles",
+        role: "Role",
+        pick: "Pick a role",
+        /** The least-rating input of a row, for assistive technology. */
+        min: (name: string) => (name ? `Min rating as ${name}` : "Min rating"),
+        add: "Add role",
+        remove: (name: string) => (name ? `Remove ${name}` : "Remove this row"),
+      },
       /** The list of chips of the filters in effect, and the name of a chip's button; `label` is what it says. */
       chips: "Filters in effect",
       removeChip: (label: string) => `Remove ${label}`,
@@ -1009,7 +1198,133 @@ export const en = {
     },
   },
 
+  /** FM Lens's scouting estimates: roles, likeness, development, top players and other careers. */
+  scout: {
+    roleGroups: { goalkeepers: "Goalkeepers", defenders: "Defenders", midfielders: "Midfielders", forwards: "Forwards" },
+    duties: { defend: "Defend", support: "Support", attack: "Attack" },
+    dutyShort: { defend: "D", support: "S", attack: "A" },
+    /** A role with its duty. */
+    roleLabel: (role: string, duty: string) => `${role} (${duty})`,
+    roles: {
+      goalkeeper: { name: "Goalkeeper", short: "GK" },
+      sweeper_keeper: { name: "Sweeper Keeper", short: "SK" },
+      central_defender: { name: "Central Defender", short: "CD" },
+      stopper: { name: "Stopper", short: "STP" },
+      covering_defender: { name: "Covering Defender", short: "CVD" },
+      ball_playing_defender: { name: "Ball-Playing Defender", short: "BPD" },
+      no_nonsense_defender: { name: "No-Nonsense Defender", short: "NND" },
+      full_back: { name: "Full-Back", short: "FB" },
+      wing_back: { name: "Wing-Back", short: "WB" },
+      inverted_wing_back: { name: "Inverted Wing-Back", short: "IWB" },
+      complete_wing_back: { name: "Complete Wing-Back", short: "CWB" },
+      defensive_midfielder: { name: "Defensive Midfielder", short: "DM" },
+      anchor: { name: "Anchor", short: "A" },
+      half_back: { name: "Half-Back", short: "HB" },
+      ball_winning_midfielder: { name: "Ball-Winning Midfielder", short: "BWM" },
+      deep_lying_playmaker: { name: "Deep-Lying Playmaker", short: "DLP" },
+      regista: { name: "Regista", short: "RGA" },
+      roaming_playmaker: { name: "Roaming Playmaker", short: "RPM" },
+      segundo_volante: { name: "Segundo Volante", short: "VOL" },
+      central_midfielder: { name: "Central Midfielder", short: "CM" },
+      box_to_box_midfielder: { name: "Box-to-Box Midfielder", short: "BBM" },
+      mezzala: { name: "Mezzala", short: "MEZ" },
+      carrilero: { name: "Carrilero", short: "CAR" },
+      advanced_playmaker: { name: "Advanced Playmaker", short: "AP" },
+      wide_midfielder: { name: "Wide Midfielder", short: "WM" },
+      defensive_winger: { name: "Defensive Winger", short: "DW" },
+      winger: { name: "Winger", short: "W" },
+      inverted_winger: { name: "Inverted Winger", short: "IW" },
+      inside_forward: { name: "Inside Forward", short: "IF" },
+      raumdeuter: { name: "Raumdeuter", short: "RMD" },
+      wide_target_forward: { name: "Wide Target Forward", short: "WTF" },
+      attacking_midfielder: { name: "Attacking Midfielder", short: "AM" },
+      enganche: { name: "Enganche", short: "ENG" },
+      shadow_striker: { name: "Shadow Striker", short: "SS" },
+      trequartista: { name: "Trequartista", short: "TQ" },
+      advanced_forward: { name: "Advanced Forward", short: "AF" },
+      poacher: { name: "Poacher", short: "P" },
+      target_forward: { name: "Target Forward", short: "TF" },
+      deep_lying_forward: { name: "Deep-Lying Forward", short: "DLF" },
+      false_nine: { name: "False Nine", short: "F9" },
+      complete_forward: { name: "Complete Forward", short: "CF" },
+      pressing_forward: { name: "Pressing Forward", short: "PF" },
+    },
+    /** Hover text of the score columns of the player list. */
+    columnTitles: {
+      similarity: "How like him, 0 to 100",
+      development: "Chance of coming within 7 of his potential",
+      progress: "Ability expected over the next two years",
+    },
+    /** Progress in stars, for assistive technology; `halfStars` from 0 to 10. */
+    starsLabel: (halfStars: number) => `${format(halfStars / 2)} of 5 stars`,
+    /** The bar over the player list while it is compared with a player. */
+    similar: {
+      like: (name: string) => `Like ${name}`,
+      today: "Today",
+      peak: "At peak",
+      /** For assistive technology: the group of the two buttons above. */
+      when: "Compared",
+      stop: "Stop comparing",
+    },
+    /** A player's Scout tab. */
+    report: {
+      development: "Development",
+      chance: "Reaches potential",
+      chanceTitle: "Chance his current ability comes within 7 of his potential during his career",
+      progress: "Progress",
+      gain: (points: number) => `+${format(points)} ability in two years`,
+      potential: "Potential ability",
+      roles: "Best roles",
+      role: "Role",
+      today: "Today",
+      peak: "Peak",
+      attributes: "Potential attributes",
+      findSimilar: "Find similar",
+      similarToday: "As he is today",
+      similarPeak: "At his peak",
+      careers: "Your other careers",
+      careersReading: "Reading your careers…",
+      noCareers: "Not seen in your other careers yet.",
+      career: (manager: string, club: string | null) => (club ? `${manager}, ${club}` : manager),
+      year: "Year",
+      age: "Age",
+      failed: (reason: string) => `Couldn't work out the report: ${reason}`,
+    },
+    /** The Top players list. */
+    top: {
+      nav: "Top players",
+      search: "Search the list",
+      kind: "List",
+      best: "Best",
+      promising: "Most promising",
+      game: "Game",
+      men: "Men",
+      women: "Women",
+      where: "Where",
+      world: "World",
+      continents: "Continents",
+      nations: "Countries",
+      division: "Division",
+      allDivisions: "All",
+      rank: "#",
+      summary: (total: number) => `${format(total)} ${total === 1 ? "player" : "players"}`,
+      empty: (query: string) => (query === "" ? "No players here." : `No players match “${query}”.`),
+    },
+  },
+
   /** The staff list. */
+  /** The select that ranks the player and staff lists for a job, and the column of how well each row fits. */
+  bestFor: {
+    label: "Best for",
+    /** The column: a score out of 100. */
+    fit: "Fit",
+    /** The column as the hover text of its header names it, after `playerList.sortBy`. */
+    fitName: "fit",
+    /** Beside the select of a ranked list: who fits best at the user's club, and the score. */
+    yours: (name: string, score: number) => `Your best: ${name} ${score}`,
+    /** What the mark on a fit says: it is better than the best at the user's club. */
+    better: "Better than your best",
+  },
   staffList: {
     /** The entry in the sidebar. */
     nav: "Staff",
@@ -1049,11 +1364,6 @@ export const en = {
       maxAge: "Maximum age",
       minPlaceholder: "Min",
       maxPlaceholder: "Max",
-      minCurrentAbility: "Min CA",
-      minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
-      minPotentialAbilityTitle: "Minimum potential ability",
-      abilityPlaceholder: "1–200",
       nation: "Nation",
       club: "Club",
     },
@@ -1061,6 +1371,8 @@ export const en = {
 
   /** The club profile: what the player and staff panels do not have. */
   clubProfile: {
+    kits: "Kits",
+    kitNames: { home: "Home", away: "Away", third: "Third" },
     // Header
     womensClub: "Women's club",
     /** "Founded 1882", in the line under the name. */
@@ -1115,6 +1427,8 @@ export const en = {
     usedAll: "All of it",
     usedTitle: "How much of the capacity FM lets in. 0 means all of it.",
     expansion: "Can grow to",
+    /** The club that owns the stadium, shown when it is another club. */
+    owner: "Owner",
     /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
     noStadium: "Couldn't read this club's stadium.",
 
@@ -1131,10 +1445,10 @@ export const en = {
     /** In the status line, once connected. */
     count: (total: number) => `${format(total)} clubs`,
     search: "Search clubs by name or ID",
-    summary: (total: number, shown: number) =>
-      total > shown
-        ? `${format(total)} clubs · Top ${shown} by reputation`
-        : `${format(total)} clubs`,
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 club" : `${format(total)} clubs`;
+      return total > shown ? `${count} · Top ${shown} by reputation` : count;
+    },
     /** The message under an empty table; `filtered` is whether a filter is in effect. */
     empty: (query: string, filtered: boolean) => {
       if (query === "") {
@@ -1192,11 +1506,6 @@ export const en = {
       age: "Age",
       minAge: "Minimum age",
       maxAge: "Maximum age",
-      minCurrentAbility: "Min CA",
-      minCurrentAbilityTitle: "Minimum current ability",
-      minPotentialAbility: "Min PA",
-      minPotentialAbilityTitle: "Minimum potential ability",
-      abilityPlaceholder: "1–200",
       nation: "Nation",
     },
     reputation: "Reputation",
@@ -1319,10 +1628,10 @@ export const en = {
   stadiumList: {
     nav: "Stadiums",
     search: "Search stadiums by name or club",
-    summary: (total: number, shown: number) =>
-      total > shown
-        ? `${format(total)} stadiums · Top ${shown} by capacity`
-        : `${format(total)} stadiums`,
+    summary: (total: number, shown: number) => {
+      const count = total === 1 ? "1 stadium" : `${format(total)} stadiums`;
+      return total > shown ? `${count} · Top ${shown} by capacity` : count;
+    },
     empty: (query: string, filtered: boolean) => {
       if (query === "" && !filtered) {
         return "Couldn't read any stadiums.";
@@ -1424,6 +1733,8 @@ export const en = {
     zoomLabel: "Zoom",
     /** A switch: anonymous counts of launches and edits (`usage.ts`) and recordings of the window (`replay.ts`). */
     usageLabel: "Share usage and recordings of this window",
+    /** A switch (Windows): FM Lens's card over the game while FM shows a player's card (see ScoutCard.tsx). */
+    scoutCardLabel: "In-game scout card",
     appearance: "Appearance",
     themes: { system: "System", light: "Light", dark: "Dark" },
     /** Shown once, until it is skipped or finished. It introduces browsing, settings and the editing boundary. */
@@ -1616,6 +1927,8 @@ export const en = {
      * once.
      */
     checkForUpdates: "Check for Updates…",
+    /** At the foot of the window, beside Wishlist: the same, until a newer version is ready to relaunch into. */
+    check: "Check for updates",
     checking: "Checking for updates…",
     upToDate: "FM Lens is up to date.",
     /** Offline, or the releases could not be read. */
@@ -1630,8 +1943,23 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
-      "0.7.8": [
+      "0.7.11": [
         "FM Lens now records how its window is used, to find what is hard to use. What you type and your manager’s name are hidden. Turn it off in Settings.",
+      ],
+      "0.7.10": [
+        "Raise a player's attributes and his CA rises with them, so the edits stay.",
+        "Say thanks: Support FM Lens opens Ko-fi inside the app.",
+      ],
+      "0.7.9": [
+        "A freeze now holds current ability too, so a frozen player stops declining.",
+        "Edit a player and FM Lens suggests the CA his attributes are worth.",
+        "Rest the pointer on an attribute to see what it means.",
+        "Traits have FM27's names and sit in FM's groups.",
+      ],
+      "0.7.8": [
+        "Works with FM27's 12 November update on Steam.",
+        "Sort every list, and filter players by wage, value, height and personality.",
+        "Edit staff birth dates, and every attribute on a player's profile.",
       ],
       "0.7.7": [
         "Remove unhappiness lasts: the reasons stay gone after you Continue.",
@@ -1745,6 +2073,15 @@ export const en = {
     button: "Star on GitHub",
     /** Hides the ask for good. */
     notNow: "Not now",
+  },
+
+  /** Support FM Lens: at the foot of the window, in Settings and under Help, and the window it opens. */
+  support: {
+    button: "Support FM Lens",
+    /** The window's title, over Ko-fi's panel. */
+    title: "Say thanks",
+    /** Opens the Ko-fi page in the browser, for a payment the window cannot show. */
+    browser: "Open in browser",
   },
 
   /** Editing a person or a club: the Edit button, the inputs, and the footer under the profile. */
@@ -1876,6 +2213,8 @@ export const en = {
     undo: "Undo",
     /** Hover text of Undo; `label` is the field's name. */
     undoTitle: (label: string) => `Put ${label} back to its old value`,
+    /** Why an Undo was refused: a newer change to the same field still stands; `label` is the field's name. */
+    undoLaterFirst: (label: string) => `${label} was changed again after this. Undo the later change first.`,
     /** The small tag after the fields a mass edit changed: a mass edit is one row of the list. */
     batch: "Mass edit",
     /** Under those fields: how many changes the mass edit made, and how many of them are not undone. */

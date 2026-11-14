@@ -6,6 +6,9 @@ node_modules/
 # Probe reports can contain memory addresses from a local game session.
 /reports
 
+# The website as scripts/build-site.mjs builds it.
+/_site/
+
 # Local tooling state.
 /.gemini/
 

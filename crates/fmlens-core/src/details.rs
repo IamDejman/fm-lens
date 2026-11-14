@@ -149,7 +149,7 @@ pub struct PlayerDetails {
 
 /// The range getter treats 300 million specially and may compute a value instead.
 /// Do not present that marker as a price or infer a transfer status from it.
-fn transfer_value(raw: i32, has_team: bool) -> Option<i32> {
+pub(crate) fn transfer_value(raw: i32, has_team: bool) -> Option<i32> {
     match raw {
         _ if !has_team => Some(0),
         300_000_000 => None,
@@ -206,6 +206,8 @@ pub struct Contract {
     pub playing_time_happiness: i8,
     /// His clauses and bonuses, in the contract's order.
     pub clauses: Vec<Clause>,
+    /// What the contract pays for competitions, in the contract's order; a separate list from the clauses.
+    pub competition_bonuses: Vec<CompetitionBonus>,
     /// His reasons to be unhappy, over ones too, in the order the game keeps them.
     pub concerns: Vec<Concern>,
     /// A player-coach's contract: he works as staff too, and does not move.
@@ -295,6 +297,114 @@ pub struct Clause {
     pub amount: Option<u32>,
     /// What it depends on: goals, assists, matches, years or a percentage, by kind; none for most.
     pub condition: Option<u16>,
+}
+
+/// A bonus a contract pays for a competition, from its own list beside the clauses. Read-only: what the bonus is
+/// paid for (a title, a round reached, an appearance) is held elsewhere in the entry and is not decoded, so only the
+/// competition and the amount are given.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompetitionBonus {
+    /// Its place in the contract's list.
+    pub index: usize,
+    /// What it names: the competition's place in the game's table of competitions, or the award's UID for an award
+    /// bonus.
+    pub key: u32,
+    /// The competition's (or award's) name, where the app finds one by its key; none here.
+    pub competition: Option<String>,
+    /// Pounds; none where the entry holds none.
+    pub amount: Option<u32>,
+    /// Whether it comes from the contract's list of award bonuses, so the UID is an award's.
+    #[serde(skip)]
+    pub award: bool,
+}
+
+/// Bytes per competition bonus, and where in one the competition's place in the game's table and its amount are.
+/// Read on Windows (Game Pass, Kylian Mbappé) and on macOS ARM64 (Declan Rice: 637, 850,975). On Windows, place 637
+/// is the UEFA Champions League, which FM's contract page names for Rice's bonus.
+const BONUS_ENTRY: usize = 32;
+const BONUS_KEY: usize = 0x14;
+const BONUS_AMOUNT: usize = 0x18;
+
+/// The longest list of competition bonuses read; the test save's longest held a handful.
+const MOST_BONUSES: u64 = 64;
+
+/// The competition bonus `entry` at `index` says, its competition not yet named.
+fn bonus_at(index: usize, entry: &[u8; BONUS_ENTRY]) -> CompetitionBonus {
+    let u32_at = |at: usize| u32::from_le_bytes(entry[at..at + 4].try_into().expect("4 bytes"));
+    let amount = u32_at(BONUS_AMOUNT);
+    CompetitionBonus {
+        index,
+        key: u32_at(BONUS_KEY),
+        competition: None,
+        amount: (amount != u32::MAX).then_some(amount),
+        award: false,
+    }
+}
+
+/// The competition bonuses of the contract at `contract`, from its list of 32-byte entries; none when the list does
+/// not look like one.
+pub(crate) fn read_competition_bonuses(process: &Process, layout: &Layout, contract: u64) -> Vec<CompetitionBonus> {
+    let size = BONUS_ENTRY as u64;
+    let at = contract + layout.contract.competition_bonuses;
+    let (Ok(begin), Ok(end)) = (process.read_u64(at), process.read_u64(at + 8)) else {
+        return Vec::new();
+    };
+    if !is_user_pointer(begin) || end < begin || end - begin > size * MOST_BONUSES || (end - begin) % size != 0 {
+        return Vec::new();
+    }
+    let Ok(bytes) = process.read_bytes(begin, (end - begin) as usize) else {
+        return Vec::new();
+    };
+    bytes.as_chunks::<BONUS_ENTRY>().0.iter().enumerate().map(|(index, entry)| bonus_at(index, entry)).collect()
+}
+
+/// Bytes per award bonus: a pointer to the award, then the amount in pounds. Read on Windows (Steam 26577676): Declan
+/// Rice's two, the World Footballer of the Year and the World Golden Ball at 1,171,666 each, as FM's contract page
+/// shows them.
+const AWARD_BONUS_ENTRY: usize = 16;
+
+/// The award an award bonus `entry` points at, and its amount.
+fn award_bonus_at(entry: &[u8; AWARD_BONUS_ENTRY]) -> (u64, Option<u32>) {
+    let award = u64::from_le_bytes(entry[..8].try_into().expect("8 bytes"));
+    let amount = u32::from_le_bytes(entry[8..12].try_into().expect("4 bytes"));
+    (award, (amount != u32::MAX).then_some(amount))
+}
+
+/// The award bonuses of the contract at `contract`, numbered from `first`: the contract points at a list of 16-byte
+/// entries. None where the layout does not say where the pointer is or the list does not look like one. Each gives
+/// the UID read from the award it points at; whoever names them checks that an award has that UID.
+pub(crate) fn read_award_bonuses(
+    process: &Process,
+    layout: &Layout,
+    contract: u64,
+    first: usize,
+) -> Vec<CompetitionBonus> {
+    let (Some(at), Some(award)) = (layout.contract.award_bonuses, layout.award.as_ref()) else {
+        return Vec::new();
+    };
+    let size = AWARD_BONUS_ENTRY as u64;
+    let Some(list) = process.read_u64(contract + at).ok().filter(|&list| is_user_pointer(list)) else {
+        return Vec::new();
+    };
+    let (Ok(begin), Ok(end)) = (process.read_u64(list), process.read_u64(list + 8)) else {
+        return Vec::new();
+    };
+    if !is_user_pointer(begin) || end < begin || end - begin > size * MOST_BONUSES || (end - begin) % size != 0 {
+        return Vec::new();
+    }
+    let Ok(bytes) = process.read_bytes(begin, (end - begin) as usize) else {
+        return Vec::new();
+    };
+    let mut bonuses = Vec::new();
+    for (index, entry) in bytes.as_chunks::<AWARD_BONUS_ENTRY>().0.iter().enumerate() {
+        let (target, amount) = award_bonus_at(entry);
+        let uid = is_user_pointer(target).then(|| process.read_u32(target + award.uid).ok()).flatten();
+        // One entry that does not point at something readable: the list is not what it is taken for.
+        let Some(key) = uid else { return Vec::new() };
+        bonuses.push(CompetitionBonus { index: first + index, key, competition: None, amount, award: true });
+    }
+    bonuses
 }
 
 /// The clauses of the contract at `contract`, from its list of 8-byte entries; none when the list does not look
@@ -426,6 +536,11 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
         happiness: buf[c.happiness as usize] as i8,
         playing_time_happiness: buf[c.playing_time_happiness as usize] as i8,
         clauses: read_clauses(process, layout, address),
+        competition_bonuses: {
+            let mut bonuses = read_competition_bonuses(process, layout, address);
+            bonuses.extend(read_award_bonuses(process, layout, address, bonuses.len()));
+            bonuses
+        },
         concerns: read_concerns(
             process,
             u64::from_le_bytes(buf[c.unhappiness as usize..c.unhappiness as usize + 8].try_into().expect("8 bytes")),
@@ -438,6 +553,33 @@ fn read_contract(process: &Process, layout: &Layout, address: u64) -> Option<Con
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn competition_bonuses_give_the_competition_and_the_amount() {
+        // Declan Rice's one bonus, read on macOS ARM64: the competition at 637 (0x27D) and 850,975 (0xCFC1F).
+        let words: [u32; 8] = [0x076C_0001, 0xFFFF_FFFF, 0x14, 0xFFFF_FFFF, 0, 0x27D, 0x000C_FC1F, 0xFFFF];
+        let entry: [u8; BONUS_ENTRY] = words.map(u32::to_le_bytes).concat().try_into().expect("32 bytes");
+        let bonus = bonus_at(1, &entry);
+        assert_eq!(
+            bonus,
+            CompetitionBonus { index: 1, key: 637, competition: None, amount: Some(850_975), award: false }
+        );
+        // An entry that holds no amount gives none.
+        let mut none = entry;
+        none[BONUS_AMOUNT..BONUS_AMOUNT + 4].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(bonus_at(0, &none).amount, None);
+    }
+
+    #[test]
+    fn award_bonuses_give_the_award_and_the_amount() {
+        // Declan Rice's bonus for the World Footballer of the Year, read on Windows: 1,171,666 (0x11E0D2).
+        let mut entry = [0u8; AWARD_BONUS_ENTRY];
+        entry[..8].copy_from_slice(&0x0222_b0a9_6ab0u64.to_le_bytes());
+        entry[8..12].copy_from_slice(&0x0011_e0d2u32.to_le_bytes());
+        assert_eq!(award_bonus_at(&entry), (0x0222_b0a9_6ab0, Some(1_171_666)));
+        entry[8..12].copy_from_slice(&u32::MAX.to_le_bytes());
+        assert_eq!(award_bonus_at(&entry).1, None);
+    }
 
     /// Entries sit 28 bytes apart, so half of them are not aligned to eight bytes: Bukayo Saka's was at ...8f64.
     #[test]

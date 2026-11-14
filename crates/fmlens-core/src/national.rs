@@ -82,11 +82,14 @@ pub struct NationDetails {
     pub women: Option<WomenFootball>,
 }
 
-/// A nation's women's football: the years its women's teams joined FIFA and the continental body, their youth
-/// rating, and the teams.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+/// A nation's women's football: its place and points in the women's FIFA ranking, the years its women's teams joined
+/// FIFA and the continental body, their youth rating, and the teams.
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WomenFootball {
+    /// Its place in the women's FIFA ranking; `None` when unranked.
+    pub ranking: Option<u16>,
+    pub points: Option<f32>,
     pub joined_fifa: Option<u16>,
     pub joined_continental: Option<u16>,
     pub youth_rating: Option<u16>,
@@ -297,13 +300,7 @@ impl Session {
     /// The name of the continent of the nation at `address`, as its profile reads it; `None` where the layout does
     /// not place nations' details or the nation has none. Only reads memory.
     pub fn nation_continent(&self, address: u64) -> Option<String> {
-        let n = self.layout.national.as_ref()?;
-        let continent =
-            is_user_pointer(address).then(|| self.process.read_u64(address + n.continent).ok()).flatten()?;
-        let name =
-            is_user_pointer(continent).then(|| self.process.read_u64(continent + n.place_name).ok()).flatten()?;
-        // FM's strings need not be 8-byte aligned, so only their range is checked.
-        (0x1_0000..0x7FFF_FFFF_0000).contains(&name).then(|| read_fm_string(&self.process, name)).flatten()
+        continent_of(&self.process, &self.layout, address)
     }
 
     /// The profile of `nation`; `None` where the layout does not place nations' details or the nation's object does
@@ -369,6 +366,8 @@ impl Session {
         if let Some(container) = container(&self.process, &self.layout, address, Side::Women) {
             let facts = self.association(container)?;
             details.women = Some(WomenFootball {
+                ranking: facts.ranking,
+                points: facts.points,
                 joined_fifa: facts.joined_fifa,
                 joined_continental: facts.joined_continental,
                 youth_rating: facts.youth_rating,
@@ -610,6 +609,16 @@ impl Session {
 fn most_spoken(spoken: Vec<(u64, u8)>) -> Vec<u64> {
     let most = spoken.iter().map(|&(_, percent)| percent).max();
     spoken.into_iter().filter(|&(_, percent)| Some(percent) == most).map(|(language, _)| language).collect()
+}
+
+/// The name of the continent of the nation at `address`; `None` where the layout does not place nations' details or the
+/// nation has none. Only reads memory.
+pub(crate) fn continent_of(process: &Process, layout: &Layout, address: u64) -> Option<String> {
+    let n = layout.national.as_ref()?;
+    let continent = is_user_pointer(address).then(|| process.read_u64(address + n.continent).ok()).flatten()?;
+    let name = is_user_pointer(continent).then(|| process.read_u64(continent + n.place_name).ok()).flatten()?;
+    // FM's strings need not be 8-byte aligned, so only their range is checked.
+    (0x1_0000..0x7FFF_FFFF_0000).contains(&name).then(|| read_fm_string(process, name)).flatten()
 }
 
 #[cfg(test)]
