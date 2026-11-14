@@ -20,7 +20,7 @@ Offsets are from the staff object start unless another record is named.
 | 4. Everything else that points at a board member | found | medium |
 | 5. People without a club | found | medium |
 | 6. The game's own board classes | names only | low |
-| 7. Changing who holds a seat | one swap tried, shows in FM after save and load | medium |
+| 7. Changing who holds a seat | one swap tried, held through a quit and a season end | medium |
 | 8. Removing or adding a seat | not safe yet | - |
 | 9. A player as a board member | not possible | high |
 
@@ -37,7 +37,9 @@ Where:
   70 president. This matches `BOARD_JOBS` in `crates/fmlens-core/src/best.rs`.
 - Entries are in ascending uid order at all seven clubs, not by job. The owner was first at
   Manchester United, a director first at Newcastle.
-- Count equals room at every club, so the list is always full.
+- Count equals room at every club on 28 January 2028, so the list starts full. After FM
+  replaced a Manchester United director by itself (section 7, Trial), that club's list sat in a
+  new block with 15 entries and room for 22.
 - FM shows the board on the club's Staff page (First Team, Staff, All Staff) with the jobs
   Owner, Chairperson and Director. FM's search does not find board members.
 - The medical, coaching and scouting lists at club `+0x60`, `+0x78` and `+0x90` hold no board
@@ -63,6 +65,8 @@ Where:
   and a physio 10. It looks like the database's job title number. It belongs to the seat.
 - `+0x26` job, u8. `+0x27` zero.
 - The only pointer to a board contract is its holder's staff object `+0x1A8`.
+- FM reuses these records. The record of a director who left during play later held a
+  chairperson of another club (section 7, Trial).
 - Coaches and medical staff use a longer record with dates, vtable `+0x4C04B08`. The class
   names `GAME_CONTRACT` and `GAME_FULL_CONTRACT` exist. Which vtable is which was not confirmed.
 
@@ -163,14 +167,31 @@ with the reading first and read back after.
   through a league match, the close of the transfer window and the month end. FM kept
   responding. Both Staff pages and the probe still showed the swapped holders, and both lists
   read as before. Manchester United's Club Info page opened as usual.
+- FM was then quit without saving and started again. The save made straight after the swap
+  was loaded in the new process. The probe and FM's Staff page showed the swapped holders.
+- That career was saved under a new name and played on by holiday for 165 days, from
+  28 January to 11 July 2028, through the end of the 2027/28 season and into 2028/29. FM kept
+  responding. The probe read the owner seat (wage 10000, `+0x24` 157, job 66) with the same
+  new holder, first in Manchester United's list, and the former owner still a director at
+  Inter Miami. FM's Staff pages showed the same and Manchester United's Club Info page opened
+  as usual. The autosaves went to the new name only.
+
+What FM did by itself during those 165 days, read after the fact:
+- One Manchester United director left and a new one joined. The list moved to a new block,
+  count 15 and room 22, still in uid order with the new director last.
+- The director who left: his staff object remained with uid 0xFFFFFFFF at `+0x10C`, a zero
+  contract pointer, wage copy 0 at `+0xB8` and the club copy at `+0xBC` still Manchester
+  United. His contract record now named a chairperson of another club.
+- The director who joined: a staff object in a different block from the 44 read before, wage
+  copy 0xFFFFFFFF, club copy Manchester United, date joined unset, and a contract record
+  inside the shared block with wage 0, `+0x24` 0 and job 6.
 
 Still to prove in FM on a career copy before any of this is enabled:
 - FM shows the change without a save and load (FM Lens refreshes FM's panels after its own
   edits; that was not tried here).
-- Quit FM and load again, then play on through a season end. One month end has passed.
 - A swap that changes the uid order of a list.
-- What FM writes to the copies at `+0xB8` and `+0xBC`, and to date joined at `+0xC8`, when a
-  director leaves or joins by himself.
+- A director who leaves one board for another, read before and after. Only a director who
+  left the game and one the game made have been read.
 - A takeover in progress, and a takeover after the change.
 - Whether the ownership kind at club-info `+0x129` (`fm27-nations-clubs-2.md`) needs to agree.
 - The same layout on macOS ARM64 and Intel.
@@ -180,9 +201,11 @@ Still to prove in FM on a career copy before any of this is enabled:
 Status: not safe yet.
 
 - Removing a seat would leave its contract record in the shared block with a person and a team
-  still named in it. Who walks that block is not known.
-- Adding a seat needs room in a list that is always full, and a new contract record. Both need
-  the game's allocator.
+  still named in it. Who walks that block is not known. FM hands a freed record to a later
+  board member (section 7), so the record has to go back to the game the way FM returns it.
+- Adding a seat needs room in a list that starts full, and a new contract record. FM moved a
+  list to a larger block when it changed the board itself. Both steps need the game's
+  allocator.
 
 ## 9. A player as a board member
 
