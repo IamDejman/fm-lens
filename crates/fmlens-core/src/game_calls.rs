@@ -1491,7 +1491,7 @@ impl Session {
         let held = FutureFee { amount, condition: self.process.read_bytes(loan + at, 1)?[0] };
         self.process.write_bytes(loan + at, &[NO_FEE_CONDITION])?;
         let taken = self.process.write_bytes(loan + l.future_fee, &u32::MAX.to_le_bytes());
-        if taken.is_err() || self.process.read_u32(loan + l.future_fee)? != u32::MAX {
+        if taken.is_err() || self.process.read_u32(loan + l.future_fee).ok() != Some(u32::MAX) {
             self.put_future_fee(loan, held)?;
             taken?;
             return Err(MoveError::CallDeclined);
