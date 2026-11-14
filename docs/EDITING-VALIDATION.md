@@ -3844,13 +3844,14 @@ write another nation, as the write only checks the kind of value. Main has
 the same bug. The fix (a633bb1, on `Iamdejman/nation-choices-reload` off main)
 drops the read nation lists whenever the game is read again.
 
-Built from main at 682f9ae with that fix: Rice showed England on the first
-save and again after FM loaded another save and FM Lens read it again. Nothing
-was written.
+Built from a4deba4 with the same change (main reads the game again the same
+way, on Reload and when FM Lens notices the game changed): Rice showed England
+on the first save and again after FM loaded another save and FM Lens read it
+again. Nothing was written. Not run on a build from main.
 
 ### Main features without a Windows record
 
-Same build (main at 682f9ae with the nation fix), same copy, 21 January 2028.
+Same build (a4deba4 with the nation fix), same copy, 21 January 2028.
 Nothing was written to the game.
 
 | PR | Check | Result |
@@ -3876,6 +3877,26 @@ Seen in passing, not fixed:
 - The Stadiums capacity Min field shows "8000" for 80,000, as the field is
   too narrow; the chip reads 80,000.
 
-Not run: #211 (the star ask needs 20 edits from fresh storage), #190 (the
-bridge's C++ runtime needs a clean PC), #168 (the declined permit message),
-#173 against FM, Windows 10 and 11, macOS (Apple Silicon and Intel), Game Pass.
+Not run: #190 (the bridge's C++ runtime needs a clean PC), #168 (the declined
+permit message), #173 against FM, Windows 10 and 11, macOS (Apple Silicon and
+Intel), Game Pass.
+
+### Star ask after 20 edits (#211)
+
+Same build and copy. FM Lens's storage on the box was moved aside, so the app
+started as a new install, then put back after the test. A new install shows
+the email gate; instead of sending an address, the gate's answer and usage
+off were written into the new storage before the first start, so no address
+and no usage events were sent.
+
+| Check | Result |
+|---|---|
+| New install | Edit count starts at 0 |
+| 19 edits (freeze attributes on Rice, on and off) | Count 19, no ask |
+| 20th edit | The ask shows with Star on GitHub and Not now |
+| Not now | The ask closes; answer kept, count stays at 20 |
+| Two more edits | Not counted; no ask |
+| Settings, Star on GitHub | Opens the repository in the browser. Not starred |
+| Restart and connect | No ask |
+
+Rice ended unfrozen, and FM Lens's frozen list was as before the test.
