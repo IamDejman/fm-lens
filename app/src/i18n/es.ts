@@ -1368,7 +1368,7 @@ export const es: Strings = {
     perWeek: "/sem.",
     noFinances: "FM solo lleva las finanzas de los clubes de ligas jugables.",
     freeze: "Congelar el dinero",
-    freezeNote: "El saldo no puede bajar mientras FM Lens esté conectado.",
+    freezeNote: "El saldo y el presupuesto de fichajes no pueden bajar mientras FM Lens esté conectado.",
 
     // Estadio
     stadium: "Estadio",

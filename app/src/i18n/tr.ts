@@ -1355,7 +1355,7 @@ export const tr: Strings = {
     perWeek: "/hafta",
     noFinances: "FM, parayı yalnızca oynanabilir liglerdeki kulüpler için tutar.",
     freeze: "Parayı dondur",
-    freezeNote: "FM Lens bağlıyken bakiye düşemez.",
+    freezeNote: "FM Lens bağlıyken bakiye ve transfer bütçesi düşemez.",
 
     // Club info
     stadium: "Stadyum",
