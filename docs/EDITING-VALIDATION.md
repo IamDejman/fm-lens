@@ -3813,3 +3813,69 @@ named by the award's UID.
 | Kvaratskhelia in FM Lens 11 and FM | "UEFA Champions League bonus £1,001,203"; FM: "Winning the UEFA Champions League $1.3M". GOAL50 award bonus still named |
 
 Not run: macOS (Apple Silicon and Intel), Game Pass.
+
+## Final builds on Windows (14 November 2026)
+
+FM27 27.0.1 (Steam build 26577676) on Windows Server 2022, on the copy
+"FM-Lens-Final-2026-11-14", saved from "FM-Lens-ClubNames-2026-11-13" at
+7 January 2028.
+
+### Position edits after save, quit and reload
+
+FM Lens built from the scout card branch at a4deba4. Its position code is the
+same as the position branch at 0658d32; later commits there change docs only.
+Declan Rice (28106491).
+
+| Check | Probe | FM |
+|---|---|---|
+| Edit DC 12 to 4, ST 1 to 14 | DC 4, ST 14 | - |
+| 14 days on holiday, to 21 January 2028 | DC 4, ST 14 | DC red, ST yellow, DR yellow (12) |
+| Save, quit, relaunch through Steam, load the copy | DC 4, ST 14 | DC red, ST yellow |
+| Changes after the relaunch | Both edits "Earlier game", no Undo, as designed | - |
+| Edit back to DC 12, ST 1 | DC 12, ST 1 | - |
+| Undo of the ST edit ("Undone at 01:20:29") | DC 12, ST 14 | DC yellow, ST yellow |
+
+### Nation choices after FM loads another save
+
+In edit mode the nation picker kept the nations of the first save it read.
+After FM loaded another save and FM Lens read the game again, Rice's nation
+showed as "Nicaragua" (build a4deba4). Applying from that stale list could
+write another nation, as the write only checks the kind of value. Main has
+the same bug. The fix (a633bb1, on `Iamdejman/nation-choices-reload` off main)
+drops the read nation lists whenever the game is read again.
+
+Built from main at 682f9ae with that fix: Rice showed England on the first
+save and again after FM loaded another save and FM Lens read it again. Nothing
+was written.
+
+### Main features without a Windows record
+
+Same build (main at 682f9ae with the nation fix), same copy, 21 January 2028.
+Nothing was written to the game.
+
+| PR | Check | Result |
+|---|---|---|
+| #249 | Hover notes | Player attribute (Finishing) and a staff coaching attribute (defending) show their notes |
+| #257 | Best for | Players, "DC: Tackling" ranks by Fit, and the Fit hover breaks it down by attribute. Staff, "Assistant Manager" ranks the list |
+| #258 | Your best | "Your best: Gabriel 85" and "Your best: David Raya 84"; Kobel (87) marked as better. His profile lists GK: Reflexes 87, Leadership 76, GK: Kicking 57. Staff: "Your best: Raúl Valbuena 80" |
+| #212 | Club staff tab | Lists the club's staff; a row opens that staff profile |
+| #216 | Squad levels | First team, U21 and U18 switch; the U21 manager is David Horseman |
+| #213 | Wishlist | Window opens with Attach; Send stays off while empty. Cancelled, not sent |
+| #254 | Say thanks | Ko-fi panel with Open in browser and Done |
+| #248 | Check for updates | "FM Lens is up to date." (0.7.10 is the latest release) |
+| #157 | List filters | Competitions by nation England 8,084 to 160; Officials by England 1,166 to 197; Nations in Africa 251 to 57; Stadiums of 80,000 or more 38; Awards of prestige 18 or more 18 |
+| #261 | Saved filters and columns | Filter "WinTest" saved, cleared, applied again (160) and deleted. Players at DC and DR with reputation 9,000 or more: Saliba and Hakimi. Value, Wage and Reputation columns show; More, Columns added PAS |
+| #252 | Trait groups | Movement, Passing, Finishing, Discipline, Defending, Technique, Career; "Plays ball with feet" named |
+| #165 | No experimental tags | Max cohesion in the squad's More menu; Unsackable and Register squad any time on your Contract tab |
+| #163 | Kept across the app swap | Rice's profile and search, Brighton's club profile and its Staff tab came back. Corners 25 alone: "No changes · 1 invalid"; Done asks "Discard 1 change?", and Discard leaves the profile as it was |
+| #173 | Wage note | Your profile shows "FM shows £275,000" for £281,250. Not compared with FM |
+
+Seen in passing, not fixed:
+
+- The More menu stays on screen over the Columns window until Done.
+- The Stadiums capacity Min field shows "8000" for 80,000, as the field is
+  too narrow; the chip reads 80,000.
+
+Not run: #211 (the star ask needs 20 edits from fresh storage), #190 (the
+bridge's C++ runtime needs a clean PC), #168 (the declined permit message),
+#173 against FM, Windows 10 and 11, macOS (Apple Silicon and Intel), Game Pass.
