@@ -28,6 +28,9 @@ pub struct Layout {
     /// A club's stadium; only in the layouts it has been checked in.
     #[serde(default)]
     pub stadium: Option<StadiumLayout>,
+    /// A club's kit colours; a layout that does not place them leaves them out.
+    #[serde(default)]
+    pub club_kits: Option<ClubKitsLayout>,
     /// The retirements the game has planned; only in the layouts they have been checked in.
     #[serde(default)]
     pub retirement: Option<RetirementLayout>,
@@ -491,6 +494,29 @@ pub struct RetirementLayout {
 pub struct SaveSystemLayout {
     /// The save's name as a pointer to a string of the game's: the file's name without its folder or `.fm`.
     pub name: u64,
+}
+
+/// A club's kit colours: the club points at its kit set, whose vector points at one record for each part of a kit.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClubKitsLayout {
+    /// In the club: the pointer to the kit set.
+    pub set: u64,
+    /// In the set: the vector of pointers to the parts.
+    pub parts: u64,
+    /// Bytes a part takes.
+    pub size: u64,
+    /// The part's colours, four bytes each: blue, green, red, alpha.
+    pub trim: u64,
+    pub main: u64,
+    /// `u8`: 0 home, 1 away, 2 third.
+    pub kit: u64,
+    /// `u8` whose low nibble says which part: 1 shirt, 4 shorts, 5 socks.
+    pub part: u64,
+    /// `u8`: where a kit has a part twice, the lowest is the one it wears.
+    pub order: u64,
+    /// `u8`: 1 on the outfield players' kit, 0 on the goalkeeper's.
+    pub outfield: u64,
 }
 
 /// A stadium, which a club's senior team points at.
@@ -1027,6 +1053,9 @@ pub struct ClubInfoLayout {
     pub youth_facilities: u64,
     pub youth_coaching: u64,
     pub youth_recruitment: u64,
+    /// How the club is owned, a code of [`crate::OWNERSHIP`], 1 based; a layout that does not place it leaves it out.
+    #[serde(default)]
+    pub ownership: Option<u64>,
 }
 
 impl ClubInfoLayout {
@@ -1041,6 +1070,7 @@ impl ClubInfoLayout {
             self.youth_facilities + 1,
             self.youth_coaching + 1,
             self.youth_recruitment + 1,
+            self.ownership.map_or(0, |offset| offset + 1),
         ]
         .into_iter()
         .max()
@@ -1057,6 +1087,10 @@ pub struct ClubFinanceLayout {
     pub wage_budget: u64,
     pub ticket_price: u64,
     pub corporate: u64,
+    /// Gate receipts of this season and of last season, i32 pounds; the other sources follow by the steps of
+    /// [`crate::INCOME_SOURCES`]. A layout that does not place them leaves income out.
+    #[serde(default)]
+    pub income: Option<[u64; 2]>,
 }
 
 impl ClubFinanceLayout {
@@ -1068,6 +1102,7 @@ impl ClubFinanceLayout {
             self.wage_budget + 4,
             self.ticket_price + 4,
             self.corporate + 1,
+            self.income.map_or(0, |[this, last]| this.max(last) + crate::clubs::INCOME_SPAN),
         ]
         .into_iter()
         .max()

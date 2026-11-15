@@ -81,6 +81,18 @@ Fresh checks:
   fm27-staff-extras.md). Registration and knowledge matched FM's own pages; FM has no screen for
   career plans (Registration, career plans and scouting knowledge in ../EDITING-VALIDATION.md).
   Cup registration, regions, editing, the Macs and Game Pass are not done.
+- Ownership, income and kit colours (15 November 2026): read on Windows, nothing edited. The
+  ownership type is the byte at club-info +0x129, eight types named from a census of the clubs
+  that hold each; income by source is fourteen i32 slots of the finance record's season blocks;
+  kit colours are 0x28-byte records behind club +0xB0 (fm27-club-ownership-income-kits.md).
+  Income matched FM's Income page and kits FM's Club Profile page (Ownership, income and kit
+  colours in ../EDITING-VALIDATION.md). FM does not show the ownership type, and two of its
+  eight names rest on elimination. The benefactor, agreements, kit styles, national kits, the
+  Macs and Game Pass are not done.
+- Staff allowances (15 November 2026): not found; the leads are in
+  fm27-club-ownership-income-kits.md. Nothing built.
+- Club vision (15 November 2026): objective records found, with no chain forward from the club
+  and no names for their types, so nothing is built (fm27-club-ownership-income-kits.md).
 
 ## Delivery sequence and shared guardrails
 

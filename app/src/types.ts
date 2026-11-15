@@ -257,6 +257,21 @@ export interface Finances {
   ticketPrice: number;
 }
 
+/** The colours of one part of a kit, as `#RRGGBB`. */
+export interface KitPart {
+  kit: "home" | "away" | "third";
+  part: "shirt" | "shorts" | "socks";
+  main: string;
+  trim: string;
+}
+
+/** One source of a club's income, in pounds. */
+export interface Income {
+  source: string;
+  thisSeason: number;
+  lastSeason: number;
+}
+
 export interface ClubDetails extends ClubSummary {
   seasonTickets: number | null;
   socialMedia: number | null;
@@ -266,8 +281,14 @@ export interface ClubDetails extends ClubSummary {
   supporterTraits: Record<string, number>;
   /** training, youth_facilities, youth_coaching, youth_recruitment and (with finances) corporate → 1–20. */
   facilities: Record<string, number>;
+  /** How the club is owned, FM's code from 1; 0 when FM gives none, null when this build does not read it. */
+  ownership: number | null;
   /** Only clubs in the leagues being played have finances. */
   finances: Finances | null;
+  /** What the club earned by source, in FM's order; empty when this build does not read it. Read-only. */
+  income: Income[];
+  /** The colours of its outfield kits, home first; empty when this build does not read them. Read-only. */
+  kits: KitPart[];
   /** The stadium the senior team plays at; null when it could not be read. */
   stadium: Stadium | null;
   /** Its rivals, strongest first. Read-only. */

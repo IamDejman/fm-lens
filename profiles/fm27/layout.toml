@@ -399,9 +399,24 @@ training = 0x120          # facilities, u8 1..20
 youth_facilities = 0x12B
 youth_coaching = 0x12C
 youth_recruitment = 0x12D
+ownership = 0x129         # u8 code: how the club is owned
 
 # Only clubs in the leagues being played have the full finance record; the others
 # use a smaller class, so readers check that these values look sane before use.
+# A club's kit colours: the club points at its kit set, whose vector points at one 0x28-byte record for each part of
+# a kit. Read on Steam 26577676 for Arsenal (red and white home, dark and gold away, gold third, as FM draws them),
+# Chelsea, Real Madrid and Barcelona. The other parts (2, 3), the pattern id at 0x14 and colours 2 to 4 are not named.
+[club_kits]
+set = 0xB0                # on the club: pointer to the kit set
+parts = 0x78              # on the set: vector of pointers to the parts
+size = 0x28
+trim = 0x00               # colour 0, bytes B G R A
+main = 0x04               # colour 1
+kit = 0x22                # u8: 0 home, 1 away, 2 third
+part = 0x23               # low nibble: 1 shirt, 4 shorts, 5 socks
+order = 0x24              # u8: lowest first where a part comes twice
+outfield = 0x25           # u8: 1 outfield, 0 goalkeeper
+
 [club_finance]
 balance = 0x0C            # i32 pounds
 transfer_budget = 0x7C4   # i32 pounds
@@ -409,6 +424,9 @@ total_wage_budget = 0x808 # i32 pounds per week
 wage_budget = 0x814       # i32 pounds per week, the spending wage budget
 ticket_price = 0x864      # f32 pounds, average match ticket
 corporate = 0x8A9         # u8 1..20, corporate facilities
+# Income by source, i32 pounds: four periods 0x118 apart (this month 0x314, last month 0x42C, this season, last
+# season), gate receipts first. Read against FM's Income page for Arsenal on Steam 26577676.
+income = [0x544, 0x65C]
 
 [nation]
 uid = 0x0C                # u32 (Argentina: 1649, as graphics packs map its flag)

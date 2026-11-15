@@ -1423,6 +1423,7 @@ export const es: Strings = {
   clubProfile: {
     kits: "Equipaciones",
     kitNames: { home: "Local", away: "Visitante", third: "Tercera" },
+    kitParts: { shirt: "Camiseta", shorts: "Pantalón", socks: "Medias" },
     // Cabecera
     womensClub: "Club femenino",
     founded: (year) => `Fundado en ${year}`,
@@ -1472,6 +1473,37 @@ export const es: Strings = {
     info: "Datos del club",
     seasonTickets: "Abonos de temporada",
     socialMedia: "Seguidores en redes sociales",
+    ownership: "Propiedad",
+    ownershipKinds: [
+      "Sociedad privada",
+      "Sociedad cotizada",
+      "De los socios, con elecciones",
+      "De los socios, sin elecciones",
+      "Consorcio, privado",
+      "Consorcio, cotizado",
+      "Sociedad cotizada de los socios, con elecciones",
+      "Sociedad cotizada de los socios, sin elecciones",
+    ],
+
+    // Ingresos
+    incomeThisSeason: "Ingresos de esta temporada",
+    incomeLastSeason: "Ingresos de la temporada pasada",
+    incomeSources: {
+      gate_receipts: "Taquilla",
+      season_tickets: "Abonos de temporada",
+      tv: "Derechos de TV",
+      merchandising: "Merchandising",
+      players_sold: "Venta de jugadores",
+      prize_money: "Premios",
+      interest: "Intereses",
+      sponsorship: "Patrocinio",
+      match_day: "Ingresos de día de partido",
+      grants: "Subvenciones",
+      fundraising: "Recaudación de fondos",
+      other: "Otros",
+      corporate: "Instalaciones corporativas",
+      loans: "Ingresos por cesiones",
+    },
   },
 
   clubList: {

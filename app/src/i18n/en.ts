@@ -1460,6 +1460,7 @@ export const en = {
   clubProfile: {
     kits: "Kits",
     kitNames: { home: "Home", away: "Away", third: "Third" },
+    kitParts: { shirt: "Shirt", shorts: "Shorts", socks: "Socks" },
     // Header
     womensClub: "Women's club",
     /** "Founded 1882", in the line under the name. */
@@ -1523,6 +1524,38 @@ export const en = {
     info: "Club info",
     seasonTickets: "Season tickets",
     socialMedia: "Social media followers",
+    ownership: "Ownership",
+    /** By FM's code, from 1. */
+    ownershipKinds: [
+      "Private company",
+      "Public company",
+      "Member-owned, elections",
+      "Member-owned, no elections",
+      "Consortium, private",
+      "Consortium, public",
+      "Member-owned public company, elections",
+      "Member-owned public company, no elections",
+    ],
+
+    // Income
+    incomeThisSeason: "Income this season",
+    incomeLastSeason: "Income last season",
+    incomeSources: {
+      gate_receipts: "Gate receipts",
+      season_tickets: "Season tickets",
+      tv: "TV revenue",
+      merchandising: "Merchandising",
+      players_sold: "Players sold",
+      prize_money: "Prize money",
+      interest: "Interest",
+      sponsorship: "Sponsorship",
+      match_day: "Match day income",
+      grants: "Grants",
+      fundraising: "Fundraising",
+      other: "Other",
+      corporate: "Corporate facilities",
+      loans: "Loan income",
+    },
   },
 
   /** The club list, with the sidebar entry and the status-line count that go with it. */

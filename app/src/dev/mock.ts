@@ -3602,6 +3602,22 @@ function clubDetails(club: ClubSummary): ClubDetails {
           totalWageBudget: Math.round(1_200_000 + next() * 3_200_000),
           ticketPrice: Math.round(20 + next() * 60),
         },
+    ownership: 1 + (club.uid % 8),
+    kits: (["home", "away", "third"] as const).flatMap((kit, n) =>
+      (["shirt", "shorts", "socks"] as const).map((part, m) => ({
+        kit,
+        part,
+        main: ["#C00020", "#182028", "#A89868"][(n + m) % 3],
+        trim: ["#F8F8F8", "#E8C038", "#202830"][n],
+      })),
+    ),
+    income: club.women
+      ? []
+      : ["gate_receipts", "season_tickets", "tv", "merchandising", "players_sold", "prize_money", "sponsorship"].map((source) => ({
+          source,
+          thisSeason: Math.round(next() * 40_000_000),
+          lastSeason: Math.round(next() * 120_000_000),
+        })),
     stadium: stadiumOf(club, next),
     ...clubTiesOf(club),
   });

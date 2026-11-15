@@ -27,7 +27,7 @@ import {
 import { ClubStaffTab } from "./ClubStaffTab";
 import { ClubTiesGroups } from "./RelationGroups";
 import { SquadTab } from "./SquadTab";
-import type { ClubDetails, ClubSummary, Finances, Stadium } from "./types";
+import type { ClubDetails, ClubSummary, Finances, Income, KitPart, Stadium } from "./types";
 import { EditorContext, useProfileEditing } from "./useProfileEditing";
 
 const text = clubProfileText;
@@ -129,20 +129,27 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
       <div className="profile-stack">
         <Facilities facilities={details.facilities} />
         <FinancesGroup club={details.uid} finances={details.finances} />
+        <IncomeGroup title={text.incomeThisSeason} income={details.income} season="thisSeason" />
+        <IncomeGroup title={text.incomeLastSeason} income={details.income} season="lastSeason" />
         <StadiumGroup club={details.uid} stadium={details.stadium} />
       </div>
       <div className="profile-stack">
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
         <ClubInfo details={details} />
         <ClubTiesGroups rivals={details.rivals} links={details.links} />
-        <Kits club={details.uid} />
+        <Kits club={details.uid} colours={details.kits} />
       </div>
     </div>
   );
 }
 
-/** The club's kits, from the user's kit packs or else the game; nothing when neither has them. */
-function Kits({ club }: { club: number }) {
+const KIT_KINDS: KitKind[] = ["home", "away", "third"];
+
+/**
+ * The club's kits: their pictures, from the user's kit packs or else the game, and the colours the game keeps for
+ * each part; nothing when it has neither.
+ */
+function Kits({ club, colours }: { club: number; colours: KitPart[] }) {
   const [kits, setKits] = useState<KitKind[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -153,17 +160,36 @@ function Kits({ club }: { club: number }) {
       cancelled = true;
     };
   }, [club]);
-  if (kits.length === 0) {
+  const kinds = KIT_KINDS.filter((kind) => kits.includes(kind) || colours.some((part) => part.kit === kind));
+  if (kinds.length === 0) {
     return null;
   }
   return (
     <section className="profile-group">
       <h3>{text.kits}</h3>
       <ul className="club-kits">
-        {kits.map((kind) => (
+        {kinds.map((kind) => (
           <li key={kind}>
-            <Picture kind={`kit-${kind}`} id={club} size={PICTURE_SIZE.kit} label={text.kitNames[kind]} />
+            {kits.includes(kind) && (
+              <Picture kind={`kit-${kind}`} id={club} size={PICTURE_SIZE.kit} label={text.kitNames[kind]} />
+            )}
             <span>{text.kitNames[kind]}</span>
+            <span className="kit-colours">
+              {colours
+                .filter((part) => part.kit === kind)
+                .map((part) => (
+                  <span
+                    key={part.part}
+                    className="kit-part"
+                    role="img"
+                    aria-label={`${text.kitParts[part.part]}: ${part.main}, ${part.trim}`}
+                    title={text.kitParts[part.part]}
+                  >
+                    <span style={{ background: part.main }} />
+                    <span style={{ background: part.trim }} />
+                  </span>
+                ))}
+            </span>
           </li>
         ))}
       </ul>
@@ -263,6 +289,27 @@ function SupporterMix({ segments }: { segments: MixSegment[] }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** What the club earned in a season, by source; nothing when it earned nothing or this build does not read it. */
+function IncomeGroup({ title, income, season }: { title: string; income: Income[]; season: "thisSeason" | "lastSeason" }) {
+  const sources: Record<string, string> = text.incomeSources;
+  const rows = income.filter((row) => row[season] !== 0 && sources[row.source]);
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{title}</h3>
+      <dl className="stats" title={converts ? profileText.converted : undefined}>
+        {rows.map((row) => (
+          <Fact key={row.source} label={sources[row.source]}>
+            <span className={row[season] < 0 ? "negative" : undefined}>{formatMoney(row[season])}</span>
+          </Fact>
+        ))}
+      </dl>
+    </section>
   );
 }
 
@@ -409,12 +456,15 @@ function formatTicketPrice(price: number): string {
 
 function ClubInfo({ details }: { details: ClubDetails }) {
   const count = (value: number | null) => (value === null ? profileText.none : formatNumber(value));
+  // FM's codes start at 1; one it gives no name for shows no row.
+  const kind = details.ownership ? text.ownershipKinds[details.ownership - 1] : undefined;
   return (
     <section className="profile-group">
       <h3>{text.info}</h3>
       <dl className="stats">
         <Fact label={text.seasonTickets}>{count(details.seasonTickets)}</Fact>
         <Fact label={text.socialMedia}>{count(details.socialMedia)}</Fact>
+        {kind && <Fact label={text.ownership}>{kind}</Fact>}
       </dl>
     </section>
   );
