@@ -4103,3 +4103,24 @@ before and after. Memory was read with the read-only probe.
 Not run: a quit and relaunch after the app's swaps (the recon trials in
 `recon/fm27-board-members.md` cover one), a holiday after them, and the
 Macs, where the layout has no board section and the button is not offered.
+
+## Staff tendencies on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. Edits were made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Probe, every member of staff | 13,076 of 21,149 have a list and each reads as one (ids 1 to 100, none twice, values 1 to 20); the longest has 54 entries. The other 8,073 have no record |
+| Diego Simeone, Pep Guardiola, Arne Slot against FM's profile | 24, 23 and 12 entries. Every line FM lists under Tendencies and Tends Not To is an entry of 15 and over or 5 and under, under the same name |
+| App profile | The list under Tendencies, the strongest first, each with its value |
+| Arne Slot (601329), "Use player marking" 3 to 16 | The probe read 16. FM's profile, opened again, listed it under Tendencies and no longer under Tends Not To |
+| The same member, "Use substitutes" 7 to 6, then 6 to 5 | At 6 FM's profile had no Tends Not To. At 5 it listed "Use substitutes" there |
+| Save in FM, load another career, load this one again | The probe and the app read 16 and 5. Changes listed the three edits as "Earlier game", without Undo |
+| "Use substitutes" 5 to 7, then Undo | Changes: "Undone". The probe read 5 |
+
+Not run: the Macs, a quit and relaunch, a holiday, a match (whether a changed
+tendency changes what a manager does), and a member who is not a manager.
+

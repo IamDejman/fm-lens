@@ -3,7 +3,7 @@
 This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
-The current FM27 layouts, macOS and Windows alike, define 171 player fields, 45 staff fields,
+The current FM27 layouts, macOS and Windows alike, define 171 player fields, 112 staff fields,
 14 club fields, 37 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam builds 26340721 (27.0.0), 26385295 and
 26577676 (both 27.0.1), on macOS ARM64, macOS Intel and Windows, for an object of class
@@ -246,6 +246,7 @@ records cannot be imported through a template.
 | `coaching_licence` | i8 | plain | 0 (none), 7 (National C) to 1 (Continental Pro) |
 | `formation.in_possession` | u8 | plain | one of 3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64 |
 | `formation.out_of_possession` | u8 | plain | one of 4, 7, 22, 27, 30, 32, 33, 35, 63, 64 |
+| `tendency.<id>` | u8 | plain | 1–20; the 67 ids FM names, and only one the member already holds |
 | `manager.unsackable` | flag (bit 1) | plain | 0–1 |
 | `manager.registration_anytime` | flag (bit 8) | plain | 0–1 |
 
@@ -327,7 +328,8 @@ Competition and award editing, making or editing a promise and youth-intake
 records do not yet have validated editing layouts in this fork. Moving your
 manager to a national team or out of a job, adding a like, dislike, language or
 ban, player registration, career plans beyond a planned retirement, staff
-scouting knowledge and tendencies, instalments and buy-backs, ownership, kits
+scouting knowledge, a tendency a member of staff does not hold, instalments
+and buy-backs, ownership, kits
 and competition rule behavior also remain research work. These cannot be
 enabled by adding inputs or reusing a Windows offset on macOS. Transfers are
 made, but not every linked record (history, finances, registration) is

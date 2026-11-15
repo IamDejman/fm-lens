@@ -108,14 +108,24 @@ Other setter-mapped bytes: `NpGw` +0xEA, `Npcs` +0xE9, `Pbdt` +0xEC, `Phes` +0xE
 byte +0xEB that the attribute setters read. Meaning not confirmed.
 
 Tendencies: the setter has about 70 `NTnn` codes (NT01..NT99) plus `N100`. They store into a
-record the staff object points at via `+0xA8`. Keys are 1..100, default 10. The record has a
-small vector of pairs. The class that fills it is `NON_PLAYER_TENDENCY_TEMPLATE`; its instances
-were not read (the `types` scan was not repeated, and `instances` needs the `db::` prefix).
-Names for NT codes are not known. Needs the screen: open a staff profile, Tendencies, and compare
-to the NT readings of that staff member (probe `dump` of the `+0xA8` target).
+record the staff object points at via `+0xA8`. The record starts with the `(begin, end)` of a
+list of two-byte entries: a tendency id (1 to 100) and how far he leans to it (1 to 20). An id
+with no entry counts as 10. The class that fills it is `NON_PLAYER_TENDENCY_TEMPLATE`.
 
-Editing: formation bytes are plain bytes, safe to write within the commonest ids above. Tendency
-edits are not advised until the NT labels are known.
+Names (15 November 2026): the game's own naming routine (macOS arm64 27.0.1, near `0x1468554`)
+gives a text to 67 of the 100 ids; the rest have none and are shown without a name. Read on
+Windows Steam 26577676 against FM's profile: Simeone has 24 entries, Guardiola 23 and Slot 12,
+and each line FM lists is one of them under the same name. Over the whole game 13,076 of 21,149
+staff have a list (the longest 54 entries); the others have no record.
+
+What FM's profile lists, checked by editing one entry of Arne Slot's on Windows: 15 and over
+under "Tendencies", 5 and under under "Tends Not To" (5 is listed, 6 and 7 are not). It leaves
+out the touchline manner and dress ids (48 to 55) whatever their value.
+
+Editing: formation bytes are plain bytes, safe to write within the commonest ids above. A
+tendency the member already holds is a plain byte too, and the editor writes it (1 to 20, named
+ids only): see Staff tendencies in EDITING-VALIDATION.md. Adding an entry he does not hold
+would grow the game's list and is not offered.
 
 ## 3. Knowledge (nation and region)
 
@@ -317,6 +327,5 @@ edit. Not tested (read only).
 
 - Coaching licence labels per level, for Jover (level 2) and the manager.
 - Formation names for ids 3, 4, 7, 27, 32, 33, 35, 64 (or read the table at `0x573CFA0`).
-- Tendency names for the NT codes.
 - Which tactic setting each familiarity kind 0..5 is.
 - Staff nation knowledge percentages.
