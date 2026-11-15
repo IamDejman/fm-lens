@@ -1943,10 +1943,15 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
-      "0.7.11": [
-        "FM Lens artık penceresinin nasıl kullanıldığını kaydediyor: neyin zor olduğunu görmek için. Yazdıklarınız ve teknik direktörünüzün adı gizlenir. Ayarlar'dan kapatabilirsiniz.",
+      "1.0.0": [
+        "Her oyuncu için Gözlem sekmesi: en iyi roller, gelişme olasılığı ve Benzerlerini bul.",
+        "En iyi oyuncular ve En uygun, oyuncuları ve personeli sıralar. Gözlem kartı FM'in üzerinde görünür: oyuncuyu açmak için karta tıklayın.",
+        "Sütunlar, her listede kayıtlı filtreler ve Toplu düzenleme için işaretli satırlar.",
+        "Mevki düzenlemeleri artık kalıcı.",
         "Mutsuzluğu kaldırmak artık morali, mutluluğu ve forma süresi mutluluğunu en yükseğe çıkarıyor, teknik direktörü de oyuncunun sevmediği kişilerden çıkarıyor. Tek bir Geri al hepsini geri alır.",
         "Morali, mutluluğu veya forma süresi mutluluğunu düzenlemek artık yalnızca o değeri değiştiriyor.",
+        "Sevdikleri ve diller ekleyin, taksitleri ve geri alımları düzenleyin, yönetim kurulu koltuklarını takas edin.",
+        "FM Lens artık penceresinin nasıl kullanıldığını kaydediyor: neyin zor olduğunu görmek için. Yazdıklarınız ve teknik direktörünüzün adı gizlenir. Ayarlar'dan kapatabilirsiniz.",
       ],
       "0.7.10": [
         "Bir oyuncunun özelliklerini yükseltin, MY de onlarla yükselir: değişiklikler kalır.",
