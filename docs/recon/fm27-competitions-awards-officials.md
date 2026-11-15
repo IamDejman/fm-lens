@@ -136,25 +136,40 @@ Name collision: index 217 (UID 129240) is named "Premier League Manager of the S
 | +0x00 | vtable | high |
 | +0x20 / +0x28 / +0x30 | name entry pointers: first, last, common (0 for most) | high |
 | +0x38 | db::NATION pointer | high |
-| +0x40..+0x47 | 8 u8 attributes | medium that they are attributes, labels unknown |
+| +0x40..+0x47 | the person's personality, 8 u8: adaptability, ambition, loyalty, pressure, professionalism, sportsmanship, temperament, controversy (setter tags `Pada`, `Pamb`, `Ploy`, `Ppre`, `Ppro`, `Pspo`, `Ptem`, `Pcvy`) | high |
 | +0x50 / +0x68 | city pointers | low |
 | +0x58 | (u16 day, u16 year) date of birth | high |
 | +0x114 / +0x116 | u16 current / potential ability | medium-high |
 | +0x118 | u16 reputation 0-10000 | medium |
-| +0x11A..+0x120 | 7 u8 values 1-20 | unknown (maybe more attributes) |
-| +0x121 / +0x122 | u8 flags, 1 for most elite Premier League referees | low |
+| +0x11A..+0x120 | the 7 refereeing attributes, u8 1-20: Allowing Flow, Discipline, Important Matches, Pressure, Refereeing, Running Line, Time Keeping (setter tags `Oalf`, `Odis`, `Oimm`, `Oprs`, `Oref`, `Orun`, `Otkp`) | high |
+| +0x121..+0x123 | u8 flags, 1 for most elite Premier League referees (setter tags `Offo`, `Ocno`, `OfUC`) | low: meaning unproved |
 | +0x128 | secondary vtable (identity block) | high |
 | +0x134 | u32 UID (repeated at +0x138) | high |
 
 1166 officials, all with name and nation, across 228 nations (England 197, France 106, Spain 93, Germany 72). First UIDs: 5352, 5357, 103812, 103879, 103896, 103902.
 
-Attribute columns at +0x40..+0x47: [0] ranges 7-20, [1..5] cluster at 9-12, [6] ranges 10-20, [7] ranges 1-8. The mapping to FM's referee attributes (allowing the game to flow, discipline and so on) cannot be made without comparing against the UI. Officials have no separate "level" field identified (CA/PA may serve).
+### Refereeing attributes (15 November 2026)
+
+The official's own property setter (macOS arm64 27.0.1) takes a four-letter tag and stores a byte
+for each of `Oalf`, `Odis`, `Oimm`, `Oprs`, `Oref`, `Orun` and `Otkp` at +0x11A..+0x120, in that
+order, right after the reputation. The bytes at +0x40..+0x47 are written by the person setter under
+the personality tags, so they are not refereeing attributes. Officials have no separate "level"
+field identified (CA/PA may serve).
+
+On Windows the seven sit at +0x122..+0x128 (the reputation is at +0x120). Read there on Steam
+26577676: Michael Oliver 15, 10, 15, 14, 16, 9, 5 and Szymon Marciniak 16, 15, 19, 18, 18, 15, 15,
+the same seven Oliver read at +0x11A on macOS. All 1,166 officials read values from 1 to 20.
+
+FM Lens shows the seven on an official's profile under Refereeing and edits one at a time, checked
+by the UID. FM has no screen that shows them, so the names rest on the setter's tags and the edits
+on readback, save and load (Referee attributes in ../EDITING-VALIDATION.md). Whether a changed
+value changes how a referee handles a match is not tested.
 
 CA/PA: established referees have CA equal to PA, young ones PA above CA (Shaun Taylor 83/160). About 101 officials read exactly 200/200, probably filler.
 
 ### Values to check
 
-| Name | UID | Nation | Born | CA/PA | Rep | Attrs +0x40.. |
+| Name | UID | Nation | Born | CA/PA | Rep | Personality +0x40.. |
 |---|---|---|---|---|---|---|
 | Michael Oliver | 103994 | England | 20 Feb 1985 | 180/180 | 8388 | 19,12,11,12,11,9,12,1 |
 | Szymon Marciniak | 96009031 | Poland | 7 Jan 1981 | 190/190 | 9013 | |
@@ -174,7 +189,7 @@ Oliver also: +0x5D..+0x60 = 0,11,1,5; +0x11A..+0x120 = 15,10,15,14,16,9,5; +0x12
 ## Open questions
 
 1. Competition rules (substitutes allowed and named, VAR, goal-line technology) are undecoded. Next step: decode the 0xcb8 tree nodes behind `VRrl`, `hlps`, `stgs` and compare EPL against a comp whose rules differ in the UI; test `mgqm`.
-2. Referee attribute labels, and whether +0x121/+0x122 is a VAR accreditation flag.
+2. What the flags at +0x121..+0x123 (`Offo`, `Ocno`, `OfUC`) mean, and whether a refereeing attribute changes match behavior.
 3. A static or cheap runtime root for the comp, award and nation pools (the vtable scan takes minutes).
 4. Meaning of comp +0x14, +0x30, +0x170/+0x178, +0xFA zeros (Serie A and Portuguese league read 0), and award +0x85, +0x94..+0x97.
 5. Whether reputation edits to +0x188 propagate to live fixtures or are cached in the ACTUAL_COMP rules.

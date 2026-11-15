@@ -4124,3 +4124,24 @@ and after. Memory was read with the read-only probe.
 Not run: the Macs, a quit and relaunch, a holiday, a match (whether a changed
 tendency changes what a manager does), and a member who is not a manager.
 
+## Referee attributes on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The edit was made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Probe, every official | All 1,166 read seven values from 1 to 20 |
+| Michael Oliver (103994) | 15, 10, 15, 14, 16, 9, 5: the seven the macOS recon read at +0x11A |
+| Szymon Marciniak (96009031), app profile | Refereeing: Allowing Flow 16, Discipline 15, Important Matches 19, Pressure 18, Refereeing 18, Running Line 15, Time Keeping 15, as the probe read them |
+| Edit | A number box for each, 1 to 20 |
+| Time Keeping 15 to 12, Apply | The probe read 12 and the other six unchanged. Changes: "Szymon Marciniak, Official, Time Keeping, 15 → 12" |
+| Save in FM, load another career, load this one again | The probe and the app read 12. Changes listed the edit as "Earlier game", without Undo |
+| Time Keeping 12 to 15, then Undo | Changes: "Undone". The probe read 12 |
+
+Not run: any comparison with FM, which has no screen for these values; a
+match (whether a changed attribute changes how a referee handles one); a
+quit and relaunch; a holiday; the Macs.
+

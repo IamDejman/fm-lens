@@ -22,7 +22,8 @@ Fresh checks:
 - National-job handler 0x33CCEC reads Ttea, Pnjo and dreL keys, constructs a 0x28-byte object
   through 0x22964C0, checks 0x2296E5C and calls 0x266B254 / 0x266B448. This supplies a concrete
   offer/interaction path to trace; it is not proof of a direct human-manager appointment API.
-- Officials getters at 0xCF6154 onward read signed bytes at +0x40..+0x47. Names remain unproved.
+- Officials getters at 0xCF6154 onward read signed bytes at +0x40..+0x47. These are the person's
+  personality; the refereeing attributes are the seven bytes at +0x11A (see Status).
 - example.ltf contains explicitly commented staff-tendency labels (22 matched entries), career-plan
   descriptions, ownership labels and club-vision labels. Labels alone do not map an enum or field.
 - Goal-line technology occurs in match-report language strings (for example KEY-457319).
@@ -57,6 +58,10 @@ Fresh checks:
 - Staff tendency names (15 November 2026): done. The names come from the game's own naming
   routine, 67 of the 100 ids. Shown and, for an entry the member already holds, edited; checked
   in FM on Windows (Staff tendencies in ../EDITING-VALIDATION.md). The Macs are not run.
+- Referee attribute names (15 November 2026): done from the official's own property setter, whose
+  tags name the seven bytes at +0x11A (+0x122 on Windows). Shown and edited; readback, Undo, save
+  and load checked on Windows (Referee attributes in ../EDITING-VALIDATION.md). FM has no screen
+  for them, so the acceptance gate's independent label match and match-day behavior are not met.
 
 ## Delivery sequence and shared guardrails
 

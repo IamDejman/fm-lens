@@ -4,7 +4,7 @@ This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
 The current FM27 layouts, macOS and Windows alike, define 171 player fields, 112 staff fields,
-14 club fields, 37 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
+14 club fields, 37 nation fields and 11 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam builds 26340721 (27.0.0), 26385295 and
 26577676 (both 27.0.1), on macOS ARM64, macOS Intel and Windows, for an object of class
 `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
@@ -308,6 +308,13 @@ One official at a time; none where the build's layout does not place officials.
 | `potential_ability` | u16 | plain | 1–200 |
 | `reputation` | u16 | plain | 0–10000 |
 | `date_of_birth` | date | plain | 1940-01-01–2020-12-31, or to the game date once later |
+| `attribute.allowing_flow` | u8 | plain | 1–20 |
+| `attribute.discipline` | u8 | plain | 1–20 |
+| `attribute.important_matches` | u8 | plain | 1–20 |
+| `attribute.pressure` | u8 | plain | 1–20 |
+| `attribute.refereeing` | u8 | plain | 1–20 |
+| `attribute.running_line` | u8 | plain | 1–20 |
+| `attribute.time_keeping` | u8 | plain | 1–20 |
 
 ## Changes made through the game
 
