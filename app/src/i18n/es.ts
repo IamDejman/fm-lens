@@ -907,7 +907,7 @@ export const es: Strings = {
     noUnhappiness: "Nada le hace estar descontento",
     removeUnhappiness: "Quitar todo",
     removingUnhappiness: "Quitando…",
-    removeUnhappinessTitle: "Quita todos sus motivos de descontento.",
+    removeUnhappinessTitle: "Quita todos sus motivos de descontento y pone al máximo su moral y su felicidad.",
     inspire: "Motivar",
     inspireTitle: "Moral al máximo y sin motivos de descontento",
     concernSince: (date) => `desde el ${date}`,
@@ -1829,6 +1829,8 @@ export const es: Strings = {
     changes: {
       "0.7.11": [
         "FM Lens ahora graba cómo se usa su ventana, para ver qué resulta difícil. Lo que escribes y el nombre de tu mánager quedan ocultos. Desactívalo en Ajustes.",
+        "Quitar el descontento ahora pone al máximo la moral, la felicidad y la felicidad con los minutos, y quita al mánager de las personas que no le gustan al jugador. Un solo Deshacer lo revierte todo.",
+        "Editar la moral, la felicidad o la felicidad con los minutos ahora cambia solo ese valor.",
       ],
       "0.7.10": [
         "Sube los atributos de un jugador y su HA sube con ellos: los cambios se quedan.",
@@ -2633,7 +2635,7 @@ export const es: Strings = {
       "Energía y ritmo de competición al máximo, y todos totalmente descansados",
     removeUnhappiness: "Quitar descontento",
     unhappyCount: (unhappy) => (unhappy === 1 ? "1 descontento" : `${format(unhappy)} descontentos`),
-    removeUnhappinessTitle: "Quitar todos los motivos de descontento del equipo",
+    removeUnhappinessTitle: "Quitar todos los motivos de descontento del equipo y poner al máximo su moral y su felicidad",
     unhappyNone: "Nadie en este equipo está descontento",
     moreLabel: "Más acciones sobre todo el equipo",
     maxMorale: "Moral al máximo",

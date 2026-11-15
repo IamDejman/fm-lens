@@ -13,13 +13,13 @@
 //!
 //! A contract's happiness is not the game's to keep as written: it holds it in a band (-100 to 100) set by the worst
 //! reason to be unhappy that lasts, and with none that counts, by the player's morale. A happiness written outside
-//! that band is put back inside it, so [`Session::happiness_hold`] says what has to move with it.
+//! that band is put back inside it. So the app's removal of unhappiness ends the reasons, then lifts morale, then
+//! happiness; an edit of happiness alone is written as asked and left to the game.
 
 use fmlens_mem::is_user_pointer;
 
 use crate::date::FmDate;
 use crate::details::{CONCERN_ENDED, CONCERN_SIZE, concern_entries};
-use crate::edit::Entity;
 use crate::players::PlayerSummary;
 use crate::profile::DynamicsLayout;
 use crate::session::Session;
@@ -34,20 +34,6 @@ const MOST_TEAMS: u64 = 16;
 /// The fields of a player that feed his squad's mood: a write to one resets the scores the game keeps of it.
 pub(crate) const MOOD_FIELDS: [&str; 4] =
     ["morale", "contract.happiness", "contract.playing_time_happiness", "contract.unhappiness"];
-
-/// Where a reason to be unhappy keeps what it is about, how bad it is, and how far the talk about it has got.
-const CONCERN_MOTIVE: usize = 0x16;
-const CONCERN_KIND: usize = 0x18;
-const CONCERN_STATUS: usize = 0x19;
-
-/// What it takes for the game to leave a player's happiness where an edit put it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct HappinessHold {
-    /// Whether a reason to be unhappy that lasts holds his happiness elsewhere: ending them frees it.
-    pub end_concerns: bool,
-    /// The morale nearest his own that allows it, where his own does not.
-    pub morale: Option<i64>,
-}
 
 /// Ending a player's reasons to be unhappy worked out: the writes that end each one that lasts.
 #[derive(Debug, Clone)]
@@ -106,27 +92,6 @@ impl Session {
             return Err(MoveError::NotInList { index: 0 });
         }
         Ok(contract)
-    }
-
-    /// What has to move with a happiness of `happiness` written to the contract of `player` for the game to leave it
-    /// there: the reasons to be unhappy that hold it elsewhere, and a morale that allows it. `None` where his
-    /// contract or morale cannot be read. Only reads memory.
-    pub fn happiness_hold(&self, player: &PlayerSummary, happiness: i64) -> Option<HappinessHold> {
-        let contract = self.contract_of(player).ok()?;
-        let record = self.process.read_u64(contract + self.layout.contract.unhappiness).ok()?;
-        let worst = concern_entries(&self.process, record)
-            .into_iter()
-            .filter_map(|entry| self.process.read_bytes(entry, CONCERN_SIZE).ok())
-            .filter(|bytes| lasts(bytes))
-            .filter_map(|bytes| {
-                let motive = u16::from_le_bytes([bytes[CONCERN_MOTIVE], bytes[CONCERN_MOTIVE + 1]]);
-                let kind = bytes[CONCERN_KIND] as i8;
-                concern_counts(motive, kind, bytes[CONCERN_STATUS]).then_some(kind)
-            })
-            .max();
-        let morale = self.field(Entity::Player, "morale").ok()?;
-        let morale = self.read_field(&player.target(), &morale).ok()?;
-        Some(hold(happiness, worst, morale))
     }
 
     /// Writes a planned ending, each write only over what the plan found, and has the game work out his squad's mood
@@ -234,52 +199,6 @@ fn lasts(entry: &[u8]) -> bool {
     FmDate::from_raw(u16::from_le_bytes([ended[0], ended[1]]), u16::from_le_bytes([ended[2], ended[3]])).is_none()
 }
 
-/// Whether the game looks at a reason that lasts when it holds happiness: not one being talked over with the
-/// manager (statuses 19 and 20), nor one about a motive it leaves out.
-fn concern_counts(motive: u16, kind: i8, status: u8) -> bool {
-    let left_out = motive == 0 || (900..=930).contains(&motive) || matches!(motive, 1100 | 1104 | 1106);
-    kind >= -1 && !left_out && !matches!(status, 19 | 20)
-}
-
-/// The band the game holds happiness in while the worst reason that counts is of `kind`; `None` for a kind that
-/// leaves it where it is.
-fn concern_band(kind: i8) -> Option<(i64, i64)> {
-    match kind {
-        -1 | 1 => Some((-40, -20)),
-        2 => Some((-60, -40)),
-        3 | 4 => Some((-80, -60)),
-        5 => Some((-100, -80)),
-        6 | 99 | 100 => Some((-100, -100)),
-        _ => None,
-    }
-}
-
-/// The band the game holds the happiness of a player with no reason that counts in, by his morale (1 to 20).
-fn morale_band(morale: i64) -> (i64, i64) {
-    match morale {
-        18.. => (80, 100),
-        15..=17 => (60, 80),
-        13..=14 => (40, 60),
-        11..=12 => (20, 40),
-        _ => (-20, 20),
-    }
-}
-
-/// What has to move for `happiness` to stay, given the kind of the worst reason that counts and his morale. A
-/// happiness under -20 only stays while a reason holds it there: without one the game brings it up to -20.
-fn hold(happiness: i64, worst: Option<i8>, morale: i64) -> HappinessHold {
-    let band = worst.and_then(concern_band);
-    if band.is_some_and(|(low, high)| (low..=high).contains(&happiness)) {
-        return HappinessHold::default();
-    }
-    let allows = |morale: i64| {
-        let (low, high) = morale_band(morale);
-        (low..=high).contains(&happiness.max(-20))
-    };
-    let nearest = || (1..=20).filter(|&other| allows(other)).min_by_key(|other| (other - morale).abs());
-    HappinessHold { end_concerns: band.is_some(), morale: if allows(morale) { None } else { nearest() } }
-}
-
 /// Whether the four bytes of a date say a score was worked out this year or the last, up to today.
 fn worked_out_lately(bytes: &[u8], today: FmDate) -> bool {
     let day = u16::from_le_bytes([bytes[0], bytes[1]]) & 0x1FF;
@@ -289,7 +208,7 @@ fn worked_out_lately(bytes: &[u8], today: FmDate) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{HappinessHold, NEVER, concern_counts, hold, worked_out_lately};
+    use super::{NEVER, worked_out_lately};
     use crate::date::FmDate;
     use crate::profile::Layout;
 
@@ -321,53 +240,5 @@ mod tests {
         assert!(!worked_out_lately(&date(345, 2027), today));
         assert!(!worked_out_lately(&date(0, 2027), today));
         assert!(!worked_out_lately(&date(400, 2027), today));
-    }
-
-    /// The reasons the squad raised on the day of the report: status 19, so the game left happiness to morale.
-    #[test]
-    fn a_reason_being_talked_over_does_not_hold_happiness() {
-        assert!(!concern_counts(811, 1, 19));
-        assert!(!concern_counts(811, 1, 20));
-        assert!(concern_counts(570, 2, 4));
-        // The motives the game leaves out, and a kind below -1.
-        assert!(!concern_counts(0, 2, 4));
-        assert!(!concern_counts(915, 2, 4));
-        assert!(!concern_counts(1104, 2, 4));
-        assert!(concern_counts(1101, 2, 4));
-        assert!(!concern_counts(570, -2, 4));
-    }
-
-    #[test]
-    fn a_happiness_the_morale_allows_needs_nothing() {
-        assert_eq!(hold(100, None, 20), HappinessHold::default());
-        assert_eq!(hold(80, None, 16), HappinessHold::default());
-        assert_eq!(hold(20, None, 11), HappinessHold::default());
-        assert_eq!(hold(-20, None, 3), HappinessHold::default());
-    }
-
-    #[test]
-    fn morale_moves_to_the_nearest_that_allows_the_happiness() {
-        let morale = |happiness, now| hold(happiness, None, now).morale;
-        assert_eq!(morale(100, 11), Some(18));
-        assert_eq!(morale(70, 11), Some(15));
-        assert_eq!(morale(70, 20), Some(17));
-        assert_eq!(morale(50, 20), Some(14));
-        assert_eq!(morale(30, 5), Some(11));
-        assert_eq!(morale(0, 20), Some(10));
-        // Under -20 nothing but a reason holds it: the lowest band is the nearest the game allows.
-        assert_eq!(morale(-90, 14), Some(10));
-        assert_eq!(morale(-90, 6), None);
-    }
-
-    #[test]
-    fn a_reason_that_holds_happiness_elsewhere_has_to_end() {
-        // Kind 2 holds -60 to -40: inside it nothing moves, whatever his morale.
-        assert_eq!(hold(-50, Some(2), 20), HappinessHold::default());
-        assert_eq!(hold(100, Some(2), 20), HappinessHold { end_concerns: true, morale: None });
-        assert_eq!(hold(100, Some(5), 9), HappinessHold { end_concerns: true, morale: Some(18) });
-        assert_eq!(hold(-100, Some(6), 9), HappinessHold::default());
-        // A kind that leaves happiness alone stays, and morale is made to allow it for when the reason ends.
-        assert_eq!(hold(100, Some(0), 11), HappinessHold { end_concerns: false, morale: Some(18) });
-        assert_eq!(hold(100, Some(50), 20), HappinessHold::default());
     }
 }

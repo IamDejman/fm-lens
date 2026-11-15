@@ -2712,6 +2712,11 @@ unless the same edit sets morale. Each shows as a change of its own in Changes
 and can be undone. A mass edit of happiness does the same per player, inside its
 batch. A happiness under -20 stays only while a reason holds it there.
 
+Withdrawn on 15 November 2026: an edit of morale, happiness or playing time
+happiness now writes that value alone, and the game may put a happiness outside
+its band back. Remove unhappiness is what moves them together (see Remove
+unhappiness lifts the mood on Windows).
+
 Remove unhappiness now also ends the reasons on a loan contract, as the game's
 own action does.
 
@@ -4103,3 +4108,33 @@ before and after. Memory was read with the read-only probe.
 Not run: a quit and relaunch after the app's swaps (the recon trials in
 `recon/fm27-board-members.md` cover one), a holiday after them, and the
 Macs, where the layout has no board section and the button is not offered.
+
+## Remove unhappiness lifts the mood on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The edits were made on a copy of a career written
+with FM's Save As, at 18 July 2028; the main career's SHA-256 was the same
+before and after. Memory was read with the read-only probe.
+
+Remove unhappiness (a profile's "Remove all", Inspire, and the team action)
+now ends the lasting reasons, then sets morale to 20, happiness to 100 and
+playing time happiness to 100, in that order, and takes the manager of the
+player's club out of his disliked people. Each is a change of its own in
+Changes, and undoing any one of them takes the whole removal back.
+
+| Check | Result |
+|---|---|
+| Patson Daka (13158264), Hamburger Sport-Verein, before | Morale 2, happiness -40, playing time happiness -52, one lasting reason, his manager Steffen Baumgart (12306) disliked at strength 25 |
+| "Remove all" on his profile | Morale 20, happiness 100, playing time happiness 100, "Nothing makes him unhappy", the reason given an end date, Baumgart gone from his preferences (4 to 3). Changes: five rows |
+| Undo on the "Reasons to be unhappy" row | All five undone at once: the reason open again, Baumgart back at strength 25, the three values as before |
+| "Remove all" again | The same five changes |
+| A lone edit on Warren Zaïre-Emery (2000179712), who had one lasting reason: happiness 20 to 90, then morale 10 to 15, then playing time happiness 20 to 70, each applied by itself | One row in Changes each time; the other two values and the reason stayed as they were |
+| "Remove unhappiness" on Arsenal's first team, 10 unhappy players | 40 changes in one batch, four per player (none disliked the manager): reasons ended, morale to 20, happiness and playing time happiness to 100. The button then read "Nobody in this team is unhappy" |
+| FM, no save and load | Ebere Eze (29156522), morale 2 before, showed "Delighted" on his page. FM hides the happiness of a player who is not scouted, so Daka's page showed nothing |
+| Save, then Continue to 19 July 2028 | Daka still 20, 100 and 100, no reason, Baumgart not disliked. Willian Pacho (86075795): morale 18, happiness 100, playing time happiness 100, no reason |
+| Save and load | The same values and lists after the load |
+
+Not run: a quit and relaunch, a player who dislikes you as his manager (the
+test career has none), what FM does over days with a lone happiness edit
+outside its band (the bands above say it puts it back), Game Pass, and the
+Macs.

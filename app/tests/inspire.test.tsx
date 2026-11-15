@@ -31,7 +31,7 @@ function answer({ morale = true, reasons = true } = {}) {
   vi.mocked(call).mockImplementation((command: string) =>
     command === 'apply_edits'
       ? Promise.resolve(morale ? { applied: [{}], failed: [] } : { applied: [], failed: [{ field: 'morale', value: 20, error: stale }] })
-      : reasons ? Promise.resolve({}) : Promise.reject(stale));
+      : reasons ? Promise.resolve({ applied: [{}], failed: [] }) : Promise.reject(stale));
 }
 
 test('Inspire sets top morale over what the profile read, ends his reasons, then has the profile read again', async () => {

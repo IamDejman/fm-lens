@@ -473,7 +473,7 @@ export const liftBans = (uid: number) => call<LoggedChange>("lift_bans", { uid }
  * stay listed as over, which keeps the game from raising them again the next day. Logged as one change of his field
  * `contract.unhappiness` from how many lasted to 0, and undone as one; fails when none lasts.
  */
-export const removeUnhappiness = (uid: number) => call<LoggedChange>("remove_unhappiness", { uid });
+export const removeUnhappiness = (uid: number) => call<ApplyReport>("remove_unhappiness", { uid });
 
 /**
  * Keeps the player from retiring: the retirement the game has planned for him is taken out of its plans, and he gets
