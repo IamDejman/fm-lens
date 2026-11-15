@@ -566,7 +566,9 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   const value = change.moved && change.field !== "contract.job"
     ? change.field === "future_transfer"
       ? valueChange(named(change.moved.to, profileText.none), profileText.none)
-      : valueChange(named(change.moved.from, profileText.freeAgent), named(change.moved.to, profileText.freeAgent))
+      : change.field.startsWith("nationalTeam")
+        ? valueChange(profileText.none, named(change.moved.to, profileText.none))
+        : valueChange(named(change.moved.from, profileText.freeAgent), named(change.moved.to, profileText.freeAgent))
     : change.captaincy
       ? valueChange(named(change.captaincy.from, profileText.none), named(change.captaincy.to))
       : change.tie

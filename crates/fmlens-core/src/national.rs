@@ -580,7 +580,7 @@ impl Session {
     }
 
     /// The member of staff whose object is at `object`, if the lists have him there.
-    fn staff_at(&self, object: u64, staff: &StaffIndex) -> Option<Person> {
+    pub(crate) fn staff_at(&self, object: u64, staff: &StaffIndex) -> Option<Person> {
         let s = &self.layout.staff;
         if !is_user_pointer(object) {
             return None;

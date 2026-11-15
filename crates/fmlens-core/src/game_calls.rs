@@ -13,7 +13,8 @@ use serde::Serialize;
 use crate::clubs::ClubSummary;
 use crate::date::FmDate;
 use crate::medical::HealPlan;
-use crate::players::PlayerSummary;
+use crate::national::{self, Side};
+use crate::players::{Nation, PlayerSummary};
 use crate::profile::{CallRvas, FutureTransferLayout};
 use crate::rtti::class_of;
 use crate::session::Session;
@@ -57,6 +58,8 @@ pub struct GameActions {
     pub max_tactics: bool,
     /// The human manager made the manager of a club, as the game's editor does it.
     pub move_manager: bool,
+    /// The human manager made the manager of a national team, as the game's editor does it.
+    pub move_to_nation: bool,
     /// A like or dislike added to a person's list, by the game's own routine.
     pub add_preference: bool,
     /// A language added to a person's list, by the game's own routine.
@@ -161,6 +164,12 @@ const JOB_TERM: u64 = 0x5063_6A6F;
 pub const MANAGER_JOB: u8 = 16;
 /// Where the job term's integer Value is built in the call's scratch memory, after the terms map and the references.
 const JOB_VALUE: usize = 0x40;
+/// Where a call keeps the stand-in for the game's editor object ([`crate::profile::EditorStandIn`]): the field its
+/// `tracker` lands on, zeros like the rest but its vtable.
+const STAND_IN: usize = 0x100;
+/// A function that only returns zero, as x86-64 and arm64 code.
+const RETURNS_NULL: [&[u8]; 3] =
+    [&[0x33, 0xC0, 0xC3], &[0x31, 0xC0, 0xC3], &[0x00, 0x00, 0x80, 0xD2, 0xC0, 0x03, 0x5F, 0xD6]];
 
 /// The human manager's move to a club, worked out from the game as it is now: nothing is written. The game dismisses
 /// the club's manager as it makes him its manager.
@@ -170,6 +179,14 @@ pub struct ManagerPlan {
     pub from_club: Option<u32>,
     pub to_club: u32,
     /// The member of staff who manages the club now, whom the game dismisses; none when it has none the lists know.
+    pub displaced: Option<u32>,
+}
+
+/// The human manager's move to a national team, worked out from the game as it is now: nothing is written.
+#[derive(Debug, Clone, Copy)]
+pub struct NationalPlan {
+    pub member: u32,
+    /// The member of staff who manages the team now, whom the game dismisses; none when it has none the lists know.
     pub displaced: Option<u32>,
 }
 
@@ -337,6 +354,15 @@ impl Session {
                     self.process.read_bytes(self.plugin.base + editor.enabled, 1).is_ok_and(|byte| byte[0] == 1)
                 })
                 && self.layout.tactics.is_some(),
+            move_to_nation: available(calls.appoint_staff)
+                && available(calls.map_new)
+                && available(calls.map_insert)
+                && available(calls.map_drop)
+                && profile.editor.is_some()
+                && profile.editor_stand_in.is_some()
+                && profile.human_manager.is_some()
+                && self.layout.national.is_some()
+                && self.layout.team.manager.is_some(),
             move_manager: available(calls.sign_free_agent)
                 && available(calls.map_new)
                 && available(calls.map_insert)
@@ -1176,15 +1202,7 @@ impl Session {
         let (_, senior) = self.manager_target(member, club)?;
         let manager = self.layout.team.manager.ok_or(MoveError::CallUnavailable)?;
         let sitting = self.process.read_u64(senior + manager)?;
-        let s = &self.layout.staff;
-        let displaced = is_user_pointer(sitting)
-            .then(|| {
-                s.person_block_shifts.iter().find_map(|&shift| {
-                    let uid = self.process.read_u32(sitting + s.at(s.uid, shift)).ok()?;
-                    staff.get(uid).filter(|found| found.address == sitting).map(|found| found.uid)
-                })
-            })
-            .flatten();
+        let displaced = self.staff_at(sitting, staff).map(|found| found.uid);
         Ok(ManagerPlan { member: member.uid, from_club: member.club_uid, to_club: club.uid, displaced })
     }
 
@@ -1239,9 +1257,126 @@ impl Session {
         Ok(MovedManager { member: member.uid, from_club: member.club_uid, to_club: club.uid })
     }
 
+    /// Works out making the human manager `member` the manager of the senior national team of `nation`, the women's
+    /// or the men's, and who manages it now. Nothing is written.
+    pub fn plan_national_move(
+        &self,
+        member: &StaffSummary,
+        nation: &Nation,
+        women: bool,
+        staff: &StaffIndex,
+    ) -> Result<NationalPlan, MoveError> {
+        let (_, _, sitting) = self.national_target(member, nation, women)?;
+        Ok(NationalPlan { member: member.uid, displaced: self.staff_at(sitting, staff).map(|found| found.uid) })
+    }
+
+    /// Has the game make the human manager `member` the manager of the senior national team of `nation`, as its own
+    /// editor does: it makes his contract with the nation and dismisses the team's manager. The job he has at a club
+    /// stays. The team's manager is read back to tell: the game does nothing for a nation it does not let him manage.
+    pub fn move_to_nation(&self, member: &StaffSummary, nation: &Nation, women: bool) -> Result<(), MoveError> {
+        let (object, team, _) = self.national_target(member, nation, women)?;
+        let profile = self.profile.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let editor = profile.editor.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let stand_in = profile.editor_stand_in.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let function = self.game_function(|calls| calls.appoint_staff)?;
+        let map_new = self.game_function(|calls| calls.map_new)?;
+        let map_insert = self.game_function(|calls| calls.map_insert)?;
+        let map_drop = self.game_function(|calls| calls.map_drop)?;
+        let types = self.process.read_u64(self.plugin.base + editor.value_types)?;
+        if !is_user_pointer(types) {
+            return Err(MoveError::CallUnavailable);
+        }
+        // The stand-in's method is still the one that only returns zero.
+        let slot = self.plugin.base + stand_in.returns_null;
+        let method = self.process.read_u64(slot)?;
+        if !is_user_pointer(method)
+            || !RETURNS_NULL.iter().any(|code| self.process.read_bytes(method, code.len()).is_ok_and(|at| at == *code))
+        {
+            return Err(MoveError::CallUnavailable);
+        }
+        let interface = usize::try_from(stand_in.interface.wrapping_sub(stand_in.tracker))
+            .ok()
+            .and_then(|apart| STAND_IN.checked_add(apart))
+            .filter(|at| at + 8 <= fmlens_mem::call::SCRATCH_SIZE)
+            .ok_or(MoveError::CallUnavailable)?;
+        let before = usize::try_from(stand_in.tracker)
+            .ok()
+            .and_then(|tracker| tracker.checked_sub(STAND_IN))
+            .filter(|&before| before <= fmlens_mem::call::MOST_BEFORE)
+            .ok_or(MoveError::CallUnavailable)?;
+        let s = &self.layout.staff;
+
+        // The terms as the game's editor gives them: only the job, a manager's. The editor object is a stand-in:
+        // no tracker, and an interface whose method answers null.
+        let mut program = Program::new();
+        program.write_u64(JOB_VALUE, types + editor.integer_type);
+        program.write_u64(JOB_VALUE + 8, u64::from(MANAGER_JOB));
+        program.write_u64(interface, slot.wrapping_sub(stand_in.method));
+        program.push(Step::new(map_new, &[Arg::scratch(TERMS_MAP)]));
+        program.push(Step::new(map_insert, &[Arg::scratch(TERMS_MAP), Arg::value(JOB_TERM), Arg::scratch(JOB_VALUE)]));
+        program.push(Step::new(
+            function,
+            &[
+                Arg::before(before),
+                Arg::value(object + s.at(s.actual_person(), member.shift)),
+                Arg::value(team),
+                Arg::scratch(TERMS_MAP),
+            ],
+        ));
+        program.push(Step::new(map_drop, &[Arg::scratch(TERMS_MAP)]).cleanup());
+        self.call_game(&program)?;
+
+        // The team's manager is him now.
+        let manager = self.layout.team.manager.ok_or(MoveError::CallUnavailable)?;
+        if self.process.read_u64(team + manager)? != object {
+            return Err(MoveError::CallDeclined);
+        }
+        Ok(())
+    }
+
+    /// Whether `nation` has a senior national team of that side.
+    pub fn has_national_team(&self, nation: &Nation, women: bool) -> bool {
+        let side = if women { Side::Women } else { Side::Men };
+        nation
+            .uid
+            .is_some_and(|uid| national::senior_team(&self.process, &self.layout, nation.address, uid, side).is_some())
+    }
+
+    /// The human manager `member`'s object, the senior national team of `nation` of that side and the manager the
+    /// team has now (zero for none), checked for a move: he is still himself, the team is the nation's, and he does
+    /// not manage it already.
+    fn national_target(
+        &self,
+        member: &StaffSummary,
+        nation: &Nation,
+        women: bool,
+    ) -> Result<(u64, u64, u64), MoveError> {
+        self.check_human(member)?;
+        let side = if women { Side::Women } else { Side::Men };
+        let team = nation
+            .uid
+            .and_then(|uid| national::senior_team(&self.process, &self.layout, nation.address, uid, side))
+            .ok_or(MoveError::NoNationalTeam)?;
+        let manager = self.layout.team.manager.ok_or(MoveError::CallUnavailable)?;
+        let sitting = self.process.read_u64(team + manager)?;
+        if sitting == member.address {
+            return Err(MoveError::ManagesAlready);
+        }
+        Ok((member.address, team, sitting))
+    }
+
     /// The human manager `member`'s object and the senior team of `club`, checked for his move: he is the human
     /// manager the build was traced on, still where the lists have him, and the club is still the club and not his.
     fn manager_target(&self, member: &StaffSummary, club: &ClubSummary) -> Result<(u64, u64), MoveError> {
+        self.check_human(member)?;
+        if member.club_uid == Some(club.uid) {
+            return Err(MoveError::SameClub);
+        }
+        Ok((member.address, self.senior_team(club)?))
+    }
+
+    /// `member` is the human manager, and his object still carries his UID and class.
+    fn check_human(&self, member: &StaffSummary) -> Result<(), MoveError> {
         let human = self.profile.as_ref().and_then(|p| p.human_manager.as_ref()).ok_or(MoveError::CallUnavailable)?;
         let s = &self.layout.staff;
         if !member.is_human || member.shift != human.person_shift {
@@ -1253,10 +1388,7 @@ impl Session {
         {
             return Err(MoveError::Moved { uid: member.uid });
         }
-        if member.club_uid == Some(club.uid) {
-            return Err(MoveError::SameClub);
-        }
-        Ok((member.address, self.senior_team(club)?))
+        Ok(())
     }
 
     /// `player`'s object and the senior team of `club`, checked for a signing: he is a free agent (a player-coach

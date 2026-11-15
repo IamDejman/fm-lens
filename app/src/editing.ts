@@ -415,6 +415,14 @@ export const planManagerMove = (uid: number, club: number) => call<ManagerPrevie
 /** Has the game make the human manager the club's manager, as its own editor does; logged, with no undo. */
 export const moveManager = (uid: number, club: number) => call<LoggedChange>("move_manager", { uid, club });
 
+/** Checks the human manager can be given the nation's senior team, and names who it dismisses. Nothing is written. */
+export const planNationalMove = (uid: number, nation: number, women: boolean) =>
+  call<ManagerPreview>("plan_national_move", { uid, nation, women });
+
+/** Has the game make the human manager the manager of the nation's senior team; logged, with no undo. */
+export const moveToNation = (uid: number, nation: number, women: boolean) =>
+  call<LoggedChange>("move_to_nation", { uid, nation, women });
+
 /** Gives the member of staff another job at his club (a contract code); logged and undone like any change. */
 export const changeStaffJob = (uid: number, job: number) => call<LoggedChange>("change_staff_job", { uid, job });
 

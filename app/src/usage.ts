@@ -47,6 +47,7 @@ export const EDITS = new Set([
   "keep_playing",
   "lift_bans",
   "move_manager",
+  "move_to_nation",
   "move_player",
   "move_staff",
   "point_preference",

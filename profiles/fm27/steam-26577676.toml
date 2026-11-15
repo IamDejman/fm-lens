@@ -117,6 +117,12 @@ add_relation = 0x30DAA90
 # from the pool at +0x5822760 and pushes it onto the list at person +0xC8, after turning away the person's own
 # language and a list of 30; the twin of macOS arm64 0xCBDFF4. The save loader calls it at +0x1950C42. Returns the link.
 add_language = 0x1963190
+# The editor's routine that appoints staff to a national team: (editor, the person's ACTUAL_PERSON, the team, a terms
+# map holding the job under 'Pcjo'). The editor's dispatcher at 0x2A966E0 jumps to it for a team whose national byte
+# is 1, and to the club mover at 0x2A95B70 otherwise. For a human it first asks 0x1CD4AA0 whether the game lets him
+# manage the nation, and does nothing where it does not. It makes a contract, dismisses the team's manager for a
+# manager's job (0x1CE5300) and registers the job. Returns nothing.
+appoint_staff = 0x2A95CA0
 
 # What a STARTING_LOAN (layout.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58.
 [starting_loan]
@@ -130,6 +136,15 @@ value_types = 0x581BF78
 integer_type = 0x28
 teams = 0x58207A8
 enabled = 0x5820E20
+
+# What appoint_staff reads of the editor object: a counted pointer at +0x3B0 it hands to the game's analytics, null
+# or not, and at +0x440 an object whose method at +0x3C0 its logger at 0x2A96920 calls twice, taking a null answer.
+# 0x4C604C8 is a vtable slot that points at 0x494BC80, which is `xor eax, eax; ret`.
+[editor_stand_in]
+tracker = 0x3B0
+interface = 0x440
+method = 0x3C0
+returns_null = 0x4C604C8
 
 # The human manager's flags word, as on macOS: the become_unsackable action (0x2F3C1D0) sets or clears bit 1 of the u32
 # at +0x3FC. MSVC keeps the class's vtable on the person block, 0x440 into the object (shifted 0x340).

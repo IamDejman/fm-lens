@@ -4446,3 +4446,28 @@ Not run: FM's own pages for the dislike, the buy-back and the board seats (All
 Staff and FM's search do not list a board member), an Apple Silicon save of
 these edits loaded on Intel, the pointer's shape on the card under Rosetta,
 the card over a full-screen FM, a packaged build, and Game Pass.
+
+## National team job on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The moves were made on a copy of a career written
+with FM's Save As, at 19 July 2028; the main career's file was not loaded or
+written. Memory was read with the read-only probe.
+
+"National team" on your manager's profile has the game make you the manager
+of a nation's senior team, as its own editor does. The dialog searches the
+nations, shows who loses the job and which national team you leave, and the
+change is logged as one nothing undoes.
+
+| Check | Result |
+|---|---|
+| England, whose senior team had no manager | The probe read the human manager in England's manager slot. FM Lens logged "National team" with no Undo. FM's header gained an England switcher, and its England portal showed the welcome, the FA's expectations and the fixtures; the news said he takes charge of England |
+| The club job after it | Unchanged: Arsenal, the same wage, the same dates, the probe reading the same contract as before |
+| Germany, managed by Jürgen Klopp (9318) | The dialog named Klopp as losing his job. After it the probe read the human manager as Germany's manager and Klopp with no job |
+| The national job held before | Left: England's manager slot was empty again, and FM's inbox had "England boss resigns" and the FA's "Confirmation of your resignation". The game allows one national job |
+| The team you manage already | Refused in the plan: "You manage this national team already" |
+| Save and load | FM's save details read "Arsenal / Germany". After the load the probe read Germany's manager, England's empty slot, Klopp with no job and the club contract as before; FM's Germany inbox had its three introductions and "German FA indicate their expectations" |
+
+Not run: a day passing (FM asks for Germany's introductions first), a women's
+team, a nation FM does not let you manage, a quit and relaunch, Game Pass,
+and the Macs, where the move is not built: the button does not show there.

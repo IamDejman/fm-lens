@@ -15,13 +15,13 @@ use fmlens_core::{
     FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
     HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageChoice, LanguageSet,
     Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails,
-    NationFilter, NationSort, NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid,
-    PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary,
-    PlayerTemplate, Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet,
-    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter,
-    StadiumSort, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan,
-    Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries,
-    nations, read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
+    NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter, OfficialSort, OfficialSummary, Operation,
+    Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder,
+    PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed,
+    RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn,
+    StadiumFilter, StadiumSort, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan,
+    StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game,
+    nation_summaries, nations, read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -1873,6 +1873,46 @@ impl Connection {
         logged
     }
 
+    /// Logs the human manager's move to a national team, as a change nothing undoes, and brings his list row and that
+    /// of the manager the game dismissed (`displaced`) up to date. The job he has at a club stays.
+    fn log_national_move(&mut self, uid: u32, nation: &Nation, women: bool, displaced: Option<u32>) -> LoggedChange {
+        let (name, left) = self
+            .staff
+            .get(uid)
+            .map_or_else(Default::default, |s| (s.name.clone(), s.national.as_ref().map(|job| job.nation.clone())));
+        let job = NationalJob { nation: nation.name.clone(), nation_uid: nation.uid, age_limit: None, women };
+        self.staff.update(uid, |member| member.national = Some(job));
+        if let Some(uid) = displaced {
+            self.staff.update(uid, |member| member.national = None);
+        }
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change: Change {
+                entity: Entity::Staff,
+                uid,
+                field: if women { "nationalTeam.women" } else { "nationalTeam" }.to_owned(),
+                old: 0,
+                new: nation.uid.map_or(0, i64::from),
+                record: Vec::new(),
+            },
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: Some(MovedClubs { from: left, to: Some(nation.name.clone()), with: None, fee: None, joins: None }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            holds: None,
+            undo: Some(Undo::Permanent),
+        };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
     fn club_name(&self, uid: u32) -> String {
         self.clubs.get(uid).map(|club| club.name.clone()).unwrap_or_default()
     }
@@ -2161,11 +2201,7 @@ impl Connection {
             Entity::Staff => self.staff.get(uid).map(|s| (s.target(), s.name.clone())),
             Entity::Club => self.clubs.get(uid).map(|c| (c.target(), c.name.clone())),
             Entity::Nation => {
-                let mut found = self.known_nations().into_iter().filter(|nation| nation.uid == Some(uid));
-                match (found.next(), found.next()) {
-                    (Some(nation), None) => nation.target().map(|target| (target, nation.name)),
-                    _ => None,
-                }
+                self.known_nation(uid).and_then(|nation| nation.target().map(|target| (target, nation.name)))
             }
             Entity::Official => match self.officials.as_ref() {
                 Some(index) => index.get(uid).map(|o| (o.target(), o.name.clone())),
@@ -2366,6 +2402,12 @@ impl Connection {
             self.nation_table = Some(self.session.nation_table().unwrap_or_default());
         }
         self.known_nations()
+    }
+
+    /// The nation with the UID `uid`, where only one of the known nations has it.
+    fn known_nation(&self, uid: u32) -> Option<Nation> {
+        let mut found = self.known_nations().into_iter().filter(|nation| nation.uid == Some(uid));
+        found.next().filter(|_| found.next().is_none())
     }
 
     /// The nations of the people in the lists, and of the competitions and the nations' table once they are read.
@@ -4790,6 +4832,77 @@ fn move_manager(state: State<'_, AppState>, uid: u32, club: u32) -> Result<Logge
     Ok(connection.log_manager_move(moved, displaced))
 }
 
+/// A senior national team the human manager can be given: the row of `search_national_teams`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NationalTeamRow {
+    /// Row id: the two teams of a nation have the same `nation_uid`.
+    uid: u64,
+    nation_uid: u32,
+    name: String,
+    women: bool,
+}
+
+/// The senior national teams, the men's and the women's, of the nations matching `query` by name; at most `limit`.
+#[tauri::command]
+fn search_national_teams(
+    state: State<'_, AppState>,
+    query: String,
+    limit: usize,
+) -> Result<Page<NationalTeamRow>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let nations = connection.listed_nations();
+    let found = page(&SearchIndex::new(nation_summaries(nations.clone())), &query, limit, 0, |_| true, |_| ());
+    let mut rows = Vec::new();
+    for row in &found.rows {
+        let nation = row.nation_uid.and_then(|uid| nations.iter().find(|nation| nation.uid == Some(uid)));
+        for women in [false, true] {
+            if let (Some(nation), Some(nation_uid)) = (nation, row.nation_uid)
+                && connection.session.has_national_team(nation, women)
+            {
+                let uid = u64::from(nation_uid) * 2 + u64::from(women);
+                rows.push(NationalTeamRow { uid, nation_uid, name: row.name.clone(), women });
+            }
+        }
+    }
+    rows.truncate(limit);
+    Ok(Page { total: rows.len() + found.total - found.rows.len(), rows })
+}
+
+/// Checks that the human manager `uid` can be made the manager of the senior national team of the nation `nation`,
+/// the women's or the men's, and names the manager the game dismisses; the error says why he cannot. Nothing is
+/// written.
+#[tauri::command]
+fn plan_national_move(state: State<'_, AppState>, uid: u32, nation: u32, women: bool) -> Result<MovePreview, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let member = connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
+    let to = connection.known_nation(nation).ok_or_else(|| not_found(Entity::Nation, nation))?;
+    let plan = connection.session.plan_national_move(member, &to, women, &connection.staff)?;
+    Ok(MovePreview {
+        jobs: None,
+        from: None,
+        to: ClubName { uid: nation, name: to.name },
+        fee: None,
+        displaced: plan.displaced.and_then(|uid| connection.staff.get(uid)).map(|found| found.name.clone()),
+        permanent: true,
+    })
+}
+
+/// Has the game make the human manager `uid` the manager of the senior national team of the nation `nation`, as its
+/// own editor does: it dismisses the team's manager. Logged as a change nothing undoes.
+#[tauri::command]
+fn move_to_nation(state: State<'_, AppState>, uid: u32, nation: u32, women: bool) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let member = connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
+    let to = connection.known_nation(nation).ok_or_else(|| not_found(Entity::Nation, nation))?;
+    let displaced = connection.session.plan_national_move(member, &to, women, &connection.staff)?.displaced;
+    connection.session.move_to_nation(member, &to, women)?;
+    Ok(connection.log_national_move(uid, &to, women, displaced))
+}
+
 /// Gives the member of staff `uid` the job `job` (a contract code) at his club, and logs it.
 #[tauri::command]
 fn change_staff_job(state: State<'_, AppState>, uid: u32, job: u8) -> Result<LoggedChange, Failure> {
@@ -5968,6 +6081,9 @@ pub fn run() {
             swap_board,
             plan_manager_move,
             move_manager,
+            search_national_teams,
+            plan_national_move,
+            move_to_nation,
             change_staff_job,
             staff_jobs,
             heal_player,

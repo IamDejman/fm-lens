@@ -726,6 +726,8 @@ export const en = {
     level: "Level",
     // A move to another club, which the change log keeps as a change of the player's club.
     club: "Club",
+    nationalTeam: "National team",
+    "nationalTeam.women": "Women's national team",
     // Healing a player, which the change log keeps as a change of his injuries.
     injuries: "Injuries",
     // One injury made longer or shorter, or taken out, which the change log keeps as a change of its days.
@@ -2729,6 +2731,19 @@ export const en = {
     managerDisplaced: (name: string) => `${name} loses his job`,
     managerMove: "Change club",
     managerMoving: "Changing club…",
+    // Making the human manager a national team's manager: the game dismisses the team's manager.
+    nationalButton: "National team",
+    nationalButtonTitle: "Manage a national team",
+    nationalTitle: "Manage a national team",
+    nationalChoose: "Pick a national team.",
+    nationalMove: "Take the job",
+    nationalMoving: "Taking the job…",
+    nationalSearchLabel: "Search for the national team to manage",
+    nationalResultsLabel: "National teams found",
+    nationalChange: "Choose another team",
+    nationalChecking: "Checking…",
+    /** In the plan: `team` is the national team you manage now, which the game has you leave. */
+    nationalLeaves: (team: string) => `You leave ${team}`,
     swapChooseClub: "Pick the other player's club.",
     swapChoosePlayer: "Pick the player to swap with.",
     swapChecking: "Checking the swap…",
