@@ -1649,9 +1649,18 @@ mod tests {
         // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale); and a loan's wage
         // and end, where the layout places loans.
         let loan = if layout.loan.is_some() { 2 } else { 0 };
+        // A buy-back's fee and two days, and each instalment's amount and months, where the layout places them.
+        let fee_terms = if layout.fee_terms.is_some() { 3 + 2 * crate::fee_terms::MOST_INSTALMENTS } else { 0 };
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 4 + 4 + 4 + 64 + loan
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1
+                + PERSONALITY.len()
+                + 4
+                + 4
+                + 4
+                + 64
+                + loan
+                + fee_terms
         );
         if layout.loan.is_some() {
             for key in ["loan.wage", "loan.ends"] {

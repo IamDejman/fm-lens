@@ -153,7 +153,8 @@ impl Session {
         self.pointers_at(deals, MOST_DEALS)?.into_iter().find(|&deal| {
             is_user_pointer(deal)
                 && self.process.read_u32(deal + t.buy_back_player).ok() == Some(uid)
-                && crate::rtti::class_of(&self.process, &self.plugin, deal).as_deref() == Some(t.buy_back_class.as_str())
+                && crate::rtti::class_of(&self.process, &self.plugin, deal).as_deref()
+                    == Some(t.buy_back_class.as_str())
         })
     }
 
