@@ -1971,10 +1971,15 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
-      "0.7.11": [
-        "FM Lens ahora graba cómo se usa su ventana, para ver qué resulta difícil. Lo que escribes y el nombre de tu mánager quedan ocultos. Desactívalo en Ajustes.",
+      "1.0.0": [
+        "Una pestaña Ojeo para cada jugador: mejores roles, probabilidad de desarrollo y Buscar parecidos.",
+        "Mejores jugadores y Mejor para ordenan jugadores y personal. Una ficha de ojeo aparece sobre FM: haz clic en ella para abrir al jugador.",
+        "Columnas, filtros guardados en todas las listas y filas marcadas para la Edición masiva.",
+        "Los cambios de posición ahora se mantienen.",
         "Quitar el descontento ahora pone al máximo la moral, la felicidad y la felicidad con los minutos, y quita al mánager de las personas que no le gustan al jugador. Un solo Deshacer lo revierte todo.",
         "Editar la moral, la felicidad o la felicidad con los minutos ahora cambia solo ese valor.",
+        "Añade afinidades e idiomas, edita plazos y recompras, intercambia puestos de la directiva.",
+        "FM Lens ahora graba cómo se usa su ventana, para ver qué resulta difícil. Lo que escribes y el nombre de tu mánager quedan ocultos. Desactívalo en Ajustes.",
       ],
       "0.7.10": [
         "Sube los atributos de un jugador y su HA sube con ellos: los cambios se quedan.",

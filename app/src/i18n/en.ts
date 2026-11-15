@@ -2092,10 +2092,15 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
-      "0.7.11": [
-        "FM Lens now records how its window is used, to find what is hard to use. What you type and your manager’s name are hidden. Turn it off in Settings.",
+      "1.0.0": [
+        "A Scout tab for every player: best roles, chance of development and Find similar.",
+        "Top players and Best for rank players and staff. A scout card shows over FM: click it to open the player.",
+        "Columns, saved filters on every list, and ticked rows for Mass edit.",
+        "Position edits now stay.",
         "Remove unhappiness now maxes morale, happiness and playing time happiness, and takes the manager off the player's dislikes. One Undo takes it all back.",
         "Editing morale, happiness or playing time happiness now changes only that value.",
+        "Add likes and languages, edit instalments and buy-backs, swap board seats.",
+        "FM Lens now records how its window is used, to find what is hard to use. What you type and your manager’s name are hidden. Turn it off in Settings.",
       ],
       "0.7.10": [
         "Raise a player's attributes and his CA rises with them, so the edits stay.",
