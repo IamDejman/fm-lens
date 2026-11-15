@@ -21,6 +21,7 @@ import {
   squadText as text,
   swapNote,
   teamLabel,
+  YOUTH_CANDIDATES_KIND,
   type TeamId,
 } from "./labels";
 import { undoFailureLines } from "./massDraft";
@@ -195,7 +196,11 @@ export function SquadTab({ clubUid, version, panel }: SquadTabProps) {
   // Set while a write may take the button that has focus out of play.
   const refocus = useRef(false);
 
-  const teams = loaded?.details;
+  // The game keeps your club's youth candidates in its under-18s, so its youth candidates team shows only with players.
+  const teams = useMemo(
+    () => loaded?.details?.filter((team) => team.kind !== YOUTH_CANDIDATES_KIND || team.players.length > 0),
+    [loaded],
+  );
   // A team that is no longer there (the game changed) gives way to the first one.
   const team = teams?.find((candidate) => candidate.index === teamIndex) ?? teams?.[0];
   const players = useMemo(() => (team ? sorted(team.players, order) : []), [team, order]);
