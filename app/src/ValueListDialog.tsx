@@ -3,7 +3,7 @@
 // removed, or, where the list allows it, the row pointed at another club or person found by a search, or another row
 // added the same way. Each change is written at once, logged like any change and undone from the Changes view.
 
-import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { RangeHint } from "./EditControls";
 import { describeError, formatNumber } from "./format";
@@ -49,9 +49,12 @@ export interface ValueSection {
   add?: Replacement;
 }
 
-/** The search on show in place of the rows: what it finds, the heading over it, and the button it was opened from. */
+/**
+ * The search on show in place of the rows: what it finds, the heading over it, none for a list of one kind, and the
+ * button it was opened from.
+ */
 interface Search {
-  heading: string;
+  heading: string | null;
   replacement: Replacement;
   from: string;
 }
@@ -431,8 +434,12 @@ export function ValueListDialog({
 
         <div className="modal-body">
           {search !== null ? (
-            <section className="move-section" aria-labelledby={id("search")}>
-              <h3 id={id("search")}>{search.heading}</h3>
+            <section
+              className="move-section"
+              aria-labelledby={search.heading === null ? undefined : id("search")}
+              aria-label={search.heading === null ? search.replacement.label : undefined}
+            >
+              {search.heading !== null && <h3 id={id("search")}>{search.heading}</h3>}
               <ReplaceSearch
                 replacement={search.replacement}
                 busy={busy}
@@ -442,33 +449,33 @@ export function ValueListDialog({
           ) : (
             sections.map((section) => {
               const { key, heading, rows, add } = section;
-              if (heading === null) {
-                return rows.length === 0 ? null : (
-                  <ul key={key} className="tie-rows">
-                    {rows.map(row)}
-                  </ul>
-                );
-              }
               if (rows.length === 0 && add === undefined) {
                 return null;
               }
-              return (
+              const list = rows.length > 0 && <ul className="tie-rows">{rows.map(row)}</ul>;
+              const adder = add !== undefined && (
+                <div className="tie-row">
+                  <button
+                    id={id(`add-${key}`)}
+                    type="button"
+                    disabled={busy}
+                    title={listText.addTo(heading ?? title)}
+                    onClick={() => setSearch({ heading, replacement: add, from: id(`add-${key}`) })}
+                  >
+                    {tieText.add}
+                  </button>
+                </div>
+              );
+              return heading === null ? (
+                <Fragment key={key}>
+                  {list}
+                  {adder}
+                </Fragment>
+              ) : (
                 <section key={key} className="move-section" aria-labelledby={id(key)}>
                   <h3 id={id(key)}>{heading}</h3>
-                  {rows.length > 0 && <ul className="tie-rows">{rows.map(row)}</ul>}
-                  {add !== undefined && (
-                    <div className="tie-row">
-                      <button
-                        id={id(`add-${key}`)}
-                        type="button"
-                        disabled={busy}
-                        title={listText.addTo(heading)}
-                        onClick={() => setSearch({ heading, replacement: add, from: id(`add-${key}`) })}
-                      >
-                        {tieText.add}
-                      </button>
-                    </div>
-                  )}
+                  {list}
+                  {adder}
                 </section>
               );
             })

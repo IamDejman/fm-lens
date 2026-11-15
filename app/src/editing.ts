@@ -377,6 +377,16 @@ export const removePreference = (uid: number, staff: boolean, index: number) =>
 export const changeLanguage = (uid: number, staff: boolean, index: number, level: number) =>
   call<LoggedChange>("change_language", { uid, staff, index, level });
 
+/** The names of the languages a person can be given, in order. Only reads the game. */
+export const languageChoices = () => call<string[]>("language_choices");
+
+/**
+ * Has the game give the player `uid`, or the member of staff `uid` for `staff`, the language `name`, one of
+ * `languageChoices`, at `level`, 1 to 10. Logged and undone like any change.
+ */
+export const addLanguage = (uid: number, staff: boolean, name: string, level: number) =>
+  call<LoggedChange>("add_language", { uid, staff, name, level });
+
 /** Takes the language `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
 export const removeLanguage = (uid: number, staff: boolean, index: number) =>
   call<LoggedChange>("remove_language", { uid, staff, index });

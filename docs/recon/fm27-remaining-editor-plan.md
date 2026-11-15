@@ -62,6 +62,12 @@ Fresh checks:
   tags name the seven bytes at +0x11A (+0x122 on Windows). Shown and edited; readback, Undo, save
   and load checked on Windows (Referee attributes in ../EDITING-VALIDATION.md). FM has no screen
   for them, so the acceptance gate's independent label match and match-day behavior are not met.
+- Adding a like or dislike (15 November 2026): done on Windows through the game's own routine.
+  Readback, Undo, save and load checked (Add a like or dislike in ../EDITING-VALIDATION.md). FM's
+  own lists were not seen; the Macs have no profile entry, so Add is not offered there.
+- Adding a language (15 November 2026): done on Windows through the game's own routine, at level
+  10. Readback, FM's Personal page, Undo, save and load checked (Add a language in
+  ../EDITING-VALIDATION.md). A day passing and a quit are not run; the Macs have no profile entry.
 
 ## Delivery sequence and shared guardrails
 

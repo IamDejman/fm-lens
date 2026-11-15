@@ -627,7 +627,7 @@ impl Session {
 
     /// The `ACTUAL_PERSON` of `owner`, which the game's `add_relation` takes, checked: the pointer to his record of
     /// relations is where the routine reads it.
-    fn actual_person(&self, owner: PersonRef) -> Result<u64, MoveError> {
+    pub(crate) fn actual_person(&self, owner: PersonRef) -> Result<u64, MoveError> {
         let (person, relations) = match owner {
             PersonRef::Player(player) => {
                 let p = &self.layout.player;
@@ -889,7 +889,7 @@ pub(crate) fn removal(header: u64, begin: u64, entries: &[Vec<u8>], index: usize
 /// The entry at `index` of a list as one written over the list without it, so that undoing it takes the entry out
 /// as [`removal`] does: the entries after it moved up, the list one shorter, and the last place cleared, in the order
 /// an undo puts them back.
-fn addition(header: u64, begin: u64, entries: &[Vec<u8>], index: usize) -> Vec<Patch> {
+pub(crate) fn addition(header: u64, begin: u64, entries: &[Vec<u8>], index: usize) -> Vec<Patch> {
     let size = entries[index].len() as u64;
     let last = entries.len() - 1;
     let end = begin + entries.len() as u64 * size;

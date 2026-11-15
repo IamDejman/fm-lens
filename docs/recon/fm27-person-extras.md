@@ -79,6 +79,15 @@ Writing: changing a proficiency byte in place is structurally simple (the link o
 its number is a plain u64), but a link object is shared by nothing that was seen, adding a language
 needs a new pool object, so only edits of existing entries are plausible. Untested.
 
+Adding (15 November 2026): the game has its own routine for it, the one the save loader calls for
+each stored language. Windows Steam 26577676: `game_plugin.dll+0x1963190(person, LANGUAGE*, *level)`,
+returning the link or 0; macOS arm64 Steam twin at `0xCBDFF4` (found by its shape, not called). It
+returns 0 for the person's own language and for a list of 30, raises the level of a language already
+listed, and otherwise takes a 16-byte link from the pool, stores the language and the level (at most
+10; at least 2 for the second language of the person's nation) and appends it to the list at person
+`+0xC8` (Windows) or `+0xC0` (macOS), growing the list as needed. The pool does not zero a link it
+hands out, so the caller should read the new link back.
+
 ## Person relations list
 
 Format (already in `layout-macos.toml`, now confirmed for staff and the human manager): the person's

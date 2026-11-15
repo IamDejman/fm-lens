@@ -133,6 +133,9 @@ const errors: ErrorTexts = {
   "preference.target": () => "Pick a club in place of a club, and another person in place of a person.",
   "preference.same": () => "That one is in the list already.",
   "preference.full": () => "This list is full.",
+  "language.same": () => "That one is in the list already.",
+  "language.own": () => "FM doesn't list a person's own language.",
+  "language.full": () => "This list is full.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM has moved its data since FM Lens read it. Press Reload, then try again.",
@@ -2773,6 +2776,7 @@ export const en = {
     insteadOf: (name: string) => `Instead of ${name}`,
     searchClubs: "Search clubs",
     searchPeople: "Search players and staff",
+    searchLanguages: "Search languages",
     searching: "Searching…",
     searchFailed: (reason: string) => `Couldn't search: ${reason}`,
     noMatch: (query: string) => (query === "" ? "None found." : `Nothing matches “${query}”.`),

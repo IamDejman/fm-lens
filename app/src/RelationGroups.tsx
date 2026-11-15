@@ -1,14 +1,17 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { call } from "./api";
 import {
+  addLanguage,
   addPreference,
   changeLanguage,
   changePreference,
+  languageChoices,
   pointPreference,
   removeLanguage,
   removePreference,
   type PreferenceTargetKind,
 } from "./editing";
+import { fold } from "./format";
 import { listText, profileText, tieText } from "./labels";
 import { ClubLine } from "./MoveDialog";
 import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -300,8 +303,32 @@ export function PreferencesGroup({
 }
 
 /**
+ * The search for a language of the game that the list has not (`held`), by name. `choose` is what picking one does:
+ * it adds it.
+ */
+function newLanguages(held: ReadonlySet<string>, choose: (name: string) => Promise<unknown>): Replacement {
+  // Asked once, when the search opens: the game's languages stay as they are.
+  let names: Promise<string[]> | null = null;
+  return {
+    label: listText.searchLanguages,
+    search: async (query) => {
+      names ??= languageChoices().catch((e: unknown) => {
+        names = null;
+        throw e;
+      });
+      const wanted = fold(query.trim());
+      return (await names)
+        .filter((name) => !held.has(name) && fold(name).includes(wanted))
+        .slice(0, SEARCH_LIMIT)
+        .map((name) => ({ key: name, label: name, choose: () => choose(name) }));
+    },
+  };
+}
+
+/**
  * The languages a person speaks besides, usually, his native one, and how well, as FM words it, and the button that
- * changes how well, or takes one out; not there when none (see `useListShown`).
+ * changes how well, takes one out or, where the game adds them, adds one. Where it adds none the group is not there
+ * for a person who has none (see `useListShown`).
  */
 export function LanguagesGroup({
   languages,
@@ -310,8 +337,10 @@ export function LanguagesGroup({
   languages: Language[];
   person: PersonRef;
 }) {
+  const { gameActions } = useContext(EditorContext);
+  const adds = gameActions.addLanguage;
   const shown = useListShown(languages.length > 0, person.uid);
-  if (!shown) {
+  if (!shown && !adds) {
     return null;
   }
   const sections = (): ValueSection[] => [
@@ -324,6 +353,12 @@ export function LanguagesGroup({
         note: language.local ? listText.raisedBack : undefined,
         value: language.level,
       })),
+      // A new one is spoken as well as a language gets; its row then takes another level.
+      add: adds
+        ? newLanguages(new Set(languages.flatMap((language) => language.name ?? [])), (name) =>
+            addLanguage(person.uid, person.staff, name, LEVELS.most),
+          )
+        : undefined,
     },
   ];
   return (

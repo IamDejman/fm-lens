@@ -171,7 +171,7 @@ the entry off the end again, so adds are undone newest first; an older one is
 refused until then. Checked on Windows on 15 November (see "Add a like or
 dislike on Windows" below).
 
-## Languages (level and removal)
+## Languages (level, removal and add)
 
 A person's languages (player `+0x338`, staff `+0x1B8`, the human manager's
 shifted `0x340`) are a list of pointers to 16-byte links, each a pointer to the
@@ -180,8 +180,20 @@ language and a `u64` level from 0 to 10 (see recon/fm27-person-extras.md; levels
 level from 1 to 10 over the link's, with its expected value, or removes a
 language as a tie is removed: the pointers after it move up, the list's end
 moves back and the freed slot is cleared. The link is left where it is, so an
-undo can point at it again. Both are logged in Changes and undone there. Adding
-a language needs a new link, which the editor does not allocate.
+undo can point at it again. Both are logged in Changes and undone there.
+
+Add (Windows Steam build 26577676) has the game add the language itself, through
+its own routine for a person's languages (`add_language` in the build profile,
+the one the save loader calls): the game takes the link from its own pool and
+grows the list as it needs. FM Lens adds at level 10 and offers the languages
+of the nations the game lists. It checks afterwards that the list is the old
+links with the new one last, at the address the game returned, and that the
+link reads as that language at a level; one that does not is taken out again.
+Refused: a language already in the list (the game would raise its level
+instead), the person's own language, which the game does not list, and a list
+of 30. Undo takes the pointer off the end again, so adds are undone newest
+first. Checked on Windows on 15 November (see "Add a language on Windows"
+below).
 
 FM's Personal page showed a removal after a day (Round 1 below). FM raises a
 lowered level in a main language of the country the person's club is in back up
@@ -4183,3 +4195,32 @@ machine's desktop size FM's Personal page shows those panels' headings only);
 a day passing in FM; a quit and relaunch; a person whose list the game had
 never made (Smith had three other relations); the Macs and Game Pass, where no
 profile names the routine, so Add is not offered.
+
+## Add a language on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The adds were made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Ethan Nwaneri (2000283271), a player with French 4 and German 9: add Spanish | Saved, in Changes as "- → Spanish · 10". The probe read French 4, German 9, Spanish 10 |
+| The same player: add English, his own language | Refused: "FM doesn't list a person's own language." The list was unchanged |
+| Matthew Smith (28116314), a player with no languages: add Italian | The probe read Italian 10 |
+| Undo of that add | Changes: "Undone". The probe read none |
+| The same add again | The probe read Italian 10 |
+| Albert Stuivenberg (859441), a member of staff with Arabic 1 and English 10: add Spanish | The probe read Arabic 1, English 10, Spanish 10 |
+| The same member of staff: add Dutch, his own language | Refused with the same line. The list was unchanged |
+| Nwaneri: a second add, Portuguese | The probe read French 4, German 9, Spanish 10, Portuguese 10 |
+| Undo of the older Spanish add | Refused: "FM has changed this since. Press Reload and try again." The list was unchanged |
+| The picker | Lists the game's languages by name and leaves out those the person holds |
+| FM's own Personal page, at once, no day passed | Stuivenberg: Dutch (Fluent), English (Fluent), Spanish (Fluent). Nwaneri: English (Fluent), Spanish (Fluent), Portuguese (Fluent), German (Fluent), French (Basic) |
+| Save As a new copy in FM, load that copy again | The probe read all three lists as made. Changes listed the adds as "Earlier game", without Undo |
+
+FM ran on through all of it.
+
+Not run: a language already in the list (the picker leaves those out; the
+refusal is covered by a unit test); a list of 30; a day passing in FM; a quit
+and relaunch; you; the Macs and Game Pass, where no profile names the routine,
+so Add is not offered.

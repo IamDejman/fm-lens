@@ -59,6 +59,8 @@ pub struct GameActions {
     pub move_manager: bool,
     /// A like or dislike added to a person's list, by the game's own routine.
     pub add_preference: bool,
+    /// A language added to a person's list, by the game's own routine.
+    pub add_language: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -346,6 +348,7 @@ impl Session {
                 && self.layout.team.manager.is_some()
                 && self.layout.work_permit.is_some(),
             add_preference: available(calls.add_relation),
+            add_language: available(calls.add_language) && self.layout.language.is_some(),
         }
     }
 

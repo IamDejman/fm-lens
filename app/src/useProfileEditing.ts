@@ -55,6 +55,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   maxTactics: false,
   moveManager: false,
   addPreference: false,
+  addLanguage: false,
 };
 
 export const EditorContext = createContext<EditorState>({

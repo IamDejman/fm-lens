@@ -1227,6 +1227,11 @@ pub struct CallRvas {
     /// it adds nothing. Before it adds, it drops his weakest favoured and disliked people once the list has reached
     /// the game's limit.
     pub add_relation: Option<u64>,
+    /// `ACTUAL_PERSON::add_language(person, language, level*)`: gives the person a new link to the language at the
+    /// level, 10 at the most, on the end of his list of languages, and returns the link. For a language in the list
+    /// already it raises that one's level instead; it returns null for his own language and for a list of 30. It
+    /// raises the level it is given to 2 for the second language of his nation.
+    pub add_language: Option<u64>,
 }
 
 impl CallRvas {
@@ -1261,6 +1266,7 @@ impl CallRvas {
             self.work_permit_rules,
             self.needs_work_permit,
             self.add_relation,
+            self.add_language,
         ]
         .into_iter()
         .flatten()
@@ -1739,6 +1745,7 @@ mod tests {
         new.plugin = old.plugin;
         let calls = new.calls.as_mut().expect("build 26577676's calls");
         assert_eq!(calls.add_relation.take(), Some(0x30D_AA90));
+        assert_eq!(calls.add_language.take(), Some(0x196_3190));
         assert_eq!(format!("{new:?}"), format!("{old:?}"));
     }
 
@@ -1853,6 +1860,7 @@ mod tests {
                 work_permit_rules: Some(0x471_8EB0),
                 needs_work_permit: Some(0x1DD_B6B0),
                 add_relation: None,
+                add_language: None,
             }
         );
         assert_eq!(calls.all().len(), 26);

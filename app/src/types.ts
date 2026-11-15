@@ -125,6 +125,8 @@ export interface GameActions {
   moveManager: boolean;
   /** Adds a club or person to those a player or member of staff favours or dislikes (`add_preference`). */
   addPreference: boolean;
+  /** Adds a language to those a player or member of staff speaks (`add_language`). */
+  addLanguage: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
