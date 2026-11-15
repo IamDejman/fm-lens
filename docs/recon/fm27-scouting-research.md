@@ -170,6 +170,12 @@ sender) and a club (Tottenham Hotspur, in a news article's text) showed their
 cards, and a click on each opened them in FM Lens. FM's own card from a squad
 row's icon still brought FM Lens's card.
 
+A name in the squad table is a button in the row's cell, and its link is found
+the same way (Ezri Konsa, Declan Rice). Names that far left leave no room for
+the card left of the pointer, so a name's card goes right of it; only FM's own
+card, which opens to the right, sends FM Lens's card to the far right of FM's
+window.
+
 ## Top players by division
 
 Built for Windows; established in the running game on Steam build 26577676

@@ -76,11 +76,12 @@ impl Rect {
     }
 }
 
-/// Where FM's card was opened: the pointer, and FM's window.
+/// Where the card was asked for: the pointer, FM's window, and whether FM opened its own card there.
 #[derive(Clone, Copy, Debug)]
 struct Spot {
     at: (i32, i32),
     game: Rect,
+    fm_card: bool,
 }
 
 #[derive(Default)]
@@ -143,8 +144,9 @@ pub(crate) fn close(app: &AppHandle) {
     }
 }
 
-/// Where the card goes, `size` big, for FM's card opened at `spot`, inside `screen` (the monitor's work area): left
-/// of the pointer, as FM opens its card to the right; where there is no room, at the far right of FM's window.
+/// Where the card goes, `size` big, for `spot`, inside `screen` (the monitor's work area): left of the pointer, as FM
+/// opens its card to the right. Where there is no room: right of the pointer for a name, at the far right of FM's
+/// window beside FM's card.
 fn place(spot: Spot, size: (i32, i32), screen: Rect, gap: i32) -> (i32, i32) {
     let area = Rect {
         left: spot.game.left.max(screen.left),
@@ -154,7 +156,14 @@ fn place(spot: Spot, size: (i32, i32), screen: Rect, gap: i32) -> (i32, i32) {
     };
     let (width, height) = size;
     let left = spot.at.0 - gap - width;
-    let x = if left >= area.left { left } else { area.right - gap - width };
+    let right = spot.at.0 + gap;
+    let x = if left >= area.left {
+        left
+    } else if !spot.fm_card && right + width <= area.right {
+        right
+    } else {
+        area.right - gap - width
+    };
     let y = (spot.at.1 - gap).min(area.bottom - height);
     (x.min(screen.right - width).max(screen.left), y.min(screen.bottom - height).max(screen.top))
 }
@@ -173,7 +182,7 @@ mod imp {
     use fmlens_mem::{Process, Region, is_user_pointer, regions};
     use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
-    use super::{EVENT, LABEL, Rect, ScoutCard, Shown, Subject, place, stays};
+    use super::{EVENT, LABEL, Rect, ScoutCard, Shown, Spot, Subject, place, stays};
     use crate::AppState;
 
     /// How often FM is looked at.
@@ -235,6 +244,8 @@ mod imp {
         resting: Option<(Target, Instant)>,
         /// Who the last target was found to be.
         found: Option<(Target, (Subject, u32))>,
+        /// The last target was FM's own card's player.
+        fm_card: bool,
     }
 
     pub(super) fn watch(app: &AppHandle) {
@@ -243,7 +254,7 @@ mod imp {
         while !card.closing.load(Ordering::Relaxed) {
             std::thread::sleep(EVERY);
             let next = look(app, &mut looking);
-            follow(app, next);
+            follow(app, next, looking.fm_card);
             // FM Lens is not the app in front, so macOS does not tell the card's window the pointer is on it.
             #[cfg(target_os = "macos")]
             if pointed(app) {
@@ -287,9 +298,13 @@ mod imp {
         let target = match reader.card() {
             Some(uid) => {
                 looking.resting = None;
+                looking.fm_card = true;
                 Some(Target::Person(uid))
             }
-            None => rested(reader.link(), &mut looking.resting),
+            None => {
+                looking.fm_card = false;
+                rested(reader.link(), &mut looking.resting)
+            }
         };
         let shown = target.and_then(|target| match looking.found {
             Some((found, who)) if found == target => Some(who),
@@ -376,7 +391,7 @@ mod imp {
 
     /// Hides the card for another one or none, and tells its window what to show. Only this thread changes what the
     /// card shows; the window is opened, and FM's window read, before the lock is taken.
-    fn follow(app: &AppHandle, next: Option<Shown>) {
+    fn follow(app: &AppHandle, next: Option<Shown>, fm_card: bool) {
         let card = app.state::<ScoutCard>();
         let current = |card: &ScoutCard| card.shown.lock().ok().and_then(|shown| *shown);
         let before = current(&card);
@@ -386,7 +401,7 @@ mod imp {
         let window = next.and_then(|_| open_window(app));
         let spot = match (next, before) {
             (Some(next), Some((before, spot))) if before.same_one(next) => Some(spot),
-            (Some(_), _) => sys::spot(),
+            (Some(_), _) => sys::spot().map(|spot| Spot { fm_card, ..spot }),
             (None, _) => None,
         };
         let now = next.zip(window.as_ref().and(spot));
@@ -1114,7 +1129,11 @@ mod imp {
             if window.is_null() || unsafe { GetWindowRect(window, &mut rect) } == 0 {
                 return None;
             }
-            Some(Spot { at, game: Rect { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } })
+            Some(Spot {
+                at,
+                game: Rect { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+                fm_card: false,
+            })
         }
 
         pub(super) fn shift_down() -> bool {
@@ -1295,6 +1314,7 @@ mod imp {
                     right: point(game.origin.x + game.size.width),
                     bottom: point(game.origin.y + game.size.height),
                 },
+                fm_card: false,
             })
         }
 
@@ -1320,7 +1340,7 @@ mod tests {
     const SCREEN: Rect = Rect { left: 0, top: 0, right: 1920, bottom: 1040 };
 
     fn spot(x: i32, y: i32) -> Spot {
-        Spot { at: (x, y), game: Rect { left: 0, top: 0, right: 1920, bottom: 1080 } }
+        Spot { at: (x, y), game: Rect { left: 0, top: 0, right: 1920, bottom: 1080 }, fm_card: true }
     }
 
     #[test]
@@ -1334,8 +1354,17 @@ mod tests {
     }
 
     #[test]
+    fn goes_right_of_a_name_without_room_on_the_left() {
+        let name = Spot { fm_card: false, ..spot(200, 300) };
+        assert_eq!(place(name, (300, 400), SCREEN, 16), (216, 284));
+        let edge = Spot { fm_card: false, ..spot(200, 300) };
+        assert_eq!(place(edge, (1800, 400), SCREEN, 16), (104, 284));
+    }
+
+    #[test]
     fn stays_inside_the_game_and_the_screen() {
-        let windowed = Spot { at: (200, 1000), game: Rect { left: 0, top: 0, right: 1024, bottom: 768 } };
+        let windowed =
+            Spot { at: (200, 1000), game: Rect { left: 0, top: 0, right: 1024, bottom: 768 }, fm_card: true };
         assert_eq!(place(windowed, (300, 400), SCREEN, 16), (708, 368));
         assert_eq!(place(spot(1900, 20), (300, 400), SCREEN, 16), (1584, 4));
         let small = Rect { left: 0, top: 0, right: 200, bottom: 200 };
