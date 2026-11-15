@@ -1931,6 +1931,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Permanent),
         };

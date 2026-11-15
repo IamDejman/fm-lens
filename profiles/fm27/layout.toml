@@ -297,6 +297,13 @@ person = 0x00             # in an entry: u32 person id
 date = 0x0C               # in an entry: the date he retires
 player_person = 0x290     # in a player: u32, the game's id of the person (Ronaldo 0x0A30, Wass 0x0E69)
 
+# The text of a club's name, laid out as on macOS: the size of what follows (u32), a gap (u32), the count of holders
+# (u32), the length (u32), the text and a zero byte, with the name's pointer at the length. Read on Steam build
+# 26577676 with Ipswich Wanderers (5103819): size 26, count 3 for its one text, held as its name and its short name.
+[club_names]
+holders = 4               # before the pointer: the u32 count of the text's holders
+listed_uid = 0x10         # in the list's record: the club's UID
+
 # The game's record of the save it has loaded (SAVE_SYSTEM), which the build profile's save_system places. Read on
 # Steam build 26577676 (15 November 2026): the name followed Save As at once and a load from its start. Not read on
 # Game Pass. See docs/recon/fm27-save-name.md.

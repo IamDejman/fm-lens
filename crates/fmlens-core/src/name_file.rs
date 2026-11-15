@@ -39,11 +39,13 @@ pub struct NameFile {
 }
 
 impl NameFile {
-    /// The file for the game whose executable is `exe_path`, where its folder of name change files is found: on macOS,
-    /// in the database the game plug-in holds, in the folder of the newest database there.
+    /// The file for the game whose executable is `exe_path`, where its folder of name change files is found, in the
+    /// folder of the newest database: on macOS, in the database the game plug-in holds; on Windows, beside `fm.exe`.
     pub fn find(exe_path: &Path) -> Option<Self> {
-        let app = exe_path.ancestors().find(|dir| dir.file_name().is_some_and(|name| name == "fm.app"))?;
-        let databases = app.join("Contents/PlugIns/game_plugin.bundle/Contents/Resources/shared/data/database/db");
+        let databases = match exe_path.ancestors().find(|dir| dir.file_name().is_some_and(|name| name == "fm.app")) {
+            Some(app) => app.join("Contents/PlugIns/game_plugin.bundle/Contents/Resources/shared/data/database/db"),
+            None => exe_path.parent()?.join("shared/data/database/db"),
+        };
         let folder = newest_database(&databases)?.join("lnc/all");
         folder.is_dir().then(|| Self { path: folder.join(FILE_NAME) })
     }
@@ -218,6 +220,13 @@ mod tests {
         let file = NameFile::find(&exe).unwrap();
         assert_eq!(file.path, databases.join("2700/lnc/all").join(FILE_NAME));
         assert!(NameFile::find(&root.join("fm.exe")).is_none());
+        let windows = root.join("Football Manager 27 Windows");
+        let databases = windows.join("shared/data/database/db");
+        for folder in ["2700/2700_fm", "2700/lnc/all"] {
+            std::fs::create_dir_all(databases.join(folder)).unwrap();
+        }
+        let file = NameFile::find(&windows.join("fm.exe")).unwrap();
+        assert_eq!(file.path, databases.join("2700/lnc/all").join(FILE_NAME));
         std::fs::remove_dir_all(&root).unwrap();
     }
 }

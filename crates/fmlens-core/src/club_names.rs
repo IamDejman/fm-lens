@@ -54,7 +54,8 @@ pub fn as_name(text: &str) -> Option<&str> {
 
 fn name_file_error(err: std::io::Error) -> MoveError {
     match err.kind() {
-        std::io::ErrorKind::PermissionDenied => MoveError::NameFileBlocked,
+        // Only macOS's App Management keeps FM Lens out of a folder the user can allow it into.
+        std::io::ErrorKind::PermissionDenied if cfg!(target_os = "macos") => MoveError::NameFileBlocked,
         _ => MoveError::NameFile(err.to_string()),
     }
 }
