@@ -541,6 +541,8 @@ mod tests {
             loan: None,
             work_permits: Vec::new(),
             future_transfers: Vec::new(),
+            instalments: Vec::new(),
+            buy_back: None,
         }
     }
 

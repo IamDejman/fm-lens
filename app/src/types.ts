@@ -1015,6 +1015,32 @@ export interface PlayerDetails extends PlayerSummary {
   workPermits: WorkPermit[];
   /** The moves FM agreed for him on a later day; empty for most players, or where the build does not place them. */
   futureTransfers: FutureTransfer[];
+  /** The fees still being paid for him; empty for most players, or where the build does not place them. */
+  instalments: Instalment[];
+  /** The buy-back clause a club holds on him; null for most players. */
+  buyBack: BuyBack | null;
+}
+
+/** A fee still being paid for a player: who pays whom, pounds for each month, and the months left. */
+export interface Instalment {
+  payer: string | null;
+  payerUid: number | null;
+  receiver: string | null;
+  receiverUid: number | null;
+  agreed: FmDate | null;
+  amount: number;
+  /** Months between payments. */
+  period: number;
+  monthsLeft: number;
+}
+
+/** A club's right to buy a player back: the fee, and the days it runs between. */
+export interface BuyBack {
+  club: string | null;
+  clubUid: number | null;
+  fee: number;
+  starts: FmDate | null;
+  ends: FmDate | null;
 }
 
 /** A move FM agreed for a player on a later day: the club he joins (null where FM names none yet) and the day. */

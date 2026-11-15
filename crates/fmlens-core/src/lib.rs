@@ -17,6 +17,7 @@ mod date;
 mod details;
 mod edit;
 mod export;
+mod fee_terms;
 mod filter;
 mod game;
 mod game_calls;
@@ -72,6 +73,7 @@ pub use details::{
 };
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};
+pub use fee_terms::{BuyBack, Instalment, MOST_INSTALMENTS};
 pub use filter::{
     AttributeBound, AwardFilter, AwardSort, ClubFilter, ClubSort, CompetitionFilter, CompetitionSort, NationFilter,
     NationSort, Needle, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, RoleBound,

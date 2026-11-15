@@ -332,6 +332,31 @@ function details(player: PlayerSummary): PlayerDetails {
     loan: loanOf(player),
     workPermits: workPermitsOf(player),
     futureTransfers: futureTransfersOf(player),
+    instalments:
+      player.club && player.uid % 7 === 0
+        ? [
+            {
+              payer: player.club,
+              payerUid: player.clubUid,
+              receiver: "Southampton",
+              receiverUid: null,
+              agreed: { year: 2025, month: 8, day: 1 },
+              amount: 250_000,
+              period: 12,
+              monthsLeft: 14,
+            },
+          ]
+        : [],
+    buyBack:
+      player.club && player.uid % 9 === 0
+        ? {
+            club: "Benfica",
+            clubUid: null,
+            fee: 30_000_000,
+            starts: { year: 2026, month: 7, day: 1 },
+            ends: { year: 2028, month: 6, day: 30 },
+          }
+        : null,
     retirementKnown: true,
     retires: retiresOf(player.uid),
     // Drawn last, so that the values above come out as before.

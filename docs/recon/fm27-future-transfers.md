@@ -246,3 +246,11 @@ A window is removed once it has passed: Quansah's 1 to 15 June 2027 record is go
 2029 windows (1 to 15 June, 51,541,912 each) remain. Fully scouted on 7 January 2028, his contract page lists three
 clauses (a relegation salary drop, an optional extension by the club, a minimum fee release clause) and no buy-back:
 FM shows the buy-back only to Liverpool, the club that holds it, as with Rushworth above.
+
+## 9. Editing on Windows (15 November 2026)
+
+Writes to an instalment's monthly amount (+0x18) and months left (+0x21), and to a buy-back's fee (+0x18) and days
+(+0x08, +0x0C), hold. With Bruno Guimaraes's instalment at 2,000,000 a month and 24 months left, FM's Clauses page
+read "$32.34M (12-Monthly)", paid in July until 2030, two instalments owed; with 12 left, until 2029 and one owed. The
+values were the same after a save and a load. Not observed: a payment falling at an edited amount, and a buy-back
+edit in FM's own pages (Arsenal holds none). The test table is in EDITING-VALIDATION.md.

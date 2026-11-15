@@ -64,6 +64,9 @@ pub struct Layout {
     /// The game's list of work permits; only in the layouts it has been checked in.
     #[serde(default)]
     pub work_permit: Option<WorkPermitLayout>,
+    /// Fee instalments and buy-back clauses; only in the layouts they have been checked in.
+    #[serde(default)]
+    pub fee_terms: Option<FeeTermsLayout>,
     /// Competitions and awards; only in the layouts they have been checked in.
     #[serde(default)]
     pub competition: Option<CompetitionLayout>,
@@ -332,6 +335,42 @@ pub struct WorkPermitLayout {
     pub record_person: u64,
     pub record_esc_since: u64,
     pub record_flags: u64,
+}
+
+/// Fee instalments and buy-back clauses. The transfer manager ([`BuildProfile::transfer_manager`], of class
+/// `manager_class`) holds at `instalments` a (begin, end) pair of pointers to instalment records; a record names the
+/// player by the u32 at `person` of his person block. A club holds at `club_deals` a pointer to a (begin, end) pair
+/// of pointers to its deals, of several classes; one of `buy_back_class` is a buy-back clause on a player of its own.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeeTermsLayout {
+    pub manager_class: String,
+    pub instalments: u64,
+    pub person: u64,
+    pub instalment_size: u64,
+    /// Pointers to the club that pays and the club that is paid.
+    pub instalment_payer: u64,
+    pub instalment_receiver: u64,
+    /// The day the fee was agreed.
+    pub instalment_agreed: u64,
+    /// `i32` pounds for each month.
+    pub instalment_amount: u64,
+    /// `u32`: the player's person id.
+    pub instalment_person: u64,
+    /// `u8` months between payments, and `u8` months left.
+    pub instalment_period: u64,
+    pub instalment_months: u64,
+    pub club_deals: u64,
+    pub buy_back_class: String,
+    pub buy_back_size: u64,
+    pub buy_back_starts: u64,
+    pub buy_back_ends: u64,
+    /// `u32`: the player's UID.
+    pub buy_back_player: u64,
+    /// `i32` pounds.
+    pub buy_back_fee: u64,
+    /// Pointer to the club that holds the right.
+    pub buy_back_club: u64,
 }
 
 /// A match official: an object of `size` bytes in the officials array ([`BuildProfile::officials`]).

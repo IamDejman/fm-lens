@@ -468,6 +468,33 @@ record_person = 0x08
 record_esc_since = 0x12
 record_flags = 0x16
 
+# What is still owed on a transfer. TRANSFER_MANAGER keeps a (begin, end) of pointers to 0x28-byte instalment records:
+# the paying and the paid club, the day agreed, pounds for each month, the player's person id, the months between
+# payments and the months left. A club's set of deals (the object its kit set hangs off, see [club_kits]) starts with
+# a (begin, end) of pointers to deals of several classes; a db::PLAYER_BUY_BACK_INFO there is a buy-back clause on one
+# of the club's players: the days it runs between, his UID, the fee and the club that holds it. Read on Steam
+# 26577676: 1,158 instalments (Ramsdale's and Bruno Guimaraes's as FM's Clauses page lists them) and 89 buy-backs.
+[fee_terms]
+manager_class = ".?AVTRANSFER_MANAGER@@"
+instalments = 0xD0
+person = 0x290            # u32 player id, in the person block (person block + 8)
+instalment_size = 0x28
+instalment_payer = 0x00
+instalment_receiver = 0x08
+instalment_agreed = 0x10
+instalment_amount = 0x18
+instalment_person = 0x1C
+instalment_period = 0x20
+instalment_months = 0x21
+club_deals = 0xB0
+buy_back_class = ".?AVPLAYER_BUY_BACK_INFO@db@@"
+buy_back_size = 0x28
+buy_back_starts = 0x08
+buy_back_ends = 0x0C
+buy_back_player = 0x10
+buy_back_fee = 0x18
+buy_back_club = 0x20
+
 # Transfers agreed for a later day, laid out as on macOS: TRANSFER_MANAGER's offers and its dated records of them.
 # Read on Steam 26340721: 34 dated records, each naming a waiting offer (status 0x13), such as Andria Bartishvili's
 # move from Iberia 1999 Tbilisi to Arsenal on 1 July 2027.

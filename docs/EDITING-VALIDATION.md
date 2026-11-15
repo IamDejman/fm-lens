@@ -4333,3 +4333,32 @@ club other than Arsenal and Chelsea against FM, goalkeeper kits, kit styles
 and national teams; a kit FM changes at a new season; the Macs and Game Pass,
 where no layout places any of the three, so nothing shows there; editing.
 Staff allowances and club vision are not read on any platform.
+
+## Instalments and buy-backs on Windows (15 November 2026)
+
+Packaged Windows app built from the branch, Steam build 26577676, on a copy of
+an Arsenal career at 19 July 2028. A player's Contract tab lists each fee still
+being paid for him (who pays whom, pounds for each month, months left, how
+often, the day agreed) and the buy-back clause on him (holder, fee, the days
+it runs between). The amount, the months left, the buy-back fee and both of
+its days can be edited; each edit is a row in Changes with its own Undo.
+
+| Step | FM Lens and the probe | FM |
+|---|---|---|
+| Bruno Guimaraes before | Arsenal pays Newcastle United £1,500,000 a month, every 12 months, 12 months left, agreed 13 Jul 2026 | Clauses: "$24.25M (12-Monthly)" to Newcastle, paid in July until 2029, one more instalment owed |
+| Per month to 2,000,000, months left to 24 | probe: 2000000 a month, 24 months left | "$32.34M (12-Monthly)", paid in July until 2030, "another 2 installments of $32.34M each" |
+| Undo of the months edit | probe: 2000000 a month, 12 months left | "$32.34M", until 2029, one more owed |
+| Floyd Samba's buy-back before | Manchester City, £36,898,002, 2 Jan 2028 to 3 Jan 2030 | not shown to Arsenal |
+| Fee to 40,000,000, from 1 Jul 2028, until 30 Jun 2031 | probe: 40000000, 2028-07-01 to 2031-06-30; three rows in Changes | not shown to Arsenal |
+| Undo of the end day | probe: 2028-07-01 to 2030-01-03 | not shown to Arsenal |
+| Save in FM, load the save | probe: Bruno Guimaraes 2000000 a month, 12 left; Samba 40000000, 2028-07-01 to 2030-01-03 | Clauses after the load: "$32.34M (12-Monthly)", until 2029 |
+
+FM shows dollars at about 1.347 to the stored pound. The main career's hash
+was unchanged afterwards.
+
+Not run: a payment falling at an edited amount (the next is July 2029), or
+what FM does when months left is set off its payment month; an edited
+buy-back in FM's own pages, since FM shows a buy-back only to the clubs in it
+and Arsenal holds none; a buy-back being used after an edit; a player with
+more than one instalment edited; quit and relaunch; the Macs and Game Pass,
+where no layout places these records, so the groups do not show.
