@@ -806,7 +806,8 @@ export function MoraleGroup({ details }: { details: Pick<PlayerDetails, "uid" | 
     }
     if (unhappy) {
       try {
-        await removeUnhappiness(uid);
+        const report = await removeUnhappiness(uid);
+        refused.push(...report.failed.map((failed) => failed.error));
       } catch (e) {
         refused.push(e);
       }
@@ -881,8 +882,12 @@ function ConcernList({ uid, concerns }: { uid: number; concerns: Concern[] }) {
     setRemoving(true);
     setError(null);
     try {
-      await removeUnhappiness(uid);
+      const report = await removeUnhappiness(uid);
       onEdited();
+      // His reasons ended; what could not be lifted with them is said.
+      if (report.failed.length > 0) {
+        setError(describeError(report.failed[0].error));
+      }
     } catch (e) {
       setError(describeError(e));
       setRemoving(false);

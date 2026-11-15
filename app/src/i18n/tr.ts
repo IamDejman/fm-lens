@@ -996,7 +996,7 @@ export const tr: Strings = {
     noUnhappiness: "Onu mutsuz eden bir şey yok",
     removeUnhappiness: "Hepsini kaldır",
     removingUnhappiness: "Kaldırılıyor…",
-    removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır.",
+    removeUnhappinessTitle: "Tüm mutsuzluk nedenlerini kaldırır, moralini ve mutluluğunu en yükseğe çıkarır.",
     inspire: "Motive et",
     inspireTitle: "Morali en üste çıkarır, tüm mutsuzluk nedenlerini kaldırır",
     concernSince: (date) => `${date} tarihinden beri`,
@@ -1945,6 +1945,8 @@ export const tr: Strings = {
     changes: {
       "0.7.11": [
         "FM Lens artık penceresinin nasıl kullanıldığını kaydediyor: neyin zor olduğunu görmek için. Yazdıklarınız ve teknik direktörünüzün adı gizlenir. Ayarlar'dan kapatabilirsiniz.",
+        "Mutsuzluğu kaldırmak artık morali, mutluluğu ve forma süresi mutluluğunu en yükseğe çıkarıyor, teknik direktörü de oyuncunun sevmediği kişilerden çıkarıyor. Tek bir Geri al hepsini geri alır.",
+        "Morali, mutluluğu veya forma süresi mutluluğunu düzenlemek artık yalnızca o değeri değiştiriyor.",
       ],
       "0.7.10": [
         "Bir oyuncunun özelliklerini yükseltin, MY de onlarla yükselir: değişiklikler kalır.",
@@ -2727,7 +2729,7 @@ export const tr: Strings = {
     refreshAllTitle: "Herkese tam enerji, tam maç kondisyonu ve tam dinlenme",
     removeUnhappiness: "Mutsuzluğu kaldır",
     unhappyCount: (unhappy) => `${format(unhappy)} mutsuz`,
-    removeUnhappinessTitle: "Takımdaki bütün mutsuzluk nedenlerini kaldır",
+    removeUnhappinessTitle: "Takımdaki bütün mutsuzluk nedenlerini kaldır, moral ve mutluluğu en yükseğe çıkar",
     unhappyNone: "Bu takımda mutsuz oyuncu yok",
     moreLabel: "Takımın tamamına yönelik diğer işlemler",
     maxMorale: "Morali tamamla",

@@ -982,7 +982,7 @@ export const en = {
     noUnhappiness: "Nothing makes him unhappy",
     removeUnhappiness: "Remove all",
     removingUnhappiness: "Removing…",
-    removeUnhappinessTitle: "Clears every reason he's unhappy.",
+    removeUnhappinessTitle: "Clears every reason he's unhappy and maxes his morale and happiness.",
     /** On the heading of his morale: morale to the top and his reasons to be unhappy ended, at once. */
     inspire: "Inspire",
     inspireTitle: "Morale to the top, and every reason he's unhappy cleared",
@@ -2094,6 +2094,8 @@ export const en = {
     changes: {
       "0.7.11": [
         "FM Lens now records how its window is used, to find what is hard to use. What you type and your manager’s name are hidden. Turn it off in Settings.",
+        "Remove unhappiness now maxes morale, happiness and playing time happiness, and takes the manager off the player's dislikes. One Undo takes it all back.",
+        "Editing morale, happiness or playing time happiness now changes only that value.",
       ],
       "0.7.10": [
         "Raise a player's attributes and his CA rises with them, so the edits stay.",
@@ -3076,7 +3078,7 @@ export const en = {
     removeUnhappiness: "Remove unhappiness",
     /** `unhappy` is how many of the team's players have a reason to be unhappy that lasts. */
     unhappyCount: (unhappy: number) => `${format(unhappy)} unhappy`,
-    removeUnhappinessTitle: "Clear every reason to be unhappy in this team",
+    removeUnhappinessTitle: "Clear every reason to be unhappy in this team, and max their morale and happiness",
     /** Hover text of Remove unhappiness while nobody in the team is unhappy. */
     unhappyNone: "Nobody in this team is unhappy",
     /** The name of the More menu for assistive technology. */

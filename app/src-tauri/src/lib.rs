@@ -682,29 +682,12 @@ impl Connection {
         let fields: BTreeMap<String, Field> =
             self.session.fields(entity).into_iter().map(|field| (field.key.clone(), field)).collect();
         let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
-        let sets_morale: Vec<u32> =
-            planned.iter().filter(|planned| planned.field == "morale").map(|planned| planned.uid).collect();
         for planned in planned {
             let field = &fields[&planned.field];
             match self.session.write_field_if(&planned.target, field, planned.old, planned.new) {
                 Ok(change) => {
-                    let held =
-                        (entity == Entity::Player && change.field == "contract.happiness" && change.old != change.new)
-                            .then_some(change.new);
-                    let edit = self.log_change(change, planned.name.clone(), Some(batch)).id;
+                    self.log_change(change, planned.name, Some(batch));
                     report.applied += 1;
-                    if let Some(happiness) = held {
-                        let keep_morale = sets_morale.contains(&planned.uid);
-                        let (logged, failed) =
-                            self.hold_happiness(planned.uid, edit, happiness, keep_morale, Some(batch));
-                        report.applied += logged.len();
-                        report.failed.extend(failed.into_iter().map(|failed| MassFailure {
-                            uid: planned.uid,
-                            name: planned.name.clone(),
-                            field: failed.field,
-                            error: failed.error,
-                        }));
-                    }
                 }
                 Err(err) => report.failed.push(MassFailure {
                     uid: planned.uid,
@@ -717,63 +700,93 @@ impl Connection {
         report
     }
 
-    /// Has the game leave the happiness just written to the player `uid` where it is: the reasons to be unhappy that
-    /// hold it elsewhere end, and his morale moves to the nearest that allows it, unless the same edit set his morale
-    /// (`keep_morale`). Each is logged as a change of its own that holds the logged happiness edit `edit`; what could
-    /// not be written comes back with its field.
-    fn hold_happiness(
-        &mut self,
-        uid: u32,
-        edit: usize,
-        happiness: i64,
-        keep_morale: bool,
-        batch: Option<u32>,
-    ) -> (Vec<LoggedChange>, Vec<FailedEdit>) {
-        let (mut logged, mut failed) = (Vec::new(), Vec::new());
-        let Some(player) = self.players.get(uid) else {
-            return (logged, failed);
-        };
-        let Some(hold) = self.session.happiness_hold(player, happiness) else {
-            return (logged, failed);
-        };
+    /// Removes the unhappiness of the player `uid`: every reason to be unhappy that lasts ends today, as the game's own
+    /// "Remove unhappiness" ends them, and what they held down is lifted: his morale, happiness and playing time
+    /// happiness go to their most, and the manager of his club leaves the people he dislikes. The reasons are logged as
+    /// one change of his `contract.unhappiness`, which comes back first; each of the rest is a change of its own that
+    /// goes back with it (see `LoggedChange::holds`), and what could not be written comes back with its field.
+    fn lift_mood(&mut self, uid: u32, batch: Option<u32>) -> Result<(Vec<LoggedChange>, Vec<FailedEdit>), Failure> {
+        let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
         let (target, name) = (player.target(), player.name.clone());
-        if hold.end_concerns {
-            let ended = self.session.plan_end_concerns(player).and_then(|plan| self.session.apply_end_concerns(&plan));
-            match ended {
-                Ok(done) => {
-                    let ended = self.log_concerns(done, batch);
-                    logged.push(self.holding(ended, edit));
-                }
+        let plan = self.session.plan_end_concerns(player)?;
+        let done = self.session.apply_end_concerns(&plan)?;
+        let ended = self.log_concerns(done, batch);
+        let removal = ended.id;
+        let (mut logged, mut failed) = (vec![ended], Vec::new());
+        // Morale first: with no reason to be unhappy left, it is what the game holds his happiness by.
+        for key in MOOD_LIFTED {
+            let field = match self.session.field(Entity::Player, key) {
+                Ok(field) => field,
                 Err(err) => {
-                    failed.push(FailedEdit { field: "contract.unhappiness".to_owned(), value: 0, error: err.into() });
+                    failed.push(FailedEdit { field: key.to_owned(), value: 0, error: err.into() });
+                    continue;
                 }
-            }
-        }
-        if let Some(morale) = hold.morale.filter(|_| !keep_morale) {
-            let written = self
-                .session
-                .field(Entity::Player, "morale")
-                .and_then(|field| self.session.write_field(&target, &field, morale));
-            match written {
+            };
+            match self.session.write_field(&target, &field, field.max) {
                 Ok(change) if change.old == change.new => {}
                 Ok(change) => {
-                    let moved = self.log_change(change, name, batch);
-                    logged.push(self.holding(moved, edit));
+                    let lifted = self.log_change(change, name.clone(), batch);
+                    logged.push(self.holding(lifted, removal, batch));
                 }
                 Err(err) => {
                     let error = self.with_names(err.into());
-                    failed.push(FailedEdit { field: "morale".to_owned(), value: morale, error });
+                    failed.push(FailedEdit { field: key.to_owned(), value: field.max, error });
                 }
             }
         }
-        (logged, failed)
+        // Taking one out moves the ones after it up: the last goes first, each planned from the list as it then is.
+        for index in self.disliked_managers(uid).into_iter().rev() {
+            let Some(player) = self.players.get(uid) else {
+                break;
+            };
+            let removed = self
+                .session
+                .plan_preference_removal(PersonRef::Player(player), index)
+                .and_then(|plan| self.session.apply_preference(&plan));
+            match removed {
+                Ok(done) => {
+                    let removed = self.log_preference(done);
+                    logged.push(self.holding(removed, removal, batch));
+                }
+                Err(err) => {
+                    failed.push(FailedEdit {
+                        field: "preference.dislikedPerson".to_owned(),
+                        value: 0,
+                        error: err.into(),
+                    });
+                }
+            }
+        }
+        Ok((logged, failed))
     }
 
-    /// Marks the change just logged as one that holds the logged happiness edit `edit` (see `LoggedChange::holds`).
-    fn holding(&mut self, mut logged: LoggedChange, edit: usize) -> LoggedChange {
-        logged.holds = Some(edit);
+    /// Where the managers of the club of the player `uid` are among the people he dislikes, as places in his list of
+    /// relations, in its order. Empty where his preferences cannot be read.
+    fn disliked_managers(&self, uid: u32) -> Vec<usize> {
+        let Some(player) = self.players.get(uid) else {
+            return Vec::new();
+        };
+        let manages_him = |member: &fmlens_core::StaffSummary| {
+            member.job == Some(MANAGER_JOB) && member.club_uid.is_some() && member.club_uid == player.club_uid
+        };
+        self.session
+            .preferences(player)
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|preference| preference.kind == PreferenceKind::DislikedPerson)
+            .filter(|preference| self.staff.get(preference.target_uid).is_some_and(manages_him))
+            .map(|preference| preference.index)
+            .collect()
+    }
+
+    /// Marks the change just logged as one made by the removal of unhappiness logged as `removal` (see
+    /// `LoggedChange::holds`), in its batch.
+    fn holding(&mut self, mut logged: LoggedChange, removal: usize, batch: Option<u32>) -> LoggedChange {
+        logged.holds = Some(removal);
+        logged.batch = batch;
         if let Some(last) = self.log.last_mut().filter(|last| last.id == logged.id) {
-            last.holds = Some(edit);
+            last.holds = Some(removal);
+            last.batch = batch;
         }
         logged
     }
@@ -1975,16 +1988,16 @@ impl Connection {
         logged
     }
 
-    /// Undoes the logged change `id` (see `undo_one`), and with it the rest of a happiness edit: the edit itself and
-    /// what moved to hold it (see `hold_happiness`). The game holds a happiness by his morale and his reasons to be
-    /// unhappy, so with one of them undone alone it moves the happiness, which then no longer goes back. The change
-    /// asked for has to go back; another the game has changed since stays as it is, listed as not undone.
+    /// Undoes the logged change `id` (see `undo_one`), and with it the rest of a removal of unhappiness: the reasons
+    /// that ended and what was lifted with them (see `lift_mood`). The game holds a happiness by his morale and his
+    /// reasons to be unhappy, so with one of them undone alone it moves the happiness, which then no longer goes back.
+    /// The change asked for has to go back; another the game has changed since stays as it is, listed as not undone.
     fn undo(&mut self, id: usize) -> Result<LoggedChange, Failure> {
         let with = undone_with(&self.log, id);
         let edit = self.log.iter().find(|logged| logged.id == id).and_then(|logged| logged.holds);
         let undone = self.undo_one(id)?;
         for other in with {
-            // Where the happiness itself no longer goes back, the rest of what holds it stays too.
+            // Where the reasons themselves no longer come back, the rest of what was lifted stays too.
             if self.undo_one(other).is_err() && Some(other) == edit {
                 break;
             }
@@ -2445,9 +2458,9 @@ struct LoggedChange {
     /// For a change to a player's contract clauses: the clause before and after.
     #[serde(skip_serializing_if = "Option::is_none")]
     clause: Option<ClauseChange>,
-    /// For a change made so that the game keeps a happiness edit (his morale moved, his reasons to be unhappy ended;
-    /// see `Connection::hold_happiness`): the id of that edit's change. They are undone together (see
-    /// `Connection::undo`).
+    /// For a change made by a removal of unhappiness (his mood lifted, his manager no longer disliked; see
+    /// `Connection::lift_mood`): the id of the change that ended his reasons to be unhappy. They are undone together
+    /// (see `Connection::undo`).
     #[serde(skip)]
     holds: Option<usize>,
     /// For a move, healing, lifting bans, a captaincy, a tie or a clause: what undoing it takes. Other changes write
@@ -2456,8 +2469,8 @@ struct LoggedChange {
     undo: Option<Undo>,
 }
 
-/// The changes that go back with the logged change `id`, in the order they are undone: with a happiness edit what
-/// moved to hold it, newest first, and with one of those the happiness edit, then the rest. Only what can still be
+/// The changes that go back with the logged change `id`, in the order they are undone: with a removal of unhappiness
+/// what was lifted with it, newest first, and with one of those the removal, then the rest. Only what can still be
 /// undone is named.
 fn undone_with(log: &[LoggedChange], id: usize) -> Vec<usize> {
     let Some(asked) = log.iter().find(|logged| logged.id == id) else {
@@ -2800,6 +2813,10 @@ struct MassOperation {
 
 /// Most players, staff or clubs one mass edit may change.
 const MASS_LIMIT: usize = 10_000;
+
+/// What a removal of unhappiness lifts to its most, in the order it is written: morale first, which the game then
+/// holds happiness by.
+const MOOD_LIFTED: [&str; 3] = ["morale", "contract.happiness", "contract.playing_time_happiness"];
 
 /// Most changes and skipped fields a preview lists; the counts cover all of them.
 const PREVIEW_ROWS: usize = 500;
@@ -4423,8 +4440,6 @@ fn apply_edits(
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let (target, name) = connection.target(entity, uid)?;
     let mut report = ApplyReport { applied: Vec::new(), failed: Vec::new() };
-    let keep_morale = edits.iter().any(|edit| edit.field == "morale");
-    let mut held = None;
     for edit in edits {
         let written = connection
             .session
@@ -4433,26 +4448,12 @@ fn apply_edits(
         match written {
             // Already the value asked for: nothing was written.
             Ok(change) if change.old == change.new => {}
-            Ok(change) => {
-                let happiness =
-                    (entity == Entity::Player && change.field == "contract.happiness").then_some(change.new);
-                let logged = connection.log_change(change, name.clone(), None);
-                if let Some(happiness) = happiness {
-                    held = Some((logged.id, happiness));
-                }
-                report.applied.push(logged);
-            }
+            Ok(change) => report.applied.push(connection.log_change(change, name.clone(), None)),
             Err(err) => {
                 let error = connection.with_names(err.into());
                 report.failed.push(FailedEdit { field: edit.field, value: edit.value, error });
             }
         }
-    }
-    // The game puts a happiness back that his reasons to be unhappy or his morale do not allow: move them with it.
-    if let Some((edit, happiness)) = held {
-        let (logged, failed) = connection.hold_happiness(uid, edit, happiness, keep_morale, None);
-        report.applied.extend(logged);
-        report.failed.extend(failed);
     }
     Ok(report)
 }
@@ -5024,16 +5025,14 @@ fn lift_bans(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failu
 }
 
 /// Ends today every reason to be unhappy of the player `uid` that lasts, as the game's own "Remove unhappiness" does,
-/// and logs it as one change of his `contract.unhappiness` to none. The reasons stay listed as over, which keeps the
-/// game from raising them again the next day.
+/// and lifts his mood with them (see `Connection::lift_mood`). The reasons stay listed as over, which keeps the game
+/// from raising them again the next day. What was lifted is undone with them.
 #[tauri::command]
-fn remove_unhappiness(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+fn remove_unhappiness(state: State<'_, AppState>, uid: u32) -> Result<ApplyReport, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
-    let plan = connection.session.plan_end_concerns(player)?;
-    let done = connection.session.apply_end_concerns(&plan)?;
-    Ok(connection.log_concerns(done, None))
+    let (applied, failed) = connection.lift_mood(uid, None)?;
+    Ok(ApplyReport { applied, failed })
 }
 
 /// Keeps the player `uid` from retiring: the retirement the game has planned for him is taken out of its plans, and he
@@ -5539,25 +5538,15 @@ fn act_on_team(
         TeamAction::RemoveUnhappiness => {
             let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
             for member in members.iter().filter(|member| member.unhappy) {
-                let Some(player) = connection.players.get(member.uid) else {
-                    continue;
-                };
-                let name = player.name.clone();
-                let ended = connection
-                    .session
-                    .plan_end_concerns(player)
-                    .and_then(|plan| connection.session.apply_end_concerns(&plan));
-                match ended {
-                    Ok(done) => {
-                        connection.log_concerns(done, Some(batch));
-                        report.applied += 1;
+                let name = connection.player_name(member.uid);
+                let failure =
+                    |field: String, error: Failure| MassFailure { uid: member.uid, name: name.clone(), field, error };
+                match connection.lift_mood(member.uid, Some(batch)) {
+                    Ok((logged, failed)) => {
+                        report.applied += logged.len();
+                        report.failed.extend(failed.into_iter().map(|failed| failure(failed.field, failed.error)));
                     }
-                    Err(err) => report.failed.push(MassFailure {
-                        uid: member.uid,
-                        name,
-                        field: "contract.unhappiness".to_owned(),
-                        error: err.into(),
-                    }),
+                    Err(error) => report.failed.push(failure("contract.unhappiness".to_owned(), error)),
                 }
             }
             return Ok(report);

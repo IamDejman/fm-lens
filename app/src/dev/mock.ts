@@ -2080,7 +2080,6 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
     };
     changes.push(logged);
     report.applied.push({ ...logged });
-    return logged.id;
   };
   for (const edit of edits) {
     const field = fieldTable(entity).find((f) => f.key === edit.field);
@@ -2118,36 +2117,18 @@ function applyEdits(entity: Entity, uid: number, edits: FieldEdit[]): ApplyRepor
     }
     write(field.key, old, edit.value);
   }
-  // Like the real command, a happiness his morale does not allow moves his morale with it, unless the edit set it.
-  const held = entity === "player" ? report.applied.find((change) => change.field === "contract.happiness") : undefined;
-  const morale: number | undefined = currentValues(entity, uid)["morale"];
-  if (held && morale !== undefined && !edits.some((edit) => edit.field === "morale")) {
-    const allows = (level: number) => {
-      const [low, high] = moraleBand(level);
-      const happiness = Math.max(held.new, -20);
-      return happiness >= low && happiness <= high;
-    };
-    const nearest = Array.from({ length: 20 }, (_, i) => i + 1)
-      .filter(allows)
-      .sort((a, b) => Math.abs(a - morale) - Math.abs(b - morale) || a - b)[0];
-    if (!allows(morale) && nearest !== undefined) {
-      happinessHolds.set(write("morale", morale, nearest), held.id);
-    }
-  }
   return report;
 }
 
-/** For a change that moved his morale to hold a happiness edit (by its id): the id of that edit's change. */
-const happinessHolds = new Map<number, number>();
+/** For a change a removal of unhappiness made with it (by its id): the id of the change that ended his reasons. */
+const liftedWith = new Map<number, number>();
 
-/** The happiness the game allows a player no reason to be unhappy holds elsewhere, by his morale. */
-function moraleBand(morale: number): [number, number] {
-  if (morale >= 18) return [80, 100];
-  if (morale >= 15) return [60, 80];
-  if (morale >= 13) return [40, 60];
-  if (morale >= 11) return [20, 40];
-  return [-20, 20];
-}
+/** What a removal of unhappiness lifts to its most, as the real command does: morale first. */
+const MOOD_LIFTED: [string, number][] = [
+  ["morale", 20],
+  ["contract.happiness", 100],
+  ["contract.playing_time_happiness", 100],
+];
 
 /** `undo_change`: writes the old value back unless the value has changed since. */
 // Staff: moves and jobs ---------------------------------------------------------------------------------------------
@@ -2345,10 +2326,10 @@ function changeStaffJob(uid: number, job: number): LoggedChange {
   return logStaff(member, "contract.job", old, job);
 }
 
-/** `undo_change`: like the real command, a happiness edit and what moved to hold it are undone together. */
+/** `undo_change`: like the real command, a removal of unhappiness and what it lifted are undone together. */
 function undoChange(id: number): LoggedChange {
-  const edit = happinessHolds.get(id);
-  const held = [...happinessHolds].filter(([, holds]) => holds === (edit ?? id)).map(([hold]) => hold);
+  const edit = liftedWith.get(id);
+  const held = [...liftedWith].filter(([, removal]) => removal === (edit ?? id)).map(([lifted]) => lifted);
   const open = (other: number) =>
     other !== id && changes.some((c) => c.id === other && c.undoneAt === null && !c.earlierGame);
   const undone = undoOne(id);
@@ -2356,7 +2337,7 @@ function undoChange(id: number): LoggedChange {
     try {
       undoOne(other);
     } catch {
-      // What the game has changed since stays as it is; without the happiness, so does the rest of what held it.
+      // What the game has changed since stays as it is; without the reasons, so does the rest of what was lifted.
       if (other === edit) {
         break;
       }
@@ -2978,20 +2959,39 @@ function liftBans(uid: number, batch: number | null = null): LoggedChange {
   return { ...logged };
 }
 
-/** `remove_unhappiness`: the fixture player's reasons to be unhappy that last end today, logged as one change. */
-function removeUnhappiness(uid: number): LoggedChange {
+/**
+ * Ends the fixture player's reasons to be unhappy that last and lifts his mood to its most, as the real commands do:
+ * the changes logged, the reasons first, the rest undone with them. Empty where no reason lasts.
+ */
+function liftMood(player: { uid: number; name: string }, report: MassReport): LoggedChange[] {
+  const from = changes.length;
+  setValues(player, [["contract.unhappiness", 0]], report);
+  const ended = changes[from];
+  if (!ended) {
+    return [];
+  }
+  setValues(player, MOOD_LIFTED, report);
+  const logged = changes.slice(from);
+  for (const lifted of logged.slice(1)) {
+    liftedWith.set(lifted.id, ended.id);
+  }
+  return logged;
+}
+
+/** `remove_unhappiness`: the fixture player's reasons to be unhappy that last end today, and his mood is lifted. */
+function removeUnhappiness(uid: number): ApplyReport {
   const player = players.find((p) => p.uid === uid);
   if (!player) {
     throw notFound("player", uid);
   }
-  const report: MassReport = { batch: 0, applied: 0, failed: [], freeze: null };
-  setValues(player, [["contract.unhappiness", 0]], report);
-  const logged = changes[changes.length - 1];
-  if (report.applied === 0 || !logged) {
+  const logged = liftMood(player, { batch: 0, applied: 0, failed: [], freeze: null });
+  if (logged.length === 0) {
     throw failure("list.missing", "the list holds nothing at number 0", { index: 0 });
   }
-  logged.batch = null;
-  return { ...logged };
+  for (const change of logged) {
+    change.batch = null;
+  }
+  return { applied: logged.map((change) => ({ ...change })), failed: [] };
 }
 
 /** Which promise (as `uid:index`) each closing, by the id of its logged change, closed, for its undo. */
@@ -3177,7 +3177,7 @@ function teamAction(clubUid: number, index: number, action: TeamAction): MassRep
   }
   if (action === "removeUnhappiness") {
     for (const player of team.players.filter((p) => p.unhappy)) {
-      setValues(player, [["contract.unhappiness", 0]], report);
+      liftMood(player, report);
     }
     return report;
   }

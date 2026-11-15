@@ -93,7 +93,7 @@ pub use languages::{LEAST_LEVEL, Language, LanguageChoice, LanguagePlan, Languag
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan, Lifted};
-pub use mood::{ConcernsEnded, ConcernsPlan, HappinessHold};
+pub use mood::{ConcernsEnded, ConcernsPlan};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
 pub use officials::{OFFICIAL_ATTRIBUTES, OfficialSummary};
 pub use plans::{CareerPlan, PlanTarget};
