@@ -5,6 +5,7 @@ import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
 import { BOARD_JOBS, fitOf } from "../recipes";
 import { version as appVersion } from "../../package.json";
+import { OFFICIAL_ATTRIBUTES } from "../types";
 import type {
   ApplyReport,
   AttributeBound,
@@ -1455,6 +1456,7 @@ function fieldTable(entity: Entity): EditField[] {
       { ...field("potential_ability", "u16", 1, 200), mass: false },
       { ...field("reputation", "u16", 0, 10_000), mass: false },
       { ...field("date_of_birth", "date", 19400101, 20201231), mass: false },
+      ...OFFICIAL_ATTRIBUTES.map((name) => ({ ...field(`attribute.${name}`, "u8", 1, 20), mass: false })),
     ];
   }
   // A nation's senior team reputation and its rules, one nation at a time; 255 years is never.
@@ -1765,6 +1767,9 @@ function currentValues(entity: Entity, uid: number): FieldValues {
       potential_ability: official.potentialAbility,
       reputation: official.reputation,
       ...(official.dateOfBirth && { date_of_birth: numberFromDate(official.dateOfBirth) }),
+      ...Object.fromEntries(
+        (official.attributes ?? []).map((value, at) => [`attribute.${OFFICIAL_ATTRIBUTES[at]}`, value]),
+      ),
     };
   }
   const d = profileOf(entity, uid);
@@ -1886,6 +1891,11 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
     if (key === "date_of_birth") {
       official.dateOfBirth = dateFromNumber(value);
       official.age = official.dateOfBirth && ageOn(official.dateOfBirth, GAME_DATE);
+    } else if (group === "attribute") {
+      const at = OFFICIAL_ATTRIBUTES.findIndex((attribute) => attribute === name);
+      if (official.attributes && at >= 0) {
+        official.attributes = official.attributes.map((old, n) => (n === at ? value : old));
+      }
     } else {
       const property = { current_ability: "currentAbility", potential_ability: "potentialAbility" }[key] ?? key;
       Object.assign(official, { [property]: value });
@@ -4804,6 +4814,8 @@ const OFFICIALS: OfficialSummary[] = Array.from({ length: 40 }, (_, i): Official
     currentAbility,
     potentialAbility: Math.min(200, currentAbility + (year > 1992 ? 25 : 0)),
     reputation: 9_500 - i * 211,
+    // The last official has none, as on a version of FM that is not known to keep them.
+    attributes: i === 39 ? null : OFFICIAL_ATTRIBUTES.map((_, n) => 1 + ((i * 3 + n * 7) % 20)),
   };
 });
 

@@ -13,10 +13,10 @@ use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use fmlens_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, AttributeBound, CaptainRole, ClubIndex, Entity, ExportFormat,
-    ExportHeader, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms, PERSONALITY,
-    POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, PreferenceKind, STAFF_ATTRIBUTE_GROUPS,
-    SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, Tie, TieTarget,
-    find_game, job_name, nations, scan_object_arrays, sort_players,
+    ExportHeader, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms,
+    OFFICIAL_ATTRIBUTES, PERSONALITY, POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort,
+    PreferenceKind, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError,
+    StaffIndex, Target, Tie, TieTarget, find_game, job_name, nations, scan_object_arrays, sort_players,
 };
 #[cfg(target_os = "macos")]
 use fmlens_mem::MachImage;
@@ -3809,7 +3809,14 @@ fn officials(session: &Session, name: Option<String>, limit: usize) -> Result<()
             o.potential_ability,
             o.reputation
         );
+        if let Some(attributes) = o.attributes {
+            let named: Vec<String> =
+                OFFICIAL_ATTRIBUTES.iter().zip(attributes).map(|(name, value)| format!("{name} {value}")).collect();
+            println!("      {}", named.join(", "));
+        }
     }
+    let with = all.iter().filter(|o| o.attributes.is_some()).count();
+    println!("{with} of {} with refereeing attributes", all.len());
     Ok(())
 }
 

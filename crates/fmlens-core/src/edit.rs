@@ -747,13 +747,21 @@ fn official_fields(layout: &Layout) -> Vec<Field> {
     let field = |key: &str, offset: u64, kind: Kind, range: RangeInclusive<i64>| {
         Field::new(Entity::Official, key, offset, kind, range).single()
     };
-    vec![
+    let mut fields = vec![
         // About a hundred officials read 200 for both, the rest less; young ones have more potential than ability.
         field("current_ability", o.current_ability, Kind::U16, 1..=200).plausible(0..=200),
         field("potential_ability", o.potential_ability, Kind::U16, 1..=200).plausible(0..=200),
         field("reputation", o.reputation, Kind::U16, 0..=10_000),
         field("date_of_birth", o.date_of_birth, Kind::Date, BIRTH_DATES).plausible(19000101..=21001231),
-    ]
+    ];
+    if let Some(first) = o.attributes {
+        fields.extend(
+            (first..)
+                .zip(crate::officials::OFFICIAL_ATTRIBUTES)
+                .map(|(offset, name)| field(&format!("attribute.{name}"), offset, Kind::U8, 1..=20)),
+        );
+    }
+    fields
 }
 
 /// The offset of the human manager's flags in `target`, when the build has traced them (`layout`) and the target is
@@ -886,7 +894,13 @@ impl OfficialSummary {
                 self.date_of_birth = FmDate::from_number(value);
                 self.age = self.date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today));
             }
-            _ => {}
+            _ => {
+                let name = field.strip_prefix("attribute.");
+                let at = name.and_then(|name| crate::officials::OFFICIAL_ATTRIBUTES.iter().position(|&a| a == name));
+                if let (Some(at), Some(attributes)) = (at, self.attributes.as_mut()) {
+                    attributes[at] = value as u8;
+                }
+            }
         }
     }
 }
@@ -1682,7 +1696,16 @@ mod tests {
             return;
         };
         let keys: Vec<&str> = officials.iter().map(|f| f.key.as_str()).collect();
-        assert_eq!(keys, ["current_ability", "potential_ability", "reputation", "date_of_birth"]);
+        assert_eq!(keys[..4], ["current_ability", "potential_ability", "reputation", "date_of_birth"]);
+        // The seven refereeing attributes, a byte each from the layout's first, where it places them.
+        assert_eq!(keys.len(), 4 + if o.attributes.is_some() { 7 } else { 0 });
+        if let Some(first) = o.attributes {
+            assert_eq!(keys[4], "attribute.allowing_flow");
+            assert_eq!(keys[10], "attribute.time_keeping");
+            let last = officials.last().expect("field");
+            assert_eq!((last.offset, last.kind), (first + 6, Kind::U8));
+            assert!(last.takes(1) && last.takes(20) && !last.takes(0) && !last.takes(21));
+        }
         assert!(officials.iter().all(|f| !f.mass && !f.shifted && f.place == Place::Object));
         let key = |key: &str| officials.iter().find(|f| f.key == key).cloned().expect(key);
 
@@ -1709,6 +1732,7 @@ mod tests {
             current_ability: 180,
             potential_ability: 180,
             reputation: 8388,
+            attributes: Some([15, 10, 15, 14, 16, 9, 5]),
         };
         let target = oliver.target();
         assert_eq!((target.entity, target.uid, target.shift), (Entity::Official, 103994, 0));
@@ -1716,7 +1740,9 @@ mod tests {
         let today = FmDate::from_number(20261116);
         oliver.note_change("reputation", 9000, today);
         oliver.note_change("date_of_birth", 19900101, today);
+        oliver.note_change("attribute.discipline", 18, today);
         assert_eq!((oliver.reputation, oliver.age), (9000, Some(36)));
+        assert_eq!(oliver.attributes, Some([15, 18, 15, 14, 16, 9, 5]));
     }
 
     #[test]

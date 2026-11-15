@@ -24,6 +24,17 @@ const OFFICIAL_CLASS: &str = "N2db8OFFICIALE";
 /// The most officials the editor reads; the test save had 1166.
 const MOST_OFFICIALS: u64 = 20_000;
 
+/// An official's refereeing attributes, in the order the game keeps them: one byte each, from 1 to 20. The names are
+/// the game's own, from the tags its property setter takes ('Oalf', 'Odis', 'Oimm', 'Oprs', 'Oref', 'Orun', 'Otkp').
+pub const OFFICIAL_ATTRIBUTES: [&str; 7] =
+    ["allowing_flow", "discipline", "important_matches", "pressure", "refereeing", "running_line", "time_keeping"];
+
+/// The attributes in `bytes`, when every one is a rating from 1 to 20; none of them otherwise.
+fn attributes_from(bytes: &[u8]) -> Option<[u8; OFFICIAL_ATTRIBUTES.len()]> {
+    let attributes: [u8; OFFICIAL_ATTRIBUTES.len()] = bytes.try_into().ok()?;
+    attributes.iter().all(|value| (1..=20).contains(value)).then_some(attributes)
+}
+
 /// One match official, as the officials list shows him.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +53,9 @@ pub struct OfficialSummary {
     pub potential_ability: u16,
     /// 0 to 10000.
     pub reputation: u16,
+    /// The refereeing attributes, in the order of [`OFFICIAL_ATTRIBUTES`]; `None` where the layout does not place
+    /// them or one of them is not a rating.
+    pub attributes: Option<[u8; OFFICIAL_ATTRIBUTES.len()]>,
 }
 
 impl Listed for OfficialSummary {
@@ -124,8 +138,25 @@ impl Session {
                 current_ability: u16_at(o.current_ability),
                 potential_ability: u16_at(o.potential_ability),
                 reputation: u16_at(o.reputation),
+                attributes: o.attributes.and_then(|at| {
+                    object.get(at as usize..at as usize + OFFICIAL_ATTRIBUTES.len()).and_then(attributes_from)
+                }),
             });
         }
         Ok(officials)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::attributes_from;
+
+    #[test]
+    fn attributes_only_when_each_is_a_rating() {
+        assert_eq!(attributes_from(&[15, 10, 15, 14, 16, 9, 5]), Some([15, 10, 15, 14, 16, 9, 5]));
+        assert_eq!(attributes_from(&[1, 20, 1, 20, 1, 20, 1]), Some([1, 20, 1, 20, 1, 20, 1]));
+        assert_eq!(attributes_from(&[15, 10, 15, 14, 16, 9, 0]), None);
+        assert_eq!(attributes_from(&[15, 10, 15, 14, 16, 9, 21]), None);
+        assert_eq!(attributes_from(&[15, 10, 15, 14, 16, 9]), None);
     }
 }

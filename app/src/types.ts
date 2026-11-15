@@ -617,7 +617,23 @@ export interface OfficialSummary {
   potentialAbility: number;
   /** 0 to 10000. */
   reputation: number;
+  /**
+   * The seven refereeing attributes, 1 to 20, in the game's order (see `OFFICIAL_ATTRIBUTES`); null where this
+   * version of FM is not known to keep them.
+   */
+  attributes: number[] | null;
 }
+
+/** The keys of an official's refereeing attributes, in the order the game keeps them. */
+export const OFFICIAL_ATTRIBUTES = [
+  "allowing_flow",
+  "discipline",
+  "important_matches",
+  "pressure",
+  "refereeing",
+  "running_line",
+  "time_keeping",
+] as const;
 
 /** A competition, read-only. */
 export interface CompetitionSummary {

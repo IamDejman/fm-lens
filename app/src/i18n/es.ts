@@ -1530,6 +1530,16 @@ export const es: Strings = {
       nation: "País",
     },
     reputation: "Reputación",
+    attributes: "Arbitraje",
+    attributeNames: {
+      allowing_flow: "Dejar seguir el juego",
+      discipline: "Disciplina",
+      important_matches: "Partidos importantes",
+      pressure: "Presión",
+      refereeing: "Arbitraje",
+      running_line: "Trabajo en la banda",
+      time_keeping: "Control del tiempo",
+    } as Record<string, string>,
   },
 
   competitionList: {

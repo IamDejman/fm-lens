@@ -288,6 +288,9 @@ export function fieldLabel(entity: Entity, key: string): string {
   const [group, name = ""] = key.split(".");
   switch (group) {
     case "attribute":
+      if (entity === "official") {
+        return labelIn(officialListText.attributeNames, name) ?? key;
+      }
       return labelIn(entity === "staff" ? STAFF_ATTRIBUTE_LABELS : ATTRIBUTE_LABELS, name) ?? key;
     case "personality":
       return labelIn(PERSONALITY_LABELS, name) ?? key;
