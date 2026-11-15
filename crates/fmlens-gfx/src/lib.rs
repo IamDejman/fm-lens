@@ -187,13 +187,14 @@ fn sprite(bundle: &Bundle, id: i64) -> Result<Rgba> {
 /// The `AddrData` folder of the install a game executable belongs to, if it exists.
 ///
 /// Windows: `<install>\fm.exe` has it in `<install>\fm_Data\StreamingAssets\AddrData`. macOS:
-/// `<install>/fm.app/Contents/MacOS/fm` has it in `<install>/fm.app/Contents/Resources/Data/StreamingAssets/AddrData`.
+/// the executable in `<install>/fm.app/Contents/MacOS` (`Football Manager 27`) has it in
+/// `<install>/fm.app/Contents/Resources/Data/StreamingAssets/AddrData`.
 pub fn addr_data_for(game_executable: &Path) -> Option<PathBuf> {
     let name = game_executable.file_name()?.to_str()?;
     let dir = game_executable.parent()?;
     let folder = if name.eq_ignore_ascii_case("fm.exe") {
         dir.join("fm_Data").join("StreamingAssets").join("AddrData")
-    } else if name == "fm" && dir.file_name()? == "MacOS" {
+    } else if dir.file_name()? == "MacOS" {
         let contents = dir.parent()?;
         if contents.file_name()? != "Contents" {
             return None;
@@ -233,10 +234,10 @@ mod tests {
         let contents = root.join("fm.app").join("Contents");
         let addr = contents.join("Resources").join("Data").join("StreamingAssets").join("AddrData");
         std::fs::create_dir_all(&addr).unwrap();
-        assert_eq!(addr_data_for(&contents.join("MacOS").join("fm")), Some(addr));
-        assert_eq!(addr_data_for(&root.join("fm.app").join("Other").join("fm")), None);
-        assert_eq!(addr_data_for(&contents.join("MacOS").join("fm2")), None);
-        assert_eq!(addr_data_for(Path::new("fm")), None);
+        assert_eq!(addr_data_for(&contents.join("MacOS").join("Football Manager 27")), Some(addr));
+        assert_eq!(addr_data_for(&root.join("fm.app").join("Other").join("Football Manager 27")), None);
+        assert_eq!(addr_data_for(&root.join("fm.app").join("MacOS").join("Football Manager 27")), None);
+        assert_eq!(addr_data_for(Path::new("Football Manager 27")), None);
         std::fs::remove_dir_all(root).ok();
     }
 
