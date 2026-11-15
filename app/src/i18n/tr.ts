@@ -936,6 +936,12 @@ export const tr: Strings = {
     retires: "Emeklilik planı",
     preferences: "Sevdikleri ve sevmedikleri",
     languages: "Diller",
+    registration: "Lig kadrosu",
+    registered: "Kayıtlı",
+    notRegistered: "Kayıtlı değil",
+    plans: "Kariyer planları",
+    planTargets: { club: "Kulüp", continent: "Kıta", nation: "Ülke", competition: "Turnuva" },
+    scoutingKnowledge: "Gözlemcilik bilgisi",
     /** How well a person speaks a language (0 to 10), in the words of FM's profile (see en.ts). */
     languageLevel: (level: number): string =>
       level >= 7 ? "Akıcı" : level >= 5 ? "İyi" : level >= 2 ? "Temel" : "Konuşmuyor",

@@ -39,6 +39,9 @@ use crate::staff::StaffSummary;
 use crate::text::read_fm_string;
 use crate::transfer::{MoveError, Patch, Patches};
 
+/// The most players the editor walks in a team's list when it looks for a registered one.
+const MOST_SQUAD: u64 = 512;
+
 /// The longest list of relations the editor reads; on the test save the longest held 42.
 const MOST_RELATIONS: u64 = 256;
 
@@ -311,6 +314,46 @@ impl Session {
             return Ok(Vec::new());
         };
         Ok(list.entries.iter().enumerate().filter_map(|(index, entry)| self.tie_at(index, entry)).collect())
+    }
+
+    /// Whether `player` is registered to play in his team's league: the relation the game's own rule looks for, an
+    /// entry that points at his team. `None` where the layout does not place registrations, for a player without a
+    /// team, and for one in a team none of whose players is registered: a league that registers nobody, or a youth
+    /// team. A player young enough to play unregistered reads as not registered, as he is. Only reads memory.
+    pub fn league_registration(&self, player: &PlayerSummary) -> Result<Option<bool>, MoveError> {
+        let Some(g) = self.layout.registration.as_ref() else {
+            return Ok(None);
+        };
+        let (p, r) = (&self.layout.player, &self.layout.relation);
+        let Some(list) = self.relation_list(player)? else {
+            return Ok(None);
+        };
+        let team = self.process.read_u64(player.address + p.at(p.team, player.shift))?;
+        if !is_user_pointer(team) {
+            return Ok(None);
+        }
+        let codes = [g.target_kind, g.relation, g.league];
+        let registers = |list: &RelationList| {
+            list.entries.iter().any(|entry| {
+                entry[r.target as usize..r.target as usize + 8] == team.to_le_bytes()
+                    && [entry[r.target_kind as usize], entry[r.relation as usize], entry[r.value as usize]] == codes
+            })
+        };
+        if registers(&list) {
+            return Ok(Some(true));
+        }
+        // His own list says no. That only means something where the team registers anyone at all.
+        let squad = self.pointer_list(team + self.layout.team.players, MOST_SQUAD).unwrap_or_default();
+        let anyone = squad.into_iter().filter(|&object| is_user_pointer(object)).any(|object| {
+            p.person_block_shifts.iter().any(|&shift| {
+                let header = self.process.read_u64(object + p.at(p.relations, shift)).ok();
+                header
+                    .filter(|&header| is_user_pointer(header))
+                    .and_then(|header| self.relation_list_at(header).ok())
+                    .is_some_and(|list| registers(&list))
+            })
+        });
+        Ok(anyone.then_some(false))
     }
 
     /// The player's favoured and disliked people and clubs. This is deliberately read-only until the relation codes

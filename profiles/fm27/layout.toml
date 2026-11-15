@@ -639,3 +639,30 @@ store_value = 0x0E
 dirty = 0xDC
 team_id = 0x08
 teams = 0x80
+
+# A player's registration to play in his team's league is one of his relations: an entry that points at the team
+# (kind 4) with code 0x19 and value 8, which the game's PLAYER_IS_REGISTERED_TO_PLAY rule looks for. Read on Steam
+# 26577676, 18 Jul 2028: Arsenal's 18 registered players are the 18 FM's Squad Registration page counts (Raya, Kepa,
+# Gabriel, Saliba, Pacho, Calafiori and Hincapie in; Rui Silva and Mosquera out), Chelsea has 25 and Coventry 24.
+[registration]
+target_kind = 4
+relation = 0x19
+league = 8
+
+# A player's career plans: the pointer 0xA0 into his ACTUAL_PERSON leads to the (begin, end) of pointers to 16-byte
+# plans, which the four career plan rules walk. Read on Steam 26577676: Julian Brandt has four (Werder Bremen, then
+# France, China PR and Saudi Arabia); 7,951 of 31,003 players have any.
+[career_plan]
+list = 0x350
+target = 0x00
+kind = 0x0B               # u8: 3 a club, 5 a continent, 9 a nation, 25 a competition
+size = 0x10
+
+# What a member of staff knows of each nation: the pointer 0x50 before his person block leads to the (begin, end) of
+# pointers to 40-byte entries, sorted by the nation's id. Read on Steam 26577676: Txiki Begiristain has seven (Spain
+# 100, England 73, France 57, four at 30).
+[knowledge]
+list = 0xB0
+nation = 0x00
+level = 0x24              # u8, 0 to 100
+size = 0x28

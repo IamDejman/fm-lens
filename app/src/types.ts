@@ -373,6 +373,8 @@ export interface StaffDetails extends StaffSummary {
   languages: Language[];
   /** The people and clubs he favours and dislikes. Read-only. */
   preferences: Preference[];
+  /** What he knows of each nation, the best known first; empty where the build does not place it. Read-only. */
+  knowledge: NationKnowledge[];
   /** 1 to 8, or 0 for none; null where the build does not place it. */
   coachingLicence: number | null;
   /** His preferred formation ids in and out of possession, 0 for none; null where the build does not place them. */
@@ -973,6 +975,10 @@ export interface PlayerDetails extends PlayerSummary {
   preferences: Preference[];
   /** The languages he speaks besides, usually, his native one. */
   languages: Language[];
+  /** Whether he is registered to play in his team's league; null where the editor cannot tell. Read-only. */
+  registered: boolean | null;
+  /** What the game has him aim for; empty for most players, or where the build does not place them. Read-only. */
+  plans: CareerPlan[];
   /** Whether the editor can read the retirements the game has planned in this version of the game. */
   retirementKnown: boolean;
   /** The date the game plans him to retire on; null when it has planned none (or `retirementKnown` is false). */
@@ -997,6 +1003,22 @@ export interface FutureTransfer {
   club: string | null;
   clubUid: number | null;
   joins: FmDate | null;
+}
+
+/** One career plan of a player: the club, nation, competition or continent the game has him aim for. */
+export interface CareerPlan {
+  target: "club" | "continent" | "nation" | "competition";
+  /** Null for a target the editor cannot name. */
+  name: string | null;
+  /** The UID of a club, nation or competition. */
+  uid: number | null;
+}
+
+/** What a member of staff knows of one nation, 0 to 100. */
+export interface NationKnowledge {
+  nation: string | null;
+  nationUid: number;
+  level: number;
 }
 
 /** A player's work permit for one nation: an active work permit, or an ESC slot from a day. */

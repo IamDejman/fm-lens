@@ -949,6 +949,12 @@ export const es: Strings = {
     retires: "Prevé retirarse",
     preferences: "Afinidades",
     languages: "Idiomas",
+    registration: "Plantilla de liga",
+    registered: "Inscrito",
+    notRegistered: "No inscrito",
+    plans: "Planes de carrera",
+    planTargets: { club: "Club", continent: "Continente", nation: "País", competition: "Competición" },
+    scoutingKnowledge: "Conocimiento de ojeo",
     /** How well a person speaks a language (0 to 10), in the words of FM's profile (see en.ts). */
     languageLevel: (level: number): string =>
       level >= 7 ? "Fluido" : level >= 5 ? "Bueno" : level >= 2 ? "Básico" : "No lo habla",

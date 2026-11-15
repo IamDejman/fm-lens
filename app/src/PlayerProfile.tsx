@@ -39,6 +39,7 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type {
+  CareerPlan,
   Concern,
   Contract,
   FmDate,
@@ -400,9 +401,29 @@ function CareerTab({ details }: { details: PlayerDetails }) {
         uid={details.uid}
       />
       <CareerGroups details={details} />
+      <PlansGroup plans={details.plans} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} person={{ uid: details.uid, staff: false, name: details.name }} />
     </>
+  );
+}
+
+/** What the game has him aim for, in its order, each under what it is. Not there for a player with no plans. */
+function PlansGroup({ plans }: { plans: CareerPlan[] }) {
+  if (plans.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{profileText.plans}</h3>
+      <dl className="stats">
+        {plans.map((plan, index) => (
+          <Fact key={`${plan.target}-${plan.uid}-${index}`} label={profileText.planTargets[plan.target]}>
+            {plan.name ?? profileText.none}
+          </Fact>
+        ))}
+      </dl>
+    </section>
   );
 }
 
@@ -459,6 +480,11 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
                 {yesNo(contract.loanListed)}
               </EditableValue>
             </Fact>
+            {details.registered !== null && (
+              <Fact label={profileText.registration}>
+                {details.registered ? profileText.registered : profileText.notRegistered}
+              </Fact>
+            )}
             <Fact label={profileText.loyaltyBonus}>
               <EditableValue field="contract.loyalty_bonus">{formatMoney(contract.loyaltyBonus)}</EditableValue>
             </Fact>

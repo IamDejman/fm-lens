@@ -4251,3 +4251,36 @@ Not run: any pair other than the three above against FM; cups and group stages
 (their rule is not mapped, so they show nothing); a season with a play-off
 stage made (it then shows no substitution rows); the Macs and Game Pass, where
 no layout places the season; editing.
+
+## Registration, career plans and scouting knowledge on Windows (15 November 2026)
+
+Three readers, nothing written. A player's Contract tab says whether he is
+registered for his league ("League squad"), his Career tab lists his career
+plans, and a member of staff's Career tab lists his scouting knowledge of
+nations, 0 to 100. Steam build 26577676, the packaged app, a copied career on
+18 July 2028.
+
+| Check | FM Lens | FM |
+|---|---|---|
+| Arsenal's league squad, read by the probe | 18 registered, 6 not, 32 not read | Squad Registration page: "18/25", 24 senior players |
+| David Raya | League squad: Registered | Switched on |
+| Cristhian Mosquera | League squad: Not registered | Switched off |
+| Kepa, Gabriel, Saliba, Pacho, Calafiori, Hincapie, read by the probe | Registered | Switched on |
+| Rui Silva, read by the probe | Not registered | Switched off |
+| Julian Brandt at Ajax, whose league registers nobody in this career | No League squad row | Not compared |
+| Julian Brandt's career plans | Club: SV Werder Bremen. Nation: France, China PR, Saudi Arabia | FM has no screen for them |
+| Txiki Begiristain's scouting knowledge | Spain 100, England 73, France 57, then Germany, Italy, Portugal and Argentina at 30 | Scouting Knowledge panel: Spain Complete, England Exceptional, France Extensive, then Germany, Italy, Portugal and Argentina Very Good, in that order |
+
+The probe read three more clubs: Chelsea 25 registered and 12 not, Coventry 24
+and 5, Real Madrid 24 and 2. Across the career 7,951 players hold 8,809 plans:
+8,354 for a club, 212 for a nation, 192 for a competition and 51 for a
+continent, every one named. The saves and the main career's hash were unchanged
+afterwards.
+
+Not run: the other clubs' counts against FM; cup and continental registration
+and a player on loan (not decoded, so the row speaks only for the league of the
+team he is in); a player aged 20 or younger, whom FM exempts and the reader
+shows as not registered; career plans against anything in FM; the four words
+FM uses for a knowledge level against the numbers, beyond the one scout;
+knowledge of regions and a club's total; the Macs and Game Pass, where no
+layout places any of the three, so nothing shows there; editing.

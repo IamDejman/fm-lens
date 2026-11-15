@@ -13,8 +13,8 @@ RVAs are game_plugin+RVA. Nothing was written to the game.
 | Work permits | found | high for storage, medium for the score fields |
 | Promises | partial | medium for the record, low for the owner list |
 | Youth intake | partial | low |
-| Squad registration | not found | low |
-| Career plans | not found | low |
+| Squad registration | found on Windows, league only (read) | high for the league entry, not found for cups |
+| Career plans | found on Windows (read) | high for the target, low for the other bytes |
 | Squad status | already mapped | high |
 
 ## Squad status
@@ -167,20 +167,55 @@ youth rating screen against the i16 at nation +0x874.
 
 ## Squad registration
 
-Status: not found.
+Status: found on Windows for the league (Steam 26577676, 15 November 2026). Read only.
 
-Evidence so far. `squad_registration_anytime` is mapped (human manager flags +0x3FC bit 8). The rule
-PLAYER_IS_REGISTERED_TO_PLAY (vtable 0x55efb00) evaluates at 0x24aeccc through 0x1f9ccec(player, team,
-competition), which calls 0xd56498 (player, team, kind 8, ...) and 0x14f9918. The info classes
-REGISTERED_PLAYERS_LIST_INFO, PLAYERS_ALLOWED_TO_BE_REGISTERED_INFO and PLAYERS_NOT_ALLOWED_TO_BE_REREGISTERED_INFO
-are 0x30-byte transient objects, probably not the store. Daily step PROCESS_CLUBS_REQUIRING_REGISTRATION_UPDATES.
-The per-player, per-competition store was not located. Next step: read 0xd56498 and find which object it queries.
+A player's registration is one of his relations (the list behind his pointer at `+0x300`, moved with his person
+block; 16-byte entries, see fm27-person-extras.md). Registered for his team's league is an entry whose target is his
+team (`+0x130`), with target kind 4, code 0x19 and value 8. The game's own rule reads it the same way:
+PLAYER_IS_REGISTERED_TO_PLAY (Windows vtable 0x4e178e8) evaluates at 0x3dd0a40 through 0x3784940 and 0x1664190 into
+0x1637eb0, which walks the relations for kind 4, a code from 0x19 to 0x1d and the value asked for.
+
+Checked against FM's Squad Registration page for Arsenal on 18 July 2028: the page reads 18 of 25, and the 18
+players with the entry are the 18 it has switched on (Raya, Kepa, Gabriel, Saliba, Pacho, Calafiori and Hincapie
+among them; Rui Silva and Mosquera off, with no entry). Kepa's object is laid out as a player-coach's, so his list
+sits 0xF8 further. Of the 24 in the senior squad, 18 read registered and 6 not. Counts read elsewhere, not compared
+with FM: Chelsea 25, Coventry 24, Real Madrid 24.
+
+A team none of whose players holds the entry (a league that registers nobody, such as Julian Brandt's at Ajax in the test career,
+or a youth team) says nothing about a player, so the editor shows no row there. FM's exemption for players aged 20
+or younger is worked out, not stored: such a player reads as not registered when he is in the senior squad.
+
+Other entries of kind 4 seen and not made sense of: code 0x19 with value 19 (every player of the club), 11 and 255
+(national teams), 3 and 44; codes 0x38 and 0x43. Not found: registration for cups and continental competitions,
+and what a player on loan holds. The info classes REGISTERED_PLAYERS_LIST_INFO,
+PLAYERS_ALLOWED_TO_BE_REGISTERED_INFO and PLAYERS_NOT_ALLOWED_TO_BE_REREGISTERED_INFO are transient. Editing would
+have to go through the game's own registration (the page's Confirm), which is not traced. The Macs and Game Pass
+are not read.
 
 ## Career plans
 
-Status: not found.
+Status: found on Windows (Steam 26577676, 15 November 2026). Read only.
 
-Evidence so far. CAREER_PLAN is a pool and class (16-byte objects per docs/recon/fm27-person-extras.md);
-string references at 0xe33ddc and 0x23f3a00. The AGREEMENT db table and the rules
-PLAYER_HAS_*_CAREER_PLAN_WITH_SENDER_CLUB_RULE exist. The holder (player, contract or club) was not traced.
-Next step: follow the xref at 0xe33ddc to the constructor and to the container that stores the pointer.
+The pointer at `+0x350` of the player (0xA0 into his ACTUAL_PERSON, moved with his person block) leads to the
+(begin, end) of pointers to 16-byte CAREER_PLAN records:
+
+| Offset | Holds |
+| --- | --- |
+| `+0x00` | pointer to what he aims for |
+| `+0x08` | u8: 1, 2 or 7 seen; not made sense of |
+| `+0x09` | u8: 1 or 2; the game's matcher counts only 1 |
+| `+0x0A` | u8: always 1 |
+| `+0x0B` | u8, the kind of target: 3 a club, 5 a continent, 9 a nation (its national team container), 25 a competition |
+| `+0x0C` | u8: always 2 |
+| `+0x0E` | u8: 0 to 8; not made sense of |
+
+There are no dates. The four rules PLAYER_HAS_*_CAREER_PLAN_WITH_SENDER_CLUB_RULE (Windows vtables 0x4e1d408 club,
+0x4e1d4d8 division, 0x4e1d568 nation, 0x4e1d5f8 continent) evaluate at 0x3ddd280, 0x3ddd380, 0x3ddd480 and
+0x3ddd580 through one matcher, 0x195e1a0, which walks this list.
+
+Read over the whole save: 7,951 of 31,003 players hold 8,809 plans (8,354 for a club, 212 for a nation, 192 for a
+competition, 51 for a continent), every one of them named; 1,532 of those players are laid out as player-coaches.
+Julian Brandt has four: Werder Bremen, then France, China PR and Saudi Arabia. Rafael Santos Borre has one, for
+South America. FM has no screen for them (its pre-game editor does), so no plan was compared with FM. Staff and
+the human manager are not read; nor are the Macs and Game Pass. Nothing is edited: three bytes of the record are
+not understood.

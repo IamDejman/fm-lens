@@ -533,6 +533,8 @@ mod tests {
             tie_room: 0,
             preferences: Vec::new(),
             languages: Vec::new(),
+            registered: None,
+            plans: Vec::new(),
             retirement_known: false,
             retires: None,
             clause_room: 0,

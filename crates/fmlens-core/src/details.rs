@@ -133,6 +133,11 @@ pub struct PlayerDetails {
     pub preferences: Vec<Preference>,
     /// The languages he speaks besides, usually, his native one (see [`crate::Session::player_languages`]).
     pub languages: Vec<Language>,
+    /// Whether he is registered to play in his team's league (see [`crate::Session::league_registration`]); none where
+    /// the editor cannot tell.
+    pub registered: Option<bool>,
+    /// His career plans (see [`crate::Session::career_plans`]).
+    pub plans: Vec<crate::plans::CareerPlan>,
     /// Whether the editor can read the retirements the game has planned (see
     /// [`crate::Session::planned_retirement`]), and the date he retires on when the game has planned it.
     pub retirement_known: bool,
@@ -501,6 +506,8 @@ pub fn read_player_details(
         tie_room: 0,
         preferences: Vec::new(),
         languages: Vec::new(),
+        registered: None,
+        plans: Vec::new(),
         retirement_known: false,
         retires: None,
         clause_room: 0,

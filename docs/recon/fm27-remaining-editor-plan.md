@@ -74,6 +74,13 @@ Fresh checks:
   pages (Season substitutions in ../EDITING-VALIDATION.md; the mapping is in
   fm27-competitions-awards-2.md). Cups, group stages, the Macs and Game Pass are not read, and
   nothing is edited.
+- Readers for registration, career plans and scouting knowledge (15 November 2026): done on
+  Windows, read-only. League registration is a relation of the player that points at his team;
+  career plans are a list of 16-byte records behind the player; a member of staff's knowledge of
+  nations is a list of 40-byte entries behind his object (fm27-player-extras.md and
+  fm27-staff-extras.md). Registration and knowledge matched FM's own pages; FM has no screen for
+  career plans (Registration, career plans and scouting knowledge in ../EDITING-VALIDATION.md).
+  Cup registration, regions, editing, the Macs and Game Pass are not done.
 
 ## Delivery sequence and shared guardrails
 

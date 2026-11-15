@@ -339,6 +339,12 @@ enum Command {
     FutureTransfers,
     /// Print the name of the save the game has loaded, as the game's own record of it holds it.
     SaveName,
+    /// List the players of the club CLUB who are registered to play in their team's league, and count how many
+    /// players in the game have career plans.
+    Registered {
+        /// The club's UID.
+        club: u32,
+    },
     /// Count the tendencies staff hold: how many lists read, how often each value comes, and who holds VALUE.
     Tendencies {
         /// List the ablest staff who hold a tendency at this value.
@@ -979,6 +985,7 @@ fn run(cli: Cli) -> Result<()> {
             }
             Ok(())
         }
+        Command::Registered { club } => registered(&connect(process, ArraySource::ProfileFirst)?, club),
         Command::Tendencies { value } => tendencies(&connect(process, ArraySource::ProfileFirst)?, value),
         Command::Ties { uid } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
@@ -2734,6 +2741,14 @@ fn player(session: &Session, uid: u32) -> Result<()> {
             println!("                 future fee £{fee}");
         }
     }
+    match d.registered {
+        Some(registered) => println!("  registered     {}", if registered { "yes" } else { "no" }),
+        None => println!("  registered     not read"),
+    }
+    for plan in &d.plans {
+        let uid = plan.uid.map(|uid| format!(" (UID {uid})")).unwrap_or_default();
+        println!("  career plan    {:?}: {}{uid}", plan.target, plan.name.as_deref().unwrap_or("?"));
+    }
     for permit in &d.work_permits {
         println!(
             "  work permit    {}: {}",
@@ -2772,6 +2787,48 @@ fn staff(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
             s.current_ability,
             s.potential_ability
         );
+    }
+    Ok(())
+}
+
+/// The players of the club `club` registered to play in their team's league, to set against FM's Squad Registration
+/// page; and how many players in the game have career plans, plain and shifted, as a check of that layout.
+fn registered(session: &Session, club: u32) -> Result<()> {
+    let players = session.players()?;
+    let (mut yes, mut no, mut unknown) = (Vec::new(), 0, 0);
+    for player in players.iter().filter(|player| player.club_uid == Some(club)) {
+        match session.league_registration(player) {
+            Ok(Some(true)) => yes.push(player.name.as_str()),
+            Ok(Some(false)) => no += 1,
+            Ok(None) | Err(_) => unknown += 1,
+        }
+    }
+    println!("club {club}: {} registered, {no} not, {unknown} not read", yes.len());
+    for name in yes {
+        println!("  {name}");
+    }
+    let (mut plain, mut shifted, mut plans) = (0, 0, 0);
+    let mut targets: BTreeMap<String, (u32, u32)> = BTreeMap::new();
+    for player in &players {
+        let list = session.career_plans(player).unwrap_or_default();
+        if list.is_empty() {
+            continue;
+        }
+        if player.shift == 0 {
+            plain += 1
+        } else {
+            shifted += 1
+        }
+        plans += list.len();
+        for plan in &list {
+            let count = targets.entry(format!("{:?}", plan.target)).or_default();
+            count.0 += 1;
+            count.1 += u32::from(plan.name.is_none());
+        }
+    }
+    println!("career plans: {plain} plain and {shifted} shifted players hold {plans}");
+    for (target, (count, unnamed)) in targets {
+        println!("  {target}: {count}, {unnamed} unnamed");
     }
     Ok(())
 }
@@ -2836,6 +2893,9 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
         .collect();
     println!("  languages      {}", if languages.is_empty() { "-".to_owned() } else { languages.join(", ") });
     println!("  preferences    {}", d.preferences.len());
+    let knowledge: Vec<String> =
+        d.knowledge.iter().map(|k| format!("{} {}", k.nation.as_deref().unwrap_or("?"), k.level)).collect();
+    println!("  knowledge      {}", if knowledge.is_empty() { "-".to_owned() } else { knowledge.join(", ") });
     match &d.tendencies {
         Some(list) if list.is_empty() => println!("  tendencies     -"),
         Some(list) => {

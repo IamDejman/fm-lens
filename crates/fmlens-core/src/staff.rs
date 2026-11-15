@@ -305,6 +305,8 @@ pub struct StaffDetails {
     pub languages: Vec<Language>,
     /// The people and clubs he favours and dislikes.
     pub preferences: Vec<Preference>,
+    /// What he knows of each nation (see [`crate::Session::nation_knowledge`]).
+    pub knowledge: Vec<crate::knowledge::NationKnowledge>,
     /// His coaching licence: 1 Continental Pro, 2 to 4 Continental A to C, 5 to 7 National A to C, and 8 or 0
     /// none; `None` where the layout does not place it.
     pub coaching_licence: Option<u8>,
@@ -444,6 +446,7 @@ pub fn read_staff_details(
         registration_anytime: None,
         languages: Vec::new(),
         preferences: Vec::new(),
+        knowledge: Vec::new(),
         coaching_licence: s.coaching_licence.map(|offset| licence_level(u8_at(offset))),
         formations: s.formations.map(|offsets| offsets.map(u8_at)),
         tendencies: s.tendencies.and_then(|offset| read_tendency_list(process, u64_at(offset))).map(|(_, list)| list),

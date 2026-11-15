@@ -237,7 +237,7 @@ rival list matches the "Rivals" shown for England (Scotland, Germany, Argentina 
 | National team reputation | team `+0xA8` | high |
 | FIFA points, position | container `+0x378`, `+0x570`; history in the same container | high |
 | Youth rating | candidate container `+0x576` (1..20) | guess |
-| Attendance | not found; only the national stadium's capacity | not found |
+| Attendance | container `+0x891` (Windows `+0x889`), u8 0 to 16; found and edited since (England's men 15, women 10) | high |
 | Languages | nation `+0x48` | high |
 | Rival nations | container `+0x48` relation 6 | high |
 | Years to gain nationality | nation `+0x1F5` | high |
