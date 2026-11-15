@@ -123,9 +123,13 @@ card showed, turned to his peak under Shift, stayed with the pointer on it (his
 name took its hover underline), and a click on it brought FM Lens to the front
 with him open.
 
+On macOS on Intel (the same build under Rosetta, 15 November) with FM in a
+window: the card showed, turned to his peak under Shift, stayed with the
+pointer on it, and a click on it opened him in FM Lens.
+
 Not checked: staff cards (the card shows players only), FM full screen on
-macOS, Intel, the pointer's shape on Windows (the capture leaves the pointer
-out) and Game Pass.
+macOS, the pointer's shape on Windows and under Rosetta (the capture leaves
+the pointer out) and Game Pass.
 
 ## Top players by division
 
