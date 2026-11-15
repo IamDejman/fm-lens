@@ -4471,3 +4471,30 @@ change is logged as one nothing undoes.
 Not run: a day passing (FM asks for Germany's introductions first), a women's
 team, a nation FM does not let you manage, a quit and relaunch, Game Pass,
 and the Macs, where the move is not built: the button does not show there.
+
+## Undo of Cancel transfer on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The checks ran on a copy of a career written with
+FM's Save As, at 19 July 2028; the main career's file was not loaded or
+written. Memory was read with the read-only probe.
+
+Cancel transfer can be undone when FM Lens agreed the signing itself this
+session. Undo has the game agree the same signing again, with the same club
+and day, and the signing's own row then undoes the new offer. A deal FM
+agreed itself stays cancelled, and the dialog says it can't be undone.
+
+| Check | Result |
+|---|---|
+| A free agent signed by Barcelona to join on 1 August 2028 | The probe read 7 transfers agreed for a later day, 6 before |
+| Cancel transfer on it | The dialog had no "It can't be undone." line. After it the probe read 6 again, and Changes showed the cancel with Undo |
+| Undo of the cancel | The probe read the signing again, Barcelona on 1 August 2028, 7 in all; the signing's row in Changes had Undo again |
+| Undo of the signing after it | The probe read 6, with no transfer for the player |
+| Cancel transfer on a club deal FM agreed itself | The dialog read "It can't be undone."; Keep it left the deal |
+| Save and load, after a second cancel and Undo | The probe read the signing after the load, and FM's profile had the Trn badge: "Transfer arranged, joining Barcelona on 8/1/2028" |
+
+Not run: a day passing to the joining day, a player who gained another
+transfer before Undo (refused in the code with "the player has a transfer
+agreed for a later day already"), a quit and relaunch, Game Pass, and the
+Macs. The change adds no game addresses, so it runs on macOS through the same
+calls as Sign later and Cancel transfer there.

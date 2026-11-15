@@ -60,11 +60,14 @@ const ENDINGS = {
   cancelTransfer: {
     text: { ...cancelTransferText, act: cancelTransferText.confirm, busy: cancelTransferText.cancelling },
     plan: (uid: number) =>
-      planCancelFutureTransfers(uid).then((transfers) =>
-        cancelTransferText.ready(
+      planCancelFutureTransfers(uid).then((transfers) => {
+        const ready = cancelTransferText.ready(
           transfers.map((transfer) => formatDate(transfer.joins) || profileText.none).join(", "),
-        ),
-      ),
+        );
+        return transfers.every((transfer) => transfer.undoable)
+          ? ready
+          : `${ready}\n${cancelTransferText.permanent}`;
+      }),
     make: cancelFutureTransfers,
   },
 } satisfies Record<
@@ -271,7 +274,6 @@ function ReleaseDialog({ ending, player, onReleased, onClose }: ReleaseDialogPro
         )}
 
         <footer className="modal-foot">
-          {"hint" in text && <span className="move-foot-note">{text.hint}</span>}
           <button type="button" className="primary" disabled={!canRelease} onClick={() => void release()}>
             {releasing ? text.busy : text.act}
           </button>

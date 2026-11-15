@@ -329,6 +329,7 @@ const errors: ErrorTexts = {
   "move.sameClub": () => "El jugador ya está en este club.",
   "move.noNationalTeam": () => "Este país no tiene esa selección.",
   "move.managesAlready": () => "Ya diriges esta selección.",
+  "move.transferPending": () => "El jugador ya tiene un traspaso acordado para más adelante.",
   "move.onLoan": () => "El jugador está cedido; los jugadores cedidos aún no se pueden traspasar.",
   "move.playerCoach": () => "Los jugadores-entrenadores no se pueden traspasar: también trabajan como personal.",
   "move.unusualContract": () => "El contrato del jugador no es un contrato de jugador corriente.",
@@ -2760,9 +2761,9 @@ export const es: Strings = {
     from: "Se incorpora a",
     checking: "Comprobando el traspaso…",
     ready: (dates) => `Previsto para ${dates}`,
+    permanent: "No se puede deshacer.",
 
     // El pie
-    hint: "No se puede deshacer.",
     confirm: "Cancelar traspaso",
     cancelling: "Cancelando…",
     cancel: "Mantenerlo",

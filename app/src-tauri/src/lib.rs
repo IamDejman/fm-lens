@@ -1079,10 +1079,11 @@ impl Connection {
     }
 
     /// Logs a transfer agreed for a later day the game cancelled, as a change of the player's `future_transfer` from
-    /// the club he was to join (its UID; 0 when the game names none) to none, with that club and the day. Nothing
-    /// undoes it.
+    /// the club he was to join (its UID; 0 when the game names none) to none, with that club and the day. A signing
+    /// the editor agreed in this game is undone by agreeing it again; nothing undoes any other.
     fn log_cancelled_transfer(&mut self, player: u32, cancelled: FutureTransfer) -> LoggedChange {
-        retire_cancelled_signing(&mut self.log, player, cancelled.offer);
+        let undo = retire_cancelled_signing(&mut self.log, player, cancelled.offer)
+            .map_or(Undo::Permanent, |(signed, agreed)| Undo::CancelledSigning { signed, agreed });
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
@@ -1110,7 +1111,7 @@ impl Connection {
             tie: None,
             clause: None,
             holds: None,
-            undo: Some(Undo::Permanent),
+            undo: Some(undo),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
@@ -2171,6 +2172,19 @@ impl Connection {
                 let player = self.players.get(agreed.player).ok_or_else(|| not_found(Entity::Player, agreed.player))?;
                 self.session.cancel_signing(player, agreed.offer)?;
             }
+            Some(Undo::CancelledSigning { signed, agreed }) => {
+                let player = self.players.get(agreed.player).ok_or_else(|| not_found(Entity::Player, agreed.player))?;
+                let club = self.clubs.get(agreed.club).ok_or_else(|| not_found(Entity::Club, agreed.club))?;
+                if !self.session.future_transfers(player)?.is_empty() {
+                    return Err(MoveError::TransferPending.into());
+                }
+                let again = self.session.sign_free_agent_later(player, club, agreed.joins)?;
+                // The signing's own row undoes the new offer, as it did the one cancelled.
+                let live = |row: &&mut LoggedChange| row.id == signed && row.undone_at.is_none() && !row.earlier_game;
+                if let Some(row) = self.log.iter_mut().find(live) {
+                    row.undo = Some(Undo::SignedLater(again));
+                }
+            }
             Some(Undo::Signed(signed)) => {
                 let plan = self.plan_release(signed.player)?;
                 self.session.apply_club_move(&plan)?;
@@ -2526,15 +2540,21 @@ fn undone_with(log: &[LoggedChange], id: usize) -> Vec<usize> {
 
 /// A cancelled offer can no longer be undone through its original Sign row. Keep the history,
 /// but retire only that offer's live signing undo; other players, offers and careers are untouched.
-fn retire_cancelled_signing(log: &mut [LoggedChange], player: u32, offer: u32) {
-    for entry in log {
-        if !entry.earlier_game
-            && entry.undone_at.is_none()
-            && matches!(&entry.undo, Some(Undo::SignedLater(agreed)) if agreed.player == player && agreed.offer == offer)
-        {
-            entry.undo = Some(Undo::Permanent);
-        }
-    }
+/// Says which row it was and what it agreed, for the cancellation to agree again when undone.
+fn retire_cancelled_signing(log: &mut [LoggedChange], player: u32, offer: u32) -> Option<(usize, AgreedSigning)> {
+    let entry = log.iter_mut().find(|entry| live_signing(entry, player, offer))?;
+    let Some(Undo::SignedLater(agreed)) = entry.undo.replace(Undo::Permanent) else {
+        return None;
+    };
+    Some((entry.id, agreed))
+}
+
+/// Whether `entry` is the editor's signing of `player` for a later day, the pending `offer`, made in this game and
+/// not undone: the one signing whose cancellation can be undone.
+fn live_signing(entry: &LoggedChange, player: u32, offer: u32) -> bool {
+    !entry.earlier_game
+        && entry.undone_at.is_none()
+        && matches!(&entry.undo, Some(Undo::SignedLater(agreed)) if agreed.player == player && agreed.offer == offer)
 }
 
 /// Whether undoing a change can be tried: all but a [`Undo::Permanent`] one.
@@ -2581,10 +2601,16 @@ enum Undo {
     Signed(SignedPlayer),
     /// A free agent the game agreed to sign on a later day: undone by having it cancel the signing.
     SignedLater(AgreedSigning),
+    /// A signing the editor agreed for a later day, the log's change `signed`, which the game then cancelled: undone
+    /// by having it agree the signing again, for the same club and day.
+    CancelledSigning {
+        signed: usize,
+        agreed: AgreedSigning,
+    },
     /// A player the game made fully familiar with his team's tactic: undone by putting his familiarity back.
     Tactics(fmlens_core::RaisedTactics),
-    /// A change nothing undoes: a transfer the game made, or one agreed for a later day the game cancelled, which only
-    /// the clubs' own negotiation agrees again.
+    /// A change nothing undoes: a transfer the game made, or a cancelled transfer FM Lens did not agree, which only the
+    /// clubs' own negotiation agrees again.
     Permanent,
 }
 
@@ -5090,17 +5116,32 @@ fn sign_free_agent_later(state: State<'_, AppState>, uid: u32, club: u32, joins:
 }
 
 /// The transfers the game agreed for the player `uid` on a later day, as cancelling them finds them; the error says why
-/// they cannot be cancelled. Nothing is written.
+/// they cannot be cancelled. Each says whether its cancellation can be undone. Nothing is written.
 #[tauri::command]
-fn plan_cancel_future_transfers(state: State<'_, AppState>, uid: u32) -> Result<Vec<FutureTransfer>, Failure> {
+fn plan_cancel_future_transfers(state: State<'_, AppState>, uid: u32) -> Result<Vec<PlannedCancel>, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
-    Ok(connection.session.plan_cancel_future_transfers(player)?)
+    let transfers = connection.session.plan_cancel_future_transfers(player)?;
+    let planned = |transfer: FutureTransfer| PlannedCancel {
+        undoable: connection.log.iter().any(|entry| live_signing(entry, uid, transfer.offer)),
+        transfer,
+    };
+    Ok(transfers.into_iter().map(planned).collect())
+}
+
+/// A transfer agreed for a later day that cancelling would cancel, and whether that can be undone: only a signing the
+/// editor agreed in this game can, by agreeing it again.
+#[derive(Serialize)]
+struct PlannedCancel {
+    #[serde(flatten)]
+    transfer: FutureTransfer,
+    undoable: bool,
 }
 
 /// Has the game cancel every transfer it agreed for the player `uid` on a later day, as its own editor does. Each is
-/// logged as a change of his `future_transfer` to none, which nothing undoes.
+/// logged as a change of his `future_transfer` to none; a signing the editor agreed in this game is undone by
+/// agreeing it again, and nothing undoes any other.
 #[tauri::command]
 fn cancel_future_transfers(state: State<'_, AppState>, uid: u32) -> Result<Vec<LoggedChange>, Failure> {
     let mut guard = state.0.lock()?;
@@ -6331,12 +6372,13 @@ mod tests {
         let mut field = signing(7, 42);
         field.undo = None;
         let mut log = vec![signing(7, 42), signing(7, 43), signing(8, 42), earlier, undone, field];
-        retire_cancelled_signing(&mut log, 7, 42);
+        let retired = retire_cancelled_signing(&mut log, 7, 42);
+        assert!(matches!(retired, Some((1, AgreedSigning { player: 7, offer: 42, .. }))));
         assert!(!is_undoable(&log[0].undo));
         assert!(log[0].undone_at.is_none(), "cancellation is not an Undo of the historical signing");
         assert_eq!(serde_json::to_value(&log[0]).unwrap()["permanent"], true);
         assert!(log[1..].iter().all(|entry| is_undoable(&entry.undo)));
-        retire_cancelled_signing(&mut log, 7, 42);
+        assert!(retire_cancelled_signing(&mut log, 7, 42).is_none(), "nothing live is left to retire");
         assert!(!is_undoable(&log[0].undo), "retiring an undo is idempotent");
     }
 

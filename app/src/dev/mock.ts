@@ -63,6 +63,7 @@ import type {
   Clause,
   CompetitionBonus,
   TieKind,
+  PlannedCancel,
   PlayerDetails,
   PlayerFilter,
   PlayerOrder,
@@ -403,6 +404,15 @@ function loanOf(player: PlayerSummary): LoanTerms | null {
 const futureTransfers = new Map<number, FutureTransfer[]>();
 /** The exact offer associated with each deferred signing in the change log. */
 const signingOffers = new Map<number, number>();
+/** A cancelled signing of the editor's, by the cancellation's id: the signing's own change and what it agreed. */
+const cancelledSignings = new Map<number, { signed: number; transfer: FutureTransfer }>();
+/** The live change that agreed the pending `offer` for the player `uid`, whose cancellation can be undone. */
+const liveSigning = (uid: number, offer: number) =>
+  changes.find(
+    (entry) =>
+      entry.uid === uid && !entry.earlierGame && entry.undoneAt === null && !entry.permanent
+      && signingOffers.get(entry.id) === offer,
+  );
 
 function futureTransfersOf(player: PlayerSummary): FutureTransfer[] {
   const fixture = (club: string): FutureTransfer => {
@@ -416,7 +426,7 @@ function futureTransfersOf(player: PlayerSummary): FutureTransfer[] {
 }
 
 /** `plan_cancel_future_transfers`: the fixture player's agreed moves, or why there are none to cancel. */
-function planCancelFutureTransfers(uid: number): FutureTransfer[] {
+function planCancelFutureTransfers(uid: number): PlannedCancel[] {
   const player = players.find((p) => p.uid === uid);
   if (!player) {
     throw notFound("player", uid);
@@ -425,20 +435,22 @@ function planCancelFutureTransfers(uid: number): FutureTransfer[] {
   if (agreed.length === 0) {
     throw failure("move.notPending", "the transfer is no longer waiting for its day: FM has made it or cancelled it");
   }
-  return agreed;
+  return agreed.map((transfer) => ({ ...transfer, undoable: liveSigning(uid, transfer.offer) !== undefined }));
 }
 
-/** `cancel_future_transfers`: the game cancels them all; each is logged as a change nothing undoes. */
+/**
+ * `cancel_future_transfers`: the game cancels them all; each is logged as a change nothing undoes, but for a signing
+ * the editor agreed, which undoing agrees again.
+ */
 function cancelFutureTransfers(uid: number): LoggedChange[] {
   const agreed = planCancelFutureTransfers(uid);
   const name = players.find((p) => p.uid === uid)?.name ?? "";
   futureTransfers.set(uid, []);
-  return agreed.map((transfer) => {
-    for (const entry of changes) {
-      if (entry.uid === uid && !entry.earlierGame && entry.undoneAt === null
-        && signingOffers.get(entry.id) === transfer.offer) {
-        entry.permanent = true;
-      }
+  return agreed.map(({ offer, club, clubUid, joins }) => {
+    const transfer: FutureTransfer = { offer, club, clubUid, joins };
+    const signed = liveSigning(uid, transfer.offer);
+    if (signed) {
+      signed.permanent = true;
     }
     const logged: LoggedChange = {
       id: changes.length + 1,
@@ -455,8 +467,11 @@ function cancelFutureTransfers(uid: number): LoggedChange[] {
         ...(transfer.club === null ? {} : { to: transfer.club }),
         ...(transfer.joins === null ? {} : { joins: numberFromDate(transfer.joins) }),
       },
-      permanent: true,
+      ...(signed ? {} : { permanent: true }),
     };
+    if (signed) {
+      cancelledSignings.set(logged.id, { signed: signed.id, transfer });
+    }
     changes.push(logged);
     return { ...logged };
   });
@@ -2449,6 +2464,21 @@ function undoOne(id: number): LoggedChange {
       player.clubUid = started.parentUid;
     }
     startedLoans.delete(entry.uid);
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
+  // A cancelled signing of the editor's is agreed again, and its own change undoes it once more.
+  const cancelled = cancelledSignings.get(entry.id);
+  if (cancelled) {
+    const player = players.find((p) => p.uid === entry.uid);
+    if (!player || futureTransfersOf(player).length > 0) {
+      throw failure("move.transferPending", "the player has a transfer agreed for a later day already");
+    }
+    futureTransfers.set(entry.uid, [cancelled.transfer]);
+    const signed = changes.find((c) => c.id === cancelled.signed && c.undoneAt === null && !c.earlierGame);
+    if (signed) {
+      delete signed.permanent;
+    }
     entry.undoneAt = Date.now();
     return { ...entry };
   }
