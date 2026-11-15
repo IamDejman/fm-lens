@@ -174,7 +174,9 @@ A name in the squad table is a button in the row's cell, and its link is found
 the same way (Ezri Konsa, Declan Rice). Names that far left leave no room for
 the card left of the pointer, so a name's card goes right of it; only FM's own
 card, which opens to the right, sends FM Lens's card to the far right of FM's
-window.
+window. Checked with release builds on Intel under Rosetta (Konsa, Rice) and on
+Windows (Rice): the card showed beside the name and a click on it opened him in
+FM Lens.
 
 ## Top players by division
 
