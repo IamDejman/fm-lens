@@ -134,6 +134,11 @@ const errors: ErrorTexts = {
   "preference.same": () => "That one is in the list already.",
   "preference.full": () => "This list is full.",
   "language.same": () => "That one is in the list already.",
+  "club.sameName": () => "The club has that name already.",
+  "club.badName": () => "A name is 1 to 50 characters, with no quotes.",
+  "club.nameFileBlocked": () =>
+    "Allow FM Lens in App Management, then try again.",
+  "club.nameFile": () => "FM Lens couldn't save the name in FM's folder, so nothing was changed.",
   "language.own": () => "FM doesn't list a person's own language.",
   "language.full": () => "This list is full.",
   "guard.unknownBuild": () =>
@@ -752,6 +757,9 @@ export const en = {
     // the club's captain or vice-captain.
     captain: "Captain",
     vice_captain: "Vice-captain",
+    // A club's rename, which the change log keeps as a change of its name, or of its short name alone.
+    name: "Name",
+    short_name: "Short name",
     // A club's own reputation, which has no home, current or world.
     reputation: "Reputation",
     "facilities.training": "Training facilities",
@@ -2333,6 +2341,8 @@ export const en = {
     title: "Changes this session",
     /** Under a move to another club that was a swap: the player who went the other way. */
     swappedWith: (name: string) => `Swapped with ${name}`,
+    /** Under a club's rename that changed its short name too: the short names. */
+    shortName: (change: string) => `Short name ${change}`,
     /** Under a transfer that had a fee: the amount, written out. */
     fee: (amount: string) => `Fee ${amount}`,
     /** Under a signing the game makes on a later day: that day. */
@@ -2983,6 +2993,19 @@ export const en = {
     /** Wishes are filed where anyone can read them, with the app's version. */
     sentWith: "Posted publicly, with your FM Lens version.",
     tooMany: "Too many from here. Try again in an hour.",
+  },
+
+  /** Renaming a club: the button in the header of its profile and the dialog it opens. */
+  rename: {
+    button: "Rename",
+    title: "Rename club",
+    name: "Name",
+    shortName: "Short name",
+    rename: "Rename",
+    renaming: "Renaming…",
+    cancel: "Cancel",
+    appManagement: "Open App Management",
+    original: "Use original names",
   },
 
   /** Releasing a player from their club, which leaves them a free agent: the button beside Transfer and its dialog. */

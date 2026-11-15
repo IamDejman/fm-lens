@@ -217,6 +217,14 @@ pub enum MoveError {
     PreferencesFull,
     /// The person's list has that language already.
     SameLanguage,
+    /// The club has that name already.
+    SameName,
+    /// The text is no name: empty, too long, holding a quote, or holding something that is not text.
+    BadName,
+    /// The game's file of club names could not be written.
+    NameFile(String),
+    /// The system does not let FM Lens write in the game's folder: on macOS, until it is allowed to manage apps.
+    NameFileBlocked,
     /// The language is the person's own, which his list does not hold.
     OwnLanguage,
     /// The person's list of languages is as long as the game lets it get.
@@ -365,6 +373,10 @@ impl fmt::Display for MoveError {
                 "the person's list is long enough that the game would drop one of his likes or dislikes to add another",
             ),
             MoveError::SameLanguage => f.write_str("the person's list has that language already"),
+            MoveError::SameName => f.write_str("the club has that name already"),
+            MoveError::BadName => f.write_str("a name is 1 to 50 characters of text, with no quotes"),
+            MoveError::NameFile(err) => write!(f, "the game's file of club names was not written: {err}"),
+            MoveError::NameFileBlocked => f.write_str("the system does not let FM Lens write in the game's folder"),
             MoveError::OwnLanguage => f.write_str("that is the person's own language, which the game does not list"),
             MoveError::LanguagesFull => {
                 f.write_str("the person's list of languages is as long as the game lets it get")
@@ -469,6 +481,10 @@ impl Coded for MoveError {
             MoveError::SamePreference => "preference.same",
             MoveError::PreferencesFull => "preference.full",
             MoveError::SameLanguage => "language.same",
+            MoveError::SameName => "club.sameName",
+            MoveError::BadName => "club.badName",
+            MoveError::NameFile(_) => "club.nameFile",
+            MoveError::NameFileBlocked => "club.nameFileBlocked",
             MoveError::OwnLanguage => "language.own",
             MoveError::LanguagesFull => "language.full",
             MoveError::UnknownRule { .. } => "relation.rule",

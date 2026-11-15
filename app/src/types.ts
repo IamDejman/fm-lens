@@ -129,6 +129,8 @@ export interface GameActions {
   addPreference: boolean;
   /** Adds a language to those a player or member of staff speaks (`add_language`). */
   addLanguage: boolean;
+  /** Renames a club (`rename_club`). */
+  renameClub: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
@@ -1409,6 +1411,14 @@ export interface LoggedChange {
   clause?: {
     from: Clause | null;
     to: Clause | null;
+  };
+  /**
+   * Set for a club's rename (`rename_club`), which is logged as a change of the club's field `name` (or `short_name`
+   * when only that changed): its names before and after, each where it changed; `name` is the one it had.
+   */
+  renamed?: {
+    name?: { from: string; to: string };
+    shortName?: { from: string; to: string };
   };
   /**
    * Set for a captaincy (`set_captain`), which is logged as a change of the club's field `captain` or

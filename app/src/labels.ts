@@ -193,6 +193,9 @@ export const comparisonText = strings.comparison;
 /** Moving a player to another club, or swapping him with one: the button in his profile and the dialog it opens. */
 export const moveText = strings.move;
 
+/** Renaming a club: the button in its profile and the dialog it opens. */
+export const renameText = strings.rename;
+
 /** Releasing a player from his club: the button beside Transfer in his profile and the dialog it opens. */
 export const releaseText = strings.release;
 export const endLoanText = strings.endLoan;

@@ -26,6 +26,7 @@ import {
 } from "./ProfileParts";
 import { ClubStaffTab } from "./ClubStaffTab";
 import { ClubTiesGroups } from "./RelationGroups";
+import { RenameButton } from "./RenameClub";
 import { SquadTab } from "./SquadTab";
 import type { ClubDetails, ClubSummary, Finances, Income, KitPart, Stadium } from "./types";
 import { EditorContext, useProfileEditing } from "./useProfileEditing";
@@ -58,6 +59,7 @@ interface ClubProfileProps {
 export function ClubProfile({ club, version, tab, onTab, onClose }: ClubProfileProps) {
   const loaded = useProfileDetails<ClubDetails>("club_details", club.uid, version);
   const editing = useProfileEditing("club", club.uid);
+  const { gameActions } = useContext(EditorContext);
   const base = useId();
   const details = loaded?.details;
   const info: ClubSummary = details ?? club;
@@ -109,6 +111,13 @@ export function ClubProfile({ club, version, tab, onTab, onClose }: ClubProfileP
       loaded={loaded}
       onClose={onClose}
       editing={editing}
+      actions={
+        // Only while the profile is read, not edited, and where clubs are renamed on this version.
+        editing.editable &&
+        editing.stage === "view" &&
+        gameActions.renameClub &&
+        details && <RenameButton club={{ uid: info.uid, name: info.name, shortName: info.shortName }} />
+      }
     >
       {details &&
         (shown === "squad" ? (

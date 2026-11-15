@@ -64,6 +64,8 @@ pub struct GameActions {
     pub add_preference: bool,
     /// A language added to a person's list, by the game's own routine.
     pub add_language: bool,
+    /// A club renamed. The editor's own write, listed here as it is offered per build like the rest.
+    pub rename_club: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -277,18 +279,20 @@ impl PermitChange {
 impl Session {
     /// Which edits the game can make itself here.
     pub fn game_actions(&self) -> GameActions {
+        // Renaming a club takes none of the game's functions.
+        let none = GameActions { rename_club: self.renames_clubs(), ..GameActions::default() };
         let (Some(profile), Some(calls)) = (&self.profile, self.profile.as_ref().and_then(|p| p.calls.as_ref())) else {
-            return GameActions::default();
+            return none;
         };
         #[cfg(windows)]
         if fmlens_mem::bridge::library().is_none() {
-            return GameActions::default();
+            return none;
         }
         // Resolve discovery once here, including a failed attempt. Otherwise a temporarily
         // unresponsive helper would incur a timeout for every action in this list.
         #[cfg(target_os = "macos")]
         if self.process.bridge_capabilities().is_err() {
-            return GameActions::default();
+            return none;
         }
         let available = |function: Option<u64>| function.is_some_and(|rva| self.helper_supports(rva).unwrap_or(false));
         GameActions {
@@ -375,6 +379,7 @@ impl Session {
                 && self.layout.work_permit.is_some(),
             add_preference: available(calls.add_relation),
             add_language: available(calls.add_language) && self.layout.language.is_some(),
+            rename_club: none.rename_club,
         }
     }
 

@@ -463,6 +463,14 @@ export const injuryKinds = () => call<InjuryKind[]>("injury_kinds");
 /** Has the game give the player an injury of the kind with UID `kind`; it picks how long it lasts. */
 export const addInjury = (uid: number, kind: number) => call<LoggedChange>("add_injury", { uid, kind });
 
+/** Gives the club `uid` another name, another short name, or both; null leaves one as it is. */
+export const renameClub = (uid: number, name: string | null, shortName: string | null) =>
+  call<LoggedChange>("rename_club", { uid, name, shortName });
+
+/** The names the game gives the club `uid` without FM Lens's file of club names, where the file gives it others. */
+export const gameClubNames = (uid: number) =>
+  call<{ name: string | null; shortName: string | null } | null>("game_club_names", { uid });
+
 /** Has the game grant the player a work permit for his club's country, or take it away. */
 export const setWorkPermit = (uid: number, granted: boolean) =>
   call<LoggedChange>("set_work_permit", { uid, granted });

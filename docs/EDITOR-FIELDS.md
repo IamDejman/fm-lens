@@ -326,7 +326,8 @@ or removal, lifting bans, staff job changes and club moves, a board member's
 seat swap (Windows), a person's likes and dislikes (add one on Windows, change
 a strength, remove one, or point one at another club or person), a language
 (add one on Windows, change its level or remove it),
-closing an open promise, cancelling a future transfer, and your manager's
+closing an open promise, cancelling a future transfer, a club's name and short name
+(Apple Silicon, kept on reload through a name change file in FM's folder, which needs App Management), and your manager's
 Change club, which has no Undo. ROADMAP.md lists each one and what has been
 checked in FM.
 

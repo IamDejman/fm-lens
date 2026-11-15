@@ -557,6 +557,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // An attribute or a percentage is stored on a finer scale than it is shown: its hover text has the values as stored.
   const storedNote = isStoredFiner(field) ? text.stored(valueChange(change.old, change.new)) : undefined;
   const className = [change.undoneAt !== null && "undone", inBatch && "in-batch"].filter(Boolean).join(" ");
+  // A club's rename is logged without values: its names say it, the short names when only they changed.
+  const renamed = change.renamed?.name ?? change.renamed?.shortName;
   // A move to another club is logged with the clubs' UIDs as its values: their names say more (a release has no new
   // club: he became a free agent), and so do the players' for a captaincy. A heal is logged as a change of his
   // injuries from how many he had to none (adding one, from none to one), and lifting his bans as one of his bans:
@@ -571,6 +573,8 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
         : valueChange(named(change.moved.from, profileText.freeAgent), named(change.moved.to, profileText.freeAgent))
     : change.captaincy
       ? valueChange(named(change.captaincy.from, profileText.none), named(change.captaincy.to))
+    : renamed
+      ? valueChange(named(renamed.from), named(renamed.to))
       : change.tie
         ? valueChange(tieEnd(change.tie.from), tieEnd(change.tie.to))
       : change.clause
@@ -590,6 +594,9 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
           : change.field === "contract.job"
             ? valueChange(jobLabel(change.old), jobLabel(change.new))
             : valueChange(valueText(field, shown(change.old)), valueText(field, shown(change.new)));
+
+  // A rename that changed both names has the short names under the names.
+  const alsoShort = change.renamed?.name && change.renamed.shortName;
 
   return (
     <tr className={className || undefined}>
@@ -612,6 +619,9 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
         {change.moved?.fee !== undefined && <div className="sub">{text.fee(formatMoney(change.moved.fee))}</div>}
         {change.moved?.joins !== undefined && (
           <div className="sub">{text.joins(formatDate(dateFromNumber(change.moved.joins)))}</div>
+        )}
+        {alsoShort && (
+          <div className="sub">{text.shortName(valueChange(named(alsoShort.from), named(alsoShort.to)))}</div>
         )}
         {captaincyNotes(change).map((note) => (
           <div key={note} className="sub">

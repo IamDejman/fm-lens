@@ -9,19 +9,20 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, BoardPlan, BoardSwap,
-    CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded,
-    Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded,
-    EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate,
-    FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
-    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageChoice, LanguageSet,
-    Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails,
-    NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter, OfficialSort, OfficialSummary, Operation,
-    Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder,
-    PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed,
-    RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn,
-    StadiumFilter, StadiumSort, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan,
-    StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game,
-    nation_summaries, nations, read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
+    CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubRenamed,
+    ClubSort, Coded, Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort,
+    CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
+    Field, Fit, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameNames, GameRelease,
+    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language,
+    LanguageChoice, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager,
+    Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter, OfficialSort,
+    OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter,
+    PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
+    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
+    SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
+    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
+    TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
+    read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -668,6 +669,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: None,
         };
@@ -827,6 +829,7 @@ impl Connection {
             captaincy: Some(captaincy),
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Captain(done)),
         };
@@ -858,6 +861,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Heal(done)),
         };
@@ -882,6 +886,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(undo),
         };
@@ -926,6 +931,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Loan(started)),
         };
@@ -968,6 +974,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::LoanEnded(ended)),
         };
@@ -1026,6 +1033,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Signed(signed)),
         };
@@ -1070,6 +1078,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Permanent),
         };
@@ -1110,6 +1119,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(undo),
         };
@@ -1148,6 +1158,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::SignedLater(agreed)),
         };
@@ -1179,6 +1190,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Promise(done)),
         };
@@ -1210,6 +1222,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Lift(done)),
         };
@@ -1242,6 +1255,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Concerns(done)),
         };
@@ -1336,6 +1350,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(before.as_ref()), to: end(after.as_ref()) }),
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Preference(done)),
         };
@@ -1379,6 +1394,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(done.before.as_ref()), to: end(done.after.as_ref()) }),
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Language(done)),
         };
@@ -1418,6 +1434,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Injury(done)),
         };
@@ -1450,6 +1467,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Cohesion(done)),
         };
@@ -1482,6 +1500,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Tactics(done)),
         };
@@ -1514,6 +1533,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Retirement(done)),
         };
@@ -1560,6 +1580,7 @@ impl Connection {
             captaincy: None,
             tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Tie(done)),
         };
@@ -1593,6 +1614,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: Some(ClauseChange { from: done.before.clone(), to: done.after.clone() }),
+            renamed: None,
             holds: None,
             undo: Some(Undo::Clause(done)),
         };
@@ -1664,6 +1686,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, team: staff_team, job })),
         };
@@ -1734,6 +1757,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Board(LoggedBoard { done, rows })),
         };
@@ -1866,6 +1890,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Permanent),
         };
@@ -1912,6 +1937,74 @@ impl Connection {
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
         logged
+    }
+
+    /// Logs a club's rename just written, as a change of its `name` (of its `short_name` when only that changed),
+    /// under the name it had.
+    fn log_rename(&mut self, done: ClubRenamed) -> LoggedChange {
+        let change = Change {
+            entity: Entity::Club,
+            uid: done.club,
+            field: if done.name.is_some() { "name" } else { "short_name" }.to_owned(),
+            old: 0,
+            new: 0,
+            record: Vec::new(),
+        };
+        let ends = |change: &Option<(String, String)>| {
+            change.as_ref().map(|(from, to)| NameChange { from: from.clone(), to: to.clone() })
+        };
+        let now = |change: &Option<(String, String)>| change.as_ref().map(|(_, now)| now.clone());
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(done.club),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: None,
+            clause: None,
+            renamed: Some(Renamed { name: ends(&done.name), short_name: ends(&done.short_name) }),
+            holds: None,
+            undo: None,
+        };
+        self.note_club_names(done.club, now(&done.name), now(&done.short_name));
+        let logged = LoggedChange { undo: Some(Undo::Renamed(done)), ..logged };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Has the lists name the club `uid` as the game does now: its own row, found by its new names, and the rows of
+    /// its players and staff, which name their club in full.
+    fn note_club_names(&mut self, uid: u32, name: Option<String>, short_name: Option<String>) {
+        if let Some(name) = &name {
+            let at_club = |club: Option<u32>| club == Some(uid);
+            let players: Vec<u32> = self.players.iter().filter(|p| at_club(p.club_uid)).map(|p| p.uid).collect();
+            for player in players {
+                self.players.update(player, |row| row.club = Some(name.clone()));
+            }
+            let staff: Vec<u32> = self.staff.iter().filter(|m| at_club(m.club_uid)).map(|m| m.uid).collect();
+            for member in staff {
+                self.staff.update(member, |row| row.club = Some(name.clone()));
+            }
+            if let Some(career) = self.career.as_mut().filter(|career| at_club(career.club_uid)) {
+                career.club = Some(name.clone());
+            }
+            // Stadiums name the clubs that play in them: read again when next asked for.
+            self.stadiums = None;
+        }
+        self.clubs.rename(uid, |club| {
+            if let Some(name) = name {
+                club.name = name;
+            }
+            if let Some(short_name) = short_name {
+                club.short_name = Some(short_name);
+            }
+        });
     }
 
     fn club_name(&self, uid: u32) -> String {
@@ -1963,6 +2056,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::Move(before)),
         };
@@ -2021,6 +2115,7 @@ impl Connection {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(undo),
         };
@@ -2120,6 +2215,11 @@ impl Connection {
             Some(Undo::Captain(captaincy)) => self.session.undo_captain(&captaincy)?,
             Some(Undo::Injured(added)) => {
                 self.session.apply_heal(&added.undo)?;
+            }
+            Some(Undo::Renamed(done)) => {
+                self.session.undo_club_rename(&done)?;
+                let was = |change: &Option<(String, String)>| change.as_ref().map(|(was, _)| was.clone());
+                self.note_club_names(done.club, was(&done.name), was(&done.short_name));
             }
             Some(Undo::Permit(change)) => {
                 let player = self.players.get(change.player).ok_or_else(|| not_found(Entity::Player, change.player))?;
@@ -2514,6 +2614,9 @@ struct LoggedChange {
     /// For a change to a player's contract clauses: the clause before and after.
     #[serde(skip_serializing_if = "Option::is_none")]
     clause: Option<ClauseChange>,
+    /// For a club's rename, logged as a change of its `name`: its names before and after.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    renamed: Option<Renamed>,
     /// For a change made by a removal of unhappiness (his mood lifted, his manager no longer disliked; see
     /// `Connection::lift_mood`): the id of the change that ended his reasons to be unhappy. They are undone together
     /// (see `Connection::undo`).
@@ -2592,6 +2695,8 @@ enum Undo {
     Injured(AddedInjury),
     /// A work permit the game gave or took away: undone by having it take the permit away or give it back.
     Permit(PermitChange),
+    /// A club's rename: undone by pointing the club back at the names it had.
+    Renamed(ClubRenamed),
     /// A loan the game started: undone by having the game end it, or where it cannot, end today, which the game does
     /// on its next day.
     Loan(StartedLoan),
@@ -2747,6 +2852,22 @@ struct TeamDone {
     team: usize,
     kind: u8,
     age_limit: Option<u8>,
+}
+
+/// A club's names before and after a rename, each where it changed.
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Renamed {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<NameChange>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    short_name: Option<NameChange>,
+}
+
+#[derive(Clone, Serialize)]
+struct NameChange {
+    from: String,
+    to: String,
 }
 
 #[derive(Clone, Serialize)]
@@ -5041,6 +5162,31 @@ fn set_work_permit(state: State<'_, AppState>, uid: u32, granted: bool) -> Resul
     Ok(connection.log_game_change(uid, "work_permit", old, new, Undo::Permit(change)))
 }
 
+/// Gives the club `uid` the full name `name` and the short name `short_name`, each where one is given and differs
+/// from the one it has. Logged as a change of its `name`, and undone by giving it back the names it had.
+#[tauri::command]
+fn rename_club(
+    state: State<'_, AppState>,
+    uid: u32,
+    name: Option<String>,
+    short_name: Option<String>,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let club = connection.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?;
+    let done = connection.session.rename_club(club, name.as_deref(), short_name.as_deref())?;
+    Ok(connection.log_rename(done))
+}
+
+/// The names the game gives the club `uid` without FM Lens's file of club names, where the file gives it others;
+/// null where it gives none. Nothing is written.
+#[tauri::command]
+fn game_club_names(state: State<'_, AppState>, uid: u32) -> Result<Option<GameNames>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    Ok(connection.session.game_club_names(uid)?)
+}
+
 /// Whether the game's rules say the player `uid` needs a work permit to play for his club, as the game asks before it
 /// gives one; null where it cannot be asked. Nothing is written.
 #[tauri::command]
@@ -6134,6 +6280,8 @@ pub fn run() {
             injury_kinds,
             add_injury,
             set_work_permit,
+            rename_club,
+            game_club_names,
             work_permit_needed,
             start_loan,
             plan_end_loan,
@@ -6357,6 +6505,7 @@ mod tests {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds: None,
             undo: Some(Undo::SignedLater(AgreedSigning {
                 player,
@@ -6404,6 +6553,7 @@ mod tests {
             captaincy: None,
             tie: None,
             clause: None,
+            renamed: None,
             holds,
             undo: None,
         };
