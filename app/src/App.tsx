@@ -56,6 +56,13 @@ const StadiumBrowser = lazy(() => import("./StadiumBrowser").then((module) => ({
 const OfficialBrowser = lazy(() => import("./OfficialBrowser").then((module) => ({ default: module.OfficialBrowser })));
 const TopPlayersBrowser = lazy(() => import("./TopPlayersBrowser").then((module) => ({ default: module.TopPlayersBrowser })));
 
+/** Who the in-game scout card was for, when it was clicked (see scout_card.rs). */
+interface ScoutCardOpen {
+  kind: "player" | "staff" | "club";
+  uid: number;
+  name: string;
+}
+
 type View =
   | "players"
   | "staff"
@@ -444,27 +451,6 @@ function App() {
       }),
     [],
   );
-  // The in-game scout card was clicked.
-  useEffect(() => {
-    if (!inTauri) {
-      return;
-    }
-    let stop: (() => void) | null = null;
-    let gone = false;
-    listen<number>("scout-card-open", (event) => openPlayer(event.payload))
-      .then((unlisten) => {
-        if (gone) {
-          unlisten();
-        } else {
-          stop = unlisten;
-        }
-      })
-      .catch((e: unknown) => console.error("FM Lens scout card:", e));
-    return () => {
-      gone = true;
-      stop?.();
-    };
-  }, [openPlayer]);
   // A player to compare the player list with, asked for from a profile.
   const [similarRequest, setSimilarRequest] = useState<SimilarRequest | null>(null);
   const findSimilar = useCallback(
@@ -542,6 +528,38 @@ function App() {
       });
     }
   };
+  // The in-game scout card was clicked.
+  useEffect(() => {
+    if (!inTauri) {
+      return;
+    }
+    let stop: (() => void) | null = null;
+    let gone = false;
+    listen<ScoutCardOpen>("scout-card-open", ({ payload: { kind, uid, name } }) => {
+      if (kind === "player") {
+        openPlayer(uid);
+      } else if (kind === "staff") {
+        openStaff(uid);
+      } else {
+        askToLeave(() => {
+          setView("clubs");
+          setRevealClub({ uid, query: name });
+        });
+      }
+    })
+      .then((unlisten) => {
+        if (gone) {
+          unlisten();
+        } else {
+          stop = unlisten;
+        }
+      })
+      .catch((e: unknown) => console.error("FM Lens scout card:", e));
+    return () => {
+      gone = true;
+      stop?.();
+    };
+  }, [openPlayer, openStaff]);
   const career = connection?.career ?? null;
   const manager = career?.manager ?? null;
   // A layout effect, so the name is masked before the recorder is told of the header that shows it.

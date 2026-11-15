@@ -1,13 +1,14 @@
-//! The in-game scout card: while FM's own card for a player is open (its (i) button hovered), FM Lens shows
-//! its scouting card for him over the game, at his peak while Shift is held. The card stays while the pointer is
-//! on it, and a click on it opens him in FM Lens. FM's card keeps the player in its Unity layer, reached from one
-//! static field (see docs/recon/fm27-scouting-research.md). Only reads the game.
+//! The in-game card: while the pointer rests on a player's, a member of staff's or a club's name in FM, or FM's own
+//! card for a player is open (its (i) button hovered), FM Lens shows its short card for them over the game; a
+//! player's at his peak while Shift is held. The card stays while the pointer is on it, and a click on it opens them
+//! in FM Lens. FM's Unity layer keeps what the pointer is on and FM's card, each reached from one static field (see
+//! docs/recon/fm27-scouting-research.md). Only reads the game.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 /// The label of the card's window.
@@ -19,11 +20,35 @@ const OPEN: &str = "scout-card-open";
 /// How long after FM's card closes the pointer may take to reach the card.
 const REACH: Duration = Duration::from_millis(800);
 
-/// The player the card is for, and whether it shows him at his peak.
+/// What a card is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum Subject {
+    Player,
+    Staff,
+    Club,
+}
+
+/// Who the card is for, and whether it shows a player at his peak.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 pub(crate) struct Shown {
+    kind: Subject,
     uid: u32,
     peak: bool,
+}
+
+impl Shown {
+    fn same_one(self, other: Shown) -> bool {
+        (self.kind, self.uid) == (other.kind, other.uid)
+    }
+}
+
+/// What the main window opens: the card was clicked.
+#[derive(Clone, Serialize)]
+struct Open {
+    kind: Subject,
+    uid: u32,
+    name: String,
 }
 
 /// A rectangle on screen: in physical pixels on Windows, in points on macOS.
@@ -51,11 +76,12 @@ impl Rect {
     }
 }
 
-/// Where FM's card was opened: the pointer, and FM's window.
+/// Where the card was asked for: the pointer, FM's window, and whether FM opened its own card there.
 #[derive(Clone, Copy, Debug)]
 struct Spot {
     at: (i32, i32),
     game: Rect,
+    fm_card: bool,
 }
 
 #[derive(Default)]
@@ -84,18 +110,18 @@ pub(crate) async fn scout_card_shown(app: AppHandle) -> Option<Shown> {
     app.state::<ScoutCard>().shown.lock().ok().and_then(|shown| shown.map(|(shown, _)| shown))
 }
 
-/// The card's window has drawn `uid` at `width` by `height` (CSS pixels): it is shown, if it is still wanted.
+/// The card's window has drawn its card at `width` by `height` (CSS pixels): it is shown, if it is still wanted.
 #[tauri::command]
-pub(crate) async fn scout_card_ready(app: AppHandle, uid: u32, peak: bool, width: f64, height: f64) {
-    imp::show(&app, Shown { uid, peak }, (width, height));
+pub(crate) async fn scout_card_ready(app: AppHandle, kind: Subject, uid: u32, peak: bool, width: f64, height: f64) {
+    imp::show(&app, Shown { kind, uid, peak }, (width, height));
 }
 
-/// The card was clicked: the main window comes to the front and opens him.
+/// The card was clicked: the main window comes to the front and opens who it is for.
 #[tauri::command]
-pub(crate) async fn scout_card_open(app: AppHandle, uid: u32) {
+pub(crate) async fn scout_card_open(app: AppHandle, kind: Subject, uid: u32, name: String) {
     crate::show_main_window(&app);
-    if let Err(err) = app.emit_to("main", OPEN, uid) {
-        eprintln!("FM Lens could not open the scout card's player: {err}");
+    if let Err(err) = app.emit_to("main", OPEN, Open { kind, uid, name }) {
+        eprintln!("FM Lens could not open the scout card's {kind:?}: {err}");
     }
 }
 
@@ -118,8 +144,9 @@ pub(crate) fn close(app: &AppHandle) {
     }
 }
 
-/// Where the card goes, `size` big, for FM's card opened at `spot`, inside `screen` (the monitor's work area): left
-/// of the pointer, as FM opens its card to the right; where there is no room, at the far right of FM's window.
+/// Where the card goes, `size` big, for `spot`, inside `screen` (the monitor's work area): left of the pointer, as FM
+/// opens its card to the right. Where there is no room: right of the pointer for a name, at the far right of FM's
+/// window beside FM's card.
 fn place(spot: Spot, size: (i32, i32), screen: Rect, gap: i32) -> (i32, i32) {
     let area = Rect {
         left: spot.game.left.max(screen.left),
@@ -129,7 +156,14 @@ fn place(spot: Spot, size: (i32, i32), screen: Rect, gap: i32) -> (i32, i32) {
     };
     let (width, height) = size;
     let left = spot.at.0 - gap - width;
-    let x = if left >= area.left { left } else { area.right - gap - width };
+    let right = spot.at.0 + gap;
+    let x = if left >= area.left {
+        left
+    } else if !spot.fm_card && right + width <= area.right {
+        right
+    } else {
+        area.right - gap - width
+    };
     let y = (spot.at.1 - gap).min(area.bottom - height);
     (x.min(screen.right - width).max(screen.left), y.min(screen.bottom - height).max(screen.top))
 }
@@ -148,37 +182,79 @@ mod imp {
     use fmlens_mem::{Process, Region, is_user_pointer, regions};
     use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
-    use super::{EVENT, LABEL, Rect, ScoutCard, Shown, place, stays};
+    use super::{EVENT, LABEL, Rect, ScoutCard, Shown, Spot, Subject, place, stays};
     use crate::AppState;
 
-    /// How often FM's card is looked at.
+    /// How often FM is looked at.
     const EVERY: Duration = Duration::from_millis(120);
-    /// How long to wait before looking for FM's card again in a game where it was not found.
+    /// How long to wait before looking for FM's classes again in a game where they were not found.
     const LOOK_AGAIN: Duration = Duration::from_secs(30);
+    /// How long to wait before looking again for FM's card class, which the game makes the first time it needs it.
+    const LOOK_FOR_CARD_AGAIN: Duration = Duration::from_secs(60);
+    /// How long the pointer rests on a name before its card shows.
+    const DWELL: Duration = Duration::from_millis(300);
     /// The room between the pointer and the card, in CSS pixels.
     const GAP: f64 = 16.0;
 
     /// The name of the binding that holds the person FM's card is for, and the key of his UID in it ('unid').
     const PERSON: &str = "personBind";
     const UNID: u32 = 0x756e_6964;
+    /// In a link's record, the key of what it links to ('111 '); in what it links to, the key of the game's own
+    /// reference ('dref'): the kind of thing in the top byte, its index below.
+    const LINKED: u32 = 0x3131_3120;
+    const DREF: u32 = 0x6472_6566;
+    const DREF_PERSON: u32 = 0x01;
+    const DREF_CLUB: u32 = 0x03;
+    const DREF_TEAM: u32 = 0x18;
+    /// The first four bytes of IL2CPP's metadata, which holds the names of the game's classes.
+    const METADATA: u32 = 0xFAB1_1BAF;
 
-    /// Bounds on what is walked, so a card the game is rebuilding cannot keep the walk going.
+    /// Bounds on what is walked, so a screen the game is rebuilding cannot keep the walk going.
     const MAX_ELEMENTS: usize = 20_000;
     const MAX_CHILDREN: usize = 4096;
     const MAX_VARIABLES: usize = 64;
     const MAX_ENTRIES: usize = 64;
     const MAX_KINDS: usize = 4096;
+    const MAX_PANELS: usize = 64;
+    const MAX_ANCESTORS: usize = 8;
+    const MAX_LINKS: usize = 256;
+    const MAX_PARENTS: usize = 16;
+    const MAX_FIELDS: u64 = 2048;
     const CHUNK: usize = 4 << 20;
 
+    /// What the pointer is on in FM: FM's card for a person (his UID), or a link to a person, a club or a team (the
+    /// game's index of it).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum Target {
+        Person(u32),
+        PersonIndex(u32),
+        Club(u32),
+        Team(u32),
+    }
+
+    /// What `look` keeps from one look to the next.
+    #[derive(Default)]
+    struct Looking {
+        reader: Option<Reader>,
+        /// The game last looked in for FM's classes, and when.
+        tried: Option<(u32, Instant)>,
+        /// When the card the pointer has left was last seen to be left.
+        closed: Option<Instant>,
+        /// The link the pointer is on, and since when.
+        resting: Option<(Target, Instant)>,
+        /// Who the last target was found to be.
+        found: Option<(Target, (Subject, u32))>,
+        /// The last target was FM's own card's player.
+        fm_card: bool,
+    }
+
     pub(super) fn watch(app: &AppHandle) {
-        let mut reader: Option<Reader> = None;
-        let mut tried: Option<(u32, Instant)> = None;
-        let mut closed: Option<Instant> = None;
+        let mut looking = Looking::default();
         let card = app.state::<ScoutCard>();
         while !card.closing.load(Ordering::Relaxed) {
             std::thread::sleep(EVERY);
-            let next = look(app, &mut reader, &mut tried, &mut closed);
-            follow(app, next);
+            let next = look(app, &mut looking);
+            follow(app, next, looking.fm_card);
             // FM Lens is not the app in front, so macOS does not tell the card's window the pointer is on it.
             #[cfg(target_os = "macos")]
             if pointed(app) {
@@ -187,14 +263,9 @@ mod imp {
         }
     }
 
-    /// What the card should show now: none unless FM is in front with its card open for a player, or the pointer
-    /// has gone from that card to this one. `closed` is when FM's card was last seen to have closed.
-    fn look(
-        app: &AppHandle,
-        reader: &mut Option<Reader>,
-        tried: &mut Option<(u32, Instant)>,
-        closed: &mut Option<Instant>,
-    ) -> Option<Shown> {
+    /// What the card should show now: none unless FM is in front with the pointer resting on a name or FM's card
+    /// open for a player, or the pointer has gone from there to the card.
+    fn look(app: &AppHandle, looking: &mut Looking) -> Option<Shown> {
         if app.state::<ScoutCard>().off.load(Ordering::Relaxed) {
             return None;
         }
@@ -202,41 +273,113 @@ mod imp {
         if !sys::in_front(pid) {
             return None;
         }
-        if reader.as_ref().is_none_or(|reader| reader.process.pid() != pid) {
-            *reader = None;
-            if tried.is_some_and(|(tried, at)| tried == pid && at.elapsed() < LOOK_AGAIN) {
+        if looking.reader.as_ref().is_none_or(|reader| reader.process.pid() != pid) {
+            looking.reader = None;
+            looking.found = None;
+            if looking.tried.is_some_and(|(tried, at)| tried == pid && at.elapsed() < LOOK_AGAIN) {
                 return None;
             }
-            *tried = Some((pid, Instant::now()));
+            looking.tried = Some((pid, Instant::now()));
             let started = Instant::now();
-            *reader = Reader::find(pid);
+            looking.reader = Reader::find(pid);
             let ms = started.elapsed().as_millis();
-            match reader {
-                Some(_) => {
-                    eprintln!("FM Lens found FM's player card in {ms} ms");
+            match &looking.reader {
+                Some(reader) => {
+                    let card = if reader.visuals.is_some() { "" } else { ", not yet its player card" };
+                    eprintln!("FM Lens found what FM's pointer is on in {ms} ms{card}");
                     // Opened now, so it is ready by the first hover.
                     open_window(app);
                 }
-                None => eprintln!("FM Lens could not find FM's player card ({ms} ms)"),
+                None => eprintln!("FM Lens could not find what FM's pointer is on ({ms} ms)"),
             }
         }
-        let uid = match reader.as_mut()?.hovered().filter(|uid| is_player(app, *uid)) {
+        let reader = looking.reader.as_mut()?;
+        reader.find_card_class();
+        let target = match reader.card() {
             Some(uid) => {
-                *closed = None;
-                uid
+                looking.resting = None;
+                looking.fm_card = true;
+                Some(Target::Person(uid))
             }
-            None => kept(app, closed)?,
+            None => {
+                looking.fm_card = false;
+                rested(reader.link(), &mut looking.resting)
+            }
         };
-        Some(Shown { uid, peak: sys::shift_down() })
+        let shown = target.and_then(|target| match looking.found {
+            Some((found, who)) if found == target => Some(who),
+            _ => {
+                let who = who(app, target)?;
+                looking.found = Some((target, who));
+                Some(who)
+            }
+        });
+        let (kind, uid) = match shown {
+            Some(who) => {
+                looking.closed = None;
+                who
+            }
+            None => kept(app, &mut looking.closed)?,
+        };
+        Some(Shown { kind, uid, peak: kind == Subject::Player && sys::shift_down() })
     }
 
-    /// The player the card stays on though FM's card has closed.
-    fn kept(app: &AppHandle, closed: &mut Option<Instant>) -> Option<u32> {
+    /// The link the pointer has rested on for `DWELL`, so moving across names does not open a card for each.
+    fn rested(link: Option<Target>, resting: &mut Option<(Target, Instant)>) -> Option<Target> {
+        let Some(link) = link else {
+            *resting = None;
+            return None;
+        };
+        match *resting {
+            Some((target, since)) if target == link => (since.elapsed() >= DWELL).then_some(link),
+            _ => {
+                *resting = Some((link, Instant::now()));
+                None
+            }
+        }
+    }
+
+    /// Who the card for `target` is for, of those FM Lens has read: a player before a member of staff, as a
+    /// player-coach is both. A team's card is its club's.
+    fn who(app: &AppHandle, target: Target) -> Option<(Subject, u32)> {
+        let state = app.state::<AppState>();
+        let guard = state.0.lock().ok()?;
+        let connection = guard.as_ref()?;
+        let person = |found: Option<u32>, staff: Option<u32>| {
+            found.map(|uid| (Subject::Player, uid)).or_else(|| staff.map(|uid| (Subject::Staff, uid)))
+        };
+        match target {
+            Target::Person(uid) => person(
+                connection.players.get(uid).map(|player| player.uid),
+                connection.staff.get(uid).map(|member| member.uid),
+            ),
+            Target::PersonIndex(index) => person(
+                connection.players.iter().find(|player| player.index == index).map(|player| player.uid),
+                connection.staff.iter().find(|member| member.index == index).map(|member| member.uid),
+            ),
+            Target::Club(index) => {
+                connection.clubs.iter().find(|club| club.index == index).map(|club| (Subject::Club, club.uid))
+            }
+            Target::Team(id) => {
+                let club = match connection.session.club_of_team_id(id) {
+                    Ok(club) => club?,
+                    Err(err) => {
+                        eprintln!("FM Lens could not find the club of team {id}: {err}");
+                        return None;
+                    }
+                };
+                connection.clubs.iter().find(|found| found.address == club).map(|club| (Subject::Club, club.uid))
+            }
+        }
+    }
+
+    /// Who the card stays on though the pointer has left what opened it.
+    fn kept(app: &AppHandle, closed: &mut Option<Instant>) -> Option<(Subject, u32)> {
         let card = app.state::<ScoutCard>();
         let (shown, spot) = card.shown.lock().ok().and_then(|shown| *shown)?;
         let placed = card.placed.lock().ok().and_then(|placed| *placed)?;
         let closed = closed.get_or_insert_with(Instant::now).elapsed();
-        stays(placed, spot.at, sys::pointer()?, closed).then_some(shown.uid)
+        stays(placed, spot.at, sys::pointer()?, closed).then_some((shown.kind, shown.uid))
     }
 
     /// Whether the pointer is on the card.
@@ -246,9 +389,9 @@ mod imp {
         placed.zip(sys::pointer()).is_some_and(|(placed, at)| placed.holds(at))
     }
 
-    /// Hides the card for another player or none, and tells its window what to show. Only this thread changes what
-    /// the card shows; the window is opened, and FM's window read, before the lock is taken.
-    fn follow(app: &AppHandle, next: Option<Shown>) {
+    /// Hides the card for another one or none, and tells its window what to show. Only this thread changes what the
+    /// card shows; the window is opened, and FM's window read, before the lock is taken.
+    fn follow(app: &AppHandle, next: Option<Shown>, fm_card: bool) {
         let card = app.state::<ScoutCard>();
         let current = |card: &ScoutCard| card.shown.lock().ok().and_then(|shown| *shown);
         let before = current(&card);
@@ -257,8 +400,8 @@ mod imp {
         }
         let window = next.and_then(|_| open_window(app));
         let spot = match (next, before) {
-            (Some(next), Some((before, spot))) if before.uid == next.uid => Some(spot),
-            (Some(_), _) => sys::spot(),
+            (Some(next), Some((before, spot))) if before.same_one(next) => Some(spot),
+            (Some(_), _) => sys::spot().map(|spot| Spot { fm_card, ..spot }),
             (None, _) => None,
         };
         let now = next.zip(window.as_ref().and(spot));
@@ -266,7 +409,7 @@ mod imp {
             return;
         };
         *shown = now;
-        if before.zip(now).is_none_or(|((before, _), (now, _))| before.uid != now.uid) {
+        if before.zip(now).is_none_or(|((before, _), (now, _))| !before.same_one(now)) {
             sys::hide(app);
             if let Ok(mut placed) = card.placed.lock() {
                 *placed = None;
@@ -363,32 +506,34 @@ mod imp {
         guard.as_ref().map(|connection| connection.session.process.pid())
     }
 
-    /// Whether `uid` is a player of the lists FM Lens has read, and they are still the game's.
-    fn is_player(app: &AppHandle, uid: u32) -> bool {
-        let state = app.state::<AppState>();
-        let Ok(guard) = state.0.lock() else {
-            return false;
-        };
-        guard.as_ref().is_some_and(|connection| connection.players.get(uid).is_some() && !connection.stale())
-    }
-
-    /// The classes FM Lens looks for in FM's card.
+    /// The classes FM Lens looks for in FM's Unity layer.
     #[derive(Clone, Copy, PartialEq, Eq)]
-    enum Kind {
+    enum Class {
         Floating,
         Bindings,
         Reference,
         Number,
+        Link,
+        Text,
+        PersonLink,
+        ClubLink,
+        TeamLink,
         Other,
     }
 
-    /// Reads FM's card in one run of the game.
+    /// Reads what the pointer is on in one run of the game.
     struct Reader {
         process: Process,
-        /// The class `SI.Bindable.Tooltip.Visuals`, whose first static field is FM's floating card.
-        visuals: u64,
+        /// The class `UnityEngine.UIElements.UIElementsUtility`, whose statics hold the game's panels.
+        utility: u64,
+        /// The class `SI.Bindable.Tooltip.Visuals`, whose first static field is FM's floating card; and when it was
+        /// last looked for, while the game has not made it.
+        visuals: Option<u64>,
+        visuals_tried: Instant,
         /// The kind of each class met, by its address.
-        kinds: HashMap<u64, Kind>,
+        kinds: HashMap<u64, Class>,
+        /// The offset of each field read, by its class and name.
+        offsets: HashMap<(u64, &'static str), u64>,
         /// Where the person was found last time: the card's root and target, and the elements from the root down to
         /// him. Looked at first, while each still holds the next: FM swaps the card's content for another player.
         last: Option<(u64, u64, Vec<u64>)>,
@@ -399,19 +544,129 @@ mod imp {
             let process = match Process::open_read(pid) {
                 Ok(process) => process,
                 Err(err) => {
-                    eprintln!("FM Lens could not open the game to read its player card: {err}");
+                    eprintln!("FM Lens could not open the game to read what its pointer is on: {err}");
                     return None;
                 }
             };
-            let visuals = find_visuals(&process)?;
-            Some(Reader { process, visuals, kinds: HashMap::new(), last: None })
+            let (utility, visuals) = find_classes(&process, true);
+            Some(Reader {
+                utility: utility?,
+                visuals,
+                visuals_tried: Instant::now(),
+                process,
+                kinds: HashMap::new(),
+                offsets: HashMap::new(),
+                last: None,
+            })
+        }
+
+        /// Looks again for FM's card class, now and then, until the game has made it.
+        fn find_card_class(&mut self) {
+            if self.visuals.is_some() || self.visuals_tried.elapsed() < LOOK_FOR_CARD_AGAIN {
+                return;
+            }
+            self.visuals_tried = Instant::now();
+            self.visuals = find_classes(&self.process, false).1;
+            if self.visuals.is_some() {
+                eprintln!("FM Lens found FM's player card");
+            }
+        }
+
+        /// What the link the pointer is on links to, in any of the game's panels.
+        fn link(&mut self) -> Option<Target> {
+            let statics = self.word(self.utility + 0xb8)?;
+            let cache = self.word(statics + static_offset(&self.process, self.utility, "s_UIElementsCache")?)?;
+            // A Dictionary<int, Panel>: its entries at +0x18, its count at +0x20; each entry 0x18 bytes, the panel last.
+            let entries = self.word(cache + 0x18)?;
+            let count = self.count(cache + 0x20, MAX_PANELS)?;
+            if self.count(entries + 0x18, usize::MAX)? < count {
+                return None;
+            }
+            for index in 0..count as u64 {
+                let entry = entries + 0x20 + index * 0x18;
+                if self.count(entry, usize::MAX).is_none() {
+                    continue;
+                }
+                let Some(panel) = self.word(entry + 0x10) else {
+                    continue;
+                };
+                // The elements under each pointer, the mouse's first.
+                let Some(element) = self
+                    .field(panel, "m_TopElementUnderPointers")
+                    .and_then(|under| self.field(under, "m_TopElementUnderPointer"))
+                    .and_then(|elements| self.word(elements + 0x20))
+                else {
+                    continue;
+                };
+                if let Some(target) = self.link_at(element) {
+                    return Some(target);
+                }
+            }
+            None
+        }
+
+        /// What the link at `element` or one of its nearest parents links to: a whole link's first, or the one the
+        /// pointer is on in a text.
+        fn link_at(&mut self, mut element: u64) -> Option<Target> {
+            for _ in 0..MAX_ANCESTORS {
+                let found = match self.kind(element) {
+                    Class::Link => return self.field(element, "m_linkText").and_then(|text| self.linked(text, true)),
+                    Class::Text => self.linked(element, false),
+                    _ => None,
+                };
+                if found.is_some() {
+                    return found;
+                }
+                element = self.field(element, "m_PhysicalParent")?;
+            }
+            None
+        }
+
+        /// What the text `text` links to where the pointer is; for a `whole` link, its first link when the pointer
+        /// is on none of them.
+        fn linked(&mut self, text: u64, whole: bool) -> Option<Target> {
+            let hovered = self.offset(text, "m_hoveredLinkID").and_then(|at| self.process.read_u32(text + at).ok());
+            let hovered = i32::from_le_bytes(hovered?.to_le_bytes());
+            let at = match usize::try_from(hovered) {
+                Ok(at) => at,
+                Err(_) if whole => 0,
+                Err(_) => return None,
+            };
+            let records = self.field(text, "m_embeddedData").and_then(|data| self.list(data, MAX_LINKS))?;
+            let record = *records.get(at)?;
+            let value = self.entry(record, LINKED)?;
+            let reference = self.field(value, "m_value")?;
+            let kind = self.kind(reference);
+            let dref = self.dref(reference)?;
+            let (of, index) = (dref >> 24, dref & 0xFF_FFFF);
+            match (kind, of) {
+                (Class::PersonLink, DREF_PERSON) => Some(Target::PersonIndex(index)),
+                (Class::ClubLink, DREF_CLUB) => Some(Target::Club(index)),
+                (Class::TeamLink, DREF_TEAM) => Some(Target::Team(index)),
+                _ => None,
+            }
+        }
+
+        /// The 'dref' of one of the game's references: a list of (key, value) pairs of u32 at `m_id`.
+        fn dref(&mut self, reference: u64) -> Option<u32> {
+            let id = self.field(reference, "m_id")?;
+            let items = self.word(id + 0x10)?;
+            let count = self.count(id + 0x18, MAX_ENTRIES)?;
+            if self.count(items + 0x18, usize::MAX)? < count {
+                return None;
+            }
+            let bytes = self.process.read_bytes(items + 0x20, count * 8).ok()?;
+            bytes.as_chunks::<8>().0.iter().find_map(|pair| {
+                let key = u32::from_le_bytes([pair[0], pair[1], pair[2], pair[3]]);
+                (key == DREF).then(|| u32::from_le_bytes([pair[4], pair[5], pair[6], pair[7]]))
+            })
         }
 
         /// The UID of the person FM's card is open for.
-        fn hovered(&mut self) -> Option<u32> {
-            let statics = self.word(self.visuals + 0xb8)?;
+        fn card(&mut self) -> Option<u32> {
+            let statics = self.word(self.visuals? + 0xb8)?;
             let floating = self.word(statics)?;
-            if self.kind(floating) != Kind::Floating {
+            if self.kind(floating) != Class::Floating {
                 return None;
             }
             // None while FM's card is closed.
@@ -423,7 +678,7 @@ mod imp {
                     .windows(2)
                     .all(|pair| self.children(pair[0]).is_some_and(|children| children.contains(&pair[1])))
                 && let Some(&element) = path.last()
-                && self.kind(element) == Kind::Bindings
+                && self.kind(element) == Class::Bindings
                 && let Some(uid) = self.person(element)
             {
                 self.last = Some((root, target, path));
@@ -439,7 +694,7 @@ mod imp {
                 }
                 path.truncate(depth);
                 path.push(element);
-                if self.kind(element) == Kind::Bindings
+                if self.kind(element) == Class::Bindings
                     && let Some(uid) = self.person(element)
                 {
                     self.last = Some((root, target, path));
@@ -475,15 +730,26 @@ mod imp {
                     continue;
                 }
                 let reference = self.word(variable + 0x20).and_then(|scope| self.word(scope + 0x28))?;
-                return if self.kind(reference) == Kind::Reference { self.unid(reference) } else { None };
+                return if self.kind(reference) == Class::Reference { self.unid(reference) } else { None };
             }
             None
         }
 
-        /// The 'unid' of a `SI.Bindable.DynamicReference`: a dictionary from four-letter keys to typed values.
+        /// The 'unid' of a `SI.Bindable.DynamicReference`.
         fn unid(&mut self, reference: u64) -> Option<u32> {
-            let entries = self.word(reference + 0x18)?;
-            let count = self.count(reference + 0x20, MAX_ENTRIES)?;
+            let value = self.entry(reference, UNID)?;
+            if self.kind(value) != Class::Number {
+                return None;
+            }
+            let number = self.process.read_u64(value + 0x18).ok()?;
+            u32::try_from(number).ok().filter(|&uid| uid != 0)
+        }
+
+        /// The value under `key` in a `SI.Core.Record` or a `SI.Bindable.DynamicReference`: dictionaries from
+        /// four-letter keys to typed values, their entries at +0x18 and their count at +0x20.
+        fn entry(&self, record: u64, key: u32) -> Option<u64> {
+            let entries = self.word(record + 0x18)?;
+            let count = self.count(record + 0x20, MAX_ENTRIES)?;
             if self.count(entries + 0x18, usize::MAX)? < count {
                 return None;
             }
@@ -491,43 +757,77 @@ mod imp {
             for entry in bytes.as_chunks::<0x18>().0 {
                 let int = |at: usize| i32::from_le_bytes([entry[at], entry[at + 1], entry[at + 2], entry[at + 3]]);
                 // A free entry has no hash, or a next below -1.
-                if int(0) < 0 || int(4) < -1 || int(8).cast_unsigned() != UNID {
+                if int(0) < 0 || int(4) < -1 || int(8).cast_unsigned() != key {
                     continue;
                 }
                 let value = u64::from_le_bytes(entry[0x10..0x18].try_into().ok()?);
-                if !is_user_pointer(value) || self.kind(value) != Kind::Number {
-                    return None;
-                }
-                let number = self.process.read_u64(value + 0x18).ok()?;
-                return u32::try_from(number).ok().filter(|&uid| uid != 0);
+                return is_user_pointer(value).then_some(value);
             }
             None
         }
 
-        /// The kind of a managed object, by its class.
-        fn kind(&mut self, object: u64) -> Kind {
+        /// The kind of a managed object, by its class or the nearest of its parents FM Lens knows.
+        fn kind(&mut self, object: u64) -> Class {
             let Some(class) = self.word(object) else {
-                return Kind::Other;
+                return Class::Other;
             };
             if let Some(&kind) = self.kinds.get(&class) {
                 return kind;
             }
-            let kind = match class_name(&self.process, class) {
-                Some((space, name)) => match (space.as_str(), name.as_str()) {
-                    ("SI.UI", "FloatingElement") => Kind::Floating,
-                    ("SI.Bindable", "BindingVariables") => Kind::Bindings,
-                    ("SI.Bindable", "DynamicReference") => Kind::Reference,
-                    ("SI.Core", "NumericTypedValue") => Kind::Number,
-                    _ => Kind::Other,
-                },
-                // Not kept: the class may be read next time.
-                None => return Kind::Other,
-            };
+            let mut at = class;
+            let mut kind = None;
+            for _ in 0..MAX_PARENTS {
+                // Not kept when a name cannot be read: the class may be read next time.
+                let Some((space, name)) = class_name(&self.process, at) else {
+                    return Class::Other;
+                };
+                let known = match (space.as_str(), name.as_str()) {
+                    ("SI.UI", "FloatingElement") => Some(Class::Floating),
+                    ("SI.Bindable", "BindingVariables") => Some(Class::Bindings),
+                    ("SI.Bindable", "DynamicReference") => Some(Class::Reference),
+                    ("SI.Core", "NumericTypedValue") => Some(Class::Number),
+                    ("SI.Bindable", "NavigableLink") => Some(Class::Link),
+                    ("SI.Bindable", "SIText") => Some(Class::Text),
+                    ("FM.UI", "PersonReference") => Some(Class::PersonLink),
+                    ("FM.UI", "ClubReference") => Some(Class::ClubLink),
+                    ("FM.UI", "TeamReference") => Some(Class::TeamLink),
+                    _ => None,
+                };
+                if known.is_some() {
+                    kind = known;
+                    break;
+                }
+                match self.word(at + 0x58) {
+                    Some(parent) if parent != at => at = parent,
+                    _ => break,
+                }
+            }
+            let kind = kind.unwrap_or(Class::Other);
             if self.kinds.len() >= MAX_KINDS {
                 self.kinds.clear();
             }
             self.kinds.insert(class, kind);
             kind
+        }
+
+        /// The offset of the instance field `name` of `object`, from its class or its parents.
+        fn offset(&mut self, object: u64, name: &'static str) -> Option<u64> {
+            let class = self.word(object)?;
+            if let Some(&at) = self.offsets.get(&(class, name)) {
+                return Some(at);
+            }
+            let at = field_offset(&self.process, class, name, false)?;
+            if self.offsets.len() >= MAX_KINDS {
+                self.offsets.clear();
+            }
+            self.offsets.insert((class, name), at);
+            Some(at)
+        }
+
+        /// The pointer in the field `name` of `object`.
+        fn field(&mut self, object: u64, name: &'static str) -> Option<u64> {
+            let at = self.offset(object, name)?;
+            self.word(object + at)
         }
 
         /// A pointer read at `at`, if it is one.
@@ -576,6 +876,43 @@ mod imp {
         Some((space, name))
     }
 
+    /// The offset of the field `name` of the IL2CPP class at `class` or one of its parents (at +0x58): its fields at
+    /// +0x80, each 0x20 bytes: the name, the type (its attributes at +8, 0x10 for a static field), the class and the
+    /// offset. A static field's is from the class's statics, at +0xB8.
+    fn field_offset(process: &Process, class: u64, name: &str, is_static: bool) -> Option<u64> {
+        let mut at = class;
+        for _ in 0..MAX_PARENTS {
+            if process.read_u64(at + 0x78).ok()? != at {
+                return None;
+            }
+            if let Some(fields) = process.read_u64(at + 0x80).ok().filter(|&fields| is_user_pointer(fields)) {
+                for index in 0..MAX_FIELDS {
+                    let field = fields + index * 0x20;
+                    if process.read_u64(field + 0x10).ok()? != at {
+                        break;
+                    }
+                    let attributes = process.read_u64(field + 8).ok().and_then(|ty| process.read_u32(ty + 8).ok())?;
+                    if (attributes & 0x10 != 0) == is_static
+                        && c_string(process, process.read_u64(field).ok()?).is_some_and(|found| found == name)
+                    {
+                        let offset = i32::from_le_bytes(process.read_u32(field + 0x18).ok()?.to_le_bytes());
+                        return u64::try_from(offset).ok();
+                    }
+                }
+            }
+            match process.read_u64(at + 0x58).ok().filter(|&parent| is_user_pointer(parent)) {
+                Some(parent) if parent != at => at = parent,
+                _ => return None,
+            }
+        }
+        None
+    }
+
+    /// The offset of the static field `name` of the class at `class`, in its statics.
+    fn static_offset(process: &Process, class: u64, name: &str) -> Option<u64> {
+        field_offset(process, class, name, true)
+    }
+
     /// A short C string at `at`, read without crossing into a page that may not be there.
     fn c_string(process: &Process, at: u64) -> Option<String> {
         const MAX: u64 = 128;
@@ -592,24 +929,43 @@ mod imp {
         String::from_utf8(bytes).ok()
     }
 
-    /// The class `Visuals` nested in `SI.Bindable.Tooltip`: its name in the game's metadata, then the class that points
-    /// at it (its name at +0x10).
-    fn find_visuals(process: &Process) -> Option<u64> {
+    /// The classes `UnityEngine.UIElements.UIElementsUtility` (when `utility`) and `Visuals` nested in
+    /// `SI.Bindable.Tooltip`: their names in IL2CPP's metadata, then the classes that point at them (the name at
+    /// +0x10). The game makes a class the first time it needs it.
+    fn find_classes(process: &Process, utility: bool) -> (Option<u64>, Option<u64>) {
         let all: Vec<Region> = regions(process, 0x1_0000, 0x7FFF_FFFF_0000)
             .into_iter()
             .filter(|region| region.is_readable() && region.size < 1 << 32)
             .collect();
-        // The name is in many places; only the class's own copy has the class pointing at it.
-        let names = find_text(process, &all, b"\0Visuals\0");
-        if names.is_empty() {
-            eprintln!("FM Lens did not find the name of FM's player card class");
-            return None;
+        // The names are in the metadata, a file the game maps whole; else looked for everywhere.
+        let metadata: Vec<Region> = all
+            .iter()
+            .filter(|region| {
+                region.size >= 1 << 20 && process.read_u32(region.base).is_ok_and(|magic| magic == METADATA)
+            })
+            .cloned()
+            .collect();
+        let named = if metadata.is_empty() { &all } else { &metadata };
+        let mut names = find_text(process, named, b"\0Visuals\0");
+        if utility {
+            names.extend(find_text(process, named, b"\0UIElementsUtility\0"));
         }
-        let (low, high) = (*names.iter().min()?, *names.iter().max()?);
-        let mut ordered: Vec<&Region> = all.iter().filter(|region| region.is_private()).collect();
-        ordered.extend(all.iter().filter(|region| !region.is_private()));
+        if names.is_empty() {
+            eprintln!("FM Lens did not find the names of FM's classes");
+            return (None, None);
+        }
+        let (low, high) = (*names.iter().min().unwrap_or(&0), *names.iter().max().unwrap_or(&0));
+        let (mut found_utility, mut found_visuals) = (None, None);
         let mut buffer = vec![0u8; CHUNK];
-        for region in ordered {
+        // The game makes its classes in its own memory; the rest is looked in only for the panels' class, which the
+        // game always has.
+        let mut ordered: Vec<&Region> = all.iter().filter(|region| region.is_private()).collect();
+        let private = ordered.len();
+        ordered.extend(all.iter().filter(|region| !region.is_private()));
+        for (at, region) in ordered.into_iter().enumerate() {
+            if at >= private && (found_utility.is_some() || !utility) {
+                break;
+            }
             let mut offset = 0;
             while offset < region.size {
                 let length = CHUNK.min((region.size - offset) as usize);
@@ -621,16 +977,23 @@ mod imp {
                             continue;
                         }
                         let class = region.base + offset + index as u64 * 8 - 0x10;
-                        if is_visuals(process, class) {
-                            return Some(class);
+                        if found_visuals.is_none() && is_visuals(process, class) {
+                            found_visuals = Some(class);
+                        } else if utility && found_utility.is_none() && is_utility(process, class) {
+                            found_utility = Some(class);
+                        }
+                        if found_visuals.is_some() && (found_utility.is_some() || !utility) {
+                            return (found_utility, found_visuals);
                         }
                     }
                 }
                 offset += length as u64;
             }
         }
-        eprintln!("FM Lens did not find FM's player card class");
-        None
+        if utility && found_utility.is_none() {
+            eprintln!("FM Lens did not find the class of FM's panels");
+        }
+        (found_utility, found_visuals)
     }
 
     /// Where `pattern` (a name between two zero bytes) is in `regions`: the address of the name.
@@ -664,6 +1027,11 @@ mod imp {
             && declaring
                 .and_then(|declaring| class_name(process, declaring))
                 .is_some_and(|(space, name)| space == "SI.Bindable" && name == "Tooltip")
+    }
+
+    fn is_utility(process: &Process, class: u64) -> bool {
+        class_name(process, class)
+            .is_some_and(|(space, name)| space == "UnityEngine.UIElements" && name == "UIElementsUtility")
     }
 
     /// The card's window and what FM's card was opened on, on Windows.
@@ -761,7 +1129,11 @@ mod imp {
             if window.is_null() || unsafe { GetWindowRect(window, &mut rect) } == 0 {
                 return None;
             }
-            Some(Spot { at, game: Rect { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } })
+            Some(Spot {
+                at,
+                game: Rect { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom },
+                fm_card: false,
+            })
         }
 
         pub(super) fn shift_down() -> bool {
@@ -942,6 +1314,7 @@ mod imp {
                     right: point(game.origin.x + game.size.width),
                     bottom: point(game.origin.y + game.size.height),
                 },
+                fm_card: false,
             })
         }
 
@@ -967,7 +1340,7 @@ mod tests {
     const SCREEN: Rect = Rect { left: 0, top: 0, right: 1920, bottom: 1040 };
 
     fn spot(x: i32, y: i32) -> Spot {
-        Spot { at: (x, y), game: Rect { left: 0, top: 0, right: 1920, bottom: 1080 } }
+        Spot { at: (x, y), game: Rect { left: 0, top: 0, right: 1920, bottom: 1080 }, fm_card: true }
     }
 
     #[test]
@@ -981,8 +1354,17 @@ mod tests {
     }
 
     #[test]
+    fn goes_right_of_a_name_without_room_on_the_left() {
+        let name = Spot { fm_card: false, ..spot(200, 300) };
+        assert_eq!(place(name, (300, 400), SCREEN, 16), (216, 284));
+        let edge = Spot { fm_card: false, ..spot(200, 300) };
+        assert_eq!(place(edge, (1800, 400), SCREEN, 16), (104, 284));
+    }
+
+    #[test]
     fn stays_inside_the_game_and_the_screen() {
-        let windowed = Spot { at: (200, 1000), game: Rect { left: 0, top: 0, right: 1024, bottom: 768 } };
+        let windowed =
+            Spot { at: (200, 1000), game: Rect { left: 0, top: 0, right: 1024, bottom: 768 }, fm_card: true };
         assert_eq!(place(windowed, (300, 400), SCREEN, 16), (708, 368));
         assert_eq!(place(spot(1900, 20), (300, 400), SCREEN, 16), (1584, 4));
         let small = Rect { left: 0, top: 0, right: 200, bottom: 200 };

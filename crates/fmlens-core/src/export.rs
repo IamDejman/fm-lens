@@ -485,6 +485,7 @@ mod tests {
             traits: 0,
             address: 0,
             shift: 0,
+            index: 0,
         };
         let attributes: BTreeMap<String, Attribute> = ATTRIBUTE_GROUPS
             .iter()

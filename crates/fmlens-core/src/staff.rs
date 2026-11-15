@@ -127,6 +127,9 @@ pub struct StaffSummary {
     /// How far this object's identity block is shifted (see [`StaffLayout::identity_shifts`]).
     #[serde(skip)]
     pub shift: u64,
+    /// The game's own index of the person, which its screens link to: the u32 before the UID, in the identity block.
+    #[serde(skip)]
+    pub index: u32,
 }
 
 impl Listed for StaffSummary {
@@ -261,6 +264,7 @@ pub fn read_staff(
                 .collect(),
             address: object,
             shift,
+            index: u32_at(at(s.uid) - 4),
         });
     }
     Ok(staff)

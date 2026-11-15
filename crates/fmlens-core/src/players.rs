@@ -74,6 +74,9 @@ pub struct PlayerSummary {
     /// How far this object's person block is shifted (see [`PlayerLayout::person_block_shifts`]).
     #[serde(skip)]
     pub shift: u64,
+    /// The game's own index of the person, which its screens link to: the u32 before the UID, in the identity block.
+    #[serde(skip)]
+    pub index: u32,
 }
 
 /// Where a player plays: whether his club is a women's club, and the country it is in (the one it plays in when based
@@ -255,6 +258,7 @@ pub fn read_players(
             traits: u64_at(p.traits),
             address: object,
             shift,
+            index: u32_at(p.uid - 4),
         });
     }
     Ok(players)

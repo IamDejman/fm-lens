@@ -127,9 +127,56 @@ On macOS on Intel (the same build under Rosetta, 15 November) with FM in a
 window: the card showed, turned to his peak under Shift, stayed with the
 pointer on it, and a click on it opened him in FM Lens.
 
-Not checked: staff cards (the card shows players only), FM full screen on
-macOS, the pointer's shape on Windows and under Rosetta (the capture leaves
-the pointer out) and Game Pass.
+Not checked: FM full screen on macOS, the pointer's shape on Windows and under
+Rosetta (the capture leaves the pointer out) and Game Pass.
+
+### Hover on names (15 November 2026, macOS)
+
+On the Mac the card was often missing: the class search above took 23 to 42
+seconds and often failed, and was then not tried again for 30 seconds. FM makes
+an IL2CPP class the first time it needs it, so `Visuals` may not exist until
+FM has shown a tooltip.
+
+The class search now looks for names only in IL2CPP's metadata, a file the game
+maps whole (the region whose first u32 is `0xFAB11BAF`; all readable memory if
+none is found), and for classes pointing at them first in the game's own
+private memory. That took about 4 seconds on the Mac. `Visuals` is looked for
+again every 60 seconds until it is found.
+
+A link under the pointer, on any screen, is read from Unity's panels:
+
+| Step | Read |
+|---|---|
+| Panels | `UnityEngine.UIElements.UIElementsUtility.s_UIElementsCache`: a `Dictionary<int, Panel>` (entries at +0x18, count at +0x20, 0x18 bytes each, the panel at +0x10) |
+| Element under the mouse | `Panel.m_TopElementUnderPointers` → `m_TopElementUnderPointer`, a `VisualElement[]`; the mouse's is element 0 |
+| The link | That element or one of its 8 nearest parents (`m_PhysicalParent`): an `SI.Bindable.NavigableLink` (its text in `m_linkText`), or an `SI.Bindable.SIText` whose `m_hoveredLinkID` is not -1 |
+| What it links to | `SIText.m_embeddedData`, one `SI.Core.Record` per `<link>`; in the record, key `111 ` holds a typed value whose `m_value` is an `FM.UI.PersonReference`, `ClubReference` or `TeamReference` |
+| The game's reference | The reference's `m_id`: (key, value) pairs of u32; key `dref` is the kind in the top byte (0x01 person, 0x03 club, 0x18 team) and the index below |
+
+Fields are found by name in each class's field list (`FieldInfo`, 0x20 bytes:
+name, type, class, offset) through its parents, so the offsets above are not
+written into FM Lens.
+
+A person's index is the u32 before the UID in the identity block, checked for a
+player (Saka) and a member of staff (De Zerbi). A club's is the u32 before its
+UID. A team's index is its id in the teams table, whose club is the team's
+club. The card shows after the pointer has rested on a link for 300 ms.
+
+Checked on macOS on 15 November (Apple Silicon, Steam build 26577676, FM in a
+window, a debug build, a career copy at 10 December 2027): FM's pointer was
+found 541 ms after FM came to the front. Hovering a player (Raya, in a
+message's team list), a member of staff (the assistant manager, as a message's
+sender) and a club (Tottenham Hotspur, in a news article's text) showed their
+cards, and a click on each opened them in FM Lens. FM's own card from a squad
+row's icon still brought FM Lens's card.
+
+A name in the squad table is a button in the row's cell, and its link is found
+the same way (Ezri Konsa, Declan Rice). Names that far left leave no room for
+the card left of the pointer, so a name's card goes right of it; only FM's own
+card, which opens to the right, sends FM Lens's card to the far right of FM's
+window. Checked with release builds on Intel under Rosetta (Konsa, Rice) and on
+Windows (Rice): the card showed beside the name and a click on it opened him in
+FM Lens.
 
 ## Top players by division
 
