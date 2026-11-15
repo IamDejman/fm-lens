@@ -132,6 +132,7 @@ const errors: ErrorTexts = {
   "list.missing": () => "That entry is no longer in the list. Press Reload and try again.",
   "preference.target": () => "Pick a club in place of a club, and another person in place of a person.",
   "preference.same": () => "That one is in the list already.",
+  "preference.full": () => "This list is full.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM has moved its data since FM Lens read it. Press Reload, then try again.",
@@ -2763,6 +2764,8 @@ export const en = {
     /** The days input of a row, for assistive technology: `name` is the injury's. */
     daysOf: (name: string) => `Days out with ${name}`,
     save: "Save",
+    /** The Add button under a heading, for the tooltip: `list` is the heading, "Favoured clubs" say. */
+    addTo: (list: string) => `Add to ${list.toLowerCase()}`,
     /** Points a like or dislike at another club or person. */
     replace: "Replace",
     replaceTitle: (name: string) => `Replace ${name}`,

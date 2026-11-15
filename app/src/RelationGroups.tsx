@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { call } from "./api";
 import {
+  addPreference,
   changeLanguage,
   changePreference,
   pointPreference,
@@ -75,17 +76,24 @@ function PersonLine({ person }: { person: PlayerSummary | StaffSummary }) {
 }
 
 /**
- * The search that points the preference `index` of `person` at another club or, for `club` false, another person: not
- * one his list has already (`taken`), nor himself.
+ * The search for a club or, for `club` false, a person that the list of `person` can take: not one it has already
+ * (`taken`), nor himself, nor, unless `you` is set, you. `choose` is what picking one does: it points a preference at
+ * it, or adds it.
  */
-function replacement(person: PersonRef, index: number, club: boolean, taken: ReadonlySet<number>): Replacement {
+function targets(
+  person: PersonRef,
+  club: boolean,
+  taken: ReadonlySet<number>,
+  you: boolean,
+  choose: (kind: PreferenceTargetKind, uid: number) => Promise<unknown>,
+): Replacement {
   const option = (kind: PreferenceTargetKind, uid: number, label: ReactNode): ReplacementOption => ({
     key: `${kind}:${uid}`,
     label,
-    choose: () => pointPreference(person.uid, person.staff, index, kind, uid),
+    choose: () => choose(kind, uid),
   });
   // Enough rows that the ones left out still leave a full list.
-  const limit = SEARCH_LIMIT + taken.size + 1;
+  const limit = SEARCH_LIMIT + taken.size + 2;
   const free = (uid: number) => !taken.has(uid) && (club || uid !== person.uid);
   if (club) {
     return {
@@ -115,7 +123,9 @@ function replacement(person: PersonRef, index: number, club: boolean, taken: Rea
       ]);
       const found = [
         players.rows.filter((p) => free(p.uid)).map((p) => option("player", p.uid, <PersonLine person={p} />)),
-        staff.rows.filter((s) => free(s.uid)).map((s) => option("staff", s.uid, <PersonLine person={s} />)),
+        staff.rows
+          .filter((s) => free(s.uid) && (you || !s.isHuman))
+          .map((s) => option("staff", s.uid, <PersonLine person={s} />)),
       ];
       // Players and staff in turn, so that neither crowds the other out.
       const options: ReplacementOption[] = [];
@@ -186,7 +196,8 @@ export function ListChange({
 
 /**
  * The people and clubs a player or member of staff favours and dislikes, and the button that changes how strongly,
- * points one at another club or person, or takes one out; not there when he has none (see `useListShown`).
+ * points one at another club or person, takes one out or, where the game adds them, adds one. Where it adds none the
+ * group is not there for a person who has none (see `useListShown`).
  */
 export function PreferencesGroup({
   preferences,
@@ -195,8 +206,10 @@ export function PreferencesGroup({
   preferences: Preference[];
   person: PersonRef;
 }) {
+  const { gameActions } = useContext(EditorContext);
+  const adds = gameActions.addPreference;
   const shown = useListShown(preferences.length > 0, person.uid);
-  if (!shown) {
+  if (!shown && !adds) {
     return null;
   }
   const sections = (): ValueSection[] => {
@@ -204,23 +217,34 @@ export function PreferencesGroup({
     const taken = (club: boolean) =>
       new Set(preferences.filter((p) => isClub(p.kind) === club).map((p) => p.targetUid));
     const takenBy = { club: taken(true), person: taken(false) };
-    return PREFERENCE_KINDS.map((kind) => ({
-      key: kind,
-      heading: profileText.preferenceKinds[kind],
-      rows: preferences
-        .filter((preference) => preference.kind === kind)
-        .map((preference) => {
-          const name = preferenceName(preference);
-          const club = isClub(kind);
-          return {
-            index: preference.index,
-            name,
-            label: club ? <ClubName uid={preference.targetUid} name={name} /> : undefined,
-            value: preference.strength,
-            replace: replacement(person, preference.index, club, club ? takenBy.club : takenBy.person),
-          };
-        }),
-    }));
+    return PREFERENCE_KINDS.map((kind) => {
+      const club = isClub(kind);
+      const taken = club ? takenBy.club : takenBy.person;
+      return {
+        key: kind,
+        heading: profileText.preferenceKinds[kind],
+        rows: preferences
+          .filter((preference) => preference.kind === kind)
+          .map((preference) => {
+            const name = preferenceName(preference);
+            return {
+              index: preference.index,
+              name,
+              label: club ? <ClubName uid={preference.targetUid} name={name} /> : undefined,
+              value: preference.strength,
+              replace: targets(person, club, taken, true, (target, uid) =>
+                pointPreference(person.uid, person.staff, preference.index, target, uid),
+              ),
+            };
+          }),
+        // A new one is as strong as the game's own editor makes it; its row then takes another strength.
+        add: adds
+          ? targets(person, club, taken, false, (target, uid) =>
+              addPreference(person.uid, person.staff, kind, target, uid, STRENGTHS.most),
+            )
+          : undefined,
+      };
+    });
   };
   return (
     <section className="profile-group">

@@ -156,8 +156,20 @@ person a person, and refuses a target already in the list and the person
 himself. All three are logged in Changes and undone there. Strength and removal
 were checked in FM on 6 November (see Round 1 below), Replace on 7 November (see
 "Replace a like or dislike" below). FM's Reason column is stored with the entry,
-not worked out from the target: a replaced entry keeps its old reason. Adding an
-entry waits until bytes `0x08` and `0x0D` are understood.
+not worked out from the target: a replaced entry keeps its old reason.
+
+Add (Windows Steam build 26577676) has the game add the entry itself, through
+its own routine for a person's relations (`add_relation` in the build profile):
+the game makes the list, or a bigger block for it, as it needs. The entry is
+the one the game's editor makes: byte `0x08` (the reason) 1 for a like and 0
+for a dislike, byte `0x0D` `0x4F` (lasting), strength 1 to 100. FM Lens checks
+afterwards that the list is the old entries with the new one last, at the
+address the game returned. Refused: a club or person already in the list, the
+person himself, you as a target, and a person whose relations list holds 20
+entries or more, where the game would drop his weakest to make room. Undo takes
+the entry off the end again, so adds are undone newest first; an older one is
+refused until then. Checked on Windows on 15 November (see "Add a like or
+dislike on Windows" below).
 
 ## Languages (level and removal)
 
@@ -4145,3 +4157,29 @@ Not run: any comparison with FM, which has no screen for these values; a
 match (whether a changed attribute changes how a referee handles one); a
 quit and relaunch; a holiday; the Macs.
 
+## Add a like or dislike on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The adds were made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Ethan Nwaneri (2000283271), a player with four likes: add favoured club Barcelona | Saved, in Changes. The probe read a new last entry, favoured club Barcelona 100, and his four as before |
+| The same player: disliked club Tottenham Hotspur, favoured person Mikel Arteta (a member of staff), disliked person Pep Guardiola | Each the new last entry at 100 |
+| Albert Stuivenberg (859441), a member of staff: disliked club AFC Ajax | The probe counted 3 where it counted 2. The app listed AFC Ajax |
+| Matthew Smith (28116314), a player with no likes: favoured person Bukayo Saka | The probe read one preference, Saka 100 |
+| Undo of that add | Changes: "Undone". The probe read none |
+| The people picker | Did not offer the person himself or you |
+| Mikel Arteta, whose list holds 39 relations | Refused as full. The probe counted 39 before and after |
+| Undo of an add that was not the newest | Refused: "FM has changed this since. Press Reload and try again." The list was unchanged |
+| Save As a new copy in FM, load that copy again | The probe read Nwaneri's four adds and Stuivenberg's as made, and none for Smith. Changes listed the adds as "Earlier game", without Undo |
+
+FM ran on through all of it.
+
+Not run: FM's own Favoured Personnel and Favoured Club lists (at the test
+machine's desktop size FM's Personal page shows those panels' headings only);
+a day passing in FM; a quit and relaunch; a person whose list the game had
+never made (Smith had three other relations); the Macs and Game Pass, where no
+profile names the routine, so Add is not offered.

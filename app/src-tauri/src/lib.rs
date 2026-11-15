@@ -1278,17 +1278,18 @@ impl Connection {
 
     /// Logs a change to a person's preferences just written, as a change of his field `preference.favouredClub`,
     /// `preference.dislikedClub`, `preference.favouredPerson` or `preference.dislikedPerson` from one strength to the
-    /// other (0 for one taken out), with the person or club and its strength before and after.
+    /// other (0 for one added or taken out), with the person or club and its strength before and after.
     fn log_preference(&mut self, done: PreferenceSet) -> LoggedChange {
-        let field = match done.before.kind {
+        let field = match done.kind() {
             PreferenceKind::FavouredClub => "preference.favouredClub",
             PreferenceKind::DislikedClub => "preference.dislikedClub",
             PreferenceKind::FavouredPerson => "preference.favouredPerson",
             PreferenceKind::DislikedPerson => "preference.dislikedPerson",
         };
         // The person's or club's name, before and after: the game's records name only clubs.
-        let mut named: Vec<Preference> = std::iter::once(done.before.clone()).chain(done.after.clone()).collect();
-        self.name_preferences(&mut named);
+        let (mut before, mut after) = (done.before.clone(), done.after.clone());
+        self.name_preferences(before.as_mut_slice());
+        self.name_preferences(after.as_mut_slice());
         let end = |preference: Option<&Preference>| {
             preference.map(|preference| TieEnd {
                 name: preference.name.clone().unwrap_or_default(),
@@ -1300,8 +1301,8 @@ impl Connection {
             entity: done.entity,
             uid: done.person,
             field: field.to_owned(),
-            old: i64::from(done.before.strength),
-            new: done.after.as_ref().map_or(0, |after| i64::from(after.strength)),
+            old: before.as_ref().map_or(0, |before| i64::from(before.strength)),
+            new: after.as_ref().map_or(0, |after| i64::from(after.strength)),
             record: Vec::new(),
         };
         let name = match done.entity {
@@ -1319,7 +1320,7 @@ impl Connection {
             batch: None,
             moved: None,
             captaincy: None,
-            tie: Some(TieChange { from: end(named.first()), to: end(named.get(1)) }),
+            tie: Some(TieChange { from: end(before.as_ref()), to: end(after.as_ref()) }),
             clause: None,
             holds: None,
             undo: Some(Undo::Preference(done)),
@@ -5142,6 +5143,21 @@ enum PreferenceTargetKind {
     Staff,
 }
 
+/// The club, player or member of staff `uid`, as what a like or dislike is pointed at.
+fn preference_target(
+    connection: &Connection,
+    kind: PreferenceTargetKind,
+    uid: u32,
+) -> Result<PreferenceTarget<'_>, Failure> {
+    Ok(match kind {
+        PreferenceTargetKind::Club => {
+            PreferenceTarget::Club(connection.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?)
+        }
+        PreferenceTargetKind::Player => PreferenceTarget::Person(person_ref(connection, uid, false)?),
+        PreferenceTargetKind::Staff => PreferenceTarget::Person(person_ref(connection, uid, true)?),
+    })
+}
+
 /// Points the preference `index` of the player `uid`, or of the member of staff `uid` for `staff`, at the club,
 /// player or member of staff `target_uid`, keeping its strength. Logged and undone like any change.
 #[tauri::command]
@@ -5156,15 +5172,30 @@ fn point_preference(
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let owner = person_ref(connection, uid, staff)?;
-    let target = match target_kind {
-        PreferenceTargetKind::Club => {
-            PreferenceTarget::Club(connection.clubs.get(target_uid).ok_or_else(|| not_found(Entity::Club, target_uid))?)
-        }
-        PreferenceTargetKind::Player => PreferenceTarget::Person(person_ref(connection, target_uid, false)?),
-        PreferenceTargetKind::Staff => PreferenceTarget::Person(person_ref(connection, target_uid, true)?),
-    };
+    let target = preference_target(connection, target_kind, target_uid)?;
     let plan = connection.session.plan_preference_target(owner, index, target)?;
     let done = connection.session.apply_preference(&plan)?;
+    Ok(connection.log_preference(done))
+}
+
+/// Has the game add a preference of `kind` for the club, player or member of staff `target_uid` to the list of the
+/// player `uid`, or of the member of staff `uid` for `staff`, at `strength`, 1 to 100. Logged and undone like any
+/// change: undoing it takes the preference out again.
+#[tauri::command]
+fn add_preference(
+    state: State<'_, AppState>,
+    uid: u32,
+    staff: bool,
+    kind: PreferenceKind,
+    target_kind: PreferenceTargetKind,
+    target_uid: u32,
+    strength: i8,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let owner = person_ref(connection, uid, staff)?;
+    let target = preference_target(connection, target_kind, target_uid)?;
+    let done = connection.session.add_preference(owner, kind, target, strength)?;
     Ok(connection.log_preference(done))
 }
 
@@ -5938,6 +5969,7 @@ pub fn run() {
             add_tie,
             change_preference,
             point_preference,
+            add_preference,
             remove_preference,
             change_language,
             remove_language,

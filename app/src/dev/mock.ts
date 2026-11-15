@@ -983,7 +983,7 @@ function logPreference(
   isStaff: boolean,
   uid: number,
   name: string,
-  before: Preference,
+  before: Preference | null,
   after: Preference | null,
   next: Preference[],
 ): LoggedChange {
@@ -998,8 +998,8 @@ function logPreference(
     name,
     entity: isStaff ? "staff" : "player",
     uid,
-    field: `preference.${before.kind}`,
-    old: before.strength,
+    field: `preference.${(before ?? after)?.kind}`,
+    old: before?.strength ?? 0,
     new: after?.strength ?? 0,
     undoneAt: null,
     batch: null,
@@ -1056,6 +1056,48 @@ function pointPreference(uid: number, isStaff: boolean, index: number, targetKin
   }
   const after = { ...before, targetUid, name: target.name };
   return logPreference(isStaff, uid, name, before, after, current.map((p) => (p.index === index ? after : p)));
+}
+
+/** How long a list the real command adds to: at this length the game drops a like or dislike to add another. */
+const PREFERENCES_FULL = 20;
+
+/**
+ * `add_preference`: adds the club, player or member of staff `targetUid` to a fixture person's list as one he favours
+ * or dislikes, with the real command's failures.
+ */
+function addPreference(
+  uid: number,
+  isStaff: boolean,
+  kind: Preference["kind"],
+  targetKind: string,
+  targetUid: number,
+  strength: number,
+): LoggedChange {
+  const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
+  if (!person) {
+    throw notFound(isStaff ? "staff" : "player", uid);
+  }
+  const isClubKind = (kind: Preference["kind"]) => kind === "favouredClub" || kind === "dislikedClub";
+  const club = isClubKind(kind);
+  const member = targetKind === "staff" ? staff.find((m) => m.uid === targetUid) : undefined;
+  const target =
+    targetKind === "club"
+      ? clubs.find((c) => c.uid === targetUid)
+      : (member ?? (targetKind === "player" ? players.find((p) => p.uid === targetUid) : undefined));
+  const own = !club && targetUid === uid && (targetKind === "staff") === isStaff;
+  if (target === undefined || (targetKind === "club") !== club || own || member?.isHuman) {
+    throw failure("preference.target", "that is not a club or person of the game, of the kind this like or dislike takes");
+  }
+  const current = currentPreferences(isStaff, uid);
+  if (current.some((p) => isClubKind(p.kind) === club && p.targetUid === targetUid)) {
+    throw failure("preference.same", "the person already likes or dislikes that one");
+  }
+  if (current.length >= PREFERENCES_FULL) {
+    throw failure("preference.full", "the person's list is long enough that the game would drop one to add another");
+  }
+  const index = Math.max(-1, ...current.map((p) => p.index)) + 1;
+  const after: Preference = { index, kind, targetUid, name: target.name, strength };
+  return logPreference(isStaff, uid, person.name, null, after, [...current, after]);
 }
 
 // Languages -------------------------------------------------------------------------------------------------------
@@ -4012,7 +4054,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, addPreference: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
@@ -4653,6 +4695,15 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return changePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.strength)) as T;
     case "remove_preference":
       return removePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
+    case "add_preference":
+      return addPreference(
+        Number(args?.uid),
+        Boolean(args?.staff),
+        args?.kind as Preference["kind"],
+        String(args?.targetKind),
+        Number(args?.targetUid),
+        Number(args?.strength),
+      ) as T;
     case "point_preference":
       return pointPreference(
         Number(args?.uid),

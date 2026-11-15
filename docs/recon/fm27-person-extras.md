@@ -93,7 +93,7 @@ relations record starts with a vector of 16-byte entries.
 | Entry offset | Field |
 | --- | --- |
 | `+0x00` | pointer to the target; for a person the pointer is to a secondary sub-object, not the primary (the vtable at `+0x20` of it leads to the primary), so resolve a person by UID from the identity block, not by class name |
-| `+0x08` | u16 count used by some codes |
+| `+0x08` | u16 count used by some codes; for a favoured or disliked club or person, the reason: 1 a like, 0 a dislike |
 | `+0x0A` | target kind: 0 none, 1 club, 3 person, 4 team (a club's team), 7 competition, 8 nation |
 | `+0x0B` | relation code |
 | `+0x0C` | value (strength or rule) |
@@ -118,8 +118,32 @@ Codes seen, with the target kind, as read on the live career:
 | 0 none | 10 | one on Luis Enrique, value 100, second 255 | unknown |
 
 For favoured and disliked people the byte `+0x0D` is 79 for most strong entries and 0 for weak
-ones; for clubs 78 or 79. That field is probably how the game ranks or ages the preference (it is
-not the target). Not decoded.
+ones; for clubs 78 or 79. The game's own editor writes 79 (`0x4F`) for a preference that lasts (the
+entry's `perm` property); 78 and 80 are not decoded.
+
+### Adding an entry
+
+The game adds a relation through one routine, which takes the person, a 16-byte entry to copy and
+a flag that allows a null target:
+
+| Build | Routine |
+| --- | --- |
+| macOS arm64 27.0.1 | `0xCF9528(person, *entry, allow_null)` |
+| Windows Steam 26577676 | `game_plugin.dll+0x30DAA90` |
+
+It returns the address of the copy it placed last in the list. It makes the list when the person
+has none and moves it to a bigger block when it is full. From 20 entries up it drops the person's
+weakest favoured and disliked people to make room, so the editor adds only under 20.
+
+The entry the game's editor makes for a new favourite or dislike (its person setter's favoured and
+disliked lists, macOS arm64 `0xCE6C6C`, and the entry's `rrea` and `perm` properties): the target
+at `+0x00`; byte `+0x08`, the reason, 1 for a like and 0 for a dislike; kind and code as in the
+table above; the strength at `+0x0C`; `+0x0D` `0x4F`; `+0x0E` 0; `+0x0F` `0xFF`.
+
+Adding with a human manager as the target also leaves a note of the person with the manager that
+removing the entry does not take back, so the editor does not offer you as a target.
+
+Run on Windows on 15 November 2026 (EDITING-VALIDATION.md, "Add a like or dislike on Windows").
 
 Examples to compare with FM's Relations or Favoured Personnel pages:
 
@@ -164,7 +188,7 @@ Time spent, so these are leads only, none of them confirmed:
 2. Does the game derive the native language from the nation, or is it stored elsewhere?
 3. What is relation code 47 (person to person, graded 0 to 100)? Candidates: mentor, friend or
    rival links. Compare with the Relations tab of Guardiola or Arteta.
-4. What do byte `+0x0D` values 78, 79 and 80 mean?
+4. What do byte `+0x0D` values 78 and 80 mean? (79 is a preference that lasts.)
 5. Where the player, staff and manager permit, registration, promise, plan, licence and formation
    data live. Next step: trace a UI string such as the licence or promise label to its code, as
    done for `become_unsackable`, rather than searching memory.

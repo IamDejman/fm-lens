@@ -1222,6 +1222,11 @@ pub struct CallRvas {
     /// needs a work permit to play for the team, as a bool. The game asks it before it gives a permit, and its screens
     /// ask it too. Only reads.
     pub needs_work_permit: Option<u64>,
+    /// `ACTUAL_PERSON::add_relation(person, entry*, allow a null target)`: copies the 16-byte entry onto the end of
+    /// the person's list of relations, making him a record of them if he has none, and returns the copy, or null when
+    /// it adds nothing. Before it adds, it drops his weakest favoured and disliked people once the list has reached
+    /// the game's limit.
+    pub add_relation: Option<u64>,
 }
 
 impl CallRvas {
@@ -1255,6 +1260,7 @@ impl CallRvas {
             self.maximise_tactics,
             self.work_permit_rules,
             self.needs_work_permit,
+            self.add_relation,
         ]
         .into_iter()
         .flatten()
@@ -1721,7 +1727,8 @@ mod tests {
         }
     }
 
-    /// The same update on Windows: another DLL (size and link time), every value where build 26385295 has it.
+    /// The same update on Windows: another DLL (size and link time), every value where build 26385295 has it. The
+    /// routine that adds a relation was found and run on this build alone, so the older one goes without it.
     #[test]
     fn steam_26577676_on_windows_is_26385295_under_another_fingerprint() {
         let old = PluginFingerprint::Pe { size_of_image: 0x17CB_9000, link_timestamp: 0x6AE8_B5A4 };
@@ -1730,6 +1737,8 @@ mod tests {
         assert!(new.name.contains("26577676"), "{}", new.name);
         new.name.clone_from(&old.name);
         new.plugin = old.plugin;
+        let calls = new.calls.as_mut().expect("build 26577676's calls");
+        assert_eq!(calls.add_relation.take(), Some(0x30D_AA90));
         assert_eq!(format!("{new:?}"), format!("{old:?}"));
     }
 
@@ -1843,6 +1852,7 @@ mod tests {
                 maximise_tactics: Some(0x256_C7C0),
                 work_permit_rules: Some(0x471_8EB0),
                 needs_work_permit: Some(0x1DD_B6B0),
+                add_relation: None,
             }
         );
         assert_eq!(calls.all().len(), 26);

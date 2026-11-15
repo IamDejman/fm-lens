@@ -109,6 +109,10 @@ maximise_tactics = 0x330AF30
 # team, 1, 0, 6, 0, no date*, no date*, null), a bool. Both only read; FM's own screens ask the second too.
 work_permit_rules = 0x1867BA0
 needs_work_permit = 0x248EEC0
+# ACTUAL_PERSON::add_relation: (person, a 16-byte entry, 1). The routine that takes a record from the
+# "PERSON_PREFERENCES" pool for a person without one and tests the entry's kind against 0x0048000000000001; the twin
+# of macOS arm64 0xCF9528, which the person setter's favoured and disliked lists call. Returns the entry it added.
+add_relation = 0x30DAA90
 
 # What a STARTING_LOAN (layout.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58.
 [starting_loan]

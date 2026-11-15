@@ -354,6 +354,9 @@ enum Command {
         /// Examples per preference kind when scanning every player.
         #[arg(long, default_value_t = 10)]
         max: usize,
+        /// Count what the rest of each entry holds instead, over every player and member of staff.
+        #[arg(long)]
+        bytes: bool,
     },
     /// Point one of a player's ties at another nation or club, or give a training another homegrown rule.
     TieSet {
@@ -521,6 +524,18 @@ enum Command {
         span: String,
         /// Stop after this many hits.
         #[arg(long, default_value_t = 100)]
+        max: usize,
+    },
+    /// Find the x86-64 code that reaches an address relative to itself: a `lea`, `mov` or `call` whose 32-bit
+    /// displacement lands on it. Only reads.
+    CodeRefs {
+        /// The address reached, e.g. a string's or a function's.
+        addr: String,
+        /// The module whose code is searched.
+        #[arg(long, default_value = "game_plugin.dll")]
+        module: String,
+        /// Stop after this many hits.
+        #[arg(long, default_value_t = 40)]
         max: usize,
     },
     /// Find the (begin, end) arrays in the game's memory that hold the 8-byte slot at ADDR,
@@ -966,7 +981,10 @@ fn run(cli: Cli) -> Result<()> {
             let session = connect(process, ArraySource::ProfileFirst)?;
             tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
         }
-        Command::Preferences { uid, max } => preferences(&connect(process, ArraySource::ProfileFirst)?, uid, max),
+        Command::Preferences { uid, max, bytes } => {
+            let session = connect(process, ArraySource::ProfileFirst)?;
+            if bytes { preference_bytes(&session, max) } else { preferences(&session, uid, max) }
+        }
         Command::TieSet { uid, index, nation, club, rule, restore } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             let target = nation.map(TieUid::Nation).or(club.map(TieUid::Club));
@@ -1023,6 +1041,10 @@ fn run(cli: Cli) -> Result<()> {
         Command::Refs { addr, span, max } => {
             let modules = list_modules(&process).context("listing modules")?;
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
+        }
+        Command::CodeRefs { addr, module, max } => {
+            let modules = list_modules(&process).context("listing modules")?;
+            code_refs(&process, &modules, resolve(&addr, &modules)?, &module, max)
         }
         Command::Squads => squads(&connect(process, ArraySource::ProfileFirst)?),
         Command::Related { clubs, players, depth, span, tolerance, linear } => {
@@ -1141,6 +1163,47 @@ fn refs(process: &Process, modules: &[Module], addr: u64, span: u64, max: usize)
                 }
             }
             scanned += len;
+            offset += CHUNK;
+        }
+    }
+    println!(
+        "{hits} hit(s){}; scanned {:.0} MiB in {:.1} s.",
+        if hits >= max { " (stopped at --max)" } else { "" },
+        scanned as f64 / 1_048_576.0,
+        started.elapsed().as_secs_f64()
+    );
+    Ok(())
+}
+
+/// Prints every place in `module` where four bytes, read as a displacement from the byte after them, land on
+/// `addr`: how x86-64 code names a string, a static or a function it calls.
+fn code_refs(process: &Process, modules: &[Module], addr: u64, module: &str, max: usize) -> Result<()> {
+    const CHUNK: u64 = 8 << 20;
+    let m = find_module(modules, module).with_context(|| format!("module {module} is not loaded"))?;
+    let started = Instant::now();
+    let (mut scanned, mut hits) = (0u64, 0usize);
+
+    'regions: for region in regions(process, m.base, m.end()).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            // Three bytes more, for a displacement that starts in the chunk's last three.
+            let len = (region.size - offset).min(CHUNK + 3);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                for (i, word) in chunk.windows(4).enumerate() {
+                    let displacement = i32::from_le_bytes(word.try_into().expect("4 bytes"));
+                    let at = base + i as u64;
+                    if (at + 4).wrapping_add_signed(displacement.into()) != addr {
+                        continue;
+                    }
+                    println!("{at:#014x}  {}", describe_address(at, modules));
+                    hits += 1;
+                    if hits >= max {
+                        break 'regions;
+                    }
+                }
+            }
+            scanned += len.min(CHUNK);
             offset += CHUNK;
         }
     }
@@ -3514,6 +3577,50 @@ fn preferences(session: &Session, uid: Option<u32>, max: usize) -> Result<()> {
         println!("{label}: {count}");
         for example in examples {
             println!("  {example}");
+        }
+    }
+    Ok(())
+}
+
+/// Counts what a preference's entry holds beside its target and strength, over every player and member of staff:
+/// the two bytes at 0x08 and the bytes at 0x0D, 0x0E and 0x0F, by kind of preference. This command never writes.
+fn preference_bytes(session: &Session, max: usize) -> Result<()> {
+    let (p, st, r) = (&session.layout.player, &session.layout.staff, &session.layout.relation);
+    let mut headers: Vec<u64> =
+        session.players()?.iter().map(|player| player.address + p.at(p.relations, player.shift)).collect();
+    if let Some(relations) = st.relations {
+        headers.extend(session.staff()?.iter().map(|member| member.address + st.at(relations, member.shift)));
+    }
+    let mut seen: BTreeMap<(u8, u8), BTreeMap<[u8; 5], usize>> = BTreeMap::new();
+    let mut lists = 0usize;
+    for slot in headers {
+        let Ok(header) = session.process.read_u64(slot) else { continue };
+        let Ok(words) = session.process.read_bytes(header, 16) else { continue };
+        let begin = u64::from_le_bytes(words[..8].try_into().expect("8 bytes"));
+        let end = u64::from_le_bytes(words[8..].try_into().expect("8 bytes"));
+        if begin == 0 || end <= begin || end - begin > 0x1000 || !(end - begin).is_multiple_of(r.size) {
+            continue;
+        }
+        let Ok(bytes) = session.process.read_bytes(begin, (end - begin) as usize) else { continue };
+        lists += 1;
+        for entry in bytes.chunks(r.size as usize) {
+            let codes = (entry[r.target_kind as usize], entry[r.relation as usize]);
+            if !matches!(codes, (3, 1 | 2) | (1, 3 | 4)) {
+                continue;
+            }
+            let rest = [entry[0x08], entry[0x09], entry[0x0D], entry[0x0E], entry[0x0F]];
+            *seen.entry(codes).or_default().entry(rest).or_default() += 1;
+        }
+    }
+    println!("{lists} list(s) read");
+    for ((kind, relation), counts) in seen {
+        let total: usize = counts.values().sum();
+        println!("kind {kind} relation {relation}: {total} entries, {} different", counts.len());
+        let mut counts: Vec<_> = counts.into_iter().collect();
+        counts.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+        for (rest, count) in counts.into_iter().take(max) {
+            let at08 = u16::from_le_bytes([rest[0], rest[1]]);
+            println!("  {count:>6}  +0x08 {at08:<5} +0x0D {:<3} +0x0E {:<3} +0x0F {:#04x}", rest[2], rest[3], rest[4]);
         }
     }
     Ok(())
