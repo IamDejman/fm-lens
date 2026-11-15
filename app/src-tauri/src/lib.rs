@@ -741,7 +741,11 @@ impl Connection {
                     logged.push(self.holding(removed, removal, batch));
                 }
                 Err(err) => {
-                    failed.push(FailedEdit { field: "preference.dislikedPerson".to_owned(), value: 0, error: err.into() });
+                    failed.push(FailedEdit {
+                        field: "preference.dislikedPerson".to_owned(),
+                        value: 0,
+                        error: err.into(),
+                    });
                 }
             }
         }
