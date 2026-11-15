@@ -83,7 +83,7 @@ pub use game_calls::{
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
 pub use index::{Listed, SearchIndex};
-pub use languages::{LEAST_LEVEL, Language, LanguagePlan, LanguageSet, MOST_LEVEL};
+pub use languages::{LEAST_LEVEL, Language, LanguageChoice, LanguagePlan, LanguageSet, MOST_LEVEL};
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan, Lifted};

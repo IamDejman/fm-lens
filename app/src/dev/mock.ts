@@ -1131,7 +1131,7 @@ function logLanguage(
   isStaff: boolean,
   uid: number,
   name: string,
-  before: Language,
+  before: Language | null,
   after: Language | null,
   next: Language[],
 ): LoggedChange {
@@ -1147,7 +1147,7 @@ function logLanguage(
     entity: isStaff ? "staff" : "player",
     uid,
     field: "language",
-    old: before.level,
+    old: before?.level ?? 0,
     new: after?.level ?? 0,
     undoneAt: null,
     batch: null,
@@ -1174,6 +1174,47 @@ function changeLanguage(uid: number, isStaff: boolean, index: number, level: num
   const after = { ...before, level };
   const next = currentLanguages(isStaff, uid).map((l, i) => (i === index ? after : l));
   return logLanguage(isStaff, uid, name, before, after, next);
+}
+
+/** `language_choices`: the languages a fixture person can be given. */
+const LANGUAGES = [
+  "Arabic", "Basque", "Catalan", "Danish", "Dutch", "English", "French", "German", "Italian", "Portuguese", "Spanish",
+  "Swedish", "Turkish",
+];
+
+/** Every fixture person's own language, which the real command turns away, and how long a list it adds to. */
+const OWN_LANGUAGE = "Italian";
+const LANGUAGES_FULL = 30;
+
+/** `add_language`: gives a fixture person another language, with the real command's failures. */
+function addLanguage(uid: number, isStaff: boolean, name: string, level: number): LoggedChange {
+  const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
+  if (!person) {
+    throw notFound(isStaff ? "staff" : "player", uid);
+  }
+  if (!LANGUAGES.includes(name)) {
+    throw failure("app.dataChanged", "This data has changed in the game; reload and try again.");
+  }
+  if (!Number.isInteger(level) || level < 1 || level > 10) {
+    throw failure("move.outOfRange", `${level} is not a valid level; it takes 1 to 10`, {
+      field: "level",
+      value: level,
+      min: 1,
+      max: 10,
+    });
+  }
+  const current = currentLanguages(isStaff, uid);
+  if (current.some((l) => l.name === name)) {
+    throw failure("language.same", "the person's list has that language already");
+  }
+  if (current.length >= LANGUAGES_FULL) {
+    throw failure("language.full", "the person's list of languages is as long as the game lets it get");
+  }
+  if (name === OWN_LANGUAGE) {
+    throw failure("language.own", "that is the person's own language, which the game does not list");
+  }
+  const after: Language = { name, level, local: false };
+  return logLanguage(isStaff, uid, person.name, null, after, [...current, after]);
 }
 
 /** `remove_language`: takes a fixture person's language out of his list. */
@@ -4054,7 +4095,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, addPreference: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, addPreference: true, addLanguage: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
@@ -4714,6 +4755,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       ) as T;
     case "change_language":
       return changeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.level)) as T;
+    case "language_choices":
+      return [...LANGUAGES] as T;
+    case "add_language":
+      return addLanguage(Number(args?.uid), Boolean(args?.staff), String(args?.name), Number(args?.level)) as T;
     case "remove_language":
       return removeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
     case "change_injury":

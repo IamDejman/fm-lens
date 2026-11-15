@@ -26,6 +26,7 @@ const OPENED_KEY = "fm-lens.opened";
 export const EDITS = new Set([
   "add_injury",
   "add_preference",
+  "add_language",
   "add_release_clause",
   "add_tie",
   "apply_edits",

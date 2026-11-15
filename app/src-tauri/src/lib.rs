@@ -13,15 +13,15 @@ use fmlens_core::{
     Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded,
     EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate,
     FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
-    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
-    MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort,
-    NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef,
-    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
-    PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS,
-    SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary,
-    StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId,
-    TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
-    read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
+    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageChoice, LanguageSet,
+    Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails,
+    NationFilter, NationSort, NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid,
+    PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary,
+    PlayerTemplate, Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet,
+    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter,
+    StadiumSort, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan,
+    Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries,
+    nations, read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -1331,7 +1331,7 @@ impl Connection {
     }
 
     /// Logs a change to a person's languages just written, as a change of his field `language` from one level to the
-    /// other (0 for one taken out), with the language and its level before and after.
+    /// other (0 for one added or taken out), with the language and its level before and after.
     fn log_language(&mut self, done: LanguageSet) -> LoggedChange {
         let end = |language: Option<&Language>| {
             language.map(|language| TieEnd {
@@ -1344,7 +1344,7 @@ impl Connection {
             entity: done.entity,
             uid: done.person,
             field: "language".to_owned(),
-            old: i64::from(done.before.level),
+            old: done.before.as_ref().map_or(0, |before| i64::from(before.level)),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.level)),
             record: Vec::new(),
         };
@@ -1363,7 +1363,7 @@ impl Connection {
             batch: None,
             moved: None,
             captaincy: None,
-            tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
+            tie: Some(TieChange { from: end(done.before.as_ref()), to: end(done.after.as_ref()) }),
             clause: None,
             holds: None,
             undo: Some(Undo::Language(done)),
@@ -5241,6 +5241,40 @@ fn remove_language(state: State<'_, AppState>, uid: u32, staff: bool, index: usi
     Ok(connection.log_language(done))
 }
 
+/// The languages of the game that a person can be given, by name.
+fn language_list(connection: &mut Connection) -> Vec<LanguageChoice> {
+    let nations: Vec<u64> = connection.listed_nations().iter().map(|nation| nation.address).collect();
+    connection.session.language_choices(&nations)
+}
+
+/// The names of the languages a person can be given, in order.
+#[tauri::command]
+fn language_choices(state: State<'_, AppState>) -> Result<Vec<String>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    Ok(language_list(connection).into_iter().map(|language| language.name).collect())
+}
+
+/// Has the game give the player `uid`, or the member of staff `uid` for `staff`, the language named `name`, one of
+/// `language_choices`, at `level`, 1 to 10. Logged and undone like any change: undoing it takes the language out
+/// again.
+#[tauri::command]
+fn add_language(
+    state: State<'_, AppState>,
+    uid: u32,
+    staff: bool,
+    name: String,
+    level: u8,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let language = language_list(connection).into_iter().find(|language| language.name == name);
+    let language = language.ok_or_else(data_changed)?;
+    let person = person_ref(connection, uid, staff)?;
+    let done = connection.session.add_language(person, &language, level)?;
+    Ok(connection.log_language(done))
+}
+
 /// Makes the injury `index` of the player `uid` last `days` days from when it began, at the most. Logged and undone like
 /// any change.
 #[tauri::command]
@@ -5972,6 +6006,8 @@ pub fn run() {
             add_preference,
             remove_preference,
             change_language,
+            add_language,
+            language_choices,
             remove_language,
             change_injury,
             remove_injury,
