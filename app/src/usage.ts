@@ -61,6 +61,7 @@ export const EDITS = new Set([
   "sign_free_agent",
   "sign_free_agent_later",
   "start_loan",
+  "swap_board",
   "swap_players",
   "team_action",
 ]);

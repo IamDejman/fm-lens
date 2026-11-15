@@ -316,6 +316,7 @@ impl Session {
         };
         details.languages = self.staff_languages(member).unwrap_or_default();
         details.preferences = self.staff_preferences(member).unwrap_or_default();
+        details.board_seat = self.holds_board_seat(member);
         // Through the editor's own guarded read: a manager whose flags cannot be located stays unknown.
         if member.is_human
             && let Ok(unsackable) = self.field(Entity::Staff, "manager.unsackable")

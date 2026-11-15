@@ -8,9 +8,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fmlens_core::{
-    AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, CaptainRole, CaptainSet,
-    Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded, Cohered,
-    CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded,
+    AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, BoardPlan, BoardSwap,
+    CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubSort, Coded,
+    Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded,
     EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate,
     FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
     HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
@@ -1649,6 +1649,76 @@ impl Connection {
         logged
     }
 
+    /// Works out the board members `uid` and `other` swapping seats.
+    fn plan_board_swap(&self, uid: u32, other: u32) -> Result<BoardPlan, Failure> {
+        let member = self.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
+        let with = self.staff.get(other).ok_or_else(|| not_found(Entity::Staff, other))?;
+        Ok(self.session.plan_board_swap(member, with)?)
+    }
+
+    /// Logs two board members' swap of seats as one change, which names the other: of the first's `club`, or of his
+    /// `contract.job` for a swap within a board. Brings both list rows up to date.
+    fn log_board(&mut self, done: BoardSwap) -> LoggedChange {
+        let row = |uid: u32| {
+            let found = self.staff.get(uid);
+            StaffRow {
+                uid,
+                club: found.and_then(|s| s.club.clone()),
+                club_uid: found.and_then(|s| s.club_uid),
+                team: found.and_then(|s| s.team),
+                job: found.and_then(|s| s.job),
+            }
+        };
+        let rows = [row(done.member), row(done.other)];
+        let other = done.other;
+        let named = |uid: u32| self.staff.get(uid).map_or_else(String::new, |s| s.name.clone());
+        let (name, with) = (named(done.member), named(done.other));
+        let moved = done.from_club != done.to_club;
+        let (from, to) = (self.club_name(done.from_club), self.club_name(done.to_club));
+        for (uid, club, club_uid, job) in
+            [(done.member, &to, done.to_club, done.job.1), (done.other, &from, done.from_club, done.job.0)]
+        {
+            self.staff.update(uid, |member| {
+                member.club = Some(club.clone());
+                member.club_uid = Some(club_uid);
+                member.team = Some(TeamId::SENIOR);
+                member.job = Some(job);
+            });
+        }
+        let (field, old, new) = if moved {
+            ("club", i64::from(done.from_club), i64::from(done.to_club))
+        } else {
+            ("contract.job", i64::from(done.job.0), i64::from(done.job.1))
+        };
+        let clubs = |club: String| moved.then_some(club);
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change: Change {
+                entity: Entity::Staff,
+                uid: done.member,
+                field: field.to_owned(),
+                old,
+                new,
+                record: Vec::new(),
+            },
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: Some(MovedClubs { from: clubs(from), to: clubs(to), with: Some(with), fee: None, joins: None }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            holds: None,
+            undo: Some(Undo::Board(LoggedBoard { done, rows })),
+        };
+        self.pending_refresh.extend([(Entity::Staff, logged.change.uid), (Entity::Staff, other)]);
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Works out what the fee `fee` of moving the player from the club `from` to the club `to` does to their money:
     /// none for no fee.
     fn plan_fee(&self, from: u32, to: u32, fee: Option<i64>) -> Result<Option<FeePlan>, Failure> {
@@ -1971,6 +2041,18 @@ impl Connection {
                     member.team = logged.team;
                     member.job = logged.job;
                 });
+            }
+            Some(Undo::Board(logged)) => {
+                self.session.undo_board_swap(&logged.done)?;
+                for row in logged.rows {
+                    self.staff.update(row.uid, |member| {
+                        member.club = row.club;
+                        member.club_uid = row.club_uid;
+                        member.team = row.team;
+                        member.job = row.job;
+                    });
+                    self.pending_refresh.push((Entity::Staff, row.uid));
+                }
             }
             Some(Undo::Captain(captaincy)) => self.session.undo_captain(&captaincy)?,
             Some(Undo::Injured(added)) => {
@@ -2420,6 +2502,8 @@ enum Undo {
     Clause(ClauseSet),
     Captain(CaptainSet),
     Staff(LoggedStaff),
+    /// Two board members' swap of seats.
+    Board(LoggedBoard),
     /// An injury the game gave: undone by healing it.
     Injured(AddedInjury),
     /// A work permit the game gave or took away: undone by having it take the permit away or give it back.
@@ -2444,6 +2528,23 @@ enum Undo {
 #[derive(Clone)]
 struct LoggedStaff {
     done: StaffChange,
+    club: Option<String>,
+    club_uid: Option<u32>,
+    team: Option<TeamId>,
+    job: Option<u8>,
+}
+
+/// Two board members' swap of seats as the log keeps it: the writes to undo, and what their list rows said before.
+#[derive(Clone)]
+struct LoggedBoard {
+    done: BoardSwap,
+    rows: [StaffRow; 2],
+}
+
+/// What a member of staff's list row said about his club and job.
+#[derive(Clone)]
+struct StaffRow {
+    uid: u32,
     club: Option<String>,
     club_uid: Option<u32>,
     team: Option<TeamId>,
@@ -2622,6 +2723,9 @@ struct MovePreview {
     /// The game makes the move itself, and nothing undoes it.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     permanent: bool,
+    /// For a swap of board seats, the job he has and the one he takes, as contract codes.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    jobs: Option<(u8, u8)>,
 }
 
 /// How a move to another club is made: written by FM Lens, or made by the game itself.
@@ -3694,12 +3798,14 @@ fn search_staff(
                 && s.club_uid.is_some_and(|club| connection.human_clubs.contains(&club))
         },
     );
+    // A search by name or ID finds the board too, so a seat can be swapped.
+    let searched = !query.trim().is_empty();
     let page = ranked_page(
         &connection.staff,
         &query,
         limit,
         offset.unwrap_or(0),
-        |s| filter.matches(s) && (!best.ranks() || filter.job.is_some() || !fmlens_core::board_job(s.job)),
+        |s| filter.matches(s) && (!best.ranks() || filter.job.is_some() || searched || !fmlens_core::board_job(s.job)),
         |hits| match order {
             Some(order) => sort_rows(hits, order),
             None if best.ranks() => best_first(hits, |s| best.staff(s)),
@@ -4421,6 +4527,7 @@ fn plan_club_move(
     let fee = connection.plan_fee(from, to, fee)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
     Ok(MovePreview {
+        jobs: None,
         from: Some(name(from)),
         to: name(to),
         fee,
@@ -4555,6 +4662,7 @@ fn plan_staff_move(state: State<'_, AppState>, uid: u32, club: u32) -> Result<Mo
     let plan = connection.plan_staff_move(uid, club)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
     Ok(MovePreview {
+        jobs: None,
         from: Some(name(plan.from_club)),
         to: name(plan.to_club),
         fee: None,
@@ -4572,6 +4680,60 @@ fn move_staff(state: State<'_, AppState>, uid: u32, club: u32) -> Result<LoggedC
     let plan = connection.plan_staff_move(uid, club)?;
     let done = connection.session.apply_staff_plan(&plan)?;
     Ok(connection.log_staff(done))
+}
+
+/// A member of a club's board, to swap seats with.
+#[derive(Serialize)]
+struct BoardMember {
+    uid: u32,
+    name: String,
+    /// His seat's job, a contract code.
+    job: u8,
+}
+
+/// The board of the club `club`, the most senior seats first, for choosing whose seat to swap for. Only reads memory.
+#[tauri::command]
+fn board_members(state: State<'_, AppState>, club: u32) -> Result<Vec<BoardMember>, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let club = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let seats = connection.session.board(club)?;
+    Ok(seats
+        .into_iter()
+        .filter_map(|seat| {
+            let member = connection.staff.get(seat.member)?;
+            Some(BoardMember { uid: seat.member, name: member.name.clone(), job: seat.job })
+        })
+        .collect())
+}
+
+/// Checks that the board members `uid` and `other` can swap seats, and names their clubs (`from` is the club of
+/// `uid`); the error says why they cannot. Nothing is written.
+#[tauri::command]
+fn plan_board_swap(state: State<'_, AppState>, uid: u32, other: u32) -> Result<MovePreview, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    let plan = connection.plan_board_swap(uid, other)?;
+    let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
+    Ok(MovePreview {
+        jobs: Some(plan.job),
+        from: Some(name(plan.from_club)),
+        to: name(plan.to_club),
+        fee: None,
+        displaced: None,
+        permanent: false,
+    })
+}
+
+/// Swaps the seats of the board members `uid` and `other`, worked out again from the game as it is now: each takes
+/// the other's club, job and wage. Logged as one change.
+#[tauri::command]
+fn swap_board(state: State<'_, AppState>, uid: u32, other: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let plan = connection.plan_board_swap(uid, other)?;
+    let done = connection.session.apply_board_plan(&plan)?;
+    Ok(connection.log_board(done))
 }
 
 /// The human manager and club of the career connected now, as edited since it was read: the human manager may have
@@ -4593,6 +4755,7 @@ fn plan_manager_move(state: State<'_, AppState>, uid: u32, club: u32) -> Result<
     let plan = connection.session.plan_manager_move(member, to, &connection.staff)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
     Ok(MovePreview {
+        jobs: None,
         from: plan.from_club.map(name),
         to: name(plan.to_club),
         fee: None,
@@ -4641,7 +4804,7 @@ fn plan_club_swap(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Mo
         SwapRoute::Game(first, _) => (first.from_club, first.to_club, true),
     };
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
-    Ok(MovePreview { from: Some(name(from)), to: name(to), fee: None, displaced: None, permanent })
+    Ok(MovePreview { from: Some(name(from)), to: name(to), fee: None, displaced: None, permanent, jobs: None })
 }
 
 /// Swaps the clubs of the players `uid` and `other`, worked out again from the game as it is
@@ -5736,6 +5899,9 @@ pub fn run() {
             swap_players,
             plan_staff_move,
             move_staff,
+            board_members,
+            plan_board_swap,
+            swap_board,
             plan_manager_move,
             move_manager,
             change_staff_job,

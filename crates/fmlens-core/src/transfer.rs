@@ -235,6 +235,12 @@ pub enum MoveError {
     You,
     /// The member of staff has no contract.
     Unemployed,
+    /// This build's layout does not place a club's board.
+    NoBoards,
+    /// The member of staff holds no seat on a board.
+    NotOnBoard,
+    /// A board, or a seat on it, is not laid out as the ones the swap was checked on.
+    UnusualBoard,
     /// The club or one of its teams points at the member of staff directly, as a team does at its manager.
     StaffRole,
     /// None of the club's department lists holds the member of staff, or the new club's holds him already.
@@ -348,6 +354,9 @@ impl fmt::Display for MoveError {
             MoveError::NotApplied { .. } => f.write_str("the change was written, but the game holds something else"),
             MoveError::You => f.write_str("that's you; use Change club"),
             MoveError::Unemployed => f.write_str("the member of staff has no club"),
+            MoveError::NoBoards => f.write_str("board seats can't be swapped in this version of the game yet"),
+            MoveError::NotOnBoard => f.write_str("only an owner, chairperson, president or director can swap seats"),
+            MoveError::UnusualBoard => f.write_str("this board is set up in a way FM Lens can't swap safely"),
             MoveError::StaffRole => f.write_str(
                 "the club or one of its teams points at this member of staff directly, as a team does at its \
                  manager; the game moves him itself",
@@ -437,6 +446,9 @@ impl Coded for MoveError {
             MoveError::NotApplied { .. } => "move.notApplied",
             MoveError::You => "staff.you",
             MoveError::Unemployed => "staff.unemployed",
+            MoveError::NoBoards => "board.unavailable",
+            MoveError::NotOnBoard => "board.notSeat",
+            MoveError::UnusualBoard => "board.unusual",
             MoveError::StaffRole => "staff.role",
             MoveError::NotInDepartment => "staff.notListed",
             MoveError::DepartmentFull { .. } => "staff.noRoom",

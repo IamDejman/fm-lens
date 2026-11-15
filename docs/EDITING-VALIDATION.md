@@ -4078,3 +4078,28 @@ Nothing was saved. Another build could not be tried: the box has one.
 - Not run: Windows 10 and 11 (the box is Windows Server 2022), Game Pass (the
   box has Steam), a quit and relaunch for the edits above, and the Macs for
   #273.
+
+## Board seat swap on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The swaps were made on a copy of a career written
+with FM's Save As, at 18 July 2028; the main career's SHA-256 was the same
+before and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| A board member's profile | "Swap seat", and no Transfer or Change job. A coach's profile has Transfer and Change job, and no "Swap seat" |
+| Dialog | From, the member's club. To, a club search. Swap with, that club's board from the owner down, without the member himself on his own board. Then "Each takes the other's job and wage." and a line for each member |
+| Across clubs: Joel Glazer (5131431), Director at Inter Miami, with David Beckham (2003443), Owner at Manchester United | Plan "Joel Glazer → Manchester United (Owner)". After: Glazer first in Manchester United's list on the owner's contract (job 66, wage 10,000), Beckham first in Inter Miami's on the director's (job 6); wage and club copies with the seats; both lists in ID order. FM Lens: Owner, Manchester United, £10,000 |
+| FM, no save and load | Manchester United's Staff page listed Joel Glazer as Owner and Inter Miami's David Beckham as Director once each page was opened again. A Staff page already open kept its old rows until then |
+| Changes | "Joel Glazer, Club, Inter Miami CF → Manchester United, Swapped with David Beckham" |
+| Undo | Both back in memory; FM's Staff page listed David Beckham as Owner again |
+| Within one board: Kevin Glazer (28002954), Director, with Omar Berrada (2000336892), Chairperson, both Manchester United | Contracts, pointers and wage copies exchanged, the list unchanged. FM Lens: Chairperson, £19,178. FM's Staff page: Kevin Glazer Chairperson, Omar Berrada Director |
+| Save and load with both swaps in place | The probe and FM's Staff page read the same holders after the load |
+| Staff search with Best for on | "Glazer" lists the five board members of that name at both clubs, and an ID finds its one member. An earlier build of this change listed no one until the Job filter was set |
+| Arsenal, your club in that career: its Chairperson (2002081523), whose club copy is unset, with its Director (2002081573) | Contracts, pointers and club copies exchanged. FM's All Staff tab listed the former director as Chairperson |
+| Undo of that swap | Memory as before; FM listed the first chairperson again |
+
+Not run: a quit and relaunch after the app's swaps (the recon trials in
+`recon/fm27-board-members.md` cover one), a holiday after them, and the
+Macs, where the layout has no board section and the button is not offered.

@@ -48,7 +48,7 @@ impl Department {
     }
 }
 
-const DEPARTMENTS: [Department; 3] = [Department::Medical, Department::Coaching, Department::Scouting];
+pub(crate) const DEPARTMENTS: [Department; 3] = [Department::Medical, Department::Coaching, Department::Scouting];
 
 /// The jobs the editor gives and takes away, by contract code (see [`crate::job_name`]), with the department each
 /// belongs to. A manager, the board, the directors and jobs the editor cannot name are left as they are.
@@ -257,7 +257,11 @@ impl Session {
     }
 
     /// The club's list of `department`, and what it holds.
-    fn department_list(&self, club: u64, department: Department) -> Result<(PointerList, Vec<u64>), MoveError> {
+    pub(crate) fn department_list(
+        &self,
+        club: u64,
+        department: Department,
+    ) -> Result<(PointerList, Vec<u64>), MoveError> {
         let list = PointerList::read(&self.process, club + department.offset(&self.layout))?
             .ok_or(MoveError::DepartmentFull { department: department.name(), staff: 0 })?;
         let elements = list.elements(&self.process)?;
@@ -273,7 +277,7 @@ impl Session {
 
     /// Fails when the club or one of its teams points at the member of staff (his object, identity or person block)
     /// itself, rather than through a department list: such a role is the game's to move.
-    fn check_unheld(&self, club: u64, object: u64, identity: u64, person: u64) -> Result<(), MoveError> {
+    pub(crate) fn check_unheld(&self, club: u64, object: u64, identity: u64, person: u64) -> Result<(), MoveError> {
         let process = &self.process;
         let mut places = vec![(club, CLUB_BYTES)];
         if let Some(teams) = PointerList::read(process, club + self.layout.club.teams)? {

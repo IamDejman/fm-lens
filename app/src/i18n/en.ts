@@ -2580,6 +2580,24 @@ export const en = {
     swapRoute: (player: string, from: string, to: string, other: string) =>
       `${player}: ${from} → ${to}\n${other}: ${to} → ${from}`,
 
+    // Swapping a board member's seat for another's: the club is chosen as for a move, then one of its board.
+    boardButton: "Swap seat",
+    boardButtonTitle: "Swap seats with another board member",
+    boardTitle: "Swap seat",
+    boardChooseClub: "Pick the other member's club.",
+    boardChooseMember: "Pick the member to swap with.",
+    /** The name of the list of the club's board, for assistive technology. */
+    boardMembersLabel: "Board members",
+    boardReading: "Reading the board…",
+    boardFailed: (reason: string) => `Couldn't read the board: ${reason}`,
+    boardEmpty: "No one else is on this board.",
+    /** Takes the place of the list once a member is picked: the button that brings it back. */
+    changeMember: "Choose another member",
+    boardContract: "Each takes the other's job and wage.",
+    /** The swap can be made: the club and job each takes, a line each. `from` is the club of `player`. */
+    boardRoute: (player: string, job: string, to: string, other: string, otherJob: string, from: string) =>
+      `${player} → ${to} (${job})\n${other} → ${from} (${otherJob})`,
+
     // The foot
     move: "Transfer",
     moving: "Transferring…",
