@@ -88,6 +88,147 @@ const RULES: [(&[u8; 4], &str, bool); 19] = [
 /// The most rules a competition is read with; the Premier League has 52.
 const MOST_RULES: u64 = 512;
 
+/// A stage of a competition's running season.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SeasonStage {
+    /// The game's class of stage, e.g. "LEAGUE_STAGE" or "CUP_STAGE".
+    pub kind: String,
+    /// The substitutions a league stage plays by: what the season uses, where the rule data says what a season is set
+    /// up with. `None` for the other kinds of stage, whose settings are not mapped, and for a rule FM words by the
+    /// match.
+    pub subs: Option<SubsRules>,
+}
+
+/// How many substitutions a team may make, and how many substitutes it may name.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct SubsRules {
+    pub allowed: u8,
+    pub named: u8,
+}
+
+/// The most stages a season is read with; the most seen is 9.
+const MOST_STAGES: u64 = 64;
+
+/// What each of FM's substitution rules allows and names, by the rule's number: the two tables FM's own text for a
+/// fixture's substitutions is written from ("5 subs can be used in 3 stoppages, from a maximum of 9 named" is rule
+/// 58). `None` for the two rules whose numbers depend on the match.
+const SUBS_RULES: [Option<(u8, u8)>; 91] = [
+    Some((3, 7)),
+    Some((3, 5)),
+    Some((3, 3)),
+    Some((3, 5)),
+    Some((3, 7)),
+    Some((3, 4)),
+    Some((3, 4)),
+    Some((3, 6)),
+    Some((3, 12)),
+    Some((7, 7)),
+    Some((3, 9)),
+    Some((3, 5)),
+    Some((3, 5)),
+    Some((3, 5)),
+    Some((3, 5)),
+    Some((3, 6)),
+    Some((5, 8)),
+    Some((5, 9)),
+    Some((15, 15)),
+    Some((0, 0)),
+    Some((5, 7)),
+    Some((4, 7)),
+    None,
+    Some((5, 5)),
+    Some((6, 9)),
+    Some((3, 11)),
+    Some((4, 9)),
+    Some((3, 6)),
+    None,
+    Some((4, 4)),
+    Some((6, 7)),
+    Some((5, 5)),
+    Some((5, 7)),
+    Some((6, 12)),
+    Some((3, 9)),
+    Some((7, 12)),
+    Some((8, 12)),
+    Some((9, 12)),
+    Some((10, 12)),
+    Some((11, 12)),
+    Some((12, 12)),
+    Some((3, 10)),
+    Some((5, 5)),
+    Some((3, 9)),
+    Some((3, 7)),
+    Some((3, 12)),
+    Some((6, 11)),
+    Some((7, 9)),
+    Some((5, 12)),
+    Some((5, 9)),
+    Some((4, 12)),
+    Some((5, 7)),
+    Some((3, 7)),
+    Some((5, 5)),
+    Some((4, 12)),
+    Some((6, 9)),
+    Some((5, 7)),
+    Some((5, 12)),
+    Some((5, 9)),
+    Some((5, 10)),
+    Some((5, 10)),
+    Some((5, 12)),
+    Some((5, 7)),
+    Some((5, 9)),
+    Some((5, 11)),
+    Some((10, 11)),
+    Some((5, 10)),
+    Some((5, 12)),
+    Some((5, 10)),
+    Some((5, 11)),
+    Some((5, 11)),
+    Some((5, 6)),
+    Some((5, 6)),
+    Some((5, 15)),
+    Some((5, 15)),
+    Some((5, 15)),
+    Some((3, 7)),
+    Some((3, 7)),
+    Some((5, 5)),
+    Some((5, 11)),
+    Some((4, 7)),
+    Some((7, 12)),
+    Some((6, 15)),
+    Some((6, 12)),
+    Some((6, 15)),
+    Some((7, 9)),
+    Some((10, 10)),
+    Some((7, 9)),
+    Some((7, 7)),
+    Some((9, 9)),
+    Some((9, 9)),
+];
+
+/// The substitutions of FM's substitution rule `rule`; `Err` for a number that is not a rule of FM's.
+fn subs_rules(rule: u8) -> Result<Option<SubsRules>, ()> {
+    let entry = SUBS_RULES.get(usize::from(rule)).ok_or(())?;
+    Ok(entry.map(|(allowed, named)| SubsRules { allowed, named }))
+}
+
+/// The substitutions a running season plays by: those of its stages where every stage made so far is a league stage
+/// and they all agree. A season with a cup or group stage has none here, as theirs are not read.
+fn season_subs(stages: &[SeasonStage]) -> Option<SubsRules> {
+    let first = stages.first()?.subs?;
+    stages.iter().all(|stage| stage.kind == "LEAGUE_STAGE" && stage.subs == Some(first)).then_some(first)
+}
+
+/// The `sicomps` class `name` without its namespace, where it ends in `suffix`: "LEAGUE_STAGE" from MSVC's
+/// `.?AVLEAGUE_STAGE@sicomps@@` and from the Itanium ABI's `N7sicomps12LEAGUE_STAGEE`.
+fn sicomps_class(name: &str, suffix: &str) -> Option<String> {
+    let class = match name.strip_prefix(".?AV") {
+        Some(msvc) => msvc.strip_suffix("@sicomps@@")?,
+        None => name.strip_prefix("N7sicomps")?.strip_suffix('E')?.trim_start_matches(|c: char| c.is_ascii_digit()),
+    };
+    (class.ends_with(suffix) && class.bytes().all(|b| b.is_ascii_uppercase() || b == b'_')).then(|| class.to_owned())
+}
+
 /// The key of a rule entry for FM's code `code`: the code's letters, first letter highest, in the low 32 bits.
 fn rule_code(code: &[u8; 4]) -> u32 {
     u32::from_be_bytes(*code)
@@ -253,7 +394,8 @@ impl Session {
     }
 
     /// The rules of `competition` that FM keeps as plain numbers and yes-or-no values, in the order of [`RULES`];
-    /// `None` where the layout does not place them or the rule data does not check out. Only reads memory.
+    /// `None` where the layout does not place them or the rule data does not check out. The substitutions are those
+    /// of the running season where its stages give them, as that is what its matches play by. Only reads memory.
     pub fn competition_rules(
         &self,
         competition: &CompetitionSummary,
@@ -308,10 +450,19 @@ impl Session {
             return Ok(None);
         }
         let flag = [b"inac", b"ilgf", b"cita"].iter().find_map(|code| node(code)).map(|n| n.1).filter(|&f| f != number);
+        let season = self.season_stages(competition)?.as_deref().and_then(season_subs);
         Ok(Some(
             RULES
                 .iter()
                 .filter_map(|&(code, key, is_flag)| {
+                    let played = season.and_then(|subs| match key {
+                        "subs_allowed" => Some(subs.allowed),
+                        "max_subs" => Some(subs.named),
+                        _ => None,
+                    });
+                    if let Some(played) = played {
+                        return Some(CompetitionRule { key, value: RuleValue::Number(u32::from(played)) });
+                    }
                     let (_, kind, value) = node(code)?;
                     let value = if is_flag {
                         (Some(kind) == flag && value & 0xFF <= 1).then_some(RuleValue::Flag(value & 0xFF == 1))?
@@ -323,6 +474,73 @@ impl Session {
                 })
                 .collect(),
         ))
+    }
+
+    /// The stages of `competition`'s running season, in the game's order; `None` where the layout does not place
+    /// them or they do not check out: every stage must be a stage of the game's that points back at the competition,
+    /// with settings of the game's. Only reads memory.
+    pub fn season_stages(&self, competition: &CompetitionSummary) -> Result<Option<Vec<SeasonStage>>, MoveError> {
+        let Some(c) = self.layout.competition.as_ref() else {
+            return Ok(None);
+        };
+        let (Some(actual), Some(season)) = (c.actual, c.season.as_ref()) else {
+            return Ok(None);
+        };
+        let address = competition.address;
+        if !is_user_pointer(address)
+            || self.process.read_u32(address + c.uid).ok() != Some(competition.uid)
+            || class_of(&self.process, &self.plugin, address).as_deref() != Some(c.class.as_str())
+        {
+            return Err(MoveError::Changed { address });
+        }
+        let actual = self.process.read_u64(address + actual)?;
+        if !is_user_pointer(actual) {
+            return Ok(None);
+        }
+        let header = self.process.read_bytes(actual + season.stages, 16)?;
+        let begin = u64::from_le_bytes(header[0..8].try_into().expect("8 bytes"));
+        let end = u64::from_le_bytes(header[8..16].try_into().expect("8 bytes"));
+        let size = end.wrapping_sub(begin);
+        if size == 0 {
+            return Ok(Some(Vec::new()));
+        }
+        if !is_user_pointer(begin) || end < begin || size % 8 != 0 || size / 8 > MOST_STAGES {
+            return Ok(None);
+        }
+        let class = |object: u64, suffix: &str| {
+            class_of(&self.process, &self.plugin, object).and_then(|name| sicomps_class(&name, suffix))
+        };
+        let mut stages = Vec::with_capacity((size / 8) as usize);
+        for pointer in self.process.read_bytes(begin, size as usize)?.as_chunks::<8>().0 {
+            let stage = u64::from_le_bytes(*pointer);
+            // A stage the season has not made yet.
+            if stage == 0 {
+                continue;
+            }
+            if !is_user_pointer(stage) {
+                return Ok(None);
+            }
+            let Some(kind) = class(stage, "_STAGE") else {
+                return Ok(None);
+            };
+            if self.process.read_u64(stage + season.competition)? != address {
+                return Ok(None);
+            }
+            let subs = if kind == "LEAGUE_STAGE" {
+                let settings = self.process.read_u64(stage + season.league_settings)?;
+                if !is_user_pointer(settings) || class(settings, "_SETTINGS").as_deref() != Some("LEAGUE_SETTINGS") {
+                    return Ok(None);
+                }
+                let Ok(subs) = subs_rules(self.process.read_bytes(settings + season.subs_rules, 1)?[0]) else {
+                    return Ok(None);
+                };
+                subs
+            } else {
+                None
+            };
+            stages.push(SeasonStage { kind, subs });
+        }
+        Ok(Some(stages))
     }
 
     /// Every award. Empty where this build's profile or layout does not place them, or the table does not check out.
@@ -420,6 +638,45 @@ mod tests {
         keys.sort_unstable();
         keys.dedup();
         assert_eq!(keys.len(), RULES.len());
+    }
+
+    #[test]
+    fn stage_classes_read_on_both_platforms() {
+        assert_eq!(sicomps_class(".?AVLEAGUE_STAGE@sicomps@@", "_STAGE").as_deref(), Some("LEAGUE_STAGE"));
+        assert_eq!(sicomps_class("N7sicomps12LEAGUE_STAGEE", "_STAGE").as_deref(), Some("LEAGUE_STAGE"));
+        assert_eq!(sicomps_class("N7sicomps12CUP_SETTINGSE", "_SETTINGS").as_deref(), Some("CUP_SETTINGS"));
+        // Another namespace, another kind of class, and a class that only holds the word.
+        assert_eq!(sicomps_class(".?AVCOMP@db@@", "_STAGE"), None);
+        assert_eq!(sicomps_class(".?AVLEAGUE_SETTINGS@sicomps@@", "_STAGE"), None);
+        assert_eq!(sicomps_class(".?AVCUP_STAGE_RULES_HELPER@sicomps@@", "_STAGE"), None);
+    }
+
+    #[test]
+    fn a_season_gives_its_substitutions_where_its_league_stages_agree() {
+        let stage = |kind: &str, subs: Option<(u8, u8)>| SeasonStage {
+            kind: kind.to_owned(),
+            subs: subs.map(|(allowed, named)| SubsRules { allowed, named }),
+        };
+        let league = |subs| stage("LEAGUE_STAGE", Some(subs));
+        assert_eq!(season_subs(&[league((5, 9))]), Some(SubsRules { allowed: 5, named: 9 }));
+        assert_eq!(season_subs(&[league((5, 12)), league((5, 12))]), Some(SubsRules { allowed: 5, named: 12 }));
+        assert_eq!(season_subs(&[]), None);
+        assert_eq!(season_subs(&[league((5, 9)), league((5, 7))]), None);
+        // A qualifying competition's table of second-placed teams is a league stage of its own.
+        assert_eq!(season_subs(&[stage("GROUP_STAGE", None), league((3, 7))]), None);
+        assert_eq!(season_subs(&[league((5, 9)), stage("CUP_STAGE", None)]), None);
+        assert_eq!(season_subs(&[stage("LEAGUE_STAGE", None)]), None);
+    }
+
+    #[test]
+    fn a_substitution_rule_gives_its_numbers() {
+        // FM's "5 subs can be used in 3 stoppages, from a maximum of 9 named".
+        assert_eq!(subs_rules(58), Ok(Some(SubsRules { allowed: 5, named: 9 })));
+        assert_eq!(subs_rules(0), Ok(Some(SubsRules { allowed: 3, named: 7 })));
+        // A rule worded by the match, and a number past FM's last rule.
+        assert_eq!(subs_rules(28), Ok(None));
+        assert_eq!(subs_rules(91), Err(()));
+        assert!(SUBS_RULES.iter().flatten().all(|&(allowed, named)| allowed <= named && named <= 15));
     }
 
     #[test]

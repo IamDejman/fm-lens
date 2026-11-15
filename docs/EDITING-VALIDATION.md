@@ -4224,3 +4224,30 @@ Not run: a language already in the list (the picker leaves those out; the
 refusal is covered by a unit test); a list of 30; a day passing in FM; a quit
 and relaunch; you; the Macs and Game Pass, where no profile names the routine,
 so Add is not offered.
+
+## Season substitutions on Windows (15 November 2026)
+
+A competition's profile now takes "Substitutions allowed" and "Substitutes
+named" from its running season: the number of FM's substitution rule in each
+league stage's settings, turned into numbers by FM's own tables. They show only
+where every stage the season has made so far is a league stage and they agree.
+Nothing is written. Steam build 26577676, the packaged app, a copied career on
+18 July 2028.
+
+| Check | FM Lens | FM's Rules page |
+|---|---|---|
+| Premier League | 5 allowed, 9 named | 5 subs, 9 named (13 November) |
+| Sky Bet Championship | 5 allowed, 9 named | "5 subs can be used in 3 stoppages, from a maximum of 9 named" |
+| Spanish First Division | 5 allowed, 12 named | "5 subs can be used in 3 stoppages, from a maximum of 12 named" |
+| European Championship Qualifying, a group stage and a table of second-placed teams | No substitution rows | Group A: "5 subs can be used in 3 stoppages, from a maximum of 12 named". Second Placed Teams: "3 subs can be used from a maximum of 7 named" |
+| The same table of second-placed teams, read by the probe | 3 allowed, 7 named | Same |
+
+The probe read every competition: of 8,084, 6,861 hold no rule data in this
+save, 1,101 have no stages yet, and 52 league stages gave twelve different
+pairs, from 3 of 7 to 7 of 12. The saves and the main career's hash were
+unchanged afterwards.
+
+Not run: any pair other than the three above against FM; cups and group stages
+(their rule is not mapped, so they show nothing); a season with a play-off
+stage made (it then shows no substitution rows); the Macs and Game Pass, where
+no layout places the season; editing.

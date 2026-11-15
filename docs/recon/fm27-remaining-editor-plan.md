@@ -68,6 +68,12 @@ Fresh checks:
 - Adding a language (15 November 2026): done on Windows through the game's own routine, at level
   10. Readback, FM's Personal page, Undo, save and load checked (Add a language in
   ../EDITING-VALIDATION.md). A day passing and a quit are not run; the Macs have no profile entry.
+- Substitutes reader (15 November 2026): done for leagues on Windows. A league stage of the
+  running season holds the number of FM's substitution rule, and FM's own tables turn it into
+  substitutions allowed and substitutes named. Three competitions checked against FM's Rules
+  pages (Season substitutions in ../EDITING-VALIDATION.md; the mapping is in
+  fm27-competitions-awards-2.md). Cups, group stages, the Macs and Game Pass are not read, and
+  nothing is edited.
 
 ## Delivery sequence and shared guardrails
 

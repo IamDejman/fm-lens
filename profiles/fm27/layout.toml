@@ -489,6 +489,14 @@ women = 0xF9             # u8, nonzero for a women's competition
 actual = 0xB0
 rules = 0x38
 
+# A running season: the stage pointers in the loaded rule data, a stage's pointer to its competition, a league stage's
+# pointer to its settings, and in those the number of FM's substitution rule. Read on Steam 26577676.
+[competition.season]
+stages = 0x1C0
+competition = 0x70
+league_settings = 0xF0
+subs_rules = 0x146
+
 # The kinds of injury (db::INJURY), laid out as on macOS but for the table's vector at +0x80.
 # Every nation (db::NATION) and every stadium (db::STADIUM), from their database tables in the block that holds the
 # competitions' (statics `nations` and `stadiums` of the build profile), read as the competitions are: a vector of
