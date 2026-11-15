@@ -4192,8 +4192,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const found = staff
         .filter((s) => String(s.uid) === query.trim() || words.every((w) => fold(`${s.name} ${s.fullName ?? ""}`).includes(w)))
         .filter((s) => matchesStaffFilter(s, filter))
-        // A ranked list leaves the board out unless it is filtered to one of its jobs.
-        .filter((s) => !bestOf(args) || filter.job !== undefined || !onBoard(s))
+        // A ranked list leaves the board out unless it is searched or filtered to one of its jobs.
+        .filter((s) => !bestOf(args) || filter.job !== undefined || query.trim() !== "" || !onBoard(s))
         .sort((a, b) => Number(b.isHuman) - Number(a.isHuman) || b.currentAbility - a.currentAbility || a.name.localeCompare(b.name))
         .sort(
           byColumn<StaffSummary>(orderOf(args), (s, by) => {

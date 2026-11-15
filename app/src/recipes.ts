@@ -94,7 +94,7 @@ export const STAFF_RECIPES: readonly Recipe[] = [
   staff(48, { sports_science: 1 }),
 ];
 
-/** The jobs of those who run a club, whom a ranked staff list leaves out (see `board_job` in `best.rs`). */
+/** The jobs of those who run a club, whom a ranked staff list leaves out unless it is searched (see `board_job` in `best.rs`). */
 export const BOARD_JOBS: readonly number[] = [4, 6, 8, 24, 66, 70];
 
 /**

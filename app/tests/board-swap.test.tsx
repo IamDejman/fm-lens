@@ -31,6 +31,14 @@ test('only a board member is offered a seat swap', async () => {
   }
 });
 
+test('a ranked staff list leaves the board out until it is searched', async () => {
+  const best = { weights: [{ key: 'attacking', weight: 1 }], positions: [] };
+  const search = (query: string) => mockInvoke<StaffPage>('search_staff', { query, limit: 500, filter: {}, best });
+  expect((await search('')).rows.some((row) => row.uid === OWNER)).toBe(false);
+  expect((await search('Marta Feld')).rows.map((row) => row.uid)).toEqual([OWNER]);
+  expect((await search(String(OWNER))).rows.map((row) => row.uid)).toEqual([OWNER]);
+});
+
 test('a board member swaps seats with one of another board, and Undo puts both back', async () => {
   const user = userEvent.setup();
   const onEdited = vi.fn();

@@ -3798,12 +3798,14 @@ fn search_staff(
                 && s.club_uid.is_some_and(|club| connection.human_clubs.contains(&club))
         },
     );
+    // A search by name or ID finds the board too, so a seat can be swapped.
+    let searched = !query.trim().is_empty();
     let page = ranked_page(
         &connection.staff,
         &query,
         limit,
         offset.unwrap_or(0),
-        |s| filter.matches(s) && (!best.ranks() || filter.job.is_some() || !fmlens_core::board_job(s.job)),
+        |s| filter.matches(s) && (!best.ranks() || filter.job.is_some() || searched || !fmlens_core::board_job(s.job)),
         |hits| match order {
             Some(order) => sort_rows(hits, order),
             None if best.ranks() => best_first(hits, |s| best.staff(s)),

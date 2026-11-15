@@ -38,7 +38,8 @@ pub struct Fit {
 const BOARD_JOBS: [u8; 6] = [4, 6, 8, 24, 66, 70];
 
 /// Whether `job`, a code of a contract, is one of the board's. The game keeps coaching attributes for the board,
-/// high ones that mean nothing, so a ranked list leaves the board out unless it is filtered to one of its jobs.
+/// high ones that mean nothing, so a ranked list leaves the board out unless it is searched or filtered to one of
+/// its jobs.
 pub fn board_job(job: Option<u8>) -> bool {
     job.is_some_and(|code| BOARD_JOBS.contains(&code))
 }
