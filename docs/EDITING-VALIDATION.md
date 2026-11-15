@@ -4529,8 +4529,7 @@ that FM install, through a name change file FM Lens writes in FM's folder. A
 club's name and short name are renamed from
 the Rename button in the club's profile (`rename_club`), on Steam build
 26577676 on macOS and Windows, where `[club_names]` is in the layout. Intel
-Macs use the macOS layout, so the button shows there too, but it has not been
-checked in FM there.
+Macs (FM under Rosetta) use the macOS layout and were checked too.
 
 What was read from the running game (Apple Silicon, read-only): a club holds a
 pointer to its name at `+0xC0` and to its short name at `+0xC8`. The game keeps
@@ -4654,4 +4653,10 @@ FM was closed without saving, started, and the copy loaded: FM Lens read
 and removed the file. After another restart and load FM Lens read "Ipswich
 Wanderers". All 47 career files' hashes were unchanged.
 
-Not run: Intel.
+Checked in FM on Intel (15 November, FM under Rosetta with the bridge, FM Lens
+1.1.0 debug build): renaming Ipswich Wanderers to "Leven Athletic", short name
+"Leven", wrote the file as on Apple Silicon. FM was quit without saving,
+started under Rosetta and FM-Lens-Rename2 loaded: FM Lens read "Leven
+Athletic". Use original names gave back "Ipswich Wanderers" and removed the
+file; after another restart and load FM Lens read "Ipswich Wanderers" with no
+Use original names. All nine career files' hashes were unchanged.
