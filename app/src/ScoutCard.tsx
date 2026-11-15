@@ -171,7 +171,8 @@ function Head({
             {shown.map((fact, at) => (
               // The facts are in a fixed order, and only ever dropped, so their place names them.
               <span key={at}>
-                {at > 0 && " · "}
+                {/* The dot stays with the fact before it, so a line never starts with one or holds only one. */}
+                {at > 0 && " · "}
                 {fact}
               </span>
             ))}

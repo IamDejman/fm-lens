@@ -162,6 +162,14 @@ player (Saka) and a member of staff (De Zerbi). A club's is the u32 before its
 UID. A team's index is its id in the teams table, whose club is the team's
 club. The card shows after the pointer has rested on a link for 300 ms.
 
+Checked on macOS on 15 November (Apple Silicon, Steam build 26577676, FM in a
+window, a debug build, a career copy at 10 December 2027): FM's pointer was
+found 541 ms after FM came to the front. Hovering a player (Raya, in a
+message's team list), a member of staff (the assistant manager, as a message's
+sender) and a club (Tottenham Hotspur, in a news article's text) showed their
+cards, and a click on each opened them in FM Lens. FM's own card from a squad
+row's icon still brought FM Lens's card.
+
 ## Top players by division
 
 Built for Windows; established in the running game on Steam build 26577676
