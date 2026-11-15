@@ -70,6 +70,8 @@ export interface Career {
   manager: string;
   club: string | null;
   clubUid: number | null;
+  /** The loaded save's name as FM lists it; null where it cannot be read. */
+  saveName: string | null;
 }
 
 export interface ConnectionInfo {

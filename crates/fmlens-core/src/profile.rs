@@ -31,6 +31,9 @@ pub struct Layout {
     /// The retirements the game has planned; only in the layouts they have been checked in.
     #[serde(default)]
     pub retirement: Option<RetirementLayout>,
+    /// The game's record of the save it has loaded; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub save_system: Option<SaveSystemLayout>,
     /// A player's familiarity with his clubs and nations; only in the layouts it has been checked in.
     #[serde(default)]
     pub cohesion: Option<CohesionLayout>,
@@ -412,6 +415,15 @@ pub struct RetirementLayout {
     pub date: u64,
     /// In a player: the `u32` id the game gives the person.
     pub player_person: u64,
+}
+
+/// The game's record of the save it has loaded (`SAVE_SYSTEM`, one object a static points at, which each build
+/// profile places: [`BuildProfile::save_system`]).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SaveSystemLayout {
+    /// The save's name as a pointer to a string of the game's: the file's name without its folder or `.fm`.
+    pub name: u64,
 }
 
 /// A stadium, which a club's senior team points at.
@@ -1049,6 +1061,10 @@ pub struct BuildProfile {
     /// ([`WorkPermitLayout`]), on the builds where it has been found.
     #[serde(default)]
     pub transfer_manager: Option<u64>,
+    /// RVA in the game plugin of the static pointer to the game's record of the loaded save ([`SaveSystemLayout`]),
+    /// on the builds where it has been found.
+    #[serde(default)]
+    pub save_system: Option<u64>,
     /// RVAs in the game plugin of the static pointers to the database tables of competitions ([`CompetitionLayout`])
     /// and awards ([`AwardLayout`]), on the one build where they have been read.
     #[serde(default)]
@@ -1724,6 +1740,8 @@ mod tests {
         );
         assert_eq!(new.officials, old.officials.map(|rva| rva + moved));
         assert_eq!(new.transfer_manager, old.transfer_manager.map(|rva| rva + moved));
+        // The loaded save's record: 0x1B0 after the transfer manager's pointer, read on build 26577676.
+        assert_eq!(new.save_system, new.transfer_manager.map(|rva| rva + 0x1B0));
         assert_eq!(new.retirement_manager, Some(new.arrays.players - 0xDAC0));
         let calls = new.calls.expect("27.0.1's calls");
         assert_eq!((calls.withdraw_offers, calls.leave_team), (Some(0xB3_3630), Some(0xB2_CFB0)));

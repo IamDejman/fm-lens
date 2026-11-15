@@ -304,6 +304,7 @@ impl Connection {
                 manager: member.name.clone(),
                 club: member.club.clone(),
                 club_uid: member.club_uid,
+                save_name: None,
             });
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
@@ -568,6 +569,13 @@ impl Connection {
         self.session.known_build() && self.session.process.can_write() && !self.session.current_career()
     }
 
+    /// The career with its save's name as the game holds it now: Save As in FM renames it.
+    fn career_now(&self) -> Option<Career> {
+        let mut career = self.career.clone()?;
+        career.save_name = self.session.save_name();
+        Some(career)
+    }
+
     /// What the window learns of a connection just read again; `refrozen` and `same_game` as `take_frozen` gave them.
     fn reload_info(&self, refrozen: Option<Refrozen>, same_game: bool) -> ReloadInfo {
         ReloadInfo {
@@ -579,7 +587,7 @@ impl Connection {
             clubs: self.clubs.len(),
             game_date: self.session.game_date(),
             health: Health::clone(&self.session.health()),
-            career: self.career.clone(),
+            career: self.career_now(),
             same_game,
             refrozen,
         }
@@ -600,7 +608,7 @@ impl Connection {
             writable: self.session.process.can_write(),
             known_build: self.session.known_build(),
             health: Health::clone(&self.session.health()),
-            career: self.career.clone(),
+            career: self.career_now(),
             game_actions: self.session.game_actions(),
             refrozen: None,
         }
@@ -3267,6 +3275,9 @@ struct Career {
     manager: String,
     club: Option<String>,
     club_uid: Option<u32>,
+    /// The loaded save's name as FM lists it, read when the career is asked for (`Connection::career_now`); none
+    /// where the build does not place it.
+    save_name: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -4737,11 +4748,11 @@ fn swap_board(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Logged
 }
 
 /// The human manager and club of the career connected now, as edited since it was read: the human manager may have
-/// changed clubs. Only reads FM Lens' own state.
+/// changed clubs. The save's name is read from the game again.
 #[tauri::command]
 fn career(state: State<'_, AppState>) -> Result<Option<Career>, Failure> {
     let guard = state.0.lock()?;
-    Ok(guard.as_ref().and_then(|connection| connection.career.clone()))
+    Ok(guard.as_ref().and_then(Connection::career_now))
 }
 
 /// Checks that the human manager `uid` can be made the manager of the club `club`, and names the clubs and the manager
