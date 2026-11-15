@@ -1637,10 +1637,10 @@ mod tests {
 
     /// A loan with a future fee is ended only where the fee's condition is placed, so the fee can be taken out whole.
     #[test]
-    fn the_windows_layout_places_a_loan_fee_s_condition() {
+    fn both_layouts_place_a_loan_fee_s_condition() {
         let layout = |text| toml::from_str::<crate::profile::Layout>(text).expect("layout").loan.expect("loans");
         assert_eq!(layout(include_str!("../../../profiles/fm27/layout.toml")).fee_condition, Some(0xF7));
-        assert_eq!(layout(include_str!("../../../profiles/fm27/layout-macos.toml")).fee_condition, None);
+        assert_eq!(layout(include_str!("../../../profiles/fm27/layout-macos.toml")).fee_condition, Some(0xF7));
     }
 
     #[test]

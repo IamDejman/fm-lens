@@ -6162,6 +6162,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .scout-card {
+  position: relative;
   display: grid;
   gap: var(--space-3);
   width: 300px;
@@ -6189,6 +6190,31 @@ button.danger:hover:not(:disabled) {
   font-size: var(--type-md);
   font-weight: 800;
   line-height: 1.2;
+}
+
+/* A click on the card opens him in FM Lens: his name is the button, and it covers the card. */
+.scout-card-who h1 button::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  cursor: pointer;
+}
+
+.scout-card-who h1 button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scout-card-who h1 button:hover {
+  background: transparent;
+  text-decoration: underline;
 }
 
 .scout-card-who p {

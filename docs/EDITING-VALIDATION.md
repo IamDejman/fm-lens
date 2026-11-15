@@ -4398,3 +4398,26 @@ Not run: a quit and relaunch, a player who dislikes you as his manager (the
 test career has none), what FM does over days with a lone happiness edit
 outside its band (the bands above say it puts it back), Game Pass, and the
 Macs.
+
+## macOS parity (15 November 2026)
+
+FM27 Steam build 26577676 on Apple Silicon, on a copy of a career
+(`FM-Lens-MacParity-2026-11-15`), with a debug build of the branch and the
+read-only probe. Each item below was Windows only before.
+
+| Item | Result on macOS arm64 |
+| --- | --- |
+| Save name | The app's header showed the loaded copy's name |
+| Ownership, income by source, kit colours | Read and shown on a club's profile |
+| League registration, career plans, scouting knowledge, award bonuses | Read and shown |
+| Instalments and buy-backs | Listed on the Contract tab; a buy-back fee edit to 20,000,000 read back |
+| Add a language, add a dislike | Each applied through the game's own call and read back |
+| Board seat swap | One swap across clubs showed in the app and the probe; not undone |
+| End a loan that has a future fee | The player was back at his club in the app and the probe |
+| Season substitutions | The stages sit at `+0x1D8` of the loaded rule data (Windows `+0x1C0`). The probe read 5 and 9 for the Premier League, the Championship and the Bundesliga and 5 and 12 for the Spanish First Division, the numbers Windows gave; the app showed 5 and 9 for the Premier League |
+| Top players by division | England narrowed to the Championship listed Championship clubs' players |
+| In-game scout card | See recon/fm27-scouting-research.md |
+
+Not run: a save, quit and reload of these edits, FM's own pages for them, the
+Intel half (its three new addresses are mapped from the binary only), and Game
+Pass.

@@ -5806,7 +5806,6 @@ fn undo_batch(state: State<'_, AppState>, file: State<'_, FrozenFile>, batch: u3
 }
 
 /// Shows the main window in front of every other, restored if it was minimized.
-#[cfg(not(debug_assertions))]
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.unminimize();
@@ -6019,7 +6018,8 @@ pub fn run() {
             bridge::remove_bridge,
             scout_card::set_scout_card,
             scout_card::scout_card_shown,
-            scout_card::scout_card_ready
+            scout_card::scout_card_ready,
+            scout_card::scout_card_open
         ])
         // The scout card's window would keep the app running once the main window has closed.
         .on_window_event(|window, event| {

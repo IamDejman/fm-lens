@@ -1,6 +1,6 @@
 // Settings: the gear at the right of the masthead, or ⌘, (Ctrl+, off a Mac), opens a window of them in four parts.
-// General holds the language, each with its flag and its own name, the currency money is shown in and, on Windows, the
-// switch for the in-game scout card; Appearance the theme and the zoom; Privacy the switch for anonymous usage; About
+// General holds the language, each with its flag and its own name, the currency money is shown in and the switch
+// for the in-game scout card; Appearance the theme and the zoom; Privacy the switch for anonymous usage; About
 // the app's version, the game's build and a link to star FM Lens on GitHub. Theme, zoom and the switches apply at once. Another language or currency reloads the window (see
 // `setLocale` and `setCurrency`), which the app survives connected, and the window comes back with Settings open (see
 // restore.ts).

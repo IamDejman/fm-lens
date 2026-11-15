@@ -95,5 +95,10 @@ Checked in the packaged app on Windows, FM27 27.0.1 Steam 26577676:
 | The same load finished, app left open | header shows `FM-Lens-SaveName-2026-11-15`, Changes cleared |
 | Load of `FM-Lens-NameCheck-2026-11-15` again | `FM-Lens-NameCheck-2026-11-15` |
 
-Not run: Game Pass, macOS on ARM64 and Intel, a career never saved, an FM
-restart with the app left open.
+On macOS arm64 (15 November) the static is at `game_plugin+0x5740BC0`, 0x1C8
+after the transfer manager's as on Windows, with the name at `+0x28`; the app's
+header showed the loaded copy's name. The Intel twin (`0x5CD9AE0`) is mapped
+from the binary and not run.
+
+Not run: Game Pass, macOS on Intel, a career never saved, an FM restart with
+the app left open.

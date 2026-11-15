@@ -1845,7 +1845,8 @@ mod tests {
 
     /// The update of 12 November 2026 (Steam build 26577676) rebuilt game_plugin. On macOS every function and static
     /// FM Lens uses is where build 26385295 has it; the two constants it reads from `__TEXT`, the loan's default bytes
-    /// and the date for none, sit 0x30 further in both halves.
+    /// and the date for none, sit 0x30 further in both halves. The record of the loaded save and the routines that add
+    /// a relation and a language were found on this build alone, so the older one goes without them.
     #[test]
     fn steam_26577676_on_macos_is_26385295_with_two_constants_moved() {
         let old_arm64 =
@@ -1855,9 +1856,16 @@ mod tests {
         let arm64 = [0xA8, 0x55, 0x0B, 0x47, 0xFD, 0xE0, 0x3D, 0x0D, 0xA6, 0xCB, 0x1B, 0x63, 0xDE, 0xE8, 0xDA, 0x19];
         let intel = [0xDD, 0x0E, 0xE1, 0x57, 0x4C, 0x9C, 0x31, 0xA7, 0x81, 0xDD, 0x0D, 0x11, 0x22, 0xE6, 0x2F, 0xC7];
         let profile = |uuid| profile_for(PluginFingerprint::MachO { uuid }).expect("27.0.1 on macOS");
-        for (new, old) in [(arm64, old_arm64), (intel, old_intel)] {
+        let found = [(0x574_0BC0, 0xCF_9528, 0xCB_DFF4), (0x5CD_9AE0, 0xDA_3510, 0xD6_5C10)];
+        for ((new, old), (save_system, add_relation, add_language)) in
+            [(arm64, old_arm64), (intel, old_intel)].into_iter().zip(found)
+        {
             let (mut new, old) = (profile(new), profile(old));
             assert!(new.name.contains("26577676"), "{}", new.name);
+            assert_eq!(new.save_system.take(), Some(save_system));
+            let calls = new.calls.as_mut().expect("calls");
+            assert_eq!(calls.add_relation.take(), Some(add_relation));
+            assert_eq!(calls.add_language.take(), Some(add_language));
             new.name.clone_from(&old.name);
             new.plugin = old.plugin;
             let loan = new.starting_loan.as_mut().expect("starting loan");
