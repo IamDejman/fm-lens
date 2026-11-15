@@ -123,6 +123,8 @@ export interface GameActions {
   maxTactics: boolean;
   /** Makes the human manager the manager of a club (`move_manager`), as FM's editor does. */
   moveManager: boolean;
+  /** Adds a club or person to those a player or member of staff favours or dislikes (`add_preference`). */
+  addPreference: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */

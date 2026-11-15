@@ -57,6 +57,8 @@ pub struct GameActions {
     pub max_tactics: bool,
     /// The human manager made the manager of a club, as the game's editor does it.
     pub move_manager: bool,
+    /// A like or dislike added to a person's list, by the game's own routine.
+    pub add_preference: bool,
 }
 
 /// An FM date as the game's functions take it: the day of the year, then the year.
@@ -343,6 +345,7 @@ impl Session {
                 && profile.human_manager.is_some()
                 && self.layout.team.manager.is_some()
                 && self.layout.work_permit.is_some(),
+            add_preference: available(calls.add_relation),
         }
     }
 

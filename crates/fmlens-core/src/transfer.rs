@@ -206,6 +206,9 @@ pub enum MoveError {
     PreferenceTarget,
     /// The person already likes or dislikes that club or person.
     SamePreference,
+    /// The person's list of relations has reached the length at which the game drops his weakest likes and dislikes
+    /// to add another.
+    PreferencesFull,
     /// A homegrown rule the editor does not write.
     UnknownRule {
         rule: u8,
@@ -343,6 +346,9 @@ impl fmt::Display for MoveError {
                 f.write_str("that is not a club or person of the game, of the kind this like or dislike takes")
             }
             MoveError::SamePreference => f.write_str("the person already likes or dislikes that one"),
+            MoveError::PreferencesFull => f.write_str(
+                "the person's list is long enough that the game would drop one of his likes or dislikes to add another",
+            ),
             MoveError::UnknownRule { rule } => write!(f, "homegrown rule {rule} is not one the editor writes"),
             MoveError::NoTeam { index } => write!(f, "the club has no team number {index} that checks out"),
             MoveError::NotInTeam => f.write_str("the player does not play for this team"),
@@ -438,6 +444,7 @@ impl Coded for MoveError {
             MoveError::SameRelation => "relation.same",
             MoveError::PreferenceTarget => "preference.target",
             MoveError::SamePreference => "preference.same",
+            MoveError::PreferencesFull => "preference.full",
             MoveError::UnknownRule { .. } => "relation.rule",
             MoveError::NoTeam { .. } => "squad.noTeam",
             MoveError::NotInTeam => "captain.notInTeam",

@@ -26,6 +26,7 @@ import type {
   MovePreview,
   MoveTerms,
   Nation,
+  PreferenceKind,
   ReleasePreview,
   Promise as PlayerPromise,
   SelectionFreeze,
@@ -354,6 +355,19 @@ export const pointPreference = (
   targetKind: PreferenceTargetKind,
   targetUid: number,
 ) => call<LoggedChange>("point_preference", { uid, staff, index, targetKind, targetUid });
+
+/**
+ * Adds the club, player or member of staff `targetUid` to the list of the player `uid`, or of the member of staff
+ * `uid` for `staff`, as one he favours or dislikes (`kind`) with the strength `strength`, 1 to 100.
+ */
+export const addPreference = (
+  uid: number,
+  staff: boolean,
+  kind: PreferenceKind,
+  targetKind: PreferenceTargetKind,
+  targetUid: number,
+  strength: number,
+) => call<LoggedChange>("add_preference", { uid, staff, kind, targetKind, targetUid, strength });
 
 /** Takes the preference `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
 export const removePreference = (uid: number, staff: boolean, index: number) =>
