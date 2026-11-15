@@ -94,6 +94,7 @@ import type {
   MassPreview,
   MassReport,
   ManagerPreview,
+  NationalSidePage,
   LoanEndPreview,
   MovePreview,
   ReleasePreview,
@@ -2211,6 +2212,50 @@ function moveManager(uid: number, clubUid: number): LoggedChange {
   return { ...entry };
 }
 
+/** `search_national_teams`: every nation's men's senior team, and the women's of every other nation. */
+function searchNationalTeams(query: string, limit: number): NationalSidePage {
+  const rows = NATIONS.flatMap((name, index) =>
+    fold(name).includes(fold(query))
+      ? [false, true]
+          .filter((women) => !women || index % 2 === 0)
+          .map((women) => ({ uid: (1000 + index) * 2 + Number(women), nationUid: 1000 + index, name, women }))
+      : [],
+  );
+  return { total: rows.length, rows: rows.slice(0, limit) };
+}
+
+/** `plan_national_move`: the human manager's move to a nation's senior team. */
+function planNationalMove(uid: number, nationUid: number, women: boolean): ManagerPreview {
+  const member = staff.find((s) => s.uid === uid);
+  if (!member) {
+    throw notFound("staff", uid);
+  }
+  const name = NATIONS[nationUid - 1000];
+  if (name === undefined) {
+    throw notFound("nation", nationUid);
+  }
+  const has = member.national;
+  if (has && has.nationUid === nationUid && has.women === women && has.ageLimit === null) {
+    throw failure("move.managesAlready", "you manage this national team already");
+  }
+  return { from: null, to: { uid: nationUid, name }, permanent: true };
+}
+
+/** `move_to_nation`: the human manager becomes the team's manager, and keeps his club. Nothing undoes it. */
+function moveToNation(uid: number, nationUid: number, women: boolean): LoggedChange {
+  const preview = planNationalMove(uid, nationUid, women);
+  const member = staff.find((s) => s.uid === uid)!;
+  const left = member.national?.nation;
+  member.national = { nation: preview.to.name, nationUid, ageLimit: null, women };
+  const logged = logStaff(member, women ? "nationalTeam.women" : "nationalTeam", 0, nationUid, {
+    from: left,
+    to: preview.to.name,
+  });
+  const entry = changes.find((c) => c.id === logged.id)!;
+  entry.permanent = true;
+  return { ...entry };
+}
+
 /** `plan_staff_move`: the checks of the real command that the fixtures can have, with its messages. */
 function planStaffMove(uid: number, clubUid: number): MovePreview {
   const member = movableStaff(uid);
@@ -4142,7 +4187,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, addPreference: true, addLanguage: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, moveToNation: true, addPreference: true, addLanguage: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
@@ -4715,6 +4760,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return undefined as T;
     case "career":
       return mockCareer() as T;
+    case "search_national_teams":
+      return searchNationalTeams(String(args?.query ?? ""), Number(args?.limit ?? 8)) as T;
+    case "plan_national_move":
+      return planNationalMove(Number(args?.uid), Number(args?.nation), Boolean(args?.women)) as T;
+    case "move_to_nation":
+      return moveToNation(Number(args?.uid), Number(args?.nation), Boolean(args?.women)) as T;
     case "plan_manager_move":
       return planManagerMove(Number(args?.uid), Number(args?.club)) as T;
     case "move_manager":

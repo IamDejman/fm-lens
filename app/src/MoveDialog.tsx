@@ -24,12 +24,14 @@ import {
   movePlayer,
   moveManager,
   moveStaff,
+  moveToNation,
   numberFromDate,
   numberFromIso,
   planClubMove,
   planBoardSwap,
   planClubSwap,
   planManagerMove,
+  planNationalMove,
   planStaffMove,
   signFreeAgent,
   signFreeAgentLater,
@@ -46,10 +48,11 @@ import {
   fieldLabel,
   jobLabel,
   moveText as text,
+  nationListText,
   positionLabel,
   profileText,
 } from "./labels";
-import { ClubLogo, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
+import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
 import { ReputationMeter } from "./ProfileParts";
 import type {
   BoardMember,
@@ -62,6 +65,8 @@ import type {
   ManagerPreview,
   MovePreview,
   MoveTerms,
+  NationalSide,
+  NationalSidePage,
   PlayerPage,
   PlayerSummary,
 } from "./types";
@@ -76,13 +81,15 @@ interface MovingPlayer {
   club: string | null;
   /** The club's UID, for its logo. */
   clubUid: number | null;
+  /** The national team he manages now, which taking another has him leave. */
+  national?: string;
 }
 
 /**
  * Who the dialog moves: a player, a member of staff, who keeps his job and his contract's terms, the human manager,
- * whom the game makes the club's manager, or a board member, who swaps seats with another.
+ * whom the game makes the manager of a club or of a national team, or a board member, who swaps seats with another.
  */
-type Kind = "player" | "staff" | "manager" | "board";
+type Kind = "player" | "staff" | "manager" | "national" | "board";
 
 interface MoveButtonProps {
   player: MovingPlayer;
@@ -135,7 +142,9 @@ export function MoveButton({ player, kind = "player", contract, ready, agreed }:
             ? text.boardButtonTitle
             : kind === "manager"
               ? text.managerButtonTitle
-              : kind === "staff"
+              : kind === "national"
+                ? text.nationalButtonTitle
+                : kind === "staff"
                 ? text.staffButtonTitle
                 : player.club === null
                   ? text.signButtonTitle
@@ -147,7 +156,9 @@ export function MoveButton({ player, kind = "player", contract, ready, agreed }:
           ? text.boardButton
           : kind === "manager"
             ? text.managerButton
-            : player.club === null
+            : kind === "national"
+              ? text.nationalButton
+              : player.club === null
               ? text.signButton
               : text.button}
       </button>
@@ -205,7 +216,13 @@ function dayAfter(today: FmDate): string {
 }
 
 /** What the search answered for the text it was asked with: a page of clubs, or why it failed. */
-type Found = { query: string; page: ClubPage } | { query: string; error: string };
+type Found = { query: string; page: ClubPage | NationalSidePage } | { query: string; error: string };
+
+/** Where the dialog moves him: a club, or for the human manager a national team. */
+type Destination = ClubSummary | NationalSide;
+
+/** A club has a reputation; the row of a national team does not. */
+const isNational = (to: Destination): to is NationalSide => !("reputation" in to);
 
 /** The same for the players of a club. */
 type FoundPlayers = { query: string; page: PlayerPage } | { query: string; error: string };
@@ -318,6 +335,20 @@ export function ClubLine({ uid, name, women = false }: { uid: number | null; nam
           {name}
         </span>
         {women && <span className="tag women">{clubListText.women}</span>}
+      </span>
+    </WithPicture>
+  );
+}
+
+/** A national team as one line: the nation's flag and name. */
+function NationLine({ team }: { team: NationalSide }) {
+  return (
+    <WithPicture picture={<NationFlag uid={team.nationUid} />}>
+      <span className="move-club-text">
+        <span className="move-club-name" title={team.name}>
+          {team.name}
+        </span>
+        {team.women && <span className="tag women">{clubListText.women}</span>}
       </span>
     </WithPicture>
   );
@@ -729,7 +760,8 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   // A member of staff moves in the departments he works in, keeping his job and his contract's terms: no fee, no
   // terms and no swap. The human manager neither: the game makes his contract. A board member only swaps seats.
   const staff = kind !== "player";
-  const manager = kind === "manager";
+  const national = kind === "national";
+  const manager = kind === "manager" || national;
   const board = kind === "board";
   const { gameActions, gameDate } = useContext(EditorContext);
   const base = useId();
@@ -759,7 +791,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   const [found, setFound] = useState<Found | null>(null);
   // The row Enter picks.
   const [active, setActive] = useState(0);
-  const [club, setClub] = useState<ClubSummary | null>(null);
+  const [club, setClub] = useState<Destination | null>(null);
   // The player a swap sends to the player's club: one of the club's players, once picked. A move has none.
   const [partner, setPartner] = useState<PlayerSummary | null>(null);
   // The board member a board member swaps seats with: one of the club's board, once picked.
@@ -847,9 +879,11 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
         ? other && (() => (board ? swapBoard : swapPlayers)(player.uid, other.uid))
         : club &&
           (() =>
-            manager
-              ? moveManager(player.uid, club.uid)
-              : staff
+            isNational(club)
+              ? moveToNation(player.uid, club.nationUid, club.women)
+              : manager
+                ? moveManager(player.uid, club.uid)
+                : staff
                 ? moveStaff(player.uid, club.uid)
                 : movePlayer(player.uid, club.uid, terms, fee));
 
@@ -882,12 +916,15 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     const timer = setTimeout(
       () => {
         // His own side of the game first: a man moves to a men's club, a woman to a women's.
-        call<ClubPage>("search_clubs", {
-          query,
-          limit: RESULT_LIMIT,
-          filter: {},
-          pickedFor: { uid: player.uid, staff },
-        }).then(
+        (national
+          ? call<NationalSidePage>("search_national_teams", { query, limit: RESULT_LIMIT })
+          : call<ClubPage>("search_clubs", {
+              query,
+              limit: RESULT_LIMIT,
+              filter: {},
+              pickedFor: { uid: player.uid, staff },
+            })
+        ).then(
           (page) => answer({ query, page }),
           (e) => answer({ query, error: describeError(e) }),
         );
@@ -915,9 +952,11 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
       }
     };
     const timer = setTimeout(() => {
-      (manager
-        ? planManagerMove(player.uid, club.uid)
-        : staff
+      (isNational(club)
+        ? planNationalMove(player.uid, club.nationUid, club.women)
+        : manager
+          ? planManagerMove(player.uid, club.uid)
+          : staff
           ? planStaffMove(player.uid, club.uid)
           : planClubMove(player.uid, club.uid, asked, fee)
       ).then(
@@ -982,7 +1021,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     }
   }, [active]);
 
-  const pick = (chosen: ClubSummary) => {
+  const pick = (chosen: Destination) => {
     setClub(chosen);
     // A swap goes on to the club's players; a move to its terms, from the button that brings the clubs back.
     pendingFocus.current = swap ? "partner" : "change";
@@ -1047,13 +1086,17 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   // What the search says under its list: a live region that is always there, so that it is read out when it fills.
   const note =
     found === null
-      ? text.searching
+      ? national
+        ? ""
+        : text.searching
       : !settled
         ? ""
         : "error" in found
-          ? text.searchFailed(found.error)
+          ? national
+            ? found.error
+            : text.searchFailed(found.error)
           : found.page.rows.length === 0
-            ? clubListText.empty(query, false)
+            ? (national ? nationListText : clubListText).empty(query, false)
             : found.page.total > found.page.rows.length
               ? text.more(found.page.total - found.page.rows.length)
               : "";
@@ -1088,7 +1131,9 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
               leaves,
             )
           : text.swapRoute(player.name, leaves, made.to.name, other.name)
-        : text.route(leaves, made.to.name),
+        : club !== null && isNational(club)
+          ? profileText.nationalTeam(made.to.name, null, club.women)
+          : text.route(leaves, made.to.name),
     ];
     if (made.fee) {
       const amount = formatMoney(made.fee.fee);
@@ -1102,6 +1147,9 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     }
     if ("displaced" in made && made.displaced) {
       lines.push(text.managerDisplaced(made.displaced));
+    }
+    if (national && player.national) {
+      lines.push(text.nationalLeaves(player.national));
     }
     if ("permanent" in made && made.permanent) {
       lines.push(text.permanent);
@@ -1131,13 +1179,20 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
             button: text.swap,
             busy: text.swapping,
           }
-        : manager
+        : national
           ? {
-              title: text.managerTitle,
-              choose: text.staffChooseClub,
-              button: text.managerMove,
-              busy: text.managerMoving,
+              title: text.nationalTitle,
+              choose: text.nationalChoose,
+              button: text.nationalMove,
+              busy: text.nationalMoving,
             }
+          : manager
+            ? {
+                title: text.managerTitle,
+                choose: text.staffChooseClub,
+                button: text.managerMove,
+                busy: text.managerMoving,
+              }
           : {
               title: text.title,
               choose: staff ? text.staffChooseClub : text.chooseClub,
@@ -1164,7 +1219,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
             : !swap && !valid
               ? { tone: "pending", message: text.fixTerms }
               : outcome === null
-                ? { tone: "pending", message: swap ? text.swapChecking : text.checking }
+                ? { tone: "pending", message: swap ? text.swapChecking : national ? text.nationalChecking : text.checking }
                 : "error" in outcome
                   ? { tone: "refused", message: outcome.error }
                   : { tone: "ok", message: route(outcome.preview) };
@@ -1215,16 +1270,19 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
             </div>
           )}
 
-          <section className="move-section" aria-labelledby={id("from")}>
-            <h3 id={id("from")}>{text.from}</h3>
-            <div className="move-club">
-              {player.club === null ? (
-                <span className="move-club-text">{from}</span>
-              ) : (
-                <ClubLine uid={player.clubUid} name={player.club} />
-              )}
-            </div>
-          </section>
+          {/* A national team's job is taken with the club's: there is nothing he leaves. */}
+          {!national && (
+            <section className="move-section" aria-labelledby={id("from")}>
+              <h3 id={id("from")}>{text.from}</h3>
+              <div className="move-club">
+                {player.club === null ? (
+                  <span className="move-club-text">{from}</span>
+                ) : (
+                  <ClubLine uid={player.clubUid} name={player.club} />
+                )}
+              </div>
+            </section>
+          )}
 
           <section className="move-section" aria-labelledby={id("to")}>
             <h3 id={id("to")}>{text.to}</h3>
@@ -1238,13 +1296,13 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
                   <input
                     ref={searchInput}
                     role="combobox"
-                    aria-label={text.searchLabel}
+                    aria-label={national ? text.nationalSearchLabel : text.searchLabel}
                     aria-autocomplete="list"
                     aria-expanded={rows.length > 0}
                     aria-controls={id("clubs")}
                     aria-activedescendant={rows.length > 0 ? id(`club-${active}`) : undefined}
                     value={query}
-                    placeholder={clubListText.search}
+                    placeholder={national ? nationListText.search : clubListText.search}
                     spellCheck={false}
                     autoComplete="off"
                     onChange={(e) => setQuery(e.currentTarget.value)}
@@ -1258,7 +1316,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
                     id={id("clubs")}
                     className="move-results"
                     role="listbox"
-                    aria-label={text.resultsLabel}
+                    aria-label={national ? text.nationalResultsLabel : text.resultsLabel}
                   >
                     {rows.map((row, index) => (
                       <li
@@ -1271,8 +1329,14 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => pick(row)}
                       >
-                        <ClubLine uid={row.uid} name={row.name} women={row.women} />
-                        <ReputationMeter value={row.reputation} />
+                        {isNational(row) ? (
+                          <NationLine team={row} />
+                        ) : (
+                          <>
+                            <ClubLine uid={row.uid} name={row.name} women={row.women} />
+                            <ReputationMeter value={row.reputation} />
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -1283,8 +1347,14 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
               </>
             ) : (
               <div className="move-club">
-                <ClubLine uid={club.uid} name={club.name} women={club.women} />
-                <ReputationMeter value={club.reputation} />
+                {isNational(club) ? (
+                  <NationLine team={club} />
+                ) : (
+                  <>
+                    <ClubLine uid={club.uid} name={club.name} women={club.women} />
+                    <ReputationMeter value={club.reputation} />
+                  </>
+                )}
                 <button
                   ref={changeButton}
                   type="button"
@@ -1292,13 +1362,13 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
                   disabled={moving}
                   onClick={searchAgain}
                 >
-                  {text.change}
+                  {national ? text.nationalChange : text.change}
                 </button>
               </div>
             )}
           </section>
 
-          {swap && club !== null && (
+          {swap && club !== null && !isNational(club) && (
             <section className="move-section" aria-labelledby={id("swap-with")}>
               <h3 id={id("swap-with")}>{text.swapWith}</h3>
               {board ? (

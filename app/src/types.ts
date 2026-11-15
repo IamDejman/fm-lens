@@ -123,6 +123,8 @@ export interface GameActions {
   maxTactics: boolean;
   /** Makes the human manager the manager of a club (`move_manager`), as FM's editor does. */
   moveManager: boolean;
+  /** Makes the human manager the manager of a senior national team (`move_to_nation`), as FM's editor does. */
+  moveToNation: boolean;
   /** Adds a club or person to those a player or member of staff favours or dislikes (`add_preference`). */
   addPreference: boolean;
   /** Adds a language to those a player or member of staff speaks (`add_language`). */
@@ -237,6 +239,20 @@ export interface ClubSummary {
   nation: string | null;
   /** The nation's UID, for its flag (see pictures.ts). */
   nationUid: number | null;
+}
+
+/** A senior national team the human manager can be given: a row of `search_national_teams`. */
+export interface NationalSide {
+  /** Row id: the two teams of a nation have the same `nationUid`. */
+  uid: number;
+  nationUid: number;
+  name: string;
+  women: boolean;
+}
+
+export interface NationalSidePage {
+  total: number;
+  rows: NationalSide[];
 }
 
 export interface ClubPage {

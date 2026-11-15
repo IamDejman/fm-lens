@@ -54,6 +54,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   futureTransfer: false,
   maxTactics: false,
   moveManager: false,
+  moveToNation: false,
   addPreference: false,
   addLanguage: false,
 };

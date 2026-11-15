@@ -1246,6 +1246,10 @@ pub struct BuildProfile {
     /// What asking whether a player needs a work permit takes, on the builds where it has been traced.
     #[serde(default)]
     pub work_permit_check: Option<WorkPermitCheckRvas>,
+    /// What stands in for the game's editor object in [`CallRvas::appoint_staff`], on the builds where it has been
+    /// traced.
+    #[serde(default)]
+    pub editor_stand_in: Option<EditorStandIn>,
 }
 
 /// RVAs in the game plugin of what [`CallRvas::needs_work_permit`] takes: the byte that is 1 while work permits are
@@ -1269,6 +1273,19 @@ pub struct EditorRvas {
     pub integer_type: u64,
     pub teams: u64,
     pub enabled: u64,
+}
+
+/// What [`CallRvas::appoint_staff`] reads of the game's editor object, which FM Lens has none of: a pointer at
+/// `tracker`, which may be null, and at `interface` an object whose virtual method at `method` it calls and whose
+/// answer may be null. `returns_null` is the RVA in the game plugin of a vtable slot whose function only returns
+/// zero: the stand-in's vtable is placed so that `method` lands on it.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EditorStandIn {
+    pub tracker: u64,
+    pub interface: u64,
+    pub method: u64,
+    pub returns_null: u64,
 }
 
 /// RVAs in the game plugin of what the game's editor builds a `STARTING_LOAN` from ([`StartingLoanLayout`]): its
@@ -1369,6 +1386,11 @@ pub struct CallRvas {
     /// already it raises that one's level instead; it returns null for his own language and for a list of 30. It
     /// raises the level it is given to 2 for the second language of his nation.
     pub add_language: Option<u64>,
+    /// The game's editor's `(editor, person block, team, terms map*)`: appoints the person to the staff of a
+    /// national team in the job the map holds under 'Pcjo', a manager's by dismissing the team's manager. It makes
+    /// the contract itself, and does nothing for a human manager the game does not let manage the nation. Of the
+    /// editor it reads only what [`EditorStandIn`] names. Returns nothing.
+    pub appoint_staff: Option<u64>,
 }
 
 impl CallRvas {
@@ -1404,6 +1426,7 @@ impl CallRvas {
             self.needs_work_permit,
             self.add_relation,
             self.add_language,
+            self.appoint_staff,
         ]
         .into_iter()
         .flatten()
@@ -1879,7 +1902,8 @@ mod tests {
     }
 
     /// The same update on Windows: another DLL (size and link time), every value where build 26385295 has it. The
-    /// routine that adds a relation was found and run on this build alone, so the older one goes without it.
+    /// routine that adds a relation was found and run on this build alone, so the older one goes without it; so do
+    /// the ones that add a language and that make the human manager a national team's.
     #[test]
     fn steam_26577676_on_windows_is_26385295_under_another_fingerprint() {
         let old = PluginFingerprint::Pe { size_of_image: 0x17CB_9000, link_timestamp: 0x6AE8_B5A4 };
@@ -1891,6 +1915,8 @@ mod tests {
         let calls = new.calls.as_mut().expect("build 26577676's calls");
         assert_eq!(calls.add_relation.take(), Some(0x30D_AA90));
         assert_eq!(calls.add_language.take(), Some(0x196_3190));
+        assert_eq!(calls.appoint_staff.take(), Some(0x2A9_5CA0));
+        assert!(new.editor_stand_in.take().is_some());
         assert_eq!(format!("{new:?}"), format!("{old:?}"));
     }
 
@@ -2006,6 +2032,7 @@ mod tests {
                 needs_work_permit: Some(0x1DD_B6B0),
                 add_relation: None,
                 add_language: None,
+                appoint_staff: None,
             }
         );
         assert_eq!(calls.all().len(), 26);

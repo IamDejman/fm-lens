@@ -23,6 +23,7 @@ pub(crate) fn execute(base: u64, steps: &[Step], scratch: u64) -> Ran {
         let value = |arg: &Arg| match arg.kind {
             Arg::SCRATCH => scratch.wrapping_add(arg.value),
             Arg::RESULT => results[arg.value as usize],
+            Arg::BEFORE => scratch.wrapping_sub(arg.value),
             _ => arg.value,
         };
         let registers = step.registers.each_ref().map(value);

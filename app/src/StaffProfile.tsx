@@ -82,7 +82,11 @@ export function jobOf(member: StaffSummary): number | null {
 
 /** The name of the national team a member of staff manages, when they have no club. */
 const nationalTeamOf = (member: StaffSummary): string | null =>
-  member.club === null && member.national !== null
+  member.club === null ? nationalJobOf(member) : null;
+
+/** The name of the national team a member of staff manages, with a club or without. */
+const nationalJobOf = (member: StaffSummary): string | null =>
+  member.national !== null
     ? profileText.nationalTeam(member.national.nation, member.national.ageLimit, member.national.women)
     : null;
 
@@ -178,6 +182,12 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
       meta={dotted([
         jobOf(info) !== null && jobLabel(jobOf(info)),
         employerLine(info),
+        // The national team your manager has as well as the club.
+        info.club !== null && info.national !== null && (
+          <WithPicture inline picture={<NationFlag uid={info.national.nationUid} />}>
+            {nationalJobOf(info)}
+          </WithPicture>
+        ),
         // An input where it is shown while the member of staff is edited, like the abilities.
         info.nation && (
           <EditableValue field="nation">
@@ -210,13 +220,31 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
         // where the game can make you another club's manager, with a club or without.
         editing.editable &&
         editing.stage === "view" &&
-        (info.isHuman ? gameActions.moveManager : info.club !== null) && (
-          <MoveButton
-            kind={info.isHuman ? "manager" : details?.boardSeat ? "board" : "staff"}
-            player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
-            contract={null}
-            ready={details !== undefined}
-          />
+        (info.isHuman ? gameActions.moveManager || gameActions.moveToNation : info.club !== null) && (
+          <>
+            {(!info.isHuman || gameActions.moveManager) && (
+              <MoveButton
+                kind={info.isHuman ? "manager" : details?.boardSeat ? "board" : "staff"}
+                player={{ uid: info.uid, name: info.name, club: info.club, clubUid: info.clubUid }}
+                contract={null}
+                ready={details !== undefined}
+              />
+            )}
+            {info.isHuman && gameActions.moveToNation && (
+              <MoveButton
+                kind="national"
+                player={{
+                  uid: info.uid,
+                  name: info.name,
+                  club: info.club,
+                  clubUid: info.clubUid,
+                  national: nationalJobOf(info) ?? undefined,
+                }}
+                contract={null}
+                ready={details !== undefined}
+              />
+            )}
+          </>
         )
       }
     >

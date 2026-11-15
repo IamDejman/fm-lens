@@ -16,6 +16,9 @@ pub const MAX_STEPS: usize = 12;
 /// terms map: filled with what the editor sends before the first step, and sent back with the answer.
 pub const SCRATCH_SIZE: usize = 1024;
 
+/// The furthest before the scratch memory an argument may point ([`Arg::BEFORE`]).
+pub const MOST_BEFORE: usize = 4096;
+
 /// What a step passes in one argument register or stack slot.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -32,6 +35,9 @@ impl Arg {
     pub const SCRATCH: u32 = 1;
     /// What the step numbered `value`, an earlier one, returned in `x0`.
     pub const RESULT: u32 = 2;
+    /// The address `value` bytes before the scratch memory, at most [`MOST_BEFORE`]: an object the game reads only
+    /// far inside, where those fields lie in the scratch memory.
+    pub const BEFORE: u32 = 3;
 
     pub const fn value(value: u64) -> Self {
         Self { kind: Self::VALUE, reserved: 0, value }
@@ -39,6 +45,10 @@ impl Arg {
 
     pub const fn scratch(offset: usize) -> Self {
         Self { kind: Self::SCRATCH, reserved: 0, value: offset as u64 }
+    }
+
+    pub const fn before(distance: usize) -> Self {
+        Self { kind: Self::BEFORE, reserved: 0, value: distance as u64 }
     }
 
     pub const fn result(step: usize) -> Self {
@@ -160,6 +170,7 @@ pub fn refusal(steps: &[Step], allowed: impl Fn(u64) -> bool) -> Option<&'static
                 Arg::VALUE => true,
                 Arg::SCRATCH => arg.value < SCRATCH_SIZE as u64,
                 Arg::RESULT => arg.value < index as u64,
+                Arg::BEFORE => arg.value <= MOST_BEFORE as u64,
                 _ => false,
             };
             if !fits || arg.reserved != 0 {
@@ -230,6 +241,8 @@ mod tests {
         assert!(refusal(&[], allowed).is_some());
         assert!(refusal(&[Step::new(0x200, &[])], allowed).is_some());
         assert!(refusal(&[Step::new(0x100, &[Arg::scratch(SCRATCH_SIZE)])], allowed).is_some());
+        assert_eq!(refusal(&[Step::new(0x100, &[Arg::before(MOST_BEFORE)])], allowed), None);
+        assert!(refusal(&[Step::new(0x100, &[Arg::before(MOST_BEFORE + 1)])], allowed).is_some());
         // A step may only use what an earlier one returned.
         assert!(refusal(&[Step::new(0x100, &[Arg::result(0)])], allowed).is_some());
         assert_eq!(refusal(&[ok, Step::new(0x100, &[Arg::result(0)])], allowed), None);

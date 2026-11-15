@@ -2,7 +2,8 @@
 
 Build: Steam 26340721, macOS arm64, game_plugin UUID F4540355-2186-39CB-9119-C706A6A35346.
 Method: static only. All addresses are RVAs (file offset equals RVA for text).
-Nothing here was run against the game.
+Sections 1 to 7 were not run against the game. Section 8 is the national move on
+Windows build 26577676, built and run on 15 November 2026.
 
 ## 1. Status
 
@@ -12,8 +13,8 @@ Nothing here was run against the game.
 | Editor action to take a national job (MOVE_TO_MY_NATIONAL_TEAM / OFFER_STAFF_NATIONAL_JOB) | Chain traced to 0x238cac8; OFFER handler 0x33ccec not traced | Medium-low |
 | Leave a job (terminate_contract handler 0x238eafc; RESIGN 0x33f5dc not traced) | Traced to 0x2d4b9dc plus 0x2798880 | Medium |
 | Direct bridge call of club move (0x2dfedac) | Plausible, FM Lens already calls it for sign_free_agent | Medium |
-| Direct bridge call of national move | Blocked: needs an IGE edit-session object | Low |
-| Club job plus national job together | Plausible (separate contract slots), unproven | Low |
+| Direct bridge call of national move | Done on Windows with a stand-in for the edit-session object (section 8); macOS not built | High on Windows |
+| Club job plus national job together | Seen in FM on Windows: the club job and contract stay (section 8) | High on Windows |
 | Undo | Reasoned, not traced | Medium-low |
 
 ## 2. Handler table (server UI-handler vtable, slot +0x38)
@@ -86,6 +87,33 @@ Undo: call the same move back to the original club (or the leave-job path for a 
 
 ## 7. Blockers
 
-- IGE object dependency of 0x238cac8 (national path).
+- IGE object dependency of 0x238cac8 (national path): solved on Windows with a stand-in (section 8). On macOS the
+  routine is 0x239c8b4 on arm64 for build 26577676, its factory takes one more editor argument on the stack, and the
+  editor object's offsets are not mapped; the Intel twin is not mapped either.
 - Unknown human-special handling (0x226f140, tag 0x17 relations).
 - Displaced manager and news cannot be restored.
+
+## 8. National move on Windows, build 26577676 (15 November 2026)
+
+The editor's routine is `appoint_staff` at 0x2A95CA0: `(editor rcx, person rdx, team r8, terms map* r9)`.
+
+- Person: the staff object plus the offset of its person block, as for the club move.
+- Team: the nation's senior team, men's or women's.
+- Terms: a map with one entry, the job key 'Pcjo' holding the integer 16 (Manager).
+- Editor: the routine only asks the editor object for its change tracker (0x3B0) and for an interface (0x440) on
+  which it calls one method (slot 0x3C0). FM Lens passes a stand-in built in the call's scratch space: a zero
+  tracker, and an interface whose method slot points at a routine in the game that returns null (0x4C604C8). The
+  profile names these four values under `[editor_stand_in]`, and the call is refused unless the bytes at the
+  returns-null address are the ones expected.
+- Readback: the team's manager slot (team + 0x80) holds the human manager's staff object.
+
+What the game does, seen on a throwaway career copy through the packaged app:
+
+| Case | Result |
+|---|---|
+| A team with no manager (England) | The human manager becomes its manager. FM's header gains a national team switcher, the national portal opens with a welcome, the FA's expectations and fixtures, and the news says he takes charge. The club job and contract are unchanged |
+| A team with a manager (Germany, Jürgen Klopp) | Klopp is left with no job and the human manager takes the team |
+| A second national job | The game allows one: taking Germany left England, whose FA sent "Confirmation of your resignation", and England's manager slot was empty again |
+| Save and load | After the load FM's save details read the club and Germany, the probe read the same three facts, and FM asked for Germany's introductions before Continue |
+
+Nothing undoes it: the manager the game dismissed stays dismissed.

@@ -157,6 +157,10 @@ pub enum MoveError {
     HasClub,
     /// The player is at that club already.
     SameClub,
+    /// The nation has no senior national team of that side that checks out.
+    NoNationalTeam,
+    /// The manager manages that national team already.
+    ManagesAlready,
     /// The player is on loan, to his club or from it.
     OnLoan,
     /// The player is not on loan.
@@ -315,6 +319,8 @@ impl fmt::Display for MoveError {
             MoveError::FreeAgent => f.write_str("the player has no club; free agents cannot be moved yet"),
             MoveError::HasClub => f.write_str("the player has a club; only a free agent signs for one"),
             MoveError::SameClub => f.write_str("the player is at this club already"),
+            MoveError::NoNationalTeam => f.write_str("this nation has no such national team"),
+            MoveError::ManagesAlready => f.write_str("you manage this national team already"),
             MoveError::OnLoan => f.write_str("the player is on loan; players on loan cannot be moved yet"),
             MoveError::NotOnLoan => f.write_str("the player is not on loan"),
             MoveError::FutureFee => {
@@ -435,6 +441,8 @@ impl Coded for MoveError {
             MoveError::FreeAgent => "move.freeAgent",
             MoveError::HasClub => "move.hasClub",
             MoveError::SameClub => "move.sameClub",
+            MoveError::NoNationalTeam => "move.noNationalTeam",
+            MoveError::ManagesAlready => "move.managesAlready",
             MoveError::OnLoan => "move.onLoan",
             MoveError::NotOnLoan => "move.notOnLoan",
             MoveError::FutureFee => "loan.futureFee",
