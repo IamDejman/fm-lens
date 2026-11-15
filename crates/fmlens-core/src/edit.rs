@@ -197,6 +197,10 @@ enum Place {
     Loan,
     /// The entry a member of staff has for the tendency of this id: its id, then its value. Missing where he has none.
     Tendency(u8),
+    /// The buy-back clause a club holds on a player (see [`crate::Session::buy_back`]).
+    BuyBack,
+    /// The nth fee still being paid for a player (see [`crate::Session::instalments`]).
+    Instalment(u8),
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -424,6 +428,35 @@ fn loan_fields(layout: &Layout) -> Vec<Field> {
     ]
 }
 
+/// A buy-back clause's fee and days, and what each of a fee's instalments pays a month and for how many months more:
+/// one player at a time, where the layout places them.
+fn fee_term_fields(layout: &Layout) -> Vec<Field> {
+    let Some(t) = layout.fee_terms.as_ref() else {
+        return Vec::new();
+    };
+    let field = |key: String, offset: u64, kind: Kind, range: RangeInclusive<i64>, place: Place| {
+        Field::new(Entity::Player, key, offset, kind, range).single().in_record(place)
+    };
+    let date = |key: &str, offset: u64| {
+        field(key.to_owned(), offset, Kind::Date, 20000101..=21001231, Place::BuyBack).plausible(0..=22001231)
+    };
+    let mut out = vec![
+        field("buy_back.fee".to_owned(), t.buy_back_fee, Kind::I32, 0..=crate::transfer::MAX_FEE, Place::BuyBack)
+            .plausible(0..=i64::from(i32::MAX)),
+        date("buy_back.starts", t.buy_back_starts),
+        date("buy_back.ends", t.buy_back_ends),
+    ];
+    for n in 0..crate::fee_terms::MOST_INSTALMENTS as u8 {
+        let place = Place::Instalment(n);
+        out.push(
+            field(format!("instalment.{n}.amount"), t.instalment_amount, Kind::I32, 0..=100_000_000, place)
+                .plausible(0..=i64::from(i32::MAX)),
+        );
+        out.push(field(format!("instalment.{n}.months"), t.instalment_months, Kind::U8, 1..=120, place));
+    }
+    out
+}
+
 /// The squad statuses the editor offers, by the codes contracts hold them as (see the names in the app's
 /// dictionaries). The game uses more codes than these, named from FM's contract screen: 7 fringe player, 9 and
 /// 21 emergency backup, 10 breakthrough prospect, 11 future prospect, 13 youngster, 15 first-choice goalkeeper,
@@ -533,6 +566,7 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
     out.extend(player_contract_fields(layout));
     out.extend(player_mood_fields(layout));
     out.extend(loan_fields(layout));
+    out.extend(fee_term_fields(layout));
     // His traits: one flag each, `trait.0` to `trait.63`, bit n of the mask.
     out.extend((0..64u64).map(|n| Field::flag(Entity::Player, format!("trait.{n}"), p.traits + n / 8, (n % 8) as u8)));
     out.into_iter().map(|f| f.in_person_block(p.person_block)).collect()
@@ -1413,6 +1447,10 @@ impl Session {
                 (owner == target.address + identity + target.shift).then_some(record)
             }
             (Place::Loan, Entity::Player) => self.loan_contract(target.address, target.shift),
+            (Place::BuyBack, Entity::Player) => self.buy_back_record(target.address, target.shift),
+            (Place::Instalment(n), Entity::Player) => {
+                self.instalment_records(target.address, target.shift).get(usize::from(n)).copied()
+            }
             (Place::ClubInfo, Entity::Club) => pointer(club.info)?,
             (Place::ClubFinance, Entity::Club) => {
                 let Some(record) = pointer(club.finance)? else {
@@ -1622,6 +1660,17 @@ mod tests {
                 assert!(!field.shifted && !field.mass);
                 assert!(!field.mass);
             }
+        }
+        if layout.fee_terms.is_some() {
+            // A buy-back clause and each instalment are records of their own: one player at a time.
+            let fee = key(&players, "buy_back.fee");
+            assert_eq!((fee.place, fee.kind), (Place::BuyBack, Kind::I32));
+            assert_eq!(key(&players, "buy_back.ends").kind, Kind::Date);
+            let months = key(&players, "instalment.3.months");
+            assert_eq!((months.place, months.kind), (Place::Instalment(3), Kind::U8));
+            assert!(!months.mass && !months.shifted);
+            assert!(months.takes(1) && months.takes(120) && !months.takes(0) && !months.takes(121));
+            assert!(!players.iter().any(|f| f.key == "instalment.4.amount"));
         }
         assert_eq!(key(&players, "nation").kind, Kind::Pointer);
         assert!(!key(&players, "nation").mass);

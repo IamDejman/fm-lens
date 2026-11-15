@@ -2752,6 +2752,26 @@ fn player(session: &Session, uid: u32) -> Result<()> {
         let uid = plan.uid.map(|uid| format!(" (UID {uid})")).unwrap_or_default();
         println!("  career plan    {:?}: {}{uid}", plan.target, plan.name.as_deref().unwrap_or("?"));
     }
+    for instalment in &d.instalments {
+        println!(
+            "  instalment     {} pays {}: {} a month, every {} months, {} months left, agreed {}",
+            instalment.payer.as_deref().unwrap_or("?"),
+            instalment.receiver.as_deref().unwrap_or("?"),
+            instalment.amount,
+            instalment.period,
+            instalment.months_left,
+            date(instalment.agreed)
+        );
+    }
+    if let Some(buy_back) = &d.buy_back {
+        println!(
+            "  buy-back       {} for {}, {} to {}",
+            buy_back.club.as_deref().unwrap_or("?"),
+            buy_back.fee,
+            date(buy_back.starts),
+            date(buy_back.ends)
+        );
+    }
     for permit in &d.work_permits {
         println!(
             "  work permit    {}: {}",

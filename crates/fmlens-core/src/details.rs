@@ -150,6 +150,10 @@ pub struct PlayerDetails {
     pub work_permits: Vec<crate::work_permits::WorkPermit>,
     /// The transfers the game agreed for him on a later day (see [`crate::Session::future_transfers`]).
     pub future_transfers: Vec<crate::game_calls::FutureTransfer>,
+    /// The fees still being paid for him (see [`crate::Session::instalments`]).
+    pub instalments: Vec<crate::fee_terms::Instalment>,
+    /// The buy-back clause a club holds on him (see [`crate::Session::buy_back`]).
+    pub buy_back: Option<crate::fee_terms::BuyBack>,
 }
 
 /// The range getter treats 300 million specially and may compute a value instead.
@@ -514,6 +518,8 @@ pub fn read_player_details(
         loan: None,
         work_permits: Vec::new(),
         future_transfers: Vec::new(),
+        instalments: Vec::new(),
+        buy_back: None,
     }))
 }
 
