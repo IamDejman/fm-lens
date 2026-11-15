@@ -345,20 +345,35 @@ fn tendencies_from(entries: &[u8]) -> Option<Vec<Tendency>> {
     (rest.is_empty() && known).then(|| pairs.iter().map(|&[id, value]| Tendency { id, value }).collect())
 }
 
-/// The tendencies in the record at `record`, which starts with the `(begin, end)` of their list.
-fn read_tendencies(process: &Process, record: u64) -> Option<Vec<Tendency>> {
+/// The tendencies FM has a name for, and so the ones the editor offers; it shows the rest as a blank line.
+pub const NAMED_TENDENCIES: [u8; 67] = [
+    1, 2, 3, 4, 5, 6, 15, 16, 17, 19, 20, 21, 22, 24, 25, 27, 31, 33, 34, 35, 36, 37, 38, 39, 40, 48, 49, 50, 51, 52,
+    53, 54, 55, 57, 58, 59, 60, 61, 62, 63, 65, 69, 72, 73, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 87, 89, 90, 91, 92,
+    93, 94, 95, 96, 97, 98, 99, 100,
+];
+
+/// The tendencies in the record at `record`, which starts with the `(begin, end)` of their list, and where the list
+/// starts (0 for an empty one).
+fn read_tendency_list(process: &Process, record: u64) -> Option<(u64, Vec<Tendency>)> {
     if !is_user_pointer(record) {
         return None;
     }
     let (begin, end) = (process.read_u64(record).ok()?, process.read_u64(record + 8).ok()?);
     if begin == end {
-        return Some(Vec::new());
+        return Some((0, Vec::new()));
     }
     let len = end.checked_sub(begin).filter(|&len| len <= 2 * u64::from(MOST_TENDENCY))?;
     if !is_user_pointer(begin) {
         return None;
     }
-    tendencies_from(&process.read_bytes(begin, len as usize).ok()?)
+    Some((begin, tendencies_from(&process.read_bytes(begin, len as usize).ok()?)?))
+}
+
+/// Where the entry of the tendency `id` is, its id and then its value, in the list of the record at `record`; `None`
+/// where the list does not read as one or he has no entry for it.
+pub(crate) fn tendency_entry(process: &Process, record: u64, id: u8) -> Option<u64> {
+    let (begin, list) = read_tendency_list(process, record)?;
+    list.iter().position(|tendency| tendency.id == id).map(|at| begin + 2 * at as u64)
 }
 
 /// The highest coaching licence level.
@@ -431,7 +446,7 @@ pub fn read_staff_details(
         preferences: Vec::new(),
         coaching_licence: s.coaching_licence.map(|offset| licence_level(u8_at(offset))),
         formations: s.formations.map(|offsets| offsets.map(u8_at)),
-        tendencies: s.tendencies.and_then(|offset| read_tendencies(process, u64_at(offset))),
+        tendencies: s.tendencies.and_then(|offset| read_tendency_list(process, u64_at(offset))).map(|(_, list)| list),
         board_seat: false,
     }))
 }

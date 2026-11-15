@@ -911,6 +911,7 @@ export const es: Strings = {
     formations: "Formaciones",
     tendencies: "Tendencias",
     tendencyName: (id) => TENDENCY_NAMES_ES[id] ?? `Tendencia ${id}`,
+    tendencyNamed: (id) => TENDENCY_NAMES_ES[id] !== undefined,
     coachingLicence: "Licencia de entrenador",
     licenceName: (level: number): string =>
       ({

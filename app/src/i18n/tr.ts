@@ -898,6 +898,7 @@ export const tr: Strings = {
     formations: "Dizilişler",
     tendencies: "Eğilimler",
     tendencyName: (id) => TENDENCY_NAMES_TR[id] ?? `Eğilim ${id}`,
+    tendencyNamed: (id) => TENDENCY_NAMES_TR[id] !== undefined,
     coachingLicence: "Antrenörlük lisansı",
     licenceName: (level: number): string =>
       ({

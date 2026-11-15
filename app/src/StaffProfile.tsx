@@ -243,7 +243,13 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
 function tendencyRows(tendencies: Tendency[]): RatingRow[] {
   return [...tendencies]
     .sort((a, b) => b.value - a.value || a.id - b.id)
-    .map(({ id, value }) => ({ key: `tendency-${id}`, label: profileText.tendencyName(id), value }));
+    .map(({ id, value }) => ({
+      key: `tendency.${id}`,
+      // Only the ones FM names can be changed.
+      field: profileText.tendencyNamed(id) ? `tendency.${id}` : undefined,
+      label: profileText.tendencyName(id),
+      value,
+    }));
 }
 
 /** Attributes and personality, which all take 1 to 20 (one hint says it for all of them), his formations and tendencies. */

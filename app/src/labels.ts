@@ -293,6 +293,8 @@ export function fieldLabel(entity: Entity, key: string): string {
       return labelIn(PERSONALITY_LABELS, name) ?? key;
     case "trait":
       return profileText.traitName(Number(name));
+    case "tendency":
+      return profileText.tendencyName(Number(name));
     case "position": {
       const position = labelIn(POSITION_LABELS, name);
       return position === undefined ? key : editText.positionRating(position);

@@ -871,6 +871,7 @@ export const en = {
     formations: "Formations",
     tendencies: "Tendencies",
     tendencyName: (id: number) => TENDENCY_NAMES_EN[id] ?? `Tendency ${id}`,
+    tendencyNamed: (id: number) => TENDENCY_NAMES_EN[id] !== undefined,
     coachingLicence: "Coaching licence",
     licenceName: (level: number): string =>
       ({
