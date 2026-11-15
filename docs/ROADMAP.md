@@ -122,7 +122,8 @@ See the latest entry in EDITING-VALIDATION.md.
 
 1. **Read-only foundation**: the read path is delivered. The probe remains
    read-only. Connecting needs a loaded career: the app names its human manager
-   and club, and refuses at FM's main menu. The save file's name is not read.
+   and club, and refuses at FM's main menu. It shows the loaded save's name
+   on Windows Steam; the Macs and Game Pass do not place that record yet.
    Remaining read checks include advancement, switching saves, disconnect
    recovery and bridge removal.
 2. **One validated edit**: finishing passed the copied-career write/readback,
@@ -141,7 +142,8 @@ See the latest entry in EDITING-VALIDATION.md.
 
 ## Decisions of 14 November 2026
 
-Asked and answered on 14 November. None of this is built yet.
+Asked and answered on 14 November. Built since: the save's name, on Windows
+Steam ([recon/fm27-save-name.md](recon/fm27-save-name.md)).
 
 | Topic | Decision |
 | --- | --- |
