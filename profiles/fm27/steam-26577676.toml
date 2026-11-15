@@ -26,6 +26,11 @@ officials = 0x5820888
 # is active on the Steam test save.
 transfer_manager = 0x580EA58
 
+# The static pointer to the game's record of the loaded save (SAVE_SYSTEM): the only pointer to the one object of
+# that class, 0x1B0 after the transfer manager's. Read on build 26577676 (15 November 2026), which has every static
+# of build 26385295 at the same address. See docs/recon/fm27-save-name.md.
+save_system = 0x580EC08
+
 # The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902
 # awards and 8,084 competitions (721 women's) on the Steam test save, the World Golden Ball and FIFA World Cup first.
 awards = 0x5820710

@@ -292,6 +292,12 @@ person = 0x00             # in an entry: u32 person id
 date = 0x0C               # in an entry: the date he retires
 player_person = 0x290     # in a player: u32, the game's id of the person (Ronaldo 0x0A30, Wass 0x0E69)
 
+# The game's record of the save it has loaded (SAVE_SYSTEM), which the build profile's save_system places. Read on
+# Steam build 26577676 (15 November 2026): the name followed Save As at once and a load from its start. Not read on
+# Game Pass. See docs/recon/fm27-save-name.md.
+[save_system]
+name = 0x28               # pointer to a string of the game's: the save file's name without its folder or ".fm"
+
 [team]
 club = 0x30               # club pointer
 # u8, the kind of team: on the test save 0 for the first team, 10 for the under-21s and

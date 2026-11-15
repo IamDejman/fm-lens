@@ -334,6 +334,8 @@ enum Command {
     },
     /// List every transfer the game has agreed for a later day: who, from which club, to which, and when.
     FutureTransfers,
+    /// Print the name of the save the game has loaded, as the game's own record of it holds it.
+    SaveName,
     /// Show a player's ties: his secondary nationalities, and the nations and clubs he was trained in.
     Ties {
         /// The player's UID.
@@ -946,6 +948,13 @@ fn run(cli: Cli) -> Result<()> {
             retirements(&connect(process, ArraySource::ProfileFirst)?, uid, keep, restore_after)
         }
         Command::FutureTransfers => future_transfers(&connect(process, ArraySource::ProfileFirst)?),
+        Command::SaveName => {
+            match connect(process, ArraySource::ProfileFirst)?.save_name() {
+                Some(name) => println!("{name}"),
+                None => println!("The loaded save's name cannot be read in this build."),
+            }
+            Ok(())
+        }
         Command::Ties { uid } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
