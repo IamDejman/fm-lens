@@ -26,6 +26,11 @@ officials = 0x5820888
 # is active on the Steam test save.
 transfer_manager = 0x580EA58
 
+# The static pointer to the game's record of the loaded save (SAVE_SYSTEM): the only pointer to the one object of
+# that class, 0x1B0 after the transfer manager's. Read on build 26577676 (15 November 2026), which has every static
+# of build 26385295 at the same address. See docs/recon/fm27-save-name.md.
+save_system = 0x580EC08
+
 # The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902
 # awards and 8,084 competitions (721 women's) on the Steam test save, the World Golden Ball and FIFA World Cup first.
 awards = 0x5820710
@@ -104,6 +109,14 @@ maximise_tactics = 0x330AF30
 # team, 1, 0, 6, 0, no date*, no date*, null), a bool. Both only read; FM's own screens ask the second too.
 work_permit_rules = 0x1867BA0
 needs_work_permit = 0x248EEC0
+# ACTUAL_PERSON::add_relation: (person, a 16-byte entry, 1). The routine that takes a record from the
+# "PERSON_PREFERENCES" pool for a person without one and tests the entry's kind against 0x0048000000000001; the twin
+# of macOS arm64 0xCF9528, which the person setter's favoured and disliked lists call. Returns the entry it added.
+add_relation = 0x30DAA90
+# ACTUAL_PERSON::add_language: (person, language, a pointer to the i8 level). The routine that takes a 16-byte link
+# from the pool at +0x5822760 and pushes it onto the list at person +0xC8, after turning away the person's own
+# language and a list of 30; the twin of macOS arm64 0xCBDFF4. The save loader calls it at +0x1950C42. Returns the link.
+add_language = 0x1963190
 
 # What a STARTING_LOAN (layout.toml) starts from: its vtable, and the 16 bytes the game's editor copies to +0x58.
 [starting_loan]

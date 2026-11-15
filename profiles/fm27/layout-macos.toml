@@ -314,6 +314,10 @@ coaching_licence = 0x204
 # his second, defensive and attacking ones in possession (+0xE0..+0xE2), then out of possession (+0xE4..+0xE6), which
 # FM's profile does not show. 0 for none, on 81 of 20,219 staff on 11 Dec 2027.
 formations = [0xDF, 0xE3]
+# A pointer to his tendencies, as on Windows: a record that starts with the (begin, end) of a list of two-byte
+# entries, an id and a value, and 10 for an id with no entry (read by 0xC9DF8C in the arm64 half of 27.0.0). Traced in
+# the code only: not read from a running game on macOS yet.
+tendencies = 0xA8
 
 # u8, raw 0..100, shown as (raw + 2) / 5; as on Windows
 [staff.attributes]
@@ -409,6 +413,9 @@ date_of_birth = 0x58
 current_ability = 0x114
 potential_ability = 0x116
 reputation = 0x118
+# The seven refereeing attributes, in the order the game's own property setter writes them ('Oalf' at +0x11A to
+# 'Otkp' at +0x120). Michael Oliver read 15, 10, 15, 14, 16, 9, 5 on Steam 26340721.
+attributes = 0x11A
 uid = 0x134
 
 # A nation's facts and its men's national team container. Read on Steam 26340721 arm64 for all 251 nations: England

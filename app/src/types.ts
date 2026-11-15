@@ -70,6 +70,8 @@ export interface Career {
   manager: string;
   club: string | null;
   clubUid: number | null;
+  /** The loaded save's name as FM lists it; null where it cannot be read. */
+  saveName: string | null;
 }
 
 export interface ConnectionInfo {
@@ -121,6 +123,10 @@ export interface GameActions {
   maxTactics: boolean;
   /** Makes the human manager the manager of a club (`move_manager`), as FM's editor does. */
   moveManager: boolean;
+  /** Adds a club or person to those a player or member of staff favours or dislikes (`add_preference`). */
+  addPreference: boolean;
+  /** Adds a language to those a player or member of staff speaks (`add_language`). */
+  addLanguage: boolean;
 }
 
 /** A kind of injury the game knows, as a choice for `add_injury`. */
@@ -251,6 +257,21 @@ export interface Finances {
   ticketPrice: number;
 }
 
+/** The colours of one part of a kit, as `#RRGGBB`. */
+export interface KitPart {
+  kit: "home" | "away" | "third";
+  part: "shirt" | "shorts" | "socks";
+  main: string;
+  trim: string;
+}
+
+/** One source of a club's income, in pounds. */
+export interface Income {
+  source: string;
+  thisSeason: number;
+  lastSeason: number;
+}
+
 export interface ClubDetails extends ClubSummary {
   seasonTickets: number | null;
   socialMedia: number | null;
@@ -260,8 +281,14 @@ export interface ClubDetails extends ClubSummary {
   supporterTraits: Record<string, number>;
   /** training, youth_facilities, youth_coaching, youth_recruitment and (with finances) corporate → 1–20. */
   facilities: Record<string, number>;
+  /** How the club is owned, FM's code from 1; 0 when FM gives none, null when this build does not read it. */
+  ownership: number | null;
   /** Only clubs in the leagues being played have finances. */
   finances: Finances | null;
+  /** What the club earned by source, in FM's order; empty when this build does not read it. Read-only. */
+  income: Income[];
+  /** The colours of its outfield kits, home first; empty when this build does not read them. Read-only. */
+  kits: KitPart[];
   /** The stadium the senior team plays at; null when it could not be read. */
   stadium: Stadium | null;
   /** Its rivals, strongest first. Read-only. */
@@ -314,6 +341,12 @@ export interface StaffSummary {
   fit?: Fit;
 }
 
+/** One of a member of staff's tendencies: the game's id for it (1 to 100) and how far he leans to it (1 to 20). */
+export interface Tendency {
+  id: number;
+  value: number;
+}
+
 /** A national team, as its manager's row names it. */
 export interface NationalJob {
   nation: string;
@@ -361,10 +394,14 @@ export interface StaffDetails extends StaffSummary {
   languages: Language[];
   /** The people and clubs he favours and dislikes. Read-only. */
   preferences: Preference[];
+  /** What he knows of each nation, the best known first; empty where the build does not place it. Read-only. */
+  knowledge: NationKnowledge[];
   /** 1 to 8, or 0 for none; null where the build does not place it. */
   coachingLicence: number | null;
   /** His preferred formation ids in and out of possession, 0 for none; null where the build does not place them. */
   formations: [number, number] | null;
+  /** The tendencies the game keeps a value for, in its order; null where the build does not place them. */
+  tendencies: Tendency[] | null;
   /** Whether he holds a seat on a club's board that can be swapped for another's. */
   boardSeat: boolean;
 }
@@ -607,7 +644,23 @@ export interface OfficialSummary {
   potentialAbility: number;
   /** 0 to 10000. */
   reputation: number;
+  /**
+   * The seven refereeing attributes, 1 to 20, in the game's order (see `OFFICIAL_ATTRIBUTES`); null where this
+   * version of FM is not known to keep them.
+   */
+  attributes: number[] | null;
 }
+
+/** The keys of an official's refereeing attributes, in the order the game keeps them. */
+export const OFFICIAL_ATTRIBUTES = [
+  "allowing_flow",
+  "discipline",
+  "important_matches",
+  "pressure",
+  "refereeing",
+  "running_line",
+  "time_keeping",
+] as const;
 
 /** A competition, read-only. */
 export interface CompetitionSummary {
@@ -943,6 +996,10 @@ export interface PlayerDetails extends PlayerSummary {
   preferences: Preference[];
   /** The languages he speaks besides, usually, his native one. */
   languages: Language[];
+  /** Whether he is registered to play in his team's league; null where the editor cannot tell. Read-only. */
+  registered: boolean | null;
+  /** What the game has him aim for; empty for most players, or where the build does not place them. Read-only. */
+  plans: CareerPlan[];
   /** Whether the editor can read the retirements the game has planned in this version of the game. */
   retirementKnown: boolean;
   /** The date the game plans him to retire on; null when it has planned none (or `retirementKnown` is false). */
@@ -958,6 +1015,32 @@ export interface PlayerDetails extends PlayerSummary {
   workPermits: WorkPermit[];
   /** The moves FM agreed for him on a later day; empty for most players, or where the build does not place them. */
   futureTransfers: FutureTransfer[];
+  /** The fees still being paid for him; empty for most players, or where the build does not place them. */
+  instalments: Instalment[];
+  /** The buy-back clause a club holds on him; null for most players. */
+  buyBack: BuyBack | null;
+}
+
+/** A fee still being paid for a player: who pays whom, pounds for each month, and the months left. */
+export interface Instalment {
+  payer: string | null;
+  payerUid: number | null;
+  receiver: string | null;
+  receiverUid: number | null;
+  agreed: FmDate | null;
+  amount: number;
+  /** Months between payments. */
+  period: number;
+  monthsLeft: number;
+}
+
+/** A club's right to buy a player back: the fee, and the days it runs between. */
+export interface BuyBack {
+  club: string | null;
+  clubUid: number | null;
+  fee: number;
+  starts: FmDate | null;
+  ends: FmDate | null;
 }
 
 /** A move FM agreed for a player on a later day: the club he joins (null where FM names none yet) and the day. */
@@ -967,6 +1050,22 @@ export interface FutureTransfer {
   club: string | null;
   clubUid: number | null;
   joins: FmDate | null;
+}
+
+/** One career plan of a player: the club, nation, competition or continent the game has him aim for. */
+export interface CareerPlan {
+  target: "club" | "continent" | "nation" | "competition";
+  /** Null for a target the editor cannot name. */
+  name: string | null;
+  /** The UID of a club, nation or competition. */
+  uid: number | null;
+}
+
+/** What a member of staff knows of one nation, 0 to 100. */
+export interface NationKnowledge {
+  nation: string | null;
+  nationUid: number;
+  level: number;
 }
 
 /** A player's work permit for one nation: an active work permit, or an ESC slot from a day. */

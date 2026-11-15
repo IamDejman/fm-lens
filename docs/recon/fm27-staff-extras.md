@@ -15,7 +15,7 @@ Offsets are from the staff object start unless "person block" is named. The pers
 |---|---|---|
 | 1. Coaching licence | found (byte and encoding), labels need the screen | high for the byte, low for labels |
 | 2. Formations, tendencies | partial | medium for bytes, low for names |
-| 3. Nation and region knowledge | not found | - |
+| 3. Nation and region knowledge | nations found on Windows (read); regions not found | high for nation and level |
 | 4. Staff offsets against FM getters | found, with two gaps | high |
 | 5. Job and club change | found (existing FM Lens plan is sound) | medium-high |
 | 6. Human manager relations | partial (format known, labels not) | medium |
@@ -108,26 +108,46 @@ Other setter-mapped bytes: `NpGw` +0xEA, `Npcs` +0xE9, `Pbdt` +0xEC, `Phes` +0xE
 byte +0xEB that the attribute setters read. Meaning not confirmed.
 
 Tendencies: the setter has about 70 `NTnn` codes (NT01..NT99) plus `N100`. They store into a
-record the staff object points at via `+0xA8`. Keys are 1..100, default 10. The record has a
-small vector of pairs. The class that fills it is `NON_PLAYER_TENDENCY_TEMPLATE`; its instances
-were not read (the `types` scan was not repeated, and `instances` needs the `db::` prefix).
-Names for NT codes are not known. Needs the screen: open a staff profile, Tendencies, and compare
-to the NT readings of that staff member (probe `dump` of the `+0xA8` target).
+record the staff object points at via `+0xA8`. The record starts with the `(begin, end)` of a
+list of two-byte entries: a tendency id (1 to 100) and how far he leans to it (1 to 20). An id
+with no entry counts as 10. The class that fills it is `NON_PLAYER_TENDENCY_TEMPLATE`.
 
-Editing: formation bytes are plain bytes, safe to write within the commonest ids above. Tendency
-edits are not advised until the NT labels are known.
+Names (15 November 2026): the game's own naming routine (macOS arm64 27.0.1, near `0x1468554`)
+gives a text to 67 of the 100 ids; the rest have none and are shown without a name. Read on
+Windows Steam 26577676 against FM's profile: Simeone has 24 entries, Guardiola 23 and Slot 12,
+and each line FM lists is one of them under the same name. Over the whole game 13,076 of 21,149
+staff have a list (the longest 54 entries); the others have no record.
+
+What FM's profile lists, checked by editing one entry of Arne Slot's on Windows: 15 and over
+under "Tendencies", 5 and under under "Tends Not To" (5 is listed, 6 and 7 are not). It leaves
+out the touchline manner and dress ids (48 to 55) whatever their value.
+
+Editing: formation bytes are plain bytes, safe to write within the commonest ids above. A
+tendency the member already holds is a plain byte too, and the editor writes it (1 to 20, named
+ids only): see Staff tendencies in EDITING-VALIDATION.md. Adding an entry he does not hold
+would grow the game's list and is not offered.
 
 ## 3. Knowledge (nation and region)
 
-Status: not found.
+Status: nation knowledge found on Windows (Steam 26577676, 15 November 2026). Read only. Regions not found.
 
-- FM has pool allocators `KNOWLEDGE` (40-byte elements) and `KNOWLEDGE_ARRAY` (24-byte), and the
-  human manager's FOG_OF_WAR singleton (`game_plugin+0x56A8430`, array at `+0x18` indexed by the
-  manager's u32 at `+0x3E4`) holds a 100 at `+8` of per-person records. This is only a lead.
-- No staff-object pointer to a KNOWLEDGE array was identified. No getter code for nation
-  knowledge was matched in `ACTUAL_NON_PLAYER` or `ACTUAL_PERSON`.
-- Needs the screen: a scout's knowledge of a nation, plus a scan of the scout's object pointers
-  for a 24-byte-element array. Not done here.
+- The pointer at `+0xB0` of a member of staff's object (0x50 before his person block at `+0x100`) leads to a
+  `KNOWLEDGE_ARRAY`: the (begin, end, capacity) of pointers, kept by the nation's id, to 40-byte `KNOWLEDGE`
+  entries.
+- An entry: `+0x00` pointer to the nation's national team container (the nation is its pointer at `+0x170`),
+  `+0x08` a pointer or 0 (not made sense of), `+0x20` a date (year in the high half, day in the low), `+0x24` the
+  level, a u8 from 0 to 100 (the game clamps it at 0x2713229), `+0x25` unknown. A nation without an entry he knows
+  nothing of.
+- Checked against FM's Scouting Knowledge panel on Txiki Begiristain's profile (18 July 2028): FM lists Spain
+  Complete, England Exceptional, France Extensive, then Germany, Italy, Portugal and Argentina Very Good; the
+  entries read Spain 100, England 73, France 57 and the four at 30, in the same order (best known first, ties as
+  the game keeps them). Read and not compared: Juni Calafat (Spain 100, Brazil 100, five at 30), Joao Amaral
+  (Portugal 100, Spain 100, Brazil 90, England 60, Argentina 60, four at 30), two staff with England 100 alone.
+- Not found: knowledge of regions, a club's total, what turns a level into FM's word, and how the game raises a
+  level. A member of staff whose object is laid out as a player's (shift 0x340) is not read. The Macs and Game
+  Pass are not read. Nothing is edited.
+- The human manager's FOG_OF_WAR singleton (`game_plugin+0x56A8430` on the Mac build, array at `+0x18` indexed by
+  the manager's u32 at `+0x3E4`) is something else: per-person records, not nations.
 
 ## 4. Staff offsets checked against FM's own setter
 
@@ -317,6 +337,5 @@ edit. Not tested (read only).
 
 - Coaching licence labels per level, for Jover (level 2) and the manager.
 - Formation names for ids 3, 4, 7, 27, 32, 33, 35, 64 (or read the table at `0x573CFA0`).
-- Tendency names for the NT codes.
 - Which tactic setting each familiarity kind 0..5 is.
 - Staff nation knowledge percentages.

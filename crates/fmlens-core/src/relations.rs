@@ -13,22 +13,34 @@
 //! lists lack, so changing one of his ties is the way to give him another.
 //!
 //! A preference, favoured or disliked, can be given another strength, pointed at another club or person, or taken out,
-//! the human manager's too. Pointing one elsewhere writes only its target: the entry's bytes `0x08` and `0x0D`, which
-//! are not decoded, stay as the game left them. Adding one waits until they are known.
+//! the human manager's too. Pointing one elsewhere writes only its target: the rest of the entry stays as the game
+//! left it.
+//!
+//! A preference is added by the game itself, where the build's profile names its `add_relation`
+//! ([`CallRvas::add_relation`]): the game makes the person a list, or a bigger block for it, as it needs. The entry is
+//! the one the game's own editor starts a favourite from (see [`new_preference`]): byte `0x08` is the reason, 1 for a
+//! like and 0 for a dislike, and byte `0x0D` is `0x4F` for one that lasts.
+//!
+//! [`CallRvas::add_relation`]: crate::profile::CallRvas::add_relation
 //!
 //! [`HeapLayout`]: crate::profile::HeapLayout
 //! [`RelationLayout`]: crate::profile::RelationLayout
 
+use fmlens_mem::call::{Arg, Program, Step};
 use fmlens_mem::is_user_pointer;
 use serde::{Deserialize, Serialize};
 
 use crate::clubs::ClubSummary;
 use crate::edit::Entity;
 use crate::players::{Nation, PlayerSummary, nation_name};
+use crate::profile::RelationLayout;
 use crate::session::Session;
 use crate::staff::StaffSummary;
 use crate::text::read_fm_string;
 use crate::transfer::{MoveError, Patch, Patches};
+
+/// The most players the editor walks in a team's list when it looks for a registered one.
+const MOST_SQUAD: u64 = 512;
 
 /// The longest list of relations the editor reads; on the test save the longest held 42.
 const MOST_RELATIONS: u64 = 256;
@@ -43,6 +55,27 @@ const RIVAL: u8 = 5;
 
 /// The strengths the editor writes for a preference: all but one of the 41,131 on the validation career were 1 to 100.
 pub const MOST_STRENGTH: i8 = 100;
+
+/// The bytes of an entry the layout does not place, as the game's editor writes them for a favoured or disliked club
+/// or person: the reason, 1 for a like and 0 for a dislike; `0x4F` for one that lasts; and a last byte that is 0xFF
+/// in every entry.
+const REASON: usize = 0x08;
+const LASTING: (usize, u8) = (0x0D, 0x4F);
+const LAST_BYTE: (usize, u8) = (0x0F, 0xFF);
+
+/// The size of an entry the game's `add_relation` copies.
+const ENTRY_SIZE: usize = 16;
+
+/// How long a person's list of relations is when the game starts dropping his weakest favoured and disliked people to
+/// add another: the lowest of its limits. The editor adds only under it, so that the game drops nothing.
+const DROPPED_FROM: usize = 20;
+
+/// Where the game's `add_relation` reads the pointer to the person's record of relations, from the `ACTUAL_PERSON` it
+/// is given.
+#[cfg(windows)]
+const RELATIONS_IN_PERSON: u64 = 0x50;
+#[cfg(target_os = "macos")]
+const RELATIONS_IN_PERSON: u64 = 0x48;
 
 /// The homegrown rules the editor writes, by the game's code: 15–21, 0–21, 15–21 excluding loans, and 0–19 for a
 /// year. The game has others, which the editor shows but does not write.
@@ -120,7 +153,7 @@ pub struct Relation {
 }
 
 /// The kinds of preference the editor can read from a person's relation list.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum PreferenceKind {
     FavouredPerson,
@@ -130,18 +163,28 @@ pub enum PreferenceKind {
 }
 
 impl PreferenceKind {
-    fn from_codes(target: u8, relation: u8) -> Option<Self> {
-        match (target, relation) {
-            (PERSON, 1) => Some(Self::FavouredPerson),
-            (PERSON, 2) => Some(Self::DislikedPerson),
-            (CLUB, 3) => Some(Self::FavouredClub),
-            (CLUB, 4) => Some(Self::DislikedClub),
-            _ => None,
+    const ALL: [Self; 4] = [Self::FavouredPerson, Self::DislikedPerson, Self::FavouredClub, Self::DislikedClub];
+
+    /// The kind of target and the kind of relation the game codes it with.
+    fn codes(self) -> (u8, u8) {
+        match self {
+            Self::FavouredPerson => (PERSON, 1),
+            Self::DislikedPerson => (PERSON, 2),
+            Self::FavouredClub => (CLUB, 3),
+            Self::DislikedClub => (CLUB, 4),
         }
+    }
+
+    fn from_codes(target: u8, relation: u8) -> Option<Self> {
+        Self::ALL.into_iter().find(|kind| kind.codes() == (target, relation))
     }
 
     fn is_club(self) -> bool {
         matches!(self, Self::FavouredClub | Self::DislikedClub)
+    }
+
+    fn is_favoured(self) -> bool {
+        matches!(self, Self::FavouredClub | Self::FavouredPerson)
     }
 }
 
@@ -240,9 +283,18 @@ pub struct PreferencePlan {
 pub struct PreferenceSet {
     pub entity: Entity,
     pub person: u32,
-    pub before: Preference,
+    /// The preference before and after: none before for one added, none after for one taken out.
+    pub before: Option<Preference>,
     pub after: Option<Preference>,
     patches: Vec<Patch>,
+}
+
+impl PreferenceSet {
+    /// The kind of preference changed.
+    pub fn kind(&self) -> PreferenceKind {
+        let changed = self.before.as_ref().or(self.after.as_ref());
+        changed.map(|preference| preference.kind).expect("a change has a preference before it or after")
+    }
 }
 
 /// A player's list of relations, as read.
@@ -262,6 +314,46 @@ impl Session {
             return Ok(Vec::new());
         };
         Ok(list.entries.iter().enumerate().filter_map(|(index, entry)| self.tie_at(index, entry)).collect())
+    }
+
+    /// Whether `player` is registered to play in his team's league: the relation the game's own rule looks for, an
+    /// entry that points at his team. `None` where the layout does not place registrations, for a player without a
+    /// team, and for one in a team none of whose players is registered: a league that registers nobody, or a youth
+    /// team. A player young enough to play unregistered reads as not registered, as he is. Only reads memory.
+    pub fn league_registration(&self, player: &PlayerSummary) -> Result<Option<bool>, MoveError> {
+        let Some(g) = self.layout.registration.as_ref() else {
+            return Ok(None);
+        };
+        let (p, r) = (&self.layout.player, &self.layout.relation);
+        let Some(list) = self.relation_list(player)? else {
+            return Ok(None);
+        };
+        let team = self.process.read_u64(player.address + p.at(p.team, player.shift))?;
+        if !is_user_pointer(team) {
+            return Ok(None);
+        }
+        let codes = [g.target_kind, g.relation, g.league];
+        let registers = |list: &RelationList| {
+            list.entries.iter().any(|entry| {
+                entry[r.target as usize..r.target as usize + 8] == team.to_le_bytes()
+                    && [entry[r.target_kind as usize], entry[r.relation as usize], entry[r.value as usize]] == codes
+            })
+        };
+        if registers(&list) {
+            return Ok(Some(true));
+        }
+        // His own list says no. That only means something where the team registers anyone at all.
+        let squad = self.pointer_list(team + self.layout.team.players, MOST_SQUAD).unwrap_or_default();
+        let anyone = squad.into_iter().filter(|&object| is_user_pointer(object)).any(|object| {
+            p.person_block_shifts.iter().any(|&shift| {
+                let header = self.process.read_u64(object + p.at(p.relations, shift)).ok();
+                header
+                    .filter(|&header| is_user_pointer(header))
+                    .and_then(|header| self.relation_list_at(header).ok())
+                    .is_some_and(|list| registers(&list))
+            })
+        });
+        Ok(anyone.then_some(false))
     }
 
     /// The player's favoured and disliked people and clubs. This is deliberately read-only until the relation codes
@@ -510,7 +602,99 @@ impl Session {
     pub fn apply_preference(&self, plan: &PreferencePlan) -> Result<PreferenceSet, MoveError> {
         self.apply_patches(&plan.patches)?;
         let PreferencePlan { entity, person, ref before, ref after, ref patches } = *plan;
-        Ok(PreferenceSet { entity, person, before: before.clone(), after: after.clone(), patches: patches.clone() })
+        let before = Some(before.clone());
+        Ok(PreferenceSet { entity, person, before, after: after.clone(), patches: patches.clone() })
+    }
+
+    /// Has the game add a preference of `kind` for `target` to the list of `owner`, at `strength`, 1 to 100: one that
+    /// lasts, as the game's own editor makes it (see [`new_preference`]). The game copies it onto the end of his
+    /// list, which it makes, or moves to a bigger block, as it needs.
+    ///
+    /// Refused for a club or person his list has already, for himself, and for a human manager, whom the game would
+    /// also give a note of him that taking the preference out again leaves behind. Refused too once his list is long
+    /// enough that the game would drop others to add this one.
+    pub fn add_preference(
+        &self,
+        owner: PersonRef,
+        kind: PreferenceKind,
+        target: PreferenceTarget,
+        strength: i8,
+    ) -> Result<PreferenceSet, MoveError> {
+        let function = self.game_function(|calls| calls.add_relation)?;
+        let r = &self.layout.relation;
+        if r.size != ENTRY_SIZE as u64 {
+            return Err(MoveError::CallUnavailable);
+        }
+        if !(1..=MOST_STRENGTH).contains(&strength) {
+            let max = i64::from(MOST_STRENGTH);
+            return Err(MoveError::OutOfRange { field: "strength", value: strength.into(), min: 1, max });
+        }
+        let (address, target_uid, name) = self.preference_target(kind, target)?;
+        let own = matches!(target, PreferenceTarget::Person(person) if person.uid() == owner.uid());
+        let human = matches!(target, PreferenceTarget::Person(PersonRef::Staff(member)) if member.is_human);
+        if own || human {
+            return Err(MoveError::PreferenceTarget);
+        }
+        let person = self.actual_person(owner)?;
+        let held = self.list_of(owner)?.map(|list| list.entries).unwrap_or_default();
+        let known = |(index, entry): (usize, &Vec<u8>)| self.preference_at(index, entry);
+        if held.iter().enumerate().filter_map(known).any(|known| known.target == address) {
+            return Err(MoveError::SamePreference);
+        }
+        if held.len() >= DROPPED_FROM {
+            return Err(MoveError::PreferencesFull);
+        }
+
+        let entry = new_preference(r, kind, address, strength);
+        let mut program = Program::new();
+        program.write(0, &entry);
+        program.push(Step::new(function, &[Arg::value(person), Arg::scratch(0), Arg::value(1)]));
+        let outcome = self.call_game(&program)?;
+        let added = outcome.results.first().copied().filter(|&added| is_user_pointer(added));
+        let added = added.ok_or(MoveError::CallDeclined)?;
+
+        // The list as the game left it: what it held, then the new entry, where the game said it put it.
+        let list = self.list_of(owner)?.ok_or(MoveError::CallDeclined)?;
+        let index = held.len();
+        let appended = list.entries.len() == index + 1
+            && list.entries[..index] == held[..]
+            && list.entries[index] == entry
+            && added == list.begin + index as u64 * r.size;
+        if !appended {
+            return Err(MoveError::Changed { address: added });
+        }
+        let after = Preference { index, kind, target: address, target_uid, name, strength };
+        let patches = addition(list.header, list.begin, &list.entries, index);
+        Ok(PreferenceSet { entity: owner.entity(), person: owner.uid(), before: None, after: Some(after), patches })
+    }
+
+    /// The `ACTUAL_PERSON` of `owner`, which the game's `add_relation` takes, checked: the pointer to his record of
+    /// relations is where the routine reads it.
+    pub(crate) fn actual_person(&self, owner: PersonRef) -> Result<u64, MoveError> {
+        let (person, relations) = match owner {
+            PersonRef::Player(player) => {
+                let p = &self.layout.player;
+                let at = |offset| player.address + p.at(offset, player.shift);
+                (at(p.actual_person()), Some(at(p.relations)))
+            }
+            PersonRef::Staff(member) => {
+                let st = &self.layout.staff;
+                let at = |offset| member.address + st.at(offset, member.shift);
+                (at(st.actual_person()), st.relations.map(at))
+            }
+        };
+        if relations != Some(person + RELATIONS_IN_PERSON) {
+            return Err(MoveError::CallUnavailable);
+        }
+        Ok(person)
+    }
+
+    /// The list of relations of `owner`, or `None` for one without a record of them.
+    fn list_of(&self, owner: PersonRef) -> Result<Option<RelationList>, MoveError> {
+        match owner {
+            PersonRef::Player(player) => self.relation_list(player),
+            PersonRef::Staff(member) => self.staff_relation_list(member),
+        }
     }
 
     /// Puts the preferences back as they were, provided the list still holds what the change wrote.
@@ -520,11 +704,7 @@ impl Session {
 
     /// The list of relations of `owner` and the preference at `index` in it.
     fn preference_in(&self, owner: PersonRef, index: usize) -> Result<(RelationList, Preference), MoveError> {
-        let list = match owner {
-            PersonRef::Player(player) => self.relation_list(player)?,
-            PersonRef::Staff(member) => self.staff_relation_list(member)?,
-        };
-        let list = list.ok_or(MoveError::NotInList { index })?;
+        let list = self.list_of(owner)?.ok_or(MoveError::NotInList { index })?;
         let before = list.entries.get(index).and_then(|entry| self.preference_at(index, entry));
         let before = before.ok_or(MoveError::NotInList { index })?;
         Ok((list, before))
@@ -749,9 +929,79 @@ pub(crate) fn removal(header: u64, begin: u64, entries: &[Vec<u8>], index: usize
     patches.0
 }
 
+/// The entry at `index` of a list as one written over the list without it, so that undoing it takes the entry out
+/// as [`removal`] does: the entries after it moved up, the list one shorter, and the last place cleared, in the order
+/// an undo puts them back.
+pub(crate) fn addition(header: u64, begin: u64, entries: &[Vec<u8>], index: usize) -> Vec<Patch> {
+    let size = entries[index].len() as u64;
+    let last = entries.len() - 1;
+    let end = begin + entries.len() as u64 * size;
+    let mut patches = Patches::default();
+    patches.push(begin + last as u64 * size, vec![0; size as usize], entries[last].clone());
+    patches.push(header + 8, (end - size).to_le_bytes(), end.to_le_bytes());
+    patches.push(begin + index as u64 * size, entries[index + 1..].concat(), entries[index..last].concat());
+    patches.0
+}
+
+/// The entry of a new preference of `kind` for the club or person at `target`, as the game's own editor makes one
+/// (its person setter's favoured and disliked lists, macOS arm64 `0xCE6C6C`, and the entry's `rrea` and `perm`
+/// properties): the reason 1 for a like and 0 for a dislike, and lasting.
+fn new_preference(r: &RelationLayout, kind: PreferenceKind, target: u64, strength: i8) -> [u8; ENTRY_SIZE] {
+    let mut entry = [0; ENTRY_SIZE];
+    let (target_kind, relation) = kind.codes();
+    entry[r.target as usize..r.target as usize + 8].copy_from_slice(&target.to_le_bytes());
+    entry[REASON] = u8::from(kind.is_favoured());
+    entry[r.target_kind as usize] = target_kind;
+    entry[r.relation as usize] = relation;
+    entry[r.value as usize] = strength.to_le_bytes()[0];
+    entry[LASTING.0] = LASTING.1;
+    entry[LAST_BYTE.0] = LAST_BYTE.1;
+    entry
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_new_preference_is_the_entry_the_game_s_editor_makes() {
+        let r = RelationLayout { target: 0, target_kind: 0x0A, relation: 0x0B, value: 0x0C, size: 0x10 };
+        let target = 0x0000_0123_4567_89A0u64;
+        let entry = |kind, strength| new_preference(&r, kind, target, strength);
+        let with = |tail: [u8; 8]| [target.to_le_bytes(), tail].concat();
+        assert_eq!(entry(PreferenceKind::FavouredClub, 100)[..], with([1, 0, 1, 3, 100, 0x4F, 0, 0xFF]));
+        assert_eq!(entry(PreferenceKind::DislikedClub, 35)[..], with([0, 0, 1, 4, 35, 0x4F, 0, 0xFF]));
+        assert_eq!(entry(PreferenceKind::FavouredPerson, 1)[..], with([1, 0, 3, 1, 1, 0x4F, 0, 0xFF]));
+        assert_eq!(entry(PreferenceKind::DislikedPerson, 60)[..], with([0, 0, 3, 2, 60, 0x4F, 0, 0xFF]));
+    }
+
+    #[test]
+    fn every_kind_of_preference_is_read_back_from_its_codes() {
+        for kind in PreferenceKind::ALL {
+            let (target, relation) = kind.codes();
+            assert_eq!(PreferenceKind::from_codes(target, relation), Some(kind));
+        }
+        assert_eq!(PreferenceKind::from_codes(CLUB, 1), None);
+        assert_eq!(PreferenceKind::from_codes(NATION, 9), None);
+    }
+
+    #[test]
+    fn an_addition_is_undone_as_a_removal_is_written() {
+        let entries = vec![vec![1u8; 8], vec![2; 8], vec![3; 8]];
+        let (end, shorter) = (0x1018u64.to_le_bytes(), 0x1010u64.to_le_bytes());
+
+        // The last entry, where the game puts a new one: nothing moved to make room.
+        let mut last = Patches::default();
+        last.push(0x1010, [0u8; 8], [3u8; 8]);
+        last.push(0x108, shorter, end);
+        assert_eq!(addition(0x100, 0x1000, &entries, 2), last.0);
+
+        let mut first = Patches::default();
+        first.push(0x1010, [0u8; 8], [3u8; 8]);
+        first.push(0x108, shorter, end);
+        first.push(0x1000, [[2u8; 8], [3; 8]].concat(), [[1u8; 8], [2; 8]].concat());
+        assert_eq!(addition(0x100, 0x1000, &entries, 0), first.0);
+    }
 
     #[test]
     fn removal_moves_the_later_entries_up_and_clears_the_last() {

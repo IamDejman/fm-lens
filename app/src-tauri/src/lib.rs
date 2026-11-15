@@ -13,15 +13,15 @@ use fmlens_core::{
     Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort, CompetitionSummary, ConcernsEnded,
     EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan, Field, Fit, FmDate,
     FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameRelease, GraphicsCounts, GraphicsIndex,
-    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageSet, Lifted, Listed, Loan,
-    MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort,
-    NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef,
-    Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
-    PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS,
-    SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary,
-    StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId,
-    TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
-    read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
+    HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language, LanguageChoice, LanguageSet,
+    Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager, Nation, NationDetails,
+    NationFilter, NationSort, NationSummary, OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid,
+    PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary,
+    PlayerTemplate, Preference, PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet,
+    RetirementSet, STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter,
+    StadiumSort, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan,
+    Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries,
+    nations, read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -304,6 +304,7 @@ impl Connection {
                 manager: member.name.clone(),
                 club: member.club.clone(),
                 club_uid: member.club_uid,
+                save_name: None,
             });
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
@@ -568,6 +569,13 @@ impl Connection {
         self.session.known_build() && self.session.process.can_write() && !self.session.current_career()
     }
 
+    /// The career with its save's name as the game holds it now: Save As in FM renames it.
+    fn career_now(&self) -> Option<Career> {
+        let mut career = self.career.clone()?;
+        career.save_name = self.session.save_name();
+        Some(career)
+    }
+
     /// What the window learns of a connection just read again; `refrozen` and `same_game` as `take_frozen` gave them.
     fn reload_info(&self, refrozen: Option<Refrozen>, same_game: bool) -> ReloadInfo {
         ReloadInfo {
@@ -579,7 +587,7 @@ impl Connection {
             clubs: self.clubs.len(),
             game_date: self.session.game_date(),
             health: Health::clone(&self.session.health()),
-            career: self.career.clone(),
+            career: self.career_now(),
             same_game,
             refrozen,
         }
@@ -600,7 +608,7 @@ impl Connection {
             writable: self.session.process.can_write(),
             known_build: self.session.known_build(),
             health: Health::clone(&self.session.health()),
-            career: self.career.clone(),
+            career: self.career_now(),
             game_actions: self.session.game_actions(),
             refrozen: None,
         }
@@ -1283,17 +1291,18 @@ impl Connection {
 
     /// Logs a change to a person's preferences just written, as a change of his field `preference.favouredClub`,
     /// `preference.dislikedClub`, `preference.favouredPerson` or `preference.dislikedPerson` from one strength to the
-    /// other (0 for one taken out), with the person or club and its strength before and after.
+    /// other (0 for one added or taken out), with the person or club and its strength before and after.
     fn log_preference(&mut self, done: PreferenceSet) -> LoggedChange {
-        let field = match done.before.kind {
+        let field = match done.kind() {
             PreferenceKind::FavouredClub => "preference.favouredClub",
             PreferenceKind::DislikedClub => "preference.dislikedClub",
             PreferenceKind::FavouredPerson => "preference.favouredPerson",
             PreferenceKind::DislikedPerson => "preference.dislikedPerson",
         };
         // The person's or club's name, before and after: the game's records name only clubs.
-        let mut named: Vec<Preference> = std::iter::once(done.before.clone()).chain(done.after.clone()).collect();
-        self.name_preferences(&mut named);
+        let (mut before, mut after) = (done.before.clone(), done.after.clone());
+        self.name_preferences(before.as_mut_slice());
+        self.name_preferences(after.as_mut_slice());
         let end = |preference: Option<&Preference>| {
             preference.map(|preference| TieEnd {
                 name: preference.name.clone().unwrap_or_default(),
@@ -1305,8 +1314,8 @@ impl Connection {
             entity: done.entity,
             uid: done.person,
             field: field.to_owned(),
-            old: i64::from(done.before.strength),
-            new: done.after.as_ref().map_or(0, |after| i64::from(after.strength)),
+            old: before.as_ref().map_or(0, |before| i64::from(before.strength)),
+            new: after.as_ref().map_or(0, |after| i64::from(after.strength)),
             record: Vec::new(),
         };
         let name = match done.entity {
@@ -1324,7 +1333,7 @@ impl Connection {
             batch: None,
             moved: None,
             captaincy: None,
-            tie: Some(TieChange { from: end(named.first()), to: end(named.get(1)) }),
+            tie: Some(TieChange { from: end(before.as_ref()), to: end(after.as_ref()) }),
             clause: None,
             holds: None,
             undo: Some(Undo::Preference(done)),
@@ -1335,7 +1344,7 @@ impl Connection {
     }
 
     /// Logs a change to a person's languages just written, as a change of his field `language` from one level to the
-    /// other (0 for one taken out), with the language and its level before and after.
+    /// other (0 for one added or taken out), with the language and its level before and after.
     fn log_language(&mut self, done: LanguageSet) -> LoggedChange {
         let end = |language: Option<&Language>| {
             language.map(|language| TieEnd {
@@ -1348,7 +1357,7 @@ impl Connection {
             entity: done.entity,
             uid: done.person,
             field: "language".to_owned(),
-            old: i64::from(done.before.level),
+            old: done.before.as_ref().map_or(0, |before| i64::from(before.level)),
             new: done.after.as_ref().map_or(0, |after| i64::from(after.level)),
             record: Vec::new(),
         };
@@ -1367,7 +1376,7 @@ impl Connection {
             batch: None,
             moved: None,
             captaincy: None,
-            tie: Some(TieChange { from: end(Some(&done.before)), to: end(done.after.as_ref()) }),
+            tie: Some(TieChange { from: end(done.before.as_ref()), to: end(done.after.as_ref()) }),
             clause: None,
             holds: None,
             undo: Some(Undo::Language(done)),
@@ -3284,6 +3293,9 @@ struct Career {
     manager: String,
     club: Option<String>,
     club_uid: Option<u32>,
+    /// The loaded save's name as FM lists it, read when the career is asked for (`Connection::career_now`); none
+    /// where the build does not place it.
+    save_name: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -4738,11 +4750,11 @@ fn swap_board(state: State<'_, AppState>, uid: u32, other: u32) -> Result<Logged
 }
 
 /// The human manager and club of the career connected now, as edited since it was read: the human manager may have
-/// changed clubs. Only reads FM Lens' own state.
+/// changed clubs. The save's name is read from the game again.
 #[tauri::command]
 fn career(state: State<'_, AppState>) -> Result<Option<Career>, Failure> {
     let guard = state.0.lock()?;
-    Ok(guard.as_ref().and_then(|connection| connection.career.clone()))
+    Ok(guard.as_ref().and_then(Connection::career_now))
 }
 
 /// Checks that the human manager `uid` can be made the manager of the club `club`, and names the clubs and the manager
@@ -5130,6 +5142,21 @@ enum PreferenceTargetKind {
     Staff,
 }
 
+/// The club, player or member of staff `uid`, as what a like or dislike is pointed at.
+fn preference_target(
+    connection: &Connection,
+    kind: PreferenceTargetKind,
+    uid: u32,
+) -> Result<PreferenceTarget<'_>, Failure> {
+    Ok(match kind {
+        PreferenceTargetKind::Club => {
+            PreferenceTarget::Club(connection.clubs.get(uid).ok_or_else(|| not_found(Entity::Club, uid))?)
+        }
+        PreferenceTargetKind::Player => PreferenceTarget::Person(person_ref(connection, uid, false)?),
+        PreferenceTargetKind::Staff => PreferenceTarget::Person(person_ref(connection, uid, true)?),
+    })
+}
+
 /// Points the preference `index` of the player `uid`, or of the member of staff `uid` for `staff`, at the club,
 /// player or member of staff `target_uid`, keeping its strength. Logged and undone like any change.
 #[tauri::command]
@@ -5144,15 +5171,30 @@ fn point_preference(
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let owner = person_ref(connection, uid, staff)?;
-    let target = match target_kind {
-        PreferenceTargetKind::Club => {
-            PreferenceTarget::Club(connection.clubs.get(target_uid).ok_or_else(|| not_found(Entity::Club, target_uid))?)
-        }
-        PreferenceTargetKind::Player => PreferenceTarget::Person(person_ref(connection, target_uid, false)?),
-        PreferenceTargetKind::Staff => PreferenceTarget::Person(person_ref(connection, target_uid, true)?),
-    };
+    let target = preference_target(connection, target_kind, target_uid)?;
     let plan = connection.session.plan_preference_target(owner, index, target)?;
     let done = connection.session.apply_preference(&plan)?;
+    Ok(connection.log_preference(done))
+}
+
+/// Has the game add a preference of `kind` for the club, player or member of staff `target_uid` to the list of the
+/// player `uid`, or of the member of staff `uid` for `staff`, at `strength`, 1 to 100. Logged and undone like any
+/// change: undoing it takes the preference out again.
+#[tauri::command]
+fn add_preference(
+    state: State<'_, AppState>,
+    uid: u32,
+    staff: bool,
+    kind: PreferenceKind,
+    target_kind: PreferenceTargetKind,
+    target_uid: u32,
+    strength: i8,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let owner = person_ref(connection, uid, staff)?;
+    let target = preference_target(connection, target_kind, target_uid)?;
+    let done = connection.session.add_preference(owner, kind, target, strength)?;
     Ok(connection.log_preference(done))
 }
 
@@ -5195,6 +5237,40 @@ fn remove_language(state: State<'_, AppState>, uid: u32, staff: bool, index: usi
     let person = person_ref(connection, uid, staff)?;
     let plan = connection.session.plan_language_removal(person, index)?;
     let done = connection.session.apply_language(&plan)?;
+    Ok(connection.log_language(done))
+}
+
+/// The languages of the game that a person can be given, by name.
+fn language_list(connection: &mut Connection) -> Vec<LanguageChoice> {
+    let nations: Vec<u64> = connection.listed_nations().iter().map(|nation| nation.address).collect();
+    connection.session.language_choices(&nations)
+}
+
+/// The names of the languages a person can be given, in order.
+#[tauri::command]
+fn language_choices(state: State<'_, AppState>) -> Result<Vec<String>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    Ok(language_list(connection).into_iter().map(|language| language.name).collect())
+}
+
+/// Has the game give the player `uid`, or the member of staff `uid` for `staff`, the language named `name`, one of
+/// `language_choices`, at `level`, 1 to 10. Logged and undone like any change: undoing it takes the language out
+/// again.
+#[tauri::command]
+fn add_language(
+    state: State<'_, AppState>,
+    uid: u32,
+    staff: bool,
+    name: String,
+    level: u8,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let language = language_list(connection).into_iter().find(|language| language.name == name);
+    let language = language.ok_or_else(data_changed)?;
+    let person = person_ref(connection, uid, staff)?;
+    let done = connection.session.add_language(person, &language, level)?;
     Ok(connection.log_language(done))
 }
 
@@ -5916,8 +5992,11 @@ pub fn run() {
             add_tie,
             change_preference,
             point_preference,
+            add_preference,
             remove_preference,
             change_language,
+            add_language,
+            language_choices,
             remove_language,
             change_injury,
             remove_injury,

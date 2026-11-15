@@ -6,12 +6,12 @@ import { formatNumber } from "./format";
 import { clubListText, officialListText, playerListText, profileText } from "./labels";
 import { ListBrowser } from "./ListBrowser";
 import { NationFlag, WithPicture } from "./Picture";
-import { Born, Fact, ProfileFrame, ReputationMeter } from "./ProfileParts";
+import { Born, Fact, ProfileFrame, RatingGroup, ReputationMeter } from "./ProfileParts";
 import { restored, useSnapshot } from "./restore";
 import { SavedFilterControls } from "./SavedFilterControls";
 import { readPlain, savedKind } from "./savedFilters";
 import { SortHeader, useListSort, type SortStart } from "./SortHeader";
-import type { ListOrder, OfficialFilter, OfficialSort, OfficialSummary } from "./types";
+import { OFFICIAL_ATTRIBUTES, type ListOrder, type OfficialFilter, type OfficialSort, type OfficialSummary } from "./types";
 import { useProfileEditing } from "./useProfileEditing";
 
 const text = officialListText;
@@ -329,6 +329,18 @@ function OfficialProfile({
           </EditableValue>
         </Fact>
       </dl>
+      {official.attributes !== null && (
+        <RatingGroup
+          title={text.attributes}
+          rows={OFFICIAL_ATTRIBUTES.map((key, at) => ({
+            key,
+            field: `attribute.${key}`,
+            label: text.attributeNames[key] ?? key,
+            value: official.attributes?.[at],
+          }))}
+          hint
+        />
+      )}
     </ProfileFrame>
   );
 }

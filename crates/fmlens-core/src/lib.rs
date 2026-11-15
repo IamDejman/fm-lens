@@ -17,12 +17,14 @@ mod date;
 mod details;
 mod edit;
 mod export;
+mod fee_terms;
 mod filter;
 mod game;
 mod game_calls;
 mod graphics;
 mod health;
 mod index;
+mod knowledge;
 mod languages;
 mod loans;
 mod mass;
@@ -30,6 +32,7 @@ mod medical;
 mod mood;
 mod national;
 mod officials;
+mod plans;
 mod players;
 mod position_records;
 mod profile;
@@ -38,6 +41,7 @@ mod refresh;
 mod relations;
 mod retirement;
 pub mod rtti;
+mod save_system;
 mod scan;
 mod scouting;
 mod session;
@@ -55,12 +59,13 @@ pub use board::{BoardPlan, BoardSeat, BoardSwap, SEAT_JOBS};
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
 pub use clubs::{
-    ClubDetails, ClubIndex, ClubSummary, Finances, SUPPORTER_MIX, SUPPORTER_TRAITS, StadiumClub, StadiumFilter,
-    StadiumSummary, read_club_details, read_clubs, read_stadiums, stadium_owner,
+    ClubDetails, ClubIndex, ClubSummary, Finances, INCOME_SOURCES, Income, KITS, KitPart, OWNERSHIP, SUPPORTER_MIX,
+    SUPPORTER_TRAITS, StadiumClub, StadiumFilter, StadiumSummary, read_club_details, read_clubs, read_stadiums,
+    stadium_owner,
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
-pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue};
+pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue, SeasonStage, SubsRules};
 pub use date::FmDate;
 pub use details::{
     ATTRIBUTE_GROUPS, Attribute, Clause, CompetitionBonus, Contract, International, PERSONALITY, POSITIONS,
@@ -68,6 +73,7 @@ pub use details::{
 };
 pub use edit::{Change, EditError, Entity, Field, Kind, Scale, Target, fields};
 pub use export::{ExportFormat, ExportHeader, Exported};
+pub use fee_terms::{BuyBack, Instalment, MOST_INSTALMENTS};
 pub use filter::{
     AttributeBound, AwardFilter, AwardSort, ClubFilter, ClubSort, CompetitionFilter, CompetitionSort, NationFilter,
     NationSort, Needle, OfficialFilter, OfficialSort, Order, PlayerFilter, PlayerOrder, PlayerSort, RoleBound,
@@ -82,13 +88,15 @@ pub use game_calls::{
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
 pub use index::{Listed, SearchIndex};
-pub use languages::{LEAST_LEVEL, Language, LanguagePlan, LanguageSet, MOST_LEVEL};
+pub use knowledge::{MOST_KNOWLEDGE, NationKnowledge};
+pub use languages::{LEAST_LEVEL, Language, LanguageChoice, LanguagePlan, LanguageSet, MOST_LEVEL};
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan, Lifted};
 pub use mood::{ConcernsEnded, ConcernsPlan};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
-pub use officials::OfficialSummary;
+pub use officials::{OFFICIAL_ATTRIBUTES, OfficialSummary};
+pub use plans::{CareerPlan, PlanTarget};
 pub use players::{
     Base, Division, Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations,
     read_players,
@@ -111,8 +119,8 @@ pub use scouting::{
 pub use session::{ArraySource, Session, SessionError, find_game};
 pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember, TeamId};
 pub use staff::{
-    STAFF_ATTRIBUTE_GROUPS, StaffContract, StaffDetails, StaffIndex, StaffSummary, job_name, read_staff,
-    read_staff_details,
+    MOST_TENDENCY, NAMED_TENDENCIES, STAFF_ATTRIBUTE_GROUPS, StaffContract, StaffDetails, StaffIndex, StaffSummary,
+    Tendency, job_name, read_staff, read_staff_details,
 };
 pub use staff_move::{Department, STAFF_JOBS, StaffChange, StaffPlan, department_of};
 pub use tactics::{PlayerTactics, RaisedTactics, TeamTactics};

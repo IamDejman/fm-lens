@@ -22,7 +22,8 @@ Fresh checks:
 - National-job handler 0x33CCEC reads Ttea, Pnjo and dreL keys, constructs a 0x28-byte object
   through 0x22964C0, checks 0x2296E5C and calls 0x266B254 / 0x266B448. This supplies a concrete
   offer/interaction path to trace; it is not proof of a direct human-manager appointment API.
-- Officials getters at 0xCF6154 onward read signed bytes at +0x40..+0x47. Names remain unproved.
+- Officials getters at 0xCF6154 onward read signed bytes at +0x40..+0x47. These are the person's
+  personality; the refereeing attributes are the seven bytes at +0x11A (see Status).
 - example.ltf contains explicitly commented staff-tendency labels (22 matched entries), career-plan
   descriptions, ownership labels and club-vision labels. Labels alone do not map an enum or field.
 - Goal-line technology occurs in match-report language strings (for example KEY-457319).
@@ -51,6 +52,47 @@ Fresh checks:
 | 5 | Instalments and buy-backs | Read existing transfer-manager instalment schedules and PLAYER_BUY_BACK_INFO first. Establish payer/payee, remaining count, period, dates and price. Trace pending-offer setters and execution; current immediate-transfer map cannot express instalments. Add existing-term edits before creation if a supported setter exists. | Completed and pending deals; payment dates, counts and both clubs' ledgers; buy-back active/expired and exercise behavior; no double payment; reload. |
 | 6 | Undo Cancel transfer | Trace re-creation and acceptance of a pending offer with all contract, fee, clause, budget-commitment, dated-record and reference state. Capture a semantic snapshot before cancellation, never restore old pointers. Revalidate all parties/day/budgets and refuse if anything material changed. | Free-agent, club-to-club and loan agreements; identical terms and budget commitments; arrival on agreed day; save/reload. News/interaction side effects may prevent exact undo: if so, keep Cancel irreversible and provide a separate explicit Recreate deal action only where supported. |
 | Deferred | Goal-line technology | No standalone control until an actual FM-owned editable setting is found. Search match/fixture/stadium technology consumers if continuing research; absence from the competition rule schema is not proof of absence everywhere. | A real backing setting, its consumer and an observable match effect. Otherwise record unsupported, with no placeholder toggle. |
+
+## Status
+
+- Staff tendency names (15 November 2026): done. The names come from the game's own naming
+  routine, 67 of the 100 ids. Shown and, for an entry the member already holds, edited; checked
+  in FM on Windows (Staff tendencies in ../EDITING-VALIDATION.md). The Macs are not run.
+- Referee attribute names (15 November 2026): done from the official's own property setter, whose
+  tags name the seven bytes at +0x11A (+0x122 on Windows). Shown and edited; readback, Undo, save
+  and load checked on Windows (Referee attributes in ../EDITING-VALIDATION.md). FM has no screen
+  for them, so the acceptance gate's independent label match and match-day behavior are not met.
+- Adding a like or dislike (15 November 2026): done on Windows through the game's own routine.
+  Readback, Undo, save and load checked (Add a like or dislike in ../EDITING-VALIDATION.md). FM's
+  own lists were not seen; the Macs have no profile entry, so Add is not offered there.
+- Adding a language (15 November 2026): done on Windows through the game's own routine, at level
+  10. Readback, FM's Personal page, Undo, save and load checked (Add a language in
+  ../EDITING-VALIDATION.md). A day passing and a quit are not run; the Macs have no profile entry.
+- Substitutes reader (15 November 2026): done for leagues on Windows. A league stage of the
+  running season holds the number of FM's substitution rule, and FM's own tables turn it into
+  substitutions allowed and substitutes named. Three competitions checked against FM's Rules
+  pages (Season substitutions in ../EDITING-VALIDATION.md; the mapping is in
+  fm27-competitions-awards-2.md). Cups, group stages, the Macs and Game Pass are not read, and
+  nothing is edited.
+- Readers for registration, career plans and scouting knowledge (15 November 2026): done on
+  Windows, read-only. League registration is a relation of the player that points at his team;
+  career plans are a list of 16-byte records behind the player; a member of staff's knowledge of
+  nations is a list of 40-byte entries behind his object (fm27-player-extras.md and
+  fm27-staff-extras.md). Registration and knowledge matched FM's own pages; FM has no screen for
+  career plans (Registration, career plans and scouting knowledge in ../EDITING-VALIDATION.md).
+  Cup registration, regions, editing, the Macs and Game Pass are not done.
+- Ownership, income and kit colours (15 November 2026): read on Windows, nothing edited. The
+  ownership type is the byte at club-info +0x129, eight types named from a census of the clubs
+  that hold each; income by source is fourteen i32 slots of the finance record's season blocks;
+  kit colours are 0x28-byte records behind club +0xB0 (fm27-club-ownership-income-kits.md).
+  Income matched FM's Income page and kits FM's Club Profile page (Ownership, income and kit
+  colours in ../EDITING-VALIDATION.md). FM does not show the ownership type, and two of its
+  eight names rest on elimination. The benefactor, agreements, kit styles, national kits, the
+  Macs and Game Pass are not done.
+- Staff allowances (15 November 2026): not found; the leads are in
+  fm27-club-ownership-income-kits.md. Nothing built.
+- Club vision (15 November 2026): objective records found, with no chain forward from the club
+  and no names for their types, so nothing is built (fm27-club-ownership-income-kits.md).
 
 ## Delivery sequence and shared guardrails
 

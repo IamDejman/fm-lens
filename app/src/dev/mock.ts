@@ -5,6 +5,7 @@ import { dateFromNumber, numberFromDate } from "../editing";
 import { fold } from "../format";
 import { BOARD_JOBS, fitOf } from "../recipes";
 import { version as appVersion } from "../../package.json";
+import { OFFICIAL_ATTRIBUTES } from "../types";
 import type {
   ApplyReport,
   AttributeBound,
@@ -325,10 +326,37 @@ function details(player: PlayerSummary): PlayerDetails {
     tieRoom: tieRoomOf(player),
     preferences: currentPreferences(false, player.uid),
     languages: currentLanguages(false, player.uid),
+    registered: player.club ? player.uid % 4 !== 0 : null,
+    plans: player.uid % 5 === 0 ? [{ target: "nation", name: "Spain", uid: 796 }] : [],
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     loan: loanOf(player),
     workPermits: workPermitsOf(player),
     futureTransfers: futureTransfersOf(player),
+    instalments:
+      player.club && player.uid % 7 === 0
+        ? [
+            {
+              payer: player.club,
+              payerUid: player.clubUid,
+              receiver: "Southampton",
+              receiverUid: null,
+              agreed: { year: 2025, month: 8, day: 1 },
+              amount: 250_000,
+              period: 12,
+              monthsLeft: 14,
+            },
+          ]
+        : [],
+    buyBack:
+      player.club && player.uid % 9 === 0
+        ? {
+            club: "Benfica",
+            clubUid: null,
+            fee: 30_000_000,
+            starts: { year: 2026, month: 7, day: 1 },
+            ends: { year: 2028, month: 6, day: 30 },
+          }
+        : null,
     retirementKnown: true,
     retires: retiresOf(player.uid),
     // Drawn last, so that the values above come out as before.
@@ -982,7 +1010,7 @@ function logPreference(
   isStaff: boolean,
   uid: number,
   name: string,
-  before: Preference,
+  before: Preference | null,
   after: Preference | null,
   next: Preference[],
 ): LoggedChange {
@@ -997,8 +1025,8 @@ function logPreference(
     name,
     entity: isStaff ? "staff" : "player",
     uid,
-    field: `preference.${before.kind}`,
-    old: before.strength,
+    field: `preference.${(before ?? after)?.kind}`,
+    old: before?.strength ?? 0,
     new: after?.strength ?? 0,
     undoneAt: null,
     batch: null,
@@ -1057,6 +1085,48 @@ function pointPreference(uid: number, isStaff: boolean, index: number, targetKin
   return logPreference(isStaff, uid, name, before, after, current.map((p) => (p.index === index ? after : p)));
 }
 
+/** How long a list the real command adds to: at this length the game drops a like or dislike to add another. */
+const PREFERENCES_FULL = 20;
+
+/**
+ * `add_preference`: adds the club, player or member of staff `targetUid` to a fixture person's list as one he favours
+ * or dislikes, with the real command's failures.
+ */
+function addPreference(
+  uid: number,
+  isStaff: boolean,
+  kind: Preference["kind"],
+  targetKind: string,
+  targetUid: number,
+  strength: number,
+): LoggedChange {
+  const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
+  if (!person) {
+    throw notFound(isStaff ? "staff" : "player", uid);
+  }
+  const isClubKind = (kind: Preference["kind"]) => kind === "favouredClub" || kind === "dislikedClub";
+  const club = isClubKind(kind);
+  const member = targetKind === "staff" ? staff.find((m) => m.uid === targetUid) : undefined;
+  const target =
+    targetKind === "club"
+      ? clubs.find((c) => c.uid === targetUid)
+      : (member ?? (targetKind === "player" ? players.find((p) => p.uid === targetUid) : undefined));
+  const own = !club && targetUid === uid && (targetKind === "staff") === isStaff;
+  if (target === undefined || (targetKind === "club") !== club || own || member?.isHuman) {
+    throw failure("preference.target", "that is not a club or person of the game, of the kind this like or dislike takes");
+  }
+  const current = currentPreferences(isStaff, uid);
+  if (current.some((p) => isClubKind(p.kind) === club && p.targetUid === targetUid)) {
+    throw failure("preference.same", "the person already likes or dislikes that one");
+  }
+  if (current.length >= PREFERENCES_FULL) {
+    throw failure("preference.full", "the person's list is long enough that the game would drop one to add another");
+  }
+  const index = Math.max(-1, ...current.map((p) => p.index)) + 1;
+  const after: Preference = { index, kind, targetUid, name: target.name, strength };
+  return logPreference(isStaff, uid, person.name, null, after, [...current, after]);
+}
+
 // Languages -------------------------------------------------------------------------------------------------------
 
 /** The languages changed through the editor, by "player:UID" or "staff:UID"; the others are the fixture's. */
@@ -1088,7 +1158,7 @@ function logLanguage(
   isStaff: boolean,
   uid: number,
   name: string,
-  before: Language,
+  before: Language | null,
   after: Language | null,
   next: Language[],
 ): LoggedChange {
@@ -1104,7 +1174,7 @@ function logLanguage(
     entity: isStaff ? "staff" : "player",
     uid,
     field: "language",
-    old: before.level,
+    old: before?.level ?? 0,
     new: after?.level ?? 0,
     undoneAt: null,
     batch: null,
@@ -1131,6 +1201,47 @@ function changeLanguage(uid: number, isStaff: boolean, index: number, level: num
   const after = { ...before, level };
   const next = currentLanguages(isStaff, uid).map((l, i) => (i === index ? after : l));
   return logLanguage(isStaff, uid, name, before, after, next);
+}
+
+/** `language_choices`: the languages a fixture person can be given. */
+const LANGUAGES = [
+  "Arabic", "Basque", "Catalan", "Danish", "Dutch", "English", "French", "German", "Italian", "Portuguese", "Spanish",
+  "Swedish", "Turkish",
+];
+
+/** Every fixture person's own language, which the real command turns away, and how long a list it adds to. */
+const OWN_LANGUAGE = "Italian";
+const LANGUAGES_FULL = 30;
+
+/** `add_language`: gives a fixture person another language, with the real command's failures. */
+function addLanguage(uid: number, isStaff: boolean, name: string, level: number): LoggedChange {
+  const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
+  if (!person) {
+    throw notFound(isStaff ? "staff" : "player", uid);
+  }
+  if (!LANGUAGES.includes(name)) {
+    throw failure("app.dataChanged", "This data has changed in the game; reload and try again.");
+  }
+  if (!Number.isInteger(level) || level < 1 || level > 10) {
+    throw failure("move.outOfRange", `${level} is not a valid level; it takes 1 to 10`, {
+      field: "level",
+      value: level,
+      min: 1,
+      max: 10,
+    });
+  }
+  const current = currentLanguages(isStaff, uid);
+  if (current.some((l) => l.name === name)) {
+    throw failure("language.same", "the person's list has that language already");
+  }
+  if (current.length >= LANGUAGES_FULL) {
+    throw failure("language.full", "the person's list of languages is as long as the game lets it get");
+  }
+  if (name === OWN_LANGUAGE) {
+    throw failure("language.own", "that is the person's own language, which the game does not list");
+  }
+  const after: Language = { name, level, local: false };
+  return logLanguage(isStaff, uid, person.name, null, after, [...current, after]);
 }
 
 /** `remove_language`: takes a fixture person's language out of his list. */
@@ -1414,8 +1525,15 @@ function staffDetails(member: StaffSummary): StaffDetails {
     registrationAnytime: member.isHuman ? false : null,
     languages: currentLanguages(true, member.uid),
     preferences: currentPreferences(true, member.uid),
+    knowledge: [
+      { nation: "England", nationUid: 765, level: 100 },
+      { nation: "France", nationUid: 769, level: 30 + (member.uid % 60) },
+    ],
     coachingLicence: member.uid % 9,
     formations: [[29, 4, 28, 3][member.uid % 4], [22, 4, 0, 32][member.uid % 4]],
+    tendencies: [85, 82, 63, 96, 76, 51, 67, 21]
+      .slice(member.uid % 3)
+      .map((id, n) => ({ id, value: 1 + ((member.uid + 7 * n) % 20) })),
     boardSeat: !member.isHuman && member.job !== null && SEAT_JOBS.includes(member.job),
   });
 }
@@ -1452,6 +1570,7 @@ function fieldTable(entity: Entity): EditField[] {
       { ...field("potential_ability", "u16", 1, 200), mass: false },
       { ...field("reputation", "u16", 0, 10_000), mass: false },
       { ...field("date_of_birth", "date", 19400101, 20201231), mass: false },
+      ...OFFICIAL_ATTRIBUTES.map((name) => ({ ...field(`attribute.${name}`, "u8", 1, 20), mass: false })),
     ];
   }
   // A nation's senior team reputation and its rules, one nation at a time; 255 years is never.
@@ -1559,6 +1678,8 @@ function fieldTable(entity: Entity): EditField[] {
       mass: false,
     },
     { ...field("formation.out_of_possession", "u8", 1, 64), choices: [4, 7, 22, 27, 30, 32, 33, 35, 63, 64], mass: false },
+    // The named ones of the tendencies the sample staff hold.
+    ...[85, 82, 63, 96, 76, 51, 21].map((id) => ({ ...field(`tendency.${id}`, "u8", 1, 20), mass: false })),
     { ...field("manager.unsackable", "flag", 0, 1), mass: false },
     { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];
@@ -1607,6 +1728,13 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         const formations = (d as StaffDetails).formations;
         if (formations !== null) {
           formations[name === "out_of_possession" ? 1 : 0] = value;
+        }
+        break;
+      }
+      case "tendency": {
+        const tendency = (d as StaffDetails).tendencies?.find((t) => t.id === Number(name));
+        if (tendency) {
+          tendency.value = value;
         }
         break;
       }
@@ -1753,6 +1881,9 @@ function currentValues(entity: Entity, uid: number): FieldValues {
       potential_ability: official.potentialAbility,
       reputation: official.reputation,
       ...(official.dateOfBirth && { date_of_birth: numberFromDate(official.dateOfBirth) }),
+      ...Object.fromEntries(
+        (official.attributes ?? []).map((value, at) => [`attribute.${OFFICIAL_ATTRIBUTES[at]}`, value]),
+      ),
     };
   }
   const d = profileOf(entity, uid);
@@ -1797,6 +1928,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return (person as StaffDetails).coachingLicence;
       case "formation":
         return (person as StaffDetails).formations?.[name === "out_of_possession" ? 1 : 0];
+      case "tendency":
+        return (person as StaffDetails).tendencies?.find((t) => t.id === Number(name))?.value;
       case "contract": {
         const contract = (person as PlayerDetails).contract;
         switch (name) {
@@ -1872,6 +2005,11 @@ function writeValue(entity: Entity, uid: number, key: string, value: number): vo
     if (key === "date_of_birth") {
       official.dateOfBirth = dateFromNumber(value);
       official.age = official.dateOfBirth && ageOn(official.dateOfBirth, GAME_DATE);
+    } else if (group === "attribute") {
+      const at = OFFICIAL_ATTRIBUTES.findIndex((attribute) => attribute === name);
+      if (official.attributes && at >= 0) {
+        official.attributes = official.attributes.map((old, n) => (n === at ? value : old));
+      }
     } else {
       const property = { current_ability: "currentAbility", potential_ability: "potentialAbility" }[key] ?? key;
       Object.assign(official, { [property]: value });
@@ -3489,6 +3627,22 @@ function clubDetails(club: ClubSummary): ClubDetails {
           totalWageBudget: Math.round(1_200_000 + next() * 3_200_000),
           ticketPrice: Math.round(20 + next() * 60),
         },
+    ownership: 1 + (club.uid % 8),
+    kits: (["home", "away", "third"] as const).flatMap((kit, n) =>
+      (["shirt", "shorts", "socks"] as const).map((part, m) => ({
+        kit,
+        part,
+        main: ["#C00020", "#182028", "#A89868"][(n + m) % 3],
+        trim: ["#F8F8F8", "#E8C038", "#202830"][n],
+      })),
+    ),
+    income: club.women
+      ? []
+      : ["gate_receipts", "season_tickets", "tv", "merchandising", "players_sold", "prize_money", "sponsorship"].map((source) => ({
+          source,
+          thisSeason: Math.round(next() * 40_000_000),
+          lastSeason: Math.round(next() * 120_000_000),
+        })),
     stadium: stadiumOf(club, next),
     ...clubTiesOf(club),
   });
@@ -3898,7 +4052,9 @@ const FAILING: CheckKey[] = ["gameDate", "attributes", "contracts"];
 /** The sample career: its human manager (the first member of staff) and his club. */
 function mockCareer() {
   const manager = staff.find((member) => member.isHuman);
-  return manager ? { uid: manager.uid, manager: manager.name, club: manager.club, clubUid: manager.clubUid } : null;
+  return manager
+    ? { uid: manager.uid, manager: manager.name, club: manager.club, clubUid: manager.clubUid, saveName: "Sample career" }
+    : null;
 }
 
 function mockHealth(): Health {
@@ -3986,7 +4142,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, addPreference: true, addLanguage: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
@@ -4627,6 +4783,15 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return changePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.strength)) as T;
     case "remove_preference":
       return removePreference(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
+    case "add_preference":
+      return addPreference(
+        Number(args?.uid),
+        Boolean(args?.staff),
+        args?.kind as Preference["kind"],
+        String(args?.targetKind),
+        Number(args?.targetUid),
+        Number(args?.strength),
+      ) as T;
     case "point_preference":
       return pointPreference(
         Number(args?.uid),
@@ -4637,6 +4802,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       ) as T;
     case "change_language":
       return changeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index), Number(args?.level)) as T;
+    case "language_choices":
+      return [...LANGUAGES] as T;
+    case "add_language":
+      return addLanguage(Number(args?.uid), Boolean(args?.staff), String(args?.name), Number(args?.level)) as T;
     case "remove_language":
       return removeLanguage(Number(args?.uid), Boolean(args?.staff), Number(args?.index)) as T;
     case "change_injury":
@@ -4788,6 +4957,8 @@ const OFFICIALS: OfficialSummary[] = Array.from({ length: 40 }, (_, i): Official
     currentAbility,
     potentialAbility: Math.min(200, currentAbility + (year > 1992 ? 25 : 0)),
     reputation: 9_500 - i * 211,
+    // The last official has none, as on a version of FM that is not known to keep them.
+    attributes: i === 39 ? null : OFFICIAL_ATTRIBUTES.map((_, n) => 1 + ((i * 3 + n * 7) % 20)),
   };
 });
 

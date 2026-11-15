@@ -1,9 +1,9 @@
 // The dialog that changes the entries of one of a person's lists, each a name and a number: how strongly he favours or
 // dislikes each person and club, or how well he speaks each language. Each row's number can be saved, or the row
-// removed, or, where the list allows it, the row pointed at another club or person found by a search. Each change is
-// written at once, logged like any change and undone from the Changes view.
+// removed, or, where the list allows it, the row pointed at another club or person found by a search, or another row
+// added the same way. Each change is written at once, logged like any change and undone from the Changes view.
 
-import { useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useContext, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { RangeHint } from "./EditControls";
 import { describeError, formatNumber } from "./format";
@@ -45,6 +45,18 @@ export interface ValueSection {
   key: string;
   heading: string | null;
   rows: ValueRow[];
+  /** How another row is added under the heading, where the list allows it; the section then shows without rows too. */
+  add?: Replacement;
+}
+
+/**
+ * The search on show in place of the rows: what it finds, the heading over it, none for a list of one kind, and the
+ * button it was opened from.
+ */
+interface Search {
+  heading: string | null;
+  replacement: Replacement;
+  from: string;
 }
 
 interface ValueListDialogProps {
@@ -222,9 +234,10 @@ function ReplaceSearch({
 }
 
 /**
- * The rows with the controls that change them: a number and its Save, Replace where the row takes it, and Remove. A
- * write keeps every control busy until the profile has read the game again; then the dialog shows the rows the game
- * holds. Replace swaps the rows for a search, until one is picked or Back is pressed.
+ * The rows with the controls that change them: a number and its Save, Replace where the row takes it, and Remove, and
+ * under a heading that takes it, Add. A write keeps every control busy until the profile has read the game again; then
+ * the dialog shows the rows the game holds. Replace and Add swap the rows for a search, until one is picked or Back is
+ * pressed.
  */
 export function ValueListDialog({
   title,
@@ -248,12 +261,12 @@ export function ValueListDialog({
   const [error, setError] = useState<string | null>(null);
   // The numbers typed, by the index of the row; the others show the game's.
   const [typed, setTyped] = useState<Partial<Record<number, string>>>({});
-  // The row being pointed elsewhere, while its search is on show.
-  const [replacing, setReplacing] = useState<ValueRow | null>(null);
+  // The search for what a row is pointed at, or for what is added, while it is on show.
+  const [search, setSearch] = useState<Search | null>(null);
 
-  const back = () => setReplacing(null);
+  const back = () => setSearch(null);
   // Escape leaves the search before it closes the dialog.
-  useModal(dialog, !busy, replacing === null ? onClose : back);
+  useModal(dialog, !busy, search === null ? onClose : back);
 
   useEffect(() => {
     alive.current = true;
@@ -270,25 +283,25 @@ export function ValueListDialog({
   useEffect(() => {
     setBusy(false);
     setTyped({});
-    setReplacing(null);
+    setSearch(null);
   }, [list]);
 
-  // When the search goes, by Back or by the write of a pick, focus goes back to the Replace button it came from. This
+  // When the search goes, by Back or by the write of a pick, focus goes back to the button it was opened from. This
   // runs before the effect below, which then has nothing left to do.
-  const replacedIndex = useRef<number | null>(null);
+  const openedFrom = useRef<string | null>(null);
   useEffect(() => {
-    if (replacing !== null) {
-      replacedIndex.current = replacing.index;
+    if (search !== null) {
+      openedFrom.current = search.from;
       return;
     }
-    const index = replacedIndex.current;
-    if (index === null) {
+    const from = openedFrom.current;
+    if (from === null) {
       return;
     }
-    replacedIndex.current = null;
+    openedFrom.current = null;
     focused.current = null;
-    (document.getElementById(id(`replace-${index}`)) ?? closeButton.current)?.focus();
-  }, [replacing]);
+    (document.getElementById(from) ?? closeButton.current)?.focus();
+  }, [search]);
 
   // Focus goes back to the control that had it, or to Close when that control went with the row it removed.
   useEffect(() => {
@@ -371,7 +384,9 @@ export function ValueListDialog({
             type="button"
             disabled={busy}
             title={listText.replaceTitle(name)}
-            onClick={() => setReplacing(entry)}
+            onClick={() =>
+              setSearch({ heading: listText.insteadOf(name), replacement: replace, from: id(`replace-${index}`) })
+            }
           >
             {listText.replace}
           </button>
@@ -414,32 +429,56 @@ export function ValueListDialog({
             {who}
           </p>
           {/* Every row takes the same numbers: one hint says them for all, while the rows are on show. */}
-          {replacing === null && <RangeHint id={id("range")} min={formatNumber(least)} max={formatNumber(most)} />}
+          {search === null && <RangeHint id={id("range")} min={formatNumber(least)} max={formatNumber(most)} />}
         </header>
 
         <div className="modal-body">
-          {replacing?.replace !== undefined ? (
-            <section className="move-section" aria-labelledby={id("replacing")}>
-              <h3 id={id("replacing")}>{listText.insteadOf(replacing.name)}</h3>
+          {search !== null ? (
+            <section
+              className="move-section"
+              aria-labelledby={search.heading === null ? undefined : id("search")}
+              aria-label={search.heading === null ? search.replacement.label : undefined}
+            >
+              {search.heading !== null && <h3 id={id("search")}>{search.heading}</h3>}
               <ReplaceSearch
-                replacement={replacing.replace}
+                replacement={search.replacement}
                 busy={busy}
                 onPick={(option) => void write(option.choose)}
               />
             </section>
           ) : (
-            sections.map((section) =>
-              section.rows.length === 0 ? null : section.heading === null ? (
-                <ul key={section.key} className="tie-rows">
-                  {section.rows.map(row)}
-                </ul>
+            sections.map((section) => {
+              const { key, heading, rows, add } = section;
+              if (rows.length === 0 && add === undefined) {
+                return null;
+              }
+              const list = rows.length > 0 && <ul className="tie-rows">{rows.map(row)}</ul>;
+              const adder = add !== undefined && (
+                <div className="tie-row">
+                  <button
+                    id={id(`add-${key}`)}
+                    type="button"
+                    disabled={busy}
+                    title={listText.addTo(heading ?? title)}
+                    onClick={() => setSearch({ heading, replacement: add, from: id(`add-${key}`) })}
+                  >
+                    {tieText.add}
+                  </button>
+                </div>
+              );
+              return heading === null ? (
+                <Fragment key={key}>
+                  {list}
+                  {adder}
+                </Fragment>
               ) : (
-                <section key={section.key} className="move-section" aria-labelledby={id(section.key)}>
-                  <h3 id={id(section.key)}>{section.heading}</h3>
-                  <ul className="tie-rows">{section.rows.map(row)}</ul>
+                <section key={key} className="move-section" aria-labelledby={id(key)}>
+                  <h3 id={id(key)}>{heading}</h3>
+                  {list}
+                  {adder}
                 </section>
-              ),
-            )
+              );
+            })
           )}
         </div>
 
@@ -453,8 +492,8 @@ export function ValueListDialog({
         )}
 
         <footer className="modal-foot">
-          <button ref={closeButton} type="button" disabled={busy} onClick={replacing === null ? onClose : back}>
-            {replacing === null ? tieText.close : listText.back}
+          <button ref={closeButton} type="button" disabled={busy} onClick={search === null ? onClose : back}>
+            {search === null ? tieText.close : listText.back}
           </button>
         </footer>
       </div>

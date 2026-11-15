@@ -133,6 +133,11 @@ pub struct PlayerDetails {
     pub preferences: Vec<Preference>,
     /// The languages he speaks besides, usually, his native one (see [`crate::Session::player_languages`]).
     pub languages: Vec<Language>,
+    /// Whether he is registered to play in his team's league (see [`crate::Session::league_registration`]); none where
+    /// the editor cannot tell.
+    pub registered: Option<bool>,
+    /// His career plans (see [`crate::Session::career_plans`]).
+    pub plans: Vec<crate::plans::CareerPlan>,
     /// Whether the editor can read the retirements the game has planned (see
     /// [`crate::Session::planned_retirement`]), and the date he retires on when the game has planned it.
     pub retirement_known: bool,
@@ -145,6 +150,10 @@ pub struct PlayerDetails {
     pub work_permits: Vec<crate::work_permits::WorkPermit>,
     /// The transfers the game agreed for him on a later day (see [`crate::Session::future_transfers`]).
     pub future_transfers: Vec<crate::game_calls::FutureTransfer>,
+    /// The fees still being paid for him (see [`crate::Session::instalments`]).
+    pub instalments: Vec<crate::fee_terms::Instalment>,
+    /// The buy-back clause a club holds on him (see [`crate::Session::buy_back`]).
+    pub buy_back: Option<crate::fee_terms::BuyBack>,
 }
 
 /// The range getter treats 300 million specially and may compute a value instead.
@@ -501,12 +510,16 @@ pub fn read_player_details(
         tie_room: 0,
         preferences: Vec::new(),
         languages: Vec::new(),
+        registered: None,
+        plans: Vec::new(),
         retirement_known: false,
         retires: None,
         clause_room: 0,
         loan: None,
         work_permits: Vec::new(),
         future_transfers: Vec::new(),
+        instalments: Vec::new(),
+        buy_back: None,
     }))
 }
 

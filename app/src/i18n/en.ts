@@ -132,6 +132,10 @@ const errors: ErrorTexts = {
   "list.missing": () => "That entry is no longer in the list. Press Reload and try again.",
   "preference.target": () => "Pick a club in place of a club, and another person in place of a person.",
   "preference.same": () => "That one is in the list already.",
+  "preference.full": () => "This list is full.",
+  "language.same": () => "That one is in the list already.",
+  "language.own": () => "FM doesn't list a person's own language.",
+  "language.full": () => "This list is full.",
   "guard.unknownBuild": () =>
     "FM Lens hasn't been tested with this FM version yet, so editing is off.",
   "guard.careerChanged": () => "FM has moved its data since FM Lens read it. Press Reload, then try again.",
@@ -196,6 +200,77 @@ const CLAUSE_NAMES_EN: Partial<Record<number, string>> = {
   40: "Seasonal landmark assist bonus",
   41: "Seasonal landmark combined goal and assist bonus",
   55: "Active relegation release clause",
+};
+
+/** A member of staff's tendencies by the game's id for them, named as FM's profile words them; the rest have no name in the game. */
+const TENDENCY_NAMES_EN: Partial<Record<number, string>> = {
+  1: "Sign domestic-based players",
+  2: "Spend on youth signings",
+  3: "Sign many youth players",
+  4: "Sign U24 players for first team",
+  5: "Use budget on one player",
+  6: "Have a large senior squad",
+  15: "Use young players in low priority cups",
+  16: "Select a substitute goalkeeper",
+  17: "Make early tactical changes",
+  19: "Fit players into preferred tactic",
+  20: "Use target forward",
+  21: "Use counter-attacks",
+  22: "Select domestic players for national team",
+  24: "Sign lower league players",
+  25: "Use loan market",
+  27: "Hire an experienced manager",
+  31: "Hire a foreign manager",
+  33: "Hire a manager from within the club",
+  34: "Hire a young manager",
+  35: "Hire a former player as manager",
+  36: "Hire a domestic manager",
+  37: "Hire a compatriot as manager",
+  38: "Rely on set pieces",
+  39: "Hire director of football for first team transfers and contracts",
+  40: "Hire director of football for youth team transfers and contracts",
+  48: "Gesture: gets crowd going",
+  49: "Gesture: argues with officials",
+  50: "Gesture: sits quietly",
+  51: "Gesture: roams technical area",
+  52: "Gesture: sits in stands",
+  53: "Attire: suit",
+  54: "Attire: tracksuit",
+  55: "Attire: casual",
+  57: "Operate without an assistant manager",
+  58: "Pay fees upfront",
+  59: "Target high-profile signings",
+  60: "Offer high promotion wage increases",
+  61: "Offer high relegation wage decreases",
+  62: "Willing to work in the lower leagues",
+  63: "Use non-first team goalkeeper for domestic cup games",
+  65: "Use non-first team goalkeeper for continental cup games",
+  69: "Doesn't use analysts",
+  72: "Prioritise domestic cups over league",
+  73: "Prioritise continental cups over league",
+  75: "Allow creative freedom",
+  76: "Use player marking",
+  77: "Holds a high defensive line",
+  78: "Sit back and protect a lead",
+  79: "Use substitutes",
+  80: "Uses crosses",
+  81: "Looks for underlap",
+  82: "Looks for overlap",
+  84: "Works the ball into the box",
+  85: "Plays out of defence",
+  87: "Force opposition to play inside",
+  89: "Focuses play down the flanks",
+  90: "Uses intense pressing",
+  91: "Uses counter-pressing",
+  92: "Sign young players to sell at a profit",
+  93: "Sign U22 players for first team",
+  94: "Influenced by supporters",
+  95: "Tries to prevent crosses",
+  96: "Delegates to a set piece coach",
+  97: "Use inside footed wingers",
+  98: "Use buyback clauses",
+  99: "Sign versatile players",
+  100: "Have experienced leaders in squad",
 };
 
 /** Promises by FM's number for them, named as FM's screens word them. */
@@ -616,6 +691,11 @@ export const en = {
     "contract.joined": "Joined club",
     "loan.wage": "Loan wage paid by borrower",
     "loan.ends": "Loan end",
+    "buy_back.fee": "Buy-back fee",
+    "buy_back.starts": "Buy-back start",
+    "buy_back.ends": "Buy-back end",
+    "instalment.amount": "Instalment per month",
+    "instalment.months": "Instalment months left",
     "transfer.joins": "Joins",
     future_transfer: "Future transfer",
     // A loan the game started, which the change log keeps as a change of the player's club for the loan.
@@ -778,6 +858,20 @@ export const en = {
     loanStarts: "Loan began",
     loanEnds: "Loan ends",
     loanFutureFee: "Future fee",
+    /** A fee still being paid for him, and a club's right to buy him back. */
+    instalments: "Instalments",
+    instalmentPayer: "Paid by",
+    instalmentReceiver: "Paid to",
+    instalmentAmount: "Per month",
+    instalmentMonths: "Months left",
+    instalmentEvery: "Paid every",
+    instalmentEveryMonths: (months: number) => `${months} months`,
+    instalmentAgreed: "Agreed",
+    buyBack: "Buy-back",
+    buyBackClub: "Held by",
+    buyBackFee: "Fee",
+    buyBackStarts: "From",
+    buyBackEnds: "Until",
     /** A move FM agreed for a later day: the club he joins, and the day. */
     futureTransfer: "Future transfer",
     futureClub: "Club",
@@ -798,6 +892,9 @@ export const en = {
     /** A member of staff's coaching licence: 0 none, 1 to 8 FM's levels. */
     qualifications: "Qualifications",
     formations: "Formations",
+    tendencies: "Tendencies",
+    tendencyName: (id: number) => TENDENCY_NAMES_EN[id] ?? `Tendency ${id}`,
+    tendencyNamed: (id: number) => TENDENCY_NAMES_EN[id] !== undefined,
     coachingLicence: "Coaching licence",
     licenceName: (level: number): string =>
       ({
@@ -832,6 +929,15 @@ export const en = {
     retires: "Plans to retire",
     preferences: "Likes and dislikes",
     languages: "Languages",
+    /** Whether a player is registered to play in his team's league. */
+    registration: "League squad",
+    registered: "Registered",
+    notRegistered: "Not registered",
+    /** What the game has a player aim for, each plan under what it is. */
+    plans: "Career plans",
+    planTargets: { club: "Club", continent: "Continent", nation: "Nation", competition: "Competition" },
+    /** What a member of staff knows of each nation, 0 to 100, under FM's name for it. */
+    scoutingKnowledge: "Scouting knowledge",
     /**
      * How well a person speaks a language (0 to 10), in the words of FM's profile: 7 to 10 fluent (10 too, as for
      * Gyökeres' English), 5 good, 3 and 4 basic. FM leaves out a language at 1.
@@ -1373,6 +1479,7 @@ export const en = {
   clubProfile: {
     kits: "Kits",
     kitNames: { home: "Home", away: "Away", third: "Third" },
+    kitParts: { shirt: "Shirt", shorts: "Shorts", socks: "Socks" },
     // Header
     womensClub: "Women's club",
     /** "Founded 1882", in the line under the name. */
@@ -1436,6 +1543,38 @@ export const en = {
     info: "Club info",
     seasonTickets: "Season tickets",
     socialMedia: "Social media followers",
+    ownership: "Ownership",
+    /** By FM's code, from 1. */
+    ownershipKinds: [
+      "Private company",
+      "Public company",
+      "Member-owned, elections",
+      "Member-owned, no elections",
+      "Consortium, private",
+      "Consortium, public",
+      "Member-owned public company, elections",
+      "Member-owned public company, no elections",
+    ],
+
+    // Income
+    incomeThisSeason: "Income this season",
+    incomeLastSeason: "Income last season",
+    incomeSources: {
+      gate_receipts: "Gate receipts",
+      season_tickets: "Season tickets",
+      tv: "TV revenue",
+      merchandising: "Merchandising",
+      players_sold: "Players sold",
+      prize_money: "Prize money",
+      interest: "Interest",
+      sponsorship: "Sponsorship",
+      match_day: "Match day income",
+      grants: "Grants",
+      fundraising: "Fundraising",
+      other: "Other",
+      corporate: "Corporate facilities",
+      loans: "Loan income",
+    },
   },
 
   /** The club list, with the sidebar entry and the status-line count that go with it. */
@@ -1509,6 +1648,16 @@ export const en = {
       nation: "Nation",
     },
     reputation: "Reputation",
+    attributes: "Refereeing",
+    attributeNames: {
+      allowing_flow: "Allowing Flow",
+      discipline: "Discipline",
+      important_matches: "Important Matches",
+      pressure: "Pressure",
+      refereeing: "Refereeing",
+      running_line: "Running Line",
+      time_keeping: "Time Keeping",
+    } as Record<string, string>,
   },
 
   competitionList: {
@@ -2681,6 +2830,8 @@ export const en = {
     /** The days input of a row, for assistive technology: `name` is the injury's. */
     daysOf: (name: string) => `Days out with ${name}`,
     save: "Save",
+    /** The Add button under a heading, for the tooltip: `list` is the heading, "Favoured clubs" say. */
+    addTo: (list: string) => `Add to ${list.toLowerCase()}`,
     /** Points a like or dislike at another club or person. */
     replace: "Replace",
     replaceTitle: (name: string) => `Replace ${name}`,
@@ -2688,6 +2839,7 @@ export const en = {
     insteadOf: (name: string) => `Instead of ${name}`,
     searchClubs: "Search clubs",
     searchPeople: "Search players and staff",
+    searchLanguages: "Search languages",
     searching: "Searching…",
     searchFailed: (reason: string) => `Couldn't search: ${reason}`,
     noMatch: (query: string) => (query === "" ? "None found." : `Nothing matches “${query}”.`),

@@ -316,6 +316,7 @@ impl Session {
         };
         details.languages = self.staff_languages(member).unwrap_or_default();
         details.preferences = self.staff_preferences(member).unwrap_or_default();
+        details.knowledge = self.nation_knowledge(member).unwrap_or_default();
         details.board_seat = self.holds_board_seat(member);
         // Through the editor's own guarded read: a manager whose flags cannot be located stays unknown.
         if member.is_human
@@ -344,10 +345,14 @@ impl Session {
         details.tie_room = self.relation_room(player).unwrap_or(0);
         details.preferences = self.preferences(player).unwrap_or_default();
         details.languages = self.player_languages(player).unwrap_or_default();
+        details.registered = self.league_registration(player).unwrap_or(None);
+        details.plans = self.career_plans(player).unwrap_or_default();
         details.clause_room = self.clause_room(player).unwrap_or(0);
         details.loan = self.loan(player);
         details.work_permits = self.work_permits(player);
         details.future_transfers = self.future_transfers(player).unwrap_or_default();
+        details.instalments = self.instalments(player);
+        details.buy_back = self.buy_back(player);
         if let Ok(date) = self.planned_retirement(player) {
             (details.retirement_known, details.retires) = (true, date);
         }

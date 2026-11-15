@@ -13,10 +13,10 @@ use anyhow::{Context, Result, anyhow, bail, ensure};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use fmlens_core::{
     ATTRIBUTE_GROUPS, ArrayCandidate, ArraySource, AttributeBound, CaptainRole, ClubIndex, Entity, ExportFormat,
-    ExportHeader, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms, PERSONALITY,
-    POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort, PreferenceKind, STAFF_ATTRIBUTE_GROUPS,
-    SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError, StaffIndex, Target, Tie, TieTarget,
-    find_game, job_name, nations, scan_object_arrays, sort_players,
+    ExportHeader, Field, FmDate, GAME_EXE, GAME_PLUGIN, GameInfo, GraphicsIndex, Kind, Loan, MoveTerms,
+    OFFICIAL_ATTRIBUTES, PERSONALITY, POSITIONS, Picture, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSort,
+    PreferenceKind, STAFF_ATTRIBUTE_GROUPS, SUPPORTER_MIX, SUPPORTER_TRAITS, Scale, ScanOptions, Session, SessionError,
+    StaffIndex, Target, Tie, TieTarget, find_game, job_name, nations, scan_object_arrays, sort_players,
 };
 #[cfg(target_os = "macos")]
 use fmlens_mem::MachImage;
@@ -134,6 +134,9 @@ enum Command {
         /// How many to print.
         #[arg(long, default_value_t = 15)]
         limit: usize,
+        /// Also print each one's running season: its stages and their substitutions.
+        #[arg(long)]
+        season: bool,
     },
     /// List the awards, by prestige; with a name, only those whose name or competition holds it
     Awards {
@@ -334,6 +337,22 @@ enum Command {
     },
     /// List every transfer the game has agreed for a later day: who, from which club, to which, and when.
     FutureTransfers,
+    /// Print the name of the save the game has loaded, as the game's own record of it holds it.
+    SaveName,
+    /// List the players of the club CLUB who are registered to play in their team's league, and count how many
+    /// players in the game have career plans.
+    Registered {
+        /// The club's UID.
+        club: u32,
+    },
+    /// Count how clubs are owned: each ownership code, how many clubs hold it and the best known of them.
+    Owners,
+    /// Count the tendencies staff hold: how many lists read, how often each value comes, and who holds VALUE.
+    Tendencies {
+        /// List the ablest staff who hold a tendency at this value.
+        #[arg(long)]
+        value: Option<u8>,
+    },
     /// Show a player's ties: his secondary nationalities, and the nations and clubs he was trained in.
     Ties {
         /// The player's UID.
@@ -346,6 +365,9 @@ enum Command {
         /// Examples per preference kind when scanning every player.
         #[arg(long, default_value_t = 10)]
         max: usize,
+        /// Count what the rest of each entry holds instead, over every player and member of staff.
+        #[arg(long)]
+        bytes: bool,
     },
     /// Point one of a player's ties at another nation or club, or give a training another homegrown rule.
     TieSet {
@@ -513,6 +535,18 @@ enum Command {
         span: String,
         /// Stop after this many hits.
         #[arg(long, default_value_t = 100)]
+        max: usize,
+    },
+    /// Find the x86-64 code that reaches an address relative to itself: a `lea`, `mov` or `call` whose 32-bit
+    /// displacement lands on it. Only reads.
+    CodeRefs {
+        /// The address reached, e.g. a string's or a function's.
+        addr: String,
+        /// The module whose code is searched.
+        #[arg(long, default_value = "game_plugin.dll")]
+        module: String,
+        /// Stop after this many hits.
+        #[arg(long, default_value_t = 40)]
         max: usize,
     },
     /// Find the (begin, end) arrays in the game's memory that hold the 8-byte slot at ADDR,
@@ -871,8 +905,8 @@ fn run(cli: Cli) -> Result<()> {
         Command::Cohesion { uid } => cohesion(&connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Tactics { uid, team } => tactics(&connect(process, ArraySource::ProfileFirst)?, uid, team),
         Command::Officials { name, limit } => officials(&connect(process, ArraySource::ProfileFirst)?, name, limit),
-        Command::Competitions { name, limit } => {
-            competitions(&connect(process, ArraySource::ProfileFirst)?, name, limit)
+        Command::Competitions { name, limit, season } => {
+            competitions(&connect(process, ArraySource::ProfileFirst)?, name, limit, season)
         }
         Command::Awards { name, limit } => awards(&connect(process, ArraySource::ProfileFirst)?, name, limit),
         Command::InjuryKinds { name } => {
@@ -946,11 +980,24 @@ fn run(cli: Cli) -> Result<()> {
             retirements(&connect(process, ArraySource::ProfileFirst)?, uid, keep, restore_after)
         }
         Command::FutureTransfers => future_transfers(&connect(process, ArraySource::ProfileFirst)?),
+        Command::SaveName => {
+            match connect(process, ArraySource::ProfileFirst)?.save_name() {
+                Some(name) => println!("{name}"),
+                None => println!("The loaded save's name cannot be read in this build."),
+            }
+            Ok(())
+        }
+        Command::Registered { club } => registered(&connect(process, ArraySource::ProfileFirst)?, club),
+        Command::Owners => owners(&connect(process, ArraySource::ProfileFirst)?),
+        Command::Tendencies { value } => tendencies(&connect(process, ArraySource::ProfileFirst)?, value),
         Command::Ties { uid } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
         }
-        Command::Preferences { uid, max } => preferences(&connect(process, ArraySource::ProfileFirst)?, uid, max),
+        Command::Preferences { uid, max, bytes } => {
+            let session = connect(process, ArraySource::ProfileFirst)?;
+            if bytes { preference_bytes(&session, max) } else { preferences(&session, uid, max) }
+        }
         Command::TieSet { uid, index, nation, club, rule, restore } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             let target = nation.map(TieUid::Nation).or(club.map(TieUid::Club));
@@ -1007,6 +1054,10 @@ fn run(cli: Cli) -> Result<()> {
         Command::Refs { addr, span, max } => {
             let modules = list_modules(&process).context("listing modules")?;
             refs(&process, &modules, resolve(&addr, &modules)?, parse_hex(&span)?, max)
+        }
+        Command::CodeRefs { addr, module, max } => {
+            let modules = list_modules(&process).context("listing modules")?;
+            code_refs(&process, &modules, resolve(&addr, &modules)?, &module, max)
         }
         Command::Squads => squads(&connect(process, ArraySource::ProfileFirst)?),
         Command::Related { clubs, players, depth, span, tolerance, linear } => {
@@ -1125,6 +1176,47 @@ fn refs(process: &Process, modules: &[Module], addr: u64, span: u64, max: usize)
                 }
             }
             scanned += len;
+            offset += CHUNK;
+        }
+    }
+    println!(
+        "{hits} hit(s){}; scanned {:.0} MiB in {:.1} s.",
+        if hits >= max { " (stopped at --max)" } else { "" },
+        scanned as f64 / 1_048_576.0,
+        started.elapsed().as_secs_f64()
+    );
+    Ok(())
+}
+
+/// Prints every place in `module` where four bytes, read as a displacement from the byte after them, land on
+/// `addr`: how x86-64 code names a string, a static or a function it calls.
+fn code_refs(process: &Process, modules: &[Module], addr: u64, module: &str, max: usize) -> Result<()> {
+    const CHUNK: u64 = 8 << 20;
+    let m = find_module(modules, module).with_context(|| format!("module {module} is not loaded"))?;
+    let started = Instant::now();
+    let (mut scanned, mut hits) = (0u64, 0usize);
+
+    'regions: for region in regions(process, m.base, m.end()).into_iter().filter(|r| r.is_readable()) {
+        let mut offset = 0;
+        while offset < region.size {
+            let base = region.base + offset;
+            // Three bytes more, for a displacement that starts in the chunk's last three.
+            let len = (region.size - offset).min(CHUNK + 3);
+            if let Ok(chunk) = process.read_bytes(base, len as usize) {
+                for (i, word) in chunk.windows(4).enumerate() {
+                    let displacement = i32::from_le_bytes(word.try_into().expect("4 bytes"));
+                    let at = base + i as u64;
+                    if (at + 4).wrapping_add_signed(displacement.into()) != addr {
+                        continue;
+                    }
+                    println!("{at:#014x}  {}", describe_address(at, modules));
+                    hits += 1;
+                    if hits >= max {
+                        break 'regions;
+                    }
+                }
+            }
+            scanned += len.min(CHUNK);
             offset += CHUNK;
         }
     }
@@ -2652,6 +2744,34 @@ fn player(session: &Session, uid: u32) -> Result<()> {
             println!("                 future fee £{fee}");
         }
     }
+    match d.registered {
+        Some(registered) => println!("  registered     {}", if registered { "yes" } else { "no" }),
+        None => println!("  registered     not read"),
+    }
+    for plan in &d.plans {
+        let uid = plan.uid.map(|uid| format!(" (UID {uid})")).unwrap_or_default();
+        println!("  career plan    {:?}: {}{uid}", plan.target, plan.name.as_deref().unwrap_or("?"));
+    }
+    for instalment in &d.instalments {
+        println!(
+            "  instalment     {} pays {}: {} a month, every {} months, {} months left, agreed {}",
+            instalment.payer.as_deref().unwrap_or("?"),
+            instalment.receiver.as_deref().unwrap_or("?"),
+            instalment.amount,
+            instalment.period,
+            instalment.months_left,
+            date(instalment.agreed)
+        );
+    }
+    if let Some(buy_back) = &d.buy_back {
+        println!(
+            "  buy-back       {} for {}, {} to {}",
+            buy_back.club.as_deref().unwrap_or("?"),
+            buy_back.fee,
+            date(buy_back.starts),
+            date(buy_back.ends)
+        );
+    }
     for permit in &d.work_permits {
         println!(
             "  work permit    {}: {}",
@@ -2694,6 +2814,112 @@ fn staff(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
     Ok(())
 }
 
+/// The players of the club `club` registered to play in their team's league, to set against FM's Squad Registration
+/// page; and how many players in the game have career plans, plain and shifted, as a check of that layout.
+fn owners(session: &Session) -> Result<()> {
+    let (c, i) = (&session.layout.club, &session.layout.club_info);
+    let offset = i.ownership.context("this build's layout does not place a club's ownership")?;
+    let mut codes: BTreeMap<u8, Vec<(u16, String)>> = BTreeMap::new();
+    for club in session.clubs()? {
+        let info = session.process.read_u64(club.address + c.info).unwrap_or(0);
+        let Some(code) = session.process.read_bytes(info + offset, 1).ok().map(|bytes| bytes[0]) else { continue };
+        codes.entry(code).or_default().push((club.reputation.unwrap_or(0), club.name));
+    }
+    for (code, mut clubs) in codes {
+        clubs.sort_by_key(|club| std::cmp::Reverse(club.0));
+        let best: Vec<&str> = clubs.iter().take(12).map(|(_, name)| name.as_str()).collect();
+        println!("{code}: {} clubs: {}", clubs.len(), best.join(", "));
+    }
+    Ok(())
+}
+
+fn registered(session: &Session, club: u32) -> Result<()> {
+    let players = session.players()?;
+    let (mut yes, mut no, mut unknown) = (Vec::new(), 0, 0);
+    for player in players.iter().filter(|player| player.club_uid == Some(club)) {
+        match session.league_registration(player) {
+            Ok(Some(true)) => yes.push(player.name.as_str()),
+            Ok(Some(false)) => no += 1,
+            Ok(None) | Err(_) => unknown += 1,
+        }
+    }
+    println!("club {club}: {} registered, {no} not, {unknown} not read", yes.len());
+    for name in yes {
+        println!("  {name}");
+    }
+    let (mut plain, mut shifted, mut plans) = (0, 0, 0);
+    let mut targets: BTreeMap<String, (u32, u32)> = BTreeMap::new();
+    for player in &players {
+        let list = session.career_plans(player).unwrap_or_default();
+        if list.is_empty() {
+            continue;
+        }
+        if player.shift == 0 {
+            plain += 1
+        } else {
+            shifted += 1
+        }
+        plans += list.len();
+        for plan in &list {
+            let count = targets.entry(format!("{:?}", plan.target)).or_default();
+            count.0 += 1;
+            count.1 += u32::from(plan.name.is_none());
+        }
+    }
+    println!("career plans: {plain} plain and {shifted} shifted players hold {plans}");
+    for (target, (count, unnamed)) in targets {
+        println!("  {target}: {count}, {unnamed} unnamed");
+    }
+    Ok(())
+}
+
+/// How the tendencies of all staff read: a check of the layout over the whole database, and people to look up in FM.
+fn tendencies(session: &Session, value: Option<u8>) -> Result<()> {
+    let mut staff = session.staff()?;
+    staff.sort_by_key(|member| std::cmp::Reverse(member.current_ability));
+    let (mut unread, mut none, mut some, mut longest) = (0, 0, 0, 0);
+    let (mut values, mut ids) = ([0u32; 21], [0u32; 101]);
+    let mut holders = Vec::new();
+    for member in &staff {
+        let Some(list) = session.staff_details(member)?.and_then(|details| details.tendencies) else {
+            unread += 1;
+            continue;
+        };
+        if list.is_empty() {
+            none += 1;
+        } else {
+            some += 1;
+        }
+        longest = longest.max(list.len());
+        for t in &list {
+            values[t.value as usize] += 1;
+            ids[t.id as usize] += 1;
+            if value == Some(t.value) && holders.len() < 12 {
+                holders.push(format!("  {} (id {}): {}={}", member.name, member.uid, t.id, t.value));
+            }
+        }
+    }
+    println!(
+        "{} staff: {some} with tendencies, {none} with none, {unread} not read; longest list {longest}",
+        staff.len()
+    );
+    let counts = |counts: &[u32]| -> String {
+        counts
+            .iter()
+            .enumerate()
+            .filter(|&(_, &n)| n > 0)
+            .map(|(at, n)| format!("{at}:{n}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    println!("values  {}", counts(&values));
+    println!("ids     {}", counts(&ids));
+    for line in holders {
+        println!("{line}");
+    }
+    Ok(())
+}
+
 fn staff_member(session: &Session, uid: u32) -> Result<()> {
     let index = StaffIndex::new(session.staff()?);
     let member = index.get(uid).with_context(|| format!("no member of staff with id {uid}"))?;
@@ -2707,6 +2933,17 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
         .collect();
     println!("  languages      {}", if languages.is_empty() { "-".to_owned() } else { languages.join(", ") });
     println!("  preferences    {}", d.preferences.len());
+    let knowledge: Vec<String> =
+        d.knowledge.iter().map(|k| format!("{} {}", k.nation.as_deref().unwrap_or("?"), k.level)).collect();
+    println!("  knowledge      {}", if knowledge.is_empty() { "-".to_owned() } else { knowledge.join(", ") });
+    match &d.tendencies {
+        Some(list) if list.is_empty() => println!("  tendencies     -"),
+        Some(list) => {
+            let pairs: Vec<String> = list.iter().map(|t| format!("{}={}", t.id, t.value)).collect();
+            println!("  tendencies     {}", pairs.join(" "));
+        }
+        None => println!("  tendencies     not read"),
+    }
     if let Some(full) = &s.full_name {
         println!("  full name      {full}");
     }
@@ -3448,6 +3685,50 @@ fn preferences(session: &Session, uid: Option<u32>, max: usize) -> Result<()> {
     Ok(())
 }
 
+/// Counts what a preference's entry holds beside its target and strength, over every player and member of staff:
+/// the two bytes at 0x08 and the bytes at 0x0D, 0x0E and 0x0F, by kind of preference. This command never writes.
+fn preference_bytes(session: &Session, max: usize) -> Result<()> {
+    let (p, st, r) = (&session.layout.player, &session.layout.staff, &session.layout.relation);
+    let mut headers: Vec<u64> =
+        session.players()?.iter().map(|player| player.address + p.at(p.relations, player.shift)).collect();
+    if let Some(relations) = st.relations {
+        headers.extend(session.staff()?.iter().map(|member| member.address + st.at(relations, member.shift)));
+    }
+    let mut seen: BTreeMap<(u8, u8), BTreeMap<[u8; 5], usize>> = BTreeMap::new();
+    let mut lists = 0usize;
+    for slot in headers {
+        let Ok(header) = session.process.read_u64(slot) else { continue };
+        let Ok(words) = session.process.read_bytes(header, 16) else { continue };
+        let begin = u64::from_le_bytes(words[..8].try_into().expect("8 bytes"));
+        let end = u64::from_le_bytes(words[8..].try_into().expect("8 bytes"));
+        if begin == 0 || end <= begin || end - begin > 0x1000 || !(end - begin).is_multiple_of(r.size) {
+            continue;
+        }
+        let Ok(bytes) = session.process.read_bytes(begin, (end - begin) as usize) else { continue };
+        lists += 1;
+        for entry in bytes.chunks(r.size as usize) {
+            let codes = (entry[r.target_kind as usize], entry[r.relation as usize]);
+            if !matches!(codes, (3, 1 | 2) | (1, 3 | 4)) {
+                continue;
+            }
+            let rest = [entry[0x08], entry[0x09], entry[0x0D], entry[0x0E], entry[0x0F]];
+            *seen.entry(codes).or_default().entry(rest).or_default() += 1;
+        }
+    }
+    println!("{lists} list(s) read");
+    for ((kind, relation), counts) in seen {
+        let total: usize = counts.values().sum();
+        println!("kind {kind} relation {relation}: {total} entries, {} different", counts.len());
+        let mut counts: Vec<_> = counts.into_iter().collect();
+        counts.sort_by_key(|(_, count)| std::cmp::Reverse(*count));
+        for (rest, count) in counts.into_iter().take(max) {
+            let at08 = u16::from_le_bytes([rest[0], rest[1]]);
+            println!("  {count:>6}  +0x08 {at08:<5} +0x0D {:<3} +0x0E {:<3} +0x0F {:#04x}", rest[2], rest[3], rest[4]);
+        }
+    }
+    Ok(())
+}
+
 /// A nation or club by UID, for a tie.
 #[derive(Clone, Copy)]
 enum TieUid {
@@ -3738,11 +4019,18 @@ fn officials(session: &Session, name: Option<String>, limit: usize) -> Result<()
             o.potential_ability,
             o.reputation
         );
+        if let Some(attributes) = o.attributes {
+            let named: Vec<String> =
+                OFFICIAL_ATTRIBUTES.iter().zip(attributes).map(|(name, value)| format!("{name} {value}")).collect();
+            println!("      {}", named.join(", "));
+        }
     }
+    let with = all.iter().filter(|o| o.attributes.is_some()).count();
+    println!("{with} of {} with refereeing attributes", all.len());
     Ok(())
 }
 
-fn competitions(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
+fn competitions(session: &Session, name: Option<String>, limit: usize, season: bool) -> Result<()> {
     let started = Instant::now();
     let mut all = session.competitions()?;
     println!(
@@ -3767,6 +4055,25 @@ fn competitions(session: &Session, name: Option<String>, limit: usize) -> Result
             c.reputation,
             if c.women { "  women" } else { "" }
         );
+        if season {
+            match session.season_stages(c)? {
+                None => println!("      season not read"),
+                Some(stages) if stages.is_empty() => println!("      no stages"),
+                Some(stages) => {
+                    for stage in stages {
+                        match stage.subs {
+                            Some(subs) => {
+                                println!(
+                                    "      {:<24} subs allowed {:>2}  named {:>2}",
+                                    stage.kind, subs.allowed, subs.named
+                                )
+                            }
+                            None => println!("      {}", stage.kind),
+                        }
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -3908,12 +4215,34 @@ fn club(session: &Session, uid: u32) -> Result<()> {
     println!("  traits         {}", traits.join(", "));
     let facilities: Vec<String> = d.facilities.iter().map(|(k, v)| format!("{k} {v}")).collect();
     println!("  facilities     {}", facilities.join(", "));
+    let ownership = d.ownership.map_or_else(
+        || "-".to_owned(),
+        |code| match fmlens_core::OWNERSHIP.get(usize::from(code).wrapping_sub(1)) {
+            Some(name) => format!("{code} {name}"),
+            None => code.to_string(),
+        },
+    );
+    println!("  ownership      {ownership}");
     match &d.finances {
         Some(f) => println!(
             "  finances       balance £{}, transfer budget £{}, wage budget £{} p/w (total £{}), ticket £{:.0}",
             f.balance, f.transfer_budget, f.wage_budget, f.total_wage_budget, f.ticket_price
         ),
         None => println!("  finances       not kept for this club"),
+    }
+    for (label, pick) in
+        [("income", (|i| i.this_season) as fn(&fmlens_core::Income) -> i32), ("last season", |i| i.last_season)]
+    {
+        let sources: Vec<String> =
+            d.income.iter().filter(|i| pick(i) != 0).map(|i| format!("{} £{}", i.source, pick(i))).collect();
+        if !sources.is_empty() {
+            println!("  {label:<14} {}", sources.join(", "));
+        }
+    }
+    if !d.kits.is_empty() {
+        let kits: Vec<String> =
+            d.kits.iter().map(|k| format!("{} {} {} on {}", k.kit, k.part, k.trim, k.main)).collect();
+        println!("  kits           {}", kits.join(", "));
     }
     match &d.stadium {
         Some(s) => println!(

@@ -341,6 +341,11 @@ function App() {
           if (!idle || !current) {
             return;
           }
+          // Save As in FM renames the loaded save.
+          const saveName = current.career?.saveName ?? null;
+          setConnection((c) =>
+            c?.career && c.career.saveName !== saveName ? { ...c, career: { ...c.career, saveName } } : c,
+          );
           if (current.writable && current.knownBuild && !current.editable) {
             if (focused) {
               void reload();
@@ -603,7 +608,7 @@ function App() {
           <span className="busy live-region" role="status">
             {busy}
           </span>
-          {/* Which career is connected, as FM names a save by default: the manager and his club. */}
+          {/* Which career is connected: the manager, his club and the save FM has loaded. */}
           {career && (
             <span className="career">
               <button type="button" className="career-manager" onClick={() => openManager(career)}>
@@ -617,6 +622,16 @@ function App() {
                   <button type="button" className="career-club" onClick={() => openClub(career)}>
                     {career.club}
                   </button>
+                </>
+              )}
+              {career.saveName !== null && (
+                <>
+                  <span className="career-dot" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="career-save" title={career.saveName}>
+                    {career.saveName}
+                  </span>
                 </>
               )}
             </span>

@@ -131,8 +131,31 @@ Rule codes that matter here:
 | Loan rules | loan_rules | lnrl |
 | Daylight offside rule | daylight_offside_rule | DaOr |
 
-Goal-line technology: no rule key and no string exists in the plugin. Status: not found. It is
-probably not a competition rule in FM27, or it is folded into the VAR block.
+Goal-line technology: no rule key and no string exists in the plugin. Status: shown by FM per
+competition, storage not found.
+
+FM does show it (Windows Steam, 15 November 2026): a competition's Rules page has a "Technology
+Rules" block under General Competition Rules, with one line for VAR and one for goal-line
+technology. Read there:
+
+| Competition | VAR | Goal-line technology |
+| --- | --- | --- |
+| Sky Bet Championship | no line | yes |
+| Spanish First Division | yes | yes |
+| European Championship Qualifying | yes | yes |
+
+So both are per competition, and VAR and goal-line technology are separate. Compared with the
+running seasons in memory:
+
+- LEAGUE_SETTINGS `+0x176` (Premier League 1, Championship 0, Spain 0, Bundesliga 1, Ligue 1 0,
+  Euro qualifying 1) matches neither column: ruled out.
+- ACTUAL_COMP `+0x4A9` is 1 for the Championship alone of 14 running seasons read, and `+0x4AF`
+  is 3 there and 0xFF elsewhere. A guess only: more likely its play-offs than its lack of VAR.
+- No competition without goal-line technology was read in FM, so no byte can be matched to it yet.
+  Next step: read FM's page for a running competition without it, then compare the same objects.
+
+The same LEAGUE_SETTINGS comparison gives `+0xD2` as the points taken for administration: the
+Championship's 12 matched FM's "12-point penalty deduction" (Premier League 9, not checked).
 
 Subs rule set names (strings at RVA 0x5293600..0x52939a0): three_from_three, three_from_five,
 three_from_seven, three_and_gk_from_five, ..., five_from_eight, five_from_nine, five_from_ten,
@@ -188,36 +211,50 @@ also sits in the heap as typed nodes. `SBal` and `SBmx` appear in 16 places in c
 
 ### Season copies and what the engine reads
 
-Status: not determined. Evidence only:
+Status: found for league stages on Windows (Steam 26577676, 15 November 2026). Cups, groups
+and the Macs: not mapped.
 
-- The ACTUAL_COMP tree is a loaded copy of the data, kept per comp. It has a `year` and
-  `year_interval` and a `stages` list, so season stages are built from it at set-up.
-- The plugin has runtime classes sicomps::LEAGUE_STAGE (vtable `+0x56759f8`), CUP_STAGE,
-  GROUP_STAGE and the strings `FIXTURE::get_subs_rules_string` and `get_subs_rules_string`.
-  Substitution rules are therefore carried by the fixture and the stage, not read live from
-  db::COMP. GAME_COMP has no instances.
-- So editing the tag in ACTUAL_COMP or the static tree probably does not change a season that
-  is already set up. This is not proven.
+- A competition's loaded rule data (ACTUAL_COMP, comp `+0xB0`) holds at `+0x1C0` the
+  (begin, end) of pointers to the stages of the running season. A slot is null until the
+  season makes that stage. A competition that is not running in the save has no rule data.
+- Every stage has a 4-letter tag at `+0x48` ('leag' or 'cup ') and its db::COMP at `+0x70`.
+  Classes seen: sicomps::LEAGUE_STAGE, CUP_STAGE, GROUP_STAGE, CUP_GROUP_STAGE, EMPTY_STAGE,
+  FUTURE_STAGE.
+- A LEAGUE_STAGE points at its sicomps::LEAGUE_SETTINGS at `+0xF0`. The settings hold one
+  byte at `+0x146`: the number of FM's substitution rule (0 to 90). The same settings hold
+  the team count at `+0x87`, games at `+0x8F`, points for a win and a draw at `+0x98` and
+  `+0x9B`, and at `+0xD2` the points taken off for administration (Premier League 9,
+  Championship 12). The earlier reading of `+0xD1..+0xD2` as "substitutes named" was wrong.
+- FM turns the rule number into its numbers with tables in its own code (the routines
+  behind `FIXTURE::get_subs_rules_string`, read from the macOS arm64 binary): substitutions
+  allowed, substitutes named, extra-time substitutions, most stoppages and a half-time rule.
+  Rule 58 is 5 allowed, 9 named, 3 stoppages. Rules 22 and 28 depend on the match, so they
+  have no fixed numbers. FM Lens carries the allowed and named numbers of all 91 rules.
+- A CUP_STAGE points at its sicomps::CUP_SETTINGS at `+0x90`, which hold a record per round.
+  Where a cup keeps its substitution rule is not mapped. A GROUP_STAGE's groups are not
+  mapped either.
+- On macOS an earlier live scan found the same two stage offsets (competition at `+0x70`,
+  LEAGUE_SETTINGS at `+0xf0`; LEAGUE_STAGE vtable `+0x56759f8`, settings `+0x5675f28`). The
+  stage list in ACTUAL_COMP and the rule byte are not mapped there, so the Macs read no season.
+- A fixture (sicomps::FIXTURE, 0x58 bytes) has a byte near `+0x3E` that looks like the same
+  rule number. Not proven, and not read by FM Lens.
 
-Checked live (vtable scan of sicomps::LEAGUE_STAGE, 413 s, 375 objects, stride about 0x1d0):
+Checked against FM's Rules pages (More > About > Rules) on Windows, 18 July 2028 in the game:
 
-- A stage object has `+0x70` = pointer to its db::COMP (the first object points at the
-  Premier League, 0x726682cbd0) and `+0xf0` = pointer to a `sicomps::LEAGUE_SETTINGS` object
-  (vtable `+0x5675f28`). The stage is the season-instantiated copy per comp.
-- The Premier League settings object (0x7afeeca0a8) holds the byte pairs (1, 5) at
-  `+0xc9..+0xca` and (1, 9) at `+0xd1..+0xd2`. This looks like "subs allowed 5" and
-  "subs named 9", flag then value. Other stages show (1, 5) at the same place and a different
-  second pair (0, 0 or 0, 0x13), so `+0xca` = 5 is common and `+0xd2` = 9 is specific to this
-  stage. This is a guess from one stage and is NOT verified.
-- If it holds, the engine reads per-stage native settings, not the ACTUAL_COMP tree or the
-  db::COMP rules, and editing the tree alone would not change a running season.
+| Competition | Stage | FM Lens | FM |
+|---|---|---|---|
+| Sky Bet Championship | League | 5 allowed, 9 named | "5 subs can be used in 3 stoppages, from a maximum of 9 named" |
+| Spanish First Division | League | 5 allowed, 12 named | "5 subs can be used in 3 stoppages, from a maximum of 12 named" |
+| European Championship Qualifying | Second Placed Teams table | 3 allowed, 7 named | "3 subs can be used from a maximum of 7 named" |
 
-Plan to settle it (reads only): follow `fxri` (EPL 6) into the match fixture rules list in the
-rule data, find the entry that holds `subr` or `SBal`, then dump a real FIXTURE of the
-Arsenal v Spurs match (the FIXTURE class has no vtable; find it from the fixture list of a
-club, see how the existing `ties`/`teams` code reaches fixtures) and compare. If the fixture
-holds the numbers, the engine reads the fixture copy and edits must be made before fixtures
-are generated, or to each fixture.
+The qualifying competition's matches are in its group stage (5 from 12 on FM's page), which is
+not read, so FM Lens shows a season's substitutions only where every stage made so far is a
+league stage and they agree. Of 8,084 competitions in that save, 6,861 had no rule data, 1,101
+had no stages yet, and 52 league stages gave numbers (twelve different pairs, 3 from 7 up to 7
+from 12).
+
+Editing: not built. The rule number is one byte per stage, but whether fixtures already made
+keep their own copy is not proven.
 
 ## 3. Awards
 

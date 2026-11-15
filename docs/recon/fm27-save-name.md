@@ -1,4 +1,4 @@
-# FM27: which save is loaded (found on Windows, not built)
+# FM27: which save is loaded (built for Windows Steam)
 
 Build: FM27 Steam 26340721, ARM64 macOS. Read-only probe work on 2026-11-05 with the
 disposable copy `FM Lens PBJ Registration Kepa 2026-11-04.fm` loaded. The main
@@ -70,9 +70,30 @@ load it names the save being loaded, before the new career's data is in place.
 - The rest of the object. `+0x70` held a day and year pair (day 200 of 2028
   beside 1 January 1900, with the game at 18 July 2028); it is not named.
 
-## Next
+## Built (15 November 2026)
 
-Add `save_system` to the build profiles and the name's offset to the layout,
-read it with the class checked first (no name shown when the check fails), add
-a read-only probe subcommand that prints it, and show it in the app where the
-career is named.
+- The Windows Steam profile places the static (`save_system`) and the Windows
+  layout holds the name's offset (`[save_system] name`). Profiles without
+  them show no name.
+- `Session::save_name` (`crates/fmlens-core/src/save_system.rs`) reads the
+  object the static points at, checks its class, then reads the string. It
+  gives no name when the class is not `SAVE_SYSTEM`, or the text is empty or
+  could not be a file's name.
+- The string pointer is not on an eight-byte boundary (the game's strings sit
+  four bytes into their blocks), so the read does not ask for an aligned
+  pointer.
+- `fmlens-probe save-name` prints it. The app shows it beside the manager and
+  club, and follows Save As and Load on its own.
+
+Checked in the packaged app on Windows, FM27 27.0.1 Steam 26577676:
+
+| Step in FM | App header and `save-name` |
+|---|---|
+| `FM-Lens-NameCheck-2026-11-15` loaded, app connects | `FM-Lens-NameCheck-2026-11-15` |
+| Save Game As a new name | the new name, with no reload |
+| Load of `FM-Lens-SaveName-2026-11-15`, probe read at 3% of the loading bar | `FM-Lens-SaveName-2026-11-15` |
+| The same load finished, app left open | header shows `FM-Lens-SaveName-2026-11-15`, Changes cleared |
+| Load of `FM-Lens-NameCheck-2026-11-15` again | `FM-Lens-NameCheck-2026-11-15` |
+
+Not run: Game Pass, macOS on ARM64 and Intel, a career never saved, an FM
+restart with the app left open.

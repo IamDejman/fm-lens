@@ -26,6 +26,7 @@ import type {
   MovePreview,
   MoveTerms,
   Nation,
+  PreferenceKind,
   ReleasePreview,
   Promise as PlayerPromise,
   SelectionFreeze,
@@ -355,6 +356,19 @@ export const pointPreference = (
   targetUid: number,
 ) => call<LoggedChange>("point_preference", { uid, staff, index, targetKind, targetUid });
 
+/**
+ * Adds the club, player or member of staff `targetUid` to the list of the player `uid`, or of the member of staff
+ * `uid` for `staff`, as one he favours or dislikes (`kind`) with the strength `strength`, 1 to 100.
+ */
+export const addPreference = (
+  uid: number,
+  staff: boolean,
+  kind: PreferenceKind,
+  targetKind: PreferenceTargetKind,
+  targetUid: number,
+  strength: number,
+) => call<LoggedChange>("add_preference", { uid, staff, kind, targetKind, targetUid, strength });
+
 /** Takes the preference `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
 export const removePreference = (uid: number, staff: boolean, index: number) =>
   call<LoggedChange>("remove_preference", { uid, staff, index });
@@ -362,6 +376,16 @@ export const removePreference = (uid: number, staff: boolean, index: number) =>
 /** Gives the language `index` of the player `uid`, or of the member of staff `uid` for `staff`, the level `level`, 1 to 10. */
 export const changeLanguage = (uid: number, staff: boolean, index: number, level: number) =>
   call<LoggedChange>("change_language", { uid, staff, index, level });
+
+/** The names of the languages a person can be given, in order. Only reads the game. */
+export const languageChoices = () => call<string[]>("language_choices");
+
+/**
+ * Has the game give the player `uid`, or the member of staff `uid` for `staff`, the language `name`, one of
+ * `languageChoices`, at `level`, 1 to 10. Logged and undone like any change.
+ */
+export const addLanguage = (uid: number, staff: boolean, name: string, level: number) =>
+  call<LoggedChange>("add_language", { uid, staff, name, level });
 
 /** Takes the language `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
 export const removeLanguage = (uid: number, staff: boolean, index: number) =>

@@ -12,6 +12,41 @@ use crate::relations::Related;
 use crate::text::{Memo, read_fm_string};
 
 /// Supporter-mix percentages in the order FM stores them.
+/// How a club is owned, by the code FM keeps less one (0 is not set), in the order of FM's own list. Read against
+/// clubs of each kind on Steam 26577676.
+pub const OWNERSHIP: [&str; 8] = [
+    "private",
+    "public",
+    "members_elections",
+    "members",
+    "consortium_private",
+    "consortium_public",
+    "members_elections_public",
+    "members_public",
+];
+
+/// A club's sources of income as FM's Income page orders them, each with its step in i32s from gate receipts.
+/// Investments, affiliate club and solidarity payments are not placed.
+pub const INCOME_SOURCES: [(&str, u64); 14] = [
+    ("gate_receipts", 0),
+    ("season_tickets", 2),
+    ("tv", 14),
+    ("merchandising", 5),
+    ("players_sold", 6),
+    ("prize_money", 13),
+    ("interest", 3),
+    ("sponsorship", 7),
+    ("match_day", 8),
+    ("grants", 11),
+    ("fundraising", 9),
+    ("other", 1),
+    ("corporate", 15),
+    ("loans", 17),
+];
+
+/// Bytes one period of income takes from its gate receipts.
+pub(crate) const INCOME_SPAN: u64 = 18 * 4;
+
 pub const SUPPORTER_MIX: [&str; 6] = ["hardcore", "core", "family", "fair_weather", "casual", "other"];
 
 /// Supporter traits (1–20) in the order FM stores them.
@@ -146,8 +181,15 @@ pub struct ClubDetails {
     /// training, youth_facilities, youth_coaching, youth_recruitment and, with full
     /// finances, corporate (1–20).
     pub facilities: BTreeMap<&'static str, u8>,
+    /// How the club is owned, a code of [`OWNERSHIP`]; none where the layout does not place it. Read-only.
+    pub ownership: Option<u8>,
     /// Only clubs with the full finance record have these.
     pub finances: Option<Finances>,
+    /// What the club earned by source, in the order of [`INCOME_SOURCES`]; empty where the layout does not place it
+    /// or the club has no finance record. Read-only.
+    pub income: Vec<Income>,
+    /// The colours of its outfield kits; empty where the layout does not place them. Read-only.
+    pub kits: Vec<KitPart>,
     /// The stadium the senior team plays at, when the layout knows where it is and it looks real.
     pub stadium: Option<Stadium>,
     /// Its rivals, strongest first (see [`crate::Session::club_rivals`]). Read-only.
@@ -423,6 +465,69 @@ pub(crate) fn stadium_class(process: &Process, module: &Module, array: &ArrayRef
     (count >= 10 && count * 100 >= found * 99).then_some(class)
 }
 
+/// The kits a club's colours are read for, by FM's number, and the parts of one by the code FM keeps.
+pub const KITS: [&str; 3] = ["home", "away", "third"];
+pub const KIT_PARTS: [(u8, &str); 3] = [(1, "shirt"), (4, "shorts"), (5, "socks")];
+
+/// The colours of one part of a kit, as `#RRGGBB`.
+#[derive(Debug, Clone, Serialize)]
+pub struct KitPart {
+    /// One of [`KITS`].
+    pub kit: &'static str,
+    /// shirt, shorts or socks.
+    pub part: &'static str,
+    pub main: String,
+    pub trim: String,
+}
+
+/// The outfield kits of the club at `club`, home first and each from the shirt down; empty when the club has none or
+/// its records do not look like kits. Only reads memory.
+fn read_kits(process: &Process, k: &crate::profile::ClubKitsLayout, club: u64) -> Vec<KitPart> {
+    let pointer = |address: u64| process.read_u64(address).ok().filter(|&p| is_user_pointer(p));
+    let Some(set) = pointer(club + k.set) else { return Vec::new() };
+    let (Some(begin), Some(end)) = (pointer(set + k.parts), pointer(set + k.parts + 8)) else { return Vec::new() };
+    let count = end.saturating_sub(begin) / 8;
+    if count == 0 || count > 256 || (end - begin) % 8 != 0 {
+        return Vec::new();
+    }
+    let Ok(pointers) = process.read_bytes(begin, (count * 8) as usize) else { return Vec::new() };
+    // (kit, part, order) -> colours; the lowest order of a part wins.
+    let mut found: BTreeMap<(usize, usize), (u8, String, String)> = BTreeMap::new();
+    for chunk in pointers.as_chunks::<8>().0 {
+        let record = u64::from_le_bytes(*chunk);
+        let Some(bytes) = is_user_pointer(record).then(|| process.read_bytes(record, k.size as usize).ok()).flatten()
+        else {
+            return Vec::new();
+        };
+        let colour = |offset: u64| {
+            let b = &bytes[offset as usize..offset as usize + 4];
+            (b[3] == 0xFF).then(|| format!("#{:02X}{:02X}{:02X}", b[2], b[1], b[0]))
+        };
+        let (Some(main), Some(trim)) = (colour(k.main), colour(k.trim)) else { return Vec::new() };
+        let kit = usize::from(bytes[k.kit as usize]);
+        let part = KIT_PARTS.iter().position(|&(code, _)| code == bytes[k.part as usize] & 0x0F);
+        let (Some(part), true) = (part, kit < KITS.len() && bytes[k.outfield as usize] == 1) else { continue };
+        let order = bytes[k.order as usize];
+        if found.get(&(kit, part)).is_none_or(|&(held, ..)| order < held) {
+            found.insert((kit, part), (order, main, trim));
+        }
+    }
+    found
+        .into_iter()
+        .map(|((kit, part), (_, main, trim))| KitPart { kit: KITS[kit], part: KIT_PARTS[part].1, main, trim })
+        .collect()
+}
+
+/// One source of a club's income, in pounds.
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Income {
+    /// A key of [`INCOME_SOURCES`].
+    pub source: &'static str,
+    pub this_season: i32,
+    pub last_season: i32,
+}
+
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Finances {
@@ -460,7 +565,10 @@ pub fn read_club_details(
         supporter_mix: BTreeMap::new(),
         supporter_traits: BTreeMap::new(),
         facilities: BTreeMap::new(),
+        ownership: None,
         finances: None,
+        income: Vec::new(),
+        kits: layout.club_kits.as_ref().map_or_else(Vec::new, |k| read_kits(process, k, club.address)),
         stadium: None,
         rivals: Vec::new(),
         links: Vec::new(),
@@ -499,6 +607,7 @@ pub fn read_club_details(
         ] {
             details.facilities.insert(key, info[offset as usize]);
         }
+        details.ownership = i.ownership.map(|offset| info[offset as usize]);
     }
 
     let f = &layout.club_finance;
@@ -516,6 +625,16 @@ pub fn read_club_details(
             total_wage_budget: i32_at(f.total_wage_budget),
             ticket_price: f32_at(&bytes, f.ticket_price),
         });
+        if let Some([this, last]) = f.income {
+            details.income = INCOME_SOURCES
+                .iter()
+                .map(|&(source, step)| Income {
+                    source,
+                    this_season: i32_at(this + step * 4),
+                    last_season: i32_at(last + step * 4),
+                })
+                .collect();
+        }
     }
     Ok(Some(details))
 }
@@ -596,6 +715,7 @@ mod tests {
             wage_budget: 20,
             ticket_price: 24,
             corporate: 28,
+            income: None,
         };
         let record = |transfer_budget: i32, wage_budget: i32| {
             let mut bytes = vec![0u8; f.end() as usize];

@@ -533,12 +533,16 @@ mod tests {
             tie_room: 0,
             preferences: Vec::new(),
             languages: Vec::new(),
+            registered: None,
+            plans: Vec::new(),
             retirement_known: false,
             retires: None,
             clause_room: 0,
             loan: None,
             work_permits: Vec::new(),
             future_transfers: Vec::new(),
+            instalments: Vec::new(),
+            buy_back: None,
         }
     }
 

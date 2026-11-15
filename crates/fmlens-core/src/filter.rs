@@ -1312,6 +1312,7 @@ mod tests {
             current_ability: 150,
             potential_ability: 160,
             reputation: 5000,
+            attributes: None,
         };
         let filter = OfficialFilter {
             min_age: Some(35),

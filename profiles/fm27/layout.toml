@@ -205,6 +205,11 @@ actual_person = 0x128
 relations = 0x178
 coaching_licence = 0x23C
 formations = [0xDF, 0xE3]
+# A pointer to his tendencies: a record that starts with the (begin, end) of a list of two-byte entries, a tendency id
+# (1 to 100) and how far he leans to it (1 to 20; 10 where he has no entry). Read on Steam 26577676 against FM's
+# profile, which lists 15 and over under Tendencies and 5 and under under "Tends Not To": Simeone has 24 entries,
+# Guardiola 23, Slot 12, and each of FM's lines is one of them.
+tendencies = 0xA8
 
 # u8, raw 0..100, shown as (raw + 2) / 5
 
@@ -291,6 +296,12 @@ by_person = 0x90          # in the manager: (begin, end, capacity) of 16-byte en
 person = 0x00             # in an entry: u32 person id
 date = 0x0C               # in an entry: the date he retires
 player_person = 0x290     # in a player: u32, the game's id of the person (Ronaldo 0x0A30, Wass 0x0E69)
+
+# The game's record of the save it has loaded (SAVE_SYSTEM), which the build profile's save_system places. Read on
+# Steam build 26577676 (15 November 2026): the name followed Save As at once and a load from its start. Not read on
+# Game Pass. See docs/recon/fm27-save-name.md.
+[save_system]
+name = 0x28               # pointer to a string of the game's: the save file's name without its folder or ".fm"
 
 [team]
 club = 0x30               # club pointer
@@ -388,9 +399,24 @@ training = 0x120          # facilities, u8 1..20
 youth_facilities = 0x12B
 youth_coaching = 0x12C
 youth_recruitment = 0x12D
+ownership = 0x129         # u8 code: how the club is owned
 
 # Only clubs in the leagues being played have the full finance record; the others
 # use a smaller class, so readers check that these values look sane before use.
+# A club's kit colours: the club points at its kit set, whose vector points at one 0x28-byte record for each part of
+# a kit. Read on Steam 26577676 for Arsenal (red and white home, dark and gold away, gold third, as FM draws them),
+# Chelsea, Real Madrid and Barcelona. The other parts (2, 3), the pattern id at 0x14 and colours 2 to 4 are not named.
+[club_kits]
+set = 0xB0                # on the club: pointer to the kit set
+parts = 0x78              # on the set: vector of pointers to the parts
+size = 0x28
+trim = 0x00               # colour 0, bytes B G R A
+main = 0x04               # colour 1
+kit = 0x22                # u8: 0 home, 1 away, 2 third
+part = 0x23               # low nibble: 1 shirt, 4 shorts, 5 socks
+order = 0x24              # u8: lowest first where a part comes twice
+outfield = 0x25           # u8: 1 outfield, 0 goalkeeper
+
 [club_finance]
 balance = 0x0C            # i32 pounds
 transfer_budget = 0x7C4   # i32 pounds
@@ -398,6 +424,9 @@ total_wage_budget = 0x808 # i32 pounds per week
 wage_budget = 0x814       # i32 pounds per week, the spending wage budget
 ticket_price = 0x864      # f32 pounds, average match ticket
 corporate = 0x8A9         # u8 1..20, corporate facilities
+# Income by source, i32 pounds: four periods 0x118 apart (this month 0x314, last month 0x42C, this season, last
+# season), gate receipts first. Read against FM's Income page for Arsenal on Steam 26577676.
+income = [0x544, 0x65C]
 
 [nation]
 uid = 0x0C                # u32 (Argentina: 1649, as graphics packs map its flag)
@@ -439,6 +468,33 @@ record_person = 0x08
 record_esc_since = 0x12
 record_flags = 0x16
 
+# What is still owed on a transfer. TRANSFER_MANAGER keeps a (begin, end) of pointers to 0x28-byte instalment records:
+# the paying and the paid club, the day agreed, pounds for each month, the player's person id, the months between
+# payments and the months left. A club's set of deals (the object its kit set hangs off, see [club_kits]) starts with
+# a (begin, end) of pointers to deals of several classes; a db::PLAYER_BUY_BACK_INFO there is a buy-back clause on one
+# of the club's players: the days it runs between, his UID, the fee and the club that holds it. Read on Steam
+# 26577676: 1,158 instalments (Ramsdale's and Bruno Guimaraes's as FM's Clauses page lists them) and 89 buy-backs.
+[fee_terms]
+manager_class = ".?AVTRANSFER_MANAGER@@"
+instalments = 0xD0
+person = 0x290            # u32 player id, in the person block (person block + 8)
+instalment_size = 0x28
+instalment_payer = 0x00
+instalment_receiver = 0x08
+instalment_agreed = 0x10
+instalment_amount = 0x18
+instalment_person = 0x1C
+instalment_period = 0x20
+instalment_months = 0x21
+club_deals = 0xB0
+buy_back_class = ".?AVPLAYER_BUY_BACK_INFO@db@@"
+buy_back_size = 0x28
+buy_back_starts = 0x08
+buy_back_ends = 0x0C
+buy_back_player = 0x10
+buy_back_fee = 0x18
+buy_back_club = 0x20
+
 # Transfers agreed for a later day, laid out as on macOS: TRANSFER_MANAGER's offers and its dated records of them.
 # Read on Steam 26340721: 34 dated records, each naming a waiting offer (status 0x13), such as Andria Bartishvili's
 # move from Iberia 1999 Tbilisi to Arsenal on 1 July 2027.
@@ -477,6 +533,14 @@ reputation = 0x188       # u16, 0..200
 women = 0xF9             # u8, nonzero for a women's competition
 actual = 0xB0
 rules = 0x38
+
+# A running season: the stage pointers in the loaded rule data, a stage's pointer to its competition, a league stage's
+# pointer to its settings, and in those the number of FM's substitution rule. Read on Steam 26577676.
+[competition.season]
+stages = 0x1C0
+competition = 0x70
+league_settings = 0xF0
+subs_rules = 0x146
 
 # The kinds of injury (db::INJURY), laid out as on macOS but for the table's vector at +0x80.
 # Every nation (db::NATION) and every stadium (db::STADIUM), from their database tables in the block that holds the
@@ -549,6 +613,10 @@ date_of_birth = 0x60
 current_ability = 0x11C
 potential_ability = 0x11E
 reputation = 0x120
+# The seven refereeing attributes, right after the reputation, in the order the game's own property setter writes
+# them ('Oalf', 'Odis', 'Oimm', 'Oprs', 'Oref', 'Orun', 'Otkp'; docs/recon/fm27-competitions-awards-officials.md).
+# Read on Steam 26577676: Michael Oliver 15, 10, 15, 14, 16, 9, 5 and Szymon Marciniak 16, 15, 19, 18, 18, 15, 15.
+attributes = 0x122
 uid = 0x144
 
 # What a nation's object holds beyond its UID and name, as on macOS but 8 bytes sooner from the capital on, and its
@@ -616,3 +684,30 @@ store_value = 0x0E
 dirty = 0xDC
 team_id = 0x08
 teams = 0x80
+
+# A player's registration to play in his team's league is one of his relations: an entry that points at the team
+# (kind 4) with code 0x19 and value 8, which the game's PLAYER_IS_REGISTERED_TO_PLAY rule looks for. Read on Steam
+# 26577676, 18 Jul 2028: Arsenal's 18 registered players are the 18 FM's Squad Registration page counts (Raya, Kepa,
+# Gabriel, Saliba, Pacho, Calafiori and Hincapie in; Rui Silva and Mosquera out), Chelsea has 25 and Coventry 24.
+[registration]
+target_kind = 4
+relation = 0x19
+league = 8
+
+# A player's career plans: the pointer 0xA0 into his ACTUAL_PERSON leads to the (begin, end) of pointers to 16-byte
+# plans, which the four career plan rules walk. Read on Steam 26577676: Julian Brandt has four (Werder Bremen, then
+# France, China PR and Saudi Arabia); 7,951 of 31,003 players have any.
+[career_plan]
+list = 0x350
+target = 0x00
+kind = 0x0B               # u8: 3 a club, 5 a continent, 9 a nation, 25 a competition
+size = 0x10
+
+# What a member of staff knows of each nation: the pointer 0x50 before his person block leads to the (begin, end) of
+# pointers to 40-byte entries, sorted by the nation's id. Read on Steam 26577676: Txiki Begiristain has seven (Spain
+# 100, England 73, France 57, four at 30).
+[knowledge]
+list = 0xB0
+nation = 0x00
+level = 0x24              # u8, 0 to 100
+size = 0x28

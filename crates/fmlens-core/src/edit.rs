@@ -195,6 +195,12 @@ enum Place {
     NationalContainer(Side),
     /// A loaned player's loan contract, where the layout places loans (see [`crate::Session::loan`]).
     Loan,
+    /// The entry a member of staff has for the tendency of this id: its id, then its value. Missing where he has none.
+    Tendency(u8),
+    /// The buy-back clause a club holds on a player (see [`crate::Session::buy_back`]).
+    BuyBack,
+    /// The nth fee still being paid for a player (see [`crate::Session::instalments`]).
+    Instalment(u8),
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -422,6 +428,35 @@ fn loan_fields(layout: &Layout) -> Vec<Field> {
     ]
 }
 
+/// A buy-back clause's fee and days, and what each of a fee's instalments pays a month and for how many months more:
+/// one player at a time, where the layout places them.
+fn fee_term_fields(layout: &Layout) -> Vec<Field> {
+    let Some(t) = layout.fee_terms.as_ref() else {
+        return Vec::new();
+    };
+    let field = |key: String, offset: u64, kind: Kind, range: RangeInclusive<i64>, place: Place| {
+        Field::new(Entity::Player, key, offset, kind, range).single().in_record(place)
+    };
+    let date = |key: &str, offset: u64| {
+        field(key.to_owned(), offset, Kind::Date, 20000101..=21001231, Place::BuyBack).plausible(0..=22001231)
+    };
+    let mut out = vec![
+        field("buy_back.fee".to_owned(), t.buy_back_fee, Kind::I32, 0..=crate::transfer::MAX_FEE, Place::BuyBack)
+            .plausible(0..=i64::from(i32::MAX)),
+        date("buy_back.starts", t.buy_back_starts),
+        date("buy_back.ends", t.buy_back_ends),
+    ];
+    for n in 0..crate::fee_terms::MOST_INSTALMENTS as u8 {
+        let place = Place::Instalment(n);
+        out.push(
+            field(format!("instalment.{n}.amount"), t.instalment_amount, Kind::I32, 0..=100_000_000, place)
+                .plausible(0..=i64::from(i32::MAX)),
+        );
+        out.push(field(format!("instalment.{n}.months"), t.instalment_months, Kind::U8, 1..=120, place));
+    }
+    out
+}
+
 /// The squad statuses the editor offers, by the codes contracts hold them as (see the names in the app's
 /// dictionaries). The game uses more codes than these, named from FM's contract screen: 7 fringe player, 9 and
 /// 21 emergency backup, 10 breakthrough prospect, 11 future prospect, 13 youngster, 15 first-choice goalkeeper,
@@ -531,6 +566,7 @@ fn player_fields(layout: &Layout) -> Vec<Field> {
     out.extend(player_contract_fields(layout));
     out.extend(player_mood_fields(layout));
     out.extend(loan_fields(layout));
+    out.extend(fee_term_fields(layout));
     // His traits: one flag each, `trait.0` to `trait.63`, bit n of the mask.
     out.extend((0..64u64).map(|n| Field::flag(Entity::Player, format!("trait.{n}"), p.traits + n / 8, (n % 8) as u8)));
     out.into_iter().map(|f| f.in_person_block(p.person_block)).collect()
@@ -579,6 +615,15 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
             let field = field(key, offset, Kind::U8, 1..=i64::from(MOST_FORMATION));
             out.push(field.plausible(0..=255).choices(choices).listed_only().single());
         }
+    }
+    // The tendencies he has an entry for, of those FM names: the value of the entry, as he leans to it. One he has
+    // no entry for counts as 10 and cannot be changed, since that would take a new entry in the game's own list.
+    if s.tendencies.is_some() {
+        out.extend(
+            crate::staff::NAMED_TENDENCIES.iter().map(|&id| {
+                field(&format!("tendency.{id}"), 1, Kind::U8, 1..=20).in_record(Place::Tendency(id)).single()
+            }),
+        );
     }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
     // located on the build and class it was traced on, so it reads as missing for everyone else.
@@ -736,13 +781,21 @@ fn official_fields(layout: &Layout) -> Vec<Field> {
     let field = |key: &str, offset: u64, kind: Kind, range: RangeInclusive<i64>| {
         Field::new(Entity::Official, key, offset, kind, range).single()
     };
-    vec![
+    let mut fields = vec![
         // About a hundred officials read 200 for both, the rest less; young ones have more potential than ability.
         field("current_ability", o.current_ability, Kind::U16, 1..=200).plausible(0..=200),
         field("potential_ability", o.potential_ability, Kind::U16, 1..=200).plausible(0..=200),
         field("reputation", o.reputation, Kind::U16, 0..=10_000),
         field("date_of_birth", o.date_of_birth, Kind::Date, BIRTH_DATES).plausible(19000101..=21001231),
-    ]
+    ];
+    if let Some(first) = o.attributes {
+        fields.extend(
+            (first..)
+                .zip(crate::officials::OFFICIAL_ATTRIBUTES)
+                .map(|(offset, name)| field(&format!("attribute.{name}"), offset, Kind::U8, 1..=20)),
+        );
+    }
+    fields
 }
 
 /// The offset of the human manager's flags in `target`, when the build has traced them (`layout`) and the target is
@@ -875,7 +928,13 @@ impl OfficialSummary {
                 self.date_of_birth = FmDate::from_number(value);
                 self.age = self.date_of_birth.zip(today).and_then(|(born, today)| born.age_on(today));
             }
-            _ => {}
+            _ => {
+                let name = field.strip_prefix("attribute.");
+                let at = name.and_then(|name| crate::officials::OFFICIAL_ATTRIBUTES.iter().position(|&a| a == name));
+                if let (Some(at), Some(attributes)) = (at, self.attributes.as_mut()) {
+                    attributes[at] = value as u8;
+                }
+            }
         }
     }
 }
@@ -1388,6 +1447,10 @@ impl Session {
                 (owner == target.address + identity + target.shift).then_some(record)
             }
             (Place::Loan, Entity::Player) => self.loan_contract(target.address, target.shift),
+            (Place::BuyBack, Entity::Player) => self.buy_back_record(target.address, target.shift),
+            (Place::Instalment(n), Entity::Player) => {
+                self.instalment_records(target.address, target.shift).get(usize::from(n)).copied()
+            }
             (Place::ClubInfo, Entity::Club) => pointer(club.info)?,
             (Place::ClubFinance, Entity::Club) => {
                 let Some(record) = pointer(club.finance)? else {
@@ -1432,6 +1495,13 @@ impl Session {
                 // The object's own class, not the list's guess that a shifted person is the human.
                 let class = crate::rtti::class_of(&self.process, &self.plugin, target.address + layout.class_at);
                 human_manager_flags(Some(layout), target, class.as_deref()).map(|flags| target.address + flags)
+            }
+            (Place::Tendency(id), Entity::Staff) => {
+                let Some(offset) = self.layout.staff.tendencies else {
+                    return Ok(None);
+                };
+                let record = self.process.read_u64(target.address + offset)?;
+                crate::staff::tendency_entry(&self.process, record, id)
             }
             (Place::NationalTeam(side), Entity::Nation) => {
                 crate::national::senior_team(&self.process, &self.layout, target.address, target.uid, side)
@@ -1579,9 +1649,18 @@ mod tests {
         // The 13 basic fields and the 4 live ones (condition, match sharpness, jadedness, morale); and a loan's wage
         // and end, where the layout places loans.
         let loan = if layout.loan.is_some() { 2 } else { 0 };
+        // A buy-back's fee and two days, and each instalment's amount and months, where the layout places them.
+        let fee_terms = if layout.fee_terms.is_some() { 3 + 2 * crate::fee_terms::MOST_INSTALMENTS } else { 0 };
         assert_eq!(
             players.len(),
-            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1 + PERSONALITY.len() + 4 + 4 + 4 + 64 + loan
+            13 + 4 + layout.player.attributes.len() + POSITIONS.len() - 1
+                + PERSONALITY.len()
+                + 4
+                + 4
+                + 4
+                + 64
+                + loan
+                + fee_terms
         );
         if layout.loan.is_some() {
             for key in ["loan.wage", "loan.ends"] {
@@ -1590,6 +1669,17 @@ mod tests {
                 assert!(!field.shifted && !field.mass);
                 assert!(!field.mass);
             }
+        }
+        if layout.fee_terms.is_some() {
+            // A buy-back clause and each instalment are records of their own: one player at a time.
+            let fee = key(&players, "buy_back.fee");
+            assert_eq!((fee.place, fee.kind), (Place::BuyBack, Kind::I32));
+            assert_eq!(key(&players, "buy_back.ends").kind, Kind::Date);
+            let months = key(&players, "instalment.3.months");
+            assert_eq!((months.place, months.kind), (Place::Instalment(3), Kind::U8));
+            assert!(!months.mass && !months.shifted);
+            assert!(months.takes(1) && months.takes(120) && !months.takes(0) && !months.takes(121));
+            assert!(!players.iter().any(|f| f.key == "instalment.4.amount"));
         }
         assert_eq!(key(&players, "nation").kind, Kind::Pointer);
         assert!(!key(&players, "nation").mass);
@@ -1611,10 +1701,19 @@ mod tests {
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
         // The 7 basic fields; the 4 contract fields, the coaching licence and the 2 formations where the layout places
-        // them, and the human manager's 2 flags.
+        // them, the human manager's 2 flags, and each tendency with a name where the layout places the list.
         let licence = usize::from(layout.staff.coaching_licence.is_some());
         let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
-        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2);
+        let tendencies = if layout.staff.tendencies.is_some() { crate::staff::NAMED_TENDENCIES.len() } else { 0 };
+        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2 + tendencies);
+        if layout.staff.tendencies.is_some() {
+            // One entry of the member's own list, which only they have: one person at a time, 1 to 20.
+            let field = key(&staff, "tendency.85");
+            assert_eq!((field.place, field.kind, field.offset), (Place::Tendency(85), Kind::U8, 1));
+            assert!(!field.mass && !field.shifted);
+            assert!(field.takes(1) && field.takes(20) && !field.takes(0) && !field.takes(21));
+            assert!(!staff.iter().any(|f| f.key == "tendency.67"));
+        }
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 3 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far). The wage budget used is the game's to work out.
@@ -1655,7 +1754,16 @@ mod tests {
             return;
         };
         let keys: Vec<&str> = officials.iter().map(|f| f.key.as_str()).collect();
-        assert_eq!(keys, ["current_ability", "potential_ability", "reputation", "date_of_birth"]);
+        assert_eq!(keys[..4], ["current_ability", "potential_ability", "reputation", "date_of_birth"]);
+        // The seven refereeing attributes, a byte each from the layout's first, where it places them.
+        assert_eq!(keys.len(), 4 + if o.attributes.is_some() { 7 } else { 0 });
+        if let Some(first) = o.attributes {
+            assert_eq!(keys[4], "attribute.allowing_flow");
+            assert_eq!(keys[10], "attribute.time_keeping");
+            let last = officials.last().expect("field");
+            assert_eq!((last.offset, last.kind), (first + 6, Kind::U8));
+            assert!(last.takes(1) && last.takes(20) && !last.takes(0) && !last.takes(21));
+        }
         assert!(officials.iter().all(|f| !f.mass && !f.shifted && f.place == Place::Object));
         let key = |key: &str| officials.iter().find(|f| f.key == key).cloned().expect(key);
 
@@ -1682,6 +1790,7 @@ mod tests {
             current_ability: 180,
             potential_ability: 180,
             reputation: 8388,
+            attributes: Some([15, 10, 15, 14, 16, 9, 5]),
         };
         let target = oliver.target();
         assert_eq!((target.entity, target.uid, target.shift), (Entity::Official, 103994, 0));
@@ -1689,7 +1798,9 @@ mod tests {
         let today = FmDate::from_number(20261116);
         oliver.note_change("reputation", 9000, today);
         oliver.note_change("date_of_birth", 19900101, today);
+        oliver.note_change("attribute.discipline", 18, today);
         assert_eq!((oliver.reputation, oliver.age), (9000, Some(36)));
+        assert_eq!(oliver.attributes, Some([15, 18, 15, 14, 16, 9, 5]));
     }
 
     #[test]

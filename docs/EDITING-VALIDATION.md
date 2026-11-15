@@ -156,10 +156,22 @@ person a person, and refuses a target already in the list and the person
 himself. All three are logged in Changes and undone there. Strength and removal
 were checked in FM on 6 November (see Round 1 below), Replace on 7 November (see
 "Replace a like or dislike" below). FM's Reason column is stored with the entry,
-not worked out from the target: a replaced entry keeps its old reason. Adding an
-entry waits until bytes `0x08` and `0x0D` are understood.
+not worked out from the target: a replaced entry keeps its old reason.
 
-## Languages (level and removal)
+Add (Windows Steam build 26577676) has the game add the entry itself, through
+its own routine for a person's relations (`add_relation` in the build profile):
+the game makes the list, or a bigger block for it, as it needs. The entry is
+the one the game's editor makes: byte `0x08` (the reason) 1 for a like and 0
+for a dislike, byte `0x0D` `0x4F` (lasting), strength 1 to 100. FM Lens checks
+afterwards that the list is the old entries with the new one last, at the
+address the game returned. Refused: a club or person already in the list, the
+person himself, you as a target, and a person whose relations list holds 20
+entries or more, where the game would drop his weakest to make room. Undo takes
+the entry off the end again, so adds are undone newest first; an older one is
+refused until then. Checked on Windows on 15 November (see "Add a like or
+dislike on Windows" below).
+
+## Languages (level, removal and add)
 
 A person's languages (player `+0x338`, staff `+0x1B8`, the human manager's
 shifted `0x340`) are a list of pointers to 16-byte links, each a pointer to the
@@ -168,8 +180,20 @@ language and a `u64` level from 0 to 10 (see recon/fm27-person-extras.md; levels
 level from 1 to 10 over the link's, with its expected value, or removes a
 language as a tie is removed: the pointers after it move up, the list's end
 moves back and the freed slot is cleared. The link is left where it is, so an
-undo can point at it again. Both are logged in Changes and undone there. Adding
-a language needs a new link, which the editor does not allocate.
+undo can point at it again. Both are logged in Changes and undone there.
+
+Add (Windows Steam build 26577676) has the game add the language itself, through
+its own routine for a person's languages (`add_language` in the build profile,
+the one the save loader calls): the game takes the link from its own pool and
+grows the list as it needs. FM Lens adds at level 10 and offers the languages
+of the nations the game lists. It checks afterwards that the list is the old
+links with the new one last, at the address the game returned, and that the
+link reads as that language at a level; one that does not is taken out again.
+Refused: a language already in the list (the game would raise its level
+instead), the person's own language, which the game does not list, and a list
+of 30. Undo takes the pointer off the end again, so adds are undone newest
+first. Checked on Windows on 15 November (see "Add a language on Windows"
+below).
 
 FM's Personal page showed a removal after a day (Round 1 below). FM raises a
 lowered level in a main language of the country the person's club is in back up
@@ -4108,6 +4132,242 @@ before and after. Memory was read with the read-only probe.
 Not run: a quit and relaunch after the app's swaps (the recon trials in
 `recon/fm27-board-members.md` cover one), a holiday after them, and the
 Macs, where the layout has no board section and the button is not offered.
+
+## Staff tendencies on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. Edits were made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Probe, every member of staff | 13,076 of 21,149 have a list and each reads as one (ids 1 to 100, none twice, values 1 to 20); the longest has 54 entries. The other 8,073 have no record |
+| Diego Simeone, Pep Guardiola, Arne Slot against FM's profile | 24, 23 and 12 entries. Every line FM lists under Tendencies and Tends Not To is an entry of 15 and over or 5 and under, under the same name |
+| App profile | The list under Tendencies, the strongest first, each with its value |
+| Arne Slot (601329), "Use player marking" 3 to 16 | The probe read 16. FM's profile, opened again, listed it under Tendencies and no longer under Tends Not To |
+| The same member, "Use substitutes" 7 to 6, then 6 to 5 | At 6 FM's profile had no Tends Not To. At 5 it listed "Use substitutes" there |
+| Save in FM, load another career, load this one again | The probe and the app read 16 and 5. Changes listed the three edits as "Earlier game", without Undo |
+| "Use substitutes" 5 to 7, then Undo | Changes: "Undone". The probe read 5 |
+
+Not run: the Macs, a quit and relaunch, a holiday, a match (whether a changed
+tendency changes what a manager does), and a member who is not a manager.
+
+## Referee attributes on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The edit was made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Probe, every official | All 1,166 read seven values from 1 to 20 |
+| Michael Oliver (103994) | 15, 10, 15, 14, 16, 9, 5: the seven the macOS recon read at +0x11A |
+| Szymon Marciniak (96009031), app profile | Refereeing: Allowing Flow 16, Discipline 15, Important Matches 19, Pressure 18, Refereeing 18, Running Line 15, Time Keeping 15, as the probe read them |
+| Edit | A number box for each, 1 to 20 |
+| Time Keeping 15 to 12, Apply | The probe read 12 and the other six unchanged. Changes: "Szymon Marciniak, Official, Time Keeping, 15 → 12" |
+| Save in FM, load another career, load this one again | The probe and the app read 12. Changes listed the edit as "Earlier game", without Undo |
+| Time Keeping 12 to 15, then Undo | Changes: "Undone". The probe read 12 |
+
+Not run: any comparison with FM, which has no screen for these values; a
+match (whether a changed attribute changes how a referee handles one); a
+quit and relaunch; a holiday; the Macs.
+
+## Add a like or dislike on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The adds were made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Ethan Nwaneri (2000283271), a player with four likes: add favoured club Barcelona | Saved, in Changes. The probe read a new last entry, favoured club Barcelona 100, and his four as before |
+| The same player: disliked club Tottenham Hotspur, favoured person Mikel Arteta (a member of staff), disliked person Pep Guardiola | Each the new last entry at 100 |
+| Albert Stuivenberg (859441), a member of staff: disliked club AFC Ajax | The probe counted 3 where it counted 2. The app listed AFC Ajax |
+| Matthew Smith (28116314), a player with no likes: favoured person Bukayo Saka | The probe read one preference, Saka 100 |
+| Undo of that add | Changes: "Undone". The probe read none |
+| The people picker | Did not offer the person himself or you |
+| Mikel Arteta, whose list holds 39 relations | Refused as full. The probe counted 39 before and after |
+| Undo of an add that was not the newest | Refused: "FM has changed this since. Press Reload and try again." The list was unchanged |
+| Save As a new copy in FM, load that copy again | The probe read Nwaneri's four adds and Stuivenberg's as made, and none for Smith. Changes listed the adds as "Earlier game", without Undo |
+
+FM ran on through all of it.
+
+Not run: FM's own Favoured Personnel and Favoured Club lists (at the test
+machine's desktop size FM's Personal page shows those panels' headings only);
+a day passing in FM; a quit and relaunch; a person whose list the game had
+never made (Smith had three other relations); the Macs and Game Pass, where no
+profile names the routine, so Add is not offered.
+
+## Add a language on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676. The packaged app was
+built from this change. The adds were made on a copy of a career written with
+FM's Save As, at 18 July 2028; the main career's SHA-256 was the same before
+and after. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Ethan Nwaneri (2000283271), a player with French 4 and German 9: add Spanish | Saved, in Changes as "- → Spanish · 10". The probe read French 4, German 9, Spanish 10 |
+| The same player: add English, his own language | Refused: "FM doesn't list a person's own language." The list was unchanged |
+| Matthew Smith (28116314), a player with no languages: add Italian | The probe read Italian 10 |
+| Undo of that add | Changes: "Undone". The probe read none |
+| The same add again | The probe read Italian 10 |
+| Albert Stuivenberg (859441), a member of staff with Arabic 1 and English 10: add Spanish | The probe read Arabic 1, English 10, Spanish 10 |
+| The same member of staff: add Dutch, his own language | Refused with the same line. The list was unchanged |
+| Nwaneri: a second add, Portuguese | The probe read French 4, German 9, Spanish 10, Portuguese 10 |
+| Undo of the older Spanish add | Refused: "FM has changed this since. Press Reload and try again." The list was unchanged |
+| The picker | Lists the game's languages by name and leaves out those the person holds |
+| FM's own Personal page, at once, no day passed | Stuivenberg: Dutch (Fluent), English (Fluent), Spanish (Fluent). Nwaneri: English (Fluent), Spanish (Fluent), Portuguese (Fluent), German (Fluent), French (Basic) |
+| Save As a new copy in FM, load that copy again | The probe read all three lists as made. Changes listed the adds as "Earlier game", without Undo |
+
+FM ran on through all of it.
+
+Not run: a language already in the list (the picker leaves those out; the
+refusal is covered by a unit test); a list of 30; a day passing in FM; a quit
+and relaunch; you; the Macs and Game Pass, where no profile names the routine,
+so Add is not offered.
+
+## Season substitutions on Windows (15 November 2026)
+
+A competition's profile now takes "Substitutions allowed" and "Substitutes
+named" from its running season: the number of FM's substitution rule in each
+league stage's settings, turned into numbers by FM's own tables. They show only
+where every stage the season has made so far is a league stage and they agree.
+Nothing is written. Steam build 26577676, the packaged app, a copied career on
+18 July 2028.
+
+| Check | FM Lens | FM's Rules page |
+|---|---|---|
+| Premier League | 5 allowed, 9 named | 5 subs, 9 named (13 November) |
+| Sky Bet Championship | 5 allowed, 9 named | "5 subs can be used in 3 stoppages, from a maximum of 9 named" |
+| Spanish First Division | 5 allowed, 12 named | "5 subs can be used in 3 stoppages, from a maximum of 12 named" |
+| European Championship Qualifying, a group stage and a table of second-placed teams | No substitution rows | Group A: "5 subs can be used in 3 stoppages, from a maximum of 12 named". Second Placed Teams: "3 subs can be used from a maximum of 7 named" |
+| The same table of second-placed teams, read by the probe | 3 allowed, 7 named | Same |
+
+The probe read every competition: of 8,084, 6,861 hold no rule data in this
+save, 1,101 have no stages yet, and 52 league stages gave twelve different
+pairs, from 3 of 7 to 7 of 12. The saves and the main career's hash were
+unchanged afterwards.
+
+Not run: any pair other than the three above against FM; cups and group stages
+(their rule is not mapped, so they show nothing); a season with a play-off
+stage made (it then shows no substitution rows); the Macs and Game Pass, where
+no layout places the season; editing.
+
+## Registration, career plans and scouting knowledge on Windows (15 November 2026)
+
+Three readers, nothing written. A player's Contract tab says whether he is
+registered for his league ("League squad"), his Career tab lists his career
+plans, and a member of staff's Career tab lists his scouting knowledge of
+nations, 0 to 100. Steam build 26577676, the packaged app, a copied career on
+18 July 2028.
+
+| Check | FM Lens | FM |
+|---|---|---|
+| Arsenal's league squad, read by the probe | 18 registered, 6 not, 32 not read | Squad Registration page: "18/25", 24 senior players |
+| David Raya | League squad: Registered | Switched on |
+| Cristhian Mosquera | League squad: Not registered | Switched off |
+| Kepa, Gabriel, Saliba, Pacho, Calafiori, Hincapie, read by the probe | Registered | Switched on |
+| Rui Silva, read by the probe | Not registered | Switched off |
+| Julian Brandt at Ajax, whose league registers nobody in this career | No League squad row | Not compared |
+| Julian Brandt's career plans | Club: SV Werder Bremen. Nation: France, China PR, Saudi Arabia | FM has no screen for them |
+| Txiki Begiristain's scouting knowledge | Spain 100, England 73, France 57, then Germany, Italy, Portugal and Argentina at 30 | Scouting Knowledge panel: Spain Complete, England Exceptional, France Extensive, then Germany, Italy, Portugal and Argentina Very Good, in that order |
+
+The probe read three more clubs: Chelsea 25 registered and 12 not, Coventry 24
+and 5, Real Madrid 24 and 2. Across the career 7,951 players hold 8,809 plans:
+8,354 for a club, 212 for a nation, 192 for a competition and 51 for a
+continent, every one named. The saves and the main career's hash were unchanged
+afterwards.
+
+Not run: the other clubs' counts against FM; cup and continental registration
+and a player on loan (not decoded, so the row speaks only for the league of the
+team he is in); a player aged 20 or younger, whom FM exempts and the reader
+shows as not registered; career plans against anything in FM; the four words
+FM uses for a knowledge level against the numbers, beyond the one scout;
+knowledge of regions and a club's total; the Macs and Game Pass, where no
+layout places any of the three, so nothing shows there; editing.
+
+## Ownership, income and kit colours on Windows (15 November 2026)
+
+Three readers, nothing written. A club's Overview shows its ownership type
+under Club info, its income by source for this season and for last season
+under Finances, and the main and trim colours of the shirt, shorts and socks
+of each kit beside the kit's picture. Steam build 26577676, the packaged app,
+a copied career on 18 July 2028. FM shows dollars at 1.3476 to the pound; the
+app showed pounds.
+
+| Check | FM Lens | FM |
+|---|---|---|
+| Arsenal, ownership | Private company | FM has no screen for the type |
+| Chelsea's women's club, ownership | Consortium, private | FM has no screen for the type |
+| Arsenal, gate receipts last season | £24,760,246 | Income page, Last Season: $33,367,379 |
+| Arsenal, season tickets last season | £67,946,659 | $91,566,213 |
+| Arsenal, TV revenue last season | £131,333,156 | $176,987,064 |
+| Arsenal, merchandising last season | £52,365,353 | $70,568,548 |
+| Arsenal, players sold last season | £162,877,961 | $219,497,444 |
+| Arsenal, prize money last season | £142,167,646 | $191,587,829 |
+| Arsenal, interest last season | £1,841,264 | $2,481,322 |
+| Arsenal, sponsorship last season | £159,391,511 | $214,799,038 |
+| Arsenal, match day income last season | £3,374,776 | $4,547,912 |
+| Arsenal, grants last season | £786,808 | $1,060,317 |
+| Arsenal, fundraising last season | £5,388,853 | $7,262,121 |
+| Arsenal, other last season | £427,615,582 | $576,262,907 |
+| Arsenal, corporate facilities last season | £10,658,844 | $14,364,061 |
+| Arsenal, loan income last season | £1,613,898 | $2,174,920 |
+| Arsenal, the fourteen sources summed by the probe | this season £493.4M, last season £1,192M | Income page totals: "$664M" and "$1.6B" |
+| Arsenal's kits | Home red and white, Away dark with gold, Third gold with dark | Club Profile, Uniforms: red and white, dark with gold, gold |
+| Chelsea's kits, read by the probe | Home #2040C0 with #F0D050, Away #002020 with #E0C020, Third #F8F8F8 with #202060 | Uniforms: blue, near black with yellow, white with navy |
+
+The probe's slots for this month matched FM's This Month rows too (gate
+receipts, season tickets, TV revenue, merchandising, players sold, interest,
+grants and other). The probe read Real Madrid, Barcelona and a club with no
+finance record and no ownership type (Casarano), which shows kits and neither
+of the other two. Ownership across the career: 13,393 clubs with none, then
+2,110, 475, 4,331, 790, 205, 69, 240 and 62 for the eight types. The saves and
+the main career's hash were unchanged afterwards.
+
+Not run: any ownership type against FM or an outside source in the app beyond
+the census, and the two rarest types rest on elimination
+(recon/fm27-club-ownership-income-kits.md); This Season's rows one by one;
+investments, affiliate club and solidarity payments, which were $0 and are
+not read; spending by kind; a club in another currency setting; kits of a
+club other than Arsenal and Chelsea against FM, goalkeeper kits, kit styles
+and national teams; a kit FM changes at a new season; the Macs and Game Pass,
+where no layout places any of the three, so nothing shows there; editing.
+Staff allowances and club vision are not read on any platform.
+
+## Instalments and buy-backs on Windows (15 November 2026)
+
+Packaged Windows app built from the branch, Steam build 26577676, on a copy of
+an Arsenal career at 19 July 2028. A player's Contract tab lists each fee still
+being paid for him (who pays whom, pounds for each month, months left, how
+often, the day agreed) and the buy-back clause on him (holder, fee, the days
+it runs between). The amount, the months left, the buy-back fee and both of
+its days can be edited; each edit is a row in Changes with its own Undo.
+
+| Step | FM Lens and the probe | FM |
+|---|---|---|
+| Bruno Guimaraes before | Arsenal pays Newcastle United £1,500,000 a month, every 12 months, 12 months left, agreed 13 Jul 2026 | Clauses: "$24.25M (12-Monthly)" to Newcastle, paid in July until 2029, one more instalment owed |
+| Per month to 2,000,000, months left to 24 | probe: 2000000 a month, 24 months left | "$32.34M (12-Monthly)", paid in July until 2030, "another 2 installments of $32.34M each" |
+| Undo of the months edit | probe: 2000000 a month, 12 months left | "$32.34M", until 2029, one more owed |
+| Floyd Samba's buy-back before | Manchester City, £36,898,002, 2 Jan 2028 to 3 Jan 2030 | not shown to Arsenal |
+| Fee to 40,000,000, from 1 Jul 2028, until 30 Jun 2031 | probe: 40000000, 2028-07-01 to 2031-06-30; three rows in Changes | not shown to Arsenal |
+| Undo of the end day | probe: 2028-07-01 to 2030-01-03 | not shown to Arsenal |
+| Save in FM, load the save | probe: Bruno Guimaraes 2000000 a month, 12 left; Samba 40000000, 2028-07-01 to 2030-01-03 | Clauses after the load: "$32.34M (12-Monthly)", until 2029 |
+
+FM shows dollars at about 1.347 to the stored pound. The main career's hash
+was unchanged afterwards.
+
+Not run: a payment falling at an edited amount (the next is July 2029), or
+what FM does when months left is set off its payment month; an edited
+buy-back in FM's own pages, since FM shows a buy-back only to the clubs in it
+and Arsenal holds none; a buy-back being used after an edit; a player with
+more than one instalment edited; quit and relaunch; the Macs and Game Pass,
+where no layout places these records, so the groups do not show.
+
 
 ## Remove unhappiness lifts the mood on Windows (15 November 2026)
 

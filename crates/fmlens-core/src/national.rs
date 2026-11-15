@@ -447,6 +447,20 @@ impl Session {
             .collect())
     }
 
+    /// The languages the nation object at `nation` lists, as pointers to the game's languages. Empty where the layout
+    /// does not place them or the list does not read.
+    pub(crate) fn nation_language_objects(&self, nation: u64) -> Vec<u64> {
+        let Ok(n) = self.national() else {
+            return Vec::new();
+        };
+        let entries = self.entries(nation + n.languages, n.entry_size, MOST_LANGUAGES).unwrap_or_default();
+        entries
+            .iter()
+            .filter_map(|entry| Some(u64::from_le_bytes(entry.get(0..8)?.try_into().ok()?)))
+            .filter(|&language| is_user_pointer(language))
+            .collect()
+    }
+
     /// The main languages of the nation object at `nation`: those the largest share of its people speak (Croatian,
     /// Bosnian and Serbian in Croatia, all at 100; German alone in Switzerland), as pointers to the game's languages.
     /// Empty where the layout does not place them or the list does not read.

@@ -28,9 +28,15 @@ pub struct Layout {
     /// A club's stadium; only in the layouts it has been checked in.
     #[serde(default)]
     pub stadium: Option<StadiumLayout>,
+    /// A club's kit colours; a layout that does not place them leaves them out.
+    #[serde(default)]
+    pub club_kits: Option<ClubKitsLayout>,
     /// The retirements the game has planned; only in the layouts they have been checked in.
     #[serde(default)]
     pub retirement: Option<RetirementLayout>,
+    /// The game's record of the save it has loaded; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub save_system: Option<SaveSystemLayout>,
     /// A player's familiarity with his clubs and nations; only in the layouts it has been checked in.
     #[serde(default)]
     pub cohesion: Option<CohesionLayout>,
@@ -58,6 +64,9 @@ pub struct Layout {
     /// The game's list of work permits; only in the layouts it has been checked in.
     #[serde(default)]
     pub work_permit: Option<WorkPermitLayout>,
+    /// Fee instalments and buy-back clauses; only in the layouts they have been checked in.
+    #[serde(default)]
+    pub fee_terms: Option<FeeTermsLayout>,
     /// Competitions and awards; only in the layouts they have been checked in.
     #[serde(default)]
     pub competition: Option<CompetitionLayout>,
@@ -80,6 +89,53 @@ pub struct Layout {
     /// Players' familiarity with their team's tactic; only in the layouts it has been traced in.
     #[serde(default)]
     pub tactics: Option<TacticsLayout>,
+    /// A player's registration for his team's league; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub registration: Option<RegistrationLayout>,
+    /// A player's career plans; only in the layouts they have been traced in.
+    #[serde(default)]
+    pub career_plan: Option<CareerPlanLayout>,
+    /// What a member of staff knows of each nation; only in the layouts it has been traced in.
+    #[serde(default)]
+    pub knowledge: Option<KnowledgeLayout>,
+}
+
+/// A player's registration to play in his team's league: one of his relations (see [`RelationLayout`]), an entry that
+/// points at the team with these codes. The game's `PLAYER_IS_REGISTERED_TO_PLAY` rule looks for the same entry.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RegistrationLayout {
+    /// `u8` at the relation's `target_kind`: a team.
+    pub target_kind: u8,
+    /// `u8` at its `relation`: registered to play.
+    pub relation: u8,
+    /// `u8` at its `value`: the team's league.
+    pub league: u8,
+}
+
+/// A player's career plans. The pointer at `list` in the player, shifted with his person block, leads to the
+/// `(begin, end)` of pointers to plans of `size` bytes: a pointer to what he aims for at `target`, and at `kind` the
+/// `u8` that says what it is (3 a club, 5 a continent, 9 a nation, by its national team container, 25 a
+/// competition).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CareerPlanLayout {
+    pub list: u64,
+    pub target: u64,
+    pub kind: u64,
+    pub size: u64,
+}
+
+/// What a member of staff knows of nations. The pointer at `list` in his object, before his person block, leads to
+/// the `(begin, end)` of pointers to entries of `size` bytes: a pointer to the nation's national team container at
+/// `nation`, and the `u8` at `level`, 0 to 100.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KnowledgeLayout {
+    pub list: u64,
+    pub nation: u64,
+    pub level: u64,
+    pub size: u64,
 }
 
 /// A player's familiarity with his team's tactic, which the game's editor raises to the most for a team
@@ -167,6 +223,22 @@ pub struct CompetitionLayout {
     pub actual: Option<u64>,
     #[serde(default)]
     pub rules: Option<u64>,
+    /// Where a running season keeps its stages and their substitutions.
+    #[serde(default)]
+    pub season: Option<SeasonLayout>,
+}
+
+/// A competition's running season. Its loaded rule data (`ACTUAL_COMP`) holds at `stages` the `(begin, end)` of
+/// pointers to the season's stages (`sicomps::LEAGUE_STAGE`, `CUP_STAGE`...). A stage points back at its competition
+/// at `competition`. A league stage points at its settings (`sicomps::LEAGUE_SETTINGS`) at `league_settings`, and
+/// they hold at `subs_rules` a `u8`: the number of FM's substitution rule the stage plays by.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SeasonLayout {
+    pub stages: u64,
+    pub competition: u64,
+    pub league_settings: u64,
+    pub subs_rules: u64,
 }
 
 /// A database table read as the competitions' is ([`CompetitionLayout`]): its objects of the mangled class `class`,
@@ -265,6 +337,42 @@ pub struct WorkPermitLayout {
     pub record_flags: u64,
 }
 
+/// Fee instalments and buy-back clauses. The transfer manager ([`BuildProfile::transfer_manager`], of class
+/// `manager_class`) holds at `instalments` a (begin, end) pair of pointers to instalment records; a record names the
+/// player by the u32 at `person` of his person block. A club holds at `club_deals` a pointer to a (begin, end) pair
+/// of pointers to its deals, of several classes; one of `buy_back_class` is a buy-back clause on a player of its own.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeeTermsLayout {
+    pub manager_class: String,
+    pub instalments: u64,
+    pub person: u64,
+    pub instalment_size: u64,
+    /// Pointers to the club that pays and the club that is paid.
+    pub instalment_payer: u64,
+    pub instalment_receiver: u64,
+    /// The day the fee was agreed.
+    pub instalment_agreed: u64,
+    /// `i32` pounds for each month.
+    pub instalment_amount: u64,
+    /// `u32`: the player's person id.
+    pub instalment_person: u64,
+    /// `u8` months between payments, and `u8` months left.
+    pub instalment_period: u64,
+    pub instalment_months: u64,
+    pub club_deals: u64,
+    pub buy_back_class: String,
+    pub buy_back_size: u64,
+    pub buy_back_starts: u64,
+    pub buy_back_ends: u64,
+    /// `u32`: the player's UID.
+    pub buy_back_player: u64,
+    /// `i32` pounds.
+    pub buy_back_fee: u64,
+    /// Pointer to the club that holds the right.
+    pub buy_back_club: u64,
+}
+
 /// A match official: an object of `size` bytes in the officials array ([`BuildProfile::officials`]).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -282,6 +390,10 @@ pub struct OfficialLayout {
     pub current_ability: u64,
     pub potential_ability: u64,
     pub reputation: u64,
+    /// The first of the seven refereeing attributes, a `u8` each from 1 to 20, in the order of
+    /// [`crate::OFFICIAL_ATTRIBUTES`]; only in the layouts they have been placed in.
+    #[serde(default)]
+    pub attributes: Option<u64>,
     pub uid: u64,
     /// Where the identity block starts, where the layout has to say (Windows: MSVC's vtables keep no offset to it).
     #[serde(default)]
@@ -412,6 +524,38 @@ pub struct RetirementLayout {
     pub date: u64,
     /// In a player: the `u32` id the game gives the person.
     pub player_person: u64,
+}
+
+/// The game's record of the save it has loaded (`SAVE_SYSTEM`, one object a static points at, which each build
+/// profile places: [`BuildProfile::save_system`]).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SaveSystemLayout {
+    /// The save's name as a pointer to a string of the game's: the file's name without its folder or `.fm`.
+    pub name: u64,
+}
+
+/// A club's kit colours: the club points at its kit set, whose vector points at one record for each part of a kit.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClubKitsLayout {
+    /// In the club: the pointer to the kit set.
+    pub set: u64,
+    /// In the set: the vector of pointers to the parts.
+    pub parts: u64,
+    /// Bytes a part takes.
+    pub size: u64,
+    /// The part's colours, four bytes each: blue, green, red, alpha.
+    pub trim: u64,
+    pub main: u64,
+    /// `u8`: 0 home, 1 away, 2 third.
+    pub kit: u64,
+    /// `u8` whose low nibble says which part: 1 shirt, 4 shorts, 5 socks.
+    pub part: u64,
+    /// `u8`: where a kit has a part twice, the lowest is the one it wears.
+    pub order: u64,
+    /// `u8`: 1 on the outfield players' kit, 0 on the goalkeeper's.
+    pub outfield: u64,
 }
 
 /// A stadium, which a club's senior team points at.
@@ -781,6 +925,10 @@ pub struct StaffLayout {
     /// profile shows; only in the layouts they have been traced in.
     #[serde(default)]
     pub formations: Option<[u64; 2]>,
+    /// The pointer to his tendencies (see [`crate::staff::Tendency`]): a record that starts with the `(begin, end)`
+    /// of a list of two-byte entries, an id and a value; only in the layouts it has been traced in.
+    #[serde(default)]
+    pub tendencies: Option<u64>,
     /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
     pub attributes: BTreeMap<String, u64>,
     /// Ratings stored as shown (1..20) by key.
@@ -825,7 +973,7 @@ impl StaffLayout {
             .chain(self.coaching_licence.as_ref())
             .chain(self.formations.iter().flatten())
             .map(|offset| offset + 1);
-        fields.into_iter().chain(single_bytes).max().unwrap_or(0)
+        fields.into_iter().chain(single_bytes).chain(self.tendencies.map(|offset| offset + 8)).max().unwrap_or(0)
     }
 
     pub fn max_shift(&self) -> u64 {
@@ -944,6 +1092,9 @@ pub struct ClubInfoLayout {
     pub youth_facilities: u64,
     pub youth_coaching: u64,
     pub youth_recruitment: u64,
+    /// How the club is owned, a code of [`crate::OWNERSHIP`], 1 based; a layout that does not place it leaves it out.
+    #[serde(default)]
+    pub ownership: Option<u64>,
 }
 
 impl ClubInfoLayout {
@@ -958,6 +1109,7 @@ impl ClubInfoLayout {
             self.youth_facilities + 1,
             self.youth_coaching + 1,
             self.youth_recruitment + 1,
+            self.ownership.map_or(0, |offset| offset + 1),
         ]
         .into_iter()
         .max()
@@ -974,6 +1126,10 @@ pub struct ClubFinanceLayout {
     pub wage_budget: u64,
     pub ticket_price: u64,
     pub corporate: u64,
+    /// Gate receipts of this season and of last season, i32 pounds; the other sources follow by the steps of
+    /// [`crate::INCOME_SOURCES`]. A layout that does not place them leaves income out.
+    #[serde(default)]
+    pub income: Option<[u64; 2]>,
 }
 
 impl ClubFinanceLayout {
@@ -985,6 +1141,7 @@ impl ClubFinanceLayout {
             self.wage_budget + 4,
             self.ticket_price + 4,
             self.corporate + 1,
+            self.income.map_or(0, |[this, last]| this.max(last) + crate::clubs::INCOME_SPAN),
         ]
         .into_iter()
         .max()
@@ -1049,6 +1206,10 @@ pub struct BuildProfile {
     /// ([`WorkPermitLayout`]), on the builds where it has been found.
     #[serde(default)]
     pub transfer_manager: Option<u64>,
+    /// RVA in the game plugin of the static pointer to the game's record of the loaded save ([`SaveSystemLayout`]),
+    /// on the builds where it has been found.
+    #[serde(default)]
+    pub save_system: Option<u64>,
     /// RVAs in the game plugin of the static pointers to the database tables of competitions ([`CompetitionLayout`])
     /// and awards ([`AwardLayout`]), on the one build where they have been read.
     #[serde(default)]
@@ -1198,6 +1359,16 @@ pub struct CallRvas {
     /// needs a work permit to play for the team, as a bool. The game asks it before it gives a permit, and its screens
     /// ask it too. Only reads.
     pub needs_work_permit: Option<u64>,
+    /// `ACTUAL_PERSON::add_relation(person, entry*, allow a null target)`: copies the 16-byte entry onto the end of
+    /// the person's list of relations, making him a record of them if he has none, and returns the copy, or null when
+    /// it adds nothing. Before it adds, it drops his weakest favoured and disliked people once the list has reached
+    /// the game's limit.
+    pub add_relation: Option<u64>,
+    /// `ACTUAL_PERSON::add_language(person, language, level*)`: gives the person a new link to the language at the
+    /// level, 10 at the most, on the end of his list of languages, and returns the link. For a language in the list
+    /// already it raises that one's level instead; it returns null for his own language and for a list of 30. It
+    /// raises the level it is given to 2 for the second language of his nation.
+    pub add_language: Option<u64>,
 }
 
 impl CallRvas {
@@ -1231,6 +1402,8 @@ impl CallRvas {
             self.maximise_tactics,
             self.work_permit_rules,
             self.needs_work_permit,
+            self.add_relation,
+            self.add_language,
         ]
         .into_iter()
         .flatten()
@@ -1697,7 +1870,8 @@ mod tests {
         }
     }
 
-    /// The same update on Windows: another DLL (size and link time), every value where build 26385295 has it.
+    /// The same update on Windows: another DLL (size and link time), every value where build 26385295 has it. The
+    /// routine that adds a relation was found and run on this build alone, so the older one goes without it.
     #[test]
     fn steam_26577676_on_windows_is_26385295_under_another_fingerprint() {
         let old = PluginFingerprint::Pe { size_of_image: 0x17CB_9000, link_timestamp: 0x6AE8_B5A4 };
@@ -1706,6 +1880,9 @@ mod tests {
         assert!(new.name.contains("26577676"), "{}", new.name);
         new.name.clone_from(&old.name);
         new.plugin = old.plugin;
+        let calls = new.calls.as_mut().expect("build 26577676's calls");
+        assert_eq!(calls.add_relation.take(), Some(0x30D_AA90));
+        assert_eq!(calls.add_language.take(), Some(0x196_3190));
         assert_eq!(format!("{new:?}"), format!("{old:?}"));
     }
 
@@ -1724,6 +1901,8 @@ mod tests {
         );
         assert_eq!(new.officials, old.officials.map(|rva| rva + moved));
         assert_eq!(new.transfer_manager, old.transfer_manager.map(|rva| rva + moved));
+        // The loaded save's record: 0x1B0 after the transfer manager's pointer, read on build 26577676.
+        assert_eq!(new.save_system, new.transfer_manager.map(|rva| rva + 0x1B0));
         assert_eq!(new.retirement_manager, Some(new.arrays.players - 0xDAC0));
         let calls = new.calls.expect("27.0.1's calls");
         assert_eq!((calls.withdraw_offers, calls.leave_team), (Some(0xB3_3630), Some(0xB2_CFB0)));
@@ -1817,6 +1996,8 @@ mod tests {
                 maximise_tactics: Some(0x256_C7C0),
                 work_permit_rules: Some(0x471_8EB0),
                 needs_work_permit: Some(0x1DD_B6B0),
+                add_relation: None,
+                add_language: None,
             }
         );
         assert_eq!(calls.all().len(), 26);

@@ -3,8 +3,8 @@
 This catalog contains field definitions, not a claim that every operation has
 passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 
-The current FM27 layouts, macOS and Windows alike, define 171 player fields, 45 staff fields,
-14 club fields, 37 nation fields and 4 official fields. Two staff fields are manager-only bits of the human manager's
+The current FM27 layouts, macOS and Windows alike, define 171 player fields, 112 staff fields,
+14 club fields, 37 nation fields and 11 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam builds 26340721 (27.0.0), 26385295 and
 26577676 (both 27.0.1), on macOS ARM64, macOS Intel and Windows, for an object of class
 `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
@@ -246,6 +246,7 @@ records cannot be imported through a template.
 | `coaching_licence` | i8 | plain | 0 (none), 7 (National C) to 1 (Continental Pro) |
 | `formation.in_possession` | u8 | plain | one of 3, 4, 7, 22, 28, 29, 30, 32, 33, 35, 63, 64 |
 | `formation.out_of_possession` | u8 | plain | one of 4, 7, 22, 27, 30, 32, 33, 35, 63, 64 |
+| `tendency.<id>` | u8 | plain | 1–20; the 67 ids FM names, and only one the member already holds |
 | `manager.unsackable` | flag (bit 1) | plain | 0–1 |
 | `manager.registration_anytime` | flag (bit 8) | plain | 0–1 |
 
@@ -307,6 +308,13 @@ One official at a time; none where the build's layout does not place officials.
 | `potential_ability` | u16 | plain | 1–200 |
 | `reputation` | u16 | plain | 0–10000 |
 | `date_of_birth` | date | plain | 1940-01-01–2020-12-31, or to the game date once later |
+| `attribute.allowing_flow` | u8 | plain | 1–20 |
+| `attribute.discipline` | u8 | plain | 1–20 |
+| `attribute.important_matches` | u8 | plain | 1–20 |
+| `attribute.pressure` | u8 | plain | 1–20 |
+| `attribute.refereeing` | u8 | plain | 1–20 |
+| `attribute.running_line` | u8 | plain | 1–20 |
+| `attribute.time_keeping` | u8 | plain | 1–20 |
 
 ## Changes made through the game
 
@@ -315,8 +323,9 @@ bridge, or FM Lens edits a list or record. These include work permits, injuries,
 transfers, swaps, releases, free-agent signings, Max tactics, secondary nationalities and homegrown ties,
 contract clauses and a planned retirement. They also include an injury's length
 or removal, lifting bans, staff job changes and club moves, a board member's
-seat swap (Windows), a person's likes and dislikes (change a strength, remove
-one, or point one at another club or person), a language's level or removal,
+seat swap (Windows), a person's likes and dislikes (add one on Windows, change
+a strength, remove one, or point one at another club or person), a language
+(add one on Windows, change its level or remove it),
 closing an open promise, cancelling a future transfer, and your manager's
 Change club, which has no Undo. ROADMAP.md lists each one and what has been
 checked in FM.
@@ -325,9 +334,10 @@ checked in FM.
 
 Competition and award editing, making or editing a promise and youth-intake
 records do not yet have validated editing layouts in this fork. Moving your
-manager to a national team or out of a job, adding a like, dislike, language or
-ban, player registration, career plans beyond a planned retirement, staff
-scouting knowledge and tendencies, instalments and buy-backs, ownership, kits
+manager to a national team or out of a job, adding a ban, adding a
+like, dislike or language on the Macs, changing player registration, career plans or staff scouting knowledge
+(shown on Windows, read-only), a tendency a member of staff does not hold, instalments
+and buy-backs, changing ownership, income or kit colours (shown on Windows, read-only), staff allowances, club vision
 and competition rule behavior also remain research work. These cannot be
 enabled by adding inputs or reusing a Windows offset on macOS. Transfers are
 made, but not every linked record (history, finances, registration) is

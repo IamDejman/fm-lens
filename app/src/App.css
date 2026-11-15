@@ -417,6 +417,19 @@ dd,
   text-overflow: ellipsis;
 }
 
+/* The loaded save's name, which is not a button: it gives way before the manager does. */
+.career-save {
+  flex: 0 4 auto;
+  min-width: 2rem;
+  max-width: 16rem;
+  padding: var(--space-1) var(--space-2);
+  overflow: hidden;
+  color: color-mix(in srgb, var(--on-strip) 65%, transparent);
+  font-size: var(--type-base);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .masthead .career button:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--on-strip) 35%, transparent);
   background: color-mix(in srgb, var(--on-strip) 8%, transparent);
@@ -470,6 +483,10 @@ dd,
   }
 
   .masthead .career .career-manager {
+    max-width: 9rem;
+  }
+
+  .career-save {
     max-width: 9rem;
   }
 }
@@ -6116,6 +6133,26 @@ button.danger:hover:not(:disabled) {
 
 .club-kits .picture img {
   object-fit: contain;
+}
+
+/* A kit's colours: a pair of squares for the shirt, the shorts and the socks. */
+.kit-colours {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.kit-part {
+  display: flex;
+}
+
+.kit-part span {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border-strong);
+}
+
+.kit-part span + span {
+  border-left: 0;
 }
 
 /* The in-game scout card (see ScoutCard.tsx): its window is see-through and sized to the card. */

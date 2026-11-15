@@ -39,10 +39,13 @@ import {
   type RatingRow,
 } from "./ProfileParts";
 import type {
+  CareerPlan,
   Concern,
   Contract,
+  BuyBack,
   FmDate,
   FutureTransfer,
+  Instalment,
   LoanTerms,
   PlayerDetails,
   PlayerSummary,
@@ -382,6 +385,8 @@ function ContractTab({ details }: { details: PlayerDetails }) {
       )}
       {details.loan && <LoanGroup loan={details.loan} />}
       {details.futureTransfers.length > 0 && <FutureTransferGroup transfers={details.futureTransfers} />}
+      {details.instalments.length > 0 && <InstalmentGroup instalments={details.instalments} />}
+      {details.buyBack && <BuyBackGroup buyBack={details.buyBack} />}
       <WorkPermitGroup details={details} />
     </>
   );
@@ -400,9 +405,29 @@ function CareerTab({ details }: { details: PlayerDetails }) {
         uid={details.uid}
       />
       <CareerGroups details={details} />
+      <PlansGroup plans={details.plans} />
       <TiesGroup details={details} />
       <LanguagesGroup languages={details.languages} person={{ uid: details.uid, staff: false, name: details.name }} />
     </>
+  );
+}
+
+/** What the game has him aim for, in its order, each under what it is. Not there for a player with no plans. */
+function PlansGroup({ plans }: { plans: CareerPlan[] }) {
+  if (plans.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{profileText.plans}</h3>
+      <dl className="stats">
+        {plans.map((plan, index) => (
+          <Fact key={`${plan.target}-${plan.uid}-${index}`} label={profileText.planTargets[plan.target]}>
+            {plan.name ?? profileText.none}
+          </Fact>
+        ))}
+      </dl>
+    </section>
   );
 }
 
@@ -459,6 +484,11 @@ function ContractGroup({ details, contract }: { details: PlayerDetails; contract
                 {yesNo(contract.loanListed)}
               </EditableValue>
             </Fact>
+            {details.registered !== null && (
+              <Fact label={profileText.registration}>
+                {details.registered ? profileText.registered : profileText.notRegistered}
+              </Fact>
+            )}
             <Fact label={profileText.loyaltyBonus}>
               <EditableValue field="contract.loyalty_bonus">{formatMoney(contract.loyaltyBonus)}</EditableValue>
             </Fact>
@@ -506,6 +536,68 @@ function LoanGroup({ loan }: { loan: LoanTerms }) {
           <EditableValue field="loan.ends">{date(loan.ends)}</EditableValue>
         </Fact>
         {loan.futureFee !== null && <Fact label={profileText.loanFutureFee}>{formatMoney(loan.futureFee)}</Fact>}
+      </dl>
+    </section>
+  );
+}
+
+/** A club in a fact: its badge and name, or the text for none. */
+function ClubFact({ label, name, uid }: { label: string; name: string | null; uid: number | null }) {
+  return (
+    <Fact label={label}>
+      {name === null ? (
+        profileText.none
+      ) : (
+        <WithPicture inline picture={<ClubLogo uid={uid} name={name} size={PICTURE_SIZE.textLogo} />}>
+          {name}
+        </WithPicture>
+      )}
+    </Fact>
+  );
+}
+
+/** The fees still being paid for him: who pays whom, how much for each month, and the months left. */
+export function InstalmentGroup({ instalments }: { instalments: Instalment[] }) {
+  return (
+    <section className="profile-group">
+      <h3>{profileText.instalments}</h3>
+      {instalments.map((instalment, index) => (
+        <dl key={index} className="stats">
+          <ClubFact label={profileText.instalmentPayer} name={instalment.payer} uid={instalment.payerUid} />
+          <ClubFact label={profileText.instalmentReceiver} name={instalment.receiver} uid={instalment.receiverUid} />
+          <Fact label={profileText.instalmentAmount}>
+            <EditableValue field={`instalment.${index}.amount`}>{formatMoney(instalment.amount)}</EditableValue>
+          </Fact>
+          <Fact label={profileText.instalmentMonths}>
+            <EditableValue field={`instalment.${index}.months`}>{formatNumber(instalment.monthsLeft)}</EditableValue>
+          </Fact>
+          {instalment.period > 1 && (
+            <Fact label={profileText.instalmentEvery}>{profileText.instalmentEveryMonths(instalment.period)}</Fact>
+          )}
+          <Fact label={profileText.instalmentAgreed}>{formatDate(instalment.agreed) || profileText.none}</Fact>
+        </dl>
+      ))}
+    </section>
+  );
+}
+
+/** The buy-back clause on him: the club that holds it, the fee, and the days it runs between. */
+export function BuyBackGroup({ buyBack }: { buyBack: BuyBack }) {
+  const date = (value: FmDate | null) => formatDate(value) || profileText.none;
+  return (
+    <section className="profile-group">
+      <h3>{profileText.buyBack}</h3>
+      <dl className="stats">
+        <ClubFact label={profileText.buyBackClub} name={buyBack.club} uid={buyBack.clubUid} />
+        <Fact label={profileText.buyBackFee}>
+          <EditableValue field="buy_back.fee">{formatMoney(buyBack.fee)}</EditableValue>
+        </Fact>
+        <Fact label={profileText.buyBackStarts}>
+          <EditableValue field="buy_back.starts">{date(buyBack.starts)}</EditableValue>
+        </Fact>
+        <Fact label={profileText.buyBackEnds}>
+          <EditableValue field="buy_back.ends">{date(buyBack.ends)}</EditableValue>
+        </Fact>
       </dl>
     </section>
   );
