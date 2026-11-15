@@ -71,6 +71,9 @@ pub struct ClubSummary {
     pub nation_uid: Option<u32>,
     #[serde(skip)]
     pub address: u64,
+    /// The game's own index of the club, which its screens link to: the u32 before the UID.
+    #[serde(skip)]
+    pub index: u32,
 }
 
 impl Listed for ClubSummary {
@@ -148,6 +151,7 @@ pub fn read_clubs(
             nation_uid: nation.as_ref().and(nation_uid),
             nation,
             address: object,
+            index: u32::from_le_bytes(buf[c.uid as usize - 4..c.uid as usize].try_into().expect("4 bytes")),
         });
     }
     Ok(clubs)
@@ -757,6 +761,7 @@ mod tests {
             nation: None,
             nation_uid: None,
             address: 0,
+            index: 0,
         }
     }
 

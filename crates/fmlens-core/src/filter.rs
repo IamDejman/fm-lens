@@ -803,6 +803,7 @@ mod tests {
             base: crate::players::Base::default(),
             address: 0,
             shift: 0,
+            index: 0,
         }
     }
 
@@ -1139,6 +1140,7 @@ mod tests {
             attributes: Vec::new(),
             address: 0,
             shift: 0,
+            index: 0,
         }
     }
 
@@ -1217,6 +1219,7 @@ mod tests {
             nation: Some("Türkiye".to_owned()),
             nation_uid: None,
             address: 0,
+            index: 0,
         }
     }
 

@@ -2084,6 +2084,7 @@ mod tests {
             traits: 0b100,
             address: 0,
             shift: 0,
+            index: 0,
         };
         // What the list's filters read follows too.
         player.note_change("contract.wage", 25_000);

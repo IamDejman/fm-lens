@@ -1,29 +1,42 @@
-// The in-game scout card: FM Lens's card for the player whose card FM shows, over the game, at his peak
-// while Shift is held. A click on it opens him in FM Lens. It is its own window, which the app shows once the card
-// is drawn (see scout_card.rs).
+// The in-game scout card: FM Lens's card for the player, member of staff or club the pointer rests on in FM, a
+// player at his peak while Shift is held. A click on it opens them in FM Lens. It is its own window, which the app
+// shows once the card is drawn (see scout_card.rs).
 
 import { listen } from "@tauri-apps/api/event";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Ability } from "./Ability";
 import { call } from "./api";
 import { formatNumber } from "./format";
-import { ATTRIBUTE_LABELS, positionLabel, profileText, scoutText, type AttributeKey } from "./labels";
+import {
+  ATTRIBUTE_LABELS,
+  clubProfileText,
+  jobLabel,
+  positionLabel,
+  profileText,
+  scoutText,
+  type AttributeKey,
+} from "./labels";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
+import { ReputationMeter } from "./ProfileParts";
 import { roleLabel } from "./scoutRoles";
 import { Stars } from "./ScoutParts";
-import type { PlayerDetails, ScoutReport } from "./types";
+import { employerOf, jobOf } from "./StaffProfile";
+import type { ClubDetails, PlayerDetails, ScoutReport, StaffDetails } from "./types";
 import "./App.css";
 
-/** What the app asks the card to show: the player, and whether at his peak. */
+type Kind = "player" | "staff" | "club";
+
+/** What the app asks the card to show: who, and for a player whether at his peak. */
 interface Shown {
+  kind: Kind;
   uid: number;
   peak: boolean;
 }
 
-interface Card {
-  details: PlayerDetails;
-  report: ScoutReport;
-}
+type Card =
+  | { kind: "player"; details: PlayerDetails; report: ScoutReport }
+  | { kind: "staff"; details: StaffDetails }
+  | { kind: "club"; details: ClubDetails };
 
 const text = scoutText.report;
 const ROLES = 3;
@@ -33,10 +46,25 @@ function log(error: unknown) {
   console.error("FM Lens scout card:", error);
 }
 
+function load(kind: Kind, uid: number): Promise<Card> {
+  switch (kind) {
+    case "player":
+      return Promise.all([
+        call<PlayerDetails>("player_details", { uid }),
+        call<ScoutReport>("player_scout", { uid }),
+      ]).then(([details, report]) => ({ kind, details, report }));
+    case "staff":
+      return call<StaffDetails>("staff_details", { uid }).then((details) => ({ kind, details }));
+    case "club":
+      return call<ClubDetails>("club_details", { uid }).then((details) => ({ kind, details }));
+  }
+}
+
 export function ScoutCard() {
   const [shown, setShown] = useState<Shown | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const box = useRef<HTMLElement>(null);
+  const kind = shown?.kind ?? null;
   const uid = shown?.uid ?? null;
   const peak = shown?.peak ?? false;
 
@@ -66,19 +94,19 @@ export function ScoutCard() {
   }, []);
 
   useEffect(() => {
-    if (uid === null) {
+    if (kind === null || uid === null) {
       return;
     }
     let live = true;
-    Promise.all([call<PlayerDetails>("player_details", { uid }), call<ScoutReport>("player_scout", { uid })])
-      .then(([details, report]) => live && setCard({ details, report }))
+    load(kind, uid)
+      .then((loaded) => live && setCard(loaded))
       .catch(log);
     return () => {
       live = false;
     };
-  }, [uid]);
+  }, [kind, uid]);
 
-  const ready = card !== null && card.details.uid === uid ? card : null;
+  const ready = card !== null && card.kind === kind && card.details.uid === uid ? card : null;
 
   // Drawn, and each time its size changes after (a font, a flag that fails): the app sizes the window to it and shows it.
   // Measured now too, as a hidden window may not be drawn, and then its size is never seen to change.
@@ -89,7 +117,7 @@ export function ScoutCard() {
     }
     const measure = () => {
       const { width, height } = element.getBoundingClientRect();
-      call("scout_card_ready", { uid: ready.details.uid, peak, width, height }).catch(log);
+      call("scout_card_ready", { kind: ready.kind, uid: ready.details.uid, peak, width, height }).catch(log);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -100,58 +128,121 @@ export function ScoutCard() {
   if (ready === null) {
     return null;
   }
-  const { details, report } = ready;
-  const roles = [...report.roles].sort((a, b) => (peak ? b.peak - a.peak : b.today - a.today)).slice(0, ROLES);
+  const open = () => call("scout_card_open", { kind: ready.kind, uid: ready.details.uid, name: ready.details.name }).catch(log);
   return (
     <article ref={box} className="scout-card">
-      <header className="scout-card-head">
-        <PersonFace uid={details.uid} name={details.name} size={PICTURE_SIZE.columnFace} />
-        <div className="scout-card-who">
-          <h1>
-            <button type="button" onClick={() => call("scout_card_open", { uid: details.uid }).catch(log)}>
-              {details.name}
-            </button>
-          </h1>
+      {ready.kind === "player" ? (
+        <PlayerCard details={ready.details} report={ready.report} peak={peak} onOpen={open} />
+      ) : ready.kind === "staff" ? (
+        <StaffCard details={ready.details} onOpen={open} />
+      ) : (
+        <ClubCard details={ready.details} onOpen={open} />
+      )}
+    </article>
+  );
+}
+
+/** The top of a card: a picture, the name (the button that opens them), a line of facts and numbers on the right. */
+function Head({
+  picture,
+  name,
+  facts,
+  numbers,
+  onOpen,
+}: {
+  picture: ReactNode;
+  name: string;
+  facts: ReactNode[];
+  numbers: ReactNode;
+  onOpen: () => void;
+}) {
+  const shown = facts.filter((fact) => fact !== null && fact !== undefined && fact !== false && fact !== "");
+  return (
+    <header className="scout-card-head">
+      {picture}
+      <div className="scout-card-who">
+        <h1>
+          <button type="button" onClick={onOpen}>
+            {name}
+          </button>
+        </h1>
+        {shown.length > 0 && (
           <p>
-            {details.club === null ? (
-              profileText.freeAgent
-            ) : (
-              <WithPicture
-                inline
-                picture={<ClubLogo uid={details.clubUid} name={details.club} size={PICTURE_SIZE.textLogo} />}
-              >
-                {details.club}
-              </WithPicture>
-            )}
-            {details.nation && (
-              <>
-                {" · "}
-                <WithPicture inline picture={<NationFlag uid={details.nationUid} />}>
-                  {details.nation}
-                </WithPicture>
-              </>
-            )}
-            {details.age !== null && (
-              <>
-                {" · "}
-                <span className="scout-card-part">{profileText.age(details.age)}</span>
-              </>
-            )}
-            {details.positions.length > 0 && (
-              <>
-                {" · "}
-                <span className="scout-card-part">{positionLabel(details.positions[0])}</span>
-              </>
-            )}
+            {shown.map((fact, at) => (
+              // The facts are in a fixed order, and only ever dropped, so their place names them.
+              <span key={at}>
+                {at > 0 && " · "}
+                {fact}
+              </span>
+            ))}
           </p>
-        </div>
-        <div className="scout-card-abilities">
-          <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
-          <Ability value={details.currentAbility} />
-          <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
-          <Ability value={details.potentialAbility} />
-        </div>
-      </header>
+        )}
+      </div>
+      <div className="scout-card-abilities">{numbers}</div>
+    </header>
+  );
+}
+
+function Abilities({ current, potential }: { current: number; potential: number }) {
+  return (
+    <>
+      <abbr title={profileText.currentAbility}>{profileText.currentAbilityShort}</abbr>
+      <Ability value={current} />
+      <abbr title={profileText.potentialAbility}>{profileText.potentialAbilityShort}</abbr>
+      <Ability value={potential} />
+    </>
+  );
+}
+
+function nation(name: string | null, uid: number | null): ReactNode {
+  return (
+    name && (
+      <WithPicture inline picture={<NationFlag uid={uid} />}>
+        {name}
+      </WithPicture>
+    )
+  );
+}
+
+function Part({ children }: { children: ReactNode }) {
+  return <span className="scout-card-part">{children}</span>;
+}
+
+function PlayerCard({
+  details,
+  report,
+  peak,
+  onOpen,
+}: {
+  details: PlayerDetails;
+  report: ScoutReport;
+  peak: boolean;
+  onOpen: () => void;
+}) {
+  const roles = [...report.roles].sort((a, b) => (peak ? b.peak - a.peak : b.today - a.today)).slice(0, ROLES);
+  return (
+    <>
+      <Head
+        picture={<PersonFace uid={details.uid} name={details.name} size={PICTURE_SIZE.columnFace} />}
+        name={details.name}
+        onOpen={onOpen}
+        facts={[
+          details.club === null ? (
+            profileText.freeAgent
+          ) : (
+            <WithPicture
+              inline
+              picture={<ClubLogo uid={details.clubUid} name={details.club} size={PICTURE_SIZE.textLogo} />}
+            >
+              {details.club}
+            </WithPicture>
+          ),
+          nation(details.nation, details.nationUid),
+          details.age !== null && <Part>{profileText.age(details.age)}</Part>,
+          details.positions.length > 0 && <Part>{positionLabel(details.positions[0])}</Part>,
+        ]}
+        numbers={<Abilities current={details.currentAbility} potential={details.potentialAbility} />}
+      />
 
       <section>
         <h2>{peak ? text.peak : text.today}</h2>
@@ -185,7 +276,56 @@ export function ScoutCard() {
           </section>
         )
       )}
-    </article>
+    </>
+  );
+}
+
+function StaffCard({ details, onOpen }: { details: StaffDetails; onOpen: () => void }) {
+  const employer = employerOf(details);
+  const job = jobOf(details);
+  return (
+    <Head
+      picture={<PersonFace uid={details.uid} name={details.name} size={PICTURE_SIZE.columnFace} />}
+      name={details.name}
+      onOpen={onOpen}
+      facts={[
+        job !== null && <Part>{jobLabel(job)}</Part>,
+        details.club !== null ? (
+          <WithPicture
+            inline
+            picture={<ClubLogo uid={details.clubUid} name={details.club} size={PICTURE_SIZE.textLogo} />}
+          >
+            {details.club}
+          </WithPicture>
+        ) : (
+          employer
+        ),
+        nation(details.nation, details.nationUid),
+        details.age !== null && <Part>{profileText.age(details.age)}</Part>,
+      ]}
+      numbers={<Abilities current={details.currentAbility} potential={details.potentialAbility} />}
+    />
+  );
+}
+
+function ClubCard({ details, onOpen }: { details: ClubDetails; onOpen: () => void }) {
+  return (
+    <Head
+      picture={<ClubLogo uid={details.uid} name={details.name} size={PICTURE_SIZE.columnFace} />}
+      name={details.name}
+      onOpen={onOpen}
+      facts={[
+        nation(details.nation, details.nationUid),
+        details.founded !== null && <Part>{clubProfileText.founded(details.founded)}</Part>,
+        details.stadium?.name && <Part>{details.stadium.name}</Part>,
+      ]}
+      numbers={
+        <>
+          <abbr title={clubProfileText.reputationTitle}>{clubProfileText.reputationShort}</abbr>
+          <ReputationMeter value={details.reputation} />
+        </>
+      }
+    />
   );
 }
 

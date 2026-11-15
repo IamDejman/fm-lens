@@ -237,6 +237,31 @@ impl Session {
         Ok(TeamTactics { id, editor_on, players: read })
     }
 
+    /// Where the club is whose team has `id` in the game's teams table, as FM's screens link to a team. `None` when
+    /// the table has no team there. Only reads.
+    pub fn club_of_team_id(&self, id: u32) -> Result<Option<u64>, MoveError> {
+        let (layout, editor) = self.tactics_layout()?;
+        let table = self.process.read_u64(self.plugin.base + editor.teams)?;
+        if id > MOST_TEAM_ID || !is_user_pointer(table) {
+            return Ok(None);
+        }
+        let list = self.process.read_u64(table + layout.teams)?;
+        if !is_user_pointer(list) {
+            return Ok(None);
+        }
+        let (begin, end) = (self.process.read_u64(list)?, self.process.read_u64(list + 8)?);
+        let slot = begin + u64::from(id) * 8;
+        if !is_user_pointer(begin) || slot >= end {
+            return Ok(None);
+        }
+        let team = self.process.read_u64(slot)?;
+        if !is_user_pointer(team) || self.process.read_u32(team + layout.team_id)? != id {
+            return Ok(None);
+        }
+        let club = self.process.read_u64(team + self.layout.team.club)?;
+        Ok(is_user_pointer(club).then_some(club))
+    }
+
     fn tactics_layout(&self) -> Result<(&TacticsLayout, &EditorRvas), MoveError> {
         let layout = self.layout.tactics.as_ref().ok_or(MoveError::CallUnavailable)?;
         let editor = self.profile.as_ref().and_then(|p| p.editor.as_ref()).ok_or(MoveError::CallUnavailable)?;

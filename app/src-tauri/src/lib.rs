@@ -6224,6 +6224,7 @@ mod tests {
             traits: 0,
             address: 0,
             shift: 0,
+            index: 0,
         }
     }
 
@@ -6323,6 +6324,7 @@ mod tests {
             nation: None,
             nation_uid: None,
             address: 0,
+            index: 0,
         };
         // As the search finds them: highest reputation first, the women's clubs on a scale of their own.
         let found = [club(1, true, 9000), club(2, false, 8000), club(3, true, 7000), club(4, false, 6000)];
