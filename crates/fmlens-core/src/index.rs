@@ -72,6 +72,18 @@ impl<T: Listed> SearchIndex<T> {
         }
     }
 
+    /// Changes the names of the item with `uid` in place, and has it found and ordered by the new ones.
+    pub fn rename(&mut self, uid: u32, change: impl FnOnce(&mut T)) -> bool {
+        let Some(&i) = self.by_uid.get(&uid) else {
+            return false;
+        };
+        change(&mut self.items[i]);
+        self.folded[i] = fold(&self.items[i].names());
+        self.sort_names[i] = fold(self.items[i].display_name());
+        self.ranked.take();
+        true
+    }
+
     /// Items whose names contain every word of `query` (ignoring accents and case), or
     /// whose id equals it; highest rank first, then by name. An empty query matches everything.
     pub fn search(&self, query: &str) -> Vec<&T> {
@@ -154,5 +166,16 @@ mod tests {
         assert_eq!(uids(index.search("")), [4, 2, 3, 1]);
         assert_eq!(uids(index.search("z")), [2, 1]);
         assert!(!index.update(9, |_| {}));
+    }
+
+    #[test]
+    fn a_renamed_item_is_found_and_ordered_by_its_new_name() {
+        let mut index =
+            SearchIndex::new(vec![Item(1, "Burntisland Shipyard", 10), Item(2, "Cowdenbeath", 10), Item(3, "Ayr", 10)]);
+        assert!(index.rename(1, |item| item.1 = "Methil Rovers"));
+        assert_eq!(uids(index.search("methil")), [1]);
+        assert!(index.search("burntisland").is_empty());
+        assert_eq!(uids(index.search("")), [3, 2, 1]);
+        assert!(!index.rename(9, |_| {}));
     }
 }

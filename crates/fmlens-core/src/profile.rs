@@ -67,6 +67,9 @@ pub struct Layout {
     /// Fee instalments and buy-back clauses; only in the layouts they have been checked in.
     #[serde(default)]
     pub fee_terms: Option<FeeTermsLayout>,
+    /// How the text of a club's name is laid out; only in the layouts renaming a club has been checked in.
+    #[serde(default)]
+    pub club_names: Option<ClubNamesLayout>,
     /// Competitions and awards; only in the layouts they have been checked in.
     #[serde(default)]
     pub competition: Option<CompetitionLayout>,
@@ -1023,6 +1026,16 @@ impl TeamLayout {
         .max()
         .unwrap_or(0)
     }
+}
+
+/// The text of a club's name. A name's pointer is to the text's length; `holders` is how far before it the game
+/// counts, as a u32, how many records hold the text. The game also lists each club's short name by UID, in records
+/// that begin with the name's pointer and hold the club's UID as a u32 at `listed_uid`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClubNamesLayout {
+    pub holders: u64,
+    pub listed_uid: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

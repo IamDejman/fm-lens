@@ -4714,6 +4714,14 @@ button.danger:hover:not(:disabled) {
   text-transform: uppercase;
 }
 
+/* The names in the dialog that renames a club: text, as wide as the dialog. */
+.rename-fields .edit-input {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  font-variant-numeric: normal;
+  text-align: left;
+}
+
 /* A club in the box of a value that is only read: the club the player is at, and the one he moves to. */
 .move-club {
   display: flex;
@@ -5277,6 +5285,11 @@ button.danger:hover:not(:disabled) {
   border-width: 1px 0 0;
   border-radius: 0;
   font-size: var(--type-base);
+}
+
+.banner.move-error button {
+  display: block;
+  margin-top: var(--space-2);
 }
 
 /* Medical */

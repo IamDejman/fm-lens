@@ -9,6 +9,7 @@ mod board;
 pub mod bridge_setup;
 mod calibrate;
 mod clauses;
+mod club_names;
 mod clubs;
 mod coded;
 mod cohesion;
@@ -30,6 +31,7 @@ mod loans;
 mod mass;
 mod medical;
 mod mood;
+mod name_file;
 mod national;
 mod officials;
 mod plans;
@@ -58,6 +60,7 @@ pub use best::{BestFor, Fit, Weight, board_job};
 pub use board::{BoardPlan, BoardSeat, BoardSwap, SEAT_JOBS};
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
+pub use club_names::{ClubRenamed, GameNames, MOST_NAME_CHARS, as_name};
 pub use clubs::{
     ClubDetails, ClubIndex, ClubSummary, Finances, INCOME_SOURCES, Income, KITS, KitPart, OWNERSHIP, SUPPORTER_MIX,
     SUPPORTER_TRAITS, StadiumClub, StadiumFilter, StadiumSummary, read_club_details, read_clubs, read_stadiums,

@@ -4521,3 +4521,137 @@ it empty; that change was checked in the app's tests, not in the packaged app.
 Not run: signed and released candidates (FM's staff offer contracts when the
 trial contracts end), CA, PA and height edits on a candidate, a quit and
 relaunch, Game Pass, and the Macs.
+
+## Club names (15 November 2026)
+
+Works in FM and is kept when the save is loaded again, for every career in
+that FM install, through a name change file FM Lens writes in FM's folder. A
+club's name and short name are renamed from
+the Rename button in the club's profile (`rename_club`), on Steam build
+26577676 on macOS and Windows, where `[club_names]` is in the layout. Intel
+Macs use the macOS layout, so the button shows there too, but it has not been
+checked in FM there.
+
+What was read from the running game (Apple Silicon, read-only): a club holds a
+pointer to its name at `+0xC0` and to its short name at `+0xC8`. The game keeps
+one copy of each text and counts its holders: a record of the size of what
+follows (`u32`), `0x78` (`u32`), the count (`u32`), the length (`u32`), the
+UTF-8 text and a zero byte, with the pointer at the length. Two clubs with the
+same name point at the same text, so the text is never written over. A full
+name had one holder; a short name had two, the club and a list of clubs sorted
+by UID in 0x30-byte records that begin with the pointer and hold the UID at
+`+0x10`.
+
+How the rename is made: FM Lens sets aside memory in the game
+(`mach_vm_allocate`, `VirtualAllocEx` on Windows), writes the new name there in the game's layout with a
+count of holders (`0x40000000`) the game never brings to zero, reads it back,
+and points the club at it. For a short name the list's record is found by
+scanning the game's data for the old pointer with the club's UID after it; the
+rename is refused where there is no such record or more than one. The old text
+is left as it was. Undo points the club, and the list, back at the names they
+had, provided they still hold the new ones. The rename waits for no screen
+lock other than the one every structural edit checks.
+
+Refused: a name that is empty, longer than 50 characters or holding a control
+character; the names the club has already; a club whose row no longer matches
+the game.
+
+Checked: `cargo test --locked --workspace` (the name's layout, what counts as
+a name, the list finding a renamed club by its new name),
+`cargo test --locked -p fmlens-mem --no-default-features` (memory set aside in
+a process can be written), `npm --prefix app test` (the dialog sends only the
+name that changed, refuses an empty one and shows a refusal), and the browser
+preview on sample data: a rename showed in the profile and the list, the
+Changes view listed it with the short name under it, and Undo brought both
+names back.
+
+Checked in FM (15 November, Apple Silicon, packaged debug build, on the copy
+FM-Lens-MacParity-2026-11-15): renaming a club to "Methil Rovers", short name
+"Methil", showed at once in the league table ("Methil"), the club's page
+("Methil Rovers") and news items. A women's club with the same old text kept
+its name. The Changes view listed the rename, and Undo brought both names back
+in FM and in FM Lens.
+
+Not kept on reload by the game change alone. Ipswich Town (UID 667) renamed and saved as
+FM-Lens-Rename-2026-11-15, then Ipswich Wanderers (UID 5103819) saved as
+FM-Lens-Rename2-2026-11-15: FM quit, started again and loaded each save, and
+showed the old names. The save file holds the new names: decompressed, the
+club's record has "Methil Rovers" and "Methil", and the second save holds no
+"Ipswich Wanderers" at all. So FM takes club names on load from somewhere other
+than the save, by UID (its database or language files), and the rename lasts
+only until the save is loaded again. Ipswich Town also has a record with its
+codes ("IPS", "IT") pointing at its name, which the save does not hold;
+Ipswich Wanderers has none, and still reverts.
+
+Kept on reload through a name change file. FM names clubs from its database by
+UID whenever a save loads, and reads name change files (`.lnc`) from
+`fm.app/Contents/PlugIns/game_plugin.bundle/Contents/Resources/shared/data/database/db/<newest>/lnc/all/`
+when it starts, for every save. A line is
+`"CLUB_LONG_NAME_CHANGE"`, the UID, the name in quotes and `""` (every
+language), apart by tabs (`CLUB_SHORT_NAME_CHANGE` for the short name), in
+UTF-8 with a byte order mark. FM does not read `.lnc` files from its
+`editor data` folder in Application Support, with `dont_scan` true or false in
+its `config.xml` (checked, then put back as it was). So FM Lens keeps its own
+file there, `fm lens club names.lnc` (`NameFile` in `name_file.rs`): a rename
+writes the club's names to it (written beside it and moved over it) before the
+game is changed, and puts the old entry back if the game change fails. Undo
+puts back the entry the club had before the rename, and the file is removed
+when it holds no club. A name holding `"` is refused. The rename is off where
+the folder is not found.
+
+macOS App Management keeps FM Lens out of `fm.app` until the user allows FM
+Lens in System Settings, Privacy & Security, App Management: the write fails
+with permission denied (`club.nameFileBlocked`), nothing is changed, and the
+rename dialog shows a button that opens that settings page
+(`x-apple.systempreferences:com.apple.preference.security?Privacy_AppBundles`).
+
+Checked in FM (15 November, Apple Silicon, packaged debug build opened with
+`open`, on the copy FM-Lens-Rename2-2026-11-15): before App Management was
+allowed the rename was refused with the message and button, and the button
+opened App Management. Once allowed, renaming Ipswich Wanderers (UID 5103819)
+to "Leven Athletic", short name "Leven", wrote the file with both lines; Undo
+removed the file. Renamed again, FM quit and started, and the save loaded
+again without being saved: FM Lens read "Leven Athletic" / "Leven" and FM's
+search found the club as "Leven". The test file was then removed.
+
+Undo works only until FM restarts: the Changes view then shows the rename as
+"Earlier game" with no Undo. To take a kept name out later, the file also
+notes the names the game gave the club before its first rename, on lines FM
+does not read (`# "CLUB_LONG_NAME_WAS"`, the UID and the name; the same with
+`CLUB_SHORT_NAME_WAS`). While the club has a kept name, the rename dialog
+shows "Use original names" (`game_club_names`), which fills in those names;
+renaming to them takes the club out of the file, and the file is removed when
+it holds no club. Renaming again keeps the names noted at the first rename.
+
+App Management is given to one build: FM Lens is signed ad hoc, so each
+rebuild (and so each update) is a new app to macOS and must be allowed again.
+A rebuilt debug build was refused until it was started from the shell, which
+writes with the shell's permission.
+
+Checked in FM (15 November, Apple Silicon, debug build started from the shell,
+on the copy FM-Lens-Rename2-2026-11-15): renaming Ipswich Wanderers (UID
+5103819) to "Leven Athletic", short name "Leven", wrote both change lines and
+both `#` lines with "Ipswich Wanderers". FM quit, started and loaded the save
+without saving: FM read the file with the `#` lines and FM Lens read "Leven
+Athletic". The dialog showed "Use original names"; it filled in "Ipswich
+Wanderers" for both, the rename gave the club those names and removed the
+file. FM quit, started and loaded the save again: FM Lens read "Ipswich
+Wanderers", and the dialog showed no "Use original names". The seven other
+career files' hashes were unchanged.
+
+Windows (read-only, Steam build 26577676): the club holds its name at `+0xC0`
+and its short name at `+0xC8`, as on macOS, and the text's record is the same
+but for the gap, `0x15e`. Ipswich Wanderers had one text of size 26 with three
+holders, used as its name and its short name. FM reads name change files from
+`shared\data\database\db\<newest>\lnc\all` beside `fm.exe`, where every
+user may write, so there is no App Management step and no message for it.
+
+Checked in FM (15 November, Windows Server 2022, release build, on the copy
+FM-Lens-YouthPost-2026-11-15): renaming Ipswich Wanderers to "Leven Athletic",
+short name "Leven", showed in FM Lens at once and wrote the file as on macOS.
+FM was closed without saving, started, and the copy loaded: FM Lens read
+"Leven Athletic". "Use original names" gave back "Ipswich Wanderers" for both
+and removed the file. After another restart and load FM Lens read "Ipswich
+Wanderers". All 47 career files' hashes were unchanged.
+
+Not run: Intel.

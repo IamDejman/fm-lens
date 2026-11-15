@@ -638,6 +638,73 @@ function setWorkPermit(uid: number, granted: boolean): LoggedChange {
   return { ...logged };
 }
 
+/** The names each rename took from its club, by the change's id, for its undo. */
+const renameUndo = new Map<number, { name: string; shortName: string | null }>();
+
+/** The names each renamed club had before FM Lens first renamed it, by UID. */
+const gameNames = new Map<number, { name: string; shortName: string | null }>();
+
+/** `text` as a club's name: trimmed, 1 to 50 characters. */
+function asName(text: string | null): string | null {
+  if (text === null) {
+    return null;
+  }
+  const name = text.trim();
+  if (name.length < 1 || [...name].length > 50) {
+    throw failure("club.badName", "a name is 1 to 50 characters of text");
+  }
+  return name;
+}
+
+/** Gives a club its names, in its own row and in the rows of its players. */
+function nameClub(club: ClubSummary, name: string, shortName: string | null) {
+  for (const player of players) {
+    if (player.club === club.name) {
+      player.club = name;
+    }
+  }
+  club.name = name;
+  club.shortName = shortName;
+}
+
+function renameClub(uid: number, name: string | null, shortName: string | null): LoggedChange {
+  const club = clubs.find((c) => c.uid === uid);
+  if (!club) {
+    throw notFound("club", uid);
+  }
+  const before = { name: club.name, shortName: club.shortName };
+  if (!gameNames.has(uid)) {
+    gameNames.set(uid, before);
+  }
+  const newName = asName(name);
+  const newShort = asName(shortName);
+  const named = newName !== null && newName !== before.name;
+  const shortened = newShort !== null && before.shortName !== null && newShort !== before.shortName;
+  if (!named && !shortened) {
+    throw failure("club.sameName", "the club has that name already");
+  }
+  const logged: LoggedChange = {
+    id: changes.length + 1,
+    at: Date.now(),
+    name: before.name,
+    entity: "club",
+    uid,
+    field: named ? "name" : "short_name",
+    old: 0,
+    new: 0,
+    undoneAt: null,
+    batch: null,
+    renamed: {
+      ...(named && { name: { from: before.name, to: newName } }),
+      ...(shortened && { shortName: { from: before.shortName ?? "", to: newShort } }),
+    },
+  };
+  renameUndo.set(logged.id, before);
+  nameClub(club, named ? newName : before.name, shortened ? newShort : before.shortName);
+  changes.push(logged);
+  return { ...logged };
+}
+
 /** The fixture players healed through the editor, by UID, while the healing is not undone. */
 const healedPlayers = new Set<number>();
 
@@ -2509,6 +2576,15 @@ function undoOne(id: number): LoggedChange {
     entry.undoneAt = Date.now();
     return { ...entry };
   }
+  if (entry.renamed) {
+    const club = clubs.find((c) => c.uid === entry.uid);
+    const before = renameUndo.get(entry.id);
+    if (club && before) {
+      nameClub(club, before.name, before.shortName);
+    }
+    entry.undoneAt = Date.now();
+    return { ...entry };
+  }
   if (entry.field === "work_permit") {
     const before = permitUndo.get(entry.id);
     if (before === undefined) {
@@ -4217,7 +4293,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, moveToNation: true, addPreference: true, addLanguage: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, moveToNation: true, addPreference: true, addLanguage: true, renameClub: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
@@ -4816,6 +4892,10 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return addInjury(Number(args?.uid), Number(args?.kind)) as T;
     case "set_work_permit":
       return setWorkPermit(Number(args?.uid), Boolean(args?.granted)) as T;
+    case "rename_club":
+      return renameClub(Number(args?.uid), (args?.name ?? null) as string | null, (args?.shortName ?? null) as string | null) as T;
+    case "game_club_names":
+      return (gameNames.get(Number(args?.uid)) ?? null) as T;
     case "work_permit_needed":
       return workPermitNeeded(Number(args?.uid)) as T;
     case "start_loan":

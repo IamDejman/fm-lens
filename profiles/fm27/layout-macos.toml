@@ -655,6 +655,15 @@ nation = 0x00
 level = 0x24              # u8, 0 to 100
 size = 0x28
 
+# The text of a club's name, as the game keeps all its text: one copy, shared by every record that holds it (two
+# clubs called "Arsenal Club" point at the same bytes), laid out as the size of what follows (u32), 0x78 (u32), the
+# count of holders (u32), the length (u32), the text and a zero byte. A name's pointer is to the length. A club holds
+# its full name once (Tivat's count: 1) and its short name twice (count 2): the club, and a list of clubs sorted by
+# UID in 0x30-byte records that begin with the short name's pointer and hold the UID at +0x10.
+[club_names]
+holders = 4               # before the pointer: the u32 count of the text's holders
+listed_uid = 0x10         # in the list's record: the club's UID
+
 # The game's record of the save it has loaded (SAVE_SYSTEM), as on Windows.
 [save_system]
 name = 0x28               # pointer to a string of the game's: the save file's name without its folder or ".fm"

@@ -235,6 +235,11 @@ const errors: ErrorTexts = {
   "preference.same": () => "Bu zaten listede.",
   "preference.full": () => "Liste dolu.",
   "language.same": () => "Bu zaten listede.",
+  "club.sameName": () => "Kulübün adı zaten bu.",
+  "club.badName": () => "Ad 1 ile 50 karakter arasında olmalı ve tırnak içermemeli.",
+  "club.nameFileBlocked": () =>
+    "Uygulama Yönetimi'nde FM Lens'e izin ver, sonra yeniden dene.",
+  "club.nameFile": () => "FM Lens adı FM klasörüne kaydedemedi, bu yüzden hiçbir şey değişmedi.",
   "language.own": () => "FM, kişinin kendi dilini listelemez.",
   "language.full": () => "Liste dolu.",
   "relation.rule": (p) => `${p.rule} numaralı yerli kuralı, düzenleyicinin yazdığı kurallardan değil.`,
@@ -801,6 +806,8 @@ export const tr: Strings = {
     "clause.condition": "Madde koşulu",
     captain: "Kaptan",
     vice_captain: "Yardımcı kaptan",
+    name: "Ad",
+    short_name: "Kısa ad",
     reputation: "İtibar",
     "facilities.training": "Antrenman tesisleri",
     "facilities.youth_facilities": "Altyapı tesisleri",
@@ -2144,6 +2151,7 @@ export const tr: Strings = {
     nav: "Değişiklikler",
     title: "Bu oturumdaki değişiklikler",
     swappedWith: (name) => `Takas: ${name}`,
+    shortName: (change) => `Kısa ad ${change}`,
     fee: (amount) => `Bedel ${amount}`,
     joins: (date) => `Katılış: ${date}`,
     healed: (count) => `${format(count)} sakatlık iyileştirildi`,
@@ -2664,6 +2672,18 @@ export const tr: Strings = {
     what: "FM Lens bundan sonra ne yapsın?",
     sentWith: "Herkese açık paylaşılır; FM Lens sürümün de eklenir.",
     tooMany: "Buradan çok fazla gönderildi. Bir saat sonra yeniden dene.",
+  },
+
+  rename: {
+    button: "Yeniden adlandır",
+    title: "Kulübü yeniden adlandır",
+    name: "Ad",
+    shortName: "Kısa ad",
+    rename: "Yeniden adlandır",
+    renaming: "Yeniden adlandırılıyor…",
+    cancel: "İptal",
+    appManagement: "Uygulama Yönetimi'ni aç",
+    original: "Orijinal adları kullan",
   },
 
   release: {

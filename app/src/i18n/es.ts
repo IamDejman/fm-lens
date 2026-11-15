@@ -366,6 +366,11 @@ const errors: ErrorTexts = {
   "preference.same": () => "Eso ya está en la lista.",
   "preference.full": () => "La lista está llena.",
   "language.same": () => "Eso ya está en la lista.",
+  "club.sameName": () => "El club ya tiene ese nombre.",
+  "club.badName": () => "Un nombre tiene de 1 a 50 caracteres, sin comillas.",
+  "club.nameFileBlocked": () =>
+    "Permite FM Lens en Gestión de apps y vuelve a intentarlo.",
+  "club.nameFile": () => "FM Lens no pudo guardar el nombre en la carpeta de FM, así que no se cambió nada.",
   "language.own": () => "FM no lista el idioma propio de una persona.",
   "language.full": () => "La lista está llena.",
   "relation.rule": (p) => `La regla de formación local ${p.rule} no es de las que escribe el editor.`,
@@ -814,6 +819,8 @@ export const es: Strings = {
     "clause.condition": "Condición de la cláusula",
     captain: "Capitán",
     vice_captain: "Vicecapitán",
+    name: "Nombre",
+    short_name: "Nombre corto",
     reputation: "Reputación",
     "facilities.training": "Instalaciones de entrenamiento",
     "facilities.youth_facilities": "Instalaciones de cantera",
@@ -2177,6 +2184,7 @@ export const es: Strings = {
     nav: "Cambios",
     title: "Cambios de esta sesión",
     swappedWith: (name) => `Intercambiado por ${name}`,
+    shortName: (change) => `Nombre corto ${change}`,
     fee: (amount) => `Traspaso: ${amount}`,
     joins: (date) => `Se incorpora el ${date}`,
     healed: (count) => (count === 1 ? "1 lesión curada" : `${format(count)} lesiones curadas`),
@@ -2717,6 +2725,18 @@ export const es: Strings = {
     what: "¿Qué debería hacer FM Lens a continuación?",
     sentWith: "Se publica, con tu versión de FM Lens.",
     tooMany: "Demasiados desde aquí. Vuelve a intentarlo en una hora.",
+  },
+
+  rename: {
+    button: "Renombrar",
+    title: "Renombrar club",
+    name: "Nombre",
+    shortName: "Nombre corto",
+    rename: "Renombrar",
+    renaming: "Renombrando…",
+    cancel: "Cancelar",
+    appManagement: "Abrir Gestión de apps",
+    original: "Usar nombres originales",
   },
 
   release: {

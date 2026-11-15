@@ -9,7 +9,8 @@ use mach2::kern_return::KERN_SUCCESS;
 use mach2::mach_port::{mach_port_deallocate, mach_port_mod_refs};
 use mach2::port::{MACH_PORT_RIGHT_SEND, mach_port_t};
 use mach2::traps::{mach_task_self, task_for_pid};
-use mach2::vm::{mach_vm_read_overwrite, mach_vm_write};
+use mach2::vm::{mach_vm_allocate, mach_vm_read_overwrite, mach_vm_write};
+use mach2::vm_statistics::VM_FLAGS_ANYWHERE;
 use mach2::vm_types::mach_vm_size_t;
 
 use super::bridge::request_task;
@@ -253,6 +254,21 @@ impl Process {
         }
         Ok(())
     }
+
+    /// Has the process set aside `len` bytes of its own memory, zeroed, readable and writable, for data the editor
+    /// places there and points one of the game's records at, such as a new name; gives the address. The memory is
+    /// the process's own from then on and stays until it exits: nothing frees it.
+    pub fn allocate(&self, len: usize) -> Result<u64> {
+        if cfg!(feature = "read-only") || !self.writable {
+            return Err(Error::ReadOnly);
+        }
+        let mut addr = 0u64;
+        let code = unsafe { mach_vm_allocate(self.task, &mut addr, len as u64, VM_FLAGS_ANYWHERE) };
+        if code != KERN_SUCCESS || addr == 0 {
+            return Err(Error::Mach { op: "mach_vm_allocate", code });
+        }
+        Ok(addr)
+    }
 }
 
 impl Process {
@@ -350,6 +366,20 @@ mod tests {
         let read_only = Process::open_read(std::process::id()).expect("open this process");
         assert!(matches!(read_only.write_bytes(addr, &[1]), Err(Error::ReadOnly)));
         drop(heap);
+    }
+
+    #[test]
+    #[cfg(not(feature = "read-only"))]
+    fn sets_aside_memory_the_process_can_be_written_in() {
+        let process = Process::open_read_write(std::process::id()).expect("open this process");
+        let addr = process.allocate(40).expect("set memory aside");
+        assert_eq!(addr % 8, 0);
+        assert_eq!(process.read_bytes(addr, 40).expect("read it"), [0; 40]);
+        process.write_bytes(addr + 12, b"Methil").expect("write into it");
+        assert_eq!(process.read_bytes(addr + 10, 9).expect("read back"), *b"\0\0Methil\0");
+
+        let read_only = Process::open_read(std::process::id()).expect("open this process");
+        assert!(matches!(read_only.allocate(40), Err(Error::ReadOnly)));
     }
 
     #[test]

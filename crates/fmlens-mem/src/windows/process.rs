@@ -8,6 +8,7 @@ use windows_sys::Win32::System::Diagnostics::Debug::{ReadProcessMemory, WritePro
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
+use windows_sys::Win32::System::Memory::{MEM_COMMIT, MEM_RESERVE, PAGE_READWRITE, VirtualAllocEx};
 use windows_sys::Win32::System::Threading::{
     GetCurrentProcess, OpenProcess, OpenProcessToken, PROCESS_ACCESS_RIGHTS, PROCESS_NAME_WIN32,
     PROCESS_QUERY_INFORMATION, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE, QueryFullProcessImageNameW,
@@ -218,6 +219,21 @@ impl Process {
             return Err(Error::Write { addr, len, code: last_error() });
         }
         Ok(())
+    }
+
+    /// Has the process set aside `len` bytes of its own memory, zeroed, readable and writable, for data the editor
+    /// places there and points one of the game's records at, such as a new name; gives the address. The memory is
+    /// the process's own from then on and stays until it exits: nothing frees it.
+    pub fn allocate(&self, len: usize) -> Result<u64> {
+        if cfg!(feature = "read-only") || !self.writable {
+            return Err(Error::ReadOnly);
+        }
+        let addr =
+            unsafe { VirtualAllocEx(self.handle.0, std::ptr::null(), len, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE) };
+        if addr.is_null() {
+            return Err(Error::last("VirtualAllocEx"));
+        }
+        Ok(addr as u64)
     }
 }
 

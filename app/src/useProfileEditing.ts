@@ -57,6 +57,7 @@ export const NO_GAME_ACTIONS: GameActions = {
   moveToNation: false,
   addPreference: false,
   addLanguage: false,
+  renameClub: false,
 };
 
 export const EditorContext = createContext<EditorState>({
