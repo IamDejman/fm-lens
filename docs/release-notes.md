@@ -1,6 +1,14 @@
 ## What's new
 
-FM Lens 1.1 lets you rename any club and keeps the new name for good, puts you in charge of a national team on top of your club job, and makes a cancelled signing something you can take back. Everything below is new since 1.0.0.
+FM Lens 1.1 opens its scout card on any name in FM, lets you rename any club and keeps the new name for good, puts you in charge of a national team on top of your club job, and makes a cancelled signing something you can take back. Everything below is new since 1.0.0.
+
+### Scout card on every name
+
+- Rest the pointer on a player's, a member of staff's or a club's name anywhere in FM, in the squad table, a message, a news story or a league table, and FM Lens's card opens beside it. A team's name opens its club's card.
+- New cards for staff (face, job, club, nation, age, current and potential ability) and clubs (badge, nation, founded, stadium, reputation).
+- The card stays while you move onto it, and a click opens them in FM Lens. FM's own (i) card still brings up FM Lens's card for players, and Shift still shows a player at his peak.
+- On the Macs the card is ready within seconds of FM coming to the front, where it used to take up to 40 seconds and sometimes never showed.
+- Works on Windows and the Macs, in the Steam version.
 
 ### Rename a club
 

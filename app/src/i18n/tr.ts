@@ -1956,6 +1956,7 @@ export const tr: Strings = {
     dismiss: "Kapat",
     changes: {
       "1.1.0": [
+        "FM'de bir oyuncunun, personelin veya kulübün adının üzerinde durun, FM Lens kartı açılır. Açmak için karta tıklayın.",
         "Bir kulübü yeniden adlandırın: yeni ad FM yeniden başlayınca da kalır. Orijinal adları kullan eski adı geri verir.",
         "Kulübünüzün yanında bir milli takımın görevini alın (Windows).",
         "FM Lens'in anlaştığı bir transferde Transferi iptal et geri alınabilir.",

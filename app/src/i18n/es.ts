@@ -1984,6 +1984,7 @@ export const es: Strings = {
     dismiss: "Cerrar",
     changes: {
       "1.1.0": [
+        "Deja el puntero sobre el nombre de un jugador, un miembro del personal o un club en FM para ver la ficha de FM Lens. Haz clic en ella para abrirlo.",
         "Renombra un club: el nombre nuevo se mantiene al reiniciar FM. Usar nombres originales devuelve el anterior.",
         "Acepta el puesto de una selección además del de tu club (Windows).",
         "Deshaz Cancelar traspaso en un fichaje que acordó FM Lens.",

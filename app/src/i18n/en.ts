@@ -2103,6 +2103,7 @@ export const en = {
      */
     changes: {
       "1.1.0": [
+        "Rest the pointer on any player, staff or club name in FM to see FM Lens's card. Click it to open them.",
         "Rename a club: the new name stays after FM restarts. Use original names gives the old one back.",
         "Take a national team's job on top of your club job (Windows).",
         "Undo Cancel transfer on a signing FM Lens agreed.",
