@@ -2102,6 +2102,13 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.0": [
+        "Rest the pointer on any player, staff or club name in FM to see FM Lens's card. Click it to open them.",
+        "Rename a club: the new name stays after FM restarts. Use original names gives the old one back.",
+        "Take a national team's job on top of your club job (Windows).",
+        "Undo Cancel transfer on a signing FM Lens agreed.",
+        "Youth candidates show in the under-18s.",
+      ],
       "1.0.0": [
         "A Scout tab for every player: best roles, chance of development and Find similar.",
         "Top players and Best for rank players and staff. A scout card shows over FM: click it to open the player.",
