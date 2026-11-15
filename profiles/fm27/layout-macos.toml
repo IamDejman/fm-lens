@@ -413,6 +413,9 @@ date_of_birth = 0x58
 current_ability = 0x114
 potential_ability = 0x116
 reputation = 0x118
+# The seven refereeing attributes, in the order the game's own property setter writes them ('Oalf' at +0x11A to
+# 'Otkp' at +0x120). Michael Oliver read 15, 10, 15, 14, 16, 9, 5 on Steam 26340721.
+attributes = 0x11A
 uid = 0x134
 
 # A nation's facts and its men's national team container. Read on Steam 26340721 arm64 for all 251 nations: England

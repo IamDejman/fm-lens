@@ -1583,6 +1583,16 @@ export const en = {
       nation: "Nation",
     },
     reputation: "Reputation",
+    attributes: "Refereeing",
+    attributeNames: {
+      allowing_flow: "Allowing Flow",
+      discipline: "Discipline",
+      important_matches: "Important Matches",
+      pressure: "Pressure",
+      refereeing: "Refereeing",
+      running_line: "Running Line",
+      time_keeping: "Time Keeping",
+    } as Record<string, string>,
   },
 
   competitionList: {

@@ -285,6 +285,10 @@ pub struct OfficialLayout {
     pub current_ability: u64,
     pub potential_ability: u64,
     pub reputation: u64,
+    /// The first of the seven refereeing attributes, a `u8` each from 1 to 20, in the order of
+    /// [`crate::OFFICIAL_ATTRIBUTES`]; only in the layouts they have been placed in.
+    #[serde(default)]
+    pub attributes: Option<u64>,
     pub uid: u64,
     /// Where the identity block starts, where the layout has to say (Windows: MSVC's vtables keep no offset to it).
     #[serde(default)]

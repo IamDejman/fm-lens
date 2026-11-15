@@ -89,7 +89,7 @@ pub use mass::{Operation, Plan, Planned, Skipped};
 pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan, Lifted};
 pub use mood::{ConcernsEnded, ConcernsPlan, HappinessHold};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
-pub use officials::OfficialSummary;
+pub use officials::{OFFICIAL_ATTRIBUTES, OfficialSummary};
 pub use players::{
     Base, Division, Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations,
     read_players,

@@ -1513,6 +1513,16 @@ export const tr: Strings = {
       nation: "Ülke",
     },
     reputation: "İtibar",
+    attributes: "Hakemlik",
+    attributeNames: {
+      allowing_flow: "Oyunu akıcı tutma",
+      discipline: "Disiplin",
+      important_matches: "Önemli maçlar",
+      pressure: "Baskı",
+      refereeing: "Hakemlik",
+      running_line: "Yan hakemlik",
+      time_keeping: "Zaman tutma",
+    } as Record<string, string>,
   },
 
   competitionList: {

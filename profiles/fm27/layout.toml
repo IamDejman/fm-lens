@@ -560,6 +560,10 @@ date_of_birth = 0x60
 current_ability = 0x11C
 potential_ability = 0x11E
 reputation = 0x120
+# The seven refereeing attributes, right after the reputation, in the order the game's own property setter writes
+# them ('Oalf', 'Odis', 'Oimm', 'Oprs', 'Oref', 'Orun', 'Otkp'; docs/recon/fm27-competitions-awards-officials.md).
+# Read on Steam 26577676: Michael Oliver 15, 10, 15, 14, 16, 9, 5 and Szymon Marciniak 16, 15, 19, 18, 18, 15, 15.
+attributes = 0x122
 uid = 0x144
 
 # What a nation's object holds beyond its UID and name, as on macOS but 8 bytes sooner from the capital on, and its
