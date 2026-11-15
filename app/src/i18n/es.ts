@@ -1983,6 +1983,12 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.0": [
+        "Renombra un club: el nombre nuevo se mantiene al reiniciar FM. Usar nombres originales devuelve el anterior.",
+        "Acepta el puesto de una selección además del de tu club (Windows).",
+        "Deshaz Cancelar traspaso en un fichaje que acordó FM Lens.",
+        "Los candidatos juveniles aparecen en la sub-18.",
+      ],
       "1.0.0": [
         "Una pestaña Ojeo para cada jugador: mejores roles, probabilidad de desarrollo y Buscar parecidos.",
         "Mejores jugadores y Mejor para ordenan jugadores y personal. Una ficha de ojeo aparece sobre FM: haz clic en ella para abrir al jugador.",
