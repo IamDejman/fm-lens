@@ -335,8 +335,8 @@ checked in FM.
 Competition and award editing, making or editing a promise and youth-intake
 records do not yet have validated editing layouts in this fork. Moving your
 manager to a national team or out of a job, adding a ban, adding a
-like, dislike or language on the Macs, player registration, career plans beyond a planned retirement, staff
-scouting knowledge, a tendency a member of staff does not hold, instalments
+like, dislike or language on the Macs, changing player registration, career plans or staff scouting knowledge
+(shown on Windows, read-only), a tendency a member of staff does not hold, instalments
 and buy-backs, ownership, kits
 and competition rule behavior also remain research work. These cannot be
 enabled by adding inputs or reusing a Windows offset on macOS. Transfers are

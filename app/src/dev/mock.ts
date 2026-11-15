@@ -326,6 +326,8 @@ function details(player: PlayerSummary): PlayerDetails {
     tieRoom: tieRoomOf(player),
     preferences: currentPreferences(false, player.uid),
     languages: currentLanguages(false, player.uid),
+    registered: player.club ? player.uid % 4 !== 0 : null,
+    plans: player.uid % 5 === 0 ? [{ target: "nation", name: "Spain", uid: 796 }] : [],
     clauseRoom: player.club ? clauseRoomOf(player.uid) : 0,
     loan: loanOf(player),
     workPermits: workPermitsOf(player),
@@ -1498,6 +1500,10 @@ function staffDetails(member: StaffSummary): StaffDetails {
     registrationAnytime: member.isHuman ? false : null,
     languages: currentLanguages(true, member.uid),
     preferences: currentPreferences(true, member.uid),
+    knowledge: [
+      { nation: "England", nationUid: 765, level: 100 },
+      { nation: "France", nationUid: 769, level: 30 + (member.uid % 60) },
+    ],
     coachingLicence: member.uid % 9,
     formations: [[29, 4, 28, 3][member.uid % 4], [22, 4, 0, 32][member.uid % 4]],
     tendencies: [85, 82, 63, 96, 76, 51, 67, 21]

@@ -32,7 +32,7 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { StaffContract, StaffDetails, StaffSummary, Tendency } from "./types";
+import type { NationKnowledge, StaffContract, StaffDetails, StaffSummary, Tendency } from "./types";
 import { EditorContext, useProfileEditing } from "./useProfileEditing";
 
 // Attributes in the order FM lists them, by group.
@@ -316,6 +316,25 @@ function ContractTab({ details, canChangeJob }: { details: StaffDetails; canChan
   );
 }
 
+/** What he knows of each nation, in the order FM lists them. Not there where the editor reads none. */
+function KnowledgeGroup({ knowledge }: { knowledge: NationKnowledge[] }) {
+  if (knowledge.length === 0) {
+    return null;
+  }
+  return (
+    <section className="profile-group">
+      <h3>{profileText.scoutingKnowledge}</h3>
+      <dl className="stats">
+        {knowledge.map((known) => (
+          <Fact key={known.nationUid} label={known.nation ?? profileText.none}>
+            {known.level}
+          </Fact>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 /** His reputation, the languages he speaks and the people and clubs he likes or dislikes. */
 function CareerTab({ details }: { details: StaffDetails }) {
   const person = { uid: details.uid, staff: true, name: details.name };
@@ -333,6 +352,7 @@ function CareerTab({ details }: { details: StaffDetails }) {
         <ReputationBars reputation={details.reputation} />
       </section>
       <LanguagesGroup languages={details.languages} person={person} />
+      <KnowledgeGroup knowledge={details.knowledge} />
       <PreferencesGroup preferences={details.preferences} person={person} />
     </>
   );

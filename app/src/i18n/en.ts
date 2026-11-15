@@ -910,6 +910,15 @@ export const en = {
     retires: "Plans to retire",
     preferences: "Likes and dislikes",
     languages: "Languages",
+    /** Whether a player is registered to play in his team's league. */
+    registration: "League squad",
+    registered: "Registered",
+    notRegistered: "Not registered",
+    /** What the game has a player aim for, each plan under what it is. */
+    plans: "Career plans",
+    planTargets: { club: "Club", continent: "Continent", nation: "Nation", competition: "Competition" },
+    /** What a member of staff knows of each nation, 0 to 100, under FM's name for it. */
+    scoutingKnowledge: "Scouting knowledge",
     /**
      * How well a person speaks a language (0 to 10), in the words of FM's profile: 7 to 10 fluent (10 too, as for
      * Gyökeres' English), 5 good, 3 and 4 basic. FM leaves out a language at 1.

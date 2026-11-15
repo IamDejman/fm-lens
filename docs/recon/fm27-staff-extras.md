@@ -15,7 +15,7 @@ Offsets are from the staff object start unless "person block" is named. The pers
 |---|---|---|
 | 1. Coaching licence | found (byte and encoding), labels need the screen | high for the byte, low for labels |
 | 2. Formations, tendencies | partial | medium for bytes, low for names |
-| 3. Nation and region knowledge | not found | - |
+| 3. Nation and region knowledge | nations found on Windows (read); regions not found | high for nation and level |
 | 4. Staff offsets against FM getters | found, with two gaps | high |
 | 5. Job and club change | found (existing FM Lens plan is sound) | medium-high |
 | 6. Human manager relations | partial (format known, labels not) | medium |
@@ -129,15 +129,25 @@ would grow the game's list and is not offered.
 
 ## 3. Knowledge (nation and region)
 
-Status: not found.
+Status: nation knowledge found on Windows (Steam 26577676, 15 November 2026). Read only. Regions not found.
 
-- FM has pool allocators `KNOWLEDGE` (40-byte elements) and `KNOWLEDGE_ARRAY` (24-byte), and the
-  human manager's FOG_OF_WAR singleton (`game_plugin+0x56A8430`, array at `+0x18` indexed by the
-  manager's u32 at `+0x3E4`) holds a 100 at `+8` of per-person records. This is only a lead.
-- No staff-object pointer to a KNOWLEDGE array was identified. No getter code for nation
-  knowledge was matched in `ACTUAL_NON_PLAYER` or `ACTUAL_PERSON`.
-- Needs the screen: a scout's knowledge of a nation, plus a scan of the scout's object pointers
-  for a 24-byte-element array. Not done here.
+- The pointer at `+0xB0` of a member of staff's object (0x50 before his person block at `+0x100`) leads to a
+  `KNOWLEDGE_ARRAY`: the (begin, end, capacity) of pointers, kept by the nation's id, to 40-byte `KNOWLEDGE`
+  entries.
+- An entry: `+0x00` pointer to the nation's national team container (the nation is its pointer at `+0x170`),
+  `+0x08` a pointer or 0 (not made sense of), `+0x20` a date (year in the high half, day in the low), `+0x24` the
+  level, a u8 from 0 to 100 (the game clamps it at 0x2713229), `+0x25` unknown. A nation without an entry he knows
+  nothing of.
+- Checked against FM's Scouting Knowledge panel on Txiki Begiristain's profile (18 July 2028): FM lists Spain
+  Complete, England Exceptional, France Extensive, then Germany, Italy, Portugal and Argentina Very Good; the
+  entries read Spain 100, England 73, France 57 and the four at 30, in the same order (best known first, ties as
+  the game keeps them). Read and not compared: Juni Calafat (Spain 100, Brazil 100, five at 30), Joao Amaral
+  (Portugal 100, Spain 100, Brazil 90, England 60, Argentina 60, four at 30), two staff with England 100 alone.
+- Not found: knowledge of regions, a club's total, what turns a level into FM's word, and how the game raises a
+  level. A member of staff whose object is laid out as a player's (shift 0x340) is not read. The Macs and Game
+  Pass are not read. Nothing is edited.
+- The human manager's FOG_OF_WAR singleton (`game_plugin+0x56A8430` on the Mac build, array at `+0x18` indexed by
+  the manager's u32 at `+0x3E4`) is something else: per-person records, not nations.
 
 ## 4. Staff offsets checked against FM's own setter
 

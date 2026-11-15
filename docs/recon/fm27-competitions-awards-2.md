@@ -131,8 +131,31 @@ Rule codes that matter here:
 | Loan rules | loan_rules | lnrl |
 | Daylight offside rule | daylight_offside_rule | DaOr |
 
-Goal-line technology: no rule key and no string exists in the plugin. Status: not found. It is
-probably not a competition rule in FM27, or it is folded into the VAR block.
+Goal-line technology: no rule key and no string exists in the plugin. Status: shown by FM per
+competition, storage not found.
+
+FM does show it (Windows Steam, 15 November 2026): a competition's Rules page has a "Technology
+Rules" block under General Competition Rules, with one line for VAR and one for goal-line
+technology. Read there:
+
+| Competition | VAR | Goal-line technology |
+| --- | --- | --- |
+| Sky Bet Championship | no line | yes |
+| Spanish First Division | yes | yes |
+| European Championship Qualifying | yes | yes |
+
+So both are per competition, and VAR and goal-line technology are separate. Compared with the
+running seasons in memory:
+
+- LEAGUE_SETTINGS `+0x176` (Premier League 1, Championship 0, Spain 0, Bundesliga 1, Ligue 1 0,
+  Euro qualifying 1) matches neither column: ruled out.
+- ACTUAL_COMP `+0x4A9` is 1 for the Championship alone of 14 running seasons read, and `+0x4AF`
+  is 3 there and 0xFF elsewhere. A guess only: more likely its play-offs than its lack of VAR.
+- No competition without goal-line technology was read in FM, so no byte can be matched to it yet.
+  Next step: read FM's page for a running competition without it, then compare the same objects.
+
+The same LEAGUE_SETTINGS comparison gives `+0xD2` as the points taken for administration: the
+Championship's 12 matched FM's "12-point penalty deduction" (Premier League 9, not checked).
 
 Subs rule set names (strings at RVA 0x5293600..0x52939a0): three_from_three, three_from_five,
 three_from_seven, three_and_gk_from_five, ..., five_from_eight, five_from_nine, five_from_ten,

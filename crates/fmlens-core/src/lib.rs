@@ -23,6 +23,7 @@ mod game_calls;
 mod graphics;
 mod health;
 mod index;
+mod knowledge;
 mod languages;
 mod loans;
 mod mass;
@@ -30,6 +31,7 @@ mod medical;
 mod mood;
 mod national;
 mod officials;
+mod plans;
 mod players;
 mod position_records;
 mod profile;
@@ -83,6 +85,7 @@ pub use game_calls::{
 pub use graphics::{GraphicsCounts, GraphicsIndex, Picture};
 pub use health::{Check, CheckResult, Health, Lock, STRUCTURE};
 pub use index::{Listed, SearchIndex};
+pub use knowledge::{MOST_KNOWLEDGE, NationKnowledge};
 pub use languages::{LEAST_LEVEL, Language, LanguageChoice, LanguagePlan, LanguageSet, MOST_LEVEL};
 pub use loans::LoanTerms;
 pub use mass::{Operation, Plan, Planned, Skipped};
@@ -90,6 +93,7 @@ pub use medical::{Ban, HealPlan, Healed, Injury, InjuryPlan, InjurySet, LiftPlan
 pub use mood::{ConcernsEnded, ConcernsPlan, HappinessHold};
 pub use national::{NationDetails, NationLanguage, NationalJob, NationalTeam, Person, WomenFootball};
 pub use officials::{OFFICIAL_ATTRIBUTES, OfficialSummary};
+pub use plans::{CareerPlan, PlanTarget};
 pub use players::{
     Base, Division, Nation, NationSummary, PLAYABLE_RATING, PlayerIndex, PlayerSummary, nation_summaries, nations,
     read_players,

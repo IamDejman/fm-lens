@@ -83,6 +83,53 @@ pub struct Layout {
     /// Players' familiarity with their team's tactic; only in the layouts it has been traced in.
     #[serde(default)]
     pub tactics: Option<TacticsLayout>,
+    /// A player's registration for his team's league; only in the layouts it has been checked in.
+    #[serde(default)]
+    pub registration: Option<RegistrationLayout>,
+    /// A player's career plans; only in the layouts they have been traced in.
+    #[serde(default)]
+    pub career_plan: Option<CareerPlanLayout>,
+    /// What a member of staff knows of each nation; only in the layouts it has been traced in.
+    #[serde(default)]
+    pub knowledge: Option<KnowledgeLayout>,
+}
+
+/// A player's registration to play in his team's league: one of his relations (see [`RelationLayout`]), an entry that
+/// points at the team with these codes. The game's `PLAYER_IS_REGISTERED_TO_PLAY` rule looks for the same entry.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RegistrationLayout {
+    /// `u8` at the relation's `target_kind`: a team.
+    pub target_kind: u8,
+    /// `u8` at its `relation`: registered to play.
+    pub relation: u8,
+    /// `u8` at its `value`: the team's league.
+    pub league: u8,
+}
+
+/// A player's career plans. The pointer at `list` in the player, shifted with his person block, leads to the
+/// `(begin, end)` of pointers to plans of `size` bytes: a pointer to what he aims for at `target`, and at `kind` the
+/// `u8` that says what it is (3 a club, 5 a continent, 9 a nation, by its national team container, 25 a
+/// competition).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CareerPlanLayout {
+    pub list: u64,
+    pub target: u64,
+    pub kind: u64,
+    pub size: u64,
+}
+
+/// What a member of staff knows of nations. The pointer at `list` in his object, before his person block, leads to
+/// the `(begin, end)` of pointers to entries of `size` bytes: a pointer to the nation's national team container at
+/// `nation`, and the `u8` at `level`, 0 to 100.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct KnowledgeLayout {
+    pub list: u64,
+    pub nation: u64,
+    pub level: u64,
+    pub size: u64,
 }
 
 /// A player's familiarity with his team's tactic, which the game's editor raises to the most for a team
