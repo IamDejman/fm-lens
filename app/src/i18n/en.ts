@@ -3038,9 +3038,10 @@ export const en = {
     checking: "Checking the transfer…",
     /** The transfer can be cancelled; `dates` are the days he was to join on. */
     ready: (dates: string) => `Due ${dates}`,
+    /** Under it, for a transfer FM Lens did not agree itself in this game. */
+    permanent: "It can't be undone.",
 
     // The foot
-    hint: "It can't be undone.",
     confirm: "Cancel transfer",
     cancelling: "Cancelling…",
     cancel: "Keep it",

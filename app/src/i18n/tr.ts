@@ -186,6 +186,7 @@ const errors: ErrorTexts = {
   "move.sameClub": () => "Oyuncu zaten bu kulüpte.",
   "move.noNationalTeam": () => "Bu ülkenin böyle bir milli takımı yok.",
   "move.managesAlready": () => "Bu milli takımı zaten yönetiyorsun.",
+  "move.transferPending": () => "Oyuncunun ileri tarihli bir transferi zaten var.",
   "move.onLoan": () => "Oyuncu kiralık; kiralık oyuncular henüz taşınamıyor.",
   "move.playerCoach": () => "Oyuncu-antrenörler taşınamıyor: aynı zamanda personel olarak da çalışıyorlar.",
   "move.unusualContract": () => "Oyuncunun sözleşmesi olağan bir oyuncu sözleşmesi değil.",
@@ -2707,9 +2708,9 @@ export const tr: Strings = {
     from: "Katılacağı kulüp",
     checking: "Transfer kontrol ediliyor…",
     ready: (dates) => `Tarih: ${dates}`,
+    permanent: "Geri alınamaz.",
 
     // The foot
-    hint: "Geri alınamaz.",
     confirm: "Transferi iptal et",
     cancelling: "İptal ediliyor…",
     cancel: "İptal",

@@ -1068,6 +1068,11 @@ export interface FutureTransfer {
   joins: FmDate | null;
 }
 
+/** A move that Cancel transfer would cancel, and whether undoing brings it back: only a signing FM Lens agreed does. */
+export interface PlannedCancel extends FutureTransfer {
+  undoable: boolean;
+}
+
 /** One career plan of a player: the club, nation, competition or continent the game has him aim for. */
 export interface CareerPlan {
   target: "club" | "continent" | "nation" | "competition";

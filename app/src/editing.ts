@@ -13,7 +13,6 @@ import type {
   FieldEdit,
   FieldValues,
   FmDate,
-  FutureTransfer,
   InjuryKind,
   LoggedChange,
   MassEntity,
@@ -24,6 +23,7 @@ import type {
   ManagerPreview,
   LoanEndPreview,
   MovePreview,
+  PlannedCancel,
   MoveTerms,
   Nation,
   PreferenceKind,
@@ -481,7 +481,7 @@ export const endLoan = (uid: number) => call<LoggedChange>("end_loan", { uid });
 
 /** The moves FM agreed for the player on a later day, as cancelling them finds them; rejects when they cannot be. */
 export const planCancelFutureTransfers = (uid: number) =>
-  call<FutureTransfer[]>("plan_cancel_future_transfers", { uid });
+  call<PlannedCancel[]>("plan_cancel_future_transfers", { uid });
 
 /** Has the game cancel every move it agreed for the player on a later day. Nothing undoes it. */
 export const cancelFutureTransfers = (uid: number) => call<LoggedChange[]>("cancel_future_transfers", { uid });

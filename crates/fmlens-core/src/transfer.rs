@@ -173,6 +173,8 @@ pub enum MoveError {
     },
     /// A transfer agreed for a later day is no longer waiting for it: the game has made it or cancelled it.
     NotPending,
+    /// The player has a transfer agreed for a later day already.
+    TransferPending,
     /// A player-coach, who works as staff too.
     PlayerCoach,
     /// The contract does not point back at the player, is not a player's, or names two teams.
@@ -330,6 +332,7 @@ impl fmt::Display for MoveError {
             MoveError::NotPending => {
                 f.write_str("the transfer is no longer waiting for its day: FM has made it or cancelled it")
             }
+            MoveError::TransferPending => f.write_str("the player has a transfer agreed for a later day already"),
             MoveError::PlayerCoach => f.write_str("player-coaches cannot be moved: they work as staff too"),
             MoveError::UnusualContract => f.write_str("the player's contract is not a plain player's contract"),
             MoveError::HumanClub => f.write_str("he plays for your club; transfer him in FM"),
@@ -448,6 +451,7 @@ impl Coded for MoveError {
             MoveError::FutureFee => "loan.futureFee",
             MoveError::JoinedOther { .. } => "loan.joinedOther",
             MoveError::NotPending => "move.notPending",
+            MoveError::TransferPending => "move.transferPending",
             MoveError::PlayerCoach => "move.playerCoach",
             MoveError::UnusualContract => "move.unusualContract",
             MoveError::HumanClub => "move.humanClub",
