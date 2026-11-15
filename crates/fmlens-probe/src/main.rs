@@ -345,6 +345,8 @@ enum Command {
         /// The club's UID.
         club: u32,
     },
+    /// Count how clubs are owned: each ownership code, how many clubs hold it and the best known of them.
+    Owners,
     /// Count the tendencies staff hold: how many lists read, how often each value comes, and who holds VALUE.
     Tendencies {
         /// List the ablest staff who hold a tendency at this value.
@@ -986,6 +988,7 @@ fn run(cli: Cli) -> Result<()> {
             Ok(())
         }
         Command::Registered { club } => registered(&connect(process, ArraySource::ProfileFirst)?, club),
+        Command::Owners => owners(&connect(process, ArraySource::ProfileFirst)?),
         Command::Tendencies { value } => tendencies(&connect(process, ArraySource::ProfileFirst)?, value),
         Command::Ties { uid } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
@@ -2793,6 +2796,23 @@ fn staff(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
 
 /// The players of the club `club` registered to play in their team's league, to set against FM's Squad Registration
 /// page; and how many players in the game have career plans, plain and shifted, as a check of that layout.
+fn owners(session: &Session) -> Result<()> {
+    let (c, i) = (&session.layout.club, &session.layout.club_info);
+    let offset = i.ownership.context("this build's layout does not place a club's ownership")?;
+    let mut codes: BTreeMap<u8, Vec<(u16, String)>> = BTreeMap::new();
+    for club in session.clubs()? {
+        let info = session.process.read_u64(club.address + c.info).unwrap_or(0);
+        let Some(code) = session.process.read_bytes(info + offset, 1).ok().map(|bytes| bytes[0]) else { continue };
+        codes.entry(code).or_default().push((club.reputation.unwrap_or(0), club.name));
+    }
+    for (code, mut clubs) in codes {
+        clubs.sort_by_key(|club| std::cmp::Reverse(club.0));
+        let best: Vec<&str> = clubs.iter().take(12).map(|(_, name)| name.as_str()).collect();
+        println!("{code}: {} clubs: {}", clubs.len(), best.join(", "));
+    }
+    Ok(())
+}
+
 fn registered(session: &Session, club: u32) -> Result<()> {
     let players = session.players()?;
     let (mut yes, mut no, mut unknown) = (Vec::new(), 0, 0);
@@ -4175,12 +4195,34 @@ fn club(session: &Session, uid: u32) -> Result<()> {
     println!("  traits         {}", traits.join(", "));
     let facilities: Vec<String> = d.facilities.iter().map(|(k, v)| format!("{k} {v}")).collect();
     println!("  facilities     {}", facilities.join(", "));
+    let ownership = d.ownership.map_or_else(
+        || "-".to_owned(),
+        |code| match fmlens_core::OWNERSHIP.get(usize::from(code).wrapping_sub(1)) {
+            Some(name) => format!("{code} {name}"),
+            None => code.to_string(),
+        },
+    );
+    println!("  ownership      {ownership}");
     match &d.finances {
         Some(f) => println!(
             "  finances       balance £{}, transfer budget £{}, wage budget £{} p/w (total £{}), ticket £{:.0}",
             f.balance, f.transfer_budget, f.wage_budget, f.total_wage_budget, f.ticket_price
         ),
         None => println!("  finances       not kept for this club"),
+    }
+    for (label, pick) in
+        [("income", (|i| i.this_season) as fn(&fmlens_core::Income) -> i32), ("last season", |i| i.last_season)]
+    {
+        let sources: Vec<String> =
+            d.income.iter().filter(|i| pick(i) != 0).map(|i| format!("{} £{}", i.source, pick(i))).collect();
+        if !sources.is_empty() {
+            println!("  {label:<14} {}", sources.join(", "));
+        }
+    }
+    if !d.kits.is_empty() {
+        let kits: Vec<String> =
+            d.kits.iter().map(|k| format!("{} {} {} on {}", k.kit, k.part, k.trim, k.main)).collect();
+        println!("  kits           {}", kits.join(", "));
     }
     match &d.stadium {
         Some(s) => println!(

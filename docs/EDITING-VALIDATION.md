@@ -4284,3 +4284,52 @@ shows as not registered; career plans against anything in FM; the four words
 FM uses for a knowledge level against the numbers, beyond the one scout;
 knowledge of regions and a club's total; the Macs and Game Pass, where no
 layout places any of the three, so nothing shows there; editing.
+
+## Ownership, income and kit colours on Windows (15 November 2026)
+
+Three readers, nothing written. A club's Overview shows its ownership type
+under Club info, its income by source for this season and for last season
+under Finances, and the main and trim colours of the shirt, shorts and socks
+of each kit beside the kit's picture. Steam build 26577676, the packaged app,
+a copied career on 18 July 2028. FM shows dollars at 1.3476 to the pound; the
+app showed pounds.
+
+| Check | FM Lens | FM |
+|---|---|---|
+| Arsenal, ownership | Private company | FM has no screen for the type |
+| Chelsea's women's club, ownership | Consortium, private | FM has no screen for the type |
+| Arsenal, gate receipts last season | £24,760,246 | Income page, Last Season: $33,367,379 |
+| Arsenal, season tickets last season | £67,946,659 | $91,566,213 |
+| Arsenal, TV revenue last season | £131,333,156 | $176,987,064 |
+| Arsenal, merchandising last season | £52,365,353 | $70,568,548 |
+| Arsenal, players sold last season | £162,877,961 | $219,497,444 |
+| Arsenal, prize money last season | £142,167,646 | $191,587,829 |
+| Arsenal, interest last season | £1,841,264 | $2,481,322 |
+| Arsenal, sponsorship last season | £159,391,511 | $214,799,038 |
+| Arsenal, match day income last season | £3,374,776 | $4,547,912 |
+| Arsenal, grants last season | £786,808 | $1,060,317 |
+| Arsenal, fundraising last season | £5,388,853 | $7,262,121 |
+| Arsenal, other last season | £427,615,582 | $576,262,907 |
+| Arsenal, corporate facilities last season | £10,658,844 | $14,364,061 |
+| Arsenal, loan income last season | £1,613,898 | $2,174,920 |
+| Arsenal, the fourteen sources summed by the probe | this season £493.4M, last season £1,192M | Income page totals: "$664M" and "$1.6B" |
+| Arsenal's kits | Home red and white, Away dark with gold, Third gold with dark | Club Profile, Uniforms: red and white, dark with gold, gold |
+| Chelsea's kits, read by the probe | Home #2040C0 with #F0D050, Away #002020 with #E0C020, Third #F8F8F8 with #202060 | Uniforms: blue, near black with yellow, white with navy |
+
+The probe's slots for this month matched FM's This Month rows too (gate
+receipts, season tickets, TV revenue, merchandising, players sold, interest,
+grants and other). The probe read Real Madrid, Barcelona and a club with no
+finance record and no ownership type (Casarano), which shows kits and neither
+of the other two. Ownership across the career: 13,393 clubs with none, then
+2,110, 475, 4,331, 790, 205, 69, 240 and 62 for the eight types. The saves and
+the main career's hash were unchanged afterwards.
+
+Not run: any ownership type against FM or an outside source in the app beyond
+the census, and the two rarest types rest on elimination
+(recon/fm27-club-ownership-income-kits.md); This Season's rows one by one;
+investments, affiliate club and solidarity payments, which were $0 and are
+not read; spending by kind; a club in another currency setting; kits of a
+club other than Arsenal and Chelsea against FM, goalkeeper kits, kit styles
+and national teams; a kit FM changes at a new season; the Macs and Game Pass,
+where no layout places any of the three, so nothing shows there; editing.
+Staff allowances and club vision are not read on any platform.

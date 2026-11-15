@@ -146,8 +146,8 @@ Arsenal at 0x7b8a8008b0: balance +0x0C 190,893,144; transfer budget +0x7C4
 1,048,517; wage budget +0x814 5,406,587; total wage budget +0x808 6,503,366.
 Many i32 figures at 0x27C..0x6A4 (+0x548 427,492,585; +0x4CC 375,345,509;
 +0x55C 154,937,307; +0x560 158,669,426; +0x678 155,000,000; +0x7FC 792,400,000;
-+0x7CC 38,175,000; +0x7D4 152,700,000). Income streams are not mapped; the
-FM finance screen values are needed to label them.
++0x7CC 38,175,000; +0x7D4 152,700,000). Income by source was mapped on Windows
+on 15 November 2026: see fm27-club-ownership-income-kits.md.
 
 ### Human manager details
 
@@ -216,6 +216,10 @@ None of these were checked against FM's contract screen, so treat the labels as 
   (Blu-neri Milano), Harriman-Annous (Huddersfield).
 
 ## 6. Not found
+
+Found since on Windows (15 November 2026): kit colours, the ownership type and
+the vision objective records, in fm27-club-ownership-income-kits.md. The rest
+of this section is as it stood.
 
 Kits and colours (RGB_COLOUR and MATCH_TEAM_KIT_SYSTEM classes exist; no field in
 the club or team subtrees, guess: stored outside), ownership and benefactor,

@@ -1409,6 +1409,7 @@ export const tr: Strings = {
   clubProfile: {
     kits: "Formalar",
     kitNames: { home: "İç saha", away: "Deplasman", third: "Üçüncü" },
+    kitParts: { shirt: "Forma", shorts: "Şort", socks: "Çorap" },
     // Header
     womensClub: "Kadın kulübü",
     founded: (year) => `Kuruluş ${year}`,
@@ -1457,6 +1458,35 @@ export const tr: Strings = {
     info: "Kulüp bilgisi",
     seasonTickets: "Sezonluk biletler",
     socialMedia: "Sosyal medya takipçileri",
+    ownership: "Sahiplik",
+    ownershipKinds: [
+      "Özel şirket",
+      "Halka açık şirket",
+      "Üyelerin, seçimli",
+      "Üyelerin, seçimsiz",
+      "Konsorsiyum, özel",
+      "Konsorsiyum, halka açık",
+      "Üyelerin halka açık şirketi, seçimli",
+      "Üyelerin halka açık şirketi, seçimsiz",
+    ],
+    incomeThisSeason: "Bu sezonun geliri",
+    incomeLastSeason: "Geçen sezonun geliri",
+    incomeSources: {
+      gate_receipts: "Maç bileti geliri",
+      season_tickets: "Sezonluk biletler",
+      tv: "TV geliri",
+      merchandising: "Ürün satışı",
+      players_sold: "Satılan oyuncular",
+      prize_money: "Para ödülü",
+      interest: "Faiz",
+      sponsorship: "Sponsorluk",
+      match_day: "Maç günü geliri",
+      grants: "Hibeler",
+      fundraising: "Bağış toplama",
+      other: "Diğer",
+      corporate: "Kurumsal tesisler",
+      loans: "Kiralama geliri",
+    },
   },
 
   clubList: {
