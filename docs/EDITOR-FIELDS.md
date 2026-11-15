@@ -323,8 +323,9 @@ bridge, or FM Lens edits a list or record. These include work permits, injuries,
 transfers, swaps, releases, free-agent signings, Max tactics, secondary nationalities and homegrown ties,
 contract clauses and a planned retirement. They also include an injury's length
 or removal, lifting bans, staff job changes and club moves, a board member's
-seat swap (Windows), a person's likes and dislikes (change a strength, remove
-one, or point one at another club or person), a language's level or removal,
+seat swap (Windows), a person's likes and dislikes (add one on Windows, change
+a strength, remove one, or point one at another club or person), a language's
+level or removal,
 closing an open promise, cancelling a future transfer, and your manager's
 Change club, which has no Undo. ROADMAP.md lists each one and what has been
 checked in FM.
@@ -333,8 +334,8 @@ checked in FM.
 
 Competition and award editing, making or editing a promise and youth-intake
 records do not yet have validated editing layouts in this fork. Moving your
-manager to a national team or out of a job, adding a like, dislike, language or
-ban, player registration, career plans beyond a planned retirement, staff
+manager to a national team or out of a job, adding a language or ban, adding a
+like or dislike on the Macs, player registration, career plans beyond a planned retirement, staff
 scouting knowledge, a tendency a member of staff does not hold, instalments
 and buy-backs, ownership, kits
 and competition rule behavior also remain research work. These cannot be
