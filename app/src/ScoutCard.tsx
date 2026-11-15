@@ -289,7 +289,7 @@ function StaffCard({ details, onOpen }: { details: StaffDetails; onOpen: () => v
       name={details.name}
       onOpen={onOpen}
       facts={[
-        job !== null && <Part>{jobLabel(job)}</Part>,
+        job !== null && jobLabel(job),
         details.club !== null ? (
           <WithPicture
             inline
@@ -317,7 +317,7 @@ function ClubCard({ details, onOpen }: { details: ClubDetails; onOpen: () => voi
       facts={[
         nation(details.nation, details.nationUid),
         details.founded !== null && <Part>{clubProfileText.founded(details.founded)}</Part>,
-        details.stadium?.name && <Part>{details.stadium.name}</Part>,
+        details.stadium?.name,
       ]}
       numbers={
         <>
