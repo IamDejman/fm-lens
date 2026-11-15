@@ -134,6 +134,9 @@ enum Command {
         /// How many to print.
         #[arg(long, default_value_t = 15)]
         limit: usize,
+        /// Also print each one's running season: its stages and their substitutions.
+        #[arg(long)]
+        season: bool,
     },
     /// List the awards, by prestige; with a name, only those whose name or competition holds it
     Awards {
@@ -894,8 +897,8 @@ fn run(cli: Cli) -> Result<()> {
         Command::Cohesion { uid } => cohesion(&connect(process, ArraySource::ProfileFirst)?, uid),
         Command::Tactics { uid, team } => tactics(&connect(process, ArraySource::ProfileFirst)?, uid, team),
         Command::Officials { name, limit } => officials(&connect(process, ArraySource::ProfileFirst)?, name, limit),
-        Command::Competitions { name, limit } => {
-            competitions(&connect(process, ArraySource::ProfileFirst)?, name, limit)
+        Command::Competitions { name, limit, season } => {
+            competitions(&connect(process, ArraySource::ProfileFirst)?, name, limit, season)
         }
         Command::Awards { name, limit } => awards(&connect(process, ArraySource::ProfileFirst)?, name, limit),
         Command::InjuryKinds { name } => {
@@ -3927,7 +3930,7 @@ fn officials(session: &Session, name: Option<String>, limit: usize) -> Result<()
     Ok(())
 }
 
-fn competitions(session: &Session, name: Option<String>, limit: usize) -> Result<()> {
+fn competitions(session: &Session, name: Option<String>, limit: usize, season: bool) -> Result<()> {
     let started = Instant::now();
     let mut all = session.competitions()?;
     println!(
@@ -3952,6 +3955,25 @@ fn competitions(session: &Session, name: Option<String>, limit: usize) -> Result
             c.reputation,
             if c.women { "  women" } else { "" }
         );
+        if season {
+            match session.season_stages(c)? {
+                None => println!("      season not read"),
+                Some(stages) if stages.is_empty() => println!("      no stages"),
+                Some(stages) => {
+                    for stage in stages {
+                        match stage.subs {
+                            Some(subs) => {
+                                println!(
+                                    "      {:<24} subs allowed {:>2}  named {:>2}",
+                                    stage.kind, subs.allowed, subs.named
+                                )
+                            }
+                            None => println!("      {}", stage.kind),
+                        }
+                    }
+                }
+            }
+        }
     }
     Ok(())
 }

@@ -170,6 +170,22 @@ pub struct CompetitionLayout {
     pub actual: Option<u64>,
     #[serde(default)]
     pub rules: Option<u64>,
+    /// Where a running season keeps its stages and their substitutions.
+    #[serde(default)]
+    pub season: Option<SeasonLayout>,
+}
+
+/// A competition's running season. Its loaded rule data (`ACTUAL_COMP`) holds at `stages` the `(begin, end)` of
+/// pointers to the season's stages (`sicomps::LEAGUE_STAGE`, `CUP_STAGE`...). A stage points back at its competition
+/// at `competition`. A league stage points at its settings (`sicomps::LEAGUE_SETTINGS`) at `league_settings`, and
+/// they hold at `subs_rules` a `u8`: the number of FM's substitution rule the stage plays by.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SeasonLayout {
+    pub stages: u64,
+    pub competition: u64,
+    pub league_settings: u64,
+    pub subs_rules: u64,
 }
 
 /// A database table read as the competitions' is ([`CompetitionLayout`]): its objects of the mangled class `class`,

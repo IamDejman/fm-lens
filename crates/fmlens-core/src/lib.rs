@@ -61,7 +61,7 @@ pub use clubs::{
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
-pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue};
+pub use competitions::{AwardSummary, CompetitionRule, CompetitionSummary, RuleValue, SeasonStage, SubsRules};
 pub use date::FmDate;
 pub use details::{
     ATTRIBUTE_GROUPS, Attribute, Clause, CompetitionBonus, Contract, International, PERSONALITY, POSITIONS,
