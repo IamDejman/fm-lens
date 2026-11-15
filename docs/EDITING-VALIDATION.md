@@ -4527,9 +4527,10 @@ relaunch, Game Pass, and the Macs.
 Works in FM and is kept when the save is loaded again, for every career in
 that FM install, through a name change file FM Lens writes in FM's folder. A
 club's name and short name are renamed from
-the Rename button in the club's profile (`rename_club`), on macOS Apple Silicon
-Steam build 26577676 only, where `[club_names]` is in the layout. Intel and
-Windows have no `[club_names]`, so the button is not shown there.
+the Rename button in the club's profile (`rename_club`), on Steam build
+26577676 on macOS and Windows, where `[club_names]` is in the layout. Intel
+Macs use the macOS layout, so the button shows there too, but it has not been
+checked in FM there.
 
 What was read from the running game (Apple Silicon, read-only): a club holds a
 pointer to its name at `+0xC0` and to its short name at `+0xC8`. The game keeps
@@ -4542,7 +4543,7 @@ by UID in 0x30-byte records that begin with the pointer and hold the UID at
 `+0x10`.
 
 How the rename is made: FM Lens sets aside memory in the game
-(`mach_vm_allocate`), writes the new name there in the game's layout with a
+(`mach_vm_allocate`, `VirtualAllocEx` on Windows), writes the new name there in the game's layout with a
 count of holders (`0x40000000`) the game never brings to zero, reads it back,
 and points the club at it. For a short name the list's record is found by
 scanning the game's data for the old pointer with the club's UID after it; the
@@ -4638,4 +4639,19 @@ file. FM quit, started and loaded the save again: FM Lens read "Ipswich
 Wanderers", and the dialog showed no "Use original names". The seven other
 career files' hashes were unchanged.
 
-Not run: Intel and Windows (no `[club_names]` there).
+Windows (read-only, Steam build 26577676): the club holds its name at `+0xC0`
+and its short name at `+0xC8`, as on macOS, and the text's record is the same
+but for the gap, `0x15e`. Ipswich Wanderers had one text of size 26 with three
+holders, used as its name and its short name. FM reads name change files from
+`shared\data\database\db\<newest>\lnc\all` beside `fm.exe`, where every
+user may write, so there is no App Management step and no message for it.
+
+Checked in FM (15 November, Windows Server 2022, release build, on the copy
+FM-Lens-YouthPost-2026-11-15): renaming Ipswich Wanderers to "Leven Athletic",
+short name "Leven", showed in FM Lens at once and wrote the file as on macOS.
+FM was closed without saving, started, and the copy loaded: FM Lens read
+"Leven Athletic". "Use original names" gave back "Ipswich Wanderers" for both
+and removed the file. After another restart and load FM Lens read "Ipswich
+Wanderers". All 47 career files' hashes were unchanged.
+
+Not run: Intel.
