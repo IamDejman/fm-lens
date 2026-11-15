@@ -1,11 +1,10 @@
-// The switch for the in-game scout card (see ScoutCard.tsx): on unless switched off in Settings. Windows only, as
-// macOS does not read FM's card yet.
+// The switch for the in-game scout card (see ScoutCard.tsx): on unless switched off in Settings.
 
 import { call, inTauri } from "./api";
 
 const KEY = "fm-lens.scoutCard";
 
-export const scoutCardAvailable = inTauri && navigator.userAgent.includes("Windows");
+export const scoutCardAvailable = inTauri;
 
 export function scoutCardOn(): boolean {
   try {

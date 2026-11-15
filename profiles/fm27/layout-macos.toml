@@ -123,6 +123,7 @@ right_foot = 0x170
 # As on Windows: a contract's owner points at the identity block of its player or member of
 # staff (Messi: wage, joined 15 July 2023, squad number 10).
 [contract]
+award_bonuses = 0x98      # as on Windows
 owner = 0x08
 wage = 0x20
 signed = 0x44
@@ -149,6 +150,7 @@ unhappiness = 0x30
 # with his parent club. Read on Steam 26340721 arm64: 735 loan contracts; Ben White (Arsenal, at West Ham United),
 # 55,000 of his 110,000 a week, loan from 10 Aug 2027 to the end of June 2028. Not yet compared with FM's screens.
 [loan]
+fee_condition = 0xF7      # as on Windows
 slot = 0x2F8
 class = "N2db13LOAN_CONTRACTE"
 # The loan's future fee, a u32 past the contract's fields, 0xFFFFFFFF for none: White's 58,000,000 (his option to buy),
@@ -477,6 +479,7 @@ date = 0x0C
 player_person = 0x390     # in the identity block, 8 bytes in, as on Windows
 
 [team]
+division = 0x50           # as on Windows
 club = 0x30
 kind = 0x28
 age_limit = 0x2C
@@ -542,6 +545,7 @@ expansion = 0x8C
 owner = 0x90
 
 [club_info]
+ownership = 0x129         # u8 code: how the club is owned; as on Windows
 season_tickets = 0xC0
 founded = 0xD8
 social_media = 0xF8
@@ -553,6 +557,7 @@ youth_coaching = 0x12C
 youth_recruitment = 0x12D
 
 [club_finance]
+income = [0x544, 0x65C]   # as on Windows
 balance = 0x0C
 transfer_budget = 0x7C4
 total_wage_budget = 0x808
@@ -578,3 +583,78 @@ store_value = 0x0E
 dirty = 0xDC
 team_id = 0x08
 teams = 0x88
+
+# A club's kits, laid out as on Windows.
+[club_kits]
+set = 0xB0                # on the club: pointer to the kit set
+parts = 0x78              # on the set: vector of pointers to the parts
+size = 0x28
+trim = 0x00               # colour 0, bytes B G R A
+main = 0x04               # colour 1
+kit = 0x22                # u8: 0 home, 1 away, 2 third
+part = 0x23               # low nibble: 1 shirt, 4 shorts, 5 socks
+order = 0x24              # u8: lowest first where a part comes twice
+outfield = 0x25           # u8: 1 outfield, 0 goalkeeper
+
+# A club's board, laid out as on Windows: the front of a staff object, before his person, is the same on both.
+[board]
+list = 0x110              # club: pointer to a block that starts with the (begin, end, capacity) of the members
+class = "N2db14BASIC_CONTRACTE"
+member_class = "N2db17ACTUAL_NON_PLAYERE"
+record = 0x28             # bytes of a board contract
+wage_copy = 0xB8          # staff object: u32 copy of the wage, 0xFFFFFFFF for none
+club_copy = 0xBC          # staff object: u32 copy of the club's id
+
+# Instalments and buy-backs. TRANSFER_MANAGER's instalments sit 8 bytes later than on Windows: the map before them
+# takes 24 bytes here and 16 there. The records are laid out as on Windows.
+[fee_terms]
+manager_class = "16TRANSFER_MANAGER"
+instalments = 0xD8
+person = 0x390            # u32 player id, in the identity block (identity + 8)
+instalment_size = 0x28
+instalment_payer = 0x00
+instalment_receiver = 0x08
+instalment_agreed = 0x10
+instalment_amount = 0x18
+instalment_person = 0x1C
+instalment_period = 0x20
+instalment_months = 0x21
+club_deals = 0xB0
+buy_back_class = "N2db20PLAYER_BUY_BACK_INFOE"
+buy_back_size = 0x28
+buy_back_starts = 0x08
+buy_back_ends = 0x0C
+buy_back_player = 0x10
+buy_back_fee = 0x18
+buy_back_club = 0x20
+
+# A competition's running season. Its stages sit 0x18 later than on Windows; a stage and its settings are laid out
+# as there.
+[competition.season]
+stages = 0x1D8
+competition = 0x70
+league_settings = 0xF0
+subs_rules = 0x146
+
+[registration]
+target_kind = 4
+relation = 0x19
+league = 8
+
+# A player's career plans, as on Windows but 0x40 earlier, as the rest of his person is.
+[career_plan]
+list = 0x310
+target = 0x00
+kind = 0x0B               # u8: 3 a club, 5 a continent, 9 a nation, 25 a competition
+size = 0x10
+
+# What a member of staff knows of each nation, as on Windows.
+[knowledge]
+list = 0xB0
+nation = 0x00
+level = 0x24              # u8, 0 to 100
+size = 0x28
+
+# The game's record of the save it has loaded (SAVE_SYSTEM), as on Windows.
+[save_system]
+name = 0x28               # pointer to a string of the game's: the save file's name without its folder or ".fm"

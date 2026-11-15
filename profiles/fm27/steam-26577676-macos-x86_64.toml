@@ -28,6 +28,10 @@ officials = 0x5D03260
 # slot 0x6E0) loads it at 0x2573B14, where the arm64 half loads 0x57409F8. Loaded in 985 places.
 transfer_manager = 0x5CD7E80
 
+# The static pointer to the game's record of the loaded save (SAVE_SYSTEM), the twin of the arm64 0x5740BC0. Static
+# mapping.
+save_system = 0x5CD9AE0
+
 # Database table pointers, traced through the static database constructor and typed tables.
 # Static mapping only; see docs/recon/fm27-steam-26340721-macos-x86_64.md.
 awards = 0x5D030E8
@@ -101,6 +105,10 @@ cancel_offer = 0x302EF10
 drop_dated_transfer = 0x197BA90
 ref_copy = 0x7A4A90
 ref_drop = 0x5125B20
+# ACTUAL_PERSON::add_relation, the twin of the arm64 0xCF9528. Static mapping.
+add_relation = 0xDA3510
+# ACTUAL_PERSON::add_language, the twin of the arm64 0xCBDFF4. Static mapping.
+add_language = 0xD65C10
 struct_value = 0x4912870
 maximise_tactics = 0x2576EB0
 # What set_work_permit asks before it gives a permit, unforced: the rules of the club's nation (rules root, the

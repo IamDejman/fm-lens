@@ -25,6 +25,10 @@ officials = 0x576EEC8
 # 11 December 2027, Collins Sichenje's and Mees Rijks' granted. The Intel half has it too, found statically.
 transfer_manager = 0x57409F8
 
+# The static pointer to the game's record of the loaded save (SAVE_SYSTEM): the only pointer to the one object of
+# that class, 0x1C8 after the transfer manager's. See docs/recon/fm27-save-name.md.
+save_system = 0x5740BC0
+
 # The static pointers to the database tables of awards and competitions, in the game's block of table pointers: 3,902
 # awards and 8,238 competitions (the last a placeholder without a name), the Premier League (UID 11) seventh. 27.0.0 and
 # 27.0.1 have them.
@@ -103,6 +107,12 @@ cancel_offer = 0x2D27800
 drop_dated_transfer = 0x18322B0
 ref_copy = 0x76C9BC
 ref_drop = 0x4B5E388
+# ACTUAL_PERSON::add_relation: (person, a 16-byte entry, 1). It takes a record from the "PERSON_PREFERENCES" pool for a
+# person without one; the person setter's favoured and disliked lists call it. Returns the entry it added.
+add_relation = 0xCF9528
+# ACTUAL_PERSON::add_language: (person, language, a pointer to the i8 level). It takes a 16-byte link from the
+# "PERSON_LANGUAGE_LINK" pool and pushes it onto the list at person +0xC0. Returns the link.
+add_language = 0xCBDFF4
 # The game's editor action that makes every player of a team fully familiar with its tactic
 # (TEAM_MAXIMISE_TACTICAL_UNDERSTANDING_ACTION, 0x23A232C): it takes the action's map, which holds under 'dref' a struct
 # Value whose own map holds the team's reference (0x18 << 24 | the team's id) as an integer Value under 'dref'. The

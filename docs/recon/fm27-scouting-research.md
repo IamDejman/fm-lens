@@ -100,8 +100,36 @@ at 10 December 2027, with a release build of the branch:
 - Faces, club logos and flags from the game's install; initials for a player
   with no face.
 
-Not checked: staff cards (the card shows players only), macOS (Apple Silicon
-and Intel) and Game Pass.
+On macOS (15 November, Apple Silicon, Steam build 26577676, FM in a window, a
+debug build): FM's tooltip class and the path to the UID are those of Windows,
+found about 16 seconds after FM comes to the front. The card's window is a
+panel above FM that joins every space; it is shown without activating FM Lens.
+
+- The card showed the hovered player, and his peak while Shift was held.
+- It stayed while the pointer moved from the (i) onto it, and went when
+  the pointer left it.
+- The pointer became a hand on the card. macOS gives a window of an app that is
+  not in front no pointer changes, so FM Lens sets the hand itself, and for
+  that sets the window server's `SetsCursorInBackground` property on its own
+  connection (`CGSSetConnectionProperty`, looked up by name; without it the
+  arrow stays). FM's own pointer came back off the card.
+- A click anywhere on the card brought FM Lens to the front with him open.
+- The Settings switch hid it and brought it back.
+- A card window that has been hidden for a while is not drawn, so its size is
+  never seen to change: the card measures itself once when it has a player.
+
+On Windows the same build was run on 15 November with FM in a window: the
+card showed, turned to his peak under Shift, stayed with the pointer on it (his
+name took its hover underline), and a click on it brought FM Lens to the front
+with him open.
+
+On macOS on Intel (the same build under Rosetta, 15 November) with FM in a
+window: the card showed, turned to his peak under Shift, stayed with the
+pointer on it, and a click on it opened him in FM Lens.
+
+Not checked: staff cards (the card shows players only), FM full screen on
+macOS, the pointer's shape on Windows and under Rosetta (the capture leaves
+the pointer out) and Game Pass.
 
 ## Top players by division
 
@@ -137,11 +165,11 @@ and each pointer followed to a competition's UID and name.
 
 FM Lens reads `0x50` of the senior team of each player's club and accepts it
 only when it is one of the competitions in the game's table; anything else is
-no division. The offset is in the Windows layout only. macOS is not mapped,
-so the division choice does not show there.
+no division. The offset is the same on macOS (15 November, Apple Silicon:
+England's list narrowed to the Championship gave Championship clubs' players).
 
 Not checked: a club with no league this season, a country whose leagues are
-not loaded, and the offset on macOS (ARM64 and Intel) and Game Pass.
+not loaded, FM's own tables on macOS, macOS on Intel and Game Pass.
 
 ## Community-wide development records
 

@@ -1,5 +1,6 @@
-// The in-game scout card (Windows): FM Lens's card for the player whose card FM shows, over the game, at his peak
-// while Shift is held. It is its own window, which the app shows once the card is drawn (see scout_card.rs).
+// The in-game scout card: FM Lens's card for the player whose card FM shows, over the game, at his peak
+// while Shift is held. A click on it opens him in FM Lens. It is its own window, which the app shows once the card
+// is drawn (see scout_card.rs).
 
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -80,15 +81,18 @@ export function ScoutCard() {
   const ready = card !== null && card.details.uid === uid ? card : null;
 
   // Drawn, and each time its size changes after (a font, a flag that fails): the app sizes the window to it and shows it.
+  // Measured now too, as a hidden window may not be drawn, and then its size is never seen to change.
   useLayoutEffect(() => {
     const element = box.current;
     if (ready === null || element === null) {
       return;
     }
-    const observer = new ResizeObserver(() => {
+    const measure = () => {
       const { width, height } = element.getBoundingClientRect();
       call("scout_card_ready", { uid: ready.details.uid, peak, width, height }).catch(log);
-    });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
   }, [ready, peak]);
@@ -103,7 +107,11 @@ export function ScoutCard() {
       <header className="scout-card-head">
         <PersonFace uid={details.uid} name={details.name} size={PICTURE_SIZE.columnFace} />
         <div className="scout-card-who">
-          <h1>{details.name}</h1>
+          <h1>
+            <button type="button" onClick={() => call("scout_card_open", { uid: details.uid }).catch(log)}>
+              {details.name}
+            </button>
+          </h1>
           <p>
             {details.club === null ? (
               profileText.freeAgent

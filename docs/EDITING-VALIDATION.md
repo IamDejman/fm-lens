@@ -4398,3 +4398,51 @@ Not run: a quit and relaunch, a player who dislikes you as his manager (the
 test career has none), what FM does over days with a lone happiness edit
 outside its band (the bands above say it puts it back), Game Pass, and the
 Macs.
+
+## macOS parity (15 November 2026)
+
+FM27 Steam build 26577676 on Apple Silicon, on a copy of a career
+(`FM-Lens-MacParity-2026-11-15`), with a debug build of the branch and the
+read-only probe. Each item below was Windows only before.
+
+| Item | Result on macOS arm64 |
+| --- | --- |
+| Save name | The app's header showed the loaded copy's name |
+| Ownership, income by source, kit colours | Read and shown on a club's profile |
+| League registration, career plans, scouting knowledge, award bonuses | Read and shown |
+| Instalments and buy-backs | Listed on the Contract tab; a buy-back fee edit to 20,000,000 read back |
+| Add a language, add a dislike | Each applied through the game's own call and read back |
+| Board seat swap | One swap across clubs showed in the app and the probe; not undone |
+| End a loan that has a future fee | The player was back at his club in the app and the probe |
+| Season substitutions | The stages sit at `+0x1D8` of the loaded rule data (Windows `+0x1C0`). The probe read 5 and 9 for the Premier League, the Championship and the Bundesliga and 5 and 12 for the Spanish First Division, the numbers Windows gave; the app showed 5 and 9 for the Premier League |
+| Top players by division | England narrowed to the Championship listed Championship clubs' players |
+| In-game scout card | See recon/fm27-scouting-research.md |
+
+### Intel under Rosetta, then a save, quit and reload
+
+The same build's Intel half was run under Rosetta on the same copy, with the
+universal helper built from the branch.
+
+| Item | Result on macOS Intel (Rosetta) |
+| --- | --- |
+| Save name | The header showed the loaded copy's name, and the new name after Save As with no reload |
+| Reads | The app connected and the pages the edits below use filled |
+| Add a language | German at level 10, read back |
+| Add a dislike | Tottenham Hotspur at strength 100, read back |
+| Buy-back fee | 19,510,082 to 20,000,000, read back |
+| End a loan that has a future fee | The player was back at Arsenal and the £58,000,000 fee was gone |
+| Board seat swap | A president and Arsenal's chairperson traded seats, read back |
+| In-game scout card | Shown over FM in a window, his peak under Shift, stayed with the pointer on it, and a click opened him in FM Lens |
+
+The Intel process then saved the career with FM's Save As as
+`FM-Lens-MacParitySaved-2026-11-15`. FM was quit and started again on Apple
+Silicon, the copy loaded from Load Game, and the probe read all five edits
+back: the language, the dislike, the buy-back fee, the player at Arsenal and
+both board seats. In FM after the reload the player's Personal page listed
+German (Fluent) and FM's search listed the recalled player at Arsenal. The
+main career's SHA-256 was the same before and after.
+
+Not run: FM's own pages for the dislike, the buy-back and the board seats (All
+Staff and FM's search do not list a board member), an Apple Silicon save of
+these edits loaded on Intel, the pointer's shape on the card under Rosetta,
+the card over a full-screen FM, a packaged build, and Game Pass.

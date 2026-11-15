@@ -444,6 +444,27 @@ function App() {
       }),
     [],
   );
+  // The in-game scout card was clicked.
+  useEffect(() => {
+    if (!inTauri) {
+      return;
+    }
+    let stop: (() => void) | null = null;
+    let gone = false;
+    listen<number>("scout-card-open", (event) => openPlayer(event.payload))
+      .then((unlisten) => {
+        if (gone) {
+          unlisten();
+        } else {
+          stop = unlisten;
+        }
+      })
+      .catch((e: unknown) => console.error("FM Lens scout card:", e));
+    return () => {
+      gone = true;
+      stop?.();
+    };
+  }, [openPlayer]);
   // A player to compare the player list with, asked for from a profile.
   const [similarRequest, setSimilarRequest] = useState<SimilarRequest | null>(null);
   const findSimilar = useCallback(
