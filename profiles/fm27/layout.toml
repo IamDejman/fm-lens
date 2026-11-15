@@ -205,6 +205,11 @@ actual_person = 0x128
 relations = 0x178
 coaching_licence = 0x23C
 formations = [0xDF, 0xE3]
+# A pointer to his tendencies: a record that starts with the (begin, end) of a list of two-byte entries, a tendency id
+# (1 to 100) and how far he leans to it (1 to 20; 10 where he has no entry). Read on Steam 26577676 against FM's
+# profile, which lists 15 and over under Tendencies and 5 and under under "Tends Not To": Simeone has 24 entries,
+# Guardiola 23, Slot 12, and each of FM's lines is one of them.
+tendencies = 0xA8
 
 # u8, raw 0..100, shown as (raw + 2) / 5
 

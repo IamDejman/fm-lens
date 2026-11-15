@@ -195,6 +195,8 @@ enum Place {
     NationalContainer(Side),
     /// A loaned player's loan contract, where the layout places loans (see [`crate::Session::loan`]).
     Loan,
+    /// The entry a member of staff has for the tendency of this id: its id, then its value. Missing where he has none.
+    Tendency(u8),
 }
 
 /// A value of a player, member of staff or club that the editor can change.
@@ -579,6 +581,15 @@ fn staff_fields(layout: &Layout) -> Vec<Field> {
             let field = field(key, offset, Kind::U8, 1..=i64::from(MOST_FORMATION));
             out.push(field.plausible(0..=255).choices(choices).listed_only().single());
         }
+    }
+    // The tendencies he has an entry for, of those FM names: the value of the entry, as he leans to it. One he has
+    // no entry for counts as 10 and cannot be changed, since that would take a new entry in the game's own list.
+    if s.tendencies.is_some() {
+        out.extend(
+            crate::staff::NAMED_TENDENCIES.iter().map(|&id| {
+                field(&format!("tendency.{id}"), 1, Kind::U8, 1..=20).in_record(Place::Tendency(id)).single()
+            }),
+        );
     }
     // A human manager's protection from the sack: bit 1 of his flags, as the game's own action toggles it. Only
     // located on the build and class it was traced on, so it reads as missing for everyone else.
@@ -1433,6 +1444,13 @@ impl Session {
                 let class = crate::rtti::class_of(&self.process, &self.plugin, target.address + layout.class_at);
                 human_manager_flags(Some(layout), target, class.as_deref()).map(|flags| target.address + flags)
             }
+            (Place::Tendency(id), Entity::Staff) => {
+                let Some(offset) = self.layout.staff.tendencies else {
+                    return Ok(None);
+                };
+                let record = self.process.read_u64(target.address + offset)?;
+                crate::staff::tendency_entry(&self.process, record, id)
+            }
             (Place::NationalTeam(side), Entity::Nation) => {
                 crate::national::senior_team(&self.process, &self.layout, target.address, target.uid, side)
             }
@@ -1611,10 +1629,19 @@ mod tests {
         let staff = fields(&layout, Entity::Staff);
         let staff_attributes = layout.staff.attributes.len() + layout.staff.ratings.len();
         // The 7 basic fields; the 4 contract fields, the coaching licence and the 2 formations where the layout places
-        // them, and the human manager's 2 flags.
+        // them, the human manager's 2 flags, and each tendency with a name where the layout places the list.
         let licence = usize::from(layout.staff.coaching_licence.is_some());
         let formations = if layout.staff.formations.is_some() { 2 } else { 0 };
-        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2);
+        let tendencies = if layout.staff.tendencies.is_some() { crate::staff::NAMED_TENDENCIES.len() } else { 0 };
+        assert_eq!(staff.len(), 7 + staff_attributes + PERSONALITY.len() + 4 + licence + formations + 2 + tendencies);
+        if layout.staff.tendencies.is_some() {
+            // One entry of the member's own list, which only they have: one person at a time, 1 to 20.
+            let field = key(&staff, "tendency.85");
+            assert_eq!((field.place, field.kind, field.offset), (Place::Tendency(85), Kind::U8, 1));
+            assert!(!field.mass && !field.shifted);
+            assert!(field.takes(1) && field.takes(20) && !field.takes(0) && !field.takes(21));
+            assert!(!staff.iter().any(|f| f.key == "tendency.67"));
+        }
         let clubs = fields(&layout, Entity::Club);
         // Reputation, the 5 facilities and the 3 amounts of money; and the 4 capacities of the stadium where the layout
         // knows it (Windows so far). The wage budget used is the game's to work out.

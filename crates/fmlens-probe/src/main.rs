@@ -336,6 +336,12 @@ enum Command {
     FutureTransfers,
     /// Print the name of the save the game has loaded, as the game's own record of it holds it.
     SaveName,
+    /// Count the tendencies staff hold: how many lists read, how often each value comes, and who holds VALUE.
+    Tendencies {
+        /// List the ablest staff who hold a tendency at this value.
+        #[arg(long)]
+        value: Option<u8>,
+    },
     /// Show a player's ties: his secondary nationalities, and the nations and clubs he was trained in.
     Ties {
         /// The player's UID.
@@ -955,6 +961,7 @@ fn run(cli: Cli) -> Result<()> {
             }
             Ok(())
         }
+        Command::Tendencies { value } => tendencies(&connect(process, ArraySource::ProfileFirst)?, value),
         Command::Ties { uid } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
             tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
@@ -2703,6 +2710,53 @@ fn staff(session: &Session, text: Option<&str>, limit: usize) -> Result<()> {
     Ok(())
 }
 
+/// How the tendencies of all staff read: a check of the layout over the whole database, and people to look up in FM.
+fn tendencies(session: &Session, value: Option<u8>) -> Result<()> {
+    let mut staff = session.staff()?;
+    staff.sort_by_key(|member| std::cmp::Reverse(member.current_ability));
+    let (mut unread, mut none, mut some, mut longest) = (0, 0, 0, 0);
+    let (mut values, mut ids) = ([0u32; 21], [0u32; 101]);
+    let mut holders = Vec::new();
+    for member in &staff {
+        let Some(list) = session.staff_details(member)?.and_then(|details| details.tendencies) else {
+            unread += 1;
+            continue;
+        };
+        if list.is_empty() {
+            none += 1;
+        } else {
+            some += 1;
+        }
+        longest = longest.max(list.len());
+        for t in &list {
+            values[t.value as usize] += 1;
+            ids[t.id as usize] += 1;
+            if value == Some(t.value) && holders.len() < 12 {
+                holders.push(format!("  {} (id {}): {}={}", member.name, member.uid, t.id, t.value));
+            }
+        }
+    }
+    println!(
+        "{} staff: {some} with tendencies, {none} with none, {unread} not read; longest list {longest}",
+        staff.len()
+    );
+    let counts = |counts: &[u32]| -> String {
+        counts
+            .iter()
+            .enumerate()
+            .filter(|&(_, &n)| n > 0)
+            .map(|(at, n)| format!("{at}:{n}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    println!("values  {}", counts(&values));
+    println!("ids     {}", counts(&ids));
+    for line in holders {
+        println!("{line}");
+    }
+    Ok(())
+}
+
 fn staff_member(session: &Session, uid: u32) -> Result<()> {
     let index = StaffIndex::new(session.staff()?);
     let member = index.get(uid).with_context(|| format!("no member of staff with id {uid}"))?;
@@ -2716,6 +2770,14 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
         .collect();
     println!("  languages      {}", if languages.is_empty() { "-".to_owned() } else { languages.join(", ") });
     println!("  preferences    {}", d.preferences.len());
+    match &d.tendencies {
+        Some(list) if list.is_empty() => println!("  tendencies     -"),
+        Some(list) => {
+            let pairs: Vec<String> = list.iter().map(|t| format!("{}={}", t.id, t.value)).collect();
+            println!("  tendencies     {}", pairs.join(" "));
+        }
+        None => println!("  tendencies     not read"),
+    }
     if let Some(full) = &s.full_name {
         println!("  full name      {full}");
     }

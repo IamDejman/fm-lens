@@ -32,7 +32,7 @@ import {
   WageFact,
   type RatingRow,
 } from "./ProfileParts";
-import type { StaffContract, StaffDetails, StaffSummary } from "./types";
+import type { StaffContract, StaffDetails, StaffSummary, Tendency } from "./types";
 import { EditorContext, useProfileEditing } from "./useProfileEditing";
 
 // Attributes in the order FM lists them, by group.
@@ -239,7 +239,20 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
   );
 }
 
-/** Attributes and personality, which all take 1 to 20 (one hint says it for all of them), and his formations. */
+/** His tendencies, the strongest first: FM's profile lists those of 15 and over, and those of 5 and under as "tends not to". */
+function tendencyRows(tendencies: Tendency[]): RatingRow[] {
+  return [...tendencies]
+    .sort((a, b) => b.value - a.value || a.id - b.id)
+    .map(({ id, value }) => ({
+      key: `tendency.${id}`,
+      // Only the ones FM names can be changed.
+      field: profileText.tendencyNamed(id) ? `tendency.${id}` : undefined,
+      label: profileText.tendencyName(id),
+      value,
+    }));
+}
+
+/** Attributes and personality, which all take 1 to 20 (one hint says it for all of them), his formations and tendencies. */
 function AttributesTab({ details }: { details: StaffDetails }) {
   return (
     <>
@@ -267,6 +280,9 @@ function AttributesTab({ details }: { details: StaffDetails }) {
                 ))}
               </dl>
             </section>
+          )}
+          {details.tendencies !== null && details.tendencies.length > 0 && (
+            <RatingGroup title={profileText.tendencies} rows={tendencyRows(details.tendencies)} />
           )}
           {/* The board's coaching attributes mean nothing (see `board_job` in `best.rs`). */}
           {!BOARD_JOBS.includes(details.job ?? -1) && (

@@ -112,8 +112,8 @@ pub use scouting::{
 pub use session::{ArraySource, Session, SessionError, find_game};
 pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember, TeamId};
 pub use staff::{
-    STAFF_ATTRIBUTE_GROUPS, StaffContract, StaffDetails, StaffIndex, StaffSummary, job_name, read_staff,
-    read_staff_details,
+    MOST_TENDENCY, NAMED_TENDENCIES, STAFF_ATTRIBUTE_GROUPS, StaffContract, StaffDetails, StaffIndex, StaffSummary,
+    Tendency, job_name, read_staff, read_staff_details,
 };
 pub use staff_move::{Department, STAFF_JOBS, StaffChange, StaffPlan, department_of};
 pub use tactics::{PlayerTactics, RaisedTactics, TeamTactics};

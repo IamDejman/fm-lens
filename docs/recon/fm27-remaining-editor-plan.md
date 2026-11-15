@@ -52,6 +52,12 @@ Fresh checks:
 | 6 | Undo Cancel transfer | Trace re-creation and acceptance of a pending offer with all contract, fee, clause, budget-commitment, dated-record and reference state. Capture a semantic snapshot before cancellation, never restore old pointers. Revalidate all parties/day/budgets and refuse if anything material changed. | Free-agent, club-to-club and loan agreements; identical terms and budget commitments; arrival on agreed day; save/reload. News/interaction side effects may prevent exact undo: if so, keep Cancel irreversible and provide a separate explicit Recreate deal action only where supported. |
 | Deferred | Goal-line technology | No standalone control until an actual FM-owned editable setting is found. Search match/fixture/stadium technology consumers if continuing research; absence from the competition rule schema is not proof of absence everywhere. | A real backing setting, its consumer and an observable match effect. Otherwise record unsupported, with no placeholder toggle. |
 
+## Status
+
+- Staff tendency names (15 November 2026): done. The names come from the game's own naming
+  routine, 67 of the 100 ids. Shown and, for an entry the member already holds, edited; checked
+  in FM on Windows (Staff tendencies in ../EDITING-VALIDATION.md). The Macs are not run.
+
 ## Delivery sequence and shared guardrails
 
 1. Finish names and list creation: likes, languages, tendencies and referee attributes.

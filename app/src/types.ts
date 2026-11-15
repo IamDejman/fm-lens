@@ -316,6 +316,12 @@ export interface StaffSummary {
   fit?: Fit;
 }
 
+/** One of a member of staff's tendencies: the game's id for it (1 to 100) and how far he leans to it (1 to 20). */
+export interface Tendency {
+  id: number;
+  value: number;
+}
+
 /** A national team, as its manager's row names it. */
 export interface NationalJob {
   nation: string;
@@ -367,6 +373,8 @@ export interface StaffDetails extends StaffSummary {
   coachingLicence: number | null;
   /** His preferred formation ids in and out of possession, 0 for none; null where the build does not place them. */
   formations: [number, number] | null;
+  /** The tendencies the game keeps a value for, in its order; null where the build does not place them. */
+  tendencies: Tendency[] | null;
   /** Whether he holds a seat on a club's board that can be swapped for another's. */
   boardSeat: boolean;
 }

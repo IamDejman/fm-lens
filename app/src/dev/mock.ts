@@ -1416,6 +1416,9 @@ function staffDetails(member: StaffSummary): StaffDetails {
     preferences: currentPreferences(true, member.uid),
     coachingLicence: member.uid % 9,
     formations: [[29, 4, 28, 3][member.uid % 4], [22, 4, 0, 32][member.uid % 4]],
+    tendencies: [85, 82, 63, 96, 76, 51, 67, 21]
+      .slice(member.uid % 3)
+      .map((id, n) => ({ id, value: 1 + ((member.uid + 7 * n) % 20) })),
     boardSeat: !member.isHuman && member.job !== null && SEAT_JOBS.includes(member.job),
   });
 }
@@ -1559,6 +1562,8 @@ function fieldTable(entity: Entity): EditField[] {
       mass: false,
     },
     { ...field("formation.out_of_possession", "u8", 1, 64), choices: [4, 7, 22, 27, 30, 32, 33, 35, 63, 64], mass: false },
+    // The named ones of the tendencies the sample staff hold.
+    ...[85, 82, 63, 96, 76, 51, 21].map((id) => ({ ...field(`tendency.${id}`, "u8", 1, 20), mass: false })),
     { ...field("manager.unsackable", "flag", 0, 1), mass: false },
     { ...field("manager.registration_anytime", "flag", 0, 1), mass: false },
   ];
@@ -1607,6 +1612,13 @@ function withWritten<D extends PlayerDetails | StaffDetails>(entity: Entity, d: 
         const formations = (d as StaffDetails).formations;
         if (formations !== null) {
           formations[name === "out_of_possession" ? 1 : 0] = value;
+        }
+        break;
+      }
+      case "tendency": {
+        const tendency = (d as StaffDetails).tendencies?.find((t) => t.id === Number(name));
+        if (tendency) {
+          tendency.value = value;
         }
         break;
       }
@@ -1797,6 +1809,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return (person as StaffDetails).coachingLicence;
       case "formation":
         return (person as StaffDetails).formations?.[name === "out_of_possession" ? 1 : 0];
+      case "tendency":
+        return (person as StaffDetails).tendencies?.find((t) => t.id === Number(name))?.value;
       case "contract": {
         const contract = (person as PlayerDetails).contract;
         switch (name) {
