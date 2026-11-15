@@ -126,9 +126,10 @@ takeover manager holds, and whether it names people, was not read.
 
 ## 7. Changing who holds a seat
 
-Status: two swaps tried on career copies, see the trials below. Not enabled in the app. The seat
-(contract record and list slot) stays where it is and only the person in it changes, so nothing
-is allocated or freed.
+Status: enabled on Windows as Swap seat on a board member's profile (15 November 2026), after
+the two trials and the check of the app below. macOS has no board layout yet, so the button is
+not offered there. The seat (contract record and list slot) stays where it is and only the
+person in it changes, so nothing is allocated or freed.
 
 Swap two board members, A at one club and B at another:
 - A's club board list: the slot holding A now holds B. B's club list: the slot holding B now
@@ -213,9 +214,27 @@ value was compared with the reading first and read back after.
 - A list left out of uid order was not tried, so the write must keep the list sorted or
   refuse.
 
-Still to prove in FM on a career copy before any of this is enabled:
-- FM shows the change without a save and load (FM Lens refreshes FM's panels after its own
-  edits; that was not tried here).
+In the app (15 November 2026, packaged Windows build, the same career at 18 July 2028): Swap
+seat on a board member's profile picks the other member's club, then the member, and shows
+each one's new club and job before it writes.
+- Across clubs: an Inter Miami director and the Manchester United owner. The probe read the
+  new holders in both seats, both lists in uid order, and the wage and club copies with the
+  seats. FM Lens showed the former director as Owner at Manchester United on the owner's wage.
+- FM showed the change with no save and load once its Staff page was opened again. A Staff
+  page that was already open kept its old rows until then.
+- Changes lists the swap as one row, a change of club with "Swapped with" and the other
+  member's name. Undo put both members back, in the probe and on FM's Staff page.
+- Within one board: a Manchester United director and its chairperson. Only the contract
+  holders, contract pointers and wage copies changed, and the list kept its order. FM's Staff
+  page showed the former director as Chairperson and the former chairperson as Director.
+  Changes lists it as a change of job.
+- With both swaps in place the career was saved and loaded in the running game. The probe and
+  FM's Staff page showed the same holders after the load.
+- A chairperson whose club copy at `+0xBC` is unset (0xFFFFFFFF) and a director of the same
+  board: the club copies were exchanged with the seats, FM's Staff page showed the former
+  director as Chairperson, and Undo put both back.
+
+Still to prove in FM:
 - A director who leaves one board for another, read before and after. Only a director who
   left the game and one the game made have been read.
 - A takeover in progress, and a takeover after the change.
