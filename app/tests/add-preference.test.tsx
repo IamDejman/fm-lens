@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { expect, test, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockInvoke } from '../src/dev/mock';
 import { PreferencesGroup } from '../src/RelationGroups';
@@ -72,7 +72,7 @@ test('a club is added to the ones a player favours, and Undo takes it out', asyn
   const row = await within(dialog).findByRole('textbox', { name: 'Strength for Atlético Riverside' });
   expect((row as HTMLInputElement).value).toBe('100');
   const again = within(within(dialog).getByRole('region', { name: 'Favoured clubs' })).getByRole('button', { name: 'Add' });
-  expect(document.activeElement).toBe(again);
+  await waitFor(() => expect(document.activeElement).toBe(again));
   expect(await likes(uid)).toMatchObject([{ kind: 'favouredClub', name: 'Atlético Riverside', strength: 100 }]);
 
   const log = await mockInvoke<LoggedChange[]>('change_log');

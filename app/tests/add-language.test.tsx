@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { expect, test, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mockInvoke } from '../src/dev/mock';
 import { LanguagesGroup } from '../src/RelationGroups';
@@ -76,7 +76,7 @@ test('a language is added to an empty list, and Undo takes it out', async () => 
   // The rows come back with the new one, spoken as well as a language gets, and focus is on Add again.
   const row = await within(dialog).findByRole('textbox', { name: 'Level of Catalan' });
   expect((row as HTMLInputElement).value).toBe('10');
-  expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Add' }));
+  await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Add' })));
   expect(await spoken(uid)).toMatchObject([{ name: 'Catalan', level: 10 }]);
 
   const log = await mockInvoke<LoggedChange[]>('change_log');
