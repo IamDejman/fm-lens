@@ -145,7 +145,7 @@ not safe until the owner list is found. Prefer FM's PERSON_PROMISES_EDIT_SESSION
 
 ## Youth intake
 
-Status: partial, low confidence.
+Status: candidates found and edited on Windows (Steam 26577676, 15 November 2026); the intake itself is not mapped.
 
 Where. REGENERATION_MANAGER object (vtable 0x55f7c28), pointer in a global at game_plugin+0x56a8428 (verified,
 live object 0x7afb2a0e00). It holds a vector at +0xA8/+0xB0/+0xB8 of 754 pointers to NEWGEN_TEMPLATE
@@ -158,12 +158,21 @@ Competition rules `newgen_intake_day` ('ngid' 0x6e676964) and `newgen_intake_var
 0x1124ac8. Inputs are club info youth_recruitment +0x12D, youth_facilities +0x12B, youth_coaching +0x12C and the
 nation youth rating, a signed i16 at nation +0x874 (from the accessor at 0x13e8ba8; this replaces the +0x576
 guess in docs/recon/fm27-nations.md).
-Not found: any stored list of pre-intake candidates. Intake candidates may be created only on the intake day,
-so editing them needs the game to be on that day. Related: patch name
-REGENERATION_MANAGER_clear_newgen_intake_reports_fm27, YOUTH_TRIAL_CONTRACT.
+Before the intake FM shows only a preview: Youth Setup, Youth Candidates lists how many players of each position
+are coming and a rating for each (16 for Arsenal in March 2028, "Average Intake"). No player objects exist for them
+then. On the intake day the game creates the candidates as ordinary players: new UIDs in a run (Arsenal's 16 were
+2002085017 to 2002085032), no contract, in the club's under-18s list (team kind 12) with their `team` pointer on it.
+The game's youth candidates team (kind 22, which plays the YC matches) keeps an empty player list before and after
+the intake, so the editor reads and edits candidates as under-18 players. In that save Arsenal's intake fell between
+23 and 30 March 2028, not on the rule's day, which fits `newgen_intake_variance`.
 
-Values to check in FM: a club's Youth intake report (Youth, Intake) on the intake day; and the nation's
-youth rating screen against the i16 at nation +0x874.
+Checked against FM on a copy: Traye Borders read CA 78, PA 158, DM and MC, 188 cm (FM: 6'2"), left foot 12 and
+right foot 20; his aggression and left foot set to 18 and 16 showed in FM's profile at once (Strong for the left
+foot) and held through Save As and a load (docs/EDITING-VALIDATION.md). Not checked: signed and released
+candidates. Related: patch name REGENERATION_MANAGER_clear_newgen_intake_reports_fm27, YOUTH_TRIAL_CONTRACT
+(`db::` class).
+
+Values still to check in FM: the nation's youth rating screen against the i16 at nation +0x874.
 
 ## Squad registration
 

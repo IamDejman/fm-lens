@@ -217,7 +217,7 @@ export const squadText = strings.squad;
 
 /** The kinds of team the game calls a B team and your club's youth candidates (see `ClubTeam.kind`). */
 const B_TEAM_KIND = 3;
-const YOUTH_CANDIDATES_KIND = 22;
+export const YOUTH_CANDIDATES_KIND = 22;
 
 /** What names a team: its place in the club's list, and where it is known the kind and age limit the game gives it. */
 export interface TeamId {

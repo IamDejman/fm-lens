@@ -4498,3 +4498,26 @@ transfer before Undo (refused in the code with "the player has a transfer
 agreed for a later day already"), a quit and relaunch, Game Pass, and the
 Macs. The change adds no game addresses, so it runs on macOS through the same
 calls as Sign later and Cancel transfer there.
+
+## Youth intake on Windows (15 November 2026)
+
+Windows Server 2022, FM27 27.0.1, Steam build 26577676, FM Lens 1.0.0 with the
+national team build. The checks ran on copies of a career written with FM's
+Save As, taken from 14 March 2028 to the intake by holidays; the main career's
+file was not loaded or written. Memory was read with the read-only probe.
+
+| Check | Result |
+|---|---|
+| Before the intake | FM's Youth Candidates screen previewed 16 players by position and rating; the probe found no player objects for them |
+| The intake | Came between 23 and 30 March 2028. FM's "Youth Candidate Evaluation Decisions" listed 16 players, 3 top prospects |
+| Where they are | 16 new players with no contract in Arsenal's under-18s list, the game's youth candidates team (kind 22) empty. FM Lens's U18 tab listed all 16 |
+| A candidate's profile | Traye Borders: CA 78, PA 158, DM and MC, 188 cm, left foot 12, right foot 20 in FM Lens and the probe; FM showed DM, M (C), 6'2" and right foot Very Strong |
+| Edit | Aggression 15 to 18 and left foot 12 to 16 in FM Lens; the probe read 18 and 16, and FM's profile showed 18 and left foot Strong at once |
+| Save As and load | After a Save As under a new name and a load of it, the probe read 18 and 16, and FM's profile showed both |
+
+The Squad tab no longer shows the youth candidates team while the game leaves
+it empty; that change was checked in the app's tests, not in the packaged app.
+
+Not run: signed and released candidates (FM's staff offer contracts when the
+trial contracts end), CA, PA and height edits on a candidate, a quit and
+relaunch, Game Pass, and the Macs.
