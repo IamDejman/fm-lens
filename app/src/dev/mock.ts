@@ -1416,6 +1416,9 @@ function staffDetails(member: StaffSummary): StaffDetails {
     preferences: currentPreferences(true, member.uid),
     coachingLicence: member.uid % 9,
     formations: [[29, 4, 28, 3][member.uid % 4], [22, 4, 0, 32][member.uid % 4]],
+    tendencies: [85, 82, 63, 96, 76, 51, 67, 21]
+      .slice(member.uid % 3)
+      .map((id, n) => ({ id, value: 1 + ((member.uid + 7 * n) % 20) })),
     boardSeat: !member.isHuman && member.job !== null && SEAT_JOBS.includes(member.job),
   });
 }

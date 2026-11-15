@@ -793,6 +793,10 @@ pub struct StaffLayout {
     /// profile shows; only in the layouts they have been traced in.
     #[serde(default)]
     pub formations: Option<[u64; 2]>,
+    /// The pointer to his tendencies (see [`crate::staff::Tendency`]): a record that starts with the `(begin, end)`
+    /// of a list of two-byte entries, an id and a value; only in the layouts it has been traced in.
+    #[serde(default)]
+    pub tendencies: Option<u64>,
     /// Attributes stored raw (0..100) by key; see [`crate::STAFF_ATTRIBUTE_GROUPS`].
     pub attributes: BTreeMap<String, u64>,
     /// Ratings stored as shown (1..20) by key.
@@ -837,7 +841,7 @@ impl StaffLayout {
             .chain(self.coaching_licence.as_ref())
             .chain(self.formations.iter().flatten())
             .map(|offset| offset + 1);
-        fields.into_iter().chain(single_bytes).max().unwrap_or(0)
+        fields.into_iter().chain(single_bytes).chain(self.tendencies.map(|offset| offset + 8)).max().unwrap_or(0)
     }
 
     pub fn max_shift(&self) -> u64 {

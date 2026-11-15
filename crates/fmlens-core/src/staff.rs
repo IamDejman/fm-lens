@@ -311,8 +311,54 @@ pub struct StaffDetails {
     /// The formation ids of his preferred formation in possession and out of possession, 0 for none; `None` where the
     /// layout does not place them.
     pub formations: Option<[u8; 2]>,
+    /// The tendencies the game keeps a value for, in its order; `None` where the layout does not place them or the
+    /// list does not read as one.
+    pub tendencies: Option<Vec<Tendency>>,
     /// Whether he holds a seat on a club's board that can be swapped for another.
     pub board_seat: bool,
+}
+
+/// One of a member of staff's tendencies as the game keeps it: its id and how far he leans to it. One he has no entry
+/// for counts as 10. FM's profile lists those of 15 and over under Tendencies and those of 5 and under under "Tends
+/// not to", and leaves out his touchline manner and dress (ids 48 to 55).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Tendency {
+    /// 1 to [`MOST_TENDENCY`].
+    pub id: u8,
+    /// 1 to 20.
+    pub value: u8,
+}
+
+/// The highest tendency id.
+pub const MOST_TENDENCY: u8 = 100;
+
+/// The tendencies in `entries`, the bytes of the game's list: an id and a value each. `None` unless every id is one
+/// of the game's, none comes twice and every value is a rating.
+fn tendencies_from(entries: &[u8]) -> Option<Vec<Tendency>> {
+    let (pairs, rest) = entries.as_chunks::<2>();
+    let mut seen = [false; MOST_TENDENCY as usize + 1];
+    let known = pairs.iter().all(|&[id, value]| {
+        (1..=MOST_TENDENCY).contains(&id)
+            && (1..=20).contains(&value)
+            && !std::mem::replace(&mut seen[id as usize], true)
+    });
+    (rest.is_empty() && known).then(|| pairs.iter().map(|&[id, value]| Tendency { id, value }).collect())
+}
+
+/// The tendencies in the record at `record`, which starts with the `(begin, end)` of their list.
+fn read_tendencies(process: &Process, record: u64) -> Option<Vec<Tendency>> {
+    if !is_user_pointer(record) {
+        return None;
+    }
+    let (begin, end) = (process.read_u64(record).ok()?, process.read_u64(record + 8).ok()?);
+    if begin == end {
+        return Some(Vec::new());
+    }
+    let len = end.checked_sub(begin).filter(|&len| len <= 2 * u64::from(MOST_TENDENCY))?;
+    if !is_user_pointer(begin) {
+        return None;
+    }
+    tendencies_from(&process.read_bytes(begin, len as usize).ok()?)
 }
 
 /// The highest coaching licence level.
@@ -385,6 +431,7 @@ pub fn read_staff_details(
         preferences: Vec::new(),
         coaching_licence: s.coaching_licence.map(|offset| licence_level(u8_at(offset))),
         formations: s.formations.map(|offsets| offsets.map(u8_at)),
+        tendencies: s.tendencies.and_then(|offset| read_tendencies(process, u64_at(offset))),
         board_seat: false,
     }))
 }
@@ -415,6 +462,20 @@ mod tests {
         assert_eq!([1, 2, 7, 8].map(licence_level), [1, 2, 7, 8]);
         assert_eq!([0xFF, 0xFE, 0xF9].map(licence_level), [2, 3, 8]);
         assert_eq!([0, 9, 0x7F, 0x80, 0xF8].map(licence_level), [0; 5]);
+    }
+
+    #[test]
+    fn tendencies_only_from_a_list_that_reads_as_one() {
+        let of = |id, value| Tendency { id, value };
+        assert_eq!(tendencies_from(&[]), Some(Vec::new()));
+        assert_eq!(tendencies_from(&[75, 13, 48, 20, 100, 1]), Some(vec![of(75, 13), of(48, 20), of(100, 1)]));
+        // Half an entry, an id or a value out of range, and an id that comes twice.
+        assert_eq!(tendencies_from(&[75, 13, 48]), None);
+        assert_eq!(tendencies_from(&[0, 13]), None);
+        assert_eq!(tendencies_from(&[101, 13]), None);
+        assert_eq!(tendencies_from(&[75, 0]), None);
+        assert_eq!(tendencies_from(&[75, 21]), None);
+        assert_eq!(tendencies_from(&[75, 13, 75, 14]), None);
     }
 
     #[test]
