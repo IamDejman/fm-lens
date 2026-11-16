@@ -30,6 +30,20 @@
 - [Release notes](https://getfmlens.com/releases/): what is new in each version
 - [Privacy](https://getfmlens.com/privacy/): what the site and the app send
 
+## Guides
+
+- [Change CA and PA](https://getfmlens.com/guides/change-ca-pa/): set a player's current and potential ability
+- [Heal injuries](https://getfmlens.com/guides/heal-injuries/): heal one player or the whole team
+- [Edit club money](https://getfmlens.com/guides/edit-club-money/): balance, transfer budget and wage budget
+- [Transfer a player](https://getfmlens.com/guides/transfer-player/): move, swap, loan or release a player
+- [Freeze attributes](https://getfmlens.com/guides/freeze-attributes/): stop a player's attributes dropping
+
+## Compare
+
+- [FM27 editor for Mac](https://getfmlens.com/fm27-editor-mac/): what you need and how to set up on a Mac
+- [FMRTE alternative](https://getfmlens.com/fmrte-alternative/): FM Lens as a free real-time editor
+- [In-Game Editor alternative](https://getfmlens.com/in-game-editor-alternative/): how FM Lens differs from the paid add-on
+
 ## Source
 
 - [Source code](https://github.com/IamDejman/fm-lens): the app, under GPL-3.0
