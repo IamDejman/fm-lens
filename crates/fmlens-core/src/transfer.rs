@@ -9,8 +9,8 @@
 //! The editor allocates nothing in the game, so the senior team's list must have room in
 //! the block it already has: below its capacity, or up to the end of the allocator's block
 //! (see [`HeapLayout`]). Only players with simple ties move: under contract with the club
-//! they play for (no loans), not player-coaches, and not at a club a human manager runs,
-//! whose tactics, training and the like point at its players too.
+//! they play for (no loans) and not player-coaches. A player of a club a human manager runs
+//! moves too: its tactics, training and the like still name him until FM next refreshes them.
 //!
 //! A player who leaves a club gives up the captaincies he holds in its teams: they are left
 //! empty, as a youth team's often are, for the club to fill.
@@ -179,8 +179,6 @@ pub enum MoveError {
     PlayerCoach,
     /// The contract does not point back at the player, is not a player's, or names two teams.
     UnusualContract,
-    /// The player is at a club a human manager runs.
-    HumanClub,
     /// One club is a men's club and the other a women's club.
     MenAndWomen,
     /// The player is not in his team's list once, or is in the new team's list already.
@@ -343,7 +341,6 @@ impl fmt::Display for MoveError {
             MoveError::TransferPending => f.write_str("the player has a transfer agreed for a later day already"),
             MoveError::PlayerCoach => f.write_str("player-coaches cannot be moved: they work as staff too"),
             MoveError::UnusualContract => f.write_str("the player's contract is not a plain player's contract"),
-            MoveError::HumanClub => f.write_str("he plays for your club; transfer him in FM"),
             MoveError::MenAndWomen => f.write_str("one club is a men's club and the other a women's club"),
             MoveError::NotListed => f.write_str("the squad lists do not hold the player where they should"),
             MoveError::NoRoom { players } => write!(
@@ -466,7 +463,6 @@ impl Coded for MoveError {
             MoveError::TransferPending => "move.transferPending",
             MoveError::PlayerCoach => "move.playerCoach",
             MoveError::UnusualContract => "move.unusualContract",
-            MoveError::HumanClub => "move.humanClub",
             MoveError::MenAndWomen => "move.menAndWomen",
             MoveError::NotListed => "move.notListed",
             MoveError::NoRoom { .. } => "move.noRoom",
@@ -687,17 +683,15 @@ impl Patches {
 
 impl Session {
     /// Works out moving `player` to the senior team of `club` from the game as it is now,
-    /// under the contract `terms`. `human_clubs` are the UIDs of the clubs human managers
-    /// run. Nothing is written.
+    /// under the contract `terms`. Nothing is written.
     pub fn plan_club_move(
         &self,
         player: &PlayerSummary,
         club: &ClubSummary,
         terms: MoveTerms,
-        human_clubs: &[u32],
     ) -> Result<MovePlan, MoveError> {
         self.check_terms(terms, self.game_date())?;
-        let leaving = self.departure(player, human_clubs)?;
+        let leaving = self.departure(player)?;
         if self.process.read_u32(club.address + self.layout.club.uid)? != club.uid {
             return Err(MoveError::NotAClub { uid: club.uid });
         }
@@ -731,7 +725,7 @@ impl Session {
         terms: MoveTerms,
     ) -> Result<TransferPlan, MoveError> {
         self.check_terms(terms, self.game_date())?;
-        let leaving = self.departure(player, &[])?;
+        let leaving = self.departure(player)?;
         if self.process.read_u32(club.address + self.layout.club.uid)? != club.uid {
             return Err(MoveError::NotAClub { uid: club.uid });
         }
@@ -749,8 +743,8 @@ impl Session {
     /// Works out releasing `player` from his club, which leaves him a free agent. He gives
     /// up its captaincies, leaves its lists, and then has no team and no contract. Nothing is
     /// written.
-    pub fn plan_release(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<MovePlan, MoveError> {
-        let leaving = self.departure(player, human_clubs)?;
+    pub fn plan_release(&self, player: &PlayerSummary) -> Result<MovePlan, MoveError> {
+        let leaving = self.departure(player)?;
         let p = &self.layout.player;
         let mut patches = Patches::default();
         self.captaincy_patches(&leaving, &mut patches)?;
@@ -767,13 +761,8 @@ impl Session {
     /// Works out `player` and `other` swapping clubs, each joining the other's senior team
     /// on his own contract. Each takes the other's slot in that team's list where it has him,
     /// so a full list is no obstacle then. Nothing is written.
-    pub fn plan_club_swap(
-        &self,
-        player: &PlayerSummary,
-        other: &PlayerSummary,
-        human_clubs: &[u32],
-    ) -> Result<MovePlan, MoveError> {
-        let (first, second) = (self.departure(player, human_clubs)?, self.departure(other, human_clubs)?);
+    pub fn plan_club_swap(&self, player: &PlayerSummary, other: &PlayerSummary) -> Result<MovePlan, MoveError> {
+        let (first, second) = (self.departure(player)?, self.departure(other)?);
         let into_second = self.arrival(second.club, &first)?;
         let into_first = self.arrival(first.club, &second)?;
 
@@ -816,7 +805,7 @@ impl Session {
     }
 
     /// Checks what ties `player` to his club and reads every list of it that holds him.
-    fn departure(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<Departure, MoveError> {
+    fn departure(&self, player: &PlayerSummary) -> Result<Departure, MoveError> {
         let (process, layout) = (&self.process, &self.layout);
         let (p, c) = (&layout.player, &layout.contract);
         let object = player.address;
@@ -853,9 +842,6 @@ impl Session {
             return Err(MoveError::OnLoan);
         }
         let club_uid = process.read_u32(old_club + layout.club.uid)?;
-        if human_clubs.contains(&club_uid) {
-            return Err(MoveError::HumanClub);
-        }
 
         // He must be in the list of the team he plays for, once. Every list of his club that holds him loses him:
         // his employer's often does too, and a youngster may be listed with more than one youth side.

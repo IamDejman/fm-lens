@@ -1658,11 +1658,11 @@ impl Session {
     /// made for him, then has him leave the team his contract is with, for a release. He becomes a free agent, and the
     /// club gets no fee and no row in its transfer history, as with the editor. The checks of a release come first: a
     /// player on loan is refused, so no loan needs ending. What the game leaves him as is read back.
-    pub fn release_through_game(&self, player: &PlayerSummary, human_clubs: &[u32]) -> Result<GameRelease, MoveError> {
+    pub fn release_through_game(&self, player: &PlayerSummary) -> Result<GameRelease, MoveError> {
         let withdraw = self.game_function(|calls| calls.withdraw_offers)?;
         let leave = self.game_function(|calls| calls.leave_team)?;
         let manager = self.transfer_manager()?;
-        let from_club = self.plan_release(player, human_clubs)?.from_club;
+        let from_club = self.plan_release(player)?.from_club;
         let (object, shift) = (self.person_object(player)?, player.shift);
         if self.loan_contract(object, shift).is_some() {
             return Err(MoveError::OnLoan);

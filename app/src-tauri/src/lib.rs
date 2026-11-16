@@ -55,7 +55,7 @@ struct Connection {
     players: PlayerIndex,
     staff: StaffIndex,
     clubs: ClubIndex,
-    /// The clubs human managers run: their players are not moved to other clubs.
+    /// The clubs human managers run.
     human_clubs: Vec<u32>,
     log: Vec<LoggedChange>,
     pending_refresh: Vec<(Entity, u32)>,
@@ -1785,15 +1785,14 @@ impl Connection {
         if self.session.game_actions().transfer {
             return Ok(MoveRoute::Game(self.session.plan_transfer(player, to, terms)?));
         }
-        Ok(MoveRoute::Write(self.session.plan_club_move(player, to, terms, &self.human_clubs)?))
+        Ok(MoveRoute::Write(self.session.plan_club_move(player, to, terms)?))
     }
 
     /// Works out releasing the player `uid` from his club. Where the game releases players itself, it does so at your
     /// club too, as its editor does; FM Lens writes no release there.
     fn plan_release(&self, uid: u32) -> Result<MovePlan, Failure> {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
-        let human_clubs: &[u32] = if self.session.game_actions().release { &[] } else { &self.human_clubs };
-        Ok(self.session.plan_release(player, human_clubs)?)
+        Ok(self.session.plan_release(player)?)
     }
 
     /// Works out the players `uid` and `other` swapping clubs: two transfers the game makes itself, without a fee,
@@ -1802,7 +1801,7 @@ impl Connection {
         let player = self.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
         let partner = self.players.get(other).ok_or_else(|| not_found(Entity::Player, other))?;
         if !self.session.game_actions().transfer {
-            return Ok(SwapRoute::Write(self.session.plan_club_swap(player, partner, &self.human_clubs)?));
+            return Ok(SwapRoute::Write(self.session.plan_club_swap(player, partner)?));
         }
         let club_of = |player: &PlayerSummary| -> Result<&fmlens_core::ClubSummary, Failure> {
             let uid = player.club_uid.ok_or(MoveError::FreeAgent)?;
@@ -4845,7 +4844,7 @@ fn release_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, 
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     if connection.session.game_actions().release {
         let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
-        let released = connection.session.release_through_game(player, &[])?;
+        let released = connection.session.release_through_game(player)?;
         if released.club_after.is_some() {
             return Err(MoveError::CallDeclined.into());
         }

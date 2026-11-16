@@ -333,7 +333,6 @@ const errors: ErrorTexts = {
   "move.onLoan": () => "El jugador está cedido; los jugadores cedidos aún no se pueden traspasar.",
   "move.playerCoach": () => "Los jugadores-entrenadores no se pueden traspasar: también trabajan como personal.",
   "move.unusualContract": () => "El contrato del jugador no es un contrato de jugador corriente.",
-  "move.humanClub": () => "Juega en tu club. Traspásalo desde FM.",
   "move.you": () => "Ese eres tú. Cambia de club desde FM.",
   "move.menAndWomen": () => "Uno de los clubes es masculino y el otro, femenino.",
   "move.notListed": () => "Las listas de la plantilla no tienen al jugador donde deberían.",
@@ -2734,7 +2733,7 @@ export const es: Strings = {
   wish: {
     title: "Lista de deseos",
     what: "¿Qué debería hacer FM Lens a continuación?",
-    sentWith: "Se publica, con tu versión de FM Lens.",
+    sentWith: "Se publica, con tu versión de FM Lens, la de FM y tu sistema.",
     tooMany: "Demasiados desde aquí. Vuelve a intentarlo en una hora.",
   },
 
