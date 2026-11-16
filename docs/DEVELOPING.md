@@ -295,8 +295,8 @@ fine-grained GitHub token (Issues: read and write, on this repository only), set
 function's `GITHUB_TOKEN`; without one it answers 503. It keeps no reports, only counts in
 the DynamoDB table `fm-lens-report-relay`, which the function may update and which drops
 them once they are old: 5 an hour and 10 a day from one sender (an IPv4 address, or an IPv6 /64 network), 200 an
-hour and 1,000 a day in all. The app's Wishlist posts to `POST /wish` with what the user wrote and the app's
-version, which the relay files as a feature request (label `enhancement`), counted apart from reports with the same
+hour and 1,000 a day in all. The app's Wishlist posts to `POST /wish` with what the user wrote, the app's
+version, the FM build and the system, which the relay files as a feature request (label `enhancement`), counted apart from reports with the same
 limits. Screenshots and videos (up to 5 images
 of 10 MB and one MP4 or MOV video of 50 MB) never pass through it: the app asks it for presigned upload addresses
 (`POST /uploads`, counted like reports), puts each file under the private `uploads/` of the S3 bucket named by the

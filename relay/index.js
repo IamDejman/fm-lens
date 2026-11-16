@@ -223,13 +223,16 @@ export function issueFor(report, files = []) {
 }
 
 /**
- * The issue for a wish from the app's wishlist (`readReport` reads it: `what` and the app's `version`), laid out as
- * GitHub lays out the feature request form (.github/ISSUE_TEMPLATE/feature_request.yml).
+ * The issue for a wish from the app's wishlist (`readReport` reads it: `what`, the app's `version` and, from 1.1.2,
+ * the FM build and the system), laid out as GitHub lays out the feature request form
+ * (.github/ISSUE_TEMPLATE/feature_request.yml).
  */
 export function wishFor(wish, files = []) {
   const body = [
     section("What you would like", wish.what),
     section("FM Lens version", wish.version),
+    ...(wish.fmBuild ? [section("FM build", wish.fmBuild)] : []),
+    ...(wish.system ? [section("System", wish.system)] : []),
     ...(files.length > 0 ? [section("Files", files.map(fileLink).join("\n\n"))] : []),
     "_Sent from the wishlist in FM Lens._",
   ].join("\n\n");

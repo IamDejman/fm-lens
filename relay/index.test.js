@@ -130,7 +130,12 @@ test("a wish becomes a feature request laid out like its form, with no mentions"
   assert.deepEqual(issue.labels, ["enhancement"]);
   assert.match(issue.body, /^### What you would like\n\nEdit stadiums\nCapacity and name, @\u200bsomeone\n\n### FM Lens version\n\n0\.7\.5\n\n/);
   assert.match(issue.body, /_Sent from the wishlist in FM Lens\._$/);
-  assert.doesNotMatch(issue.body, /What happened/);
+  assert.doesNotMatch(issue.body, /What happened|FM build|System/);
+  const told = readReport({ what: "Edit stadiums", version: "1.1.2", fmBuild: "FM27 Steam 26577676, editing on", macos: "macOS 27.2, Apple Silicon" });
+  assert.match(
+    wishFor(told.report).body,
+    /### FM Lens version\n\n1\.1\.2\n\n### FM build\n\nFM27 Steam 26577676, editing on\n\n### System\n\nmacOS 27\.2, Apple Silicon\n\n/,
+  );
 });
 
 test("the relay files a wish, counted apart from reports", async () => {
