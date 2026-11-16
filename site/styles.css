@@ -464,13 +464,29 @@ footer a {
   max-width: 46rem;
 }
 
-.policy ul {
+.policy ul,
+.policy ol {
   margin: 0 0 16px;
   padding-left: 1.25em;
 }
 
 .policy li {
   margin-bottom: 6px;
+}
+
+.policy h3 {
+  margin: 16px 0 4px;
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+/* A download button, and the footer's links, on the guides and comparison pages. */
+.policy .button {
+  margin-block: 12px;
+}
+
+footer p + p {
+  margin-top: 12px;
 }
 
 .policy code {
