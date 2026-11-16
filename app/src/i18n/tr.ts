@@ -1955,6 +1955,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.1": [
+        "Game Pass'teki FM27'yi tam sürüm 0.9.2435.0'da yeniden düzenleyin.",
+        "Windows'ta Epic Games Store'dan FM27 salt okunur açılır.",
+      ],
       "1.1.0": [
         "FM'de bir oyuncunun, personelin veya kulübün adının üzerinde durun, FM Lens kartı açılır. Açmak için karta tıklayın.",
         "Bir kulübü yeniden adlandırın: yeni ad FM yeniden başlayınca da kalır. Orijinal adları kullan eski adı geri verir.",

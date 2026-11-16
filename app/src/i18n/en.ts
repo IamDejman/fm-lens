@@ -2102,6 +2102,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.1": [
+        "Edit FM27 on Game Pass again, on its full release version 0.9.2435.0.",
+        "FM27 from the Epic Games Store on Windows opens read-only.",
+      ],
       "1.1.0": [
         "Rest the pointer on any player, staff or club name in FM to see FM Lens's card. Click it to open them.",
         "Rename a club: the new name stays after FM restarts. Use original names gives the old one back.",

@@ -1,43 +1,25 @@
 ## What's new
 
-FM Lens 1.1 opens its scout card on any name in FM, lets you rename any club and keeps the new name for good, puts you in charge of a national team on top of your club job, and makes a cancelled signing something you can take back. Everything below is new since 1.0.0.
+FM Lens 1.1.1 brings editing back to FM27 on Game Pass after its full release update, and opens FM27 from the Epic Games Store on Windows for the first time. Everything below is new since 1.1.0.
 
-### Scout card on every name
+### Game Pass: editing is back
 
-- Rest the pointer on a player's, a member of staff's or a club's name anywhere in FM, in the squad table, a message, a news story or a league table, and FM Lens's card opens beside it. A team's name opens its club's card.
-- New cards for staff (face, job, club, nation, age, current and potential ability) and clubs (badge, nation, founded, stadium, reputation).
-- The card stays while you move onto it, and a click opens them in FM Lens. FM's own (i) card still brings up FM Lens's card for players, and Shift still shows a player at his peak.
-- On the Macs the card is ready within seconds of FM coming to the front, where it used to take up to 40 seconds and sometimes never showed.
-- Works on Windows and the Macs, in the Steam version.
+- FM27 on Game Pass moved to version 0.9.2435.0 with the full release on 10 November, and since then FM Lens could only read it. FM Lens 1.1.1 knows this version, so you can edit your Game Pass career again.
+- The edits FM Lens makes itself work, as they did on the previous Game Pass version: attributes, CA and PA, contracts and the rest. Undo in Changes puts any of them back.
+- Moves FM makes for FM Lens, such as transfers, loans, signing free agents and injuries, stay on Steam for now.
+- The map of this version comes from tozmoz's open source [FMLibreEditor](https://github.com/tozmoz/FMLibreEditor), where it passed every check on a Game Pass save. Thank you. We have not had a Game Pass copy of our own to test it with yet, so if anything looks off, tell us on [GitHub](https://github.com/IamDejman/fm-lens/issues).
 
-### Rename a club
+### Epic Games Store on Windows
 
-- Rename, in a club's profile, gives the club a new name, a new short name, or both. FM shows them straight away, and Undo in Changes puts the old names back.
-- The new names stay. FM normally names every club from its database each time a save loads, so a rename used to vanish. FM Lens now writes your names to its own name change file in FM's folder, which FM reads when it starts. We checked it by quitting FM, starting it again and loading the save: the new names were still there.
-- The names apply to every career in that FM install, as FM's own name change files do.
-- Changed your mind after FM restarts? Rename shows Use original names, which fills in the club's own names. Rename with them and the club is back to how FM named it, and taken out of the file.
-- On macOS, FM Lens needs App Management to write into FM's folder. If it is not allowed, the dialog says so and Open App Management takes you straight to the right page in System Settings. Allow it again after each FM Lens update.
-- Works on Windows and the Macs, in the Steam version.
+- FM Lens used to stop at Connect when FM27 came from the Epic Games Store on Windows. It now recognises your game and opens it read-only, so you can browse, search and scout every player, member of staff and club.
+- Editing on Epic comes once FM Lens has learned that version. We have not had an Epic copy to test with, so tell us how Connect goes.
 
-### Manage a national team
+### New guides
 
-- National team, in your manager's profile, lets you take a national team's job while keeping your club job, as FM itself allows. Search for the team and pick it.
-- Before anything changes you see the plan: the manager who is dismissed, and the national team you leave, since FM gives you one national job at a time. A team you already manage is refused.
-- FM makes the appointment itself, and your profile header shows the national job beside your club. Changes names the team you left.
-- Windows, Steam version, for now.
-
-### Undo a cancelled signing
-
-- Cancel transfer can now be undone when FM Lens agreed the signing itself, for example with Sign later. Undo has FM agree the same signing again, with the same club and on the same day.
-- A deal FM agreed on its own still can't be brought back once cancelled. The dialog tells you when that applies, before you cancel.
-- Undo is refused if the player has picked up another transfer for a later day in the meantime, so nothing is overwritten.
-
-### Squad
-
-- Your club's youth candidates show where FM keeps them, in the under-18s. The empty Youth Candidates team is hidden until it has players.
+- Step by step guides with screenshots on [getfmlens.com](https://getfmlens.com/guides/): change CA and PA, edit club money, freeze a player's attributes, heal injuries and transfer a player to any club.
 
 ### Updating
 
-- Open FM Lens and it fetches 1.1.0 by itself. Press Relaunch to update when it appears, or download 1.1.0 from getfmlens.com.
+- Open FM Lens and it fetches 1.1.1 by itself. Press Relaunch to update when it appears, or download 1.1.1 from getfmlens.com.
 
 FM Lens is free and open source, and it will stay that way. A [star on GitHub](https://github.com/IamDejman/fm-lens) encourages me.

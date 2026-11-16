@@ -1983,6 +1983,10 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.1": [
+        "Vuelve a editar FM27 de Game Pass, en su versión completa 0.9.2435.0.",
+        "FM27 de Epic Games Store en Windows se abre en solo lectura.",
+      ],
       "1.1.0": [
         "Deja el puntero sobre el nombre de un jugador, un miembro del personal o un club en FM para ver la ficha de FM Lens. Haz clic en ella para abrirlo.",
         "Renombra un club: el nombre nuevo se mantiene al reiniciar FM. Usar nombres originales devuelve el anterior.",
