@@ -485,6 +485,15 @@ footer a {
   margin-block: 12px;
 }
 
+.policy img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-block: 16px;
+  border: 1px solid rgb(37 27 55 / 0.16);
+  border-radius: 8px;
+}
+
 footer p + p {
   margin-top: 12px;
 }
