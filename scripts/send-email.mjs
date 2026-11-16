@@ -9,7 +9,9 @@
 //   again after it stops sends only to the rest.
 //
 // The email file is plain text: the subject on the first line, a blank line, then the email, with a blank line between
-// paragraphs. Links are made clickable. Every email ends with a link to unsubscribe, and carries the headers that let
+// paragraphs. Links are made clickable. A paragraph whose first line ends with a colon, with more lines under it, shows
+// that line as a bold title. A paragraph that is only `![what it shows](https://address/of/image)` is a picture, as wide
+// as the email; the plain text copy of the email leaves it out. Every email ends with a link to unsubscribe, and carries the headers that let
 // email apps show their own unsubscribe button. Addresses SES won't send to, after a bounce or a complaint, are skipped
 // and marked so on the list.
 
@@ -57,15 +59,32 @@ function readEmailFile(file) {
   return { subject: subject.trim(), paragraphs };
 }
 
+/** A picture paragraph, `![what it shows](address)`: its two parts. */
+const PICTURE = /^!\[([^\]]*)\]\((https:\/\/[^\s)]+)\)$/;
+
+/** `paragraph` as HTML: a picture, or text with its links, its line breaks and a bold title if it has one. */
+function htmlOf(paragraph) {
+  const picture = PICTURE.exec(paragraph);
+  if (picture) {
+    const [, alt, src] = picture;
+    return `<p><img src="${escape(src)}" alt="${escape(alt)}" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;border-radius:8px"></p>`;
+  }
+  const [first, ...rest] = paragraph.split("\n");
+  if (rest.length > 0 && first.endsWith(":")) {
+    return `<p><strong>${linked(escape(first))}</strong><br>${linked(escape(rest.join("\n"))).replace(/\n/g, "<br>")}</p>`;
+  }
+  return `<p>${linked(escape(paragraph)).replace(/\n/g, "<br>")}</p>`;
+}
+
 /** The email for `to`, whose unsubscribe link carries `token`, as SES's SendEmail takes it. */
 function emailFor({ subject, paragraphs }, to, token) {
   const query = `email=${encodeURIComponent(to)}&token=${token}`;
   const unsubscribe = `https://getfmlens.com/unsubscribe/?${query}`;
-  const text = `${paragraphs.join("\n\n")}\n\n--\n${FREE} A star on GitHub encourages me: ${REPOSITORY}\nUnsubscribe: ${unsubscribe}\n`;
+  const text = `${paragraphs.filter((paragraph) => !PICTURE.test(paragraph)).join("\n\n")}\n\n--\n${FREE} A star on GitHub encourages me: ${REPOSITORY}\nUnsubscribe: ${unsubscribe}\n`;
   const html = [
     '<!doctype html><html><body style="margin:0;padding:24px;background:#ffffff">',
     '<div style="max-width:560px;margin:0 auto;font:16px/1.55 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d1d1f">',
-    ...paragraphs.map((paragraph) => `<p>${linked(escape(paragraph)).replace(/\n/g, "<br>")}</p>`),
+    ...paragraphs.map(htmlOf),
     `<p style="margin-top:32px;font-size:13px;color:#6e6e73">${FREE} A <a href="${REPOSITORY}" style="color:#6e6e73">star on GitHub</a> encourages me.</p>`,
     `<p style="font-size:13px"><a href="${escape(unsubscribe)}" style="color:#6e6e73">Unsubscribe</a></p>`,
     "</div></body></html>",
