@@ -1539,6 +1539,7 @@ const LAYOUTS: &[&str] = &[include_str!("../../../profiles/fm27/layout-macos.tom
 const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/gamepass-0.9.2355.0.toml"),
     include_str!("../../../profiles/fm27/gamepass-0.9.2409.0.toml"),
+    include_str!("../../../profiles/fm27/gamepass-0.9.2435.0.toml"),
     include_str!("../../../profiles/fm27/steam-26227640.toml"),
     include_str!("../../../profiles/fm27/steam-26340721.toml"),
     include_str!("../../../profiles/fm27/steam-26385295.toml"),
@@ -1745,6 +1746,20 @@ mod tests {
         );
         assert_eq!(profile.current_date, Some(0x562_57C8));
         assert_eq!(profile.retirement_manager, Some(profile.arrays.players - 0xED60));
+
+        // The full release on Game Pass (0.9.2435.0): the statics about 0x2CC000 back, the manager's 0xED70 before
+        // the players pair, and no function traced.
+        let fingerprint = PluginFingerprint::Pe { size_of_image: 0x1796_9000, link_timestamp: 0x6AE8_CF77 };
+        let profile = profile_for(fingerprint).expect("Game Pass 0.9.2435.0 profile");
+        assert_eq!(profile.storefront, Storefront::GamePass);
+        assert_eq!(profile.package_version.as_deref(), Some("0.9.2435.0"));
+        assert_eq!(
+            (profile.arrays.players, profile.arrays.staff, profile.arrays.clubs),
+            (0x53B_7DE0, 0x53B_7E28, 0x53B_7F98)
+        );
+        assert_eq!(profile.current_date, Some(0x535_97C8));
+        assert_eq!(profile.retirement_manager, Some(profile.arrays.players - 0xED70));
+        assert!(profile.calls.is_none());
 
         // The same version on Steam, packaged differently: another fingerprint and other RVAs, the manager's static
         // 0xDAC0 before the players pair.

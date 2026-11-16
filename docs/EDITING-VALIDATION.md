@@ -4660,3 +4660,15 @@ started under Rosetta and FM-Lens-Rename2 loaded: FM Lens read "Leven
 Athletic". Use original names gave back "Ipswich Wanderers" and removed the
 file; after another restart and load FM Lens read "Ipswich Wanderers" with no
 Use original names. All nine career files' hashes were unchanged.
+
+## Game Pass 0.9.2435.0 (16 November 2026)
+
+Not checked by FM Lens. Game Pass moved to 0.9.2435.0, the full release of 10
+November, and every install on it connected read-only: 7 installs from 11 to
+15 November, 0 edits. `profiles/fm27/gamepass-0.9.2435.0.toml` is ported from
+tozmoz's FMLibreEditor (GPL-3.0, its commit c1bbd53), where the probe's
+profile check passed all 10 checks on a Game Pass save of 3 January 2028. It
+places the arrays, the in-game date and the retirement manager; no function is
+traced, so the features that call into the game stay off on this build.
+Neither `scripts/check-build.sh` nor the write checks have run on it, since no
+Game Pass install is at hand. Run both the next time one is.
