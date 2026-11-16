@@ -329,8 +329,13 @@ address, and `--send` to everyone. The email file is plain text, the subject on 
 paragraphs. It skips the addresses SES won't send to after a bounce or a complaint and marks them so on the list, and
 keeps who it sent to in `<email file>.sent`, so running it again after it stops sends only to the rest.
 
+`--counts` prints how many of that email were sent, delivered, opened, clicked and bounced in the last 30 days. SES
+counts them in CloudWatch under the email's tag, its file name, so they are totals and say nothing of who: one person
+opening twice counts twice, an email app that hides pictures counts none, and Apple Mail opens every email by itself.
+Emails sent with `--test` are counted together under `test`.
+
 `relay/setup-email.sh` sets all this up once: the table (recoverable for 35 days), the role's permission to update and
-count it, getfmlens.com in SES with its configuration set `fm-lens`, and the schedule below. It prints the DNS records
+count it, getfmlens.com in SES with its configuration set `fm-lens` and that set's counts, and the schedule below. It prints the DNS records
 getfmlens.com needs at Namecheap: three DKIM CNAMEs and DMARC. The domain's MX and SPF stay on Namecheap's email
 forwarding, which takes no other MX record, so bounces go to SES's own domain and DMARC passes on the DKIM signature.
 

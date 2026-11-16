@@ -2,11 +2,16 @@
 // Sends an email to everyone on FM Lens's list, from news@getfmlens.com with Amazon SES. The list is the DynamoDB table
 // fm-lens-subscribers that the report relay keeps (relay/index.js); relay/setup-email.sh sets the list and SES up.
 //
-// Usage: AWS_PROFILE=<the relay's account> node scripts/send-email.mjs <email file> [--test <address> | --send]
+// Usage: AWS_PROFILE=<the relay's account> node scripts/send-email.mjs <email file> [--test <address> | --send |
+// --counts]
 // - With neither, it changes nothing: it says how many it would send to and prints the email.
 // - --test sends it to <address> alone.
 // - --send sends it to everyone on the list. Each address it sends to is added to <email file>.sent, so running it
 //   again after it stops sends only to the rest.
+// - --counts sends nothing: it prints how many of this email were sent, delivered, opened, clicked and bounced, as SES
+//   counted them in CloudWatch over the last 30 days. Opens and clicks are totals, not people: one person opening twice
+//   counts twice, an email app that hides pictures counts none, and Apple Mail opens every email by itself. Emails
+//   sent with --test are counted together, apart from every email's own counts.
 //
 // The email file is plain text: the subject on the first line, a blank line, then the email, with a blank line between
 // paragraphs. Links are made clickable. A paragraph whose first line ends with a colon, with more lines under it, shows
@@ -17,6 +22,7 @@
 
 import { execFile } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
+import { basename } from "node:path";
 import { promisify } from "node:util";
 
 const FROM = "FM Lens <news@getfmlens.com>";
@@ -28,6 +34,15 @@ const RELAY = "https://5om2ly4fvanjhg425jlb7s26dm0etzak.lambda-url.us-east-1.on.
 /** Every email's footer asks for a star, as the app does once. */
 const REPOSITORY = "https://github.com/IamDejman/fm-lens";
 const FREE = "FM Lens is free and open source, and it will stay that way.";
+/** What --counts prints, by SES's name for each count. */
+const COUNTS = {
+  Send: "Sent",
+  Delivery: "Delivered",
+  Open: "Opens",
+  Click: "Clicks",
+  Bounce: "Bounced",
+  Complaint: "Complaints",
+};
 /** How many emails are sent at once: SES lets this account send 14 a second. */
 const AT_ONCE = 5;
 
@@ -45,7 +60,7 @@ const escape = (text) =>
 const linked = (html) =>
   html.replace(/https?:\/\/[^\s<]*[^\s<.,:;!?)]/g, (url) => `<a href="${url}" style="color:#5b3fd1">${url}</a>`);
 
-/** The email in `file`: its subject and its paragraphs. */
+/** The email in `file`: its subject, its paragraphs, and the tag SES counts it under, from the file's name. */
 function readEmailFile(file) {
   const [subject, blank, ...rest] = readFileSync(file, "utf8").replace(/\r\n/g, "\n").split("\n");
   const paragraphs = rest
@@ -56,7 +71,8 @@ function readEmailFile(file) {
   if (!subject?.trim() || blank?.trim() !== "" || paragraphs.length === 0) {
     throw new Error(`${file} needs the subject on its first line, a blank line, then the email.`);
   }
-  return { subject: subject.trim(), paragraphs };
+  const tag = basename(file).replace(/\.[^.]*$/, "").replace(/[^A-Za-z0-9_-]/g, "-");
+  return { subject: subject.trim(), paragraphs, tag };
 }
 
 /** A picture paragraph, `![what it shows](address)`: its two parts. */
@@ -77,7 +93,7 @@ function htmlOf(paragraph) {
 }
 
 /** The email for `to`, whose unsubscribe link carries `token`, as SES's SendEmail takes it. */
-function emailFor({ subject, paragraphs }, to, token) {
+function emailFor({ subject, paragraphs, tag }, to, token) {
   const query = `email=${encodeURIComponent(to)}&token=${token}`;
   const unsubscribe = `https://getfmlens.com/unsubscribe/?${query}`;
   const text = `${paragraphs.filter((paragraph) => !PICTURE.test(paragraph)).join("\n\n")}\n\n--\n${FREE} A star on GitHub encourages me: ${REPOSITORY}\nUnsubscribe: ${unsubscribe}\n`;
@@ -94,6 +110,7 @@ function emailFor({ subject, paragraphs }, to, token) {
     FromEmailAddress: FROM,
     Destination: { ToAddresses: [to] },
     ConfigurationSetName: "fm-lens",
+    EmailTags: [{ Name: "email", Value: tag }],
     Content: {
       Simple: {
         Subject: utf8(subject),
@@ -148,12 +165,52 @@ async function send(email) {
   await aws("sesv2", "send-email", "--region", SES_REGION, "--cli-input-json", JSON.stringify(email));
 }
 
+/** How many emails tagged `tag` SES counted in the last 30 days, by COUNTS's keys. */
+async function readCounts(tag) {
+  const day = 24 * 60 * 60 * 1000;
+  const end = new Date(Math.ceil(Date.now() / day) * day);
+  const counts = await Promise.all(
+    Object.keys(COUNTS).map(async (metric) => {
+      const { Datapoints = [] } = await aws(
+        "cloudwatch",
+        "get-metric-statistics",
+        "--region",
+        SES_REGION,
+        "--namespace",
+        "AWS/SES",
+        "--metric-name",
+        metric,
+        "--dimensions",
+        `Name=email,Value=${tag}`,
+        "--start-time",
+        new Date(end - 30 * day).toISOString(),
+        "--end-time",
+        end.toISOString(),
+        "--period",
+        String((30 * day) / 1000),
+        "--statistics",
+        "Sum",
+      );
+      return [metric, Datapoints.reduce((sum, point) => sum + point.Sum, 0)];
+    }),
+  );
+  return Object.fromEntries(counts);
+}
+
 async function main() {
   const [file, flag, address] = process.argv.slice(2);
-  if (!file || (flag && !["--test", "--send"].includes(flag)) || (flag === "--test" && !address)) {
-    throw new Error("Usage: node scripts/send-email.mjs <email file> [--test <address> | --send]");
+  if (!file || (flag && !["--test", "--send", "--counts"].includes(flag)) || (flag === "--test" && !address)) {
+    throw new Error("Usage: node scripts/send-email.mjs <email file> [--test <address> | --send | --counts]");
   }
   const email = readEmailFile(file);
+  if (flag === "--counts") {
+    const counts = await readCounts(email.tag);
+    console.log(`"${email.subject}", last 30 days:`);
+    for (const [metric, label] of Object.entries(COUNTS)) {
+      console.log(`${label.padEnd(11)}${counts[metric]}`);
+    }
+    return;
+  }
   const list = await readList();
 
   if (flag === "--test") {
@@ -162,7 +219,7 @@ async function main() {
     if (!row) {
       console.warn(`${to} is not on the list, so its unsubscribe link won't work.`);
     }
-    await send(emailFor(email, to, row?.token ?? "0".repeat(32)));
+    await send(emailFor({ ...email, tag: "test" }, to, row?.token ?? "0".repeat(32)));
     console.log(`Sent "${email.subject}" to ${to}.`);
     return;
   }

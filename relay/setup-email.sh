@@ -3,7 +3,8 @@
 # - the DynamoDB table of addresses, fm-lens-subscribers, kept recoverable for 35 days, which the relay's role may
 #   update and count;
 # - getfmlens.com as a sender in Amazon SES in SES_REGION (eu-west-1 by default, where the account may send to anyone),
-#   with its own configuration set, fm-lens;
+#   with its own configuration set, fm-lens, which counts each email's sends, deliveries, opens, clicks, bounces and
+#   complaints in CloudWatch (scripts/send-email.mjs --counts reads them);
 # - an EventBridge schedule that runs the relay with `{ "job": "report-counts" }` every 15 minutes, to send PostHog the
 #   download counts and the list's size.
 # It prints the DNS records getfmlens.com needs for SES. Run it with AWS_PROFILE and AWS_REGION set for the relay's
@@ -41,6 +42,14 @@ aws iam put-role-policy --role-name "${role##*/}" --policy-name fm-lens-subscrib
 aws sesv2 get-configuration-set --region "$ses_region" --configuration-set-name fm-lens >/dev/null 2>&1 ||
   aws sesv2 create-configuration-set --region "$ses_region" --configuration-set-name fm-lens \
     --reputation-options ReputationMetricsEnabled=true
+# SES counts every email under its "email" tag, which scripts/send-email.mjs sets. Counting opens and clicks makes SES
+# add a picture to each email and send its links through its own address first.
+aws sesv2 get-configuration-set-event-destinations --region "$ses_region" --configuration-set-name fm-lens \
+  --query 'EventDestinations[].Name' --output text | grep -qw counts ||
+  aws sesv2 create-configuration-set-event-destination --region "$ses_region" --configuration-set-name fm-lens \
+    --event-destination-name counts --event-destination '{"Enabled":true,
+"MatchingEventTypes":["SEND","DELIVERY","OPEN","CLICK","BOUNCE","COMPLAINT"],"CloudWatchDestination":{
+"DimensionConfigurations":[{"DimensionName":"email","DimensionValueSource":"MESSAGE_TAG","DefaultDimensionValue":"none"}]}}'
 aws sesv2 get-email-identity --region "$ses_region" --email-identity "$domain" >/dev/null 2>&1 ||
   aws sesv2 create-email-identity --region "$ses_region" --email-identity "$domain" \
     --configuration-set-name fm-lens >/dev/null
