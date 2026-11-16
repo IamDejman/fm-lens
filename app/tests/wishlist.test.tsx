@@ -13,7 +13,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test('a wish is sent to the relay with the version only, and the window says so', async () => {
+test('a wish is sent to the relay with the version, the FM build and the system', async () => {
   const fetch = vi.fn(async () => new Response('{"sent":true}', { status: 201 }));
   vi.stubGlobal('fetch', fetch);
   render(<ReportDialog kind="wish" facts={FACTS} onClose={() => {}} />);
@@ -24,7 +24,12 @@ test('a wish is sent to the relay with the version only, and the window says so'
   expect(fetch).toHaveBeenCalledTimes(1);
   const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
   expect(url).toBe(`${RELAY}/wish`);
-  expect(JSON.parse(String(init.body))).toEqual({ what: 'Edit stadiums', version: '0.7.5' });
+  expect(JSON.parse(String(init.body))).toEqual({
+    what: 'Edit stadiums',
+    version: '0.7.5',
+    fmBuild: 'not connected',
+    macos: 'macOS 27.2, Apple Silicon',
+  });
 });
 
 test('too many wishes from here says to wait', async () => {

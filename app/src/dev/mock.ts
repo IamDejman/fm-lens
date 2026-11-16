@@ -2962,12 +2962,6 @@ function planSwap(uid: number, otherUid: number): MovePreview {
     if (p.clubUid === null) {
       throw failure("move.freeAgent", "the player has no club; free agents cannot be moved yet");
     }
-    if (staff.some((s) => s.isHuman && s.clubUid === p.clubUid)) {
-      throw failure(
-        "move.humanClub",
-        "he plays for your club; transfer him in FM",
-      );
-    }
   }
   if (player.clubUid === other.clubUid) {
     throw failure("move.sameClub", "the player is at this club already");

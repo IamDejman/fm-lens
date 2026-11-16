@@ -104,7 +104,6 @@ const errors: ErrorTexts = {
   "edit.notApplied": (p) => `${field(p.field)} didn't stick: FM Lens wrote ${p.wrote}, FM has ${p.read}.`,
   "edit.conflict": (p) => `FM has since changed ${field(p.field)} to ${p.found}, so it was left alone.`,
   "move.outOfRange": (p) => `${field(p.field)} must be from ${p.min} to ${p.max}. You entered ${p.value}.`,
-  "move.humanClub": () => "He plays for your club. Transfer him in FM.",
   "move.you": () => "That's you. Change clubs in FM.",
   "export.failed": (p) => `Couldn't save the file: ${p.reason}`,
   "export.notAllowed": (p) =>
@@ -3001,8 +3000,8 @@ export const en = {
   wish: {
     title: "Wishlist",
     what: "What should FM Lens do next?",
-    /** Wishes are filed where anyone can read them, with the app's version. */
-    sentWith: "Posted publicly, with your FM Lens version.",
+    /** Wishes are filed where anyone can read them, with the app's version, the FM build and the system. */
+    sentWith: "Posted publicly, with your FM Lens version, FM build and system.",
     tooMany: "Too many from here. Try again in an hour.",
   },
 

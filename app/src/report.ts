@@ -1,6 +1,6 @@
 // A problem report: what the user writes in Report a problem, sent with what FM Lens knows (its version, the FM build,
 // the checks on the game that did not pass, the Mac and the changes written while it has been open) to the report relay (relay/), which files it as an issue in
-// the fm-lens repository. A wish from the wishlist goes the same way with only the version, as a feature request.
+// the fm-lens repository. A wish from the wishlist goes the same way with the version, the FM build and the system, as a feature request.
 // Nothing leaves the app until the user presses Send. The facts are written in English, as the
 // issues are. Screenshots and videos go straight to the relay's bucket, at addresses the relay hands out, and the issue
 // links them.
@@ -245,9 +245,21 @@ export async function sendReport(facts: ReportFacts, what: string, files: Attach
   return result;
 }
 
-/** Sends a wish, `what` and `files`, to the relay with FM Lens's version, which files it as a feature request. */
+/**
+ * Sends a wish, `what` and `files`, to the relay with FM Lens's version, the FM build and the system, which tell where
+ * a feature is missing. The relay files it as a feature request.
+ */
 export async function sendWish(facts: ReportFacts, what: string, files: Attachment[] = []): Promise<SendResult> {
-  const result = await post("/wish", async () => ({ what, version: facts.version ?? "" }), files);
+  const result = await post(
+    "/wish",
+    async () => ({
+      what,
+      version: facts.version ?? "",
+      fmBuild: describeGame(facts),
+      macos: await systemVersion(),
+    }),
+    files,
+  );
   if (result === "sent" && inTauri) {
     track("wish_sent", { attachments: files.length });
   }

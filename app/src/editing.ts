@@ -283,14 +283,14 @@ export const undoBatch = (batch: number) => call<BatchUndo>("undo_batch", { batc
 
 /**
  * Checks that the player `uid` can move to the club `club` on `terms`, and names both clubs. Nothing is written;
- * when he cannot move, the error says why (a loan, a club a human manager runs, a squad list with no room, ...).
+ * when he cannot move, the error says why (a loan, a squad list with no room, ...).
  */
 export const planClubMove = (uid: number, club: number, terms: MoveTerms, fee?: number) =>
   call<MovePreview>("plan_club_move", { uid, club, terms, fee });
 
 /**
  * Checks that the player `uid` can be released from his club, and names it. Nothing is written; when he cannot be
- * released, the error says why (a loan, a club a human manager runs, ...).
+ * released, the error says why (a loan, ...).
  */
 export const planRelease = (uid: number) => call<ReleasePreview>("plan_release", { uid });
 

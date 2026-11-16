@@ -3239,8 +3239,7 @@ fn move_player(
     let clubs = ClubIndex::new(session.clubs()?);
     let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
     let to = clubs.get(club).with_context(|| format!("no club with UID {club}"))?;
-    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
-    let plan = session.plan_club_move(player, to, terms, &human)?;
+    let plan = session.plan_club_move(player, to, terms)?;
     let from_club = clubs.get(plan.from_club).context("his club is not in the list")?;
     let from = from_club.name.as_str();
     println!("{} (UID {uid}): {from} -> {}, {} writes", player.name, to.name, plan.writes());
@@ -3339,8 +3338,7 @@ fn release_through_game(session: &Session, uid: u32) -> Result<()> {
     let players = PlayerIndex::new(session.players()?);
     let clubs = ClubIndex::new(session.clubs()?);
     let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
-    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
-    let released = session.release_through_game(player, &human)?;
+    let released = session.release_through_game(player)?;
     let name = |uid: u32| clubs.get(uid).map_or_else(|| uid.to_string(), |c| c.name.clone());
     println!("{} (UID {uid}): the game ended his contract with {}", player.name, name(released.from_club));
     println!(
@@ -3355,8 +3353,7 @@ fn release_player(session: &Session, uid: u32, restore: bool, hold: u64) -> Resu
     let players = PlayerIndex::new(session.players()?);
     let clubs = ClubIndex::new(session.clubs()?);
     let player = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
-    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
-    let plan = session.plan_release(player, &human)?;
+    let plan = session.plan_release(player)?;
     let from = clubs.get(plan.from_club).map_or("?", |c| c.name.as_str());
     println!("{} (UID {uid}): released by {from}, {} writes", player.name, plan.writes());
 
@@ -3804,8 +3801,7 @@ fn swap_players(session: &Session, uid: u32, other: u32, restore: bool) -> Resul
     let clubs = ClubIndex::new(session.clubs()?);
     let first = players.get(uid).with_context(|| format!("no player with UID {uid}"))?;
     let second = players.get(other).with_context(|| format!("no player with UID {other}"))?;
-    let human: Vec<u32> = session.staff()?.iter().filter(|s| s.is_human).filter_map(|s| s.club_uid).collect();
-    let plan = session.plan_club_swap(first, second, &human)?;
+    let plan = session.plan_club_swap(first, second)?;
     let name = |club: u32| clubs.get(club).map_or("?", |c| c.name.as_str());
     println!(
         "{} ({}) <-> {} ({}), {} writes",

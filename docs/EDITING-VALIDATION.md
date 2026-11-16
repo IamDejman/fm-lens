@@ -4672,3 +4672,42 @@ places the arrays, the in-game date and the retirement manager; no function is
 traced, so the features that call into the game stay off on this build.
 Neither `scripts/check-build.sh` nor the write checks have run on it, since no
 Game Pass install is at hand. Run both the next time one is.
+
+## Scout card over a full screen FM on macOS, 16 November 2026
+
+Issue 307: on macOS the card showed with FM in a window and not with FM full
+screen. macOS keeps a plain window of an app that is not in front off another
+app's full screen space, so the card's window is now a panel that does not
+activate FM Lens. Checked on Apple Silicon, macOS 27.2, Steam build 26577676,
+with a debug build of FM Lens from the branch, by hover only (no edits).
+
+| Item | Result on macOS Apple Silicon |
+| --- | --- |
+| Card with FM in a window | Shown by the pointer over FM's own card |
+| Card with FM full screen (Preferences, Mode, Fullscreen) | Shown by the pointer over FM's own card |
+
+Not run: macOS Intel (Rosetta), and Windows, whose code did not change.
+
+## Moving your own player by the write route on macOS, 16 November 2026
+
+Issue 308: where FM's transfer cannot be called, a player of your club was
+refused. He now moves by the write route like any other. Checked on Apple
+Silicon, macOS 27.2, Steam build 26577676, on a copy of a career
+(`LensOwnClubMove`, Arsenal, 8 April 2028). The app takes FM's transfer on
+this build, so the write route was run with a probe built with writes on:
+`fmlens-probe move 28106491 617`, Declan Rice from Arsenal to Brentford.
+
+| Item | Result on macOS Apple Silicon |
+| --- | --- |
+| Move | 11 writes; club Brentford, wage and expiry kept, signed and joined 8 April 2028, squad number cleared |
+| Squads | Gone from Arsenal's first team, listed in Brentford's |
+| Tactics | His M(C) slot showed None Selected, no crash |
+| Squad, Training, Individual Training, Tactical Effectiveness | Opened as normal, without him |
+| Continue | Three days to 11 April 2028, two press conferences sent to the assistant |
+| Match | The assistant's suggested team filled the slot; Arsenal v Benfica played by Instant Result |
+| Save and load | Saved, loaded again; he is still at Brentford and not in Arsenal's squad |
+
+The Squad screen's count in its heading stayed at 29 right after the move.
+
+Not run: swap and release of your own player by the write route, a watched
+match, macOS Intel (Rosetta), and Windows.

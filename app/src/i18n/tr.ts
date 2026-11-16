@@ -190,7 +190,6 @@ const errors: ErrorTexts = {
   "move.onLoan": () => "Oyuncu kiralık; kiralık oyuncular henüz taşınamıyor.",
   "move.playerCoach": () => "Oyuncu-antrenörler taşınamıyor: aynı zamanda personel olarak da çalışıyorlar.",
   "move.unusualContract": () => "Oyuncunun sözleşmesi olağan bir oyuncu sözleşmesi değil.",
-  "move.humanClub": () => "Senin kulübünde oynuyor. Transferini FM'de yap.",
   "move.you": () => "Bu sensin. Kulüp değişikliğini FM'de yap.",
   "move.menAndWomen": () => "Kulüplerden biri erkek, diğeri kadın kulübü.",
   "move.notListed": () => "Kadro listeleri oyuncuyu olması gereken yerde tutmuyor.",
@@ -2681,7 +2680,7 @@ export const tr: Strings = {
   wish: {
     title: "İstek listesi",
     what: "FM Lens bundan sonra ne yapsın?",
-    sentWith: "Herkese açık paylaşılır; FM Lens sürümün de eklenir.",
+    sentWith: "Herkese açık paylaşılır; FM Lens sürümün, FM sürümün ve sistemin de eklenir.",
     tooMany: "Buradan çok fazla gönderildi. Bir saat sonra yeniden dene.",
   },
 

@@ -1158,8 +1158,12 @@ mod imp {
             copy_window_info, kCGNullWindowID, kCGWindowBounds, kCGWindowLayer, kCGWindowListExcludeDesktopElements,
             kCGWindowListOptionOnScreenOnly, kCGWindowOwnerPID,
         };
+        use std::ffi::{CStr, CString};
+
         use objc2::rc::autoreleasepool;
-        use objc2_app_kit::{NSCursor, NSWindow, NSWindowCollectionBehavior, NSWorkspace};
+        use objc2::runtime::{AnyClass, AnyObject, Bool, ClassBuilder, Sel};
+        use objc2::{ClassType, sel};
+        use objc2_app_kit::{NSCursor, NSPanel, NSWindow, NSWindowCollectionBehavior, NSWindowStyleMask, NSWorkspace};
         use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewWindow};
 
         use super::super::{LABEL, Rect, Spot};
@@ -1176,10 +1180,50 @@ mod imp {
                         | NSWindowCollectionBehavior::Transient
                         | NSWindowCollectionBehavior::IgnoresCycle;
                     // SAFETY: the card's own window, alive while `card` is, on the main thread.
-                    unsafe { (*ns_window.cast::<NSWindow>()).setCollectionBehavior(spaces) };
+                    unsafe {
+                        let object = &*ns_window.cast::<AnyObject>();
+                        let window = &*ns_window.cast::<NSWindow>();
+                        // macOS keeps a window of an app that is not in front off another app's full screen space,
+                        // whatever its collection behaviour: only a panel that does not activate its app goes there.
+                        match panel_class(object.class().instance_size()) {
+                            Some(panel) => {
+                                AnyObject::set_class(object, panel);
+                                window.setStyleMask(window.styleMask() | NSWindowStyleMask::NonactivatingPanel);
+                            }
+                            None => eprintln!("FM Lens could not let the scout card over a full screen FM"),
+                        }
+                        window.setCollectionBehavior(spaces);
+                    }
                 }
                 Err(err) => eprintln!("FM Lens could not let the scout card over a full screen FM: {err}"),
             })
+        }
+
+        /// A panel that never takes the keyboard, as large as the window that is to become one: an object may
+        /// only change to a class of its own size. `None` where a panel is larger than that window.
+        fn panel_class(size: usize) -> Option<&'static AnyClass> {
+            const NAME: &CStr = c"FMLensScoutCardPanel";
+            extern "C-unwind" fn never(_: &AnyObject, _: Sel) -> Bool {
+                Bool::NO
+            }
+            if let Some(made) = AnyClass::get(NAME) {
+                return (made.instance_size() == size).then_some(made);
+            }
+            let spare = size.checked_sub(NSPanel::class().instance_size())?;
+            if spare % size_of::<usize>() != 0 {
+                return None;
+            }
+            let mut builder = ClassBuilder::new(NAME, NSPanel::class())?;
+            for word in 0..spare / size_of::<usize>() {
+                builder.add_ivar::<usize>(&CString::new(format!("_spare{word}")).ok()?);
+            }
+            // SAFETY: both selectors take nothing and return a BOOL, as `never` does.
+            unsafe {
+                builder.add_method(sel!(canBecomeKeyWindow), never as extern "C-unwind" fn(_, _) -> _);
+                builder.add_method(sel!(canBecomeMainWindow), never as extern "C-unwind" fn(_, _) -> _);
+            }
+            let made = builder.register();
+            (made.instance_size() == size).then_some(made)
         }
 
         /// The work area of the monitor FM's card was opened on: a monitor's pixels over its scale.

@@ -134,8 +134,7 @@ The card stays while the pointer is on FM's card or on the card itself, and a
 click on it opens him in FM Lens. It never takes focus from FM until it is
 clicked. It goes when the pointer leaves both, when FM is not the window in
 front and at FM's main menu, and it follows FM when another save loads. It
-works with FM full screen or in a window (full screen is checked on Windows
-only). Switch it off in Settings, General.
+works with FM full screen or in a window. Switch it off in Settings, General.
 
 FM Lens finds the player from FM's own card: FM keeps the player's UID in its
 Unity layer, reached from one fixed place (see
