@@ -82,10 +82,7 @@ impl GameInfo {
 
         // Package full names look like "Name_Version_Arch_ResourceId_PublisherId".
         let package_version = package_full_name.as_deref().and_then(|name| name.split('_').nth(1)).map(str::to_owned);
-        let edition = package_full_name
-            .as_deref()
-            .and_then(|name| number_after(name, "FootballManager"))
-            .or_else(|| number_after(&exe_path.to_string_lossy(), "Football Manager "));
+        let edition = edition(package_full_name.as_deref(), &exe_path);
         let steam_build = (storefront == Storefront::Steam).then(|| steam_build(&exe_path)).flatten();
 
         Ok(Self { pid: process.pid(), exe_path, storefront, edition, package_full_name, package_version, steam_build })
@@ -134,6 +131,16 @@ fn acf_value(text: &str, key: &str) -> Option<String> {
     text.lines().find_map(|line| Some(line.trim().strip_prefix(&quoted)?.trim().trim_matches('"').to_owned()))
 }
 
+/// The edition, from the Game Pass package name, the Steam or macOS "Football Manager 27" in the path, or the
+/// "FootballManager27" folder Epic installs to on Windows.
+fn edition(package_full_name: Option<&str>, exe_path: &Path) -> Option<u32> {
+    let path = exe_path.to_string_lossy();
+    package_full_name
+        .and_then(|name| number_after(name, "FootballManager"))
+        .or_else(|| number_after(&path, "Football Manager "))
+        .or_else(|| number_after(&path, "FootballManager"))
+}
+
 /// The number right after `marker`, e.g. 27 in "SportsInteractive.FootballManager27_...".
 fn number_after(text: &str, marker: &str) -> Option<u32> {
     let start = text.find(marker)? + marker.len();
@@ -152,6 +159,12 @@ mod tests {
         let steam = r"C:\Steam\steamapps\common\Football Manager 27\fm.exe";
         assert_eq!(number_after(steam, "Football Manager "), Some(27));
         assert_eq!(number_after("fm.exe", "Football Manager "), None);
+        assert_eq!(edition(Some(package), Path::new(r"C:\WindowsApps\fm.exe")), Some(27));
+        assert_eq!(edition(None, Path::new(steam)), Some(27));
+        assert_eq!(edition(None, Path::new(r"D:\Epic Games\FootballManager27\fm.exe")), Some(27));
+        let epic_mac = "/Users/Shared/Epic Games/FootballManager27/fm.app/Contents/MacOS/Football Manager 27";
+        assert_eq!(edition(None, Path::new(epic_mac)), Some(27));
+        assert_eq!(edition(None, Path::new(r"D:\Games\fm.exe")), None);
     }
 
     #[test]
