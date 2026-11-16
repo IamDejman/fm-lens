@@ -209,8 +209,12 @@ function App() {
   const connect = () =>
     run(appText.connecting, async () => {
       const { refrozen: again, ...connected } = await call<ConnectionInfo>("connect").catch((e: unknown) => {
-        // Only the failure's code, such as `session.noCareer`: its message and parameters can hold paths.
-        track("fm_connect_failed", { code: isFailure(e) ? e.code : "unknown" });
+        // The failure's code, such as `session.noCareer`, and the store; not its message or parameters, which can hold
+        // paths.
+        track("fm_connect_failed", {
+          code: isFailure(e) ? e.code : "unknown",
+          storefront: detection?.games[0]?.info?.storefront ?? "unknown",
+        });
         throw e;
       });
       // A new connection lists the changes of the game before, and its field tables may differ.
