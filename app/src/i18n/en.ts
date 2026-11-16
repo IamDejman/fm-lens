@@ -2101,6 +2101,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.2": [
+        "Scout cards show when FM is full screen on macOS.",
+        "Move, swap or release a player of your own club on every FM27 version you can edit.",
+      ],
       "1.1.1": [
         "Edit FM27 on Game Pass again, on its full release version 0.9.2435.0.",
         "FM27 from the Epic Games Store on Windows opens read-only.",

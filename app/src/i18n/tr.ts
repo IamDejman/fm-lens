@@ -1954,6 +1954,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.2": [
+        "Gözlem kartları macOS'ta FM tam ekranken de görünür.",
+        "Düzenleyebildiğiniz her FM27 sürümünde kendi kulübünüzün oyuncusunu transfer edin, takas edin veya serbest bırakın.",
+      ],
       "1.1.1": [
         "Game Pass'teki FM27'yi tam sürüm 0.9.2435.0'da yeniden düzenleyin.",
         "Windows'ta Epic Games Store'dan FM27 salt okunur açılır.",
