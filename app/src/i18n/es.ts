@@ -1982,6 +1982,9 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.3": [
+        "Edita FM27 27.1.0 de Steam, en Mac y Windows.",
+      ],
       "1.1.2": [
         "Las fichas de ojeo se muestran con FM a pantalla completa en macOS.",
         "Traspasa, intercambia o libera a un jugador de tu club en todas las versiones de FM27 que puedes editar.",

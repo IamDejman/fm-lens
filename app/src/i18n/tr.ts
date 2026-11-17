@@ -1954,6 +1954,9 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.3": [
+        "Steam'deki FM27 27.1.0'ı Mac ve Windows'ta düzenleyin.",
+      ],
       "1.1.2": [
         "Gözlem kartları macOS'ta FM tam ekranken de görünür.",
         "Düzenleyebildiğiniz her FM27 sürümünde kendi kulübünüzün oyuncusunu transfer edin, takas edin veya serbest bırakın.",
