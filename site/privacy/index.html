@@ -71,7 +71,8 @@
       <h2>Your email</h2>
       <p>The app asks for your email address the first time it opens on a computer. FM Lens's own server keeps it on
         FM Lens's email list, on Amazon Web Services, and FM Lens sends the emails from getfmlens.com with Amazon SES.
-        It is used only to tell you about FM Lens, and is not sent to PostHog. Every email has a link to unsubscribe,
+        It is used only to tell you about FM Lens, and is not sent to PostHog. Amazon SES counts how many of each email
+        are opened and how many links are clicked, not who opened or clicked. Every email has a link to unsubscribe,
         which takes you off the list.</p>
 
       <h2>Questions</h2>

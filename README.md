@@ -145,7 +145,9 @@ computer. They are never sent anywhere.
 Before it opens for the first time on a computer, the app asks for an email
 address. FM Lens's own server keeps it on FM Lens's email list, on Amazon Web
 Services, and FM Lens emails it from getfmlens.com with Amazon SES. It never goes
-to PostHog. Every email has a link to unsubscribe.
+to PostHog. Amazon SES counts how many of each email are opened and how many
+links are clicked, not who opened or clicked. Every email has a link to
+unsubscribe.
 
 The site counts page views and downloads started, without cookies or stored ids.
 
