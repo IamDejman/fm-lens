@@ -2101,6 +2101,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.3": [
+        "Edit FM27 27.1.0 from Steam, on Mac and Windows.",
+      ],
       "1.1.2": [
         "Scout cards show when FM is full screen on macOS.",
         "Move, swap or release a player of your own club on every FM27 version you can edit.",
