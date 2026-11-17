@@ -16,8 +16,8 @@ after that.
 
 - A Mac with Apple Silicon or Intel, or a 64-bit Windows PC. Built for Windows 10
   and 11; tested so far on Windows Server 2022.
-- Football Manager 27 from Steam, version 27.0.1 (build 26577676 or 26385295)
-  or 27.0.0 (build 26340721), or from Game Pass, version 0.9.2435.0. Other
+- Football Manager 27 from Steam, version 27.1.0 (build 26620374), 27.0.1
+  (build 26577676 or 26385295) or 27.0.0 (build 26340721), or from Game Pass, version 0.9.2435.0. Other
   builds open read-only.
 - A copy of your save to edit.
 

@@ -45,7 +45,11 @@ and on Windows. Rows that name build 26340721 (27.0.0) say where their evidence
 came from; it was not repeated field by field on 27.0.1.
 
 Steam build 26577676 (12 November, still 27.0.1) has its own three profiles and
-passed the same run on all three that day. It is the verified build.
+passed the same run on all three that day.
+
+Steam build 26620374 (17 November, 27.1.0) moved every function and static and
+one byte of the club finance record. It has its own three profiles and passed
+the same run on all three that day. It is the verified build.
 
 Intel action parity (#164): all 24 ARM64 call keys, the injury and database statics, the editor tables and the STARTING_LOAN defaults have Intel values, and the Intel bridge passes an indirect result place the System V way. The actions switch on through profile and helper capability discovery. Run under Rosetta in the packaged app on 9 and 10 November: Add injury and Heal, work permit Revoke and Request, Loan and End loan, Transfer, Release, Sign, Sign later and Cancel transfer, Max tactics, Max attributes and Lift bans, with their undos where they have one (the 9 November entries and the FM27 27.0.1 entry in EDITING-VALIDATION.md). No Rosetta run saved an edited career, so Intel has no edited-save persistence of its own; on 10 November it loaded the copy edited and saved on Apple Silicon and read those edits back. See [the mapping and Rosetta handoff](recon/fm27-steam-26340721-macos-x86_64.md#intel-action-parity-mapping-8-november-2026).
 

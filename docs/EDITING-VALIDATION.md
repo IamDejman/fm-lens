@@ -3230,6 +3230,77 @@ saved. No other save changed.
 Main career SHA-256 stayed 23472DA3...6192BEF4 on Mac and AF20CBAC...2CB747E5
 on Windows.
 
+## FM27 Steam build 26620374, 27.1.0 (17 November 2026)
+
+Steam updated FM27 on 17 November to 27.1.0, build 26620374. Unlike build
+26577676 the code grew on every platform and every function and static FM Lens
+uses moved, so FM Lens opened the build read-only. The three new profiles are
+in `profiles/fm27/`; how they were made is in
+[recon/fm27-steam-26620374.md](recon/fm27-steam-26620374.md). This is the run
+of [PATCH-VALIDATION.md](PATCH-VALIDATION.md) on that build.
+
+Packaged FM Lens 1.1.2 built from the working tree of
+`Iamdejman/fm27-1-0-steam-26620374`, driven through UI Automation on Windows.
+Every edit was read back with `fmlens-probe` of the same tree. A copy of a
+career only (`FM-Lens-National-2026-11-15`, Arsenal, 19 July 2028).
+
+What the run found: on this build no club's finances read. The corporate
+facilities byte of the finance record moved from `0x8A9` to `0x8AA`, so the
+check that tells the full finance record from the short one failed for all
+21,679 clubs. The profiles of this build now set `club_finance_corporate`, and
+the session uses it in place of the layout's offset. The app was rebuilt with
+that; the rows from Club balance down ran on the rebuilt app, the rows above it
+on the build before, which differs in nothing else.
+
+Read checks on Windows: `fmlens-probe health` named the build "FM27 Steam build
+26620374 (27.1.0)" and passed 12 of 12; `info` gave game_plugin.dll size
+`0x18878000`, timestamp `0x6af5c68f`; the arrays sit where the profile says
+(players `+0x587b8b8` 30,998, staff `+0x587b900` 21,139, clubs `+0x587ba70`
+21,679).
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass. `scripts/check-build.sh` 15 of 15; Arsenal, 8 Apr 2028 | Pass. `scripts/check-build.sh` 15 of 15, FM and FM Lens both translated | Pass. 30,998 players, the human manager, Arsenal, 19 Jul 2028 |
+| Player attribute | Pass. Declan Rice Corners 20 to 17 (stored 85) | Pass. Bukayo Saka Corners 17 to 18 (stored 90) | Pass. Declan Rice Corners 20 to 17 (stored 85) |
+| Contract wage | Pass. Rice 344,990 to 350,000 | Pass. Saka 300,000 to 310,000 | Pass. Rice 344,990 to 350,000 |
+| Add injury, then Heal | Pass. Rice, abdominal strain; Heal: none | Pass. Saka, abdominal strain from 8 Apr 2028, back 28 Apr to 3 May; Heal: none | Pass. Rice, abdominal strain from 19 Jul 2028, back 5 to 9 Aug; Heal: none |
+| Work permit Revoke, then Request | Pass. Gabriel: none, then England active | Pass. Gabriel: none, then England | Pass. Gabriel: none, then "England: active"; Saka reads "Not needed" |
+| Loan, then End loan | Pass. Gabriel to Barcelona; back at Arsenal | Pass. Gabriel to Barcelona; back at Arsenal | Pass. Saka to Barcelona, 19 Jul 2028 to 30 Jun 2029, borrower pays 0; back at Arsenal |
+| Transfer club to club | Pass. Gabriel, Arsenal to Manchester City for 50,000,000; Arsenal's balance 13.4M to 55.98M | Pass. Gabriel, Arsenal to Manchester City for 40,000,000 | Pass. Paul Ifill, Greytown AFC to Barcelona, 1,000 a week to 30 Jun 2030 |
+| Release | Pass. Gabriel a free agent | Pass. Gabriel a free agent, no contract | Pass. Ifill a free agent, no contract |
+| Sign later, then Cancel transfer | Pass. Arsenal on 1 Jul 2028, listed in future transfers; cancelled, gone | Pass. Arsenal on 1 Jul 2028 (offer 111); cancelled, gone | Pass. Arsenal on 2 Aug 2028 (offer 4745, 7 to 8 future transfers); cancelled, 7 again |
+| Sign now | Pass. Gabriel at Arsenal, 200,000 a week to 30 Jun 2030 | Pass. Gabriel at Arsenal, 210,000 a week to 30 Jun 2031 | Pass. Ifill at Arsenal, 23,385 a week to 30 Jun 2029 |
+| Club balance | Pass. Arsenal to 310,000,000 | Pass. Arsenal 310,000,000 to 320,000,000; corporate facilities read 20 | Pass. Arsenal 299,884,337 to 310,000,000 |
+| Max tactics | Pass. First team, 29 changes, the tactics in use at 10000 | Pass. The U21s, 28 changes, from about 1000 to 2500 up to 10000. The first address for it was wrong and crashed FM; see the notes | Pass. First team (team 462), 25 changes, the tactics in use at 10000; the U21s, untouched, read about 1000 |
+| Lift bans, Heal, Refresh fitness, Remove unhappiness | Pass. First team: Heal 2, Lift bans 3, Refresh fitness 68 changes, Remove unhappiness 1 player (4 changes) | Pass. The U21s: Heal 3, Lift bans 1, Refresh fitness 72 changes; Remove unhappiness made no change | Pass. First team: Refresh fitness 63 changes, Heal 4, Lift bans 1; Remove unhappiness made no change |
+| Staff attribute | Pass. Nicolas Jover Fitness 3 to 9 (stored 45) | Pass. Jover Fitness 9 to 10 (stored 50) | Pass. Nicolas Jover Fitness 6 to 9 (stored 45) |
+| Nation field | Pass. England youth rating 135 to 140 | Pass. England youth rating 135 to 140 | Pass. England youth rating 135 to 140 |
+| Undo in Changes | Pass. England youth rating 140 back to 135 | Pass. Jover Attacking 14 to 12, undone, 14 again (stored 70) | Pass. The human manager's Fitness 9 back to 2 (stored 45 to 9), "95 changes · 1 undone" |
+| FM shows it | Pass. News: "Gabriel deal falls through" | Pass. The Portal's transfer budget reads £381M after the sale, as the probe does | Pass. News on the Portal: "Paul Ifill deal falls through" |
+| FM kept running | Pass. Responding after the last edit and the save | Pass. Running after Max tactics, the last edit and the save | Pass. `fm` responding after the last edit and after the save |
+| Saved under a new name, reloaded | Pass. Saved as `FM-Lens-26620374-Mac`, FM quit, the save loaded in FM under Rosetta: every value held. The Intel save was then loaded here: see the next column | Pass. Saved as `FM-Lens-26620374-Mac-Intel`, FM quit and started natively through Steam, that save loaded: Saka Corners 18, wage 310,000, not injured, Gabriel at Arsenal on 210,000 to 30 Jun 2031, no future transfer, Jover Fitness 10 and Attacking 14, balance 320,000,000, corporate 20, youth rating 140, U21 tactics at 10000; health 12 of 12 | Pass. Saved as `FM-Lens-26620374-Windows`, FM quit and started again (process 5056), that save loaded: Corners 17, wage 350,000, Jover Fitness 9, the manager's 2, balance 310,000,000, corporate 20, youth rating 140, Ifill at Arsenal on 23,385 a week, Gabriel's permit active, first team tactics at 10000, Rice not injured; health 12 of 12 |
+
+Notes:
+
+- The main career on the box was not opened; its file hashes the same as
+  before the run (`AF20CBAC...2CB747E5`).
+- The Undo row came from an edit made on the wrong profile (the human manager
+  in place of Jover), undone at once; Jover's edit followed.
+- Mac: the packaged universal app of the same tree, driven through the
+  accessibility API, on a copy of a career (`FM-Lens-Copy-2026-11-17`, Arsenal,
+  8 April 2028). Apple Silicon ran first and saved `FM-Lens-26620374-Mac`; the
+  Intel run loaded that save with FM and FM Lens both under Rosetta
+  (`arch -x86_64`), so its starting values are the Apple Silicon run's.
+- On Intel `start_loan`, `maximise_tactics`, `officials`, `staff` and
+  `save_system` were placed with the least evidence (see the recon note). All
+  held in the game but `maximise_tactics`: its first address, `0x25967B0`, was
+  the function after it, and Max tactics on the U21s crashed FM under Rosetta
+  (nothing was saved). The profile now has `0x2595E20`; the app was rebuilt and
+  the whole Intel column above is from the rebuilt app. The Windows and Apple
+  Silicon profiles did not change.
+- The main career on the Mac was not opened; its four files hash the same as
+  before the run (`3dc9a2b7...`, `b12bbc02...`, `9bfa8ecf...`, `ea53c416...`).
+
 ## 0.7.8 on the Mac (12 November 2026)
 
 The FM checks owed by PR 244 (sorting, filters, club Nation, stadium owner,
