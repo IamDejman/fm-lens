@@ -133,13 +133,15 @@ validated fields and the guarded memory layer for domain operations.
 
 - Distinguish available UI, inherited code, live verification and roadmap work.
   Code presence does not establish that an operation works on this user's save.
-- The verified target is FM27 27.0.1, Steam build 26577676: native ARM64 module
-  UUID A8550B47-FDE0-3D0D-A6CB-1B63DEE8DA19, Intel
-  DD0EE157-4C9C-31A7-81DD-0D1122E62FC7. It passed the docs/PATCH-VALIDATION.md
-  run on 12 November on Apple Silicon, under Rosetta and on the Windows test
-  box (Windows Server 2022 only); see the FM27 Steam build 26577676 entry in
-  docs/EDITING-VALIDATION.md. The first 27.0.1, build 26385295, passed the same
-  run on 10 November and its profiles remain. Most field, in-game and
+- The verified target is FM27 27.1.0, Steam build 26620374: native ARM64 module
+  UUID 869F5F90-FD89-3606-8AE4-2B4A7F02F324, Intel
+  864625AF-9AA9-3254-8EC5-47E9D486132A. It passed the docs/PATCH-VALIDATION.md
+  run on 17 November on Apple Silicon, under Rosetta and on the Windows test
+  box (Windows Server 2022 only); see the FM27 Steam build 26620374 entry in
+  docs/EDITING-VALIDATION.md. Every function and static moved in it and the
+  club finance record's corporate byte moved by one (docs/recon/fm27-steam-26620374.md).
+  Build 26577676 (27.0.1) passed the same run on 12 November and the first
+  27.0.1, build 26385295, on 10 November; their profiles remain. Most field, in-game and
   persistence evidence is from 27.0.0, build 26340721 (ARM64 UUID
   F4540355-2186-39CB-9119-C706A6A35346), whose profiles remain. The object
   layouts are unchanged in 27.0.1, but evidence dated before 10 November was

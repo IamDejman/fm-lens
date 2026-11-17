@@ -1,0 +1,140 @@
+# FM27 on Steam for macOS (app 4530370, build 26620374), an update of 17 November 2026 whose fm.app reads
+# 27.1.0.2505117: the Intel half of the universal game_plugin, which Intel Macs run, and Apple silicon Macs under
+# Rosetta. The update grew the code, so every function and static moved; each was found by matching build 26577676's
+# code in this one, and the arguments are unchanged. The notes on each value are build 26577676's (steam-26577676-macos-x86_64.toml):
+# the callers' addresses they give are that build's. See docs/recon/fm27-steam-26620374.md.
+name = "FM27 Steam build 26620374 (27.1.0, macOS, Intel)"
+edition = 27
+storefront = "steam"
+
+# The in-game date.
+current_date = 0x5D33710
+
+# A club's corporate facilities in its finance record: one byte after layout.toml's 0x8A9 since this build (read on
+# Arsenal, 20, on Windows).
+club_finance_corporate = 0x8AA
+
+# The static pointer to the game's GAME_UI. The game's editor actions load it and call its virtual slot +0xA0 with the
+# person (0x256EEEA, the twin of the arm64 0x239A408, which loads 0x57708F0), as entity_changed below. Loaded before
+# +0xA0 calls in nine places; see docs/recon/fm27-intel-refresh.md.
+game_ui = 0x5D54E50
+
+# The static pointer to the retirement manager, loaded in 61 places; its class is checked before it is used.
+retirement_manager = 0x5D29F00
+
+# The (begin, end) pair of the match officials' array, 0x78 above the players' as in the arm64 half: three functions
+# that walk the officials (by nation, by competition) load it where their arm64 twins load 0x576EEC8.
+officials = 0x5D533E0
+
+# The static pointer to the transfer manager (TRANSFER_MANAGER), which keeps the work permits: the game's editor action
+# for work permits (0x2573A40, the twin of the arm64 0x239EEFC: keys 'dref' and 'tick', the player through identity
+# slot 0x6E0) loads it at 0x2573B14, where the arm64 half loads 0x57409F8. Loaded in 985 places.
+transfer_manager = 0x5D27E90
+
+# The static pointer to the game's record of the loaded save (SAVE_SYSTEM), the twin of the arm64 0x5740BC0. Static
+# mapping.
+save_system = 0x5D29AF0
+
+# Database table pointers, traced through the static database constructor and typed tables.
+# Static mapping only; see docs/recon/fm27-steam-26340721-macos-x86_64.md.
+awards = 0x5D53268
+competitions = 0x5D53280
+# The static pointers to the database tables of every nation and every stadium, in the same block: 0x28 and 0x80 after
+# the awards', where the block of the arm64 Mac build 26340721 has them (docs/recon/fm27-competitions-awards-2.md). The
+# block keeps one order in every build profiled: the competitions sit 0x18 and the kinds of injury 0x40 after the
+# awards in each, each found on its own. The tables' class and rows are checked before they are used.
+nations = 0x5D53290
+stadiums = 0x5D532E8
+injury_kinds = 0x5D532A8
+# INJURY_MANAGER, loaded by the training-injury caller of add_injury.
+injury_manager = 0x5D29EF0
+
+# game_plugin as mapped in memory: its LC_UUID identifies the build and the architecture.
+[plugin]
+uuid = "864625AF-9AA9-3254-8EC5-47E9D486132A"
+
+# RVAs in game_plugin of the (begin, end) pointer pairs of the entity arrays.
+[arrays]
+players = 0x5D53368
+staff = 0x5D533B0
+clubs = 0x5D53520
+
+# The human manager's flags word, traced statically: become_unsackable's handler (0x256EAA0) finds the selected human
+# manager through the same vtable slots as the arm64 half and toggles bit 1 of the u32 at +0x3FC (andl/orl at
+# 0x256EB9F). The object layout is the arm64 half's.
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = "N2db16HUMAN_NON_PLAYERE"
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. The bridge runs these and
+# no others on this build. The work permit calls are direct calls of the work permit action above, with the arm64
+# half's arguments (see docs/recon/fm27-steam-26340721-macos-x86_64.md); the refresh calls are traced from GAME_UI's
+# vtable (see docs/recon/fm27-intel-refresh.md).
+[calls]
+# GAME_UI virtual slot +0xA0, the twin of the arm64 0x30CF8: (ui, the person's identity). It makes the identity's
+# reference vector (0x6844E0) and hands it to the rfui notifier (0x2FBD0), which calls refresh_views.
+entity_changed = 0x31010
+# The rfui dispatcher, the twin of the arm64 0x2FDC8 instruction for instruction; an empty reference vector requests
+# an unfiltered view refresh.
+refresh_views = 0x301E0
+# TRANSFER_MANAGER::set_work_permit: (manager, the player's identity block, his club team, force, esc), called at
+# 0x2573D98 with force 0 and esc 0 for 'tick' false ("add_work_permit").
+set_work_permit = 0x30C1190
+# TRANSFER_MANAGER::find_work_permit: (manager, identity block, club team), called at 0x2573CB8: -1 unless the
+# identity's flag 0x4 is set, then a binary search of the records at +0x720 by the id at +0x08. Only reads.
+find_work_permit = 0x3126070
+# TRANSFER_MANAGER::remove_work_permit: (manager, identity block, record), called at 0x2573D48 for 'tick' true
+# ("remove_work_permit") with the record at [manager + 0x720] of the place found: takes it out of the ESC slots at
+# +0x780 and the records at +0x720.
+remove_work_permit = 0x31022B0
+
+# Intel twins of the ARM64 editor/training calls. Arguments follow the same scalar order,
+# with six System V registers then stack slots. Evidence and ABI audit are in the recon note.
+add_injury = 0x29698F0
+start_loan = 0x3156AE0
+sign_free_agent = 0x314B120
+map_new = 0x494AF60
+map_drop = 0x494B000
+refs_drop = 0x49525A0
+end_contract = 0x3084030
+withdraw_offers = 0x30884D0
+leave_team = 0x3081770
+date_type = 0x48415C0
+date_value = 0x48417B0
+map_insert = 0x494B610
+value_drop = 0x49572D0
+cancel_offer = 0x304FE60
+drop_dated_transfer = 0x1993CA0
+ref_copy = 0x7B56A0
+ref_drop = 0x516DD60
+# ACTUAL_PERSON::add_relation, the twin of the arm64 0xCF9528. Static mapping.
+add_relation = 0xDB5FC0
+# ACTUAL_PERSON::add_language, the twin of the arm64 0xCBDFF4. Static mapping.
+add_language = 0xD771C0
+struct_value = 0x4957CB0
+maximise_tactics = 0x2595E20
+# What set_work_permit asks before it gives a permit, unforced: the rules of the club's nation (rules root, the
+# nation, the club's women's byte), then whether they say the player needs a permit (rules, identity block, club
+# team, 1, 0, 6, 0, no date*, no date*, null), a bool. Both only read; FM's own screens ask the second too.
+work_permit_rules = 0x4770B80
+needs_work_permit = 0x1E003E0
+
+# STARTING_LOAN builder at 0x2572450: vtable and the 16 bytes copied to +0x58.
+[starting_loan]
+vtable = 0x5C40640
+defaults = 0x5A2A460
+
+# Value registry, integer type within it, team table and editor-enabled byte.
+[editor]
+value_types = 0x5DBC148
+integer_type = 0x28
+teams = 0x5D53300
+enabled = 0x5D53A30
+
+# What needs_work_permit takes, as set_work_permit reads it: the byte that is 1 while work permits are in force
+# (otherwise it gives none), the static pointer to the rules root, and the date it passes for none (1 Jan 1900).
+[work_permit_check]
+enabled = 0x5D54F33
+rules = 0x5D55DA8
+no_date = 0x597F9B0
