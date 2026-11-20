@@ -119,7 +119,9 @@ or Windows version and processor, and the app language:
 - `fm_connect_failed`: connecting to FM failed, with the kind of failure (such
   as `session.noCareer`) and FM's version and store, never its message.
 - `readonly_seen`: FM Lens opened read-only on an FM version it does not know
-  yet, with FM's version, store and the same two values of its game file.
+  yet, with FM's version, store and the same two values of its game file, where
+  in that file FM Lens found the lists of players, staff and clubs, and which of
+  its checks passed. Nothing from your save is in it.
 - `update_offered`: a newer FM Lens was found, with its version and whether it
   installed itself.
 - `update_installed`: FM Lens opened for the first time after an update, with
