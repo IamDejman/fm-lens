@@ -116,7 +116,13 @@ or Windows version and processor, and the app language:
 - `app_opened`: the app started.
 - `fm_connected`: FM Lens connected to FM, with FM's version and store.
 - `fm_connect_failed`: connecting to FM failed, with the kind of failure (such
-  as `session.noCareer`) and FM's store, never its message.
+  as `session.noCareer`) and FM's version and store, never its message.
+- `readonly_seen`: FM Lens opened read-only on an FM version it does not know
+  yet, with FM's version and store.
+- `update_offered`: a newer FM Lens was found, with its version and whether it
+  installed itself.
+- `update_installed`: FM Lens opened for the first time after an update, with
+  the versions before and after.
 - `tab_viewed`: a section opened, such as Players.
 - `edit_applied`: an edit went into FM, with its kind (`move_player`, or the
   field changed, such as `contract.wage`), never the value.
@@ -150,6 +156,20 @@ links are clicked, not who opened or clicked. Every email has a link to
 unsubscribe.
 
 The site counts page views and downloads started, without cookies or stored ids.
+A link to the site can name where it was posted (`utm_source`, such as
+`reddit`); the site keeps that name for the browser tab and sends it with
+`download_started`.
+
+Links posted for FM Lens use one of these names, so visits and downloads can be
+told apart by where they came from:
+
+| Posted on | Link |
+| --- | --- |
+| X | `https://getfmlens.com/?utm_source=x` |
+| Reddit | `https://getfmlens.com/?utm_source=reddit` |
+| YouTube | `https://getfmlens.com/?utm_source=youtube` |
+| Forums | `https://getfmlens.com/?utm_source=forum` |
+| Email | `https://getfmlens.com/?utm_source=email` |
 
 ## Security
 

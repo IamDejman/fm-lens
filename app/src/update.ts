@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 import { call, inTauri } from "./api";
 import { describeError } from "./format";
 import { MAC } from "./keys";
+import { track } from "./usage";
 
 /** The website's release notes and download pages, which the app may open (see capabilities/default.json). */
 const RELEASES_PAGE = "https://getfmlens.com/releases/";
@@ -108,6 +109,17 @@ async function lookOnce(): Promise<Found> {
   }
 }
 
+/** The version last counted as offered, each once in a window (`update_offered`). */
+let offered: string | null = null;
+
+/** Counts a newer version turning up, with what the app did about it: installed, to download, or failed. */
+function countOffer(found: Extract<UpdateState, { version: string }>): void {
+  if (offered !== found.version) {
+    offered = found.version;
+    track("update_offered", { to: found.version, phase: found.phase });
+  }
+}
+
 /** The look under way: a check asked for while one runs gets its answer instead of starting another. */
 let looking: Promise<Found> | null = null;
 
@@ -139,6 +151,7 @@ export function useUpdate(waiting = false) {
         setTimeout(() => void lookLater(), RECHECK_MS);
         return;
       }
+      countOffer(found);
       setUpdate(found);
     };
     void lookLater();
@@ -152,6 +165,7 @@ export function useUpdate(waiting = false) {
     const lookNow = async () => {
       const found = await look();
       if (typeof found !== "string" && !stopped) {
+        countOffer(found);
         setUpdate(found);
       }
     };
@@ -166,6 +180,9 @@ export function useUpdate(waiting = false) {
   const checkNow = useCallback(async () => {
     setUpdate({ phase: "checking" });
     const found = await look();
+    if (typeof found !== "string") {
+      countOffer(found);
+    }
     setUpdate(typeof found === "string" ? { phase: found } : found);
   }, []);
 

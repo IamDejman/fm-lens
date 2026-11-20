@@ -214,11 +214,13 @@ function App() {
   const connect = () =>
     run(appText.connecting, async () => {
       const { refrozen: again, ...connected } = await call<ConnectionInfo>("connect").catch((e: unknown) => {
-        // The failure's code, such as `session.noCareer`, and the store; not its message or parameters, which can hold
-        // paths.
+        // The failure's code, such as `session.noCareer`, and the store and version of the game found; not its message
+        // or parameters, which can hold paths.
+        const found = detection?.games[0]?.info;
         track("fm_connect_failed", {
           code: isFailure(e) ? e.code : "unknown",
-          storefront: detection?.games[0]?.info?.storefront ?? "unknown",
+          storefront: found?.storefront ?? "unknown",
+          fm_build: found?.steamBuild ?? found?.packageVersion ?? "unknown",
         });
         throw e;
       });
@@ -234,6 +236,13 @@ function App() {
         known_build: connected.knownBuild,
         editable: connected.editable,
       });
+      // The read-only notice of a version without a profile came up (see `CompatibilityNotice`).
+      if (!connected.knownBuild && !connected.editable) {
+        track("readonly_seen", {
+          storefront: connected.game.storefront,
+          fm_build: connected.game.steamBuild ?? connected.game.packageVersion,
+        });
+      }
       setDataVersion((v) => v + 1);
       setGame((g) => g + 1);
     });

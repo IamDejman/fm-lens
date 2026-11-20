@@ -21,6 +21,8 @@ const SWITCH_KEY = "fm-lens.usage";
 const INSTALL_KEY = "fm-lens.installId";
 /** Set for the life of the window, so a reload (a new language or currency) is not counted as another launch. */
 const OPENED_KEY = "fm-lens.opened";
+/** The version that last opened on this computer, so the first launch of another one counts as an update. */
+const VERSION_KEY = "fm-lens.version";
 
 /** The commands that change the game, counted as `edit_applied`. Reads and plans are not counted. */
 export const EDITS = new Set([
@@ -178,6 +180,26 @@ export function trackOpened(): void {
     return;
   }
   track("app_opened");
+  trackUpdated();
+}
+
+/** Counts an update (`update_installed`) when the version that last opened here was another one. */
+function trackUpdated(): void {
+  void ready().then((ctx) => {
+    if (!ctx) {
+      return;
+    }
+    const to = ctx.props.app_version;
+    try {
+      const from = localStorage.getItem(VERSION_KEY);
+      localStorage.setItem(VERSION_KEY, to);
+      if (from && from !== to) {
+        track("update_installed", { from, to });
+      }
+    } catch {
+      // Without storage there is no version to compare with.
+    }
+  });
 }
 
 /** Which kind of edit: the field keys of an edit ("contract.wage"), never their values. */
