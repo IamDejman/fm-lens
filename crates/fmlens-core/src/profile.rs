@@ -1543,6 +1543,7 @@ const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/gamepass-0.9.2355.0.toml"),
     include_str!("../../../profiles/fm27/gamepass-0.9.2409.0.toml"),
     include_str!("../../../profiles/fm27/gamepass-0.9.2435.0.toml"),
+    include_str!("../../../profiles/fm27/gamepass-0.9.2524.0.toml"),
     include_str!("../../../profiles/fm27/steam-26227640.toml"),
     include_str!("../../../profiles/fm27/steam-26340721.toml"),
     include_str!("../../../profiles/fm27/steam-26385295.toml"),
@@ -1765,6 +1766,21 @@ mod tests {
         );
         assert_eq!(profile.current_date, Some(0x535_97C8));
         assert_eq!(profile.retirement_manager, Some(profile.arrays.players - 0xED70));
+        assert!(profile.calls.is_none());
+
+        // The update of 17 November on Game Pass (0.9.2524.0): the statics moved again, the manager's 0xD2E8 before
+        // the players pair, the corporate facilities further on in the finance record, and no function traced.
+        let fingerprint = PluginFingerprint::Pe { size_of_image: 0x179A_D000, link_timestamp: 0x6AF5_C8C6 };
+        let profile = profile_for(fingerprint).expect("Game Pass 0.9.2524.0 profile");
+        assert_eq!(profile.storefront, Storefront::GamePass);
+        assert_eq!(profile.package_version.as_deref(), Some("0.9.2524.0"));
+        assert_eq!(
+            (profile.arrays.players, profile.arrays.staff, profile.arrays.clubs),
+            (0x53F_AE88, 0x53F_AED0, 0x53F_B040)
+        );
+        assert_eq!(profile.current_date, Some(0x539_DD10));
+        assert_eq!(profile.retirement_manager, Some(profile.arrays.players - 0xD2E8));
+        assert_eq!(profile.club_finance_corporate, Some(0x8AD));
         assert!(profile.calls.is_none());
 
         // The same version on Steam, packaged differently: another fingerprint and other RVAs, the manager's static

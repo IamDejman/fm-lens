@@ -1,0 +1,36 @@
+# FM27 on Game Pass / Microsoft Store, 0.9.2524.0: the update of 17 November 2026 (27.1.0 on Steam). Ported from
+# tozmoz's FMLibreEditor (GPL-3.0, profiles/fm27/gamepass-0.9.2524.0.toml, commit 37c0cfa), where
+# `fmlibre-probe profile` passed all 12 checks on a save of 18 January 2028. FM Lens has not run scripts/check-build.sh on this build.
+# The statics moved: the players pair sits 0x430A8 after that of 0.9.2435.0, and the retirement manager's static is no
+# longer at the old distance from it. The object layout is that of 0.9.2435.0 but for the club finance record (below).
+# No function is traced on this build, so the features that call into the game stay off here.
+name = "FM27 0.9.2524.0 (Game Pass)"
+edition = 27
+storefront = "gamePass"
+package_version = "0.9.2524.0"
+
+# The in-game date, 2028-01-18 on that save: 3764 of 3764 contract dates before it, and 181 of 181 current injuries
+# begun by then and not over.
+current_date = 0x539DD10
+
+# A club's corporate facilities in its finance record, which this update moved from layout.toml's 0x8A9. FMLibreEditor
+# read it at 0x8AD on this build: 30 of 30 clubs of that save held there what 0.9.2435.0 held at 0x8A9 (Beşiktaş 20,
+# Fenerbahçe 12, Trabzonspor 16), and 0x8A9 held 0 for each. FM Lens read it at 0x8AA on Steam build 26620374, the same
+# update, on one club (Arsenal, 20); which of the two holds on Steam is not settled, and neither is checked here by
+# FM Lens.
+club_finance_corporate = 0x8AD
+
+# The static pointer to the retirement manager (RETIREMENT_MANAGER), 0xD2E8 before the players pair (0xED70 in
+# 0.9.2435.0), found by searching for pointers to the manager; 437 planned retirements on that save.
+retirement_manager = 0x53EDBA0
+
+# game_plugin.dll as mapped in memory; these two values identify the build.
+[plugin]
+size_of_image = 0x179AD000
+link_timestamp = 0x6AF5C8C6
+
+# RVAs in game_plugin.dll of the (begin, end) pointer pairs of the entity arrays.
+[arrays]
+players = 0x53FAE88
+staff = 0x53FAED0
+clubs = 0x53FB040
