@@ -2037,6 +2037,8 @@ export const en = {
     /** The headline for a version without a profile; `game` as the status line names it. */
     unknownBuild: (game: string) => `${game} is not supported yet`,
     unknownBuildText: "Values may be wrong, so editing is off.",
+    /** Under it while editing is off, for those who gave their email: the list hears of each new game version. */
+    emailPromise: "We'll email you when it works.",
     /** Once Edit anyway was pressed. */
     allowedText: "Editing is on where checks passed. Back up your save.",
     /** The headline when checks did not pass on a version the editor knows, and what may help. */

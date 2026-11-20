@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  ALERTS_PER_DAY,
   FILE_LIMITS,
   PER_ADDRESS_DAY,
   PER_ADDRESS_HOUR,
   PER_DAY,
   PER_HOUR,
   SUBSCRIBE_LIMITS,
+  alertUnknownBuilds,
   createRelay,
   createSubscribers,
   createTableLimiter,
@@ -702,4 +704,99 @@ test("the job still sends the list's size when GitHub fails, and says what faile
     createRelay({ subscribers: list().subscribers, fetch: offline.fetch, limiter: {} })({ job: "report-counts" }),
     /PostHog answered 500/,
   );
+});
+
+/** A stand-in for the limiter's table that takes each key once, and PostHog's answer to the unknown versions query. */
+function alerting(results, { status = 200 } = {}) {
+  const taken = new Set();
+  const limiter = {
+    claim: async (key) => !taken.has(key) && Boolean(taken.add(key)),
+    release: async (key) => void taken.delete(key),
+  };
+  const asked = [];
+  const fetch = async (url, init) => {
+    asked.push({ url, headers: init.headers, body: JSON.parse(init.body) });
+    return new Response(JSON.stringify({ results }), { status });
+  };
+  const sent = [];
+  const alerts = { key: "phx_read", to: "owner@example.com", send: async (email) => void sent.push(email) };
+  return { limiter, fetch, asked, sent, alerts, taken };
+}
+
+test("a game version without a profile is emailed about once a week", async () => {
+  let now = Date.UTC(2026, 10, 17, 15);
+  const { limiter, fetch, asked, sent, alerts } = alerting([
+    ["steam", "26620374", 3, "2026-11-17T14:22:05Z"],
+    ["gamePass", "0.9.2524.0\r\nBcc: x@example.com <b>", 1, null],
+  ]);
+  const run = () => alertUnknownBuilds({ alerts, limiter, latest: "v1.1.2", fetch, now: () => now });
+  assert.deepEqual(await run(), ["Steam 26620374", "Game Pass 0.9.2524.0Bcc:xexample.comb"]);
+  assert.equal(asked[0].headers.Authorization, "Bearer phx_read");
+  assert.match(asked[0].body.query.query, /app_version = '1\.1\.2' /);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, "owner@example.com");
+  assert.equal(sent[0].subject, "FM Lens: unknown FM version, Steam 26620374, Game Pass 0.9.2524.0Bcc:xexample.comb");
+  assert.match(sent[0].text, /^FM Lens 1\.1\.2 connected/);
+  assert.match(sent[0].text, /Steam 26620374: 3 installs in the last day, first seen 17 Nov 14:22 UTC\n/);
+  assert.match(sent[0].text, /comb: 1 install in the last day, first seen unknown$/);
+  assert.deepEqual(await run(), []);
+  assert.equal(sent.length, 1);
+  now += 7 * 24 * 60 * 60 * 1000;
+  assert.equal((await run()).length, 2);
+  assert.equal(sent.length, 2);
+});
+
+test("nothing is asked without a release, and an email that fails is sent on the next run", async () => {
+  const { limiter, fetch, asked, sent, alerts } = alerting([["steam", "26620374", 3, "2026-11-17T14:22:05Z"]]);
+  assert.deepEqual(await alertUnknownBuilds({ alerts, limiter, latest: null, fetch }), []);
+  assert.equal(asked.length, 0);
+  const failing = { ...alerts, send: async () => Promise.reject(new Error("SES is down")) };
+  await assert.rejects(alertUnknownBuilds({ alerts: failing, limiter, latest: "v1.1.2", fetch }), /SES is down/);
+  assert.deepEqual(await alertUnknownBuilds({ alerts, limiter, latest: "v1.1.2", fetch }), ["Steam 26620374"]);
+  assert.equal(sent.length, 1);
+  const down = alerting([], { status: 500 });
+  await assert.rejects(
+    alertUnknownBuilds({ alerts, limiter: down.limiter, latest: "v1.1.2", fetch: down.fetch }),
+    /PostHog answered 500/,
+  );
+});
+
+test("no more than a few emails go out in a day, whatever the events say", async () => {
+  const now = Date.UTC(2026, 10, 17, 15);
+  const { limiter, sent, alerts } = alerting([]);
+  for (let i = 0; i < ALERTS_PER_DAY + 2; i++) {
+    const answer = async () => new Response(JSON.stringify({ results: [["steam", `build${i}`, 1, null]] }));
+    await alertUnknownBuilds({ alerts, limiter, latest: "v1.1.2", fetch: answer, now: () => now });
+  }
+  assert.equal(sent.length, ALERTS_PER_DAY);
+});
+
+test("the job alerts after the counts, with the newest release", async () => {
+  const { fetch: countsFetch } = counts({ releases: [RELEASE("v1.1.3", { "latest.json": 1 })] });
+  const { limiter, fetch: queryFetch, asked, sent, alerts } = alerting([["gamePass", "0.9.2524.0", 6, null]]);
+  const fetch = (url, init) => (url.includes("/query/") ? queryFetch(url, init) : countsFetch(url, init));
+  const relay = createRelay({ subscribers: list().subscribers, fetch, limiter, alerts });
+  assert.equal((await relay({ job: "report-counts" })).latest_version, "v1.1.3");
+  assert.match(asked[0].body.query.query, /app_version = '1\.1\.3' /);
+  assert.equal(sent.length, 1);
+});
+
+test("the limiter takes a key once, and again once it is given back", async () => {
+  const items = new Map();
+  const update = async (input) => {
+    const key = input.Key.key.S;
+    if (input.UpdateExpression.startsWith("SET reports = :zero")) {
+      items.set(key, 0);
+      return;
+    }
+    if ((items.get(key) ?? 0) >= Number(input.ExpressionAttributeValues[":max"].N)) {
+      throw Object.assign(new Error("The conditional request failed"), { name: "ConditionalCheckFailedException" });
+    }
+    items.set(key, (items.get(key) ?? 0) + 1);
+  };
+  const limiter = createTableLimiter({ table: "t", update });
+  assert.equal(await limiter.claim("k", 1), true);
+  assert.equal(await limiter.claim("k", 1), false);
+  await limiter.release("k");
+  assert.equal(await limiter.claim("k", 1), true);
 });

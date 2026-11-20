@@ -22,6 +22,11 @@
 //
 // Every 15 minutes an EventBridge schedule runs the function with `{ "job": "report-counts" }` (relay/setup-email.sh),
 // which sends PostHog the download counts of FM Lens's releases and how many addresses are on the list.
+//
+// The same run asks PostHog which game versions the newest FM Lens connected to in the last day without a profile for
+// them, and emails ALERT_EMAIL about each one once a week, so the profile can follow the game's update within hours.
+// It needs POSTHOG_READ_KEY, a personal PostHog key that may only read queries, and ALERT_EMAIL
+// (relay/setup-alerts.sh); without both, nothing is asked or sent.
 
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 
@@ -340,6 +345,17 @@ export function createTableLimiter({ table, update, now = Date.now }) {
     }
   };
   return {
+    /** Takes `key` once: true for the first to ask, false after that, until `release` or the item expires. */
+    claim: (key, expires) => count(key, 1, expires),
+    /** Gives `key` back, so the next to ask may take it. */
+    async release(key) {
+      await update({
+        TableName: table,
+        Key: { key: { S: key } },
+        UpdateExpression: "SET reports = :zero",
+        ExpressionAttributeValues: { ":zero": { N: "0" } },
+      });
+    },
     /**
      * Counts one report from `address`, or with `what` "wish", one wish, or "uploads", one request for upload
      * addresses, or "subscribe", one address to subscribe (`SUBSCRIBE_LIMITS`). Reports and wishes together stay
@@ -541,17 +557,124 @@ async function reportCounts({ token, subscribers, fetch }) {
   return Object.assign({}, ...sent);
 }
 
+/** PostHog's query address for the FM Lens project, which a personal key that may read queries can ask. */
+const QUERY_URL = "https://us.posthog.com/api/projects/717473/query/";
+
 /**
- * The relay's handler for function URL requests, and for the schedule's `{ "job": "report-counts" }`. `token` and `repo`
+ * The game versions FM Lens `version` (digits and dots) connected to in the last day with no profile for them, most
+ * installs first. The version is part of the text, as PostHog answers from its cache whatever a query's values are.
+ */
+const unknownBuilds = (version) =>
+  "select properties.storefront s, properties.fm_build b, count(distinct distinct_id) installs, min(timestamp) seen " +
+  "from events where event = 'fm_connected' and properties.known_build = false " +
+  `and properties.app_version = '${version}' ` +
+  "and timestamp > now() - interval 1 day and {filters} group by s, b order by installs desc limit 10";
+
+/** The most emails about unknown game versions in a day: the events come from anyone who has the public key. */
+export const ALERTS_PER_DAY = 3;
+
+/** A value from an event, as the email shows it: anyone can send events, so nothing but plain characters, and few. */
+const plain = (value) =>
+  String(value ?? "")
+    .replace(/[^\w.+:-]/g, "")
+    .slice(0, 40) || "unknown";
+
+/** The stores as the email names them. */
+const STORES = { steam: "Steam", gamePass: "Game Pass", epic: "Epic" };
+
+/** When an event was sent, as the email says it: "20 Nov 03:18 UTC". */
+function when(timestamp) {
+  const at = new Date(String(timestamp ?? ""));
+  if (Number.isNaN(at.getTime())) {
+    return "unknown";
+  }
+  const day = at.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  return `${day} ${at.toISOString().slice(11, 16)} UTC`;
+}
+
+/**
+ * Emails `alerts.to` about each game version the newest FM Lens (`latest`, a release tag) connected to in the last day
+ * without a profile, once a week for each version, and at most `ALERTS_PER_DAY` emails a day. `alerts.send` sends the
+ * email and `limiter` remembers which versions were told; a version whose email fails is told on the next run.
+ * Returns the versions the email named.
+ */
+export async function alertUnknownBuilds({ alerts, limiter, latest, fetch, now = Date.now }) {
+  const version = /^v?(\d+\.\d+\.\d+)$/.exec(latest ?? "")?.[1];
+  if (!version) {
+    return [];
+  }
+  const response = await fetch(QUERY_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${alerts.key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: { kind: "HogQLQuery", query: unknownBuilds(version), filters: { filterTestAccounts: true } },
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw new Error(`PostHog answered ${response.status} to the unknown versions query`);
+  }
+  const { results = [] } = await response.json();
+  const at = now();
+  const week = Math.floor(at / (7 * DAY));
+  const day = Math.floor(at / DAY);
+  const claimed = [];
+  for (const [storefront, build, installs, first] of results) {
+    const key = `alert#build#${plain(storefront)} ${plain(build)}#week#${week}`;
+    if (await limiter.claim(key, (week + 2) * 7 * DAY)) {
+      const name = `${STORES[storefront] ?? plain(storefront)} ${plain(build)}`;
+      claimed.push({ name, key, installs: Number(installs) || 0, first: when(first) });
+    }
+  }
+  if (claimed.length === 0) {
+    return [];
+  }
+  // One of the day's emails, or none: the versions stay told, as more of the same would follow.
+  let slot = 0;
+  while (slot < ALERTS_PER_DAY && !(await limiter.claim(`alert#day#${day}#${slot}`, (day + 2) * DAY))) {
+    slot++;
+  }
+  if (slot === ALERTS_PER_DAY) {
+    return [];
+  }
+  try {
+    await alerts.send({
+      to: alerts.to,
+      subject: `FM Lens: unknown FM version, ${claimed.map((build) => build.name).join(", ")}`,
+      text: [
+        `FM Lens ${version} connected to a game version it has no profile for. Those installs are read-only.`,
+        "",
+        ...claimed.map(
+          (build) =>
+            `${build.name}: ${build.installs} ${build.installs === 1 ? "install" : "installs"} in the last day, ` +
+            `first seen ${build.first}`,
+        ),
+      ].join("\n"),
+    });
+  } catch (err) {
+    await Promise.allSettled(claimed.map((build) => limiter.release(build.key)));
+    throw err;
+  }
+  return claimed.map((build) => build.name);
+}
+
+/**
+ * The relay's handler for function URL requests, and for the schedule's `{ "job": "report-counts" }`.
+ * `alerts`, when set, is the key, address and sender `alertUnknownBuilds` takes. `token` and `repo`
  * name where issues go, `subscribers` (`createSubscribers`) is the list, and `limiter` counts requests; `fetch` is
  * swapped in by the tests. Requests are counted by the address AWS saw them come from, which a sender can't set, an IPv6
  * one by its network (`senderOf`).
  */
-export function createRelay({ token, repo, limiter, uploads, subscribers, fetch = globalThis.fetch }) {
+export function createRelay({ token, repo, limiter, uploads, subscribers, alerts, fetch = globalThis.fetch }) {
   return async (event) => {
     // Only the schedule sends `job`: a function URL request's event is made by AWS, with the request's body as a string.
     if (event.job === "report-counts") {
-      return reportCounts({ token, subscribers, fetch });
+      const counts = await reportCounts({ token, subscribers, fetch });
+      // The alert asks about the newest release, which the counts name.
+      if (alerts) {
+        await alertUnknownBuilds({ alerts, limiter, latest: counts.latest_version, fetch });
+      }
+      return counts;
     }
     const method = event.requestContext?.http?.method ?? "";
     const path = event.rawPath ?? "/";
@@ -743,7 +866,25 @@ export async function handler(event) {
   if (!relay) {
     const { DynamoDBClient, ScanCommand, UpdateItemCommand } = await import("@aws-sdk/client-dynamodb");
     const client = new DynamoDBClient({});
+    let alerts;
+    if (process.env.POSTHOG_READ_KEY && process.env.ALERT_EMAIL) {
+      const { SESv2Client, SendEmailCommand } = await import("@aws-sdk/client-sesv2");
+      const ses = new SESv2Client({ region: process.env.SES_REGION || "eu-west-1" });
+      alerts = {
+        key: process.env.POSTHOG_READ_KEY,
+        to: process.env.ALERT_EMAIL,
+        send: ({ to, subject, text }) =>
+          ses.send(
+            new SendEmailCommand({
+              FromEmailAddress: "FM Lens <news@getfmlens.com>",
+              Destination: { ToAddresses: [to] },
+              Content: { Simple: { Subject: { Data: subject }, Body: { Text: { Data: text } } } },
+            }),
+          ),
+      };
+    }
     relay = createRelay({
+      alerts,
       token: process.env.GITHUB_TOKEN,
       repo: process.env.GITHUB_REPO || "IamDejman/fm-lens",
       subscribers: createSubscribers({

@@ -4782,3 +4782,24 @@ The Squad screen's count in its heading stayed at 29 right after the move.
 
 Not run: swap and release of your own player by the write route, a watched
 match, macOS Intel (Rosetta), and Windows.
+
+## Game Pass 0.9.2524.0 (20 November 2026)
+
+Not checked by FM Lens. Game Pass moved to 0.9.2524.0 on 17 November, the
+update Steam calls 27.1.0, and every install on it connected read-only: 6
+installs from 17 to 20 November, 0 edits.
+`profiles/fm27/gamepass-0.9.2524.0.toml` is ported from tozmoz's FMLibreEditor
+(GPL-3.0, its commit 37c0cfa), where the probe's profile check passed all 12
+checks on a Game Pass save of 18 January 2028. It places the arrays, the
+in-game date, the retirement manager and the corporate facilities byte of the
+club finance record; no function is traced, so the features that call into the
+game stay off on this build.
+
+FMLibreEditor reads the corporate facilities at `0x8AD` on this build (30 of 30
+clubs) and on Steam build 26620374. FM Lens reads them at `0x8AA` on Steam
+build 26620374, from one club (Arsenal, 20). The Game Pass profile takes
+`0x8AD`, which was read on Game Pass. Which offset holds on Steam is open:
+compare both bytes over several clubs the next time the Windows build runs.
+
+Neither `scripts/check-build.sh` nor the write checks have run on this build,
+since no Game Pass install is at hand. Run both the next time one is.

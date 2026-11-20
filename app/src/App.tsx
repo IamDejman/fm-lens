@@ -157,7 +157,12 @@ function App() {
   const standing = log.filter(stands).length;
   // Their fields, by profile: a profile marks them as applied.
   const standingByProfile = useMemo(() => standingFields(log), [log]);
-  const { update, checkNow, relaunch, dismiss: dismissUpdate } = useUpdate();
+  const {
+    update,
+    checkNow,
+    relaunch,
+    dismiss: dismissUpdate,
+  } = useUpdate(connection !== null && !connection.knownBuild && !connection.editable);
   const [version, setVersion] = useState<string | null>(null);
   const [debugBuild, setDebugBuild] = useState(false);
   const [reporting, setReporting] = useState<ReportKind | null>(null);
