@@ -52,6 +52,9 @@ export const converts = currency !== "GBP";
 /** An amount the game keeps, in pounds, in the chosen currency, unrounded: for a ticket price's decimals. */
 export const inCurrency = (pounds: number): number => pounds * rate;
 
+/** An amount typed in the chosen currency, in pounds, unrounded: for a ticket price's decimals. */
+export const fromCurrency = (amount: number): number => amount / rate;
+
 /** An amount the game keeps, in pounds, as shown: in the chosen currency, to the whole unit. */
 export const toShown = (pounds: number): number => Math.round(pounds * rate);
 

@@ -4803,3 +4803,51 @@ compare both bytes over several clubs the next time the Windows build runs.
 
 Neither `scripts/check-build.sh` nor the write checks have run on this build,
 since no Game Pass install is at hand. Run both the next time one is.
+
+## Average ticket price on macOS, 20 November 2026
+
+Debug app from `Iamdejman/edit-ticket-price`, FM27 Steam build 26620374 (27.1.0,
+Apple silicon), Arsenal (UID 602), game date 24 March 2028, 00:00.
+
+- The profile showed £50.75, as the read-only probe did (`finance.ticket_price`).
+- Set to 62.50 and applied: "1 change applied", and the probe read 62.50.
+- Continue to 09:00, then past midnight to 25 March: the probe still read 62.50.
+  FM did not recalculate it. No save was written.
+- Set back to 50.75 through the app; the probe read 50.75.
+
+FM's panels did not refresh after Apply, since the game held the 1.1.4 release
+bridge and the debug app did not understand its capability answer.
+
+### FM's own screen and gate receipts, same day
+
+Same build and debug app, game date 26 March 2028. Ten clubs had the price set
+to five times its value (Arsenal 50.75 to 253.75) and five were left alone; the
+probe read every new value back. The game then ran to 7 April.
+
+- FM's own screen: Club > Club Profile showed "Average ticket price £254" for
+  Arsenal.
+- Gate receipts rose with the price. Rise in `gate_receipts` over the period,
+  beside the season total before it:
+
+  | Club | Price | Rise | Season so far |
+  | --- | --- | --- | --- |
+  | Norwich City | 170.00 | 1,552,363 | 6,573,144 |
+  | Ipswich Town | 205.00 | 1,415,610 | 6,645,795 |
+  | Swansea City | 135.00 | 1,341,158 | 5,023,068 |
+  | Wolverhampton Wanderers | 170.00 | 1,143,633 | 6,246,888 |
+  | Arsenal | 253.75 | 989,458 | 20,788,528 |
+  | Millwall | 190.00 | 433,571 | 4,071,208 |
+  | Blackburn Rovers (not edited) | 26.00 | 120,977 | 3,838,515 |
+
+  Edited clubs took 11 to 27 percent of their season's receipts in the period,
+  the unedited club with a home match took 3 percent. Arsenal's one home match
+  was the FA Cup tie with Hull, whose receipts rose by 976,681 (the shared gate),
+  so it does not show the effect. Derby, Stoke, Wrexham, Middlesbrough,
+  Sunderland and West Bromwich Albion had no home first team match.
+- The number of home matches each club played was not read, so the size of the
+  effect is approximate.
+- Every price was set back through the app and read back. Pressing Continue on
+  match day sent the manager on holiday to 7 April, and FM autosaved during the
+  run.
+
+Not checked: macOS Intel (Rosetta) and Windows.

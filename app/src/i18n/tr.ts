@@ -817,6 +817,7 @@ export const tr: Strings = {
     "finance.transfer_budget": "Transfer bütçesi",
     "finance.wage_budget": "Maaş bütçesi",
     "finance.total_wage_budget": "Toplam maaş bütçesi",
+    "finance.ticket_price": "Ortalama bilet fiyatı",
     "stadium.capacity": "Stadyum kapasitesi",
     "stadium.seating": "Oturma kapasitesi",
     "stadium.used": "Kullanılan kapasite",

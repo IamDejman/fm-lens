@@ -147,13 +147,16 @@ pub enum Scale {
     Attribute,
     /// Stored 0–10000, shown as a percentage 0–100.
     Percent,
+    /// An amount of money with a fraction, such as a ticket price: stored in pounds, shown in the chosen currency,
+    /// which the window converts.
+    Price,
 }
 
 impl Scale {
     /// The value the game shows for `stored`.
     pub fn shown(self, stored: i64) -> i64 {
         match self {
-            Scale::Plain => stored,
+            Scale::Plain | Scale::Price => stored,
             Scale::Attribute => ((stored + 2) / 5).clamp(1, 20),
             Scale::Percent => (stored + 50) / 100,
         }
@@ -162,7 +165,7 @@ impl Scale {
     /// A stored value the game shows as `shown`: the middle of the values it rounds to it.
     pub fn stored(self, shown: i64) -> i64 {
         match self {
-            Scale::Plain => shown,
+            Scale::Plain | Scale::Price => shown,
             Scale::Attribute => shown * 5,
             Scale::Percent => shown * 100,
         }
@@ -278,6 +281,11 @@ impl Field {
 
     fn percent(mut self) -> Self {
         self.scale = Scale::Percent;
+        self
+    }
+
+    fn price(mut self) -> Self {
+        self.scale = Scale::Price;
         self
     }
 
@@ -656,6 +664,12 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
         money("finance.transfer_budget", f.transfer_budget, 0..=2_000_000_000),
         // Not the wage budget used (`f.wage_budget`): the game works it out again from the contracts within seconds.
         money("finance.total_wage_budget", f.total_wage_budget, 0..=100_000_000),
+        // The average ticket price, in pounds: within what a finance record must hold to look real (see
+        // `clubs::finances_look_real`), so an edit never hides the club's finances.
+        field("finance.ticket_price", f.ticket_price, Kind::F32, f32_bits(1.0)..=f32_bits(1000.0), Place::ClubFinance)
+            .plausible(0..=f32_bits(f32::MAX))
+            .price()
+            .single(),
     ];
     // Capacities, as stored. The biggest stadium of the test save held 115,109.
     if let Some(s) = &layout.stadium {
@@ -1715,9 +1729,13 @@ mod tests {
             assert!(!staff.iter().any(|f| f.key == "tendency.67"));
         }
         let clubs = fields(&layout, Entity::Club);
-        // Reputation, the 5 facilities and the 3 amounts of money; and the 4 capacities of the stadium where the layout
-        // knows it (Windows so far). The wage budget used is the game's to work out.
-        assert_eq!(clubs.len(), 9 + if layout.stadium.is_some() { 4 } else { 0 });
+        // Reputation, the 5 facilities, the 3 amounts of money and the ticket price; and the 4 capacities of the
+        // stadium where the layout knows it (Windows so far). The wage budget used is the game's to work out.
+        assert_eq!(clubs.len(), 10 + if layout.stadium.is_some() { 4 } else { 0 });
+        // A price in pounds with its pence, from 1 to 1,000, one club at a time.
+        let price = key(&clubs, "finance.ticket_price");
+        assert_eq!((price.kind, price.scale, price.place), (Kind::F32, Scale::Price, Place::ClubFinance));
+        assert!(price.takes(f32_bits(41.8)) && !price.takes(f32_bits(0.5)) && !price.takes(f32_bits(1000.5)));
         assert!(!clubs.iter().any(|field| field.key == "finance.wage_budget"));
         if layout.stadium.is_some() {
             assert_eq!(key(&clubs, "stadium.capacity").place, Place::Stadium);

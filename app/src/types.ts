@@ -1306,9 +1306,10 @@ export interface EditField {
   kind: "u8" | "i8" | "u16" | "i16" | "i32" | "u32" | "date" | "flag" | "pointer" | "f32";
   /**
    * "attribute": stored 0–100, shown 1–20 (see `shownValue` in editing.ts); "percent": stored 0–10000, shown as a
-   * percentage 0–100; "plain": shown as stored.
+   * percentage 0–100; "price": a float of money, stored in pounds and shown in the chosen currency; "plain": shown
+   * as stored.
    */
-  scale: "plain" | "attribute" | "percent";
+  scale: "plain" | "attribute" | "percent" | "price";
   /** Smallest stored value the editor writes. */
   min: number;
   /** Largest stored value the editor writes. */
