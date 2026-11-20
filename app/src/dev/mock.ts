@@ -4271,6 +4271,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       const info: ConnectionInfo = {
         game,
         profile: unknownBuild ? null : "FM27 0.9.2409.0 (Game Pass)",
+        plugin: "175da000-6ae563a1",
         arrays: {
           players: { pairRva: 0x5681dc0, count: players.length, confidence: 1 },
           staff: { pairRva: 0x5681e08, count: 120, confidence: 1 },

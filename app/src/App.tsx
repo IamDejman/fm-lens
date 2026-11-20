@@ -233,6 +233,7 @@ function App() {
         edition: connected.game.edition,
         storefront: connected.game.storefront,
         fm_build: connected.game.steamBuild ?? connected.game.packageVersion,
+        fm_plugin: connected.plugin,
         known_build: connected.knownBuild,
         editable: connected.editable,
       });
@@ -241,6 +242,7 @@ function App() {
         track("readonly_seen", {
           storefront: connected.game.storefront,
           fm_build: connected.game.steamBuild ?? connected.game.packageVersion,
+          fm_plugin: connected.plugin,
         });
       }
       setDataVersion((v) => v + 1);
