@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { inTauri, watchCommands } from "./api";
 import { locale } from "./i18n";
 import { replaySession, startReplay, stopReplay } from "./replay";
+import type { ConnectionInfo } from "./types";
 
 /**
  * Anonymous usage counts, sent to PostHog: how many installs open the app, connect to FM and use each kind of edit.
@@ -244,3 +245,23 @@ function record(): void {
 }
 
 record();
+
+/**
+ * What FM Lens found by itself on a game version without a profile, for `readonly_seen`: where in FM's game file the
+ * lists of players, staff and clubs are and how sure it is of each, and which of its checks passed. These are the same
+ * for everyone on that version; of the save there is only how many of the objects a failed check looked at fit.
+ */
+export function findings(connection: Pick<ConnectionInfo, "arrays" | "health">): Record<string, unknown> {
+  const found: Record<string, unknown> = {};
+  for (const list of ["players", "staff", "clubs"] as const) {
+    const array = connection.arrays[list];
+    found[`${list}_at`] = array ? `0x${array.pairRva.toString(16)}` : "none";
+    found[`${list}_confidence`] = array?.confidence ?? 0;
+  }
+  const results = connection.health.results;
+  found.checks_passed = results.filter((result) => result.passed).map((result) => result.check);
+  found.checks_failed = results
+    .filter((result) => !result.passed)
+    .map((result) => `${result.check} ${result.fit}/${result.sampled}`);
+  return found;
+}

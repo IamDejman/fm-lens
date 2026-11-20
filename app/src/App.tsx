@@ -39,7 +39,7 @@ import { useUpdate } from "./update";
 import { UpdateNotice } from "./UpdateNotice";
 import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
 import { hideManager } from "./replay";
-import { track, trackOpened } from "./usage";
+import { findings, track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
 import { injuryKinds, massFreeze, standingFields, stands } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, FmDate, InjuryKind, Refrozen, ReloadInfo } from "./types";
@@ -243,6 +243,7 @@ function App() {
           storefront: connected.game.storefront,
           fm_build: connected.game.steamBuild ?? connected.game.packageVersion,
           fm_plugin: connected.plugin,
+          ...findings(connected),
         });
       }
       setDataVersion((v) => v + 1);
