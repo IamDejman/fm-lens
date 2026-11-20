@@ -47,7 +47,7 @@
   </main>
 
   <script type="module">
-    import { track } from "../analytics.js";
+    import { source, track } from "../analytics.js";
     import { release as releaseOf, thisComputer } from "../release.js";
 
     // The home page names the computer and the releases page a version; a link without them gets the latest download
@@ -63,7 +63,8 @@
     if (url) {
       document.getElementById("title").textContent =
         release.version ? `Downloading FM Lens ${release.version}` : "Downloading FM Lens";
-      track("download_started", { version: release.version ?? "latest", page: "download", computer });
+      const version = release.version ?? "latest";
+      track("download_started", { version, page: "download", computer, source: source() });
       window.location.assign(url);
     } else {
       document.getElementById("status").textContent = "This release has no download for this computer.";
