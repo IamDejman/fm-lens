@@ -599,6 +599,7 @@ impl Connection {
         ConnectionInfo {
             game: self.session.game.clone(),
             profile: self.session.profile.as_ref().map(|p| p.name.clone()),
+            plugin: self.session.fingerprint.id(),
             arrays: self.session.arrays.clone(),
             players: self.players.len(),
             staff: self.staff.len(),
@@ -3492,6 +3493,8 @@ struct Career {
 struct ConnectionInfo {
     game: GameInfo,
     profile: Option<String>,
+    /// The game plugin's fingerprint as one word (`PluginFingerprint::id`), for the usage counts.
+    plugin: String,
     arrays: EntityArrays,
     players: usize,
     staff: usize,

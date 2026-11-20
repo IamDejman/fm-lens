@@ -77,6 +77,8 @@ export interface Career {
 export interface ConnectionInfo {
   game: GameInfo;
   profile: string | null;
+  /** The game plugin's identity as one word, such as `179ad000-6af5c8c6`: the same on two stores means one file. */
+  plugin: string;
   arrays: EntityArrays;
   players: number;
   staff: number;

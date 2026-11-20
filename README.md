@@ -114,11 +114,12 @@ The app sends these events with a random install id, the app version, the macOS
 or Windows version and processor, and the app language:
 
 - `app_opened`: the app started.
-- `fm_connected`: FM Lens connected to FM, with FM's version and store.
+- `fm_connected`: FM Lens connected to FM, with FM's version and store, and the
+  size and build time of FM's game file, which tell one FM version from another.
 - `fm_connect_failed`: connecting to FM failed, with the kind of failure (such
   as `session.noCareer`) and FM's version and store, never its message.
 - `readonly_seen`: FM Lens opened read-only on an FM version it does not know
-  yet, with FM's version and store.
+  yet, with FM's version, store and the same two values of its game file.
 - `update_offered`: a newer FM Lens was found, with its version and whether it
   installed itself.
 - `update_installed`: FM Lens opened for the first time after an update, with

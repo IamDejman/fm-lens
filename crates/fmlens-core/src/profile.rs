@@ -1497,6 +1497,19 @@ impl PluginFingerprint {
     }
 }
 
+impl PluginFingerprint {
+    /// The fingerprint as one short word for the usage counts: `179ad000-6af5c8c6` (size of image, link timestamp)
+    /// or the UUID in hex. It tells whether two stores ship the same plugin.
+    pub fn id(&self) -> String {
+        match self {
+            PluginFingerprint::Pe { size_of_image, link_timestamp } => {
+                format!("{size_of_image:08x}-{link_timestamp:08x}")
+            }
+            PluginFingerprint::MachO { uuid } => uuid.iter().map(|b| format!("{b:02x}")).collect(),
+        }
+    }
+}
+
 impl fmt::Display for PluginFingerprint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -1677,6 +1690,7 @@ mod tests {
     fn fingerprints_parse() {
         let pe: PluginFingerprint = toml::from_str("size_of_image = 0x10\nlink_timestamp = 0x20").expect("PE");
         assert_eq!(pe, PluginFingerprint::Pe { size_of_image: 0x10, link_timestamp: 0x20 });
+        assert_eq!(pe.id(), "00000010-00000020");
         let mach_o: PluginFingerprint =
             toml::from_str(r#"uuid = "9E8E47DE-F704-314C-917D-C32D12637678""#).expect("Mach-O");
         assert_eq!(mach_o.to_string(), "UUID 9E8E47DE-F704-314C-917D-C32D12637678");
