@@ -2104,6 +2104,9 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.5": [
+        "Edit a club's average ticket price.",
+      ],
       "1.1.4": [
         "Edit FM27 from Game Pass, version 0.9.2524.0.",
         "After an FM update, FM Lens looks for its fix every 30 minutes.",
