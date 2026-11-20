@@ -1502,7 +1502,9 @@ impl PluginFingerprint {
     /// or the UUID in hex. It tells whether two stores ship the same plugin.
     pub fn id(&self) -> String {
         match self {
-            PluginFingerprint::Pe { size_of_image, link_timestamp } => format!("{size_of_image:08x}-{link_timestamp:08x}"),
+            PluginFingerprint::Pe { size_of_image, link_timestamp } => {
+                format!("{size_of_image:08x}-{link_timestamp:08x}")
+            }
             PluginFingerprint::MachO { uuid } => uuid.iter().map(|b| format!("{b:02x}")).collect(),
         }
     }
