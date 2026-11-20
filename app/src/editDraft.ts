@@ -76,7 +76,9 @@ export function valueText(field: EditField | undefined, shown: number): string {
     case "date":
       return formatDate(dateFromNumber(shown)) || String(shown);
     case "f32":
-      return formatNumber(shown / 100, TWO_DECIMALS);
+      return field.scale === "price"
+        ? formatAmount(shown / 100, TWO_DECIMALS)
+        : formatNumber(shown / 100, TWO_DECIMALS);
     case "flag":
       return shown === 0 ? editText.no : editText.yes;
     case "i32":

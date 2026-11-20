@@ -358,7 +358,9 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
               <EditableValue field="finance.total_wage_budget">{formatMoney(finances.totalWageBudget)}</EditableValue>
               <PerWeek />
             </Fact>
-            <Fact label={text.ticketPrice}>{formatTicketPrice(finances.ticketPrice)}</Fact>
+            <Fact label={text.ticketPrice}>
+              <EditableValue field="finance.ticket_price">{formatTicketPrice(finances.ticketPrice)}</EditableValue>
+            </Fact>
           </dl>
           <FreezeMoney club={club} />
         </>

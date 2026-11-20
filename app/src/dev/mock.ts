@@ -1713,6 +1713,7 @@ function fieldTable(entity: Entity): EditField[] {
       field("finance.balance", "i32", -2_000_000_000, 2_000_000_000),
       field("finance.transfer_budget", "i32", 0, 2_000_000_000),
       field("finance.total_wage_budget", "i32", 0, 100_000_000),
+      { ...field("finance.ticket_price", "f32", floatBits(1), floatBits(1000), "price"), mass: false },
       ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "u32", 0, 250_000)),
     ];
   }
@@ -1915,7 +1916,11 @@ function withWrittenClub(d: ClubDetails): ClubDetails {
     if (group === "facilities") {
       d.facilities[name] = value;
     } else if (group === "finance" && d.finances) {
-      d.finances[FINANCE[name as keyof typeof FINANCE]] = value;
+      if (name === "ticket_price") {
+        d.finances.ticketPrice = floatOfBits(value);
+      } else {
+        d.finances[FINANCE[name as keyof typeof FINANCE]] = value;
+      }
     } else if (group === "stadium" && d.stadium) {
       d.stadium[name as "capacity" | "seating" | "used" | "expansion"] = value;
     }
@@ -2065,6 +2070,9 @@ function currentValues(entity: Entity, uid: number): FieldValues {
       case "facilities":
         return club.facilities[name];
       case "finance":
+        if (name === "ticket_price") {
+          return club.finances ? floatBits(club.finances.ticketPrice) : undefined;
+        }
         return club.finances?.[FINANCE[name as keyof typeof FINANCE]];
       case "stadium":
         return club.stadium?.[name as "capacity" | "seating" | "used" | "expansion"];

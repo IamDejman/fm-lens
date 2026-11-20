@@ -830,6 +830,7 @@ export const es: Strings = {
     "finance.transfer_budget": "Presupuesto de fichajes",
     "finance.wage_budget": "Presupuesto salarial",
     "finance.total_wage_budget": "Presupuesto salarial total",
+    "finance.ticket_price": "Precio medio de la entrada",
     "stadium.capacity": "Aforo del estadio",
     "stadium.seating": "Aforo con asientos",
     "stadium.used": "Aforo en uso",

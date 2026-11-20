@@ -4803,3 +4803,19 @@ compare both bytes over several clubs the next time the Windows build runs.
 
 Neither `scripts/check-build.sh` nor the write checks have run on this build,
 since no Game Pass install is at hand. Run both the next time one is.
+
+## Average ticket price on macOS, 20 November 2026
+
+Debug app from `Iamdejman/edit-ticket-price`, FM27 Steam build 26620374 (27.1.0,
+Apple silicon), Arsenal (UID 602), game date 24 March 2028, 00:00.
+
+- The profile showed £50.75, as the read-only probe did (`finance.ticket_price`).
+- Set to 62.50 and applied: "1 change applied", and the probe read 62.50.
+- Continue to 09:00, then past midnight to 25 March: the probe still read 62.50.
+  FM did not recalculate it. No save was written.
+- Set back to 50.75 through the app; the probe read 50.75.
+
+Not checked: FM's own screen showing the price, gate receipts at a home match
+(the next was 8 days on), macOS Intel (Rosetta) and Windows. FM's panels did not
+refresh after Apply, since the game held the 1.1.4 release bridge and the debug
+app did not understand its capability answer.

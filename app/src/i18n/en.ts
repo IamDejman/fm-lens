@@ -770,6 +770,7 @@ export const en = {
     "finance.transfer_budget": "Transfer budget",
     "finance.wage_budget": "Wage budget",
     "finance.total_wage_budget": "Total wage budget",
+    "finance.ticket_price": "Average ticket price",
     "stadium.capacity": "Stadium capacity",
     "stadium.seating": "Seated capacity",
     "stadium.used": "Capacity in use",

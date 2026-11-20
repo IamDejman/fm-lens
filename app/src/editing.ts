@@ -1,7 +1,7 @@
 // Editing: the Rust commands that change the game, and how stored values are shown.
 
 import { call, watchCommands } from "./api";
-import { converts, toPounds, toShown } from "./currency";
+import { converts, fromCurrency, inCurrency, toPounds, toShown } from "./currency";
 import type {
   ApplyReport,
   BatchUndo,
@@ -177,7 +177,8 @@ export function shownValue(field: EditField, stored: number): number {
     return stored === field.blank ? stored : toShown(stored);
   }
   if (field.kind === "f32") {
-    return Math.round(floatOf(stored) * 100);
+    const value = floatOf(stored);
+    return Math.round((field.scale === "price" ? inCurrency(value) : value) * 100);
   }
   switch (field.scale) {
     case "attribute":
@@ -195,7 +196,9 @@ export function shownValue(field: EditField, stored: number): number {
  * False for a field the table lacks.
  */
 export const isStoredFiner = (field: EditField | undefined): boolean =>
-  field !== undefined && (field.scale !== "plain" || (field.kind === "i32" && converts));
+  field !== undefined &&
+  field.scale !== "price" &&
+  (field.scale !== "plain" || (field.kind === "i32" && converts));
 
 /**
  * The stored value to write for a value typed as shown: the middle of the stored values the game shows as it; for
@@ -206,7 +209,11 @@ export function storedValue(field: EditField, shown: number): number {
     return shown === field.blank ? shown : toPounds(shown);
   }
   if (field.kind === "f32") {
-    return bitsOf(shown / 100);
+    // A price converted back from another currency may land a hair outside the range: the bits of a float that is
+    // not negative run in the order of the values, so the range holds it in.
+    return field.scale === "price"
+      ? Math.min(field.max, Math.max(field.min, bitsOf(fromCurrency(shown / 100))))
+      : bitsOf(shown / 100);
   }
   switch (field.scale) {
     case "attribute":

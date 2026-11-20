@@ -3108,6 +3108,7 @@ fn shown(field: &Field, stored: i64) -> String {
         Scale::Plain => stored.to_string(),
         Scale::Attribute => format!("{stored} ({})", field.scale.shown(stored)),
         Scale::Percent => format!("{stored} ({}%)", field.scale.shown(stored)),
+        Scale::Price => format!("{:.2}", f32::from_bits(u32::try_from(stored).unwrap_or_default())),
     }
 }
 
