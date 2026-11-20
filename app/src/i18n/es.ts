@@ -1940,6 +1940,7 @@ export const es: Strings = {
   compatibility: {
     unknownBuild: (game) => `FM Lens aún no se ha probado con ${game}`,
     unknownBuildText: "Los valores pueden estar mal, así que la edición está desactivada.",
+    emailPromise: "Te avisaremos por correo cuando funcione.",
     allowedText:
       "La edición está activada donde pasaron las comprobaciones. Haz una copia de tu partida.",
     failedTitle: "Algunos datos parecen incorrectos",

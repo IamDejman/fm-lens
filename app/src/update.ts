@@ -6,8 +6,9 @@
 // app as it runs, so it waits for the user. Either way the colophon offers Relaunch to update. A copy that cannot
 // replace itself (one macOS runs from where it was downloaded, a bare FM Lens.exe, or a development build) names the new
 // version and opens the website's download page instead. Offline, or when the check fails, nothing happens and the app
-// works as before. Check for Updates, at the foot of the window, in the app menu on macOS and in Settings, About, on
-// Windows, looks at once and says what it found.
+// works as before. While the game is a version this FM Lens cannot edit, it looks every 30 minutes instead, as the
+// version that can is likely on its way. Check for Updates, at the foot of the window, in the app menu on macOS and in
+// Settings, About, on Windows, looks at once and says what it found.
 
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -26,6 +27,9 @@ const DOWNLOAD_TIMEOUT_MS = 10 * 60_000;
 
 /** How long the app waits before looking again while there is no newer version, in milliseconds. */
 const RECHECK_MS = 4 * 60 * 60_000;
+
+/** The same while the game is a version this FM Lens cannot edit, when the version that can is likely on its way. */
+const WAITING_RECHECK_MS = 30 * 60_000;
 
 /** A newer version, and what the app has done about it. */
 export type UpdateState =
@@ -114,12 +118,13 @@ const look = (): Promise<Found> =>
 
 /**
  * Looks for a newer version when the window opens, and again every four hours until one turns up, and installs it in
- * the background where this copy can.
+ * the background where this copy can. While `waiting` (the game is a version this FM Lens cannot edit), it looks at
+ * once and then every 30 minutes, so Relaunch to update shows as soon as the version that can is out.
  * `update` is what to tell the user, null while there is nothing to tell; `checkNow` looks at once and says what it
  * found; `relaunch` starts the installed version (on Windows, installs it, and its installer then starts it);
  * `dismiss` hides a notice the user cannot act on now.
  */
-export function useUpdate() {
+export function useUpdate(waiting = false) {
   const [update, setUpdate] = useState<UpdateState | null>(null);
 
   useEffect(() => {
@@ -138,6 +143,25 @@ export function useUpdate() {
     };
     void lookLater();
   }, []);
+
+  useEffect(() => {
+    if (!inTauri || !waiting) {
+      return;
+    }
+    let stopped = false;
+    const lookNow = async () => {
+      const found = await look();
+      if (typeof found !== "string" && !stopped) {
+        setUpdate(found);
+      }
+    };
+    void lookNow();
+    const timer = setInterval(() => void lookNow(), WAITING_RECHECK_MS);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }, [waiting]);
 
   const checkNow = useCallback(async () => {
     setUpdate({ phase: "checking" });

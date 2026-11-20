@@ -1913,6 +1913,7 @@ export const tr: Strings = {
   compatibility: {
     unknownBuild: (game) => `FM Lens henüz ${game} ile denenmedi`,
     unknownBuildText: "Değerler yanlış olabilir, bu yüzden düzenleme kapalı.",
+    emailPromise: "Çalıştığında size e-posta göndereceğiz.",
     allowedText: "Denetimlerin geçtiği yerlerde düzenleme açık. Kaydınızı yedekleyin.",
     failedTitle: "Bazı veriler yanlış görünüyor",
     reloadHint: "Kayıt hâlâ yükleniyorduysa Verileri yeniden oku'ya basın.",
