@@ -835,6 +835,8 @@ export const es: Strings = {
     "stadium.seating": "Aforo con asientos",
     "stadium.used": "Aforo en uso",
     "stadium.expansion": "Aforo ampliable",
+    "info.season_tickets": "Abonos de temporada",
+    "info.ownership": "Propiedad",
     population: "Población",
     dual_nationality: "Doble nacionalidad",
     naturalisation: "Años para nacionalizarse",

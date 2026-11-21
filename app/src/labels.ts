@@ -95,6 +95,7 @@ const CHOICE_NAMES = new Map<string, (code: number) => string>([
   ["formation.out_of_possession", profileText.formationName],
   // A nation's people may hold another nationality as well (0), or may not (2).
   ["dual_nationality", (code) => (code === 0 ? strings.nationList.allowed : strings.nationList.notAllowed)],
+  ["info.ownership", (code) => strings.clubProfile.ownershipKinds[code - 1] ?? formatNumber(code)],
   ["nation", (address) => NATION_NAMES.get(address) ?? editText.unknownNation],
 ]);
 

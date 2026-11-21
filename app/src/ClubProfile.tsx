@@ -487,9 +487,15 @@ function ClubInfo({ details }: { details: ClubDetails }) {
     <section className="profile-group">
       <h3>{text.info}</h3>
       <dl className="stats">
-        <Fact label={text.seasonTickets}>{count(details.seasonTickets)}</Fact>
+        <Fact label={text.seasonTickets}>
+          <EditableValue field="info.season_tickets">{count(details.seasonTickets)}</EditableValue>
+        </Fact>
         <Fact label={text.socialMedia}>{count(details.socialMedia)}</Fact>
-        {kind && <Fact label={text.ownership}>{kind}</Fact>}
+        {kind && (
+          <Fact label={text.ownership}>
+            <EditableValue field="info.ownership">{kind}</EditableValue>
+          </Fact>
+        )}
       </dl>
     </section>
   );

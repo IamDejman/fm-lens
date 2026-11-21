@@ -670,7 +670,23 @@ fn club_fields(layout: &Layout) -> Vec<Field> {
             .plausible(0..=f32_bits(f32::MAX))
             .price()
             .single(),
+        // How many season tickets the club sold: a count the game sets anew when the next season's go on sale.
+        field("info.season_tickets", i.season_tickets, Kind::U32, 0..=250_000, Place::ClubInfo)
+            .plausible(0..=i64::from(i32::MAX))
+            .single(),
     ];
+    // How the club is owned, one of FM's own kinds (see `crate::OWNERSHIP`), where the layout places it. Only
+    // written over a kind or over none, never over a code FM has no name for.
+    if let Some(ownership) = i.ownership {
+        let kinds: Vec<i64> = (1..=crate::OWNERSHIP.len() as i64).collect();
+        fields.push(
+            field("info.ownership", ownership, Kind::U8, 1..=crate::OWNERSHIP.len() as i64, Place::ClubInfo)
+                .plausible(0..=255)
+                .choices(&kinds)
+                .listed_only()
+                .single(),
+        );
+    }
     // Capacities, as stored. The biggest stadium of the test save held 115,109.
     if let Some(s) = &layout.stadium {
         let seats = |key: &str, offset: u64| {
@@ -1729,9 +1745,10 @@ mod tests {
             assert!(!staff.iter().any(|f| f.key == "tendency.67"));
         }
         let clubs = fields(&layout, Entity::Club);
-        // Reputation, the 5 facilities, the 3 amounts of money and the ticket price; and the 4 capacities of the
-        // stadium where the layout knows it (Windows so far). The wage budget used is the game's to work out.
-        assert_eq!(clubs.len(), 10 + if layout.stadium.is_some() { 4 } else { 0 });
+        // Reputation, the 5 facilities, the 3 amounts of money, the ticket price and the season tickets; and the kind
+        // of ownership and the 4 capacities of the stadium where the layout knows them (Windows so far). The wage budget used is the game's to work out.
+        let placed = usize::from(layout.club_info.ownership.is_some()) + if layout.stadium.is_some() { 4 } else { 0 };
+        assert_eq!(clubs.len(), 11 + placed);
         // A price in pounds with its pence, from 1 to 1,000, one club at a time.
         let price = key(&clubs, "finance.ticket_price");
         assert_eq!((price.kind, price.scale, price.place), (Kind::F32, Scale::Price, Place::ClubFinance));

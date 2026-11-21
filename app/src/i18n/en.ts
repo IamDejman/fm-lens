@@ -775,6 +775,8 @@ export const en = {
     "stadium.seating": "Seated capacity",
     "stadium.used": "Capacity in use",
     "stadium.expansion": "Expansion capacity",
+    "info.season_tickets": "Season tickets",
+    "info.ownership": "Ownership",
     // A nation's rules; its reputation is its senior team's.
     population: "Population",
     dual_nationality: "Dual nationality",

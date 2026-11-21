@@ -822,6 +822,8 @@ export const tr: Strings = {
     "stadium.seating": "Oturma kapasitesi",
     "stadium.used": "Kullanılan kapasite",
     "stadium.expansion": "Genişleme kapasitesi",
+    "info.season_tickets": "Sezonluk biletler",
+    "info.ownership": "Sahiplik",
     population: "Nüfus",
     dual_nationality: "Çifte vatandaşlık",
     naturalisation: "Vatandaşlık için yıl",

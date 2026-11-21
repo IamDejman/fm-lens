@@ -1715,6 +1715,8 @@ function fieldTable(entity: Entity): EditField[] {
       field("finance.total_wage_budget", "i32", 0, 100_000_000),
       { ...field("finance.ticket_price", "f32", floatBits(1), floatBits(1000), "price"), mass: false },
       ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "u32", 0, 250_000)),
+      { ...field("info.season_tickets", "u32", 0, 250_000), mass: false },
+      { ...field("info.ownership", "u8", 1, 8), choices: [1, 2, 3, 4, 5, 6, 7, 8], mass: false },
     ];
   }
   if (entity === "player") {
@@ -1923,6 +1925,8 @@ function withWrittenClub(d: ClubDetails): ClubDetails {
       }
     } else if (group === "stadium" && d.stadium) {
       d.stadium[name as "capacity" | "seating" | "used" | "expansion"] = value;
+    } else if (group === "info") {
+      d[name === "ownership" ? "ownership" : "seasonTickets"] = value;
     }
   }
   return d;
@@ -2076,6 +2080,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return club.finances?.[FINANCE[name as keyof typeof FINANCE]];
       case "stadium":
         return club.stadium?.[name as "capacity" | "seating" | "used" | "expansion"];
+      case "info":
+        return (name === "ownership" ? club.ownership : club.seasonTickets) ?? undefined;
     }
     throw new Error(`No fixture value for ${key}`);
   };
