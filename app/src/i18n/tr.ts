@@ -786,6 +786,7 @@ export const tr: Strings = {
     "preference.dislikedClub": "Sevmediği kulüp",
     "preference.favouredPerson": "Sevdiği kişi",
     "preference.dislikedPerson": "Sevmediği kişi",
+    rival: "Rakip",
     strength: "Derece",
     language: "Dil",
     level: "Seviye",
@@ -2585,6 +2586,7 @@ export const tr: Strings = {
 
   lists: {
     likesTitle: "Sevdiği ve sevmediği kişileri ve kulüpleri değiştir",
+    rivalsTitle: "Bu kulübün rakiplerini değiştir",
     strengthOf: (name) => `${name} için derece`,
     languagesTitle: "Her dili ne kadar iyi konuştuğunu değiştir",
     levelOf: (name) => `${name} seviyesi`,

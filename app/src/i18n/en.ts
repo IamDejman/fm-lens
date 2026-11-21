@@ -724,6 +724,7 @@ export const en = {
     "preference.dislikedClub": "Disliked club",
     "preference.favouredPerson": "Favoured person",
     "preference.dislikedPerson": "Disliked person",
+    rival: "Rival",
     strength: "Strength",
     // A person's languages, which the change log keeps as changes of their level (see `lists`).
     language: "Language",
@@ -2885,6 +2886,7 @@ export const en = {
   /** Changing a player's or member of staff's likes and dislikes, and languages: the button under each, and its dialog. */
   lists: {
     likesTitle: "Change the people and clubs he likes and dislikes",
+    rivalsTitle: "Change this club's rivals",
     /** The strength input of a row, for assistive technology: `name` is the person's or club's. */
     strengthOf: (name: string) => `Strength for ${name}`,
     languagesTitle: "Change how well he speaks each language",

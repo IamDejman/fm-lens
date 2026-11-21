@@ -18,7 +18,7 @@ use fmlens_core::{
     Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter, OfficialSort,
     OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter,
     PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
-    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
+    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, RivalPlan, STAFF_JOBS, SearchIndex, Session,
     SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
     StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
     TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
@@ -1581,6 +1581,47 @@ impl Connection {
 
     /// Logs a change to a player's ties just written, as a change of his field `tie.nationality`,
     /// `tie.trainedInNation` or `tie.trainedAtClub` from one nation's or club's UID to the other's (0 for none).
+    /// Logs a change to a club's rivals: the rival before and after, each with how strong the rivalry is.
+    fn log_rival(&mut self, done: RivalPlan) -> LoggedChange {
+        let end = |rival: &Option<fmlens_core::Related>| {
+            rival.as_ref().map(|rival| TieEnd {
+                name: rival.name.clone().unwrap_or_default(),
+                rule: None,
+                value: rival.strength.map(i64::from),
+            })
+        };
+        let strength =
+            |rival: &Option<fmlens_core::Related>| rival.as_ref().and_then(|rival| rival.strength).map_or(0, i64::from);
+        let change = Change {
+            entity: Entity::Club,
+            uid: done.club,
+            field: "rival".to_owned(),
+            old: strength(&done.before),
+            new: strength(&done.after),
+            record: Vec::new(),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(done.club),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
+            clause: None,
+            renamed: None,
+            holds: None,
+            undo: Some(Undo::Rival(done)),
+        };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
     fn log_tie(&mut self, done: RelationSet) -> LoggedChange {
         let tie = done.before.as_ref().or(done.after.as_ref()).map_or(Tie::Nationality, |relation| relation.tie);
         let field = match tie {
@@ -2225,6 +2266,7 @@ impl Connection {
             Some(Undo::Tactics(raised)) => self.session.undo_tactics(&raised)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
+            Some(Undo::Rival(rival)) => self.session.undo_rival(&rival)?,
             Some(Undo::Preference(preference)) => self.session.undo_preference(&preference)?,
             Some(Undo::Language(language)) => self.session.undo_language(&language)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
@@ -2771,6 +2813,7 @@ enum Undo {
     Cohesion(Cohered),
     Retirement(RetirementSet),
     Tie(RelationSet),
+    Rival(RivalPlan),
     Preference(PreferenceSet),
     Language(LanguageSet),
     Clause(ClauseSet),
@@ -5507,6 +5550,39 @@ fn change_tie(
     Ok(connection.log_tie(done))
 }
 
+/// Gives the rivalry of the club `club` with the club `rival` (by UID) the strength `strength`, 1 to 100; without a
+/// strength, takes it out of the club's list. Logged and undone like any change.
+#[tauri::command]
+fn change_rival(
+    state: State<'_, AppState>,
+    club: u32,
+    rival: u32,
+    strength: Option<u8>,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let plan = match strength {
+        Some(strength) => connection.session.plan_rival_strength(summary, rival, strength)?,
+        None => connection.session.plan_rival_removal(summary, rival)?,
+    };
+    let done = connection.session.apply_rival(&plan)?;
+    Ok(connection.log_rival(done))
+}
+
+/// Makes the club `rival` a rival of the club `club`, at `strength`, 1 to 100, where the club's list has room.
+/// Logged and undone like any change.
+#[tauri::command]
+fn add_rival(state: State<'_, AppState>, club: u32, rival: u32, strength: u8) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let other = connection.clubs.get(rival).ok_or_else(|| not_found(Entity::Club, rival))?;
+    let plan = connection.session.plan_rival_add(summary, other, strength)?;
+    let done = connection.session.apply_rival(&plan)?;
+    Ok(connection.log_rival(done))
+}
+
 /// Takes the tie `index` of the player `uid` out of his list. Logged and undone like any change.
 #[tauri::command]
 fn remove_tie(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
@@ -6392,6 +6468,8 @@ pub fn run() {
             freeze_money,
             frozen_clubs,
             protect_squad,
+            change_rival,
+            add_rival,
             protected_clubs,
             freeze_attributes,
             frozen_players,

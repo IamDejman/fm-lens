@@ -3,8 +3,10 @@ import { call } from "./api";
 import {
   addLanguage,
   addPreference,
+  addRival,
   changeLanguage,
   changePreference,
+  changeRival,
   languageChoices,
   pointPreference,
   removeLanguage,
@@ -393,19 +395,74 @@ export function LanguagesGroup({
   );
 }
 
-/** A club's rivals, strongest first, and the clubs it is linked with; each not there when it has none. */
+/**
+ * A club's rivals, strongest first, with the button that changes how strong a rivalry is, ends one or adds one, and
+ * the clubs it is linked with; each not there when it has none.
+ */
 export function ClubTiesGroups({
+  club,
   rivals,
   links,
 }: {
+  club: { uid: number; name: string };
   rivals: Related[];
   links: Related[];
 }) {
+  const shown = useListShown(rivals.length > 0, club.uid);
+  const sections = (): ValueSection[] => {
+    const taken = new Set([club.uid, ...rivals.map((rival) => rival.uid)]);
+    return [
+      {
+        key: "rivals",
+        heading: null,
+        // A rival is told by its club, not by its place in the list: the list here is in order of strength.
+        rows: rivals.map((rival) => {
+          const name = rival.name ?? profileText.unknownClub;
+          return { index: rival.uid, name, label: <ClubName uid={rival.uid} name={name} />, value: rival.strength ?? 0 };
+        }),
+        add: {
+          label: listText.searchClubs,
+          search: async (query) => {
+            const page = await call<ClubPage>("search_clubs", {
+              query,
+              limit: SEARCH_LIMIT + taken.size,
+              filter: {},
+            });
+            return page.rows
+              .filter((found) => !taken.has(found.uid))
+              .slice(0, SEARCH_LIMIT)
+              .map((found) => ({
+                key: `club:${found.uid}`,
+                label: <ClubLine uid={found.uid} name={found.name} women={found.women} />,
+                choose: () => addRival(club.uid, found.uid, STRENGTHS.most),
+              }));
+          },
+        },
+      },
+    ];
+  };
   return (
     <>
-      {rivals.length > 0 && (
+      {shown && (
         <section className="profile-group">
-          <h3>{profileText.rivals}</h3>
+          <GroupHead title={profileText.rivals}>
+            <ListChange
+              title={listText.rivalsTitle}
+              dialog={(onClose) => (
+                <ValueListDialog
+                  title={profileText.rivals}
+                  who={club.name}
+                  sections={sections()}
+                  {...STRENGTHS}
+                  inputLabel={listText.strengthOf}
+                  save={(rival, strength) => changeRival(club.uid, rival, strength)}
+                  remove={(rival) => changeRival(club.uid, rival, null)}
+                  list={rivals}
+                  onClose={onClose}
+                />
+              )}
+            />
+          </GroupHead>
           <dl className="stats">
             {rivals.map((rival) => (
               <Fact

@@ -799,6 +799,7 @@ export const es: Strings = {
     "preference.dislikedClub": "Club que no soporta",
     "preference.favouredPerson": "Persona favorita",
     "preference.dislikedPerson": "Persona que no soporta",
+    rival: "Rival",
     strength: "Intensidad",
     language: "Idioma",
     level: "Nivel",
@@ -2637,6 +2638,7 @@ export const es: Strings = {
 
   lists: {
     likesTitle: "Cambiar las personas y los clubes que le gustan y disgustan",
+    rivalsTitle: "Cambiar los rivales de este club",
     strengthOf: (name) => `Intensidad para ${name}`,
     languagesTitle: "Cambiar cómo de bien habla cada idioma",
     levelOf: (name) => `Nivel de ${name}`,

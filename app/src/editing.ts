@@ -354,6 +354,14 @@ export const addTie = (uid: number, tie: TieKind, target: number, rule?: number)
 export const changePreference = (uid: number, staff: boolean, index: number, strength: number) =>
   call<LoggedChange>("change_preference", { uid, staff, index, strength });
 
+/** Gives the rivalry of the club `club` with the club `rival` the strength `strength`, 1 to 100; without one, ends it. */
+export const changeRival = (club: number, rival: number, strength: number | null) =>
+  call<LoggedChange>("change_rival", { club, rival, strength });
+
+/** Makes the club `rival` a rival of the club `club`, at `strength`, 1 to 100. */
+export const addRival = (club: number, rival: number, strength: number) =>
+  call<LoggedChange>("add_rival", { club, rival, strength });
+
 /** What a preference can be pointed at: a club, for a club one, or a player or member of staff, for a person one. */
 export type PreferenceTargetKind = "club" | "player" | "staff";
 

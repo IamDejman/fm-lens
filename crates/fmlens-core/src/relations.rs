@@ -217,6 +217,27 @@ pub struct Related {
     pub strength: Option<u8>,
 }
 
+/// A change to a club's rivals, worked out from the game as it is now, and what undoing it takes once written.
+#[derive(Debug, Clone)]
+pub struct RivalPlan {
+    pub club: u32,
+    /// The rivalry before and after: none before for one added, none after for one taken out.
+    pub before: Option<Related>,
+    pub after: Option<Related>,
+    patches: Vec<Patch>,
+}
+
+/// A club's list of relations, and the rivals in it, each with where its entry is in the list.
+type RivalList = (RelationList, Vec<(usize, Related)>);
+
+/// The strengths the editor writes for a rivalry.
+fn rival_strength(strength: u8) -> Result<(), MoveError> {
+    if (1..=100).contains(&strength) {
+        return Ok(());
+    }
+    Err(MoveError::OutOfRange { field: "strength", value: strength.into(), min: 1, max: 100 })
+}
+
 /// A change to a player's ties, worked out from the game as it is now and ready to be written.
 #[derive(Debug, Clone)]
 pub struct RelationPlan {
@@ -377,29 +398,120 @@ impl Session {
     /// The clubs `club` is a rival of, strongest first, with how strong each rivalry is (0 to 100). Empty where the
     /// layout does not place a club's relations.
     pub fn club_rivals(&self, club: &ClubSummary) -> Result<Vec<Related>, MoveError> {
+        let Some((_, rivals)) = self.rival_list(club)? else {
+            return Ok(Vec::new());
+        };
+        let mut rivals: Vec<Related> = rivals.into_iter().map(|(_, rival)| rival).collect();
+        rivals.sort_by_key(|rival| std::cmp::Reverse(rival.strength));
+        Ok(rivals)
+    }
+
+    /// The list of relations of `club` and the rivals in it, each with where its entry is in the list. `None` where
+    /// the layout does not place a club's relations.
+    fn rival_list(&self, club: &ClubSummary) -> Result<Option<RivalList>, MoveError> {
         let c = &self.layout.club;
         let Some(relations) = c.relations else {
-            return Ok(Vec::new());
+            return Ok(None);
         };
         if self.process.read_u32(club.address + c.uid)? != club.uid {
             return Err(MoveError::NotAClub { uid: club.uid });
         }
         let r = &self.layout.relation;
         let list = self.relation_list_at(club.address + relations)?;
-        let mut rivals: Vec<Related> = list
+        let rivals = list
             .entries
             .iter()
-            .filter(|entry| entry[r.target_kind as usize] == CLUB && entry[r.relation as usize] == RIVAL)
-            .filter_map(|entry| {
+            .enumerate()
+            .filter(|(_, entry)| entry[r.target_kind as usize] == CLUB && entry[r.relation as usize] == RIVAL)
+            .filter_map(|(index, entry)| {
                 let target = u64::from_le_bytes(entry[r.target as usize..r.target as usize + 8].try_into().ok()?);
                 let mut tie = self.club_tie(target)?;
                 tie.strength = Some(entry[r.value as usize]);
-                Some(tie)
+                Some((index, tie))
             })
-            .filter(|tie| tie.uid != club.uid)
+            .filter(|(_, tie)| tie.uid != club.uid)
             .collect();
-        rivals.sort_by_key(|rival| std::cmp::Reverse(rival.strength));
-        Ok(rivals)
+        Ok(Some((list, rivals)))
+    }
+
+    /// The list of `club` and its rivalry with the club `rival`, with where that is in the list.
+    fn rival_in(&self, club: &ClubSummary, rival: u32) -> Result<(RelationList, usize, Related), MoveError> {
+        let (list, rivals) = self.rival_list(club)?.ok_or(MoveError::NotListed)?;
+        let (index, before) = rivals.into_iter().find(|(_, known)| known.uid == rival).ok_or(MoveError::NotListed)?;
+        Ok((list, index, before))
+    }
+
+    /// Works out giving the rivalry of `club` with the club `rival` the strength `strength`, 1 to 100. Nothing is
+    /// written.
+    pub fn plan_rival_strength(&self, club: &ClubSummary, rival: u32, strength: u8) -> Result<RivalPlan, MoveError> {
+        let r = &self.layout.relation;
+        let (list, index, before) = self.rival_in(club, rival)?;
+        rival_strength(strength)?;
+        if before.strength == Some(strength) {
+            return Err(MoveError::SameRelation);
+        }
+        let mut patches = Patches::default();
+        let address = list.begin + index as u64 * r.size + r.value;
+        patches.push(address, [before.strength.unwrap_or(0)], [strength]);
+        let after = Related { strength: Some(strength), ..before.clone() };
+        Ok(RivalPlan { club: club.uid, before: Some(before), after: Some(after), patches: patches.0 })
+    }
+
+    /// Works out taking the rivalry of `club` with the club `rival` out of its list: the entries after it move up
+    /// one. Nothing is written.
+    pub fn plan_rival_removal(&self, club: &ClubSummary, rival: u32) -> Result<RivalPlan, MoveError> {
+        let (list, index, before) = self.rival_in(club, rival)?;
+        let patches = removal(list.header, list.begin, &list.entries, index);
+        Ok(RivalPlan { club: club.uid, before: Some(before), after: None, patches })
+    }
+
+    /// Works out making `rival` a rival of `club` at `strength`, 1 to 100, where the block of the club's list has
+    /// room: an entry as the club's first rivalry is, pointed at `rival`. Refused for a club without a rival to go
+    /// by, for itself and for a rival it has. Nothing is written.
+    pub fn plan_rival_add(
+        &self,
+        club: &ClubSummary,
+        rival: &ClubSummary,
+        strength: u8,
+    ) -> Result<RivalPlan, MoveError> {
+        let r = &self.layout.relation;
+        let (list, rivals) = self.rival_list(club)?.ok_or(MoveError::NotListed)?;
+        rival_strength(strength)?;
+        if rival.uid == club.uid || rivals.iter().any(|(_, known)| known.uid == rival.uid) {
+            return Err(MoveError::SameRelation);
+        }
+        if self.process.read_u32(rival.address + self.layout.club.uid)? != rival.uid {
+            return Err(MoveError::WrongTarget);
+        }
+        let Some(&(like, _)) = rivals.first() else {
+            return Err(MoveError::RelationsFull);
+        };
+        if self.room(&list)? == 0 {
+            return Err(MoveError::RelationsFull);
+        }
+        let mut entry = list.entries[like].clone();
+        entry[r.target as usize..r.target as usize + 8].copy_from_slice(&rival.address.to_le_bytes());
+        entry[r.value as usize] = strength;
+
+        let mut patches = Patches::default();
+        let slot = self.process.read_bytes(list.end, r.size as usize)?;
+        patches.push(list.end, slot, entry);
+        let end = list.end + r.size;
+        let header = [list.end.to_le_bytes(), list.capacity.to_le_bytes()].concat();
+        patches.push(list.header + 8, header, [end.to_le_bytes(), list.capacity.max(end).to_le_bytes()].concat());
+        let after = Related { uid: rival.uid, name: Some(rival.name.clone()), strength: Some(strength) };
+        Ok(RivalPlan { club: club.uid, before: None, after: Some(after), patches: patches.0 })
+    }
+
+    /// Writes a planned change to a club's rivals, each write over the bytes it expects, after checking them all.
+    pub fn apply_rival(&self, plan: &RivalPlan) -> Result<RivalPlan, MoveError> {
+        self.apply_patches(&plan.patches)?;
+        Ok(plan.clone())
+    }
+
+    /// Puts the rivals back as they were, provided the list still holds what the change wrote.
+    pub fn undo_rival(&self, done: &RivalPlan) -> Result<(), MoveError> {
+        self.undo_patches(&done.patches)
     }
 
     /// The clubs `club` has links with (affiliations), in the game's order. Empty where the layout does not place
