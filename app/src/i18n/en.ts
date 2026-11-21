@@ -3142,7 +3142,7 @@ export const en = {
     /** Heal, Lift bans and Remove unhappiness carry how many players they are for; these name them after the count. */
     healAll: "Heal",
     injuredCount: (injured: number) => `${format(injured)} injured`,
-    healAllTitle: "Heal everyone in this team",
+    healAllTitle: "Heal everyone in this team and restore their fitness",
     /** Hover text of Heal while nobody in the team is injured. */
     healNone: "Nobody in this team is injured",
     liftAll: "Lift bans",

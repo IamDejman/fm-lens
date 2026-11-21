@@ -2843,7 +2843,7 @@ export const es: Strings = {
     actionsLabel: "Acciones sobre todo el equipo",
     healAll: "Curar",
     injuredCount: (injured) => (injured === 1 ? "1 lesionado" : `${format(injured)} lesionados`),
-    healAllTitle: "Curar a todo el equipo",
+    healAllTitle: "Curar a todo el equipo y recuperar su forma física",
     healNone: "Nadie en este equipo está lesionado",
     liftAll: "Levantar sanciones",
     bannedCount: (banned) => (banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`),

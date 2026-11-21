@@ -2792,7 +2792,7 @@ export const tr: Strings = {
     actionsLabel: "Takımın tamamına yönelik işlemler",
     healAll: "İyileştir",
     injuredCount: (injured) => `${format(injured)} sakat`,
-    healAllTitle: "Takımdaki herkesi iyileştir",
+    healAllTitle: "Takımdaki herkesi iyileştir ve kondisyonlarını yenile",
     healNone: "Bu takımda sakat oyuncu yok",
     liftAll: "Cezaları kaldır",
     bannedCount: (banned) => `${format(banned)} cezalı`,

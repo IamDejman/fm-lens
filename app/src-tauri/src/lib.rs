@@ -5744,6 +5744,17 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
     report
 }
 
+/// A player rested as the game rests him: full energy and sharpness, and jadedness at its least.
+const RESTED: &[(&str, i64)] = &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)];
+
+/// The edits that rest a player (see `RESTED`).
+fn rest_operations(connection: &Connection) -> Result<Vec<(Field, Operation)>, EditError> {
+    RESTED
+        .iter()
+        .map(|&(key, value)| Ok((connection.session.field(Entity::Player, key)?, Operation::Set { value })))
+        .collect()
+}
+
 /// Does `action` to `members`, the players of the team `team` of the club `summary`, logging the changes as `batch`.
 fn act_on_team(
     connection: &mut Connection,
@@ -5756,16 +5767,17 @@ fn act_on_team(
     let values: &[(&str, i64)] = match action {
         TeamAction::Heal => {
             let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
+            let mut healed: Vec<(Target, String)> = Vec::new();
             for member in members.iter().filter(|member| member.injuries > 0) {
                 let Some(player) = connection.players.get(member.uid) else {
                     continue;
                 };
-                let name = player.name.clone();
-                let healed = connection.session.plan_heal(player).and_then(|plan| connection.session.apply_heal(&plan));
-                match healed {
+                let (target, name) = (player.target(), player.name.clone());
+                match connection.session.plan_heal(player).and_then(|plan| connection.session.apply_heal(&plan)) {
                     Ok(done) => {
                         connection.log_heal(done, Some(batch));
                         report.applied += 1;
+                        healed.push((target, name));
                     }
                     Err(err) => report.failed.push(MassFailure {
                         uid: member.uid,
@@ -5774,6 +5786,11 @@ fn act_on_team(
                         error: err.into(),
                     }),
                 }
+            }
+            // A healed player is fit to play at once: rested as Refresh fitness rests him, in the same batch.
+            if !healed.is_empty() {
+                let plan = connection.session.plan_mass_edit(&healed, &rest_operations(connection)?)?;
+                report.failed.extend(connection.write_planned(Entity::Player, plan.planned, batch).failed);
             }
             return Ok(report);
         }
@@ -5855,8 +5872,7 @@ fn act_on_team(
             return Ok(report);
         }
         TeamAction::MaxMorale => &[("morale", 20)],
-        // Rested as the game rests a player: full energy and sharpness, and jadedness at its least.
-        TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)],
+        TeamAction::Refresh => RESTED,
         TeamAction::MaxAttributes => &[],
     };
     let targets: Vec<(Target, String)> = members
