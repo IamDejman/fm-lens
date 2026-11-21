@@ -1956,6 +1956,12 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.6": [
+        "Bir kulübün ortalama bilet fiyatını düzenleyin.",
+        "Game Pass'teki FM27'yi düzenleyin, sürüm 0.9.2524.0.",
+        "FM güncellenince FM Lens düzeltmesini 30 dakikada bir arar.",
+        "Yenilikler güncellemeden sonra yeniden gösterilir.",
+      ],
       "1.1.5": [
         "Bir kulübün ortalama bilet fiyatını düzenleyin.",
       ],

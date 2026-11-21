@@ -1984,6 +1984,12 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.6": [
+        "Edita el precio medio de la entrada de un club.",
+        "Edita FM27 de Game Pass, versión 0.9.2524.0.",
+        "Tras una actualización de FM, FM Lens busca su arreglo cada 30 minutos.",
+        "Las novedades vuelven a mostrarse tras actualizar.",
+      ],
       "1.1.5": [
         "Edita el precio medio de la entrada de un club.",
       ],
