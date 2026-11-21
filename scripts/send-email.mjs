@@ -13,12 +13,13 @@
 //   counts twice, an email app that hides pictures counts none, and Apple Mail opens every email by itself. Emails
 //   sent with --test are counted together, apart from every email's own counts.
 //
-// The email file is plain text: the subject on the first line, a blank line, then the email, with a blank line between
-// paragraphs. Links are made clickable. A paragraph whose first line ends with a colon, with more lines under it, shows
-// that line as a bold title. A paragraph that is only `![what it shows](https://address/of/image)` is a picture, as wide
-// as the email; the plain text copy of the email leaves it out. Every email ends with a link to unsubscribe, and carries the headers that let
-// email apps show their own unsubscribe button. Addresses SES won't send to, after a bounce or a complaint, are skipped
-// and marked so on the list.
+// The email file is plain text: the subject on the first line, a blank line, then the email, with a blank line
+// between paragraphs. Links are made clickable, and `[words](https://address)` puts a link behind words. A paragraph
+// whose first line ends with a colon, with more lines under it, shows that line as a bold title. A paragraph that is
+// only `![what it shows](https://address/of/image)` is a picture, as wide as the email; the plain text copy of the
+// email leaves it out. Every email ends with a link to unsubscribe, and carries the headers that let email apps show
+// their own unsubscribe button. Addresses SES won't send to, after a bounce or a complaint, are skipped and marked
+// so on the list.
 
 import { execFile } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
@@ -57,8 +58,14 @@ async function aws(...args) {
 const escape = (text) =>
   text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
+/** `[words](address)`, a link behind words, or an address by itself. */
+const LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|https?:\/\/[^\s<]*[^\s<.,:;!?)]/g;
+
 const linked = (html) =>
-  html.replace(/https?:\/\/[^\s<]*[^\s<.,:;!?)]/g, (url) => `<a href="${url}" style="color:#5b3fd1">${url}</a>`);
+  html.replace(LINK, (url, words, address) => `<a href="${address ?? url}" style="color:#5b3fd1">${words ?? url}</a>`);
+
+/** `text` for the plain text copy: a link behind words shows as the words, then its address. */
+const plain = (text) => text.replace(LINK, (url, words, address) => (words ? `${words} (${address})` : url));
 
 /** The email in `file`: its subject, its paragraphs, and the tag SES counts it under, from the file's name. */
 function readEmailFile(file) {
@@ -96,7 +103,7 @@ function htmlOf(paragraph) {
 function emailFor({ subject, paragraphs, tag }, to, token) {
   const query = `email=${encodeURIComponent(to)}&token=${token}`;
   const unsubscribe = `https://getfmlens.com/unsubscribe/?${query}`;
-  const text = `${paragraphs.filter((paragraph) => !PICTURE.test(paragraph)).join("\n\n")}\n\n--\n${FREE} A star on GitHub encourages me: ${REPOSITORY}\nUnsubscribe: ${unsubscribe}\n`;
+  const text = `${paragraphs.filter((paragraph) => !PICTURE.test(paragraph)).map(plain).join("\n\n")}\n\n--\n${FREE} A star on GitHub encourages me: ${REPOSITORY}\nUnsubscribe: ${unsubscribe}\n`;
   const html = [
     '<!doctype html><html><body style="margin:0;padding:24px;background:#ffffff">',
     '<div style="max-width:560px;margin:0 auto;font:16px/1.55 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d1d1f">',
