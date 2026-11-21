@@ -1072,7 +1072,7 @@ export const es: Strings = {
     injuryStarted: (date) => `Desde el ${date}`,
     injuryBack: (dates) => `Regreso previsto: ${dates}`,
     heal: "Curar",
-    healTitle: "Curar todas sus lesiones",
+    healTitle: "Curar todas sus lesiones y recuperar su forma física",
     addInjury: "Añadir lesión",
     injuryKind: "Lesión",
     noBans: "Sin sanciones",
@@ -1486,7 +1486,8 @@ export const es: Strings = {
     perWeek: "/sem.",
     noFinances: "FM solo lleva las finanzas de los clubes de ligas jugables.",
     freeze: "Congelar el dinero",
-    freezeNote: "El saldo y el presupuesto de fichajes no pueden bajar mientras FM Lens esté conectado.",
+    freezeNote:
+      "El saldo y el presupuesto de fichajes no pueden bajar, y el precio de las entradas se mantiene, mientras FM Lens esté conectado.",
 
     // Estadio
     stadium: "Estadio",

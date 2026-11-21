@@ -1059,7 +1059,7 @@ export const tr: Strings = {
     injuryStarted: (date) => `Başlangıç: ${date}`,
     injuryBack: (dates) => `Beklenen dönüş: ${dates}`,
     heal: "İyileştir",
-    healTitle: "Tüm sakatlıklarını iyileştir",
+    healTitle: "Tüm sakatlıklarını iyileştir ve kondisyonunu yenile",
     addInjury: "Sakatlık ekle",
     injuryKind: "Sakatlık",
     noBans: "Cezası yok",
@@ -1473,7 +1473,7 @@ export const tr: Strings = {
     perWeek: "/hafta",
     noFinances: "FM, parayı yalnızca oynanabilir liglerdeki kulüpler için tutar.",
     freeze: "Parayı dondur",
-    freezeNote: "FM Lens bağlıyken bakiye ve transfer bütçesi düşemez.",
+    freezeNote: "FM Lens bağlıyken bakiye ve transfer bütçesi düşemez, bilet fiyatı da değişmez.",
 
     // Club info
     stadium: "Stadyum",

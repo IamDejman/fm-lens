@@ -1054,7 +1054,7 @@ export const en = {
     injuryBack: (dates: string) => `Expected back ${dates}`,
     /** Heals every injury of the player at once. */
     heal: "Heal",
-    healTitle: "Heal all his injuries",
+    healTitle: "Heal all his injuries and restore his fitness",
     /** Has FM give him the injury chosen in the select next to it; the select's label is `injuryKind`. */
     addInjury: "Add injury",
     injuryKind: "Injury",
@@ -1533,7 +1533,7 @@ export const en = {
     noFinances: "FM only tracks money for clubs in playable leagues.",
     /** Freezing the club's money, while the game can be written to, and what that does. */
     freeze: "Freeze money",
-    freezeNote: "The balance and transfer budget can't go down while FM Lens is connected.",
+    freezeNote: "The balance and transfer budget can't go down, and the ticket price stays, while FM Lens is connected.",
 
     // Stadium
     stadium: "Stadium",

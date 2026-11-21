@@ -111,6 +111,8 @@ fn held_fields(fields: Vec<Field>) -> Vec<Field> {
 /// What a money freeze holds of a club: its balance, then its transfer budget, which the game lowers on its own too.
 const BALANCE: &str = "finance.balance";
 const TRANSFER_BUDGET: &str = "finance.transfer_budget";
+/// What a money freeze holds as it is, not from below: the game sets a ticket price anew each season, up or down.
+const TICKET_PRICE: &str = "finance.ticket_price";
 
 /// What the app keeps from getting worse while it is connected (see `Connection::hold_frozen`).
 #[derive(Default)]
@@ -530,6 +532,14 @@ impl Connection {
             && budget.takes(value)
         {
             held.insert(budget.key, value);
+        }
+        // The ticket price likewise: a build that does not place it freezes the club without it.
+        if let Ok(price) = self.session.field(Entity::Club, TICKET_PRICE)
+            && self.session.field_lock(&price).is_none()
+            && let Ok(value) = self.session.read_field(&target, &price)
+            && price.takes(value)
+        {
+            held.insert(price.key, value);
         }
         self.frozen.money.insert(uid, held);
         Ok(())
@@ -2343,8 +2353,10 @@ impl Connection {
         if self.frozen.money.is_empty() {
             return;
         }
-        let fields: Vec<Field> =
-            [BALANCE, TRANSFER_BUDGET].iter().filter_map(|key| self.session.field(Entity::Club, key).ok()).collect();
+        let fields: Vec<Field> = [BALANCE, TRANSFER_BUDGET, TICKET_PRICE]
+            .iter()
+            .filter_map(|key| self.session.field(Entity::Club, key).ok())
+            .collect();
         for (&uid, held) in self.frozen.money.iter_mut() {
             let Some(target) = self.clubs.get(uid).map(|club| club.target()) else {
                 continue;
@@ -2354,7 +2366,7 @@ impl Connection {
                     continue;
                 };
                 match self.session.read_field(&target, field) {
-                    Ok(now) if now < *floor => {
+                    Ok(now) if now < *floor || (field.key == TICKET_PRICE && now != *floor) => {
                         // Only while the game still holds what was read: a day it is working out is left to it.
                         let written = self.session.write_field_if(&target, field, now, *floor);
                         log_refused(&mut self.frozen.refused, &target, written.err());
@@ -5120,16 +5132,24 @@ fn close_promise(
     Ok(connection.log_promise(done))
 }
 
-/// Heals every current injury of the player `uid`, as the game does when he gets over them,
-/// and logs it as one change of his `injuries` to none.
+/// Heals every current injury of the player `uid`, as the game does when he gets over them, and rests him (see
+/// `RESTED`). Logged as one batch: a change of his `injuries` to none, which is returned, and the values that rest him.
 #[tauri::command]
 fn heal_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let rested = [(player.target(), player.name.clone())];
     let plan = connection.session.plan_heal(player)?;
     let done = connection.session.apply_heal(&plan)?;
-    Ok(connection.log_heal(done, None))
+    // Fit to play at once: rested as Refresh fitness rests him, in one batch with the heal. A value that will not
+    // write leaves him healed.
+    let batch = connection.fresh_id();
+    let healed = connection.log_heal(done, Some(batch));
+    if let Ok(plan) = connection.session.plan_mass_edit(&rested, &rest_operations(connection)?) {
+        connection.write_planned(Entity::Player, plan.planned, batch);
+    }
+    Ok(healed)
 }
 
 /// The kinds of injury the game knows, in its order, for adding one. Only reads memory.
