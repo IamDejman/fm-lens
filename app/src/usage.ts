@@ -34,6 +34,7 @@ export const EDITS = new Set([
   "add_language",
   "add_release_clause",
   "add_rival",
+  "set_kit_colour",
   "add_tie",
   "apply_edits",
   "apply_mass_edit",

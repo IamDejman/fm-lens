@@ -62,9 +62,9 @@ pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
 pub use club_names::{ClubRenamed, GameNames, MOST_NAME_CHARS, as_name};
 pub use clubs::{
-    ClubDetails, ClubIndex, ClubSummary, Finances, INCOME_SOURCES, Income, KITS, KitPart, OWNERSHIP, SUPPORTER_MIX,
-    SUPPORTER_TRAITS, StadiumClub, StadiumFilter, StadiumSummary, read_club_details, read_clubs, read_stadiums,
-    stadium_owner,
+    ClubDetails, ClubIndex, ClubSummary, Finances, INCOME_SOURCES, Income, KITS, KitPart, KitPlan, OWNERSHIP,
+    SUPPORTER_MIX, SUPPORTER_TRAITS, StadiumClub, StadiumFilter, StadiumSummary, read_club_details, read_clubs,
+    read_stadiums, stadium_owner,
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};

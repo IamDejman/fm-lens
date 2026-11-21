@@ -310,6 +310,12 @@ export function fieldLabel(entity: Entity, key: string): string {
     }
     case "style":
       return labelIn(NATION_STYLE_LABELS, name) ?? key;
+    case "kit": {
+      // "kit.home.shirt.trim"
+      const [, kit = "", part = ""] = key.split(".");
+      const names = [labelIn(clubProfileText.kitNames, kit), labelIn(clubProfileText.kitParts, part)];
+      return names.every((found) => found !== undefined) ? names.join(" · ") : key;
+    }
     case "women": {
       // "women.style.tempo"; the women's other fields are named in FIELD_LABELS.
       const [, part, style = ""] = key.split(".");

@@ -13,11 +13,11 @@ use fmlens_core::{
     ClubSort, Coded, Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort,
     CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
     Field, Fit, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameNames, GameRelease,
-    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language,
-    LanguageChoice, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager,
-    Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter, OfficialSort,
-    OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter,
-    PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
+    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, KitPlan,
+    Language, LanguageChoice, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms,
+    MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter,
+    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
+    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
     PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, RivalPlan, STAFF_JOBS, SearchIndex, Session,
     SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
     StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
@@ -1581,6 +1581,40 @@ impl Connection {
 
     /// Logs a change to a player's ties just written, as a change of his field `tie.nationality`,
     /// `tie.trainedInNation` or `tie.trainedAtClub` from one nation's or club's UID to the other's (0 for none).
+    /// Logs a change of a kit's colour, `field` naming the kit, its part and which colour: the colour before and after.
+    fn log_kit(&mut self, done: KitPlan, field: String) -> LoggedChange {
+        let end = |colour: &str| Some(TieEnd { name: colour.to_owned(), rule: None, value: None });
+        let number = |colour: &str| i64::from_str_radix(colour.trim_start_matches('#'), 16).unwrap_or(0);
+        let change = Change {
+            entity: Entity::Club,
+            uid: done.club,
+            field,
+            old: number(&done.before),
+            new: number(&done.after),
+            record: Vec::new(),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(done.club),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
+            clause: None,
+            renamed: None,
+            holds: None,
+            undo: Some(Undo::Kit(done)),
+        };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs a change to a club's rivals: the rival before and after, each with how strong the rivalry is.
     fn log_rival(&mut self, done: RivalPlan) -> LoggedChange {
         let end = |rival: &Option<fmlens_core::Related>| {
@@ -2267,6 +2301,7 @@ impl Connection {
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
             Some(Undo::Rival(rival)) => self.session.undo_rival(&rival)?,
+            Some(Undo::Kit(kit)) => self.session.undo_kit_colour(&kit)?,
             Some(Undo::Preference(preference)) => self.session.undo_preference(&preference)?,
             Some(Undo::Language(language)) => self.session.undo_language(&language)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
@@ -2814,6 +2849,7 @@ enum Undo {
     Retirement(RetirementSet),
     Tie(RelationSet),
     Rival(RivalPlan),
+    Kit(KitPlan),
     Preference(PreferenceSet),
     Language(LanguageSet),
     Clause(ClauseSet),
@@ -5570,6 +5606,30 @@ fn change_rival(
     Ok(connection.log_rival(done))
 }
 
+/// Gives the `part` (shirt, shorts or socks) of the `kit` (home, away or third) of the club `club` the colour
+/// `colour`, as `#RRGGBB`: its main colour, or for `trim` its trim. Logged and undone like any change.
+#[tauri::command]
+fn set_kit_colour(
+    state: State<'_, AppState>,
+    club: u32,
+    kit: String,
+    part: String,
+    trim: bool,
+    colour: String,
+) -> Result<LoggedChange, Failure> {
+    let digits = colour.strip_prefix('#').filter(|digits| digits.len() == 6);
+    let rgb = digits
+        .and_then(|digits| u32::from_str_radix(digits, 16).ok())
+        .map(|rgb| [(rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8])
+        .ok_or_else(|| Failure::new("kit.colour", format!("{colour} is not a colour.")))?;
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let plan = connection.session.plan_kit_colour(summary, &kit, &part, trim, rgb)?;
+    let done = connection.session.apply_kit_colour(&plan)?;
+    Ok(connection.log_kit(done, format!("kit.{kit}.{part}.{}", if trim { "trim" } else { "main" })))
+}
+
 /// Makes the club `rival` a rival of the club `club`, at `strength`, 1 to 100, where the club's list has room.
 /// Logged and undone like any change.
 #[tauri::command]
@@ -6470,6 +6530,7 @@ pub fn run() {
             protect_squad,
             change_rival,
             add_rival,
+            set_kit_colour,
             protected_clubs,
             freeze_attributes,
             frozen_players,

@@ -522,6 +522,88 @@ fn read_kits(process: &Process, k: &crate::profile::ClubKitsLayout, club: u64) -
         .collect()
 }
 
+/// A change of one colour of a club's kit, worked out from the game as it is now, and what undoing it takes once
+/// written.
+#[derive(Debug, Clone)]
+pub struct KitPlan {
+    pub club: u32,
+    /// The colour before and after, as `#RRGGBB`.
+    pub before: String,
+    pub after: String,
+    patches: Vec<crate::transfer::Patch>,
+}
+
+impl crate::Session {
+    /// Works out giving the `part` (shirt, shorts or socks) of the outfield `kit` (home, away or third) of `club` the
+    /// colour `rgb`: its main colour, or for `trim` its trim. The record FM reads first for that part is the one
+    /// changed. Nothing is written.
+    pub fn plan_kit_colour(
+        &self,
+        club: &ClubSummary,
+        kit: &str,
+        part: &str,
+        trim: bool,
+        rgb: [u8; 3],
+    ) -> Result<KitPlan, crate::MoveError> {
+        use crate::MoveError;
+        let k = self.layout.club_kits.as_ref().ok_or(MoveError::NotListed)?;
+        let kit = KITS.iter().position(|&name| name == kit).ok_or(MoveError::NotListed)?;
+        let part = KIT_PARTS.iter().find(|&&(_, name)| name == part).ok_or(MoveError::NotListed)?.0;
+        if self.process.read_u32(club.address + self.layout.club.uid)? != club.uid {
+            return Err(MoveError::NotAClub { uid: club.uid });
+        }
+        let pointer = |address: u64| -> Result<u64, MoveError> {
+            let found = self.process.read_u64(address)?;
+            is_user_pointer(found).then_some(found).ok_or(MoveError::NotListed)
+        };
+        let set = pointer(club.address + k.set)?;
+        let (begin, end) = (pointer(set + k.parts)?, pointer(set + k.parts + 8)?);
+        let count = end.saturating_sub(begin) / 8;
+        if count == 0 || count > 256 || (end - begin) % 8 != 0 {
+            return Err(MoveError::NotListed);
+        }
+        // The record of the part with the lowest order, as `read_kits` shows it.
+        let mut first: Option<(u8, u64, Vec<u8>)> = None;
+        for index in 0..count {
+            let record = pointer(begin + index * 8)?;
+            let bytes = self.process.read_bytes(record, k.size as usize)?;
+            let is_it = usize::from(bytes[k.kit as usize]) == kit
+                && bytes[k.part as usize] & 0x0F == part
+                && bytes[k.outfield as usize] == 1;
+            let order = bytes[k.order as usize];
+            if is_it && first.as_ref().is_none_or(|&(held, ..)| order < held) {
+                first = Some((order, record, bytes));
+            }
+        }
+        let (_, record, bytes) = first.ok_or(MoveError::NotListed)?;
+        let offset = if trim { k.trim } else { k.main };
+        let held = &bytes[offset as usize..offset as usize + 4];
+        if held[3] != 0xFF {
+            return Err(MoveError::NotListed);
+        }
+        let hex = |b: u8, g: u8, r: u8| format!("#{r:02X}{g:02X}{b:02X}");
+        let [r, g, b] = rgb;
+        let mut patches = crate::transfer::Patches::default();
+        patches.push(record + offset, held.to_vec(), vec![b, g, r, 0xFF]);
+        if patches.0.is_empty() {
+            return Err(MoveError::SameRelation);
+        }
+        let (before, after) = (hex(held[0], held[1], held[2]), hex(b, g, r));
+        Ok(KitPlan { club: club.uid, before, after, patches: patches.0 })
+    }
+
+    /// Writes a planned change of a kit's colour over the bytes it expects.
+    pub fn apply_kit_colour(&self, plan: &KitPlan) -> Result<KitPlan, crate::MoveError> {
+        self.apply_patches(&plan.patches)?;
+        Ok(plan.clone())
+    }
+
+    /// Puts the colour back as it was, provided the record still holds what the change wrote.
+    pub fn undo_kit_colour(&self, done: &KitPlan) -> Result<(), crate::MoveError> {
+        self.undo_patches(&done.patches)
+    }
+}
+
 /// One source of a club's income, in pounds.
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]

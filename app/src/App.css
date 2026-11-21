@@ -6164,8 +6164,28 @@ button.danger:hover:not(:disabled) {
   border: 1px solid var(--border-strong);
 }
 
-.kit-part span + span {
+.kit-part span + span,
+.kit-part input + input {
   border-left: 0;
+}
+
+.kit-part input {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.kit-part input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.kit-part input::-webkit-color-swatch {
+  border: 0;
+  border-radius: 0;
 }
 
 /* The in-game scout card (see ScoutCard.tsx): its window is see-through and sized to the card. */

@@ -358,6 +358,10 @@ export const changePreference = (uid: number, staff: boolean, index: number, str
 export const changeRival = (club: number, rival: number, strength: number | null) =>
   call<LoggedChange>("change_rival", { club, rival, strength });
 
+/** Gives a part of a kit of the club `club` the colour `colour` ("#RRGGBB"): its main colour, or for `trim` its trim. */
+export const setKitColour = (club: number, kit: string, part: string, trim: boolean, colour: string) =>
+  call<LoggedChange>("set_kit_colour", { club, kit, part, trim, colour });
+
 /** Makes the club `rival` a rival of the club `club`, at `strength`, 1 to 100. */
 export const addRival = (club: number, rival: number, strength: number) =>
   call<LoggedChange>("add_rival", { club, rival, strength });

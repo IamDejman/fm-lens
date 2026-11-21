@@ -1,6 +1,6 @@
 import { useContext, useEffect, useId, useState } from "react";
 import { EditableValue } from "./EditControls";
-import { freezeMoney, frozenClubs, protectedClubs, protectSquad, watchMassFreeze } from "./editing";
+import { freezeMoney, frozenClubs, protectedClubs, protectSquad, setKitColour, watchMassFreeze } from "./editing";
 import { converts, inCurrency } from "./currency";
 import { describeError, formatMoney, formatNumber } from "./format";
 import {
@@ -169,7 +169,33 @@ function Kits({ club, colours }: { club: number; colours: KitPart[] }) {
       cancelled = true;
     };
   }, [club]);
+  const { editable, onEdited } = useContext(EditorContext);
+  const [error, setError] = useState<string | null>(null);
   const kinds = KIT_KINDS.filter((kind) => kits.includes(kind) || colours.some((part) => part.kit === kind));
+  const swatch = (part: KitPart, trim: boolean) => {
+    const colour = trim ? part.trim : part.main;
+    if (!editable) {
+      return <span style={{ background: colour }} />;
+    }
+    const save = (chosen: string) => {
+      if (chosen.toLowerCase() === colour.toLowerCase()) {
+        return;
+      }
+      setError(null);
+      setKitColour(club, part.kit, part.part, trim, chosen)
+        .then(onEdited)
+        .catch((e: unknown) => setError(describeError(e)));
+    };
+    return (
+      <input
+        key={colour}
+        type="color"
+        defaultValue={colour}
+        aria-label={`${text.kitNames[part.kit]} · ${text.kitParts[part.part]}`}
+        onBlur={(event) => save(event.currentTarget.value)}
+      />
+    );
+  };
   if (kinds.length === 0) {
     return null;
   }
@@ -190,18 +216,23 @@ function Kits({ club, colours }: { club: number; colours: KitPart[] }) {
                   <span
                     key={part.part}
                     className="kit-part"
-                    role="img"
-                    aria-label={`${text.kitParts[part.part]}: ${part.main}, ${part.trim}`}
+                    role={editable ? undefined : "img"}
+                    aria-label={editable ? undefined : `${text.kitParts[part.part]}: ${part.main}, ${part.trim}`}
                     title={text.kitParts[part.part]}
                   >
-                    <span style={{ background: part.main }} />
-                    <span style={{ background: part.trim }} />
+                    {swatch(part, false)}
+                    {swatch(part, true)}
                   </span>
                 ))}
             </span>
           </li>
         ))}
       </ul>
+      {error !== null && (
+        <p className="note error" role="alert">
+          {error}
+        </p>
+      )}
     </section>
   );
 }
