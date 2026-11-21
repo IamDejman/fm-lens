@@ -23,7 +23,9 @@ const INSTALL_KEY = "fm-lens.installId";
 /** Set for the life of the window, so a reload (a new language or currency) is not counted as another launch. */
 const OPENED_KEY = "fm-lens.opened";
 /** The version that last opened on this computer, so the first launch of another one counts as an update. */
-const VERSION_KEY = "fm-lens.version";
+const VERSION_KEY = "fm-lens.usage.version";
+/** Where 1.1.4 and 1.1.5 kept it. It is the What's new notice's own record (see WhatsNew.tsx), so it is only read. */
+const SHARED_VERSION_KEY = "fm-lens.version";
 
 /** The commands that change the game, counted as `edit_applied`. Reads and plans are not counted. */
 export const EDITS = new Set([
@@ -181,18 +183,26 @@ export function trackOpened(): void {
     return;
   }
   track("app_opened");
-  trackUpdated();
+  trackUpdated(lastVersion());
 }
 
-/** Counts an update (`update_installed`) when the version that last opened here was another one. */
-function trackUpdated(): void {
+/** The version that last opened here. Read as the app starts, before the What's new notice records this one. */
+function lastVersion(): string | null {
+  try {
+    return localStorage.getItem(VERSION_KEY) ?? localStorage.getItem(SHARED_VERSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Counts an update (`update_installed`) when `from`, the version that last opened here, was another one. */
+function trackUpdated(from: string | null): void {
   void ready().then((ctx) => {
     if (!ctx) {
       return;
     }
     const to = ctx.props.app_version;
     try {
-      const from = localStorage.getItem(VERSION_KEY);
       localStorage.setItem(VERSION_KEY, to);
       if (from && from !== to) {
         track("update_installed", { from, to });
