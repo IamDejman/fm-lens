@@ -84,6 +84,9 @@ struct Connection {
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
 const FREEZE_EVERY: Duration = Duration::from_secs(2);
 
+/// How many holds pass between two looks at the players of the protected clubs: every ten seconds.
+const PROTECT_EVERY: u32 = 5;
+
 /// How long the hold of frozen values waits after failing to read the game again before it tries once more.
 const READ_AGAIN_RETRY: Duration = Duration::from_secs(30);
 
@@ -126,6 +129,11 @@ struct Frozen {
     attributes: BTreeMap<u32, BTreeMap<String, i64>>,
     /// The members of staff whose attributes are frozen, held the same way on the staff's own attribute scales.
     staff_attributes: BTreeMap<u32, BTreeMap<String, i64>>,
+    /// The clubs whose players are protected: healed, their bans lifted and their unhappiness removed as each comes
+    /// (see `Connection::hold_protected`).
+    protected: BTreeSet<u32>,
+    /// How many holds there were since the protected clubs were last looked at.
+    since_protected: u32,
     /// The holds the editor's checks refused, as logged: each is logged once.
     refused: BTreeSet<String>,
     /// What each mass edit froze or unfroze, by its batch, for `undo_batch` to take back with its values.
@@ -152,7 +160,10 @@ struct Froze {
 
 impl Frozen {
     fn is_empty(&self) -> bool {
-        self.money.is_empty() && self.attributes.is_empty() && self.staff_attributes.is_empty()
+        self.money.is_empty()
+            && self.attributes.is_empty()
+            && self.staff_attributes.is_empty()
+            && self.protected.is_empty()
     }
 
     /// What a connection just made holds of `old`, the one before it: in the same game all of it, at what it was held
@@ -194,11 +205,14 @@ struct RememberedSave {
     /// The members of staff whose attributes are frozen. Files from before staff freezes were remembered have none.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     staff: BTreeSet<u32>,
+    /// The clubs whose players are protected. Files from before there was such a thing have none.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    protected: BTreeSet<u32>,
 }
 
 impl RememberedSave {
     fn is_empty(&self) -> bool {
-        self.players.is_empty() && self.clubs.is_empty() && self.staff.is_empty()
+        self.players.is_empty() && self.clubs.is_empty() && self.staff.is_empty() && self.protected.is_empty()
     }
 }
 
@@ -248,6 +262,8 @@ struct Refrozen {
     clubs: Vec<String>,
     /// The members of staff whose attributes are frozen again, by name.
     staff: Vec<String>,
+    /// The clubs whose players are protected again, by name.
+    protected: Vec<String>,
     /// How many are left for later, still remembered: the editor has no profile for this version of the game, or a
     /// check did not pass.
     waiting: usize,
@@ -387,12 +403,14 @@ impl Connection {
         let Some(entry) = remembered.saves.get_mut(&save) else {
             return refrozen;
         };
-        let count = entry.players.len() + entry.clubs.len() + entry.staff.len();
+        let count = entry.players.len() + entry.clubs.len() + entry.staff.len() + entry.protected.len();
         entry.players.retain(|&uid| self.players.get(uid).is_some());
         entry.clubs.retain(|&uid| self.clubs.get(uid).is_some());
         entry.staff.retain(|&uid| self.staff.get(uid).is_some());
+        entry.protected.retain(|&uid| self.clubs.get(uid).is_some());
         let (players, clubs, staff) = (entry.players.clone(), entry.clubs.clone(), entry.staff.clone());
-        if players.len() + clubs.len() + staff.len() < count {
+        let protected = entry.protected.clone();
+        if players.len() + clubs.len() + staff.len() + protected.len() < count {
             remembered.saves.retain(|_, save| !save.is_empty());
             let _ = remembered.write(path);
         }
@@ -413,6 +431,14 @@ impl Connection {
             match safe.then(|| self.freeze_staff(uid)) {
                 Some(Ok(())) => refrozen.staff.push(self.staff_name(uid)),
                 _ => refrozen.waiting += 1,
+            }
+        }
+        for uid in protected {
+            if safe {
+                self.frozen.protected.insert(uid);
+                refrozen.protected.push(self.club_name(uid));
+            } else {
+                refrozen.waiting += 1;
             }
         }
         refrozen
@@ -2347,6 +2373,54 @@ impl Connection {
         self.hold_money();
         self.hold_attributes();
         self.hold_staff_attributes();
+        self.hold_protected();
+    }
+
+    /// Heals the players of every protected club, lifts their bans and removes their unhappiness, as the team's own
+    /// buttons do and logged the same way. Looked at every `PROTECT_EVERY` holds, and not while the game is working
+    /// out a day.
+    fn hold_protected(&mut self) {
+        if self.frozen.protected.is_empty() {
+            return;
+        }
+        self.frozen.since_protected += 1;
+        if self.frozen.since_protected < PROTECT_EVERY || self.session.structure_lock().is_some() {
+            return;
+        }
+        self.frozen.since_protected = 0;
+        for uid in self.frozen.protected.clone() {
+            let Some(summary) = self.clubs.get(uid).cloned() else {
+                continue;
+            };
+            let Ok(teams) = self.session.club_teams(&summary, &self.players) else {
+                continue;
+            };
+            for team in teams {
+                let members: Vec<_> = team.players.iter().filter(|member| member.plays_here).cloned().collect();
+                for action in [TeamAction::Heal, TeamAction::LiftBans, TeamAction::RemoveUnhappiness] {
+                    let needed = members.iter().any(|member| match action {
+                        TeamAction::Heal => member.injuries > 0,
+                        TeamAction::LiftBans => member.bans > 0,
+                        _ => member.unhappy,
+                    });
+                    if !needed {
+                        continue;
+                    }
+                    let batch = self.fresh_id();
+                    let done = TeamDone {
+                        action,
+                        club: summary.name.clone(),
+                        team: team.index,
+                        kind: team.kind,
+                        age_limit: team.age_limit,
+                    };
+                    if let Err(err) = act_on_team(self, &summary, team.index, &members, action, batch) {
+                        eprintln!("FM Lens could not protect {}: {}", summary.name, err.message);
+                    }
+                    self.name_batch(batch, &done);
+                }
+            }
+        }
     }
 
     fn hold_money(&mut self) {
@@ -4490,6 +4564,46 @@ fn freeze_money(
     Ok(connection.frozen.money.keys().copied().collect())
 }
 
+/// Protects the players of the club `club`, or stops: while the app is connected, a protected club's players are
+/// healed, their bans lifted and their unhappiness removed as each comes. The app remembers it for this save.
+/// Returns the clubs protected now.
+#[tauri::command]
+fn protect_squad(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    club: u32,
+    protected: bool,
+) -> Result<Vec<u32>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    if protected {
+        connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+        if !(connection.session.known_build() && connection.session.process.can_write()) {
+            return Err(Failure::new("memory.readOnly", "This connection cannot write to the game."));
+        }
+        connection.frozen.protected.insert(club);
+        // Looked at on the next hold, not ten seconds on.
+        connection.frozen.since_protected = PROTECT_EVERY;
+    } else {
+        connection.frozen.protected.remove(&club);
+    }
+    connection.remember(file.0.as_deref(), |save| {
+        if protected {
+            save.protected.insert(club);
+        } else {
+            save.protected.remove(&club);
+        }
+    });
+    Ok(connection.frozen.protected.iter().copied().collect())
+}
+
+/// The clubs whose players are protected.
+#[tauri::command]
+fn protected_clubs(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
+    let guard = state.0.lock()?;
+    Ok(guard.as_ref().map(|connection| connection.frozen.protected.iter().copied().collect()).unwrap_or_default())
+}
+
 /// The clubs whose money is frozen.
 #[tauri::command]
 fn frozen_clubs(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
@@ -6277,6 +6391,8 @@ pub fn run() {
             list_nations,
             freeze_money,
             frozen_clubs,
+            protect_squad,
+            protected_clubs,
             freeze_attributes,
             frozen_players,
             freeze_staff_attributes,

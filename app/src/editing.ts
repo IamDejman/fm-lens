@@ -40,6 +40,12 @@ export const editFields = (entity: Entity) => call<EditField[]>("edit_fields", {
 /** Freezes the money of the club `club`, or unfreezes it; the clubs whose money is frozen now. */
 export const freezeMoney = (club: number, frozen: boolean) => call<number[]>("freeze_money", { club, frozen });
 
+/** Protects the players of the club `club`, or stops; the clubs whose players are protected now. */
+export const protectSquad = (club: number, on: boolean) => call<number[]>("protect_squad", { club, protected: on });
+
+/** The clubs whose players are protected: healed, unbanned and their unhappiness removed while the app is connected. */
+export const protectedClubs = () => call<number[]>("protected_clubs");
+
 /** The clubs whose money is frozen: while the app is connected, their balance does not go down. */
 export const frozenClubs = () => call<number[]>("frozen_clubs");
 

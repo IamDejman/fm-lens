@@ -1534,6 +1534,8 @@ export const en = {
     /** Freezing the club's money, while the game can be written to, and what that does. */
     freeze: "Freeze money",
     freezeNote: "The balance and transfer budget can't go down, and the ticket price stays, while FM Lens is connected.",
+    protect: "Protect squad",
+    protectNote: "Injuries, bans and unhappiness are removed as they come, while FM Lens is connected.",
 
     // Stadium
     stadium: "Stadium",
@@ -1976,6 +1978,7 @@ export const en = {
       /** `names` are the players' names, set apart by commas. */
       players: (names: string) => `Attributes: ${names}`,
       clubs: (names: string) => `Money: ${names}`,
+      protected: (names: string) => `Protected squads: ${names}`,
       /** After the first few names. */
       more: (count: number) => `and ${format(count)} more`,
       /** What was left for later: an update of the game, say. */

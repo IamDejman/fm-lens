@@ -4134,6 +4134,7 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
 
 /** The clubs whose money is frozen in this page; the fixtures have no game days for it to hold through. */
 const frozenMoney = new Set<number>();
+const protectedSquads = new Set<number>();
 
 /** The players whose attributes are frozen in this page, likewise. */
 const frozenAttributes = new Set<number>();
@@ -4561,6 +4562,17 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "frozen_clubs":
       return [...frozenMoney] as T;
+    case "protect_squad": {
+      const club = Number(args?.club);
+      if (args?.protected) {
+        protectedSquads.add(club);
+      } else {
+        protectedSquads.delete(club);
+      }
+      return [...protectedSquads] as T;
+    }
+    case "protected_clubs":
+      return [...protectedSquads] as T;
     case "freeze_attributes": {
       const uid = Number(args?.uid);
       if (args?.frozen) {

@@ -193,6 +193,8 @@ export interface Refrozen {
   players: string[];
   staff: string[];
   clubs: string[];
+  /** The clubs whose players are protected again. */
+  protected?: string[];
   waiting: number;
 }
 

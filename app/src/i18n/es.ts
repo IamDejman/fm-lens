@@ -1488,6 +1488,9 @@ export const es: Strings = {
     freeze: "Congelar el dinero",
     freezeNote:
       "El saldo y el presupuesto de fichajes no pueden bajar, y el precio de las entradas se mantiene, mientras FM Lens esté conectado.",
+    protect: "Proteger la plantilla",
+    protectNote:
+      "Las lesiones, las sanciones y el descontento se eliminan en cuanto aparecen, mientras FM Lens esté conectado.",
 
     // Estadio
     stadium: "Estadio",
@@ -1893,6 +1896,7 @@ export const es: Strings = {
       waitingTitle: "Lo congelado espera por ahora",
       players: (names) => `Atributos: ${names}`,
       clubs: (names) => `Dinero: ${names}`,
+      protected: (names) => `Plantillas protegidas: ${names}`,
       more: (count) => `y ${format(count)} más`,
       waiting: (count) =>
         `${count === 1 ? "1 sigue recordado" : `${format(count)} siguen recordados`}, pero no se congelan ahora: ` +

@@ -1,6 +1,6 @@
 import { useContext, useEffect, useId, useState } from "react";
 import { EditableValue } from "./EditControls";
-import { freezeMoney, frozenClubs, watchMassFreeze } from "./editing";
+import { freezeMoney, frozenClubs, protectedClubs, protectSquad, watchMassFreeze } from "./editing";
 import { converts, inCurrency } from "./currency";
 import { describeError, formatMoney, formatNumber } from "./format";
 import {
@@ -362,7 +362,8 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
               <EditableValue field="finance.ticket_price">{formatTicketPrice(finances.ticketPrice)}</EditableValue>
             </Fact>
           </dl>
-          <FreezeMoney club={club} />
+          <Hold club={club} read={frozenClubs} set={freezeMoney} label={text.freeze} note={text.freezeNote} />
+          <Hold club={club} read={protectedClubs} set={protectSquad} label={text.protect} note={text.protectNote} />
         </>
       ) : (
         <p className="note">{text.noFinances}</p>
@@ -403,19 +404,32 @@ function StadiumGroup({ club, stadium }: { club: number; stadium: Stadium | null
 }
 
 /**
- * Freezing the club's money: while the app is open and connected, its balance does not go down. Offered while the game
- * can be written to; once frozen, a note says what it does.
+ * A switch the app holds for the club while it is open and connected: its money frozen, or its players protected.
+ * `read` gives the clubs it is on for and `set` turns it on or off. Offered while the game can be written to; once
+ * on, a note says what it does.
  */
-function FreezeMoney({ club }: { club: number }) {
+function Hold({
+  club,
+  read: held,
+  set,
+  label,
+  note,
+}: {
+  club: number;
+  read: () => Promise<number[]>;
+  set: (club: number, on: boolean) => Promise<number[]>;
+  label: string;
+  note: string;
+}) {
   const { editable } = useContext(EditorContext);
-  // Whether the club's money is frozen; null until the app has said.
+  // Whether it is on for the club; null until the app has said.
   const [frozen, setFrozen] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     const read = () =>
-      frozenClubs()
+      held()
         .then((clubs) => alive && setFrozen(clubs.includes(club)))
         .catch(() => alive && setFrozen(false));
     void read();
@@ -424,7 +438,7 @@ function FreezeMoney({ club }: { club: number }) {
       alive = false;
       stop();
     };
-  }, [club]);
+  }, [club, held]);
 
   if (!editable || frozen === null) {
     return null;
@@ -432,18 +446,18 @@ function FreezeMoney({ club }: { club: number }) {
   const toggle = async (on: boolean) => {
     setError(null);
     try {
-      setFrozen((await freezeMoney(club, on)).includes(club));
+      setFrozen((await set(club, on)).includes(club));
     } catch (e) {
       setError(describeError(e));
     }
   };
   return (
     <>
-      <label className="freeze-toggle" title={text.freezeNote}>
+      <label className="freeze-toggle" title={note}>
         <input type="checkbox" checked={frozen} onChange={(e) => void toggle(e.currentTarget.checked)} />
-        <span>{text.freeze}</span>
+        <span>{label}</span>
       </label>
-      {frozen && <p className="note">{text.freezeNote}</p>}
+      {frozen && <p className="note">{note}</p>}
       {error && (
         <p className="note error" role="alert">
           {error}

@@ -19,13 +19,15 @@ const names = (all: string[]) => {
 /** What connecting froze again, by name, and how many wait; it stays until it is dismissed. */
 export function FrozenNotice({ refrozen, onDismiss }: { refrozen: Refrozen; onDismiss: () => void }) {
   const people = [...refrozen.players, ...refrozen.staff];
-  const again = people.length + refrozen.clubs.length > 0;
+  const guarded = refrozen.protected ?? [];
+  const again = people.length + refrozen.clubs.length + guarded.length > 0;
   return (
     <div className="frozen-notice">
       <div className="compatibility-text">
         <strong>{again ? text.title : text.waitingTitle}</strong>
         {people.length > 0 && <p>{text.players(names(people))}</p>}
         {refrozen.clubs.length > 0 && <p>{text.clubs(names(refrozen.clubs))}</p>}
+        {guarded.length > 0 && <p>{text.protected(names(guarded))}</p>}
         {refrozen.waiting > 0 && <p>{text.waiting(refrozen.waiting)}</p>}
       </div>
       <button type="button" className="icon-button" aria-label={text.dismiss} title={text.dismiss} onClick={onDismiss}>
