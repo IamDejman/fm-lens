@@ -18,8 +18,11 @@
 //!
 //! A preference is added by the game itself, where the build's profile names its `add_relation`
 //! ([`CallRvas::add_relation`]): the game makes the person a list, or a bigger block for it, as it needs. The entry is
-//! the one the game's own editor starts a favourite from (see [`new_preference`]): byte `0x08` is the reason, 1 for a
-//! like and 0 for a dislike, and byte `0x0D` is `0x4F` for one that lasts.
+//! the one the game's own editor starts a favourite from (see [`new_preference`]): byte `0x08` is the reason, 0 for a
+//! dislike, and byte `0x0D` is `0x4F` for one that lasts. For a favoured person the reason is what the game shows
+//! beside him: 1 his father, 2 his brother, 3 his son, 4 another relative ([`PersonTie`]), 5 a team-mate, 6 for the
+//! managers and coaches players favour (Windows Steam build 26620374: of the 181 people favoured for reason 1, 161
+//! share the surname of a person 27.6 years younger on average, and the game shows "Father" for one added so).
 //!
 //! [`CallRvas::add_relation`]: crate::profile::CallRvas::add_relation
 //!
@@ -188,6 +191,34 @@ impl PreferenceKind {
     }
 }
 
+/// How a favoured person is family: the reason the game shows beside him.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PersonTie {
+    Father,
+    Brother,
+    Son,
+    Relative,
+}
+
+impl PersonTie {
+    const ALL: [Self; 4] = [Self::Father, Self::Brother, Self::Son, Self::Relative];
+
+    /// The reason the game codes it with.
+    fn code(self) -> u8 {
+        match self {
+            Self::Father => 1,
+            Self::Brother => 2,
+            Self::Son => 3,
+            Self::Relative => 4,
+        }
+    }
+}
+
+/// The reason of a favoured team-mate, and of a favoured member of staff.
+const TEAM_MATE: u8 = 5;
+const STAFF: u8 = 6;
+
 /// A person's or club's place in a player's or member of staff's preferences.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -204,6 +235,8 @@ pub struct Preference {
     /// The preference strength stored by the game. Signed: one favoured club on the test career holds -35 beside a
     /// dislike of the same club at 35.
     pub strength: i8,
+    /// For a favoured person, how he is family, where he is.
+    pub tie: Option<PersonTie>,
 }
 
 /// A club or nation another is related to: a rival, with how strong the rivalry is, or a club it has a link
@@ -731,6 +764,7 @@ impl Session {
         kind: PreferenceKind,
         target: PreferenceTarget,
         strength: i8,
+        tie: Option<PersonTie>,
     ) -> Result<PreferenceSet, MoveError> {
         let function = self.game_function(|calls| calls.add_relation)?;
         let r = &self.layout.relation;
@@ -744,9 +778,15 @@ impl Session {
         let (address, target_uid, name) = self.preference_target(kind, target)?;
         let own = matches!(target, PreferenceTarget::Person(person) if person.uid() == owner.uid());
         let human = matches!(target, PreferenceTarget::Person(PersonRef::Staff(member)) if member.is_human);
-        if own || human {
+        if own || human || (tie.is_some() && kind != PreferenceKind::FavouredPerson) {
             return Err(MoveError::PreferenceTarget);
         }
+        let reason = match (kind, tie, target) {
+            (_, Some(tie), _) => tie.code(),
+            (PreferenceKind::FavouredPerson, None, PreferenceTarget::Person(PersonRef::Staff(_))) => STAFF,
+            (PreferenceKind::FavouredPerson, None, _) => TEAM_MATE,
+            _ => u8::from(kind.is_favoured()),
+        };
         let person = self.actual_person(owner)?;
         let held = self.list_of(owner)?.map(|list| list.entries).unwrap_or_default();
         let known = |(index, entry): (usize, &Vec<u8>)| self.preference_at(index, entry);
@@ -757,7 +797,7 @@ impl Session {
             return Err(MoveError::PreferencesFull);
         }
 
-        let entry = new_preference(r, kind, address, strength);
+        let entry = new_preference(r, kind, address, strength, reason);
         let mut program = Program::new();
         program.write(0, &entry);
         program.push(Step::new(function, &[Arg::value(person), Arg::scratch(0), Arg::value(1)]));
@@ -775,7 +815,7 @@ impl Session {
         if !appended {
             return Err(MoveError::Changed { address: added });
         }
-        let after = Preference { index, kind, target: address, target_uid, name, strength };
+        let after = Preference { index, kind, target: address, target_uid, name, strength, tie };
         let patches = addition(list.header, list.begin, &list.entries, index);
         Ok(PreferenceSet { entity: owner.entity(), person: owner.uid(), before: None, after: Some(after), patches })
     }
@@ -973,7 +1013,10 @@ impl Session {
             .then(|| self.process.read_u64(target + self.layout.club.name).ok())
             .flatten()
             .and_then(|text| read_fm_string(&self.process, text));
-        Some(Preference { index, kind, target, target_uid, name, strength: entry[r.value as usize] as i8 })
+        let tie = (kind == PreferenceKind::FavouredPerson)
+            .then(|| PersonTie::ALL.into_iter().find(|tie| tie.code() == entry[REASON]))
+            .flatten();
+        Some(Preference { index, kind, target, target_uid, name, strength: entry[r.value as usize] as i8, tie })
     }
 
     /// How many more entries the block of `list` holds: up to its capacity, or to the end of the allocator's block
@@ -1057,12 +1100,12 @@ pub(crate) fn addition(header: u64, begin: u64, entries: &[Vec<u8>], index: usiz
 
 /// The entry of a new preference of `kind` for the club or person at `target`, as the game's own editor makes one
 /// (its person setter's favoured and disliked lists, macOS arm64 `0xCE6C6C`, and the entry's `rrea` and `perm`
-/// properties): the reason 1 for a like and 0 for a dislike, and lasting.
-fn new_preference(r: &RelationLayout, kind: PreferenceKind, target: u64, strength: i8) -> [u8; ENTRY_SIZE] {
+/// properties), lasting, with the reason `reason`.
+fn new_preference(r: &RelationLayout, kind: PreferenceKind, target: u64, strength: i8, reason: u8) -> [u8; ENTRY_SIZE] {
     let mut entry = [0; ENTRY_SIZE];
     let (target_kind, relation) = kind.codes();
     entry[r.target as usize..r.target as usize + 8].copy_from_slice(&target.to_le_bytes());
-    entry[REASON] = u8::from(kind.is_favoured());
+    entry[REASON] = reason;
     entry[r.target_kind as usize] = target_kind;
     entry[r.relation as usize] = relation;
     entry[r.value as usize] = strength.to_le_bytes()[0];
@@ -1079,12 +1122,15 @@ mod tests {
     fn a_new_preference_is_the_entry_the_game_s_editor_makes() {
         let r = RelationLayout { target: 0, target_kind: 0x0A, relation: 0x0B, value: 0x0C, size: 0x10 };
         let target = 0x0000_0123_4567_89A0u64;
-        let entry = |kind, strength| new_preference(&r, kind, target, strength);
+        let entry =
+            |kind: PreferenceKind, strength| new_preference(&r, kind, target, strength, u8::from(kind.is_favoured()));
         let with = |tail: [u8; 8]| [target.to_le_bytes(), tail].concat();
         assert_eq!(entry(PreferenceKind::FavouredClub, 100)[..], with([1, 0, 1, 3, 100, 0x4F, 0, 0xFF]));
         assert_eq!(entry(PreferenceKind::DislikedClub, 35)[..], with([0, 0, 1, 4, 35, 0x4F, 0, 0xFF]));
         assert_eq!(entry(PreferenceKind::FavouredPerson, 1)[..], with([1, 0, 3, 1, 1, 0x4F, 0, 0xFF]));
         assert_eq!(entry(PreferenceKind::DislikedPerson, 60)[..], with([0, 0, 3, 2, 60, 0x4F, 0, 0xFF]));
+        let son = new_preference(&r, PreferenceKind::FavouredPerson, target, 100, PersonTie::Son.code());
+        assert_eq!(son[..], with([3, 0, 3, 1, 100, 0x4F, 0, 0xFF]));
     }
 
     #[test]

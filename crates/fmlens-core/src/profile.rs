@@ -577,6 +577,9 @@ pub struct StadiumLayout {
     pub expansion: u64,
     /// Pointer to the club that owns it.
     pub owner: u64,
+    /// `u32`: the stadium's UID, which the game's name change files name it by.
+    #[serde(default)]
+    pub uid: Option<u64>,
 }
 
 impl StadiumLayout {

@@ -1146,7 +1146,12 @@ export interface Preference {
   name: string | null;
   /** How strongly, as the game stores it. */
   strength: number;
+  /** For a favoured person, how he is family, where he is. */
+  tie: PersonTie | null;
 }
+
+/** How a favoured person is family. */
+export type PersonTie = "father" | "brother" | "son" | "relative";
 
 /** A language a person speaks, and how well: FM's 0 to 10. */
 export interface Language {

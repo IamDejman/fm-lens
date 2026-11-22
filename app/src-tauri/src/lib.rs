@@ -16,13 +16,13 @@ use fmlens_core::{
     GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, KitPlan,
     Language, LanguageChoice, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms,
     MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter,
-    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails,
-    PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
-    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, RivalPlan, STAFF_JOBS, SearchIndex, Session,
-    SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
-    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
-    TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
-    read_stadiums, sort_players, sort_rows, stadium_owner,
+    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, PersonTie, Picture, Planned,
+    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
+    PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, RivalPlan, STAFF_JOBS,
+    SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumRenamed, StadiumSort,
+    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target,
+    TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
+    read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -1615,6 +1615,34 @@ impl Connection {
         logged
     }
 
+    /// Logs a change of the name of the stadium the club `club` plays at (`stadium.name`): the name before and after.
+    fn log_stadium(&mut self, club: u32, field: &str, before: &str, after: &str, undo: Undo) -> LoggedChange {
+        let end = |name: &str| Some(TieEnd { name: name.to_owned(), rule: None, value: None });
+        let change =
+            Change { entity: Entity::Club, uid: club, field: field.to_owned(), old: 0, new: 0, record: Vec::new() };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(club),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(before), to: end(after) }),
+            clause: None,
+            renamed: None,
+            holds: None,
+            undo: Some(undo),
+        };
+        self.stadiums = None;
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
     /// Logs a change to a club's rivals: the rival before and after, each with how strong the rivalry is.
     fn log_rival(&mut self, done: RivalPlan) -> LoggedChange {
         let end = |rival: &Option<fmlens_core::Related>| {
@@ -2302,6 +2330,10 @@ impl Connection {
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
             Some(Undo::Rival(rival)) => self.session.undo_rival(&rival)?,
             Some(Undo::Kit(kit)) => self.session.undo_kit_colour(&kit)?,
+            Some(Undo::StadiumName(done)) => {
+                self.session.undo_stadium_rename(&done)?;
+                self.stadiums = None;
+            }
             Some(Undo::Preference(preference)) => self.session.undo_preference(&preference)?,
             Some(Undo::Language(language)) => self.session.undo_language(&language)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
@@ -2850,6 +2882,7 @@ enum Undo {
     Tie(RelationSet),
     Rival(RivalPlan),
     Kit(KitPlan),
+    StadiumName(StadiumRenamed),
     Preference(PreferenceSet),
     Language(LanguageSet),
     Clause(ClauseSet),
@@ -5630,6 +5663,17 @@ fn set_kit_colour(
     Ok(connection.log_kit(done, format!("kit.{kit}.{part}.{}", if trim { "trim" } else { "main" })))
 }
 
+/// Gives the stadium the club `club` plays at the name `name`. Logged as a change of its `stadium.name`.
+#[tauri::command]
+fn rename_stadium(state: State<'_, AppState>, club: u32, name: String) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let done = connection.session.rename_stadium(summary, &name)?;
+    let (before, after) = (done.before.clone(), done.after.clone());
+    Ok(connection.log_stadium(club, "stadium.name", &before, &after, Undo::StadiumName(done)))
+}
+
 /// Makes the club `rival` a rival of the club `club`, at `strength`, 1 to 100, where the club's list has room.
 /// Logged and undone like any change.
 #[tauri::command]
@@ -5751,8 +5795,11 @@ fn point_preference(
 }
 
 /// Has the game add a preference of `kind` for the club, player or member of staff `target_uid` to the list of the
-/// player `uid`, or of the member of staff `uid` for `staff`, at `strength`, 1 to 100. Logged and undone like any
-/// change: undoing it takes the preference out again.
+/// player `uid`, or of the member of staff `uid` for `staff`, at `strength`, 1 to 100; a favoured person as his
+/// father, brother, son or relative for `tie`. Logged and undone like any change: undoing it takes the preference out
+/// again.
+// The window names each argument, so they stay arguments.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn add_preference(
     state: State<'_, AppState>,
@@ -5762,12 +5809,13 @@ fn add_preference(
     target_kind: PreferenceTargetKind,
     target_uid: u32,
     strength: i8,
+    tie: Option<PersonTie>,
 ) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let owner = person_ref(connection, uid, staff)?;
     let target = preference_target(connection, target_kind, target_uid)?;
-    let done = connection.session.add_preference(owner, kind, target, strength)?;
+    let done = connection.session.add_preference(owner, kind, target, strength, tie)?;
     Ok(connection.log_preference(done))
 }
 
@@ -6575,6 +6623,7 @@ pub fn run() {
             add_injury,
             set_work_permit,
             rename_club,
+            rename_stadium,
             game_club_names,
             work_permit_needed,
             start_loan,

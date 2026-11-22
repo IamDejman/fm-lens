@@ -1,6 +1,14 @@
 import { useContext, useEffect, useId, useState } from "react";
 import { EditableValue } from "./EditControls";
-import { freezeMoney, frozenClubs, protectedClubs, protectSquad, setKitColour, watchMassFreeze } from "./editing";
+import {
+  freezeMoney,
+  frozenClubs,
+  protectedClubs,
+  protectSquad,
+  renameStadium,
+  setKitColour,
+  watchMassFreeze,
+} from "./editing";
 import { converts, inCurrency } from "./currency";
 import { describeError, formatMoney, formatNumber } from "./format";
 import {
@@ -408,11 +416,37 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
  * where that is another club.
  */
 function StadiumGroup({ club, stadium }: { club: number; stadium: Stadium | null }) {
+  const { editable, onEdited, gameActions } = useContext(EditorContext);
+  const [error, setError] = useState<string | null>(null);
+  const change = (done: Promise<unknown>) => {
+    setError(null);
+    done.then(onEdited).catch((e: unknown) => setError(describeError(e)));
+  };
+  const renames = editable && gameActions.renameClub && stadium?.name;
   return (
     <section className="profile-group">
       <h3>{stadium?.name ? `${text.stadium} · ${stadium.name}` : text.stadium}</h3>
       {stadium ? (
         <dl className="stats">
+          {renames && (
+            <Fact label={text.stadiumName}>
+              <input
+                key={stadium.name}
+                type="text"
+                className="stadium-name"
+                defaultValue={stadium.name ?? ""}
+                maxLength={50}
+                aria-label={text.stadiumName}
+                onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+                onBlur={(event) => {
+                  const name = event.currentTarget.value.trim();
+                  if (name !== "" && name !== stadium.name) {
+                    change(renameStadium(club, name));
+                  }
+                }}
+              />
+            </Fact>
+          )}
           <Fact label={text.capacity}>
             <EditableValue field="stadium.capacity">{formatNumber(stadium.capacity)}</EditableValue>
           </Fact>
@@ -429,6 +463,11 @@ function StadiumGroup({ club, stadium }: { club: number; stadium: Stadium | null
         </dl>
       ) : (
         <p className="note">{text.noStadium}</p>
+      )}
+      {error !== null && (
+        <p className="note error" role="alert">
+          {error}
+        </p>
       )}
     </section>
   );

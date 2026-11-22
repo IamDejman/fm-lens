@@ -60,8 +60,8 @@ test('a club is added to the ones a player favours, and Undo takes it out', asyn
 
   await user.click(await screen.findByRole('button', { name: 'Change' }));
   const dialog = screen.getByRole('dialog');
-  // Every kind has its heading and Add, with no rows yet.
-  expect(within(dialog).getAllByRole('button', { name: 'Add' })).toHaveLength(4);
+  // Every kind, and each way to be family, has its heading and Add, with no rows yet.
+  expect(within(dialog).getAllByRole('button', { name: 'Add' })).toHaveLength(8);
   const favoured = within(dialog).getByRole('region', { name: 'Favoured clubs' });
   await user.click(within(favoured).getByRole('button', { name: 'Add' }));
 

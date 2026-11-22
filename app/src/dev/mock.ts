@@ -910,13 +910,13 @@ function preferencesOf(player: PlayerSummary): Preference[] {
     const liked = player.uid % CLUBS.length;
     const disliked = (liked + 3) % CLUBS.length;
     preferences.push(
-      { index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 35 },
-      { index: 2, kind: "dislikedClub", targetUid: 500 + disliked * 7, name: CLUBS[disliked], strength: 30 },
+      { index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 35, tie: null },
+      { index: 2, kind: "dislikedClub", targetUid: 500 + disliked * 7, name: CLUBS[disliked], strength: 30, tie: null },
     );
   }
   if (player.uid % 3 === 0) {
     const member = staff[player.uid % staff.length];
-    preferences.push({ index: 4, kind: "favouredPerson", targetUid: member.uid, name: member.name, strength: 25 });
+    preferences.push({ index: 4, kind: "favouredPerson", targetUid: member.uid, name: member.name, strength: 25, tie: null });
   }
   return preferences;
 }
@@ -1058,7 +1058,7 @@ function staffPreferencesOf(member: StaffSummary): Preference[] {
     return [];
   }
   const liked = member.uid % CLUBS.length;
-  return [{ index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 100 }];
+  return [{ index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 100, tie: null }];
 }
 
 /** The likes and dislikes of the fixture player, or member of staff for `isStaff`, `uid` as the game holds them now. */
@@ -1182,6 +1182,7 @@ function addPreference(
   targetKind: string,
   targetUid: number,
   strength: number,
+  tie: Preference["tie"] = null,
 ): LoggedChange {
   const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
   if (!person) {
@@ -1206,7 +1207,7 @@ function addPreference(
     throw failure("preference.full", "the person's list is long enough that the game would drop one to add another");
   }
   const index = Math.max(-1, ...current.map((p) => p.index)) + 1;
-  const after: Preference = { index, kind, targetUid, name: target.name, strength };
+  const after: Preference = { index, kind, targetUid, name: target.name, strength, tie };
   return logPreference(isStaff, uid, person.name, null, after, [...current, after]);
 }
 
@@ -4973,6 +4974,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         String(args?.targetKind),
         Number(args?.targetUid),
         Number(args?.strength),
+        (args?.tie ?? null) as Preference["tie"],
       ) as T;
     case "point_preference":
       return pointPreference(

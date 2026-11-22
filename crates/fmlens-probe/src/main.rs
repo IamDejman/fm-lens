@@ -368,6 +368,10 @@ enum Command {
         /// Count what the rest of each entry holds instead, over every player and member of staff.
         #[arg(long)]
         bytes: bool,
+        /// Count favoured people by the reason they are favoured for, with whether the two share a surname, how
+        /// much older the favoured one is, and examples: what tells the family reasons apart.
+        #[arg(long)]
+        reasons: bool,
     },
     /// Point one of a player's ties at another nation or club, or give a training another homegrown rule.
     TieSet {
@@ -994,9 +998,15 @@ fn run(cli: Cli) -> Result<()> {
             let session = connect(process, ArraySource::ProfileFirst)?;
             tie_change(&session, uid, None, RestoreArgs { restore: false, hold: 0 })
         }
-        Command::Preferences { uid, max, bytes } => {
+        Command::Preferences { uid, max, bytes, reasons } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
-            if bytes { preference_bytes(&session, max) } else { preferences(&session, uid, max) }
+            if reasons {
+                preference_reasons(&session, max)
+            } else if bytes {
+                preference_bytes(&session, max)
+            } else {
+                preferences(&session, uid, max)
+            }
         }
         Command::TieSet { uid, index, nation, club, rule, restore } => {
             let session = connect(process, ArraySource::ProfileFirst)?;
@@ -3722,6 +3732,68 @@ fn preference_bytes(session: &Session, max: usize) -> Result<()> {
         for (rest, count) in counts.into_iter().take(max) {
             let at08 = u16::from_le_bytes([rest[0], rest[1]]);
             println!("  {count:>6}  +0x08 {at08:<5} +0x0D {:<3} +0x0E {:<3} +0x0F {:#04x}", rest[2], rest[3], rest[4]);
+        }
+    }
+    Ok(())
+}
+
+/// Counts favoured people by the reason byte of the entry (`+0x08`), over every player and member of staff. For each
+/// reason: how many, how many share the holder's last name, the mean years the favoured person is older by, and
+/// examples. This command never writes.
+fn preference_reasons(session: &Session, max: usize) -> Result<()> {
+    let (p, st, r) = (&session.layout.player, &session.layout.staff, &session.layout.relation);
+    let mut people: Vec<(u64, u32, String, Option<u16>)> = session
+        .players()?
+        .iter()
+        .map(|one| (one.address + p.at(p.relations, one.shift), one.uid, one.name.clone(), one.age))
+        .collect();
+    if let Some(relations) = st.relations {
+        people.extend(
+            session
+                .staff()?
+                .iter()
+                .map(|one| (one.address + st.at(relations, one.shift), one.uid, one.name.clone(), one.age)),
+        );
+    }
+    let known: BTreeMap<u32, (String, Option<u16>)> =
+        people.iter().map(|(_, uid, name, age)| (*uid, (name.clone(), *age))).collect();
+    let last = |name: &str| name.rsplit(' ').next().unwrap_or("").to_lowercase();
+    // Per reason: entries, same last name, the gaps in age, examples.
+    let mut seen: BTreeMap<u8, (usize, usize, Vec<i32>, Vec<String>)> = BTreeMap::new();
+    for (slot, _, name, age) in &people {
+        let Ok(header) = session.process.read_u64(*slot) else { continue };
+        let Ok(words) = session.process.read_bytes(header, 16) else { continue };
+        let begin = u64::from_le_bytes(words[..8].try_into().expect("8 bytes"));
+        let end = u64::from_le_bytes(words[8..].try_into().expect("8 bytes"));
+        if begin == 0 || end <= begin || end - begin > 0x1000 || !(end - begin).is_multiple_of(r.size) {
+            continue;
+        }
+        let Ok(bytes) = session.process.read_bytes(begin, (end - begin) as usize) else { continue };
+        for entry in bytes.chunks(r.size as usize) {
+            if (entry[r.target_kind as usize], entry[r.relation as usize]) != (3, 1) {
+                continue;
+            }
+            let target = u64::from_le_bytes(entry[..8].try_into().expect("8 bytes"));
+            let Ok(uid) = session.process.read_u32(target + session.layout.club.uid) else { continue };
+            let group = seen.entry(entry[0x08]).or_default();
+            group.0 += 1;
+            let Some((other, other_age)) = known.get(&uid) else { continue };
+            if last(name) == last(other) {
+                group.1 += 1;
+            }
+            if let (Some(age), Some(other_age)) = (age, other_age) {
+                group.2.push(i32::from(*other_age) - i32::from(*age));
+            }
+            if group.3.len() < max && last(name) == last(other) {
+                group.3.push(format!("{name} ({}) -> {other} ({})", age.unwrap_or(0), other_age.unwrap_or(0)));
+            }
+        }
+    }
+    for (reason, (count, same, gaps, examples)) in seen {
+        let mean = if gaps.is_empty() { 0.0 } else { f64::from(gaps.iter().sum::<i32>()) / gaps.len() as f64 };
+        println!("reason {reason}: {count} entries, {same} share a last name, favoured older by {mean:.1} years");
+        for example in examples {
+            println!("    {example}");
         }
     }
     Ok(())

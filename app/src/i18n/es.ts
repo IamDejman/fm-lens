@@ -836,6 +836,7 @@ export const es: Strings = {
     "stadium.seating": "Aforo con asientos",
     "stadium.used": "Aforo en uso",
     "stadium.expansion": "Aforo ampliable",
+    "stadium.name": "Nombre del estadio",
     "info.season_tickets": "Abonos de temporada",
     "info.ownership": "Propiedad",
     population: "Población",
@@ -999,6 +1000,12 @@ export const es: Strings = {
       dislikedClub: "Clubes que no soporta",
       favouredPerson: "Personas favoritas",
       dislikedPerson: "Personas que no soporta",
+    },
+    personTies: {
+      father: "Padre",
+      son: "Hijos",
+      brother: "Hermanos",
+      relative: "Familiares",
     },
     noRetirement: "El juego no ha previsto su retirada",
     keepPlaying: "Evitar la retirada",
@@ -1505,6 +1512,7 @@ export const es: Strings = {
     expansion: "Ampliable hasta",
     owner: "Propietario",
     noStadium: "No se ha podido leer el estadio de este club.",
+    stadiumName: "Nombre",
 
     // Datos del club
     info: "Datos del club",

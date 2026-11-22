@@ -6188,6 +6188,17 @@ button.danger:hover:not(:disabled) {
   border-radius: 0;
 }
 
+.stadium-name {
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
 /* The in-game scout card (see ScoutCard.tsx): its window is see-through and sized to the card. */
 :root.card-window,
 :root.card-window body {

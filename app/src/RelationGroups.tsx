@@ -26,6 +26,7 @@ import type {
   PlayerPage,
   PlayerSummary,
   Preference,
+  PersonTie,
   PreferenceKind,
   StaffPage,
   StaffSummary,
@@ -39,6 +40,15 @@ const PREFERENCE_KINDS: readonly PreferenceKind[] = [
   "dislikedClub",
   "favouredPerson",
   "dislikedPerson",
+];
+
+/** The ways a favoured person is family, in the order they are listed in. */
+const PERSON_TIES: readonly PersonTie[] = ["father", "son", "brother", "relative"];
+
+/** The lists a person's preferences are shown in: each kind, then his family, favoured people the game shows so. */
+const PREFERENCE_LISTS: readonly (readonly [PreferenceKind, PersonTie | null])[] = [
+  ...PREFERENCE_KINDS.map((kind) => [kind, null] as const),
+  ...PERSON_TIES.map((tie) => ["favouredPerson", tie] as const),
 ];
 
 /** The strengths of a preference, and the levels of a language, that the editor writes. */
@@ -222,14 +232,14 @@ export function PreferencesGroup({
     const taken = (club: boolean) =>
       new Set(preferences.filter((p) => isClub(p.kind) === club).map((p) => p.targetUid));
     const takenBy = { club: taken(true), person: taken(false) };
-    return PREFERENCE_KINDS.map((kind) => {
+    return PREFERENCE_LISTS.map(([kind, tie]) => {
       const club = isClub(kind);
       const taken = club ? takenBy.club : takenBy.person;
       return {
-        key: kind,
-        heading: profileText.preferenceKinds[kind],
+        key: tie ?? kind,
+        heading: tie ? profileText.personTies[tie] : profileText.preferenceKinds[kind],
         rows: preferences
-          .filter((preference) => preference.kind === kind)
+          .filter((preference) => preference.kind === kind && preference.tie === tie)
           .map((preference) => {
             const name = preferenceName(preference);
             return {
@@ -245,7 +255,7 @@ export function PreferencesGroup({
         // A new one is as strong as the game's own editor makes it; its row then takes another strength.
         add: adds
           ? targets(person, club, taken, false, (target, uid) =>
-              addPreference(person.uid, person.staff, kind, target, uid, STRENGTHS.most),
+              addPreference(person.uid, person.staff, kind, target, uid, STRENGTHS.most, tie),
             )
           : undefined,
       };
@@ -273,15 +283,15 @@ export function PreferencesGroup({
       </GroupHead>
       {preferences.length === 0 && <p className="note">{profileText.none}</p>}
       <dl className="stats">
-        {PREFERENCE_KINDS.map((kind) => {
+        {PREFERENCE_LISTS.map(([kind, tie]) => {
           const listed = preferences.filter(
-            (preference) => preference.kind === kind,
+            (preference) => preference.kind === kind && preference.tie === tie,
           );
           if (listed.length === 0) {
             return null;
           }
           return (
-            <Fact key={kind} label={profileText.preferenceKinds[kind]}>
+            <Fact key={tie ?? kind} label={tie ? profileText.personTies[tie] : profileText.preferenceKinds[kind]}>
               <span className="preference-list">
                 {listed.map((preference) => {
                   const name = preferenceName(preference);

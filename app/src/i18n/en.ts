@@ -776,6 +776,7 @@ export const en = {
     "stadium.seating": "Seated capacity",
     "stadium.used": "Capacity in use",
     "stadium.expansion": "Expansion capacity",
+    "stadium.name": "Stadium name",
     "info.season_tickets": "Season tickets",
     "info.ownership": "Ownership",
     // A nation's rules; its reputation is its senior team's.
@@ -965,6 +966,12 @@ export const en = {
       dislikedClub: "Disliked clubs",
       favouredPerson: "Favoured people",
       dislikedPerson: "Disliked people",
+    },
+    personTies: {
+      father: "Father",
+      son: "Sons",
+      brother: "Brothers",
+      relative: "Relatives",
     },
     noRetirement: "No retirement planned",
     keepPlaying: "Prevent retirement",
@@ -1553,6 +1560,7 @@ export const en = {
     owner: "Owner",
     /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
     noStadium: "Couldn't read this club's stadium.",
+    stadiumName: "Name",
 
     // Club info
     info: "Club info",

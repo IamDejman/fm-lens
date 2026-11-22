@@ -543,6 +543,7 @@ seating = 0x80
 used = 0x84
 expansion = 0x8C
 owner = 0x90
+uid = 0x0C                # u32, as the game's name change files name a stadium (the Emirates 5114336)
 
 [club_info]
 ownership = 0x129         # u8 code: how the club is owned; as on Windows
