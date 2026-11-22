@@ -910,13 +910,13 @@ function preferencesOf(player: PlayerSummary): Preference[] {
     const liked = player.uid % CLUBS.length;
     const disliked = (liked + 3) % CLUBS.length;
     preferences.push(
-      { index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 35 },
-      { index: 2, kind: "dislikedClub", targetUid: 500 + disliked * 7, name: CLUBS[disliked], strength: 30 },
+      { index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 35, tie: null },
+      { index: 2, kind: "dislikedClub", targetUid: 500 + disliked * 7, name: CLUBS[disliked], strength: 30, tie: null },
     );
   }
   if (player.uid % 3 === 0) {
     const member = staff[player.uid % staff.length];
-    preferences.push({ index: 4, kind: "favouredPerson", targetUid: member.uid, name: member.name, strength: 25 });
+    preferences.push({ index: 4, kind: "favouredPerson", targetUid: member.uid, name: member.name, strength: 25, tie: null });
   }
   return preferences;
 }
@@ -1058,7 +1058,7 @@ function staffPreferencesOf(member: StaffSummary): Preference[] {
     return [];
   }
   const liked = member.uid % CLUBS.length;
-  return [{ index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 100 }];
+  return [{ index: 0, kind: "favouredClub", targetUid: 500 + liked * 7, name: CLUBS[liked], strength: 100, tie: null }];
 }
 
 /** The likes and dislikes of the fixture player, or member of staff for `isStaff`, `uid` as the game holds them now. */
@@ -1182,6 +1182,7 @@ function addPreference(
   targetKind: string,
   targetUid: number,
   strength: number,
+  tie: Preference["tie"] = null,
 ): LoggedChange {
   const person = isStaff ? staff.find((m) => m.uid === uid) : players.find((p) => p.uid === uid);
   if (!person) {
@@ -1206,7 +1207,7 @@ function addPreference(
     throw failure("preference.full", "the person's list is long enough that the game would drop one to add another");
   }
   const index = Math.max(-1, ...current.map((p) => p.index)) + 1;
-  const after: Preference = { index, kind, targetUid, name: target.name, strength };
+  const after: Preference = { index, kind, targetUid, name: target.name, strength, tie };
   return logPreference(isStaff, uid, person.name, null, after, [...current, after]);
 }
 
@@ -1715,6 +1716,8 @@ function fieldTable(entity: Entity): EditField[] {
       field("finance.total_wage_budget", "i32", 0, 100_000_000),
       { ...field("finance.ticket_price", "f32", floatBits(1), floatBits(1000), "price"), mass: false },
       ...["capacity", "seating", "used", "expansion"].map((key) => field(`stadium.${key}`, "u32", 0, 250_000)),
+      { ...field("info.season_tickets", "u32", 0, 250_000), mass: false },
+      { ...field("info.ownership", "u8", 1, 8), choices: [1, 2, 3, 4, 5, 6, 7, 8], mass: false },
     ];
   }
   if (entity === "player") {
@@ -1923,6 +1926,8 @@ function withWrittenClub(d: ClubDetails): ClubDetails {
       }
     } else if (group === "stadium" && d.stadium) {
       d.stadium[name as "capacity" | "seating" | "used" | "expansion"] = value;
+    } else if (group === "info") {
+      d[name === "ownership" ? "ownership" : "seasonTickets"] = value;
     }
   }
   return d;
@@ -2076,6 +2081,8 @@ function currentValues(entity: Entity, uid: number): FieldValues {
         return club.finances?.[FINANCE[name as keyof typeof FINANCE]];
       case "stadium":
         return club.stadium?.[name as "capacity" | "seating" | "used" | "expansion"];
+      case "info":
+        return (name === "ownership" ? club.ownership : club.seasonTickets) ?? undefined;
     }
     throw new Error(`No fixture value for ${key}`);
   };
@@ -4134,6 +4141,7 @@ function matchesStaffFilter(s: StaffSummary, f: StaffFilter): boolean {
 
 /** The clubs whose money is frozen in this page; the fixtures have no game days for it to hold through. */
 const frozenMoney = new Set<number>();
+const protectedSquads = new Set<number>();
 
 /** The players whose attributes are frozen in this page, likewise. */
 const frozenAttributes = new Set<number>();
@@ -4561,6 +4569,17 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     }
     case "frozen_clubs":
       return [...frozenMoney] as T;
+    case "protect_squad": {
+      const club = Number(args?.club);
+      if (args?.protected) {
+        protectedSquads.add(club);
+      } else {
+        protectedSquads.delete(club);
+      }
+      return [...protectedSquads] as T;
+    }
+    case "protected_clubs":
+      return [...protectedSquads] as T;
     case "freeze_attributes": {
       const uid = Number(args?.uid);
       if (args?.frozen) {
@@ -4955,6 +4974,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         String(args?.targetKind),
         Number(args?.targetUid),
         Number(args?.strength),
+        (args?.tie ?? null) as Preference["tie"],
       ) as T;
     case "point_preference":
       return pointPreference(

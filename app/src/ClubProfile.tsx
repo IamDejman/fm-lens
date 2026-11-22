@@ -1,6 +1,14 @@
 import { useContext, useEffect, useId, useState } from "react";
 import { EditableValue } from "./EditControls";
-import { freezeMoney, frozenClubs, watchMassFreeze } from "./editing";
+import {
+  freezeMoney,
+  frozenClubs,
+  protectedClubs,
+  protectSquad,
+  renameStadium,
+  setKitColour,
+  watchMassFreeze,
+} from "./editing";
 import { converts, inCurrency } from "./currency";
 import { describeError, formatMoney, formatNumber } from "./format";
 import {
@@ -145,7 +153,7 @@ function ClubBody({ details, panel }: { details: ClubDetails; panel: PanelIds })
       <div className="profile-stack">
         <Supporters traits={details.supporterTraits} mix={details.supporterMix} />
         <ClubInfo details={details} />
-        <ClubTiesGroups rivals={details.rivals} links={details.links} />
+        <ClubTiesGroups club={details} rivals={details.rivals} links={details.links} />
         <Kits club={details.uid} colours={details.kits} />
       </div>
     </div>
@@ -169,7 +177,33 @@ function Kits({ club, colours }: { club: number; colours: KitPart[] }) {
       cancelled = true;
     };
   }, [club]);
+  const { editable, onEdited } = useContext(EditorContext);
+  const [error, setError] = useState<string | null>(null);
   const kinds = KIT_KINDS.filter((kind) => kits.includes(kind) || colours.some((part) => part.kit === kind));
+  const swatch = (part: KitPart, trim: boolean) => {
+    const colour = trim ? part.trim : part.main;
+    if (!editable) {
+      return <span style={{ background: colour }} />;
+    }
+    const save = (chosen: string) => {
+      if (chosen.toLowerCase() === colour.toLowerCase()) {
+        return;
+      }
+      setError(null);
+      setKitColour(club, part.kit, part.part, trim, chosen)
+        .then(onEdited)
+        .catch((e: unknown) => setError(describeError(e)));
+    };
+    return (
+      <input
+        key={colour}
+        type="color"
+        defaultValue={colour}
+        aria-label={`${text.kitNames[part.kit]} · ${text.kitParts[part.part]}`}
+        onBlur={(event) => save(event.currentTarget.value)}
+      />
+    );
+  };
   if (kinds.length === 0) {
     return null;
   }
@@ -190,18 +224,23 @@ function Kits({ club, colours }: { club: number; colours: KitPart[] }) {
                   <span
                     key={part.part}
                     className="kit-part"
-                    role="img"
-                    aria-label={`${text.kitParts[part.part]}: ${part.main}, ${part.trim}`}
+                    role={editable ? undefined : "img"}
+                    aria-label={editable ? undefined : `${text.kitParts[part.part]}: ${part.main}, ${part.trim}`}
                     title={text.kitParts[part.part]}
                   >
-                    <span style={{ background: part.main }} />
-                    <span style={{ background: part.trim }} />
+                    {swatch(part, false)}
+                    {swatch(part, true)}
                   </span>
                 ))}
             </span>
           </li>
         ))}
       </ul>
+      {error !== null && (
+        <p className="note error" role="alert">
+          {error}
+        </p>
+      )}
     </section>
   );
 }
@@ -362,7 +401,8 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
               <EditableValue field="finance.ticket_price">{formatTicketPrice(finances.ticketPrice)}</EditableValue>
             </Fact>
           </dl>
-          <FreezeMoney club={club} />
+          <Hold club={club} read={frozenClubs} set={freezeMoney} label={text.freeze} note={text.freezeNote} />
+          <Hold club={club} read={protectedClubs} set={protectSquad} label={text.protect} note={text.protectNote} />
         </>
       ) : (
         <p className="note">{text.noFinances}</p>
@@ -376,11 +416,37 @@ function FinancesGroup({ club, finances }: { club: number; finances: Finances | 
  * where that is another club.
  */
 function StadiumGroup({ club, stadium }: { club: number; stadium: Stadium | null }) {
+  const { editable, onEdited, gameActions } = useContext(EditorContext);
+  const [error, setError] = useState<string | null>(null);
+  const change = (done: Promise<unknown>) => {
+    setError(null);
+    done.then(onEdited).catch((e: unknown) => setError(describeError(e)));
+  };
+  const renames = editable && gameActions.renameClub && stadium?.name;
   return (
     <section className="profile-group">
       <h3>{stadium?.name ? `${text.stadium} · ${stadium.name}` : text.stadium}</h3>
       {stadium ? (
         <dl className="stats">
+          {renames && (
+            <Fact label={text.stadiumName}>
+              <input
+                key={stadium.name}
+                type="text"
+                className="stadium-name"
+                defaultValue={stadium.name ?? ""}
+                maxLength={50}
+                aria-label={text.stadiumName}
+                onKeyDown={(event) => event.key === "Enter" && event.currentTarget.blur()}
+                onBlur={(event) => {
+                  const name = event.currentTarget.value.trim();
+                  if (name !== "" && name !== stadium.name) {
+                    change(renameStadium(club, name));
+                  }
+                }}
+              />
+            </Fact>
+          )}
           <Fact label={text.capacity}>
             <EditableValue field="stadium.capacity">{formatNumber(stadium.capacity)}</EditableValue>
           </Fact>
@@ -398,24 +464,42 @@ function StadiumGroup({ club, stadium }: { club: number; stadium: Stadium | null
       ) : (
         <p className="note">{text.noStadium}</p>
       )}
+      {error !== null && (
+        <p className="note error" role="alert">
+          {error}
+        </p>
+      )}
     </section>
   );
 }
 
 /**
- * Freezing the club's money: while the app is open and connected, its balance does not go down. Offered while the game
- * can be written to; once frozen, a note says what it does.
+ * A switch the app holds for the club while it is open and connected: its money frozen, or its players protected.
+ * `read` gives the clubs it is on for and `set` turns it on or off. Offered while the game can be written to; once
+ * on, a note says what it does.
  */
-function FreezeMoney({ club }: { club: number }) {
+function Hold({
+  club,
+  read: held,
+  set,
+  label,
+  note,
+}: {
+  club: number;
+  read: () => Promise<number[]>;
+  set: (club: number, on: boolean) => Promise<number[]>;
+  label: string;
+  note: string;
+}) {
   const { editable } = useContext(EditorContext);
-  // Whether the club's money is frozen; null until the app has said.
+  // Whether it is on for the club; null until the app has said.
   const [frozen, setFrozen] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
     const read = () =>
-      frozenClubs()
+      held()
         .then((clubs) => alive && setFrozen(clubs.includes(club)))
         .catch(() => alive && setFrozen(false));
     void read();
@@ -424,7 +508,7 @@ function FreezeMoney({ club }: { club: number }) {
       alive = false;
       stop();
     };
-  }, [club]);
+  }, [club, held]);
 
   if (!editable || frozen === null) {
     return null;
@@ -432,18 +516,18 @@ function FreezeMoney({ club }: { club: number }) {
   const toggle = async (on: boolean) => {
     setError(null);
     try {
-      setFrozen((await freezeMoney(club, on)).includes(club));
+      setFrozen((await set(club, on)).includes(club));
     } catch (e) {
       setError(describeError(e));
     }
   };
   return (
     <>
-      <label className="freeze-toggle" title={text.freezeNote}>
+      <label className="freeze-toggle" title={note}>
         <input type="checkbox" checked={frozen} onChange={(e) => void toggle(e.currentTarget.checked)} />
-        <span>{text.freeze}</span>
+        <span>{label}</span>
       </label>
-      {frozen && <p className="note">{text.freezeNote}</p>}
+      {frozen && <p className="note">{note}</p>}
       {error && (
         <p className="note error" role="alert">
           {error}
@@ -473,9 +557,15 @@ function ClubInfo({ details }: { details: ClubDetails }) {
     <section className="profile-group">
       <h3>{text.info}</h3>
       <dl className="stats">
-        <Fact label={text.seasonTickets}>{count(details.seasonTickets)}</Fact>
+        <Fact label={text.seasonTickets}>
+          <EditableValue field="info.season_tickets">{count(details.seasonTickets)}</EditableValue>
+        </Fact>
         <Fact label={text.socialMedia}>{count(details.socialMedia)}</Fact>
-        {kind && <Fact label={text.ownership}>{kind}</Fact>}
+        {kind && (
+          <Fact label={text.ownership}>
+            <EditableValue field="info.ownership">{kind}</EditableValue>
+          </Fact>
+        )}
       </dl>
     </section>
   );

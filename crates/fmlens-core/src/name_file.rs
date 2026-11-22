@@ -20,6 +20,8 @@ const SHORT: &str = "CLUB_SHORT_NAME_CHANGE";
 const WAS_LONG: &str = "CLUB_LONG_NAME_WAS";
 const WAS_SHORT: &str = "CLUB_SHORT_NAME_WAS";
 
+const STADIUM: &str = "STADIUM_NAME_CHANGE";
+const WAS_STADIUM: &str = "STADIUM_NAME_WAS";
 const BOM: char = '\u{feff}';
 
 /// The names the file gives a club, where it gives one, and the names the game gives it without the file, where they
@@ -30,6 +32,20 @@ pub struct KeptNames {
     pub short_name: Option<String>,
     pub was_name: Option<String>,
     pub was_short_name: Option<String>,
+}
+
+/// The name the file gives a stadium, and the name the game gives it without the file, where that is known.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeptStadium {
+    pub name: String,
+    pub was: Option<String>,
+}
+
+/// Everything the file holds: clubs' names by the club's UID and stadiums' by the stadium's.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+struct Names {
+    clubs: BTreeMap<u32, KeptNames>,
+    stadiums: BTreeMap<u32, KeptStadium>,
 }
 
 /// FM Lens's file of club names, in the folder the game reads name change files from.
@@ -52,17 +68,36 @@ impl NameFile {
 
     /// The names the file gives the club `uid`.
     pub fn kept(&self, uid: u32) -> io::Result<Option<KeptNames>> {
-        Ok(self.read()?.remove(&uid))
+        Ok(self.read()?.clubs.remove(&uid))
+    }
+
+    /// The name the file gives the stadium `uid`.
+    pub fn kept_stadium(&self, uid: u32) -> io::Result<Option<KeptStadium>> {
+        Ok(self.read()?.stadiums.remove(&uid))
+    }
+
+    /// Has the file give the stadium `uid` the name `kept`, or none.
+    pub fn keep_stadium(&self, uid: u32, kept: Option<&KeptStadium>) -> io::Result<()> {
+        let mut names = self.read()?;
+        match kept {
+            Some(kept) => names.stadiums.insert(uid, kept.clone()),
+            None => names.stadiums.remove(&uid),
+        };
+        self.write(&names)
     }
 
     /// Has the file give the club `uid` the names `names`, or none when there are none.
     pub fn keep(&self, uid: u32, names: Option<&KeptNames>) -> io::Result<()> {
-        let mut clubs = self.read()?;
+        let mut all = self.read()?;
         match names.filter(|names| names.name.is_some() || names.short_name.is_some()) {
-            Some(names) => clubs.insert(uid, names.clone()),
-            None => clubs.remove(&uid),
+            Some(names) => all.clubs.insert(uid, names.clone()),
+            None => all.clubs.remove(&uid),
         };
-        if clubs.is_empty() {
+        self.write(&all)
+    }
+
+    fn write(&self, names: &Names) -> io::Result<()> {
+        if names.clubs.is_empty() && names.stadiums.is_empty() {
             return match std::fs::remove_file(&self.path) {
                 Err(err) if err.kind() != io::ErrorKind::NotFound => Err(err),
                 _ => Ok(()),
@@ -71,14 +106,14 @@ impl NameFile {
         // Written beside it and moved over it, so the game never reads half a file.
         let mut part = self.path.clone().into_os_string();
         part.push(".part");
-        std::fs::write(&part, render(&clubs))?;
+        std::fs::write(&part, render(names))?;
         std::fs::rename(&part, &self.path)
     }
 
-    fn read(&self) -> io::Result<BTreeMap<u32, KeptNames>> {
+    fn read(&self) -> io::Result<Names> {
         match std::fs::read_to_string(&self.path) {
             Ok(text) => Ok(parse(&text)),
-            Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(BTreeMap::new()),
+            Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(Names::default()),
             Err(err) => Err(err),
         }
     }
@@ -100,8 +135,9 @@ fn newest_database(databases: &Path) -> Option<PathBuf> {
 }
 
 /// The names the file's text gives each club. Lines that are not FM Lens's are left out.
-fn parse(text: &str) -> BTreeMap<u32, KeptNames> {
+fn parse(text: &str) -> Names {
     let mut clubs: BTreeMap<u32, KeptNames> = BTreeMap::new();
+    let mut stadiums: BTreeMap<u32, (Option<String>, Option<String>)> = BTreeMap::new();
     for line in text.trim_start_matches(BOM).lines() {
         let line = line.strip_prefix("# ").unwrap_or(line);
         let mut fields = line.split('\t').map(|field| field.trim().trim_matches('"'));
@@ -111,6 +147,14 @@ fn parse(text: &str) -> BTreeMap<u32, KeptNames> {
         let Ok(uid) = uid.parse() else {
             continue;
         };
+        match command {
+            STADIUM => stadiums.entry(uid).or_default().0 = Some(name.to_owned()),
+            WAS_STADIUM => stadiums.entry(uid).or_default().1 = Some(name.to_owned()),
+            _ => {}
+        }
+        if !matches!(command, LONG | SHORT | WAS_LONG | WAS_SHORT) {
+            continue;
+        }
         let names = clubs.entry(uid).or_default();
         match command {
             LONG => names.name = Some(name.to_owned()),
@@ -121,11 +165,14 @@ fn parse(text: &str) -> BTreeMap<u32, KeptNames> {
         }
     }
     clubs.retain(|_, names| names.name.is_some() || names.short_name.is_some());
-    clubs
+    let stadiums =
+        stadiums.into_iter().filter_map(|(uid, (name, was))| Some((uid, KeptStadium { name: name?, was }))).collect();
+    Names { clubs, stadiums }
 }
 
-/// The file's text for `clubs`.
-fn render(clubs: &BTreeMap<u32, KeptNames>) -> String {
+/// The file's text for `names`.
+fn render(names: &Names) -> String {
+    let Names { clubs, stadiums } = names;
     let mut text = format!("{BOM}# Club names from FM Lens. To take a club out, use its original names in FM Lens.\n");
     for (uid, names) in clubs {
         for (command, name) in [(LONG, &names.name), (SHORT, &names.short_name)] {
@@ -139,6 +186,12 @@ fn render(clubs: &BTreeMap<u32, KeptNames>) -> String {
             if let (Some(name), Some(_)) = (name, kept) {
                 text.push_str(&format!("# \"{command}\"\t{uid}\t\"{name}\"\n"));
             }
+        }
+    }
+    for (uid, kept) in stadiums {
+        text.push_str(&format!("\"{STADIUM}\"\t{uid}\t\"{}\"\t\"\"\n", kept.name));
+        if let Some(was) = &kept.was {
+            text.push_str(&format!("# \"{WAS_STADIUM}\"\t{uid}\t\"{was}\"\n"));
         }
     }
     text
@@ -156,7 +209,8 @@ mod tests {
     fn the_file_is_written_as_the_game_reads_name_changes() {
         let clubs =
             BTreeMap::from([(5103819, names(Some("Methil Rovers"), Some("Methil"))), (7, names(None, Some("Köln")))]);
-        let text = render(&clubs);
+        let all = Names { clubs, ..Names::default() };
+        let text = render(&all);
         assert!(text.starts_with('\u{feff}'));
         let lines: Vec<&str> = text.lines().skip(1).collect();
         assert_eq!(
@@ -167,13 +221,28 @@ mod tests {
                 "\"CLUB_SHORT_NAME_CHANGE\"\t5103819\t\"Methil\"\t\"\"",
             ]
         );
-        assert_eq!(parse(&text), clubs);
+        assert_eq!(parse(&text), all);
+    }
+
+    #[test]
+    fn a_stadium_s_name_is_kept_beside_the_clubs() {
+        let kept = KeptStadium { name: "Ashburton Grove".into(), was: Some("Emirates Stadium".into()) };
+        let all = Names { stadiums: BTreeMap::from([(5114336, kept)]), ..Names::default() };
+        let text = render(&all);
+        assert_eq!(
+            text.lines().skip(1).collect::<Vec<_>>(),
+            [
+                "\"STADIUM_NAME_CHANGE\"\t5114336\t\"Ashburton Grove\"\t\"\"",
+                "# \"STADIUM_NAME_WAS\"\t5114336\t\"Emirates Stadium\"",
+            ]
+        );
+        assert_eq!(parse(&text), all);
     }
 
     #[test]
     fn the_names_the_game_gives_are_noted_where_the_game_does_not_read_them() {
         let kept = KeptNames { was_name: Some("Ipswich Wanderers".into()), ..names(Some("Leven Athletic"), None) };
-        let text = render(&BTreeMap::from([(5103819, kept.clone())]));
+        let text = render(&Names { clubs: BTreeMap::from([(5103819, kept.clone())]), ..Names::default() });
         assert_eq!(
             text.lines().skip(1).collect::<Vec<_>>(),
             [
@@ -181,14 +250,14 @@ mod tests {
                 "# \"CLUB_LONG_NAME_WAS\"\t5103819\t\"Ipswich Wanderers\"",
             ]
         );
-        assert_eq!(parse(&text), BTreeMap::from([(5103819, kept)]));
+        assert_eq!(parse(&text).clubs, BTreeMap::from([(5103819, kept)]));
     }
 
     #[test]
     fn other_lines_are_left_out() {
         let text = "\u{feff}# a comment\n\n\"COMP_LONG_NAME_CHANGE\"\t12\t\"Cup\"\t\"\"\n\"CLUB_LONG_NAME_CHANGE\"\tx\t\"A\"\n\
                     \"CLUB_SHORT_NAME_CHANGE\"\t9\t\"Nine\"\n";
-        assert_eq!(parse(text), BTreeMap::from([(9, names(None, Some("Nine")))]));
+        assert_eq!(parse(text).clubs, BTreeMap::from([(9, names(None, Some("Nine")))]));
     }
 
     #[test]

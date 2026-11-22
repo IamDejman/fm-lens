@@ -13,16 +13,16 @@ use fmlens_core::{
     ClubSort, Coded, Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort,
     CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
     Field, Fit, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameNames, GameRelease,
-    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, Language,
-    LanguageChoice, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms, MovedManager,
-    Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter, OfficialSort,
-    OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, Picture, Planned, PlayerDetails, PlayerFilter,
-    PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind, PreferenceSet,
-    PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, STAFF_JOBS, SearchIndex, Session,
-    SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumSort, StadiumSummary, StaffChange,
-    StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie,
-    TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations, read_player_details,
-    read_stadiums, sort_players, sort_rows, stadium_owner,
+    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, KitPlan,
+    Language, LanguageChoice, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms,
+    MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter,
+    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, PersonTie, Picture, Planned,
+    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
+    PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, RivalPlan, STAFF_JOBS,
+    SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumRenamed, StadiumSort,
+    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target,
+    TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
+    read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -84,6 +84,9 @@ struct Connection {
 /// How often the balances of frozen clubs and the attributes of frozen players are looked at.
 const FREEZE_EVERY: Duration = Duration::from_secs(2);
 
+/// How many holds pass between two looks at the players of the protected clubs: every ten seconds.
+const PROTECT_EVERY: u32 = 5;
+
 /// How long the hold of frozen values waits after failing to read the game again before it tries once more.
 const READ_AGAIN_RETRY: Duration = Duration::from_secs(30);
 
@@ -111,6 +114,8 @@ fn held_fields(fields: Vec<Field>) -> Vec<Field> {
 /// What a money freeze holds of a club: its balance, then its transfer budget, which the game lowers on its own too.
 const BALANCE: &str = "finance.balance";
 const TRANSFER_BUDGET: &str = "finance.transfer_budget";
+/// What a money freeze holds as it is, not from below: the game sets a ticket price anew each season, up or down.
+const TICKET_PRICE: &str = "finance.ticket_price";
 
 /// What the app keeps from getting worse while it is connected (see `Connection::hold_frozen`).
 #[derive(Default)]
@@ -124,6 +129,11 @@ struct Frozen {
     attributes: BTreeMap<u32, BTreeMap<String, i64>>,
     /// The members of staff whose attributes are frozen, held the same way on the staff's own attribute scales.
     staff_attributes: BTreeMap<u32, BTreeMap<String, i64>>,
+    /// The clubs whose players are protected: healed, their bans lifted and their unhappiness removed as each comes
+    /// (see `Connection::hold_protected`).
+    protected: BTreeSet<u32>,
+    /// How many holds there were since the protected clubs were last looked at.
+    since_protected: u32,
     /// The holds the editor's checks refused, as logged: each is logged once.
     refused: BTreeSet<String>,
     /// What each mass edit froze or unfroze, by its batch, for `undo_batch` to take back with its values.
@@ -150,7 +160,10 @@ struct Froze {
 
 impl Frozen {
     fn is_empty(&self) -> bool {
-        self.money.is_empty() && self.attributes.is_empty() && self.staff_attributes.is_empty()
+        self.money.is_empty()
+            && self.attributes.is_empty()
+            && self.staff_attributes.is_empty()
+            && self.protected.is_empty()
     }
 
     /// What a connection just made holds of `old`, the one before it: in the same game all of it, at what it was held
@@ -192,11 +205,14 @@ struct RememberedSave {
     /// The members of staff whose attributes are frozen. Files from before staff freezes were remembered have none.
     #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
     staff: BTreeSet<u32>,
+    /// The clubs whose players are protected. Files from before there was such a thing have none.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    protected: BTreeSet<u32>,
 }
 
 impl RememberedSave {
     fn is_empty(&self) -> bool {
-        self.players.is_empty() && self.clubs.is_empty() && self.staff.is_empty()
+        self.players.is_empty() && self.clubs.is_empty() && self.staff.is_empty() && self.protected.is_empty()
     }
 }
 
@@ -246,6 +262,8 @@ struct Refrozen {
     clubs: Vec<String>,
     /// The members of staff whose attributes are frozen again, by name.
     staff: Vec<String>,
+    /// The clubs whose players are protected again, by name.
+    protected: Vec<String>,
     /// How many are left for later, still remembered: the editor has no profile for this version of the game, or a
     /// check did not pass.
     waiting: usize,
@@ -385,12 +403,14 @@ impl Connection {
         let Some(entry) = remembered.saves.get_mut(&save) else {
             return refrozen;
         };
-        let count = entry.players.len() + entry.clubs.len() + entry.staff.len();
+        let count = entry.players.len() + entry.clubs.len() + entry.staff.len() + entry.protected.len();
         entry.players.retain(|&uid| self.players.get(uid).is_some());
         entry.clubs.retain(|&uid| self.clubs.get(uid).is_some());
         entry.staff.retain(|&uid| self.staff.get(uid).is_some());
+        entry.protected.retain(|&uid| self.clubs.get(uid).is_some());
         let (players, clubs, staff) = (entry.players.clone(), entry.clubs.clone(), entry.staff.clone());
-        if players.len() + clubs.len() + staff.len() < count {
+        let protected = entry.protected.clone();
+        if players.len() + clubs.len() + staff.len() + protected.len() < count {
             remembered.saves.retain(|_, save| !save.is_empty());
             let _ = remembered.write(path);
         }
@@ -411,6 +431,14 @@ impl Connection {
             match safe.then(|| self.freeze_staff(uid)) {
                 Some(Ok(())) => refrozen.staff.push(self.staff_name(uid)),
                 _ => refrozen.waiting += 1,
+            }
+        }
+        for uid in protected {
+            if safe {
+                self.frozen.protected.insert(uid);
+                refrozen.protected.push(self.club_name(uid));
+            } else {
+                refrozen.waiting += 1;
             }
         }
         refrozen
@@ -530,6 +558,14 @@ impl Connection {
             && budget.takes(value)
         {
             held.insert(budget.key, value);
+        }
+        // The ticket price likewise: a build that does not place it freezes the club without it.
+        if let Ok(price) = self.session.field(Entity::Club, TICKET_PRICE)
+            && self.session.field_lock(&price).is_none()
+            && let Ok(value) = self.session.read_field(&target, &price)
+            && price.takes(value)
+        {
+            held.insert(price.key, value);
         }
         self.frozen.money.insert(uid, held);
         Ok(())
@@ -1545,6 +1581,109 @@ impl Connection {
 
     /// Logs a change to a player's ties just written, as a change of his field `tie.nationality`,
     /// `tie.trainedInNation` or `tie.trainedAtClub` from one nation's or club's UID to the other's (0 for none).
+    /// Logs a change of a kit's colour, `field` naming the kit, its part and which colour: the colour before and after.
+    fn log_kit(&mut self, done: KitPlan, field: String) -> LoggedChange {
+        let end = |colour: &str| Some(TieEnd { name: colour.to_owned(), rule: None, value: None });
+        let number = |colour: &str| i64::from_str_radix(colour.trim_start_matches('#'), 16).unwrap_or(0);
+        let change = Change {
+            entity: Entity::Club,
+            uid: done.club,
+            field,
+            old: number(&done.before),
+            new: number(&done.after),
+            record: Vec::new(),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(done.club),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
+            clause: None,
+            renamed: None,
+            holds: None,
+            undo: Some(Undo::Kit(done)),
+        };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a change of the name of the stadium the club `club` plays at (`stadium.name`): the name before and after.
+    fn log_stadium(&mut self, club: u32, field: &str, before: &str, after: &str, undo: Undo) -> LoggedChange {
+        let end = |name: &str| Some(TieEnd { name: name.to_owned(), rule: None, value: None });
+        let change =
+            Change { entity: Entity::Club, uid: club, field: field.to_owned(), old: 0, new: 0, record: Vec::new() };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(club),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(before), to: end(after) }),
+            clause: None,
+            renamed: None,
+            holds: None,
+            undo: Some(undo),
+        };
+        self.stadiums = None;
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
+    /// Logs a change to a club's rivals: the rival before and after, each with how strong the rivalry is.
+    fn log_rival(&mut self, done: RivalPlan) -> LoggedChange {
+        let end = |rival: &Option<fmlens_core::Related>| {
+            rival.as_ref().map(|rival| TieEnd {
+                name: rival.name.clone().unwrap_or_default(),
+                rule: None,
+                value: rival.strength.map(i64::from),
+            })
+        };
+        let strength =
+            |rival: &Option<fmlens_core::Related>| rival.as_ref().and_then(|rival| rival.strength).map_or(0, i64::from);
+        let change = Change {
+            entity: Entity::Club,
+            uid: done.club,
+            field: "rival".to_owned(),
+            old: strength(&done.before),
+            new: strength(&done.after),
+            record: Vec::new(),
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name: self.club_name(done.club),
+            change,
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: None,
+            captaincy: None,
+            tie: Some(TieChange { from: end(&done.before), to: end(&done.after) }),
+            clause: None,
+            renamed: None,
+            holds: None,
+            undo: Some(Undo::Rival(done)),
+        };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
+    }
+
     fn log_tie(&mut self, done: RelationSet) -> LoggedChange {
         let tie = done.before.as_ref().or(done.after.as_ref()).map_or(Tie::Nationality, |relation| relation.tie);
         let field = match tie {
@@ -2189,6 +2328,12 @@ impl Connection {
             Some(Undo::Tactics(raised)) => self.session.undo_tactics(&raised)?,
             Some(Undo::Retirement(retirement)) => self.session.undo_retirement(&retirement)?,
             Some(Undo::Tie(tie)) => self.session.undo_relation(&tie)?,
+            Some(Undo::Rival(rival)) => self.session.undo_rival(&rival)?,
+            Some(Undo::Kit(kit)) => self.session.undo_kit_colour(&kit)?,
+            Some(Undo::StadiumName(done)) => {
+                self.session.undo_stadium_rename(&done)?;
+                self.stadiums = None;
+            }
             Some(Undo::Preference(preference)) => self.session.undo_preference(&preference)?,
             Some(Undo::Language(language)) => self.session.undo_language(&language)?,
             Some(Undo::Clause(clause)) => self.session.undo_clause(&clause)?,
@@ -2337,14 +2482,64 @@ impl Connection {
         self.hold_money();
         self.hold_attributes();
         self.hold_staff_attributes();
+        self.hold_protected();
+    }
+
+    /// Heals the players of every protected club, lifts their bans and removes their unhappiness, as the team's own
+    /// buttons do and logged the same way. Looked at every `PROTECT_EVERY` holds, and not while the game is working
+    /// out a day.
+    fn hold_protected(&mut self) {
+        if self.frozen.protected.is_empty() {
+            return;
+        }
+        self.frozen.since_protected += 1;
+        if self.frozen.since_protected < PROTECT_EVERY || self.session.structure_lock().is_some() {
+            return;
+        }
+        self.frozen.since_protected = 0;
+        for uid in self.frozen.protected.clone() {
+            let Some(summary) = self.clubs.get(uid).cloned() else {
+                continue;
+            };
+            let Ok(teams) = self.session.club_teams(&summary, &self.players) else {
+                continue;
+            };
+            for team in teams {
+                let members: Vec<_> = team.players.iter().filter(|member| member.plays_here).cloned().collect();
+                for action in [TeamAction::Heal, TeamAction::LiftBans, TeamAction::RemoveUnhappiness] {
+                    let needed = members.iter().any(|member| match action {
+                        TeamAction::Heal => member.injuries > 0,
+                        TeamAction::LiftBans => member.bans > 0,
+                        _ => member.unhappy,
+                    });
+                    if !needed {
+                        continue;
+                    }
+                    let batch = self.fresh_id();
+                    let done = TeamDone {
+                        action,
+                        club: summary.name.clone(),
+                        team: team.index,
+                        kind: team.kind,
+                        age_limit: team.age_limit,
+                    };
+                    if let Err(err) = act_on_team(self, &summary, team.index, &members, action, batch) {
+                        eprintln!("FM Lens could not protect {}: {}", summary.name, err.message);
+                    }
+                    self.name_batch(batch, &done);
+                }
+            }
+        }
     }
 
     fn hold_money(&mut self) {
         if self.frozen.money.is_empty() {
             return;
         }
-        let fields: Vec<Field> =
-            [BALANCE, TRANSFER_BUDGET].iter().filter_map(|key| self.session.field(Entity::Club, key).ok()).collect();
+        let fields: Vec<Field> = [BALANCE, TRANSFER_BUDGET, TICKET_PRICE]
+            .iter()
+            .filter_map(|key| self.session.field(Entity::Club, key).ok())
+            .collect();
         for (&uid, held) in self.frozen.money.iter_mut() {
             let Some(target) = self.clubs.get(uid).map(|club| club.target()) else {
                 continue;
@@ -2354,7 +2549,7 @@ impl Connection {
                     continue;
                 };
                 match self.session.read_field(&target, field) {
-                    Ok(now) if now < *floor => {
+                    Ok(now) if now < *floor || (field.key == TICKET_PRICE && now != *floor) => {
                         // Only while the game still holds what was read: a day it is working out is left to it.
                         let written = self.session.write_field_if(&target, field, now, *floor);
                         log_refused(&mut self.frozen.refused, &target, written.err());
@@ -2685,6 +2880,9 @@ enum Undo {
     Cohesion(Cohered),
     Retirement(RetirementSet),
     Tie(RelationSet),
+    Rival(RivalPlan),
+    Kit(KitPlan),
+    StadiumName(StadiumRenamed),
     Preference(PreferenceSet),
     Language(LanguageSet),
     Clause(ClauseSet),
@@ -4478,6 +4676,46 @@ fn freeze_money(
     Ok(connection.frozen.money.keys().copied().collect())
 }
 
+/// Protects the players of the club `club`, or stops: while the app is connected, a protected club's players are
+/// healed, their bans lifted and their unhappiness removed as each comes. The app remembers it for this save.
+/// Returns the clubs protected now.
+#[tauri::command]
+fn protect_squad(
+    state: State<'_, AppState>,
+    file: State<'_, FrozenFile>,
+    club: u32,
+    protected: bool,
+) -> Result<Vec<u32>, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    if protected {
+        connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+        if !(connection.session.known_build() && connection.session.process.can_write()) {
+            return Err(Failure::new("memory.readOnly", "This connection cannot write to the game."));
+        }
+        connection.frozen.protected.insert(club);
+        // Looked at on the next hold, not ten seconds on.
+        connection.frozen.since_protected = PROTECT_EVERY;
+    } else {
+        connection.frozen.protected.remove(&club);
+    }
+    connection.remember(file.0.as_deref(), |save| {
+        if protected {
+            save.protected.insert(club);
+        } else {
+            save.protected.remove(&club);
+        }
+    });
+    Ok(connection.frozen.protected.iter().copied().collect())
+}
+
+/// The clubs whose players are protected.
+#[tauri::command]
+fn protected_clubs(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
+    let guard = state.0.lock()?;
+    Ok(guard.as_ref().map(|connection| connection.frozen.protected.iter().copied().collect()).unwrap_or_default())
+}
+
 /// The clubs whose money is frozen.
 #[tauri::command]
 fn frozen_clubs(state: State<'_, AppState>) -> Result<Vec<u32>, Failure> {
@@ -5120,16 +5358,24 @@ fn close_promise(
     Ok(connection.log_promise(done))
 }
 
-/// Heals every current injury of the player `uid`, as the game does when he gets over them,
-/// and logs it as one change of his `injuries` to none.
+/// Heals every current injury of the player `uid`, as the game does when he gets over them, and rests him (see
+/// `RESTED`). Logged as one batch: a change of his `injuries` to none, which is returned, and the values that rest him.
 #[tauri::command]
 fn heal_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
+    let rested = [(player.target(), player.name.clone())];
     let plan = connection.session.plan_heal(player)?;
     let done = connection.session.apply_heal(&plan)?;
-    Ok(connection.log_heal(done, None))
+    // Fit to play at once: rested as Refresh fitness rests him, in one batch with the heal. A value that will not
+    // write leaves him healed.
+    let batch = connection.fresh_id();
+    let healed = connection.log_heal(done, Some(batch));
+    if let Ok(plan) = connection.session.plan_mass_edit(&rested, &rest_operations(connection)?) {
+        connection.write_planned(Entity::Player, plan.planned, batch);
+    }
+    Ok(healed)
 }
 
 /// The kinds of injury the game knows, in its order, for adding one. Only reads memory.
@@ -5373,6 +5619,74 @@ fn change_tie(
     Ok(connection.log_tie(done))
 }
 
+/// Gives the rivalry of the club `club` with the club `rival` (by UID) the strength `strength`, 1 to 100; without a
+/// strength, takes it out of the club's list. Logged and undone like any change.
+#[tauri::command]
+fn change_rival(
+    state: State<'_, AppState>,
+    club: u32,
+    rival: u32,
+    strength: Option<u8>,
+) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let plan = match strength {
+        Some(strength) => connection.session.plan_rival_strength(summary, rival, strength)?,
+        None => connection.session.plan_rival_removal(summary, rival)?,
+    };
+    let done = connection.session.apply_rival(&plan)?;
+    Ok(connection.log_rival(done))
+}
+
+/// Gives the `part` (shirt, shorts or socks) of the `kit` (home, away or third) of the club `club` the colour
+/// `colour`, as `#RRGGBB`: its main colour, or for `trim` its trim. Logged and undone like any change.
+#[tauri::command]
+fn set_kit_colour(
+    state: State<'_, AppState>,
+    club: u32,
+    kit: String,
+    part: String,
+    trim: bool,
+    colour: String,
+) -> Result<LoggedChange, Failure> {
+    let digits = colour.strip_prefix('#').filter(|digits| digits.len() == 6);
+    let rgb = digits
+        .and_then(|digits| u32::from_str_radix(digits, 16).ok())
+        .map(|rgb| [(rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8])
+        .ok_or_else(|| Failure::new("kit.colour", format!("{colour} is not a colour.")))?;
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let plan = connection.session.plan_kit_colour(summary, &kit, &part, trim, rgb)?;
+    let done = connection.session.apply_kit_colour(&plan)?;
+    Ok(connection.log_kit(done, format!("kit.{kit}.{part}.{}", if trim { "trim" } else { "main" })))
+}
+
+/// Gives the stadium the club `club` plays at the name `name`. Logged as a change of its `stadium.name`.
+#[tauri::command]
+fn rename_stadium(state: State<'_, AppState>, club: u32, name: String) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let done = connection.session.rename_stadium(summary, &name)?;
+    let (before, after) = (done.before.clone(), done.after.clone());
+    Ok(connection.log_stadium(club, "stadium.name", &before, &after, Undo::StadiumName(done)))
+}
+
+/// Makes the club `rival` a rival of the club `club`, at `strength`, 1 to 100, where the club's list has room.
+/// Logged and undone like any change.
+#[tauri::command]
+fn add_rival(state: State<'_, AppState>, club: u32, rival: u32, strength: u8) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let summary = connection.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
+    let other = connection.clubs.get(rival).ok_or_else(|| not_found(Entity::Club, rival))?;
+    let plan = connection.session.plan_rival_add(summary, other, strength)?;
+    let done = connection.session.apply_rival(&plan)?;
+    Ok(connection.log_rival(done))
+}
+
 /// Takes the tie `index` of the player `uid` out of his list. Logged and undone like any change.
 #[tauri::command]
 fn remove_tie(state: State<'_, AppState>, uid: u32, index: usize) -> Result<LoggedChange, Failure> {
@@ -5481,8 +5795,11 @@ fn point_preference(
 }
 
 /// Has the game add a preference of `kind` for the club, player or member of staff `target_uid` to the list of the
-/// player `uid`, or of the member of staff `uid` for `staff`, at `strength`, 1 to 100. Logged and undone like any
-/// change: undoing it takes the preference out again.
+/// player `uid`, or of the member of staff `uid` for `staff`, at `strength`, 1 to 100; a favoured person as his
+/// father, brother, son or relative for `tie`. Logged and undone like any change: undoing it takes the preference out
+/// again.
+// The window names each argument, so they stay arguments.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn add_preference(
     state: State<'_, AppState>,
@@ -5492,12 +5809,13 @@ fn add_preference(
     target_kind: PreferenceTargetKind,
     target_uid: u32,
     strength: i8,
+    tie: Option<PersonTie>,
 ) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
     let owner = person_ref(connection, uid, staff)?;
     let target = preference_target(connection, target_kind, target_uid)?;
-    let done = connection.session.add_preference(owner, kind, target, strength)?;
+    let done = connection.session.add_preference(owner, kind, target, strength, tie)?;
     Ok(connection.log_preference(done))
 }
 
@@ -5744,6 +6062,17 @@ fn team_action(state: State<'_, AppState>, club: u32, team: usize, action: TeamA
     report
 }
 
+/// A player rested as the game rests him: full energy and sharpness, and jadedness at its least.
+const RESTED: &[(&str, i64)] = &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)];
+
+/// The edits that rest a player (see `RESTED`).
+fn rest_operations(connection: &Connection) -> Result<Vec<(Field, Operation)>, EditError> {
+    RESTED
+        .iter()
+        .map(|&(key, value)| Ok((connection.session.field(Entity::Player, key)?, Operation::Set { value })))
+        .collect()
+}
+
 /// Does `action` to `members`, the players of the team `team` of the club `summary`, logging the changes as `batch`.
 fn act_on_team(
     connection: &mut Connection,
@@ -5756,16 +6085,17 @@ fn act_on_team(
     let values: &[(&str, i64)] = match action {
         TeamAction::Heal => {
             let mut report = MassReport { batch, applied: 0, failed: Vec::new(), freeze: None };
+            let mut healed: Vec<(Target, String)> = Vec::new();
             for member in members.iter().filter(|member| member.injuries > 0) {
                 let Some(player) = connection.players.get(member.uid) else {
                     continue;
                 };
-                let name = player.name.clone();
-                let healed = connection.session.plan_heal(player).and_then(|plan| connection.session.apply_heal(&plan));
-                match healed {
+                let (target, name) = (player.target(), player.name.clone());
+                match connection.session.plan_heal(player).and_then(|plan| connection.session.apply_heal(&plan)) {
                     Ok(done) => {
                         connection.log_heal(done, Some(batch));
                         report.applied += 1;
+                        healed.push((target, name));
                     }
                     Err(err) => report.failed.push(MassFailure {
                         uid: member.uid,
@@ -5774,6 +6104,11 @@ fn act_on_team(
                         error: err.into(),
                     }),
                 }
+            }
+            // A healed player is fit to play at once: rested as Refresh fitness rests him, in the same batch.
+            if !healed.is_empty() {
+                let plan = connection.session.plan_mass_edit(&healed, &rest_operations(connection)?)?;
+                report.failed.extend(connection.write_planned(Entity::Player, plan.planned, batch).failed);
             }
             return Ok(report);
         }
@@ -5855,8 +6190,7 @@ fn act_on_team(
             return Ok(report);
         }
         TeamAction::MaxMorale => &[("morale", 20)],
-        // Rested as the game rests a player: full energy and sharpness, and jadedness at its least.
-        TeamAction::Refresh => &[("condition", 10_000), ("match_sharpness", 10_000), ("jadedness", -500)],
+        TeamAction::Refresh => RESTED,
         TeamAction::MaxAttributes => &[],
     };
     let targets: Vec<(Target, String)> = members
@@ -6241,6 +6575,11 @@ pub fn run() {
             list_nations,
             freeze_money,
             frozen_clubs,
+            protect_squad,
+            change_rival,
+            add_rival,
+            set_kit_colour,
+            protected_clubs,
             freeze_attributes,
             frozen_players,
             freeze_staff_attributes,
@@ -6284,6 +6623,7 @@ pub fn run() {
             add_injury,
             set_work_permit,
             rename_club,
+            rename_stadium,
             game_club_names,
             work_permit_needed,
             start_loan,

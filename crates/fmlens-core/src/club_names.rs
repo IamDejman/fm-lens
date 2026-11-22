@@ -12,7 +12,7 @@
 use fmlens_mem::{is_user_pointer, regions};
 
 use crate::clubs::ClubSummary;
-use crate::name_file::{KeptNames, NameFile};
+use crate::name_file::{KeptNames, KeptStadium, NameFile};
 use crate::session::Session;
 use crate::text::read_fm_string;
 use crate::transfer::{MoveError, Patch, Patches};
@@ -41,6 +41,18 @@ pub struct ClubRenamed {
     patches: Vec<Patch>,
     /// The names the file of name changes gave the club before.
     kept_before: Option<KeptNames>,
+}
+
+/// A stadium's name changed: what the log shows, and what undoing it takes.
+#[derive(Debug, Clone)]
+pub struct StadiumRenamed {
+    /// The club whose senior team plays there.
+    pub club: u32,
+    pub stadium: u32,
+    pub before: String,
+    pub after: String,
+    patches: Vec<Patch>,
+    kept_before: Option<KeptStadium>,
 }
 
 /// `text` as a name is written: without the spaces around it, or none when it is no name, being empty, longer than
@@ -188,6 +200,51 @@ impl Session {
             short_name: renamed(short_name, club.short_name.as_deref()),
             patches,
             kept_before,
+        })
+    }
+
+    /// Gives the stadium the senior team of `club` plays at the name `name`, as a club is renamed: text of its own in
+    /// the game's memory, and a line in the file of name changes for the next time the game starts.
+    pub fn rename_stadium(&self, club: &ClubSummary, name: &str) -> Result<StadiumRenamed, MoveError> {
+        let n = self.layout.club_names.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let s = self.layout.stadium.as_ref().ok_or(MoveError::CallUnavailable)?;
+        let uid_at = s.uid.ok_or(MoveError::CallUnavailable)?;
+        let file = self.name_file().ok_or(MoveError::CallUnavailable)?;
+        if self.process.read_u32(club.address + self.layout.club.uid)? != club.uid {
+            return Err(MoveError::Changed { address: club.address + self.layout.club.uid });
+        }
+        let (stadium, _) =
+            crate::clubs::club_stadium(&self.process, &self.layout, club.address).ok_or(MoveError::CallUnavailable)?;
+        let slot = stadium + s.name;
+        let before = read_fm_string(&self.process, self.process.read_u64(slot)?).ok_or(MoveError::CallUnavailable)?;
+        let name = as_name(name).ok_or(MoveError::BadName)?;
+        if name == before {
+            return Err(MoveError::SameName);
+        }
+        let old = self.held_name(slot, &before, n.holders)?;
+        let uid = self.process.read_u32(stadium + uid_at)?;
+        let (bytes, pointer) = name_record(name, n.holders);
+        if let Some(lock) = self.structure_lock() {
+            return Err(MoveError::Locked(lock));
+        }
+        let kept_before = file.kept_stadium(uid).map_err(name_file_error)?;
+        // The game's own name is the one it has where the file gave it none; given that back, the file keeps none.
+        let was = kept_before.as_ref().map_or(Some(before.clone()), |kept| kept.was.clone());
+        let kept = (was.as_deref() != Some(name)).then(|| KeptStadium { name: name.to_owned(), was });
+        file.keep_stadium(uid, kept.as_ref()).map_err(name_file_error)?;
+        let patches = self.place_names(&[(slot, old, name)], &[(name, pointer)], &bytes).inspect_err(|_| {
+            let _ = file.keep_stadium(uid, kept_before.as_ref());
+        })?;
+        Ok(StadiumRenamed { club: club.uid, stadium: uid, before, after: name.to_owned(), patches, kept_before })
+    }
+
+    /// Points the stadium back at the name it had and has the file of name changes give it what it gave before.
+    pub fn undo_stadium_rename(&self, done: &StadiumRenamed) -> Result<(), MoveError> {
+        let file = self.name_file().ok_or(MoveError::CallUnavailable)?;
+        let kept = file.kept_stadium(done.stadium).map_err(name_file_error)?;
+        file.keep_stadium(done.stadium, done.kept_before.as_ref()).map_err(name_file_error)?;
+        self.undo_patches(&done.patches).inspect_err(|_| {
+            let _ = file.keep_stadium(done.stadium, kept.as_ref());
         })
     }
 

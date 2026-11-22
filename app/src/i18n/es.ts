@@ -799,6 +799,7 @@ export const es: Strings = {
     "preference.dislikedClub": "Club que no soporta",
     "preference.favouredPerson": "Persona favorita",
     "preference.dislikedPerson": "Persona que no soporta",
+    rival: "Rival",
     strength: "Intensidad",
     language: "Idioma",
     level: "Nivel",
@@ -835,6 +836,9 @@ export const es: Strings = {
     "stadium.seating": "Aforo con asientos",
     "stadium.used": "Aforo en uso",
     "stadium.expansion": "Aforo ampliable",
+    "stadium.name": "Nombre del estadio",
+    "info.season_tickets": "Abonos de temporada",
+    "info.ownership": "Propiedad",
     population: "Población",
     dual_nationality: "Doble nacionalidad",
     naturalisation: "Años para nacionalizarse",
@@ -997,6 +1001,12 @@ export const es: Strings = {
       favouredPerson: "Personas favoritas",
       dislikedPerson: "Personas que no soporta",
     },
+    personTies: {
+      father: "Padre",
+      son: "Hijos",
+      brother: "Hermanos",
+      relative: "Familiares",
+    },
     noRetirement: "El juego no ha previsto su retirada",
     keepPlaying: "Evitar la retirada",
     keepingPlaying: "Evitando…",
@@ -1072,7 +1082,7 @@ export const es: Strings = {
     injuryStarted: (date) => `Desde el ${date}`,
     injuryBack: (dates) => `Regreso previsto: ${dates}`,
     heal: "Curar",
-    healTitle: "Curar todas sus lesiones",
+    healTitle: "Curar todas sus lesiones y recuperar su forma física",
     addInjury: "Añadir lesión",
     injuryKind: "Lesión",
     noBans: "Sin sanciones",
@@ -1486,7 +1496,11 @@ export const es: Strings = {
     perWeek: "/sem.",
     noFinances: "FM solo lleva las finanzas de los clubes de ligas jugables.",
     freeze: "Congelar el dinero",
-    freezeNote: "El saldo y el presupuesto de fichajes no pueden bajar mientras FM Lens esté conectado.",
+    freezeNote:
+      "El saldo y el presupuesto de fichajes no pueden bajar, y el precio de las entradas se mantiene, mientras FM Lens esté conectado.",
+    protect: "Proteger la plantilla",
+    protectNote:
+      "Las lesiones, las sanciones y el descontento se eliminan en cuanto aparecen, mientras FM Lens esté conectado.",
 
     // Estadio
     stadium: "Estadio",
@@ -1498,6 +1512,7 @@ export const es: Strings = {
     expansion: "Ampliable hasta",
     owner: "Propietario",
     noStadium: "No se ha podido leer el estadio de este club.",
+    stadiumName: "Nombre",
 
     // Datos del club
     info: "Datos del club",
@@ -1892,6 +1907,7 @@ export const es: Strings = {
       waitingTitle: "Lo congelado espera por ahora",
       players: (names) => `Atributos: ${names}`,
       clubs: (names) => `Dinero: ${names}`,
+      protected: (names) => `Plantillas protegidas: ${names}`,
       more: (count) => `y ${format(count)} más`,
       waiting: (count) =>
         `${count === 1 ? "1 sigue recordado" : `${format(count)} siguen recordados`}, pero no se congelan ahora: ` +
@@ -2630,6 +2646,7 @@ export const es: Strings = {
 
   lists: {
     likesTitle: "Cambiar las personas y los clubes que le gustan y disgustan",
+    rivalsTitle: "Cambiar los rivales de este club",
     strengthOf: (name) => `Intensidad para ${name}`,
     languagesTitle: "Cambiar cómo de bien habla cada idioma",
     levelOf: (name) => `Nivel de ${name}`,
@@ -2843,7 +2860,7 @@ export const es: Strings = {
     actionsLabel: "Acciones sobre todo el equipo",
     healAll: "Curar",
     injuredCount: (injured) => (injured === 1 ? "1 lesionado" : `${format(injured)} lesionados`),
-    healAllTitle: "Curar a todo el equipo",
+    healAllTitle: "Curar a todo el equipo y recuperar su forma física",
     healNone: "Nadie en este equipo está lesionado",
     liftAll: "Levantar sanciones",
     bannedCount: (banned) => (banned === 1 ? "1 sancionado" : `${format(banned)} sancionados`),

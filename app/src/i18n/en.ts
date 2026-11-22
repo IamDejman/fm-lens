@@ -724,6 +724,7 @@ export const en = {
     "preference.dislikedClub": "Disliked club",
     "preference.favouredPerson": "Favoured person",
     "preference.dislikedPerson": "Disliked person",
+    rival: "Rival",
     strength: "Strength",
     // A person's languages, which the change log keeps as changes of their level (see `lists`).
     language: "Language",
@@ -775,6 +776,9 @@ export const en = {
     "stadium.seating": "Seated capacity",
     "stadium.used": "Capacity in use",
     "stadium.expansion": "Expansion capacity",
+    "stadium.name": "Stadium name",
+    "info.season_tickets": "Season tickets",
+    "info.ownership": "Ownership",
     // A nation's rules; its reputation is its senior team's.
     population: "Population",
     dual_nationality: "Dual nationality",
@@ -963,6 +967,12 @@ export const en = {
       favouredPerson: "Favoured people",
       dislikedPerson: "Disliked people",
     },
+    personTies: {
+      father: "Father",
+      son: "Sons",
+      brother: "Brothers",
+      relative: "Relatives",
+    },
     noRetirement: "No retirement planned",
     keepPlaying: "Prevent retirement",
     keepingPlaying: "Preventing…",
@@ -1054,7 +1064,7 @@ export const en = {
     injuryBack: (dates: string) => `Expected back ${dates}`,
     /** Heals every injury of the player at once. */
     heal: "Heal",
-    healTitle: "Heal all his injuries",
+    healTitle: "Heal all his injuries and restore his fitness",
     /** Has FM give him the injury chosen in the select next to it; the select's label is `injuryKind`. */
     addInjury: "Add injury",
     injuryKind: "Injury",
@@ -1533,7 +1543,9 @@ export const en = {
     noFinances: "FM only tracks money for clubs in playable leagues.",
     /** Freezing the club's money, while the game can be written to, and what that does. */
     freeze: "Freeze money",
-    freezeNote: "The balance and transfer budget can't go down while FM Lens is connected.",
+    freezeNote: "The balance and transfer budget can't go down, and the ticket price stays, while FM Lens is connected.",
+    protect: "Protect squad",
+    protectNote: "Injuries, bans and unhappiness are removed as they come, while FM Lens is connected.",
 
     // Stadium
     stadium: "Stadium",
@@ -1548,6 +1560,7 @@ export const en = {
     owner: "Owner",
     /** When the layout of this build does not know where the stadium is, or the club's stadium did not check out. */
     noStadium: "Couldn't read this club's stadium.",
+    stadiumName: "Name",
 
     // Club info
     info: "Club info",
@@ -1976,6 +1989,7 @@ export const en = {
       /** `names` are the players' names, set apart by commas. */
       players: (names: string) => `Attributes: ${names}`,
       clubs: (names: string) => `Money: ${names}`,
+      protected: (names: string) => `Protected squads: ${names}`,
       /** After the first few names. */
       more: (count: number) => `and ${format(count)} more`,
       /** What was left for later: an update of the game, say. */
@@ -2880,6 +2894,7 @@ export const en = {
   /** Changing a player's or member of staff's likes and dislikes, and languages: the button under each, and its dialog. */
   lists: {
     likesTitle: "Change the people and clubs he likes and dislikes",
+    rivalsTitle: "Change this club's rivals",
     /** The strength input of a row, for assistive technology: `name` is the person's or club's. */
     strengthOf: (name: string) => `Strength for ${name}`,
     languagesTitle: "Change how well he speaks each language",
@@ -3142,7 +3157,7 @@ export const en = {
     /** Heal, Lift bans and Remove unhappiness carry how many players they are for; these name them after the count. */
     healAll: "Heal",
     injuredCount: (injured: number) => `${format(injured)} injured`,
-    healAllTitle: "Heal everyone in this team",
+    healAllTitle: "Heal everyone in this team and restore their fitness",
     /** Hover text of Heal while nobody in the team is injured. */
     healNone: "Nobody in this team is injured",
     liftAll: "Lift bans",

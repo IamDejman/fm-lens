@@ -18,8 +18,11 @@
 //!
 //! A preference is added by the game itself, where the build's profile names its `add_relation`
 //! ([`CallRvas::add_relation`]): the game makes the person a list, or a bigger block for it, as it needs. The entry is
-//! the one the game's own editor starts a favourite from (see [`new_preference`]): byte `0x08` is the reason, 1 for a
-//! like and 0 for a dislike, and byte `0x0D` is `0x4F` for one that lasts.
+//! the one the game's own editor starts a favourite from (see [`new_preference`]): byte `0x08` is the reason, 0 for a
+//! dislike, and byte `0x0D` is `0x4F` for one that lasts. For a favoured person the reason is what the game shows
+//! beside him: 1 his father, 2 his brother, 3 his son, 4 another relative ([`PersonTie`]), 5 a team-mate, 6 for the
+//! managers and coaches players favour (Windows Steam build 26620374: of the 181 people favoured for reason 1, 161
+//! share the surname of a person 27.6 years younger on average, and the game shows "Father" for one added so).
 //!
 //! [`CallRvas::add_relation`]: crate::profile::CallRvas::add_relation
 //!
@@ -188,6 +191,34 @@ impl PreferenceKind {
     }
 }
 
+/// How a favoured person is family: the reason the game shows beside him.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PersonTie {
+    Father,
+    Brother,
+    Son,
+    Relative,
+}
+
+impl PersonTie {
+    const ALL: [Self; 4] = [Self::Father, Self::Brother, Self::Son, Self::Relative];
+
+    /// The reason the game codes it with.
+    fn code(self) -> u8 {
+        match self {
+            Self::Father => 1,
+            Self::Brother => 2,
+            Self::Son => 3,
+            Self::Relative => 4,
+        }
+    }
+}
+
+/// The reason of a favoured team-mate, and of a favoured member of staff.
+const TEAM_MATE: u8 = 5;
+const STAFF: u8 = 6;
+
 /// A person's or club's place in a player's or member of staff's preferences.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -204,6 +235,8 @@ pub struct Preference {
     /// The preference strength stored by the game. Signed: one favoured club on the test career holds -35 beside a
     /// dislike of the same club at 35.
     pub strength: i8,
+    /// For a favoured person, how he is family, where he is.
+    pub tie: Option<PersonTie>,
 }
 
 /// A club or nation another is related to: a rival, with how strong the rivalry is, or a club it has a link
@@ -215,6 +248,27 @@ pub struct Related {
     pub name: Option<String>,
     /// How strong a rivalry is, 0 to 100; `None` for a link.
     pub strength: Option<u8>,
+}
+
+/// A change to a club's rivals, worked out from the game as it is now, and what undoing it takes once written.
+#[derive(Debug, Clone)]
+pub struct RivalPlan {
+    pub club: u32,
+    /// The rivalry before and after: none before for one added, none after for one taken out.
+    pub before: Option<Related>,
+    pub after: Option<Related>,
+    patches: Vec<Patch>,
+}
+
+/// A club's list of relations, and the rivals in it, each with where its entry is in the list.
+type RivalList = (RelationList, Vec<(usize, Related)>);
+
+/// The strengths the editor writes for a rivalry.
+fn rival_strength(strength: u8) -> Result<(), MoveError> {
+    if (1..=100).contains(&strength) {
+        return Ok(());
+    }
+    Err(MoveError::OutOfRange { field: "strength", value: strength.into(), min: 1, max: 100 })
 }
 
 /// A change to a player's ties, worked out from the game as it is now and ready to be written.
@@ -377,29 +431,120 @@ impl Session {
     /// The clubs `club` is a rival of, strongest first, with how strong each rivalry is (0 to 100). Empty where the
     /// layout does not place a club's relations.
     pub fn club_rivals(&self, club: &ClubSummary) -> Result<Vec<Related>, MoveError> {
+        let Some((_, rivals)) = self.rival_list(club)? else {
+            return Ok(Vec::new());
+        };
+        let mut rivals: Vec<Related> = rivals.into_iter().map(|(_, rival)| rival).collect();
+        rivals.sort_by_key(|rival| std::cmp::Reverse(rival.strength));
+        Ok(rivals)
+    }
+
+    /// The list of relations of `club` and the rivals in it, each with where its entry is in the list. `None` where
+    /// the layout does not place a club's relations.
+    fn rival_list(&self, club: &ClubSummary) -> Result<Option<RivalList>, MoveError> {
         let c = &self.layout.club;
         let Some(relations) = c.relations else {
-            return Ok(Vec::new());
+            return Ok(None);
         };
         if self.process.read_u32(club.address + c.uid)? != club.uid {
             return Err(MoveError::NotAClub { uid: club.uid });
         }
         let r = &self.layout.relation;
         let list = self.relation_list_at(club.address + relations)?;
-        let mut rivals: Vec<Related> = list
+        let rivals = list
             .entries
             .iter()
-            .filter(|entry| entry[r.target_kind as usize] == CLUB && entry[r.relation as usize] == RIVAL)
-            .filter_map(|entry| {
+            .enumerate()
+            .filter(|(_, entry)| entry[r.target_kind as usize] == CLUB && entry[r.relation as usize] == RIVAL)
+            .filter_map(|(index, entry)| {
                 let target = u64::from_le_bytes(entry[r.target as usize..r.target as usize + 8].try_into().ok()?);
                 let mut tie = self.club_tie(target)?;
                 tie.strength = Some(entry[r.value as usize]);
-                Some(tie)
+                Some((index, tie))
             })
-            .filter(|tie| tie.uid != club.uid)
+            .filter(|(_, tie)| tie.uid != club.uid)
             .collect();
-        rivals.sort_by_key(|rival| std::cmp::Reverse(rival.strength));
-        Ok(rivals)
+        Ok(Some((list, rivals)))
+    }
+
+    /// The list of `club` and its rivalry with the club `rival`, with where that is in the list.
+    fn rival_in(&self, club: &ClubSummary, rival: u32) -> Result<(RelationList, usize, Related), MoveError> {
+        let (list, rivals) = self.rival_list(club)?.ok_or(MoveError::NotListed)?;
+        let (index, before) = rivals.into_iter().find(|(_, known)| known.uid == rival).ok_or(MoveError::NotListed)?;
+        Ok((list, index, before))
+    }
+
+    /// Works out giving the rivalry of `club` with the club `rival` the strength `strength`, 1 to 100. Nothing is
+    /// written.
+    pub fn plan_rival_strength(&self, club: &ClubSummary, rival: u32, strength: u8) -> Result<RivalPlan, MoveError> {
+        let r = &self.layout.relation;
+        let (list, index, before) = self.rival_in(club, rival)?;
+        rival_strength(strength)?;
+        if before.strength == Some(strength) {
+            return Err(MoveError::SameRelation);
+        }
+        let mut patches = Patches::default();
+        let address = list.begin + index as u64 * r.size + r.value;
+        patches.push(address, [before.strength.unwrap_or(0)], [strength]);
+        let after = Related { strength: Some(strength), ..before.clone() };
+        Ok(RivalPlan { club: club.uid, before: Some(before), after: Some(after), patches: patches.0 })
+    }
+
+    /// Works out taking the rivalry of `club` with the club `rival` out of its list: the entries after it move up
+    /// one. Nothing is written.
+    pub fn plan_rival_removal(&self, club: &ClubSummary, rival: u32) -> Result<RivalPlan, MoveError> {
+        let (list, index, before) = self.rival_in(club, rival)?;
+        let patches = removal(list.header, list.begin, &list.entries, index);
+        Ok(RivalPlan { club: club.uid, before: Some(before), after: None, patches })
+    }
+
+    /// Works out making `rival` a rival of `club` at `strength`, 1 to 100, where the block of the club's list has
+    /// room: an entry as the club's first rivalry is, pointed at `rival`. Refused for a club without a rival to go
+    /// by, for itself and for a rival it has. Nothing is written.
+    pub fn plan_rival_add(
+        &self,
+        club: &ClubSummary,
+        rival: &ClubSummary,
+        strength: u8,
+    ) -> Result<RivalPlan, MoveError> {
+        let r = &self.layout.relation;
+        let (list, rivals) = self.rival_list(club)?.ok_or(MoveError::NotListed)?;
+        rival_strength(strength)?;
+        if rival.uid == club.uid || rivals.iter().any(|(_, known)| known.uid == rival.uid) {
+            return Err(MoveError::SameRelation);
+        }
+        if self.process.read_u32(rival.address + self.layout.club.uid)? != rival.uid {
+            return Err(MoveError::WrongTarget);
+        }
+        let Some(&(like, _)) = rivals.first() else {
+            return Err(MoveError::RelationsFull);
+        };
+        if self.room(&list)? == 0 {
+            return Err(MoveError::RelationsFull);
+        }
+        let mut entry = list.entries[like].clone();
+        entry[r.target as usize..r.target as usize + 8].copy_from_slice(&rival.address.to_le_bytes());
+        entry[r.value as usize] = strength;
+
+        let mut patches = Patches::default();
+        let slot = self.process.read_bytes(list.end, r.size as usize)?;
+        patches.push(list.end, slot, entry);
+        let end = list.end + r.size;
+        let header = [list.end.to_le_bytes(), list.capacity.to_le_bytes()].concat();
+        patches.push(list.header + 8, header, [end.to_le_bytes(), list.capacity.max(end).to_le_bytes()].concat());
+        let after = Related { uid: rival.uid, name: Some(rival.name.clone()), strength: Some(strength) };
+        Ok(RivalPlan { club: club.uid, before: None, after: Some(after), patches: patches.0 })
+    }
+
+    /// Writes a planned change to a club's rivals, each write over the bytes it expects, after checking them all.
+    pub fn apply_rival(&self, plan: &RivalPlan) -> Result<RivalPlan, MoveError> {
+        self.apply_patches(&plan.patches)?;
+        Ok(plan.clone())
+    }
+
+    /// Puts the rivals back as they were, provided the list still holds what the change wrote.
+    pub fn undo_rival(&self, done: &RivalPlan) -> Result<(), MoveError> {
+        self.undo_patches(&done.patches)
     }
 
     /// The clubs `club` has links with (affiliations), in the game's order. Empty where the layout does not place
@@ -619,6 +764,7 @@ impl Session {
         kind: PreferenceKind,
         target: PreferenceTarget,
         strength: i8,
+        tie: Option<PersonTie>,
     ) -> Result<PreferenceSet, MoveError> {
         let function = self.game_function(|calls| calls.add_relation)?;
         let r = &self.layout.relation;
@@ -632,9 +778,15 @@ impl Session {
         let (address, target_uid, name) = self.preference_target(kind, target)?;
         let own = matches!(target, PreferenceTarget::Person(person) if person.uid() == owner.uid());
         let human = matches!(target, PreferenceTarget::Person(PersonRef::Staff(member)) if member.is_human);
-        if own || human {
+        if own || human || (tie.is_some() && kind != PreferenceKind::FavouredPerson) {
             return Err(MoveError::PreferenceTarget);
         }
+        let reason = match (kind, tie, target) {
+            (_, Some(tie), _) => tie.code(),
+            (PreferenceKind::FavouredPerson, None, PreferenceTarget::Person(PersonRef::Staff(_))) => STAFF,
+            (PreferenceKind::FavouredPerson, None, _) => TEAM_MATE,
+            _ => u8::from(kind.is_favoured()),
+        };
         let person = self.actual_person(owner)?;
         let held = self.list_of(owner)?.map(|list| list.entries).unwrap_or_default();
         let known = |(index, entry): (usize, &Vec<u8>)| self.preference_at(index, entry);
@@ -645,7 +797,7 @@ impl Session {
             return Err(MoveError::PreferencesFull);
         }
 
-        let entry = new_preference(r, kind, address, strength);
+        let entry = new_preference(r, kind, address, strength, reason);
         let mut program = Program::new();
         program.write(0, &entry);
         program.push(Step::new(function, &[Arg::value(person), Arg::scratch(0), Arg::value(1)]));
@@ -663,7 +815,7 @@ impl Session {
         if !appended {
             return Err(MoveError::Changed { address: added });
         }
-        let after = Preference { index, kind, target: address, target_uid, name, strength };
+        let after = Preference { index, kind, target: address, target_uid, name, strength, tie };
         let patches = addition(list.header, list.begin, &list.entries, index);
         Ok(PreferenceSet { entity: owner.entity(), person: owner.uid(), before: None, after: Some(after), patches })
     }
@@ -861,7 +1013,10 @@ impl Session {
             .then(|| self.process.read_u64(target + self.layout.club.name).ok())
             .flatten()
             .and_then(|text| read_fm_string(&self.process, text));
-        Some(Preference { index, kind, target, target_uid, name, strength: entry[r.value as usize] as i8 })
+        let tie = (kind == PreferenceKind::FavouredPerson)
+            .then(|| PersonTie::ALL.into_iter().find(|tie| tie.code() == entry[REASON]))
+            .flatten();
+        Some(Preference { index, kind, target, target_uid, name, strength: entry[r.value as usize] as i8, tie })
     }
 
     /// How many more entries the block of `list` holds: up to its capacity, or to the end of the allocator's block
@@ -945,12 +1100,12 @@ pub(crate) fn addition(header: u64, begin: u64, entries: &[Vec<u8>], index: usiz
 
 /// The entry of a new preference of `kind` for the club or person at `target`, as the game's own editor makes one
 /// (its person setter's favoured and disliked lists, macOS arm64 `0xCE6C6C`, and the entry's `rrea` and `perm`
-/// properties): the reason 1 for a like and 0 for a dislike, and lasting.
-fn new_preference(r: &RelationLayout, kind: PreferenceKind, target: u64, strength: i8) -> [u8; ENTRY_SIZE] {
+/// properties), lasting, with the reason `reason`.
+fn new_preference(r: &RelationLayout, kind: PreferenceKind, target: u64, strength: i8, reason: u8) -> [u8; ENTRY_SIZE] {
     let mut entry = [0; ENTRY_SIZE];
     let (target_kind, relation) = kind.codes();
     entry[r.target as usize..r.target as usize + 8].copy_from_slice(&target.to_le_bytes());
-    entry[REASON] = u8::from(kind.is_favoured());
+    entry[REASON] = reason;
     entry[r.target_kind as usize] = target_kind;
     entry[r.relation as usize] = relation;
     entry[r.value as usize] = strength.to_le_bytes()[0];
@@ -967,12 +1122,15 @@ mod tests {
     fn a_new_preference_is_the_entry_the_game_s_editor_makes() {
         let r = RelationLayout { target: 0, target_kind: 0x0A, relation: 0x0B, value: 0x0C, size: 0x10 };
         let target = 0x0000_0123_4567_89A0u64;
-        let entry = |kind, strength| new_preference(&r, kind, target, strength);
+        let entry =
+            |kind: PreferenceKind, strength| new_preference(&r, kind, target, strength, u8::from(kind.is_favoured()));
         let with = |tail: [u8; 8]| [target.to_le_bytes(), tail].concat();
         assert_eq!(entry(PreferenceKind::FavouredClub, 100)[..], with([1, 0, 1, 3, 100, 0x4F, 0, 0xFF]));
         assert_eq!(entry(PreferenceKind::DislikedClub, 35)[..], with([0, 0, 1, 4, 35, 0x4F, 0, 0xFF]));
         assert_eq!(entry(PreferenceKind::FavouredPerson, 1)[..], with([1, 0, 3, 1, 1, 0x4F, 0, 0xFF]));
         assert_eq!(entry(PreferenceKind::DislikedPerson, 60)[..], with([0, 0, 3, 2, 60, 0x4F, 0, 0xFF]));
+        let son = new_preference(&r, PreferenceKind::FavouredPerson, target, 100, PersonTie::Son.code());
+        assert_eq!(son[..], with([3, 0, 3, 1, 100, 0x4F, 0, 0xFF]));
     }
 
     #[test]

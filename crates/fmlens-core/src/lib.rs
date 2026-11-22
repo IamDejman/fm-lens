@@ -60,11 +60,11 @@ pub use best::{BestFor, Fit, Weight, board_job};
 pub use board::{BoardPlan, BoardSeat, BoardSwap, SEAT_JOBS};
 pub use calibrate::{ArrayRef, EntityArrays, calibrate};
 pub use clauses::{ClausePlan, ClauseSet, MOST_CLAUSE_AMOUNT, MOST_CLAUSE_CONDITION, RELEASE_CLAUSE};
-pub use club_names::{ClubRenamed, GameNames, MOST_NAME_CHARS, as_name};
+pub use club_names::{ClubRenamed, GameNames, MOST_NAME_CHARS, StadiumRenamed, as_name};
 pub use clubs::{
-    ClubDetails, ClubIndex, ClubSummary, Finances, INCOME_SOURCES, Income, KITS, KitPart, OWNERSHIP, SUPPORTER_MIX,
-    SUPPORTER_TRAITS, StadiumClub, StadiumFilter, StadiumSummary, read_club_details, read_clubs, read_stadiums,
-    stadium_owner,
+    ClubDetails, ClubIndex, ClubSummary, Finances, INCOME_SOURCES, Income, KITS, KitPart, KitPlan, OWNERSHIP,
+    SUPPORTER_MIX, SUPPORTER_TRAITS, StadiumClub, StadiumFilter, StadiumSummary, read_club_details, read_clubs,
+    read_stadiums, stadium_owner,
 };
 pub use coded::Coded;
 pub use cohesion::{Cohered, CohesionPlan, MOST_FAMILIARITY};
@@ -110,8 +110,8 @@ pub use profile::{
 };
 pub use promises::{Promise, PromiseClosed, PromisePlan};
 pub use relations::{
-    HOMEGROWN_RULES, MOST_STRENGTH, PersonRef, Preference, PreferenceKind, PreferencePlan, PreferenceSet,
-    PreferenceTarget, Related, Relation, RelationPlan, RelationSet, Tie, TieTarget,
+    HOMEGROWN_RULES, MOST_STRENGTH, PersonRef, PersonTie, Preference, PreferenceKind, PreferencePlan, PreferenceSet,
+    PreferenceTarget, Related, Relation, RelationPlan, RelationSet, RivalPlan, Tie, TieTarget,
 };
 pub use retirement::{PlannedRetirement, RetirementPlan, RetirementSet};
 pub use scan::{ArrayCandidate, ScanOptions, VtableCount, scan_object_arrays};

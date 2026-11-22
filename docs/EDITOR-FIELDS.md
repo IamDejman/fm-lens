@@ -268,6 +268,7 @@ records cannot be imported through a template.
 | `stadium.seating` | u32 | plain | 0–250000 |
 | `stadium.used` | u32 | plain | 0–250000 |
 | `stadium.expansion` | u32 | plain | 0–250000 |
+| `stadium.name` | text | game text and name file | as a club's name |
 
 ## Nations
 

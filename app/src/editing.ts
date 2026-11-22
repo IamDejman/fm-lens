@@ -26,6 +26,7 @@ import type {
   PlannedCancel,
   MoveTerms,
   Nation,
+  PersonTie,
   PreferenceKind,
   ReleasePreview,
   Promise as PlayerPromise,
@@ -39,6 +40,12 @@ export const editFields = (entity: Entity) => call<EditField[]>("edit_fields", {
 
 /** Freezes the money of the club `club`, or unfreezes it; the clubs whose money is frozen now. */
 export const freezeMoney = (club: number, frozen: boolean) => call<number[]>("freeze_money", { club, frozen });
+
+/** Protects the players of the club `club`, or stops; the clubs whose players are protected now. */
+export const protectSquad = (club: number, on: boolean) => call<number[]>("protect_squad", { club, protected: on });
+
+/** The clubs whose players are protected: healed, unbanned and their unhappiness removed while the app is connected. */
+export const protectedClubs = () => call<number[]>("protected_clubs");
 
 /** The clubs whose money is frozen: while the app is connected, their balance does not go down. */
 export const frozenClubs = () => call<number[]>("frozen_clubs");
@@ -348,6 +355,23 @@ export const addTie = (uid: number, tie: TieKind, target: number, rule?: number)
 export const changePreference = (uid: number, staff: boolean, index: number, strength: number) =>
   call<LoggedChange>("change_preference", { uid, staff, index, strength });
 
+/** Gives the rivalry of the club `club` with the club `rival` the strength `strength`, 1 to 100; without one, ends it. */
+export const changeRival = (club: number, rival: number, strength: number | null) =>
+  call<LoggedChange>("change_rival", { club, rival, strength });
+
+/** Gives a part of a kit of the club `club` the colour `colour` ("#RRGGBB"): its main colour, or for `trim` its trim. */
+export const setKitColour = (club: number, kit: string, part: string, trim: boolean, colour: string) =>
+  call<LoggedChange>("set_kit_colour", { club, kit, part, trim, colour });
+
+/** Gives the stadium the club `club` plays at the name `name`. */
+export const renameStadium = (club: number, name: string) => call<LoggedChange>("rename_stadium", { club, name });
+
+/** Has the club `club` play at the stadium the club `host` plays at. */
+
+/** Makes the club `rival` a rival of the club `club`, at `strength`, 1 to 100. */
+export const addRival = (club: number, rival: number, strength: number) =>
+  call<LoggedChange>("add_rival", { club, rival, strength });
+
 /** What a preference can be pointed at: a club, for a club one, or a player or member of staff, for a person one. */
 export type PreferenceTargetKind = "club" | "player" | "staff";
 
@@ -365,7 +389,8 @@ export const pointPreference = (
 
 /**
  * Adds the club, player or member of staff `targetUid` to the list of the player `uid`, or of the member of staff
- * `uid` for `staff`, as one he favours or dislikes (`kind`) with the strength `strength`, 1 to 100.
+ * `uid` for `staff`, as one he favours or dislikes (`kind`) with the strength `strength`, 1 to 100; a favoured
+ * person as his father, brother, son or relative for `tie`.
  */
 export const addPreference = (
   uid: number,
@@ -374,7 +399,8 @@ export const addPreference = (
   targetKind: PreferenceTargetKind,
   targetUid: number,
   strength: number,
-) => call<LoggedChange>("add_preference", { uid, staff, kind, targetKind, targetUid, strength });
+  tie: PersonTie | null = null,
+) => call<LoggedChange>("add_preference", { uid, staff, kind, targetKind, targetUid, strength, tie });
 
 /** Takes the preference `index` out of the list of the player `uid`, or of the member of staff `uid` for `staff`. */
 export const removePreference = (uid: number, staff: boolean, index: number) =>

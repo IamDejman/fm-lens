@@ -4851,3 +4851,26 @@ probe read every new value back. The game then ran to 7 April.
   run.
 
 Not checked: macOS Intel (Rosetta) and Windows.
+
+## Club and favourite edits on Windows, 21 and 22 November 2026
+
+FM27 27.1.0, Steam build 26620374, Windows, a packaged build of the branch, on
+a disposable copy of a career. The main career's file hash was the same before
+and after.
+
+| Edit | Result |
+| --- | --- |
+| Stadium name | Arsenal's ground renamed: FM's Club Profile and Facilities pages showed the new name at once and after save, quit and reload. The name file held the `STADIUM_NAME_CHANGE` line; renaming back to the original removed the file |
+| Family ties on a favoured person | Father, Brother, Son and Relative written on Arsenal players. FM's Personal page showed "Father", "Brothers", "Sons" and "Relations". A favoured player added with no tie showed "Team-mates" (it showed "Father" before this change). After save, quit and reload FM still showed "Sons" and "Relations", and FM Lens read every tie back, with Son on the manager's own list |
+| Kit colours, rivalries, ownership, season tickets, Heal with fitness, Protect squad, Freeze money with the ticket price | Applied and read back in the packaged build on 21 November |
+
+- FM keeps a player's Personal page as first drawn: a tie changed after the
+  page was opened shows the old reason until the save is reloaded.
+- A tie to the manager is refused on the player's side (the manager cannot be a
+  target), so "my son" is written on the manager's list as Son.
+- The reason shown for a favoured member of staff was not read in FM.
+- Pointing a team at another club's stadium changed what FM Lens read but not
+  FM's Club Profile or Facilities pages, so sharing a stadium is not offered.
+- The ticket price hold was not run against a change by the game.
+
+Not checked: macOS arm64 and macOS Intel (Rosetta).

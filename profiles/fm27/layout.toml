@@ -395,6 +395,7 @@ seating = 0x80            # u32, seats; never above the capacity
 used = 0x84               # u32, the capacity in use when it is limited (Old Trafford 74,310); 0 when it is not
 expansion = 0x8C          # u32, the most it can be expanded to
 owner = 0x90              # pointer to the club that owns it
+uid = 0x0C                # u32, as the game's name change files name a stadium (the Emirates 5114336)
 
 [club_info]
 season_tickets = 0xC0     # u32

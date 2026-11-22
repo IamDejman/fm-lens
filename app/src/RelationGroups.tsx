@@ -3,8 +3,10 @@ import { call } from "./api";
 import {
   addLanguage,
   addPreference,
+  addRival,
   changeLanguage,
   changePreference,
+  changeRival,
   languageChoices,
   pointPreference,
   removeLanguage,
@@ -24,6 +26,7 @@ import type {
   PlayerPage,
   PlayerSummary,
   Preference,
+  PersonTie,
   PreferenceKind,
   StaffPage,
   StaffSummary,
@@ -37,6 +40,15 @@ const PREFERENCE_KINDS: readonly PreferenceKind[] = [
   "dislikedClub",
   "favouredPerson",
   "dislikedPerson",
+];
+
+/** The ways a favoured person is family, in the order they are listed in. */
+const PERSON_TIES: readonly PersonTie[] = ["father", "son", "brother", "relative"];
+
+/** The lists a person's preferences are shown in: each kind, then his family, favoured people the game shows so. */
+const PREFERENCE_LISTS: readonly (readonly [PreferenceKind, PersonTie | null])[] = [
+  ...PREFERENCE_KINDS.map((kind) => [kind, null] as const),
+  ...PERSON_TIES.map((tie) => ["favouredPerson", tie] as const),
 ];
 
 /** The strengths of a preference, and the levels of a language, that the editor writes. */
@@ -220,14 +232,14 @@ export function PreferencesGroup({
     const taken = (club: boolean) =>
       new Set(preferences.filter((p) => isClub(p.kind) === club).map((p) => p.targetUid));
     const takenBy = { club: taken(true), person: taken(false) };
-    return PREFERENCE_KINDS.map((kind) => {
+    return PREFERENCE_LISTS.map(([kind, tie]) => {
       const club = isClub(kind);
       const taken = club ? takenBy.club : takenBy.person;
       return {
-        key: kind,
-        heading: profileText.preferenceKinds[kind],
+        key: tie ?? kind,
+        heading: tie ? profileText.personTies[tie] : profileText.preferenceKinds[kind],
         rows: preferences
-          .filter((preference) => preference.kind === kind)
+          .filter((preference) => preference.kind === kind && preference.tie === tie)
           .map((preference) => {
             const name = preferenceName(preference);
             return {
@@ -243,7 +255,7 @@ export function PreferencesGroup({
         // A new one is as strong as the game's own editor makes it; its row then takes another strength.
         add: adds
           ? targets(person, club, taken, false, (target, uid) =>
-              addPreference(person.uid, person.staff, kind, target, uid, STRENGTHS.most),
+              addPreference(person.uid, person.staff, kind, target, uid, STRENGTHS.most, tie),
             )
           : undefined,
       };
@@ -271,15 +283,15 @@ export function PreferencesGroup({
       </GroupHead>
       {preferences.length === 0 && <p className="note">{profileText.none}</p>}
       <dl className="stats">
-        {PREFERENCE_KINDS.map((kind) => {
+        {PREFERENCE_LISTS.map(([kind, tie]) => {
           const listed = preferences.filter(
-            (preference) => preference.kind === kind,
+            (preference) => preference.kind === kind && preference.tie === tie,
           );
           if (listed.length === 0) {
             return null;
           }
           return (
-            <Fact key={kind} label={profileText.preferenceKinds[kind]}>
+            <Fact key={tie ?? kind} label={tie ? profileText.personTies[tie] : profileText.preferenceKinds[kind]}>
               <span className="preference-list">
                 {listed.map((preference) => {
                   const name = preferenceName(preference);
@@ -393,19 +405,74 @@ export function LanguagesGroup({
   );
 }
 
-/** A club's rivals, strongest first, and the clubs it is linked with; each not there when it has none. */
+/**
+ * A club's rivals, strongest first, with the button that changes how strong a rivalry is, ends one or adds one, and
+ * the clubs it is linked with; each not there when it has none.
+ */
 export function ClubTiesGroups({
+  club,
   rivals,
   links,
 }: {
+  club: { uid: number; name: string };
   rivals: Related[];
   links: Related[];
 }) {
+  const shown = useListShown(rivals.length > 0, club.uid);
+  const sections = (): ValueSection[] => {
+    const taken = new Set([club.uid, ...rivals.map((rival) => rival.uid)]);
+    return [
+      {
+        key: "rivals",
+        heading: null,
+        // A rival is told by its club, not by its place in the list: the list here is in order of strength.
+        rows: rivals.map((rival) => {
+          const name = rival.name ?? profileText.unknownClub;
+          return { index: rival.uid, name, label: <ClubName uid={rival.uid} name={name} />, value: rival.strength ?? 0 };
+        }),
+        add: {
+          label: listText.searchClubs,
+          search: async (query) => {
+            const page = await call<ClubPage>("search_clubs", {
+              query,
+              limit: SEARCH_LIMIT + taken.size,
+              filter: {},
+            });
+            return page.rows
+              .filter((found) => !taken.has(found.uid))
+              .slice(0, SEARCH_LIMIT)
+              .map((found) => ({
+                key: `club:${found.uid}`,
+                label: <ClubLine uid={found.uid} name={found.name} women={found.women} />,
+                choose: () => addRival(club.uid, found.uid, STRENGTHS.most),
+              }));
+          },
+        },
+      },
+    ];
+  };
   return (
     <>
-      {rivals.length > 0 && (
+      {shown && (
         <section className="profile-group">
-          <h3>{profileText.rivals}</h3>
+          <GroupHead title={profileText.rivals}>
+            <ListChange
+              title={listText.rivalsTitle}
+              dialog={(onClose) => (
+                <ValueListDialog
+                  title={profileText.rivals}
+                  who={club.name}
+                  sections={sections()}
+                  {...STRENGTHS}
+                  inputLabel={listText.strengthOf}
+                  save={(rival, strength) => changeRival(club.uid, rival, strength)}
+                  remove={(rival) => changeRival(club.uid, rival, null)}
+                  list={rivals}
+                  onClose={onClose}
+                />
+              )}
+            />
+          </GroupHead>
           <dl className="stats">
             {rivals.map((rival) => (
               <Fact
