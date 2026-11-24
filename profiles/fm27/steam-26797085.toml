@@ -1,0 +1,121 @@
+# FM27 on Steam (app 4530370, build 26797085), 27.1.1, an update of 24 November 2026. A small one: the functions FM Lens
+# uses moved a little and read the same arguments, and most statics stayed where build 26620374 has them (the injury
+# and retirement managers' pointers are 0x20 on, the date for none 0x10 on). Each value is the twin of build 26620374's
+# (steam-26620374.toml; steam-26577676.toml says what each one is and how the game calls it), the functions matched by
+# their bytes in the two DLLs and the statics by the code that loads them. See docs/recon/fm27-steam-26797085.md.
+name = "FM27 Steam build 26797085 (27.1.1)"
+edition = 27
+storefront = "steam"
+
+# The in-game date: 19 July 2028 on the Steam test save, as the game's own screen says.
+current_date = 0x58268E0
+
+# A club's corporate facilities in its finance record: one byte after layout.toml's 0x8A9 since build 26620374 (read on
+# Arsenal, 20, on Windows).
+club_finance_corporate = 0x8AA
+
+# The static pointers to the game's UI, the retirement manager, the transfer manager and the game's record of the
+# loaded save (0x1B0 after the transfer manager's, as before).
+game_ui = 0x587C470
+retirement_manager = 0x586F870
+transfer_manager = 0x586B520
+save_system = 0x586B6D0
+
+# The (begin, end) pair of the match officials' array, with the other arrays: 1,166 on the Steam test save.
+officials = 0x587B930
+
+# The game's block of table pointers, in the order every build keeps: competitions 0x18, nations 0x28, the kinds of
+# injury 0x40 and stadiums 0x80 after the awards.
+awards = 0x587B7B8
+competitions = 0x587B7D0
+nations = 0x587B7E0
+stadiums = 0x587B838
+injury_kinds = 0x587B7F8
+
+# The injury manager, 8 bytes before the retirement manager's.
+injury_manager = 0x586F868
+
+# The game's own functions FM Lens has the game run on its main thread, through the bridge. Same arguments as build
+# 26577676. start_loan, maximise_tactics, sign_free_agent, end_contract and entity_changed were rebuilt with small
+# changes inside; they read the same arguments. withdraw_offers and remove_work_permit are still jumps into the
+# protected code, found through their callers, as were map_new, map_insert and date_type.
+[calls]
+entity_changed = 0x1EFB90
+refresh_views = 0x1EEDB0
+add_injury = 0x2F1F1A0
+set_work_permit = 0xD273E0
+find_work_permit = 0xD8A010
+remove_work_permit = 0xD68260
+withdraw_offers = 0xCEE260
+leave_team = 0xCE7D10
+start_loan = 0xDB8390
+sign_free_agent = 0xDAF4F0
+map_new = 0xC8AB0
+map_drop = 0xA551C0
+refs_drop = 0x153B30
+end_contract = 0xCEA410
+date_type = 0x1029940
+date_value = 0x1029A80
+map_insert = 0xA554C0
+value_drop = 0xA4B7C0
+cancel_offer = 0xCB39A0
+drop_dated_transfer = 0x1AD7000
+ref_copy = 0x7F1290
+ref_assign = 0x7F12B0
+struct_value = 0xA4C030
+maximise_tactics = 0x3366A20
+work_permit_rules = 0x18AFAD0
+needs_work_permit = 0x24F2690
+add_relation = 0x31928D0
+add_language = 0x19A4D30
+# The editor's dispatcher is at 0x26A3370 on this build and its logger at 0x26A35B0.
+appoint_staff = 0x26A2930
+
+# What a STARTING_LOAN starts from: its vtable (its three first slots are the twins of build 26577676's), and the 16
+# bytes the game's editor copies to +0x58, FFFFFFFF 00000000 FFFFFFFF FFFFFFFF as before.
+[starting_loan]
+vtable = 0x4DF4508
+defaults = 0x4DE7E30
+
+# The registry of Value types (its integer type at +0x28), the database table of teams, and the byte the editor's
+# actions check is 1.
+[editor]
+value_types = 0x5878D90
+integer_type = 0x28
+teams = 0x587B850
+enabled = 0x587BEC8
+
+# What appoint_staff reads of the editor object, at the offsets of build 26577676 (the logger's code is unchanged).
+# 0x4CB9D58 is a vtable slot that points at 0x49A2E10, which is `xor eax, eax; ret`.
+[editor_stand_in]
+tracker = 0x3B0
+interface = 0x440
+method = 0x3C0
+returns_null = 0x4CB9D58
+
+# The human manager's flags word: become_unsackable (0x2FA1970) is unchanged, instruction for instruction.
+[human_manager]
+flags = 0x3FC
+person_shift = 0x340
+class = ".?AVHUMAN_NON_PLAYER@db@@"
+class_at = 0x440
+
+# game_plugin.dll as mapped in memory; these two values identify the build.
+[plugin]
+size_of_image = 0x1849A000
+link_timestamp = 0x6AFF57A2
+
+# RVAs in game_plugin.dll of the (begin, end) pointer pairs of the entity arrays: 30,998 players, 21,139 staff and
+# 21,679 clubs on the Steam test save.
+[arrays]
+players = 0x587B8B8
+staff = 0x587B900
+clubs = 0x587BA70
+
+# What needs_work_permit takes, as set_work_permit reads it (that function is unchanged, instruction for
+# instruction): the byte that is 1 while work permits are in force, the static pointer to the rules root, and the
+# date it passes for none (01 00 6C 07, 1 Jan 1900).
+[work_permit_check]
+enabled = 0x58791E3
+rules = 0x5883120
+no_date = 0x4C58BBC

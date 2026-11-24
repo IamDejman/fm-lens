@@ -6,7 +6,7 @@ passed in-game save/reload validation. See ROADMAP.md and PERSONAL-SCOUT.md.
 The current FM27 layouts, macOS and Windows alike, define 171 player fields, 112 staff fields,
 14 club fields, 37 nation fields and 11 official fields. Two staff fields are manager-only bits of the human manager's
 flags word, located only on FM27 Steam builds 26340721 (27.0.0), 26385295 and
-26577676 (both 27.0.1) and 26620374 (27.1.0), on macOS ARM64, macOS Intel and Windows, for an object of class
+26577676 (both 27.0.1), 26620374 (27.1.0) and 26797085 (27.1.1), on macOS ARM64, macOS Intel and Windows, for an object of class
 `db::HUMAN_NON_PLAYER`; every other build and member of staff reads them as
 missing. The checks below ran on build 26340721, ARM64; Windows has apply,
 readback and undo only, and no check of either flag is recorded on 27.0.1.
