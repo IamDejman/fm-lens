@@ -1970,6 +1970,13 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.7": [
+        "Steam'deki FM27 27.1.1'i düzenleyin.",
+        "Kadroyu koru: bağlıyken sakatlık, ceza ve mutsuzluk yok.",
+        "İyileştir artık kondisyonu da geri getirir.",
+        "Stadyumun adını, forma renklerini ve rakipleri değiştirin.",
+        "Sahipliği, sezonluk biletleri ve aile bağlarını düzenleyin.",
+      ],
       "1.1.6": [
         "Bir kulübün ortalama bilet fiyatını düzenleyin.",
         "Game Pass'teki FM27'yi düzenleyin, sürüm 0.9.2524.0.",

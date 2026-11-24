@@ -2118,6 +2118,13 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.7": [
+        "Edit FM27 27.1.1 from Steam.",
+        "Protect squad: no injuries, bans or unhappiness while connected.",
+        "Heal restores fitness too.",
+        "Rename a stadium, change kit colours and rivals.",
+        "Edit ownership, season tickets and family ties.",
+      ],
       "1.1.6": [
         "Edit a club's average ticket price.",
         "Edit FM27 from Game Pass, version 0.9.2524.0.",

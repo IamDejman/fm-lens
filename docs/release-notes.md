@@ -1,41 +1,61 @@
 ## What's new
 
-FM Lens 1.1.6 brings back the What's new notice, which went missing after the last update, and catches you up on everything you may have missed: ticket prices from 1.1.5, and Game Pass editing and faster fixes from 1.1.4. Everything below is new since 1.1.3.
+FM Lens 1.1.7 gets you editing again on FM27 27.1.1, the update Steam sent out on 24 November, and it is the biggest round of club edits so far: rename your stadium, repaint your kits, rewrite your rivalries and keep your squad fit, eligible and happy for as long as FM Lens is connected. Everything below is new since 1.1.6.
 
-### What's new shows again
+### FM27 27.1.1 on Steam: editing is on
 
-- FM Lens updates itself, and the notice under the masthead is where it tells you what changed. After the update to 1.1.5 it stayed hidden. It is back from 1.1.6, and it lists what 1.1.4 and 1.1.5 brought too, since most of you never saw those.
+- Steam moved FM27 to 27.1.1 (build 26797085) on 24 November, and FM Lens opened it read-only. From 1.1.7 it knows this version, so every edit and every move FM makes for FM Lens is back: attributes, contracts, transfers, loans, injuries, club money, staff and nations.
+- We played it through on all three: an Apple Silicon Mac, an Intel build of FM on a Mac, and Windows. Each ran the full set of edits on a copy of a career, saved, quit, reloaded and found every change still there.
 
-### Edit a club's average ticket price (from 1.1.5)
+### Protect squad
 
-- Open any club with a finance record, press Edit beside Average ticket price in its profile, type the new price and press Apply. It takes anything from 1.00 to 1,000.00, to the penny, in the currency you chose in Settings.
-- FM shows your price straight away: we set Arsenal's to 253.75 and FM's own Club Profile read "Average ticket price £254".
-- FM keeps it. The price held through the days that followed, with no recalculation by the game. Undo in Changes puts the old price back.
-- It moves the money. We raised the price five times over at ten clubs and ran the game for twelve days: the clubs that played at home took 11 to 27 percent of their season's gate receipts in that stretch, against 3 percent for a club left alone.
-- It is edited one club at a time, so it stays out of Mass edit. The field name is translated in English, Spanish and Turkish.
-- We played this through on an Apple Silicon Mac with Steam's 27.1.0. Intel Macs and Windows run the same edit and passed our automatic checks, but we have not played it through there yet. Tell us from Report a problem if anything looks wrong.
+- Turn on Protect squad for a team and FM Lens removes injuries, bans and unhappiness as they come, for as long as it is connected. Play a whole season without losing a player to a hamstring or a red card.
+- Turn it off and FM goes back to its own ways. Nothing is locked into the save.
 
-### Game Pass 0.9.2524.0: editing is on (from 1.1.4)
+### Heal restores fitness too
 
-- Game Pass moved FM27 to version 0.9.2524.0 on 17 November, the update Steam calls 27.1.0. FM Lens knows this version, so editing is on.
-- That covers the edits FM Lens makes itself: attributes, CA and PA, contracts, club money, staff and nations. Undo in Changes puts any of them back.
-- As on earlier Game Pass versions, the moves FM makes for FM Lens, such as transfers, loans and healing injuries, are for Steam.
-- We do not own a Game Pass copy, so this version has not been played through by us the way Steam versions are. Edit a copy of your save, and tell us from Report a problem if anything looks wrong.
+- Heal used to clear a player's injuries and leave him short of match fitness. Now it also restores his fitness and condition, so he is ready to play, not just out of the treatment room.
+- It works the same for one player and for Heal everyone on a team.
 
-### Back to editing sooner after an FM update (from 1.1.4)
+### Freeze money holds the ticket price
 
-- When FM updates to a version FM Lens does not know yet, FM Lens opens your career read-only. It then looks for its own update every 30 minutes while it stays open, so the fix reaches you without restarting the app. Press Relaunch when it appears.
-- The read-only notice tells you what happens next: if you gave your email, we email you when your version works.
+- Freeze money already stopped a club's balance and transfer budget going down. It now holds the average ticket price too, so the price you set stays the price while FM Lens is connected.
 
-### What FM Lens counts (from 1.1.4)
+### Rename your stadium
 
-- To support new game versions faster, FM Lens counts a few more things, with no name, no save and nothing about your career: that a career opened read-only and on which game version, which version of the game's files it found, whether its own checks passed there, and that an update was offered or installed. The download page counts which link brought a visitor, when the link says so.
-- The full list is in the README and on getfmlens.com/privacy. Settings turns all of it off.
+- Open a club, edit its stadium's name, and FM shows the new name at once on the Club Profile and Facilities pages. It is still there after you save, quit and reload.
+- Rename it back to the original and FM Lens tidies up after itself.
+
+### Kit colours
+
+- Change the colours of a club's home, away and third kits from its profile.
+
+### Rivalries
+
+- Change a club's rivals, end a rivalry or add a new one. Make the derby you always wanted.
+
+### Ownership and season tickets
+
+- Edit a club's ownership type and its number of season tickets.
+
+### Family ties
+
+- When you add a favoured person to a player or a manager, choose how they are tied: father, brother, son or relative. FM's Personal page shows them under Father, Brothers, Sons and Relations.
+- Fixed: a favoured player added with no tie showed in FM as a father. He now shows as a team-mate.
+
+### How the new club edits were tested
+
+- The stadium name, kit colours, rivalries, ownership, season tickets, family ties and Protect squad were played through on Windows with Steam's 27.1.0. The stadium name and family ties were also checked on FM's own screens after save, quit and reload.
+- Macs run the same edits and passed our automatic checks, but we have not played these through there yet. Edit a copy of your save, and tell us from Report a problem if anything looks wrong.
+
+### Windows 11: if the installer is blocked
+
+- On some Windows 11 PCs, Smart App Control blocks the FM Lens installer and offers no Run anyway button. The download page on getfmlens.com now says where to turn it off, and warns that some PCs cannot turn it back on without resetting Windows.
 
 ### Updating
 
-- Open FM Lens and it fetches 1.1.6 by itself. Press Relaunch to update when it appears, or download 1.1.6 from getfmlens.com.
-- Every supported game version keeps working: 27.1.0, 27.0.1 and 27.0.0 on Steam, and 0.9.2524.0 and 0.9.2435.0 on Game Pass.
+- Open FM Lens and it fetches 1.1.7 by itself. Press Relaunch to update when it appears, or download 1.1.7 from getfmlens.com.
+- Every supported game version keeps working: 27.1.1, 27.1.0, 27.0.1 and 27.0.0 on Steam, and 0.9.2524.0 and 0.9.2435.0 on Game Pass.
 - As always, edit a copy of your save.
 
 FM Lens is free and open source, and it will stay that way. A [star on GitHub](https://github.com/IamDejman/fm-lens) encourages me.
