@@ -2000,6 +2000,13 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.7": [
+        "Edita FM27 27.1.1 de Steam.",
+        "Proteger la plantilla: sin lesiones, sanciones ni descontento mientras esté conectado.",
+        "Curar también recupera la forma física.",
+        "Cambia el nombre del estadio, los colores de las equipaciones y los rivales.",
+        "Edita la propiedad, los abonos de temporada y los lazos familiares.",
+      ],
       "1.1.6": [
         "Edita el precio medio de la entrada de un club.",
         "Edita FM27 de Game Pass, versión 0.9.2524.0.",
