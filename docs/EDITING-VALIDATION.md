@@ -3301,6 +3301,72 @@ Notes:
 - The main career on the Mac was not opened; its four files hash the same as
   before the run (`3dc9a2b7...`, `b12bbc02...`, `9bfa8ecf...`, `ea53c416...`).
 
+## FM27 Steam build 26797085, 27.1.1 (24 November 2026)
+
+Steam updated FM27 on 24 November to 27.1.1, build 26797085. A small update:
+the code moved a little on every platform, so every function address changed
+and FM Lens opened the build read-only. The statics moved by a fixed distance
+on macOS and all but three stayed put on Windows; the object layouts hold. The
+three new profiles are in `profiles/fm27/`; how they were made is in
+[recon/fm27-steam-26797085.md](recon/fm27-steam-26797085.md). This is the run
+of [PATCH-VALIDATION.md](PATCH-VALIDATION.md) on that build.
+
+Packaged FM Lens 1.1.6 built from the working tree of
+`Iamdejman/fm27-steam-26797085`, driven through UI Automation on Windows and
+the accessibility API on the Mac. Every edit was read back with `fmlens-probe`
+of the same tree. Copies of a career only (`FM-Lens-Copy-2026-11-24` on each
+machine: Arsenal, 19 July 2028 on Windows and 8 April 2028 on the Mac).
+
+What the run found: nothing to change. The profiles are as they were first
+written, on all three platforms.
+
+Read checks on Windows: `fmlens-probe health` named the build "FM27 Steam build
+26797085 (27.1.1)" and passed 12 of 12; `info` gave game_plugin.dll size
+`0x1849a000`, timestamp `0x6aff57a2`; the arrays sit where the profile says
+(players `+0x587b8b8` 30,998, staff `+0x587b900` 21,139, clubs `+0x587ba70`
+21,679).
+
+| Check | Apple Silicon | Intel (Rosetta) | Windows |
+|---|---|---|---|
+| Profile matched, data loaded | Pass. "FM27 Steam build 26797085 (27.1.1, macOS, Apple silicon)", health 12 of 12, `scripts/check-build.sh` 15 of 15; 31,216 players, Arsenal, 8 Apr 2028 | Pass. "FM27 Steam build 26797085 (27.1.1, macOS, Intel)", health 12 of 12, `scripts/check-build.sh` 15 of 15, FM and FM Lens both translated; the save's name read | Pass. 30,998 players, Arsenal, 19 Jul 2028 |
+| Player attribute | Pass. Bukayo Saka Corners 17 to 15 (stored 75) | Pass. Saka Corners 15 to 13 (stored 65) | Pass. Bukayo Saka Corners 18 to 17 (stored 85) |
+| Contract wage | Pass. Saka 300,000 to 315,000 | Pass. Saka 315,000 to 305,000 | Pass. Saka 310,000 to 320,000 |
+| Add injury, then Heal | Pass. Saka, abdominal strain from 8 Apr 2028, back 28 Apr to 3 May; Heal: none | Pass. Saka, abdominal strain from 8 Apr 2028, back 28 Apr to 3 May; Heal: none | Pass. Saka, abdominal strain from 19 Jul 2028, back 7 to 12 Aug; Heal: none |
+| Work permit Revoke, then Request | Pass. Gabriel: none, then England | Pass. Gabriel: none, then England | Pass. Gabriel: none, then England |
+| Loan, then End loan | Pass. Gabriel to Barcelona; back at Arsenal | Pass. Gabriel to Barcelona; back at Arsenal | Pass. Gabriel to Barcelona; back at Arsenal |
+| Transfer club to club | Pass. Gabriel, Arsenal to Manchester City for 40,000,000; Arsenal's balance 13,401,296 to 46,430,592, transfer budget 295,394,688 to 333,594,688 | Pass. Gabriel, Arsenal to Manchester City for 30,000,000; balance 59,980,000 to 80,425,865, transfer budget 333,594,688 to 362,394,689 | Pass. Gabriel, Arsenal to Manchester City for 40,000,000; balance 310,000,000 to 343,470,966, transfer budget 513,238,269 to 551,438,269 |
+| Release | Pass. Gabriel a free agent, no contract | Pass. Gabriel a free agent | Pass. Gabriel a free agent, no contract |
+| Sign later, then Cancel transfer | Pass. Arsenal on 1 Jul 2028 (offer 111, 124 to 125 future transfers); cancelled, 124 again | Pass. Arsenal on 1 Jul 2028 (offer 111, 124 to 125); cancelled, 124 again | Pass. Arsenal on 2 Aug 2028 (offer 4747, 8 to 9 future transfers); cancelled, 8 again |
+| Sign now | Pass. Gabriel at Arsenal, 210,000 a week to 30 Jun 2031 | Pass. Gabriel at Arsenal, 215,000 a week to 30 Jun 2032 | Pass. Gabriel at Arsenal, 215,000 a week to 30 Jun 2031 |
+| Club balance | Pass. Arsenal to 60,000,000; corporate facilities read 20 | Pass. Arsenal to 65,000,000; corporate facilities read 20 | Pass. Arsenal 343,470,966 to 330,000,000; corporate facilities read 20 |
+| Max tactics | Pass. The U21s (team 28112), 28 changes, from about 1000 to 2500 up to 10000 | Pass. The U18s (team 28113), 17 changes, up to 10000 | Pass. The U21s (team 28112), 17 changes, from about 1000 to 10000 |
+| Lift bans, Heal, Refresh fitness, Remove unhappiness | Pass. The U21s: Heal 3, Lift bans 1, Refresh fitness 63 changes. First team: Heal 2, Lift bans 3, Remove unhappiness 1 player (4 changes) | Pass. Arsenal: Heal 1, Refresh fitness 60 changes. Liverpool: Lift bans 3, Remove unhappiness 12 players (45 changes) | Pass. The U21s: Refresh fitness 44 changes. First team: Heal 1. Borussia Dortmund: Lift bans 2, Remove unhappiness 2 players (8 changes) |
+| Staff attribute | Pass. Nicolas Jover Fitness 3 to 6 (stored 30) | Pass. Jover Fitness 6 to 8 (stored 40) | Pass. Nicolas Jover Fitness 9 to 11 (stored 55) |
+| Nation field | Pass. England youth rating 135 to 137 | Pass. England youth rating 137 to 138 | Pass. England youth rating 140 to 141 |
+| Undo in Changes | Pass. Jover Attacking 14 to 12, undone, 14 again (stored 70), "140 changes · 1 undone" | Pass. Jover Attacking 14 to 12, undone, 14 again, "34 changes · 1 undone" | Pass. Jover Attacking 14 to 12, undone, 14 again (stored 70), "108 changes · 1 undone" |
+| FM shows it | Pass. News on the Portal: "Gabriel deal falls through"; its transfer budget reads £333M, as the probe does | Pass. News on the Portal: "Gabriel deal falls through"; its transfer budget reads £362M, as the probe does | Pass. The squad screen lists 25 senior players, all fit; Gabriel is in the XI |
+| FM kept running | Pass. Running after Max tactics, the last edit and the save | Pass. Running after Max tactics, the last edit and the save | Pass. `fm` responding after Max tactics, the last edit and the save |
+| Saved under a new name, reloaded | Pass. Saved as `FM-Lens-26797085-Mac`, FM quit, the save loaded in FM under Rosetta: Corners 15, wage 315,000, Saka not injured, Gabriel at Arsenal on 210,000 to 30 Jun 2031, 124 future transfers, balance 60,000,000, Jover Fitness 6 and Attacking 14, youth rating 137, U21 tactics at 10000; health 12 of 12 | Pass. Saved as `FM-Lens-26797085-Mac-Intel`, FM quit and started natively through Steam, that save loaded: Corners 13, wage 305,000, Saka not injured, Gabriel at Arsenal on 215,000 to 30 Jun 2032, 124 future transfers, balance 65,000,000, Jover Fitness 8 and Attacking 14, youth rating 138, U18 tactics at 10000; health 12 of 12 | Pass. Saved as `FM-Lens-26797085-Windows`, FM quit and started again (process 3208), that save loaded: Corners 17, wage 320,000, Saka not injured, Gabriel at Arsenal on 215,000 to 30 Jun 2031, 8 future transfers, Jover Fitness 11 and Attacking 14, youth rating 141, balance 330,000,000, corporate 20, U21 tactics at 10000, no bans at Dortmund; health 12 of 12 |
+
+Notes:
+
+- The Windows test career came with Freeze money and Protect squad on for
+  Arsenal from an earlier session. Protect squad removed the first added injury
+  at once; both were turned off and the run started again from there.
+- On the Mac the packaged app installs its bridge when it starts, and FM loads
+  the bridge when FM starts. FM was already running an older bridge, so FM Lens
+  hid Add injury and the other actions until FM was restarted. Every row above
+  is from after that restart.
+- Apple Silicon ran first and saved `FM-Lens-26797085-Mac`; the Intel run
+  loaded that save with FM and FM Lens both under Rosetta (`arch -x86_64`), so
+  its starting values are the Apple Silicon run's. Max tactics ran on the U18s
+  there because the U21s were already at 10000.
+- On Intel `transfer_manager`, `save_system`, `map_insert` and
+  `maximise_tactics` were placed with the least evidence (see the recon note).
+  All four held in the game.
+- The main careers were not opened. The one on the box hashes the same as
+  before the run (`AF20CBAC...`), as do all nine career files on the Mac.
+
 ## 0.7.8 on the Mac (12 November 2026)
 
 The FM checks owed by PR 244 (sorting, filters, club Nation, stadium owner,

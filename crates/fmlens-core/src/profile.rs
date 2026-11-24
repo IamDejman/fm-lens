@@ -1565,6 +1565,7 @@ const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/steam-26385295.toml"),
     include_str!("../../../profiles/fm27/steam-26577676.toml"),
     include_str!("../../../profiles/fm27/steam-26620374.toml"),
+    include_str!("../../../profiles/fm27/steam-26797085.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26227640-macos-arm64.toml"),
     include_str!("../../../profiles/fm27/steam-26340721-macos-x86_64.toml"),
@@ -1575,6 +1576,8 @@ const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/steam-26577676-macos-arm64.toml"),
     include_str!("../../../profiles/fm27/steam-26620374-macos-x86_64.toml"),
     include_str!("../../../profiles/fm27/steam-26620374-macos-arm64.toml"),
+    include_str!("../../../profiles/fm27/steam-26797085-macos-x86_64.toml"),
+    include_str!("../../../profiles/fm27/steam-26797085-macos-arm64.toml"),
 ];
 
 /// The built-in object layout for `edition`, if there is one.
@@ -1717,7 +1720,7 @@ mod tests {
             assert_eq!(profile.stadiums, Some(awards + 0x80), "{}", profile.name);
             placed += 1;
         }
-        assert_eq!(placed, 12);
+        assert_eq!(placed, 15);
         for (layout, items, nation, stadium) in [
             (parse::<Layout>(WINDOWS), 0x80, ".?AVNATION@db@@", ".?AVSTADIUM@db@@"),
             (parse::<Layout>(MACOS), 0x88, "N2db6NATIONE", "N2db7STADIUME"),
@@ -1863,7 +1866,10 @@ mod tests {
         // 27.1.0 moved the code and kept the layout.
         let arm64_3 = [0x86, 0x9F, 0x5F, 0x90, 0xFD, 0x89, 0x36, 0x06, 0x8A, 0xE4, 0x2B, 0x4A, 0x7F, 0x02, 0xF3, 0x24];
         let intel_3 = [0x86, 0x46, 0x25, 0xAF, 0x9A, 0xA9, 0x32, 0x54, 0x8E, 0xC5, 0x47, 0xE9, 0xD4, 0x86, 0x13, 0x2A];
-        let traced = [arm64, intel, arm64_1, intel_1, arm64_2, intel_2, arm64_3, intel_3]
+        // So did 27.1.1.
+        let arm64_4 = [0xF5, 0x3E, 0xAD, 0x40, 0xBD, 0x51, 0x30, 0x7F, 0x9B, 0xD8, 0xBA, 0x24, 0x57, 0x7B, 0xF2, 0xAF];
+        let intel_4 = [0xD1, 0xD8, 0x1C, 0x1A, 0x44, 0xAD, 0x33, 0x42, 0xB6, 0xD4, 0xB8, 0xDD, 0xF2, 0xEA, 0x6B, 0x61];
+        let traced = [arm64, intel, arm64_1, intel_1, arm64_2, intel_2, arm64_3, intel_3, arm64_4, intel_4]
             .map(|uuid| PluginFingerprint::MachO { uuid });
         for plugin in &traced {
             let profile = profile_for(*plugin).expect("27.0.0 or 27.0.1 on macOS");
@@ -1903,10 +1909,16 @@ mod tests {
             profile_for(windows_3).expect("27.1.0 on Windows").human_manager,
             profile_for(windows).expect("27.0.0 on Windows").human_manager
         );
+        // 27.1.1 moved it a little; it is still the same routine.
+        let windows_4 = PluginFingerprint::Pe { size_of_image: 0x1849_A000, link_timestamp: 0x6AFF_57A2 };
+        assert_eq!(
+            profile_for(windows_4).expect("27.1.1 on Windows").human_manager,
+            profile_for(windows).expect("27.0.0 on Windows").human_manager
+        );
         for text in BUILDS {
             let profile: BuildProfile = parse(text);
             if !traced.contains(&profile.plugin)
-                && ![windows, windows_1, windows_2, windows_3].contains(&profile.plugin)
+                && ![windows, windows_1, windows_2, windows_3, windows_4].contains(&profile.plugin)
             {
                 assert!(profile.human_manager.is_none(), "{}", profile.name);
             }
@@ -2061,6 +2073,72 @@ mod tests {
         let (old, new) = (old.calls.expect("build 26577676's calls"), new.calls.expect("27.1.0's calls"));
         assert_eq!(new.all().len(), old.all().len());
         assert_eq!(new.appoint_staff, Some(0x26A_24D0));
+    }
+
+    /// 27.1.1 (Steam build 26797085, 24 November 2026) on macOS: a small update. Each half keeps every value 27.1.0
+    /// has, and the block of table pointers and arrays moved as one: 0xFFF0 on in the arm64 half, 0x6030 back in
+    /// the Intel one.
+    #[test]
+    fn steam_27_1_1_on_macos_keeps_every_value_of_27_1_0() {
+        let old_arm64 =
+            [0x86, 0x9F, 0x5F, 0x90, 0xFD, 0x89, 0x36, 0x06, 0x8A, 0xE4, 0x2B, 0x4A, 0x7F, 0x02, 0xF3, 0x24];
+        let old_intel =
+            [0x86, 0x46, 0x25, 0xAF, 0x9A, 0xA9, 0x32, 0x54, 0x8E, 0xC5, 0x47, 0xE9, 0xD4, 0x86, 0x13, 0x2A];
+        let arm64 = [0xF5, 0x3E, 0xAD, 0x40, 0xBD, 0x51, 0x30, 0x7F, 0x9B, 0xD8, 0xBA, 0x24, 0x57, 0x7B, 0xF2, 0xAF];
+        let intel = [0xD1, 0xD8, 0x1C, 0x1A, 0x44, 0xAD, 0x33, 0x42, 0xB6, 0xD4, 0xB8, 0xDD, 0xF2, 0xEA, 0x6B, 0x61];
+        let profile = |uuid| profile_for(PluginFingerprint::MachO { uuid }).expect("a macOS build");
+        // How far the block of table pointers and arrays moved, and the managers' pointers, in each half.
+        for ((new, old), (tables, managers)) in
+            [(arm64, old_arm64), (intel, old_intel)].into_iter().zip([(0xFFF0_i64, 0x1_0000_i64), (-0x6030, -0x6020)])
+        {
+            let (new, old) = (profile(new), profile(old));
+            let moved = |at: u64, by: i64| at.wrapping_add_signed(by);
+            assert!(new.name.contains("26797085"), "{}", new.name);
+            assert_eq!(new.arrays.players, moved(old.arrays.players, tables));
+            assert_eq!(new.arrays.staff, moved(old.arrays.staff, tables));
+            assert_eq!(new.arrays.clubs, moved(old.arrays.clubs, tables));
+            assert_eq!(new.officials, old.officials.map(|at| moved(at, tables)));
+            assert_eq!(new.awards, old.awards.map(|at| moved(at, tables)));
+            assert_eq!(new.nations, old.nations.map(|at| moved(at, tables)));
+            assert_eq!(new.stadiums, old.stadiums.map(|at| moved(at, tables)));
+            assert_eq!(new.injury_manager, old.injury_manager.map(|at| moved(at, managers)));
+            assert_eq!(new.retirement_manager, old.retirement_manager.map(|at| moved(at, managers)));
+            assert_eq!(new.current_date, old.current_date.map(|at| moved(at, managers)));
+            assert_eq!(new.human_manager, old.human_manager);
+            assert_eq!(new.starting_loan.is_some(), old.starting_loan.is_some());
+            assert_eq!(new.editor.is_some(), old.editor.is_some());
+            assert_eq!(new.work_permit_check.is_some(), old.work_permit_check.is_some());
+            let (new, old) = (new.calls.expect("27.1.1's calls"), old.calls.expect("27.1.0's calls"));
+            assert_eq!(new.all().len(), old.all().len());
+            assert_eq!(new.add_relation.is_some(), old.add_relation.is_some());
+            assert_eq!(new.add_language.is_some(), old.add_language.is_some());
+        }
+    }
+
+    /// 27.1.1 on Windows (Steam build 26797085): the functions moved, the statics hardly did. The arrays, the table
+    /// pointers and the date are where 27.1.0 has them; the injury and retirement managers' pointers are 0x20 on.
+    #[test]
+    fn steam_27_1_1_on_windows_keeps_the_statics_of_27_1_0() {
+        let old = PluginFingerprint::Pe { size_of_image: 0x1887_8000, link_timestamp: 0x6AF5_C68F };
+        let new = PluginFingerprint::Pe { size_of_image: 0x1849_A000, link_timestamp: 0x6AFF_57A2 };
+        let (old, new) = (profile_for(old).expect("27.1.0"), profile_for(new).expect("27.1.1"));
+        assert!(new.name.contains("26797085"), "{}", new.name);
+        assert_eq!(format!("{:?}", new.arrays), format!("{:?}", old.arrays));
+        assert_eq!(new.current_date, old.current_date);
+        assert_eq!(new.officials, old.officials);
+        assert_eq!(new.awards, old.awards);
+        assert_eq!(new.nations, old.nations);
+        assert_eq!(new.stadiums, old.stadiums);
+        assert_eq!(new.transfer_manager, old.transfer_manager);
+        assert_eq!(new.save_system, old.save_system);
+        assert_eq!(new.injury_manager, old.injury_manager.map(|rva| rva + 0x20));
+        assert_eq!(new.retirement_manager, old.retirement_manager.map(|rva| rva + 0x20));
+        assert_eq!(new.human_manager, old.human_manager);
+        assert!(new.editor_stand_in.is_some());
+        let (old, new) = (old.calls.expect("27.1.0's calls"), new.calls.expect("27.1.1's calls"));
+        assert_eq!(new.all().len(), old.all().len());
+        assert_ne!(new.entity_changed, old.entity_changed);
+        assert_eq!(new.appoint_staff, Some(0x26A_2930));
     }
 
     /// 27.0.1 on Windows: another DLL (size and link time), every static in the block of table pointers 0x11B040 further.
