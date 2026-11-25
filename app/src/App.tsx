@@ -284,7 +284,8 @@ function App() {
     [run, readAgain, detect],
   );
 
-  // The Rust side reads the game again by itself once FM has moved its lists, e.g. on loading another save.
+  // The Rust side reads the game again by itself once FM has moved its lists, e.g. on loading another save, or added
+  // players to them, e.g. a youth intake.
   useEffect(() => {
     if (!inTauri) {
       return;

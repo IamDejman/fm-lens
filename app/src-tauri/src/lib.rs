@@ -14,7 +14,7 @@ use fmlens_core::{
     CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
     Field, Fit, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameNames, GameRelease,
     GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, KitPlan,
-    Language, LanguageChoice, LanguageSet, Lifted, Listed, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms,
+    Language, LanguageChoice, LanguageSet, Lifted, Listed, Lists, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms,
     MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter,
     OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, PersonTie, Picture, Planned,
     PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
@@ -90,9 +90,28 @@ const PROTECT_EVERY: u32 = 5;
 /// How long the hold of frozen values waits after failing to read the game again before it tries once more.
 const READ_AGAIN_RETRY: Duration = Duration::from_secs(30);
 
-/// The event that tells the window the game was read again without it (see `read_again_once_moved`), with what a
+/// The least time between two reads of the game for players FM has added: on holiday it adds some day after day, and
+/// reading takes a while.
+const READ_AGAIN_REST: Duration = Duration::from_secs(30);
+
+/// The event that tells the window the game was read again without it (see `read_again_once_changed`), with what a
 /// Reload returns.
 const READ_AGAIN_EVENT: &str = "game-read-again";
+
+/// Tells when FM has finished changing its lists: it adds a day's new players one after another (a youth intake,
+/// say), and a read in the middle would miss the rest.
+#[derive(Default)]
+struct Settling(Option<Lists>);
+
+impl Settling {
+    /// `changed` is the game's lists now, while they are not as the connection read them (see
+    /// `Session::changed_lists`). True once they are as they were at the look before.
+    fn settled(&mut self, changed: Option<Lists>) -> bool {
+        let settled = changed.is_some() && changed == self.0;
+        self.0 = changed;
+        settled
+    }
+}
 
 /// The attributes of a player that are at their best at 1, not at 20.
 const LOWER_IS_BETTER: [&str; 2] = ["attribute.injury_proneness", "attribute.dirtiness"];
@@ -4018,20 +4037,23 @@ fn load_again(pid: u32) -> Result<Connection, Failure> {
     Ok(connection)
 }
 
-/// Reads the game again once FM has moved its lists, which stops every write, e.g. on loading another save: so that
-/// the lists follow the game and what is frozen stays held. As Reload does, without waiting for the window, which is
-/// told as it is of a Reload. Left alone when the connection was read again or let go meanwhile.
-fn read_again_once_moved(app: &tauri::AppHandle, pid: u32) -> Result<(), Failure> {
+/// Reads the game again once FM has changed its lists: moved them, which stops every write, e.g. on loading another
+/// save, or added players to them where they are, as a youth intake does. So that the lists follow the game and what
+/// is frozen stays held. As Reload does, without waiting for the window, which is told as it is of a Reload. Left
+/// alone when the connection was read again or let go meanwhile.
+fn read_again_once_changed(app: &tauri::AppHandle, pid: u32) -> Result<(), Failure> {
     let path = app.state::<FrozenFile>().0.clone();
     let mut connection = load_again(pid)?;
     let state = app.state::<AppState>();
     let mut guard = state.0.lock()?;
-    let Some(old) = guard.as_mut().filter(|old| old.session.process.pid() == pid && old.stale()) else {
+    let Some(old) =
+        guard.as_mut().filter(|old| old.session.process.pid() == pid && old.session.changed_lists().is_some())
+    else {
         return Ok(());
     };
     let (refrozen, same_game) = connection.take_frozen(old, path.as_deref());
     connection.carry_log(std::mem::take(&mut old.log), same_game);
-    eprintln!("FM Lens read the game again after FM moved its lists (same game: {same_game}).");
+    eprintln!("FM Lens read the game again after FM changed its lists (same game: {same_game}).");
     connection.hold_frozen();
     let info = connection.reload_info(refrozen, same_game);
     app.state::<Histories>().record(&connection);
@@ -6501,27 +6523,42 @@ pub fn run() {
             bridge::refresh(app.handle());
             scout_card::start(app.handle());
             // Frozen money and attributes: every little while, what the game took from them is put back. Once FM has
-            // moved its lists, which stops every write, the game is read again, frozen or not.
+            // moved its lists, which stops every write, the game is read again, frozen or not. So it is once FM has
+            // added players to them, a youth intake say: until then no list or squad of the app's has them.
             let handle = app.handle().clone();
             std::thread::spawn(move || {
-                let mut next_read = Instant::now();
+                let (mut next_read, mut rested) = (Instant::now(), Instant::now());
+                let mut settling = Settling::default();
                 loop {
                     std::thread::sleep(FREEZE_EVERY);
                     let state = handle.state::<AppState>();
-                    let stale = match state.0.lock().as_deref_mut() {
-                        Ok(Some(connection)) if connection.stale() => Some(connection.session.process.pid()),
-                        Ok(Some(connection)) if !connection.frozen.is_empty() => {
-                            connection.hold_frozen();
-                            None
+                    let behind = match state.0.lock().as_deref_mut() {
+                        Ok(Some(connection)) => {
+                            let moved = connection.stale();
+                            if !moved && !connection.frozen.is_empty() {
+                                connection.hold_frozen();
+                            }
+                            let settled = settling.settled(connection.session.changed_lists());
+                            (moved || settled).then(|| (connection.session.process.pid(), moved))
                         }
                         _ => None,
                     };
-                    if let Some(pid) = stale
-                        && Instant::now() >= next_read
-                        && let Err(err) = read_again_once_moved(&handle, pid)
+                    let now = Instant::now();
+                    if let Some((pid, moved)) = behind
+                        && now >= next_read
+                        && (moved || now >= rested)
                     {
-                        eprintln!("FM Lens could not read the game again after FM moved its lists: {}", err.message);
-                        next_read = Instant::now() + READ_AGAIN_RETRY;
+                        match read_again_once_changed(&handle, pid) {
+                            // Longer where reading the game is slow, in a large database.
+                            Ok(()) => rested = Instant::now() + READ_AGAIN_REST.max(now.elapsed() * 10),
+                            Err(err) => {
+                                eprintln!(
+                                    "FM Lens could not read the game again after FM changed its lists: {}",
+                                    err.message
+                                );
+                                next_read = Instant::now() + READ_AGAIN_RETRY;
+                            }
+                        }
                     }
                 }
             });
@@ -7053,6 +7090,23 @@ mod tests {
         let json = |permanent| serde_json::to_value(preview(permanent)).expect("a preview serializes");
         assert_eq!(json(true), serde_json::json!({ "uid": 7, "name": "Fulham", "permanent": true }));
         assert_eq!(json(false), serde_json::json!({ "uid": 7, "name": "Fulham" }));
+    }
+
+    #[test]
+    fn changed_lists_are_read_once_they_settle() {
+        let lists = |players: u64| -> Lists { [Some((0x1000, players)), Some((0x2000, 5)), None] };
+        let mut settling = Settling::default();
+        // As the connection read them.
+        assert!(!settling.settled(None));
+        // FM is still adding players.
+        assert!(!settling.settled(Some(lists(10))));
+        assert!(!settling.settled(Some(lists(12))));
+        // As at the look before, and still so while the read waits its turn.
+        assert!(settling.settled(Some(lists(12))));
+        assert!(settling.settled(Some(lists(12))));
+        // Read again: a later change starts over.
+        assert!(!settling.settled(None));
+        assert!(!settling.settled(Some(lists(12))));
     }
 }
 

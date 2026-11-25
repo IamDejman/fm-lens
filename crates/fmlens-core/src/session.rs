@@ -108,6 +108,14 @@ pub enum ArraySource {
     ScanOnly,
 }
 
+/// Where the game keeps its players, staff and clubs, and how many of each; none for a list that cannot be read.
+pub type Lists = [Option<(u64, u64)>; 3];
+
+fn lists_now(process: &Process, plugin: &Module, arrays: &EntityArrays) -> Lists {
+    [&arrays.players, &arrays.staff, &arrays.clubs]
+        .map(|array| array.as_ref().and_then(|array| array.locate(process, plugin).ok()))
+}
+
 /// A game process with its data located and ready to read.
 pub struct Session {
     pub process: Process,
@@ -118,9 +126,9 @@ pub struct Session {
     pub profile: Option<BuildProfile>,
     pub layout: Layout,
     pub arrays: EntityArrays,
-    /// Array storage when this session was attached. A career reload invalidates
-    /// cached targets, undo records and freezes even when it reuses the same UIDs.
-    array_storage: [Option<u64>; 3],
+    /// Array storage when this session was attached, and how many each array held. A career
+    /// reload invalidates cached targets, undo records and freezes even when it reuses the same UIDs.
+    array_storage: Lists,
     /// The class of the full club finance record, found the first time it is needed.
     finance_class: OnceLock<Option<u64>>,
     pub(crate) refresh_support: crate::refresh::OptionalRefresh,
@@ -152,8 +160,7 @@ impl Session {
         if arrays.players.is_none() {
             return Err(SessionError::PlayersNotFound);
         }
-        let array_storage = [&arrays.players, &arrays.staff, &arrays.clubs]
-            .map(|array| array.as_ref().and_then(|array| array.locate(&process, &plugin).ok()).map(|(begin, _)| begin));
+        let array_storage = lists_now(&process, &plugin, &arrays);
         Ok(Self {
             process,
             game,
@@ -183,10 +190,16 @@ impl Session {
 
     /// Fails closed if FM has replaced its entity storage or can no longer be read.
     pub fn current_career(&self) -> bool {
-        let current = [&self.arrays.players, &self.arrays.staff, &self.arrays.clubs].map(|array| {
-            array.as_ref().and_then(|array| array.locate(&self.process, &self.plugin).ok()).map(|(begin, _)| begin)
-        });
-        current == self.array_storage
+        let begins = |lists: Lists| lists.map(|list| list.map(|(begin, _)| begin));
+        begins(lists_now(&self.process, &self.plugin, &self.arrays)) == begins(self.array_storage)
+    }
+
+    /// The game's lists as they are now, once they are no longer as this session found them: FM has moved them, or
+    /// has added to them or taken from them where they are. A youth intake adds its players that way, which leaves
+    /// the career current, but what was read before has none of them. None while the lists are as they were.
+    pub fn changed_lists(&self) -> Option<Lists> {
+        let now = lists_now(&self.process, &self.plugin, &self.arrays);
+        (now != self.array_storage).then_some(now)
     }
 
     /// What the checks found on this game, worked out the first time it is asked for.
