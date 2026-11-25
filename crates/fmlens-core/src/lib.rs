@@ -119,7 +119,7 @@ pub use scouting::{
     Development, League, Likeness, PROMISING_AGE, Place, REPORT_ROLES, ROLES, RoleRating, Scores, ScoutReport,
     SimilarTo, TOP_COUNT, TopKind, TopPlaces, TopScope, WITHIN, history, scores, scout_report, top_places, top_players,
 };
-pub use session::{ArraySource, Session, SessionError, find_game};
+pub use session::{ArraySource, Lists, Session, SessionError, find_game};
 pub use squad::{CaptainPlan, CaptainRole, CaptainSet, ClubTeam, Loan, SquadMember, TeamId};
 pub use staff::{
     MOST_TENDENCY, NAMED_TENDENCIES, STAFF_ATTRIBUTE_GROUPS, StaffContract, StaffDetails, StaffIndex, StaffSummary,
