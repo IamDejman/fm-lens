@@ -2118,6 +2118,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.8": [
+        "Youth candidates show by themselves, with no Reload.",
+        "New players and staff show as FM adds them.",
+      ],
       "1.1.7": [
         "Edit FM27 27.1.1 from Steam.",
         "Protect squad: no injuries, bans or unhappiness while connected.",

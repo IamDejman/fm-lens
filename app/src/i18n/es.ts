@@ -2000,6 +2000,10 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.8": [
+        "Los candidatos juveniles aparecen solos, sin pulsar Recargar datos.",
+        "Los jugadores y el personal nuevos aparecen cuando FM los añade.",
+      ],
       "1.1.7": [
         "Edita FM27 27.1.1 de Steam.",
         "Proteger la plantilla: sin lesiones, sanciones ni descontento mientras esté conectado.",

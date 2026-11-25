@@ -1970,6 +1970,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.8": [
+        "Altyapı adayları kendiliğinden görünür, Verileri yeniden oku'ya basmanız gerekmez.",
+        "Yeni oyuncular ve personel, FM ekledikçe görünür.",
+      ],
       "1.1.7": [
         "Steam'deki FM27 27.1.1'i düzenleyin.",
         "Kadroyu koru: bağlıyken sakatlık, ceza ve mutsuzluk yok.",

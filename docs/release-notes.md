@@ -1,60 +1,33 @@
 ## What's new
 
-FM Lens 1.1.7 gets you editing again on FM27 27.1.1, the update Steam sent out on 24 November, and it is the biggest round of club edits so far: rename your stadium, repaint your kits, rewrite your rivalries and keep your squad fit, eligible and happy for as long as FM Lens is connected. Everything below is new since 1.1.6.
+FM Lens 1.1.8 keeps up with your game: when FM brings in new players, FM Lens now sees them by itself. Your youth intake shows up in your under-18s seconds after it lands, with no Reload and no reconnect. Everything below is new since 1.1.7.
 
-### FM27 27.1.1 on Steam: editing is on
+### Your youth intake shows up by itself
 
-- Steam moved FM27 to 27.1.1 (build 26797085) on 24 November, and FM Lens opened it read-only. From 1.1.7 it knows this version, so every edit and every move FM makes for FM Lens is back: attributes, contracts, transfers, loans, injuries, club money, staff and nations.
-- We played it through on all three: an Apple Silicon Mac, an Intel build of FM on a Mac, and Windows. Each ran the full set of edits on a copy of a career, saved, quit, reloaded and found every change still there.
+- On intake day FM hands you a list of youth candidates, and until now FM Lens could not see any of them. They were missing from your under-18s and from search until you pressed Reload.
+- From 1.1.8 FM Lens notices when FM adds players and reads the game again by itself, a few seconds after the new players settle. Open your club, go to Squad, pick U18, and your candidates are there with their ability and potential, before you decide who gets a contract.
+- It is not only your club. Every club's intake, every new player FM creates and every new member of staff shows up the same way, so search finds them too.
 
-### Protect squad
+### Why they were missing
 
-- Turn on Protect squad for a team and FM Lens removes injuries, bans and unhappiness as they come, for as long as it is connected. Play a whole season without losing a player to a hamstring or a red card.
-- Turn it off and FM goes back to its own ways. Nothing is locked into the save.
+- FM Lens reads every player once, when it connects, and it read again only when FM moved its lists, as it does when you load another save. A youth intake adds players to the list where it already is, so FM Lens never knew there was anything new to read. In one career the list grew from 30,993 players to 32,692 without moving, and FM Lens knew only the first 30,993.
+- Now it also counts the players, staff and clubs, and reads again when a count changes.
 
-### Heal restores fitness too
+### Good to know
 
-- Heal used to clear a player's injuries and leave him short of match fitness. Now it also restores his fitness and condition, so he is ready to play, not just out of the treatment room.
-- It works the same for one player and for Heal everyone on a team.
+- FM Lens waits for the numbers to stop changing before it reads, and reads at most once every 30 seconds, longer in a very large database. On holiday, when FM adds players day after day, it does not read over and over.
+- It works the same when FM Lens is connected read-only.
+- If you have previewed a mass edit and not applied it when FM Lens reads again, the preview is dropped, the same as when you press Reload. Preview it again and apply.
+- Reload is still there whenever you want to read the game again yourself.
 
-### Freeze money holds the ticket price
+### How this was tested
 
-- Freeze money already stopped a club's balance and transfer budget going down. It now holds the average ticket price too, so the price you set stays the price while FM Lens is connected.
-
-### Rename your stadium
-
-- Open a club, edit its stadium's name, and FM shows the new name at once on the Club Profile and Facilities pages. It is still there after you save, quit and reload.
-- Rename it back to the original and FM Lens tidies up after itself.
-
-### Kit colours
-
-- Change the colours of a club's home, away and third kits from its profile.
-
-### Rivalries
-
-- Change a club's rivals, end a rivalry or add a new one. Make the derby you always wanted.
-
-### Ownership and season tickets
-
-- Edit a club's ownership type and its number of season tickets.
-
-### Family ties
-
-- When you add a favoured person to a player or a manager, choose how they are tied: father, brother, son or relative. FM's Personal page shows them under Father, Brothers, Sons and Relations.
-- Fixed: a favoured player added with no tie showed in FM as a father. He now shows as a team-mate.
-
-### How the new club edits were tested
-
-- The stadium name, kit colours, rivalries, ownership, season tickets, family ties and Protect squad were played through on Windows with Steam's 27.1.0. The stadium name and family ties were also checked on FM's own screens after save, quit and reload.
-- Macs run the same edits and passed our automatic checks, but we have not played these through there yet. Edit a copy of your save, and tell us from Report a problem if anything looks wrong.
-
-### Windows 11: if the installer is blocked
-
-- On some Windows 11 PCs, Smart App Control blocks the FM Lens installer and offers no Run anyway button. The download page on getfmlens.com now says where to turn it off, and warns that some PCs cannot turn it back on without resetting Windows.
+- We found the cause on an Apple Silicon Mac with Steam's 27.1.1, in a career on its intake day, and the fix passed our automatic checks on macOS and Windows.
+- We have not yet played 1.1.8 through an intake day on a Mac or on Windows. If new players do not show up by themselves, press Reload and tell us from Report a problem.
 
 ### Updating
 
-- Open FM Lens and it fetches 1.1.7 by itself. Press Relaunch to update when it appears, or download 1.1.7 from getfmlens.com.
+- Open FM Lens and it fetches 1.1.8 by itself. Press Relaunch to update when it appears, or download 1.1.8 from getfmlens.com.
 - Every supported game version keeps working: 27.1.1, 27.1.0, 27.0.1 and 27.0.0 on Steam, and 0.9.2524.0 and 0.9.2435.0 on Game Pass.
 - As always, edit a copy of your save.
 
