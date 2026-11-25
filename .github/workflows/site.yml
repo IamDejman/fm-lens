@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 10
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deploy.outputs.page_url || steps.retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,5 +43,14 @@ jobs:
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: _site
+      # The deploy asks GitHub once for the site just uploaded, a moment after the upload, and GitHub has not always
+      # listed it by then: the deploy fails with no site to publish, as it did after 1.1.7 and 1.1.8. So a deploy that
+      # fails is tried once more, half a minute later.
       - id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - if: steps.deploy.outcome == 'failure'
+        run: sleep 30
+      - id: retry
+        if: steps.deploy.outcome == 'failure'
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
