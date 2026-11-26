@@ -2125,6 +2125,12 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.11": [
+        "Suggested CA is closer to the game's own number, and counts every position a player can play.",
+        "See when your attributes are worth more than CA 200.",
+        "PA is never changed for you, and a note shows when CA is above PA.",
+        "Set all attributes, templates and mass edits keep each player's suggestion right.",
+      ],
       "1.1.10": [
         "Suggested CA no longer comes out too high for a player you edited before.",
         "FM Lens remembers each player you edit, so the suggestion stays right after a restart.",
