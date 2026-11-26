@@ -99,6 +99,16 @@ export const AppliedFieldsContext = createContext<ReadonlySet<string>>(NO_FIELDS
  */
 export const StandingFieldsContext = createContext<ReadonlyMap<string, ReadonlySet<string>>>(new Map());
 
+/** What is known of the edits made before: what a suggested ability goes by. */
+export interface EditHistory {
+  /** The loaded save's name, which what is remembered of its players is kept under; null where it cannot be read. */
+  save: string | null;
+  /** What the fields held before the changes of this session that stand, by profile (see `valuesBefore`). */
+  before: ReadonlyMap<string, ReadonlyMap<string, number>>;
+}
+
+export const EditHistoryContext = createContext<EditHistory>({ save: null, before: new Map() });
+
 export const useEditSession = () => useContext(SessionContext);
 
 /** Starting the edit of one field from its displayed value, while the profile is read. */

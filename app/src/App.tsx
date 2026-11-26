@@ -41,10 +41,10 @@ import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
 import { hideManager } from "./replay";
 import { findings, track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
-import { injuryKinds, massFreeze, standingFields, stands } from "./editing";
+import { injuryKinds, massFreeze, standingFields, stands, valuesBefore } from "./editing";
 import type { BridgeInfo, Career, ConnectionInfo, Detection, FmDate, InjuryKind, Refrozen, ReloadInfo } from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol-120.png";
-import { askToLeave, changesPending, EditorContext, NO_GAME_ACTIONS, StandingFieldsContext } from "./useProfileEditing";
+import { askToLeave, changesPending, EditorContext, NO_GAME_ACTIONS, EditHistoryContext, StandingFieldsContext } from "./useProfileEditing";
 import "./App.css";
 
 const StaffBrowser = lazy(() => import("./StaffBrowser").then((module) => ({ default: module.StaffBrowser })));
@@ -157,6 +157,9 @@ function App() {
   const standing = log.filter(stands).length;
   // Their fields, by profile: a profile marks them as applied.
   const standingByProfile = useMemo(() => standingFields(log), [log]);
+  // What they held before, and the save: the ability an edited player is suggested goes by the game's own values.
+  const saveName = connection?.career?.saveName ?? null;
+  const history = useMemo(() => ({ save: saveName, before: valuesBefore(log) }), [saveName, log]);
   const {
     update,
     checkNow,
@@ -752,6 +755,7 @@ function App() {
           // Visited lists stay mounted, so each keeps its search and selection while another is shown.
           <EditorContext.Provider value={editor}>
             <StandingFieldsContext.Provider value={standingByProfile}>
+            <EditHistoryContext.Provider value={history}>
             <div className="views">
               <PlayerBrowser
                 version={dataVersion}
@@ -786,6 +790,7 @@ function App() {
               </DeferredView>
               {view === "changes" && <ChangesView log={log} error={logError} reload={reloadLog} onUndone={edited} />}
             </div>
+            </EditHistoryContext.Provider>
             </StandingFieldsContext.Provider>
           </EditorContext.Provider>
         ) : (

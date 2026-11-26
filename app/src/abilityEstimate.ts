@@ -113,22 +113,42 @@ export function abilityFor(
 /** How far a player's ability may be from the estimate and still be taken as the game's own. */
 const OWN = 6;
 
+/** How far below the offset remembered for a player his ability has to be for the offset to be taken as too high. */
+const BELOW = 1;
+
+/** A player as the estimate reads him. */
+type Rated = { attributes: Readonly<Record<string, number>>; positions: Readonly<Record<string, number>> };
+
+/**
+ * How far the game's own ability of a player is from the estimate, when it holds `ability` for `before`: null when
+ * there is nothing to go by. An ability further from the estimate than the game's ever is (one typed in before) says
+ * nothing, and counts as none. `kept` is the offset remembered from an edit of him before: his ability may have been
+ * left above what he needs since, so `kept` holds, unless he is now seen further below the estimate than it says.
+ */
+export function ownAbility(ability: number, before: Rated, kept: number | null = null): number | null {
+  const was = abilityFor(before.attributes, before.positions);
+  if (was === null) {
+    return null;
+  }
+  const seen = ability - was;
+  if (kept !== null && (seen >= kept - BELOW || seen < -OWN)) {
+    return kept;
+  }
+  return Math.abs(seen) <= OWN ? seen : 0;
+}
+
 /**
  * The current ability to suggest for a player whose attributes, feet or positions are `after` an edit, when the
  * game held `ability` for `before`: 1–200, or null when there is nothing to go by. An ability the game worked out
  * itself moves by what the edit is worth, so a player nothing was changed on is suggested the ability he has. One
  * that is further from the estimate than the game's ever is (an ability typed in before) is suggested the estimate.
+ * `kept` is the offset remembered for him (see `ownAbility`).
  */
-export function suggestedAbility(
-  ability: number,
-  before: { attributes: Readonly<Record<string, number>>; positions: Readonly<Record<string, number>> },
-  after: { attributes: Readonly<Record<string, number>>; positions: Readonly<Record<string, number>> },
-): number | null {
-  const was = abilityFor(before.attributes, before.positions);
+export function suggestedAbility(ability: number, before: Rated, after: Rated, kept: number | null = null): number | null {
+  const own = ownAbility(ability, before, kept);
   const now = abilityFor(after.attributes, after.positions);
-  if (was === null || now === null) {
+  if (own === null || now === null) {
     return null;
   }
-  const own = Math.abs(ability - was) <= OWN ? ability - was : 0;
   return Math.min(200, Math.max(1, Math.round(now + own)));
 }
