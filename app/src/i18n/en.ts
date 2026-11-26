@@ -2121,6 +2121,13 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.9": [
+        "Sign unemployed staff for any club.",
+        "Move staff into a club with a full staff list.",
+        "Transfer or appoint a Director of Football.",
+        "Stop staff from retiring.",
+        "Edit FM27 from Game Pass, version 0.9.2562.0.",
+      ],
       "1.1.8": [
         "Youth candidates show by themselves, with no Reload.",
         "New players and staff show as FM adds them.",
