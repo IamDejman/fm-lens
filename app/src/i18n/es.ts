@@ -2006,6 +2006,12 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.11": [
+        "La HA sugerida se acerca más a la del juego y cuenta cada posición que puede ocupar el jugador.",
+        "Mira cuándo tus atributos valen más de HA 200.",
+        "La HP nunca se cambia por ti, y un aviso indica cuándo la HA supera la HP.",
+        "Fijar todos los atributos, las plantillas y la edición en masa mantienen correcta la sugerencia de cada jugador.",
+      ],
       "1.1.10": [
         "La HA sugerida ya no sale demasiado alta en un jugador que ya habías editado.",
         "FM Lens recuerda a cada jugador que editas, así que la sugerencia sigue siendo correcta al volver a abrirlo.",

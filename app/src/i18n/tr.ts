@@ -1976,6 +1976,12 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.11": [
+        "Önerilen MY oyunun kendi değerine daha yakın ve oyuncunun oynayabildiği her mevkiyi sayar.",
+        "Özellikleriniz MY 200'den fazlasına denk geldiğinde bunu görün.",
+        "PY sizin yerinize asla değiştirilmez; MY, PY'nin üstüne çıktığında bir not gösterilir.",
+        "Tüm özellikleri ayarlama, şablonlar ve toplu düzenleme her oyuncunun önerisini doğru tutar.",
+      ],
       "1.1.10": [
         "Önerilen MY, daha önce düzenlediğiniz bir oyuncuda artık fazla yüksek çıkmıyor.",
         "FM Lens düzenlediğiniz her oyuncuyu hatırlar; yeniden açtığınızda da öneri doğru kalır.",

@@ -1,37 +1,45 @@
 ## What's new
 
-FM Lens 1.1.10 fixes Suggested CA. When you change a player's attributes, the current ability FM Lens suggests now fits the player you are building, even when you have edited him before, and even after you close FM Lens and come back. Everything below is new since 1.1.9.
+FM Lens 1.1.11 makes Suggested CA sharper and safer. The current ability it suggests is now closer to what Football Manager itself would give your player, it tells you when your attributes go past what the game can hold, and it never touches potential ability behind your back. Everything below is new since 1.1.10.
 
-### Suggested CA no longer creeps up on a player you edited before
+### Suggested CA lands closer to the game's own number
 
-- When you change a player's attributes, feet or positions, FM Lens works out the current ability that fits them and puts it in the box for you, the way FM's own editor recommends one.
-- That number could come out too high for a player you had already edited. If an earlier Apply left his ability a little above what his attributes needed, or you typed a current ability by hand, FM Lens counted that spare room as part of the player and added it again to the next suggestion.
-- It added up fast. We saw a winger whose new attributes were worth about 197 get a suggestion of 200, and his potential ability was pushed up to 200 with it.
-- Now the suggestion goes by what the game itself gave the player, before your edits. Edit him in one go or in ten small steps, and the suggested ability comes out the same.
-- Building a specialist is where you will notice it most: take points out of what he does not need, put them where he does, and the ability stays where it should instead of climbing with every Apply.
+- Suggested CA now works the way FM's own pre-game editor does. Every position your player can play is weighed by how well he plays it: rated 18 to 20 it counts in full, and it counts for less the lower he is rated there.
+- The position that asks the most of his attributes sets the number, and each other position he can play adds a little on top, more the better he plays it and depending on what kind of position it is.
+- The result: tested on all 30,282 players of an FM27 save, the suggestion is within 2 points of the game's own current ability for 86 players in 100 (81 in 1.1.10) and within 4 for 98 in 100 (96 in 1.1.10).
+- Versatile players gain the most. A winger who can also play wing back, or a striker who can fill in at centre back, now gets a suggestion that reflects that.
 
-### FM Lens remembers the players you edit
+### See when your attributes go past 200
 
-- When you apply a change to a player's ability, attributes or positions, FM Lens notes how the game's own ability compared with his attributes, and keeps that note with your save.
-- Close FM Lens, come back next week, open the same player, and his suggestion is still right.
-- The note corrects itself. If FM Lens later sees that it was too generous to a player, it lowers what it remembers, so one odd edit does not follow him around.
+- When the attributes you set are worth more than the game can hold, a note beside Suggested CA shows the real figure, for example "Attributes fit CA 243, the most is 200".
+- You know straight away how far over you are, so you can trim attributes back if you want the ability to match.
+
+### Potential ability is yours alone
+
+- FM Lens no longer raises potential ability for you. Suggested CA still fills current ability as you build a player, but PA stays exactly where you put it.
+- When current ability goes above potential, a note says "CA is above PA", so you can decide what to do about it.
+
+### Suggested CA remembers more of your edits
+
+- Set all attributes, player templates and mass edits now keep FM Lens's note on every player they change, the same way editing from a player's profile does. His next suggestion starts from the right place.
+- Notes now belong to your career, not to the name of your save. Save As, a renamed save, or a career you have not saved under a name yet all keep their notes.
+- A new career saved under an old name starts fresh instead of picking up notes meant for another career.
 
 ### Good to know
 
-- A player you edited before 1.1.10 has no note yet, so his first suggestion can still be too high. Type the current and potential ability you want once and press Apply. From then on his suggestions are right.
-- An ability you type in is left exactly as you typed it. The Suggested CA button shows what would fit, and you choose whether to use it.
-- FM Lens still never lowers a player's ability by itself. A lower suggestion waits behind its button.
-- The notes go by the name of your save. A career saved under a new name starts fresh for the players you edited.
-- Mass edit and templates applied from a list do not write a note. Editing a player from his profile does.
+- Notes from 1.1.10 move to the first career you open under that save name. If you kept two careers under the same name, open the one you edited first.
+- After a mass edit of many players, FM Lens reads each of them once in the background to keep his note. You can carry on while it does.
+- Set all attributes to 20 still sets CA and PA to 200, as its own message says.
 
 ### How this was tested
 
-- The app's automated checks cover every case above, including the winger's own numbers: 200 before, 197 now.
-- We have not yet run 1.1.10 in the installed app against FM on a Mac or on Windows. If a suggestion looks wrong, tell us from Report a problem.
+- The app's automated checks cover every change above.
+- The accuracy figures come from every player in an FM27 save. We also checked FM27's own pre-game editor: on 12 of the hardest players its recommended ability matches the game's within 3 points, and Suggested CA now weighs positions by their rating the way it does.
+- We have not yet run 1.1.11 in the installed app against FM on a Mac or on Windows. If a suggestion looks wrong, tell us from Report a problem.
 
 ### Updating
 
-- Open FM Lens and it fetches 1.1.10 by itself. Press Relaunch to update when it appears, or download 1.1.10 from getfmlens.com.
+- Open FM Lens and it fetches 1.1.11 by itself. Press Relaunch to update when it appears, or download 1.1.11 from getfmlens.com.
 - Every supported game version keeps working: 27.1.1, 27.1.0, 27.0.1 and 27.0.0 on Steam, and 0.9.2562.0, 0.9.2524.0 and 0.9.2435.0 on Game Pass.
 - As always, edit a copy of your save.
 
