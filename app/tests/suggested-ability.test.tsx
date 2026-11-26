@@ -1,12 +1,14 @@
-import { expect, test } from 'vitest';
+import { beforeEach, expect, test } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useMemo, useState } from 'react';
-import { ABILITY_ATTRIBUTES, ABILITY_POSITIONS, abilityFor, suggestedAbility } from '../src/abilityEstimate';
+import { ABILITY_ATTRIBUTES, ABILITY_POSITIONS, abilityFor, ownAbility, suggestedAbility } from '../src/abilityEstimate';
+import { keptOwnAbility } from '../src/abilityMemory';
 import { inputState, type Typed } from '../src/editDraft';
+import { valuesBefore } from '../src/editing';
 import { SuggestedAbility } from '../src/SuggestedAbility';
-import { SessionContext, type EditSession } from '../src/useProfileEditing';
-import type { EditField } from '../src/types';
+import { EditHistoryContext, SessionContext, type EditSession } from '../src/useProfileEditing';
+import type { EditField, LoggedChange } from '../src/types';
 
 // One player of each role as a save held him, no names: the ability the game gave him, his attributes as stored
 // (0-100, in the order of ABILITY_ATTRIBUTES) and his position ratings (in the order of ABILITY_POSITIONS).
@@ -80,11 +82,22 @@ test('an ability that does not fit is suggested the estimate, within 1 to 200', 
 const field = (key: string, kind: EditField['kind'], min: number, max: number, scale: EditField['scale'] = 'plain'): EditField =>
   ({ key, entity: 'player', kind, scale, min, max, blank: null, choices: null, mass: true });
 
-// The striker being edited: the inputs judge what is typed as the profile's do.
-function Editing({ potential }: { potential: number }) {
-  const { ability, raw, positions } = player('st');
+const STRIKER = 7;
+const SAVE = 'Fixture career';
+beforeEach(() => { localStorage.clear(); });
+
+// The striker being edited: the inputs judge what is typed as the profile's do. `log` is what was applied to him
+// before, newest first: he then holds what it wrote. It is the change log too, unless FM Lens was opened again since
+// (`reopened`). Apply only makes the inputs wait, as while the changes are written.
+function Editing({ potential, log = [], reopened = false, save = SAVE }: { potential: number; log?: LoggedChange[]; reopened?: boolean; save?: string | null }) {
+  const { ability: own, raw: game, positions } = player('st');
+  const holds = (key: string, stored: number) => log.find((change) => change.field === key)?.new ?? stored;
+  const ability = holds('current_ability', own);
+  const raw = Object.fromEntries(Object.entries(game).map(([key, value]) => [key, holds(`attribute.${key}`, value)]));
   const [typed, setTyped] = useState<Typed>({});
+  const [busy, setBusy] = useState(false);
   const details = useMemo(() => ({
+    uid: STRIKER,
     attributes: Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, { raw: value, value: Math.floor((value + 2) / 5) }])),
     positionRatings: positions,
   }), [raw, positions]);
@@ -99,7 +112,7 @@ function Editing({ potential }: { potential: number }) {
     ]);
     return {
       entity: 'player',
-      busy: false,
+      busy,
       has: (key) => fields.has(key),
       input: (key) => {
         const found = fields.get(key);
@@ -107,12 +120,13 @@ function Editing({ potential }: { potential: number }) {
       },
       type: (key, text) => setTyped((old) => ({ ...old, [key]: text })),
     };
-  }, [ability, potential, raw, positions, typed]);
-  return <SessionContext.Provider value={session}>
+  }, [ability, potential, raw, positions, typed, busy]);
+  return <EditHistoryContext.Provider value={{ save, before: valuesBefore(reopened ? [] : log) }}><SessionContext.Provider value={session}>
     <SuggestedAbility details={details} />
     {['current_ability', 'potential_ability', 'attribute.finishing', 'position.dc'].map((key) =>
       <input key={key} aria-label={key} value={session.input(key)?.text ?? ''} onChange={(e) => session.type(key, e.target.value)} />)}
-  </SessionContext.Provider>;
+    <button onClick={() => setBusy(true)}>Apply</button>
+  </SessionContext.Provider></EditHistoryContext.Provider>;
 }
 
 const type = async (label: string, value: string) => {
@@ -125,15 +139,15 @@ const held = (label: string) => (screen.getByRole('textbox', { name: label }) as
 test('raising an attribute raises the ability with it, and typing it back puts the ability back', async () => {
   const { ability, attributes } = player('st');
   render(<Editing potential={190} />);
-  expect(screen.queryByRole('button')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Suggested/ })).toBeNull();
   await type('attribute.finishing', '20');
   const suggested = ability + Math.round((20 - attributes.finishing) * 1.5);
   expect(held('current_ability')).toBe(String(suggested));
   expect(held('potential_ability')).toBe('190');
-  expect(screen.queryByRole('button')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Suggested/ })).toBeNull();
   await type('attribute.finishing', String(Math.floor(attributes.finishing + 0.4)));
   expect(held('current_ability')).toBe(String(ability));
-  expect(screen.queryByRole('button')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Suggested/ })).toBeNull();
 });
 
 test('a lower suggestion waits for its button, and puts the ability in the input', async () => {
@@ -141,9 +155,9 @@ test('a lower suggestion waits for its button, and puts the ability in the input
   render(<Editing potential={190} />);
   await type('attribute.finishing', '5');
   expect(held('current_ability')).toBe(String(ability));
-  await userEvent.click(screen.getByRole('button'));
+  await userEvent.click(screen.getByRole('button', { name: /Suggested/ }));
   expect(Number(held('current_ability'))).toBeLessThan(ability);
-  expect(screen.queryByRole('button')).toBeNull();
+  expect(screen.queryByRole('button', { name: /Suggested/ })).toBeNull();
 });
 
 test('an ability typed in is left as typed', async () => {
@@ -169,4 +183,76 @@ test('a potential below the ability is raised with it, one set as a range is lef
   await type('attribute.finishing', '20');
   expect(Number(held('current_ability'))).toBeGreaterThan(ability);
   expect(held('potential_ability')).toBe('-9');
+});
+
+const change = (id: number, field: string, old: number, written: number, more: Partial<LoggedChange> = {}): LoggedChange =>
+  ({ id, at: id, name: 'Fixture', entity: 'player', uid: STRIKER, field, old, new: written, undoneAt: null, batch: null, ...more });
+
+test('the values before are those of the oldest change that stands', () => {
+  const before = (log: LoggedChange[]) => valuesBefore(log).get(`player:${STRIKER}`)?.get('attribute.finishing');
+  expect(before([change(2, 'attribute.finishing', 65, 90), change(1, 'attribute.finishing', 78, 65)])).toBe(78);
+  expect(before([change(2, 'attribute.finishing', 65, 90), change(1, 'attribute.finishing', 78, 65, { undoneAt: 5 })])).toBe(65);
+  expect(before([change(1, 'attribute.finishing', 78, 65, { earlierGame: true })])).toBeUndefined();
+  expect(before([change(1, 'attribute.finishing', 78, 65, { uid: STRIKER + 1 })])).toBeUndefined();
+});
+
+test('an ability left behind or typed in by an earlier Apply does not raise the next suggestion', async () => {
+  const { ability, attributes } = player('st');
+  // What putting his finishing at 16 is worth to the striker the game made: a point.
+  const suggested = ability + Math.round((16 - attributes.finishing) * 1.5);
+  // His finishing was taken down to 13 and the ability left where it was: putting it at 16 gives it back, no more.
+  const lowered = [change(1, 'attribute.finishing', attributes.finishing * 5, 65)];
+  const first = render(<Editing potential={190} log={lowered} />);
+  await type('attribute.finishing', '16');
+  expect(held('current_ability')).toBe(String(suggested));
+  first.unmount();
+  // The same with an ability typed in on top, which is held: the suggestion is still the game's own.
+  render(<Editing potential={190} log={[change(2, 'current_ability', ability, ability + 2), ...lowered]} />);
+  await type('attribute.finishing', '16');
+  expect(held('current_ability')).toBe(String(ability + 2));
+  expect(screen.getByRole('button', { name: `Suggested CA ${suggested}` })).toBeTruthy();
+});
+
+test('an offset that is kept holds while the ability is not seen below it', () => {
+  const { ability, attributes, positions } = player('st');
+  const own = ownAbility(ability, { attributes, positions })!;
+  // An ability left above what he needs, by a little or by far, and one within the rounding of an Apply.
+  for (const left of [5, 60, -0.5]) {
+    expect(ownAbility(ability + left, { attributes, positions }, own)).toBe(own);
+  }
+  // Seen further below: the offset kept was too high, as one taken from an ability that was typed in is.
+  expect(ownAbility(ability - 3, { attributes, positions }, own)).toBeCloseTo(own - 3, 5);
+  // An ability typed in far below what he needs says nothing.
+  expect(ownAbility(ability - 60, { attributes, positions }, own)).toBe(own);
+  expect(ownAbility(ability - 60, { attributes, positions })).toBe(0);
+});
+
+test('the game\'s own offset is remembered by save once his abilities are applied', async () => {
+  const { ability, attributes, positions } = player('st');
+  const own = ownAbility(ability, { attributes, positions })!;
+  const suggested = ability + Math.round((16 - attributes.finishing) * 1.5);
+  // His finishing is taken down to 13, the ability left where it is.
+  const first = render(<Editing potential={190} />);
+  expect(keptOwnAbility(SAVE, STRIKER)).toBeNull();
+  await type('attribute.finishing', '13');
+  expect(keptOwnAbility(SAVE, STRIKER)).toBeNull();
+  await userEvent.click(screen.getByRole('button', { name: 'Apply' }));
+  expect(keptOwnAbility(SAVE, STRIKER)).toBeCloseTo(own, 2);
+  first.unmount();
+  // FM Lens is opened again: the change log is empty, and the ability he has is above what he needs.
+  const lowered = [change(1, 'attribute.finishing', attributes.finishing * 5, 65)];
+  const again = render(<Editing potential={190} log={lowered} reopened />);
+  await type('attribute.finishing', '16');
+  expect(held('current_ability')).toBe(String(suggested));
+  again.unmount();
+  // Another save knows nothing of him, and one without a name keeps nothing.
+  const other = render(<Editing potential={190} log={lowered} reopened save="Another career" />);
+  await type('attribute.finishing', '16');
+  expect(Number(held('current_ability'))).toBeGreaterThan(suggested);
+  other.unmount();
+  render(<Editing potential={190} save={null} />);
+  await type('attribute.finishing', '13');
+  await userEvent.click(screen.getByRole('button', { name: 'Apply' }));
+  expect(localStorage.length).toBe(1);
+  expect(keptOwnAbility(null, STRIKER)).toBeNull();
 });

@@ -156,6 +156,24 @@ export function standingFields(log: readonly LoggedChange[]): ReadonlyMap<string
   return byProfile;
 }
 
+/**
+ * What each field held before the first change in `log` (newest first) that stands, as stored, by profile and field:
+ * the game's own values of a profile that was edited.
+ */
+export function valuesBefore(log: readonly LoggedChange[]): ReadonlyMap<string, ReadonlyMap<string, number>> {
+  const byProfile = new Map<string, Map<string, number>>();
+  for (const change of log) {
+    if (!stands(change)) {
+      continue;
+    }
+    const key = profileKey(change.entity, change.uid);
+    const fields = byProfile.get(key) ?? new Map<string, number>();
+    // An older change of the field comes later, and takes the place of a newer one.
+    byProfile.set(key, fields.set(change.field, change.old));
+  }
+  return byProfile;
+}
+
 /** The whole percentage the game shows (0–100) for a stored one (0–10000), for a profile that has no field table. */
 export const wholePercent = (stored: number): number => Math.floor((stored + 50) / 100);
 
