@@ -877,6 +877,8 @@ export const es: Strings = {
     potentialAbilityShort: "HP",
     potentialRange: "Potencial fijado como un rango",
     suggestedAbility: (value) => `HA sugerida ${value}`,
+    abilityOverMost: (value, most) => `Los atributos piden HA ${value}, el máximo es ${most}`,
+    abilityAbovePotential: "La HA supera la HP",
     personalDetails: "Datos personales",
     fullNameLabel: "Nombre completo",
     heightLabel: "Altura",

@@ -4231,7 +4231,14 @@ const FAILING: CheckKey[] = ["gameDate", "attributes", "contracts"];
 function mockCareer() {
   const manager = staff.find((member) => member.isHuman);
   return manager
-    ? { uid: manager.uid, manager: manager.name, club: manager.club, clubUid: manager.clubUid, saveName: "Sample career" }
+    ? {
+        uid: manager.uid,
+        key: `Sample:${manager.uid}`,
+        manager: manager.name,
+        club: manager.club,
+        clubUid: manager.clubUid,
+        saveName: "Sample career",
+      }
     : null;
 }
 

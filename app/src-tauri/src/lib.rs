@@ -343,6 +343,7 @@ impl Connection {
                 club: member.club.clone(),
                 club_uid: member.club_uid,
                 save_name: None,
+                key: save.clone().unwrap_or_default(),
             });
         let staff = StaffIndex::new(staff);
         let clubs = ClubIndex::new(session.clubs()?);
@@ -3846,6 +3847,9 @@ struct Career {
     /// The loaded save's name as FM lists it, read when the career is asked for (`Connection::career_now`); none
     /// where the build does not place it.
     save_name: Option<String>,
+    /// What tells this career from another (`save_of`), whatever its save is named: what the app keeps its notes on
+    /// a career under.
+    key: String,
 }
 
 #[derive(Serialize)]

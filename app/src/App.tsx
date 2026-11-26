@@ -41,8 +41,19 @@ import { useWhatsNew, WhatsNewNotice } from "./WhatsNew";
 import { hideManager } from "./replay";
 import { findings, track, trackOpened } from "./usage";
 import type { Reveal } from "./ListBrowser";
+import { claimOwnAbilities, keepOwnAbilities } from "./abilityMemory";
 import { injuryKinds, massFreeze, standingFields, stands, valuesBefore } from "./editing";
-import type { BridgeInfo, Career, ConnectionInfo, Detection, FmDate, InjuryKind, Refrozen, ReloadInfo } from "./types";
+import type {
+  BridgeInfo,
+  Career,
+  ConnectionInfo,
+  Detection,
+  FmDate,
+  InjuryKind,
+  MassReport,
+  Refrozen,
+  ReloadInfo,
+} from "./types";
 import lensSymbol from "./assets/brand/fm-lens-symbol-120.png";
 import { askToLeave, changesPending, EditorContext, NO_GAME_ACTIONS, EditHistoryContext, StandingFieldsContext } from "./useProfileEditing";
 import "./App.css";
@@ -157,9 +168,26 @@ function App() {
   const standing = log.filter(stands).length;
   // Their fields, by profile: a profile marks them as applied.
   const standingByProfile = useMemo(() => standingFields(log), [log]);
-  // What they held before, and the save: the ability an edited player is suggested goes by the game's own values.
+  // What they held before, and the career: the ability an edited player is suggested goes by the game's own values.
+  const saveKey = connection?.career?.key ?? null;
   const saveName = connection?.career?.saveName ?? null;
-  const history = useMemo(() => ({ save: saveName, before: valuesBefore(log) }), [saveName, log]);
+  const history = useMemo(() => ({ career: saveKey, before: valuesBefore(log) }), [saveKey, log]);
+  useEffect(() => claimOwnAbilities(saveKey, saveName), [saveKey, saveName]);
+  // Set all attributes, a template and a mass edit write attributes without a profile's Apply.
+  useEffect(
+    () =>
+      watchCommands((command, _args, result) => {
+        if (command === "set_attributes" || command === "apply_mass_edit") {
+          const { applied, batch } = result as MassReport;
+          if (applied > 0) {
+            keepOwnAbilities(saveKey, batch).catch(() => {
+              // Not kept: his offset is then read from the ability he has.
+            });
+          }
+        }
+      }),
+    [saveKey],
+  );
   const {
     update,
     checkNow,
