@@ -2121,6 +2121,10 @@ export const en = {
      * Releasing adds the new version, in every language (see docs/DEVELOPING.md).
      */
     changes: {
+      "1.1.10": [
+        "Suggested CA no longer comes out too high for a player you edited before.",
+        "FM Lens remembers each player you edit, so the suggestion stays right after a restart.",
+      ],
       "1.1.9": [
         "Sign unemployed staff for any club.",
         "Move staff into a club with a full staff list.",

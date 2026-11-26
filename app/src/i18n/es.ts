@@ -2004,6 +2004,10 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.10": [
+        "La HA sugerida ya no sale demasiado alta en un jugador que ya habías editado.",
+        "FM Lens recuerda a cada jugador que editas, así que la sugerencia sigue siendo correcta al volver a abrirlo.",
+      ],
       "1.1.9": [
         "Ficha personal sin club para cualquier club.",
         "Traspasa personal a un club con la plantilla técnica completa.",

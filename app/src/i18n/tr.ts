@@ -1974,6 +1974,10 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.10": [
+        "Önerilen MY, daha önce düzenlediğiniz bir oyuncuda artık fazla yüksek çıkmıyor.",
+        "FM Lens düzenlediğiniz her oyuncuyu hatırlar; yeniden açtığınızda da öneri doğru kalır.",
+      ],
       "1.1.9": [
         "Kulüpsüz personeli istediğiniz kulübe alın.",
         "Personel listesi dolu kulübe personel transfer edin.",
