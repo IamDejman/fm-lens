@@ -320,7 +320,8 @@ function details(player: PlayerSummary): PlayerDetails {
     condition: Math.round(7000 + next() * 3000),
     matchSharpness: Math.round(3500 + next() * 6500),
     jadedness: Math.round(-500 + next() * 600),
-    traits: [7, 10, 19, 20, 35, 43, 51].filter(() => next() < 0.4),
+    // A player kept from retiring has the trait to play on as long as possible.
+    traits: [7, 10, 19, 20, 35, 43, 51].filter(() => next() < 0.4).concat(keptPlayers.has(player.uid) ? [49] : []),
     injuries: injuriesOf(player.uid),
     bans: bansOf(player.uid),
     promises: promisesOf(player.uid),
@@ -1473,7 +1474,7 @@ function addReleaseClause(uid: number, amount: number): LoggedChange {
 /** The fixture players kept from retiring through the editor, by UID, while it is not undone. */
 const keptPlayers = new Set<number>();
 
-/** The retirement the game plans for a fixture player: every seventh one retires on 30 June next year, until kept. */
+/** The retirement the game plans for a fixture player or member of staff: every seventh one retires on 30 June next year, until kept. */
 function retiresOf(uid: number): FmDate | null {
   if (uid % 7 !== 3 || keptPlayers.has(uid)) {
     return null;
@@ -1481,25 +1482,28 @@ function retiresOf(uid: number): FmDate | null {
   return { year: GAME_DATE.year + 1, month: 6, day: 30 };
 }
 
-/** `keep_playing`: the fixture player's retirement is taken out of the plans, logged as a change of his `retirement`. */
-function keepPlaying(uid: number): LoggedChange {
-  const player = players.find((p) => p.uid === uid);
-  if (!player) {
-    throw notFound("player", uid);
+/**
+ * `keep_playing` and `keep_working`: the fixture person's retirement is taken out of the plans, logged as a change of
+ * his `retirement`; a player with none planned gets the trait to play on.
+ */
+function keepPlaying(uid: number, entity: "player" | "staff" = "player"): LoggedChange {
+  const person = (entity === "staff" ? staff : players).find((p) => p.uid === uid);
+  if (!person) {
+    throw notFound(entity, uid);
   }
   const retires = retiresOf(uid);
-  if (retires === null) {
+  if (retires === null && (entity === "staff" || keptPlayers.has(uid))) {
     throw failure("retirement.none", "the game has not planned the player's retirement, and he already means to play on");
   }
   keptPlayers.add(uid);
   const logged: LoggedChange = {
     id: changes.length + 1,
     at: Date.now(),
-    name: player.name,
-    entity: "player",
+    name: person.name,
+    entity,
     uid,
     field: "retirement",
-    old: retires.year * 10000 + retires.month * 100 + retires.day,
+    old: retires === null ? 0 : retires.year * 10000 + retires.month * 100 + retires.day,
     new: 0,
     undoneAt: null,
     batch: null,
@@ -1619,6 +1623,8 @@ function staffDetails(member: StaffSummary): StaffDetails {
       .slice(member.uid % 3)
       .map((id, n) => ({ id, value: 1 + ((member.uid + 7 * n) % 20) })),
     boardSeat: !member.isHuman && member.job !== null && SEAT_JOBS.includes(member.job),
+    retirementKnown: true,
+    retires: retiresOf(member.uid),
   });
 }
 
@@ -2354,12 +2360,17 @@ function moveToNation(uid: number, nationUid: number, women: boolean): LoggedCha
 }
 
 /** `plan_staff_move`: the checks of the real command that the fixtures can have, with its messages. */
-function planStaffMove(uid: number, clubUid: number): MovePreview {
-  const member = movableStaff(uid);
+/** `plan_staff_move`: with no club, FM signs the member itself for the job picked, and nothing undoes it. */
+function planStaffMove(uid: number, clubUid: number, job?: number): ManagerPreview {
   const to = clubs.find((c) => c.uid === clubUid);
   if (!to) {
     throw notFound("club", clubUid);
   }
+  const free = staff.find((s) => s.uid === uid && !s.isHuman && s.clubUid === null);
+  if (free && job !== undefined) {
+    return { from: null, to: { uid: to.uid, name: to.name }, permanent: true };
+  }
+  const member = movableStaff(uid);
   if (member.clubUid === clubUid) {
     throw failure("move.sameClub", "the player is at this club already");
   }
@@ -2445,9 +2456,15 @@ function swapBoard(uid: number, otherUid: number): LoggedChange {
     : logStaff(member, "contract.job", mine.job ?? 0, theirs.job ?? 0, { with: other.name });
 }
 
-function moveStaff(uid: number, clubUid: number): LoggedChange {
-  const preview = planStaffMove(uid, clubUid);
+function moveStaff(uid: number, clubUid: number, job?: number): LoggedChange {
+  const preview = planStaffMove(uid, clubUid, job);
   const member = staff.find((s) => s.uid === uid)!;
+  if (preview.from === null) {
+    Object.assign(member, { club: preview.to.name, clubUid: preview.to.uid, team: SENIOR_TEAM, job: job ?? null });
+    const logged = logStaff(member, "club", 0, preview.to.uid, { to: preview.to.name });
+    changes[changes.length - 1].permanent = true;
+    return { ...logged, permanent: true };
+  }
   staffUndo.set(changes.length + 1, { club: member.club, clubUid: member.clubUid, team: member.team, job: member.job });
   member.club = preview.to.name;
   member.clubUid = preview.to.uid;
@@ -4304,7 +4321,7 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
         knownBuild: !unknownBuild,
         health: mockHealth(),
         career: mockCareer(),
-        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, moveToNation: true, addPreference: true, addLanguage: true, renameClub: true },
+        gameActions: { addInjury: true, workPermit: true, startLoan: true, signFreeAgent: true, transfer: true, endLoan: true, release: true, futureTransfer: true, maxTactics: true, moveManager: true, moveToNation: true, signStaff: true, addPreference: true, addLanguage: true, renameClub: true },
       };
       if (restarted && changes.length === 0) {
         changes.push(...earlierChanges());
@@ -4875,9 +4892,11 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case "staff_jobs":
       return [...STAFF_JOBS] as T;
     case "plan_staff_move":
-      return planStaffMove(Number(args?.uid), Number(args?.club)) as T;
+      return planStaffMove(Number(args?.uid), Number(args?.club), args?.job == null ? undefined : Number(args.job)) as T;
     case "move_staff":
-      return moveStaff(Number(args?.uid), Number(args?.club)) as T;
+      return moveStaff(Number(args?.uid), Number(args?.club), args?.job == null ? undefined : Number(args.job)) as T;
+    case "plan_staff_job":
+      return false as T;
     case "board_members":
       return boardMembers(Number(args?.club)) as T;
     case "plan_board_swap":
@@ -4953,6 +4972,8 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
       return addReleaseClause(Number(args?.uid), Number(args?.amount)) as T;
     case "keep_playing":
       return keepPlaying(Number(args?.uid)) as T;
+    case "keep_working":
+      return keepPlaying(Number(args?.uid), "staff") as T;
     case "change_tie":
       return changeTie(
         Number(args?.uid),

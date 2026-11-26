@@ -2,7 +2,7 @@ import { Fragment, useContext, useEffect, useId, useRef, useState, type ReactNod
 import { BestFits } from "./BestFor";
 import { EditableValue, SharedRangeHint } from "./EditControls";
 import { call } from "./api";
-import { changeStaffJob, staffJobs, watchMassFreeze } from "./editing";
+import { changeStaffJob, planStaffJob, staffJobs, watchMassFreeze } from "./editing";
 import { describeError } from "./format";
 import {
   choiceLabel,
@@ -15,6 +15,7 @@ import {
   type StaffAttributeKey,
 } from "./labels";
 import { MoveButton } from "./MoveDialog";
+import { RetirementPlan } from "./PlayerProfile";
 import { bestFits, BOARD_JOBS, STAFF_RECIPES } from "./recipes";
 import { LanguagesGroup, PreferencesGroup } from "./RelationGroups";
 import { ClubLogo, NationFlag, PersonFace, PICTURE_SIZE, WithPicture } from "./Picture";
@@ -220,7 +221,9 @@ export function StaffProfile({ member, version, tab, onTab, onClose }: StaffProf
         // where the game can make you another club's manager, with a club or without.
         editing.editable &&
         editing.stage === "view" &&
-        (info.isHuman ? gameActions.moveManager || gameActions.moveToNation : info.club !== null) && (
+        (info.isHuman
+          ? gameActions.moveManager || gameActions.moveToNation
+          : info.club !== null || gameActions.signStaff) && (
           <>
             {(!info.isHuman || gameActions.moveManager) && (
               <MoveButton
@@ -379,6 +382,7 @@ function CareerTab({ details }: { details: StaffDetails }) {
         <h3>{profileText.reputation}</h3>
         <ReputationBars reputation={details.reputation} />
       </section>
+      {details.retirementKnown && !details.isHuman && <RetirementPlan uid={details.uid} retires={details.retires} staff />}
       <LanguagesGroup languages={details.languages} person={person} />
       <KnowledgeGroup knowledge={details.knowledge} />
       <PreferencesGroup preferences={details.preferences} person={person} />
@@ -490,6 +494,24 @@ function JobChange({ uid, job }: { uid: number; job: number }) {
   const [picked, setPicked] = useState(job);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Whether FM makes the picked job's change itself: its department has no room left for the editor to write in.
+  const [permanent, setPermanent] = useState(false);
+
+  useEffect(() => {
+    setPermanent(false);
+    if (!open || picked === job) {
+      return;
+    }
+    let alive = true;
+    planStaffJob(uid, picked).then(
+      (made) => alive && setPermanent(made),
+      // Apply says why the job cannot be given.
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, [open, picked, job, uid]);
 
   useEffect(() => {
     let alive = true;
@@ -565,6 +587,7 @@ function JobChange({ uid, job }: { uid: number; job: number }) {
       <button type="button" disabled={busy} onClick={() => setOpen(false)}>
         {profileText.cancelJob}
       </button>
+      {permanent && !error && <p className="note">{profileText.jobPermanent}</p>}
       {error && (
         <p className="note error" role="alert">
           {error}

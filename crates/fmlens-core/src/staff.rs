@@ -322,6 +322,10 @@ pub struct StaffDetails {
     pub tendencies: Option<Vec<Tendency>>,
     /// Whether he holds a seat on a club's board that can be swapped for another.
     pub board_seat: bool,
+    /// Whether the editor can read the retirements the game has planned in this build, and the date he retires on
+    /// when the game has planned it (see [`crate::Session::planned_staff_retirement`]).
+    pub retirement_known: bool,
+    pub retires: Option<FmDate>,
 }
 
 /// One of a member of staff's tendencies as the game keeps it: its id and how far he leans to it. One he has no entry
@@ -455,6 +459,8 @@ pub fn read_staff_details(
         formations: s.formations.map(|offsets| offsets.map(u8_at)),
         tendencies: s.tendencies.and_then(|offset| read_tendency_list(process, u64_at(offset))).map(|(_, list)| list),
         board_seat: false,
+        retirement_known: false,
+        retires: None,
     }))
 }
 

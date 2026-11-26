@@ -1070,6 +1070,10 @@ pub struct ClubLayout {
     pub medical_staff: u64,
     pub coaching_staff: u64,
     pub scouting_staff: u64,
+    /// The pointer to the club's Director of Football, null when it has none: no department lists him. Only in the
+    /// layouts it has been checked in.
+    #[serde(default)]
+    pub director_of_football: Option<u64>,
 }
 
 impl ClubLayout {
@@ -1087,6 +1091,7 @@ impl ClubLayout {
             self.scouting_staff + 24,
             self.plays_in.map_or(0, |offset| offset + 8),
             self.nation.map_or(0, |offset| offset + 8),
+            self.director_of_football.map_or(0, |offset| offset + 8),
         ]
         .into_iter()
         .max()
@@ -1560,6 +1565,7 @@ const BUILDS: &[&str] = &[
     include_str!("../../../profiles/fm27/gamepass-0.9.2409.0.toml"),
     include_str!("../../../profiles/fm27/gamepass-0.9.2435.0.toml"),
     include_str!("../../../profiles/fm27/gamepass-0.9.2524.0.toml"),
+    include_str!("../../../profiles/fm27/gamepass-0.9.2562.0.toml"),
     include_str!("../../../profiles/fm27/steam-26227640.toml"),
     include_str!("../../../profiles/fm27/steam-26340721.toml"),
     include_str!("../../../profiles/fm27/steam-26385295.toml"),
@@ -1799,6 +1805,21 @@ mod tests {
             (0x53F_AE88, 0x53F_AED0, 0x53F_B040)
         );
         assert_eq!(profile.current_date, Some(0x539_DD10));
+        assert_eq!(profile.retirement_manager, Some(profile.arrays.players - 0xD2E8));
+        assert_eq!(profile.club_finance_corporate, Some(0x8AD));
+        assert!(profile.calls.is_none());
+
+        // The update of 24 November on Game Pass (0.9.2562.0): every static 0x1FE0 back, the layout as before, and
+        // no function traced.
+        let fingerprint = PluginFingerprint::Pe { size_of_image: 0x1762_4000, link_timestamp: 0x6AFF_583B };
+        let profile = profile_for(fingerprint).expect("Game Pass 0.9.2562.0 profile");
+        assert_eq!(profile.storefront, Storefront::GamePass);
+        assert_eq!(profile.package_version.as_deref(), Some("0.9.2562.0"));
+        assert_eq!(
+            (profile.arrays.players, profile.arrays.staff, profile.arrays.clubs),
+            (0x53F_AE88 - 0x1FE0, 0x53F_AED0 - 0x1FE0, 0x53F_B040 - 0x1FE0)
+        );
+        assert_eq!(profile.current_date, Some(0x539_DD10 - 0x2000));
         assert_eq!(profile.retirement_manager, Some(profile.arrays.players - 0xD2E8));
         assert_eq!(profile.club_finance_corporate, Some(0x8AD));
         assert!(profile.calls.is_none());

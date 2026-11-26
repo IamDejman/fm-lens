@@ -4849,6 +4849,27 @@ The Squad screen's count in its heading stayed at 29 right after the move.
 Not run: swap and release of your own player by the write route, a watched
 match, macOS Intel (Rosetta), and Windows.
 
+## Game Pass 0.9.2562.0 (26 November 2026)
+
+Not checked by FM Lens. Game Pass moved to 0.9.2562.0 on 24 November, the
+update Steam calls 27.1.1. One install connected on it, read-only, from 25
+November. `profiles/fm27/gamepass-0.9.2562.0.toml` is ported from tozmoz's
+FMLibreEditor (GPL-3.0, its commit e0fe879), where the probe's profile check
+passed all 12 checks on a Game Pass save of 4 August 2027. It places the
+arrays, the in-game date, the retirement manager and the corporate facilities
+byte of the club finance record, the same keys as the 0.9.2524.0 profile. The
+arrays and the retirement manager sit 0x1FE0 before those of 0.9.2524.0 and the
+date 0x2000 before; the object layout is unchanged. No function is traced, so
+the features that call into the game stay off on this build.
+
+FMLibreEditor's file also names the game's own object, the tactics and
+training managers, the national team arrays and a tactics offset. FM Lens
+leaves them out, as it did for 0.9.2524.0: it uses them only with traced
+functions, which this build does not have.
+
+Neither `scripts/check-build.sh` nor the write checks have run on this build,
+since no Game Pass install is at hand. Run both the next time one is.
+
 ## Game Pass 0.9.2524.0 (20 November 2026)
 
 Not checked by FM Lens. Game Pass moved to 0.9.2524.0 on 17 November, the
@@ -4940,3 +4961,100 @@ and after.
 - The ticket price hold was not run against a change by the game.
 
 Not checked: macOS arm64 and macOS Intel (Rosetta).
+
+## Director of Football move on Windows (26 November 2026)
+
+Windows Server 2022, FM27 27.1.1, Steam build 26797085. The packaged app was
+built from this change. The moves were made on the test career
+`FM-Lens-Max-2026-11-25`, at 20 July 2028, where FM runs in US English and
+calls the job General Manager. Memory was read with the read-only probe; the
+club's director pointer is at club + 0x148.
+
+| Check | Result |
+|---|---|
+| To a club without a director: Julian Ward (28087384), Liverpool, to Barnsley (606) | Dialog "Same job and contract." and "Liverpool → Barnsley". After: his contract on Barnsley's teams, signed and joined 20 July 2028, £30,000 a week to 30 June 2031; Liverpool's pointer null, Barnsley's on him. FM's Barnsley Staff page listed him as General Manager |
+| Undo | Contract teams and both dates as before, Liverpool's pointer on him, Barnsley's null. FM's Barnsley Staff page no longer listed him |
+| To a club with a director: Ward to Arsenal (602), whose director was Markus Krösche (6000747) | Dialog "Julian Ward: Liverpool → Arsenal" and "Markus Krösche: Arsenal → Liverpool". After: each on the other club's teams with his own wage (£30,000 and £69,000), signed and joined 20 July 2028; Arsenal's pointer on Ward, Liverpool's on Krösche. FM's profiles: Ward at Arsenal and Krösche at Liverpool, both General Manager |
+| Changes | "Julian Ward, Club, Liverpool → Arsenal, Swapped with Markus Krösche" |
+| Continue, two hours | A "Staffing Advice" message to Arsenal's manager from "Julian Ward, General Manager" |
+| Save, quit FM and load | Probe: Ward at Arsenal and Krösche at Liverpool on the same contracts, each club's pointer on its new director. FM Lens after Connect: Julian Ward, Director of Football, Arsenal |
+| Change job lists Director of Football | Offered on a director's Contract tab and in the New job list |
+| Giving the job: Alec Chamberlain (2003718), Scout at Burnley (622), which had no director | Contract job Director of Football, Burnley's pointer on him, its scouting list one shorter (12 to 11). FM's search listed him as General Manager |
+| Taking the job away: Chamberlain back to Scout | Burnley's pointer null and he is in the scouting list again, at its end |
+| Undo of both job changes | Burnley's pointer null, the scouting list as before with him first |
+| Giving the job where there is a director: Mark Gower (2004253), Scout at Liverpool | Refused, "The club has a Director of Football already". Nothing written |
+| A director leaving the job at a club whose lists are full: Ward at Arsenal to Coach, Scout and Physio | Each refused with the list's "no room" message (41, 16 and 25). Nothing written |
+
+Every club read after the load had staff lists with no spare room (end equal
+to capacity), so a job that joins a list is refused until the game has grown
+that list.
+
+Not run: a full day of Continue (FM's set piece introduction was in the
+way), and macOS arm64 and macOS Intel (Rosetta), where the pointer was only
+read.
+
+## Staff moves into full lists on Windows (26 November 2026)
+
+Windows Server 2022, FM27 27.1.1, Steam build 26797085, the packaged app
+built from this change, the test career `FM-Lens-Max-2026-11-25` at 20 July
+2028. Memory was read with the read-only probe. How the game makes the move
+is in `docs/recon/fm27-staff-signing.md`.
+
+A move by rewriting the lists is still tried first and can still be undone.
+Where the new club's list has no spare room FM Lens now has the game sign the
+member instead, so nothing is written past the end of a list.
+
+| Check | Result |
+|---|---|
+| Employed, into a full list: Dassler Marques (28123248), Scout at Liverpool on £1,680 a week to 30 June 2032, to Burnley (622) | Dialog "Same job and contract.", "Liverpool → Burnley" and "It can't be undone.". After: Scout at Burnley, £1,680 a week to 30 June 2032, signed and joined 20 July 2028 |
+| Change job into a full department: Marques, Burnley Scout to Coach | "It can't be undone." under New job before Apply. After: Coach, the wage, expiry and both dates as before |
+| Probe, the same call: Mark Gower (2004253), Scout at Liverpool, to Arsenal (602) | Arsenal's scouting list from 16 of 16 to 17 of 24, grown by the game; Liverpool's one shorter |
+| Changes | "Dassler Marques, Club, Liverpool → Burnley" and "Job, Scout → Coach", each with a hyphen for status and no Undo |
+| Save, quit FM, load (saved as `FM-Lens-Staff-2026-11-26` on 22 July 2028) | Marques still Coach at Burnley, £1,680 a week, signed and joined 20 July 2028, to 30 June 2032. FM's Burnley Staff page lists him: Senior Squad, Coach, $118K a year |
+
+Undo: none for a move the game makes. The game frees the old contract, and
+FM Lens has nothing it could write back to rebuild it. The dialog says so
+before the move.
+
+## Signing unemployed staff on Windows (26 November 2026)
+
+Same machine, build, app and career.
+
+A member of staff without a club has a Sign button on their profile. The
+dialog asks for the club and the job (Coach first), and FM sets the wage and
+dates.
+
+| Check | Result |
+|---|---|
+| As Director of Football where there is one: Markus Krösche (6000747), unemployed, to Arsenal (602), whose director was Julian Ward (28087384) | Dialog "Sign", "FM sets the wage and dates.", "Unemployed → Arsenal", "Julian Ward is released." and "It can't be undone.". After: Krösche Director of Football at Arsenal, £17,159 a week, signed 20 July 2028, to 30 June 2033; Arsenal's director pointer on him; Ward without club or contract. FM's profile: Krösche, Arsenal, General Manager, $1.2M a year to 6/30/2033. FM's inbox: "Ward sacked. General Manager Julian Ward has had his contract terminated." |
+| As Scout: Jürgen Klopp (9318), unemployed, to Burnley (622) | Scout at Burnley, £3,648 a week to 30 June 2032 |
+| Probe, the same call: Antonio Conte (8088), unemployed, to Arsenal as Coach | FM's profile: Arsenal, Coach, $146K a year to 6/30/2033 |
+| Changes | "Markus Krösche, Club" and "Jürgen Klopp, Club", no Undo. The rows read "Free agent → Arsenal" in this build; the wording was changed afterwards to "Unemployed → Arsenal" and that is covered by the tests only |
+| Save, quit FM, load | Krösche still Director of Football at Arsenal, £17,159 a week to 30 June 2033; Klopp still Scout at Burnley, £3,648 a week to 30 June 2032; Ward still without club or contract |
+
+Undo: none, as above.
+
+## Stopping staff retirement on Windows (26 November 2026)
+
+Same machine, build, app and career, from 20 July 2028.
+
+A member of staff's Career tab has a Retirement section with the planned date
+and a Prevent retirement button, the same control a player has.
+
+| Check | Result |
+|---|---|
+| Prevent: Joselu (823506), unemployed Head Coach, "Plans to retire 21 Jul 2028" | After: "No retirement planned", the button greyed out. Probe: not planned. Changes: "Retirement on 21 Jul 2028 prevented" with Undo |
+| Undo, then prevent again | Undo: the probe reads 21 July 2028 again and Changes counts one undone. Prevented again: not planned |
+| Prevent: Joseph Yobo (6600696), unemployed Assistant Coach, planned for 22 July 2028 | Not planned |
+| Control, left alone: Óscar Gurría (842), planned for 21 July 2028 | On 21 July FM's profile reads "Retired, 55 years old" |
+| Continue past the dates, to 22 July 2028 14:00 | FM's profiles: Joselu still a Free Agent Head Coach on 21 July, Yobo still a Free Agent Assistant Coach on 22 July. No new retirement planned for either |
+| Nothing planned: Dassler Marques (28123248) | "No retirement planned", the button greyed out |
+| Save, quit FM, load | Joselu and Yobo not planned; Gurría retired; Florentino Pérez (810186), employed and never touched, still 12 August 2028 |
+| Player with nothing planned: William Saliba (49039004) | The button is live. Pressed: trait 49 (plays as long as possible) set, the button greyed out, Changes "Retirement, Will play on" with Undo. Undo: trait 49 off again |
+
+Not covered: an employed member of staff (five on this save had a date, none
+was tried); more than two days of Continue, so whether FM plans a retirement
+again later is not known.
+
+Not run for any of the three sections above: macOS arm64 and macOS Intel
+(Rosetta).

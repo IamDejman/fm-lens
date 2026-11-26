@@ -253,6 +253,7 @@ const errors: ErrorTexts = {
   "staff.noRoom": (p) =>
     `Kulübün ${STAFF_DEPARTMENTS[p.department] ?? p.department} listesinde bir kişiye daha yer yok (şu an ${p.staff}) ve düzenleyici listeyi büyütemez.`,
   "staff.job": (p) => `Düzenleyici, görevi ${jobName(p.job)} olan personeli henüz taşıyamıyor ve bu görevi veremiyor.`,
+  "staff.directorTaken": () => "Kulübün zaten bir futbol direktörü var.",
   "squad.noTeam": () => `Kulübün böyle bir takımı yok ya da takım doğrulanamadı; ${reload}.`,
   "captain.notInTeam": () => "Oyuncu bu takımda oynamıyor; kaptan ancak takımın kendi oyuncularından seçilebilir.",
   "captain.unchanged": () => "Oyuncu bu görevi zaten üstleniyor.",
@@ -999,6 +1000,8 @@ export const tr: Strings = {
     keepingPlaying: "Engelleniyor…",
     keepPlayingTitle:
       "Emekliliğini iptal eder. Değişiklikler'den geri alabilirsiniz.",
+    keepWorkingTitle: "Emekliliğini iptal eder. Değişiklikler'den geri alabilirsiniz.",
+    playOnTitle: "Mümkün olduğunca uzun oynama özelliğini verir. Değişiklikler'den geri alabilirsiniz.",
 
     // Medical
     morale: (value) => `${value} / 20`,
@@ -1132,6 +1135,7 @@ export const tr: Strings = {
     newJob: "Yeni görev",
     applyJob: "Uygula",
     cancelJob: "Vazgeç",
+    jobPermanent: "Geri alınamaz.",
     unemployed: "İşsiz",
     nationalTeam: (nation, ageLimit, women) =>
       `${nation}${women ? " Kadın" : ""}${ageLimit === null ? "" : ` U${ageLimit}`}`,
@@ -2512,6 +2516,8 @@ export const tr: Strings = {
     staffButtonTitle: "Başka bir kulübe taşı",
     staffChooseClub: "Personelin taşınacağı kulübü seçin.",
     staffContract: "Görev ve sözleşme aynı kalır.",
+    staffHireContract: "Maaşı ve tarihleri FM belirler.",
+    staffReleased: (name) => `${name} serbest kalır.`,
     managerButton: "Kulüp değiştir",
     managerButtonTitle: "Başka bir kulübün teknik direktörü ol",
     managerTitle: "Kulüp değiştir",

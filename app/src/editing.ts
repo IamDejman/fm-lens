@@ -428,10 +428,12 @@ export const removeLanguage = (uid: number, staff: boolean, index: number) =>
 export const homegrownRules = () => call<number[]>("homegrown_rules");
 
 /** Checks that the member of staff can move to the club, and names the clubs; the error says why he cannot. */
-export const planStaffMove = (uid: number, club: number) => call<MovePreview>("plan_staff_move", { uid, club });
+export const planStaffMove = (uid: number, club: number, job?: number) =>
+  call<ManagerPreview>("plan_staff_move", { uid, club, job });
 
 /** Moves the member of staff to the club, in the departments he works in; logged and undone like any change. */
-export const moveStaff = (uid: number, club: number) => call<LoggedChange>("move_staff", { uid, club });
+export const moveStaff = (uid: number, club: number, job?: number) =>
+  call<LoggedChange>("move_staff", { uid, club, job });
 
 /** The board of the club, the most senior seats first. Only reads the game. */
 export const boardMembers = (club: number) => call<BoardMember[]>("board_members", { club });
@@ -458,6 +460,9 @@ export const moveToNation = (uid: number, nation: number, women: boolean) =>
 
 /** Gives the member of staff another job at his club (a contract code); logged and undone like any change. */
 export const changeStaffJob = (uid: number, job: number) => call<LoggedChange>("change_staff_job", { uid, job });
+
+/** Whether FM makes the job change itself, which can't be undone. Nothing is written; the error says why not. */
+export const planStaffJob = (uid: number, job: number) => call<boolean>("plan_staff_job", { uid, job });
 
 /** The jobs `changeStaffJob` gives, by contract code. */
 export const staffJobs = () => call<number[]>("staff_jobs");
@@ -554,6 +559,9 @@ export const removeUnhappiness = (uid: number) => call<ApplyReport>("remove_unha
  * field `retirement` to 0, and undone as one; fails with "retirement.none" when there is nothing to change.
  */
 export const keepPlaying = (uid: number) => call<LoggedChange>("keep_playing", { uid });
+
+/** Keeps the member of staff from retiring: the retirement the game has planned is taken out of its plans. */
+export const keepWorking = (uid: number) => call<LoggedChange>("keep_working", { uid });
 
 /** The teams of a club, the senior team first, with their players and the live values a squad screen shows. */
 export const clubSquads = (uid: number) => call<ClubTeam[]>("club_squads", { uid });

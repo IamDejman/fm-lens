@@ -334,6 +334,9 @@ impl Session {
         details.preferences = self.staff_preferences(member).unwrap_or_default();
         details.knowledge = self.nation_knowledge(member).unwrap_or_default();
         details.board_seat = self.holds_board_seat(member);
+        if let Ok(date) = self.planned_staff_retirement(member) {
+            (details.retirement_known, details.retires) = (true, date);
+        }
         // Through the editor's own guarded read: a manager whose flags cannot be located stays unknown.
         if member.is_human
             && let Ok(unsackable) = self.field(Entity::Staff, "manager.unsackable")

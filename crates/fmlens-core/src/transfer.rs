@@ -275,6 +275,8 @@ pub enum MoveError {
     UnusualJob {
         job: u8,
     },
+    /// The job is Director of Football, and the club has one already.
+    DirectorTaken,
     /// The editor cannot find the retirements the game has planned in this build, or they do not check out.
     NoRetirements,
     /// Keeping a player from retiring asked for one the game has not planned to retire who already has the traits.
@@ -406,6 +408,7 @@ impl fmt::Display for MoveError {
                 Some(name) => write!(f, "the editor does not yet move staff whose job is {name}, or give that job"),
                 None => write!(f, "the editor does not yet move staff whose job is {job}, or give that job"),
             },
+            MoveError::DirectorTaken => f.write_str("the club has a Director of Football already"),
             MoveError::NoRetirements => {
                 f.write_str("the editor cannot find the retirements the game has planned in this version of the game")
             }
@@ -498,6 +501,7 @@ impl Coded for MoveError {
             MoveError::NotInDepartment => "staff.notListed",
             MoveError::DepartmentFull { .. } => "staff.noRoom",
             MoveError::UnusualJob { .. } => "staff.job",
+            MoveError::DirectorTaken => "staff.directorTaken",
             MoveError::NoRetirements => "retirement.unknown",
             MoveError::NotRetiring => "retirement.none",
             MoveError::NoContract => "clause.noContract",

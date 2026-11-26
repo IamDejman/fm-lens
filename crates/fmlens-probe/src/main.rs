@@ -291,6 +291,16 @@ enum Command {
         #[arg(long)]
         restore: bool,
     },
+    /// Have the game sign a member of staff for a club's senior team in a job, as its own editor does. Nothing
+    /// undoes it. Prints his contract and both clubs' staff lists before and after.
+    StaffSign {
+        /// The member of staff's id.
+        id: u32,
+        /// The club's UID.
+        club: u32,
+        /// The job's contract code (see `staff-job`).
+        job: u8,
+    },
     /// Show a player's current injuries, and with --heal heal them in the running game.
     Heal {
         /// The player's UID.
@@ -331,6 +341,9 @@ enum Command {
         /// With --keep, put it all back afterwards and check it.
         #[arg(long)]
         restore: bool,
+        /// The UID is a member of staff's: with --keep his plan is taken out, and no more.
+        #[arg(long, requires = "uid")]
+        staff: bool,
         /// With --restore, how many seconds to wait before putting it back, to look at the game.
         #[arg(long, default_value_t = 0)]
         hold: u64,
@@ -873,6 +886,7 @@ fn run(cli: Cli) -> Result<()> {
                 | Command::Release { .. }
                 | Command::StaffMove { .. }
                 | Command::StaffJob { .. }
+                | Command::StaffSign { .. }
                 | Command::Swap { .. }
                 | Command::Heal { heal: true, .. }
                 | Command::Bans { lift: true, .. }
@@ -971,6 +985,9 @@ fn run(cli: Cli) -> Result<()> {
         Command::StaffJob { id, job, restore } => {
             staff_change(&connect(process, ArraySource::ProfileFirst)?, id, StaffAction::Job(job), restore)
         }
+        Command::StaffSign { id, club, job } => {
+            staff_sign(&connect(process, ArraySource::ProfileFirst)?, id, club, job)
+        }
         Command::Heal { uid, heal, restore, hold } => {
             let restore_after = restore.then_some(hold);
             heal_player(&connect(process, ArraySource::ProfileFirst)?, uid, heal, restore_after)
@@ -979,9 +996,13 @@ fn run(cli: Cli) -> Result<()> {
             let restore_after = restore.then_some(hold);
             ban_list(&connect(process, ArraySource::ProfileFirst)?, uid, lift, restore_after)
         }
-        Command::Retirements { uid, keep, restore, hold } => {
+        Command::Retirements { uid, keep, restore, staff, hold } => {
             let restore_after = restore.then_some(hold);
-            retirements(&connect(process, ArraySource::ProfileFirst)?, uid, keep, restore_after)
+            let session = connect(process, ArraySource::ProfileFirst)?;
+            match (staff, uid) {
+                (true, Some(uid)) => staff_retirement(&session, uid, keep, restore_after),
+                _ => retirements(&session, uid, keep, restore_after),
+            }
         }
         Command::FutureTransfers => future_transfers(&connect(process, ArraySource::ProfileFirst)?),
         Command::SaveName => {
@@ -2930,6 +2951,59 @@ fn tendencies(session: &Session, value: Option<u8>) -> Result<()> {
     Ok(())
 }
 
+/// Has the game sign the member of staff `id` for `club` in `job`, and prints what ties him to his clubs around it.
+fn staff_sign(session: &Session, id: u32, club: u32, job: u8) -> Result<()> {
+    let index = StaffIndex::new(session.staff()?);
+    let member = index.get(id).with_context(|| format!("no member of staff with id {id}"))?;
+    let clubs = ClubIndex::new(session.clubs()?);
+    let to = clubs.get(club).with_context(|| format!("no club with UID {club}"))?;
+    let from = member.club_uid.and_then(|uid| clubs.get(uid));
+    let (st, c, l) = (&session.layout.staff, &session.layout.contract, &session.layout.club);
+    let show = |label: &str| {
+        let p = &session.process;
+        let contract = p.read_u64(member.address + st.contract).unwrap_or(0);
+        let word = |offset: u64| p.read_u64(contract + offset).unwrap_or(0);
+        let bytes = p.read_bytes(contract, c.end() as usize).unwrap_or_default();
+        println!(
+            "{label}: contract {contract:#x}, team {:#x}, senior {:#x}, job {}, wage {}",
+            word(c.team),
+            word(c.senior_team),
+            bytes.get(c.job as usize).copied().unwrap_or(0),
+            p.read_u32(contract + c.wage).unwrap_or(0),
+        );
+        println!("  contract bytes {}", bytes.iter().map(|b| format!("{b:02x}")).collect::<String>());
+        for (name, summary) in [("from", from), ("to", Some(to))] {
+            let Some(summary) = summary else { continue };
+            let mut line = format!("  {name} {} ({:#x}):", summary.name, summary.address);
+            for (department, at) in
+                [("medical", l.medical_staff), ("coaching", l.coaching_staff), ("scouting", l.scouting_staff)]
+            {
+                let words: Vec<u64> = (0..3).map(|i| p.read_u64(summary.address + at + 8 * i).unwrap_or(0)).collect();
+                let count = words[1].saturating_sub(words[0]) / 8;
+                let holds = (0..count.min(4096)).any(|i| p.read_u64(words[0] + 8 * i).unwrap_or(0) == member.address);
+                line += &format!(
+                    " {department} {count} of {} at {:#x}{}",
+                    words[2].saturating_sub(words[0]) / 8,
+                    words[0],
+                    if holds { " (him)" } else { "" }
+                );
+            }
+            if let Some(at) = l.director_of_football {
+                let director = p.read_u64(summary.address + at).unwrap_or(0);
+                line += &format!(" director {director:#x}{}", if director == member.address { " (him)" } else { "" });
+            }
+            println!("{line}");
+        }
+    };
+    show("before");
+    let signing = session.plan_staff_signing(member, to, Some(job))?;
+    println!("planned: from {:?}, job {:?}, displaced {:?}", signing.from_club, signing.job, signing.displaced);
+    let signed = session.sign_staff(&signing)?;
+    println!("signed: {signed:?}");
+    show("after");
+    Ok(())
+}
+
 fn staff_member(session: &Session, uid: u32) -> Result<()> {
     let index = StaffIndex::new(session.staff()?);
     let member = index.get(uid).with_context(|| format!("no member of staff with id {uid}"))?;
@@ -2966,6 +3040,20 @@ fn staff_member(session: &Session, uid: u32) -> Result<()> {
         "  reputation     home {}, current {}, world {}",
         d.reputation.home, d.reputation.current, d.reputation.world
     );
+    {
+        let (st, c) = (&session.layout.staff, &session.layout.contract);
+        let contract = session.process.read_u64(member.address + st.at(st.contract, member.shift)).unwrap_or(0);
+        let word = |offset: u64| session.process.read_u64(contract + offset).unwrap_or(0);
+        println!(
+            "  addresses      object {:#x}, identity {:#x}, person block {:#x}, contract {contract:#x}, team {:#x}, \
+             senior team {:#x}",
+            member.address,
+            member.address + st.identity(),
+            member.address + st.person_block + member.shift,
+            word(c.team),
+            word(c.senior_team),
+        );
+    }
     if member.shift != 0 {
         println!("  layout         person block shifted by {:#x}", member.shift);
     }
@@ -3415,6 +3503,9 @@ fn staff_change(session: &Session, id: u32, action: StaffAction, restore: bool) 
         job(plan.job.0),
         job(plan.job.1)
     );
+    if let Some(other) = plan.displaced.and_then(|uid| staff.get(uid)) {
+        println!("  {} (id {}) takes his place at {}", other.name, other.uid, name(plan.from_club));
+    }
     let done = session.apply_staff_plan(&plan)?;
     let now = |label: &str| -> Result<()> {
         let read = session.staff()?.into_iter().find(|s| s.uid == id).context("the member of staff is gone")?;
@@ -3593,6 +3684,34 @@ fn retirements(session: &Session, uid: Option<u32>, keep: bool, restore_after: O
         }
         session.undo_retirement(&done)?;
         ensure!(show("restored")? == before, "his plan or traits are not as they were");
+        println!("  restored");
+    }
+    Ok(())
+}
+
+/// Shows the retirement the game plans for the member of staff `uid`, and with `keep` takes it out of the plans.
+fn staff_retirement(session: &Session, uid: u32, keep: bool, restore_after: Option<u64>) -> Result<()> {
+    let staff = session.staff()?;
+    let member = staff.iter().find(|member| member.uid == uid).with_context(|| format!("no staff with UID {uid}"))?;
+    let show = |label: &str| -> Result<Option<FmDate>> {
+        let date = session.planned_staff_retirement(member)?;
+        let shown = date.map_or_else(|| "not planned".to_owned(), |date| iso_date(Some(date)));
+        println!("{} (staff {uid}) {label}: retires {shown}", member.name);
+        Ok(date)
+    };
+    let before = show("now")?;
+    if !keep {
+        return Ok(());
+    }
+    let done = session.apply_retirement(&session.plan_keep_working(member)?)?;
+    ensure!(show("kept")?.is_none(), "he still retires");
+    if let Some(hold) = restore_after {
+        if hold > 0 {
+            println!("  putting it back in {hold} s");
+            std::thread::sleep(std::time::Duration::from_secs(hold));
+        }
+        session.undo_retirement(&done)?;
+        ensure!(show("restored")? == before, "his plan is not as it was");
         println!("  restored");
     }
     Ok(())

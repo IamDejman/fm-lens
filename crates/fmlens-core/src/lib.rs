@@ -125,7 +125,9 @@ pub use staff::{
     MOST_TENDENCY, NAMED_TENDENCIES, STAFF_ATTRIBUTE_GROUPS, StaffContract, StaffDetails, StaffIndex, StaffSummary,
     Tendency, job_name, read_staff, read_staff_details,
 };
-pub use staff_move::{Department, STAFF_JOBS, StaffChange, StaffPlan, department_of};
+pub use staff_move::{
+    DIRECTOR_JOB, Department, STAFF_JOBS, SignedStaff, StaffChange, StaffPlan, StaffSigning, department_of,
+};
 pub use tactics::{PlayerTactics, RaisedTactics, TeamTactics};
 pub use template::{PlayerTemplate, TemplateError, TemplateGroup};
 pub use text::{fold, is_name_like, read_fm_string, read_name_entry};

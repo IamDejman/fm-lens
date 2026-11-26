@@ -9,6 +9,9 @@
 //! trait "Will play football as long as possible" in place of "Will retire at top". The entry itself stays where it
 //! is, unlisted, and comes back with an undo.
 //!
+//! The game plans the retirements of staff in the same lists, by the same id, which a member of staff keeps where a
+//! player does, in his identity block. Staff have no traits, so keeping one working takes his entry out and no more.
+//!
 //! [`BuildProfile::retirement_manager`]: crate::profile::BuildProfile::retirement_manager
 
 use fmlens_mem::is_user_pointer;
@@ -18,6 +21,7 @@ use crate::date::FmDate;
 use crate::players::PlayerSummary;
 use crate::rtti::class_of;
 use crate::session::Session;
+use crate::staff::StaffSummary;
 use crate::transfer::{MoveError, Patch, Patches, PointerList, removal_patches};
 
 /// The name the compiler keeps for the class of the retirement manager: MSVC's on Windows, the Itanium C++ ABI's on
@@ -54,6 +58,7 @@ pub struct PlannedRetirement {
 /// Keeping a player from retiring, worked out from the game as it is now and ready to be written.
 #[derive(Debug, Clone)]
 pub struct RetirementPlan {
+    /// The UID of the player, or of the member of staff.
     pub player: u32,
     /// The date he was to retire on; none when the game had not planned it yet.
     pub date: Option<FmDate>,
@@ -134,29 +139,9 @@ impl Session {
     /// trait "Will play football as long as possible" in place of "Will retire at top". Nothing is written.
     pub fn plan_keep_playing(&self, player: &PlayerSummary) -> Result<RetirementPlan, MoveError> {
         let planned = self.planned()?.ok_or(MoveError::NoRetirements)?;
-        let person = self.person_id(player)?;
+        let mut taken = Taken { person: self.person_id(player)?, entry: None, next: None, traits: (0, 0, 0) };
         let mut patches = Patches::default();
-        let mut date = None;
-        let mut taken = Taken { person, entry: None, next: None, traits: (0, 0, 0) };
-        if let Some((at, entry)) = planned.find(person) {
-            let list = planned.list.as_ref().ok_or(MoveError::NoRetirements)?;
-            let index = planned.entries.iter().position(|&listed| listed == entry).ok_or(MoveError::NoRetirements)?;
-            date = self.read_retirement(entry)?.date;
-            (taken.entry, taken.next) = (Some(entry), planned.entries.get(index + 1).copied());
-            // The index first, as the game finds a person's entry by it; each list repeats its last entry for a
-            // moment, then ends one earlier and clears the slot it gave up.
-            let last = planned.index.len() - 1;
-            let size = INDEX_ENTRY as u64;
-            patches.push(
-                planned.index_begin + at as u64 * size,
-                planned.index[at..last].concat(),
-                planned.index[at + 1..].concat(),
-            );
-            let end = planned.index_end;
-            patches.push(planned.index_header + 8, end.to_le_bytes(), (end - size).to_le_bytes());
-            patches.push(planned.index_begin + last as u64 * size, planned.index[last], [0; INDEX_ENTRY]);
-            removal_patches(list, index, &planned.entries, &mut patches);
-        }
+        let date = self.unlist(&planned, &mut taken, &mut patches)?;
         // The two traits share the mask's seventh byte.
         let p = &self.layout.player;
         let byte = player.address + p.at(p.traits, player.shift) + u64::from(RETIRE_AT_TOP / 8);
@@ -168,6 +153,54 @@ impl Session {
             return Err(MoveError::NotRetiring);
         }
         Ok(RetirementPlan { player: player.uid, date, taken, patches: patches.0 })
+    }
+
+    /// The date the game plans the member of staff `member` to retire on, as [`Session::planned_retirement`] gives a
+    /// player's.
+    pub fn planned_staff_retirement(&self, member: &StaffSummary) -> Result<Option<FmDate>, MoveError> {
+        let planned = self.planned()?.ok_or(MoveError::NoRetirements)?;
+        match planned.find(self.staff_person_id(member)?) {
+            Some((_, entry)) => Ok(self.read_retirement(entry)?.date),
+            None => Ok(None),
+        }
+    }
+
+    /// Works out keeping the member of staff `member` from retiring: his planned retirement taken out of the
+    /// manager's lists. Nothing is written. [`MoveError::NotRetiring`] when the game has planned none.
+    pub fn plan_keep_working(&self, member: &StaffSummary) -> Result<RetirementPlan, MoveError> {
+        let planned = self.planned()?.ok_or(MoveError::NoRetirements)?;
+        let mut taken = Taken { person: self.staff_person_id(member)?, entry: None, next: None, traits: (0, 0, 0) };
+        let mut patches = Patches::default();
+        let date = self.unlist(&planned, &mut taken, &mut patches)?;
+        if patches.0.is_empty() {
+            return Err(MoveError::NotRetiring);
+        }
+        Ok(RetirementPlan { player: member.uid, date, taken, patches: patches.0 })
+    }
+
+    /// Takes the entry of the person `taken.person` out of both of the manager's lists, noting it in `taken`, and
+    /// gives the date it held; nothing, and no patch, when the game has planned no retirement for him.
+    fn unlist(&self, planned: &Planned, taken: &mut Taken, patches: &mut Patches) -> Result<Option<FmDate>, MoveError> {
+        let Some((at, entry)) = planned.find(taken.person) else {
+            return Ok(None);
+        };
+        let list = planned.list.as_ref().ok_or(MoveError::NoRetirements)?;
+        let index = planned.entries.iter().position(|&listed| listed == entry).ok_or(MoveError::NoRetirements)?;
+        (taken.entry, taken.next) = (Some(entry), planned.entries.get(index + 1).copied());
+        // The index first, as the game finds a person's entry by it; each list repeats its last entry for a
+        // moment, then ends one earlier and clears the slot it gave up.
+        let last = planned.index.len() - 1;
+        let size = INDEX_ENTRY as u64;
+        patches.push(
+            planned.index_begin + at as u64 * size,
+            planned.index[at..last].concat(),
+            planned.index[at + 1..].concat(),
+        );
+        let end = planned.index_end;
+        patches.push(planned.index_header + 8, end.to_le_bytes(), (end - size).to_le_bytes());
+        patches.push(planned.index_begin + last as u64 * size, planned.index[last], [0; INDEX_ENTRY]);
+        removal_patches(list, index, &planned.entries, patches);
+        Ok(self.read_retirement(entry)?.date)
     }
 
     /// Writes planned changes to a player's retirement, each write over the bytes it expects, after checking them
@@ -336,5 +369,17 @@ impl Session {
             return Err(MoveError::Moved { uid: player.uid });
         }
         Ok(self.process.read_u32(player.address + p.at(r.player_person, player.shift))?)
+    }
+
+    /// The id the game gives the member of staff `member`, once his object is checked to still be his: kept in his
+    /// identity block where a player's is in his.
+    fn staff_person_id(&self, member: &StaffSummary) -> Result<u32, MoveError> {
+        let (p, s) = (&self.layout.player, &self.layout.staff);
+        let r = self.layout.retirement.as_ref().ok_or(MoveError::NoRetirements)?;
+        if self.process.read_u32(member.address + s.at(s.uid, member.shift))? != member.uid {
+            return Err(MoveError::Moved { uid: member.uid });
+        }
+        let person = s.identity() + (r.player_person - p.identity());
+        Ok(self.process.read_u32(member.address + s.at(person, member.shift))?)
     }
 }
