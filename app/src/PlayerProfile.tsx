@@ -4,7 +4,7 @@ import { BestFits } from "./BestFor";
 import { ClauseList } from "./ClauseList";
 import { CompareToggle } from "./Comparison";
 import { EditableValue, EditInput, SharedRangeHint } from "./EditControls";
-import { applyEdits, keepPlaying, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
+import { applyEdits, keepPlaying, keepWorking, removeUnhappiness, setWorkPermit, wholePercent, workPermitNeeded } from "./editing";
 import { describeError, formatDate, formatNumber, formatMoney } from "./format";
 import { ATTRIBUTE_LABELS, ATTRIBUTE_NOTES, editText, fieldLabel, positionLabel, profileText, type AttributeKey } from "./labels";
 import { MedicalGroups, percentText } from "./MedicalGroup";
@@ -1015,27 +1015,47 @@ function CareerGroups({ details }: { details: PlayerDetails }) {
         <h3>{profileText.reputation}</h3>
         <ReputationBars reputation={reputation} />
       </section>
-      {details.retirementKnown && <RetirementPlan uid={details.uid} retires={details.retires} />}
+      {details.retirementKnown && (
+        <RetirementPlan
+          uid={details.uid}
+          retires={details.retires}
+          playsOn={details.traits.includes(PLAY_ON) && !details.traits.includes(RETIRE_AT_TOP)}
+        />
+      )}
     </>
   );
+}
+
+/** The traits (bits of a player's `traits`) "Will retire at top" and "Will play football as long as possible". */
+const RETIRE_AT_TOP = 48;
+const PLAY_ON = 49;
+
+interface RetirementPlanProps {
+  uid: number;
+  retires: FmDate | null;
+  /** A member of staff, whose plan is cancelled and no more. */
+  staff?: boolean;
+  /** A player who has the trait to play on and not the one to retire at the top. */
+  playsOn?: boolean;
 }
 
 /**
  * The date the game plans the player to retire on, with the button that keeps him playing: his plan comes out of the
  * game's, and he gets the trait to play on as long as possible. Like healing, it asks no question; Changes undoes it.
  */
-function RetirementPlan({ uid, retires }: { uid: number; retires: FmDate | null }) {
+export function RetirementPlan({ uid, retires, staff = false, playsOn = false }: RetirementPlanProps) {
   const { editable, readOnlyNote, onEdited } = useContext(EditorContext);
   const [keeping, setKeeping] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const planned = retires !== null;
+  // With none planned, a player can still be given the trait to play on; staff have no such trait.
+  const planned = retires !== null || (!staff && !playsOn);
   const none = useRef<HTMLParagraphElement>(null);
   const wasPlanned = useRef(planned);
 
   // The button stays busy until the profile has read the game again.
   useEffect(() => {
     setKeeping(false);
-  }, [retires]);
+  }, [retires, playsOn]);
 
   // Keeping him playing dims the button, which had focus: it goes to the line that says so.
   useEffect(() => {
@@ -1052,7 +1072,7 @@ function RetirementPlan({ uid, retires }: { uid: number; retires: FmDate | null 
     setKeeping(true);
     setError(null);
     try {
-      await keepPlaying(uid);
+      await (staff ? keepWorking(uid) : keepPlaying(uid));
       onEdited();
     } catch (e) {
       setError(describeError(e));
@@ -1069,7 +1089,7 @@ function RetirementPlan({ uid, retires }: { uid: number; retires: FmDate | null 
           disabled={!editable || !planned}
           aria-disabled={keeping || undefined}
           aria-busy={keeping || undefined}
-          title={editable ? profileText.keepPlayingTitle : readOnlyNote}
+          title={editable ? (staff ? profileText.keepWorkingTitle : retires === null ? profileText.playOnTitle : profileText.keepPlayingTitle) : readOnlyNote}
           onClick={() => void keep()}
         >
           {keeping ? profileText.keepingPlaying : profileText.keepPlaying}

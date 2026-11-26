@@ -978,6 +978,8 @@ export const en = {
     keepingPlaying: "Preventing…",
     keepPlayingTitle:
       "Cancels his retirement. You can undo it in Changes.",
+    keepWorkingTitle: "Cancels their retirement. You can undo it in Changes.",
+    playOnTitle: "Gives him the trait to play on as long as possible. You can undo it in Changes.",
 
     // Medical (the group's heading is `medical`, below; the names of its values are in `fields`)
     /** A player's morale, 1–20. */
@@ -1139,6 +1141,7 @@ export const en = {
     newJob: "New job",
     applyJob: "Apply",
     cancelJob: "Cancel",
+    jobPermanent: "It can't be undone.",
     unemployed: "Unemployed",
     /** A national team, as the employer of its manager: "England", "England U21", "England Women". */
     nationalTeam: (nation: string, ageLimit: number | null, women: boolean) =>
@@ -2790,6 +2793,8 @@ export const en = {
     staffButtonTitle: "Move them to another club",
     staffChooseClub: "Pick a club.",
     staffContract: "Same job and contract.",
+    staffHireContract: "FM sets the wage and dates.",
+    staffReleased: (name: string) => `${name} is released.`,
     // Making the human manager another club's manager: the game makes his contract and dismisses the club's manager.
     managerButton: "Change club",
     managerButtonTitle: "Become the manager of another club",

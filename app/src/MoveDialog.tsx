@@ -33,6 +33,7 @@ import {
   planManagerMove,
   planNationalMove,
   planStaffMove,
+  staffJobs,
   signFreeAgent,
   signFreeAgentLater,
   startLoan,
@@ -296,9 +297,12 @@ function termsOf(wage: number | undefined, expires: number | undefined): MoveTer
   return { ...(wage !== undefined && { wage }), ...(expires !== undefined && { expires }) };
 }
 
+/** The job a member of staff without a club is offered first: a coach's, by contract code. */
+const COACH_JOB = 2;
+
 /** What a plan is for. A plan is the dialog's only while the club, the terms and the fee are those it was asked about. */
-const planKey = (club: number, terms: MoveTerms, fee: number | undefined) =>
-  `${club}:${terms.wage ?? ""}:${terms.expires ?? ""}:${fee ?? ""}`;
+const planKey = (club: number, terms: MoveTerms, fee: number | undefined, job?: number) =>
+  `${club}:${terms.wage ?? ""}:${terms.expires ?? ""}:${fee ?? ""}:${job ?? ""}`;
 
 /** What a fee does to one club's money, a line for the plan: what it pays or gets, and its money before and after. */
 function moneyLine(money: ClubMoney | null, club: string, fee: string, paying: boolean): string {
@@ -763,6 +767,8 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   const national = kind === "national";
   const manager = kind === "manager" || national;
   const board = kind === "board";
+  // A member of staff without a club is given a job: FM makes the contract.
+  const hire = kind === "staff" && player.club === null;
   const { gameActions, gameDate } = useContext(EditorContext);
   const base = useId();
   const id = (part: string) => `${base}-${part}`;
@@ -801,6 +807,9 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
   const [feeText, setFeeText] = useState("");
   const [loanEndsText, setLoanEndsText] = useState(() => seasonEnd(gameDate));
   const [joinsText, setJoinsText] = useState(() => (gameDate ? isoFromNumber(numberFromDate(gameDate)) : ""));
+  // The jobs a member of staff without a club can be given, and the one picked.
+  const [jobs, setJobs] = useState<number[]>([]);
+  const [job, setJob] = useState<number | null>(null);
   const [planned, setPlanned] = useState<Planned | null>(null);
   // How often the plan was asked again with nothing changed: after a move the game refused.
   const [replans, setReplans] = useState(0);
@@ -809,13 +818,34 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
 
   useModal(dialog, !moving, onClose);
 
+  useEffect(() => {
+    if (!hire) {
+      return;
+    }
+    let cancelled = false;
+    staffJobs().then(
+      (codes) => {
+        if (!cancelled) {
+          setJobs([...codes].sort((a, b) => jobLabel(a).localeCompare(jobLabel(b))));
+          setJob((picked) => picked ?? (codes.includes(COACH_JOB) ? COACH_JOB : (codes[0] ?? null)));
+        }
+      },
+      // With no jobs to offer there is nothing to plan: the dialog stays on its club search.
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [hire]);
+
   // The inputs, and the terms they stand for.
   const wageVerdict = judgeWage(wageText, wasWageShown);
   const expiresVerdict = judgeExpires(expiresText, wasExpires);
   const feeVerdict = judgeFee(feeText);
-  const valid =
-    staff ||
-    (wageVerdict.status !== "invalid" && expiresVerdict.status !== "invalid" && feeVerdict.status !== "invalid");
+  const valid = staff
+    ? !hire || job !== null
+    : wageVerdict.status !== "invalid" && expiresVerdict.status !== "invalid" && feeVerdict.status !== "invalid";
+  const hired = hire && job !== null ? job : undefined;
   const wage = !staff && wageVerdict.status === "changed" ? toPounds(wageVerdict.value) : undefined;
   const expires = !staff && expiresVerdict.status === "changed" ? expiresVerdict.value : undefined;
   const fee = !staff && feeVerdict.status === "changed" ? toPounds(feeVerdict.value) : undefined;
@@ -859,7 +889,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
           ? swapKey(other.uid)
           : null
         : club !== null && valid
-          ? planKey(club.uid, terms, fee)
+          ? planKey(club.uid, terms, fee, hired)
           : null;
   const outcome = key !== null && planned?.key === key ? planned.outcome : null;
   const preview = outcome !== null && "preview" in outcome ? outcome.preview : null;
@@ -884,7 +914,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
               : manager
                 ? moveManager(player.uid, club.uid)
                 : staff
-                ? moveStaff(player.uid, club.uid)
+                ? moveStaff(player.uid, club.uid, hired)
                 : movePlayer(player.uid, club.uid, terms, fee));
 
   // The clubs on show. Until the search has answered for what is typed they are the last ones: Enter leaves them alone.
@@ -948,7 +978,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     const asked = termsOf(wage, expires);
     const answer = (result: Planned["outcome"]) => {
       if (!cancelled) {
-        setPlanned({ key: planKey(club.uid, asked, fee), outcome: result });
+        setPlanned({ key: planKey(club.uid, asked, fee, hired), outcome: result });
       }
     };
     const timer = setTimeout(() => {
@@ -957,7 +987,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
         : manager
           ? planManagerMove(player.uid, club.uid)
           : staff
-          ? planStaffMove(player.uid, club.uid)
+          ? planStaffMove(player.uid, club.uid, hired)
           : planClubMove(player.uid, club.uid, asked, fee)
       ).then(
         (made) => answer({ preview: made }),
@@ -968,7 +998,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [sign, swap, loan, staff, manager, player.uid, club, valid, wage, expires, fee, replans]);
+  }, [sign, swap, loan, staff, manager, player.uid, club, valid, wage, expires, fee, hired, replans]);
 
   // The same for a swap, a moment after the player to swap with is picked.
   useEffect(() => {
@@ -1113,7 +1143,7 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
     feeVerdict.status === "invalid" ? { message: text.feeInvalid(formatAmount(MAX_FEE_SHOWN)), invalid: true } : null;
 
   // The club he leaves, or what he is without one.
-  const from = player.club ?? (manager ? profileText.unemployed : profileText.freeAgent);
+  const from = player.club ?? (staff ? profileText.unemployed : profileText.freeAgent);
 
   // Where the clubs of a move that can be made lead, and what its fee does to their money; for a swap, who goes where.
   // For the human manager, the manager the club loses.
@@ -1133,7 +1163,10 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
           : text.swapRoute(player.name, leaves, made.to.name, other.name)
         : club !== null && isNational(club)
           ? profileText.nationalTeam(made.to.name, null, club.women)
-          : text.route(leaves, made.to.name),
+          : !manager && made.displaced && !made.permanent
+            ? // A Director of Football changes places with the new club's.
+              text.swapRoute(player.name, leaves, made.to.name, made.displaced)
+            : text.route(leaves, made.to.name),
     ];
     if (made.fee) {
       const amount = formatMoney(made.fee.fee);
@@ -1145,8 +1178,11 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
         lines.push(moneyLine(made.fee.seller, leaves, amount, false));
       }
     }
-    if ("displaced" in made && made.displaced) {
+    if (manager && made.displaced) {
       lines.push(text.managerDisplaced(made.displaced));
+    }
+    if (!manager && made.displaced && made.permanent) {
+      lines.push(text.staffReleased(made.displaced));
     }
     if (national && player.national) {
       lines.push(text.nationalLeaves(player.national));
@@ -1194,10 +1230,10 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
                 busy: text.managerMoving,
               }
           : {
-              title: text.title,
+              title: hire ? text.signTitle : text.title,
               choose: staff ? text.staffChooseClub : text.chooseClub,
-              button: text.move,
-              busy: text.moving,
+              button: hire ? text.sign : text.move,
+              busy: hire ? text.signing : text.moving,
             };
 
   // What the move or the swap comes to, or why it cannot be made. The plan line is a live region that is always there.
@@ -1453,7 +1489,27 @@ function MoveDialog({ player, kind, contract, agreed, onMoved, onClose }: MoveDi
           ) : (
             <section className="move-section" aria-labelledby={id("contract")}>
               <h3 id={id("contract")}>{profileText.contract}</h3>
-              {swap || staff ? (
+              {hire ? (
+                <div className="move-terms">
+                  <div className="move-term">
+                    <label htmlFor={id("job")}>{profileText.job}</label>
+                    <select
+                      id={id("job")}
+                      className="move-input"
+                      value={job ?? ""}
+                      disabled={moving}
+                      onChange={(e) => setJob(Number(e.currentTarget.value))}
+                    >
+                      {jobs.map((code) => (
+                        <option key={code} value={code}>
+                          {jobLabel(code)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="move-note">{text.staffHireContract}</p>
+                  </div>
+                </div>
+              ) : swap || staff ? (
                 <p className="move-note">
                   {manager
                     ? text.managerContract

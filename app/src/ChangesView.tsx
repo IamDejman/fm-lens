@@ -565,12 +565,13 @@ function ChangeRow({ change, field, failure, undoing, onUndo, inBatch }: ChangeR
   // "Healed 2 injuries" says it better than "2 → 0". A work permit is logged as a number, which it names. Keeping
   // him from retiring is logged with the date he was to retire on, which it names. A cancelled transfer agreed for a
   // later day is logged with the club he was to join, which goes to none.
+  const noClub = change.entity === "staff" ? profileText.unemployed : profileText.freeAgent;
   const value = change.moved && change.field !== "contract.job"
     ? change.field === "future_transfer"
       ? valueChange(named(change.moved.to, profileText.none), profileText.none)
       : change.field.startsWith("nationalTeam")
         ? valueChange(profileText.none, named(change.moved.to, profileText.none))
-        : valueChange(named(change.moved.from, profileText.freeAgent), named(change.moved.to, profileText.freeAgent))
+        : valueChange(named(change.moved.from, noClub), named(change.moved.to, noClub))
     : change.captaincy
       ? valueChange(named(change.captaincy.from, profileText.none), named(change.captaincy.to))
     : renamed

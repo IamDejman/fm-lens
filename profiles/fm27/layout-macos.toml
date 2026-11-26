@@ -532,6 +532,7 @@ finance = 0x150
 medical_staff = 0x60
 coaching_staff = 0x78
 scouting_staff = 0x90
+director_of_football = 0x148  # pointer to its Director of Football, as on Windows (Liverpool: Julian Ward)
 
 # Stadiums are laid out as on Windows: Old Trafford reads 74,879, 74,310 in use, room to grow to 95,285; the
 # Emirates 60,704, the Tottenham Hotspur Stadium 62,850, the Amex 31,876.

@@ -127,6 +127,8 @@ export interface GameActions {
   moveManager: boolean;
   /** Makes the human manager the manager of a senior national team (`move_to_nation`), as FM's editor does. */
   moveToNation: boolean;
+  /** Signs staff for a club (`move_staff`) into a full department, or from no club, as FM's editor does. */
+  signStaff: boolean;
   /** Adds a club or person to those a player or member of staff favours or dislikes (`add_preference`). */
   addPreference: boolean;
   /** Adds a language to those a player or member of staff speaks (`add_language`). */
@@ -426,6 +428,10 @@ export interface StaffDetails extends StaffSummary {
   tendencies: Tendency[] | null;
   /** Whether he holds a seat on a club's board that can be swapped for another's. */
   boardSeat: boolean;
+  /** Whether the editor can read the retirements the game has planned in this version of the game. */
+  retirementKnown: boolean;
+  /** The date the game plans them to retire on; null when it has planned none (or `retirementKnown` is false). */
+  retires: FmDate | null;
 }
 
 export interface FmDate {
@@ -1532,6 +1538,11 @@ export interface MovePreview {
   permanent?: boolean;
   /** For a swap of board seats (`plan_board_swap`): the job he has and the one he takes, as contract codes. */
   jobs?: [number, number];
+  /**
+   * For a Director of Football's move: the name of the new club's director, who takes his place at the old club, or
+   * whom FM releases where the move is `permanent`.
+   */
+  displaced?: string;
 }
 
 /** From `board_members`: a member of a club's board, and his seat's job as a contract code. */

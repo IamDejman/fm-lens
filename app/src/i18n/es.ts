@@ -386,6 +386,7 @@ const errors: ErrorTexts = {
     `La lista ${STAFF_DEPARTMENTS[p.department] ?? `de ${p.department}`} del club no tiene sitio para nadie más ` +
     `(ahora ${p.staff}) y el editor no puede ampliarla.`,
   "staff.job": (p) => `El editor todavía no mueve al personal con el puesto de ${jobName(p.job)} ni da ese puesto.`,
+  "staff.directorTaken": () => "El club ya tiene un director deportivo.",
   "squad.noTeam": () => `El club no tiene ese equipo o no supera la comprobación; ${reload}.`,
   "captain.notInTeam": () =>
     "El jugador no juega en este equipo; el capitán solo puede ser uno de los jugadores del propio equipo.",
@@ -1012,6 +1013,8 @@ export const es: Strings = {
     keepingPlaying: "Evitando…",
     keepPlayingTitle:
       "Cancela su retirada. Puedes deshacerlo en Cambios.",
+    keepWorkingTitle: "Cancela su retirada. Puedes deshacerlo en Cambios.",
+    playOnTitle: "Le da el rasgo de jugar todo el tiempo posible. Puedes deshacerlo en Cambios.",
 
     // Médico
     morale: (value) => `${value} / 20`,
@@ -1147,6 +1150,7 @@ export const es: Strings = {
     newJob: "Nuevo puesto",
     applyJob: "Aplicar",
     cancelJob: "Cancelar",
+    jobPermanent: "No se puede deshacer.",
     unemployed: "Sin empleo",
     nationalTeam: (nation, ageLimit, women) =>
       `${nation}${women ? " femenina" : ""}${ageLimit === null ? "" : ` sub-${ageLimit}`}`,
@@ -2564,6 +2568,8 @@ export const es: Strings = {
     staffButtonTitle: "Moverlo a otro club",
     staffChooseClub: "Elige el club al que mover a este miembro del personal.",
     staffContract: "Mismo puesto y contrato.",
+    staffHireContract: "FM fija el sueldo y las fechas.",
+    staffReleased: (name) => `${name} queda libre.`,
     managerButton: "Cambiar de club",
     managerButtonTitle: "Pasar a ser el mánager de otro club",
     managerTitle: "Cambiar de club",

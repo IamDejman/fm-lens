@@ -11,18 +11,18 @@ use fmlens_core::{
     AddedInjury, AgreedSigning, ArraySource, AwardFilter, AwardSort, AwardSummary, BestFor, BoardPlan, BoardSwap,
     CaptainRole, CaptainSet, Change, Clause, ClauseSet, ClubDetails, ClubFilter, ClubIndex, ClubMove, ClubRenamed,
     ClubSort, Coded, Cohered, CompetitionBonus, CompetitionFilter, CompetitionRule, CompetitionSort,
-    CompetitionSummary, ConcernsEnded, EditError, EndedLoan, Entity, EntityArrays, ExportFormat, ExportHeader, FeePlan,
-    Field, Fit, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameNames, GameRelease,
-    GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind, KitPlan,
-    Language, LanguageChoice, LanguageSet, Lifted, Listed, Lists, Loan, MANAGER_JOB, MoveError, MovePlan, MoveTerms,
-    MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob, OfficialFilter,
-    OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, PersonTie, Picture, Planned,
-    PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference, PreferenceKind,
-    PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, RivalPlan, STAFF_JOBS,
-    SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumRenamed, StadiumSort,
-    StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSort, StartedLoan, Target,
-    TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game, nation_summaries, nations,
-    read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
+    CompetitionSummary, ConcernsEnded, DIRECTOR_JOB, EditError, EndedLoan, Entity, EntityArrays, ExportFormat,
+    ExportHeader, FeePlan, Field, Fit, FmDate, FutureTransfer, GAME_EXE, GAME_PLUGIN, GameActions, GameInfo, GameNames,
+    GameRelease, GraphicsCounts, GraphicsIndex, HOMEGROWN_RULES, Healed, Health, Injury, InjuryKind, InjurySet, Kind,
+    KitPlan, Language, LanguageChoice, LanguageSet, Lifted, Listed, Lists, Loan, MANAGER_JOB, MoveError, MovePlan,
+    MoveTerms, MovedManager, Nation, NationDetails, NationFilter, NationSort, NationSummary, NationalJob,
+    OfficialFilter, OfficialSort, OfficialSummary, Operation, Order, Paid, PermitChange, PersonRef, PersonTie, Picture,
+    Planned, PlayerDetails, PlayerFilter, PlayerIndex, PlayerOrder, PlayerSummary, PlayerTemplate, Preference,
+    PreferenceKind, PreferenceSet, PreferenceTarget, Promise, PromiseClosed, RelationSet, RetirementSet, RivalPlan,
+    STAFF_JOBS, SearchIndex, Session, SessionError, SignedPlayer, Skipped, SortColumn, StadiumFilter, StadiumRenamed,
+    StadiumSort, StadiumSummary, StaffChange, StaffDetails, StaffFilter, StaffIndex, StaffPlan, StaffSigning,
+    StaffSort, StartedLoan, Target, TeamId, TemplateGroup, Tie, TieTarget, TransferPlan, TransferredPlayer, find_game,
+    nation_summaries, nations, read_player_details, read_stadiums, sort_players, sort_rows, stadium_owner,
 };
 use fmlens_core::{Likeness, PlayerSort, Scores, SimilarTo, scores, sort_by_likeness};
 use fmlens_mem::{Process, find_processes, is_current_process_elevated, list_modules};
@@ -1567,9 +1567,9 @@ impl Connection {
 
     /// Logs keeping a player from retiring just written, as a change of his `retirement` from the date he was to retire
     /// on (0 when the game had planned none) to 0.
-    fn log_retirement(&mut self, done: RetirementSet) -> LoggedChange {
+    fn log_retirement(&mut self, done: RetirementSet, entity: Entity) -> LoggedChange {
         let change = Change {
-            entity: Entity::Player,
+            entity,
             uid: done.player,
             field: "retirement".to_owned(),
             old: done.date.map_or(0, FmDate::to_number),
@@ -1579,7 +1579,7 @@ impl Connection {
         let logged = LoggedChange {
             id: self.log.len() + 1,
             at: now_ms(),
-            name: self.player_name(done.player),
+            name: if entity == Entity::Staff { self.staff_name(done.player) } else { self.player_name(done.player) },
             change,
             undone_at: None,
             earlier_game: false,
@@ -1790,21 +1790,124 @@ impl Connection {
             .ok_or_else(|| Failure::new("app.notFound", format!("No nation with UID {uid}")).with("uid", uid))
     }
 
-    /// Works out moving the member of staff `uid` to the club `club`.
-    fn plan_staff_move(&self, uid: u32, club: u32) -> Result<StaffPlan, Failure> {
+    /// Works out moving the member of staff `uid` to the club `club`, in the job `job` or the one he has. The editor's
+    /// own writes, which can be undone, where he keeps his job and the club's lists have room; the game's signing
+    /// where they have none, or he has no club.
+    fn plan_staff_move(&self, uid: u32, club: u32, job: Option<u8>) -> Result<StaffRoute, Failure> {
         let member = self.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
         let to = self.clubs.get(club).ok_or_else(|| not_found(Entity::Club, club))?;
-        Ok(self.session.plan_staff_move(member, to)?)
+        let refused = match self.session.plan_staff_move(member, to) {
+            Ok(plan) if job.is_none_or(|job| job == plan.job.0) => return Ok(StaffRoute::Written(plan)),
+            Ok(_) => None,
+            Err(error @ (MoveError::DepartmentFull { .. } | MoveError::Unemployed)) => Some(error),
+            Err(error) => return Err(error.into()),
+        };
+        self.plan_staff_signing(member, to, job, refused)
     }
 
-    /// Works out giving the member of staff `uid` the job `job` at his club.
-    fn plan_staff_job(&self, uid: u32, job: u8) -> Result<StaffPlan, Failure> {
+    /// Works out giving the member of staff `uid` the job `job` at his club: the editor's own writes, or the game's
+    /// signing where the job's department has no room.
+    fn plan_staff_job(&self, uid: u32, job: u8) -> Result<StaffRoute, Failure> {
         let member = self.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
-        Ok(self.session.plan_staff_job(member, job)?)
+        let refused = match self.session.plan_staff_job(member, job) {
+            Ok(plan) => return Ok(StaffRoute::Written(plan)),
+            Err(error @ MoveError::DepartmentFull { .. }) => error,
+            Err(error) => return Err(error.into()),
+        };
+        match member.club_uid.and_then(|uid| self.clubs.get(uid)) {
+            Some(club) => self.plan_staff_signing(member, club, Some(job), Some(refused)),
+            None => Err(refused.into()),
+        }
+    }
+
+    /// Works out the game's signing of `member` for `to`. Where this build cannot ask the game, the answer is why the
+    /// editor's own writes were `refused`.
+    fn plan_staff_signing(
+        &self,
+        member: &fmlens_core::StaffSummary,
+        to: &fmlens_core::ClubSummary,
+        job: Option<u8>,
+        refused: Option<MoveError>,
+    ) -> Result<StaffRoute, Failure> {
+        match (self.session.plan_staff_signing(member, to, job), refused) {
+            (Ok(signing), _) => Ok(StaffRoute::Signed(signing)),
+            (Err(MoveError::CallUnavailable), Some(refused)) => Err(refused.into()),
+            (Err(error), _) => Err(error.into()),
+        }
+    }
+
+    /// Makes a member of staff's move or new job the way it was worked out, and logs it.
+    fn make_staff_route(&mut self, route: StaffRoute) -> Result<LoggedChange, Failure> {
+        match route {
+            StaffRoute::Written(plan) => {
+                let done = self.session.apply_staff_plan(&plan)?;
+                Ok(self.log_staff(done))
+            }
+            StaffRoute::Signed(signing) => {
+                let done = self.session.sign_staff(&signing)?;
+                Ok(self.log_staff_signing(done))
+            }
+        }
+    }
+
+    /// Logs a signing of staff the game made, as a change of his `club`, or of `contract.job` at the club he was at,
+    /// that nothing undoes, and brings his list row and that of the director the game released up to date.
+    fn log_staff_signing(&mut self, done: fmlens_core::SignedStaff) -> LoggedChange {
+        let name = self.staff.get(done.member).map_or_else(String::new, |s| s.name.clone());
+        let moved = done.from_club != Some(done.to_club);
+        let from = done.from_club.map(|uid| self.club_name(uid));
+        let to = self.club_name(done.to_club);
+        self.staff.update(done.member, |member| {
+            member.club = Some(to.clone());
+            member.club_uid = Some(done.to_club);
+            member.team = Some(TeamId::SENIOR);
+            member.job = Some(done.job.1);
+        });
+        if let Some(uid) = done.displaced {
+            self.staff.update(uid, |member| {
+                member.club = None;
+                member.club_uid = None;
+                member.team = None;
+                member.job = None;
+            });
+            self.pending_refresh.push((Entity::Staff, uid));
+        }
+        let (field, old, new) = if moved {
+            ("club", done.from_club.map_or(0, i64::from), i64::from(done.to_club))
+        } else {
+            ("contract.job", done.job.0.map_or(0, i64::from), i64::from(done.job.1))
+        };
+        let logged = LoggedChange {
+            id: self.log.len() + 1,
+            at: now_ms(),
+            name,
+            change: Change {
+                entity: Entity::Staff,
+                uid: done.member,
+                field: field.to_owned(),
+                old,
+                new,
+                record: Vec::new(),
+            },
+            undone_at: None,
+            earlier_game: false,
+            team: None,
+            batch: None,
+            moved: moved.then_some(MovedClubs { from, to: Some(to), with: None, fee: None, joins: None }),
+            captaincy: None,
+            tie: None,
+            clause: None,
+            renamed: None,
+            holds: None,
+            undo: Some(Undo::Permanent),
+        };
+        self.pending_refresh.push((logged.change.entity, logged.change.uid));
+        self.log.push(logged.clone());
+        logged
     }
 
     /// Logs a member of staff's move, as a change of his `club`, or his new job, as a change of `contract.job`, and
-    /// brings his list row up to date.
+    /// brings his list row up to date; and that of the Director of Football who took his place, whom the change names.
     fn log_staff(&mut self, done: StaffChange) -> LoggedChange {
         let row = self.staff.get(done.member);
         let (club, club_uid, staff_team, job) =
@@ -1812,6 +1915,25 @@ impl Connection {
         let name = row.map_or_else(String::new, |s| s.name.clone());
         let moved = done.from_club != done.to_club;
         let (from, to) = (self.club_name(done.from_club), self.club_name(done.to_club));
+        let displaced = done.displaced.map(|uid| {
+            let found = self.staff.get(uid);
+            StaffRow {
+                uid,
+                club: found.and_then(|s| s.club.clone()),
+                club_uid: found.and_then(|s| s.club_uid),
+                team: found.and_then(|s| s.team),
+                job: found.and_then(|s| s.job),
+            }
+        });
+        let with = displaced.as_ref().map(|row| self.staff.get(row.uid).map_or_else(String::new, |s| s.name.clone()));
+        if let Some(row) = &displaced {
+            self.staff.update(row.uid, |member| {
+                member.club = Some(from.clone());
+                member.club_uid = Some(done.from_club);
+                member.team = Some(TeamId::SENIOR);
+            });
+            self.pending_refresh.push((Entity::Staff, row.uid));
+        }
         self.staff.update(done.member, |member| {
             if moved {
                 member.club = Some(to.clone());
@@ -1841,13 +1963,13 @@ impl Connection {
             earlier_game: false,
             team: None,
             batch: None,
-            moved: moved.then_some(MovedClubs { from: Some(from), to: Some(to), with: None, fee: None, joins: None }),
+            moved: moved.then_some(MovedClubs { from: Some(from), to: Some(to), with, fee: None, joins: None }),
             captaincy: None,
             tie: None,
             clause: None,
             renamed: None,
             holds: None,
-            undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, team: staff_team, job })),
+            undo: Some(Undo::Staff(LoggedStaff { done, club, club_uid, team: staff_team, job, displaced })),
         };
         self.pending_refresh.push((logged.change.entity, logged.change.uid));
         self.log.push(logged.clone());
@@ -2364,6 +2486,15 @@ impl Connection {
                     member.team = logged.team;
                     member.job = logged.job;
                 });
+                if let Some(row) = logged.displaced {
+                    self.staff.update(row.uid, |member| {
+                        member.club = row.club;
+                        member.club_uid = row.club_uid;
+                        member.team = row.team;
+                        member.job = row.job;
+                    });
+                    self.pending_refresh.push((Entity::Staff, row.uid));
+                }
             }
             Some(Undo::Board(logged)) => {
                 self.session.undo_board_swap(&logged.done)?;
@@ -2945,6 +3076,8 @@ struct LoggedStaff {
     club_uid: Option<u32>,
     team: Option<TeamId>,
     job: Option<u8>,
+    /// The Director of Football who took his place, as his list row said.
+    displaced: Option<StaffRow>,
 }
 
 /// Two board members' swap of seats as the log keeps it: the writes to undo, and what their list rows said before.
@@ -3136,6 +3269,14 @@ struct LoanEndPreview {
     future_fee: Option<u32>,
 }
 
+/// How a member of staff's move or new job is made.
+enum StaffRoute {
+    /// By the editor's own writes, which the change log undoes.
+    Written(StaffPlan),
+    /// By the game's signing, which nothing undoes.
+    Signed(StaffSigning),
+}
+
 /// The clubs a move is between.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -3146,7 +3287,9 @@ struct MovePreview {
     /// What the fee does to the two clubs' money, when one is to be paid.
     #[serde(skip_serializing_if = "Option::is_none")]
     fee: Option<FeePlan>,
-    /// For the human manager's move, the name of the club's manager, whom the game dismisses.
+    /// The name of who makes way at the club: for the human manager's move, its manager, whom the game dismisses; for
+    /// a Director of Football's, its director, who takes his place at the club he leaves, or whom the game releases
+    /// where the move is `permanent`.
     #[serde(skip_serializing_if = "Option::is_none")]
     displaced: Option<String>,
     /// The game makes the move itself, and nothing undoes it.
@@ -5121,30 +5264,32 @@ fn release_player(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, 
 /// Checks that the member of staff `uid` can move to the club `club`, and names the clubs; the error says why he
 /// cannot. Nothing is written.
 #[tauri::command]
-fn plan_staff_move(state: State<'_, AppState>, uid: u32, club: u32) -> Result<MovePreview, Failure> {
+fn plan_staff_move(state: State<'_, AppState>, uid: u32, club: u32, job: Option<u8>) -> Result<MovePreview, Failure> {
     let guard = state.0.lock()?;
     let connection = guard.as_ref().ok_or_else(not_connected)?;
-    let plan = connection.plan_staff_move(uid, club)?;
     let name = |uid: u32| ClubName { uid, name: connection.club_name(uid) };
+    let (from, to, displaced, permanent) = match connection.plan_staff_move(uid, club, job)? {
+        StaffRoute::Written(plan) => (Some(plan.from_club), plan.to_club, plan.displaced, false),
+        StaffRoute::Signed(signing) => (signing.from_club, signing.to_club, signing.displaced, true),
+    };
     Ok(MovePreview {
         jobs: None,
-        from: Some(name(plan.from_club)),
-        to: name(plan.to_club),
+        from: from.map(name),
+        to: name(to),
         fee: None,
-        displaced: None,
-        permanent: false,
+        displaced: displaced.and_then(|uid| connection.staff.get(uid)).map(|found| found.name.clone()),
+        permanent,
     })
 }
 
-/// Moves the member of staff `uid` to the club `club`, in the departments he works in, worked out again from the game
-/// as it is now, and logs the move.
+/// Moves the member of staff `uid` to the club `club`, in the job `job` or the one he has, worked out again from the
+/// game as it is now, and logs the move.
 #[tauri::command]
-fn move_staff(state: State<'_, AppState>, uid: u32, club: u32) -> Result<LoggedChange, Failure> {
+fn move_staff(state: State<'_, AppState>, uid: u32, club: u32, job: Option<u8>) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let plan = connection.plan_staff_move(uid, club)?;
-    let done = connection.session.apply_staff_plan(&plan)?;
-    Ok(connection.log_staff(done))
+    let route = connection.plan_staff_move(uid, club, job)?;
+    connection.make_staff_route(route)
 }
 
 /// A member of a club's board, to swap seats with.
@@ -5318,15 +5463,26 @@ fn move_to_nation(state: State<'_, AppState>, uid: u32, nation: u32, women: bool
 fn change_staff_job(state: State<'_, AppState>, uid: u32, job: u8) -> Result<LoggedChange, Failure> {
     let mut guard = state.0.lock()?;
     let connection = guard.as_mut().ok_or_else(not_connected)?;
-    let plan = connection.plan_staff_job(uid, job)?;
-    let done = connection.session.apply_staff_plan(&plan)?;
-    Ok(connection.log_staff(done))
+    let route = connection.plan_staff_job(uid, job)?;
+    connection.make_staff_route(route)
 }
 
-/// The jobs `change_staff_job` gives, by contract code.
+/// Whether giving the member of staff `uid` the job `job` is the game's to make, which nothing undoes; the error
+/// says why he cannot have it. Nothing is written.
 #[tauri::command]
-fn staff_jobs() -> Vec<u8> {
-    STAFF_JOBS.iter().map(|&(code, _)| code).collect()
+fn plan_staff_job(state: State<'_, AppState>, uid: u32, job: u8) -> Result<bool, Failure> {
+    let guard = state.0.lock()?;
+    let connection = guard.as_ref().ok_or_else(not_connected)?;
+    Ok(matches!(connection.plan_staff_job(uid, job)?, StaffRoute::Signed(_)))
+}
+
+/// The jobs `change_staff_job` gives in the game connected now, by contract code: Director of Football where the
+/// editor knows how a club holds one.
+#[tauri::command]
+fn staff_jobs(state: State<'_, AppState>) -> Result<Vec<u8>, Failure> {
+    let guard = state.0.lock()?;
+    let director = guard.as_ref().and_then(|connection| connection.session.layout.club.director_of_football);
+    Ok(STAFF_JOBS.iter().map(|&(code, _)| code).chain(director.map(|_| DIRECTOR_JOB)).collect())
 }
 
 /// Checks that the players `uid` and `other` can swap clubs, and names the clubs (`from` is
@@ -5616,7 +5772,19 @@ fn keep_playing(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Fa
     let player = connection.players.get(uid).ok_or_else(|| not_found(Entity::Player, uid))?;
     let plan = connection.session.plan_keep_playing(player)?;
     let done = connection.session.apply_retirement(&plan)?;
-    Ok(connection.log_retirement(done))
+    Ok(connection.log_retirement(done, Entity::Player))
+}
+
+/// Keeps the member of staff `uid` from retiring: the retirement the game has planned for them is taken out of its
+/// plans. Logged as one change of their `retirement` to none, and undone as one.
+#[tauri::command]
+fn keep_working(state: State<'_, AppState>, uid: u32) -> Result<LoggedChange, Failure> {
+    let mut guard = state.0.lock()?;
+    let connection = guard.as_mut().ok_or_else(not_connected)?;
+    let member = connection.staff.get(uid).ok_or_else(|| not_found(Entity::Staff, uid))?;
+    let plan = connection.session.plan_keep_working(member)?;
+    let done = connection.session.apply_retirement(&plan)?;
+    Ok(connection.log_retirement(done, Entity::Staff))
 }
 
 /// Points the tie `index` of the player `uid` at the nation `nation` or the club `club` (by UID), and gives a
@@ -6651,6 +6819,7 @@ pub fn run() {
             plan_national_move,
             move_to_nation,
             change_staff_job,
+            plan_staff_job,
             staff_jobs,
             heal_player,
             lift_bans,
@@ -6671,6 +6840,7 @@ pub fn run() {
             plan_cancel_future_transfers,
             cancel_future_transfers,
             keep_playing,
+            keep_working,
             change_tie,
             remove_tie,
             add_tie,

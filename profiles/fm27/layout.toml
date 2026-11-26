@@ -374,6 +374,7 @@ finance = 0x150           # finance record pointer
 medical_staff = 0x60      # physios, sports scientists, the head of sports science, some fitness coaches
 coaching_staff = 0x78     # coaches, assistants, goalkeeping and fitness coaches, analysts, youth managers
 scouting_staff = 0x90     # scouts, the chief scout, recruitment analysts
+director_of_football = 0x148  # pointer to its Director of Football, null without one (Liverpool: Julian Ward)
 # As on macOS, checked on Steam 26340721 with Arsenal: its rivals (Tottenham 100, Manchester United 90, Chelsea 85,
 # Liverpool 75, West Ham 60), its link with Boreham Wood, and England as the country it plays in and its own.
 relations = 0x48          # the club's relations, laid out as a person's: code 5 to a club is a rivalry, 0-100

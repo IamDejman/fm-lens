@@ -208,7 +208,7 @@ impl Session {
                 return Err(MoveError::UnusualBoard);
             }
         }
-        self.check_unheld(club, object, object + s.identity(), object + s.person_block)?;
+        self.check_unheld(club, object, object + s.identity(), object + s.person_block, None)?;
         Ok((board, index))
     }
 
