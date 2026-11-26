@@ -2004,6 +2004,13 @@ export const es: Strings = {
     releaseNotes: "Notas de la versión",
     dismiss: "Cerrar",
     changes: {
+      "1.1.9": [
+        "Ficha personal sin club para cualquier club.",
+        "Traspasa personal a un club con la plantilla técnica completa.",
+        "Traspasa o nombra un director deportivo.",
+        "Evita que el personal se retire.",
+        "Edita FM27 de Game Pass, versión 0.9.2562.0.",
+      ],
       "1.1.8": [
         "Los candidatos juveniles aparecen solos, sin pulsar Recargar datos.",
         "Los jugadores y el personal nuevos aparecen cuando FM los añade.",

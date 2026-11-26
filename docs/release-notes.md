@@ -1,34 +1,55 @@
 ## What's new
 
-FM Lens 1.1.8 keeps up with your game: when FM brings in new players, FM Lens now sees them by itself. Your youth intake shows up in your under-18s seconds after it lands, with no Reload and no reconnect. Everything below is new since 1.1.7.
+FM Lens 1.1.9 is the staff release. Sign an unemployed coach, scout or director for any club, move staff into a club whose backroom team is full, appoint a Director of Football, and stop staff from retiring. It also edits the latest FM27 on Game Pass, version 0.9.2562.0. Everything below is new since 1.1.8.
 
-### Your youth intake shows up by itself
+### Sign unemployed staff for any club
 
-- On intake day FM hands you a list of youth candidates, and until now FM Lens could not see any of them. They were missing from your under-18s and from search until you pressed Reload.
-- From 1.1.8 FM Lens notices when FM adds players and reads the game again by itself, a few seconds after the new players settle. Open your club, go to Squad, pick U18, and your candidates are there with their ability and potential, before you decide who gets a contract.
-- It is not only your club. Every club's intake, every new player FM creates and every new member of staff shows up the same way, so search finds them too.
+- Until now FM Lens could only move staff who already had a job. Someone out of work could not be brought to your club, or to any club.
+- Now an unemployed member of staff has a Sign button on their profile. Pick the club and the job, Coach, Scout, Physio, Director of Football and the rest, and press Sign.
+- FM itself makes the signing, so they get a real contract with the wage and dates FM would give them, and they are on the club's Staff page in FM straight away.
+- That big name sitting without a club in your save? Open Staff, search for them and give them a job at your club.
 
-### Why they were missing
+### Appoint a Director of Football
 
-- FM Lens reads every player once, when it connects, and it read again only when FM moved its lists, as it does when you load another save. A youth intake adds players to the list where it already is, so FM Lens never knew there was anything new to read. In one career the list grew from 30,993 players to 32,692 without moving, and FM Lens knew only the first 30,993.
-- Now it also counts the players, staff and clubs, and reads again when a count changes.
+- Moving a Director of Football used to stop with an error. Now you can transfer one from another club, sign one who is unemployed, or give the job to someone already at the club with Change job.
+- A club has one Director of Football. If the club already has one, FM releases them to make room, and the dialog names who is released before you confirm.
+
+### Move staff into a full backroom team
+
+- FM Lens used to refuse a staff transfer when the new club's list for that department had no spare room, even when FM itself showed free places, 5 of 20 scouts for example.
+- Now FM makes those signings too, so the move goes through. They keep the same job, wage and contract end date.
+- The same goes for Change job at the same club, when the department they are moving into is full.
+
+### Stop staff from retiring
+
+- A member of staff's Career tab now has a Retirement section. It shows the date they plan to retire and a Prevent retirement button, the same control a player has.
+- Press it and the plan is cancelled. Changed your mind? Undo it in Changes and the date is back.
+- We watched it in a career: two coaches whose retirement we prevented were still there after their dates, and one we left alone retired on his day.
+- When nothing is planned the section says No retirement planned.
+
+### Prevent retirement works on more players
+
+- Prevent retirement had nothing to offer a player with no retirement planned. Now it gives him the trait to play on as long as possible, and you can undo that in Changes too.
+
+### FM27 on Game Pass, version 0.9.2562.0
+
+- The Game Pass update of 24 November opened read-only. FM Lens 1.1.9 edits it.
 
 ### Good to know
 
-- FM Lens waits for the numbers to stop changing before it reads, and reads at most once every 30 seconds, longer in a very large database. On holiday, when FM adds players day after day, it does not read over and over.
-- It works the same when FM Lens is connected read-only.
-- If you have previewed a mass edit and not applied it when FM Lens reads again, the preview is dropped, the same as when you press Reload. Preview it again and apply.
-- Reload is still there whenever you want to read the game again yourself.
+- A signing FM makes cannot be undone in Changes: FM ends the old contract, and there is nothing FM Lens could put back. The dialog says It can't be undone before you confirm. To send someone back, transfer them again.
+- Signing through FM works on Steam, on Windows and on a Mac. On Game Pass a staff transfer still needs spare room at the new club, and unemployed staff cannot be signed yet.
+- When the new club has room, a staff transfer works as before and can be undone.
 
 ### How this was tested
 
-- We found the cause on an Apple Silicon Mac with Steam's 27.1.1, in a career on its intake day, and the fix passed our automatic checks on macOS and Windows.
-- We have not yet played 1.1.8 through an intake day on a Mac or on Windows. If new players do not show up by themselves, press Reload and tell us from Report a problem.
+- We ran every change above with the installed app on Windows with Steam's 27.1.1: signed, moved, prevented, saved, quit FM and loaded the save again, and everything was as we left it.
+- We have not yet run them on a Mac, and we have not played the Game Pass update with 1.1.9. If something looks wrong, tell us from Report a problem.
 
 ### Updating
 
-- Open FM Lens and it fetches 1.1.8 by itself. Press Relaunch to update when it appears, or download 1.1.8 from getfmlens.com.
-- Every supported game version keeps working: 27.1.1, 27.1.0, 27.0.1 and 27.0.0 on Steam, and 0.9.2524.0 and 0.9.2435.0 on Game Pass.
+- Open FM Lens and it fetches 1.1.9 by itself. Press Relaunch to update when it appears, or download 1.1.9 from getfmlens.com.
+- Every supported game version keeps working: 27.1.1, 27.1.0, 27.0.1 and 27.0.0 on Steam, and 0.9.2562.0, 0.9.2524.0 and 0.9.2435.0 on Game Pass.
 - As always, edit a copy of your save.
 
 FM Lens is free and open source, and it will stay that way. A [star on GitHub](https://github.com/IamDejman/fm-lens) encourages me.

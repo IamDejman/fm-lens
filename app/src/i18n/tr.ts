@@ -1974,6 +1974,13 @@ export const tr: Strings = {
     releaseNotes: "Sürüm notları",
     dismiss: "Kapat",
     changes: {
+      "1.1.9": [
+        "Kulüpsüz personeli istediğiniz kulübe alın.",
+        "Personel listesi dolu kulübe personel transfer edin.",
+        "Futbol direktörü transfer edin ya da atayın.",
+        "Personelin emekli olmasını önleyin.",
+        "Game Pass'teki FM27'yi düzenleyin, sürüm 0.9.2562.0.",
+      ],
       "1.1.8": [
         "Altyapı adayları kendiliğinden görünür, Verileri yeniden oku'ya basmanız gerekmez.",
         "Yeni oyuncular ve personel, FM ekledikçe görünür.",
