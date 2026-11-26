@@ -864,6 +864,8 @@ export const tr: Strings = {
     potentialAbilityShort: "PY",
     potentialRange: "Potansiyel bir aralık olarak belirlenmiş",
     suggestedAbility: (value) => `Önerilen MY ${value}`,
+    abilityOverMost: (value, most) => `Özellikler MY ${value} gerektiriyor, en fazla ${most}`,
+    abilityAbovePotential: "MY, PY'nin üstünde",
     personalDetails: "Kişisel bilgiler",
     fullNameLabel: "Tam ad",
     heightLabel: "Boy",

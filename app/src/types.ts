@@ -67,6 +67,8 @@ export interface EntityArrays {
 export interface Career {
   /** The manager's staff UID. */
   uid: number;
+  /** What tells this career from another: the store and its human managers, whom each new career makes afresh. */
+  key: string;
   manager: string;
   club: string | null;
   clubUid: number | null;

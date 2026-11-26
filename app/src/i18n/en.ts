@@ -824,6 +824,10 @@ export const en = {
     potentialRange: "Potential set as a range",
     /** While a player is edited: the button that puts the current ability that fits his attributes in the input. */
     suggestedAbility: (value: number) => `Suggested CA ${value}`,
+    /** Beside it: the attributes typed fit an ability the game cannot hold. */
+    abilityOverMost: (value: number, most: number) => `Attributes fit CA ${value}, the most is ${most}`,
+    /** Beside it: the current ability typed is more than the potential. */
+    abilityAbovePotential: "CA is above PA",
     /** The group of what the header leaves out: the full name, the birth date, the height and the ID. */
     personalDetails: "Personal details",
     fullNameLabel: "Full name",
