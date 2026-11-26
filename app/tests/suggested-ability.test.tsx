@@ -36,7 +36,7 @@ const player = (role: string) => {
   };
 };
 
-// Of all players, 85 in 100 are within 2 and 98 within 4 (see the fit in `abilityEstimate.ts`); these ten are within 3.5.
+// Of all players, 86 in 100 are within 2 and 98 within 4 (see the fit in `abilityEstimate.ts`); these ten are within 3.5.
 test('the estimate lands on the ability the game holds, for every role', () => {
   for (const { role } of PLAYERS) {
     const { ability, attributes, positions } = player(role);
@@ -70,13 +70,17 @@ test('a position counts by its rating, and the dearest of them sets the ability'
   expect(abilityFor(attributes, { st: 1, dc: 20 })).toBeLessThan(striker);
   // A position he half plays can be the dearest: his own at 10 is worth less than a winger's at 20.
   expect(abilityFor(attributes, { st: 10, aml: 20 })).toBe(abilityFor(attributes, { aml: 20 }));
-  // His other positions add by how well he plays them: nothing up to 10, a whole one at 20, part of one between.
+  // His other positions add by how well he plays them: nothing up to 10, a whole one at 20, part of one between. Each
+  // also adds what its role costs a striker: 0.8 for centre back, 0.2 for defensive midfield, nothing for keeper.
   expect(abilityFor(attributes, { st: 20, dc: 10 })).toBe(striker);
-  expect(abilityFor(attributes, { st: 20, dc: 20, gk: 20 })).toBeCloseTo(striker + 1.6, 5);
-  expect(abilityFor(attributes, { st: 20, dc: 20, gk: 20, dm: 15 })).toBeCloseTo(striker + 1.6 + 0.6 * 2.8, 5);
-  // Six or more count as six.
+  expect(abilityFor(attributes, { st: 20, dc: 20, gk: 20 })).toBeCloseTo(striker + 1.6 + 0.8, 5);
+  expect(abilityFor(attributes, { st: 20, dc: 20, gk: 20, dm: 15 })).toBeCloseTo(
+    striker + 1.6 + 0.6 * 2.8 + 0.8 + 0.6 * 0.2,
+    5,
+  );
+  // Six or more count as six, and each still adds what its role costs a striker.
   const all = named(ABILITY_POSITIONS, ABILITY_POSITIONS.map(() => 20));
-  expect(abilityFor(attributes, all)).toBeCloseTo(striker + 17.2, 5);
+  expect(abilityFor(attributes, all)).toBeCloseTo(striker + 17.2 + 5.4, 5);
 });
 
 test('the ability that fits is not held to what the game holds, the suggestion is', () => {

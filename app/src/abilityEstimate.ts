@@ -2,8 +2,8 @@
 // after an edit, so that an edited player's ability still fits what he can do. The game's sum is not read from the
 // game: these weights were fitted to every player of a save (30,282 players, game build 26577676), with a position
 // weighed by its rating, and his other positions counted, as FM's own editor does. They land within 2 points of the
-// ability the game holds for 85 players in 100 and within 4 for 98 (root mean square error 1.9). On players kept out
-// of the fit the error is 1.92; counting every position from 15 in full, as at first, it was 2.13.
+// ability the game holds for 86 players in 100 and within 4 for 98 (root mean square error 1.9). On players kept out
+// of the fit the error is 1.88; counting every position from 15 in full, as at first, it was 2.13.
 
 /** The roles the game weighs attributes for, in the order of the weights below. */
 const ROLES = ["gk", "dc", "fb", "wb", "dm", "mc", "wm", "w", "amc", "st"] as const;
@@ -73,6 +73,23 @@ const BASE: readonly number[] = [-115.7, -117.7, -117.1, -119.6, -117.3, -116.9,
 const VERSATILITY: readonly number[] = [0, -0.3, 1.6, 4.4, 8.9, 12.5, 17.2];
 
 /**
+ * What each of his other positions adds on top, by the role of the one that sets his ability (rows) and its own role
+ * (columns), both in the order of `ROLES`: in full at 20, less below it (see `PLAYED`). A striker adds the most.
+ */
+const PAIR: readonly (readonly number[])[] = [
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0.2, 0, -0.2, 0.3, -0.1, 0, 0.4, -0.2, 0.2, 0.9],
+  [0, -0.2, 0.2, 0.2, 0.4, 0.2, 0, 0.6, -0.1, 1],
+  [0, 0.5, 0.1, 0.9, 0.2, 0, -0.2, 0.7, 0, 0.4],
+  [0, 0.6, 0.7, -0.5, 0, 0.1, -0.7, 0, 0.4, 0.4],
+  [0, 0.8, 0.6, -0.3, 0.2, 0, -0.4, -0.6, 0.2, 0.5],
+  [0, 0.3, 0, 0.6, -0.5, -0.2, -0.8, -0.2, -0.6, 1.1],
+  [0, 0.1, 0.3, 0.9, 0.9, -1, -0.4, -0.1, -0.6, 1.3],
+  [0.1, -0.2, 0.2, 0.4, 0.5, -0.2, -0.8, -0.5, 0, 1.1],
+  [0, 0.8, 0.7, 0.5, 0.2, 0.3, 0.5, 0.3, 0.1, 0],
+];
+
+/**
  * How much of a position played a rating of 1–20 counts for, in the steps FM's own editor takes: nothing up to 10, a
  * whole one at 20.
  */
@@ -102,7 +119,7 @@ export const ABILITY_POSITIONS: readonly string[] = Object.keys(ROLE_OF);
  * `attributes` are on the scale the game shows (1–20, between whole numbers for a stored value that is: the game
  * stores five steps for each), `positions` are his ratings, 1–20. Each position costs what its role does, less the
  * lower it is rated (see `FADE`), and the one that costs the most sets the ability; the others add to it (see
- * `VERSATILITY`).
+ * `VERSATILITY` and `PAIR`).
  */
 export function abilityFor(
   attributes: Readonly<Record<string, number>>,
@@ -120,8 +137,9 @@ export function abilityFor(
     Object.entries(WEIGHTS).reduce((sum, [key, weights]) => sum + weights[role] * (values[key] ?? 0), BASE[role]);
   const costs = new Map<number, number>();
   const ratings = rated.map((key) => Math.min(FADE.length, Math.max(1, Math.round(positions[key]))));
-  const faded = rated.map((key, index) => {
-    const role = ROLES.indexOf(ROLE_OF[key]);
+  const roles = rated.map((key) => ROLES.indexOf(ROLE_OF[key]));
+  const faded = rated.map((_, index) => {
+    const role = roles[index];
     if (!costs.has(role)) {
       costs.set(role, cost(role));
     }
@@ -130,9 +148,13 @@ export function abilityFor(
   const most = Math.max(...faded);
   const best = faded.indexOf(most);
   const others = ratings.reduce((sum, rating, index) => sum + (index === best ? 0 : PLAYED[rating - 1]), 0);
+  const kinds = ratings.reduce(
+    (sum, rating, index) => sum + (index === best ? 0 : PAIR[roles[best]][roles[index]] * PLAYED[rating - 1]),
+    0,
+  );
   const whole = Math.min(Math.floor(others), VERSATILITY.length - 2);
   const between = Math.min(others - whole, 1);
-  return most + VERSATILITY[whole] + between * (VERSATILITY[whole + 1] - VERSATILITY[whole]);
+  return most + VERSATILITY[whole] + between * (VERSATILITY[whole + 1] - VERSATILITY[whole]) + kinds;
 }
 
 /** How far a player's ability may be from the estimate and still be taken as the game's own. */
