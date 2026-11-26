@@ -36,11 +36,11 @@ const player = (role: string) => {
   };
 };
 
-// Of all players, 84 in 100 are within 2 (see the fit in `abilityEstimate.ts`); these ten are within 2.5.
+// Of all players, 85 in 100 are within 2 and 98 within 4 (see the fit in `abilityEstimate.ts`); these ten are within 3.5.
 test('the estimate lands on the ability the game holds, for every role', () => {
   for (const { role } of PLAYERS) {
     const { ability, attributes, positions } = player(role);
-    expect(Math.abs(abilityFor(attributes, positions)! - ability), role).toBeLessThan(2.5);
+    expect(Math.abs(abilityFor(attributes, positions)! - ability), role).toBeLessThan(3.5);
   }
 });
 
@@ -67,13 +67,16 @@ test('a position counts by its rating, and the dearest of them sets the ability'
   expect(abilityFor(attributes, { st: 18 })).toBe(striker);
   expect(abilityFor(attributes, { st: 15 })).toBeCloseTo(striker * 0.96, 5);
   expect(abilityFor(attributes, { st: 10 })).toBeCloseTo(striker * 0.802, 5);
-  expect(abilityFor(attributes, { st: 20, dc: 14 })).toBe(striker);
   expect(abilityFor(attributes, { st: 1, dc: 20 })).toBeLessThan(striker);
   // A position he half plays can be the dearest: his own at 10 is worth less than a winger's at 20.
   expect(abilityFor(attributes, { st: 10, aml: 20 })).toBe(abilityFor(attributes, { aml: 20 }));
-  // Each position played, from 15, adds for the versatility: nothing for two, a point for three.
-  expect(abilityFor(attributes, { st: 20, dc: 20 })).toBe(striker);
-  expect(abilityFor(attributes, { st: 20, dc: 15, gk: 15 })).toBeCloseTo(striker + 1.1, 5);
+  // His other positions add by how well he plays them: nothing up to 10, a whole one at 20, part of one between.
+  expect(abilityFor(attributes, { st: 20, dc: 10 })).toBe(striker);
+  expect(abilityFor(attributes, { st: 20, dc: 20, gk: 20 })).toBeCloseTo(striker + 1.6, 5);
+  expect(abilityFor(attributes, { st: 20, dc: 20, gk: 20, dm: 15 })).toBeCloseTo(striker + 1.6 + 0.6 * 2.8, 5);
+  // Six or more count as six.
+  const all = named(ABILITY_POSITIONS, ABILITY_POSITIONS.map(() => 20));
+  expect(abilityFor(attributes, all)).toBeCloseTo(striker + 17.2, 5);
 });
 
 test('the ability that fits is not held to what the game holds, the suggestion is', () => {
@@ -90,7 +93,7 @@ test('an ability that does not fit is suggested the estimate, within 1 to 200', 
   const best = named(ABILITY_ATTRIBUTES, ABILITY_ATTRIBUTES.map(() => 20));
   const worst = named(ABILITY_ATTRIBUTES, ABILITY_ATTRIBUTES.map(() => 1));
   expect(suggestedAbility(fit, { attributes, positions }, { attributes: best, positions })).toBe(200);
-  expect(suggestedAbility(fit, { attributes, positions }, { attributes: worst, positions })).toBe(1);
+  expect(suggestedAbility(fit, { attributes, positions }, { attributes: worst, positions: { mc: 20 } })).toBe(1);
   expect(suggestedAbility(fit, { attributes, positions: {} }, { attributes, positions: {} })).toBeNull();
 });
 
@@ -100,7 +103,7 @@ const field = (key: string, kind: EditField['kind'], min: number, max: number, s
 const STRIKER = 7;
 const CAREER = 'Steam:2000000001';
 // What a point of finishing is worth to a striker.
-const FINISHING = 1.53;
+const FINISHING = 1.54;
 beforeEach(() => { localStorage.clear(); });
 
 // The striker being edited: the inputs judge what is typed as the profile's do. `log` is what was applied to him
